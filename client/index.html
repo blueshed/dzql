@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ZeroQL Demo - Nested Proxy API</title>
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <h1>ZeroQL Demo - Nested Proxy API</h1>
+
+        <div class="container">
+            <div id="status" class="status disconnected">Disconnected</div>
+
+            <div id="auth-section">
+                <h3>Authentication</h3>
+                <div class="inline-form">
+                    <input
+                        type="email"
+                        id="email"
+                        placeholder="Email"
+                        value="test@example.com"
+                    />
+                    <input
+                        type="password"
+                        id="password"
+                        placeholder="Password"
+                        value="password123"
+                    />
+                    <button onclick="register()">Register</button>
+                    <button onclick="login()">Login</button>
+                    <button onclick="logout()">Logout</button>
+                </div>
+                <div id="auth-result"></div>
+            </div>
+        </div>
+
+        <div class="container">
+            <h3>ZeroQL Nested Proxy API Examples</h3>
+            <p>
+                The new API syntax matches the documented patterns:
+                <code>api.operation.entity(params)</code>
+            </p>
+
+            <div class="api-section">
+                <h4>📖 Get Operations</h4>
+                <div class="api-call">api.get.organisations({ id: 1 })</div>
+                <button onclick="testGet()">Test Get Organisation</button>
+                <div class="api-call">api.get.venues({ id: 1 })</div>
+                <button onclick="testGetVenue()">Test Get Venue</button>
+                <div id="get-result"></div>
+            </div>
+
+            <div class="api-section">
+                <h4>🔍 Lookup Operations</h4>
+                <div class="inline-form">
+                    <input
+                        type="text"
+                        id="lookup-filter"
+                        placeholder="Filter text"
+                        value="Event"
+                    />
+                    <button onclick="testLookup()">Test Lookup</button>
+                </div>
+                <div class="api-call">
+                    api.lookup.organisations({ p_filter: "..." })
+                </div>
+                <div id="lookup-result"></div>
+            </div>
+
+            <div class="api-section">
+                <h4>🔎 Search Operations</h4>
+
+                <!-- Entity Selector -->
+                <div class="search-controls">
+                    <label>Entity:</label>
+                    <select id="search-entity">
+                        <option value="venues">Venues</option>
+                        <option value="products">Products</option>
+                        <option value="organisations">Organisations</option>
+                        <option value="users">Users</option>
+                    </select>
+                </div>
+
+                <!-- Text Search -->
+                <div class="search-controls">
+                    <label>Text Search:</label>
+                    <input
+                        type="text"
+                        id="search-text"
+                        placeholder="Search across all text fields..."
+                    />
+                </div>
+
+                <!-- Filter Builder -->
+                <div class="filter-builder">
+                    <h5>Filters</h5>
+                    <div id="filters-container">
+                        <!-- Filters will be added dynamically here -->
+                    </div>
+                    <button onclick="addFilter()" class="btn-small">
+                        + Add Filter
+                    </button>
+                </div>
+
+                <!-- Sorting -->
+                <div class="search-controls">
+                    <label>Sort by:</label>
+                    <input
+                        type="text"
+                        id="sort-field"
+                        placeholder="Field name"
+                    />
+                    <select id="sort-order">
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                    </select>
+                </div>
+
+                <!-- Pagination -->
+                <div class="search-controls">
+                    <label>Page:</label>
+                    <input
+                        type="number"
+                        id="page-num"
+                        value="1"
+                        min="1"
+                        style="width: 60px"
+                    />
+                    <label>Limit:</label>
+                    <input
+                        type="number"
+                        id="page-limit"
+                        value="10"
+                        min="1"
+                        max="100"
+                        style="width: 60px"
+                    />
+                </div>
+
+                <!-- Temporal Filter -->
+                <div class="search-controls">
+                    <label>On Date (optional):</label>
+                    <input type="date" id="on-date" />
+                </div>
+
+                <!-- Example Queries -->
+                <div class="example-queries">
+                    <label>Quick Examples:</label>
+                    <button
+                        onclick="loadExample('expensive')"
+                        class="btn-small"
+                    >
+                        Expensive Products
+                    </button>
+                    <button onclick="loadExample('brooklyn')" class="btn-small">
+                        Brooklyn Venues
+                    </button>
+                    <button onclick="loadExample('led')" class="btn-small">
+                        LED Products
+                    </button>
+                    <button onclick="loadExample('range')" class="btn-small">
+                        Price Range
+                    </button>
+                </div>
+
+                <!-- Search Button and API Preview -->
+                <div class="api-call" id="search-preview">
+                    api.search.venues({ filters: {} })
+                </div>
+                <button onclick="executeSearch()" class="btn-primary">
+                    Execute Search
+                </button>
+
+                <!-- Results -->
+                <div id="search-stats"></div>
+                <div id="search-result"></div>
+            </div>
+
+            <div class="api-section">
+                <h4>💾 Save Operations</h4>
+                <div class="inline-form">
+                    <input
+                        type="number"
+                        id="org-id"
+                        placeholder="ID (for update)"
+                        value=""
+                    />
+                    <input
+                        type="text"
+                        id="org-name"
+                        placeholder="Organisation Name"
+                        value=""
+                    />
+                    <input
+                        type="text"
+                        id="org-desc"
+                        placeholder="Description"
+                        value=""
+                    />
+                    <button onclick="testSave()">Save Organisation</button>
+                </div>
+                <div class="api-call">
+                    api.save.organisations({ id?: N, name: "...", description:
+                    "..." })
+                </div>
+                <div id="save-result"></div>
+            </div>
+
+            <div class="api-section">
+                <h4>🗑️ Delete Operations</h4>
+                <div class="inline-form">
+                    <input
+                        type="number"
+                        id="delete-id"
+                        placeholder="ID to delete"
+                        value=""
+                    />
+                    <button onclick="testDelete()">Delete Organisation</button>
+                </div>
+                <div class="api-call">api.delete.organisations({ id: N })</div>
+                <div id="delete-result"></div>
+            </div>
+        </div>
+
+        <div class="container">
+            <h3>🔴 Real-time Events</h3>
+            <p>All database changes trigger real-time events via WebSocket</p>
+            <button onclick="clearEvents()">Clear Events</button>
+            <div id="events" class="events"></div>
+        </div>
+
+        <script type="module" src="site.js"></script>
+    </body>
+</html>
