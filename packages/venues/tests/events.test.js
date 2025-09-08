@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, afterAll, describe } from "bun:test";
-import { sql } from "../server/db.js";
+import { sql } from "zeroql";
 import { setupTestServer, teardownTestServer } from "./test-server.js";
 import { WebSocketManager } from "../client/ws.js";
 

@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, afterAll } from "bun:test";
-import { sql, db } from "../server/db.js";
+import { sql, db } from "zeroql";
 
 beforeAll(async () => {
   // Clean up test data

@@ -1,6 +1,9 @@
 -- Simple Domain for ZeroQL Testing
 -- Basic venue/site/product entities with organizations
 
+-- Ensure we create tables in public schema
+SET search_path = public, zeroql;
+
 -- === Domain Tables ===
 
 -- Organizations (owners, sponsors, contractors)

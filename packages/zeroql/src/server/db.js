@@ -3,7 +3,7 @@ import postgres from "postgres";
 // Environment configuration
 const DATABASE_URL =
   process.env.DATABASE_URL ||
-  "postgresql://postgres:secret@localhost:5432/simple";
+  "postgresql://zeroql:zeroql@localhost:5432/zeroql";
 
 // Main PostgreSQL connection for queries
 export const sql = postgres(DATABASE_URL, {

@@ -1,18 +1,44 @@
 {
-  "name": "zeroql",
+  "name": "zeroql-monorepo",
   "version": "1.0.0",
+  "private": true,
+  "description": "ZeroQL - PostgreSQL-powered framework with zero boilerplate",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "db": "cd database && docker compose down -v && docker compose up -d",
-    "db:down": "cd database && docker compose down -v",
-    "db:up": "cd database && docker compose up -d",
-    "db:logs": "cd database && docker compose logs postgres",
-    "dev": "bun --watch server/index.js"
-  },
-  "dependencies": {
-    "jose": "^6.1.0",
-    "postgres": "^3.4.7"
+    "dev": "bun run --cwd packages/venues dev",
+    "dev:framework": "bun --watch packages/zeroql/src/index.js",
+    "build": "bun run build:zeroql && bun run build:venues",
+    "build:zeroql": "bun run --cwd packages/zeroql build",
+    "build:venues": "bun run --cwd packages/venues build",
+    "test": "bun test",
+    "test:framework": "bun test packages/zeroql",
+    "test:venues": "bun run --cwd packages/venues test",
+    "clean": "rm -rf packages/*/node_modules && rm -rf node_modules",
+    "db:up": "bun run --cwd packages/venues db:up",
+    "db:down": "bun run --cwd packages/venues db:down",
+    "db:logs": "bun run --cwd packages/venues db:logs"
   },
   "devDependencies": {
-    "ws": "^8.18.3"
-  }
+    "@types/bun": "latest"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/zeroql"
+  },
+  "keywords": [
+    "postgresql",
+    "websocket",
+    "real-time",
+    "crud",
+    "api",
+    "framework",
+    "zero-boilerplate"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
 }

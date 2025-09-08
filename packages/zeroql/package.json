@@ -1,0 +1,44 @@
+{
+  "name": "zeroql",
+  "version": "1.0.0",
+  "description": "PostgreSQL-powered framework with zero boilerplate CRUD operations and real-time WebSocket synchronization",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "zeroql": "./bin/cli.js"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./client": "./src/client/ws.js",
+    "./server": "./src/server/index.js"
+  },
+  "scripts": {
+    "build": "echo 'No build step required for now'",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "jose": "^6.1.0",
+    "postgres": "^3.4.7"
+  },
+  "keywords": [
+    "postgresql",
+    "websocket",
+    "real-time",
+    "crud",
+    "api",
+    "framework",
+    "zero-boilerplate",
+    "database",
+    "orm"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/zeroql",
+    "directory": "packages/zeroql"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

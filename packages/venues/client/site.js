@@ -1,4 +1,5 @@
-import { useWs } from "./ws.js";
+import { useWs } from "zeroql/client";
+
 
 const ws = useWs();
 let isAuthenticated = false;
