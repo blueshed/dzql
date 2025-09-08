@@ -38,9 +38,17 @@ SELECT zeroql.register_entity(
   'name',                                -- label field for lookups
   array['name', 'address', 'description'], -- searchable fields
   '{"org": "organisations"}',            -- foreign keys to dereference
-  '{"read": ["user"], "write": ["owner"]}', -- permissions
   false,                                 -- soft delete
-  '{}'                                   -- temporal fields
+  '{}',                                  -- temporal fields
+  '{                                     -- notification paths
+    "ownership": ["@org_id->acts_for[org_id=$]{active}.user_id"]
+  }',
+  '{                                     -- permission paths
+    "create": ["@org_id->acts_for[org_id=$]{active}.user_id"],
+    "update": ["@org_id->acts_for[org_id=$]{active}.user_id"],
+    "delete": ["@org_id->acts_for[org_id=$]{active}.user_id"],
+    "view": []
+  }'
 );
 ```
 
@@ -48,6 +56,8 @@ This single call:
 - Configures the entity in `zeroql.entities` table
 - Creates database trigger for real-time events
 - Enables all 5 standard operations
+- Sets up notification paths for targeted real-time updates
+- Configures permission paths for row-level security
 
 ### 3. Start the Server
 ```bash
@@ -131,7 +141,7 @@ const results = await ws.api.search.venues({
 
 ## Real-time Events
 
-All database changes trigger WebSocket events:
+All database changes trigger WebSocket events with intelligent user targeting:
 
 ```javascript
 // Listen for specific table events
@@ -145,10 +155,81 @@ ws.onBroadcast((method, params) => {
 
 Events flow:
 1. Database trigger fires on INSERT/UPDATE/DELETE
-2. Event logged to `zeroql.events` table with `notify_users` array
-3. PostgreSQL NOTIFY on 'zeroql' channel
-4. Bun server filters by `notify_users` (null = broadcast to all)
-5. WebSocket message sent as `{table}:{op}` method
+2. Notification paths resolve affected users based on entity relationships
+3. Event logged to `zeroql.events` table with `notify_users` array
+4. PostgreSQL NOTIFY on 'zeroql' channel
+5. Bun server filters by `notify_users` (null = broadcast to all)
+6. WebSocket message sent as `{table}:{op}` method to affected users only
+
+### Notification Paths
+
+Notification paths determine which users receive real-time updates for an entity. They use a path syntax to traverse relationships:
+
+```sql
+-- Path syntax: @field->table[filter]{temporal}.target_field
+-- Examples:
+'@org_id->acts_for[org_id=$]{active}.user_id'     -- Users who act for the org
+'@user_id'                                         -- Direct user reference
+'@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id'  -- Via venue
+```
+
+Path components:
+- `@field` - Start from a field in the current record
+- `->table` - Navigate to related table
+- `[filter]` - Filter condition (`$` = current field value)
+- `{temporal}` - Apply temporal filtering (`{active}` = current valid)
+- `.field` - Target field to extract
+
+Configure notification paths when registering an entity:
+
+```sql
+SELECT zeroql.register_entity(
+  'packages',
+  'name',
+  array['name'],
+  '{"owner_org": "organisations", "sponsor_org": "organisations"}',
+  false,
+  '{}',
+  '{
+    "ownership": ["@owner_org_id->acts_for[org_id=$]{active}.user_id"],
+    "sponsorship": ["@sponsor_org_id->acts_for[org_id=$]{active}.user_id"]
+  }'::jsonb
+);
+```
+
+## Permissions
+
+ZeroQL provides row-level security through permission paths:
+
+### Permission Paths
+
+Permission paths determine who can perform operations on each record:
+
+```sql
+-- Configure permissions when registering entity
+SELECT zeroql.register_entity(
+  'venues', 'name', array['name'], '{}', false, '{}',
+  '{}',  -- notification paths
+  '{
+    "create": ["@org_id->acts_for[org_id=$]{active}.user_id"],
+    "update": ["@org_id->acts_for[org_id=$]{active}.user_id"],
+    "delete": ["@org_id->acts_for[org_id=$]{active}.user_id"],
+    "view": []  -- Empty = public read access
+  }'::jsonb
+);
+```
+
+Permission types:
+- **create**: Who can create records (checked against new record)
+- **update**: Who can modify records (checked against existing record)
+- **delete**: Who can remove records (checked against existing record)
+- **view**: Who can read records (empty array = public access)
+
+The permission system automatically:
+- Checks permissions before any operation
+- Uses the same path syntax as notifications
+- Resolves permissions based on current relationships
+- Respects temporal filtering for time-based access
 
 ## Authentication
 
@@ -182,9 +263,10 @@ SELECT zeroql.register_entity(
   'contractor_name',
   array['contractor_name'],
   '{"contractor_org": "organisations", "venue": "venues"}',
-  '{"read": ["owner","contractor"]}',
   false,
-  '{"valid_from": "valid_from", "valid_to": "valid_to"}'
+  '{"valid_from": "valid_from", "valid_to": "valid_to"}',
+  '{}',  -- notification paths
+  '{}'   -- permission paths
 );
 ```
 
@@ -201,15 +283,106 @@ const pastRights = await ws.api.get.contractor_rights({
 
 ## Custom Functions
 
-Add business logic beyond standard operations:
+ZeroQL supports two types of custom functions that extend beyond the 5 standard operations:
+
+### 1. PostgreSQL Functions
+
+Create stored procedures in PostgreSQL and call them via the proxy API:
+
+```sql
+-- Create a PostgreSQL function (first parameter must be p_user_id)
+CREATE OR REPLACE FUNCTION hello(p_user_id INT, p_name TEXT DEFAULT 'World')
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN jsonb_build_object(
+    'message', 'Hello, ' || COALESCE(p_name, 'World') || '!',
+    'timestamp', now(),
+    'from', 'PostgreSQL',
+    'user_id', p_user_id
+  );
+END;
+$$;
+
+-- Functions are automatically callable - no registration needed
+```
 
 ```javascript
-// Call custom PostgreSQL functions (must be in zeroql.registry)
-const result = await ws.call('complex_business_operation', {
-  param1: 'value1',
-  param2: 'value2'
-});
+// Call PostgreSQL function via proxy API
+const result = await ws.api.hello();
+// Returns: {message: "Hello, World!", timestamp: "...", from: "PostgreSQL", user_id: 123}
+
+// With parameters
+const greeting = await ws.api.hello({name: 'ZeroQL'});
+// Returns: {message: "Hello, ZeroQL!", timestamp: "...", from: "PostgreSQL", user_id: 123}
 ```
+
+### 2. Bun Functions
+
+Create JavaScript functions in the server and call them via the same proxy API:
+
+```javascript
+// server/api.js - Export functions for auto-discovery
+export async function goodbye(userId, params = {}) {
+  const { name = "World" } = params;
+
+  return {
+    message: `Goodbye, ${name}!`,
+    from: "Bun",
+    user_id: userId,
+  };
+}
+
+export async function calculateDiscount(userId, params) {
+  const { total, customerType } = params;
+
+  // Business logic here - can use db.api for database access
+  const discount = customerType === 'premium' ? 0.15 : 0.05;
+
+  return {
+    originalTotal: total,
+    discount: discount,
+    finalTotal: total * (1 - discount),
+    calculatedBy: userId,
+  };
+}
+```
+
+```javascript
+// Call Bun functions via the same proxy API
+const farewell = await ws.api.goodbye({name: 'ZeroQL'});
+// Returns: {message: "Goodbye, ZeroQL!", from: "Bun", user_id: 123}
+
+const pricing = await ws.api.calculateDiscount({
+  total: 100,
+  customerType: 'premium'
+});
+// Returns: {originalTotal: 100, discount: 0.15, finalTotal: 85, calculatedBy: 123}
+```
+
+### Function Conventions
+
+**Both PostgreSQL and Bun functions follow the same pattern:**
+
+1. **First Parameter**: Always receives `user_id` (automatically injected)
+2. **Second Parameter**: Request parameters object
+3. **Authentication**: All custom functions require user authentication
+4. **API Access**: Use the same `ws.api.functionName()` syntax
+5. **Return Value**: Can return any JSON-serializable object
+
+**PostgreSQL Functions:**
+- First parameter must be named `p_user_id INT`
+- Can access full PostgreSQL ecosystem (other tables, functions, etc.)
+- Automatically transactional
+- Optional registration in `zeroql.registry`
+
+**Bun Functions:**
+- First parameter is `userId` (number)
+- Can access database via `db.api.*` proxy
+- Can use any npm packages
+
 
 ## Project Structure
 
@@ -251,8 +424,22 @@ zeroql.events {
   before: jsonb,         -- old values
   after: jsonb,          -- new values
   user_id: int,          -- who made the change
-  notify_users: int[],   -- who to notify (null = everyone)
+  notify_users: int[],   -- who to notify (resolved from notification_paths)
   at: timestamptz
+}
+```
+
+### Entity Configuration
+```sql
+zeroql.entities {
+  table_name: text,
+  label_field: text,
+  searchable_fields: text[],
+  fk_includes: jsonb,
+  soft_delete: boolean,
+  temporal_fields: jsonb,
+  notification_paths: jsonb,  -- Named paths for notifications
+  permission_paths: jsonb     -- CRUD permission paths
 }
 ```
 

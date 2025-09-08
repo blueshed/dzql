@@ -18,9 +18,10 @@ create table if not exists zeroql.entities (
   label_field text not null,             -- field to use for lookup labels
   searchable_fields text[] not null,     -- fields to search in search operations
   fk_includes jsonb default '{}',        -- foreign keys to dereference in get operations
-  permissions jsonb default '{}',        -- role-based access control
   soft_delete boolean default false,     -- use deleted_at instead of hard delete
-  temporal_fields jsonb default '{}'     -- valid_from/valid_to field names for temporal filtering
+  temporal_fields jsonb default '{}',    -- valid_from/valid_to field names for temporal filtering
+  notification_paths jsonb default '{}', -- paths to determine who gets notified
+  permission_paths jsonb default '{}'    -- paths to determine who has permission for operations
 );
 
 -- === Registry (allowlist of callable functions) ===
@@ -222,12 +223,18 @@ begin
   -- Execute query
   execute l_final_query into l_result;
 
-  -- Apply foreign key dereferencing based on fk_includes configuration
+  -- Check view permission on the record BEFORE dereferencing
+  if l_result is not null then
+    if not zeroql.check_permission(p_user_id, 'view', p_entity, l_result) then
+      -- No permission to view this record
+      return null;
+    end if;
+  end if;
+
+  -- Apply foreign key dereferencing AFTER permission check
   if l_entity_config.fk_includes is not null and jsonb_typeof(l_entity_config.fk_includes) = 'object' then
     l_result := zeroql.dereference_foreign_keys(p_entity, l_result, l_entity_config.fk_includes, l_on_date);
   end if;
-
-  -- TODO: Add permission checking based on permissions configuration
 
   return coalesce(l_result, '{}'::jsonb);
 end $$;
@@ -307,14 +314,13 @@ begin
           execute l_query into l_label_value;
 
           if l_label_value is not null then
-            -- Replace the foreign key with {label, value} object
+            -- Add label field without modifying the original FK
+            -- e.g., owner_org_id stays as integer, owner_org gets the label
             l_result := l_result || jsonb_build_object(
-              l_fk_column,
-              jsonb_build_object(
-                'label', l_label_value,
-                'value', l_fk_id::int
-              )
+              l_fk_key,  -- without _id suffix (e.g., 'owner_org')
+              l_label_value  -- just the label string
             );
+            -- Original FK field (e.g., owner_org_id) remains unchanged
           end if;
         end if;
       end if;
@@ -346,6 +352,8 @@ declare
   l_result jsonb;
   l_record_id text;
   l_args_json jsonb;
+  l_operation text;
+  l_permission_record jsonb;
 begin
   -- Ensure p_args is proper JSONB
   l_args_json := p_args::jsonb;
@@ -383,6 +391,13 @@ begin
       raise exception 'ZeroQL: record with id % not found in %', l_record_id, p_entity;
     end if;
 
+    -- Check update permission on existing record
+    l_operation := 'update';
+    l_permission_record := l_existing_record;
+    if not zeroql.check_permission(p_user_id, l_operation, p_entity, l_permission_record) then
+      raise exception 'Permission denied: % on %', l_operation, p_entity;
+    end if;
+
     -- Merge existing data with new data (new data takes precedence)
     l_merged_data := l_existing_record || l_args_json;
 
@@ -405,6 +420,13 @@ begin
 
   else
     -- INSERT: Use provided values, let database handle defaults
+
+    -- Check create permission on new values
+    l_operation := 'create';
+    l_permission_record := l_args_json;
+    if not zeroql.check_permission(p_user_id, l_operation, p_entity, l_permission_record) then
+      raise exception 'Permission denied: % on %', l_operation, p_entity;
+    end if;
 
     l_cols := array[]::text[];
     l_vals := array[]::text[];
@@ -430,9 +452,6 @@ begin
     execute l_sql_stmt into l_result;
   end if;
 
-  -- TODO: Add permission checking
-  -- TODO: Add validation logic
-
   return l_result;
 end $$;
 
@@ -451,6 +470,7 @@ declare
   l_pk_value text;
   l_delete_sql text;
   l_result jsonb;
+  l_existing_record jsonb;
 begin
   -- Get entity configuration
   select * into l_entity_config from zeroql.entities where table_name = p_entity;
@@ -473,7 +493,20 @@ begin
     raise exception 'ZeroQL: no primary key provided for entity %', p_entity;
   end if;
 
-  -- TODO: Add permission checking
+  -- Get existing record for permission check
+  execute format('SELECT to_jsonb(t.*) FROM %I t WHERE %I = %L',
+                 p_entity, l_pk_field, l_pk_value)
+  into l_existing_record;
+
+  if l_existing_record is null then
+    raise exception 'ZeroQL: record not found in %', p_entity;
+  end if;
+
+  -- Check delete permission on existing record
+  if not zeroql.check_permission(p_user_id, 'delete', p_entity, l_existing_record) then
+    raise exception 'Permission denied: delete on %', p_entity;
+  end if;
+
   -- TODO: Add cascade handling
 
   if l_entity_config.soft_delete then
@@ -514,20 +547,20 @@ begin
   l_filter_text := coalesce(p_args->>'p_filter', '');
   l_on_date := (p_args->>'on_date')::timestamptz;
 
-  -- Build lookup query
+  -- Build lookup query with permission filtering
   l_lookup_sql := format($q$
     select jsonb_agg(jsonb_build_object('label', %I, 'value', id))
-    from %I
+    from %I t
     where %I ilike $1
-  $q$, l_entity_config.label_field, p_entity, l_entity_config.label_field);
+      and zeroql.check_permission(%L, 'view', %L, to_jsonb(t.*))
+  $q$, l_entity_config.label_field, p_entity, l_entity_config.label_field,
+       p_user_id, p_entity);
 
   -- Apply temporal filtering
   l_lookup_sql := zeroql.apply_temporal_filter(p_entity::regclass, l_lookup_sql, l_on_date);
 
   -- Add limit
   l_lookup_sql := l_lookup_sql || ' limit 20';
-
-  -- TODO: Add permission filtering
 
   execute l_lookup_sql using '%' || l_filter_text || '%' into l_result;
   return coalesce(l_result, '[]'::jsonb);
@@ -646,14 +679,18 @@ declare
   l_pk_value text;
   l_current_user_id int;
   l_notify_users int[];
+  l_record jsonb;
 begin
   if TG_OP = 'INSERT' then
     l_row_after := to_jsonb(NEW);
+    l_record := l_row_after;
   elsif TG_OP = 'UPDATE' then
     l_row_after := to_jsonb(NEW);
     l_row_before := to_jsonb(OLD);
+    l_record := l_row_after;
   else
     l_row_before := to_jsonb(OLD);
+    l_record := l_row_before;
   end if;
 
   -- Extract primary key value
@@ -676,8 +713,8 @@ begin
     null
   );
 
-  -- Set notify users (null = notify everyone for now)
-  l_notify_users := null;
+  -- Use notification paths to determine who should be notified
+  l_notify_users := zeroql.resolve_notification_paths(TG_TABLE_NAME, l_record);
 
   -- Insert into events table (notification handled by events table trigger)
   insert into zeroql.events(context_id, table_name, op, pk, before, after, user_id, notify_users)
@@ -700,11 +737,12 @@ create or replace function zeroql.notify_event()
 returns trigger language plpgsql as $$
 begin
   -- Send real-time notification to single channel
+  -- For DELETE operations, send the 'before' data since 'after' is NULL
   perform pg_notify('zeroql', jsonb_build_object(
     'event_id', NEW.event_id,
     'table', NEW.table_name,
     'op', NEW.op,
-    'data', NEW.after,
+    'data', coalesce(NEW.after, NEW.before),
     'notify_users', NEW.notify_users
   )::text);
 
@@ -784,24 +822,32 @@ create or replace function zeroql.register_entity(
   p_label_field text,
   p_searchable_fields text[],
   p_fk_includes jsonb default '{}',
-  p_permissions jsonb default '{}',
   p_soft_delete boolean default false,
-  p_temporal_fields jsonb default '{}'
+  p_temporal_fields jsonb default '{}',
+  p_notification_paths jsonb default '{}',
+  p_permission_paths jsonb default '{}'
 ) returns void
 language plpgsql as $$
 begin
-  -- Insert/update entity configuration
+  -- Validate permission paths if provided
+  if p_permission_paths is not null and p_permission_paths != '{}' then
+    if not zeroql.validate_permission_paths(p_table_name, p_permission_paths) then
+      raise exception 'Invalid permission paths for entity %', p_table_name;
+    end if;
+  end if;
+
   insert into zeroql.entities
-    (table_name, label_field, searchable_fields, fk_includes, permissions, soft_delete, temporal_fields)
+    (table_name, label_field, searchable_fields, fk_includes, soft_delete, temporal_fields, notification_paths, permission_paths)
   values
-    (p_table_name, p_label_field, p_searchable_fields, p_fk_includes, p_permissions, p_soft_delete, p_temporal_fields)
+    (p_table_name, p_label_field, p_searchable_fields, p_fk_includes, p_soft_delete, p_temporal_fields, p_notification_paths, p_permission_paths)
   on conflict (table_name) do update set
     label_field = excluded.label_field,
     searchable_fields = excluded.searchable_fields,
     fk_includes = excluded.fk_includes,
-    permissions = excluded.permissions,
     soft_delete = excluded.soft_delete,
-    temporal_fields = excluded.temporal_fields;
+    temporal_fields = excluded.temporal_fields,
+    notification_paths = excluded.notification_paths,
+    permission_paths = excluded.permission_paths;
 
   -- Automatically add event trigger
   execute format('
@@ -811,4 +857,483 @@ begin
       FOR EACH ROW EXECUTE FUNCTION zeroql.emit_row_change(%L)',
     p_table_name, p_table_name, p_table_name, p_table_name, 'id'
   );
+end $$;
+
+-- === Notification Path Resolution Functions ===
+
+-- Resolve a single-hop foreign key traversal
+create or replace function zeroql.resolve_fk_hop(
+  p_current_record jsonb,
+  p_hop text
+) returns jsonb
+language plpgsql as $$
+declare
+  l_parts text[];
+  l_fk_field text;
+  l_table_name text;
+  l_result jsonb;
+  l_sql text;
+begin
+  -- Parse hop: "venue_id->venues" or just "venue_id"
+  if p_hop ~ '->' then
+    l_parts := string_to_array(p_hop, '->');
+    l_fk_field := l_parts[1];
+    l_table_name := l_parts[2];
+  else
+    -- Simple field, infer table name from field
+    l_fk_field := p_hop;
+    -- Assume table name is pluralized field without _id
+    if l_fk_field ~ '_id$' then
+      l_table_name := replace(l_fk_field, '_id', '') || 's';
+    else
+      return p_current_record;
+    end if;
+  end if;
+
+  -- Get the foreign key value
+  if not (p_current_record ? l_fk_field) then
+    return null;
+  end if;
+
+  -- Query the related record
+  l_sql := format('SELECT to_jsonb(t.*) FROM %I t WHERE id = %L',
+                  l_table_name, p_current_record->>l_fk_field);
+  execute l_sql into l_result;
+
+  return l_result;
+exception
+  when others then
+    raise warning 'Failed to resolve FK hop %: %', p_hop, SQLERRM;
+    return null;
+end $$;
+
+-- Parse and resolve a single notification path to org_ids
+-- Path syntax:
+--   @field_name                  - Direct field on record
+--   fk_field->table.field        - Follow foreign key to related table (single hop)
+--   fk1->table1/fk2->table2.field - Multi-hop traversal
+--   table[condition].field       - Query table with condition
+--   table[condition]{active}.field - Query with temporal filtering
+create or replace function zeroql.resolve_notification_path(
+  p_table_name text,
+  p_record jsonb,
+  p_path text
+) returns int[]
+language plpgsql as $$
+declare
+  l_result_ids int[] := '{}';
+  l_continuation_parts text[];
+  l_current_segment text;
+  l_current_result jsonb;
+  l_current_ids int[];
+  l_sql text;
+  l_field_name text;
+  l_table_name text;
+  l_condition text;
+  l_is_active boolean := false;
+  l_i int;
+begin
+  -- Split by continuation operator (->) if present
+  if p_path ~ '->' then
+    l_continuation_parts := string_to_array(p_path, '->');
+
+    -- Process first segment with the original record
+    l_current_result := zeroql.resolve_path_segment(p_table_name, p_record, l_continuation_parts[1]);
+
+    -- Process each continuation segment
+    for l_i in 2..array_length(l_continuation_parts, 1) loop
+      l_current_segment := l_continuation_parts[l_i];
+
+      -- Replace $ with the result from previous segment
+      if l_current_result is not null then
+        -- Handle array results
+        if jsonb_typeof(l_current_result) = 'array' then
+          -- For each ID in the array, resolve the path and collect results
+          l_current_ids := '{}';
+          declare
+            l_j int;
+            l_temp_segment text;
+            l_temp_ids int[];
+          begin
+            for l_j in 0..jsonb_array_length(l_current_result) - 1 loop
+              l_temp_segment := replace(l_continuation_parts[l_i], '$', (l_current_result->>l_j)::text);
+              l_temp_ids := array(select jsonb_array_elements_text(zeroql.resolve_path_segment(null, null, l_temp_segment))::int);
+              l_current_ids := l_current_ids || coalesce(l_temp_ids, '{}');
+            end loop;
+          end;
+          l_current_result := to_jsonb(l_current_ids);
+        else
+          -- Single value result
+          l_current_segment := replace(l_current_segment, '$', l_current_result::text);
+          l_current_result := zeroql.resolve_path_segment(null, null, l_current_segment);
+        end if;
+      else
+        return '{}';  -- Path broken
+      end if;
+    end loop;
+
+    -- Convert final result to int array
+    if jsonb_typeof(l_current_result) = 'array' then
+      l_result_ids := array(select jsonb_array_elements_text(l_current_result)::int);
+    else
+      l_result_ids := array[l_current_result::text::int];
+    end if;
+
+    return coalesce(l_result_ids, '{}');
+  else
+    -- No continuation, process as single segment
+    l_current_result := zeroql.resolve_path_segment(p_table_name, p_record, p_path);
+
+    -- Convert result to int array
+    if l_current_result is not null then
+      if jsonb_typeof(l_current_result) = 'array' then
+        l_result_ids := array(select jsonb_array_elements_text(l_current_result)::int);
+      elsif l_current_result::text != 'null' then
+        l_result_ids := array[l_current_result::text::int];
+      end if;
+    end if;
+
+    return coalesce(l_result_ids, '{}');
+  end if;
+exception
+  when others then
+    raise warning 'Failed to resolve path %: %', p_path, SQLERRM;
+    return '{}';
+end $$;
+
+-- Helper function to resolve a single path segment
+create or replace function zeroql.resolve_path_segment(
+  p_table_name text,
+  p_record jsonb,
+  p_segment text
+) returns jsonb
+language plpgsql as $$
+declare
+  l_result jsonb;
+  l_parts text[];
+  l_field_name text;
+  l_table_name text;
+  l_condition text;
+  l_is_active boolean := false;
+  l_sql text;
+  l_current_record jsonb;
+  l_step text;
+  l_hops text[];
+  l_final_field text;
+begin
+  -- Handle simple field reference: @field_name
+  if p_segment like '@%' then
+    l_field_name := substring(p_segment from 2);
+    if p_record ? l_field_name then
+      return to_jsonb(array[p_record->>l_field_name]::int[]);
+    end if;
+    return null;
+  end if;
+
+  -- Handle conditional queries: table[condition]{active}.field
+  if p_segment ~ '\[.*\]' then
+    -- Extract parts: table[condition]{active}.field
+    l_table_name := split_part(p_segment, '[', 1);
+    l_condition := split_part(split_part(p_segment, '[', 2), ']', 1);
+    -- Get field name after the closing bracket
+    l_step := split_part(p_segment, ']', 2);
+    -- Remove {active} if present
+    l_step := replace(l_step, '{active}', '');
+    -- Get field name after the dot
+    l_field_name := ltrim(l_step, '.');
+    l_is_active := p_segment like '%{active}%';
+
+    -- Replace @ references in condition with actual values from the record (if we have one)
+    if p_record is not null then
+      declare
+        l_ref_field text;
+      begin
+        while l_condition ~ '@[a-z_]+' loop
+          l_ref_field := substring(l_condition from '@([a-z_]+)');
+          l_condition := replace(l_condition, '@' || l_ref_field,
+                               quote_literal(p_record->>l_ref_field));
+        end loop;
+      end;
+    end if;
+
+    -- Build and execute query
+    l_sql := format('SELECT array_agg(%I) FROM %I WHERE %s',
+                    l_field_name, l_table_name, l_condition);
+
+    -- Add temporal filtering if {active}
+    if l_is_active then
+      -- Check if table has temporal fields configured
+      if exists(
+        select 1 from zeroql.entities
+        where table_name = l_table_name
+        and temporal_fields is not null
+        and temporal_fields != '{}'
+      ) then
+        l_sql := l_sql || format(' AND %I <= now() AND (%I > now() OR %I IS NULL)',
+          'valid_from', 'valid_to', 'valid_to');
+      end if;
+    end if;
+
+    declare
+      l_ids int[];
+    begin
+      execute l_sql into l_ids;
+      if l_ids is not null then
+        return to_jsonb(l_ids);
+      else
+        return null;
+      end if;
+    end;
+  end if;
+
+  -- Handle foreign key traversal (single or multi-hop)
+  if p_segment ~ '\.' and p_record is not null then
+    -- For paths like site_id.venue_id.org_id, we need to:
+    -- 1. Follow site_id to get the site record
+    -- 2. Follow venue_id from that to get the venue record
+    -- 3. Extract org_id from the venue record
+
+    l_current_record := p_record;
+    l_parts := string_to_array(p_segment, '.');
+
+    -- We need to track which table we're currently in for FK resolution
+    declare
+      l_current_table_name text;
+    begin
+      l_current_table_name := p_table_name;
+
+      -- Process each part except the last (which is the field to extract)
+      for i in 1..(array_length(l_parts, 1) - 1) loop
+        l_step := l_parts[i];
+
+        -- If current record has this field, follow it as a foreign key
+        if l_current_record ? l_step then
+          -- Get the FK value
+          declare
+            l_fk_value text;
+            l_fk_sql text;
+            l_entity_config record;
+            l_fk_target text;
+          begin
+            l_fk_value := l_current_record->>l_step;
+
+            -- Look up the current table's FK configuration
+            if l_current_table_name is not null then
+              select fk_includes into l_entity_config
+              from zeroql.entities
+              where table_name = l_current_table_name;
+
+              if l_entity_config.fk_includes is not null and l_entity_config.fk_includes ? l_step then
+                -- The fk_includes tells us which table this FK points to
+                l_table_name := l_entity_config.fk_includes->>l_step;
+              elsif l_entity_config.fk_includes is not null then
+                -- Check if the field without _id suffix is in fk_includes
+                l_fk_target := regexp_replace(l_step, '_id$', '');
+                if l_entity_config.fk_includes ? l_fk_target then
+                  l_table_name := l_entity_config.fk_includes->>l_fk_target;
+                end if;
+              end if;
+            end if;
+
+            -- If we still don't have a table name, try pattern matching
+            if l_table_name is null then
+              declare
+                l_pattern text;
+              begin
+                -- Remove _id suffix and try to find a matching table
+                l_pattern := regexp_replace(l_step, '_id$', '');
+
+                -- Check for common patterns
+                if exists(select 1 from zeroql.entities where table_name = l_pattern || 's') then
+                  l_table_name := l_pattern || 's';
+                elsif exists(select 1 from zeroql.entities where table_name = l_pattern) then
+                  l_table_name := l_pattern;
+                end if;
+              end;
+            end if;
+
+            if l_table_name is null then
+              raise warning 'Could not determine target table for FK field % in table %', l_step, coalesce(l_current_table_name, 'unknown');
+              return null;
+            end if;
+
+            -- Query the related table
+            l_fk_sql := format('SELECT to_jsonb(t.*) FROM %I t WHERE t.id = %L', l_table_name, l_fk_value);
+            execute l_fk_sql into l_current_record;
+
+            if l_current_record is null then
+              return null; -- FK broken
+            end if;
+
+            -- Update current table context for next iteration
+            l_current_table_name := l_table_name;
+          end;
+        else
+          return null; -- Field not found
+        end if;
+      end loop;
+    end;
+
+    -- Extract the final field value
+    l_final_field := l_parts[array_length(l_parts, 1)];
+    if l_current_record ? l_final_field then
+      return to_jsonb(array[l_current_record->>l_final_field]::int[]);
+    end if;
+
+    return null;
+  end if;
+
+  return null;
+end $$;
+
+-- === Permission System ===
+
+-- Check if a user has permission to perform an operation on a record
+create or replace function zeroql.check_permission(
+  p_user_id int,
+  p_operation text,  -- 'create', 'update', 'delete', 'view'
+  p_table_name text,
+  p_record jsonb     -- existing record for update/delete/view, new values for create
+) returns boolean
+language plpgsql as $$
+declare
+  l_entity_config record;
+  l_permission_paths jsonb;
+  l_path text;
+  l_resolved_users int[];
+  l_all_users int[] := '{}';
+begin
+  -- Get entity configuration
+  select * into l_entity_config
+  from zeroql.entities
+  where table_name = p_table_name;
+
+  -- No config means no restrictions (permissive by default)
+  if not found or l_entity_config.permission_paths is null then
+    return true;
+  end if;
+
+  -- Get paths for this operation
+  l_permission_paths := l_entity_config.permission_paths->p_operation;
+
+  -- Empty or null paths means unrestricted for this operation
+  if l_permission_paths is null or
+     jsonb_typeof(l_permission_paths) = 'null' or
+     (jsonb_typeof(l_permission_paths) = 'array' and jsonb_array_length(l_permission_paths) = 0) then
+    return true;
+  end if;
+
+  -- Resolve each path to user_ids
+  for l_path in select jsonb_array_elements_text(l_permission_paths)
+  loop
+    l_resolved_users := zeroql.resolve_notification_path(
+      p_table_name,
+      p_record,
+      l_path
+    );
+    l_all_users := l_all_users || l_resolved_users;
+  end loop;
+
+  -- Check if requesting user is in the allowed set
+  return p_user_id = any(l_all_users);
+end $$;
+
+-- Validate permission paths during entity registration
+create or replace function zeroql.validate_permission_paths(
+  p_table_name text,
+  p_permission_paths jsonb
+) returns boolean
+language plpgsql as $$
+declare
+  l_operation text;
+  l_paths jsonb;
+  l_path text;
+  l_test_record jsonb := '{}';
+  l_result int[];
+begin
+  -- If no permission paths provided, that's valid
+  if p_permission_paths is null or p_permission_paths = '{}' then
+    return true;
+  end if;
+
+  -- Check each operation's paths
+  for l_operation in select jsonb_object_keys(p_permission_paths)
+  loop
+    l_paths := p_permission_paths->l_operation;
+
+    -- Skip if null or not an array
+    if l_paths is null or jsonb_typeof(l_paths) != 'array' then
+      continue;
+    end if;
+
+    -- Skip if empty array (unrestricted)
+    if jsonb_array_length(l_paths) = 0 then
+      continue;
+    end if;
+
+    -- Try to resolve each path with an empty test record
+    for l_path in select jsonb_array_elements_text(l_paths)
+    loop
+      begin
+        -- This will raise an error if the path is invalid
+        l_result := zeroql.resolve_notification_path(
+          p_table_name,
+          l_test_record,
+          l_path
+        );
+      exception
+        when others then
+          raise warning 'Invalid permission path for %.%: % - %',
+                        p_table_name, l_operation, l_path, SQLERRM;
+          return false;
+      end;
+    end loop;
+  end loop;
+
+  return true;
+end $$;
+
+-- No longer needed - paths now resolve directly to user_ids
+-- Removed zeroql.org_ids_to_user_ids function as it violates ZeroQL's generic nature
+
+-- Main function to resolve all notification paths for an entity
+create or replace function zeroql.resolve_notification_paths(
+  p_table_name text,
+  p_record jsonb
+) returns int[]
+language plpgsql as $$
+declare
+  l_entity_config record;
+  l_all_user_ids int[] := '{}';
+  l_path_group_key text;
+  l_path_array jsonb;
+  l_path text;
+  l_user_ids int[];
+begin
+  -- Get entity configuration
+  select * into l_entity_config
+  from zeroql.entities
+  where table_name = p_table_name;
+
+  if l_entity_config.notification_paths is null then
+    return '{}';
+  end if;
+
+  -- Process each notification path group (ownership, commercial, delegated, etc.)
+  for l_path_group_key in select jsonb_object_keys(l_entity_config.notification_paths)
+  loop
+    l_path_array := l_entity_config.notification_paths->l_path_group_key;
+
+    -- Process each path in the group
+    for l_path in select jsonb_array_elements_text(l_path_array)
+    loop
+      l_user_ids := zeroql.resolve_notification_path(p_table_name, p_record, l_path);
+      l_all_user_ids := l_all_user_ids || l_user_ids;
+    end loop;
+  end loop;
+
+  -- Remove duplicates and return user_ids directly (paths now resolve to user_ids)
+  l_all_user_ids := array(select distinct unnest(l_all_user_ids));
+
+  return coalesce(l_all_user_ids, '{}');
 end $$;

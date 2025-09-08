@@ -10,13 +10,27 @@ class WebSocketManager {
     this.isShuttingDown = false;
 
     // ZeroQL nested proxy API - matches server-side db.api pattern
-    this.api = {
+    // Proxy handles both ZeroQL operations and custom functions
+    const zeroqlOps = {
       get: this.createEntityProxy("get"),
       save: this.createEntityProxy("save"),
       delete: this.createEntityProxy("delete"),
       lookup: this.createEntityProxy("lookup"),
       search: this.createEntityProxy("search"),
     };
+
+    this.api = new Proxy(zeroqlOps, {
+      get: (target, prop) => {
+        // Return cached ZeroQL operation if it exists
+        if (prop in target) {
+          return target[prop];
+        }
+        // All other properties are treated as custom function calls
+        return (params = {}) => {
+          return this.call(prop, params);
+        };
+      },
+    });
   }
 
   /**

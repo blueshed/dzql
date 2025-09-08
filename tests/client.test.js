@@ -9,14 +9,20 @@ let server;
 let testUser;
 
 beforeAll(async () => {
-  // Clean up any existing test user first
-  await sql`DELETE FROM users WHERE email = 'proxy-test@example.com'`;
+  // Use a unique email for this test run to avoid conflicts
+  const testEmail = `proxy-test-${Date.now()}@example.com`;
+
+  // Clean up any existing test data first
+  await sql`DELETE FROM acts_for WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'proxy-test-%@example.com')`;
+  await sql`DELETE FROM organisations WHERE name LIKE '%Test%' OR name LIKE '%Event Test%'`;
+  await sql`DELETE FROM users WHERE email LIKE 'proxy-test-%@example.com'`;
 
   // Create test user for websocket tests
   const result = await sql`
-    SELECT register_user('proxy-test@example.com', 'password123') as user_data
+    SELECT register_user(${testEmail}, 'password123') as user_data
   `;
   testUser = result[0].user_data;
+  testUser.email = testEmail; // Store for use in tests
 
   // Start the server using test utility
   server = await setupTestServer(3000);
@@ -25,8 +31,14 @@ beforeAll(async () => {
 afterAll(async () => {
   await teardownTestServer(server);
   // Clean up test user and any test data
+  if (testUser) {
+    await sql`DELETE FROM acts_for WHERE user_id = ${testUser.user_id}`;
+    await sql`DELETE FROM users WHERE id = ${testUser.user_id}`;
+  }
+  // Also clean up any leftover test data
+  await sql`DELETE FROM acts_for WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'proxy-test-%@example.com')`;
   await sql`DELETE FROM organisations WHERE name LIKE '%Test%' OR name LIKE '%Event Test%'`;
-  await sql`DELETE FROM users WHERE email = 'proxy-test@example.com'`;
+  await sql`DELETE FROM users WHERE email LIKE 'proxy-test-%@example.com'`;
 });
 
 test("Client proxy API - end-to-end with real WebSocket", async () => {
@@ -56,8 +68,8 @@ test("Client proxy API - end-to-end with real WebSocket", async () => {
       });
 
       // Login first
-      const loginResult = await ws.call("login_user", {
-        email: "proxy-test@example.com",
+      const loginResult = await ws.api.login_user({
+        email: testUser.email,
         password: "password123",
       });
 
@@ -149,8 +161,8 @@ test("Client proxy API vs legacy API comparison", async () => {
       });
 
       // Login
-      await ws.call("login_user", {
-        email: "proxy-test@example.com",
+      await ws.api.login_user({
+        email: testUser.email,
         password: "password123",
       });
 
@@ -212,8 +224,8 @@ test("Client proxy API - all 5 operations work", async () => {
         checkConnection();
       });
 
-      await ws.call("login_user", {
-        email: "proxy-test@example.com",
+      await ws.api.login_user({
+        email: testUser.email,
         password: "password123",
       });
 
@@ -261,6 +273,138 @@ test("Client proxy API - all 5 operations work", async () => {
   });
 });
 
+test("Client proxy API - custom PostgreSQL functions", async () => {
+  const ws = useWs();
+
+  return new Promise(async (resolve, reject) => {
+    const timeout = setTimeout(() => {
+      ws.disconnect();
+      reject(new Error("Test timeout - custom function calls failed"));
+    }, 5000);
+
+    try {
+      await ws.connect();
+
+      // Login first
+      await ws.api.login_user({
+        email: testUser.email,
+        password: "password123",
+      });
+
+      // Test calling hello function through proxy
+      const helloResult = await ws.api.hello();
+
+      expect(helloResult).toBeObject();
+      expect(helloResult.message).toBe("Hello, World!");
+      expect(helloResult.from).toBe("PostgreSQL");
+      expect(helloResult.user_id).toBe(testUser.user_id);
+      expect(helloResult.timestamp).toBeDefined();
+
+      // Test with parameters
+      const helloWithName = await ws.api.hello({ name: "ZeroQL" });
+
+      expect(helloWithName.message).toBe("Hello, ZeroQL!");
+      expect(helloWithName.from).toBe("PostgreSQL");
+      expect(helloWithName.user_id).toBe(testUser.user_id);
+
+      // Verify both patterns work
+      const directCall = await ws.api.hello({ name: "Direct" });
+
+      expect(directCall.message).toBe("Hello, Direct!");
+      expect(directCall.from).toBe("PostgreSQL");
+
+      clearTimeout(timeout);
+      ws.cleanDisconnect();
+      resolve();
+    } catch (error) {
+      clearTimeout(timeout);
+      ws.cleanDisconnect();
+      reject(error);
+    }
+  });
+});
+
+test("Client proxy API - handles non-existent functions", async () => {
+  const ws = useWs();
+
+  return new Promise(async (resolve, reject) => {
+    const timeout = setTimeout(() => {
+      ws.disconnect();
+      reject(new Error("Test timeout"));
+    }, 5000);
+
+    try {
+      await ws.connect();
+
+      // Login first
+      await ws.api.login_user({
+        email: testUser.email,
+        password: "password123",
+      });
+
+      // Test calling non-existent function
+      try {
+        await ws.api.nonExistentFunction();
+        reject(new Error("Should have thrown an error"));
+      } catch (error) {
+        expect(error.message).toContain("Internal error");
+      }
+
+      clearTimeout(timeout);
+      ws.cleanDisconnect();
+      resolve();
+    } catch (error) {
+      clearTimeout(timeout);
+      ws.cleanDisconnect();
+      reject(error);
+    }
+  });
+});
+
+test("Client proxy API - Bun function goodbye", async () => {
+  const ws = useWs();
+
+  return new Promise(async (resolve, reject) => {
+    const timeout = setTimeout(() => {
+      ws.disconnect();
+      reject(new Error("Test timeout - goodbye function failed"));
+    }, 5000);
+
+    try {
+      await ws.connect();
+
+      // Login first
+      await ws.api.login_user({
+        email: testUser.email,
+        password: "password123",
+      });
+
+      // Test calling goodbye Bun function
+      const result = await ws.api.goodbye();
+
+      expect(result).toBeObject();
+      expect(result.message).toBe("Goodbye, World!");
+      expect(result.from).toBe("Bun");
+      expect(result.user_id).toBe(testUser.user_id);
+
+      // Test with parameters
+      const withName = await ws.api.goodbye({ name: "ZeroQL" });
+
+      expect(withName.message).toBe("Goodbye, ZeroQL!");
+      expect(withName.from).toBe("Bun");
+      expect(withName.user_id).toBe(testUser.user_id);
+
+      clearTimeout(timeout);
+      ws.cleanDisconnect();
+      resolve();
+    } catch (error) {
+      clearTimeout(timeout);
+      ws.cleanDisconnect();
+      reject(error);
+    }
+  });
+});
+
 test("Client proxy API - real-time events integration", async () => {
   const ws = useWs();
 
@@ -284,8 +428,9 @@ test("Client proxy API - real-time events integration", async () => {
         checkConnection();
       });
 
-      await ws.call("login_user", {
-        email: "proxy-test@example.com",
+      // Login first
+      await ws.api.login_user({
+        email: testUser.email,
         password: "password123",
       });
 

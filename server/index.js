@@ -1,12 +1,14 @@
 import { createWebSocketHandlers, verify_jwt_token } from "./ws.js";
 import { closeConnections, setupListeners } from "./db.js";
+import * as api from "./api.js";
 
 const PORT = process.env.PORT || 3000;
 
 // Single channel for all ZeroQL events
-
-// Create WebSocket event handlers
-const { broadcast, ...websocketHandlers } = createWebSocketHandlers();
+// Create WebSocket event handlers with custom handlers
+const { broadcast, ...websocketHandlers } = createWebSocketHandlers({
+  customHandlers: api,
+});
 
 // Setup NOTIFY listeners
 setupListeners((event) => {

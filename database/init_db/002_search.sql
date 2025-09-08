@@ -332,8 +332,13 @@ BEGIN
   -- Build base FROM clause
   l_base_sql := format('FROM %I t', p_entity);
 
+  -- Add permission filtering
   IF l_where_clause != '' THEN
-    l_base_sql := l_base_sql || ' WHERE ' || l_where_clause;
+    l_base_sql := l_base_sql || format(' WHERE (%s) AND zeroql.check_permission(%L, ''view'', %L, to_jsonb(t.*))',
+      l_where_clause, p_user_id, p_entity);
+  ELSE
+    l_base_sql := l_base_sql || format(' WHERE zeroql.check_permission(%L, ''view'', %L, to_jsonb(t.*))',
+      p_user_id, p_entity);
   END IF;
 
   -- Execute count query

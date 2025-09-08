@@ -1,196 +1,291 @@
-# ZeroQL Database Schema Modeling Rules
+# ZeroQL Framework - AI Assistant Guide
 
-## Architecture
-- **Server**: Bun runtime for high performance
-- **Protocol**: JSON-RPC 2.0 over WebSocket
-- **Database**: PostgreSQL with ZeroQL stored functions
-- **API Pattern**: Nested proxy to PostgreSQL via ZeroQL generic operations
-- **Real-time**: PostgreSQL NOTIFY/LISTEN for push updates
-  - Single 'zeroql' channel for all events
-  - Bun handles event filtering and user notification
-  - Events stored in zeroql.events for audit trail and replay
+## What is ZeroQL?
 
-## ZeroQL Standard Operations
+ZeroQL is an EXTENSION to a base WebSocket RPC system that automatically provides 5 standard database operations per entity with zero boilerplate. The base RPC system allows calling PostgreSQL functions and Bun functions, while ZeroQL adds automatic CRUD operations on top.
 
-### 5 Standard Operations Per Entity
-Every entity automatically gets these 5 operations via ZeroQL:
+## System Architecture
 
-1. **get**: Rich document with dereferenced foreign keys
-   - `api.get.venue({p_venue_id})` → Full venue with sites, areas, products
-   - Supports `on_date` parameter for temporal queries
+### Base RPC Layer
+- **WebSocket with JSON-RPC 2.0**: Thin layer for calling functions
+- **PostgreSQL functions**: Can be registered in `zeroql.registry` table
+- **Bun functions**: Auto-discovered from `/server/functions/*.js`
+- **Direct calls**: Use `ws.call('function_name', params)`
 
-2. **save**: Smart upsert with validation
-   - `api.save.venue({id, name, org_id, address})` → Upserted venue record
+### ZeroQL Extension Layer
+- **5 Standard Operations**: Automatically available for registered entities
+- **Nested Proxy API**: `ws.api.{operation}.{entity}(params)`
+- **Real-time Events**: PostgreSQL NOTIFY/LISTEN on 'zeroql' channel
+- **Audit Trail**: All changes logged to `zeroql.events` table
 
-3. **delete**: Cascading delete (soft or hard)
-   - `api.delete.venue({p_venue_id})` → Deleted venue with cascades
+## File Structure
+```
+zeroql/
+├── server/
+│   ├── index.js        # Bun WebSocket server
+│   ├── ws.js           # WebSocket handlers & routing
+│   ├── db.js           # PostgreSQL connection & ZeroQL proxy
+│   └── functions/      # Custom Bun functions (auto-discovered)
+├── database/
+│   ├── compose.yml     # Docker PostgreSQL setup
+│   └── init_db/
+│       ├── 001_zeroql.sql        # Core ZeroQL system
+│       ├── 002_search.sql        # Advanced search
+│       ├── 010_auth.sql          # Auth functions (login_user, register_user)
+│       └── 011_simple_domain.sql # Example domain with entities
+├── client/
+│   ├── ws.js           # WebSocket client with proxy API
+│   └── index.html      # Example UI
+└── tests/
+    └── *.test.js       # Bun test suite
+```
 
-4. **lookup**: Typeahead/autocomplete data
-   - `api.lookup.venues({p_filter: "madison"})` → `[{label, value}, ...]`
+## The 5 Standard Operations
 
-5. **search**: Filterable table data with pagination
-   - `api.search.venues({p_filters: {city: "NYC"}})` → `{data: [...], total, page}`
+Every registered entity automatically gets these operations via `ws.api.{operation}.{entity}()`:
 
-### Entity Configuration
-All entities must be registered in `zeroql.entities`:
+### 1. GET - Retrieve single record with foreign keys
+```javascript
+const venue = await ws.api.get.venues({id: 1});
+// Returns full record with dereferenced foreign keys
+// Supports temporal: {id: 1, on_date: '2023-01-01'}
+```
+
+### 2. SAVE - Smart upsert
+```javascript
+// Insert (no id)
+const newVenue = await ws.api.save.venues({name: 'MSG', org_id: 1});
+// Update (with id)
+const updated = await ws.api.save.venues({id: 1, name: 'Updated'});
+// Returns: {id: 123}
+```
+
+### 3. DELETE - Remove record
+```javascript
+const result = await ws.api.delete.venues({id: 1});
+// Respects soft_delete if configured
+```
+
+### 4. LOOKUP - Autocomplete/dropdown data
+```javascript
+const options = await ws.api.lookup.venues({p_filter: 'madison'});
+// Returns: [{label: "Madison Square Garden", value: 1}, ...]
+```
+
+### 5. SEARCH - Paginated, filterable results
+```javascript
+const results = await ws.api.search.venues({
+  filters: {
+    city: 'NYC',
+    capacity: {gte: 1000, lt: 5000},
+    name: {ilike: '%garden%'},
+    _search: 'madison'  // Text search across searchable_fields
+  },
+  sort: {field: 'name', order: 'asc'},
+  page: 1,
+  limit: 25
+});
+// Returns: {data: [...], total: 100, page: 1, limit: 25}
+```
+
+## Entity Registration
+
+Register entities to enable the 5 standard operations:
+
 ```sql
-select zeroql.register_entity(
-  'table_name',
-  'label_field',                    -- for lookup operations
-  array['searchable','fields'],     -- for search operations
-  '{"fk": "related_table"}',        -- foreign keys to dereference in get
-  '{"read": ["role"], "write": ["role"]}',  -- permissions
-  false,                            -- soft_delete boolean
-  '{"valid_from": "field", "valid_to": "field"}'  -- temporal fields
+SELECT zeroql.register_entity(
+  p_table_name := 'venues',
+  p_label_field := 'name',                         -- for lookup display
+  p_searchable_fields := array['name', 'address'], -- for text search
+  p_fk_includes := '{"org": "organisations"}'::jsonb,  -- foreign keys to dereference
+  p_soft_delete := false,                          -- soft vs hard delete
+  p_temporal_fields := '{"valid_from": "valid_from", "valid_to": "valid_to"}'::jsonb,
+  p_notification_paths := '{                       -- who gets real-time updates
+    "ownership": ["@org_id->acts_for[org_id=$]{active}.user_id"]
+  }'::jsonb,
+  p_permission_paths := '{                         -- who can CRUD
+    "create": ["@org_id->acts_for[org_id=$]{active}.user_id"],
+    "update": ["@org_id->acts_for[org_id=$]{active}.user_id"],
+    "delete": ["@org_id->acts_for[org_id=$]{active}.user_id"],
+    "view": []  -- empty = public read
+  }'::jsonb
 );
 ```
 
-## Temporal Relationships
+## Path Syntax (Notifications & Permissions)
 
-### Automatic Temporal Filtering
-Many-to-many relationships with `valid_from`/`valid_to` are automatically filtered:
-- **Current state**: `valid_from <= now() AND (valid_to > now() OR valid_to IS NULL)`
-- **Historical state**: Use `on_date` parameter in any operation
-- **Examples**: `acts_for`, `contractor_rights`, `promotion_rights`
+Paths traverse relationships to determine affected users:
 
-### on_date Parameter
-- **No on_date**: Shows current valid relationships (using `now()`)
-- **With on_date**: Shows relationships valid at that specific time
-- **Usage**: `api.get.user({p_user_id, on_date: '2023-07-15'})`
+### Components
+- `@field` - Start from field in current record
+- `->table` - Navigate to related table
+- `[condition]` - Filter rows (`$` = current field value)
+- `{active}` - Apply temporal filtering (current valid only)
+- `.field` - Extract target field
 
-## Database Design
-
-### Primary Keys & Foreign Keys
-- Primary keys use `serial` (auto-incrementing integers) or `uuid`
-- Foreign keys reference with arrows: `user_id: int → Users.id`
-- Composite keys: `PRIMARY KEY (field1, field2, field3)`
-
-### Temporal Validity Pattern
-For time-based relationships:
-- `valid_from: date` - When relationship starts (inclusive)
-- `valid_to: date` - When relationship ends (exclusive), NULL = no end
-- ZeroQL automatically filters these in all operations
-
-### Events as Audit Trail
-The `zeroql.events` table serves as the centralized audit trail:
-- `table_name`: Which table was affected
-- `pk`: Primary key of affected record (jsonb)
-- `op`: Operation performed (insert/update/delete)
-- `user_id`: Who performed the action
-- `before`/`after`: JSON with old/new values
-- `at`: When it happened
-- Plus real-time notification capabilities
-
-## API Patterns
-
-### Nested Proxy Structure
-- **Client**: `api.get.venue()`, `api.save.area()`, `api.lookup.products()`
-- **Server**: `db.api.get.venue()`, `db.api.save.area()`, `db.api.lookup.products()`
-- **Same syntax everywhere**: Consistent mental model
-
-### ZeroQL Operations Response Format
-- **Default**: Operations return only ID (`{id: 123}`)
-- **Opt-in Full Record**: Use `{returnFullRecord: true}` option
-- **Events**: All changes trigger real-time events with full record data
-
-### Authentication
-- `login`/`register` return `{user_id: int, token: string}`
-- JWT token contains `user_id`
-- All operations automatically receive `user_id` from JWT
-- ZeroQL handles permission checking via entity configuration
-
-### Custom Business Logic
-For complex operations beyond standard CRUD:
-- Server functions in `/functions/*.js`
-- Export functions like `export async function createComplexSponsorship(userId, params)`
-- Use `db.api.*` calls inside for database access
-- Auto-discovered and exposed via same proxy
-
-## Schema Format Rules
-
-### Table Definitions
-```markdown
-### TableName
-- id: serial
-- name: string unique
-- org_id: int → Organisations.id
-- created_at: timestamptz
-- PRIMARY KEY (id)
-```
-
-### Junction Tables
-```markdown
-### TableA_TableB
-- table_a_id: int → TableA.id
-- table_b_id: int → TableB.id
-- valid_from: date
-- valid_to: date (nullable)
-- PRIMARY KEY (table_a_id, table_b_id, valid_from)
-```
-
-## Development Workflow
-
-1. **Define Schema**: Tables with relationships and constraints
-2. **Register Entities**: `zeroql.register_entity()` automatically adds:
-   - Entity configuration in `zeroql.entities` table
-   - Event trigger for real-time notifications
-   - Standard CRUD operations (get, save, delete, lookup, search)
-3. **Custom Functions**: Add server functions for complex business logic
-4. **Temporal Setup**: Configure temporal fields for time-based relationships
-5. **Event Filtering**: Add trigger logic to populate `notify_users` array
-
-## Real-time Notifications
-
-### Event System Architecture
-- **Single Channel**: All events use `NOTIFY 'zeroql'` channel
-- **Event Record**: Full event stored in `zeroql.events` with audit trail
-- **Bun Filtering**: Server filters events based on `notify_users` array
-- **Auto-triggers**: `zeroql.register_entity()` automatically adds event triggers
-
-### Event Record Structure
+### Examples
 ```sql
-zeroql.events {
-  event_id: bigserial,
-  context_id: text,           -- for catchup queries
-  table_name: text,
-  op: 'insert'|'update'|'delete',
-  pk: jsonb,                  -- primary key
-  before: jsonb,              -- old values
-  after: jsonb,               -- new values
-  user_id: int,               -- who performed action
-  notify_users: int[],        -- who to notify (null = everyone)
-  at: timestamptz
+-- Direct user reference
+'@user_id'
+
+-- Users who act for the org
+'@org_id->acts_for[org_id=$]{active}.user_id'
+
+-- Users via venue->org relationship
+'@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id'
+
+-- Complex: contractor users for a package
+'@package_id->contractor_rights[package_id=$]{active}.contractor_org_id->acts_for[org_id=$]{active}.user_id'
+```
+
+## Authentication
+
+Special-cased auth functions (not through proxy):
+
+```javascript
+// Login
+const auth = await ws.call('login_user', {
+  email: 'user@example.com',
+  password: 'password'
+});
+// Returns: {user_id, email, token, profile}
+
+// Register
+const newUser = await ws.call('register_user', {
+  email: 'new@example.com',
+  password: 'password'
+});
+// Returns: {user_id, email, token, profile}
+```
+
+After auth, all operations automatically include `user_id` from JWT.
+
+## Custom Functions
+
+### PostgreSQL Functions
+1. Create function in PostgreSQL
+2. Register in `zeroql.registry` table (optional, for exposure)
+3. Call via `ws.call('function_name', params)`
+
+### Bun Functions
+1. Export from `/server/functions/*.js`:
+```javascript
+export async function myCustomFunction(userId, params) {
+  // Can use db.api.* for database access
+  const venue = await db.api.get.venues({id: params.venueId, userId});
+  // Business logic here
+  return result;
 }
 ```
+2. Auto-discovered on server start
+3. Call via `ws.call('myCustomFunction', params)`
 
-### Client Event Handling
-- **WebSocket Method**: `{table}:{op}` (e.g., "venues:update")
-- **Event Filtering**: Bun filters by `notify_users` before WebSocket send
-- **Catchup**: Use `zeroql.catchup(context_id, since_event_id)` for offline users
+## Real-time Events
 
-## Development Best Practices
+All database changes trigger WebSocket broadcasts:
 
-### JSON Parameter Handling
-- **PostgreSQL Functions**: Always declare JSON parameters as `jsonb` type
-- **Test Code**: Pass JavaScript objects directly, NOT `JSON.stringify()` results
-- **Let the Driver Convert**: Bun's postgres library handles JS object → JSONB conversion automatically
-- **Example**: Use `${jsObject}` not `${JSON.stringify(jsObject)}` in SQL templates
+```javascript
+// Listen for events
+ws.onBroadcast((method, params) => {
+  if (method === 'venues:update') {
+    // params: {table, op, pk, before, after, user_id, at}
+  }
+});
+```
 
-### Variable Naming Conventions
-- **Parameters**: Use `p_` prefix (e.g., `p_user_id`, `p_venue_id`, `p_args`)
-- **Local Variables**: Use `l_` prefix (e.g., `l_result`, `l_sql_stmt`, `l_entity_config`)
-- **Prevents**: Naming conflicts between parameters and local variables
+Event flow:
+1. Database trigger fires on INSERT/UPDATE/DELETE
+2. Notification paths resolve to `notify_users` array
+3. Event stored in `zeroql.events` table
+4. PostgreSQL NOTIFY on 'zeroql' channel
+5. Bun filters by `notify_users` and broadcasts
+6. Clients receive `{table}:{operation}` events
 
-### Data Types
-- **user_id**: Always use `int` (serial), never `uuid`
-- **Primary Keys**: Use `serial` for auto-incrementing integer IDs
-- **Foreign Keys**: Reference with arrows: `user_id: int → Users.id`
+## Database Conventions
 
-## Design Principles
+- **Primary Keys**: Use `serial` (auto-increment) or `uuid`
+- **Foreign Keys**: Document as `field: type → Table.field`
+- **User IDs**: Always `int` (serial), never `uuid`
+- **Temporal**: `valid_from`/`valid_to` for time-based relationships
+- **Parameters**: Use `p_` prefix in PostgreSQL functions
+- **Local Variables**: Use `l_` prefix in PostgreSQL functions
 
-1. **Zero Boilerplate**: Standard operations work automatically
-2. **Temporal by Default**: Time-aware relationships without manual filtering
-3. **Proxy Consistency**: Same API pattern client and server side
-4. **Configuration over Code**: Entity behavior driven by `zeroql.entities`
-5. **Real-time Native**: Built-in event streaming and state synchronization
-6. **Events as Audit**: `zeroql.events` provides audit trail + real-time notifications
+## Search Operators
+
+The search operation supports rich filtering:
+
+- **Exact**: `{field: "value"}`
+- **Range**: `{field: {gte: 100, lt: 500}}`
+- **Pattern**: `{field: {like: "%text%"}}` or `{ilike: "%text%"}`
+- **IN array**: `{field: ["val1", "val2"]}`
+- **NULL**: `{field: null}` or `{field: {not_null: true}}`
+- **Text search**: `{_search: "text"}` - searches all searchable_fields
+
+## Testing Patterns
+
+```javascript
+import { test } from 'bun:test';
+
+// WebSocket testing
+const ws = new WebSocketManager();
+await ws.connect();
+const venue = await ws.api.get.venues({id: 1});
+
+// Direct database testing (server-side)
+const venue = await db.api.get.venues({id: 1, userId: 123});
+```
+
+## Common Tasks
+
+### Create New Entity
+1. Create table in PostgreSQL
+2. Register with `zeroql.register_entity()`
+3. All 5 operations immediately available
+
+### Add Business Logic
+1. Export function from `/server/functions/*.js`
+2. Call via `ws.call('functionName', params)`
+
+### Setup Temporal Data
+1. Add `valid_from` and `valid_to` columns
+2. Include in `p_temporal_fields` when registering
+3. Use `on_date` parameter for historical queries
+
+### Implement Row-Level Security
+1. Define permission paths when registering
+2. Paths automatically enforce who can CRUD
+3. Empty array `[]` means public access
+
+## Development Commands
+
+```bash
+npm run db:up       # Start PostgreSQL
+npm run db:down     # Stop and remove volumes
+npm run dev         # Start Bun server with hot reload
+bun test           # Run test suite
+```
+
+## Key Tables
+
+### zeroql.entities
+Configuration for all registered entities (label fields, searchable fields, permissions)
+
+### zeroql.events
+Audit trail of all changes with real-time notification data:
+- `table_name`, `op`, `pk` - What changed
+- `before`, `after` - Old and new values
+- `user_id` - Who made the change
+- `notify_users` - Who to notify (null = everyone)
+- `at` - When it happened
+
+### zeroql.registry
+Optional registration of PostgreSQL functions for RPC exposure
+
+## Remember
+
+1. **ZeroQL is an extension** - Base RPC + automatic CRUD operations
+2. **Everything uses the same API** - `ws.api.*` for ZeroQL ops, `ws.call()` for custom functions
+3. **No boilerplate** - Register entity once, get 5 operations instantly
+4. **Temporal by default** - Built-in time-travel with `on_date`
+5. **Real-time native** - Every change can trigger targeted notifications
+6. **PostgreSQL is the source of truth** - All business logic can live in the database

@@ -40,6 +40,13 @@ describe("ZeroQL Real-time Events", () => {
       name: `Test Event Org ${uniqueId}`,
     });
     expect(testOrg.id).toBeDefined();
+
+    // Ensure the test user can act for this org
+    await sql`
+      INSERT INTO acts_for (user_id, org_id, valid_from)
+      VALUES (${testUser.user_id}, ${testOrg.id}, CURRENT_DATE)
+      ON CONFLICT (user_id, org_id, valid_from) DO NOTHING
+    `;
   }, 30000);
 
   afterAll(async () => {
@@ -47,6 +54,7 @@ describe("ZeroQL Real-time Events", () => {
     if (testOrg) {
       try {
         await sql`DELETE FROM products WHERE org_id = ${testOrg.id}`;
+        await sql`DELETE FROM acts_for WHERE org_id = ${testOrg.id}`;
         await sql`DELETE FROM organisations WHERE id = ${testOrg.id}`;
       } catch (error) {
         console.warn("Cleanup warning:", error.message);
@@ -61,6 +69,7 @@ describe("ZeroQL Real-time Events", () => {
 
     // Clean up test user
     if (testUser) {
+      await sql`DELETE FROM acts_for WHERE user_id = ${testUser.user_id}`;
       await sql`DELETE FROM users WHERE id = ${testUser.user_id}`;
     }
   });
@@ -201,8 +210,14 @@ describe("ZeroQL Real-time Events", () => {
             // ASSERT: Check the event payload
             expect(params.op).toBe("delete");
             expect(params.table).toBe("products");
-            // For delete events, data structure may vary - check what's actually there
             expect(params.event_id).toBeDefined();
+
+            // Verify deleted record data is included
+            expect(params.data).toBeDefined();
+            expect(params.data.id).toBe(productToDelete.id);
+            expect(params.data.name).toBe(productName);
+            expect(params.data.price).toBe(99.0);
+            expect(params.data.org_id).toBe(testOrg.id);
 
             client.offBroadcast(listener);
             clearTimeout(timeout);

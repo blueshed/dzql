@@ -6,12 +6,21 @@ beforeAll(async () => {
   // Verify we can connect and have data
   const result = await sql`SELECT 1 as test`;
   expect(result[0].test).toBe(1);
+
+  // Ensure user 1 has acts_for relationships for test organizations
+  // First, check if user 1 exists, if not create it
+  await sql`
+    INSERT INTO users (id, email, name, password_hash)
+    VALUES (1, 'test@test.com', 'Test User', 'hash')
+    ON CONFLICT (id) DO NOTHING
+  `;
 });
 
 // Clean up test data before each test to avoid conflicts
 beforeEach(async () => {
   await sql`DELETE FROM products WHERE name LIKE '%SearchTest%'`;
   await sql`DELETE FROM venues WHERE name LIKE '%SearchTest%'`;
+  await sql`DELETE FROM acts_for WHERE org_id IN (SELECT id FROM organisations WHERE name LIKE '%SearchTest%')`;
   await sql`DELETE FROM organisations WHERE name LIKE '%SearchTest%'`;
 });
 
@@ -19,7 +28,10 @@ afterAll(async () => {
   // Final cleanup after all tests
   await sql`DELETE FROM products WHERE name LIKE '%SearchTest%'`;
   await sql`DELETE FROM venues WHERE name LIKE '%SearchTest%'`;
+  await sql`DELETE FROM acts_for WHERE org_id IN (SELECT id FROM organisations WHERE name LIKE '%SearchTest%')`;
   await sql`DELETE FROM organisations WHERE name LIKE '%SearchTest%'`;
+  // Clean up the test user created in beforeAll
+  await sql`DELETE FROM users WHERE email = 'test@test.com'`;
 });
 
 // ============================================================================
@@ -75,6 +87,13 @@ test("Search with null value filter", async () => {
     },
     1,
   );
+
+  // Ensure user 1 can act for this org
+  await sql`
+    INSERT INTO acts_for (user_id, org_id, valid_from)
+    VALUES (1, ${org.id}, CURRENT_DATE)
+    ON CONFLICT (user_id, org_id, valid_from) DO NOTHING
+  `;
 
   await db.api.save.venues(
     {
@@ -361,6 +380,13 @@ test("Multiple filters with text search and sorting", async () => {
     },
     1,
   );
+
+  // Ensure user 1 can act for this org
+  await sql`
+    INSERT INTO acts_for (user_id, org_id, valid_from)
+    VALUES (1, ${org.id}, CURRENT_DATE)
+    ON CONFLICT (user_id, org_id, valid_from) DO NOTHING
+  `;
 
   await db.api.save.products(
     {

@@ -174,7 +174,7 @@ export function createRPCHandler(customHandlers = {}) {
 
       // Check for custom handlers
       if (customHandlers[method]) {
-        const result = await customHandlers[method](params, ws);
+        const result = await customHandlers[method](ws.data.user_id, params);
         return create_rpc_response(id, result);
       }
 
