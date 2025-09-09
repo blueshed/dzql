@@ -110,15 +110,17 @@ class WebSocketManager {
         // Browser environment
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         wsUrl = `${protocol}//${window.location.host}/ws`;
+      } else {
+        // Node.js environment (default for testing)
+        wsUrl = "ws://localhost:3000/ws";
+      }
 
-        // Add JWT token as query parameter if available
+      // Add JWT token as query parameter if available
+      if (typeof localStorage !== 'undefined'){
         const storedToken = localStorage.getItem("zeroql_token");
         if (storedToken) {
           wsUrl += `?token=${encodeURIComponent(storedToken)}`;
         }
-      } else {
-        // Node.js environment (default for testing)
-        wsUrl = "ws://localhost:3000/ws";
       }
 
       const connectionTimeout = setTimeout(() => {
@@ -128,10 +130,8 @@ class WebSocketManager {
         reject(new Error(`WebSocket connection timed out after ${timeout}ms`));
       }, timeout);
 
-      // Use Node.js WebSocket in Node environment, browser WebSocket in browser
-      const WSConstructor =
-        typeof window !== "undefined" ? WebSocket : require("ws");
-      this.ws = new WSConstructor(wsUrl);
+      // When bundled by Bun, this will always use the browser's WebSocket
+      this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
         clearTimeout(connectionTimeout);
@@ -229,8 +229,7 @@ class WebSocketManager {
   }
 
   isConnected() {
-    const OPEN = typeof window !== "undefined" ? WebSocket.OPEN : 1; // WebSocket.OPEN = 1
-    return this.ws?.readyState === OPEN;
+    return this.ws?.readyState === WebSocket.OPEN;
   }
 
   disconnect() {
@@ -280,19 +279,14 @@ class WebSocketManager {
   getStatus() {
     if (!this.ws) return "disconnected";
 
-    const CONNECTING = typeof window !== "undefined" ? WebSocket.CONNECTING : 0;
-    const OPEN = typeof window !== "undefined" ? WebSocket.OPEN : 1;
-    const CLOSING = typeof window !== "undefined" ? WebSocket.CLOSING : 2;
-    const CLOSED = typeof window !== "undefined" ? WebSocket.CLOSED : 3;
-
     switch (this.ws.readyState) {
-      case CONNECTING:
+      case WebSocket.CONNECTING:
         return "connecting";
-      case OPEN:
+      case WebSocket.OPEN:
         return "connected";
-      case CLOSING:
+      case WebSocket.CLOSING:
         return "closing";
-      case CLOSED:
+      case WebSocket.CLOSED:
         return "disconnected";
       default:
         return "unknown";

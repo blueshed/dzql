@@ -252,48 +252,46 @@ as $$
 declare
   l_result jsonb := p_record;
   l_fk_key text;
-  l_target_table text;
+  l_target_spec text;
   l_fk_id text;
   l_fk_column text;
   l_label_field text;
   l_label_value text;
   l_related_records jsonb;
   l_query text;
+  l_target_parts text[];
+  l_field_values jsonb;
 begin
   -- Process each foreign key in the fk_includes configuration
-  for l_fk_key, l_target_table in select * from jsonb_each_text(p_fk_includes)
+  for l_fk_key, l_target_spec in select * from jsonb_each_text(p_fk_includes)
   loop
-    if l_fk_key = l_target_table then
-      -- One-to-many: include related records (e.g., "sites": "sites")
-      -- Find the foreign key column that references this entity
-      select kcu.column_name into l_fk_column
-      from information_schema.key_column_usage kcu
-      join information_schema.table_constraints tc
-        on kcu.constraint_name = tc.constraint_name
-      join information_schema.constraint_column_usage ccu
-        on kcu.constraint_name = ccu.constraint_name
-      where tc.constraint_type = 'FOREIGN KEY'
-        and kcu.table_name = l_target_table
-        and ccu.table_name = p_entity
-        and ccu.column_name = 'id'
-      limit 1;
+    -- Check for collection field syntax: "collection.field": "junction.field"
+    if l_fk_key ~ '\.' then
+      -- Handle nested collection field arrays (e.g., "sites.product_ids": "site_products.product_id")
+      l_result := zeroql.handle_collection_field_array(p_entity, l_result, l_fk_key, l_target_spec);
 
-      if l_fk_column is null then
-        raise exception 'ZeroQL: no foreign key found from % to %', l_target_table, p_entity;
+    -- Check for dot syntax in target specification
+    elsif l_target_spec ~ '\.' then
+      l_target_parts := string_to_array(l_target_spec, '.');
+
+      -- Collection syntax: "areas": "areas.venue_id"
+      if l_fk_key = l_target_parts[1] then
+        l_result := zeroql.handle_collection_include(p_entity, l_result, l_fk_key, l_target_spec);
+      else
+        -- Direct field array syntax: "product_ids": "site_products.product_id"
+        l_query := format(
+          'select coalesce(jsonb_agg(%I), ''[]''::jsonb) from %I where %I = %L',
+          l_target_parts[2], -- field to aggregate (e.g., product_id)
+          l_target_parts[1], -- junction table (e.g., site_products)
+          regexp_replace(p_entity, 's$', '') || '_id', -- FK column (e.g., sites -> site_id)
+          (p_record->>'id')
+        );
+        execute l_query into l_field_values;
+        l_result := l_result || jsonb_build_object(l_fk_key, l_field_values);
       end if;
 
-      l_query := format(
-        'select coalesce(jsonb_agg(to_jsonb(t.*)), ''[]''::jsonb) from %I t where t.%I = %L',
-        l_target_table,
-        l_fk_column,
-        (p_record->>'id')
-      );
-
-      execute l_query into l_related_records;
-      l_result := l_result || jsonb_build_object(l_fk_key, l_related_records);
-
     else
-      -- One-to-one: dereference to {label, value} format
+      -- One-to-one FK dereferencing (existing behavior)
       l_fk_column := l_fk_key || '_id';
       l_fk_id := p_record->>l_fk_column;
 
@@ -301,13 +299,13 @@ begin
         -- Get the label field for this target table
         select label_field into l_label_field
         from zeroql.entities
-        where table_name = l_target_table;
+        where table_name = l_target_spec;
 
         if l_label_field is not null then
           l_query := format(
             'select %I from %I where id = %L',
             l_label_field,
-            l_target_table,
+            l_target_spec,
             l_fk_id
           );
 
@@ -315,12 +313,10 @@ begin
 
           if l_label_value is not null then
             -- Add label field without modifying the original FK
-            -- e.g., owner_org_id stays as integer, owner_org gets the label
             l_result := l_result || jsonb_build_object(
               l_fk_key,  -- without _id suffix (e.g., 'owner_org')
               l_label_value  -- just the label string
             );
-            -- Original FK field (e.g., owner_org_id) remains unchanged
           end if;
         end if;
       end if;
@@ -328,6 +324,107 @@ begin
   end loop;
 
   return l_result;
+end $$;
+
+-- Helper function to handle collection includes like "areas": "areas.venue_id"
+create or replace function zeroql.handle_collection_include(
+  p_entity text,
+  p_result jsonb,
+  p_fk_key text,
+  p_target_spec text
+) returns jsonb
+language plpgsql
+security invoker
+as $$
+declare
+  l_target_parts text[];
+  l_fk_column text;
+  l_collection_table text;
+  l_related_records jsonb;
+  l_query text;
+begin
+  l_target_parts := string_to_array(p_target_spec, '.');
+  l_collection_table := l_target_parts[1];
+  l_fk_column := l_target_parts[2];
+
+  -- Check if collection table has an id column for ordering
+  if exists(select 1 from information_schema.columns where table_name = l_collection_table and column_name = 'id') then
+    l_query := format(
+      'select coalesce(jsonb_agg(to_jsonb(t.*) order by t.id), ''[]''::jsonb) from %I t where t.%I = %L',
+      l_collection_table, l_fk_column, (p_result->>'id')
+    );
+  else
+    l_query := format(
+      'select coalesce(jsonb_agg(to_jsonb(t.*)), ''[]''::jsonb) from %I t where t.%I = %L',
+      l_collection_table, l_fk_column, (p_result->>'id')
+    );
+  end if;
+
+  execute l_query into l_related_records;
+  return p_result || jsonb_build_object(p_fk_key, l_related_records);
+end $$;
+
+-- Helper function to handle nested collection field arrays like "sites.product_ids": "site_products.product_id"
+create or replace function zeroql.handle_collection_field_array(
+  p_entity text,
+  p_result jsonb,
+  p_fk_key text,
+  p_target_spec text
+) returns jsonb
+language plpgsql
+security invoker
+as $$
+declare
+  l_collection_name text;
+  l_field_name text;
+  l_target_parts text[];
+  l_junction_table text;
+  l_junction_field text;
+  l_updated_records jsonb;
+  l_record jsonb;
+  l_record_id text;
+  l_field_values jsonb;
+  l_query text;
+begin
+  -- Parse collection.field syntax
+  l_collection_name := split_part(p_fk_key, '.', 1);
+  l_field_name := split_part(p_fk_key, '.', 2);
+
+  -- Parse target specification: "junction.field"
+  l_target_parts := string_to_array(p_target_spec, '.');
+  l_junction_table := l_target_parts[1];
+  l_junction_field := l_target_parts[2];
+
+  -- First, ensure we have the collection loaded
+  if not (p_result ? l_collection_name) then
+    p_result := zeroql.handle_collection_include(p_entity, p_result, l_collection_name, l_collection_name || '.' || p_entity || '_id');
+  end if;
+
+  -- Now enhance each record in the collection with the field array
+  l_updated_records := '[]'::jsonb;
+
+  for l_record in select jsonb_array_elements(p_result->l_collection_name)
+  loop
+    l_record_id := l_record->>'id';
+
+    -- Get field values from junction table
+    l_query := format(
+      'select coalesce(jsonb_agg(%I), ''[]''::jsonb) from %I where %I = %L',
+      l_junction_field,
+      l_junction_table,
+      regexp_replace(l_collection_name, 's$', '') || '_id', -- Convert plural to singular + _id
+      l_record_id
+    );
+
+    execute l_query into l_field_values;
+
+    -- Add the field array to this record
+    l_record := l_record || jsonb_build_object(l_field_name, l_field_values);
+    l_updated_records := l_updated_records || jsonb_build_array(l_record);
+  end loop;
+
+  -- Replace the collection in the result with the enhanced version
+  return p_result || jsonb_build_object(l_collection_name, l_updated_records);
 end $$;
 
 -- Generic SAVE with upsert capability

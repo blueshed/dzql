@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: zeroql
+      POSTGRES_PASSWORD: zeroql
+      POSTGRES_DB: zeroql
+    volumes:
+      # Framework migrations (individual files)
+      - ../../zeroql/src/database/migrations/001_zeroql.sql:/docker-entrypoint-initdb.d/001_zeroql.sql:ro
+      - ../../zeroql/src/database/migrations/002_search.sql:/docker-entrypoint-initdb.d/002_search.sql:ro
+      - ../../zeroql/src/database/migrations/003_auth.sql:/docker-entrypoint-initdb.d/003_auth.sql:ro
+      - ../../zeroql/src/database/migrations/004_hello.sql:/docker-entrypoint-initdb.d/004_hello.sql:ro
+      # Domain-specific migrations
+      - ./init_db/005_rights.sql:/docker-entrypoint-initdb.d/005_rights.sql:ro
+      - ./init_db/006_meta.sql:/docker-entrypoint-initdb.d/006_meta.sql:ro
+    ports:
+      - "5432:5432"

@@ -1,0 +1,277 @@
+<template>
+  <div class="space-y-4">
+    <!-- Search Bar -->
+    <div class="flex flex-col sm:flex-row gap-4">
+      <div class="flex-1">
+        <input
+          v-model="searchFilter"
+          type="text"
+          placeholder="Search..."
+          class="input input-bordered w-full"
+          @input="debouncedSearch"
+        />
+      </div>
+      <button
+        @click="refresh"
+        class="btn btn-primary"
+        :disabled="loading"
+      >
+        <span v-if="loading" class="loading loading-spinner loading-sm"></span>
+        <RefreshCwIcon v-else class="h-4 w-4" />
+        Refresh
+      </button>
+    </div>
+
+    <!-- Error Alert -->
+    <div v-if="error" class="alert alert-error">
+      <XCircleIcon class="stroke-current shrink-0 h-6 w-6" />
+      <span>{{ error }}</span>
+      <button @click="clearError" class="btn btn-sm btn-ghost">×</button>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading && !hasData" class="flex justify-center py-12">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+
+    <!-- Table -->
+    <div v-else-if="hasData" class="overflow-x-auto">
+      <table class="table table-zebra">
+        <thead>
+          <tr>
+            <th v-for="column in columns" :key="column.key">
+              <button
+                @click="toggleSort(column.key)"
+                class="btn btn-ghost btn-sm justify-start p-0 h-auto font-semibold"
+                :class="{ 'text-primary': sortField === column.key }"
+              >
+                {{ column.label }}
+                <span v-if="sortField === column.key" class="ml-1">
+                  {{ sortOrder === 'asc' ? '↑' : '↓' }}
+                </span>
+              </button>
+            </th>
+            <th class="w-20">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="record in records" :key="record.id || record.pk">
+            <td v-for="column in columns" :key="column.key" class="max-w-xs">
+              <div class="truncate" :title="getDisplayValue(record, column.key)">
+                {{ getDisplayValue(record, column.key) }}
+              </div>
+            </td>
+            <td>
+              <div class="flex gap-1">
+                <button
+                  @click="editRecord(record)"
+                  class="btn btn-ghost btn-xs"
+                  title="Edit"
+                >
+                  <EditIcon class="h-3 w-3" />
+                </button>
+                <button
+                  @click="deleteRecord(record)"
+                  class="btn btn-ghost btn-xs text-error hover:bg-error hover:text-error-content"
+                  title="Delete"
+                >
+                  <TrashIcon class="h-3 w-3" />
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Empty State -->
+    <div v-else-if="!loading" class="text-center py-12">
+      <div class="text-base-content/60">
+        <InboxIcon class="mx-auto h-12 w-12 mb-4" />
+        <h3 class="text-lg font-medium mb-2">No {{ entity }} found</h3>
+        <p class="text-sm">Try adjusting your search or create a new record.</p>
+      </div>
+      <button class="btn btn-primary mt-4" @click="createRecord">
+        <PlusIcon class="h-4 w-4 mr-2" />
+        Create {{ entity }}
+      </button>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="searchResults && searchResults.total > searchResults.limit" class="flex justify-between items-center">
+      <div class="text-sm text-base-content/70">
+        Showing {{ ((searchResults.page - 1) * searchResults.limit) + 1 }} to
+        {{ Math.min(searchResults.page * searchResults.limit, searchResults.total) }} of
+        {{ searchResults.total }} results
+      </div>
+      <div class="join">
+        <button
+          @click="goToPage(searchResults.page - 1)"
+          :disabled="searchResults.page <= 1 || loading"
+          class="join-item btn btn-sm"
+        >
+          « Previous
+        </button>
+        <button
+          @click="goToPage(searchResults.page + 1)"
+          :disabled="searchResults.page >= totalPages || loading"
+          class="join-item btn btn-sm"
+        >
+          Next »
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
+import RefreshCwIcon from 'feather-icons/dist/icons/refresh-cw.svg?component'
+import XCircleIcon from 'feather-icons/dist/icons/x-circle.svg?component'
+import EditIcon from 'feather-icons/dist/icons/edit-2.svg?component'
+import TrashIcon from 'feather-icons/dist/icons/trash-2.svg?component'
+import InboxIcon from 'feather-icons/dist/icons/inbox.svg?component'
+import PlusIcon from 'feather-icons/dist/icons/plus.svg?component'
+
+const props = defineProps({
+  entity: {
+    type: String,
+    required: true
+  },
+  store: {
+    type: Object,
+    required: true
+  }
+})
+
+const emit = defineEmits(['edit', 'create', 'delete'])
+
+// Local state
+const searchFilter = ref('')
+const sortField = ref('id')
+const sortOrder = ref('asc')
+
+// Store state
+const { records, loading, error, searchResults, hasData, totalPages } = props.store
+const { search, clearError } = props.store
+
+// Computed
+const columns = computed(() => {
+  if (!hasData.value) return []
+
+  // Get first record to determine columns
+  const firstRecord = records.value[0]
+  if (!firstRecord) return []
+
+  return Object.keys(firstRecord)
+    .filter(key => key !== 'id') // Hide ID column
+    .slice(0, 6) // Limit columns for mobile
+    .map(key => ({
+      key,
+      label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+    }))
+})
+
+// Methods
+let searchTimeout = null
+const debouncedSearch = () => {
+  clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    performSearch()
+  }, 300)
+}
+
+const performSearch = async () => {
+  const params = {
+    page: 1,
+    limit: 25
+  }
+
+  if (searchFilter.value.trim()) {
+    params.filters = {
+      _search: searchFilter.value.trim()
+    }
+  }
+
+  if (sortField.value) {
+    params.sort = {
+      field: sortField.value,
+      order: sortOrder.value
+    }
+  }
+
+  await search(params)
+}
+
+const refresh = () => {
+  performSearch()
+}
+
+const toggleSort = (field) => {
+  if (sortField.value === field) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortField.value = field
+    sortOrder.value = 'asc'
+  }
+  performSearch()
+}
+
+const goToPage = async (page) => {
+  if (page < 1 || page > totalPages.value) return
+
+  const params = {
+    ...props.store.searchParams,
+    page
+  }
+
+  await search(params)
+}
+
+const getDisplayValue = (record, key) => {
+  const value = record[key]
+  if (value === null || value === undefined) return '-'
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+const editRecord = (record) => {
+  emit('edit', record)
+}
+
+const createRecord = () => {
+  emit('create')
+}
+
+const deleteRecord = (record) => {
+  if (confirm(`Are you sure you want to delete this ${props.entity}?`)) {
+    emit('delete', record)
+  }
+}
+
+// Initialize
+onMounted(() => {
+  performSearch()
+})
+</script>
+
+<style scoped>
+@reference '@/style.css';
+/* Custom scrollbar for table */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  @apply bg-base-200;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  @apply bg-base-content/20 rounded-full;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  @apply bg-base-content/30;
+}
+</style>

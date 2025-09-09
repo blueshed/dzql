@@ -2,23 +2,17 @@
   "name": "zeroql-monorepo",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "ZeroQL - PostgreSQL-powered framework with zero boilerplate",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun run --cwd packages/venues dev",
-    "dev:framework": "bun --watch packages/zeroql/src/index.js",
-    "build": "bun run build:zeroql && bun run build:venues",
-    "build:zeroql": "bun run --cwd packages/zeroql build",
-    "build:venues": "bun run --cwd packages/venues build",
-    "test": "bun test",
-    "test:framework": "bun test packages/zeroql",
-    "test:venues": "bun run --cwd packages/venues test",
-    "clean": "rm -rf packages/*/node_modules && rm -rf node_modules",
-    "db:up": "bun run --cwd packages/venues db:up",
-    "db:down": "bun run --cwd packages/venues db:down",
-    "db:logs": "bun run --cwd packages/venues db:logs"
+    "client": "cd packages/client && bun run dev",
+    "server": "cd packages/rights && bun run dev",
+    "dev": "concurrently -n \"client,server\" -c \"blue,green\" \"bun run client\" \"bun run server\"",
+    "db": "cd packages/rights/database && docker compose down -v && docker compose up -d",
+    "db:logs": "bun run --cwd packages/rights db:logs"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -40,5 +34,8 @@
     "zero-boilerplate"
   ],
   "author": "Your Name",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
 }

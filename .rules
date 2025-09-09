@@ -1,5 +1,10 @@
 # ZeroQL Framework - AI Assistant Guide
 
+## Language Rules
+- **NO TYPESCRIPT** - Use plain JavaScript only
+- Keep it simple - no unnecessary type systems or build steps
+- Focus on runtime behavior, not compile-time checking
+
 ## What is ZeroQL?
 
 ZeroQL is an EXTENSION to a base WebSocket RPC system that automatically provides 5 standard database operations per entity with zero boilerplate. The base RPC system allows calling PostgreSQL functions and Bun functions, while ZeroQL adds automatic CRUD operations on top.
@@ -50,6 +55,15 @@ const venue = await ws.api.get.venues({id: 1});
 // Returns full record with dereferenced foreign keys
 // Supports temporal: {id: 1, on_date: '2023-01-01'}
 ```
+
+## IMPORTANT: Function Registration
+
+**YOU DO NOT REGISTER FUNCTIONS!** The 5 standard ZeroQL operations (get, save, delete, lookup, search) are automatically available via the proxy API when you register an entity. They are NOT PostgreSQL functions and do NOT need to be registered in `zeroql.registry`.
+
+The `zeroql.registry` table is ONLY for:
+- Custom PostgreSQL functions you want to expose via `ws.call()`
+- NOT for the standard ZeroQL operations
+- NOT for entity operations accessed via `ws.api.*`
 
 ### 2. SAVE - Smart upsert
 ```javascript

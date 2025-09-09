@@ -1,0 +1,244 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: zeroql --default, zeroql-dark --prefersdark;
+}
+
+@plugin "daisyui/theme" {
+  name: "zeroql";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  /* Brand Colors - Modern tech palette with WebSocket/RPC theme */
+  --color-primary: oklch(60% 0.15 260);           /* Deep tech blue */
+  --color-primary-content: oklch(98% 0.01 260);   /* Pure white for contrast */
+  --color-secondary: oklch(65% 0.12 200);         /* Teal for secondary actions */
+  --color-secondary-content: oklch(98% 0.01 200); /* White content */
+  --color-accent: oklch(70% 0.18 120);            /* Success green for real-time */
+  --color-accent-content: oklch(15% 0.05 120);    /* Dark green text */
+
+  /* Neutral Colors - Clean, professional grays */
+  --color-neutral: oklch(25% 0.02 260);           /* Dark neutral with blue hint */
+  --color-neutral-content: oklch(95% 0.01 260);   /* Light neutral content */
+
+  /* Base Colors - Clean, modern whites and grays */
+  --color-base-100: oklch(99% 0.005 260);         /* Pure white with subtle blue */
+  --color-base-200: oklch(96% 0.01 260);          /* Light gray */
+  --color-base-300: oklch(92% 0.015 260);         /* Medium gray */
+  --color-base-content: oklch(20% 0.02 260);      /* Dark text */
+
+  /* Status Colors - Clear, accessible status indicators */
+  --color-info: oklch(70% 0.15 240);              /* Information blue */
+  --color-info-content: oklch(98% 0.01 240);      /* White on info */
+  --color-success: oklch(65% 0.15 140);           /* Success green */
+  --color-success-content: oklch(98% 0.01 140);   /* White on success */
+  --color-warning: oklch(75% 0.15 60);            /* Warning amber */
+  --color-warning-content: oklch(15% 0.05 60);    /* Dark on warning */
+  --color-error: oklch(60% 0.18 20);              /* Error red */
+  --color-error-content: oklch(98% 0.01 20);      /* White on error */
+
+  /* Design Tokens - Clean, modern styling */
+  --radius-selector: 0.5rem;   /* Moderate radius for checkboxes, toggles */
+  --radius-field: 0.375rem;    /* Slightly rounded fields */
+  --radius-box: 0.75rem;       /* More rounded boxes for cards, modals */
+
+  --size-selector: 0.25rem;    /* Standard selector size */
+  --size-field: 0.25rem;       /* Standard field size */
+
+  --border: 1px;               /* Clean 1px borders */
+  --depth: 1;                  /* Subtle depth effects */
+  --noise: 0;                  /* No noise for clean look */
+}
+
+@plugin "daisyui/theme" {
+  name: "zeroql-dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+
+  /* Brand Colors - Dark mode optimized */
+  --color-primary: oklch(70% 0.15 260);           /* Lighter blue for dark mode */
+  --color-primary-content: oklch(15% 0.02 260);   /* Dark text on primary */
+  --color-secondary: oklch(75% 0.12 200);         /* Lighter teal */
+  --color-secondary-content: oklch(15% 0.02 200); /* Dark content */
+  --color-accent: oklch(75% 0.15 120);            /* Brighter green for visibility */
+  --color-accent-content: oklch(15% 0.05 120);    /* Dark green text */
+
+  /* Neutral Colors - Dark theme neutrals */
+  --color-neutral: oklch(85% 0.02 260);           /* Light neutral for dark theme */
+  --color-neutral-content: oklch(20% 0.02 260);   /* Dark content on neutral */
+
+  /* Base Colors - Dark theme backgrounds */
+  --color-base-100: oklch(18% 0.015 260);         /* Dark background */
+  --color-base-200: oklch(22% 0.02 260);          /* Slightly lighter */
+  --color-base-300: oklch(26% 0.025 260);         /* Medium dark */
+  --color-base-content: oklch(90% 0.01 260);      /* Light text */
+
+  /* Status Colors - Dark mode optimized */
+  --color-info: oklch(75% 0.15 240);              /* Brighter info blue */
+  --color-info-content: oklch(15% 0.02 240);      /* Dark on info */
+  --color-success: oklch(70% 0.15 140);           /* Brighter success */
+  --color-success-content: oklch(15% 0.02 140);   /* Dark on success */
+  --color-warning: oklch(80% 0.15 60);            /* Brighter warning */
+  --color-warning-content: oklch(15% 0.05 60);    /* Dark on warning */
+  --color-error: oklch(70% 0.18 20);              /* Brighter error */
+  --color-error-content: oklch(15% 0.02 20);      /* Dark on error */
+
+  /* Design Tokens - Same as light theme */
+  --radius-selector: 0.5rem;
+  --radius-field: 0.375rem;
+  --radius-box: 0.75rem;
+
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+/* Layout Helper - Preserved from original */
+.content {
+  height: calc(100dvh - 64px);
+  overflow: hidden;
+}
+
+/* Custom ZeroQL Components */
+.zeroql-status-indicator {
+  @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium;
+}
+
+.zeroql-status-indicator.connected {
+  @apply bg-success/10 text-success border border-success/20;
+}
+
+.zeroql-status-indicator.disconnected {
+  @apply bg-error/10 text-error border border-error/20;
+}
+
+.zeroql-status-indicator.connecting {
+  @apply bg-warning/10 text-warning border border-warning/20;
+}
+
+/* WebSocket Connection Pulse Animation */
+.ws-pulse {
+  animation: ws-pulse 2s ease-in-out infinite;
+}
+
+@keyframes ws-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Real-time Event Highlight */
+.realtime-update {
+  animation: realtime-highlight 0.8s ease-out;
+}
+
+@keyframes realtime-highlight {
+  0% { background-color: oklch(70% 0.18 120 / 0.3); }
+  100% { background-color: transparent; }
+}
+
+/* Database Operation Status */
+.db-operation-success {
+  @apply border-l-4 border-success bg-success/5 pl-4;
+}
+
+.db-operation-error {
+  @apply border-l-4 border-error bg-error/5 pl-4;
+}
+
+.db-operation-loading {
+  @apply border-l-4 border-info bg-info/5 pl-4;
+}
+
+/* Code/JSON Syntax Highlighting Enhancement */
+.zeroql-code {
+  @apply bg-base-200 rounded-lg p-4 font-mono text-sm overflow-x-auto;
+}
+
+.zeroql-code.dark {
+  @apply bg-base-300;
+}
+
+/* ZeroQL Branded Elements */
+.zeroql-brand-gradient {
+  background: linear-gradient(135deg,
+    oklch(60% 0.15 260),
+    oklch(65% 0.12 200),
+    oklch(70% 0.18 120)
+  );
+}
+
+/* Enhanced brand text with better contrast */
+.zeroql-brand-text {
+  background: linear-gradient(135deg,
+    oklch(55% 0.20 260),
+    oklch(60% 0.18 200),
+    oklch(65% 0.22 120)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  font-weight: bold;
+  /* Fallback for browsers that don't support background-clip: text */
+  -webkit-text-fill-color: transparent;
+}
+
+@supports not (background-clip: text) {
+  .zeroql-brand-text {
+    color: oklch(60% 0.15 260);
+    background: none;
+  }
+}
+
+.zeroql-glass {
+  @apply backdrop-blur-sm bg-base-100/80 border border-base-200/50;
+}
+
+/* Performance Metrics Display */
+.metric-card {
+  @apply card bg-base-100 shadow-sm border border-base-200/50 transition-all duration-200;
+}
+
+.metric-card:hover {
+  @apply shadow-md border-primary/20 scale-[1.02];
+}
+
+.metric-value {
+  @apply text-2xl font-bold text-primary;
+}
+
+.metric-label {
+  @apply text-sm text-base-content/70 uppercase tracking-wide;
+}
+
+/* API Explorer Styling */
+.api-endpoint {
+  @apply bg-base-200/50 rounded-lg p-3 border-l-4 border-secondary;
+}
+
+.api-method-get { @apply border-l-success; }
+.api-method-post { @apply border-l-primary; }
+.api-method-put { @apply border-l-warning; }
+.api-method-delete { @apply border-l-error; }
+
+/* Responsive Utilities for ZeroQL */
+@media (max-width: 768px) {
+  .content {
+    height: calc(100dvh - 56px); /* Smaller header on mobile */
+  }
+
+  .zeroql-code {
+    @apply text-xs p-3;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .zeroql-brand-gradient {
+    background: oklch(60% 0.15 260) !important;
+    -webkit-print-color-adjust: exact;
+  }
+}

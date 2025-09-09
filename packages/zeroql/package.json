@@ -9,7 +9,7 @@
   },
   "exports": {
     ".": "./src/index.js",
-    "./client": "./src/client/ws.js",
+    "./client": "./src/client.js",
     "./server": "./src/server/index.js"
   },
   "scripts": {
