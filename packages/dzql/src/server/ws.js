@@ -69,8 +69,8 @@ export function createRPCHandler(customHandlers = {}) {
         return create_rpc_error(id, -32601, "Cannot call private functions");
       }
 
-      // Handle ZeroQL operations (require auth, identifiable by signature)
-      if (method.startsWith("zeroql.")) {
+      // Handle DZQL operations (require auth, identifiable by signature)
+      if (method.startsWith("dzql.")) {
         if (!ws.data.user_id) {
           return create_rpc_error(id, -32603, "Not authenticated");
         }
@@ -80,7 +80,7 @@ export function createRPCHandler(customHandlers = {}) {
           return create_rpc_error(
             id,
             -32602,
-            "Invalid ZeroQL method format. Use: zeroql.operation.entity",
+            "Invalid DZQL method format. Use: dzql.operation.entity",
           );
         }
 
@@ -90,7 +90,7 @@ export function createRPCHandler(customHandlers = {}) {
           return create_rpc_error(
             id,
             -32602,
-            `Unknown ZeroQL operation: ${operation}`,
+            `Unknown DZQL operation: ${operation}`,
           );
         }
 

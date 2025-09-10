@@ -13,7 +13,7 @@
     "db:logs": "cd database && docker compose logs postgres"
   },
   "dependencies": {
-    "zeroql": "workspace:*",
+    "dzql": "workspace:*",
     "juris": "^0.88.2"
   }
 }

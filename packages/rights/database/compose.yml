@@ -2,20 +2,20 @@ services:
   postgres:
     image: postgres:latest
     environment:
-      POSTGRES_USER: zeroql
-      POSTGRES_PASSWORD: zeroql
-      POSTGRES_DB: zeroql
+      POSTGRES_USER: dzql
+      POSTGRES_PASSWORD: dzql
+      POSTGRES_DB: dzql
     volumes:
       # ZeroQL Core System (modular architecture with graph rules)
-      - ../../zeroql/src/database/migrations/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
-      - ../../zeroql/src/database/migrations/002_functions.sql:/docker-entrypoint-initdb.d/002_functions.sql:ro
-      - ../../zeroql/src/database/migrations/003_operations.sql:/docker-entrypoint-initdb.d/003_operations.sql:ro
-      - ../../zeroql/src/database/migrations/004_search.sql:/docker-entrypoint-initdb.d/004_search.sql:ro
-      - ../../zeroql/src/database/migrations/005_entities.sql:/docker-entrypoint-initdb.d/005_entities.sql:ro
+      - ../../dzql/src/database/migrations/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      - ../../dzql/src/database/migrations/002_functions.sql:/docker-entrypoint-initdb.d/002_functions.sql:ro
+      - ../../dzql/src/database/migrations/003_operations.sql:/docker-entrypoint-initdb.d/003_operations.sql:ro
+      - ../../dzql/src/database/migrations/004_search.sql:/docker-entrypoint-initdb.d/004_search.sql:ro
+      - ../../dzql/src/database/migrations/005_entities.sql:/docker-entrypoint-initdb.d/005_entities.sql:ro
       # ZeroQL Extensions
-      - ../../zeroql/src/database/migrations/006_auth.sql:/docker-entrypoint-initdb.d/006_auth.sql:ro
-      - ../../zeroql/src/database/migrations/007_events.sql:/docker-entrypoint-initdb.d/007_events.sql:ro
-      - ../../zeroql/src/database/migrations/008_hello.sql:/docker-entrypoint-initdb.d/008_hello.sql:ro
+      - ../../dzql/src/database/migrations/006_auth.sql:/docker-entrypoint-initdb.d/006_auth.sql:ro
+      - ../../dzql/src/database/migrations/007_events.sql:/docker-entrypoint-initdb.d/007_events.sql:ro
+      - ../../dzql/src/database/migrations/008_hello.sql:/docker-entrypoint-initdb.d/008_hello.sql:ro
       # Domain-specific migrations
       - ./init_db/009_rights.sql:/docker-entrypoint-initdb.d/009_rights.sql:ro
       - ./init_db/010_meta.sql:/docker-entrypoint-initdb.d/010_meta.sql:ro

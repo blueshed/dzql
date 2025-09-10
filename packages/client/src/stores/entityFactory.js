@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useWs } from 'zeroql/client'
+import { useWs } from 'dzql/client'
 
 const storeCache = new Map()
 

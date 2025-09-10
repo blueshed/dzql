@@ -1,4 +1,4 @@
-import { useWs } from "zeroql/client";
+import { useWs } from "dzql/client";
 
 
 const ws = useWs();
@@ -93,7 +93,7 @@ window.register = async function () {
     document.getElementById("auth-result").innerHTML =
       `<div class="result">${JSON.stringify(result, null, 2)}</div>`;
     if (result.token) {
-      localStorage.setItem("zeroql_token", result.token);
+      localStorage.setItem("dzql_token", result.token);
       isAuthenticated = true;
       userProfile = result.profile;
     }
@@ -114,7 +114,7 @@ window.login = async function () {
     document.getElementById("auth-result").innerHTML =
       `<div class="result">${JSON.stringify(result, null, 2)}</div>`;
     if (result.token) {
-      localStorage.setItem("zeroql_token", result.token);
+      localStorage.setItem("dzql_token", result.token);
       isAuthenticated = true;
       userProfile = result.profile;
     }
@@ -127,7 +127,7 @@ window.login = async function () {
 window.logout = async function () {
   try {
     await ws.call("logout");
-    localStorage.removeItem("zeroql_token");
+    localStorage.removeItem("dzql_token");
     isAuthenticated = false;
     userProfile = null;
     document.getElementById("auth-result").innerHTML =
@@ -138,10 +138,10 @@ window.logout = async function () {
   }
 };
 
-// ZeroQL API Examples using new nested proxy syntax
+// DZQL API Examples using new nested proxy syntax
 window.testGet = async function () {
   try {
-    // NEW: api.get.organisations() instead of ws.call('zeroql.get.organisations')
+    // NEW: api.get.organisations() instead of ws.call('dzql.get.organisations')
     const result = await ws.api.get.organisations({ id: 1 });
     document.getElementById("get-result").innerHTML =
       `<div class="result">${JSON.stringify(result, null, 2)}</div>`;

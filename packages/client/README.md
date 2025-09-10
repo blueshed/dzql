@@ -1,4 +1,4 @@
-# ZeroQL Dynamic Client Framework
+# DZQL Dynamic Client Framework
 
 ## Philosophy
 A tight, working core with obvious extension points. Zero config to start, progressive enhancement as needed.
@@ -16,7 +16,7 @@ A tight, working core with obvious extension points. Zero config to start, progr
 
 That's it. You get:
 - ✅ **Searchable table** with debounced text search
-- ✅ **Sortable columns** with visual indicators  
+- ✅ **Sortable columns** with visual indicators
 - ✅ **Pagination** with page navigation
 - ✅ **Real-time updates** via WebSocket broadcasts
 - ✅ **Mobile-responsive** design
@@ -94,7 +94,7 @@ registerLookup('tasks.assigned_to', TeamMemberPicker);
 - Real-time collaboration built in
 - Temporal queries native
 
-### 2. **ZeroQL's 5 Operations Are The API**
+### 2. **DZQL's 5 Operations Are The API**
 ```javascript
 // Everything goes through these
 ws.api.get.venues({id: 1})
@@ -158,7 +158,7 @@ ws.api.get.contractor_rights({
 ## Example: Complete App
 
 ```javascript
-import { ZeroQLClient, DynamicApp } from 'zeroql-client';
+import { DZQLClient, DynamicApp } from 'dzql-client';
 import { uiConfig } from './ui.config.js';
 
 // Custom components for your domain
@@ -177,7 +177,7 @@ const customizations = {
 
 // The entire app
 function App() {
-  const client = new ZeroQLClient(ws);
+  const client = new DZQLClient(ws);
 
   return (
     <DynamicApp
@@ -243,12 +243,12 @@ export const uiConfig = {
     'venues': markRaw(MapPinIcon),
     'users': markRaw(UsersIcon)
   },
-  app: { name: 'ZeroQL', theme: 'light' }
+  app: { name: 'DZQL', theme: 'light' }
 }
 ```
 
-### ✅ **ZeroQL Integration**
-All 5 ZeroQL operations implemented in entity stores:
+### ✅ **DZQL Integration**
+All 5 DZQL operations implemented in entity stores:
 ```javascript
 const store = useEntityStore('venues')
 await store.search({ filters: { name: 'Madison' }, page: 1 })

@@ -1,4 +1,4 @@
-import { createServer } from 'zeroql';
+import { createServer } from 'dzql';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import client from "../client/index.html"
@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 // Import custom API functions for venues app
 const customApi = await import('./api.js');
 
-// Start the ZeroQL server with venues-specific configuration
+// Start the DZQL server with venues-specific configuration
 const server = await createServer({
   port: process.env.PORT || 3000,
   customApi,

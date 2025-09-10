@@ -1,8 +1,8 @@
--- Simple Domain for ZeroQL Testing
+-- Simple Domain for DZQL Testing
 -- Basic venue/site/product entities with organizations
 
 -- Ensure we create tables in public schema
-SET search_path = public, zeroql;
+SET search_path = public, dzql;
 
 -- === Domain Tables ===
 
@@ -84,7 +84,7 @@ create table if not exists contractor_rights (
 -- Register entities with ZeroQL for automatic CRUD operations
 
 -- Register users
-select zeroql.register_entity(
+select dzql.register_entity(
   'users',
   'name',                              -- label field for lookups
   array['name', 'email'],              -- searchable fields
@@ -101,7 +101,7 @@ select zeroql.register_entity(
 );
 
 -- Register organisations
-select zeroql.register_entity(
+select dzql.register_entity(
   'organisations',
   'name',                              -- label field for lookups
   array['name', 'description'],        -- searchable fields
@@ -136,7 +136,7 @@ select zeroql.register_entity(
 );
 
 -- Register venues
-select zeroql.register_entity(
+select dzql.register_entity(
   'venues',
   'name',
   array['name', 'address', 'description'],
@@ -155,7 +155,7 @@ select zeroql.register_entity(
 );
 
 -- Register sites
-select zeroql.register_entity(
+select dzql.register_entity(
   'sites',
   'name',
   array['name', 'description'],
@@ -174,7 +174,7 @@ select zeroql.register_entity(
 );
 
 -- Register products
-select zeroql.register_entity(
+select dzql.register_entity(
   'products',
   'name',
   array['name', 'description'],
@@ -193,7 +193,7 @@ select zeroql.register_entity(
 );
 
 -- Register acts_for with temporal support
-select zeroql.register_entity(
+select dzql.register_entity(
   'acts_for',
   'org_id',  -- Will need custom label function
   array['org_id', 'user_id'],
@@ -205,7 +205,7 @@ select zeroql.register_entity(
 );
 
 -- Register packages with notification paths
-select zeroql.register_entity(
+select dzql.register_entity(
   'packages',
   'name',
   array['name'],
@@ -234,7 +234,7 @@ select zeroql.register_entity(
 );
 
 -- Register allocations with complex notification paths
-select zeroql.register_entity(
+select dzql.register_entity(
   'allocations',
   'id',  -- No good label field, use id
   array['site_id'],
@@ -268,7 +268,7 @@ select zeroql.register_entity(
 );
 
 -- Register contractor_rights with temporal support
-select zeroql.register_entity(
+select dzql.register_entity(
   'contractor_rights',
   'contractor_org_id',
   array['contractor_org_id', 'sponsor_org_id'],

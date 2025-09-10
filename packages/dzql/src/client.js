@@ -1,4 +1,4 @@
-// ZeroQL Framework - Client Entry Point
+// DZQL Framework - Client Entry Point
 // This file exports only client-side code for browser use
 
 // Re-export client utilities

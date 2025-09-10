@@ -1,5 +1,5 @@
 import { test, expect, afterAll } from "bun:test";
-import { sql } from "zeroql";
+import { sql } from "dzql";
 
 afterAll(async () => {
   // Clean up test users

@@ -1,26 +1,26 @@
-# ZeroQL Framework - AI Assistant Guide
+# DZQL Framework - AI Assistant Guide
 
 ## Language Rules
 - **NO TYPESCRIPT** - Use plain JavaScript only
 - Keep it simple - no unnecessary type systems or build steps
 - Focus on runtime behavior, not compile-time checking
 
-## What is ZeroQL?
+## What is DZQL?
 
-ZeroQL is a PostgreSQL-powered framework that automatically provides 5 standard database operations per entity with zero boilerplate. It combines WebSocket RPC, automatic CRUD operations, graph rules for relationship management, and real-time synchronization.
+DZQL is a PostgreSQL-powered framework that automatically provides 5 standard database operations per entity with zero boilerplate. It combines WebSocket RPC, automatic CRUD operations, graph rules for relationship management, and real-time synchronization.
 
 ## System Architecture
 
 ### Core Layers
 1. **WebSocket RPC Layer**: JSON-RPC 2.0 over WebSocket for all communication
-2. **ZeroQL Proxy Layer**: Nested proxy API (`ws.api.{operation}.{entity}`) for standard operations
+2. **DZQL Proxy Layer**: Nested proxy API (`ws.api.{operation}.{entity}`) for standard operations
 3. **Graph Rules Engine**: Automatic relationship management on data changes
 4. **Real-time Events**: PostgreSQL NOTIFY/LISTEN for targeted broadcasts
 5. **Permission System**: Path-based row-level security
 
 ### Database Structure (Modular Architecture)
 ```
-packages/zeroql/src/database/migrations/
+packages/dzql/src/database/migrations/
 ├── 001_schema.sql      # Core tables (entities, events, registry)
 ├── 002_functions.sql   # Helper functions, path resolution, graph validation
 ├── 003_operations.sql  # Generic CRUD operations with graph rules
@@ -84,7 +84,7 @@ const results = await ws.api.search.venues({
 Register entities to enable all features:
 
 ```sql
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
   p_table_name := 'venues',
   p_label_field := 'name',
   p_searchable_fields := array['name', 'address'],
@@ -231,7 +231,7 @@ Events are filtered by `notify_users` array resolved from notification paths.
 
 ```javascript
 // Server-side testing (direct database)
-import { db } from 'zeroql';
+import { db } from 'dzql';
 const venue = await db.api.get.venues({id: 1, userId: 123});
 
 // Client-side testing (WebSocket)
@@ -247,17 +247,17 @@ const venue = await ws.api.get.venues({id: 1});
 - **Foreign Keys**: `field_id: int → table.id`
 - **Temporal**: `valid_from`/`valid_to` columns
 - **Soft Delete**: `deleted_at` column (optional)
-- **Audit**: All changes logged to `zeroql.events`
+- **Audit**: All changes logged to `dzql.events`
 
 ## Key Tables
 
-### zeroql.entities
+### dzql.entities
 Entity configuration including graph rules
 
-### zeroql.events
+### dzql.events
 Audit trail with `notify_users` for targeted broadcasts
 
-### zeroql.registry
+### dzql.registry
 Optional registration for custom PostgreSQL functions
 
 ## Common Mistakes to Avoid

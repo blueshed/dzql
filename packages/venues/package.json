@@ -2,7 +2,7 @@
   "name": "venues-app",
   "version": "1.0.0",
   "private": true,
-  "description": "Example ZeroQL application for venue management",
+  "description": "Example DZQL application for venue management",
   "type": "module",
   "scripts": {
     "dev": "bun --watch server/index.js",
@@ -14,6 +14,6 @@
     "db:logs": "cd database && docker compose logs postgres"
   },
   "dependencies": {
-    "zeroql": "workspace:*"
+    "dzql": "workspace:*"
   }
 }

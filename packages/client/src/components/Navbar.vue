@@ -18,13 +18,13 @@
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
               </svg>
-              About ZeroQL
+              About DZQL
             </a>
           </li>
         </ul>
       </div>
       <button class="btn btn-ghost text-xl hover:bg-primary/10 transition-colors" @click="showAbout">
-        <span class="zeroql-brand-text">{{ config.app.name }}</span>
+        <span class="dzql-brand-text">{{ config.app.name }}</span>
       </button>
     </div>
 
@@ -43,7 +43,7 @@
     <div class="navbar-end">
       <!-- Theme Toggle -->
       <label class="swap swap-rotate btn btn-ghost btn-circle">
-        <input type="checkbox" class="theme-controller" value="zeroql-dark" @change="toggleTheme" />
+        <input type="checkbox" class="theme-controller" value="dzql-dark" @change="toggleTheme" />
 
         <!-- sun icon -->
         <SunIcon class="swap-off w-5 h-5" />
@@ -55,7 +55,7 @@
       <!-- User Menu -->
       <div class="dropdown dropdown-end">
         <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
-          <div class="w-10 rounded-full zeroql-brand-gradient">
+          <div class="w-10 rounded-full dzql-brand-gradient">
             <div class="flex items-center justify-center h-full text-lg font-semibold text-white">
               {{ userInitials }}
             </div>
@@ -130,7 +130,7 @@ const capitalize = (str) => {
 }
 
 const toggleTheme = (event) => {
-  const theme = event.target.checked ? 'zeroql-dark' : 'zeroql'
+  const theme = event.target.checked ? 'dzql-dark' : 'dzql'
   document.documentElement.setAttribute('data-theme', theme)
   localStorage.setItem('theme', theme)
 
@@ -162,12 +162,12 @@ const handleLogout = () => {
 
 // Set initial theme
 onMounted(() => {
-  // Use config theme as default, fallback to localStorage, then 'zeroql'
-  const savedTheme = localStorage.getItem('theme') || config.app.theme || 'zeroql'
+  // Use config theme as default, fallback to localStorage, then 'dzql'
+  const savedTheme = localStorage.getItem('theme') || config.app.theme || 'dzql'
   document.documentElement.setAttribute('data-theme', savedTheme)
   const themeToggle = document.querySelector('.theme-controller')
   if (themeToggle) {
-    themeToggle.checked = savedTheme === 'zeroql-dark'
+    themeToggle.checked = savedTheme === 'dzql-dark'
   }
 
   // Sync config with actual theme

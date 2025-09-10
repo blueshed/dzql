@@ -1,9 +1,9 @@
 import { test, expect, beforeAll, afterAll } from "bun:test";
-import { sql } from "zeroql";
+import { sql } from "dzql";
 import { setupTestServer, teardownTestServer } from "./test-server.js";
 
 // Import the actual WebSocket manager from client
-import { useWs } from "../../zeroql/src/client/ws.js";
+import { useWs } from "../../dzql/src/client/ws.js";
 
 let server;
 let testUser;
@@ -165,7 +165,7 @@ test("Client proxy API vs legacy API comparison", async () => {
       // Test both old and new API give same results
 
       // OLD WAY: Direct WebSocket call
-      const legacyResult = await ws.call("zeroql.get.organisations", {
+      const legacyResult = await ws.call("dzql.get.organisations", {
         id: 1,
       });
 
@@ -178,7 +178,7 @@ test("Client proxy API vs legacy API comparison", async () => {
       expect(proxyResult.name).toBeDefined();
 
       // Test lookup comparison
-      const legacyLookup = await ws.call("zeroql.lookup.organisations", {
+      const legacyLookup = await ws.call("dzql.lookup.organisations", {
         p_filter: "Event",
       });
       const proxyLookup = await ws.api.lookup.organisations({
@@ -225,7 +225,7 @@ test("Client proxy API - all 5 operations work", async () => {
         password: "password123",
       });
 
-      // Test all 5 ZeroQL operations using NEW proxy API
+      // Test all 5 DZQL operations using NEW proxy API
 
       // 1. GET
       const getResult = await ws.api.get.organisations({ id: 1 });
@@ -297,9 +297,9 @@ test("Client proxy API - custom PostgreSQL functions", async () => {
       expect(helloResult.timestamp).toBeDefined();
 
       // Test with parameters
-      const helloWithName = await ws.api.hello({ name: "ZeroQL" });
+      const helloWithName = await ws.api.hello({ name: "DZQL" });
 
-      expect(helloWithName.message).toBe("Hello, ZeroQL!");
+      expect(helloWithName.message).toBe("Hello, DZQL!");
       expect(helloWithName.from).toBe("PostgreSQL");
       expect(helloWithName.user_id).toBe(testUser.user_id);
 
@@ -384,9 +384,9 @@ test("Client proxy API - Bun function goodbye", async () => {
       expect(result.user_id).toBe(testUser.user_id);
 
       // Test with parameters
-      const withName = await ws.api.goodbye({ name: "ZeroQL" });
+      const withName = await ws.api.goodbye({ name: "DZQL" });
 
-      expect(withName.message).toBe("Goodbye, ZeroQL!");
+      expect(withName.message).toBe("Goodbye, DZQL!");
       expect(withName.from).toBe("Bun");
       expect(withName.user_id).toBe(testUser.user_id);
 

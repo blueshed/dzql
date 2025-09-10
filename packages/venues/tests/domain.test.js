@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, beforeEach, afterAll } from "bun:test";
-import { sql, db } from "zeroql";
+import { sql, db } from "dzql";
 
 // Unique prefix for this test run to avoid conflicts
 const PREFIX = `DOM_${Date.now()}`;
@@ -42,14 +42,14 @@ afterAll(async () => {
   }
 });
 
-test("Get organisation using ZeroQL API", async () => {
+test("Get organisation using DZQL API", async () => {
   const result = await db.api.get.organisations({ id: 1 }, testUserId);
   expect(result).toBeDefined();
   expect(result.id).toBe(1);
   expect(result.name).toBeDefined();
 });
 
-test("Lookup organisations using ZeroQL API", async () => {
+test("Lookup organisations using DZQL API", async () => {
   const result = await db.api.lookup.organisations(
     { p_filter: "Event" },
     testUserId,
@@ -61,7 +61,7 @@ test("Lookup organisations using ZeroQL API", async () => {
   expect(result[0].value).toBeDefined();
 });
 
-test("Search venues using ZeroQL API", async () => {
+test("Search venues using DZQL API", async () => {
   const result = await db.api.search.venues({ p_filters: {} }, testUserId);
   expect(result).toBeDefined();
   expect(result.data).toBeDefined();
@@ -70,7 +70,7 @@ test("Search venues using ZeroQL API", async () => {
   expect(result.page).toBe(1);
 });
 
-test("Save new organisation using ZeroQL API", async () => {
+test("Save new organisation using DZQL API", async () => {
   const orgData = {
     name: `${PREFIX}_Org_1`,
     description: "Test organization for domain testing",
@@ -82,8 +82,8 @@ test("Save new organisation using ZeroQL API", async () => {
   expect(result.description).toBe("Test organization for domain testing");
 });
 
-test("Save new venue using ZeroQL API", async () => {
-  // First create a test org using ZeroQL API
+test("Save new venue using DZQL API", async () => {
+  // First create a test org using DZQL API
   const orgData = {
     name: `${PREFIX}_VenueOwner`,
     description: "Owner for test venue",
@@ -111,7 +111,7 @@ test("Save new venue using ZeroQL API", async () => {
   expect(result.org_id).toBe(orgId);
 });
 
-test("Get venue using ZeroQL API", async () => {
+test("Get venue using DZQL API", async () => {
   // Create test org and venue
   const testOrg = await db.api.save.organisations(
     {
@@ -179,8 +179,8 @@ test("Get venue using ZeroQL API", async () => {
   }
 });
 
-test("Delete organisation using ZeroQL API", async () => {
-  // Create a test org to delete using ZeroQL API
+test("Delete organisation using DZQL API", async () => {
+  // Create a test org to delete using DZQL API
   const orgData = {
     name: `${PREFIX}_DeleteOrg`,
     description: "Will be deleted",
@@ -188,7 +188,7 @@ test("Delete organisation using ZeroQL API", async () => {
   const createResult = await db.api.save.organisations(orgData, testUserId);
   const orgId = createResult.id;
 
-  // Delete it using ZeroQL API
+  // Delete it using DZQL API
   const deleteResult = await db.api.delete.organisations(
     { id: orgId },
     testUserId,
@@ -244,8 +244,8 @@ test("Foreign key relationships work", async () => {
   expect(sites.length).toBeGreaterThan(0);
 });
 
-test("ZeroQL save - partial update coalescing", async () => {
-  // Create a test organisation with full data using ZeroQL API
+test("DZQL save - partial update coalescing", async () => {
+  // Create a test organisation with full data using DZQL API
   const createData = {
     name: `${PREFIX}_PartialOrg`,
     description: "Original description",
@@ -255,7 +255,7 @@ test("ZeroQL save - partial update coalescing", async () => {
   expect(createResult.name).toBe(`${PREFIX}_PartialOrg`);
   expect(createResult.description).toBe("Original description");
 
-  // Partial update - only change the name using ZeroQL API
+  // Partial update - only change the name using DZQL API
   const updateData = { id: orgId, name: `${PREFIX}_UpdatedPartialOrg` };
   const updateResult = await db.api.save.organisations(updateData, testUserId);
 
@@ -265,8 +265,8 @@ test("ZeroQL save - partial update coalescing", async () => {
   expect(updateResult.description).toBe("Original description"); // Should be preserved
 });
 
-test("ZeroQL save - insert with defaults", async () => {
-  // Insert with minimal data using ZeroQL API (description should be null/default)
+test("DZQL save - insert with defaults", async () => {
+  // Insert with minimal data using DZQL API (description should be null/default)
   const insertData = { name: `${PREFIX}_MinimalOrg` };
   const result = await db.api.save.organisations(insertData, testUserId);
 
@@ -275,7 +275,7 @@ test("ZeroQL save - insert with defaults", async () => {
   expect(result.description).toBeNull(); // Should use column default (null)
 });
 
-test("ZeroQL save - update non-existent record fails", async () => {
+test("DZQL save - update non-existent record fails", async () => {
   let threwError = false;
   try {
     const badData = { id: "99999", name: "Does not exist" };

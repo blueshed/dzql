@@ -1,10 +1,10 @@
-# ZeroQL
+# DZQL
 
 A PostgreSQL-powered framework that automatically provides 5 standard database operations per entity with real-time WebSocket synchronization and zero boilerplate.
 
 ## Overview
 
-ZeroQL eliminates CRUD boilerplate by providing a nested proxy API pattern where registering an entity in PostgreSQL instantly gives you:
+DZQL eliminates CRUD boilerplate by providing a nested proxy API pattern where registering an entity in PostgreSQL instantly gives you:
 - 5 standard operations (get, save, delete, lookup, search)
 - Real-time change notifications via WebSocket
 - Temporal relationship handling
@@ -15,14 +15,14 @@ ZeroQL eliminates CRUD boilerplate by providing a nested proxy API pattern where
 
 ```
 Browser                Bun Server              PostgreSQL
-ws.api.get.venue() --> db.api.get.venues() --> zeroql.generic_get()
-                       WebSocket broadcast  <-- NOTIFY 'zeroql' channel
+ws.api.get.venue() --> db.api.get.venues() --> dzql.generic_get()
+                       WebSocket broadcast  <-- NOTIFY 'dzql' channel
 ```
 
 - **Protocol**: JSON-RPC 2.0 over WebSocket
 - **Server**: Bun runtime with WebSocket support
 - **Database**: PostgreSQL with stored procedures
-- **Real-time**: PostgreSQL NOTIFY/LISTEN on single 'zeroql' channel
+- **Real-time**: PostgreSQL NOTIFY/LISTEN on single 'dzql' channel
 
 ## Quick Start
 
@@ -33,7 +33,7 @@ npm run db:up        # Starts PostgreSQL via Docker Compose
 
 ### 2. Register an Entity
 ```sql
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
   'venues',                              -- table name
   'name',                                -- label field for lookups
   array['name', 'address', 'description'], -- searchable fields
@@ -53,7 +53,7 @@ SELECT zeroql.register_entity(
 ```
 
 This single call:
-- Configures the entity in `zeroql.entities` table
+- Configures the entity in `dzql.entities` table
 - Creates database trigger for real-time events
 - Enables all 5 standard operations
 - Sets up notification paths for targeted real-time updates
@@ -156,8 +156,8 @@ ws.onBroadcast((method, params) => {
 Events flow:
 1. Database trigger fires on INSERT/UPDATE/DELETE
 2. Notification paths resolve affected users based on entity relationships
-3. Event logged to `zeroql.events` table with `notify_users` array
-4. PostgreSQL NOTIFY on 'zeroql' channel
+3. Event logged to `dzql.events` table with `notify_users` array
+4. PostgreSQL NOTIFY on 'dzql' channel
 5. Bun server filters by `notify_users` (null = broadcast to all)
 6. WebSocket message sent as `{table}:{op}` method to affected users only
 
@@ -183,7 +183,7 @@ Path components:
 Configure notification paths when registering an entity:
 
 ```sql
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
   'packages',
   'name',
   array['name'],
@@ -199,7 +199,7 @@ SELECT zeroql.register_entity(
 
 ## Permissions
 
-ZeroQL provides row-level security through permission paths:
+DZQL provides row-level security through permission paths:
 
 ### Permission Paths
 
@@ -207,7 +207,7 @@ Permission paths determine who can perform operations on each record:
 
 ```sql
 -- Configure permissions when registering entity
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
   'venues', 'name', array['name'], '{}', false, '{}',
   '{}',  -- notification paths
   '{
@@ -258,7 +258,7 @@ Handle time-based relationships with `valid_from`/`valid_to` fields:
 
 ```sql
 -- Configure temporal entity
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
   'contractor_rights',
   'contractor_name',
   array['contractor_name'],
@@ -290,7 +290,7 @@ Graph rules automatically manage entity relationships when data changes. They el
 Graph rules are configured when registering an entity:
 
 ```sql
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
   'organisations',
   'name',
   array['name', 'description'],
@@ -455,7 +455,7 @@ Graph rules run automatically within the same transaction as the triggering oper
 
 ## Custom Functions
 
-ZeroQL supports two types of custom functions that extend beyond the 5 standard operations:
+DZQL supports two types of custom functions that extend beyond the 5 standard operations:
 
 ### 1. PostgreSQL Functions
 
@@ -487,8 +487,8 @@ const result = await ws.api.hello();
 // Returns: {message: "Hello, World!", timestamp: "...", from: "PostgreSQL", user_id: 123}
 
 // With parameters
-const greeting = await ws.api.hello({name: 'ZeroQL'});
-// Returns: {message: "Hello, ZeroQL!", timestamp: "...", from: "PostgreSQL", user_id: 123}
+const greeting = await ws.api.hello({name: 'DZQL'});
+// Returns: {message: "Hello, DZQL!", timestamp: "...", from: "PostgreSQL", user_id: 123}
 ```
 
 ### 2. Bun Functions
@@ -524,8 +524,8 @@ export async function calculateDiscount(userId, params) {
 
 ```javascript
 // Call Bun functions via the same proxy API
-const farewell = await ws.api.goodbye({name: 'ZeroQL'});
-// Returns: {message: "Goodbye, ZeroQL!", from: "Bun", user_id: 123}
+const farewell = await ws.api.goodbye({name: 'DZQL'});
+// Returns: {message: "Goodbye, DZQL!", from: "Bun", user_id: 123}
 
 const pricing = await ws.api.calculateDiscount({
   total: 100,
@@ -548,7 +548,7 @@ const pricing = await ws.api.calculateDiscount({
 - First parameter must be named `p_user_id INT`
 - Can access full PostgreSQL ecosystem (other tables, functions, etc.)
 - Automatically transactional
-- Optional registration in `zeroql.registry`
+- Optional registration in `dzql.registry`
 
 **Bun Functions:**
 - First parameter is `userId` (number)
@@ -563,11 +563,11 @@ zeroql/
 ├── server/
 │   ├── index.js     # Bun WebSocket server
 │   ├── ws.js        # WebSocket handlers & JSON-RPC
-│   └── db.js        # PostgreSQL connection & ZeroQL proxy
+│   └── db.js        # PostgreSQL connection & DZQL proxy
 ├── database/
 │   ├── compose.yml  # PostgreSQL Docker setup
 │   └── init_db/
-│       ├── 001_zeroql.sql     # Core ZeroQL functions
+│       ├── 001_dzql.sql     # Core DZQL functions
 │       ├── 002_search.sql     # Advanced search implementation
 │       ├── 010_auth.sql       # Authentication functions
 │       └── 011_simple_domain.sql  # Example domain & entities
@@ -580,14 +580,14 @@ zeroql/
 
 ## Database Tables
 
-### Core ZeroQL Tables
-- `zeroql.entities` - Entity configuration (label fields, searchable fields, permissions)
-- `zeroql.registry` - Allowed custom functions
-- `zeroql.events` - Event log with audit trail and real-time notification data
+### Core DZQL Tables
+- `dzql.entities` - Entity configuration (label fields, searchable fields, permissions)
+- `dzql.registry` - Allowed custom functions
+- `dzql.events` - Event log with audit trail and real-time notification data
 
 ### Event Structure
 ```sql
-zeroql.events {
+dzql.events {
   event_id: bigserial,
   context_id: text,       -- for catchup queries
   table_name: text,
@@ -603,7 +603,7 @@ zeroql.events {
 
 ### Entity Configuration
 ```sql
-zeroql.entities {
+dzql.entities {
   table_name: text,
   label_field: text,
   searchable_fields: text[],
@@ -641,7 +641,7 @@ npm run dev          # Start Bun server with hot reload
 bun test            # Run test suite
 ```
 
-## Why ZeroQL?
+## Why DZQL?
 
 Traditional approaches require:
 - Writing CRUD endpoints for every entity
@@ -650,7 +650,7 @@ Traditional approaches require:
 - Separate real-time infrastructure
 - Manual permission checking
 
-ZeroQL provides all of this automatically through a single `register_entity()` call, letting you focus on your domain model instead of boilerplate.
+DZQL provides all of this automatically through a single `register_entity()` call, letting you focus on your domain model instead of boilerplate.
 
 ## License
 

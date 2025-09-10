@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, beforeEach, afterAll } from "bun:test";
-import { sql, db } from "zeroql";
+import { sql, db } from "dzql";
 
 let testUserId;
 
@@ -79,7 +79,7 @@ test("Enhanced get - venues with areas and sites collections", async () => {
 
   // Register venue entity with enhanced fk_includes
   await sql`
-    INSERT INTO zeroql.entities (table_name, label_field, searchable_fields, fk_includes)
+    INSERT INTO dzql.entities (table_name, label_field, searchable_fields, fk_includes)
     VALUES ('venues', 'name', ARRAY['name', 'address'], '{
       "org": "organisations",
       "areas": "areas.venue_id",
@@ -178,7 +178,7 @@ test("Enhanced get - sites with product_ids junction field array", async () => {
 
   // Register sites entity with junction field array
   await sql`
-    INSERT INTO zeroql.entities (table_name, label_field, searchable_fields, fk_includes)
+    INSERT INTO dzql.entities (table_name, label_field, searchable_fields, fk_includes)
     VALUES ('sites', 'name', ARRAY['name'], '{
       "venue": "venues",
       "area": "areas",
@@ -260,7 +260,7 @@ test("Enhanced get - venues with sites containing product_ids", async () => {
 
   // Register venue entity with enhanced fk_includes including nested junction fields
   await sql`
-    INSERT INTO zeroql.entities (table_name, label_field, searchable_fields, fk_includes)
+    INSERT INTO dzql.entities (table_name, label_field, searchable_fields, fk_includes)
     VALUES ('venues', 'name', ARRAY['name', 'address'], '{
       "org": "organisations",
       "areas": "areas.venue_id",
@@ -334,7 +334,7 @@ test("Enhanced get - backward compatibility with existing FK dereferencing", asy
 
   // Register with mixed old and new syntax
   await sql`
-    INSERT INTO zeroql.entities (table_name, label_field, searchable_fields, fk_includes)
+    INSERT INTO dzql.entities (table_name, label_field, searchable_fields, fk_includes)
     VALUES ('venues', 'name', ARRAY['name', 'address'], '{
       "org": "organisations",
       "sites": "sites.venue_id"

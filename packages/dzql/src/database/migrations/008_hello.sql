@@ -1,7 +1,7 @@
--- Hello World Function for Testing ZeroQL's Function Proxy
+-- Hello World Function for Testing DZQL's Function Proxy
 
 -- Create a simple hello world function
--- First parameter must be p_user_id for ZeroQL compatibility
+-- First parameter must be p_user_id for DZQL compatibility
 create or replace function hello(p_user_id int, p_name text default 'World')
 returns jsonb
 language plpgsql

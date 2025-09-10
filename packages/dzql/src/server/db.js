@@ -3,7 +3,7 @@ import postgres from "postgres";
 // Environment configuration
 const DATABASE_URL =
   process.env.DATABASE_URL ||
-  "postgresql://zeroql:zeroql@localhost:5432/zeroql";
+  "postgresql://dzql:dzql@localhost:5432/dzql";
 
 // Main PostgreSQL connection for queries
 export const sql = postgres(DATABASE_URL, {
@@ -135,8 +135,8 @@ export async function getUserProfile(userId) {
 // Setup NOTIFY listeners
 export async function setupListeners(callback) {
   try {
-    // Listen to single zeroql channel for all events
-    await listen_sql.listen("zeroql", (payload) => {
+    // Listen to single dzql channel for all events
+    await listen_sql.listen("dzql", (payload) => {
       const event = JSON.parse(payload);
       callback(event);
     });
@@ -147,33 +147,33 @@ export async function setupListeners(callback) {
   }
 }
 
-// ZeroQL Generic Operations
-export async function callZeroQLOperation(operation, entity, args, userId) {
+// DZQL Generic Operations
+export async function callDZQLOperation(operation, entity, args, userId) {
   const result = await sql`
-    SELECT zeroql.generic_exec(${operation}, ${entity}, ${args}, ${userId}) as result
+    SELECT dzql.generic_exec(${operation}, ${entity}, ${args}, ${userId}) as result
   `;
   return result[0].result;
 }
 
-// ZeroQL nested proxy factory
+// DZQL nested proxy factory
 function createEntityProxy(operation) {
   return new Proxy(
     {},
     {
       get(target, entityName) {
         return async (args = {}, userId) => {
-          // userId is required for ZeroQL operations
+          // userId is required for DZQL operations
           if (!userId) {
-            throw new Error("userId is required for ZeroQL operations");
+            throw new Error("userId is required for DZQL operations");
           }
-          return callZeroQLOperation(operation, entityName, args, userId);
+          return callDZQLOperation(operation, entityName, args, userId);
         };
       },
     },
   );
 }
 
-// ZeroQL database API proxy
+// DZQL database API proxy
 export const db = {
   api: {
     get: createEntityProxy("get"),

@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, beforeEach, afterAll } from "bun:test";
-import { sql, db } from "zeroql";
+import { sql, db } from "dzql";
 
 let testUserId;
 
@@ -13,7 +13,7 @@ beforeAll(async () => {
   // Register organisations entity with graph rules
   // This should ideally be in the database init, but for testing we do it here
   await sql`
-    SELECT zeroql.register_entity(
+    SELECT dzql.register_entity(
       p_table_name := 'organisations',
       p_label_field := 'name',
       p_searchable_fields := array['name', 'description'],
@@ -69,7 +69,7 @@ beforeAll(async () => {
 
   // Register acts_for entity (no graph rules needed)
   await sql`
-    SELECT zeroql.register_entity(
+    SELECT dzql.register_entity(
       p_table_name := 'acts_for',
       p_label_field := 'user_id',
       p_searchable_fields := array[]::text[],

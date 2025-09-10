@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, beforeEach, afterAll } from "bun:test";
-import { sql, db } from "zeroql";
+import { sql, db } from "dzql";
 
 beforeAll(async () => {
   // Ensure we have clean test data
@@ -68,7 +68,7 @@ afterAll(async () => {
 test("Notification paths - direct user reference", async () => {
   // Test direct user field reference
   const result = await sql`
-    SELECT zeroql.resolve_notification_path(
+    SELECT dzql.resolve_notification_path(
       'venues',
       '{"id": 101, "created_by_user_id": 101, "name": "Test Stadium"}'::jsonb,
       '@created_by_user_id'
@@ -81,7 +81,7 @@ test("Notification paths - direct user reference", async () => {
 test("Notification paths - org to users via acts_for", async () => {
   // Test explicit path: @org_id->acts_for[org_id=$]{active}.user_id
   const result = await sql`
-    SELECT zeroql.resolve_notification_path(
+    SELECT dzql.resolve_notification_path(
       'venues',
       '{"id": 101, "org_id": 101, "name": "Test Stadium"}'::jsonb,
       '@org_id->acts_for[org_id=$]{active}.user_id'
@@ -95,7 +95,7 @@ test("Notification paths - org to users via acts_for", async () => {
 test("Notification paths - foreign key traversal with continuation", async () => {
   // Test traversal: site.venue.org_id -> acts_for.user_id
   const result = await sql`
-    SELECT zeroql.resolve_notification_path(
+    SELECT dzql.resolve_notification_path(
       'sites',
       '{"id": 101, "venue_id": 101, "name": "Test Site"}'::jsonb,
       'venue_id.org_id->acts_for[org_id=$]{active}.user_id'
@@ -109,7 +109,7 @@ test("Notification paths - foreign key traversal with continuation", async () =>
 test("Full notification resolution for venue", async () => {
   // Test complete notification path resolution for a venue
   const result = await sql`
-    SELECT zeroql.resolve_notification_paths(
+    SELECT dzql.resolve_notification_paths(
       'venues',
       '{"id": 101, "org_id": 101, "name": "Test Stadium"}'::jsonb
     ) as notify_users
@@ -128,7 +128,7 @@ test("Package notifications - multiple paths", async () => {
   `;
 
   const result = await sql`
-    SELECT zeroql.resolve_notification_paths(
+    SELECT dzql.resolve_notification_paths(
       'packages',
       '{"id": 101, "owner_org_id": 102, "sponsor_org_id": 103, "name": "Test Package"}'::jsonb
     ) as notify_users
@@ -148,7 +148,7 @@ test("Allocation notifications - complex paths", async () => {
   `;
 
   const result = await sql`
-    SELECT zeroql.resolve_notification_paths(
+    SELECT dzql.resolve_notification_paths(
       'allocations',
       '{"id": 101, "package_id": 101, "site_id": 101}'::jsonb
     ) as notify_users
@@ -170,7 +170,7 @@ test("Contractor rights - temporal filtering with explicit user resolution", asy
 
   // Test conditional path with temporal filtering and explicit user resolution
   const result = await sql`
-    SELECT zeroql.resolve_notification_path(
+    SELECT dzql.resolve_notification_path(
       'allocations',
       '{"id": 101, "package_id": 101, "site_id": 101}'::jsonb,
       'contractor_rights[package_id=@package_id]{active}.contractor_org_id->acts_for[org_id=$]{active}.user_id'
@@ -188,7 +188,7 @@ test("Contractor rights - temporal filtering with explicit user resolution", asy
   `;
 
   const expiredResult = await sql`
-    SELECT zeroql.resolve_notification_path(
+    SELECT dzql.resolve_notification_path(
       'allocations',
       '{"id": 101, "package_id": 101, "site_id": 101}'::jsonb,
       'contractor_rights[package_id=@package_id]{active}.contractor_org_id->acts_for[org_id=$]{active}.user_id'
@@ -208,7 +208,7 @@ test("Event creation with notification paths", async () => {
 
   // Check that event was created with correct notify_users
   const events = await sql`
-    SELECT * FROM zeroql.events
+    SELECT * FROM dzql.events
     WHERE table_name = 'venues'
     AND pk->>'id' = '101'
     ORDER BY event_id DESC
@@ -222,14 +222,14 @@ test("Event creation with notification paths", async () => {
 
 test("Multiple organization notification paths", async () => {
   // Test that all related organizations get notified
-  // Use ZeroQL API to update allocation - this will create an event
+  // Use DZQL API to update allocation - this will create an event
   const updated = await db.api.save.allocations({
     id: 101,
     from_date: '2024-08-01'
   }, 102);
 
   const events = await sql`
-    SELECT * FROM zeroql.events
+    SELECT * FROM dzql.events
     WHERE table_name = 'allocations'
     AND pk->>'id' = '101'
     ORDER BY event_id DESC

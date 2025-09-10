@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, afterAll } from "bun:test";
-import { sql, db } from "zeroql";
+import { sql, db } from "dzql";
 
 // Unique prefix for this test run
 const PREFIX = `PERM_${Date.now()}`;

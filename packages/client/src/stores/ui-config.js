@@ -21,7 +21,7 @@ export const uiConfig = {
 
   // App metadata
   app: {
-    name: 'ZeroQL',
-    theme: 'zeroql'
+    name: 'DZQL',
+    theme: 'dzql'
   }
 };

@@ -1,8 +1,8 @@
 /**
- * ZeroQL Declarative UI Framework
+ * DZQL Declarative UI Framework
  *
  * Renders adaptive UI components from JSON descriptions.
- * Handles all ZeroQL operations declaratively with automatic state management.
+ * Handles all DZQL operations declaratively with automatic state management.
  */
 
 // Component Registry - Maps component types to render functions
@@ -150,7 +150,7 @@ class Component {
         break;
 
       case 'call':
-        await this.callZeroQL(action);
+        await this.callDZQL(action);
         break;
 
       case 'emit':
@@ -174,8 +174,8 @@ class Component {
     }
   }
 
-  // Call ZeroQL API
-  async callZeroQL(action) {
+  // Call DZQL API
+  async callDZQL(action) {
     try {
       const { operation, entity, params, onSuccess, onError, resultPath } = action;
 
@@ -188,7 +188,7 @@ class Component {
       // Make the call
       let result;
       if (operation && entity) {
-        // ZeroQL operation: ws.api.{operation}.{entity}(params)
+        // DZQL operation: ws.api.{operation}.{entity}(params)
         result = await this.ws.api[operation][entity](evaluatedParams);
       } else if (action.method) {
         // Direct method call: ws.call(method, params)
@@ -207,7 +207,7 @@ class Component {
         }
       }
     } catch (error) {
-      console.error('ZeroQL call failed:', error);
+      console.error('DZQL call failed:', error);
 
       // Store error if path provided
       if (action.errorPath) {
@@ -438,7 +438,7 @@ class ButtonComponent extends Component {
 }
 
 /**
- * Table Component - Renders data tables with ZeroQL integration
+ * Table Component - Renders data tables with DZQL integration
  */
 class TableComponent extends Component {
   render() {
@@ -520,7 +520,7 @@ class TableComponent extends Component {
 
     // Auto-fetch if configured
     if (this.config.fetch) {
-      this.callZeroQL({
+      this.callDZQL({
         ...this.config.fetch,
         onSuccess: [{
           type: 'setState',
@@ -617,7 +617,7 @@ class FormComponent extends Component {
 }
 
 /**
- * Select Component - Dropdown with ZeroQL lookup integration
+ * Select Component - Dropdown with DZQL lookup integration
  */
 class SelectComponent extends Component {
   render() {
@@ -666,7 +666,7 @@ class SelectComponent extends Component {
 
     // Auto-fetch options via lookup
     if (this.config.lookup) {
-      this.callZeroQL({
+      this.callDZQL({
         operation: 'lookup',
         entity: this.config.lookup.entity,
         params: this.config.lookup.params || {},
@@ -747,7 +747,7 @@ class ListComponent extends Component {
 
     // Auto-fetch if configured
     if (this.config.fetch) {
-      this.callZeroQL({
+      this.callDZQL({
         ...this.config.fetch,
         resultPath: `lists.${this.id}`
       }).then(() => {
@@ -880,7 +880,7 @@ export const exampleUI = {
   children: [
     {
       type: 'h1',
-      text: 'ZeroQL Declarative UI'
+      text: 'DZQL Declarative UI'
     },
     {
       type: 'section',

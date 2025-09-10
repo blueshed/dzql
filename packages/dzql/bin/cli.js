@@ -21,17 +21,17 @@ switch (command) {
     break;
   default:
     console.log(`
-ZeroQL CLI
+DZQL CLI
 
 Usage:
-  zeroql create <app-name>     Create a new ZeroQL application
-  zeroql dev                   Start development server
-  zeroql db:up                 Start PostgreSQL database
-  zeroql db:down               Stop PostgreSQL database
-  zeroql --version             Show version
+  dzql create <app-name>     Create a new DZQL application
+  dzql dev                   Start development server
+  dzql db:up                 Start PostgreSQL database
+  dzql db:down               Stop PostgreSQL database
+  dzql --version             Show version
 
 Examples:
-  zeroql create my-venue-app
-  zeroql dev
+  dzql create my-venue-app
+  dzql dev
 `);
 }

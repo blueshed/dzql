@@ -1,12 +1,12 @@
--- ZeroQL Search Operations - Version 3.0.0
--- Advanced search and filtering capabilities for ZeroQL entities
+-- DZQL Search Operations - Version 3.0.0
+-- Advanced search and filtering capabilities for DZQL entities
 
 -- ============================================================================
 -- FILTER PROCESSING HELPERS
 -- ============================================================================
 
 -- Get column data type for proper casting
-CREATE OR REPLACE FUNCTION zeroql.get_column_type(
+CREATE OR REPLACE FUNCTION dzql.get_column_type(
   p_table_name text,
   p_column_name text
 ) RETURNS text
@@ -20,7 +20,7 @@ LANGUAGE sql STABLE AS $$
 $$;
 
 -- Build operator-based WHERE clause fragment using direct SQL
-CREATE OR REPLACE FUNCTION zeroql.build_operator_clause(
+CREATE OR REPLACE FUNCTION dzql.build_operator_clause(
   p_column_name text,
   p_operator_obj jsonb,
   p_column_type text
@@ -105,7 +105,7 @@ BEGIN
 END $$;
 
 -- Build complete WHERE clause from filter object
-CREATE OR REPLACE FUNCTION zeroql.build_where_clause(
+CREATE OR REPLACE FUNCTION dzql.build_where_clause(
   p_table_name text,
   p_filters jsonb
 ) RETURNS text
@@ -139,13 +139,13 @@ BEGIN
     END IF;
 
     -- Get column type
-    l_column_type := zeroql.get_column_type(p_table_name, l_key);
+    l_column_type := dzql.get_column_type(p_table_name, l_key);
 
     -- Build clause based on value type
     CASE jsonb_typeof(l_value)
       WHEN 'object' THEN
         -- Handle operator objects like {gte: 100, lt: 500}
-        l_clause := zeroql.build_operator_clause(l_key, l_value, l_column_type);
+        l_clause := dzql.build_operator_clause(l_key, l_value, l_column_type);
         IF l_clause IS NOT NULL THEN
           l_clauses := l_clauses || l_clause;
         END IF;
@@ -175,7 +175,7 @@ BEGIN
 END $$;
 
 -- Build text search clause
-CREATE OR REPLACE FUNCTION zeroql.build_search_clause(
+CREATE OR REPLACE FUNCTION dzql.build_search_clause(
   p_search_text text,
   p_searchable_fields text[]
 ) RETURNS text
@@ -204,7 +204,7 @@ END $$;
 -- ============================================================================
 
 -- Generic SEARCH with advanced filtering support
-CREATE OR REPLACE FUNCTION zeroql.generic_search(
+CREATE OR REPLACE FUNCTION dzql.generic_search(
   p_entity text,
   p_args jsonb,
   p_user_id int
@@ -235,10 +235,10 @@ DECLARE
   l_column_exists boolean;
 BEGIN
   -- Get entity configuration
-  SELECT * INTO l_entity_config FROM zeroql.entities WHERE table_name = p_entity;
+  SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_entity;
 
   IF l_entity_config IS NULL THEN
-    RAISE EXCEPTION 'ZeroQL: entity % not configured', p_entity;
+    RAISE EXCEPTION 'DZQL: entity % not configured', p_entity;
   END IF;
 
   -- Extract filters and parameters
@@ -259,16 +259,16 @@ BEGIN
   l_offset := (l_page - 1) * l_limit;
 
   -- Build WHERE clause from filters
-  l_filter_clause := zeroql.build_where_clause(p_entity, l_filters);
+  l_filter_clause := dzql.build_where_clause(p_entity, l_filters);
 
   -- Build text search clause
-  l_search_clause := zeroql.build_search_clause(
+  l_search_clause := dzql.build_search_clause(
     l_filters->>'_search',
     l_entity_config.searchable_fields
   );
 
   -- Build temporal filter
-  l_temporal_clause := zeroql.apply_temporal_filter(
+  l_temporal_clause := dzql.apply_temporal_filter(
     p_entity::regclass,
     l_entity_config.temporal_fields,
     l_on_date
@@ -349,7 +349,7 @@ BEGIN
 
 EXCEPTION
   WHEN OTHERS THEN
-    RAISE EXCEPTION 'ZeroQL: search error for entity %: %', p_entity, SQLERRM;
+    RAISE EXCEPTION 'DZQL: search error for entity %: %', p_entity, SQLERRM;
 END $$;
 
 -- ============================================================================
@@ -357,7 +357,7 @@ END $$;
 -- ============================================================================
 
 -- Build faceted search aggregations
-CREATE OR REPLACE FUNCTION zeroql.build_search_facets(
+CREATE OR REPLACE FUNCTION dzql.build_search_facets(
   p_entity text,
   p_filters jsonb,
   p_facet_fields text[]
@@ -371,7 +371,7 @@ DECLARE
   l_facets jsonb := '{}'::jsonb;
 BEGIN
   -- Build base WHERE clause (without the facet field being aggregated)
-  l_base_where := COALESCE(zeroql.build_where_clause(p_entity, p_filters), '1=1');
+  l_base_where := COALESCE(dzql.build_where_clause(p_entity, p_filters), '1=1');
 
   -- Build facets for each requested field
   FOREACH l_facet_field IN ARRAY p_facet_fields
@@ -398,7 +398,7 @@ BEGIN
 END $$;
 
 -- Build search suggestions based on searchable fields
-CREATE OR REPLACE FUNCTION zeroql.build_search_suggestions(
+CREATE OR REPLACE FUNCTION dzql.build_search_suggestions(
   p_entity text,
   p_partial_text text,
   p_limit int DEFAULT 10
@@ -412,7 +412,7 @@ DECLARE
   l_result jsonb;
 BEGIN
   -- Get entity configuration
-  SELECT * INTO l_entity_config FROM zeroql.entities WHERE table_name = p_entity;
+  SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_entity;
 
   IF l_entity_config IS NULL THEN
     RETURN '[]'::jsonb;

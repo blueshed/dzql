@@ -1,9 +1,9 @@
--- ZeroQL Core Operations - Version 3.0.0
+-- DZQL Core Operations - Version 3.0.0
 -- Generic CRUD operations for entities (get, save, delete, lookup)
 
 -- === Foreign Key Resolution Helpers ===
 -- Resolve direct foreign key (field -> table lookup)
-CREATE OR REPLACE FUNCTION zeroql.resolve_direct_fk(
+CREATE OR REPLACE FUNCTION dzql.resolve_direct_fk(
   p_record jsonb,
   p_fk_field text,
   p_target_table text,
@@ -32,11 +32,11 @@ BEGIN
 
   -- Get temporal configuration for target table
   SELECT temporal_fields INTO l_temporal_config
-  FROM zeroql.entities
+  FROM dzql.entities
   WHERE table_name = p_target_table;
 
   -- Build temporal filter
-  l_temporal_filter := zeroql.apply_temporal_filter(
+  l_temporal_filter := dzql.apply_temporal_filter(
     p_target_table::regclass,
     COALESCE(l_temporal_config.temporal_fields, '{}'::jsonb),
     p_on_date
@@ -52,7 +52,7 @@ BEGIN
 END $$;
 
 -- Resolve reverse foreign key (table.field -> this record)
-CREATE OR REPLACE FUNCTION zeroql.resolve_reverse_fk(
+CREATE OR REPLACE FUNCTION dzql.resolve_reverse_fk(
   p_record jsonb,
   p_result_field text,
   p_table_field text,
@@ -85,11 +85,11 @@ BEGIN
 
   -- Get temporal configuration for target table
   SELECT temporal_fields INTO l_temporal_config
-  FROM zeroql.entities
+  FROM dzql.entities
   WHERE table_name = l_target_table;
 
   -- Build temporal filter
-  l_temporal_filter := zeroql.apply_temporal_filter(
+  l_temporal_filter := dzql.apply_temporal_filter(
     l_target_table::regclass,
     COALESCE(l_temporal_config.temporal_fields, '{}'::jsonb),
     p_on_date
@@ -106,7 +106,7 @@ END $$;
 
 -- === Generic GET Operation ===
 -- Generic GET with foreign key dereferencing and temporal filtering
-CREATE OR REPLACE FUNCTION zeroql.generic_get(
+CREATE OR REPLACE FUNCTION dzql.generic_get(
   p_entity text,
   p_args jsonb,
   p_user_id int
@@ -128,10 +128,10 @@ DECLARE
   l_fk_result jsonb;
 BEGIN
   -- Get entity configuration
-  SELECT * INTO l_entity_config FROM zeroql.entities WHERE table_name = p_entity;
+  SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_entity;
 
   IF l_entity_config IS NULL THEN
-    RAISE EXCEPTION 'ZeroQL: entity % not configured', p_entity;
+    RAISE EXCEPTION 'DZQL: entity % not configured', p_entity;
   END IF;
 
   -- Extract primary key
@@ -145,14 +145,14 @@ BEGIN
   END IF;
 
   IF l_pk_value IS NULL THEN
-    RAISE EXCEPTION 'ZeroQL: no primary key provided for entity %', p_entity;
+    RAISE EXCEPTION 'DZQL: no primary key provided for entity %', p_entity;
   END IF;
 
   -- Extract temporal parameter
   l_on_date := (p_args ->> 'on_date')::timestamptz;
 
   -- Build temporal filter
-  l_temporal_filter := zeroql.apply_temporal_filter(
+  l_temporal_filter := dzql.apply_temporal_filter(
     p_entity::regclass,
     l_entity_config.temporal_fields,
     l_on_date
@@ -165,11 +165,11 @@ BEGIN
   EXECUTE l_base_sql INTO l_result;
 
   IF l_result IS NULL THEN
-    RAISE EXCEPTION 'ZeroQL: record not found in %', p_entity;
+    RAISE EXCEPTION 'DZQL: record not found in %', p_entity;
   END IF;
 
   -- Check view permission
-  IF NOT zeroql.check_permission(p_user_id, 'view', p_entity, l_result) THEN
+  IF NOT dzql.check_permission(p_user_id, 'view', p_entity, l_result) THEN
     RAISE EXCEPTION 'Permission denied: view on %', p_entity;
   END IF;
 
@@ -181,16 +181,16 @@ BEGIN
       -- Handle different FK reference formats
       IF l_value LIKE '%.%' THEN
         -- Format: "table.field" for reverse foreign keys
-        l_fk_result := zeroql.resolve_reverse_fk(l_result, l_key, l_value, l_on_date);
+        l_fk_result := dzql.resolve_reverse_fk(l_result, l_key, l_value, l_on_date);
       ELSIF l_key = l_value THEN
         -- When key equals value (e.g., "sites": "sites"), it's a reverse FK
         -- The target table has a field named {entity_singular}_id pointing back to this entity
         -- Convert plural entity name to singular (simple rule: remove trailing 's')
-        l_fk_result := zeroql.resolve_reverse_fk(l_result, l_key,
+        l_fk_result := dzql.resolve_reverse_fk(l_result, l_key,
           l_value || '.' || regexp_replace(p_entity, 's$', '') || '_id', l_on_date);
       ELSE
         -- Format: "table" for direct foreign keys
-        l_fk_result := zeroql.resolve_direct_fk(l_result, l_key, l_value, l_on_date);
+        l_fk_result := dzql.resolve_direct_fk(l_result, l_key, l_value, l_on_date);
       END IF;
 
       IF l_fk_result IS NOT NULL THEN
@@ -204,7 +204,7 @@ END $$;
 
 -- === Generic SAVE Operation ===
 -- Generic SAVE with upsert capability and graph rules
-CREATE OR REPLACE FUNCTION zeroql.generic_save(
+CREATE OR REPLACE FUNCTION dzql.generic_save(
   p_entity text,
   p_args jsonb,
   p_user_id int
@@ -233,10 +233,10 @@ BEGIN
   l_args_json := p_args::jsonb;
 
   -- Get entity configuration
-  SELECT * INTO l_entity_config FROM zeroql.entities WHERE table_name = p_entity;
+  SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_entity;
 
   IF l_entity_config IS NULL THEN
-    RAISE EXCEPTION 'ZeroQL: entity % not configured', p_entity;
+    RAISE EXCEPTION 'DZQL: entity % not configured', p_entity;
   END IF;
 
   -- Get primary key columns
@@ -247,7 +247,7 @@ BEGIN
   WHERE i.indrelid = p_entity::regclass AND i.indisprimary;
 
   IF l_pk_cols IS NULL THEN
-    RAISE EXCEPTION 'ZeroQL: entity % has no primary key', p_entity;
+    RAISE EXCEPTION 'DZQL: entity % has no primary key', p_entity;
   END IF;
 
   -- Check if this is an update (has ID) or insert (no ID)
@@ -262,13 +262,13 @@ BEGIN
     EXECUTE l_sql_stmt INTO l_existing_record;
 
     IF l_existing_record IS NULL THEN
-      RAISE EXCEPTION 'ZeroQL: record with id % not found in %', l_record_id, p_entity;
+      RAISE EXCEPTION 'DZQL: record with id % not found in %', l_record_id, p_entity;
     END IF;
 
     -- Check update permission on existing record
     l_operation := 'update';
     l_permission_record := l_existing_record;
-    IF NOT zeroql.check_permission(p_user_id, l_operation, p_entity, l_permission_record) THEN
+    IF NOT dzql.check_permission(p_user_id, l_operation, p_entity, l_permission_record) THEN
       RAISE EXCEPTION 'Permission denied: % on %', l_operation, p_entity;
     END IF;
 
@@ -293,7 +293,7 @@ BEGIN
     EXECUTE l_sql_stmt INTO l_result;
 
     -- Execute graph rules for update
-    l_graph_rules_result := zeroql.execute_graph_rules(
+    l_graph_rules_result := dzql.execute_graph_rules(
       p_entity,
       'update',
       l_existing_record,
@@ -307,7 +307,7 @@ BEGIN
     -- Check create permission on new values
     l_operation := 'create';
     l_permission_record := l_args_json;
-    IF NOT zeroql.check_permission(p_user_id, l_operation, p_entity, l_permission_record) THEN
+    IF NOT dzql.check_permission(p_user_id, l_operation, p_entity, l_permission_record) THEN
       RAISE EXCEPTION 'Permission denied: % on %', l_operation, p_entity;
     END IF;
 
@@ -323,7 +323,7 @@ BEGIN
     END LOOP;
 
     IF array_length(l_cols, 1) = 0 THEN
-      RAISE EXCEPTION 'ZeroQL: no valid columns provided for insert into %', p_entity;
+      RAISE EXCEPTION 'DZQL: no valid columns provided for insert into %', p_entity;
     END IF;
 
     -- Execute INSERT
@@ -335,7 +335,7 @@ BEGIN
     EXECUTE l_sql_stmt INTO l_result;
 
     -- Execute graph rules for create
-    l_graph_rules_result := zeroql.execute_graph_rules(
+    l_graph_rules_result := dzql.execute_graph_rules(
       p_entity,
       'insert',
       NULL,
@@ -345,7 +345,7 @@ BEGIN
   END IF;
 
   -- Create event for the operation (INSERT or UPDATE)
-  INSERT INTO zeroql.events (
+  INSERT INTO dzql.events (
     table_name,
     op,
     pk,
@@ -360,7 +360,7 @@ BEGIN
     CASE WHEN l_record_id IS NOT NULL THEN l_existing_record ELSE NULL END,
     l_result,
     p_user_id,
-    zeroql.resolve_notification_paths(p_entity, l_result)
+    dzql.resolve_notification_paths(p_entity, l_result)
   );
 
   -- Add graph rules execution summary to result if rules were executed
@@ -373,7 +373,7 @@ END $$;
 
 -- === Generic DELETE Operation ===
 -- Generic DELETE with cascading support and graph rules
-CREATE OR REPLACE FUNCTION zeroql.generic_delete(
+CREATE OR REPLACE FUNCTION dzql.generic_delete(
   p_entity text,
   p_args jsonb,
   p_user_id int
@@ -391,10 +391,10 @@ DECLARE
   l_graph_rules_result jsonb;
 BEGIN
   -- Get entity configuration
-  SELECT * INTO l_entity_config FROM zeroql.entities WHERE table_name = p_entity;
+  SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_entity;
 
   IF l_entity_config IS NULL THEN
-    RAISE EXCEPTION 'ZeroQL: entity % not configured', p_entity;
+    RAISE EXCEPTION 'DZQL: entity % not configured', p_entity;
   END IF;
 
   -- Extract primary key
@@ -408,7 +408,7 @@ BEGIN
   END IF;
 
   IF l_pk_value IS NULL THEN
-    RAISE EXCEPTION 'ZeroQL: no primary key provided for entity %', p_entity;
+    RAISE EXCEPTION 'DZQL: no primary key provided for entity %', p_entity;
   END IF;
 
   -- Get existing record for permission check and graph rules
@@ -417,16 +417,16 @@ BEGIN
   INTO l_existing_record;
 
   IF l_existing_record IS NULL THEN
-    RAISE EXCEPTION 'ZeroQL: record not found in %', p_entity;
+    RAISE EXCEPTION 'DZQL: record not found in %', p_entity;
   END IF;
 
   -- Check delete permission on existing record
-  IF NOT zeroql.check_permission(p_user_id, 'delete', p_entity, l_existing_record) THEN
+  IF NOT dzql.check_permission(p_user_id, 'delete', p_entity, l_existing_record) THEN
     RAISE EXCEPTION 'Permission denied: delete on %', p_entity;
   END IF;
 
   -- Execute graph rules BEFORE deletion (so we can access the record)
-  l_graph_rules_result := zeroql.execute_graph_rules(
+  l_graph_rules_result := dzql.execute_graph_rules(
     p_entity,
     'delete',
     l_existing_record,
@@ -449,7 +449,7 @@ BEGIN
   l_result := COALESCE(l_result, l_existing_record);
 
   -- Create event for the delete operation
-  INSERT INTO zeroql.events (
+  INSERT INTO dzql.events (
     table_name,
     op,
     pk,
@@ -464,7 +464,7 @@ BEGIN
     l_existing_record,
     NULL,
     p_user_id,
-    zeroql.resolve_notification_paths(p_entity, l_existing_record)
+    dzql.resolve_notification_paths(p_entity, l_existing_record)
   );
 
   -- Add graph rules execution summary to result if rules were executed
@@ -477,7 +477,7 @@ END $$;
 
 -- === Generic LOOKUP Operation ===
 -- Generic LOOKUP for autocomplete/dropdown data
-CREATE OR REPLACE FUNCTION zeroql.generic_lookup(
+CREATE OR REPLACE FUNCTION dzql.generic_lookup(
   p_entity text,
   p_args jsonb,
   p_user_id int
@@ -496,10 +496,10 @@ DECLARE
   l_result jsonb;
 BEGIN
   -- Get entity configuration
-  SELECT * INTO l_entity_config FROM zeroql.entities WHERE table_name = p_entity;
+  SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_entity;
 
   IF l_entity_config IS NULL THEN
-    RAISE EXCEPTION 'ZeroQL: entity % not configured', p_entity;
+    RAISE EXCEPTION 'DZQL: entity % not configured', p_entity;
   END IF;
 
   -- Extract parameters
@@ -515,7 +515,7 @@ BEGIN
   END IF;
 
   -- Add temporal filter
-  l_temporal_filter := zeroql.apply_temporal_filter(
+  l_temporal_filter := dzql.apply_temporal_filter(
     p_entity::regclass,
     l_entity_config.temporal_fields,
     l_on_date
@@ -526,7 +526,7 @@ BEGIN
   -- Build and execute query with permission check for lookup
   l_sql_stmt := format(
     'SELECT COALESCE(jsonb_agg(jsonb_build_object(''label'', %I, ''value'', id) ORDER BY %I), ''[]''::jsonb)
-     FROM %I t WHERE %s AND zeroql.check_permission(%L, ''view'', %L, to_jsonb(t.*)) LIMIT 50',
+     FROM %I t WHERE %s AND dzql.check_permission(%L, ''view'', %L, to_jsonb(t.*)) LIMIT 50',
     l_label_field, l_label_field, p_entity, l_where_clause, p_user_id, p_entity
   );
 
@@ -535,12 +535,12 @@ BEGIN
   RETURN COALESCE(l_result, '[]'::jsonb);
 EXCEPTION
   WHEN OTHERS THEN
-    RAISE EXCEPTION 'ZeroQL: lookup error for entity %: %', p_entity, SQLERRM;
+    RAISE EXCEPTION 'DZQL: lookup error for entity %: %', p_entity, SQLERRM;
 END $$;
 
 -- === Generic Dispatcher Function ===
 -- Routes operations to their specific implementation functions
-CREATE OR REPLACE FUNCTION zeroql.generic_exec(
+CREATE OR REPLACE FUNCTION dzql.generic_exec(
   p_operation text,
   p_entity text,
   p_args jsonb,
@@ -552,16 +552,16 @@ AS $$
 BEGIN
   CASE lower(p_operation)
     WHEN 'get' THEN
-      RETURN zeroql.generic_get(p_entity, p_args, p_user_id);
+      RETURN dzql.generic_get(p_entity, p_args, p_user_id);
     WHEN 'save' THEN
-      RETURN zeroql.generic_save(p_entity, p_args, p_user_id);
+      RETURN dzql.generic_save(p_entity, p_args, p_user_id);
     WHEN 'delete' THEN
-      RETURN zeroql.generic_delete(p_entity, p_args, p_user_id);
+      RETURN dzql.generic_delete(p_entity, p_args, p_user_id);
     WHEN 'lookup' THEN
-      RETURN zeroql.generic_lookup(p_entity, p_args, p_user_id);
+      RETURN dzql.generic_lookup(p_entity, p_args, p_user_id);
     WHEN 'search' THEN
-      RETURN zeroql.generic_search(p_entity, p_args, p_user_id);
+      RETURN dzql.generic_search(p_entity, p_args, p_user_id);
     ELSE
-      RAISE EXCEPTION 'ZeroQL: unknown operation %', p_operation;
+      RAISE EXCEPTION 'DZQL: unknown operation %', p_operation;
   END CASE;
 END $$;

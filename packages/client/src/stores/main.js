@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useWs } from "zeroql/client";
+import { useWs } from "dzql/client";
 import { uiConfig } from './ui-config.js';
 
 export const useProfileStore = defineStore('profile', () => {

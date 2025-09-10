@@ -1,4 +1,4 @@
-# ZeroQL Test Suite Status & Coverage Analysis
+# DZQL Test Suite Status & Coverage Analysis
 
 ## Current Status: 82/82 Tests Passing (100% success rate) 🎉
 
@@ -11,13 +11,13 @@ After extensive debugging and fixes, we have achieved full test suite success wi
 - **Solution**: Added proper CASCADE DELETE to foreign key constraints
 - **Status**: All 12 domain tests passing
 
-### 2. Permission System - FIXED  
+### 2. Permission System - FIXED
 - **Problem**: Permission tests failing due to test pollution
 - **Solution**: Proper database reset and test isolation
 - **Status**: All 13 permission tests passing
 
 ### 3. Notifications System - FIXED
-- **Problem**: Incomplete test file + notification paths not working  
+- **Problem**: Incomplete test file + notification paths not working
 - **Solution**: Fixed syntax errors and entity registration conflicts
 - **Status**: All 9 notification tests passing
 
@@ -99,7 +99,7 @@ After extensive debugging and fixes, we have achieved full test suite success wi
 **🔴 FUNCTIONAL GAPS:**
 
 - **Concurrency**: No concurrent operation testing
-- **Performance**: No stress testing with large datasets  
+- **Performance**: No stress testing with large datasets
 - **Scale**: No testing with realistic data volumes
 - **Complex Business Logic**: Multi-entity transaction scenarios missing
 - **Soft Delete**: No entities use it, feature untested
@@ -118,7 +118,7 @@ After extensive debugging and fixes, we have achieved full test suite success wi
 
 **Weaknesses:**
 - ❌ 44% of entities have significant coverage gaps
-- ❌ Advanced features (temporal, complex permissions) undertested  
+- ❌ Advanced features (temporal, complex permissions) undertested
 - ❌ Error conditions poorly covered
 - ❌ Performance/scale not addressed
 - ❌ Complex business scenarios missing
@@ -137,9 +137,9 @@ After extensive debugging and fixes, we have achieved full test suite success wi
 ```
 
 **users (Core Entity)**
-```javascript  
+```javascript
 // Add tests for:
-- ZeroQL CRUD operations (not just auth functions)
+- DZQL CRUD operations (not just auth functions)
 - User permission updates
 - User profile management
 ```
@@ -147,7 +147,7 @@ After extensive debugging and fixes, we have achieved full test suite success wi
 **acts_for (Junction Table)**
 ```javascript
 // Add tests for:
-- Direct CRUD operations  
+- Direct CRUD operations
 - Temporal relationship management
 - Permission inheritance testing
 ```
@@ -172,7 +172,7 @@ After extensive debugging and fixes, we have achieved full test suite success wi
 - Edge cases (empty results, invalid columns)
 ```
 
-**Lookup Operations**  
+**Lookup Operations**
 ```javascript
 // Add lookup tests for remaining 8 entities:
 - Label field resolution
@@ -214,17 +214,17 @@ After extensive debugging and fixes, we have achieved full test suite success wi
 
 ### **Immediate (Next Sprint)**
 - [ ] Add comprehensive contractor_rights tests (all 5 operations)
-- [ ] Add users entity CRUD tests  
+- [ ] Add users entity CRUD tests
 - [ ] Add direct acts_for operation tests
 - [ ] Add temporal parameter testing for existing temporal entities
 
 ### **Short Term (Next Month)**
 - [ ] Extend search operations to all entities (8 remaining)
-- [ ] Extend lookup operations to all entities (8 remaining)  
+- [ ] Extend lookup operations to all entities (8 remaining)
 - [ ] Add complex permission path testing
 - [ ] Add error condition testing for all operations
 
-### **Medium Term (Next Quarter)**  
+### **Medium Term (Next Quarter)**
 - [ ] Add performance/stress testing
 - [ ] Add concurrent operation testing
 - [ ] Add complex business scenario tests
@@ -253,7 +253,7 @@ cd packages/venues && bun db && sleep 5 && bun test
 
 ### **Coverage Measurement**
 - [ ] Implement PostgreSQL function coverage tracking
-- [ ] Add API endpoint coverage measurement  
+- [ ] Add API endpoint coverage measurement
 - [ ] Create coverage reports per entity
 - [ ] Set up automated coverage monitoring
 
@@ -275,11 +275,11 @@ cd packages/venues && bun db && sleep 5 && bun test
 
 ## 🔍 Framework Assessment
 
-**CONCLUSION: The ZeroQL framework core functionality is solid and production-ready.**
+**CONCLUSION: The DZQL framework core functionality is solid and production-ready.**
 
 **Evidence:**
 - ✅ All 82 tests pass reliably
-- ✅ Core CRUD operations work across multiple entities  
+- ✅ Core CRUD operations work across multiple entities
 - ✅ Authentication, permissions, and real-time events functional
 - ✅ WebSocket and HTTP APIs working correctly
 - ✅ Graph rules and notifications systems operational

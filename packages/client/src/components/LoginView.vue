@@ -2,7 +2,7 @@
   <div class="hero min-h-screen bg-base-200">
     <div class="hero-content flex-col w-full max-w-sm">
       <div class="text-center mb-8">
-        <h1 class="text-4xl font-bold">ZeroQL</h1>
+        <h1 class="text-4xl font-bold">DZQL</h1>
         <p class="text-base-content/60">Sign in to continue</p>
       </div>
 
@@ -113,7 +113,7 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted } from 'vue'
-import { useWs } from 'zeroql/client'
+import { useWs } from 'dzql/client'
 import { useProfileStore } from '../stores/main'
 import CheckIcon from 'feather-icons/dist/icons/check.svg?component'
 import XIcon from 'feather-icons/dist/icons/x.svg?component'
@@ -173,7 +173,7 @@ const handleSubmit = async () => {
     })
 
     if (result.token) {
-      localStorage.setItem('zeroql_token', result.token)
+      localStorage.setItem('dzql_token', result.token)
       profileStore.profile = result.profile
 
       if (mode.value === 'register') {

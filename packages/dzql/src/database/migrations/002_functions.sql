@@ -1,33 +1,33 @@
--- ZeroQL Core Functions - Version 3.0.0
--- Helper functions, utilities, and core ZeroQL functionality
+-- DZQL Core Functions - Version 3.0.0
+-- Helper functions, utilities, and core DZQL functionality
 
 -- === JSON Helpers ===
-CREATE OR REPLACE FUNCTION zeroql.jarr(x anyarray)
+CREATE OR REPLACE FUNCTION dzql.jarr(x anyarray)
 RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$
   SELECT coalesce(to_jsonb(x), '[]'::jsonb);
 $$;
 
 -- Convert record to jsonb efficiently
-CREATE OR REPLACE FUNCTION zeroql.to_jsonb(rec anyelement)
+CREATE OR REPLACE FUNCTION dzql.to_jsonb(rec anyelement)
 RETURNS jsonb LANGUAGE plpgsql IMMUTABLE AS $$
 BEGIN
   RETURN to_jsonb(rec);
 END $$;
 
 -- Extract object keys as array
-CREATE OR REPLACE FUNCTION zeroql.keys(obj jsonb)
+CREATE OR REPLACE FUNCTION dzql.keys(obj jsonb)
 RETURNS text[] LANGUAGE sql IMMUTABLE AS $$
   SELECT array_agg(key) FROM jsonb_object_keys(obj) AS key;
 $$;
 
 -- Build JSON object from key-value pair
-CREATE OR REPLACE FUNCTION zeroql.j(k text, v jsonb)
+CREATE OR REPLACE FUNCTION dzql.j(k text, v jsonb)
 RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$
   SELECT jsonb_build_object(k, v);
 $$;
 
 -- Merge multiple JSONB objects
-CREATE OR REPLACE FUNCTION zeroql.merge(variadic parts jsonb[])
+CREATE OR REPLACE FUNCTION dzql.merge(variadic parts jsonb[])
 RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$
   SELECT coalesce(jsonb_strip_nulls(jsonb_object_agg(k, v)), '{}'::jsonb)
   FROM (
@@ -37,7 +37,7 @@ RETURNS jsonb LANGUAGE sql IMMUTABLE AS $$
 $$;
 
 -- === Temporal Filtering Helper ===
-CREATE OR REPLACE FUNCTION zeroql.apply_temporal_filter(
+CREATE OR REPLACE FUNCTION dzql.apply_temporal_filter(
   p_table regclass,
   p_temporal_fields jsonb,
   p_on_date timestamptz DEFAULT NULL
@@ -67,7 +67,7 @@ BEGIN
 END $$;
 
 -- === Describe (introspection) ===
-CREATE OR REPLACE FUNCTION zeroql.describe()
+CREATE OR REPLACE FUNCTION dzql.describe()
 RETURNS TABLE(
   table_name text,
   label_field text,
@@ -80,12 +80,12 @@ RETURNS TABLE(
 ) LANGUAGE sql AS $$
   SELECT e.table_name, e.label_field, e.searchable_fields, e.fk_includes,
          e.temporal_fields, e.notification_paths, e.permission_paths, e.graph_rules
-  FROM zeroql.entities e
+  FROM dzql.entities e
   ORDER BY e.table_name;
 $$;
 
 -- === Legacy Exec Dispatcher (for custom functions) ===
-CREATE OR REPLACE FUNCTION zeroql.exec(
+CREATE OR REPLACE FUNCTION dzql.exec(
   exposed text,
   args jsonb DEFAULT '{}',
   p_user_id int DEFAULT NULL
@@ -104,10 +104,10 @@ DECLARE
   l_user_id int;
 BEGIN
   -- Get user_id from session if not provided
-  l_user_id := coalesce(p_user_id, nullif(current_setting('zeroql.user_id', true), '')::int);
+  l_user_id := coalesce(p_user_id, nullif(current_setting('dzql.user_id', true), '')::int);
 
   -- Check if function is registered
-  SELECT fn_regproc INTO l_fn_regproc FROM zeroql.registry WHERE fn_regproc = exposed::regproc;
+  SELECT fn_regproc INTO l_fn_regproc FROM dzql.registry WHERE fn_regproc = exposed::regproc;
   IF l_fn_regproc IS NULL THEN
     RAISE EXCEPTION 'Function % not found or not registered', exposed;
   END IF;
@@ -143,7 +143,7 @@ BEGIN
     EXECUTE l_call_sql INTO l_result;
   EXCEPTION
     WHEN OTHERS THEN
-      RAISE EXCEPTION 'ZeroQL: exec error for %: %', exposed, SQLERRM;
+      RAISE EXCEPTION 'DZQL: exec error for %: %', exposed, SQLERRM;
   END;
 
   RETURN l_result;
@@ -153,7 +153,7 @@ END $$;
 -- Resolve notification/permission paths to user IDs
 -- === Path Resolution Functions ===
 -- Resolve a single path segment (handles @field, table[condition], and FK traversal)
-CREATE OR REPLACE FUNCTION zeroql.resolve_path_segment(
+CREATE OR REPLACE FUNCTION dzql.resolve_path_segment(
   p_table_name text,
   p_record jsonb,
   p_segment text
@@ -220,7 +220,7 @@ BEGIN
         l_valid_to_field text;
       BEGIN
         SELECT temporal_fields INTO l_temporal_config
-        FROM zeroql.entities
+        FROM dzql.entities
         WHERE table_name = l_table_name;
 
         IF l_temporal_config.temporal_fields IS NOT NULL AND l_temporal_config.temporal_fields != '{}' THEN
@@ -281,7 +281,7 @@ BEGIN
             -- Look up the current table's FK configuration
             IF l_current_table_name IS NOT NULL THEN
               SELECT fk_includes INTO l_entity_config
-              FROM zeroql.entities
+              FROM dzql.entities
               WHERE table_name = l_current_table_name;
 
               IF l_entity_config.fk_includes IS NOT NULL AND l_entity_config.fk_includes ? l_step THEN
@@ -305,9 +305,9 @@ BEGIN
                 l_pattern := regexp_replace(l_step, '_id$', '');
 
                 -- Check for common patterns
-                IF EXISTS(SELECT 1 FROM zeroql.entities WHERE table_name = l_pattern || 's') THEN
+                IF EXISTS(SELECT 1 FROM dzql.entities WHERE table_name = l_pattern || 's') THEN
                   l_table_name := l_pattern || 's';
-                ELSIF EXISTS(SELECT 1 FROM zeroql.entities WHERE table_name = l_pattern) THEN
+                ELSIF EXISTS(SELECT 1 FROM dzql.entities WHERE table_name = l_pattern) THEN
                   l_table_name := l_pattern;
                 END IF;
               END;
@@ -348,7 +348,7 @@ BEGIN
 END $$;
 
 -- Resolve notification/permission paths to user IDs
-CREATE OR REPLACE FUNCTION zeroql.resolve_notification_path(
+CREATE OR REPLACE FUNCTION dzql.resolve_notification_path(
   p_table_name text,
   p_record jsonb,
   p_path text
@@ -372,7 +372,7 @@ BEGIN
     l_continuation_parts := string_to_array(p_path, '->');
 
     -- Process first segment with the original record
-    l_current_result := zeroql.resolve_path_segment(p_table_name, p_record, l_continuation_parts[1]);
+    l_current_result := dzql.resolve_path_segment(p_table_name, p_record, l_continuation_parts[1]);
 
     -- Process each continuation segment
     FOR l_i IN 2..array_length(l_continuation_parts, 1) LOOP
@@ -391,7 +391,7 @@ BEGIN
           BEGIN
             FOR l_j IN 0..jsonb_array_length(l_current_result) - 1 LOOP
               l_temp_segment := replace(l_continuation_parts[l_i], '$', (l_current_result->>l_j)::text);
-              l_temp_ids := array(SELECT jsonb_array_elements_text(zeroql.resolve_path_segment(null, null, l_temp_segment))::int);
+              l_temp_ids := array(SELECT jsonb_array_elements_text(dzql.resolve_path_segment(null, null, l_temp_segment))::int);
               l_current_ids := l_current_ids || coalesce(l_temp_ids, '{}');
             END LOOP;
           END;
@@ -399,7 +399,7 @@ BEGIN
         ELSE
           -- Single value result
           l_current_segment := replace(l_current_segment, '$', l_current_result::text);
-          l_current_result := zeroql.resolve_path_segment(null, null, l_current_segment);
+          l_current_result := dzql.resolve_path_segment(null, null, l_current_segment);
         END IF;
       ELSE
         RETURN '{}';  -- Path broken
@@ -416,7 +416,7 @@ BEGIN
     RETURN coalesce(l_result_ids, '{}');
   ELSE
     -- No continuation, process as single segment
-    l_current_result := zeroql.resolve_path_segment(p_table_name, p_record, p_path);
+    l_current_result := dzql.resolve_path_segment(p_table_name, p_record, p_path);
 
     -- Convert result to int array
     IF l_current_result IS NOT NULL THEN
@@ -436,18 +436,18 @@ EXCEPTION
 END $$;
 
 -- Backward compatibility alias
-CREATE OR REPLACE FUNCTION zeroql.resolve_path_to_users(
+CREATE OR REPLACE FUNCTION dzql.resolve_path_to_users(
   p_path text,
   p_record jsonb,
   p_table_name text DEFAULT NULL
 ) RETURNS int[]
 LANGUAGE plpgsql AS $$
 BEGIN
-  RETURN zeroql.resolve_notification_path(p_table_name, p_record, p_path);
+  RETURN dzql.resolve_notification_path(p_table_name, p_record, p_path);
 END $$;
 
 -- === Permission Validation ===
-CREATE OR REPLACE FUNCTION zeroql.validate_permission_paths(
+CREATE OR REPLACE FUNCTION dzql.validate_permission_paths(
   p_table_name text,
   p_permission_paths jsonb
 ) RETURNS boolean
@@ -480,7 +480,7 @@ BEGIN
 END $$;
 
 -- Check if user has permission for operation
-CREATE OR REPLACE FUNCTION zeroql.check_permission(
+CREATE OR REPLACE FUNCTION dzql.check_permission(
   p_user_id int,
   p_operation text,
   p_entity text,
@@ -494,7 +494,7 @@ DECLARE
   l_allowed_users int[];
 BEGIN
   -- Get entity configuration
-  SELECT * INTO l_entity_config FROM zeroql.entities WHERE table_name = p_entity;
+  SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_entity;
 
   IF l_entity_config IS NULL THEN
     RETURN true; -- Entity not configured - permissive default like old version
@@ -510,7 +510,7 @@ BEGIN
   -- Check each permission path
   FOR l_path IN SELECT jsonb_array_elements_text(l_permission_paths)
   LOOP
-    l_allowed_users := zeroql.resolve_notification_path(p_entity, p_record, l_path);
+    l_allowed_users := dzql.resolve_notification_path(p_entity, p_record, l_path);
 
     IF p_user_id = ANY(l_allowed_users) THEN
       RETURN true;
@@ -521,7 +521,7 @@ BEGIN
 END $$;
 
 -- Resolve all notification paths for an entity to user IDs
-CREATE OR REPLACE FUNCTION zeroql.resolve_notification_paths(
+CREATE OR REPLACE FUNCTION dzql.resolve_notification_paths(
   p_table_name text,
   p_record jsonb
 ) RETURNS int[]
@@ -536,7 +536,7 @@ DECLARE
 BEGIN
   -- Get entity configuration
   SELECT * INTO l_entity_config
-  FROM zeroql.entities
+  FROM dzql.entities
   WHERE table_name = p_table_name;
 
   IF l_entity_config.notification_paths IS NULL THEN
@@ -551,7 +551,7 @@ BEGIN
     -- Process each path in the group
     FOR l_path IN SELECT jsonb_array_elements_text(l_path_array)
     LOOP
-      l_user_ids := zeroql.resolve_notification_path(p_table_name, p_record, l_path);
+      l_user_ids := dzql.resolve_notification_path(p_table_name, p_record, l_path);
       l_all_user_ids := l_all_user_ids || l_user_ids;
     END LOOP;
   END LOOP;
@@ -564,7 +564,7 @@ END $$;
 
 -- === Utility Functions ===
 -- Set current user for audit trail
-CREATE OR REPLACE FUNCTION zeroql.set_current_user(p_user_id int)
+CREATE OR REPLACE FUNCTION dzql.set_current_user(p_user_id int)
 RETURNS void
 LANGUAGE sql AS $$
   SELECT set_config('app.current_user_id', p_user_id::text, false);
@@ -572,7 +572,7 @@ $$;
 
 -- === Graph Rules Helper Functions ===
 -- Validate graph rules structure
-CREATE OR REPLACE FUNCTION zeroql.validate_graph_rules(
+CREATE OR REPLACE FUNCTION dzql.validate_graph_rules(
   p_rules jsonb
 ) RETURNS boolean
 LANGUAGE plpgsql AS $$
@@ -641,7 +641,7 @@ BEGIN
 END $$;
 
 -- Resolve graph variables like @user_id, @field_name, etc.
-CREATE OR REPLACE FUNCTION zeroql.resolve_graph_variable(
+CREATE OR REPLACE FUNCTION dzql.resolve_graph_variable(
   p_variable text,
   p_record_before jsonb,
   p_record_after jsonb,
@@ -678,7 +678,7 @@ BEGIN
 END $$;
 
 -- Resolve data object with variable substitution
-CREATE OR REPLACE FUNCTION zeroql.resolve_graph_data(
+CREATE OR REPLACE FUNCTION dzql.resolve_graph_data(
   p_data jsonb,
   p_record_before jsonb,
   p_record_after jsonb,
@@ -693,7 +693,7 @@ BEGIN
   FOR l_key, l_value IN SELECT * FROM jsonb_each_text(p_data)
   LOOP
     IF l_value LIKE '@%' THEN
-      l_value := zeroql.resolve_graph_variable(l_value, p_record_before, p_record_after, p_user_id);
+      l_value := dzql.resolve_graph_variable(l_value, p_record_before, p_record_after, p_user_id);
     END IF;
 
     l_result := l_result || jsonb_build_object(l_key, l_value);

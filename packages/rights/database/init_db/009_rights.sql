@@ -2,7 +2,7 @@
 -- All tables from schema with proper permissions and notifications
 
 -- Ensure we create tables in public schema
-SET search_path = public, zeroql;
+SET search_path = public, dzql;
 
 -- ===============================================
 -- Core Entities
@@ -432,7 +432,7 @@ CREATE TABLE IF NOT EXISTS task_template_components (
 -- ===============================================
 
 -- Register users
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'users',
     'name',
     array['name', 'email'],
@@ -449,7 +449,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register organisations
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'organisations',
     'name',
     array['name', 'description'],
@@ -468,7 +468,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register acts_for (temporal)
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'acts_for',
     'org_id',
     array['org_id', 'user_id'],
@@ -485,7 +485,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register venues
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'venues',
     'name',
     array['name', 'address', 'description'],
@@ -509,7 +509,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register areas
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'areas',
     'name',
     array['name', 'description'],
@@ -528,7 +528,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register sites
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'sites',
     'name',
     array['name', 'description'],
@@ -547,7 +547,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register products
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'products',
     'name',
     array['name', 'description'],
@@ -566,7 +566,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register modules
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'modules',
     'name',
     array['name', 'dimensions'],
@@ -585,7 +585,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register occasions
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'occasions',
     'name',
     array['name'],
@@ -608,7 +608,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register packages
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'packages',
     'name',
     array['name'],
@@ -641,7 +641,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register allocations
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'allocations',
     'id',
     array['site_id'],
@@ -678,7 +678,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register contractor_rights (temporal)
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'contractor_rights',
     'contractor_org_id',
     array['contractor_org_id', 'granted_by_id'],
@@ -698,7 +698,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register promotion_rights (temporal)
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'promotion_rights',
     'promoter_id',
     array['owner_id', 'promoter_id'],
@@ -718,7 +718,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register campaigns
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'campaigns',
     'name',
     array['name', 'description'],
@@ -737,7 +737,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register allocation_options
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'allocation_options',
     'id',
     array['contractor_notes'],
@@ -760,7 +760,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register sponsor_selections
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'sponsor_selections',
     'allocation_id',
     array['sponsor_notes'],
@@ -783,7 +783,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register inventory_allocations
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'inventory_allocations',
     'id',
     array['condition_notes'],
@@ -815,7 +815,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register tasks
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'tasks',
     'name',
     array['name', 'description'],
@@ -838,7 +838,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register teams
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'teams',
     'name',
     array['name'],
@@ -861,7 +861,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register sponsor_briefs
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'sponsor_briefs',
     'sponsor_id',
     array['notes', 'plan_assessment_notes', 'execution_assessment_notes'],
@@ -887,7 +887,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register module_items
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'module_items',
     'barcode',
     array['barcode', 'location', 'notes'],
@@ -906,7 +906,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register product_items
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'product_items',
     'barcode',
     array['barcode', 'location', 'notes'],
@@ -932,7 +932,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register site_info
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'site_info',
     'site_id',
     array['dimensions', 'notes'],
@@ -952,7 +952,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register faces
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'faces',
     'name',
     array['name'],
@@ -971,7 +971,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register performance
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'performance',
     'site_id',
     array[]::text[],
@@ -990,7 +990,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register package_proposals
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'package_proposals',
     'package_id',
     array['notes'],
@@ -1016,7 +1016,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register work_windows
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'work_windows',
     'name',
     array['name'],
@@ -1035,7 +1035,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register events
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'events',
     'name',
     array['name'],
@@ -1054,7 +1054,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register moments
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'moments',
     'name',
     array['name'],
@@ -1073,7 +1073,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register components
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'components',
     'name',
     array['name', 'description', 'specifications'],
@@ -1090,7 +1090,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register module_task_templates
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'module_task_templates',
     'name',
     array['name', 'description', 'required_tools', 'safety_notes'],
@@ -1113,7 +1113,7 @@ SELECT zeroql.register_entity(
 -- ===============================================
 
 -- Register site_products
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'site_products',
     'site_id',
     array[]::text[],
@@ -1133,7 +1133,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register site_modules
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'site_modules',
     'site_id',
     array[]::text[],
@@ -1152,7 +1152,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register face_products
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'face_products',
     'face_id',
     array[]::text[],
@@ -1171,7 +1171,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register module_components
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'module_components',
     'module_id',
     array['notes'],
@@ -1190,7 +1190,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register campaign_packages
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'campaign_packages',
     'campaign_id',
     array[]::text[],
@@ -1209,7 +1209,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register team_members
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'team_members',
     'team_id',
     array[]::text[],
@@ -1232,7 +1232,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register task_dependencies
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'task_dependencies',
     'task_id',
     array[]::text[],
@@ -1249,7 +1249,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register task_resources
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'task_resources',
     'task_id',
     array[]::text[],
@@ -1266,7 +1266,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register task_template_dependencies
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'task_template_dependencies',
     'template_id',
     array[]::text[],
@@ -1283,7 +1283,7 @@ SELECT zeroql.register_entity(
 );
 
 -- Register task_template_components
-SELECT zeroql.register_entity(
+SELECT dzql.register_entity(
     'task_template_components',
     'template_id',
     array[]::text[],

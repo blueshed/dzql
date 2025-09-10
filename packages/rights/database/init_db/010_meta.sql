@@ -20,7 +20,7 @@ as $$
       'permission_paths', permission_paths
     )
   )
-  from zeroql.entities;
+  from dzql.entities;
 $$;
 
 -- === Create Test User ===

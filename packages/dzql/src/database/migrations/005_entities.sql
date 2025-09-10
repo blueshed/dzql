@@ -1,4 +1,4 @@
--- ZeroQL Entity Management - Version 3.0.0
+-- DZQL Entity Management - Version 3.0.0
 -- Entity registration, API functions creation, and graph rules execution
 
 -- ============================================================================
@@ -6,7 +6,7 @@
 -- ============================================================================
 
 -- Execute graph insert action
-CREATE OR REPLACE FUNCTION zeroql.execute_graph_insert(
+CREATE OR REPLACE FUNCTION dzql.execute_graph_insert(
   p_entity text,
   p_data jsonb,
   p_user_id int
@@ -19,7 +19,7 @@ DECLARE
   l_sql_stmt text;
 BEGIN
   -- Check permissions before executing graph rule action
-  IF NOT zeroql.check_permission(p_user_id, 'create', p_entity, p_data) THEN
+  IF NOT dzql.check_permission(p_user_id, 'create', p_entity, p_data) THEN
     RAISE EXCEPTION 'Graph rule permission denied: create on % for user %', p_entity, p_user_id;
   END IF;
 
@@ -40,7 +40,7 @@ BEGIN
   EXECUTE l_sql_stmt;
 
   -- Create event for graph rule action
-  INSERT INTO zeroql.events (
+  INSERT INTO dzql.events (
     table_name,
     op,
     pk,
@@ -55,12 +55,12 @@ BEGIN
     NULL,
     p_data,
     p_user_id,
-    zeroql.resolve_notification_paths(p_entity, p_data)
+    dzql.resolve_notification_paths(p_entity, p_data)
   );
 END $$;
 
 -- Execute graph update action
-CREATE OR REPLACE FUNCTION zeroql.execute_graph_update(
+CREATE OR REPLACE FUNCTION dzql.execute_graph_update(
   p_entity text,
   p_match jsonb,
   p_data jsonb,
@@ -74,7 +74,7 @@ DECLARE
   l_sql_stmt text;
 BEGIN
   -- Check permissions before executing graph rule action
-  IF NOT zeroql.check_permission(p_user_id, 'update', p_entity, p_data) THEN
+  IF NOT dzql.check_permission(p_user_id, 'update', p_entity, p_data) THEN
     RAISE EXCEPTION 'Graph rule permission denied: update on % for user %', p_entity, p_user_id;
   END IF;
 
@@ -101,7 +101,7 @@ BEGIN
 
   -- Create event for graph rule action
   -- Note: We don't have the before/after data here, just logging the update occurred
-  INSERT INTO zeroql.events (
+  INSERT INTO dzql.events (
     table_name,
     op,
     pk,
@@ -121,7 +121,7 @@ BEGIN
 END $$;
 
 -- Execute graph delete action
-CREATE OR REPLACE FUNCTION zeroql.execute_graph_delete(
+CREATE OR REPLACE FUNCTION dzql.execute_graph_delete(
   p_entity text,
   p_match jsonb,
   p_user_id int
@@ -133,7 +133,7 @@ DECLARE
   l_sql_stmt text;
 BEGIN
   -- Check permissions before executing graph rule action
-  IF NOT zeroql.check_permission(p_user_id, 'delete', p_entity, p_match) THEN
+  IF NOT dzql.check_permission(p_user_id, 'delete', p_entity, p_match) THEN
     RAISE EXCEPTION 'Graph rule permission denied: delete on % for user %', p_entity, p_user_id;
   END IF;
   -- Build WHERE clauses
@@ -151,7 +151,7 @@ BEGIN
   EXECUTE l_sql_stmt;
 
   -- Create event for graph rule action
-  INSERT INTO zeroql.events (
+  INSERT INTO dzql.events (
     table_name,
     op,
     pk,
@@ -171,7 +171,7 @@ BEGIN
 END $$;
 
 -- Main graph rules execution engine
-CREATE OR REPLACE FUNCTION zeroql.execute_graph_rules(
+CREATE OR REPLACE FUNCTION dzql.execute_graph_rules(
   p_table_name text,
   p_operation text,  -- 'insert', 'update', 'delete'
   p_record_before jsonb,
@@ -198,7 +198,7 @@ DECLARE
   l_condition_result boolean;
 BEGIN
   -- Get entity configuration
-  SELECT * INTO l_entity_config FROM zeroql.entities WHERE table_name = p_table_name;
+  SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_table_name;
 
   IF l_entity_config IS NULL THEN
     RETURN jsonb_build_object('status', 'entity_not_found');
@@ -239,7 +239,7 @@ BEGIN
 
     -- TODO: Implement condition evaluation
     -- IF l_condition IS NOT NULL THEN
-    --   l_condition_result := zeroql.evaluate_condition(l_condition, p_record_before, p_record_after, p_user_id);
+    --   l_condition_result := dzql.evaluate_condition(l_condition, p_record_before, p_record_after, p_user_id);
     -- END IF;
 
     IF l_condition_result THEN
@@ -253,24 +253,24 @@ BEGIN
 
         -- Resolve variables in data and match objects
         IF l_action_data IS NOT NULL THEN
-          l_resolved_data := zeroql.resolve_graph_data(l_action_data, p_record_before, p_record_after, p_user_id);
+          l_resolved_data := dzql.resolve_graph_data(l_action_data, p_record_before, p_record_after, p_user_id);
         END IF;
 
         IF l_action_match IS NOT NULL THEN
-          l_resolved_match := zeroql.resolve_graph_data(l_action_match, p_record_before, p_record_after, p_user_id);
+          l_resolved_match := dzql.resolve_graph_data(l_action_match, p_record_before, p_record_after, p_user_id);
         END IF;
 
         -- Execute the action
         BEGIN
           CASE l_action_type
             WHEN 'create' THEN
-              PERFORM zeroql.execute_graph_insert(l_target_entity, l_resolved_data, p_user_id);
+              PERFORM dzql.execute_graph_insert(l_target_entity, l_resolved_data, p_user_id);
 
             WHEN 'update' THEN
-              PERFORM zeroql.execute_graph_update(l_target_entity, l_resolved_match, l_resolved_data, p_user_id);
+              PERFORM dzql.execute_graph_update(l_target_entity, l_resolved_match, l_resolved_data, p_user_id);
 
             WHEN 'delete' THEN
-              PERFORM zeroql.execute_graph_delete(l_target_entity, l_resolved_match, p_user_id);
+              PERFORM dzql.execute_graph_delete(l_target_entity, l_resolved_match, p_user_id);
           END CASE;
 
           -- Log successful execution
@@ -308,7 +308,7 @@ END $$;
 -- ============================================================================
 
 -- Create API functions for an entity
-CREATE OR REPLACE FUNCTION zeroql.create_entity_functions(p_table_name text)
+CREATE OR REPLACE FUNCTION dzql.create_entity_functions(p_table_name text)
 RETURNS void
 LANGUAGE plpgsql AS $$
 DECLARE
@@ -327,51 +327,51 @@ BEGIN
 
   -- Create GET function
   EXECUTE format('
-    CREATE OR REPLACE FUNCTION zeroql.%I(p_args jsonb, p_user_id int)
+    CREATE OR REPLACE FUNCTION dzql.%I(p_args jsonb, p_user_id int)
     RETURNS jsonb
     LANGUAGE sql
     AS $func$
-      SELECT zeroql.generic_get(%L, p_args, p_user_id);
+      SELECT dzql.generic_get(%L, p_args, p_user_id);
     $func$;
   ', l_get_fn_name, p_table_name);
 
   -- Create SAVE function
   EXECUTE format('
-    CREATE OR REPLACE FUNCTION zeroql.%I(p_args jsonb, p_user_id int)
+    CREATE OR REPLACE FUNCTION dzql.%I(p_args jsonb, p_user_id int)
     RETURNS jsonb
     LANGUAGE sql
     AS $func$
-      SELECT zeroql.generic_save(%L, p_args, p_user_id);
+      SELECT dzql.generic_save(%L, p_args, p_user_id);
     $func$;
   ', l_save_fn_name, p_table_name);
 
   -- Create DELETE function
   EXECUTE format('
-    CREATE OR REPLACE FUNCTION zeroql.%I(p_args jsonb, p_user_id int)
+    CREATE OR REPLACE FUNCTION dzql.%I(p_args jsonb, p_user_id int)
     RETURNS jsonb
     LANGUAGE sql
     AS $func$
-      SELECT zeroql.generic_delete(%L, p_args, p_user_id);
+      SELECT dzql.generic_delete(%L, p_args, p_user_id);
     $func$;
   ', l_delete_fn_name, p_table_name);
 
   -- Create LOOKUP function
   EXECUTE format('
-    CREATE OR REPLACE FUNCTION zeroql.%I(p_args jsonb, p_user_id int)
+    CREATE OR REPLACE FUNCTION dzql.%I(p_args jsonb, p_user_id int)
     RETURNS jsonb
     LANGUAGE sql
     AS $func$
-      SELECT zeroql.generic_lookup(%L, p_args, p_user_id);
+      SELECT dzql.generic_lookup(%L, p_args, p_user_id);
     $func$;
   ', l_lookup_fn_name, p_table_name);
 
   -- Create SEARCH function
   EXECUTE format('
-    CREATE OR REPLACE FUNCTION zeroql.%I(p_args jsonb, p_user_id int)
+    CREATE OR REPLACE FUNCTION dzql.%I(p_args jsonb, p_user_id int)
     RETURNS jsonb
     LANGUAGE sql
     AS $func$
-      SELECT zeroql.generic_search(%L, p_args, p_user_id);
+      SELECT dzql.generic_search(%L, p_args, p_user_id);
     $func$;
   ', l_search_fn_name, p_table_name);
 END $$;
@@ -381,7 +381,7 @@ END $$;
 -- ============================================================================
 
 -- Register entity function with full graph rules support
-CREATE OR REPLACE FUNCTION zeroql.register_entity(
+CREATE OR REPLACE FUNCTION dzql.register_entity(
   p_table_name text,
   p_label_field text,
   p_searchable_fields text[],
@@ -396,20 +396,20 @@ LANGUAGE plpgsql AS $$
 BEGIN
   -- Validate permission paths if provided
   IF p_permission_paths IS NOT NULL AND p_permission_paths != '{}' THEN
-    IF NOT zeroql.validate_permission_paths(p_table_name, p_permission_paths) THEN
+    IF NOT dzql.validate_permission_paths(p_table_name, p_permission_paths) THEN
       RAISE EXCEPTION 'Invalid permission paths for entity %', p_table_name;
     END IF;
   END IF;
 
   -- Validate graph rules if provided
   IF p_graph_rules IS NOT NULL AND p_graph_rules != '{}' THEN
-    IF NOT zeroql.validate_graph_rules(p_graph_rules) THEN
+    IF NOT dzql.validate_graph_rules(p_graph_rules) THEN
       RAISE EXCEPTION 'Invalid graph rules for entity %', p_table_name;
     END IF;
   END IF;
 
   -- Insert or update entity configuration
-  INSERT INTO zeroql.entities
+  INSERT INTO dzql.entities
     (table_name, label_field, searchable_fields, fk_includes, soft_delete, temporal_fields, notification_paths, permission_paths, graph_rules)
   VALUES
     (p_table_name, p_label_field, p_searchable_fields, p_fk_includes, p_soft_delete, p_temporal_fields, p_notification_paths, p_permission_paths, p_graph_rules)
@@ -424,10 +424,10 @@ BEGIN
     graph_rules = EXCLUDED.graph_rules;
 
   -- Create API functions for this entity
-  PERFORM zeroql.create_entity_functions(p_table_name);
+  PERFORM dzql.create_entity_functions(p_table_name);
 
   -- Log successful registration
-  RAISE NOTICE 'ZeroQL: Entity % registered successfully with graph rules support', p_table_name;
+  RAISE NOTICE 'DZQL: Entity % registered successfully with graph rules support', p_table_name;
 END $$;
 
 -- ============================================================================
@@ -435,7 +435,7 @@ END $$;
 -- ============================================================================
 
 -- Unregister an entity (removes configuration and API functions)
-CREATE OR REPLACE FUNCTION zeroql.unregister_entity(p_table_name text)
+CREATE OR REPLACE FUNCTION dzql.unregister_entity(p_table_name text)
 RETURNS void
 LANGUAGE plpgsql AS $$
 DECLARE
@@ -443,19 +443,19 @@ DECLARE
   l_fn_name text;
 BEGIN
   -- Remove entity configuration
-  DELETE FROM zeroql.entities WHERE table_name = p_table_name;
+  DELETE FROM dzql.entities WHERE table_name = p_table_name;
 
   -- Drop API functions
   FOREACH l_fn_name IN ARRAY l_fn_names
   LOOP
-    EXECUTE format('DROP FUNCTION IF EXISTS zeroql.%I(jsonb, int)', l_fn_name || p_table_name);
+    EXECUTE format('DROP FUNCTION IF EXISTS dzql.%I(jsonb, int)', l_fn_name || p_table_name);
   END LOOP;
 
-  RAISE NOTICE 'ZeroQL: Entity % unregistered successfully', p_table_name;
+  RAISE NOTICE 'DZQL: Entity % unregistered successfully', p_table_name;
 END $$;
 
 -- List all registered entities
-CREATE OR REPLACE FUNCTION zeroql.list_entities()
+CREATE OR REPLACE FUNCTION dzql.list_entities()
 RETURNS TABLE(
   table_name text,
   label_field text,
@@ -478,21 +478,21 @@ LANGUAGE sql AS $$
     (e.notification_paths IS NOT NULL AND e.notification_paths != '{}') as has_notification_paths,
     (e.permission_paths IS NOT NULL AND e.permission_paths != '{}') as has_permission_paths,
     (e.graph_rules IS NOT NULL AND e.graph_rules != '{}') as has_graph_rules
-  FROM zeroql.entities e
+  FROM dzql.entities e
   ORDER BY e.table_name;
 $$;
 
 -- Get detailed entity configuration
-CREATE OR REPLACE FUNCTION zeroql.get_entity_config(p_table_name text)
+CREATE OR REPLACE FUNCTION dzql.get_entity_config(p_table_name text)
 RETURNS jsonb
 LANGUAGE sql AS $$
   SELECT to_jsonb(e.*)
-  FROM zeroql.entities e
+  FROM dzql.entities e
   WHERE e.table_name = p_table_name;
 $$;
 
 -- Update entity graph rules only
-CREATE OR REPLACE FUNCTION zeroql.update_entity_graph_rules(
+CREATE OR REPLACE FUNCTION dzql.update_entity_graph_rules(
   p_table_name text,
   p_graph_rules jsonb
 ) RETURNS void
@@ -500,13 +500,13 @@ LANGUAGE plpgsql AS $$
 BEGIN
   -- Validate graph rules
   IF p_graph_rules IS NOT NULL AND p_graph_rules != '{}' THEN
-    IF NOT zeroql.validate_graph_rules(p_graph_rules) THEN
+    IF NOT dzql.validate_graph_rules(p_graph_rules) THEN
       RAISE EXCEPTION 'Invalid graph rules for entity %', p_table_name;
     END IF;
   END IF;
 
   -- Update only graph rules
-  UPDATE zeroql.entities
+  UPDATE dzql.entities
   SET graph_rules = p_graph_rules
   WHERE table_name = p_table_name;
 
@@ -514,5 +514,5 @@ BEGIN
     RAISE EXCEPTION 'Entity % not found', p_table_name;
   END IF;
 
-  RAISE NOTICE 'ZeroQL: Graph rules updated for entity %', p_table_name;
+  RAISE NOTICE 'DZQL: Graph rules updated for entity %', p_table_name;
 END $$;

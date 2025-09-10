@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, afterAll } from "bun:test";
-import { sql } from "zeroql";
+import { sql } from "dzql";
 import { setupTestServer, teardownTestServer } from "./test-server.js";
 
 let server;
@@ -63,10 +63,10 @@ test("WebSocket login and basic functionality", async () => {
           expect(response.result.profile.name).toBe("websocket-test");
           expect(response.result.profile.created_at).toBeDefined();
 
-          // Test a ZeroQL operation instead of _profile
+          // Test a DZQL operation instead of _profile
           const getOrgMessage = {
             jsonrpc: "2.0",
-            method: "zeroql.get.organisations",
+            method: "dzql.get.organisations",
             params: { id: 1 },
             id: ++messageId,
           };
@@ -81,13 +81,13 @@ test("WebSocket login and basic functionality", async () => {
           );
         }
       } else if (response.id === 2) {
-        // ZeroQL get organisations response
+        // DZQL get organisations response
         if (response.result) {
           expect(response.result.id).toBe(1);
           expect(response.result.name).toBe("Event Corp");
-          console.log("SUCCESS: ZeroQL get worked in raw WebSocket test");
+          console.log("SUCCESS: DZQL get worked in raw WebSocket test");
         } else {
-          console.log("FAILED: ZeroQL get failed in raw WebSocket test", response.error);
+          console.log("FAILED: DZQL get failed in raw WebSocket test", response.error);
         }
 
         clearTimeout(timeout);

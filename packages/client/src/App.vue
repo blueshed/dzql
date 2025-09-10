@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useWs } from 'zeroql/client'
+import { useWs } from 'dzql/client'
 import LoginView from './components/LoginView.vue'
 import Navbar from './components/Navbar.vue'
 
@@ -29,7 +29,7 @@ const handleLogout = async () => {
   } catch (err) {
     console.error('Logout error:', err)
   }
-  localStorage.removeItem('zeroql_token')
+  localStorage.removeItem('dzql_token')
   userProfile.value = null
   state.value = 'login'
   // Reconnect to get fresh state

@@ -1,9 +1,9 @@
 {
-  "name": "zeroql-monorepo",
+  "name": "dzql-monorepo",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "ZeroQL - PostgreSQL-powered framework with zero boilerplate",
+  "description": "DZQL - PostgreSQL-powered framework with zero boilerplate",
   "workspaces": [
     "packages/*"
   ],
@@ -23,7 +23,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/zeroql"
+    "url": "https://github.com/your-org/dzql"
   },
   "keywords": [
     "postgresql",

@@ -1,5 +1,5 @@
 /**
- * ZeroQL UI Configuration Loader
+ * DZQL UI Configuration Loader
  *
  * Loads UI configurations from JSON files or API endpoints
  * and renders them using the declarative UI framework.
@@ -208,7 +208,7 @@ async function executeAction(action, ws) {
 }
 
 /**
- * Fetch data using ZeroQL
+ * Fetch data using DZQL
  */
 async function fetchData(action, ws) {
     try {
@@ -275,8 +275,8 @@ function setupRefresh(config, instance, ws) {
  */
 export async function loadEntityUI(entityName, viewType, container, ws) {
     try {
-        // Fetch entity metadata from ZeroQL
-        const metadata = await ws.call('zeroql.get_entity_metadata', { entity: entityName });
+        // Fetch entity metadata from DZQL
+        const metadata = await ws.call('dzql.get_entity_metadata', { entity: entityName });
 
         // Generate UI based on metadata and view type
         const config = generateEntityUI(metadata, viewType);

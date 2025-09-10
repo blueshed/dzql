@@ -1,11 +1,11 @@
 {
-  "name": "zeroql",
+  "name": "dzql",
   "version": "1.0.0",
   "description": "PostgreSQL-powered framework with zero boilerplate CRUD operations and real-time WebSocket synchronization",
   "type": "module",
   "main": "src/index.js",
   "bin": {
-    "zeroql": "./bin/cli.js"
+    "dzql": "./bin/cli.js"
   },
   "exports": {
     ".": "./src/index.js",
@@ -35,8 +35,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/zeroql",
-    "directory": "packages/zeroql"
+    "url": "https://github.com/your-org/dzql",
+    "directory": "packages/dzql"
   },
   "engines": {
     "bun": ">=1.0.0"

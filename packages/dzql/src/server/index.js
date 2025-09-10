@@ -26,7 +26,7 @@ export default function createServer(options = {}) {
 
   // Setup NOTIFY listeners for real-time events
   setupListeners((event) => {
-    // Handle single zeroql event with filtering
+    // Handle single dzql event with filtering
     const { notify_users, ...eventData } = event;
 
     // Create JSON-RPC notification
@@ -105,13 +105,13 @@ export default function createServer(options = {}) {
     websocket: websocketHandlers,
   });
 
-  log(`🚀 ZeroQL server: http://localhost:${port}`);
+  log(`🚀 DZQL server: http://localhost:${port}`);
   log(`   WebSocket endpoint: ws://localhost:${port}/ws`);
   log(`   Environment: ${process.env.NODE_ENV || "development"}`);
 
   // Add graceful shutdown handling
   const shutdown = async () => {
-    console.log("\nShutting down ZeroQL server...");
+    console.log("\nShutting down DZQL server...");
     await closeConnections();
   };
 

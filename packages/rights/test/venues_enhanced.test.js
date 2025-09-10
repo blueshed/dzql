@@ -1,5 +1,5 @@
 import { test, expect, beforeAll, beforeEach, afterAll } from "bun:test";
-import { sql, db } from "zeroql";
+import { sql, db } from "dzql";
 
 let testUserId;
 

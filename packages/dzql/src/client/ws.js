@@ -9,9 +9,11 @@ class WebSocketManager {
     this.maxReconnectAttempts = options.maxReconnectAttempts ?? 5;
     this.isShuttingDown = false;
 
-    // ZeroQL nested proxy API - matches server-side db.api pattern
-    // Proxy handles both ZeroQL operations and custom functions
-    const zeroqlOps = {
+    // Ad
+
+    // DZQL nested proxy API - matches server-side db.api pattern
+    // Proxy handles both DZQL operations and custom functions
+    const dzqlOps = {
       get: this.createEntityProxy("get"),
       save: this.createEntityProxy("save"),
       delete: this.createEntityProxy("delete"),
@@ -19,9 +21,9 @@ class WebSocketManager {
       search: this.createEntityProxy("search"),
     };
 
-    this.api = new Proxy(zeroqlOps, {
+    this.api = new Proxy(dzqlOps, {
       get: (target, prop) => {
-        // Return cached ZeroQL operation if it exists
+        // Return cached DZQL operation if it exists
         if (prop in target) {
           return target[prop];
         }
@@ -34,7 +36,7 @@ class WebSocketManager {
   }
 
   /**
-   * Create entity proxy for ZeroQL operations
+   * Create entity proxy for DZQL operations
    *
    * @param {string} operation - The operation type (get, save, delete, lookup, search)
    * @returns {Proxy} A proxy that creates entity-specific methods
@@ -92,7 +94,7 @@ class WebSocketManager {
       {
         get: (target, entityName) => {
           return (params = {}) => {
-            return this.call(`zeroql.${operation}.${entityName}`, params);
+            return this.call(`dzql.${operation}.${entityName}`, params);
           };
         },
       },
@@ -117,7 +119,7 @@ class WebSocketManager {
 
       // Add JWT token as query parameter if available
       if (typeof localStorage !== 'undefined'){
-        const storedToken = localStorage.getItem("zeroql_token");
+        const storedToken = localStorage.getItem("dzql_token");
         if (storedToken) {
           wsUrl += `?token=${encodeURIComponent(storedToken)}`;
         }
@@ -143,6 +145,7 @@ class WebSocketManager {
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+
           this.handleMessage(message);
         } catch (error) {
           console.error("Failed to parse WebSocket message:", error);
@@ -165,17 +168,21 @@ class WebSocketManager {
   }
 
   handleMessage(message) {
+
+
     // Handle JSON-RPC responses
     if (message.id && this.pendingRequests.has(message.id)) {
       const { resolve, reject } = this.pendingRequests.get(message.id);
       this.pendingRequests.delete(message.id);
 
       if (message.error) {
-        reject(new Error(message.error.message));
+
+        reject(new Error(message.error.message || message.error.code || 'Unknown error'));
       } else {
         resolve(message.result);
       }
     } else {
+
       this.broadcastCallbacks.forEach((callback) => {
         callback(message.method, message.params);
       });
