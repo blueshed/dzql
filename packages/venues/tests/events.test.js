@@ -1,7 +1,7 @@
 import { test, expect, beforeAll, afterAll, describe } from "bun:test";
 import { sql } from "zeroql";
 import { setupTestServer, teardownTestServer } from "./test-server.js";
-import { WebSocketManager } from "../client/ws.js";
+import { WebSocketManager } from "../../zeroql/src/client/ws.js";
 
 describe("ZeroQL Real-time Events", () => {
   let server;

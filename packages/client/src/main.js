@@ -1,5 +1,5 @@
 import { createApp } from 'vue'
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import { createPinia } from 'pinia'
 import { useProfileStore } from './stores/main'
 import { uiConfig } from './stores/ui-config.js'
@@ -13,7 +13,7 @@ const pinia = createPinia()
 
 // Configure router
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes: [
     { path: '/', component: Home },
     {

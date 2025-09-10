@@ -1,22 +1,22 @@
 // Entity icon imports
 import { markRaw } from 'vue'
 import MapPinIcon from 'feather-icons/dist/icons/map-pin.svg?component'
-import UsersIcon from 'feather-icons/dist/icons/users.svg?component'
+import { BuildingOfficeIcon } from '@heroicons/vue/24/outline'
 
 export const uiConfig = {
   // Primary navigation entities
-  primary: ['venues', 'users'],
+  primary: ['venues', 'organisations'],
 
   // Display preferences
   display: {
     'venues': 'table',
-    'users': 'cards'
+    'organisations': 'table'
   },
 
   // Entity icons (direct component references marked as raw to prevent reactivity)
   icons: {
     'venues': markRaw(MapPinIcon),
-    'users': markRaw(UsersIcon)
+    'organisations': markRaw(BuildingOfficeIcon)
   },
 
   // App metadata

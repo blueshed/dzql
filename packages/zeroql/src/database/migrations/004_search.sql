@@ -1,6 +1,5 @@
--- ZeroQL Search Filtering Enhancement
--- Migration: 002_search.sql
--- Adds advanced filtering capabilities to generic_search
+-- ZeroQL Search Operations - Version 3.0.0
+-- Advanced search and filtering capabilities for ZeroQL entities
 
 -- ============================================================================
 -- FILTER PROCESSING HELPERS
@@ -98,7 +97,6 @@ BEGIN
     END CASE;
   END LOOP;
 
-  -- Combine clauses with AND
   IF array_length(l_clauses, 1) > 0 THEN
     RETURN '(' || array_to_string(l_clauses, ' AND ') || ')';
   ELSE
@@ -106,7 +104,7 @@ BEGIN
   END IF;
 END $$;
 
--- Build complete WHERE clause from filters
+-- Build complete WHERE clause from filter object
 CREATE OR REPLACE FUNCTION zeroql.build_where_clause(
   p_table_name text,
   p_filters jsonb
@@ -118,16 +116,17 @@ DECLARE
   l_value jsonb;
   l_column_type text;
   l_column_exists boolean;
-  l_operator_clause text;
+  l_clause text;
 BEGIN
-  -- Process each filter
-  FOR l_key, l_value IN SELECT * FROM jsonb_each(p_filters)
+  -- Skip _search key (handled separately)
+  FOR l_key, l_value IN SELECT key, value FROM jsonb_each(p_filters)
   LOOP
-    -- Skip special keys
-    CONTINUE WHEN l_key IN ('page', 'limit', 'sort', '_search', 'on_date');
+    IF l_key = '_search' THEN
+      CONTINUE;
+    END IF;
 
     -- Check if column exists
-    SELECT EXISTS(
+    SELECT EXISTS (
       SELECT 1 FROM pg_attribute
       WHERE attrelid = p_table_name::regclass
         AND attname = l_key
@@ -142,13 +141,13 @@ BEGIN
     -- Get column type
     l_column_type := zeroql.get_column_type(p_table_name, l_key);
 
-    -- Handle different value types
+    -- Build clause based on value type
     CASE jsonb_typeof(l_value)
       WHEN 'object' THEN
-        -- Handle operators
-        l_operator_clause := zeroql.build_operator_clause(l_key, l_value, l_column_type);
-        IF l_operator_clause IS NOT NULL THEN
-          l_clauses := l_clauses || l_operator_clause;
+        -- Handle operator objects like {gte: 100, lt: 500}
+        l_clause := zeroql.build_operator_clause(l_key, l_value, l_column_type);
+        IF l_clause IS NOT NULL THEN
+          l_clauses := l_clauses || l_clause;
         END IF;
 
       WHEN 'array' THEN
@@ -201,10 +200,10 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- ENHANCED GENERIC SEARCH
+-- GENERIC SEARCH OPERATION
 -- ============================================================================
 
--- Enhanced generic_search with full filtering support
+-- Generic SEARCH with advanced filtering support
 CREATE OR REPLACE FUNCTION zeroql.generic_search(
   p_entity text,
   p_args jsonb,
@@ -233,6 +232,7 @@ DECLARE
   l_data_sql text;
   l_total int;
   l_data jsonb;
+  l_column_exists boolean;
 BEGIN
   -- Get entity configuration
   SELECT * INTO l_entity_config FROM zeroql.entities WHERE table_name = p_entity;
@@ -260,116 +260,187 @@ BEGIN
 
   -- Build WHERE clause from filters
   l_filter_clause := zeroql.build_where_clause(p_entity, l_filters);
-  IF l_filter_clause IS NOT NULL THEN
-    l_where_clause := l_filter_clause;
-  END IF;
 
-  -- Handle text search
-  IF l_filters ? '_search' AND l_filters->>'_search' != '' THEN
-    l_search_clause := zeroql.build_search_clause(
-      l_filters->>'_search',
-      l_entity_config.searchable_fields
-    );
+  -- Build text search clause
+  l_search_clause := zeroql.build_search_clause(
+    l_filters->>'_search',
+    l_entity_config.searchable_fields
+  );
 
-    IF l_search_clause IS NOT NULL THEN
-      IF l_where_clause != '' THEN
-        l_where_clause := l_where_clause || ' AND ' || l_search_clause;
-      ELSE
-        l_where_clause := l_search_clause;
-      END IF;
-    END IF;
-  END IF;
+  -- Build temporal filter
+  l_temporal_clause := zeroql.apply_temporal_filter(
+    p_entity::regclass,
+    l_entity_config.temporal_fields,
+    l_on_date
+  );
 
-  -- Apply temporal filtering
-  IF l_on_date IS NOT NULL AND l_entity_config.temporal_fields IS NOT NULL
-     AND l_entity_config.temporal_fields != '{}' THEN
-    l_temporal_clause := format('%I <= %L AND (%I > %L OR %I IS NULL)',
-      l_entity_config.temporal_fields->>'valid_from', l_on_date,
-      l_entity_config.temporal_fields->>'valid_to', l_on_date,
-      l_entity_config.temporal_fields->>'valid_to'
-    );
-
-    IF l_where_clause != '' THEN
-      l_where_clause := l_where_clause || ' AND ' || l_temporal_clause;
-    ELSE
-      l_where_clause := l_temporal_clause;
-    END IF;
-  END IF;
-
-  -- Handle sorting
-  l_sort := COALESCE(p_args->'sort', l_filters->'sort', NULL);
+  -- Extract sort parameters
+  l_sort := COALESCE(p_args->'sort', l_filters->'sort');
   IF l_sort IS NOT NULL THEN
-    CASE jsonb_typeof(l_sort)
-      WHEN 'object' THEN
-        -- Single sort
-        l_sort_field := l_sort->>'field';
-        l_sort_order := upper(COALESCE(l_sort->>'order', 'ASC'));
+    l_sort_field := COALESCE(l_sort->>'field', l_sort->>'column');
+    l_sort_order := COALESCE(l_sort->>'order', l_sort->>'dir', 'asc');
 
-        IF l_sort_order NOT IN ('ASC', 'DESC') THEN
-          l_sort_order := 'ASC';
-        END IF;
+    IF l_sort_field IS NOT NULL THEN
+      -- Validate sort field exists, fall back to 'id' if invalid
+      SELECT EXISTS (
+        SELECT 1 FROM pg_attribute
+        WHERE attrelid = p_entity::regclass
+          AND attname = l_sort_field
+          AND NOT attisdropped
+          AND attnum > 0
+      ) INTO l_column_exists;
 
-        -- Verify column exists
-        IF EXISTS(
-          SELECT 1 FROM pg_attribute
-          WHERE attrelid = p_entity::regclass
-            AND attname = l_sort_field
-            AND NOT attisdropped
-            AND attnum > 0
-        ) THEN
-          l_order_clause := format(' ORDER BY %I %s', l_sort_field, l_sort_order);
-        ELSE
-          l_order_clause := ' ORDER BY id ASC';
-        END IF;
+      IF NOT l_column_exists THEN
+        l_sort_field := 'id'; -- Fall back to default
+      END IF;
 
-      ELSE
-        l_order_clause := ' ORDER BY id ASC';
-    END CASE;
-  ELSE
-    l_order_clause := ' ORDER BY id ASC';
+      l_order_clause := format(' ORDER BY %I %s', l_sort_field,
+        CASE WHEN upper(l_sort_order) = 'DESC' THEN 'DESC' ELSE 'ASC' END);
+    END IF;
   END IF;
 
-  -- Build base FROM clause
-  l_base_sql := format('FROM %I t', p_entity);
-
-  -- Add permission filtering
-  IF l_where_clause != '' THEN
-    l_base_sql := l_base_sql || format(' WHERE (%s) AND zeroql.check_permission(%L, ''view'', %L, to_jsonb(t.*))',
-      l_where_clause, p_user_id, p_entity);
-  ELSE
-    l_base_sql := l_base_sql || format(' WHERE zeroql.check_permission(%L, ''view'', %L, to_jsonb(t.*))',
-      p_user_id, p_entity);
+  -- Build complete WHERE clause
+  IF l_filter_clause IS NOT NULL THEN
+    l_where_clause := 'WHERE ' || l_filter_clause;
   END IF;
 
-  -- Execute count query
+  IF l_search_clause IS NOT NULL THEN
+    IF l_where_clause = '' THEN
+      l_where_clause := 'WHERE ' || l_search_clause;
+    ELSE
+      l_where_clause := l_where_clause || ' AND (' || l_search_clause || ')';
+    END IF;
+  END IF;
+
+  IF l_temporal_clause != '' THEN
+    IF l_where_clause = '' THEN
+      l_where_clause := 'WHERE 1=1' || l_temporal_clause;
+    ELSE
+      l_where_clause := l_where_clause || l_temporal_clause;
+    END IF;
+  END IF;
+
+  -- Build base SQL
+  l_base_sql := format('FROM %I t %s', p_entity, l_where_clause);
+
+  -- Get total count
   l_count_sql := 'SELECT COUNT(*) ' || l_base_sql;
   EXECUTE l_count_sql INTO l_total;
 
-  -- Execute data query
-  l_data_sql := format('SELECT COALESCE(jsonb_agg(x), ''[]''::jsonb) FROM (SELECT to_jsonb(t.*) as x %s %s LIMIT %s OFFSET %s) sub',
-    l_base_sql,
-    l_order_clause,
-    l_limit,
-    l_offset
-  );
+  -- Get paginated data - Always use subquery to ensure LIMIT works correctly
+  IF l_order_clause != '' THEN
+    l_data_sql := format('SELECT COALESCE(jsonb_agg(to_jsonb(sub.*)), ''[]''::jsonb) FROM (SELECT t.* %s %s LIMIT %L OFFSET %L) sub',
+      l_base_sql, l_order_clause, l_limit, l_offset);
+  ELSE
+    -- Use subquery even without ORDER BY to ensure LIMIT is applied before aggregation
+    l_data_sql := format('SELECT COALESCE(jsonb_agg(to_jsonb(sub.*)), ''[]''::jsonb) FROM (SELECT t.* %s ORDER BY t.id LIMIT %L OFFSET %L) sub',
+      l_base_sql, l_limit, l_offset);
+  END IF;
+
   EXECUTE l_data_sql INTO l_data;
 
-  -- Return result
   RETURN jsonb_build_object(
-    'data', l_data,
-    'total', COALESCE(l_total, 0),
+    'data', COALESCE(l_data, '[]'::jsonb),
+    'total', l_total,
     'page', l_page,
-    'limit', l_limit
+    'limit', l_limit,
+    'pages', CEIL(l_total::numeric / l_limit)
   );
 
-EXCEPTION WHEN OTHERS THEN
-  -- Re-raise the exception to the client
-  RAISE;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'ZeroQL: search error for entity %: %', p_entity, SQLERRM;
 END $$;
 
--- Grant execute permissions
-GRANT EXECUTE ON FUNCTION zeroql.generic_search TO PUBLIC;
-GRANT EXECUTE ON FUNCTION zeroql.get_column_type TO PUBLIC;
-GRANT EXECUTE ON FUNCTION zeroql.build_operator_clause TO PUBLIC;
-GRANT EXECUTE ON FUNCTION zeroql.build_where_clause TO PUBLIC;
-GRANT EXECUTE ON FUNCTION zeroql.build_search_clause TO PUBLIC;
+-- ============================================================================
+-- SEARCH UTILITIES
+-- ============================================================================
+
+-- Build faceted search aggregations
+CREATE OR REPLACE FUNCTION zeroql.build_search_facets(
+  p_entity text,
+  p_filters jsonb,
+  p_facet_fields text[]
+) RETURNS jsonb
+LANGUAGE plpgsql AS $$
+DECLARE
+  l_base_where text;
+  l_facet_field text;
+  l_facet_sql text;
+  l_facet_result jsonb;
+  l_facets jsonb := '{}'::jsonb;
+BEGIN
+  -- Build base WHERE clause (without the facet field being aggregated)
+  l_base_where := COALESCE(zeroql.build_where_clause(p_entity, p_filters), '1=1');
+
+  -- Build facets for each requested field
+  FOREACH l_facet_field IN ARRAY p_facet_fields
+  LOOP
+    l_facet_sql := format(
+      'SELECT COALESCE(jsonb_agg(jsonb_build_object(''value'', %I, ''count'', count)), ''[]''::jsonb)
+       FROM (
+         SELECT %I, COUNT(*) as count
+         FROM %I
+         WHERE %s AND %I IS NOT NULL
+         GROUP BY %I
+         ORDER BY count DESC, %I
+         LIMIT 20
+       ) facet_data',
+      l_facet_field, l_facet_field, p_entity, l_base_where,
+      l_facet_field, l_facet_field, l_facet_field
+    );
+
+    EXECUTE l_facet_sql INTO l_facet_result;
+    l_facets := l_facets || jsonb_build_object(l_facet_field, l_facet_result);
+  END LOOP;
+
+  RETURN l_facets;
+END $$;
+
+-- Build search suggestions based on searchable fields
+CREATE OR REPLACE FUNCTION zeroql.build_search_suggestions(
+  p_entity text,
+  p_partial_text text,
+  p_limit int DEFAULT 10
+) RETURNS jsonb
+LANGUAGE plpgsql AS $$
+DECLARE
+  l_entity_config record;
+  l_field text;
+  l_suggestions_sql text;
+  l_field_sqls text[] := array[]::text[];
+  l_result jsonb;
+BEGIN
+  -- Get entity configuration
+  SELECT * INTO l_entity_config FROM zeroql.entities WHERE table_name = p_entity;
+
+  IF l_entity_config IS NULL THEN
+    RETURN '[]'::jsonb;
+  END IF;
+
+  -- Build UNION query for all searchable fields
+  FOREACH l_field IN ARRAY l_entity_config.searchable_fields
+  LOOP
+    l_field_sqls := l_field_sqls || format(
+      'SELECT DISTINCT %I::text as suggestion FROM %I WHERE %I::text ILIKE %L AND %I IS NOT NULL',
+      l_field, p_entity, l_field, p_partial_text || '%', l_field
+    );
+  END LOOP;
+
+  IF array_length(l_field_sqls, 1) = 0 THEN
+    RETURN '[]'::jsonb;
+  END IF;
+
+  l_suggestions_sql := format(
+    'SELECT COALESCE(jsonb_agg(suggestion ORDER BY suggestion), ''[]''::jsonb) FROM (
+       %s
+       LIMIT %s
+     ) suggestions',
+    array_to_string(l_field_sqls, ' UNION '),
+    p_limit
+  );
+
+  EXECUTE l_suggestions_sql INTO l_result;
+
+  RETURN COALESCE(l_result, '[]'::jsonb);
+END $$;

@@ -10,6 +10,8 @@ export const sql = postgres(DATABASE_URL, {
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,
+  // Suppress NOTICE messages in test environment
+  onnotice: process.env.NODE_ENV === 'test' ? () => {} : undefined,
 });
 
 // Separate PostgreSQL connection for NOTIFY/LISTEN
@@ -17,6 +19,8 @@ export const listen_sql = postgres(DATABASE_URL, {
   max: 1,
   idle_timeout: 0,
   connect_timeout: 10,
+  // Suppress NOTICE messages in test environment
+  onnotice: process.env.NODE_ENV === 'test' ? () => {} : undefined,
 });
 
 // Cache for function parameter metadata

@@ -16,7 +16,7 @@ create table if not exists organisations (
 -- Venues (physical locations)
 create table if not exists venues (
   id serial primary key,
-  org_id int not null references organisations(id),
+  org_id int not null references organisations(id) ON DELETE CASCADE,
   name text unique not null,
   address text not null,
   description text
@@ -33,7 +33,7 @@ create table if not exists sites (
 -- Products (advertising products that can be installed)
 create table if not exists products (
   id serial primary key,
-  org_id int not null references organisations(id),
+  org_id int not null references organisations(id) ON DELETE CASCADE,
   name text unique not null,
   description text,
   price decimal(10, 2) not null default 0.00
@@ -44,7 +44,7 @@ create table if not exists products (
 -- Users act for organizations (temporal relationship)
 create table if not exists acts_for (
   user_id int not null references users(id),
-  org_id int not null references organisations(id),
+  org_id int not null references organisations(id) ON DELETE CASCADE,
   valid_from date not null default current_date,
   valid_to date,
   PRIMARY KEY (user_id, org_id, valid_from)
@@ -53,8 +53,8 @@ create table if not exists acts_for (
 -- Packages: Commercial offerings that can be sold
 create table if not exists packages (
   id serial primary key,
-  owner_org_id int not null references organisations(id),    -- Who created it
-  sponsor_org_id int references organisations(id),           -- Who bought it (null = available)
+  owner_org_id int not null references organisations(id) ON DELETE CASCADE,    -- Who created it
+  sponsor_org_id int references organisations(id) ON DELETE SET NULL,           -- Who bought it (null = available)
   name text not null,
   price decimal(10, 2) not null default 0.00,
   status text not null default 'draft'
@@ -72,9 +72,9 @@ create table if not exists allocations (
 
 -- Contractor rights: Sponsor delegates execution rights
 create table if not exists contractor_rights (
-  contractor_org_id int not null references organisations(id),
-  sponsor_org_id int not null references organisations(id),
-  package_id int not null references packages(id),
+  contractor_org_id int not null references organisations(id) ON DELETE CASCADE,
+  sponsor_org_id int not null references organisations(id) ON DELETE CASCADE,
+  package_id int not null references packages(id) ON DELETE CASCADE,
   valid_from date not null default current_date,
   valid_to date,
   PRIMARY KEY (contractor_org_id, package_id, valid_from)
@@ -109,7 +109,30 @@ select zeroql.register_entity(
   false,                              -- no soft delete
   '{}',                               -- no temporal fields
   '{}',                               -- no notification paths yet
-  '{}'                                -- no permission paths (unrestricted)
+  jsonb_build_object(
+    'create', array[]::text[],                        -- Anyone can create organizations
+    'update', array['@id->acts_for[org_id=$]{active}.user_id'],  -- Only org members can update
+    'delete', array['@id->acts_for[org_id=$]{active}.user_id'],  -- Only org members can delete
+    'view', array[]::text[]                           -- Public read access
+  ),
+  jsonb_build_object(
+    'on_create', jsonb_build_object(
+      'establish_ownership', jsonb_build_object(
+        'description', 'Creator becomes owner',
+        'actions', jsonb_build_array(
+          jsonb_build_object(
+            'type', 'create',
+            'entity', 'acts_for',
+            'data', jsonb_build_object(
+              'user_id', '@user_id',
+              'org_id', '@id',
+              'valid_from', '@today'
+            )
+          )
+        )
+      )
+    )
+  )
 );
 
 -- Register venues

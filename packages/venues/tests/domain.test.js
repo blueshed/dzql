@@ -1,34 +1,45 @@
 import { test, expect, beforeAll, beforeEach, afterAll } from "bun:test";
 import { sql, db } from "zeroql";
 
+// Unique prefix for this test run to avoid conflicts
+const PREFIX = `DOM_${Date.now()}`;
 let testUserId;
 
 beforeAll(async () => {
-  // Create test user for domain tests
+  // Clean up any existing test user from previous failed runs
+  const testEmail = `${PREFIX.toLowerCase()}_user@test.local`;
+
+  // First delete if exists
+  await sql`DELETE FROM users WHERE email = ${testEmail}`;
+
+  // Now create fresh test user
   const userResult = await sql`
-    SELECT register_user('domain-test@example.com', 'password123') as user_data
+    SELECT register_user(${testEmail}, 'password123') as user_data
   `;
   testUserId = userResult[0].user_data.user_id;
 });
 
 // Clean up test data before each test to avoid conflicts
 beforeEach(async () => {
-  await sql`DELETE FROM sites WHERE name LIKE '%Test%'`;
-  await sql`DELETE FROM venues WHERE name LIKE '%Test%'`;
-  await sql`DELETE FROM products WHERE name LIKE '%Test%'`;
-  await sql`DELETE FROM acts_for WHERE org_id IN (SELECT id FROM organisations WHERE name LIKE '%Test%' OR name LIKE 'Partial Test Org%' OR name LIKE 'Updated Partial Org%' OR name LIKE 'Minimal Org%')`;
-  await sql`DELETE FROM organisations WHERE name LIKE '%Test%' OR name LIKE 'Partial Test Org%' OR name LIKE 'Updated Partial Org%' OR name LIKE 'Minimal Org%'`;
+  // Delete in correct FK dependency order (children first)
+  await sql`DELETE FROM sites WHERE name LIKE ${PREFIX + '%'}`;
+  await sql`DELETE FROM products WHERE name LIKE ${PREFIX + '%'}`;
+  await sql`DELETE FROM venues WHERE name LIKE ${PREFIX + '%'}`;
+  await sql`DELETE FROM acts_for WHERE org_id IN (SELECT id FROM organisations WHERE name LIKE ${PREFIX + '%'})`;
+  await sql`DELETE FROM organisations WHERE name LIKE ${PREFIX + '%'}`;
 });
 
 afterAll(async () => {
-  // Final cleanup after all tests
-  await sql`DELETE FROM sites WHERE name LIKE '%Test%'`;
-  await sql`DELETE FROM venues WHERE name LIKE '%Test%'`;
-  await sql`DELETE FROM products WHERE name LIKE '%Test%'`;
-  await sql`DELETE FROM acts_for WHERE org_id IN (SELECT id FROM organisations WHERE name LIKE '%Test%' OR name LIKE 'Partial Test Org%' OR name LIKE 'Updated Partial Org%' OR name LIKE 'Minimal Org%') OR user_id = ${testUserId}`;
-  await sql`DELETE FROM organisations WHERE name LIKE '%Test%' OR name LIKE 'Partial Test Org%' OR name LIKE 'Updated Partial Org%' OR name LIKE 'Minimal Org%'`;
+  // Final cleanup in correct order
+  await sql`DELETE FROM sites WHERE name LIKE ${PREFIX + '%'}`;
+  await sql`DELETE FROM products WHERE name LIKE ${PREFIX + '%'}`;
+  await sql`DELETE FROM venues WHERE name LIKE ${PREFIX + '%'}`;
+  await sql`DELETE FROM acts_for WHERE org_id IN (SELECT id FROM organisations WHERE name LIKE ${PREFIX + '%'}) OR user_id = ${testUserId}`;
+  await sql`DELETE FROM organisations WHERE name LIKE ${PREFIX + '%'}`;
   // Clean up test user
-  await sql`DELETE FROM users WHERE id = ${testUserId}`;
+  if (testUserId) {
+    await sql`DELETE FROM users WHERE id = ${testUserId}`;
+  }
 });
 
 test("Get organisation using ZeroQL API", async () => {
@@ -61,26 +72,26 @@ test("Search venues using ZeroQL API", async () => {
 
 test("Save new organisation using ZeroQL API", async () => {
   const orgData = {
-    name: "Test Org Domain",
+    name: `${PREFIX}_Org_1`,
     description: "Test organization for domain testing",
   };
   const result = await db.api.save.organisations(orgData, testUserId);
   expect(result).toBeDefined();
   expect(result.id).toBeDefined();
-  expect(result.name).toBe("Test Org Domain");
+  expect(result.name).toBe(`${PREFIX}_Org_1`);
   expect(result.description).toBe("Test organization for domain testing");
 });
 
 test("Save new venue using ZeroQL API", async () => {
   // First create a test org using ZeroQL API
   const orgData = {
-    name: `Test Venue Owner ${Date.now()}`,
+    name: `${PREFIX}_VenueOwner`,
     description: "Owner for test venue",
   };
   const orgResult = await db.api.save.organisations(orgData, testUserId);
   const orgId = orgResult.id;
 
-  // Ensure user 1 can act for this org
+  // Ensure user can act for this org
   await sql`
     INSERT INTO acts_for (user_id, org_id, valid_from)
     VALUES (${testUserId}, ${orgId}, CURRENT_DATE)
@@ -89,23 +100,22 @@ test("Save new venue using ZeroQL API", async () => {
 
   const venueData = {
     org_id: orgId,
-    name: "Test Venue Domain",
+    name: `${PREFIX}_Venue_1`,
     address: "123 Test Street, Test City",
     description: "Test venue for domain testing",
   };
   const result = await db.api.save.venues(venueData, testUserId);
   expect(result).toBeDefined();
   expect(result.id).toBeDefined();
-  expect(result.name).toBe("Test Venue Domain");
+  expect(result.name).toBe(`${PREFIX}_Venue_1`);
   expect(result.org_id).toBe(orgId);
 });
 
 test("Get venue using ZeroQL API", async () => {
-  // Get first venue - ZeroQL should include related sites automatically
-  // First ensure we have a venue with proper permissions
+  // Create test org and venue
   const testOrg = await db.api.save.organisations(
     {
-      name: `Test Get Venue Org ${Date.now()}`,
+      name: `${PREFIX}_GetVenueOrg`,
       description: "Org for get venue test",
     },
     testUserId,
@@ -121,7 +131,7 @@ test("Get venue using ZeroQL API", async () => {
   const testVenue = await db.api.save.venues(
     {
       org_id: testOrg.id,
-      name: `Test Get Venue ${Date.now()}`,
+      name: `${PREFIX}_GetVenue`,
       address: "789 Test Blvd",
       description: "Venue for get test",
     },
@@ -129,6 +139,15 @@ test("Get venue using ZeroQL API", async () => {
   );
 
   const firstVenueId = testVenue.id;
+
+  // Create some sites for this venue
+  await sql`
+    INSERT INTO sites (venue_id, name, description)
+    VALUES
+      (${firstVenueId}, ${PREFIX + '_Site_A'}, 'First test site'),
+      (${firstVenueId}, ${PREFIX + '_Site_B'}, 'Second test site')
+  `;
+
   const result = await db.api.get.venues({ id: firstVenueId }, testUserId);
 
   expect(result).toBeDefined();
@@ -141,10 +160,11 @@ test("Get venue using ZeroQL API", async () => {
   expect(typeof result.org_id).toBe("number");
   expect(result.org_id).toBe(testOrg.id);
 
-  // The dereferenced org field should contain the label
+  // The dereferenced org field should contain the full record
   expect(result.org).toBeDefined();
-  expect(typeof result.org).toBe("string");
-  expect(result.org).toBe(testOrg.name);
+  expect(typeof result.org).toBe("object");
+  expect(result.org.id).toBe(testOrg.id);
+  expect(result.org.name).toBe(testOrg.name);
 
   // Verify sites are included as an array
   expect(result.sites).toBeDefined();
@@ -162,7 +182,7 @@ test("Get venue using ZeroQL API", async () => {
 test("Delete organisation using ZeroQL API", async () => {
   // Create a test org to delete using ZeroQL API
   const orgData = {
-    name: `Test Delete Org ${Date.now()}`,
+    name: `${PREFIX}_DeleteOrg`,
     description: "Will be deleted",
   };
   const createResult = await db.api.save.organisations(orgData, testUserId);
@@ -176,10 +196,14 @@ test("Delete organisation using ZeroQL API", async () => {
   expect(deleteResult).toBeDefined();
   expect(deleteResult.id).toBe(orgId);
 
-  // Verify it's gone by trying to get it
-  const getResult = await db.api.get.organisations({ id: orgId }, testUserId);
-  // Should return empty object when record doesn't exist
-  expect(getResult).toEqual({});
+  // Verify it's gone by trying to get it - should throw error
+  try {
+    await db.api.get.organisations({ id: orgId }, testUserId);
+    // Should not reach here
+    expect(true).toBe(false);
+  } catch (error) {
+    expect(error.message).toContain('record not found');
+  }
 });
 
 test("Sample data exists", async () => {
@@ -222,34 +246,32 @@ test("Foreign key relationships work", async () => {
 
 test("ZeroQL save - partial update coalescing", async () => {
   // Create a test organisation with full data using ZeroQL API
-  const timestamp = Date.now();
   const createData = {
-    name: `Partial Test Org ${timestamp}`,
+    name: `${PREFIX}_PartialOrg`,
     description: "Original description",
   };
   const createResult = await db.api.save.organisations(createData, testUserId);
   const orgId = createResult.id;
-  expect(createResult.name).toBe(`Partial Test Org ${timestamp}`);
+  expect(createResult.name).toBe(`${PREFIX}_PartialOrg`);
   expect(createResult.description).toBe("Original description");
 
   // Partial update - only change the name using ZeroQL API
-  const updateData = { id: orgId, name: `Updated Partial Org ${timestamp}` };
+  const updateData = { id: orgId, name: `${PREFIX}_UpdatedPartialOrg` };
   const updateResult = await db.api.save.organisations(updateData, testUserId);
 
   // Should keep existing description, update name
   expect(updateResult.id).toBe(orgId);
-  expect(updateResult.name).toBe(`Updated Partial Org ${timestamp}`);
+  expect(updateResult.name).toBe(`${PREFIX}_UpdatedPartialOrg`);
   expect(updateResult.description).toBe("Original description"); // Should be preserved
 });
 
 test("ZeroQL save - insert with defaults", async () => {
   // Insert with minimal data using ZeroQL API (description should be null/default)
-  const timestamp = Date.now();
-  const insertData = { name: `Minimal Org ${timestamp}` };
+  const insertData = { name: `${PREFIX}_MinimalOrg` };
   const result = await db.api.save.organisations(insertData, testUserId);
 
   expect(result.id).toBeDefined();
-  expect(result.name).toBe(`Minimal Org ${timestamp}`);
+  expect(result.name).toBe(`${PREFIX}_MinimalOrg`);
   expect(result.description).toBeNull(); // Should use column default (null)
 });
 

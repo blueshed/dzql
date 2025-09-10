@@ -7,42 +7,30 @@
 
 ## What is ZeroQL?
 
-ZeroQL is an EXTENSION to a base WebSocket RPC system that automatically provides 5 standard database operations per entity with zero boilerplate. The base RPC system allows calling PostgreSQL functions and Bun functions, while ZeroQL adds automatic CRUD operations on top.
+ZeroQL is a PostgreSQL-powered framework that automatically provides 5 standard database operations per entity with zero boilerplate. It combines WebSocket RPC, automatic CRUD operations, graph rules for relationship management, and real-time synchronization.
 
 ## System Architecture
 
-### Base RPC Layer
-- **WebSocket with JSON-RPC 2.0**: Thin layer for calling functions
-- **PostgreSQL functions**: Can be registered in `zeroql.registry` table
-- **Bun functions**: Auto-discovered from `/server/functions/*.js`
-- **Direct calls**: Use `ws.call('function_name', params)`
+### Core Layers
+1. **WebSocket RPC Layer**: JSON-RPC 2.0 over WebSocket for all communication
+2. **ZeroQL Proxy Layer**: Nested proxy API (`ws.api.{operation}.{entity}`) for standard operations
+3. **Graph Rules Engine**: Automatic relationship management on data changes
+4. **Real-time Events**: PostgreSQL NOTIFY/LISTEN for targeted broadcasts
+5. **Permission System**: Path-based row-level security
 
-### ZeroQL Extension Layer
-- **5 Standard Operations**: Automatically available for registered entities
-- **Nested Proxy API**: `ws.api.{operation}.{entity}(params)`
-- **Real-time Events**: PostgreSQL NOTIFY/LISTEN on 'zeroql' channel
-- **Audit Trail**: All changes logged to `zeroql.events` table
-
-## File Structure
+### Database Structure (Modular Architecture)
 ```
-zeroql/
-├── server/
-│   ├── index.js        # Bun WebSocket server
-│   ├── ws.js           # WebSocket handlers & routing
-│   ├── db.js           # PostgreSQL connection & ZeroQL proxy
-│   └── functions/      # Custom Bun functions (auto-discovered)
-├── database/
-│   ├── compose.yml     # Docker PostgreSQL setup
-│   └── init_db/
-│       ├── 001_zeroql.sql        # Core ZeroQL system
-│       ├── 002_search.sql        # Advanced search
-│       ├── 010_auth.sql          # Auth functions (login_user, register_user)
-│       └── 011_simple_domain.sql # Example domain with entities
-├── client/
-│   ├── ws.js           # WebSocket client with proxy API
-│   └── index.html      # Example UI
-└── tests/
-    └── *.test.js       # Bun test suite
+packages/zeroql/src/database/migrations/
+├── 001_schema.sql      # Core tables (entities, events, registry)
+├── 002_functions.sql   # Helper functions, path resolution, graph validation
+├── 003_operations.sql  # Generic CRUD operations with graph rules
+├── 004_search.sql      # Advanced search functionality
+├── 005_entities.sql    # Entity registration and graph rules execution
+├── 006_auth.sql        # Authentication functions
+└── 007_hello.sql       # Example custom function
+
+packages/{app}/database/init_db/
+└── Domain files        # Your business entities (e.g., 008_venues_domain.sql)
 ```
 
 ## The 5 Standard Operations
@@ -52,32 +40,22 @@ Every registered entity automatically gets these operations via `ws.api.{operati
 ### 1. GET - Retrieve single record with foreign keys
 ```javascript
 const venue = await ws.api.get.venues({id: 1});
-// Returns full record with dereferenced foreign keys
+// Returns full record with dereferenced foreign keys and collections
 // Supports temporal: {id: 1, on_date: '2023-01-01'}
 ```
 
-## IMPORTANT: Function Registration
-
-**YOU DO NOT REGISTER FUNCTIONS!** The 5 standard ZeroQL operations (get, save, delete, lookup, search) are automatically available via the proxy API when you register an entity. They are NOT PostgreSQL functions and do NOT need to be registered in `zeroql.registry`.
-
-The `zeroql.registry` table is ONLY for:
-- Custom PostgreSQL functions you want to expose via `ws.call()`
-- NOT for the standard ZeroQL operations
-- NOT for entity operations accessed via `ws.api.*`
-
-### 2. SAVE - Smart upsert
+### 2. SAVE - Smart upsert with graph rules
 ```javascript
-// Insert (no id)
+// Insert (no id) - triggers on_create graph rules
 const newVenue = await ws.api.save.venues({name: 'MSG', org_id: 1});
-// Update (with id)
+// Update (with id) - triggers on_update graph rules
 const updated = await ws.api.save.venues({id: 1, name: 'Updated'});
-// Returns: {id: 123}
 ```
 
-### 3. DELETE - Remove record
+### 3. DELETE - Remove record with graph rules
 ```javascript
 const result = await ws.api.delete.venues({id: 1});
-// Respects soft_delete if configured
+// Triggers on_delete graph rules (cascades, cleanup, etc.)
 ```
 
 ### 4. LOOKUP - Autocomplete/dropdown data
@@ -99,34 +77,80 @@ const results = await ws.api.search.venues({
   page: 1,
   limit: 25
 });
-// Returns: {data: [...], total: 100, page: 1, limit: 25}
 ```
 
 ## Entity Registration
 
-Register entities to enable the 5 standard operations:
+Register entities to enable all features:
 
 ```sql
 SELECT zeroql.register_entity(
   p_table_name := 'venues',
-  p_label_field := 'name',                         -- for lookup display
-  p_searchable_fields := array['name', 'address'], -- for text search
-  p_fk_includes := '{"org": "organisations"}'::jsonb,  -- foreign keys to dereference
-  p_soft_delete := false,                          -- soft vs hard delete
+  p_label_field := 'name',
+  p_searchable_fields := array['name', 'address'],
+  p_fk_includes := '{"org": "organisations", "sites": "sites"}'::jsonb,
+  p_soft_delete := false,
   p_temporal_fields := '{"valid_from": "valid_from", "valid_to": "valid_to"}'::jsonb,
-  p_notification_paths := '{                       -- who gets real-time updates
+  p_notification_paths := '{
     "ownership": ["@org_id->acts_for[org_id=$]{active}.user_id"]
   }'::jsonb,
-  p_permission_paths := '{                         -- who can CRUD
+  p_permission_paths := '{
     "create": ["@org_id->acts_for[org_id=$]{active}.user_id"],
     "update": ["@org_id->acts_for[org_id=$]{active}.user_id"],
     "delete": ["@org_id->acts_for[org_id=$]{active}.user_id"],
-    "view": []  -- empty = public read
+    "view": []
+  }'::jsonb,
+  p_graph_rules := '{
+    "on_create": {
+      "establish_ownership": {
+        "description": "Creator becomes owner",
+        "actions": [{
+          "type": "create",
+          "entity": "acts_for",
+          "data": {"user_id": "@user_id", "org_id": "@id", "valid_from": "@today"}
+        }]
+      }
+    }
   }'::jsonb
 );
 ```
 
-## Path Syntax (Notifications & Permissions)
+## Graph Rules
+
+Graph rules automatically manage entity relationships when data changes.
+
+### Structure
+```jsonb
+{
+  "on_create": {
+    "rule_name": {
+      "description": "Human-readable description",
+      "actions": [{
+        "type": "create|update|delete",
+        "entity": "target_table",
+        "data": {"field": "@variable"},    // for create/update
+        "match": {"field": "@variable"}    // for update/delete
+      }]
+    }
+  },
+  "on_update": {},
+  "on_delete": {}
+}
+```
+
+### Variables
+- `@user_id` - Current authenticated user
+- `@id` - Primary key of record
+- `@field_name` - Any field from the record
+- `@now` - Current timestamp
+- `@today` - Current date
+
+### Common Patterns
+1. **Creator becomes owner** - Automatically establish relationships
+2. **Cascade delete** - Clean up related records
+3. **Temporal transitions** - End previous relationships
+
+## Path Syntax (Permissions & Notifications)
 
 Paths traverse relationships to determine affected users:
 
@@ -134,72 +158,66 @@ Paths traverse relationships to determine affected users:
 - `@field` - Start from field in current record
 - `->table` - Navigate to related table
 - `[condition]` - Filter rows (`$` = current field value)
-- `{active}` - Apply temporal filtering (current valid only)
+- `{active}` - Apply temporal filtering
 - `.field` - Extract target field
 
 ### Examples
 ```sql
--- Direct user reference
-'@user_id'
-
--- Users who act for the org
-'@org_id->acts_for[org_id=$]{active}.user_id'
-
--- Users via venue->org relationship
-'@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id'
-
--- Complex: contractor users for a package
-'@package_id->contractor_rights[package_id=$]{active}.contractor_org_id->acts_for[org_id=$]{active}.user_id'
+'@user_id'                                                    -- Direct reference
+'@org_id->acts_for[org_id=$]{active}.user_id'               -- Via relationship
+'@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id'  -- Multi-hop
 ```
+
+## FK Includes (Foreign Key Collections)
+
+Two patterns for including related data:
+
+### 1. Foreign Key Dereferencing
+```jsonb
+{"org": "organisations"}  // org_id → organisations table
+```
+
+### 2. Collection Includes
+```jsonb
+{"sites": "sites"}  // Include all sites where sites.venue_id = venues.id
+```
+
+Both patterns work in `p_fk_includes` during entity registration.
 
 ## Authentication
 
-Special-cased auth functions (not through proxy):
-
 ```javascript
-// Login
+// Login (special case - no proxy)
 const auth = await ws.call('login_user', {
   email: 'user@example.com',
   password: 'password'
 });
-// Returns: {user_id, email, token, profile}
 
-// Register
-const newUser = await ws.call('register_user', {
-  email: 'new@example.com',
-  password: 'password'
-});
-// Returns: {user_id, email, token, profile}
+// All subsequent operations include user_id automatically
 ```
-
-After auth, all operations automatically include `user_id` from JWT.
 
 ## Custom Functions
 
 ### PostgreSQL Functions
-1. Create function in PostgreSQL
-2. Register in `zeroql.registry` table (optional, for exposure)
-3. Call via `ws.call('function_name', params)`
+```sql
+CREATE FUNCTION custom_func(p_user_id INT, p_params JSONB)
+-- First param MUST be p_user_id
+```
 
 ### Bun Functions
-1. Export from `/server/functions/*.js`:
 ```javascript
-export async function myCustomFunction(userId, params) {
+// server/api.js
+export async function customFunc(userId, params) {
   // Can use db.api.* for database access
-  const venue = await db.api.get.venues({id: params.venueId, userId});
-  // Business logic here
   return result;
 }
 ```
-2. Auto-discovered on server start
-3. Call via `ws.call('myCustomFunction', params)`
+
+Both callable via: `ws.call('customFunc', params)`
 
 ## Real-time Events
 
-All database changes trigger WebSocket broadcasts:
-
 ```javascript
-// Listen for events
 ws.onBroadcast((method, params) => {
   if (method === 'venues:update') {
     // params: {table, op, pk, before, after, user_id, at}
@@ -207,99 +225,62 @@ ws.onBroadcast((method, params) => {
 });
 ```
 
-Event flow:
-1. Database trigger fires on INSERT/UPDATE/DELETE
-2. Notification paths resolve to `notify_users` array
-3. Event stored in `zeroql.events` table
-4. PostgreSQL NOTIFY on 'zeroql' channel
-5. Bun filters by `notify_users` and broadcasts
-6. Clients receive `{table}:{operation}` events
+Events are filtered by `notify_users` array resolved from notification paths.
+
+## Testing
+
+```javascript
+// Server-side testing (direct database)
+import { db } from 'zeroql';
+const venue = await db.api.get.venues({id: 1, userId: 123});
+
+// Client-side testing (WebSocket)
+const ws = new WebSocketManager();
+await ws.connect();
+await ws.call('login_user', {email: 'test@test.com', password: 'pass'});
+const venue = await ws.api.get.venues({id: 1});
+```
 
 ## Database Conventions
 
-- **Primary Keys**: Use `serial` (auto-increment) or `uuid`
-- **Foreign Keys**: Document as `field: type → Table.field`
-- **User IDs**: Always `int` (serial), never `uuid`
-- **Temporal**: `valid_from`/`valid_to` for time-based relationships
-- **Parameters**: Use `p_` prefix in PostgreSQL functions
-- **Local Variables**: Use `l_` prefix in PostgreSQL functions
+- **Primary Keys**: `serial` (never `uuid` for users)
+- **Foreign Keys**: `field_id: int → table.id`
+- **Temporal**: `valid_from`/`valid_to` columns
+- **Soft Delete**: `deleted_at` column (optional)
+- **Audit**: All changes logged to `zeroql.events`
 
-## Search Operators
+## Key Tables
 
-The search operation supports rich filtering:
+### zeroql.entities
+Entity configuration including graph rules
 
-- **Exact**: `{field: "value"}`
-- **Range**: `{field: {gte: 100, lt: 500}}`
-- **Pattern**: `{field: {like: "%text%"}}` or `{ilike: "%text%"}`
-- **IN array**: `{field: ["val1", "val2"]}`
-- **NULL**: `{field: null}` or `{field: {not_null: true}}`
-- **Text search**: `{_search: "text"}` - searches all searchable_fields
+### zeroql.events
+Audit trail with `notify_users` for targeted broadcasts
 
-## Testing Patterns
+### zeroql.registry
+Optional registration for custom PostgreSQL functions
 
-```javascript
-import { test } from 'bun:test';
+## Common Mistakes to Avoid
 
-// WebSocket testing
-const ws = new WebSocketManager();
-await ws.connect();
-const venue = await ws.api.get.venues({id: 1});
-
-// Direct database testing (server-side)
-const venue = await db.api.get.venues({id: 1, userId: 123});
-```
-
-## Common Tasks
-
-### Create New Entity
-1. Create table in PostgreSQL
-2. Register with `zeroql.register_entity()`
-3. All 5 operations immediately available
-
-### Add Business Logic
-1. Export function from `/server/functions/*.js`
-2. Call via `ws.call('functionName', params)`
-
-### Setup Temporal Data
-1. Add `valid_from` and `valid_to` columns
-2. Include in `p_temporal_fields` when registering
-3. Use `on_date` parameter for historical queries
-
-### Implement Row-Level Security
-1. Define permission paths when registering
-2. Paths automatically enforce who can CRUD
-3. Empty array `[]` means public access
+1. **DON'T register standard operations** - They're automatic
+2. **DON'T use `ws.call('query')` ** - It doesn't exist (security risk)
+3. **DON'T use TypeScript** - Plain JavaScript only
+4. **DON'T skip user_id parameter** - Required for all functions
+5. **DON'T forget cleanup in tests** - Use unique prefixes per test file
 
 ## Development Commands
 
 ```bash
 npm run db:up       # Start PostgreSQL
 npm run db:down     # Stop and remove volumes
-npm run dev         # Start Bun server with hot reload
-bun test           # Run test suite
+npm run dev         # Start Bun server
+npm run todo        # Run test suite (packages/venues)
 ```
-
-## Key Tables
-
-### zeroql.entities
-Configuration for all registered entities (label fields, searchable fields, permissions)
-
-### zeroql.events
-Audit trail of all changes with real-time notification data:
-- `table_name`, `op`, `pk` - What changed
-- `before`, `after` - Old and new values
-- `user_id` - Who made the change
-- `notify_users` - Who to notify (null = everyone)
-- `at` - When it happened
-
-### zeroql.registry
-Optional registration of PostgreSQL functions for RPC exposure
 
 ## Remember
 
-1. **ZeroQL is an extension** - Base RPC + automatic CRUD operations
-2. **Everything uses the same API** - `ws.api.*` for ZeroQL ops, `ws.call()` for custom functions
-3. **No boilerplate** - Register entity once, get 5 operations instantly
-4. **Temporal by default** - Built-in time-travel with `on_date`
-5. **Real-time native** - Every change can trigger targeted notifications
-6. **PostgreSQL is the source of truth** - All business logic can live in the database
+1. **Graph rules are core** - Fully integrated, not optional
+2. **Everything is a proxy** - `ws.api.*` for operations
+3. **Paths are powerful** - Same syntax for permissions/notifications
+4. **Tests need isolation** - Unique data per test file
+5. **PostgreSQL is truth** - All logic can live in database

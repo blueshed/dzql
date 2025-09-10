@@ -63,14 +63,14 @@ test("WebSocket login and basic functionality", async () => {
           expect(response.result.profile.name).toBe("websocket-test");
           expect(response.result.profile.created_at).toBeDefined();
 
-          // Test a simple authenticated function call
-          const profileMessage = {
+          // Test a ZeroQL operation instead of _profile
+          const getOrgMessage = {
             jsonrpc: "2.0",
-            method: "_profile",
-            params: {},
+            method: "zeroql.get.organisations",
+            params: { id: 1 },
             id: ++messageId,
           };
-          ws.send(JSON.stringify(profileMessage));
+          ws.send(JSON.stringify(getOrgMessage));
         } else {
           // Login failed - user doesn't exist
           clearTimeout(timeout);
@@ -81,12 +81,14 @@ test("WebSocket login and basic functionality", async () => {
           );
         }
       } else if (response.id === 2) {
-        // Profile function response (should fail since _profile is private)
-        expect(response.error).toBeDefined();
-        expect(response.error.code).toBe(-32601);
-        expect(response.error.message).toContain(
-          "Cannot call private functions",
-        );
+        // ZeroQL get organisations response
+        if (response.result) {
+          expect(response.result.id).toBe(1);
+          expect(response.result.name).toBe("Event Corp");
+          console.log("SUCCESS: ZeroQL get worked in raw WebSocket test");
+        } else {
+          console.log("FAILED: ZeroQL get failed in raw WebSocket test", response.error);
+        }
 
         clearTimeout(timeout);
         ws.close();

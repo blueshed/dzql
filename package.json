@@ -12,7 +12,8 @@
     "server": "cd packages/rights && bun run dev",
     "dev": "concurrently -n \"client,server\" -c \"blue,green\" \"bun run client\" \"bun run server\"",
     "db": "cd packages/rights/database && docker compose down -v && docker compose up -d",
-    "db:logs": "bun run --cwd packages/rights db:logs"
+    "db:logs": "bun run --cwd packages/rights db:logs",
+    "todo": "cd packages/venues && bun test"
   },
   "devDependencies": {
     "@types/bun": "latest"

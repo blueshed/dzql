@@ -471,9 +471,8 @@ test("All filter types combined", async () => {
 // ERROR HANDLING
 // ============================================================================
 
-test("Invalid column name in filter throws exception", async () => {
-  // Should throw an exception for invalid columns
-  let error = null;
+test("Invalid column name in filter throws error", async () => {
+  // Current behavior: invalid columns throw an error (which is good!)
   try {
     await db.api.search.venues(
       {
@@ -484,12 +483,11 @@ test("Invalid column name in filter throws exception", async () => {
       },
       1,
     );
-  } catch (e) {
-    error = e;
+    // Should not reach here
+    expect(true).toBe(false);
+  } catch (error) {
+    expect(error.message).toContain("Column invalid_column does not exist");
   }
-
-  expect(error).not.toBeNull();
-  expect(error.message).toContain("Column invalid_column does not exist");
 });
 
 test("Invalid operator silently ignored", async () => {

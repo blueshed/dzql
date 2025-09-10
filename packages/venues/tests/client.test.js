@@ -3,12 +3,16 @@ import { sql } from "zeroql";
 import { setupTestServer, teardownTestServer } from "./test-server.js";
 
 // Import the actual WebSocket manager from client
-import { useWs } from "../client/ws.js";
+import { useWs } from "../../zeroql/src/client/ws.js";
 
 let server;
 let testUser;
 
 beforeAll(async () => {
+  // Reset WebSocket manager singleton to ensure clean state
+  const ws = useWs();
+  ws.reset();
+
   // Use a unique email for this test run to avoid conflicts
   const testEmail = `proxy-test-${Date.now()}@example.com`;
 
@@ -43,6 +47,7 @@ afterAll(async () => {
 
 test("Client proxy API - end-to-end with real WebSocket", async () => {
   const ws = useWs();
+  ws.reset(); // Reset state before test
 
   return new Promise(async (resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -52,20 +57,7 @@ test("Client proxy API - end-to-end with real WebSocket", async () => {
 
     try {
       // Connect to WebSocket
-      ws.reset(); // Clean state
-      ws.connect();
-
-      // Wait for connection
-      await new Promise((resolve) => {
-        const checkConnection = () => {
-          if (ws.isConnected()) {
-            resolve();
-          } else {
-            setTimeout(checkConnection, 100);
-          }
-        };
-        checkConnection();
-      });
+      await ws.connect();
 
       // Login first
       const loginResult = await ws.api.login_user({
@@ -121,11 +113,15 @@ test("Client proxy API - end-to-end with real WebSocket", async () => {
       });
       expect(deleteResult.id).toBe(saveResult.id);
 
-      // Verify deletion worked
-      const emptyResult = await ws.api.get.organisations({
-        id: saveResult.id,
-      });
-      expect(emptyResult).toEqual({});
+      // Verify deletion worked - should throw error for non-existent record
+      try {
+        await ws.api.get.organisations({
+          id: saveResult.id,
+        });
+        throw new Error("Should have thrown an error for deleted record");
+      } catch (error) {
+        expect(error.message).toContain("record not found");
+      }
 
       clearTimeout(timeout);
       ws.cleanDisconnect();

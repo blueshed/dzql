@@ -200,15 +200,11 @@ test("Contractor rights - temporal filtering with explicit user resolution", asy
 });
 
 test("Event creation with notification paths", async () => {
-  // Set current user for audit
-  await sql`SELECT zeroql.set_current_user(102)`;
-
-  // Update a venue - should trigger notification path resolution
-  await sql`
-    UPDATE venues
-    SET description = 'Updated via test'
-    WHERE id = 101
-  `;
+  // Use the API to update a venue - this will create an event
+  const updated = await db.api.save.venues({
+    id: 101,
+    description: 'Updated via API test'
+  }, 101);
 
   // Check that event was created with correct notify_users
   const events = await sql`
@@ -221,15 +217,16 @@ test("Event creation with notification paths", async () => {
 
   expect(events.length).toBe(1);
   expect(events[0].notify_users).toContain(101); // venue owner should be notified
+  expect(events[0].user_id).toBe(101); // correct user_id
 });
 
 test("Multiple organization notification paths", async () => {
   // Test that all related organizations get notified
-  await sql`
-    UPDATE allocations
-    SET from_date = '2024-08-01'
-    WHERE id = 101
-  `;
+  // Use ZeroQL API to update allocation - this will create an event
+  const updated = await db.api.save.allocations({
+    id: 101,
+    from_date: '2024-08-01'
+  }, 102);
 
   const events = await sql`
     SELECT * FROM zeroql.events

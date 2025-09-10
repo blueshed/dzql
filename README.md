@@ -281,6 +281,178 @@ const pastRights = await ws.api.get.contractor_rights({
 });
 ```
 
+## Graph Rules
+
+Graph rules automatically manage entity relationships when data changes. They eliminate boilerplate for common patterns like "creator becomes owner" or "cascade deletes".
+
+### Configuring Graph Rules
+
+Graph rules are configured when registering an entity:
+
+```sql
+SELECT zeroql.register_entity(
+  'organisations',
+  'name',
+  array['name', 'description'],
+  '{}',
+  false,
+  '{}',
+  '{}',  -- notification paths
+  '{}',  -- permission paths
+  jsonb_build_object(
+    'on_create', jsonb_build_object(
+      'establish_ownership', jsonb_build_object(
+        'description', 'Creator becomes member of organisation',
+        'actions', jsonb_build_array(
+          jsonb_build_object(
+            'type', 'create',
+            'entity', 'acts_for',
+            'data', jsonb_build_object(
+              'user_id', '@user_id',
+              'org_id', '@id',
+              'valid_from', '@today'
+            )
+          )
+        )
+      )
+    ),
+    'on_delete', jsonb_build_object(
+      'cascade_venues', jsonb_build_object(
+        'description', 'Delete all venues when org is deleted',
+        'actions', jsonb_build_array(
+          jsonb_build_object(
+            'type', 'delete',
+            'entity', 'venues',
+            'match', jsonb_build_object('org_id', '@id')
+          )
+        )
+      )
+    )
+  )
+);
+```
+
+### Graph Rule Structure
+
+```jsonb
+{
+  "on_create": {
+    "rule_name": {
+      "description": "Human-readable description",
+      "actions": [
+        {
+          "type": "create|update|delete",
+          "entity": "target_table",
+          "data": {"field": "@variable"},      // for create/update
+          "match": {"field": "@variable"}      // for update/delete
+        }
+      ]
+    }
+  },
+  "on_update": { /* similar structure */ },
+  "on_delete": { /* similar structure */ }
+}
+```
+
+### Variable System
+
+Graph rules use variables to reference data from the triggering operation:
+
+**Built-in Variables:**
+- `@user_id` - Current authenticated user
+- `@id` - Primary key of the record
+- `@field_name` - Any field from the record
+- `@now` - Current timestamp
+- `@today` - Current date
+
+**Examples:**
+```jsonb
+{
+  "data": {
+    "user_id": "@user_id",     // Current user becomes owner
+    "org_id": "@id",           // Reference to created org
+    "valid_from": "@today"     // Today's date
+  }
+}
+```
+
+### Common Graph Rule Patterns
+
+#### 1. Creator Becomes Owner
+When a user creates an organisation, they automatically become a member:
+
+```jsonb
+{
+  "on_create": {
+    "establish_ownership": {
+      "description": "Creator becomes member of organisation",
+      "actions": [{
+        "type": "create",
+        "entity": "acts_for",
+        "data": {
+          "user_id": "@user_id",
+          "org_id": "@id",
+          "valid_from": "@today"
+        }
+      }]
+    }
+  }
+}
+```
+
+#### 2. Cascade Delete
+When an organisation is deleted, delete all its venues:
+
+```jsonb
+{
+  "on_delete": {
+    "cascade_venues": {
+      "description": "Delete all venues when org is deleted",
+      "actions": [{
+        "type": "delete",
+        "entity": "venues",
+        "match": {"org_id": "@id"}
+      }]
+    }
+  }
+}
+```
+
+#### 3. Temporal Transitions
+End previous relationship when creating a new one:
+
+```jsonb
+{
+  "on_create": {
+    "expire_previous": {
+      "description": "End previous temporal relationship",
+      "actions": [{
+        "type": "update",
+        "entity": "acts_for",
+        "match": {
+          "user_id": "@user_id",
+          "org_id": "@org_id",
+          "valid_to": null
+        },
+        "data": {
+          "valid_to": "@valid_from"
+        }
+      }]
+    }
+  }
+}
+```
+
+### How Graph Rules Work
+
+1. **Trigger**: When you save/delete an entity, graph rules check for configured rules
+2. **Variable Resolution**: Variables like `@user_id` and `@id` are replaced with actual values
+3. **Action Execution**: Each action (create/update/delete) runs in sequence
+4. **Transaction**: All changes are atomic - if any rule fails, everything rolls back
+5. **Event Generation**: Graph rule actions generate their own audit events
+
+Graph rules run automatically within the same transaction as the triggering operation, ensuring data consistency.
+
 ## Custom Functions
 
 ZeroQL supports two types of custom functions that extend beyond the 5 standard operations:
