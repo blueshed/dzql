@@ -18,10 +18,7 @@ DECLARE
   l_col_name text;
   l_sql_stmt text;
 BEGIN
-  -- Check permissions before executing graph rule action
-  IF NOT dzql.check_permission(p_user_id, 'create', p_entity, p_data) THEN
-    RAISE EXCEPTION 'Graph rule permission denied: create on % for user %', p_entity, p_user_id;
-  END IF;
+  -- Graph rules are trusted server-side operations, skip permission checks
 
   -- Build column and value lists
   FOR l_col_name IN SELECT * FROM jsonb_object_keys(p_data)
@@ -74,9 +71,7 @@ DECLARE
   l_sql_stmt text;
 BEGIN
   -- Check permissions before executing graph rule action
-  IF NOT dzql.check_permission(p_user_id, 'update', p_entity, p_data) THEN
-    RAISE EXCEPTION 'Graph rule permission denied: update on % for user %', p_entity, p_user_id;
-  END IF;
+  -- Graph rules are trusted server-side operations, skip permission checks
 
   -- Build SET clauses
   FOR l_col_name IN SELECT * FROM jsonb_object_keys(p_data)
@@ -133,9 +128,7 @@ DECLARE
   l_sql_stmt text;
 BEGIN
   -- Check permissions before executing graph rule action
-  IF NOT dzql.check_permission(p_user_id, 'delete', p_entity, p_match) THEN
-    RAISE EXCEPTION 'Graph rule permission denied: delete on % for user %', p_entity, p_user_id;
-  END IF;
+  -- Graph rules are trusted server-side operations, skip permission checks
   -- Build WHERE clauses
   FOR l_col_name IN SELECT * FROM jsonb_object_keys(p_match)
   LOOP

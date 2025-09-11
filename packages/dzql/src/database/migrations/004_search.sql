@@ -233,12 +233,34 @@ DECLARE
   l_total int;
   l_data jsonb;
   l_column_exists boolean;
+  l_pk_cols text[];
+  l_pk_order text;
+  l_fk_includes jsonb;
+  l_key text;
+  l_value text;
+  l_fk_result jsonb;
+  l_record jsonb;
+  l_processed_data jsonb[] := '{}';
+  i int;
 BEGIN
   -- Get entity configuration
   SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_entity;
 
   IF l_entity_config IS NULL THEN
     RAISE EXCEPTION 'DZQL: entity % not configured', p_entity;
+  END IF;
+
+  -- Get primary key columns for default ordering
+  SELECT array_agg(a.attname ORDER BY a.attnum)
+    INTO l_pk_cols
+  FROM pg_index i
+  JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+  WHERE i.indrelid = p_entity::regclass AND i.indisprimary;
+
+  IF l_pk_cols IS NOT NULL THEN
+    l_pk_order := array_to_string(array(SELECT format('t.%I', col) FROM unnest(l_pk_cols) AS col), ', ');
+  ELSE
+    l_pk_order := 't.*';
   END IF;
 
   -- Extract filters and parameters
@@ -333,11 +355,48 @@ BEGIN
       l_base_sql, l_order_clause, l_limit, l_offset);
   ELSE
     -- Use subquery even without ORDER BY to ensure LIMIT is applied before aggregation
-    l_data_sql := format('SELECT COALESCE(jsonb_agg(to_jsonb(sub.*)), ''[]''::jsonb) FROM (SELECT t.* %s ORDER BY t.id LIMIT %L OFFSET %L) sub',
-      l_base_sql, l_limit, l_offset);
+    l_data_sql := format('SELECT COALESCE(jsonb_agg(to_jsonb(sub.*)), ''[]''::jsonb) FROM (SELECT t.* %s ORDER BY %s LIMIT %L OFFSET %L) sub',
+      l_base_sql, l_pk_order, l_limit, l_offset);
   END IF;
 
   EXECUTE l_data_sql INTO l_data;
+
+  -- Process FK dereferencing for each record
+  l_fk_includes := l_entity_config.fk_includes;
+  IF l_fk_includes IS NOT NULL AND l_fk_includes != '{}' AND l_data IS NOT NULL AND jsonb_array_length(l_data) > 0 THEN
+    -- Process each record in the data array
+    FOR i IN 0..jsonb_array_length(l_data) - 1 LOOP
+      l_record := l_data->i;
+
+      -- Dereference foreign keys for this record
+      FOR l_key, l_value IN SELECT key, value FROM jsonb_each_text(l_fk_includes)
+      LOOP
+        -- Handle different FK reference formats
+        IF l_value LIKE '%.%' THEN
+          -- Format: "table.field" for reverse foreign keys
+          l_fk_result := dzql.resolve_reverse_fk(l_record, l_key, l_value, l_on_date);
+        ELSIF l_key = l_value THEN
+          -- When key equals value (e.g., "sites": "sites"), it's a reverse FK
+          -- The target table has a field named {entity_singular}_id pointing back to this entity
+          -- Convert plural entity name to singular (simple rule: remove trailing 's')
+          l_fk_result := dzql.resolve_reverse_fk(l_record, l_key,
+            l_value || '.' || regexp_replace(p_entity, 's$', '') || '_id', l_on_date);
+        ELSE
+          -- Format: "table" for direct foreign keys
+          l_fk_result := dzql.resolve_direct_fk(l_record, l_key, l_value, l_on_date);
+        END IF;
+
+        IF l_fk_result IS NOT NULL THEN
+          l_record := l_record || jsonb_build_object(l_key, l_fk_result);
+        END IF;
+      END LOOP;
+
+      l_processed_data := l_processed_data || l_record;
+    END LOOP;
+
+    -- Convert processed data back to jsonb array
+    l_data := to_jsonb(l_processed_data);
+  END IF;
 
   RETURN jsonb_build_object(
     'data', COALESCE(l_data, '[]'::jsonb),

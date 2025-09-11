@@ -175,8 +175,17 @@ BEGIN
   -- Handle simple field reference: @field_name
   IF p_segment LIKE '@%' THEN
     l_field_name := substring(p_segment from 2);
-    IF p_record ? l_field_name THEN
-      RETURN to_jsonb(array[p_record->>l_field_name]::int[]);
+    IF p_record ? l_field_name AND p_record->>l_field_name IS NOT NULL THEN
+      DECLARE
+        l_field_value text;
+      BEGIN
+        l_field_value := p_record->>l_field_name;
+        -- Try to convert to integer and return as array
+        RETURN to_jsonb(array[l_field_value::int]);
+      EXCEPTION WHEN OTHERS THEN
+        -- If conversion fails, return as text array
+        RETURN to_jsonb(array[l_field_value]);
+      END;
     END IF;
     RETURN null;
   END IF;
@@ -388,10 +397,25 @@ BEGIN
             l_j int;
             l_temp_segment text;
             l_temp_ids int[];
+            l_temp_value int;
+            l_segment_table text;
+            l_segment_record jsonb;
           BEGIN
             FOR l_j IN 0..jsonb_array_length(l_current_result) - 1 LOOP
               l_temp_segment := replace(l_continuation_parts[l_i], '$', (l_current_result->>l_j)::text);
-              l_temp_ids := array(SELECT jsonb_array_elements_text(dzql.resolve_path_segment(null, null, l_temp_segment))::int);
+
+              -- Handle table.field syntax in continuation segments
+              IF l_temp_segment ~ '^[a-z_]+\.[a-z_]+' THEN
+                l_segment_table := split_part(l_temp_segment, '.', 1);
+                l_field_name := split_part(l_temp_segment, '.', 2);
+                -- Query the table directly to get the field value
+                l_sql := format('SELECT %I FROM %I WHERE id = %L', l_field_name, l_segment_table, (l_current_result->>l_j)::int);
+                EXECUTE l_sql INTO l_temp_value;
+                l_temp_ids := array[l_temp_value];
+              ELSE
+                l_temp_ids := array(SELECT jsonb_array_elements_text(dzql.resolve_path_segment(null, null, l_temp_segment))::int);
+              END IF;
+
               l_current_ids := l_current_ids || coalesce(l_temp_ids, '{}');
             END LOOP;
           END;
@@ -399,7 +423,22 @@ BEGIN
         ELSE
           -- Single value result
           l_current_segment := replace(l_current_segment, '$', l_current_result::text);
-          l_current_result := dzql.resolve_path_segment(null, null, l_current_segment);
+
+          -- Handle table.field syntax in continuation segments
+          IF l_current_segment ~ '^[a-z_]+\.[a-z_]+' THEN
+            l_table_name := split_part(l_current_segment, '.', 1);
+            l_field_name := split_part(l_current_segment, '.', 2);
+            -- Query the table directly to get the field value
+            DECLARE
+              l_field_value int;
+            BEGIN
+              l_sql := format('SELECT %I FROM %I WHERE id = %L', l_field_name, l_table_name, l_current_result::text::int);
+              EXECUTE l_sql INTO l_field_value;
+              l_current_result := to_jsonb(array[l_field_value]);
+            END;
+          ELSE
+            l_current_result := dzql.resolve_path_segment(null, null, l_current_segment);
+          END IF;
         END IF;
       ELSE
         RETURN '{}';  -- Path broken

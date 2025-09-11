@@ -173,23 +173,66 @@ function createEntityProxy(operation) {
   );
 }
 
-// DZQL database API proxy
+// DZQL database API proxy with custom function support
 export const db = {
-  api: {
-    get: createEntityProxy("get"),
-    save: createEntityProxy("save"),
-    delete: createEntityProxy("delete"),
-    lookup: createEntityProxy("lookup"),
-    search: createEntityProxy("search"),
-
-    // Legacy support for custom functions
-    exec: async (functionName, args, userId) => {
-      if (!userId) {
-        throw new Error("userId is required for function calls");
-      }
-      return callUserFunction(functionName, userId, args);
+  api: new Proxy(
+    {
+      get: createEntityProxy("get"),
+      save: createEntityProxy("save"),
+      delete: createEntityProxy("delete"),
+      lookup: createEntityProxy("lookup"),
+      search: createEntityProxy("search"),
+      exec: async (functionName, args, userId) => {
+        if (!userId) {
+          throw new Error("userId is required for function calls");
+        }
+        return callUserFunction(functionName, userId, args);
+      },
+      // Permission and path resolution utilities
+      checkPermission: async (userId, operation, entity, record) => {
+        const result = await sql`
+          SELECT dzql.check_permission(${userId}, ${operation}, ${entity}, ${JSON.stringify(record)}) as allowed
+        `;
+        return result[0].allowed;
+      },
+      resolveNotificationPath: async (tableName, record, path) => {
+        const result = await sql`
+          SELECT dzql.resolve_notification_path(${tableName}, ${JSON.stringify(record)}, ${path}) as user_ids
+        `;
+        return result[0].user_ids;
+      },
+      resolveNotificationPaths: async (tableName, record) => {
+        const result = await sql`
+          SELECT dzql.resolve_notification_paths(${tableName}, ${JSON.stringify(record)}) as user_ids
+        `;
+        return result[0].user_ids;
+      },
     },
-  },
+    {
+      get(target, prop) {
+        // Return existing DZQL operations
+        if (target[prop]) {
+          return target[prop];
+        }
+
+        // Handle custom functions
+        return async (userIdOrArgs, args = {}) => {
+          // Special handling for auth functions that don't require userId
+          if (prop === 'register_user' || prop === 'login_user') {
+            // For auth functions, first param is the args object
+            return callAuthFunction(prop, userIdOrArgs.email, userIdOrArgs.password);
+          }
+
+          // For other functions, userId is required as first parameter
+          if (!userIdOrArgs) {
+            throw new Error(`userId is required for function ${prop}`);
+          }
+
+          return callUserFunction(prop, userIdOrArgs, args);
+        };
+      },
+    }
+  ),
 };
 
 // Graceful shutdown

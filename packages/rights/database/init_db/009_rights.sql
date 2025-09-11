@@ -464,6 +464,24 @@ SELECT dzql.register_entity(
         'update', array['@id->acts_for[org_id=$]{active}.user_id'],
         'delete', array['@id->acts_for[org_id=$]{active}.user_id'],
         'view', array[]::text[]
+    ),
+    jsonb_build_object(
+        'on_create', jsonb_build_object(
+            'establish_ownership', jsonb_build_object(
+                'description', 'Creator becomes member of organisation',
+                'actions', jsonb_build_array(
+                    jsonb_build_object(
+                        'type', 'create',
+                        'entity', 'acts_for',
+                        'data', jsonb_build_object(
+                            'user_id', '@user_id',
+                            'org_id', '@id',
+                            'valid_from', '@today'
+                        )
+                    )
+                )
+            )
+        )
     )
 );
 

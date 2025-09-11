@@ -126,12 +126,36 @@ DECLARE
   l_key text;
   l_value text;
   l_fk_result jsonb;
+  l_pk_cols text[];
+  l_is_compound_key boolean;
+  l_lookup_result jsonb;
 BEGIN
   -- Get entity configuration
   SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_entity;
 
   IF l_entity_config IS NULL THEN
     RAISE EXCEPTION 'DZQL: entity % not configured', p_entity;
+  END IF;
+
+  -- Get primary key columns to check if this is a compound key
+  SELECT array_agg(a.attname ORDER BY a.attnum)
+    INTO l_pk_cols
+  FROM pg_index i
+  JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+  WHERE i.indrelid = p_entity::regclass AND i.indisprimary;
+
+  -- Check if this is a compound key
+  l_is_compound_key := array_length(l_pk_cols, 1) > 1;
+
+  -- For compound keys, use LOOKUP logic and return the label
+  IF l_is_compound_key THEN
+    l_lookup_result := dzql.generic_lookup(p_entity, p_args, p_user_id);
+
+    IF l_lookup_result IS NOT NULL AND jsonb_array_length(l_lookup_result) > 0 THEN
+      RETURN l_lookup_result->0->'label';
+    ELSE
+      RETURN NULL;
+    END IF;
   END IF;
 
   -- Extract primary key
@@ -228,6 +252,10 @@ DECLARE
   l_operation text;
   l_permission_record jsonb;
   l_graph_rules_result jsonb;
+  l_is_insert boolean := false;
+  l_pk_where text;
+  l_pk_where_clauses text[] := array[]::text[];
+  i int;
 BEGIN
   -- Ensure p_args is proper JSONB
   l_args_json := p_args::jsonb;
@@ -250,20 +278,35 @@ BEGIN
     RAISE EXCEPTION 'DZQL: entity % has no primary key', p_entity;
   END IF;
 
-  -- Check if this is an update (has ID) or insert (no ID)
-  l_record_id := l_args_json ->> l_pk_cols[1]; -- assume first PK column is the ID
+  -- Check if this is an update (has all PKs) or insert (missing any PK)
+  -- Check if any PK column is missing
+  FOR i IN 1..array_length(l_pk_cols, 1) LOOP
+    IF l_args_json ->> l_pk_cols[i] IS NULL THEN
+      l_is_insert := true;
+      EXIT;
+    END IF;
+  END LOOP;
 
-  IF l_record_id IS NOT NULL AND l_record_id != '' THEN
-    -- UPDATE: Merge with existing record
+  -- If all PK columns provided, check if record exists
+  IF NOT l_is_insert THEN
+    -- Build composite WHERE clause for existing record check
+    FOR i IN 1..array_length(l_pk_cols, 1) LOOP
+      l_pk_where_clauses := l_pk_where_clauses ||
+        format('%I = %L', l_pk_cols[i], l_args_json ->> l_pk_cols[i]);
+    END LOOP;
+    l_pk_where := array_to_string(l_pk_where_clauses, ' AND ');
 
-    -- Get existing record
-    l_sql_stmt := format('SELECT to_jsonb(t.*) FROM %I t WHERE %I = %L',
-                      p_entity, l_pk_cols[1], l_record_id);
+    -- Get existing record using composite WHERE clause
+    l_sql_stmt := format('SELECT to_jsonb(t.*) FROM %I t WHERE %s', p_entity, l_pk_where);
     EXECUTE l_sql_stmt INTO l_existing_record;
 
     IF l_existing_record IS NULL THEN
-      RAISE EXCEPTION 'DZQL: record with id % not found in %', l_record_id, p_entity;
+      l_is_insert := true;
     END IF;
+  END IF;
+
+  IF NOT l_is_insert THEN
+    -- UPDATE: Merge with existing record
 
     -- Check update permission on existing record
     l_operation := 'update';
@@ -279,16 +322,17 @@ BEGIN
     l_set_clauses := array[]::text[];
     FOR l_col_name IN SELECT jsonb_object_keys(l_merged_data)
     LOOP
-      IF l_col_name != l_pk_cols[1] THEN -- don't update the primary key
+      -- Don't update any primary key columns
+      IF NOT (l_col_name = ANY(l_pk_cols)) THEN
         l_set_clauses := l_set_clauses || format('%I = %L', l_col_name, l_merged_data ->> l_col_name);
       END IF;
     END LOOP;
 
-    -- Execute UPDATE
-    l_sql_stmt := format('UPDATE %I SET %s WHERE %I = %L RETURNING to_jsonb(%I.*)',
+    -- Execute UPDATE using composite WHERE clause
+    l_sql_stmt := format('UPDATE %I SET %s WHERE %s RETURNING to_jsonb(%I.*)',
                       p_entity,
                       array_to_string(l_set_clauses, ', '),
-                      l_pk_cols[1], l_record_id,
+                      l_pk_where,
                       p_entity);
     EXECUTE l_sql_stmt INTO l_result;
 
@@ -334,7 +378,7 @@ BEGIN
                       p_entity);
     EXECUTE l_sql_stmt INTO l_result;
 
-    -- Execute graph rules for create
+    -- Execute graph rules for insert
     l_graph_rules_result := dzql.execute_graph_rules(
       p_entity,
       'insert',
@@ -343,6 +387,15 @@ BEGIN
       p_user_id
     );
   END IF;
+
+  -- Execute graph rules for the appropriate operation
+  l_graph_rules_result := dzql.execute_graph_rules(
+    p_entity,
+    CASE WHEN l_is_insert THEN 'insert' ELSE 'update' END,
+    CASE WHEN l_is_insert THEN NULL ELSE l_existing_record END,
+    l_result,
+    p_user_id
+  );
 
   -- Create event for the operation (INSERT or UPDATE)
   INSERT INTO dzql.events (
@@ -355,9 +408,12 @@ BEGIN
     notify_users
   ) VALUES (
     p_entity,
-    CASE WHEN l_record_id IS NULL THEN 'insert' ELSE 'update' END,
-    jsonb_build_object('id', COALESCE(l_record_id, l_result->>'id')),
-    CASE WHEN l_record_id IS NOT NULL THEN l_existing_record ELSE NULL END,
+    CASE WHEN l_is_insert THEN 'insert' ELSE 'update' END,
+    (
+      SELECT jsonb_object_agg(col, l_result ->> col)
+      FROM unnest(l_pk_cols) AS col
+    ),
+    CASE WHEN NOT l_is_insert THEN l_existing_record ELSE NULL END,
     l_result,
     p_user_id,
     dzql.resolve_notification_paths(p_entity, l_result)
@@ -383,12 +439,13 @@ SECURITY INVOKER
 AS $$
 DECLARE
   l_entity_config record;
-  l_pk_field text;
-  l_pk_value text;
-  l_delete_sql text;
-  l_result jsonb;
-  l_existing_record jsonb;
+  l_pk_cols text[];
+  l_pk_where text;
+  l_pk_where_clauses text[] := array[]::text[];
+  l_record jsonb;
   l_graph_rules_result jsonb;
+  i int;
+  l_pk_provided boolean := true;
 BEGIN
   -- Get entity configuration
   SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_entity;
@@ -397,56 +454,68 @@ BEGIN
     RAISE EXCEPTION 'DZQL: entity % not configured', p_entity;
   END IF;
 
-  -- Extract primary key
-  l_pk_field := 'id';
-  l_pk_value := p_args ->> ('p_' || p_entity || '_id');
-  IF l_pk_value IS NULL THEN
-    l_pk_value := p_args ->> 'p_id';
-  END IF;
-  IF l_pk_value IS NULL THEN
-    l_pk_value := p_args ->> 'id';
+  -- Get primary key columns
+  SELECT array_agg(a.attname ORDER BY a.attnum)
+    INTO l_pk_cols
+  FROM pg_index i
+  JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+  WHERE i.indrelid = p_entity::regclass AND i.indisprimary;
+
+  IF l_pk_cols IS NULL THEN
+    RAISE EXCEPTION 'DZQL: entity % has no primary key', p_entity;
   END IF;
 
-  IF l_pk_value IS NULL THEN
+  -- Build composite WHERE clause from provided PK values
+  FOR i IN 1..array_length(l_pk_cols, 1) LOOP
+    DECLARE
+      l_pk_value text := p_args ->> l_pk_cols[i];
+    BEGIN
+      IF l_pk_value IS NULL THEN
+        l_pk_provided := false;
+        EXIT;
+      END IF;
+      l_pk_where_clauses := l_pk_where_clauses ||
+        format('%I = %L', l_pk_cols[i], l_pk_value);
+    END;
+  END LOOP;
+
+  IF NOT l_pk_provided THEN
     RAISE EXCEPTION 'DZQL: no primary key provided for entity %', p_entity;
   END IF;
 
-  -- Get existing record for permission check and graph rules
-  EXECUTE format('SELECT to_jsonb(t.*) FROM %I t WHERE %I = %L',
-                 p_entity, l_pk_field, l_pk_value)
-  INTO l_existing_record;
+  l_pk_where := array_to_string(l_pk_where_clauses, ' AND ');
 
-  IF l_existing_record IS NULL THEN
+  -- Get existing record for permission check and graph rules
+  EXECUTE format('SELECT to_jsonb(t.*) FROM %I t WHERE %s', p_entity, l_pk_where)
+  INTO l_record;
+
+  IF l_record IS NULL THEN
     RAISE EXCEPTION 'DZQL: record not found in %', p_entity;
   END IF;
 
   -- Check delete permission on existing record
-  IF NOT dzql.check_permission(p_user_id, 'delete', p_entity, l_existing_record) THEN
+  IF NOT dzql.check_permission(p_user_id, 'delete', p_entity, l_record) THEN
     RAISE EXCEPTION 'Permission denied: delete on %', p_entity;
   END IF;
 
-  -- Execute graph rules BEFORE deletion (so we can access the record)
+  -- Execute graph rules for delete
   l_graph_rules_result := dzql.execute_graph_rules(
     p_entity,
     'delete',
-    l_existing_record,
+    l_record,
     NULL,
     p_user_id
   );
 
-  -- Perform the actual delete
+  -- Perform the actual delete using composite WHERE clause
   IF l_entity_config.soft_delete THEN
-    l_delete_sql := format('UPDATE %I SET deleted_at = now() WHERE %I = %L RETURNING to_jsonb(%I.*)',
-                        p_entity, l_pk_field, l_pk_value, p_entity);
+    EXECUTE format('UPDATE %I SET deleted_at = now() WHERE %s', p_entity, l_pk_where);
   ELSE
-    l_delete_sql := format('DELETE FROM %I WHERE %I = %L RETURNING to_jsonb(%I.*)',
-                        p_entity, l_pk_field, l_pk_value, p_entity);
+    EXECUTE format('DELETE FROM %I WHERE %s', p_entity, l_pk_where);
   END IF;
 
-  EXECUTE l_delete_sql INTO l_result;
 
-  -- Ensure we have a result object
-  l_result := COALESCE(l_result, l_existing_record);
+
 
   -- Create event for the delete operation
   INSERT INTO dzql.events (
@@ -460,19 +529,22 @@ BEGIN
   ) VALUES (
     p_entity,
     'delete',
-    jsonb_build_object('id', l_pk_value),
-    l_existing_record,
+    (
+      SELECT jsonb_object_agg(col, l_record ->> col)
+      FROM unnest(l_pk_cols) AS col
+    ),
+    l_record,
     NULL,
     p_user_id,
-    dzql.resolve_notification_paths(p_entity, l_existing_record)
+    dzql.resolve_notification_paths(p_entity, l_record)
   );
 
   -- Add graph rules execution summary to result if rules were executed
   IF l_graph_rules_result IS NOT NULL AND l_graph_rules_result != '{}' THEN
-    l_result := l_result || jsonb_build_object('_graph_rules', l_graph_rules_result);
+    l_record := l_record || jsonb_build_object('graph_rules', l_graph_rules_result);
   END IF;
 
-  RETURN l_result;
+  RETURN l_record;
 END $$;
 
 -- === Generic LOOKUP Operation ===
@@ -494,12 +566,46 @@ DECLARE
   l_on_date timestamptz;
   l_sql_stmt text;
   l_result jsonb;
+  l_pk_cols text[];
+  l_pk_value_expr text;
+  l_is_compound_key boolean;
+  l_fk_includes jsonb;
+  l_key text;
+  l_value text;
+  l_fk_result jsonb;
+  l_record jsonb;
+  l_processed_data jsonb[] := '{}';
+  l_label_obj jsonb;
+  i int;
 BEGIN
   -- Get entity configuration
   SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_entity;
 
   IF l_entity_config IS NULL THEN
     RAISE EXCEPTION 'DZQL: entity % not configured', p_entity;
+  END IF;
+
+  -- Get primary key columns
+  SELECT array_agg(a.attname ORDER BY a.attnum)
+    INTO l_pk_cols
+  FROM pg_index i
+  JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+  WHERE i.indrelid = p_entity::regclass AND i.indisprimary;
+
+  IF l_pk_cols IS NULL THEN
+    RAISE EXCEPTION 'DZQL: entity % has no primary key', p_entity;
+  END IF;
+
+  -- Check if this is a compound key
+  l_is_compound_key := array_length(l_pk_cols, 1) > 1;
+
+  -- Build primary key value expression
+  IF l_is_compound_key THEN
+    -- Composite primary key - concatenate values
+    l_pk_value_expr := format('CONCAT(%s)', array_to_string(array(SELECT format('%I', col) FROM unnest(l_pk_cols) AS col), ', ''-'', '));
+  ELSE
+    -- Single primary key
+    l_pk_value_expr := l_pk_cols[1];
   END IF;
 
   -- Extract parameters
@@ -523,14 +629,65 @@ BEGIN
 
   l_where_clause := l_where_clause || l_temporal_filter;
 
-  -- Build and execute query with permission check for lookup
-  l_sql_stmt := format(
-    'SELECT COALESCE(jsonb_agg(jsonb_build_object(''label'', %I, ''value'', id) ORDER BY %I), ''[]''::jsonb)
-     FROM %I t WHERE %s AND dzql.check_permission(%L, ''view'', %L, to_jsonb(t.*)) LIMIT 50',
-    l_label_field, l_label_field, p_entity, l_where_clause, p_user_id, p_entity
-  );
+  IF l_is_compound_key AND l_entity_config.fk_includes IS NOT NULL AND l_entity_config.fk_includes != '{}' THEN
+    -- For compound keys with FK includes, build full dereferenced labels
+    l_sql_stmt := format(
+      'SELECT COALESCE(jsonb_agg(to_jsonb(t.*) ORDER BY %I), ''[]''::jsonb)
+       FROM %I t WHERE %s AND dzql.check_permission(%L, ''view'', %L, to_jsonb(t.*)) LIMIT 50',
+      l_label_field, p_entity, l_where_clause, p_user_id, p_entity
+    );
 
-  EXECUTE l_sql_stmt INTO l_result;
+    EXECUTE l_sql_stmt INTO l_result;
+
+    -- Process FK dereferencing for each record
+    l_fk_includes := l_entity_config.fk_includes;
+    IF l_result IS NOT NULL AND jsonb_array_length(l_result) > 0 THEN
+      -- Process each record in the result array
+      FOR i IN 0..jsonb_array_length(l_result) - 1 LOOP
+        l_record := l_result->i;
+        l_label_obj := l_record; -- Start with base record
+
+        -- Dereference foreign keys for this record, getting only label fields
+        FOR l_key, l_value IN SELECT key, value FROM jsonb_each_text(l_fk_includes)
+        LOOP
+          -- Handle direct FK only for compound keys (resolve_direct_fk returns full record)
+          l_fk_result := dzql.resolve_direct_fk(l_record, l_key, l_value, l_on_date);
+
+          -- Extract just the label_field from the target entity
+          IF l_fk_result IS NOT NULL THEN
+            -- Get the target entity's label_field
+            SELECT label_field INTO l_label_field FROM dzql.entities WHERE table_name = l_value;
+            IF l_label_field IS NOT NULL THEN
+              l_label_obj := l_label_obj || jsonb_build_object(l_key, l_fk_result ->> l_label_field);
+            END IF;
+          END IF;
+        END LOOP;
+
+        -- Build the lookup entry with dereferenced label
+        l_processed_data := l_processed_data || jsonb_build_object(
+          'label', l_label_obj,
+          'value', (
+            SELECT string_agg(l_record ->> col, '-' ORDER BY ordinality)
+            FROM unnest(l_pk_cols) WITH ORDINALITY AS col
+          )
+        );
+      END LOOP;
+
+      -- Convert processed data to final result
+      l_result := to_jsonb(l_processed_data);
+    ELSE
+      l_result := '[]'::jsonb;
+    END IF;
+  ELSE
+    -- For simple entities, use the original approach
+    l_sql_stmt := format(
+      'SELECT COALESCE(jsonb_agg(jsonb_build_object(''label'', %I, ''value'', %s) ORDER BY %I), ''[]''::jsonb)
+       FROM %I t WHERE %s AND dzql.check_permission(%L, ''view'', %L, to_jsonb(t.*)) LIMIT 50',
+      l_label_field, l_pk_value_expr, l_label_field, p_entity, l_where_clause, p_user_id, p_entity
+    );
+
+    EXECUTE l_sql_stmt INTO l_result;
+  END IF;
 
   RETURN COALESCE(l_result, '[]'::jsonb);
 EXCEPTION
