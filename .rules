@@ -239,7 +239,20 @@ const ws = new WebSocketManager();
 await ws.connect();
 await ws.call('login_user', {email: 'test@test.com', password: 'pass'});
 const venue = await ws.api.get.venues({id: 1});
+
+// Error handling for deleted records
+try {
+  const deleted = await ws.api.get.venues({id: deletedId});
+} catch (error) {
+  // Expect: "record not found" - this is correct behavior
+}
 ```
+
+### Test Isolation Best Practices
+- Reset database before each test run: `bun venues:db`
+- Use unique prefixes for test data in each file
+- Clean up test data after each test
+- Expect errors for invalid operations (don't assume empty objects)
 
 ## Database Conventions
 
@@ -267,14 +280,27 @@ Optional registration for custom PostgreSQL functions
 3. **DON'T use TypeScript** - Plain JavaScript only
 4. **DON'T skip user_id parameter** - Required for all functions
 5. **DON'T forget cleanup in tests** - Use unique prefixes per test file
+6. **DON'T expect deleted records to return data** - They throw "record not found" errors
+7. **DON'T skip database reset between test runs** - Tests require clean state
+8. **DON'T forget temporal filtering** - Use `{active}` in paths for current relationships
 
 ## Development Commands
 
 ```bash
+# Database Management
 npm run db:up       # Start PostgreSQL
 npm run db:down     # Stop and remove volumes
+
+# Development Server
 npm run dev         # Start Bun server
-npm run todo        # Run test suite (packages/venues)
+
+# Testing & Development (Updated Scripts)
+bun venues:test     # Run the venues test suite
+bun venues:db       # Reset the database (clean slate)
+bun venues:logs     # View venues application logs
+
+# Reliable test workflow
+bun venues:db && sleep 5 && bun venues:test
 ```
 
 ## Remember
@@ -282,5 +308,8 @@ npm run todo        # Run test suite (packages/venues)
 1. **Graph rules are core** - Fully integrated, not optional
 2. **Everything is a proxy** - `ws.api.*` for operations
 3. **Paths are powerful** - Same syntax for permissions/notifications
-4. **Tests need isolation** - Unique data per test file
+4. **Tests need isolation** - Full database reset required between runs
 5. **PostgreSQL is truth** - All logic can live in database
+6. **Error handling is strict** - Deleted records throw errors, don't return empty objects
+7. **Temporal relationships matter** - Always use `{active}` filtering in paths
+8. **FK includes are powerful** - Both dereferencing and collections work seamlessly

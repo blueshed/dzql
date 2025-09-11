@@ -6,6 +6,7 @@ A PostgreSQL-powered framework that automatically provides 5 standard database o
 
 DZQL eliminates CRUD boilerplate by providing a nested proxy API pattern where registering an entity in PostgreSQL instantly gives you:
 - 5 standard operations (get, save, delete, lookup, search)
+- Graph rules for automatic relationship management
 - Real-time change notifications via WebSocket
 - Temporal relationship handling
 - JWT authentication
@@ -14,9 +15,9 @@ DZQL eliminates CRUD boilerplate by providing a nested proxy API pattern where r
 ## Architecture
 
 ```
-Browser                Bun Server              PostgreSQL
-ws.api.get.venue() --> db.api.get.venues() --> dzql.generic_get()
-                       WebSocket broadcast  <-- NOTIFY 'dzql' channel
+Browser                 Bun Server              PostgreSQL
+ws.api.save.venues() -> db.api.save.venues() -> dzql.generic_save()
+                        WebSocket broadcast  <-- NOTIFY 'dzql' channel
 ```
 
 - **Protocol**: JSON-RPC 2.0 over WebSocket
@@ -28,7 +29,7 @@ ws.api.get.venue() --> db.api.get.venues() --> dzql.generic_get()
 
 ### 1. Start PostgreSQL
 ```bash
-npm run db:up        # Starts PostgreSQL via Docker Compose
+bun venues:db        # Starts PostgreSQL via Docker Compose (clean slate)
 ```
 
 ### 2. Register an Entity
@@ -48,6 +49,22 @@ SELECT dzql.register_entity(
     "update": ["@org_id->acts_for[org_id=$]{active}.user_id"],
     "delete": ["@org_id->acts_for[org_id=$]{active}.user_id"],
     "view": []
+  }',
+  '{                                     -- graph rules
+    "on_create": {
+      "establish_site": {
+        "description": "Create default site when venue is created",
+        "actions": [{
+          "type": "create",
+          "entity": "sites",
+          "data": {
+            "name": "Main Site",
+            "venue_id": "@id",
+            "created_by": "@user_id"
+          }
+        }]
+      }
+    }
   }'
 );
 ```
@@ -58,21 +75,22 @@ This single call:
 - Enables all 5 standard operations
 - Sets up notification paths for targeted real-time updates
 - Configures permission paths for row-level security
+- Installs graph rules for automatic relationship management
 
 ### 3. Start the Server
 ```bash
-npm run dev          # Starts Bun server with hot reload
+bun venues           # Starts venues example server with hot reload
 ```
 
 ### 4. Use the API
 ```javascript
-import WebSocketManager from './client/ws.js';
+import WebSocketManager from './packages/client/ws.js';
 
 const ws = new WebSocketManager();
 await ws.connect();
 
 // Authenticate
-const auth = await ws.call('login_user', {
+const auth = await ws.api.login_user({
   email: 'user@example.com',
   password: 'password'
 });
@@ -163,7 +181,7 @@ Events flow:
 
 ### Notification Paths
 
-Notification paths determine which users receive real-time updates for an entity. They use a path syntax to traverse relationships:
+Notification paths determine which users receive real-time updates for an entity. They use a path syntax to traverse relationships that result in sets of user_ids:
 
 ```sql
 -- Path syntax: @field->table[filter]{temporal}.target_field
@@ -203,7 +221,7 @@ DZQL provides row-level security through permission paths:
 
 ### Permission Paths
 
-Permission paths determine who can perform operations on each record:
+Permission paths determine who can perform operations on each record by checking to see if the user_id is in the set of user_ids returned by the paths:
 
 ```sql
 -- Configure permissions when registering entity
@@ -237,14 +255,14 @@ JWT-based authentication with automatic user_id injection:
 
 ```javascript
 // Login
-const result = await ws.call('login_user', {
+const result = await ws.api.login_user({
   email: 'user@example.com',
   password: 'password'
 });
 // Returns: {user_id, email, token, profile}
 
 // Register
-const newUser = await ws.call('register_user', {
+const newUser = await ws.api.register_user({
   email: 'newuser@example.com',
   password: 'password'
 });
@@ -559,23 +577,35 @@ const pricing = await ws.api.calculateDiscount({
 ## Project Structure
 
 ```
-zeroql/
-├── server/
-│   ├── index.js     # Bun WebSocket server
-│   ├── ws.js        # WebSocket handlers & JSON-RPC
-│   └── db.js        # PostgreSQL connection & DZQL proxy
-├── database/
-│   ├── compose.yml  # PostgreSQL Docker setup
-│   └── init_db/
-│       ├── 001_dzql.sql     # Core DZQL functions
-│       ├── 002_search.sql     # Advanced search implementation
-│       ├── 010_auth.sql       # Authentication functions
-│       └── 011_simple_domain.sql  # Example domain & entities
-├── client/
-│   ├── ws.js        # WebSocket client with nested proxy API
-│   └── index.html   # Example web interface
-└── tests/
-    └── *.test.js    # Bun test suite
+dzql/
+├── packages/
+│   ├── dzql/                        # Core DZQL framework
+│   │   └── src/database/migrations/
+│   │       ├── 001_schema.sql       # Core tables (entities, events, registry)
+│   │       ├── 002_functions.sql    # Helper functions, path resolution
+│   │       ├── 003_operations.sql   # Generic CRUD operations with graph rules
+│   │       ├── 004_search.sql       # Advanced search functionality
+│   │       ├── 005_entities.sql     # Entity registration and graph rules
+│   │       ├── 006_auth.sql         # Authentication functions
+│   │       └── 007_hello.sql        # Example custom function
+│   ├── venues/                      # Example application
+│   │   ├── server/
+│   │   │   ├── index.js             # Bun WebSocket server
+│   │   │   ├── ws.js                # WebSocket handlers & JSON-RPC
+│   │   │   ├── db.js                # PostgreSQL connection & DZQL proxy
+│   │   │   └── api.js               # Custom Bun functions
+│   │   ├── database/
+│   │   │   ├── docker-compose.yml   # PostgreSQL Docker setup
+│   │   │   └── init_db/
+│   │   │       └── 008_venues_domain.sql  # Venues domain entities
+│   │   ├── client/
+│   │   │   ├── ws.js                # WebSocket client with nested proxy API
+│   │   │   └── index.html           # Example web interface
+│   │   └── tests/
+│   │       └── *.test.js            # Bun test suite
+│   ├── client/                      # Shared client utilities
+│   └── rights/                      # Alternative example application
+└── package.json                     # Workspace configuration
 ```
 
 ## Database Tables
@@ -629,16 +659,21 @@ The search operation supports advanced filtering:
 ## Development
 
 ```bash
-# Database
-npm run db:up        # Start PostgreSQL
-npm run db:down      # Stop and remove volumes
-npm run db:logs      # View PostgreSQL logs
+# Venues Example (Recommended for getting started)
+bun venues:db        # Start PostgreSQL (clean slate)
+bun venues           # Start Bun server with hot reload
+bun venues:test      # Run test suite
+bun venues:logs      # View application logs
 
-# Server
-npm run dev          # Start Bun server with hot reload
+# Alternative - Rights Example
+bun db               # Start PostgreSQL for rights example
+bun server           # Start rights server
 
-# Tests
-bun test            # Run test suite
+# Client
+bun client           # Start client development server
+
+# Full Development (Client + Server)
+bun dev              # Start both client and server concurrently
 ```
 
 ## Why DZQL?
@@ -650,7 +685,7 @@ Traditional approaches require:
 - Separate real-time infrastructure
 - Manual permission checking
 
-DZQL provides all of this automatically through a single `register_entity()` call, letting you focus on your domain model instead of boilerplate.
+DZQL treats your database as a graph that grows and changes through user actions. Graph rules automate relationship management, permissions control how the graph can evolve, and real-time notifications keep everyone in sync as it changes. Rather than just providing CRUD operations, DZQL gives you a complete graph evolution platform through simple entity registration.
 
 ## License
 
