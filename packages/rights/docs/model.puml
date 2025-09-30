@@ -1,0 +1,473 @@
+@startuml Rights Management Model
+
+!define ENTITY class
+!define JUNCTION class
+
+' Core Entities
+ENTITY User {
+  +id: number
+  +email: string
+  +name: string
+  +password_hash: string
+  --
+  +organisations: Organisation[]
+  +assigned_tasks: Task[]
+  +completed_tasks: Task[]
+  +team_memberships: Team[]
+}
+
+ENTITY Organisation {
+  +id: number
+  +name: string
+  +description: string
+  --
+  +users: User[]
+  +owned_venues: Venue[]
+  +owned_products: Product[]
+  +contractor_modules: Module[]
+  +owned_packages: Package[]
+  +promoted_packages: Package[]
+  +sponsored_packages: Package[]
+  +campaigns: Campaign[]
+  +contractor_rights: ContractorRights[]
+  +promotion_rights_owned: PromotionRights[]
+  +promotion_rights_received: PromotionRights[]
+}
+
+ENTITY Venue {
+  +id: number
+  +org_id: number
+  +name: string
+  +address: string
+  +lat: number
+  +lng: number
+  --
+  +organisation: Organisation
+  +areas: Area[]
+  +sites: Site[]
+  +occasions: Occasion[]
+  +contractor_rights: ContractorRights[]
+}
+
+ENTITY Area {
+  +id: number
+  +venue_id: number
+  +parent_id?: number
+  +group_id: number
+  +name: string
+  --
+  +venue: Venue
+  +parent_area?: Area
+  +child_areas: Area[]
+  +sites: Site[]
+}
+
+ENTITY Site {
+  +id: number
+  +venue_id: number
+  +area_id?: number
+  +name: string
+  +lat: number
+  +lng: number
+  --
+  +venue: Venue
+  +area?: Area
+  +products: Product[]
+  +modules: Module[]
+  +allocations: Allocation[]
+  +performance_scores: Performance[]
+}
+
+ENTITY Product {
+  +id: number
+  +owner_org_id: number
+  +name: string
+  +description: string
+  +dimensions: object
+  --
+  +owner_organisation: Organisation
+  +sites: Site[]
+  +faces: Face[]
+  +product_items: ProductItem[]
+  +allocation_options: AllocationOption[]
+}
+
+' Events & Timing
+ENTITY Occasion {
+  +id: number
+  +venue_id: number
+  +name: string
+  +from_date: Date
+  +to_date: Date
+  --
+  +venue: Venue
+  +events: Event[]
+  +moments: Moment[]
+  +packages: Package[]
+  +work_windows: WorkWindow[]
+  +teams: Team[]
+  +promotion_rights: PromotionRights[]
+}
+
+ENTITY Event {
+  +id: number
+  +occasion_id: number
+  +name: string
+  +from_datetime: Date
+  +to_datetime: Date
+  --
+  +occasion: Occasion
+}
+
+ENTITY Moment {
+  +id: number
+  +occasion_id: number
+  +name: string
+  +at_datetime: Date
+  --
+  +occasion: Occasion
+}
+
+' Commercial Operations
+ENTITY Package {
+  +id: number
+  +occasion_id?: number
+  +owner_id: number
+  +promoter_id?: number
+  +sponsor_id?: number
+  +name: string
+  +is_public: boolean
+  --
+  +occasion?: Occasion
+  +owner: Organisation
+  +promoter?: Organisation
+  +sponsor?: Organisation
+  +campaigns: Campaign[]
+  +allocations: Allocation[]
+}
+
+ENTITY Campaign {
+  +id: number
+  +sponsor_id: number
+  +name: string
+  +description: string
+  --
+  +sponsor: Organisation
+  +packages: Package[]
+}
+
+ENTITY Allocation {
+  +id: number
+  +package_id: number
+  +site_id: number
+  +from_datetime: Date
+  +to_datetime: Date
+  --
+  +package: Package
+  +site: Site
+  +options: AllocationOption[]
+  +sponsor_selection?: SponsorSelection
+}
+
+ENTITY AllocationOption {
+  +id: number
+  +allocation_id: number
+  +module_id: number
+  +face_id: number
+  +product_id: number
+  +contractor_notes: string
+  --
+  +allocation: Allocation
+  +module: Module
+  +face: Face
+  +product: Product
+}
+
+ENTITY SponsorSelection {
+  +allocation_id: number
+  +option_id: number
+  +procurement: enum
+  +sponsor_notes: string
+  --
+  +allocation: Allocation
+  +option: AllocationOption
+  +inventory_allocations: InventoryAllocation[]
+}
+
+' Inventory Management
+ENTITY Module {
+  +id: number
+  +contractor_org_id: number
+  +name: string
+  +dimensions: string
+  --
+  +contractor_organisation: Organisation
+  +components: Component[]
+  +faces: Face[]
+  +sites: Site[]
+  +module_items: ModuleItem[]
+  +task_templates: ModuleTaskTemplate[]
+}
+
+ENTITY Component {
+  +id: number
+  +name: string
+  +type: enum
+  +description: string
+  +specifications: string
+  +unit: string
+  --
+  +modules: Module[]
+  +task_templates: ModuleTaskTemplate[]
+}
+
+ENTITY Face {
+  +id: number
+  +module_id: number
+  +name: string
+  +sequence: number
+  +orientation: number
+  +dimensions: string
+  --
+  +module: Module
+  +products: Product[]
+  +allocation_options: AllocationOption[]
+}
+
+ENTITY ModuleItem {
+  +id: number
+  +module_id: number
+  +barcode: string
+  +location: string
+  --
+  +module: Module
+  +inventory_allocations: InventoryAllocation[]
+}
+
+ENTITY ProductItem {
+  +id: number
+  +product_id: number
+  +sponsor_id: number
+  +contractor_org_id: number
+  +barcode: string
+  +location: string
+  --
+  +product: Product
+  +sponsor: Organisation
+  +contractor_organisation: Organisation
+}
+
+ENTITY InventoryAllocation {
+  +id: number
+  +sponsor_selection_id: number
+  +module_item_id?: number
+  +product_item_id?: number
+  +allocated_at: Date
+  +returned_at?: Date
+  +return_condition?: enum
+  --
+  +sponsor_selection: SponsorSelection
+  +module_item?: ModuleItem
+  +product_item?: ProductItem
+}
+
+' Rights Management
+ENTITY ContractorRights {
+  +id: number
+  +contractor_org_id: number
+  +granted_by_type: enum
+  +granted_by_id: number
+  +venue_id: number
+  +valid_from: Date
+  +valid_to?: Date
+  --
+  +contractor_organisation: Organisation
+  +granted_by_organisation: Organisation
+  +venue: Venue
+}
+
+ENTITY PromotionRights {
+  +owner_id: number
+  +promoter_id: number
+  +occasion_id: number
+  +valid_from: Date
+  +valid_to?: Date
+  --
+  +owner: Organisation
+  +promoter: Organisation
+  +occasion: Occasion
+}
+
+' Task Management
+ENTITY Task {
+  +id: number
+  +name: string
+  +description: string
+  +duration: string
+  +assigned_to?: number
+  +team_id?: number
+  +work_window_id?: number
+  +started?: Date
+  +completed?: Date
+  --
+  +assigned_user?: User
+  +team?: Team
+  +work_window?: WorkWindow
+  +dependencies: Task[]
+  +dependent_tasks: Task[]
+  +resources: InventoryAllocation[]
+}
+
+ENTITY Team {
+  +id: number
+  +contractor_org_id: number
+  +occasion_id: number
+  +name: string
+  --
+  +contractor_organisation: Organisation
+  +occasion: Occasion
+  +members: User[]
+  +tasks: Task[]
+}
+
+ENTITY WorkWindow {
+  +id: number
+  +occasion_id: number
+  +name: string
+  +from_datetime: Date
+  +to_datetime: Date
+  --
+  +occasion: Occasion
+  +tasks: Task[]
+}
+
+ENTITY ModuleTaskTemplate {
+  +id: number
+  +module_id: number
+  +name: string
+  +sequence: number
+  +duration: string
+  +skill_level: enum
+  +task_type: enum
+  --
+  +module: Module
+  +dependencies: ModuleTaskTemplate[]
+  +components: Component[]
+}
+
+' Value Objects / Complex Types
+JUNCTION Performance {
+  +site_id: number
+  +face_id: number
+  +product_id: number
+  +tv_score: number
+  +social_score: number
+  +footfall_score: number
+  +hospitality_score: number
+  --
+  +site: Site
+  +face: Face
+  +product: Product
+}
+
+JUNCTION SponsorBrief {
+  +sponsor_id: number
+  +occasion_id: number
+  +contractor_org_id: number
+  +tv_priority: number
+  +social_priority: number
+  +footfall_priority: number
+  +hospitality_priority: number
+  +plan_assessment_*: number
+  +execution_assessment_*: number
+  --
+  +sponsor: Organisation
+  +occasion: Occasion
+  +contractor: Organisation
+}
+
+' Core Relationships
+Organisation ||--o{ Venue : owns
+Organisation ||--o{ Product : owns
+Organisation ||--o{ Module : contracts
+Organisation ||--o{ Package : owns/promotes/sponsors
+Organisation ||--o{ Campaign : sponsors
+Organisation }o--o{ User : acts_for
+
+Venue ||--o{ Area : contains
+Venue ||--o{ Site : contains
+Venue ||--o{ Occasion : hosts
+
+Area ||--o{ Area : parent/child
+Area ||--o{ Site : contains
+
+Site }o--o{ Product : displays
+Site }o--o{ Module : uses
+Site ||--o{ Allocation : allocated
+
+Occasion ||--o{ Event : contains
+Occasion ||--o{ Moment : contains
+Occasion ||--o{ Package : offers
+Occasion ||--o{ WorkWindow : schedules
+Occasion ||--o{ Team : works
+
+Package ||--o{ Allocation : allocates
+Package }o--o{ Campaign : includes
+
+Allocation ||--o{ AllocationOption : options
+Allocation ||--|| SponsorSelection : selected
+
+Module ||--o{ Face : has
+Module ||--o{ ModuleItem : instances
+Module }o--o{ Component : contains
+Module ||--o{ ModuleTaskTemplate : templates
+
+Face }o--o{ Product : displays
+
+AllocationOption }o--|| Module : uses
+AllocationOption }o--|| Face : on
+AllocationOption }o--|| Product : displays
+
+SponsorSelection ||--o{ InventoryAllocation : allocates
+
+Team }o--o{ User : members
+Team ||--o{ Task : assigns
+
+Task }o--|| WorkWindow : scheduled
+Task }o--|| User : assigned
+Task }o--o{ Task : dependencies
+Task }o--o{ InventoryAllocation : resources
+
+ModuleTaskTemplate }o--o{ Component : requires
+ModuleTaskTemplate }o--o{ ModuleTaskTemplate : dependencies
+
+' Rights Relationships
+ContractorRights }o--|| Organisation : contractor
+ContractorRights }o--|| Organisation : grantor
+ContractorRights }o--|| Venue : for
+
+PromotionRights }o--|| Organisation : owner
+PromotionRights }o--|| Organisation : promoter
+PromotionRights }o--|| Occasion : for
+
+' Performance Relationships
+Performance }o--|| Site : measures
+Performance }o--|| Face : on
+Performance }o--|| Product : of
+
+' Sponsor Brief Relationships
+SponsorBrief }o--|| Organisation : sponsor
+SponsorBrief }o--|| Occasion : for
+SponsorBrief }o--|| Organisation : contractor
+
+note top of Organisation : Central entity coordinating\nall business relationships
+
+note top of Site : Physical location where\nproducts are displayed
+
+note top of Allocation : Links packages to sites\nwith time boundaries
+
+note top of Task : Operational work items\nwith dependencies
+
+note bottom of Performance : Composite score for\nsite+face+product combination
+
+@enduml

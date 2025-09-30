@@ -1,4 +1,4 @@
-import { createServer } from 'dzql';
+import { createServer, metaRoute } from 'dzql';
 import path from 'path';
 import { fileURLToPath } from 'url';
 // import client from "../zclient/index.html"
@@ -11,13 +11,14 @@ const __dirname = path.dirname(__filename);
 const customApi = await import('./api.js');
 
 // Start the DZQL server with venues-specific configuration
-const server = await createServer({
+const server = createServer({
   port: process.env.PORT || 3000,
   customApi,
   staticPath: path.join(__dirname, '../../client/dist'),
-  // routes: {
-  //   "/": client
-  // }
+  routes: {
+    // "/": client
+    "/meta": metaRoute()
+  }
 });
 
 console.log(`🚀 Rights app running on port ${server.port}`);

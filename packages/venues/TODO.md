@@ -8,7 +8,56 @@ bun venues:db      # Reset the database (clean slate)
 bun venues:logs    # View venues application logs
 ```
 
-## 🎯 Current Priority: Test Coverage Expansion
+## 🎯 Current Priority: Component Recipe Generator
+
+**Status: Meta endpoint complete, need to build UX recipe generator from metadata**
+
+### Component Recipe System TODO
+- [ ] **Replace navigation graph with component recipes**
+  - Remove current navigationGraph from meta-route.js  
+  - Build recipe generator that outputs component specifications
+  - Start from user→acts_for→organizations workflow
+  - Generate recipes for each path with component + props
+
+- [ ] **Recipe format specification**
+  ```json
+  {
+    "path": "user→acts_for→organisations→venues",
+    "component": "MapWithSidebar", 
+    "fallback": "TableWithActions",
+    "props": {
+      "entity": "venues",
+      "primaryField": "address", 
+      "permissions": {...},
+      "actions": [...],
+      "navigation": {...}
+    }
+  }
+  ```
+
+- [ ] **Component library design**
+  - Generic: TableWithActions, FormModal, DetailView, ListWithFilters
+  - Custom: VenueMapManager, AllocationCalendar, ContractorKanban, PackageMarketplace
+  - App loads custom component or falls back to generic
+
+- [ ] **Recipe generation algorithm** 
+  - Analyze schema for UI hints (temporal→calendar, geo→map)
+  - Parse permission paths to determine available actions
+  - Build navigation options from relations
+  - Detect business workflows from entity graph
+  - Output component recipes, not generic navigation
+
+- [ ] **Test recipe generation**
+  - Verify recipes generate for key workflows:
+    - user→orgs→venues→sites (venue management)
+    - packages→allocations→sites (booking flow)
+    - contractor_rights workflow
+  - Validate component selection logic
+  - Test fallback mechanisms
+
+**Next session focus: Implement recipe generator in meta-route.js**
+
+## 📋 Test Coverage Expansion (Lower Priority)
 
 **Status: Core framework is stable (82/82 tests passing), now expanding coverage**
 

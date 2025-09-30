@@ -21,3 +21,12 @@ services:
       - ./init_db/010_meta.sql:/docker-entrypoint-initdb.d/010_meta.sql:ro
     ports:
       - "5432:5432"
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres

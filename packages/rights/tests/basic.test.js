@@ -7,6 +7,12 @@ describe("Rights End-to-End Test", () => {
   let orgId;
   let venueId;
   let siteId;
+  let occasionId;
+  let eventId;
+  let gatesOpenMomentId;
+  let gatesCloseMomentId;
+  let packageId;
+  let allocationId;
   let events = [];
 
   beforeAll(async () => {
@@ -21,6 +27,9 @@ describe("Rights End-to-End Test", () => {
     await setupListeners((event) => {
       events.push(event);
     });
+
+    // Set correct search path to include dzql schema
+    await sql`SET search_path = public, dzql`;
 
     // Register test user
     const userResult = await db.api.register_user({
@@ -207,8 +216,208 @@ describe("Rights End-to-End Test", () => {
     expect(linkEvent.after.site_id).toBe(siteId);
     expect(linkEvent.after.product_id).toBe(product.id);
 
-    console.log(`✅ Rights End-to-End Test: All composite key operations working`);
-    console.log(`   SAVE/GET/LOOKUP/SEARCH/DELETE for junction tables: ✅`);
-    console.log(`   Composite PK events with proper structure: ✅`);
+    // ===============================================
+    // Step 8: Create Occasion at Venue
+    // ===============================================
+    events.length = 0;
+
+    const occasion = await db.api.save.occasions({
+      venue_id: venueId,
+      name: "Summer Music Festival 2024",
+      from_date: "2024-07-01",
+      to_date: "2024-07-03"
+    }, userId);
+
+    expect(occasion.id).toBeDefined();
+    expect(occasion.name).toBe("Summer Music Festival 2024");
+    expect(occasion.venue_id).toBe(venueId);
+    occasionId = occasion.id;
+
+    // Test GET with FK dereferencing
+    const retrievedOccasion = await db.api.get.occasions({id: occasionId}, userId);
+    expect(retrievedOccasion.venue.name).toBe("Test Rights Venue");
+
+    // ===============================================
+    // Step 9: Create Event during Occasion
+    // ===============================================
+    events.length = 0;
+
+    const event = await db.api.save.events({
+      occasion_id: occasionId,
+      name: "Main Concert",
+      from_datetime: "2024-07-02T19:00:00",
+      to_datetime: "2024-07-02T23:00:00"
+    }, userId);
+
+    expect(event.id).toBeDefined();
+    expect(event.name).toBe("Main Concert");
+    expect(event.occasion_id).toBe(occasionId);
+    eventId = event.id;
+
+    // Test GET with FK dereferencing
+    const retrievedEvent = await db.api.get.events({id: eventId}, userId);
+    expect(retrievedEvent.occasion.name).toBe("Summer Music Festival 2024");
+
+    // ===============================================
+    // Step 10: Create Moments - Gates Open and Close
+    // ===============================================
+    events.length = 0;
+
+    const gatesOpenMoment = await db.api.save.moments({
+      occasion_id: occasionId,
+      name: "Gates Open",
+      at_datetime: "2024-07-02T17:00:00"
+    }, userId);
+
+    expect(gatesOpenMoment.id).toBeDefined();
+    expect(gatesOpenMoment.name).toBe("Gates Open");
+    expect(gatesOpenMoment.occasion_id).toBe(occasionId);
+    gatesOpenMomentId = gatesOpenMoment.id;
+
+    const gatesCloseMoment = await db.api.save.moments({
+      occasion_id: occasionId,
+      name: "Gates Close",
+      at_datetime: "2024-07-03T01:00:00"
+    }, userId);
+
+    expect(gatesCloseMoment.id).toBeDefined();
+    expect(gatesCloseMoment.name).toBe("Gates Close");
+    expect(gatesCloseMoment.occasion_id).toBe(occasionId);
+    gatesCloseMomentId = gatesCloseMoment.id;
+
+    // ===============================================
+    // Step 11: Test SEARCH and LOOKUP for new entities
+    // ===============================================
+
+    // Test occasion search
+    const occasionSearch = await db.api.search.occasions({
+      filters: {
+        venue_id: venueId
+      }
+    }, userId);
+    expect(occasionSearch.data.length).toBe(1);
+    expect(occasionSearch.data[0].name).toBe("Summer Music Festival 2024");
+
+    // Test event search
+    const eventSearch = await db.api.search.events({
+      filters: {
+        occasion_id: occasionId
+      }
+    }, userId);
+    expect(eventSearch.data.length).toBe(1);
+    expect(eventSearch.data[0].name).toBe("Main Concert");
+
+    // Test moments search
+    const momentsSearch = await db.api.search.moments({
+      filters: {
+        occasion_id: occasionId
+      },
+      sort: {field: 'at_datetime', order: 'asc'}
+    }, userId);
+    expect(momentsSearch.data.length).toBe(2);
+    expect(momentsSearch.data[0].name).toBe("Gates Open");
+    expect(momentsSearch.data[1].name).toBe("Gates Close");
+
+    // Test lookups
+    const occasionLookup = await db.api.lookup.occasions({}, userId);
+    expect(occasionLookup.length).toBe(1);
+    expect(occasionLookup[0].label).toBe("Summer Music Festival 2024");
+
+    const eventLookup = await db.api.lookup.events({}, userId);
+    expect(eventLookup.length).toBe(1);
+    expect(eventLookup[0].label).toBe("Main Concert");
+
+    const momentsLookup = await db.api.lookup.moments({}, userId);
+    expect(momentsLookup.length).toBe(2);
+
+    // ===============================================
+    // Step 12: Create Package for the Occasion
+    // ===============================================
+    events.length = 0;
+
+    const packageData = await db.api.save.packages({
+      occasion_id: occasionId,
+      owner_id: orgId,
+      name: "Festival Sponsorship Package",
+      is_public: true
+    }, userId);
+
+    expect(packageData.id).toBeDefined();
+    expect(packageData.name).toBe("Festival Sponsorship Package");
+    expect(packageData.occasion_id).toBe(occasionId);
+    expect(packageData.owner_id).toBe(orgId);
+    packageId = packageData.id;
+
+    // Test GET with FK dereferencing
+    const retrievedPackage = await db.api.get.packages({id: packageId}, userId);
+    expect(retrievedPackage.occasion.name).toBe("Summer Music Festival 2024");
+    expect(retrievedPackage.owner.name).toBe("Test Rights Org");
+
+    // ===============================================
+    // Step 13: Allocate Site to Package with Occasion Date Range
+    // ===============================================
+    events.length = 0;
+
+    // Create allocation using occasion's date range
+    const allocation = await db.api.save.allocations({
+      package_id: packageId,
+      site_id: siteId,
+      from_datetime: "2024-07-01T00:00:00", // occasion from_date
+      to_datetime: "2024-07-03T23:59:59"    // occasion to_date
+    }, userId);
+
+    expect(allocation.id).toBeDefined();
+    expect(allocation.package_id).toBe(packageId);
+    expect(allocation.site_id).toBe(siteId);
+    allocationId = allocation.id;
+
+    // Test GET with FK dereferencing
+    const retrievedAllocation = await db.api.get.allocations({id: allocationId}, userId);
+    expect(retrievedAllocation.package.name).toBe("Festival Sponsorship Package");
+    expect(retrievedAllocation.site.name).toBe("Main Site");
+
+    // ===============================================
+    // Step 14: Test Package and Allocation Search/Lookup
+    // ===============================================
+
+    // Test package search
+    const packageSearch = await db.api.search.packages({
+      filters: {
+        occasion_id: occasionId
+      }
+    }, userId);
+    expect(packageSearch.data.length).toBe(1);
+    expect(packageSearch.data[0].name).toBe("Festival Sponsorship Package");
+
+    // Test allocation search
+    const allocationSearch = await db.api.search.allocations({
+      filters: {
+        package_id: packageId
+      }
+    }, userId);
+    expect(allocationSearch.data.length).toBe(1);
+    expect(allocationSearch.data[0].site_id).toBe(siteId);
+
+    // Test lookups
+    const packageLookup = await db.api.lookup.packages({}, userId);
+    expect(packageLookup.length).toBe(1);
+    expect(packageLookup[0].label).toBe("Festival Sponsorship Package");
+
+    const allocationLookup = await db.api.lookup.allocations({}, userId);
+    expect(allocationLookup.length).toBe(1);
+
+    // ===============================================
+    // Final Summary
+    // ===============================================
+    console.log(`✅ Rights End-to-End Test Complete:`);
+    console.log(`   Organisation: "${org.name}" (ID: ${orgId})`);
+    console.log(`   Venue: "${venue.name}" (ID: ${venueId})`);
+    console.log(`   Site: "${site.name}" (ID: ${siteId})`);
+    console.log(`   Occasion: "${occasion.name}" (ID: ${occasionId})`);
+    console.log(`   Event: "${event.name}" (ID: ${eventId})`);
+    console.log(`   Moments: Gates Open (ID: ${gatesOpenMomentId}), Gates Close (ID: ${gatesCloseMomentId})`);
+    console.log(`   Package: "${packageData.name}" (ID: ${packageId})`);
+    console.log(`   Allocation: Site "${site.name}" → Package "${packageData.name}" (ID: ${allocationId})`);
+    console.log(`   All DZQL operations including packages & allocations working perfectly! 🎉`);
   });
 });

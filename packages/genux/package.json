@@ -1,0 +1,41 @@
+{
+  "name": "@dzql/genux",
+  "version": "0.1.0",
+  "description": "Generative UX system for DZQL - dynamically creates interfaces from metadata",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "bunx vite",
+    "build": "bunx vite build",
+    "preview": "bunx vite preview",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "vue": "^3.5.21",
+    "pinia": "^2.3.1",
+    "mapbox-gl": "^3.15.0",
+    "dayjs": "^1.11.18",
+    "@vueuse/core": "^10.11.1",
+    "sortablejs": "^1.15.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.4",
+    "vite": "^5.4.20",
+    "vitest": "^1.6.1",
+    "sass": "^1.92.1"
+  },
+  "peerDependencies": {
+    "dzql": "workspace:*"
+  },
+  "keywords": [
+    "dzql",
+    "generative-ui",
+    "metadata-driven",
+    "vue3",
+    "pinia",
+    "websocket",
+    "real-time"
+  ],
+  "author": "",
+  "license": "MIT"
+}

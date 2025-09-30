@@ -8,9 +8,12 @@
     "dev": "bun --watch server/index.js",
     "build": "echo 'No build step required'",
     "test": "bun test tests/",
+    "db": "bun db:down && bun db:up",
     "db:up": "cd database && docker compose up -d",
     "db:down": "cd database && docker compose down -v",
-    "db:logs": "cd database && docker compose logs postgres"
+    "db:logs": "cd database && docker compose logs postgres",
+    "db:admin": "echo 'Adminer available at: http://localhost:8080' && echo 'Server: postgres | User: dzql | Pass: dzql | DB: dzql'",
+    "diagram": "plantuml -tsvg docs/model.puml -o ../generated/"
   },
   "dependencies": {
     "dzql": "workspace:*",
