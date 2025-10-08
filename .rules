@@ -1,315 +1,69 @@
-# DZQL Framework - AI Assistant Guide
+# DZQL Framework - Concise AI Guide
 
-## Language Rules
-- **NO TYPESCRIPT** - Use plain JavaScript only
-- Keep it simple - no unnecessary type systems or build steps
-- Focus on runtime behavior, not compile-time checking
+## Language: Plain JavaScript only (NO TypeScript)
 
 ## What is DZQL?
+PostgreSQL framework with automatic CRUD via WebSocket RPC. Every entity gets 5 operations: GET, SAVE, DELETE, LOOKUP, SEARCH.
 
-DZQL is a PostgreSQL-powered framework that automatically provides 5 standard database operations per entity with zero boilerplate. It combines WebSocket RPC, automatic CRUD operations, graph rules for relationship management, and real-time synchronization.
-
-## System Architecture
-
-### Core Layers
-1. **WebSocket RPC Layer**: JSON-RPC 2.0 over WebSocket for all communication
-2. **DZQL Proxy Layer**: Nested proxy API (`ws.api.{operation}.{entity}`) for standard operations
-3. **Graph Rules Engine**: Automatic relationship management on data changes
-4. **Real-time Events**: PostgreSQL NOTIFY/LISTEN for targeted broadcasts
-5. **Permission System**: Path-based row-level security
-
-### Database Structure (Modular Architecture)
-```
-packages/dzql/src/database/migrations/
-├── 001_schema.sql      # Core tables (entities, events, registry)
-├── 002_functions.sql   # Helper functions, path resolution, graph validation
-├── 003_operations.sql  # Generic CRUD operations with graph rules
-├── 004_search.sql      # Advanced search functionality
-├── 005_entities.sql    # Entity registration and graph rules execution
-├── 006_auth.sql        # Authentication functions
-└── 007_hello.sql       # Example custom function
-
-packages/{app}/database/init_db/
-└── Domain files        # Your business entities (e.g., 008_venues_domain.sql)
-```
-
-## The 5 Standard Operations
-
-Every registered entity automatically gets these operations via `ws.api.{operation}.{entity}()`:
-
-### 1. GET - Retrieve single record with foreign keys
+## Core API Pattern
 ```javascript
-const venue = await ws.api.get.venues({id: 1});
-// Returns full record with dereferenced foreign keys and collections
-// Supports temporal: {id: 1, on_date: '2023-01-01'}
+// All operations via: ws.api.{operation}.{entity}(params)
+const venue = await ws.api.get.venues({id: 1});           // Single record
+const saved = await ws.api.save.venues({name: 'MSG'});    // Upsert
+const deleted = await ws.api.delete.venues({id: 1});      // Delete
+const options = await ws.api.lookup.venues({p_filter: 'msg'}); // Autocomplete
+const results = await ws.api.search.venues({filters: {city: 'NYC'}}); // Paginated
 ```
 
-### 2. SAVE - Smart upsert with graph rules
-```javascript
-// Insert (no id) - triggers on_create graph rules
-const newVenue = await ws.api.save.venues({name: 'MSG', org_id: 1});
-// Update (with id) - triggers on_update graph rules
-const updated = await ws.api.save.venues({id: 1, name: 'Updated'});
-```
-
-### 3. DELETE - Remove record with graph rules
-```javascript
-const result = await ws.api.delete.venues({id: 1});
-// Triggers on_delete graph rules (cascades, cleanup, etc.)
-```
-
-### 4. LOOKUP - Autocomplete/dropdown data
-```javascript
-const options = await ws.api.lookup.venues({p_filter: 'madison'});
-// Returns: [{label: "Madison Square Garden", value: 1}, ...]
-```
-
-### 5. SEARCH - Paginated, filterable results
-```javascript
-const results = await ws.api.search.venues({
-  filters: {
-    city: 'NYC',
-    capacity: {gte: 1000, lt: 5000},
-    name: {ilike: '%garden%'},
-    _search: 'madison'  // Text search across searchable_fields
-  },
-  sort: {field: 'name', order: 'asc'},
-  page: 1,
-  limit: 25
-});
-```
-
-## Entity Registration
-
-Register entities to enable all features:
-
+## Entity Registration (Required for features)
 ```sql
 SELECT dzql.register_entity(
   p_table_name := 'venues',
   p_label_field := 'name',
   p_searchable_fields := array['name', 'address'],
   p_fk_includes := '{"org": "organisations", "sites": "sites"}'::jsonb,
-  p_soft_delete := false,
-  p_temporal_fields := '{"valid_from": "valid_from", "valid_to": "valid_to"}'::jsonb,
-  p_notification_paths := '{
-    "ownership": ["@org_id->acts_for[org_id=$]{active}.user_id"]
-  }'::jsonb,
-  p_permission_paths := '{
-    "create": ["@org_id->acts_for[org_id=$]{active}.user_id"],
-    "update": ["@org_id->acts_for[org_id=$]{active}.user_id"],
-    "delete": ["@org_id->acts_for[org_id=$]{active}.user_id"],
-    "view": []
-  }'::jsonb,
   p_graph_rules := '{
     "on_create": {
-      "establish_ownership": {
-        "description": "Creator becomes owner",
-        "actions": [{
-          "type": "create",
-          "entity": "acts_for",
-          "data": {"user_id": "@user_id", "org_id": "@id", "valid_from": "@today"}
-        }]
+      "rule_name": {
+        "actions": [{"type": "create", "entity": "table", "data": {"field": "@value"}}]
       }
     }
   }'::jsonb
 );
 ```
 
-## Graph Rules
+## Graph Rules Variables
+- `@user_id`, `@id`, `@field_name`, `@now`, `@today`
 
-Graph rules automatically manage entity relationships when data changes.
-
-### Structure
-```jsonb
-{
-  "on_create": {
-    "rule_name": {
-      "description": "Human-readable description",
-      "actions": [{
-        "type": "create|update|delete",
-        "entity": "target_table",
-        "data": {"field": "@variable"},    // for create/update
-        "match": {"field": "@variable"}    // for update/delete
-      }]
-    }
-  },
-  "on_update": {},
-  "on_delete": {}
-}
-```
-
-### Variables
-- `@user_id` - Current authenticated user
-- `@id` - Primary key of record
-- `@field_name` - Any field from the record
-- `@now` - Current timestamp
-- `@today` - Current date
-
-### Common Patterns
-1. **Creator becomes owner** - Automatically establish relationships
-2. **Cascade delete** - Clean up related records
-3. **Temporal transitions** - End previous relationships
-
-## Path Syntax (Permissions & Notifications)
-
-Paths traverse relationships to determine affected users:
-
-### Components
-- `@field` - Start from field in current record
-- `->table` - Navigate to related table
-- `[condition]` - Filter rows (`$` = current field value)
-- `{active}` - Apply temporal filtering
-- `.field` - Extract target field
-
-### Examples
-```sql
-'@user_id'                                                    -- Direct reference
-'@org_id->acts_for[org_id=$]{active}.user_id'               -- Via relationship
-'@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id'  -- Multi-hop
-```
-
-## FK Includes (Foreign Key Collections)
-
-Two patterns for including related data:
-
-### 1. Foreign Key Dereferencing
-```jsonb
-{"org": "organisations"}  // org_id → organisations table
-```
-
-### 2. Collection Includes
-```jsonb
-{"sites": "sites"}  // Include all sites where sites.venue_id = venues.id
-```
-
-Both patterns work in `p_fk_includes` during entity registration.
+## Path Syntax (permissions/notifications)
+- `@field` - field value
+- `->table[condition]{active}.field` - traverse relationships
+- `$` in conditions = current field value
 
 ## Authentication
-
 ```javascript
-// Login (special case - no proxy)
-const auth = await ws.call('login_user', {
-  email: 'user@example.com',
-  password: 'password'
-});
-
-// All subsequent operations include user_id automatically
+await ws.call('login_user', {email: 'user@email.com', password: 'pass'});
+// All subsequent operations auto-include user_id
 ```
 
 ## Custom Functions
+PostgreSQL: First param MUST be `p_user_id INT`
+Bun: First param MUST be `userId`
+Call via: `ws.call('funcName', params)`
 
-### PostgreSQL Functions
-```sql
-CREATE FUNCTION custom_func(p_user_id INT, p_params JSONB)
--- First param MUST be p_user_id
-```
+## Database Structure
+- Core: `packages/dzql/src/database/migrations/001-007*.sql`
+- Domain: `packages/{app}/database/init_db/008+*.sql`
 
-### Bun Functions
-```javascript
-// server/api.js
-export async function customFunc(userId, params) {
-  // Can use db.api.* for database access
-  return result;
-}
-```
-
-Both callable via: `ws.call('customFunc', params)`
-
-## Real-time Events
-
-```javascript
-ws.onBroadcast((method, params) => {
-  if (method === 'venues:update') {
-    // params: {table, op, pk, before, after, user_id, at}
-  }
-});
-```
-
-Events are filtered by `notify_users` array resolved from notification paths.
-
-## Testing
-
-```javascript
-// Server-side testing (direct database)
-import { db } from 'dzql';
-const venue = await db.api.get.venues({id: 1, userId: 123});
-
-// Client-side testing (WebSocket)
-const ws = new WebSocketManager();
-await ws.connect();
-await ws.call('login_user', {email: 'test@test.com', password: 'pass'});
-const venue = await ws.api.get.venues({id: 1});
-
-// Error handling for deleted records
-try {
-  const deleted = await ws.api.get.venues({id: deletedId});
-} catch (error) {
-  // Expect: "record not found" - this is correct behavior
-}
-```
-
-### Test Isolation Best Practices
-- Reset database before each test run: `bun venues:db`
-- Use unique prefixes for test data in each file
-- Clean up test data after each test
-- Expect errors for invalid operations (don't assume empty objects)
-
-## Database Conventions
-
-- **Primary Keys**: `serial` (never `uuid` for users)
-- **Foreign Keys**: `field_id: int → table.id`
-- **Temporal**: `valid_from`/`valid_to` columns
-- **Soft Delete**: `deleted_at` column (optional)
-- **Audit**: All changes logged to `dzql.events`
-
-## Key Tables
-
-### dzql.entities
-Entity configuration including graph rules
-
-### dzql.events
-Audit trail with `notify_users` for targeted broadcasts
-
-### dzql.registry
-Optional registration for custom PostgreSQL functions
-
-## Common Mistakes to Avoid
-
-1. **DON'T register standard operations** - They're automatic
-2. **DON'T use `ws.call('query')` ** - It doesn't exist (security risk)
-3. **DON'T use TypeScript** - Plain JavaScript only
-4. **DON'T skip user_id parameter** - Required for all functions
-5. **DON'T forget cleanup in tests** - Use unique prefixes per test file
-6. **DON'T expect deleted records to return data** - They throw "record not found" errors
-7. **DON'T skip database reset between test runs** - Tests require clean state
-8. **DON'T forget temporal filtering** - Use `{active}` in paths for current relationships
-
-## Development Commands
-
+## Testing Commands
 ```bash
-# Database Management
-npm run db:up       # Start PostgreSQL
-npm run db:down     # Stop and remove volumes
-
-# Development Server
-npm run dev         # Start Bun server
-
-# Testing & Development (Updated Scripts)
-bun venues:test     # Run the venues test suite
-bun venues:db       # Reset the database (clean slate)
-bun venues:logs     # View venues application logs
-
-# Reliable test workflow
-bun venues:db && sleep 5 && bun venues:test
+bun venues:db && sleep 5 && bun venues:test  # Reset DB + test
+bun venues:logs                               # View logs
 ```
 
-## Remember
-
-1. **Graph rules are core** - Fully integrated, not optional
-2. **Everything is a proxy** - `ws.api.*` for operations
-3. **Paths are powerful** - Same syntax for permissions/notifications
-4. **Tests need isolation** - Full database reset required between runs
-5. **PostgreSQL is truth** - All logic can live in database
-6. **Error handling is strict** - Deleted records throw errors, don't return empty objects
-7. **Temporal relationships matter** - Always use `{active}` filtering in paths
-8. **FK includes are powerful** - Both dereferencing and collections work seamlessly
+## Key Points
+- FK includes: `{"field": "table"}` for dereferencing OR collections
+- Graph rules execute on data changes automatically
+- Deleted records throw "record not found" errors (don't return empty objects)
+- Use temporal `{active}` filtering in paths
+- Reset database between test runs for isolation

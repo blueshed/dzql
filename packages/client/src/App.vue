@@ -1,12 +1,37 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useWs } from 'dzql/client'
 import LoginView from './components/LoginView.vue'
 import Navbar from './components/Navbar.vue'
+import ThreePanelLayout from './components/ThreePanelLayout.vue'
+import ContextPanel from './components/ContextPanel.vue'
+import ContentPanel from './components/ContentPanel.vue'
+import PropertiesPanel from './components/PropertiesPanel.vue'
+import HelloView from './components/hello.vue'
 
 const ws = useWs()
+const route = useRoute()
 const state = ref('connecting')
 const userProfile = ref(null)
+
+// Computed labels for panels
+const pageTitle = computed(() => {
+  return 'DZQL Admin'
+})
+
+const contentLabel = computed(() => {
+  if (route.params.entity) {
+    return route.params.entity.charAt(0).toUpperCase() + route.params.entity.slice(1)
+  }
+  return 'Home'
+})
+
+const propertiesLabel = computed(() => {
+  if (route.params.id === 'new') return 'New'
+  if (route.params.id) return `Edit #${route.params.id}`
+  return 'Properties'
+})
 
 onMounted(() => {
   // Listen for the connected broadcast
@@ -53,14 +78,37 @@ const handleLogout = async () => {
     <LoginView v-else-if="state === 'login'" @authenticated="handleAuth" />
 
     <!-- Content State -->
-    <div v-else-if="state === 'content'" class="min-h-screen">
+    <div v-else-if="state === 'content'" class="min-h-screen flex flex-col">
       <Navbar :user="userProfile" @logout="handleLogout" />
-      <main class="content">
-        <div class="h-full overflow-y-auto">
-          <div class="container mx-auto px-4 py-8">
-            <router-view />
-          </div>
-        </div>
+      <main class="flex-1 min-h-0">
+        <ThreePanelLayout
+          :title="pageTitle"
+          :context-label="'Entities'"
+          :content-label="contentLabel"
+          :properties-label="propertiesLabel"
+        >
+          <template #context>
+            <ContextPanel />
+          </template>
+
+          <template #content>
+            <ContentPanel v-if="route.params.entity" :entity="route.params.entity" />
+            <HelloView v-else />
+          </template>
+
+          <template #properties>
+            <PropertiesPanel
+              v-if="route.params.entity"
+              :entity="route.params.entity"
+              :id="route.params.id"
+            />
+            <div v-else class="flex items-center justify-center h-full p-8 text-center">
+              <div class="text-base-content/60">
+                <p class="text-sm">Select an item to view properties</p>
+              </div>
+            </div>
+          </template>
+        </ThreePanelLayout>
       </main>
     </div>
   </div>

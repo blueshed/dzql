@@ -9,10 +9,10 @@
   ],
   "scripts": {
     "client": "cd packages/client && bun run dev",
-    "server": "cd packages/rights && bun run dev",
+    "server": "cd packages/venues && bun run dev",
     "dev": "concurrently -n \"client,server\" -c \"blue,green\" \"bun run client\" \"bun run server\"",
-    "db": "cd packages/rights/database && docker compose down -v && docker compose up -d",
-    "logs": "bun run --cwd packages/rights db:logs",
+    "db": "cd packages/venues/database && docker compose down -v && docker compose up -d",
+    "logs": "bun run --cwd packages/venues db:logs",
     "venues": "cd packages/venues && bun dev",
     "venues:test": "cd packages/venues && bun test",
     "venues:db": "cd packages/venues/database && docker compose down -v && docker compose up -d",

@@ -2,23 +2,42 @@ import { createApp } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { createPinia } from 'pinia'
 import { useProfileStore } from './stores/main'
-import { uiConfig } from './stores/ui-config.js'
 import './style.css'
 import App from './App.vue'
-import Home from './components/hello.vue'
-import DynamicEntity from './components/DynamicEntity.vue'
 
 // Initialize WebSocket connection
 const pinia = createPinia()
+
+// Simple container component for routing (Vue Router requires component)
+const RouteContainer = {
+  template: '<div />'
+}
 
 // Configure router
 const router = createRouter({
   history: createWebHashHistory(),
   routes: [
-    { path: '/', component: Home },
+    {
+      path: '/',
+      name: 'home',
+      component: RouteContainer
+    },
     {
       path: '/:entity',
-      component: DynamicEntity,
+      name: 'entity-list',
+      component: RouteContainer,
+      props: true
+    },
+    {
+      path: '/:entity/new',
+      name: 'entity-create',
+      component: RouteContainer,
+      props: true
+    },
+    {
+      path: '/:entity/:id',
+      name: 'entity-edit',
+      component: RouteContainer,
       props: true
     }
   ]

@@ -7,12 +7,6 @@
         </div>
         <ul tabindex="0" class="menu dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
           <li><router-link to="/"><HomeIcon class="h-4 w-4"/> Home</router-link></li>
-          <li v-for="entity in config.primary" :key="entity">
-            <router-link :to="`/${entity}`" class="flex items-center gap-2">
-              <component :is="config.icons[entity]" class="h-4 w-4" />
-              {{ capitalize(entity) }}
-            </router-link>
-          </li>
           <li class="mt-2 border-t border-base-300 pt-2">
             <a @click="showAbout" class="flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
@@ -31,12 +25,6 @@
     <div class="navbar-center hidden lg:flex">
       <ul class="menu menu-horizontal px-1">
         <li><router-link to="/"><HomeIcon class="h-4 w-4"/> Home</router-link></li>
-        <li v-for="entity in config.primary" :key="entity">
-          <router-link :to="`/${entity}`" class="flex items-center gap-2">
-            <component :is="config.icons[entity]" class="h-4 w-4" />
-            {{ capitalize(entity) }}
-          </router-link>
-        </li>
       </ul>
     </div>
 
@@ -90,10 +78,10 @@ import { useRouter } from 'vue-router'
 import { useProfileStore } from '../stores/main'
 import AboutModal from './AboutModal.vue'
 
-import HomeIcon from 'feather-icons/dist/icons/home.svg?component'
-import MenuIcon from 'feather-icons/dist/icons/menu.svg?component'
-import SunIcon from 'feather-icons/dist/icons/sun.svg?component'
-import MoonIcon from 'feather-icons/dist/icons/moon.svg?component'
+import HomeIcon from '@feather-icons/home.svg?component'
+import MenuIcon from '@feather-icons/menu.svg?component'
+import SunIcon from '@feather-icons/sun.svg?component'
+import MoonIcon from '@feather-icons/moon.svg?component'
 
 const props = defineProps({
   user: {

@@ -126,12 +126,13 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import RefreshCwIcon from 'feather-icons/dist/icons/refresh-cw.svg?component'
-import XCircleIcon from 'feather-icons/dist/icons/x-circle.svg?component'
-import EditIcon from 'feather-icons/dist/icons/edit-2.svg?component'
-import TrashIcon from 'feather-icons/dist/icons/trash-2.svg?component'
-import InboxIcon from 'feather-icons/dist/icons/inbox.svg?component'
-import PlusIcon from 'feather-icons/dist/icons/plus.svg?component'
+import { storeToRefs } from 'pinia'
+import RefreshCwIcon from '@feather-icons/refresh-cw.svg?component'
+import XCircleIcon from '@feather-icons/x-circle.svg?component'
+import EditIcon from '@feather-icons/edit-2.svg?component'
+import TrashIcon from '@feather-icons/trash-2.svg?component'
+import InboxIcon from '@feather-icons/inbox.svg?component'
+import PlusIcon from '@feather-icons/plus.svg?component'
 
 const props = defineProps({
   entity: {
@@ -151,8 +152,9 @@ const searchFilter = ref('')
 const sortField = ref('id')
 const sortOrder = ref('asc')
 
-// Store state
-const { records, loading, error, searchResults, hasData, totalPages } = props.store
+// Store state - use storeToRefs for reactive state
+const { records, loading, error, searchResults, hasData, totalPages } = storeToRefs(props.store)
+// Methods don't need storeToRefs
 const { search, clearError } = props.store
 
 // Computed

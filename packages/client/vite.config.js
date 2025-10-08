@@ -1,5 +1,6 @@
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from 'vite'
+import path from "path";
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite';
 import svgLoader from 'vite-svg-loader';
@@ -33,6 +34,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      "@feather-icons": path.resolve(
+        __dirname,
+        "../../node_modules/feather-icons/dist/icons",
+      ),
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },

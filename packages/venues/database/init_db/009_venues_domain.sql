@@ -291,6 +291,10 @@ select dzql.register_entity(
 
 -- === Sample Data ===
 
+-- Sample users
+select dzql.register_user('admin@example.com', 'admin');
+select dzql.register_user('test@example.com', 'password123');
+
 -- Sample organizations
 insert into organisations (name, description) values
   ('Event Corp', 'Event management company'),
@@ -301,6 +305,18 @@ on conflict (name) do nothing;
 
 -- Note: acts_for records need to be created after users exist
 -- Users are created in 010_auth.sql, so we'll skip sample data here
+-- Sample acts_for relationships (users acting for organizations)
+insert into acts_for (user_id, org_id, valid_from) values
+  ((select id from users where email = 'admin@example.com'),
+   (select id from organisations where name = 'Event Corp'), current_date),
+  ((select id from users where email = 'admin@example.com'),
+   (select id from organisations where name = 'Venue Management'), current_date),
+  ((select id from users where email = 'test@example.com'),
+   (select id from organisations where name = 'Sponsor LLC'), current_date),
+  ((select id from users where email = 'test@example.com'),
+   (select id from organisations where name = 'Contractor Co'), current_date)
+on conflict do nothing;
+
 
 -- Sample venues (must be created before sites)
 insert into venues (org_id, name, address, description) values

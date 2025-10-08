@@ -63,6 +63,7 @@ async function getFunctionParams(functionName) {
       WHERE r.routine_name = ${functionName}
       AND r.routine_type = 'FUNCTION'
     )
+    AND (p.parameter_mode = 'IN' OR p.parameter_mode IS NULL)
     ORDER BY p.ordinal_position
   `;
 

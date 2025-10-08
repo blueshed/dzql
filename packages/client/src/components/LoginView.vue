@@ -115,10 +115,10 @@
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { useWs } from 'dzql/client'
 import { useProfileStore } from '../stores/main'
-import CheckIcon from 'feather-icons/dist/icons/check.svg?component'
-import XIcon from 'feather-icons/dist/icons/x.svg?component'
-import EyeIcon from 'feather-icons/dist/icons/eye.svg?component'
-import EyeOffIcon from 'feather-icons/dist/icons/eye-off.svg?component'
+import CheckIcon from '@feather-icons/check.svg?component'
+import XIcon from '@feather-icons/x.svg?component'
+import EyeIcon from '@feather-icons/eye.svg?component'
+import EyeOffIcon from '@feather-icons/eye-off.svg?component'
 
 const emit = defineEmits(['authenticated'])
 const ws = useWs()
