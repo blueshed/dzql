@@ -14,3 +14,6 @@ export { createWebSocketHandlers, verify_jwt_token } from './server/ws.js';
 
 // Re-export meta route for applications
 export { metaRoute } from './server/meta-route.js';
+
+// Re-export MCP route for Claude Code integration
+export { createMCPRoute } from './server/mcp.js';

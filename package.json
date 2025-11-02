@@ -40,6 +40,7 @@
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "postgres": "^3.4.7"
   }
 }

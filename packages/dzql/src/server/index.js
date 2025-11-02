@@ -1,12 +1,7 @@
 import { createWebSocketHandlers, verify_jwt_token } from "./ws.js";
 import { closeConnections, setupListeners } from "./db.js";
 import * as defaultApi from "./api.js";
-
-// Logging utility
-const IS_TEST = process.env.NODE_ENV === "test";
-function log(...args) {
-  if (!IS_TEST) console.log(...args);
-}
+import { serverLogger, notifyLogger } from "./logger.js";
 
 export default function createServer(options = {}) {
   const {
@@ -39,9 +34,11 @@ export default function createServer(options = {}) {
     // Filter based on notify_users (null = broadcast to all)
     if (notify_users && notify_users.length > 0) {
       // Send to specific users only
+      notifyLogger.debug(`Broadcasting ${event.table}:${event.op} to ${notify_users.length} users`);
       broadcast(message, notify_users);
     } else {
       // Send to all connected users
+      notifyLogger.debug(`Broadcasting ${event.table}:${event.op} to all users`);
       broadcast(message);
     }
   });
@@ -105,14 +102,16 @@ export default function createServer(options = {}) {
     websocket: websocketHandlers,
   });
 
-  log(`🚀 DZQL server: http://localhost:${port}`);
-  log(`   WebSocket endpoint: ws://localhost:${port}/ws`);
-  log(`   Environment: ${process.env.NODE_ENV || "development"}`);
+  serverLogger.info(`🚀 DZQL server started`);
+  serverLogger.info(`   HTTP: http://localhost:${port}`);
+  serverLogger.info(`   WebSocket: ws://localhost:${port}/ws`);
+  serverLogger.info(`   Environment: ${process.env.NODE_ENV || "development"}`);
 
   // Add graceful shutdown handling
   const shutdown = async () => {
-    console.log("\nShutting down DZQL server...");
+    serverLogger.info("Shutting down DZQL server...");
     await closeConnections();
+    serverLogger.info("Server shutdown complete");
   };
 
   // Return server instance with utilities

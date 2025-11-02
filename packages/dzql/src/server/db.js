@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { dbLogger, notifyLogger } from "./logger.js";
 
 // Environment configuration
 const DATABASE_URL =
@@ -22,6 +23,8 @@ export const listen_sql = postgres(DATABASE_URL, {
   // Suppress NOTICE messages in test environment
   onnotice: process.env.NODE_ENV === 'test' ? () => {} : undefined,
 });
+
+dbLogger.info(`Database connected: ${DATABASE_URL.replace(/\/\/.*@/, '//***@')}`);
 
 // Cache for function parameter metadata
 const functionParamCache = new Map();
@@ -139,17 +142,20 @@ export async function setupListeners(callback) {
     // Listen to single dzql channel for all events
     await listen_sql.listen("dzql", (payload) => {
       const event = JSON.parse(payload);
+      notifyLogger.debug(`Received NOTIFY event:`, event.table, event.op);
       callback(event);
     });
+    notifyLogger.info("NOTIFY listener established on 'dzql' channel");
     return true;
   } catch (error) {
-    console.error("Failed to setup listeners:", error);
+    notifyLogger.error("Failed to setup listeners:", error.message);
     return false;
   }
 }
 
 // DZQL Generic Operations
 export async function callDZQLOperation(operation, entity, args, userId) {
+  dbLogger.trace(`DZQL ${operation}.${entity} for user ${userId}`);
   const result = await sql`
     SELECT dzql.generic_exec(${operation}, ${entity}, ${args}, ${userId}) as result
   `;
@@ -238,6 +244,8 @@ export const db = {
 
 // Graceful shutdown
 export async function closeConnections() {
+  dbLogger.info("Closing database connections...");
   await sql.end();
   await listen_sql.end();
+  dbLogger.info("Database connections closed");
 }

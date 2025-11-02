@@ -5,6 +5,7 @@ class WebSocketManager {
     this.messageId = 0;
     this.pendingRequests = new Map();
     this.broadcastCallbacks = new Set();
+    this.sidRequestHandlers = new Set();
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = options.maxReconnectAttempts ?? 5;
     this.isShuttingDown = false;
@@ -168,21 +169,28 @@ class WebSocketManager {
   }
 
   handleMessage(message) {
-
-
     // Handle JSON-RPC responses
     if (message.id && this.pendingRequests.has(message.id)) {
       const { resolve, reject } = this.pendingRequests.get(message.id);
       this.pendingRequests.delete(message.id);
 
       if (message.error) {
-
         reject(new Error(message.error.message || message.error.code || 'Unknown error'));
       } else {
         resolve(message.result);
       }
     } else {
+      // Handle broadcasts and SID requests
 
+      // Check if this is a SID request from server
+      if (message.params && message.params.sid) {
+        // Call all registered SID handlers
+        this.sidRequestHandlers.forEach((handler) => {
+          handler(message.method, message.params);
+        });
+      }
+
+      // Call regular broadcast callbacks
       this.broadcastCallbacks.forEach((callback) => {
         callback(message.method, message.params);
       });
@@ -233,6 +241,40 @@ class WebSocketManager {
 
   offBroadcast(callback) {
     this.broadcastCallbacks.delete(callback);
+  }
+
+  /**
+   * Register a handler for SID requests from server
+   * Handler receives (method, params) where params includes { sid, ...otherData }
+   * Handler should call respondToSID(sid, result) or respondToSID(sid, null, error)
+   *
+   * @param {Function} callback - Handler function
+   * @returns {Function} - Cleanup function to remove the handler
+   */
+  onSIDRequest(callback) {
+    this.sidRequestHandlers.add(callback);
+    return () => this.sidRequestHandlers.delete(callback);
+  }
+
+  offSIDRequest(callback) {
+    this.sidRequestHandlers.delete(callback);
+  }
+
+  /**
+   * Respond to a SID request from server
+   *
+   * @param {string} sid - The session ID from the server request
+   * @param {any} result - The result to send back (use null if error)
+   * @param {string|Error} error - Optional error if the request failed
+   */
+  async respondToSID(sid, result = null, error = null) {
+    const errorMessage = error ? (typeof error === 'string' ? error : error.message) : null;
+
+    return this.call('_sid_response', {
+      sid,
+      result,
+      error: errorMessage
+    });
   }
 
   isConnected() {

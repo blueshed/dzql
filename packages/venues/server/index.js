@@ -1,4 +1,4 @@
-import { createServer, metaRoute } from 'dzql';
+import { createServer, metaRoute, createMCPRoute } from 'dzql';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import client from "../client/index.html"
@@ -11,13 +11,22 @@ const __dirname = path.dirname(__filename);
 const customApi = await import('./api.js');
 
 // Start the DZQL server with venues-specific configuration
+// Note: We can't add MCP route yet because we need the broadcast function
 const server = createServer({
   port: process.env.PORT || 3000,
   customApi,
   // staticPath: path.join(__dirname, '../client'),
   routes: {
     "/": client,
-    "/meta": metaRoute()
+    "/meta": metaRoute(),
+    // MCP route will be created with a wrapper that captures broadcast
+    "/mcp": async (req) => {
+      // Lazy initialization of MCP route handler
+      if (!server._mcpHandler) {
+        server._mcpHandler = await createMCPRoute(server.broadcast);
+      }
+      return server._mcpHandler(req);
+    }
   }
 });
 

@@ -5,20 +5,12 @@ import {
   getUserProfile,
   db,
 } from "./db.js";
+import { wsLogger, authLogger } from "./logger.js";
 
 // Environment configuration
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "dev-secret-at-least-32-chars-long!!",
 );
-
-// Logging utility
-const IS_TEST = process.env.NODE_ENV === "test";
-function log(...args) {
-  if (!IS_TEST) console.log(...args);
-}
-function logError(...args) {
-  if (!IS_TEST) console.error(...args);
-}
 
 // JWT helpers
 export async function create_jwt(payload) {
@@ -55,17 +47,112 @@ export function create_rpc_error(id, code, message, data = null) {
   });
 }
 
+// SID (Session ID) Promise Management for bidirectional client-server communication
+// Used for async operations where server requests data from client
+const sidPromises = new Map();
+
+/**
+ * Create a promise with a unique SID that can be resolved/rejected later
+ * @param {number} timeout - Timeout in milliseconds (default: 30000)
+ * @returns {Object} - { sid, promise }
+ */
+export function createSIDPromise(timeout = 30000) {
+  const sid = crypto.randomUUID();
+
+  const promise = new Promise((resolve, reject) => {
+    // Store resolve/reject functions
+    sidPromises.set(sid, { resolve, reject });
+
+    // Set timeout
+    const timer = setTimeout(() => {
+      if (sidPromises.has(sid)) {
+        sidPromises.delete(sid);
+        reject(new Error(`SID request timeout after ${timeout}ms`));
+      }
+    }, timeout);
+
+    // Store timer so it can be cleared on resolution
+    const entry = sidPromises.get(sid);
+    if (entry) {
+      entry.timer = timer;
+    }
+  });
+
+  return { sid, promise };
+}
+
+/**
+ * Resolve a pending SID promise with a result
+ * @param {string} sid - The session ID
+ * @param {any} result - The result to resolve with
+ * @returns {boolean} - True if SID was found and resolved
+ */
+export function resolveSID(sid, result) {
+  const entry = sidPromises.get(sid);
+  if (!entry) {
+    wsLogger.warn(`Attempted to resolve unknown SID: ${sid}`);
+    return false;
+  }
+
+  clearTimeout(entry.timer);
+  sidPromises.delete(sid);
+  entry.resolve(result);
+  wsLogger.debug(`SID resolved: ${sid}`);
+  return true;
+}
+
+/**
+ * Reject a pending SID promise with an error
+ * @param {string} sid - The session ID
+ * @param {Error|string} error - The error to reject with
+ * @returns {boolean} - True if SID was found and rejected
+ */
+export function rejectSID(sid, error) {
+  const entry = sidPromises.get(sid);
+  if (!entry) {
+    wsLogger.warn(`Attempted to reject unknown SID: ${sid}`);
+    return false;
+  }
+
+  clearTimeout(entry.timer);
+  sidPromises.delete(sid);
+  entry.reject(typeof error === 'string' ? new Error(error) : error);
+  wsLogger.debug(`SID rejected: ${sid}`);
+  return true;
+}
+
 // Create RPC handler function
 export function createRPCHandler(customHandlers = {}) {
   return async function handle_rpc(ws, message) {
     let id = null;
+    const startTime = Date.now();
 
     try {
       const { method, params, id: request_id } = JSON.parse(message);
       id = request_id;
 
+      // Log incoming request
+      wsLogger.request(method, params);
+
+      // Handle SID responses from client (special internal method)
+      if (method === "_sid_response") {
+        const { sid, result, error } = params || {};
+        if (!sid) {
+          return create_rpc_error(id, -32602, "Missing sid parameter");
+        }
+
+        if (error) {
+          rejectSID(sid, error);
+        } else {
+          resolveSID(sid, result);
+        }
+
+        return create_rpc_response(id, { success: true });
+      }
+
       // Validate method doesn't start with underscore (private)
       if (method.startsWith("_")) {
+        wsLogger.warn(`Blocked private function call: ${method}`);
         return create_rpc_error(id, -32601, "Cannot call private functions");
       }
 
@@ -103,6 +190,7 @@ export function createRPCHandler(customHandlers = {}) {
 
       // Local API functions that don't require auth
       if (method === "login_user") {
+        authLogger.debug(`Login attempt for: ${params.email}`);
         const data = await callAuthFunction(
           "login_user",
           params.email,
@@ -112,6 +200,7 @@ export function createRPCHandler(customHandlers = {}) {
         // On successful auth, set user_id on WebSocket connection
         if (data && data.user_id) {
           ws.data.user_id = data.user_id;
+          authLogger.info(`User logged in: ${params.email} (id: ${data.user_id})`);
 
           // Create JWT token for client storage
           const token = await create_jwt({
@@ -122,18 +211,23 @@ export function createRPCHandler(customHandlers = {}) {
           // Get full profile
           const profile = await getUserProfile(data.user_id);
 
-          return create_rpc_response(id, {
+          const result = {
             user_id: data.user_id,
             email: data.email,
             token,
             profile,
-          });
+          };
+          wsLogger.response(method, result, Date.now() - startTime);
+          return create_rpc_response(id, result);
         }
 
+        authLogger.warn(`Login failed for: ${params.email}`);
+        wsLogger.response(method, data, Date.now() - startTime);
         return create_rpc_response(id, data);
       }
 
       if (method === "register_user") {
+        authLogger.debug(`Registration attempt for: ${params.email}`);
         const data = await callAuthFunction(
           "register_user",
           params.email,
@@ -143,6 +237,7 @@ export function createRPCHandler(customHandlers = {}) {
         // On successful registration, set user_id on WebSocket connection
         if (data && data.user_id) {
           ws.data.user_id = data.user_id;
+          authLogger.info(`User registered: ${params.email} (id: ${data.user_id})`);
 
           // Create JWT token for client storage
           const token = await create_jwt({
@@ -150,39 +245,51 @@ export function createRPCHandler(customHandlers = {}) {
             email: data.email,
           });
 
-          return create_rpc_response(id, {
+          const result = {
             user_id: data.user_id,
             email: data.email,
             token,
             profile: data,
-          });
+          };
+          wsLogger.response(method, result, Date.now() - startTime);
+          return create_rpc_response(id, result);
         }
 
+        authLogger.warn(`Registration failed for: ${params.email}`);
+        wsLogger.response(method, data, Date.now() - startTime);
         return create_rpc_response(id, data);
       }
 
       // Everything else requires authentication
       if (!ws.data.user_id) {
+        wsLogger.warn(`Unauthenticated request to: ${method}`);
         return create_rpc_error(id, -32603, "Not authenticated");
       }
 
       // Authenticated-only local functions
       if (method === "logout") {
+        authLogger.info(`User logged out (id: ${ws.data.user_id})`);
         ws.data.user_id = null;
-        return create_rpc_response(id, { success: true });
+        const result = { success: true };
+        wsLogger.response(method, result, Date.now() - startTime);
+        return create_rpc_response(id, result);
       }
 
       // Check for custom handlers
       if (customHandlers[method]) {
+        wsLogger.debug(`Calling custom handler: ${method}`);
         const result = await customHandlers[method](ws.data.user_id, params);
+        wsLogger.response(method, result, Date.now() - startTime);
         return create_rpc_response(id, result);
       }
 
       // Call stored function with user_id as first parameter
+      wsLogger.debug(`Calling database function: ${method}`);
       const result = await callUserFunction(method, ws.data.user_id, params);
+      wsLogger.response(method, result, Date.now() - startTime);
       return create_rpc_response(id, result);
     } catch (error) {
-      logError("RPC error:", error);
+      wsLogger.error(`RPC error in ${method}:`, error.message);
 
       // PostgreSQL error codes
       if (error.code) {
@@ -226,8 +333,8 @@ export function createWebSocketHandlers(options = {}) {
       ws.data.connection_id = id;
       connections.set(id, ws);
 
-      log(
-        `WebSocket connected: ${id}`,
+      wsLogger.info(
+        `Connection opened: ${id.slice(0, 8)}...`,
         ws.data.user_id ? `(user: ${ws.data.user_id})` : "(anonymous)",
       );
 
@@ -237,7 +344,7 @@ export function createWebSocketHandlers(options = {}) {
         try {
           profile = await getUserProfile(ws.data.user_id);
         } catch (error) {
-          logError("Failed to load profile:", error);
+          wsLogger.error("Failed to load profile:", error.message);
         }
       }
 
@@ -270,7 +377,7 @@ export function createWebSocketHandlers(options = {}) {
     close(ws) {
       const id = ws.data.connection_id;
       connections.delete(id);
-      log(`WebSocket disconnected: ${id}`);
+      wsLogger.info(`Connection closed: ${id?.slice(0, 8)}...`);
 
       // Call custom disconnection handler
       if (onDisconnection) {
@@ -280,7 +387,7 @@ export function createWebSocketHandlers(options = {}) {
 
     // Error occurred
     error(ws, error) {
-      logError(`WebSocket error for ${ws.data.connection_id}:`, error);
+      wsLogger.error(`WebSocket error for ${ws.data.connection_id?.slice(0, 8)}...:`, error.message);
     },
   };
 }
