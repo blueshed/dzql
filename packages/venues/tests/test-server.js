@@ -1,4 +1,10 @@
 import { spawn } from "bun";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+// Get the directory of this test file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Test server utility for consistent server spawning and health checking
@@ -18,11 +24,11 @@ class TestServer {
       throw new Error("Server is already running");
     }
 
-    // Spawn the server process
-    this.server = spawn(["bun", "run", "server/index.js"], {
-      cwd: process.cwd(),
-      stdout: "pipe",
-      stderr: "pipe",
+    // Spawn the server process from the package directory
+    this.server = spawn(["bun", "server/index.js"], {
+      cwd: dirname(__dirname), // Go up from tests/ to package root
+      stdout: "inherit",
+      stderr: "inherit",
       env: { ...process.env, NODE_ENV: "test", PORT: this.port.toString() },
     });
 
@@ -80,8 +86,7 @@ class TestServer {
 
     while (Date.now() - startTime < timeoutMs) {
       try {
-        // Use Node.js WebSocket to test connection
-        const WebSocket = require("ws");
+        // Use Bun's built-in WebSocket to test connection
         const ws = new WebSocket(this.getWebSocketUrl());
 
         await new Promise((resolve, reject) => {
@@ -90,16 +95,16 @@ class TestServer {
             reject(new Error("WebSocket connection timeout"));
           }, 1000);
 
-          ws.on("open", () => {
+          ws.onopen = () => {
             clearTimeout(timeout);
             ws.close();
             resolve();
-          });
+          };
 
-          ws.on("error", (error) => {
+          ws.onerror = (error) => {
             clearTimeout(timeout);
             reject(error);
-          });
+          };
         });
 
         // If we get here, WebSocket is ready

@@ -6,11 +6,15 @@ const DATABASE_URL =
   process.env.DATABASE_URL ||
   "postgresql://dzql:dzql@localhost:5432/dzql";
 
+const DB_MAX_CONNECTIONS = parseInt(process.env.DB_MAX_CONNECTIONS || "10", 10);
+const DB_IDLE_TIMEOUT = parseInt(process.env.DB_IDLE_TIMEOUT || "20", 10);
+const DB_CONNECT_TIMEOUT = parseInt(process.env.DB_CONNECT_TIMEOUT || "10", 10);
+
 // Main PostgreSQL connection for queries
 export const sql = postgres(DATABASE_URL, {
-  max: 10,
-  idle_timeout: 20,
-  connect_timeout: 10,
+  max: DB_MAX_CONNECTIONS,
+  idle_timeout: DB_IDLE_TIMEOUT,
+  connect_timeout: DB_CONNECT_TIMEOUT,
   // Suppress NOTICE messages in test environment
   onnotice: process.env.NODE_ENV === 'test' ? () => {} : undefined,
 });
@@ -19,7 +23,7 @@ export const sql = postgres(DATABASE_URL, {
 export const listen_sql = postgres(DATABASE_URL, {
   max: 1,
   idle_timeout: 0,
-  connect_timeout: 10,
+  connect_timeout: DB_CONNECT_TIMEOUT,
   // Suppress NOTICE messages in test environment
   onnotice: process.env.NODE_ENV === 'test' ? () => {} : undefined,
 });
@@ -83,6 +87,12 @@ async function getFunctionParams(functionName) {
 
 // Generic stored function call with user_id
 export async function callUserFunction(method, userId, params) {
+  // Validate function name format (only alphanumeric and underscore, no special chars)
+  // This prevents SQL injection via function names like "foo(); DROP TABLE users--"
+  if (!/^[a-z_][a-z0-9_]*$/i.test(method)) {
+    throw new Error(`Invalid function name: ${method}`);
+  }
+
   const functionParams = await getFunctionParams(method);
 
   if (functionParams.length === 0) {

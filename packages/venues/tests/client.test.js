@@ -2,17 +2,13 @@ import { test, expect, beforeAll, afterAll } from "bun:test";
 import { sql } from "dzql";
 import { setupTestServer, teardownTestServer } from "./test-server.js";
 
-// Import the actual WebSocket manager from client
-import { useWs } from "../../dzql/src/client/ws.js";
+// Import the WebSocketManager class to create fresh instances per test
+import { WebSocketManager } from "../../dzql/src/client/ws.js";
 
 let server;
 let testUser;
 
 beforeAll(async () => {
-  // Reset WebSocket manager singleton to ensure clean state
-  const ws = useWs();
-  ws.reset();
-
   // Use a unique email for this test run to avoid conflicts
   const testEmail = `proxy-test-${Date.now()}@example.com`;
 
@@ -45,89 +41,255 @@ afterAll(async () => {
   await sql`DELETE FROM users WHERE email LIKE 'proxy-test-%@example.com'`;
 });
 
-test("Client proxy API - end-to-end with real WebSocket", async () => {
-  const ws = useWs();
-  ws.reset(); // Reset state before test
+test("DEBUG: Verify PostgreSQL generic_get raises error for missing record", async () => {
+  // Test directly at SQL level to isolate the issue
+  try {
+    console.log("\n=== POSTGRES DEBUG TEST ===");
+    const result = await sql`
+      SELECT dzql.generic_get('organisations', '{"id": 999999}'::jsonb, 65) as result
+    `;
+    console.error("ERROR: PostgreSQL should have raised exception, got:", result);
+    throw new Error("PostgreSQL generic_get should raise exception for missing record");
+  } catch (error) {
+    console.log("PostgreSQL error (expected):", error.message);
+    if (error.message.includes("record not found")) {
+      console.log("✓ PostgreSQL is correctly raising 'record not found' error");
+    } else {
+      console.error("✗ PostgreSQL error doesn't mention 'record not found':", error.message);
+    }
+  }
+});
+
+test("DEBUG: Verify generic_exec via SELECT raises error", async () => {
+  // Test generic_exec (which is called by the server) to see if it properly raises errors
+  try {
+    console.log("\n=== GENERIC_EXEC DEBUG TEST ===");
+    const result = await sql`
+      SELECT dzql.generic_exec('get', 'organisations', '{"id": 999999}'::jsonb, 65) as result
+    `;
+    console.error("ERROR: generic_exec should have raised exception, got:", result);
+    throw new Error("generic_exec should raise exception for missing record");
+  } catch (error) {
+    console.log("generic_exec error (expected):", error.message);
+    if (error.message.includes("record not found")) {
+      console.log("✓ generic_exec is correctly raising 'record not found' error");
+    } else {
+      console.error("✗ generic_exec error doesn't match:", error.message);
+    }
+  }
+});
+
+test("DEBUG: GET non-existent record", async () => {
+  const ws = new WebSocketManager();
 
   return new Promise(async (resolve, reject) => {
     const timeout = setTimeout(() => {
+      console.error("\n!!! TIMEOUT: WebSocket GET call never returned !!!");
+      console.error("This suggests server is not sending error response back");
+      ws.disconnect();
+      reject(new Error("GET non-existent record timed out - server not responding"));
+    }, 5000);
+
+    try {
+      console.log("\n=== DEBUG: GET NON-EXISTENT TEST ===");
+      console.log("1. Connecting...");
+      await ws.connect();
+      console.log("2. Connected!");
+
+      console.log("3. Logging in...");
+      await ws.api.login_user({
+        email: testUser.email,
+        password: "password123",
+      });
+      console.log("4. Logged in!");
+
+      console.log("5. Attempting GET with invalid ID (999999)...");
+      console.log("   (If this hangs, server is not responding to errors)");
+
+      try {
+        const result = await ws.api.get.organisations({ id: 999999 });
+        console.error("ERROR: Should have thrown but got:", result);
+        throw new Error("Should have thrown error for non-existent record");
+      } catch (error) {
+        console.log("6. Got expected error:", error.message);
+        if (!error.message.includes("record not found")) {
+          throw new Error(`Wrong error message. Expected "record not found", got: "${error.message}"`);
+        }
+      }
+
+      clearTimeout(timeout);
+      console.log("7. Test passed!");
+      ws.cleanDisconnect();
+      resolve();
+    } catch (error) {
+      clearTimeout(timeout);
+      console.error("Test failed:", error.message);
+      ws.cleanDisconnect();
+      reject(error);
+    }
+  });
+});
+
+test("DEBUG: Simple WebSocket connection test", async () => {
+  const ws = new WebSocketManager();
+
+  return new Promise(async (resolve, reject) => {
+    try {
+      console.log("\n=== DEBUG TEST START ===");
+      console.log("1. Creating fresh WebSocketManager instance");
+
+      console.log("2. Attempting to connect...");
+      await ws.connect();
+      console.log("3. Connected successfully!");
+      console.log("4. WebSocket state:", ws.getStatus());
+
+      console.log("5. Attempting login...");
+      const loginResult = await ws.api.login_user({
+        email: testUser.email,
+        password: "password123",
+      });
+      console.log("6. Login successful!");
+      console.log("7. Got token:", loginResult.token ? "YES" : "NO");
+      console.log("8. User ID:", loginResult.profile.user_id);
+
+      console.log("9. Attempting simple GET...");
+      const orgResult = await ws.api.get.organisations({ id: 1 });
+      console.log("10. GET successful!");
+      console.log("11. Org ID:", orgResult.id);
+      console.log("12. Org name:", orgResult.name);
+
+      console.log("13. Cleaning up...");
+      ws.cleanDisconnect();
+      console.log("14. Disconnected");
+      console.log("=== DEBUG TEST END ===\n");
+
+      resolve();
+    } catch (error) {
+      console.error("\n!!! ERROR in debug test !!!");
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+      console.error("WebSocket status:", ws.getStatus());
+      console.error("!!!!!!!!!!!!!!!!!!!!!!\n");
+      ws.cleanDisconnect();
+      reject(error);
+    }
+  });
+});
+
+test("Client proxy API - end-to-end with real WebSocket", async () => {
+  const ws = new WebSocketManager(); // Fresh instance per test
+
+  return new Promise(async (resolve, reject) => {
+    const timeout = setTimeout(() => {
+      console.error("TIMEOUT: Test did not complete in 10s");
+      console.error("WebSocket status:", ws.getStatus());
       ws.disconnect();
       reject(new Error("Test timeout - WebSocket operations failed"));
     }, 10000);
 
     try {
       // Connect to WebSocket
+      console.log("E2E: Connecting...");
       await ws.connect();
+      console.log("E2E: Connected!");
 
       // Login first
+      console.log("E2E: Logging in...");
       const loginResult = await ws.api.login_user({
         email: testUser.email,
         password: "password123",
       });
+      console.log("E2E: Login successful!");
 
       expect(loginResult.token).toBeDefined();
       expect(loginResult.profile.user_id).toBe(testUser.user_id);
 
       // Test NEW nested proxy API - get operation
+      console.log("E2E: Testing GET...");
       const orgResult = await ws.api.get.organisations({ id: 1 });
+      console.log("E2E: GET successful!");
       expect(orgResult).toBeDefined();
       expect(orgResult.id).toBe(1);
       expect(orgResult.name).toBeDefined();
 
       // Test NEW nested proxy API - lookup operation
+      console.log("E2E: Testing LOOKUP...");
       const lookupResult = await ws.api.lookup.organisations({
         p_filter: "Event",
       });
+      console.log("E2E: LOOKUP successful!");
       expect(Array.isArray(lookupResult)).toBe(true);
       expect(lookupResult.length).toBeGreaterThan(0);
       expect(lookupResult[0].label).toContain("Event");
 
       // Test NEW nested proxy API - search operation
+      console.log("E2E: Testing SEARCH...");
       const searchResult = await ws.api.search.venues({
         p_filters: {},
       });
+      console.log("E2E: SEARCH successful!");
       expect(searchResult.data).toBeDefined();
       expect(Array.isArray(searchResult.data)).toBe(true);
       expect(searchResult.total).toBeDefined();
 
       // Test NEW nested proxy API - save operation (create new org)
+      console.log("E2E: Testing SAVE (create)...");
       const testOrgName = `Proxy Test Org ${Date.now()}`;
       const saveResult = await ws.api.save.organisations({
         name: testOrgName,
         description: "Created via proxy API test",
       });
+      console.log("E2E: SAVE successful! ID:", saveResult.id);
       expect(saveResult.id).toBeDefined();
       expect(saveResult.name).toBe(testOrgName);
 
       // Test NEW nested proxy API - get the created org
+      console.log("E2E: Testing GET created org...");
       const getResult = await ws.api.get.organisations({
         id: saveResult.id,
       });
+      console.log("E2E: GET created org successful!");
       expect(getResult.id).toBe(saveResult.id);
       expect(getResult.name).toBe(testOrgName);
       expect(getResult.description).toBe("Created via proxy API test");
 
       // Test NEW nested proxy API - delete operation
+      console.log("E2E: Testing DELETE...");
       const deleteResult = await ws.api.delete.organisations({
         id: saveResult.id,
       });
+      console.log("E2E: DELETE successful!");
       expect(deleteResult.id).toBe(saveResult.id);
 
       // Verify deletion worked - should throw error for non-existent record
+      console.log("E2E: Verifying deletion...");
       try {
-        await ws.api.get.organisations({
+        const deletionVerifyPromise = ws.api.get.organisations({
           id: saveResult.id,
         });
+
+        // Add a timeout to the deletion verification
+        const deletionTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Deletion verification timeout")), 3000)
+        );
+
+        await Promise.race([deletionVerifyPromise, deletionTimeout]);
         throw new Error("Should have thrown an error for deleted record");
       } catch (error) {
+        console.log("E2E: Got expected error:", error.message);
         expect(error.message).toContain("record not found");
       }
+      console.log("E2E: Deletion verified!");
 
       clearTimeout(timeout);
+      console.log("E2E: Test complete, disconnecting...");
       ws.cleanDisconnect();
+      console.log("E2E: Disconnected");
       resolve();
     } catch (error) {
       clearTimeout(timeout);
+      console.error("E2E ERROR:", error.message);
+      console.error("WebSocket status:", ws.getStatus());
       ws.cleanDisconnect();
       reject(error);
     }
@@ -135,7 +297,7 @@ test("Client proxy API - end-to-end with real WebSocket", async () => {
 });
 
 test("Client proxy API vs legacy API comparison", async () => {
-  const ws = useWs();
+  const ws = new WebSocketManager(); // Fresh instance per test
 
   return new Promise(async (resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -144,8 +306,7 @@ test("Client proxy API vs legacy API comparison", async () => {
     }, 5000);
 
     try {
-      ws.reset(); // Clean state
-      ws.connect();
+      await ws.connect();
 
       // Wait for connection
       await new Promise((resolve) => {
@@ -200,7 +361,7 @@ test("Client proxy API vs legacy API comparison", async () => {
 });
 
 test("Client proxy API - all 5 operations work", async () => {
-  const ws = useWs();
+  const ws = new WebSocketManager(); // Fresh instance per test
 
   return new Promise(async (resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -209,8 +370,7 @@ test("Client proxy API - all 5 operations work", async () => {
     }, 8000);
 
     try {
-      ws.reset(); // Clean state
-      ws.connect();
+      await ws.connect();
 
       await new Promise((resolve) => {
         const checkConnection = () => {
@@ -270,7 +430,7 @@ test("Client proxy API - all 5 operations work", async () => {
 });
 
 test("Client proxy API - custom PostgreSQL functions", async () => {
-  const ws = useWs();
+  const ws = new WebSocketManager(); // Fresh instance per test
 
   return new Promise(async (resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -321,7 +481,7 @@ test("Client proxy API - custom PostgreSQL functions", async () => {
 });
 
 test("Client proxy API - handles non-existent functions", async () => {
-  const ws = useWs();
+  const ws = new WebSocketManager(); // Fresh instance per test
 
   return new Promise(async (resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -358,7 +518,7 @@ test("Client proxy API - handles non-existent functions", async () => {
 });
 
 test("Client proxy API - Bun function goodbye", async () => {
-  const ws = useWs();
+  const ws = new WebSocketManager(); // Fresh instance per test
 
   return new Promise(async (resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -402,7 +562,7 @@ test("Client proxy API - Bun function goodbye", async () => {
 });
 
 test("Client proxy API - real-time events integration", async () => {
-  const ws = useWs();
+  const ws = new WebSocketManager(); // Fresh instance per test
 
   return new Promise(async (resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -413,8 +573,7 @@ test("Client proxy API - real-time events integration", async () => {
     const receivedEvents = [];
 
     try {
-      ws.reset(); // Clean state
-      ws.connect();
+      await ws.connect();
 
       await new Promise((resolve) => {
         const checkConnection = () => {

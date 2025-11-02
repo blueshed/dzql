@@ -1,5 +1,5 @@
 // ZeroQL Framework - Main Entry Point
-export { default as createServer } from './server/index.js';
+export { createServer } from './server/index.js';
 
 // Re-export client utilities
 export { WebSocketManager, useWs } from './client/ws.js';

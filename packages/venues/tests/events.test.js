@@ -47,7 +47,7 @@ describe("DZQL Real-time Events", () => {
       VALUES (${testUser.user_id}, ${testOrg.id}, CURRENT_DATE)
       ON CONFLICT (user_id, org_id, valid_from) DO NOTHING
     `;
-  }, 30000);
+  });
 
   afterAll(async () => {
     // Clean up in reverse order to avoid foreign key constraints

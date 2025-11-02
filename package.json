@@ -26,7 +26,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/dzql"
+    "url": "https://github.com/blueshed/dzql"
   },
   "keywords": [
     "postgresql",
@@ -37,7 +37,7 @@
     "framework",
     "zero-boilerplate"
   ],
-  "author": "Your Name",
+  "author": "Peter Bunyan",
   "license": "MIT",
   "dependencies": {
     "concurrently": "^9.2.1",

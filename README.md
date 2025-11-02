@@ -1,5 +1,7 @@
 # DZQL
 
+> ⚠️ **ALPHA SOFTWARE** - DZQL is in early alpha (v0.1.0-alpha.1). The API may change. Not recommended for production use yet. Feedback and contributions welcome!
+
 A PostgreSQL-powered framework that automatically provides 5 standard database operations per entity with real-time WebSocket synchronization and zero boilerplate.
 
 ## Overview
@@ -27,12 +29,33 @@ ws.api.save.venues() -> db.api.save.venues() -> dzql.generic_save()
 
 ## Quick Start
 
-### 1. Start PostgreSQL
+### 1. Configure Environment
+
+Copy the example environment file and configure:
+
+```bash
+cp .env.example .env
+```
+
+**Required for production:**
+- `JWT_SECRET` - Secret key for JWT tokens (generate with `openssl rand -base64 32`)
+
+**Optional configuration:**
+- `DATABASE_URL` - PostgreSQL connection string (default: `postgresql://dzql:dzql@localhost:5432/dzql`)
+- `PORT` - Server port (default: 3000)
+- `JWT_EXPIRES_IN` - Token expiration (default: 7d)
+- `DB_MAX_CONNECTIONS` - Connection pool size (default: 10)
+- `LOG_LEVEL` - Logging level: ERROR, WARN, INFO, DEBUG, TRACE (default: INFO)
+- `LOG_CATEGORIES` - Per-category levels (e.g., `ws:debug,db:info`)
+
+See [`.env.example`](.env.example) for all available options.
+
+### 2. Start PostgreSQL
 ```bash
 bun venues:db        # Starts PostgreSQL via Docker Compose (clean slate)
 ```
 
-### 2. Register an Entity
+### 3. Register an Entity
 ```sql
 SELECT dzql.register_entity(
   'venues',                              -- table name

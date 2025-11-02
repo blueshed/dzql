@@ -8,8 +8,32 @@ import {
 import { wsLogger, authLogger } from "./logger.js";
 
 // Environment configuration
+const JWT_SECRET_STRING = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+
+// WebSocket ping/pong configuration (important for Heroku and other platforms)
+// Heroku terminates WebSocket connections after 55 seconds of inactivity (H15 error)
+// Default 30s interval keeps connections alive well within that limit
+const WS_PING_INTERVAL = parseInt(process.env.WS_PING_INTERVAL || "30000", 10); // 30 seconds default
+const WS_PING_TIMEOUT = parseInt(process.env.WS_PING_TIMEOUT || "5000", 10);    // 5 seconds default
+const WS_MAX_MESSAGE_SIZE = parseInt(process.env.WS_MAX_MESSAGE_SIZE || "1048576", 10); // 1MB default
+
+// Validate JWT_SECRET in production
+if (process.env.NODE_ENV === "production" && !JWT_SECRET_STRING) {
+  throw new Error(
+    "JWT_SECRET environment variable is required in production. Generate one with: openssl rand -base64 32"
+  );
+}
+
+// Warn if using default secret in development
+if (!JWT_SECRET_STRING && process.env.NODE_ENV !== "test") {
+  console.warn(
+    "⚠️  WARNING: Using default JWT secret. Set JWT_SECRET environment variable for security."
+  );
+}
+
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "dev-secret-at-least-32-chars-long!!",
+  JWT_SECRET_STRING || "dev-secret-at-least-32-chars-long!!"
 );
 
 // JWT helpers
@@ -17,7 +41,7 @@ export async function create_jwt(payload) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("24h")
+    .setExpirationTime(JWT_EXPIRES_IN)
     .sign(JWT_SECRET);
 }
 
@@ -125,11 +149,14 @@ export function rejectSID(sid, error) {
 export function createRPCHandler(customHandlers = {}) {
   return async function handle_rpc(ws, message) {
     let id = null;
+    let method = null;
     const startTime = Date.now();
 
     try {
-      const { method, params, id: request_id } = JSON.parse(message);
-      id = request_id;
+      const parsed = JSON.parse(message);
+      method = parsed.method;
+      const params = parsed.params;
+      id = parsed.id;
 
       // Log incoming request
       wsLogger.request(method, params);
@@ -181,10 +208,12 @@ export function createRPCHandler(customHandlers = {}) {
           );
         }
 
+        wsLogger.debug(`DZQL: Calling ${operation}.${entity} with params:`, JSON.stringify(params));
         const result = await db.api[operation][entity](
           params || {},
           ws.data.user_id,
         );
+        wsLogger.debug(`DZQL: ${operation}.${entity} returned successfully`);
         return create_rpc_response(id, result);
       }
 
@@ -290,15 +319,18 @@ export function createRPCHandler(customHandlers = {}) {
       return create_rpc_response(id, result);
     } catch (error) {
       wsLogger.error(`RPC error in ${method}:`, error.message);
+      wsLogger.debug(`RPC error stack:`, error.stack);
 
       // PostgreSQL error codes
       if (error.code) {
+        wsLogger.debug(`Returning PostgreSQL error for id=${id}`);
         return create_rpc_error(id, -32603, String(error), {
           code: error.code,
         });
       }
 
       // Generic error
+      wsLogger.debug(`Returning generic error for id=${id}: ${error.message}`);
       return create_rpc_error(id, -32603, "Internal error", {
         message: error.message,
       });
@@ -327,6 +359,14 @@ export function createWebSocketHandlers(options = {}) {
   return {
     connections,
     broadcast,
+
+    // WebSocket configuration for Bun.serve
+    // These properties are required for proper ping/pong support (especially on Heroku)
+    perMessageDeflate: true,
+    maxPayloadLength: WS_MAX_MESSAGE_SIZE,
+    idleTimeout: WS_PING_INTERVAL / 1000, // Convert to seconds for Bun
+    closeOnBackpressureLimit: true, // Close connection if backpressure limit exceeded
+
     // Connection opened
     async open(ws) {
       const id = crypto.randomUUID();

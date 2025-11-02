@@ -301,7 +301,8 @@ BEGIN
     EXECUTE l_sql_stmt INTO l_existing_record;
 
     IF l_existing_record IS NULL THEN
-      l_is_insert := true;
+      -- User provided ID but record doesn't exist - this is an error
+      RAISE EXCEPTION 'DZQL: record with id % not found in %', l_args_json ->> l_pk_cols[1], p_entity;
     END IF;
   END IF;
 

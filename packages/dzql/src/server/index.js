@@ -1,14 +1,20 @@
 import { createWebSocketHandlers, verify_jwt_token } from "./ws.js";
-import { closeConnections, setupListeners } from "./db.js";
+import { closeConnections, setupListeners, sql, db } from "./db.js";
 import * as defaultApi from "./api.js";
 import { serverLogger, notifyLogger } from "./logger.js";
 
-export default function createServer(options = {}) {
+// Re-export commonly used utilities
+export { sql, db } from "./db.js";
+export { metaRoute } from "./meta-route.js";
+export { createMCPRoute } from "./mcp.js";
+
+export function createServer(options = {}) {
   const {
     port = process.env.PORT || 3000,
     customApi = {},
     routes = {},
-    staticPath = null  // No default static path - applications should specify
+    staticPath = null,  // No default static path - applications should specify
+    onReady = null      // Optional callback that receives { broadcast, server } after initialization
   } = options;
 
   // Merge default API with custom API
@@ -44,6 +50,14 @@ export default function createServer(options = {}) {
   });
 
   routes['/health'] = () => new Response("OK", { status: 200 });
+
+  // Call onReady callback if provided to allow dynamic route setup
+  if (onReady && typeof onReady === 'function') {
+    const additionalRoutes = onReady({ broadcast, routes });
+    if (additionalRoutes && typeof additionalRoutes === 'object') {
+      Object.assign(routes, additionalRoutes);
+    }
+  }
 
   // Create and start the Bun server
   const server = Bun.serve({
@@ -106,6 +120,7 @@ export default function createServer(options = {}) {
   serverLogger.info(`   HTTP: http://localhost:${port}`);
   serverLogger.info(`   WebSocket: ws://localhost:${port}/ws`);
   serverLogger.info(`   Environment: ${process.env.NODE_ENV || "development"}`);
+  serverLogger.info(`   WS Ping Interval: ${process.env.WS_PING_INTERVAL || 30000}ms (Heroku safe: <55s)`);
 
   // Add graceful shutdown handling
   const shutdown = async () => {

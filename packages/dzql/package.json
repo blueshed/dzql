@@ -1,44 +1,67 @@
 {
   "name": "dzql",
-  "version": "1.0.0",
+  "version": "0.1.0-alpha.2",
   "description": "PostgreSQL-powered framework with zero boilerplate CRUD operations and real-time WebSocket synchronization",
   "type": "module",
-  "main": "src/index.js",
-  "bin": {
-    "dzql": "./bin/cli.js"
-  },
+  "main": "src/server/index.js",
   "exports": {
-    ".": "./src/index.js",
-    "./client": "./src/client.js",
-    "./server": "./src/server/index.js"
+    ".": "./src/server/index.js",
+    "./client": "./src/client/ws.js",
+    "./server": "./src/server/index.js",
+    "./db": "./src/server/db.js"
   },
+  "files": [
+    "src/**/*.js",
+    "src/database/migrations/**/*.sql",
+    "README.md",
+    "GETTING_STARTED.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "echo 'No build step required for now'",
-    "test": "bun test"
+    "test": "bun test",
+    "prepublishOnly": "echo '⚠️  Publishing DZQL alpha release...'"
   },
   "dependencies": {
     "jose": "^6.1.0",
     "postgres": "^3.4.7"
   },
+
   "keywords": [
     "postgresql",
+    "postgres",
     "websocket",
     "real-time",
+    "realtime",
     "crud",
     "api",
     "framework",
     "zero-boilerplate",
     "database",
-    "orm"
+    "bun",
+    "graph-rules",
+    "permissions",
+    "row-level-security",
+    "rls",
+    "notify",
+    "listen",
+    "subscriptions"
   ],
-  "author": "Your Name",
+  "author": "Peter Bunyan",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/dzql",
+    "url": "https://github.com/blueshed/dzql",
     "directory": "packages/dzql"
   },
+  "bugs": {
+    "url": "https://github.com/blueshed/dzql/issues"
+  },
+  "homepage": "https://github.com/blueshed/dzql#readme",
   "engines": {
     "bun": ">=1.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
   }
 }
