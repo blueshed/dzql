@@ -149,7 +149,7 @@ bun dev          # Client + server concurrently
 ## Documentation
 
 - **[GETTING_STARTED.md](packages/dzql/GETTING_STARTED.md)** - Step-by-step tutorial with complete todo app
-- **[REFERENCE.md](REFERENCE.md)** - Complete API documentation
+- **[REFERENCE.md](packages/dzql/REFERENCE.md)** - Complete API documentation
 - **[CLAUDE.md](CLAUDE.md)** - AI development guide
 - **[Venues Example](packages/venues/)** - Full working application
 - **[ROADMAP.md](ROADMAP.md)** - Project roadmap & known issues

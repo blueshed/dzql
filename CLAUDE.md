@@ -925,7 +925,7 @@ array['name', 'address', 'city', 'description', 'notes', 'tags', 'metadata']
 
 ## Additional Resources
 
-- **API Reference**: See [REFERENCE.md](REFERENCE.md) for complete API documentation
+- **API Reference**: See [packages/dzql/REFERENCE.md](packages/dzql/REFERENCE.md) for complete API documentation
 - **Tutorial**: See [packages/dzql/GETTING_STARTED.md](packages/dzql/GETTING_STARTED.md) for hands-on guide
 - **Examples**: See `packages/venues/` for complete working application
 - **Tests**: See `packages/venues/tests/` for comprehensive test patterns

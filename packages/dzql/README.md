@@ -8,7 +8,7 @@ All documentation is maintained in the repository root:
 
 - **[README.md](../../README.md)** - Project overview and quick start
 - **[GETTING_STARTED.md](GETTING_STARTED.md)** - Complete tutorial with working todo app
-- **[REFERENCE.md](../../REFERENCE.md)** - Complete API reference
+- **[REFERENCE.md](REFERENCE.md)** - Complete API reference
 - **[CLAUDE.md](../../CLAUDE.md)** - Development guide for AI assistants
 - **[Venues Example](../venues/)** - Full working application
 
