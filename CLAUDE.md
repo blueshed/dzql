@@ -382,3 +382,550 @@ invokej dzql.lookup organisations '{"query": "acme"}'
 4. **Graph Rule Variables**: Use `@` prefix for all variables (`@user_id`, `@id`, `@field_name`)
 5. **Permission Paths**: Empty array means "allow all", missing permission type means "deny all"
 6. **NOTIFY Filtering**: `notify_users: null` broadcasts to all authenticated users; array targets specific user_ids
+
+---
+
+## Database Schema Reference
+
+### Core DZQL Tables
+
+#### `dzql.entities`
+Stores entity configuration metadata:
+```sql
+TABLE dzql.entities {
+  table_name TEXT PRIMARY KEY,
+  label_field TEXT NOT NULL,
+  searchable_fields TEXT[] NOT NULL,
+  fk_includes JSONB DEFAULT '{}'::jsonb,
+  soft_delete BOOLEAN DEFAULT false,
+  temporal_fields JSONB DEFAULT '{}'::jsonb,
+  notification_paths JSONB DEFAULT '{}'::jsonb,
+  permission_paths JSONB DEFAULT '{}'::jsonb,
+  graph_rules JSONB DEFAULT '{}'::jsonb
+}
+```
+
+#### `dzql.events`
+Complete audit trail with real-time notification data:
+```sql
+TABLE dzql.events {
+  event_id BIGSERIAL PRIMARY KEY,
+  context_id TEXT,           -- For catchup queries
+  table_name TEXT NOT NULL,
+  op TEXT NOT NULL,          -- 'insert' | 'update' | 'delete'
+  pk JSONB NOT NULL,         -- Primary key: {id: 1}
+  before JSONB,              -- Old values (null for insert)
+  after JSONB,               -- New values (null for delete)
+  user_id INT,               -- Who made the change
+  notify_users INT[],        -- Who to notify (null = all)
+  at TIMESTAMPTZ DEFAULT NOW()
+}
+```
+
+#### `dzql.registry`
+Allowed custom functions (optional):
+```sql
+TABLE dzql.registry {
+  function_name TEXT PRIMARY KEY,
+  description TEXT
+}
+```
+
+---
+
+## Common Error Messages
+
+### Error Dictionary
+
+| Error Message | Cause | Solution |
+|---------------|-------|----------|
+| `"record not found"` | GET operation on non-existent ID | Check ID exists, handle 404 case |
+| `"Permission denied: view on users"` | User not in permission path result | Verify user has access, check permission paths |
+| `"Permission denied: create on venues"` | User can't create records | Add user to create permission path |
+| `"entity users not configured"` | Table not registered with DZQL | Call `dzql.register_entity()` |
+| `"Column foo does not exist in table users"` | Invalid filter field in SEARCH | Check `searchable_fields` configuration |
+| `"Invalid function name: foo"` | Custom function doesn't exist | Create function or check spelling |
+| `"Function not found"` | Function not exported or not in DB | Export from api.js or CREATE FUNCTION |
+| `"Authentication required"` | Not logged in | Call `login_user()` first |
+| `"Invalid token"` | Expired or malformed JWT | Re-authenticate with `login_user()` |
+| `"Duplicate key violates unique constraint"` | Inserting duplicate unique value | Check for existing record first |
+| `"Foreign key violation"` | Referenced record doesn't exist | Create parent record before child |
+| `"Invalid JSON"` | Malformed JSON in request | Validate JSON syntax |
+
+### Error Handling Pattern
+
+```javascript
+try {
+  const user = await ws.api.get.users({id: userId});
+} catch (error) {
+  if (error.message === 'record not found') {
+    // Handle missing record
+  } else if (error.message.includes('Permission denied')) {
+    // Handle unauthorized access
+  } else {
+    // Handle unexpected errors
+  }
+}
+```
+
+---
+
+## Event Structure Reference
+
+### WebSocket Event Format
+
+**Method:** `"{table}:{operation}"`
+- Examples: `"venues:insert"`, `"users:update"`, `"sites:delete"`
+
+**Params Structure:**
+```javascript
+{
+  table: 'venues',              // Table name
+  op: 'insert',                 // Operation: 'insert' | 'update' | 'delete'
+  pk: {id: 1},                  // Primary key object
+  before: {                     // Old values (null for insert)
+    id: 1,
+    name: 'Old Name',
+    address: 'Old Address'
+  },
+  after: {                      // New values (null for delete)
+    id: 1,
+    name: 'New Name',
+    address: 'New Address'
+  },
+  user_id: 123,                 // User who made the change
+  at: '2025-01-01T12:00:00Z',  // Timestamp
+  notify_users: [1, 2, 3]       // Targeted users (null = all authenticated)
+}
+```
+
+### Using Event Data
+
+```javascript
+ws.onBroadcast((method, params) => {
+  // For insert
+  if (method === 'venues:insert') {
+    const newRecord = params.after;
+    // params.before is null
+  }
+  
+  // For update
+  if (method === 'venues:update') {
+    const oldRecord = params.before;
+    const newRecord = params.after;
+    // Compare to detect what changed
+  }
+  
+  // For delete
+  if (method === 'venues:delete') {
+    const deletedRecord = params.before;
+    // params.after is null
+  }
+});
+```
+
+---
+
+## Decision Trees
+
+### When to Use Graph Rules vs Manual Operations
+
+**Use Graph Rules When:**
+- ✅ Pattern repeats consistently (always create X when Y is created)
+- ✅ Relationship is declarative (cascade delete, ownership transfer)
+- ✅ Action is atomic with parent operation
+- ✅ Business rule applies system-wide
+- ✅ Need automatic execution within same transaction
+
+**Use Manual Operations When:**
+- ❌ Logic is complex with multiple conditions
+- ❌ Requires external API calls
+- ❌ Need user confirmation before action
+- ❌ Action is optional or contextual
+- ❌ Involves asynchronous processing
+
+**Examples:**
+
+✅ **Good for Graph Rules:**
+```jsonb
+// Creator becomes owner
+"on_create": {
+  "establish_ownership": {
+    "actions": [{
+      "type": "create",
+      "entity": "acts_for",
+      "data": {"user_id": "@user_id", "org_id": "@id"}
+    }]
+  }
+}
+```
+
+❌ **Bad for Graph Rules:**
+```javascript
+// Send welcome email, create Stripe customer, notify Slack
+// Too many external dependencies - do manually
+export async function createOrganisation(userId, params) {
+  const org = await db.api.save.organisations(params, userId);
+  await sendWelcomeEmail(org);
+  await createStripeCustomer(org);
+  await notifySlack(org);
+  return org;
+}
+```
+
+### PostgreSQL Functions vs Bun Functions
+
+**Use PostgreSQL Functions When:**
+- ✅ Data-heavy operations (aggregations, complex queries)
+- ✅ Need transactional guarantees
+- ✅ Performance critical (no network overhead)
+- ✅ Pure database logic
+- ✅ Reusable across multiple applications
+
+**Use Bun Functions When:**
+- ✅ Complex business logic
+- ✅ Need external API calls
+- ✅ Require npm packages
+- ✅ Easier to test/debug in JavaScript
+- ✅ Rapid prototyping
+
+**Example Decision:**
+
+✅ **PostgreSQL - Data aggregation:**
+```sql
+CREATE FUNCTION get_venue_stats(p_user_id INT, p_venue_id INT)
+RETURNS JSONB AS $$
+  SELECT jsonb_build_object(
+    'total_sites', COUNT(s.id),
+    'total_events', COUNT(e.id),
+    'revenue', SUM(e.revenue)
+  )
+  FROM sites s
+  LEFT JOIN events e ON e.site_id = s.id
+  WHERE s.venue_id = p_venue_id;
+$$ LANGUAGE sql;
+```
+
+✅ **Bun - External API integration:**
+```javascript
+export async function sendInvitation(userId, params) {
+  const { email, org_id } = params;
+  
+  // Send via SendGrid
+  await sendgrid.send({...});
+  
+  // Create invitation record
+  await db.api.save.invitations({
+    email, org_id, sent_by: userId
+  }, userId);
+  
+  return { success: true };
+}
+```
+
+### Notification Paths vs Broadcast All
+
+**Use Targeted Notification Paths When:**
+- ✅ Only specific users should see the change
+- ✅ Data is sensitive (private org data)
+- ✅ Need to reduce notification noise
+- ✅ Clear ownership/membership model
+
+**Use Broadcast All (null) When:**
+- ✅ Public data everyone should see
+- ✅ No ownership model
+- ✅ Simplicity is priority
+- ✅ Small user base
+
+**Example:**
+
+✅ **Targeted (private venues):**
+```sql
+SELECT dzql.register_entity(
+  'venues', 'name', array['name'],
+  '{}', false, '{}',
+  '{
+    "ownership": ["@org_id->acts_for[org_id=$]{active}.user_id"]
+  }'  -- Only org members notified
+);
+```
+
+✅ **Broadcast (public events):**
+```sql
+SELECT dzql.register_entity(
+  'public_events', 'name', array['name'],
+  '{}', false, '{}',
+  '{}'  -- Empty = notify all authenticated users
+);
+```
+
+---
+
+## Transaction Boundaries
+
+### What Runs Atomically
+
+**Single Transaction Includes:**
+1. Primary operation (save/delete)
+2. All graph rule actions for that operation
+3. Event log writing
+4. Trigger execution
+
+**Example Flow:**
+```javascript
+// User creates organisation
+await ws.api.save.organisations({name: 'Acme Corp'});
+
+// PostgreSQL executes in ONE transaction:
+// 1. INSERT INTO organisations
+// 2. Graph rule: INSERT INTO acts_for (creator becomes owner)
+// 3. INSERT INTO dzql.events
+// 4. NOTIFY 'dzql'
+// Either all succeed or all rollback
+```
+
+### Transaction Rollback
+
+If any step fails, **entire transaction rolls back**:
+
+```sql
+-- This graph rule will rollback the org creation if site creation fails
+"on_create": {
+  "create_default_site": {
+    "actions": [{
+      "type": "create",
+      "entity": "sites",
+      "data": {
+        "venue_id": "@id",
+        "invalid_field": "@foo"  -- ERROR: invalid_field doesn't exist
+      }
+    }]
+  }
+}
+-- Result: Organisation is NOT created, error is thrown
+```
+
+### Multiple Operations Are Separate Transactions
+
+```javascript
+// These are TWO separate transactions
+const org = await ws.api.save.organisations({name: 'Acme'});  // Transaction 1
+const venue = await ws.api.save.venues({org_id: org.id});     // Transaction 2
+
+// If venue creation fails, org still exists
+```
+
+To make multiple operations atomic, use a PostgreSQL function:
+
+```sql
+CREATE FUNCTION create_org_with_venue(p_user_id INT, p_org_name TEXT, p_venue_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_org RECORD;
+  v_venue RECORD;
+BEGIN
+  INSERT INTO organisations (name) VALUES (p_org_name) RETURNING * INTO v_org;
+  INSERT INTO venues (name, org_id) VALUES (p_venue_name, v_org.id) RETURNING * INTO v_venue;
+  
+  RETURN jsonb_build_object('org', to_jsonb(v_org), 'venue', to_jsonb(v_venue));
+END;
+$$ LANGUAGE plpgsql;
+```
+
+---
+
+## FK Includes Edge Cases
+
+### Circular References
+
+**Problem:** A→B and B→A causes infinite recursion
+
+```sql
+-- organisations.parent_org_id -> organisations
+-- organisations.child_orgs <- organisations
+SELECT dzql.register_entity(
+  'organisations', 'name', array['name'],
+  '{"parent": "organisations", "children": "organisations"}'  -- CIRCULAR!
+);
+```
+
+**Solution:** Only include one direction
+```sql
+'{"parent": "organisations"}'  -- Parent only, not children
+```
+
+### Deeply Nested Includes
+
+**Problem:** Performance degrades with deep nesting
+
+```sql
+-- venue -> org -> parent_org -> parent_org -> ...
+'{"org": "organisations"}'  -- This only derefs 1 level
+```
+
+**Behavior:**
+- FK includes dereference **1 level only**
+- Nested includes (org.parent_org) are NOT automatically included
+- To include nested, configure in each entity separately
+
+### Performance Implications
+
+| FK Includes | Query Complexity | Recommendation |
+|-------------|------------------|----------------|
+| None | SELECT * FROM table | Fastest |
+| 1-2 single objects | 1-2 JOINs | Good |
+| 3+ single objects | 3+ JOINs | Consider splitting |
+| 1 child array | 1 subquery | Good |
+| 2+ child arrays | 2+ subqueries | Slow - avoid |
+
+**Optimization Strategy:**
+- Only include FKs you actually need
+- Avoid including large child arrays unless necessary
+- Consider separate queries for child arrays
+- Use pagination for child arrays
+
+---
+
+## Security Checklist
+
+### When Building DZQL Applications
+
+**Authentication:**
+- ✅ Always require `login_user()` before operations
+- ✅ Store JWT in secure storage (not localStorage for production)
+- ✅ Set `JWT_EXPIRES_IN` to reasonable duration (7d default)
+- ✅ Regenerate `JWT_SECRET` for production (never use default)
+- ✅ Validate token on every operation (automatic in DZQL)
+
+**Permissions:**
+- ✅ Configure `permission_paths` for all non-public entities
+- ✅ Use empty array `[]` only for truly public data
+- ✅ Test permission paths with different user roles
+- ✅ Never trust client-side filtering - always enforce server-side
+- ✅ Use `{active}` temporal filtering in permission paths
+
+**Graph Rules:**
+- ✅ Validate graph rule variables exist
+- ✅ Test rollback behavior (ensure atomicity)
+- ✅ Avoid complex logic in graph rules (use functions instead)
+- ✅ Document cascade delete behavior
+
+**Input Validation:**
+- ✅ DZQL validates entity schema automatically
+- ✅ Add custom validation in PostgreSQL functions if needed
+- ✅ Use CHECK constraints for business rules
+- ✅ Never expose raw error messages to client
+
+**Rate Limiting:**
+- ⚠️ DZQL doesn't include rate limiting (v0.1.0)
+- ✅ Add rate limiting middleware for production
+- ✅ Limit login attempts
+- ✅ Limit operations per user/minute
+
+**Error Handling:**
+- ✅ Catch all errors in client
+- ✅ Log errors server-side
+- ✅ Never expose stack traces in production
+- ✅ Return generic error messages to client
+
+---
+
+## Performance Guidelines
+
+### Index Recommendations
+
+**Always Index:**
+- ✅ Primary keys (automatic)
+- ✅ Foreign keys used in paths
+- ✅ Fields in `searchable_fields`
+- ✅ Temporal fields (`valid_from`, `valid_to`)
+- ✅ Fields used in permission path filters
+
+```sql
+-- Example indexes for venues entity
+CREATE INDEX idx_venues_org_id ON venues(org_id);
+CREATE INDEX idx_venues_name ON venues(name);  -- searchable field
+CREATE INDEX idx_sites_venue_id ON sites(venue_id);  -- for FK includes
+```
+
+### Searchable Fields Impact
+
+**Performance Cost:**
+- Each searchable field adds to `_search` query cost
+- Text search uses `ILIKE` which can be slow without indexes
+- Limit to 3-5 truly searchable fields
+
+```sql
+-- Good: 3 searchable fields
+array['name', 'address', 'city']
+
+-- Bad: Too many fields
+array['name', 'address', 'city', 'description', 'notes', 'tags', 'metadata']
+```
+
+### FK Includes Cost
+
+| Include Type | Cost | Query |
+|--------------|------|-------|
+| Single object | 1 JOIN | Fast |
+| Child array (small) | 1 subquery | Moderate |
+| Child array (large) | 1 subquery + many rows | Slow |
+| Multiple arrays | N subqueries | Very slow |
+
+**Optimization:**
+```sql
+-- Good: One FK dereference
+'{"org": "organisations"}'
+
+-- Good: Small child array (<100 records)
+'{"sites": "sites"}'
+
+-- Bad: Multiple large child arrays
+'{"sites": "sites", "events": "events", "contractors": "contractors"}'
+```
+
+### Graph Rules Complexity
+
+**Fast Graph Rules:**
+- ✅ Single action per rule
+- ✅ Simple match conditions
+- ✅ Direct variable references
+
+**Slow Graph Rules:**
+- ❌ Multiple chained actions
+- ❌ Complex match conditions
+- ❌ Nested graph rules triggering other graph rules
+
+```jsonb
+// Good: Simple cascade
+"on_delete": {
+  "cascade": {
+    "actions": [{"type": "delete", "entity": "sites", "match": {"venue_id": "@id"}}]
+  }
+}
+
+// Bad: Complex chain
+"on_create": {
+  "rule1": {"actions": [...]},  // Triggers more operations
+  "rule2": {"actions": [...]},  // Which trigger more operations
+  "rule3": {"actions": [...]}   // Slows down creation significantly
+}
+```
+
+### Query Optimization Tips
+
+1. **Limit searchable fields** to truly searchable content
+2. **Index foreign keys** used in joins and paths
+3. **Avoid large FK includes** in list operations
+4. **Use pagination** (keep `limit` ≤ 100)
+5. **Filter before including** FKs when possible
+6. **Monitor slow queries** via PostgreSQL logs
+
+---
+
+## Additional Resources
+
+- **API Reference**: See [REFERENCE.md](REFERENCE.md) for complete API documentation
+- **Tutorial**: See [packages/dzql/GETTING_STARTED.md](packages/dzql/GETTING_STARTED.md) for hands-on guide
+- **Examples**: See `packages/venues/` for complete working application
+- **Tests**: See `packages/venues/tests/` for comprehensive test patterns

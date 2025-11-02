@@ -2,6 +2,8 @@
 
 DZQL is a PostgreSQL framework that gives you **atomic real-time updates** via WebSocket. Every database change broadcasts instantly to all connected clients. Zero boilerplate.
 
+> **See also:** [REFERENCE.md](../../REFERENCE.md) for complete API documentation | [CLAUDE.md](../../CLAUDE.md) for AI development guide
+
 ## The Core Pattern
 
 1. **Schema = API**: Define a table → DZQL auto-creates CRUD endpoints
