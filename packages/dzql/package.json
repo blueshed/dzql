@@ -1,6 +1,6 @@
 {
   "name": "dzql",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0",
   "description": "PostgreSQL-powered framework with zero boilerplate CRUD operations and real-time WebSocket synchronization",
   "type": "module",
   "main": "src/server/index.js",
@@ -63,7 +63,6 @@
     "bun": ">=1.0.0"
   },
   "publishConfig": {
-    "access": "public",
-    "tag": "alpha"
+    "access": "public"
   }
 }
