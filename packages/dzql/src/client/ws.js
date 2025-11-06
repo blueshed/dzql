@@ -1,5 +1,58 @@
+/**
+ * WebSocket manager for DZQL client-side real-time communication
+ *
+ * Provides:
+ * - WebSocket connection management with auto-reconnect
+ * - JSON-RPC 2.0 protocol for API calls
+ * - Proxy-based API matching server-side db.api pattern
+ * - Real-time broadcast event handling
+ * - Automatic JWT authentication
+ *
+ * @class WebSocketManager
+ *
+ * @example
+ * // Basic usage
+ * import { WebSocketManager } from 'dzql/client';
+ *
+ * const ws = new WebSocketManager();
+ * await ws.connect('ws://localhost:3000/ws');
+ *
+ * // Login
+ * const session = await ws.api.login_user({
+ *   email: 'user@example.com',
+ *   password: 'password123'
+ * });
+ *
+ * // CRUD operations
+ * const venue = await ws.api.get.venues({ id: 1 });
+ * const created = await ws.api.save.venues({ name: 'New Venue' });
+ *
+ * // Listen to real-time updates
+ * ws.onBroadcast((method, params) => {
+ *   console.log(`Event: ${method}`, params);
+ * });
+ *
+ * @example
+ * // Advanced search
+ * const results = await ws.api.search.venues({
+ *   filters: {
+ *     city: 'New York',
+ *     capacity: { gte: 1000 },
+ *     _search: 'garden'
+ *   },
+ *   sort: { field: 'name', order: 'asc' },
+ *   page: 1,
+ *   limit: 25
+ * });
+ */
 // Pure WebSocket manager class (no React dependencies)
 class WebSocketManager {
+  /**
+   * Create a WebSocketManager instance
+   *
+   * @param {Object} [options={}] - Configuration options
+   * @param {number} [options.maxReconnectAttempts=5] - Maximum reconnection attempts before giving up
+   */
   constructor(options = {}) {
     this.ws = null;
     this.messageId = 0;
@@ -22,6 +75,62 @@ class WebSocketManager {
       search: this.createEntityProxy("search"),
     };
 
+    /**
+     * API proxy for calling DZQL operations and custom functions
+     *
+     * @member {Object} api
+     * @memberof WebSocketManager
+     *
+     * @property {Object} get - Get single record by primary key
+     * @property {Object} save - Create or update record (upsert)
+     * @property {Object} delete - Delete record by primary key
+     * @property {Object} lookup - Autocomplete lookup by label field
+     * @property {Object} search - Advanced search with filters
+     *
+     * @example
+     * // Get operation
+     * const venue = await ws.api.get.venues({ id: 1 });
+     *
+     * @example
+     * // Save operation (create)
+     * const created = await ws.api.save.venues({
+     *   name: 'New Venue',
+     *   org_id: 3
+     * });
+     *
+     * @example
+     * // Save operation (update)
+     * const updated = await ws.api.save.venues({
+     *   id: 1,
+     *   name: 'Updated Name'
+     * });
+     *
+     * @example
+     * // Delete operation
+     * await ws.api.delete.venues({ id: 1 });
+     *
+     * @example
+     * // Lookup for autocomplete
+     * const results = await ws.api.lookup.venues({ p_filter: 'garden' });
+     *
+     * @example
+     * // Search with filters
+     * const results = await ws.api.search.venues({
+     *   filters: {
+     *     city: 'New York',
+     *     capacity: { gte: 1000, lt: 5000 },
+     *     name: { ilike: '%garden%' },
+     *     _search: 'madison'
+     *   },
+     *   sort: { field: 'name', order: 'asc' },
+     *   page: 1,
+     *   limit: 25
+     * });
+     *
+     * @example
+     * // Call custom function
+     * const result = await ws.api.myCustomFunction({ param: 'value' });
+     */
     this.api = new Proxy(dzqlOps, {
       get: (target, prop) => {
         // Return cached DZQL operation if it exists
@@ -102,6 +211,31 @@ class WebSocketManager {
     );
   }
 
+  /**
+   * Connect to DZQL WebSocket server
+   *
+   * Automatically detects environment (browser vs Node.js) and constructs WebSocket URL.
+   * If JWT token exists in localStorage, automatically includes it in connection.
+   *
+   * @param {string|null} [url=null] - WebSocket URL (auto-detected if not provided)
+   *   Browser: ws://current-host/ws or wss://current-host/ws
+   *   Node.js: ws://localhost:3000/ws
+   * @param {number} [timeout=5000] - Connection timeout in milliseconds
+   *
+   * @returns {Promise<void>} Resolves when connected, rejects on timeout or error
+   *
+   * @example
+   * // Auto-detect URL (browser)
+   * await ws.connect();
+   *
+   * @example
+   * // Explicit URL
+   * await ws.connect('ws://localhost:3000/ws');
+   *
+   * @example
+   * // Custom timeout
+   * await ws.connect(null, 10000); // 10 second timeout
+   */
   connect(url = null, timeout = 5000) {
     return new Promise((resolve, reject) => {
       let wsUrl;
@@ -214,6 +348,14 @@ class WebSocketManager {
     }
   }
 
+  /**
+   * Call a method via JSON-RPC over WebSocket
+   *
+   * @private
+   * @param {string} method - Method name (e.g., 'login_user' or 'dzql.get.venues')
+   * @param {Object} [params={}] - Method parameters
+   * @returns {Promise<*>} Resolves with method result, rejects on error
+   */
   call(method, params = {}) {
     return new Promise((resolve, reject) => {
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -234,6 +376,50 @@ class WebSocketManager {
     });
   }
 
+  /**
+   * Register callback for real-time broadcast events
+   *
+   * Broadcasts are sent when data changes (insert/update/delete operations).
+   * Method format: "{table}:{operation}" (e.g., "venues:update")
+   *
+   * @param {Function} callback - Callback function (method, params) => void
+   * @returns {Function} Cleanup function to remove the callback
+   *
+   * @example
+   * // Listen to all broadcasts
+   * ws.onBroadcast((method, params) => {
+   *   console.log(`Event: ${method}`, params);
+   * });
+   *
+   * @example
+   * // Listen to specific table events
+   * ws.onBroadcast((method, params) => {
+   *   if (method === 'venues:update') {
+   *     console.log('Venue updated:', params.after);
+   *   }
+   * });
+   *
+   * @example
+   * // With cleanup
+   * const cleanup = ws.onBroadcast((method, params) => {
+   *   console.log(method, params);
+   * });
+   *
+   * // Later: stop listening
+   * cleanup();
+   *
+   * @example
+   * // Event structure
+   * {
+   *   table: 'venues',
+   *   op: 'insert',     // 'insert', 'update', or 'delete'
+   *   pk: { id: 1 },
+   *   before: null,     // Old values (null for insert)
+   *   after: { ... },   // New values (null for delete)
+   *   user_id: 123,
+   *   at: '2025-01-15T10:30:00Z'
+   * }
+   */
   onBroadcast(callback) {
     this.broadcastCallbacks.add(callback);
     return () => this.broadcastCallbacks.delete(callback);

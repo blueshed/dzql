@@ -8,6 +8,77 @@ export { sql, db } from "./db.js";
 export { metaRoute } from "./meta-route.js";
 export { createMCPRoute } from "./mcp.js";
 
+/**
+ * Create a DZQL server with WebSocket support, real-time updates, and automatic CRUD operations
+ *
+ * Sets up a Bun server with:
+ * - WebSocket endpoint at /ws for real-time communication
+ * - JSON-RPC 2.0 protocol for API calls
+ * - PostgreSQL NOTIFY/LISTEN for real-time broadcasts
+ * - Automatic JWT authentication
+ * - Health check endpoint at /health
+ *
+ * @param {Object} [options={}] - Server configuration options
+ * @param {number} [options.port=3000] - Port number to listen on (or process.env.PORT)
+ * @param {Object} [options.customApi={}] - Custom Bun functions to expose via WebSocket API
+ *   Each function receives (userId, params) and can return any JSON-serializable value
+ * @param {Object} [options.routes={}] - Additional HTTP routes as { path: handlerFunction }
+ * @param {string|null} [options.staticPath=null] - Path to static files directory for serving
+ * @param {Function} [options.onReady=null] - Callback invoked after server initialization
+ *   Receives { broadcast, routes } to allow dynamic route setup
+ *
+ * @returns {Object} Server instance with the following properties:
+ * @returns {number} .port - The port number the server is listening on
+ * @returns {Object} .server - The underlying Bun.Server instance
+ * @returns {Function} .shutdown - Async function to gracefully shutdown server and close DB connections
+ * @returns {Function} .broadcast - Function to send messages to connected WebSocket clients
+ *   Signature: broadcast(message: string, userIds?: number[])
+ *   If userIds provided, sends only to those users; otherwise broadcasts to all authenticated users
+ *
+ * @example
+ * // Basic server
+ * import { createServer } from 'dzql';
+ *
+ * const server = createServer({ port: 3000 });
+ *
+ * @example
+ * // Server with custom API functions
+ * import { createServer, db } from 'dzql';
+ *
+ * const server = createServer({
+ *   port: 3000,
+ *   customApi: {
+ *     async getVenueStats(userId, params) {
+ *       const { venueId } = params;
+ *       return db.api.get.venues({ id: venueId }, userId);
+ *     }
+ *   }
+ * });
+ *
+ * // Client can call: await ws.api.getVenueStats({ venueId: 1 })
+ *
+ * @example
+ * // Server with static files and custom routes
+ * const server = createServer({
+ *   port: 3000,
+ *   staticPath: './public',
+ *   routes: {
+ *     '/api/health': () => new Response(JSON.stringify({ status: 'ok' }))
+ *   }
+ * });
+ *
+ * @example
+ * // Server with onReady callback for dynamic setup
+ * const server = createServer({
+ *   onReady: ({ broadcast, routes }) => {
+ *     // Add routes dynamically
+ *     routes['/api/notify'] = (req) => {
+ *       broadcast(JSON.stringify({ method: 'alert', params: { msg: 'Hello!' } }));
+ *       return new Response('Sent');
+ *     };
+ *   }
+ * });
+ */
 export function createServer(options = {}) {
   const {
     port = process.env.PORT || 3000,

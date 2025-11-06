@@ -190,6 +190,79 @@ function createEntityProxy(operation) {
   );
 }
 
+/**
+ * DZQL database API
+ *
+ * Provides server-side access to DZQL operations and custom PostgreSQL functions.
+ * All operations require explicit userId parameter (unlike client API which auto-injects).
+ *
+ * @namespace db.api
+ *
+ * @property {Object} get - Get single record by primary key
+ * @property {Object} save - Create or update record (upsert)
+ * @property {Object} delete - Delete record by primary key
+ * @property {Object} lookup - Autocomplete lookup by label field
+ * @property {Object} search - Advanced search with filters, pagination, sorting
+ *
+ * @example
+ * // Get a single venue
+ * const venue = await db.api.get.venues({ id: 1 }, userId);
+ *
+ * @example
+ * // Create a new venue
+ * const venue = await db.api.save.venues({
+ *   name: 'Madison Square Garden',
+ *   org_id: 3,
+ *   address: '4 Pennsylvania Plaza, New York'
+ * }, userId);
+ *
+ * @example
+ * // Update existing venue
+ * const updated = await db.api.save.venues({
+ *   id: 1,
+ *   name: 'Updated Name'
+ * }, userId);
+ *
+ * @example
+ * // Delete venue
+ * await db.api.delete.venues({ id: 1 }, userId);
+ *
+ * @example
+ * // Lookup for autocomplete
+ * const results = await db.api.lookup.venues({
+ *   p_filter: 'garden'  // Searches label field
+ * }, userId);
+ * // Returns: [{ value: 1, label: 'Madison Square Garden' }, ...]
+ *
+ * @example
+ * // Advanced search with filters
+ * const results = await db.api.search.venues({
+ *   p_filters: {
+ *     city: 'New York',
+ *     capacity: { gte: 1000 },
+ *     _search: 'garden'  // Full-text search
+ *   },
+ *   p_sort: { field: 'name', order: 'asc' },
+ *   p_page: 1,
+ *   p_limit: 25
+ * }, userId);
+ * // Returns: { data: [...], total: 100, page: 1, limit: 25 }
+ *
+ * @example
+ * // Call custom PostgreSQL function
+ * const stats = await db.api.myCustomFunction({ param1: 'value' }, userId);
+ *
+ * @example
+ * // Call auth functions (no userId required)
+ * const user = await db.api.register_user({
+ *   email: 'user@example.com',
+ *   password: 'secure123'
+ * });
+ * const session = await db.api.login_user({
+ *   email: 'user@example.com',
+ *   password: 'secure123'
+ * });
+ */
 // DZQL database API proxy with custom function support
 export const db = {
   api: new Proxy(
