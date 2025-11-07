@@ -1318,18 +1318,6 @@ SELECT dzql.register_entity(
 );
 
 
--- === Create Test User ===
--- Create a test user for development/testing purposes
-do $$
-begin
-  -- Only create if user doesn't exist
-  if not exists (select 1 from users where email = 'test@example.com') then
-    perform register_user(
-      p_email := 'test@example.com',
-      p_password := 'password123'
-    );
-    raise notice 'Test user created: test@example.com';
-  else
-    raise notice 'Test user already exists: test@example.com';
-  end if;
-end $$;
+-- === Test User Creation Removed ===
+-- Tests now create their own users dynamically
+-- This keeps the database clean for testing

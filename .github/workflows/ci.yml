@@ -78,16 +78,13 @@ jobs:
           bun test || echo "No tests in dzql package yet"
 
       - name: Test - Venues Domain
-        run: |
-          cd packages/venues
-          bun test tests/domain.test.js
-          bun test tests/permissions.test.js
-          bun test tests/graph_rules.test.js
+        run: bun venues:test
 
-      - name: Test - Graph Rules Validation (New)
+      - name: Test - Rights Domain
         run: |
-          cd packages/venues
-          bun test tests/graph_validation.test.js
+          # Rights requires its own database on port 5433 which isn't available in CI
+          # Skip for now - rights tests require Docker compose
+          echo "Rights tests skipped in CI (requires separate database)"
 
       - name: Test Summary
         if: always()

@@ -1,6 +1,6 @@
 {
   "name": "dzql-monorepo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "description": "DZQL - PostgreSQL-powered framework with zero boilerplate",
@@ -18,9 +18,10 @@
     "venues:db": "cd packages/venues/database && docker compose -p venues down -v && docker compose -p venues up -d",
     "venues:logs": "bun run --cwd packages/venues db:logs",
     "rights": "cd packages/rights && bun dev",
-    "rights:test": "cd packages/rights && bun test",
+    "rights:test": "bun rights:db && sleep 5 && bun run --cwd packages/rights test",
     "rights:db": "cd packages/rights && bun db",
-    "rights:logs": "bun run --cwd packages/rights db:logs"
+    "rights:logs": "bun run --cwd packages/rights db:logs",
+    "down": "cd packages/venues && bun db:down && cd ../rights && bun db:down"
   },
   "devDependencies": {
     "@types/bun": "latest"

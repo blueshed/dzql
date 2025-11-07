@@ -1,6 +1,6 @@
 {
   "name": "dzql",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "PostgreSQL-powered framework with zero boilerplate CRUD operations and real-time WebSocket synchronization",
   "type": "module",
   "main": "src/server/index.js",
@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "test": "bun test",
-    "prepublishOnly": "echo '✅ Publishing DZQL v0.1.1...'"
+    "prepublishOnly": "echo '✅ Publishing DZQL v0.1.2...'"
   },
   "dependencies": {
     "jose": "^6.1.0",
