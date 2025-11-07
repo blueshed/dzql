@@ -1,8 +1,11 @@
 # DZQL
 
-> ⚠️ **ALPHA SOFTWARE** - DZQL is in early alpha. The API may change. Not recommended for production use yet.
+[![npm version](https://badge.fury.io/js/dzql.svg)](https://www.npmjs.com/package/dzql)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-PostgreSQL-powered framework that provides 5 automatic CRUD operations per entity with real-time WebSocket synchronization and zero boilerplate.
+> **v0.1.1** - PostgreSQL-powered framework that provides 5 automatic CRUD operations per entity with real-time WebSocket synchronization and zero boilerplate.
+>
+> 🚧 **Pre-1.0 Release** - API is stabilizing but may still change. Test thoroughly before production use.
 
 ## What is DZQL?
 
@@ -78,13 +81,15 @@ ws.api.save.venues() -> db.api.save.venues() -> dzql.generic_save()
 
 ## Features
 
-✅ **Zero Boilerplate** - Register entity, get 5 operations automatically  
-✅ **Real-time WebSocket** - Automatic change notifications  
-✅ **PostgreSQL-native** - Leverage full SQL power  
-✅ **Graph Rules** - Cascading operations without joins  
-✅ **Permissions & RLS** - Row-level security built-in  
-✅ **Full-text Search** - Built-in with filters & pagination  
-✅ **Framework-agnostic** - Works with React, Vue, Svelte, plain JS  
+✅ **Zero Boilerplate** - Register entity, get 5 operations automatically
+✅ **Real-time WebSocket** - Automatic change notifications
+✅ **PostgreSQL-native** - Leverage full SQL power
+✅ **Graph Rules** - Cascading operations without joins
+✅ **Validation Actions** - Data integrity checks in graph rules (v0.1.1)
+✅ **Function Execution** - Custom logic in graph rules (v0.1.1)
+✅ **Permissions & RLS** - Row-level security built-in
+✅ **Full-text Search** - Built-in with filters & pagination
+✅ **Framework-agnostic** - Works with React, Vue, Svelte, plain JS
 ✅ **Bun Native** - No Node.js required  
 
 ## The 5 Operations
@@ -133,6 +138,59 @@ ws.onBroadcast((method, params) => {
   }
 });
 ```
+
+## Graph Rules Validation (v0.1.1)
+
+Validate data integrity automatically with graph rules:
+
+```sql
+-- Create validation function
+CREATE FUNCTION validate_positive_value(p_value INT)
+RETURNS BOOLEAN AS $$
+  SELECT p_value > 0;
+$$ LANGUAGE sql;
+
+-- Register entity with validation
+SELECT dzql.register_entity(
+  'products',
+  'name',
+  array['name'],
+  '{}', false, '{}', '{}',
+  '{
+    "view": [],
+    "create": [],
+    "update": [],
+    "delete": []
+  }',
+  '{
+    "on_create": {
+      "validate_price": {
+        "description": "Ensure price is positive",
+        "actions": [{
+          "type": "validate",
+          "function": "validate_positive_value",
+          "params": {"p_value": "@price"},
+          "error_message": "Price must be positive"
+        }]
+      }
+    },
+    "on_update": {
+      "prevent_posted_changes": {
+        "description": "Prevent modification of posted records",
+        "condition": "@before.status = ''posted''",
+        "actions": [{
+          "type": "validate",
+          "function": "always_false",
+          "params": {},
+          "error_message": "Cannot modify posted records"
+        }]
+      }
+    }
+  }'
+);
+```
+
+**Condition syntax** supports `@before.field`, `@after.field`, `@user_id`, and complex expressions.
 
 ## Development Commands
 
