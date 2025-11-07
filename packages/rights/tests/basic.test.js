@@ -16,12 +16,23 @@ describe("Rights End-to-End Test", () => {
   let events = [];
 
   beforeAll(async () => {
-    // Reset database using npm scripts
-    await $`bun db:down`;
-    await $`bun db:up`;
+    // Reset database using Bun's shell
+    const cwd = new URL('..', import.meta.url).pathname;
+    await $`docker compose -f database/compose.yml down -v`.cwd(cwd);
+    await $`docker compose -f database/compose.yml up -d`.cwd(cwd);
 
-    // Wait for database to be ready
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Wait for PostgreSQL to be ready
+    console.log('Waiting for PostgreSQL...');
+    for (let i = 0; i < 30; i++) {
+      try {
+        await sql`SELECT 1`;
+        console.log('PostgreSQL is ready!');
+        break;
+      } catch (error) {
+        if (i === 29) throw new Error('PostgreSQL failed to start');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
 
     // Setup event listener
     await setupListeners((event) => {
@@ -419,5 +430,5 @@ describe("Rights End-to-End Test", () => {
     console.log(`   Package: "${packageData.name}" (ID: ${packageId})`);
     console.log(`   Allocation: Site "${site.name}" → Package "${packageData.name}" (ID: ${allocationId})`);
     console.log(`   All DZQL operations including packages & allocations working perfectly! 🎉`);
-  });
+  }, { timeout: 60000 });
 });

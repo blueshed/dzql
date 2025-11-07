@@ -403,12 +403,16 @@ Automatically manage entity relationships when data changes.
   "on_create": {
     "rule_name": {
       "description": "Human-readable description",
+      "condition": "@after.field = 'value'",  // Optional: only run if condition is true
       "actions": [
         {
-          "type": "create|update|delete",
-          "entity": "target_table",
+          "type": "create|update|delete|validate|execute",
+          "entity": "target_table",            // for create/update/delete
           "data": {"field": "@variable"},      // for create/update
-          "match": {"field": "@variable"}      // for update/delete
+          "match": {"field": "@variable"},     // for update/delete
+          "function": "function_name",         // for validate/execute
+          "params": {"param": "@variable"},    // for validate/execute
+          "error_message": "Validation failed" // for validate (optional)
         }
       ]
     }
@@ -425,6 +429,8 @@ Automatically manage entity relationships when data changes.
 | `create` | `entity`, `data` | INSERT new record |
 | `update` | `entity`, `match`, `data` | UPDATE matching records |
 | `delete` | `entity`, `match` | DELETE matching records |
+| `validate` | `function`, `params`, `error_message` | Call validation function, rollback if returns false |
+| `execute` | `function`, `params` | Fire-and-forget function execution |
 
 ### Variables
 
@@ -498,6 +504,69 @@ Variables reference data from the triggering operation:
   }
 }
 ```
+
+#### Data Validation
+```jsonb
+{
+  "on_create": {
+    "validate_positive_price": {
+      "description": "Ensure price is positive",
+      "actions": [{
+        "type": "validate",
+        "function": "validate_positive_value",
+        "params": {"p_value": "@price"},
+        "error_message": "Price must be positive"
+      }]
+    }
+  }
+}
+```
+
+**Note:** Validation function must return BOOLEAN:
+```sql
+CREATE FUNCTION validate_positive_value(p_value INT)
+RETURNS BOOLEAN AS $$
+  SELECT p_value > 0;
+$$ LANGUAGE sql;
+```
+
+#### Conditional Execution
+```jsonb
+{
+  "on_update": {
+    "prevent_posted_changes": {
+      "description": "Prevent modification of posted records",
+      "condition": "@before.status = 'posted'",
+      "actions": [{
+        "type": "validate",
+        "function": "always_false",
+        "params": {},
+        "error_message": "Cannot modify posted records"
+      }]
+    }
+  }
+}
+```
+
+**Available in conditions:** `@before.field`, `@after.field`, `@user_id`, and SQL expressions.
+
+#### Fire-and-Forget Actions
+```jsonb
+{
+  "on_create": {
+    "send_notification": {
+      "description": "Notify external system",
+      "actions": [{
+        "type": "execute",
+        "function": "log_event",
+        "params": {"p_event": "New record created", "p_record_id": "@id"}
+      }]
+    }
+  }
+}
+```
+
+**Note:** Execute actions don't affect transaction. Function errors are logged but don't rollback.
 
 ### Execution
 

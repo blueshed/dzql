@@ -301,8 +301,16 @@ BEGIN
     EXECUTE l_sql_stmt INTO l_existing_record;
 
     IF l_existing_record IS NULL THEN
-      -- User provided ID but record doesn't exist - this is an error
-      RAISE EXCEPTION 'DZQL: record with id % not found in %', l_args_json ->> l_pk_cols[1], p_entity;
+      -- Record doesn't exist. For composite keys, treat as INSERT.
+      -- For single-column PKs, this is an error (user provided non-existent ID).
+      IF array_length(l_pk_cols, 1) > 1 THEN
+        -- Composite key: treat as INSERT
+        l_is_insert := true;
+      ELSE
+        -- Single PK: this is an error
+        RAISE EXCEPTION 'DZQL: record with %=%s not found in %',
+          l_pk_cols[1], l_args_json ->> l_pk_cols[1], p_entity;
+      END IF;
     END IF;
   END IF;
 
