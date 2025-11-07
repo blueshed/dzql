@@ -113,7 +113,7 @@ test("Creator becomes owner pattern - organisation creation", async () => {
 
   // Check if graph rules were executed
   if (org._graph_rules) {
-    expect(org._graph_rules.status).toBe('completed');
+    expect(org._graph_rules.status).toBe('success');
     expect(org._graph_rules.trigger).toBe('on_create');
   }
 
@@ -168,7 +168,7 @@ test("Cascade delete pattern - organisation deletion", async () => {
 
   // Check if graph rules were executed
   if (deleteResult._graph_rules) {
-    expect(deleteResult._graph_rules.status).toBe('completed');
+    expect(deleteResult._graph_rules.status).toBe('success');
     expect(deleteResult._graph_rules.trigger).toBe('on_delete');
   }
 

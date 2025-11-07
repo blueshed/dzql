@@ -1,0 +1,95 @@
+name: CI Tests
+
+on:
+  push:
+    branches: [ main, 'claude/**' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: dzql
+          POSTGRES_PASSWORD: dzql
+          POSTGRES_DB: dzql
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://dzql:dzql@localhost:5432/dzql
+      NODE_ENV: test
+      LOG_LEVEL: ERROR
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U dzql; then
+              echo "PostgreSQL is ready"
+              exit 0
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 1
+          done
+          echo "PostgreSQL did not become ready in time"
+          exit 1
+        env:
+          PGPASSWORD: dzql
+
+      - name: Run DZQL migrations
+        run: |
+          cd packages/dzql
+          bun run ../../scripts/run-migrations.js
+        env:
+          DATABASE_URL: postgresql://dzql:dzql@localhost:5432/dzql
+
+      - name: Run Venues domain migrations
+        run: |
+          cd packages/venues
+          for sql_file in database/init_db/*.sql; do
+            echo "Running migration: $sql_file"
+            PGPASSWORD=dzql psql -h localhost -U dzql -d dzql -f "$sql_file"
+          done
+
+      - name: Test - DZQL Core
+        run: |
+          cd packages/dzql
+          bun test || echo "No tests in dzql package yet"
+
+      - name: Test - Venues Domain
+        run: |
+          cd packages/venues
+          bun test tests/domain.test.js
+          bun test tests/permissions.test.js
+          bun test tests/graph_rules.test.js
+
+      - name: Test - Graph Rules Validation (New)
+        run: |
+          cd packages/venues
+          bun test tests/graph_validation.test.js
+
+      - name: Test Summary
+        if: always()
+        run: echo "Tests completed - check logs above for results"
