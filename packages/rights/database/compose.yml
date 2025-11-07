@@ -19,12 +19,12 @@ services:
       # Domain-specific migrations
       - ./init_db/009_rights.sql:/docker-entrypoint-initdb.d/009_rights.sql:ro
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   adminer:
     image: adminer:latest
     ports:
-      - "8080:8080"
+      - "8081:8080"
     depends_on:
       - postgres
     environment:

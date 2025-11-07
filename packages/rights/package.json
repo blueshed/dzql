@@ -5,14 +5,14 @@
   "description": "The Right Exchange",
   "type": "module",
   "scripts": {
-    "dev": "bun --watch server/index.js",
+    "dev": "DATABASE_URL=postgresql://dzql:dzql@localhost:5433/dzql bun --watch server/index.js",
     "build": "echo 'No build step required'",
-    "test": "bun test tests/",
+    "test": "DATABASE_URL=postgresql://dzql:dzql@localhost:5433/dzql bun test tests/",
     "db": "bun db:down && bun db:up",
-    "db:up": "cd database && docker compose up -d",
-    "db:down": "cd database && docker compose down -v",
-    "db:logs": "cd database && docker compose logs postgres",
-    "db:admin": "echo 'Adminer available at: http://localhost:8080' && echo 'Server: postgres | User: dzql | Pass: dzql | DB: dzql'",
+    "db:up": "cd database && docker compose -p rights up -d",
+    "db:down": "cd database && docker compose -p rights down -v",
+    "db:logs": "cd database && docker compose -p rights logs postgres",
+    "db:admin": "echo 'Adminer available at: http://localhost:8081' && echo 'Server: postgres:5433 | User: dzql | Pass: dzql | DB: dzql'",
     "diagram": "plantuml -tsvg docs/model.puml -o ../generated/"
   },
   "dependencies": {

@@ -308,7 +308,7 @@ BEGIN
         l_is_insert := true;
       ELSE
         -- Single PK: this is an error
-        RAISE EXCEPTION 'DZQL: record with %=%s not found in %',
+        RAISE EXCEPTION 'DZQL: record with %=% not found in %',
           l_pk_cols[1], l_args_json ->> l_pk_cols[1], p_entity;
       END IF;
     END IF;

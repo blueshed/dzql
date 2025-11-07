@@ -16,23 +16,8 @@ describe("Rights End-to-End Test", () => {
   let events = [];
 
   beforeAll(async () => {
-    // Reset database using Bun's shell
-    const cwd = new URL('..', import.meta.url).pathname;
-    await $`docker compose -f database/compose.yml down -v`.cwd(cwd);
-    await $`docker compose -f database/compose.yml up -d`.cwd(cwd);
-
-    // Wait for PostgreSQL to be ready
-    console.log('Waiting for PostgreSQL...');
-    for (let i = 0; i < 30; i++) {
-      try {
-        await sql`SELECT 1`;
-        console.log('PostgreSQL is ready!');
-        break;
-      } catch (error) {
-        if (i === 29) throw new Error('PostgreSQL failed to start');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
+    // NOTE: Run `bun rights:db` before running this test to ensure database is running
+    // The test assumes the database is already up and ready
 
     // Setup event listener
     await setupListeners((event) => {

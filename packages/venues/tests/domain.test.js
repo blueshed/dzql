@@ -282,7 +282,7 @@ test("DZQL save - update non-existent record fails", async () => {
     await db.api.save.organisations(badData, testUserId);
   } catch (error) {
     threwError = true;
-    expect(error.message).toContain("record with id 99999 not found");
+    expect(error.message).toContain("record with id=99999 not found");
   }
   expect(threwError).toBe(true);
 });
