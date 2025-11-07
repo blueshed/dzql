@@ -12,7 +12,7 @@
 Register an entity in PostgreSQL → Instantly get:
 - **5 operations**: GET, SAVE, DELETE, LOOKUP, SEARCH
 - **Real-time sync**: WebSocket broadcasts for all changes
-- **Graph rules**: Automatic relationship management
+- **Graph rules**: Automatic relationship management with validation
 - **Permissions**: Path-based row-level security
 - **Zero code**: No API routes, resolvers, or TypeScript types needed
 
@@ -66,32 +66,6 @@ await ws.connect();
 const user = await ws.api.save.users({ name: 'Alice' });
 ```
 
-## Architecture
-
-```
-Browser                 Bun Server              PostgreSQL
-ws.api.save.venues() -> db.api.save.venues() -> dzql.generic_save()
-                        WebSocket broadcast  <-- NOTIFY 'dzql' channel
-```
-
-**Protocol**: JSON-RPC 2.0 over WebSocket  
-**Server**: Bun runtime  
-**Database**: PostgreSQL with stored procedures  
-**Real-time**: NOTIFY/LISTEN on single 'dzql' channel  
-
-## Features
-
-✅ **Zero Boilerplate** - Register entity, get 5 operations automatically
-✅ **Real-time WebSocket** - Automatic change notifications
-✅ **PostgreSQL-native** - Leverage full SQL power
-✅ **Graph Rules** - Cascading operations without joins
-✅ **Validation Actions** - Data integrity checks in graph rules (v0.1.1)
-✅ **Function Execution** - Custom logic in graph rules (v0.1.1)
-✅ **Permissions & RLS** - Row-level security built-in
-✅ **Full-text Search** - Built-in with filters & pagination
-✅ **Framework-agnostic** - Works with React, Vue, Svelte, plain JS
-✅ **Bun Native** - No Node.js required  
-
 ## The 5 Operations
 
 ```javascript
@@ -110,11 +84,7 @@ const options = await ws.api.lookup.users({ p_filter: 'ali' });
 
 // SEARCH - Advanced search with pagination
 const results = await ws.api.search.users({
-  filters: {
-    name: { ilike: '%alice%' },
-    email: 'alice@example.com',
-    created_at: { gte: '2025-01-01' }
-  },
+  filters: { name: { ilike: '%alice%' } },
   sort: { field: 'name', order: 'asc' },
   page: 1,
   limit: 25
@@ -128,110 +98,15 @@ All database changes broadcast instantly to connected clients:
 ```javascript
 ws.onBroadcast((method, params) => {
   if (method === 'users:insert') {
-    console.log('New user:', params.data);
+    console.log('New user:', params.after);
   }
   if (method === 'users:update') {
-    console.log('Updated:', params.data);
+    console.log('Updated from:', params.before, 'to:', params.after);
   }
   if (method === 'users:delete') {
-    console.log('Deleted:', params.data);
+    console.log('Deleted:', params.before);
   }
 });
-```
-
-## Graph Rules Validation (v0.1.1)
-
-Validate data integrity automatically with graph rules:
-
-```sql
--- Create validation function
-CREATE FUNCTION validate_positive_value(p_value INT)
-RETURNS BOOLEAN AS $$
-  SELECT p_value > 0;
-$$ LANGUAGE sql;
-
--- Register entity with validation
-SELECT dzql.register_entity(
-  'products',
-  'name',
-  array['name'],
-  '{}', false, '{}', '{}',
-  '{
-    "view": [],
-    "create": [],
-    "update": [],
-    "delete": []
-  }',
-  '{
-    "on_create": {
-      "validate_price": {
-        "description": "Ensure price is positive",
-        "actions": [{
-          "type": "validate",
-          "function": "validate_positive_value",
-          "params": {"p_value": "@price"},
-          "error_message": "Price must be positive"
-        }]
-      }
-    },
-    "on_update": {
-      "prevent_posted_changes": {
-        "description": "Prevent modification of posted records",
-        "condition": "@before.status = ''posted''",
-        "actions": [{
-          "type": "validate",
-          "function": "always_false",
-          "params": {},
-          "error_message": "Cannot modify posted records"
-        }]
-      }
-    }
-  }'
-);
-```
-
-**Condition syntax** supports `@before.field`, `@after.field`, `@user_id`, and complex expressions.
-
-## Development Commands
-
-```bash
-# Venues Example (primary)
-bun venues:db    # Start PostgreSQL (clean slate)
-bun venues       # Start server with hot reload
-bun venues:test  # Run test suite
-
-# Full stack
-bun dev          # Client + server concurrently
-```
-
-## Documentation
-
-- **[GETTING_STARTED.md](packages/dzql/GETTING_STARTED.md)** - Step-by-step tutorial with complete todo app
-- **[REFERENCE.md](packages/dzql/REFERENCE.md)** - Complete API documentation
-- **[CLAUDE.md](CLAUDE.md)** - AI development guide
-- **[Venues Example](packages/venues/)** - Full working application
-- **[ROADMAP.md](ROADMAP.md)** - Project roadmap & known issues
-
-## Example: Todo App
-
-**Database:**
-```sql
-CREATE TABLE todos (
-  id SERIAL PRIMARY KEY,
-  user_id INT REFERENCES users(id),
-  title TEXT NOT NULL,
-  completed BOOLEAN DEFAULT FALSE
-);
-
-SELECT dzql.register_entity('todos', 'title', array['title']);
-```
-
-**Client:**
-```javascript
-const todo = await ws.api.save.todos({ title: 'Learn DZQL' });
-const list = await ws.api.search.todos({ filters: { completed: false } });
-await ws.api.save.todos({ id: todo.id, completed: true });
-await ws.api.delete.todos({ id: todo.id });
 ```
 
 ## Why DZQL?
@@ -247,20 +122,26 @@ Traditional approaches require:
 
 Graph rules automate relationship management, permissions control how the graph evolves, and real-time notifications keep everyone in sync. Rather than just CRUD operations, DZQL gives you a complete graph evolution platform through simple entity registration.
 
-## Project Structure
+## Features
 
-```
-dzql/
-├── packages/
-│   ├── dzql/                        # Core framework
-│   │   └── src/database/migrations/ # PostgreSQL migrations
-│   ├── venues/                      # Example application
-│   │   ├── server/                  # Bun server
-│   │   ├── database/                # Docker setup
-│   │   └── tests/                   # Test suite
-│   └── client/                      # Shared utilities
-└── package.json
-```
+✅ **Zero Boilerplate** - Register entity, get 5 operations automatically  
+✅ **Real-time WebSocket** - Automatic change notifications  
+✅ **PostgreSQL-native** - Leverage full SQL power  
+✅ **Graph Rules** - Cascading operations without joins  
+✅ **Validation Actions** - Data integrity checks in graph rules (v0.1.1)  
+✅ **Function Execution** - Custom logic in graph rules (v0.1.1)  
+✅ **Permissions & RLS** - Row-level security built-in  
+✅ **Full-text Search** - Built-in with filters & pagination  
+✅ **Framework-agnostic** - Works with React, Vue, Svelte, plain JS  
+✅ **Bun Native** - No Node.js required  
+
+## Documentation
+
+- **[Getting Started](packages/dzql/GETTING_STARTED.md)** - Step-by-step tutorial with complete todo app
+- **[API Reference](packages/dzql/REFERENCE.md)** - Complete API documentation
+- **[Development Guide](docs/CLAUDE.md)** - Comprehensive guide for building with DZQL
+- **[Roadmap](docs/ROADMAP.md)** - Project roadmap & known issues
+- **[Venues Example](packages/venues/)** - Full working application
 
 ## Installation
 
@@ -284,6 +165,22 @@ See [`.env.example`](.env.example) for all configuration options.
 - `PORT` - Server port (default: 3000)
 - `LOG_LEVEL` - Logging level (INFO, DEBUG, TRACE)
 
+## Project Structure
+
+```
+dzql/
+├── packages/
+│   ├── dzql/                        # Core framework
+│   │   └── src/database/migrations/ # PostgreSQL migrations
+│   ├── venues/                      # Example application
+│   │   ├── server/                  # Bun server
+│   │   ├── database/                # Docker setup
+│   │   └── tests/                   # Test suite
+│   └── client/                      # Shared utilities
+├── docs/                            # Documentation
+└── package.json
+```
+
 ## Support
 
 - **Issues**: https://github.com/blueshed/dzql/issues
@@ -296,4 +193,4 @@ MIT - See [LICENSE](LICENSE) file
 
 ---
 
-**Ready to build?** Start with [GETTING_STARTED.md](packages/dzql/GETTING_STARTED.md) 🚀
+**Ready to build?** Start with [Getting Started Guide](packages/dzql/GETTING_STARTED.md) 🚀

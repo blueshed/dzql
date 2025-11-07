@@ -1,6 +1,6 @@
 # DZQL API Reference
 
-Complete API documentation for DZQL framework. For tutorials, see [GETTING_STARTED.md](GETTING_STARTED.md). For AI development guide, see [CLAUDE.md](../../CLAUDE.md).
+Complete API documentation for DZQL framework. For tutorials, see [GETTING_STARTED.md](GETTING_STARTED.md). For AI development guide, see [CLAUDE.md](../../docs/CLAUDE.md).
 
 ## Table of Contents
 
@@ -886,6 +886,6 @@ const result = await db.api.myCustomFunction({param: 'value'}, userId);
 ## See Also
 
 - [GETTING_STARTED.md](GETTING_STARTED.md) - Hands-on tutorial
-- [CLAUDE.md](../../CLAUDE.md) - AI development guide
+- [CLAUDE.md](../../docs/CLAUDE.md) - AI development guide
 - [README.md](../../README.md) - Project overview
 - [Venues Example](../venues/) - Complete working application

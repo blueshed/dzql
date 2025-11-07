@@ -229,6 +229,100 @@ Automatic relationship management executed in transactions:
 
 Variables available: `@user_id`, `@id`, `@field_name`, `@now`, `@today`
 
+**Available Action Types:**
+
+| Action | Purpose | Required Fields | Rollback on Error |
+|--------|---------|----------------|-------------------|
+| `create` | Create related record | `entity`, `data` | ✅ Yes |
+| `update` | Update related record | `entity`, `match`, `data` | ✅ Yes |
+| `delete` | Delete related record | `entity`, `match` | ✅ Yes |
+| `validate` | Block operation if validation fails | `function`, `params`, `error_message` | ✅ Yes |
+| `execute` | Fire-and-forget function call | `function`, `params` | ❌ No |
+
+#### Graph Rules: Advanced Features
+
+**Conditional Execution**
+
+Rules can include conditions that determine if they execute:
+
+```jsonb
+{
+  "on_update": {
+    "prevent_modification": {
+      "condition": "@before.status = 'posted'",
+      "actions": [{
+        "type": "validate",
+        "function": "always_false",
+        "params": {},
+        "error_message": "Cannot modify a posted record"
+      }]
+    }
+  }
+}
+```
+
+**Condition Variables:**
+- `@before.field` - Value before update (null for create)
+- `@after.field` - Value after update/create (null for delete)
+- `@user_id` - Current user ID
+- `@id` - Record ID
+- Standard SQL expressions: `=`, `!=`, `AND`, `OR`, `>`, `<`, `>=`, `<=`
+
+**Validate Action**
+
+Call validation functions that can block operations:
+
+```jsonb
+{
+  "on_create": {
+    "validate_positive": {
+      "description": "Ensure value is positive",
+      "actions": [{
+        "type": "validate",
+        "function": "validate_positive_value",
+        "params": {"p_value": "@value"},
+        "error_message": "Value must be positive"
+      }]
+    }
+  }
+}
+```
+
+**Validation function signature:**
+```sql
+CREATE FUNCTION validate_positive_value(p_value INT)
+RETURNS BOOLEAN
+LANGUAGE sql AS $$
+  SELECT p_value > 0;
+$$;
+```
+
+Validation functions must:
+- Return BOOLEAN (true = pass, false = fail)
+- Use named parameters matching the `params` object
+- Be deterministic for consistent results
+
+**Execute Action**
+
+Call custom functions as side effects (fire-and-forget):
+
+```jsonb
+{
+  "on_create": {
+    "send_notification": {
+      "description": "Notify external system",
+      "actions": [{
+        "type": "execute",
+        "function": "send_email_notification",
+        "params": {"p_email": "@email", "p_name": "@name"}
+      }]
+    }
+  }
+}
+```
+
+Execute functions can return JSONB or void. Errors are logged as warnings but don't block the operation or rollback the transaction.
+
 ### 5. Real-Time Event Flow
 
 1. Database trigger fires on INSERT/UPDATE/DELETE
@@ -374,6 +468,34 @@ invokej dzql.lookup organisations '{"query": "acme"}'
 - Permissions checked before operations execute
 - Use path syntax to traverse relationships
 
+## Input Validation
+
+DZQL provides three validation approaches:
+
+1. **Graph Rules Validation** (recommended for business logic)
+   - Declarative in entity registration
+   - Access to before/after values
+   - Conditional execution support
+   - Transaction-safe (rollback on failure)
+   - Example: Prevent posting unbalanced journal entries
+
+2. **CHECK constraints** (for simple field validation)
+   - Field-level validation
+   - Database-enforced
+   - Fastest performance
+   - Example: `CHECK (price >= 0)`
+
+3. **PostgreSQL Triggers** (for complex side effects)
+   - When validation isn't enough
+   - When you need automatic updates
+   - Full PostgreSQL power
+   - Example: Complex audit logging
+
+**When to use which:**
+- Simple field validation → CHECK constraints
+- Business rules validation → Graph rules validate action
+- Complex validation + side effects → PostgreSQL triggers
+
 ## Common Gotchas
 
 1. **Server vs Client API**: Server `db.api` requires explicit `userId` as second parameter; client `ws.api` auto-injects from JWT
@@ -382,6 +504,8 @@ invokej dzql.lookup organisations '{"query": "acme"}'
 4. **Graph Rule Variables**: Use `@` prefix for all variables (`@user_id`, `@id`, `@field_name`)
 5. **Permission Paths**: Empty array means "allow all", missing permission type means "deny all"
 6. **NOTIFY Filtering**: `notify_users: null` broadcasts to all authenticated users; array targets specific user_ids
+7. **Validation vs Execute Actions**: `validate` blocks operations on failure; `execute` logs errors but continues
+8. **Condition Evaluation**: Conditions use SQL syntax, not JavaScript - use `=` not `===`, use `AND` not `&&`
 
 ---
 
@@ -809,9 +933,13 @@ SELECT dzql.register_entity(
 - ✅ Test rollback behavior (ensure atomicity)
 - ✅ Avoid complex logic in graph rules (use functions instead)
 - ✅ Document cascade delete behavior
+- ✅ Use `validate` action for business rules validation
+- ✅ Test conditions thoroughly with different data states
 
 **Input Validation:**
 - ✅ DZQL validates entity schema automatically
+- ✅ Use graph rules `validate` action for business logic validation
+- ✅ Validation functions should be deterministic (same input = same output)
 - ✅ Add custom validation in PostgreSQL functions if needed
 - ✅ Use CHECK constraints for business rules
 - ✅ Never expose raw error messages to client

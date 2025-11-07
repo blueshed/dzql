@@ -163,6 +163,90 @@ BEGIN
   );
 END $$;
 
+-- === Validate Action ===
+-- Calls a validation function and raises exception if it returns false
+CREATE OR REPLACE FUNCTION dzql.execute_graph_validate(
+  p_function_name text,
+  p_params jsonb,
+  p_error_message text DEFAULT 'Validation failed'
+) RETURNS void
+LANGUAGE plpgsql AS $$
+DECLARE
+  l_result boolean;
+  l_sql text;
+  l_param_list text[];
+  l_key text;
+  l_value text;
+BEGIN
+  -- Validate function name (prevent SQL injection)
+  IF NOT p_function_name ~ '^[a-z_][a-z0-9_]*$' THEN
+    RAISE EXCEPTION 'Invalid function name: %', p_function_name;
+  END IF;
+
+  -- Build parameter list
+  l_param_list := array[]::text[];
+  FOR l_key, l_value IN SELECT * FROM jsonb_each_text(p_params)
+  LOOP
+    l_param_list := l_param_list || (l_key || ' => ' || quote_literal(l_value));
+  END LOOP;
+
+  -- Build and execute function call
+  IF array_length(l_param_list, 1) > 0 THEN
+    l_sql := format('SELECT %I(%s)', p_function_name, array_to_string(l_param_list, ', '));
+  ELSE
+    l_sql := format('SELECT %I()', p_function_name);
+  END IF;
+
+  EXECUTE l_sql INTO l_result;
+
+  -- Raise exception if validation failed
+  IF NOT COALESCE(l_result, false) THEN
+    RAISE EXCEPTION '%', p_error_message;
+  END IF;
+END $$;
+
+-- === Execute Action ===
+-- Calls a custom function with parameters (fire-and-forget)
+CREATE OR REPLACE FUNCTION dzql.execute_graph_function(
+  p_function_name text,
+  p_params jsonb
+) RETURNS jsonb
+LANGUAGE plpgsql AS $$
+DECLARE
+  l_result jsonb;
+  l_sql text;
+  l_param_list text[];
+  l_key text;
+  l_value text;
+BEGIN
+  -- Validate function name (prevent SQL injection)
+  IF NOT p_function_name ~ '^[a-z_][a-z0-9_]*$' THEN
+    RAISE EXCEPTION 'Invalid function name: %', p_function_name;
+  END IF;
+
+  -- Build parameter list
+  l_param_list := array[]::text[];
+  FOR l_key, l_value IN SELECT * FROM jsonb_each_text(p_params)
+  LOOP
+    l_param_list := l_param_list || (l_key || ' => ' || quote_literal(l_value));
+  END LOOP;
+
+  -- Build and execute function call
+  IF array_length(l_param_list, 1) > 0 THEN
+    l_sql := format('SELECT %I(%s)', p_function_name, array_to_string(l_param_list, ', '));
+  ELSE
+    l_sql := format('SELECT %I()', p_function_name);
+  END IF;
+
+  EXECUTE l_sql INTO l_result;
+
+  RETURN COALESCE(l_result, '{}'::jsonb);
+EXCEPTION WHEN OTHERS THEN
+  -- Log error but don't fail the transaction
+  RAISE WARNING 'Graph rule function execution failed: % (function: %)', SQLERRM, p_function_name;
+  RETURN jsonb_build_object('error', SQLERRM);
+END $$;
+
 -- Main graph rules execution engine
 CREATE OR REPLACE FUNCTION dzql.execute_graph_rules(
   p_table_name text,
@@ -189,6 +273,10 @@ DECLARE
   l_execution_log jsonb := '[]'::jsonb;
   l_condition text;
   l_condition_result boolean;
+  l_function_name text;
+  l_function_params jsonb;
+  l_error_message text;
+  l_function_result jsonb;
 BEGIN
   -- Get entity configuration
   SELECT * INTO l_entity_config FROM dzql.entities WHERE table_name = p_table_name;
@@ -230,69 +318,88 @@ BEGIN
     l_condition := l_rule_config->>'condition';
     l_condition_result := true;  -- Default to true if no condition
 
-    -- TODO: Implement condition evaluation
-    -- IF l_condition IS NOT NULL THEN
-    --   l_condition_result := dzql.evaluate_condition(l_condition, p_record_before, p_record_after, p_user_id);
-    -- END IF;
+    IF l_condition IS NOT NULL THEN
+      l_condition_result := dzql.evaluate_condition(l_condition, p_record_before, p_record_after, p_user_id);
+    END IF;
 
     IF l_condition_result THEN
       -- Execute each action in the rule
       FOR l_action IN SELECT * FROM jsonb_array_elements(l_rule_config->'actions')
       LOOP
         l_action_type := l_action->>'type';
-        l_target_entity := l_action->>'entity';
-        l_action_data := l_action->'data';
-        l_action_match := l_action->'match';
 
-        -- Resolve variables in data and match objects
-        IF l_action_data IS NOT NULL THEN
-          l_resolved_data := dzql.resolve_graph_data(l_action_data, p_record_before, p_record_after, p_user_id);
-        END IF;
-
-        IF l_action_match IS NOT NULL THEN
-          l_resolved_match := dzql.resolve_graph_data(l_action_match, p_record_before, p_record_after, p_user_id);
-        END IF;
-
-        -- Execute the action
+        -- Execute the action based on type
         BEGIN
           CASE l_action_type
+            -- Existing action types
             WHEN 'create' THEN
+              l_target_entity := l_action->>'entity';
+              l_action_data := l_action->'data';
+              l_resolved_data := dzql.resolve_graph_data(l_action_data, p_record_before, p_record_after, p_user_id);
               PERFORM dzql.execute_graph_insert(l_target_entity, l_resolved_data, p_user_id);
 
             WHEN 'update' THEN
+              l_target_entity := l_action->>'entity';
+              l_action_data := l_action->'data';
+              l_action_match := l_action->'match';
+              l_resolved_data := dzql.resolve_graph_data(l_action_data, p_record_before, p_record_after, p_user_id);
+              l_resolved_match := dzql.resolve_graph_data(l_action_match, p_record_before, p_record_after, p_user_id);
               PERFORM dzql.execute_graph_update(l_target_entity, l_resolved_match, l_resolved_data, p_user_id);
 
             WHEN 'delete' THEN
+              l_target_entity := l_action->>'entity';
+              l_action_match := l_action->'match';
+              l_resolved_match := dzql.resolve_graph_data(l_action_match, p_record_before, p_record_after, p_user_id);
               PERFORM dzql.execute_graph_delete(l_target_entity, l_resolved_match, p_user_id);
+
+            -- NEW: Validation action
+            WHEN 'validate' THEN
+              l_function_name := l_action->>'function';
+              l_function_params := l_action->'params';
+              l_error_message := COALESCE(l_action->>'error_message', 'Validation failed');
+              l_resolved_data := dzql.resolve_graph_data(l_function_params, p_record_before, p_record_after, p_user_id);
+              PERFORM dzql.execute_graph_validate(l_function_name, l_resolved_data, l_error_message);
+
+            -- NEW: Execute function action
+            WHEN 'execute' THEN
+              l_function_name := l_action->>'function';
+              l_function_params := l_action->'params';
+              l_resolved_data := dzql.resolve_graph_data(l_function_params, p_record_before, p_record_after, p_user_id);
+              l_function_result := dzql.execute_graph_function(l_function_name, l_resolved_data);
+
+            ELSE
+              RAISE WARNING 'Unknown graph rule action type: %', l_action_type;
           END CASE;
 
           -- Log successful execution
           l_execution_log := l_execution_log || jsonb_build_object(
             'rule', l_rule_name,
-            'action_type', l_action_type,
-            'target_entity', l_target_entity,
+            'action', l_action_type,
             'status', 'success'
           );
 
-        EXCEPTION
-          WHEN OTHERS THEN
-            -- Log failed execution but continue with other rules
-            l_execution_log := l_execution_log || jsonb_build_object(
-              'rule', l_rule_name,
-              'action_type', l_action_type,
-              'target_entity', l_target_entity,
-              'status', 'error',
-              'error', SQLERRM
-            );
+        EXCEPTION WHEN OTHERS THEN
+          -- Log error and re-raise for validate actions, otherwise just log
+          l_execution_log := l_execution_log || jsonb_build_object(
+            'rule', l_rule_name,
+            'action', l_action_type,
+            'status', 'error',
+            'error', SQLERRM
+          );
+
+          -- Re-raise exceptions from validate actions to prevent operation
+          IF l_action_type = 'validate' THEN
+            RAISE;
+          END IF;
         END;
       END LOOP;
     END IF;
   END LOOP;
 
   RETURN jsonb_build_object(
-    'status', 'completed',
+    'status', 'success',
     'trigger', l_trigger_key,
-    'execution_log', l_execution_log
+    'executed_actions', l_execution_log
   );
 END $$;
 

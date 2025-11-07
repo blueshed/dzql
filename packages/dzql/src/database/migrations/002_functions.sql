@@ -149,6 +149,82 @@ BEGIN
   RETURN l_result;
 END $$;
 
+-- === Condition Evaluation ===
+-- Evaluates a condition string with variable substitution
+CREATE OR REPLACE FUNCTION dzql.evaluate_condition(
+  p_condition text,
+  p_record_before jsonb,
+  p_record_after jsonb,
+  p_user_id int
+) RETURNS boolean
+LANGUAGE plpgsql AS $$
+DECLARE
+  l_resolved_condition text;
+  l_result boolean;
+  l_match_array text[];
+  l_field_name text;
+  l_field_value text;
+BEGIN
+  -- Replace variables in condition
+  l_resolved_condition := p_condition;
+
+  -- Replace @before.field references
+  IF p_record_before IS NOT NULL THEN
+    LOOP
+      l_match_array := regexp_match(l_resolved_condition, '@before\.(\w+)');
+      EXIT WHEN l_match_array IS NULL;
+
+      l_field_name := l_match_array[1];
+      l_field_value := COALESCE(p_record_before->>l_field_name, 'null');
+      l_resolved_condition := regexp_replace(
+        l_resolved_condition,
+        '@before\.' || l_field_name,
+        quote_literal(l_field_value),
+        1
+      );
+    END LOOP;
+  END IF;
+
+  -- Replace @after.field references
+  IF p_record_after IS NOT NULL THEN
+    LOOP
+      l_match_array := regexp_match(l_resolved_condition, '@after\.(\w+)');
+      EXIT WHEN l_match_array IS NULL;
+
+      l_field_name := l_match_array[1];
+      l_field_value := COALESCE(p_record_after->>l_field_name, 'null');
+      l_resolved_condition := regexp_replace(
+        l_resolved_condition,
+        '@after\.' || l_field_name,
+        quote_literal(l_field_value),
+        1
+      );
+    END LOOP;
+  END IF;
+
+  -- Replace @user_id
+  l_resolved_condition := replace(l_resolved_condition, '@user_id', p_user_id::text);
+
+  -- Replace @id (use after if available, otherwise before)
+  IF p_record_after IS NOT NULL THEN
+    l_resolved_condition := replace(l_resolved_condition, '@id',
+      COALESCE(p_record_after->>'id', 'null'));
+  ELSIF p_record_before IS NOT NULL THEN
+    l_resolved_condition := replace(l_resolved_condition, '@id',
+      COALESCE(p_record_before->>'id', 'null'));
+  END IF;
+
+  -- Execute the condition
+  BEGIN
+    EXECUTE 'SELECT (' || l_resolved_condition || ')::boolean' INTO l_result;
+    RETURN COALESCE(l_result, false);
+  EXCEPTION WHEN OTHERS THEN
+    -- If condition evaluation fails, log and return false
+    RAISE WARNING 'Graph rule condition evaluation failed: % (condition: %)', SQLERRM, l_resolved_condition;
+    RETURN false;
+  END;
+END $$;
+
 -- === Path Resolution Functions ===
 -- Resolve notification/permission paths to user IDs
 -- === Path Resolution Functions ===
@@ -651,8 +727,8 @@ BEGIN
       LOOP
         l_action_type := l_action->>'type';
 
-        -- Check valid action types
-        IF l_action_type NOT IN ('create', 'update', 'delete') THEN
+        -- Check valid action types (includes new 'validate' and 'execute' types)
+        IF l_action_type NOT IN ('create', 'update', 'delete', 'validate', 'execute') THEN
           RAISE WARNING 'Invalid action type: %', l_action_type;
           RETURN false;
         END IF;
@@ -670,6 +746,17 @@ BEGIN
 
         IF l_action_type IN ('update', 'delete') AND NOT l_action ? 'match' THEN
           RAISE WARNING 'Action type % requires "match" field', l_action_type;
+          RETURN false;
+        END IF;
+
+        -- Validate new action types
+        IF l_action_type IN ('validate', 'execute') AND NOT l_action ? 'function' THEN
+          RAISE WARNING 'Action type % requires "function" field', l_action_type;
+          RETURN false;
+        END IF;
+
+        IF l_action_type IN ('validate', 'execute') AND NOT l_action ? 'params' THEN
+          RAISE WARNING 'Action type % requires "params" field', l_action_type;
           RETURN false;
         END IF;
       END LOOP;

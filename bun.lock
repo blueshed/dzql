@@ -33,10 +33,7 @@
     },
     "packages/dzql": {
       "name": "dzql",
-      "version": "1.0.0",
-      "bin": {
-        "dzql": "./bin/cli.js",
-      },
+      "version": "0.1.1",
       "dependencies": {
         "jose": "^6.1.0",
         "postgres": "^3.4.7",

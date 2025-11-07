@@ -321,6 +321,89 @@ ROADMAP.md                      - Project status
 
 ---
 
+### 17. **Declarative Validation Function Parameter**
+
+**Status:** 💡 **Proposed** (Optional Enhancement)
+
+**Issue:** While graph rules now support `validate` action (v0.1.1), some developers may prefer a simpler top-level parameter for common validation cases.
+
+**Current Approach (v0.1.1 - Graph Rules):**
+```sql
+SELECT dzql.register_entity(
+  'journal_entries', 'description', ARRAY['description'],
+  '{}', false, '{}', '{}', '{}',
+  jsonb_build_object(
+    'on_update', jsonb_build_object(
+      'validate_balanced', jsonb_build_object(
+        'condition', '@after.status = ''posted''',
+        'actions', jsonb_build_array(
+          jsonb_build_object(
+            'type', 'validate',
+            'function', 'validate_entry',
+            'params', jsonb_build_object('p_entry_id', '@id'),
+            'error_message', 'Validation failed'
+          )
+        )
+      )
+    )
+  )
+);
+```
+
+**Proposed Simpler Alternative:**
+```sql
+SELECT dzql.register_entity(
+  'journal_entries', 'description', ARRAY['description'],
+  '{}', false, '{}', '{}', '{}', '{}',
+  '_validate_journal_entry'  -- NEW: optional 10th parameter
+);
+```
+
+**Validation Function Signature:**
+```sql
+CREATE FUNCTION _validate_journal_entry(
+  p_user_id INT,
+  p_operation TEXT,      -- 'create' | 'update' | 'delete'
+  p_old_data JSONB,      -- Previous values (null for create)
+  p_new_data JSONB,      -- New values (null for delete)
+  p_context JSONB        -- Timestamps, etc.
+) RETURNS JSONB          -- null = success, object = error
+```
+
+**Benefits:**
+- ✅ Simpler syntax for common validation cases
+- ✅ Structured error responses (JSONB with code, field, message)
+- ✅ Single validation function per entity
+- ✅ Familiar to developers coming from other frameworks
+- ✅ Backward compatible (optional parameter)
+- ✅ Can coexist with graph rules validation
+
+**Trade-offs:**
+- ❌ Less flexible than graph rules (no conditions, no multiple rules)
+- ❌ Adds another validation approach (may confuse users)
+- ⚠️ Validation runs before DB operation (different timing than graph rules)
+
+**Implementation Effort:** Medium (2-3 days)
+- Schema: Add `validation_function` column to `dzql.entities`
+- Core: Update `register_entity()` with 10th parameter
+- Core: Update `generic_save/delete()` to call validation before DB operation
+- Tests: Add validation function test suite
+- Docs: Document both approaches with decision tree
+
+**Decision:** 
+- **Keep** graph rules validation as primary approach (more flexible)
+- **Consider** adding simple parameter in v0.2.0+ if user demand exists
+- **Evaluate** based on community feedback and use cases
+
+**Related:**
+- Feature request: `/Users/peterb/Workshop/dzql/plan.md`
+- Graph rules validation: Implemented in v0.1.1 (002_functions.sql, 005_entities.sql)
+- Documentation: Comprehensive examples in CLAUDE.md
+
+**Priority:** LOW - Enhancement for developer experience
+
+---
+
 ## 📦 Package Publishing Checklist
 
 ### Before Publishing to npm:
@@ -461,6 +544,7 @@ Still needed before 1.0:
 | TypeScript (#11) | MEDIUM | HIGH | **LOW** | 🔴 **Pending** |
 | ~~WS Keepalive (#12)~~ | MEDIUM | LOW | ~~MEDIUM~~ | ✅ **Fixed** (server) |
 | WS Reconnect (#12) | LOW | MEDIUM | **LOW** | 🔴 **Pending** (client) |
+| Validation Param (#17) | LOW | MEDIUM | **LOW** | 💡 **Proposed** |
 
 ---
 

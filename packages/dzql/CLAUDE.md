@@ -229,6 +229,244 @@ Automatic relationship management executed in transactions:
 
 Variables available: `@user_id`, `@id`, `@field_name`, `@now`, `@today`
 
+**Available Action Types:**
+
+| Action | Purpose | Required Fields | Rollback on Error |
+|--------|---------|----------------|-------------------|
+| `create` | Create related record | `entity`, `data` | ✅ Yes |
+| `update` | Update related record | `entity`, `match`, `data` | ✅ Yes |
+| `delete` | Delete related record | `entity`, `match` | ✅ Yes |
+| `validate` | Block operation if validation fails | `function`, `params`, `error_message` | ✅ Yes |
+| `execute` | Fire-and-forget function call | `function`, `params` | ❌ No |
+
+#### Graph Rules: Advanced Features
+
+**Conditional Execution**
+
+Rules can include conditions that determine if they execute:
+
+```jsonb
+{
+  "on_update": {
+    "prevent_modification": {
+      "condition": "@before.status = 'posted'",
+      "actions": [{
+        "type": "validate",
+        "function": "always_false",
+        "params": {},
+        "error_message": "Cannot modify a posted record"
+      }]
+    }
+  }
+}
+```
+
+**Condition Variables:**
+- `@before.field` - Value before update (null for create)
+- `@after.field` - Value after update/create (null for delete)
+- `@user_id` - Current user ID
+- `@id` - Record ID
+- Standard SQL expressions: `=`, `!=`, `AND`, `OR`, `>`, `<`, `>=`, `<=`
+
+**Validate Action**
+
+Call validation functions that can block operations:
+
+```jsonb
+{
+  "on_create": {
+    "validate_positive": {
+      "description": "Ensure value is positive",
+      "actions": [{
+        "type": "validate",
+        "function": "validate_positive_value",
+        "params": {"p_value": "@value"},
+        "error_message": "Value must be positive"
+      }]
+    }
+  }
+}
+```
+
+**Validation function signature:**
+```sql
+CREATE FUNCTION validate_positive_value(p_value INT)
+RETURNS BOOLEAN
+LANGUAGE sql AS $$
+  SELECT p_value > 0;
+$$;
+```
+
+Validation functions must:
+- Return BOOLEAN (true = pass, false = fail)
+- Use named parameters matching the `params` object
+- Be deterministic for consistent results
+
+**Execute Action**
+
+Call custom functions as side effects (fire-and-forget):
+
+```jsonb
+{
+  "on_create": {
+    "send_notification": {
+      "description": "Notify external system",
+      "actions": [{
+        "type": "execute",
+        "function": "send_email_notification",
+        "params": {"p_email": "@email", "p_name": "@name"}
+      }]
+    }
+  }
+}
+```
+
+Execute functions can return JSONB or void. Errors are logged as warnings but don't block the operation or rollback the transaction.
+
+#### Complex Validation Example: Double-Entry Bookkeeping
+
+**Requirement**: Journal entries must be balanced (debits = credits) before posting
+
+**Validation function that queries related tables:**
+```sql
+CREATE FUNCTION validate_journal_entry_balanced(p_entry_id INT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_total_debits DECIMAL;
+  v_total_credits DECIMAL;
+BEGIN
+  -- Query related journal_lines table
+  SELECT
+    COALESCE(SUM(debit_amount), 0),
+    COALESCE(SUM(credit_amount), 0)
+  INTO v_total_debits, v_total_credits
+  FROM journal_lines
+  WHERE entry_id = p_entry_id;
+
+  -- Check if balanced and non-zero
+  RETURN v_total_debits = v_total_credits AND v_total_debits > 0;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Entity registration with multiple validation rules:**
+```sql
+SELECT dzql.register_entity(
+  'journal_entries',
+  'description',
+  ARRAY['description'],
+  '{"lines": "journal_lines"}',  -- Include child lines
+  false, '{}', '{}', '{}',
+  jsonb_build_object(
+    'on_update', jsonb_build_object(
+      -- Rule 1: Validate balanced entry
+      'validate_balanced_on_post', jsonb_build_object(
+        'description', 'Ensure entry is balanced before posting',
+        'condition', '@after.status = ''posted'' AND @before.status = ''draft''',
+        'actions', jsonb_build_array(
+          jsonb_build_object(
+            'type', 'validate',
+            'function', 'validate_journal_entry_balanced',
+            'params', jsonb_build_object('p_entry_id', '@id'),
+            'error_message', 'Cannot post unbalanced entry - debits must equal credits'
+          )
+        )
+      ),
+      -- Rule 2: Check fiscal period is open
+      'check_fiscal_period_open', jsonb_build_object(
+        'description', 'Prevent posting to closed periods',
+        'condition', '@after.status = ''posted''',
+        'actions', jsonb_build_array(
+          jsonb_build_object(
+            'type', 'validate',
+            'function', 'is_fiscal_period_open',
+            'params', jsonb_build_object('p_period_id', '@fiscal_period_id'),
+            'error_message', 'Cannot post to a closed fiscal period'
+          )
+        )
+      ),
+      -- Rule 3: Prevent modifying posted entries
+      'prevent_modify_posted', jsonb_build_object(
+        'description', 'Posted entries are immutable',
+        'condition', '@before.status = ''posted''',
+        'actions', jsonb_build_array(
+          jsonb_build_object(
+            'type', 'validate',
+            'function', 'always_false',
+            'params', jsonb_build_object(),
+            'error_message', 'Cannot modify a posted journal entry'
+          )
+        )
+      )
+    )
+  )
+);
+```
+
+**Key features demonstrated:**
+- Multiple validation rules on same trigger
+- Conditions control when validations run
+- Validation functions query related tables
+- Clear error messages for business rules
+
+#### Migration from PostgreSQL Triggers to Graph Rules Validation
+
+**Before (Trigger approach):**
+```sql
+CREATE TRIGGER journal_entry_validation
+  BEFORE UPDATE ON journal_entries
+  FOR EACH ROW
+  EXECUTE FUNCTION check_journal_entry_balanced();
+
+CREATE OR REPLACE FUNCTION check_journal_entry_balanced()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.status = 'posted' AND OLD.status = 'draft' THEN
+    IF NOT validate_journal_entry_balanced(NEW.id) THEN
+      RAISE EXCEPTION 'Cannot post unbalanced journal entry';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**After (Graph rules approach):**
+```sql
+SELECT dzql.register_entity(
+  'journal_entries', 'description', ARRAY['description'],
+  '{}', false, '{}', '{}', '{}',
+  jsonb_build_object(
+    'on_update', jsonb_build_object(
+      'validate_balanced', jsonb_build_object(
+        'condition', '@after.status = ''posted'' AND @before.status = ''draft''',
+        'actions', jsonb_build_array(
+          jsonb_build_object(
+            'type', 'validate',
+            'function', 'validate_journal_entry_balanced',
+            'params', jsonb_build_object('p_entry_id', '@id'),
+            'error_message', 'Cannot post unbalanced journal entry'
+          )
+        )
+      )
+    )
+  )
+);
+```
+
+**Advantages:**
+- ✅ Visible in entity registration (no separate trigger objects)
+- ✅ Declarative and easier to understand
+- ✅ Conditional execution built-in
+- ✅ Testable (can call validation function directly)
+- ✅ All entity config in one place
+
+**When to still use triggers:**
+- Complex multi-step validation with loops/cursors
+- Need to modify NEW record before saving
+- Side effects that must happen in same transaction (use execute action instead for side effects)
+- Integration with legacy PostgreSQL systems
+
 ### 5. Real-Time Event Flow
 
 1. Database trigger fires on INSERT/UPDATE/DELETE
