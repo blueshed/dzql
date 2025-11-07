@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "DATABASE_URL=postgresql://dzql:dzql@localhost:5433/dzql bun --watch server/index.js",
     "build": "echo 'No build step required'",
-    "test": "DATABASE_URL=postgresql://dzql:dzql@localhost:5433/dzql bun test tests/",
+    "test": "bun db && bash -c 'for i in {1..30}; do pg_isready -h localhost -p 5433 -U dzql && break || sleep 1; done' && sleep 10 && DATABASE_URL=postgresql://dzql:dzql@localhost:5433/dzql bun test tests/",
     "db": "bun db:down && bun db:up",
     "db:up": "cd database && docker compose -p rights up -d",
     "db:down": "cd database && docker compose -p rights down -v",
