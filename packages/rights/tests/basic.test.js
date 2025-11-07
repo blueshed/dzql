@@ -27,9 +27,9 @@ describe("Rights End-to-End Test", () => {
     // Set correct search path to include dzql schema
     await sql`SET search_path = public, dzql`;
 
-    // Register test user
-    const userResult = await db.api.register_user({
-      email: 'rights-test@example.com',
+    // Use the test user created by migration (test@example.com)
+    const userResult = await db.api.login_user({
+      email: 'test@example.com',
       password: 'password123'
     });
     userId = userResult.user_id;
