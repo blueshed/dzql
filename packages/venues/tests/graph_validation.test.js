@@ -27,33 +27,40 @@ beforeAll(async () => {
   testOrgId = orgResult.id;
 
   // Set up test entity with validation rules
+
+  // Create test table for validation
   await sql`
-    -- Create test table for validation
     CREATE TABLE IF NOT EXISTS test_validation (
       id SERIAL PRIMARY KEY,
       name TEXT,
       value INT,
       status TEXT DEFAULT 'draft',
       org_id INT REFERENCES organisations(id)
-    );
+    )
+  `;
 
-    -- Create validation function
+  // Create validation function
+  await sql`
     CREATE OR REPLACE FUNCTION validate_positive_value(p_value INT)
     RETURNS BOOLEAN
     LANGUAGE sql
     IMMUTABLE AS $$
       SELECT p_value > 0;
-    $$;
+    $$
+  `;
 
-    -- Create always_false function for unconditional rejection
+  // Create always_false function for unconditional rejection
+  await sql`
     CREATE OR REPLACE FUNCTION always_false()
     RETURNS BOOLEAN
     LANGUAGE sql
     IMMUTABLE AS $$
       SELECT false;
-    $$;
+    $$
+  `;
 
-    -- Register entity with validation rules
+  // Register entity with validation rules
+  await sql`
     SELECT dzql.register_entity(
       'test_validation',
       'name',
@@ -93,7 +100,7 @@ beforeAll(async () => {
           }
         }
       }'
-    );
+    )
   `;
 });
 
@@ -237,16 +244,19 @@ test("Graph rules execute within transaction", async () => {
 
 test("Multiple validation rules execute in order", async () => {
   // Create entity with multiple validation rules
+
+  // Create second validation function
   await sql`
-    -- Create second validation function
     CREATE OR REPLACE FUNCTION validate_reasonable_value(p_value INT)
     RETURNS BOOLEAN
     LANGUAGE sql
     IMMUTABLE AS $$
       SELECT p_value <= 1000;
-    $$;
+    $$
+  `;
 
-    -- Update entity registration with multiple validations
+  // Update entity registration with multiple validations
+  await sql`
     UPDATE dzql.entities
     SET graph_rules = '{
       "on_create": {
@@ -270,7 +280,7 @@ test("Multiple validation rules execute in order", async () => {
         }
       }
     }'::jsonb
-    WHERE table_name = 'test_validation';
+    WHERE table_name = 'test_validation'
   `;
 
   // Test first validation (negative value)

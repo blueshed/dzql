@@ -13,28 +13,45 @@ LANGUAGE plpgsql AS $$
 DECLARE
   l_resolved_condition text;
   l_result boolean;
+  l_match_array text[];
+  l_field_name text;
+  l_field_value text;
 BEGIN
   -- Replace variables in condition
   l_resolved_condition := p_condition;
 
   -- Replace @before.field references
   IF p_record_before IS NOT NULL THEN
-    l_resolved_condition := regexp_replace(
-      l_resolved_condition,
-      '@before\.(\w+)',
-      'COALESCE((''' || p_record_before::text || '''::jsonb->>\1), ''null'')',
-      'g'
-    );
+    LOOP
+      l_match_array := regexp_match(l_resolved_condition, '@before\.(\w+)');
+      EXIT WHEN l_match_array IS NULL;
+
+      l_field_name := l_match_array[1];
+      l_field_value := COALESCE(p_record_before->>l_field_name, 'null');
+      l_resolved_condition := regexp_replace(
+        l_resolved_condition,
+        '@before\.' || l_field_name,
+        quote_literal(l_field_value),
+        1
+      );
+    END LOOP;
   END IF;
 
   -- Replace @after.field references
   IF p_record_after IS NOT NULL THEN
-    l_resolved_condition := regexp_replace(
-      l_resolved_condition,
-      '@after\.(\w+)',
-      'COALESCE((''' || p_record_after::text || '''::jsonb->>\1), ''null'')',
-      'g'
-    );
+    LOOP
+      l_match_array := regexp_match(l_resolved_condition, '@after\.(\w+)');
+      EXIT WHEN l_match_array IS NULL;
+
+      l_field_name := l_match_array[1];
+      l_field_value := COALESCE(p_record_after->>l_field_name, 'null');
+      l_resolved_condition := regexp_replace(
+        l_resolved_condition,
+        '@after\.' || l_field_name,
+        quote_literal(l_field_value),
+        1
+      );
+    END LOOP;
   END IF;
 
   -- Replace @user_id
@@ -295,6 +312,87 @@ BEGIN
 
   RETURN jsonb_build_object(
     'status', 'success',
+    'trigger', l_trigger_key,
     'executed_actions', l_execution_log
   );
+END $$;
+
+-- === Update validate_graph_rules to accept new action types ===
+CREATE OR REPLACE FUNCTION dzql.validate_graph_rules(
+  p_rules jsonb
+) RETURNS boolean
+LANGUAGE plpgsql AS $$
+DECLARE
+  l_trigger_key text;
+  l_trigger_rules jsonb;
+  l_rule_name text;
+  l_rule_config jsonb;
+  l_action jsonb;
+  l_action_type text;
+BEGIN
+  -- Check if rules is empty or null (valid)
+  IF p_rules IS NULL OR p_rules = '{}' THEN
+    RETURN true;
+  END IF;
+
+  -- Validate top-level trigger types
+  FOR l_trigger_key, l_trigger_rules IN SELECT * FROM jsonb_each(p_rules)
+  LOOP
+    -- Check valid trigger types
+    IF l_trigger_key NOT IN ('on_create', 'on_update', 'on_delete', 'on_field_change') THEN
+      RAISE WARNING 'Invalid trigger type: %', l_trigger_key;
+      RETURN false;
+    END IF;
+
+    -- Validate each rule within the trigger
+    FOR l_rule_name, l_rule_config IN SELECT * FROM jsonb_each(l_trigger_rules)
+    LOOP
+      -- Check required fields
+      IF NOT l_rule_config ? 'actions' THEN
+        RAISE WARNING 'Rule % missing required "actions" field', l_rule_name;
+        RETURN false;
+      END IF;
+
+      -- Validate each action
+      FOR l_action IN SELECT * FROM jsonb_array_elements(l_rule_config->'actions')
+      LOOP
+        l_action_type := l_action->>'type';
+
+        -- Check valid action types (includes new 'validate' and 'execute' types)
+        IF l_action_type NOT IN ('create', 'update', 'delete', 'validate', 'execute') THEN
+          RAISE WARNING 'Invalid action type: %', l_action_type;
+          RETURN false;
+        END IF;
+
+        -- Check required fields per action type
+        IF l_action_type IN ('create', 'update') AND NOT l_action ? 'entity' THEN
+          RAISE WARNING 'Action type % requires "entity" field', l_action_type;
+          RETURN false;
+        END IF;
+
+        IF l_action_type = 'create' AND NOT l_action ? 'data' THEN
+          RAISE WARNING 'Action type "create" requires "data" field';
+          RETURN false;
+        END IF;
+
+        IF l_action_type IN ('update', 'delete') AND NOT l_action ? 'match' THEN
+          RAISE WARNING 'Action type % requires "match" field', l_action_type;
+          RETURN false;
+        END IF;
+
+        -- Validate new action types
+        IF l_action_type IN ('validate', 'execute') AND NOT l_action ? 'function' THEN
+          RAISE WARNING 'Action type % requires "function" field', l_action_type;
+          RETURN false;
+        END IF;
+
+        IF l_action_type IN ('validate', 'execute') AND NOT l_action ? 'params' THEN
+          RAISE WARNING 'Action type % requires "params" field', l_action_type;
+          RETURN false;
+        END IF;
+      END LOOP;
+    END LOOP;
+  END LOOP;
+
+  RETURN true;
 END $$;
