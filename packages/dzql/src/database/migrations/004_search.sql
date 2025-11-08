@@ -342,6 +342,13 @@ BEGIN
     END IF;
   END IF;
 
+  -- Add permission check to WHERE clause
+  IF l_where_clause = '' OR l_where_clause = 'WHERE' THEN
+    l_where_clause := format('WHERE dzql.check_permission(%L, ''view'', %L, to_jsonb(t.*))', p_user_id, p_entity);
+  ELSE
+    l_where_clause := l_where_clause || format(' AND dzql.check_permission(%L, ''view'', %L, to_jsonb(t.*))', p_user_id, p_entity);
+  END IF;
+
   -- Build base SQL
   l_base_sql := format('FROM %I t %s', p_entity, l_where_clause);
 
