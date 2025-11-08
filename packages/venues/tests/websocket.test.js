@@ -1,14 +1,17 @@
 import { test, expect, beforeAll, afterAll } from "bun:test";
 import { sql } from "dzql";
 import { setupTestServer, teardownTestServer } from "./test-server.js";
+import { WebSocketManager } from "../../dzql/src/client/ws.js";
 
 let server;
+let testUser;
 
 beforeAll(async () => {
   // Create test user for websocket tests
-  await sql`
-    SELECT register_user('websocket-test@example.com', 'password123')
+  const result = await sql`
+    SELECT register_user('websocket-test@example.com', 'password123') as user_data
   `;
+  testUser = result[0].user_data;
 
   // Start the server using test utility
   server = await setupTestServer(3000);
@@ -21,87 +24,35 @@ afterAll(async () => {
 });
 
 test("WebSocket login and basic functionality", async () => {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error("Test timeout - WebSocket connection failed"));
-    }, 3000);
+  const ws = new WebSocketManager();
 
-    const ws = new WebSocket("ws://localhost:3000/ws");
-    let messageId = 0;
+  try {
+    // Connect to WebSocket server
+    await ws.connect(server.getWebSocketUrl());
 
-    ws.onopen = () => {
-      // First login
-      const loginMessage = {
-        jsonrpc: "2.0",
-        method: "login_user",
-        params: {
-          email: "websocket-test@example.com",
-          password: "password123",
-        },
-        id: ++messageId,
-      };
-      ws.send(JSON.stringify(loginMessage));
-    };
+    // Login
+    const loginResult = await ws.api.login_user({
+      email: "websocket-test@example.com",
+      password: "password123",
+    });
 
-    ws.onmessage = (event) => {
-      const response = JSON.parse(event.data);
+    // Verify login response structure
+    expect(loginResult.token).toBeDefined();
+    expect(loginResult.profile).toBeDefined();
+    expect(loginResult.profile.user_id).toBeDefined();
+    expect(loginResult.profile.email).toBe("websocket-test@example.com");
+    expect(loginResult.profile.name).toBe("websocket-test");
+    expect(loginResult.profile.created_at).toBeDefined();
 
-      // Handle initial 'connected' message (now a JSON-RPC method call)
-      if (response.method === "connected") {
-        return;
-      }
+    // Test DZQL get operation
+    const org = await ws.api.get.organisations({ id: 1 });
+    expect(org.id).toBe(1);
+    expect(org.name).toBe("Event Corp");
 
-      if (response.id === 1) {
-        if (response.result) {
-          // Login successful, verify response structure
-          expect(response.result.token).toBeDefined();
-          expect(response.result.profile).toBeDefined();
-          expect(response.result.profile.user_id).toBeDefined();
-          expect(response.result.profile.email).toBe(
-            "websocket-test@example.com",
-          );
-          expect(response.result.profile.name).toBe("websocket-test");
-          expect(response.result.profile.created_at).toBeDefined();
-
-          // Test a DZQL operation instead of _profile
-          const getOrgMessage = {
-            jsonrpc: "2.0",
-            method: "dzql.get.organisations",
-            params: { id: 1 },
-            id: ++messageId,
-          };
-          ws.send(JSON.stringify(getOrgMessage));
-        } else {
-          // Login failed - user doesn't exist
-          clearTimeout(timeout);
-          reject(
-            new Error(
-              "Login failed - websocket-test@example.com user does not exist",
-            ),
-          );
-        }
-      } else if (response.id === 2) {
-        // DZQL get organisations response
-        if (response.result) {
-          expect(response.result.id).toBe(1);
-          expect(response.result.name).toBe("Event Corp");
-          console.log("SUCCESS: DZQL get worked in raw WebSocket test");
-        } else {
-          console.log("FAILED: DZQL get failed in raw WebSocket test", response.error);
-        }
-
-        clearTimeout(timeout);
-        ws.close();
-        resolve();
-      } else if (response.error) {
-        clearTimeout(timeout);
-        reject(new Error(response.error.message));
-      }
-    };
-
-    ws.onerror = (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    };
-  });
+    // Clean disconnect
+    ws.cleanDisconnect();
+  } catch (error) {
+    ws.cleanDisconnect();
+    throw error;
+  }
 });
