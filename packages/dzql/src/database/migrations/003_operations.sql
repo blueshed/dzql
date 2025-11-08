@@ -345,14 +345,6 @@ BEGIN
                       p_entity);
     EXECUTE l_sql_stmt INTO l_result;
 
-    -- Execute graph rules for update
-    l_graph_rules_result := dzql.execute_graph_rules(
-      p_entity,
-      'update',
-      l_existing_record,
-      l_result,
-      p_user_id
-    );
 
   ELSE
     -- INSERT: Use provided values, let database handle defaults
@@ -387,14 +379,6 @@ BEGIN
                       p_entity);
     EXECUTE l_sql_stmt INTO l_result;
 
-    -- Execute graph rules for insert
-    l_graph_rules_result := dzql.execute_graph_rules(
-      p_entity,
-      'insert',
-      NULL,
-      l_result,
-      p_user_id
-    );
   END IF;
 
   -- Execute graph rules for the appropriate operation
