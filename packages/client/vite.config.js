@@ -28,9 +28,6 @@ export default defineConfig({
     })],
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version),
-    __GOOGLEMAP_KEY__: JSON.stringify(
-      "AIzaSyBAtIr8pLqEdHYp9HD-d1MysIeAYZkUJZs",
-    ),
   },
   resolve: {
     alias: {
