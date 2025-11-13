@@ -416,4 +416,116 @@ describe("Rights End-to-End Test", () => {
     console.log(`   Allocation: Site "${site.name}" → Package "${packageData.name}" (ID: ${allocationId})`);
     console.log(`   All DZQL operations including packages & allocations working perfectly! 🎉`);
   }, { timeout: 60000 });
+
+  test("contractor_rights temporal grants work correctly", async () => {
+    // This test demonstrates the temporal behavior of contractor_rights
+    // With proper composite PK (contractor_org_id, venue_id, valid_from),
+    // we can track multiple grants over time for the same contractor/venue pair
+
+    // Create a contractor organisation
+    const contractorOrg = await db.api.save.organisations({
+      name: "Contractor LLC",
+      description: "Contractor for testing temporal rights"
+    }, userId);
+
+    expect(contractorOrg.id).toBeDefined();
+    const contractorOrgId = contractorOrg.id;
+
+    // Wait for graph rules to establish ownership
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Create a venue owner organisation
+    const ownerOrg = await db.api.save.organisations({
+      name: "Venue Owner Corp",
+      description: "Owner for testing temporal rights"
+    }, userId);
+
+    expect(ownerOrg.id).toBeDefined();
+    const ownerOrgId = ownerOrg.id;
+
+    // Wait for graph rules
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Create a venue owned by the owner org
+    const testVenue = await db.api.save.venues({
+      name: "Temporal Test Venue",
+      address: "456 Temporal St",
+      org_id: ownerOrgId
+    }, userId);
+
+    expect(testVenue.id).toBeDefined();
+    const testVenueId = testVenue.id;
+
+    // ===============================================
+    // Grant 1: Currently active rights (2025-2026)
+    // ===============================================
+    const rights1 = await db.api.save.contractor_rights({
+      contractor_org_id: contractorOrgId,
+      venue_id: testVenueId,
+      granted_by_id: ownerOrgId,
+      granted_by_type: 'owner',
+      valid_from: "2025-01-01",
+      valid_to: "2026-12-31"
+    }, userId);
+
+    expect(rights1.contractor_org_id).toBe(contractorOrgId);
+    expect(rights1.venue_id).toBe(testVenueId);
+    expect(rights1.valid_from).toBeDefined();
+    expect(rights1.valid_to).toBeDefined();
+
+    // ===============================================
+    // Grant 2: Future rights (2027-2028)
+    // With composite PK (contractor_org_id, venue_id, valid_from),
+    // this should create a NEW record, not update the existing one
+    // ===============================================
+    const rights2 = await db.api.save.contractor_rights({
+      contractor_org_id: contractorOrgId,  // Same contractor
+      venue_id: testVenueId,                // Same venue
+      granted_by_id: ownerOrgId,
+      granted_by_type: 'owner',
+      valid_from: "2027-01-01",             // Different valid_from
+      valid_to: "2028-12-31"
+    }, userId);
+
+    expect(rights2.contractor_org_id).toBe(contractorOrgId);
+    expect(rights2.venue_id).toBe(testVenueId);
+    expect(rights2.valid_from).toBeDefined();
+
+    // ===============================================
+    // Verify: Default search shows only currently active record
+    // ===============================================
+    const currentRights = await db.api.search.contractor_rights({
+      filters: {
+        contractor_org_id: contractorOrgId,
+        venue_id: testVenueId
+      }
+    }, userId);
+
+    // Default temporal filter shows only active records (Grant 1)
+    expect(currentRights.data.length).toBe(1);
+    expect(currentRights.data[0].valid_from).toContain("2025-01-01");
+
+    // ===============================================
+    // Test temporal queries: Query all records using SQL
+    // ===============================================
+    // Verify both records exist in database
+    const allRecords = await sql`
+      SELECT * FROM contractor_rights
+      WHERE contractor_org_id = ${contractorOrgId}
+      AND venue_id = ${testVenueId}
+      ORDER BY valid_from
+    `;
+
+    // THIS IS THE KEY ASSERTION: With proper composite PK, we have 2 distinct records
+    expect(allRecords.length).toBe(2);
+    expect(allRecords[0].valid_from.toISOString()).toContain("2025-01-01");
+    expect(allRecords[1].valid_from.toISOString()).toContain("2027-01-01");
+
+    console.log(`✅ Contractor Rights Temporal Test Complete:`);
+    console.log(`   Contractor: "${contractorOrg.name}" (ID: ${contractorOrgId})`);
+    console.log(`   Venue: "${testVenue.name}" (ID: ${testVenueId})`);
+    console.log(`   Grant 1: 2025-2026 (currently active)`);
+    console.log(`   Grant 2: 2027-2028 (future)`);
+    console.log(`   Composite PK allows multiple temporal grants! 🎉`);
+  }, { timeout: 60000 });
 });

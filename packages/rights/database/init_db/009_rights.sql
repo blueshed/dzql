@@ -186,13 +186,13 @@ CREATE TABLE IF NOT EXISTS performance (
 
 -- Contractor rights (from owner or sponsor)
 CREATE TABLE IF NOT EXISTS contractor_rights (
-    id serial PRIMARY KEY,
     contractor_org_id int NOT NULL REFERENCES organisations(id),
     granted_by_type text CHECK (granted_by_type IN ('owner', 'sponsor')),
     granted_by_id int NOT NULL REFERENCES organisations(id),
     venue_id int NOT NULL REFERENCES venues(id),
     valid_from date NOT NULL DEFAULT current_date,
-    valid_to date
+    valid_to date,
+    PRIMARY KEY (contractor_org_id, venue_id, valid_from)
 );
 
 -- ===============================================
@@ -699,7 +699,7 @@ SELECT dzql.register_entity(
 SELECT dzql.register_entity(
     'contractor_rights',
     'contractor_org_id',
-    array['contractor_org_id', 'granted_by_id'],
+    array['contractor_org_id', 'venue_id', 'valid_from'],
     '{"contractor_org": "organisations", "granted_by": "organisations", "venue": "venues"}',
     false,
     '{"valid_from": "valid_from", "valid_to": "valid_to"}',
@@ -711,7 +711,7 @@ SELECT dzql.register_entity(
         'create', array['@granted_by_id->acts_for[org_id=$]{active}.user_id'],
         'update', array['@granted_by_id->acts_for[org_id=$]{active}.user_id'],
         'delete', array['@granted_by_id->acts_for[org_id=$]{active}.user_id'],
-        'view', array[]::text[]
+        'view', array['@contractor_org_id->acts_for[org_id=$]{active}.user_id', '@granted_by_id->acts_for[org_id=$]{active}.user_id']
     )
 );
 
