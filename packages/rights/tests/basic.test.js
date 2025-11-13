@@ -416,4 +416,266 @@ describe("Rights End-to-End Test", () => {
     console.log(`   Allocation: Site "${site.name}" → Package "${packageData.name}" (ID: ${allocationId})`);
     console.log(`   All DZQL operations including packages & allocations working perfectly! 🎉`);
   }, { timeout: 60000 });
+
+  test("contractor_rights temporal grants work correctly", async () => {
+    // This test demonstrates the temporal behavior of contractor_rights
+    // With proper composite PK (contractor_org_id, venue_id, valid_from),
+    // we can track multiple grants over time for the same contractor/venue pair
+
+    // Create a contractor organisation
+    const contractorOrg = await db.api.save.organisations({
+      name: "Contractor LLC",
+      description: "Contractor for testing temporal rights"
+    }, userId);
+
+    expect(contractorOrg.id).toBeDefined();
+    const contractorOrgId = contractorOrg.id;
+
+    // Wait for graph rules to establish ownership
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Create a venue owner organisation
+    const ownerOrg = await db.api.save.organisations({
+      name: "Venue Owner Corp",
+      description: "Owner for testing temporal rights"
+    }, userId);
+
+    expect(ownerOrg.id).toBeDefined();
+    const ownerOrgId = ownerOrg.id;
+
+    // Wait for graph rules
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Create a venue owned by the owner org
+    const testVenue = await db.api.save.venues({
+      name: "Temporal Test Venue",
+      address: "456 Temporal St",
+      org_id: ownerOrgId
+    }, userId);
+
+    expect(testVenue.id).toBeDefined();
+    const testVenueId = testVenue.id;
+
+    // ===============================================
+    // Grant 1: Currently active rights (2025-2026)
+    // ===============================================
+    const rights1 = await db.api.save.contractor_rights({
+      contractor_org_id: contractorOrgId,
+      venue_id: testVenueId,
+      granted_by_id: ownerOrgId,
+      granted_by_type: 'owner',
+      valid_from: "2025-01-01",
+      valid_to: "2026-12-31"
+    }, userId);
+
+    expect(rights1.contractor_org_id).toBe(contractorOrgId);
+    expect(rights1.venue_id).toBe(testVenueId);
+    expect(rights1.valid_from).toBeDefined();
+    expect(rights1.valid_to).toBeDefined();
+
+    // ===============================================
+    // Grant 2: Future rights (2027-2028)
+    // With composite PK (contractor_org_id, venue_id, valid_from),
+    // this should create a NEW record, not update the existing one
+    // ===============================================
+    const rights2 = await db.api.save.contractor_rights({
+      contractor_org_id: contractorOrgId,  // Same contractor
+      venue_id: testVenueId,                // Same venue
+      granted_by_id: ownerOrgId,
+      granted_by_type: 'owner',
+      valid_from: "2027-01-01",             // Different valid_from
+      valid_to: "2028-12-31"
+    }, userId);
+
+    expect(rights2.contractor_org_id).toBe(contractorOrgId);
+    expect(rights2.venue_id).toBe(testVenueId);
+    expect(rights2.valid_from).toBeDefined();
+
+    // ===============================================
+    // Verify: Default search shows only currently active record
+    // ===============================================
+    const currentRights = await db.api.search.contractor_rights({
+      filters: {
+        contractor_org_id: contractorOrgId,
+        venue_id: testVenueId
+      }
+    }, userId);
+
+    // Default temporal filter shows only active records (Grant 1)
+    expect(currentRights.data.length).toBe(1);
+    expect(currentRights.data[0].valid_from).toContain("2025-01-01");
+
+    // ===============================================
+    // Test temporal queries: Query all records using SQL
+    // ===============================================
+    // Verify both records exist in database
+    const allRecords = await sql`
+      SELECT * FROM contractor_rights
+      WHERE contractor_org_id = ${contractorOrgId}
+      AND venue_id = ${testVenueId}
+      ORDER BY valid_from
+    `;
+
+    // THIS IS THE KEY ASSERTION: With proper composite PK, we have 2 distinct records
+    expect(allRecords.length).toBe(2);
+    expect(allRecords[0].valid_from.toISOString()).toContain("2025-01-01");
+    expect(allRecords[1].valid_from.toISOString()).toContain("2027-01-01");
+
+    console.log(`✅ Contractor Rights Temporal Test Complete:`);
+    console.log(`   Contractor: "${contractorOrg.name}" (ID: ${contractorOrgId})`);
+    console.log(`   Venue: "${testVenue.name}" (ID: ${testVenueId})`);
+    console.log(`   Grant 1: 2025-2026 (currently active)`);
+    console.log(`   Grant 2: 2027-2028 (future)`);
+    console.log(`   Composite PK allows multiple temporal grants! 🎉`);
+  }, { timeout: 60000 });
+
+  test("notification filtering - events only to authorized users", async () => {
+    // This test ensures notifications are NOT shotgunned to everyone
+    // but only sent to users with permission to view the data
+
+    const testEvents = [];
+
+    // Setup event listener to capture all notifications
+    await setupListeners((event) => {
+      testEvents.push(event);
+    });
+
+    // ===============================================
+    // Create 3 separate users in 3 different orgs
+    // ===============================================
+
+    // User A - Venue Owner
+    const userA = await db.api.register_user({
+      email: 'owner@venue.com',
+      password: 'password123'
+    });
+    const userAId = userA.user_id;
+
+    const orgA = await db.api.save.organisations({
+      name: "Notification Test Venue Owner",
+      description: "Owns venues for notification test"
+    }, userAId);
+    const orgAId = orgA.id;
+
+    // Wait for graph rules to establish ownership
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // User B - Contractor
+    const userB = await db.api.register_user({
+      email: 'contractor@example.com',
+      password: 'password123'
+    });
+    const userBId = userB.user_id;
+
+    const orgB = await db.api.save.organisations({
+      name: "Notification Test Contractor",
+      description: "Does contracting work for notification test"
+    }, userBId);
+    const orgBId = orgB.id;
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // User C - Unrelated Third Party (should NOT receive notifications)
+    const userC = await db.api.register_user({
+      email: 'unrelated@example.com',
+      password: 'password123'
+    });
+    const userCId = userC.user_id;
+
+    const orgC = await db.api.save.organisations({
+      name: "Notification Test Unrelated",
+      description: "Has nothing to do with the venue or contractor"
+    }, userCId);
+    const orgCId = orgC.id;
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Clear events from user/org creation
+    testEvents.length = 0;
+
+    // ===============================================
+    // Scenario 1: User A creates a venue
+    // Expected: Only User A should be notified
+    // ===============================================
+    const venue = await db.api.save.venues({
+      name: "Notification Test Venue",
+      address: "123 Test Street",
+      org_id: orgAId
+    }, userAId);
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const venueEvents = testEvents.filter(e => e.table === 'venues' && e.op === 'insert');
+    expect(venueEvents.length).toBeGreaterThanOrEqual(1);
+
+    const venueEvent = venueEvents[0];
+    expect(venueEvent.notify_users).toBeDefined();
+    expect(venueEvent.notify_users).toContain(userAId);
+
+    // CRITICAL: User C (unrelated) should NOT be notified
+    expect(venueEvent.notify_users).not.toContain(userCId);
+
+    console.log(`✅ Venue creation notification: User A=${venueEvent.notify_users.includes(userAId)}, User C=${venueEvent.notify_users.includes(userCId)}`);
+
+    // Clear events
+    testEvents.length = 0;
+
+    // ===============================================
+    // Scenario 2: User A grants contractor_rights to User B
+    // Expected: Both User A and User B should be notified
+    // Expected: User C should NOT be notified
+    // ===============================================
+    const rights = await db.api.save.contractor_rights({
+      contractor_org_id: orgBId,
+      venue_id: venue.id,
+      granted_by_id: orgAId,
+      granted_by_type: 'owner',
+      valid_from: "2025-01-01",
+      valid_to: "2026-12-31"
+    }, userAId);
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const rightsEvents = testEvents.filter(e => e.table === 'contractor_rights' && e.op === 'insert');
+    expect(rightsEvents.length).toBeGreaterThanOrEqual(1);
+
+    const rightsEvent = rightsEvents[0];
+    expect(rightsEvent.notify_users).toBeDefined();
+
+    // EXPECTED: User A (grantor) should be notified
+    expect(rightsEvent.notify_users).toContain(userAId);
+
+    // EXPECTED: User B (contractor) should be notified
+    expect(rightsEvent.notify_users).toContain(userBId);
+
+    // CRITICAL: User C (unrelated) should NOT be notified
+    expect(rightsEvent.notify_users).not.toContain(userCId);
+
+    console.log(`✅ Contractor rights notification: User A=${rightsEvent.notify_users.includes(userAId)}, User B=${rightsEvent.notify_users.includes(userBId)}, User C=${rightsEvent.notify_users.includes(userCId)}`);
+
+    // ===============================================
+    // Scenario 3: User C tries to view contractor_rights
+    // Expected: Permission should be denied (separate from notification)
+    // ===============================================
+    const searchResult = await db.api.search.contractor_rights({
+      filters: {
+        contractor_org_id: orgBId,
+        venue_id: venue.id
+      }
+    }, userCId);
+
+    // User C should NOT see any rights (filtered by permissions)
+    expect(searchResult.data.length).toBe(0);
+
+    console.log(`✅ Permission filtering: User C cannot view contractor_rights`);
+
+    // ===============================================
+    // Summary
+    // ===============================================
+    console.log(`✅ Notification Filtering Test Complete:`);
+    console.log(`   User A (Owner): Notified of venue & rights`);
+    console.log(`   User B (Contractor): Notified of rights grant`);
+    console.log(`   User C (Unrelated): NOT notified of anything`);
+    console.log(`   Security: Notifications are filtered, not shotgunned! 🎉`);
+  }, { timeout: 60000 });
 });
