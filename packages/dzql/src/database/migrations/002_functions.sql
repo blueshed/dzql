@@ -476,9 +476,26 @@ BEGIN
             l_temp_value int;
             l_segment_table text;
             l_segment_record jsonb;
+            l_replacement_value text;
           BEGIN
             FOR l_j IN 0..jsonb_array_length(l_current_result) - 1 LOOP
-              l_temp_segment := replace(l_continuation_parts[l_i], '$', (l_current_result->>l_j)::text);
+              l_replacement_value := (l_current_result->>l_j)::text;
+
+              -- Check if $ appears in a condition context table[field=$]
+              -- If so, we need to quote it properly for text values
+              IF l_continuation_parts[l_i] ~ '\[.*\$.*\]' THEN
+                -- Try to parse as integer first
+                BEGIN
+                  -- If it's an integer, use it directly
+                  l_temp_segment := replace(l_continuation_parts[l_i], '$', l_replacement_value::int::text);
+                EXCEPTION WHEN OTHERS THEN
+                  -- Not an integer, quote it as a literal
+                  l_temp_segment := replace(l_continuation_parts[l_i], '$', quote_literal(l_replacement_value));
+                END;
+              ELSE
+                -- Not in a condition, use raw value
+                l_temp_segment := replace(l_continuation_parts[l_i], '$', l_replacement_value);
+              END IF;
 
               -- Handle table.field syntax in continuation segments
               IF l_temp_segment ~ '^[a-z_]+\.[a-z_]+' THEN
@@ -498,7 +515,27 @@ BEGIN
           l_current_result := to_jsonb(l_current_ids);
         ELSE
           -- Single value result
-          l_current_segment := replace(l_current_segment, '$', l_current_result::text);
+          DECLARE
+            l_replacement_value text;
+          BEGIN
+            l_replacement_value := l_current_result::text;
+
+            -- Check if $ appears in a condition context table[field=$]
+            -- If so, we need to quote it properly for text values
+            IF l_current_segment ~ '\[.*\$.*\]' THEN
+              -- Try to parse as integer first
+              BEGIN
+                -- If it's an integer, use it directly
+                l_current_segment := replace(l_current_segment, '$', l_replacement_value::int::text);
+              EXCEPTION WHEN OTHERS THEN
+                -- Not an integer, quote it as a literal
+                l_current_segment := replace(l_current_segment, '$', quote_literal(l_replacement_value));
+              END;
+            ELSE
+              -- Not in a condition, use raw value
+              l_current_segment := replace(l_current_segment, '$', l_replacement_value);
+            END IF;
+          END;
 
           -- Handle table.field syntax in continuation segments
           IF l_current_segment ~ '^[a-z_]+\.[a-z_]+' THEN

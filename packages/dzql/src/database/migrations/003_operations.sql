@@ -349,6 +349,16 @@ BEGIN
   ELSE
     -- INSERT: Use provided values, let database handle defaults
 
+    -- Auto-inject user_id if table has a user_id column and it's not provided
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public'
+      AND table_name = p_entity
+      AND column_name = 'user_id'
+    ) AND (l_args_json->>'user_id' IS NULL) THEN
+      l_args_json := l_args_json || jsonb_build_object('user_id', p_user_id);
+    END IF;
+
     -- Check create permission on new values
     l_operation := 'create';
     l_permission_record := l_args_json;

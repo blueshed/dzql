@@ -153,6 +153,7 @@ Implementation details:
 - Custom functions are accessed directly: `ws.api.customFunction({params})`
 - All operations require authentication (except `login_user` and `register_user`)
 - Server-side requires explicit `userId` parameter; client-side injects automatically
+- **Automatic `user_id` injection**: If a table has a `user_id` column, DZQL automatically injects the authenticated user's ID on INSERT operations (cannot be overridden by client for security)
 
 ### 2. Entity Registration
 
@@ -943,6 +944,11 @@ SELECT dzql.register_entity(
 - ✅ Add custom validation in PostgreSQL functions if needed
 - ✅ Use CHECK constraints for business rules
 - ✅ Never expose raw error messages to client
+
+**Automatic Security Features:**
+- ✅ **Auto `user_id` injection**: Tables with a `user_id` column automatically have it set to the authenticated user on INSERT - client cannot override this
+- ✅ Client-provided `user_id` values are ignored on INSERT to prevent privilege escalation
+- ✅ Use `user_id` columns for direct ownership; use junction tables (like `acts_for`) for delegated access
 
 **Rate Limiting:**
 - ⚠️ DZQL doesn't include rate limiting (v0.1.0)
