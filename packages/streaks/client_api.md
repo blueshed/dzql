@@ -37,7 +37,7 @@ await ws.api.{operation}.{entity}(params)
   description: "10 minutes daily",
   total_logs: 5,        // Auto-calculated
   current_streak: 3,    // Auto-calculated  
-  longest_streak: 7     // Auto-calculated
+  best_streak: 7     // Auto-calculated
 }
 ```
 
@@ -194,41 +194,48 @@ const { data } = await ws.api.search.streak_reactions({
 
 ## Real-Time Events
 
+Listen to the WebSocket broadcast to receive real-time updates for all relevant data changes.
+
 ```javascript
 ws.onBroadcast((method, params) => {
   // method: "streaks:update", "streak_logs:insert", etc.
   // params: { table, op, pk, before, after, user_id, at }
   
+  // Fires when a streak's data changes.
+  // NOTE: This also fires when a log is added/deleted, as the
+  // `current_streak` and `best_streak` counters will be updated.
   if (method === 'streaks:update') {
     updateUI(params.after);
   }
-  
+
+  // Fires when a new log is created for a streak you can view.
   if (method === 'streak_logs:insert') {
     showNotification(`New log for streak ${params.after.streak_id}!`);
   }
   
+  // Fires when a user you are connected with hits a milestone (e.g., 3, 7, 30 days).
+  if (method === 'streaks:milestone') {
+    const { name, milestone } = params.after;
+    showConfetti(`${name} just hit a ${milestone}-day streak! 🎉`);
+  }
+
+  // Fires when a user you can view reacts to a streak.
   if (method === 'streak_reactions:insert') {
     animateReaction(params.after.streak_id, params.after.reaction_type);
   }
   
-  if (method === 'share_connections:insert') {
-    const { email_a, email_b, valid_from } = params.after;
-    if (valid_from === null) {
-      // Pending connection request
-      showNotification(`${email_a} wants to connect!`);
-    } else {
-      // Mutual connection activated!
-      showNotification(`You're now connected with ${email_b}!`);
-    }
-  }
-  
-  if (method === 'share_connections:update') {
+  // Fires when a connection request is initiated or becomes mutual.
+  if (method === 'share_connections:insert' || method === 'share_connections:update') {
     const { email_a, email_b, valid_from, valid_to } = params.after;
-    if (valid_from !== null && valid_to === null) {
-      // Connection activated (reciprocal request received)
-      showNotification(`Connection with ${email_b} is now mutual!`);
-    } else if (valid_to !== null) {
-      // Connection closed
+
+    if (valid_from === null) {
+      // A pending connection request was created
+      showNotification(`${email_a} wants to connect!`);
+    } else if (valid_to === null) {
+      // A connection just became mutual
+      showNotification(`You're now connected with ${email_b}!`);
+    } else {
+      // A connection was closed
       showNotification(`Connection with ${email_b} closed`);
     }
   }

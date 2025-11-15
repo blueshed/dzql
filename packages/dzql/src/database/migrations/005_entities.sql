@@ -2,6 +2,90 @@
 -- Entity registration, API functions creation, and graph rules execution
 
 -- ============================================================================
+-- DYNAMIC TRIGGER CREATION (for "execution": "trigger" actions)
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION dzql.create_event_trigger(
+  p_table_name text,
+  p_trigger_op text, -- 'on_create', 'on_update', 'on_delete'
+  p_action_config jsonb
+) RETURNS void
+LANGUAGE plpgsql AS $$
+DECLARE
+  l_trigger_name text;
+  l_function_name text;
+  l_target_function text;
+  l_params jsonb;
+  l_param_key text;
+  l_param_value text;
+  l_param_list text[];
+  l_record_ref text;
+  l_sql text;
+BEGIN
+  l_target_function := p_action_config->>'function';
+  l_params := p_action_config->'params';
+
+  -- Determine if we should use NEW or OLD record
+  IF p_trigger_op = 'on_delete' THEN
+    l_record_ref := 'OLD';
+  ELSE
+    l_record_ref := 'NEW';
+  END IF;
+
+  -- Construct the parameter list for the function call
+  l_param_list := array[]::text[];
+  IF l_params IS NOT NULL THEN
+    FOR l_param_key, l_param_value IN SELECT * FROM jsonb_each_text(l_params)
+    LOOP
+      -- e.g., p_streak_id => NEW.streak_id
+      l_param_list := l_param_list || format('%I => %s.%I', l_param_key, l_record_ref, right(l_param_value, -1));
+    END LOOP;
+  END IF;
+
+  -- Generate unique names for the trigger and its function
+  l_function_name := format('dzql_trigger_%s_%s_%s', p_table_name, p_trigger_op, l_target_function);
+  l_trigger_name := format('dzql_managed_%s_%s', p_table_name, p_trigger_op);
+
+  -- Create the trigger function
+  l_sql := format(
+    $SQL$
+      CREATE OR REPLACE FUNCTION %I()
+      RETURNS TRIGGER AS $trigger_func$
+      BEGIN
+        PERFORM %I(%s);
+        RETURN NULL; -- Result is ignored for AFTER trigger
+      END;
+      $trigger_func$ LANGUAGE plpgsql;
+    $SQL$,
+    l_function_name,
+    l_target_function,
+    array_to_string(l_param_list, ', ')
+  );
+  EXECUTE l_sql;
+
+  -- Create the trigger
+  l_sql := format(
+    $SQL$
+      DROP TRIGGER IF EXISTS %I ON %I;
+      CREATE TRIGGER %I
+      AFTER %s ON %I
+      FOR EACH ROW
+      EXECUTE FUNCTION %I();
+    $SQL$,
+    l_trigger_name, p_table_name,
+    l_trigger_name,
+    CASE p_trigger_op WHEN 'on_create' THEN 'INSERT' WHEN 'on_update' THEN 'UPDATE' ELSE 'DELETE' END,
+    p_table_name,
+    l_function_name
+  );
+  EXECUTE l_sql;
+
+  RAISE NOTICE 'DZQL: Created trigger % on % for % event', l_trigger_name, p_table_name, p_trigger_op;
+END;
+$$;
+
+
+-- ============================================================================
 -- GRAPH RULES EXECUTION ENGINE
 -- ============================================================================
 
@@ -326,6 +410,11 @@ BEGIN
       -- Execute each action in the rule
       FOR l_action IN SELECT * FROM jsonb_array_elements(l_rule_config->'actions')
       LOOP
+        -- If action is handled by a native trigger, skip it in the immediate executor
+        IF l_action->>'execution' = 'trigger' THEN
+          CONTINUE;
+        END IF;
+
         l_action_type := l_action->>'type';
 
         -- Execute the action based on type
@@ -493,6 +582,11 @@ CREATE OR REPLACE FUNCTION dzql.register_entity(
   p_graph_rules jsonb DEFAULT '{}'
 ) RETURNS void
 LANGUAGE plpgsql AS $$
+DECLARE
+  l_trigger_op text;
+  l_rule_name text;
+  l_rule_config jsonb;
+  l_action jsonb;
 BEGIN
   -- Validate permission paths if provided
   IF p_permission_paths IS NOT NULL AND p_permission_paths != '{}' THEN
@@ -525,6 +619,24 @@ BEGIN
 
   -- Create API functions for this entity
   PERFORM dzql.create_entity_functions(p_table_name);
+
+  -- Create managed triggers for any 'execution: trigger' actions
+  IF p_graph_rules IS NOT NULL AND p_graph_rules != '{}' THEN
+    FOREACH l_trigger_op IN ARRAY ARRAY['on_create', 'on_update', 'on_delete']
+    LOOP
+      IF p_graph_rules ? l_trigger_op THEN
+        FOR l_rule_name, l_rule_config IN SELECT * FROM jsonb_each(p_graph_rules->l_trigger_op)
+        LOOP
+          FOR l_action IN SELECT * FROM jsonb_array_elements(l_rule_config->'actions')
+          LOOP
+            IF l_action->>'execution' = 'trigger' THEN
+              PERFORM dzql.create_event_trigger(p_table_name, l_trigger_op, l_action);
+            END IF;
+          END LOOP;
+        END LOOP;
+      END IF;
+    END LOOP;
+  END IF;
 
   -- Log successful registration
   RAISE NOTICE 'DZQL: Entity % registered successfully with graph rules support', p_table_name;

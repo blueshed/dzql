@@ -3,6 +3,94 @@
 
 SET search_path = public, dzql;
 
+CREATE OR REPLACE FUNCTION update_streak_counters(p_streak_id INT)
+RETURNS JSONB AS $$
+DECLARE
+  v_total_logs INT;
+  v_current_streak INT := 0;
+  v_best_streak INT := 0;
+  v_last_logged_at DATE;
+  v_streak_owner_id INT;
+  v_streak_record RECORD;
+  v_milestones INT[] := ARRAY[3, 7, 14, 30, 50, 100, 150, 200, 250, 300, 365];
+  v_payload JSONB;
+  v_previous_current_streak INT;
+BEGIN
+  -- Get the current state of the streak before update
+  SELECT user_id, current_streak INTO v_streak_owner_id, v_previous_current_streak FROM streaks WHERE id = p_streak_id;
+
+  -- Use CTEs to calculate all streak metrics in a single, set-based operation
+  WITH streak_groups AS (
+    -- First, create groups of consecutive dates
+    SELECT
+      log_date,
+      log_date - (ROW_NUMBER() OVER (ORDER BY log_date))::int * INTERVAL '1 day' as streak_group
+    FROM streak_logs
+    WHERE streak_id = p_streak_id
+  ),
+  streaks_summary AS (
+    -- Then, count the length of each streak group
+    SELECT
+      streak_group,
+      COUNT(*) as streak_length,
+      MAX(log_date) as last_log_in_streak
+    FROM streak_groups
+    GROUP BY streak_group
+  )
+  -- Finally, aggregate all results in one query that has the CTEs in scope
+  SELECT
+    (SELECT COUNT(*) FROM streak_logs WHERE streak_id = p_streak_id),
+    COALESCE(MAX(streak_length), 0),
+    CASE
+      WHEN MAX(last_log_in_streak) = CURRENT_DATE OR MAX(last_log_in_streak) = CURRENT_DATE - INTERVAL '1 day'
+      THEN (SELECT streak_length FROM streaks_summary WHERE last_log_in_streak = (SELECT MAX(last_log_in_streak) FROM streaks_summary))
+      ELSE 0
+    END,
+    MAX(last_log_in_streak)
+  INTO
+    v_total_logs,
+    v_best_streak,
+    v_current_streak,
+    v_last_logged_at
+  FROM streaks_summary;
+
+  -- Update the streak record with the new, correct values
+  UPDATE streaks
+  SET
+    total_logs = COALESCE(v_total_logs, 0),
+    current_streak = COALESCE(v_current_streak, 0),
+    best_streak = COALESCE(v_best_streak, 0),
+    last_logged_at = v_last_logged_at
+  WHERE id = p_streak_id
+  RETURNING * INTO v_streak_record;
+
+  -- === Milestone Notification Logic ===
+  -- Only fire a milestone event if the streak has increased and crossed a milestone threshold
+  IF v_current_streak > v_previous_current_streak AND v_current_streak = ANY(v_milestones) THEN
+    v_payload := jsonb_build_object(
+      'streak_id', v_streak_record.id,
+      'user_id', v_streak_record.user_id,
+      'name', v_streak_record.name,
+      'milestone', v_current_streak
+    );
+
+    INSERT INTO dzql.events (table_name, op, pk, after, user_id, notify_users)
+    VALUES (
+      'streaks',
+      'milestone',
+      jsonb_build_object('id', p_streak_id),
+      v_payload,
+      v_streak_owner_id,
+      dzql.resolve_notification_paths('streaks', v_payload)
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'success', true
+  );
+END;
+$$ LANGUAGE plpgsql;
+
 -- === Domain Tables ===
 
 -- Streaks: The habits people are tracking
@@ -187,25 +275,27 @@ SELECT dzql.register_entity(
   ),
   jsonb_build_object(
     'on_create', jsonb_build_object(
-      'increment_total', jsonb_build_object(
-        'description', 'Increment total logs count',
+      'update_counters', jsonb_build_object(
+        'description', 'Update streak counters via a native trigger',
         'actions', jsonb_build_array(
           jsonb_build_object(
             'type', 'execute',
-            'function', '_increment_streak_total',
-            'params', jsonb_build_object('p_streak_id', '@streak_id')
+            'function', 'update_streak_counters',
+            'params', jsonb_build_object('p_streak_id', '@streak_id'),
+            'execution', 'trigger'
           )
         )
       )
     ),
     'on_delete', jsonb_build_object(
-      'decrement_total', jsonb_build_object(
-        'description', 'Decrement total logs count when log deleted',
+      'update_counters', jsonb_build_object(
+        'description', 'Update streak counters via a native trigger',
         'actions', jsonb_build_array(
           jsonb_build_object(
             'type', 'execute',
-            'function', '_decrement_streak_total',
-            'params', jsonb_build_object('p_streak_id', '@streak_id')
+            'function', 'update_streak_counters',
+            'params', jsonb_build_object('p_streak_id', '@streak_id'),
+            'execution', 'trigger'
           )
         )
       )
@@ -481,25 +571,7 @@ SELECT dzql.register_entity(
   '{}'::jsonb
 );
 
--- === Helper Functions ===
 
--- Internal function to increment streak total_logs (not callable by clients)
-CREATE OR REPLACE FUNCTION _increment_streak_total(p_streak_id INT)
-RETURNS JSONB AS $$
-BEGIN
-  UPDATE streaks SET total_logs = total_logs + 1 WHERE id = p_streak_id;
-  RETURN jsonb_build_object('success', true);
-END;
-$$ LANGUAGE plpgsql;
-
--- Internal function to decrement streak total_logs (not callable by clients)
-CREATE OR REPLACE FUNCTION _decrement_streak_total(p_streak_id INT)
-RETURNS JSONB AS $$
-BEGIN
-  UPDATE streaks SET total_logs = total_logs - 1 WHERE id = p_streak_id;
-  RETURN jsonb_build_object('success', true);
-END;
-$$ LANGUAGE plpgsql;
 
 -- === Sample Data ===
 
