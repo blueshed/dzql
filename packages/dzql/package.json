@@ -8,7 +8,8 @@
     ".": "./src/server/index.js",
     "./client": "./src/client/ws.js",
     "./server": "./src/server/index.js",
-    "./db": "./src/server/db.js"
+    "./db": "./src/server/db.js",
+    "./compiler": "./src/compiler/index.js"
   },
   "files": [
     "src/**/*.js",

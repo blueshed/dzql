@@ -4,12 +4,10 @@ PostgreSQL-powered framework with automatic CRUD operations and real-time WebSoc
 
 ## Documentation
 
-All documentation is maintained in the repository root:
-
-- **[README.md](../../README.md)** - Project overview and quick start
-- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Complete tutorial with working todo app
-- **[REFERENCE.md](REFERENCE.md)** - Complete API reference
-- **[CLAUDE.md](../../docs/CLAUDE.md)** - Development guide for AI assistants
+- **[Getting Started Guide](docs/GETTING_STARTED.md)** - Complete tutorial with working todo app
+- **[API Reference](docs/REFERENCE.md)** - Complete API documentation
+- **[Compiler Documentation](docs/compiler/)** - Entity compilation guide and coding standards
+- **[Claude Guide](docs/CLAUDE.md)** - Development guide for AI assistants
 - **[Venues Example](../venues/)** - Full working application
 
 ## Quick Install
@@ -32,6 +30,23 @@ await ws.connect();
 const user = await ws.api.save.users({ name: 'Alice' });
 const results = await ws.api.search.users({ filters: { name: 'alice' } });
 ```
+
+## DZQL Compiler
+
+Transform declarative entity definitions into optimized PostgreSQL stored procedures:
+
+```bash
+# Via CLI
+dzql compile database/init_db/009_venues_domain.sql -o compiled/
+
+# Programmatically
+import { DZQLCompiler } from 'dzql/compiler';
+
+const compiler = new DZQLCompiler();
+const result = compiler.compileFromSQL(sqlContent);
+```
+
+See **[Compiler Documentation](docs/compiler/)** for complete usage guide, coding standards, and advanced features.
 
 ## License
 
