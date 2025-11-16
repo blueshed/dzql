@@ -12,7 +12,7 @@ describe('SQL Validation Tests', () => {
   let compiledEntity;
 
   test('compiles test entity successfully', () => {
-    const entitySQL = readFileSync('./tests/compiler/examples/test-graph-rules.sql', 'utf8');
+    const entitySQL = readFileSync(new URL('./examples/test-graph-rules.sql', import.meta.url), 'utf8');
     const result = compileFromSQL(entitySQL);
 
     expect(result.results.length).toBe(1);
