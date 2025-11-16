@@ -1,0 +1,21 @@
+{
+  "name": "@dzql/compiler",
+  "version": "0.1.0",
+  "description": "DZQL Compiler - Transforms declarative entity definitions into optimized PostgreSQL stored procedures",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "dzql-compile": "./src/cli/index.js"
+  },
+  "scripts": {
+    "test": "bun test",
+    "compile": "bun src/cli/index.js"
+  },
+  "keywords": ["dzql", "compiler", "postgresql", "code-generation"],
+  "author": "DZQL Team",
+  "license": "MIT",
+  "dependencies": {
+    "postgres": "^3.4.7"
+  },
+  "devDependencies": {}
+}
