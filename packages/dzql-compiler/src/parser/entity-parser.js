@@ -105,12 +105,48 @@ export class EntityParser {
     if (!str || str === 'array[]::text[]') return [];
 
     // Handle array['item1', 'item2'] format
-    const match = str.match(/array\[(.*?)\]/i);
+    // Use greedy match to get everything up to the last ] before optional ::type
+    const match = str.match(/array\[(.*)\](?:::.*)?$/i);
     if (!match) return [];
 
-    const items = match[1].split(',').map(item =>
-      item.trim().replace(/^['"]|['"]$/g, '')
-    );
+    // Split on commas that are not inside brackets or quotes
+    const items = [];
+    let current = '';
+    let depth = 0;
+    let inString = false;
+    let stringChar = null;
+
+    for (let i = 0; i < match[1].length; i++) {
+      const char = match[1][i];
+      const prev = i > 0 ? match[1][i - 1] : '';
+
+      if ((char === "'" || char === '"') && prev !== '\\') {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+          stringChar = null;
+        }
+      }
+
+      if (!inString) {
+        if (char === '[') depth++;
+        if (char === ']') depth--;
+
+        if (char === ',' && depth === 0) {
+          items.push(current.trim().replace(/^['"]|['"]$/g, ''));
+          current = '';
+          continue;
+        }
+      }
+
+      current += char;
+    }
+
+    if (current.trim()) {
+      items.push(current.trim().replace(/^['"]|['"]$/g, ''));
+    }
 
     return items.filter(item => item.length > 0);
   }

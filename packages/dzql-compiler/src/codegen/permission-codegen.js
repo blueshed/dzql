@@ -120,74 +120,76 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
    */
   _generateTraversalCheck(ast) {
     const steps = ast.steps;
-    let sql = '';
-    let joins = [];
-    let conditions = [];
+
+    // Extract components from the path
     let sourceField = null;
+    let targetTable = null;
+    let targetField = null;
+    let filters = [];
+    let temporal = false;
 
-    for (let i = 0; i < steps.length; i++) {
-      const step = steps[i];
-
+    for (const step of steps) {
       if (step.type === 'field_ref') {
-        // Source field
-        sourceField = step.field;
+        if (!sourceField) {
+          // First field reference is the source
+          sourceField = step.field;
+        } else {
+          // Last field reference is the target
+          targetField = step.field;
+        }
       } else if (step.type === 'table_ref') {
-        // Table reference with join
-        const alias = `t${i}`;
+        targetTable = step.table;
 
-        // Build join condition
-        let joinCondition = '';
-        if (sourceField) {
-          joinCondition = `${alias}.${sourceField} = (p_record->>'${sourceField}')::int`;
-        }
-
-        // Add filter conditions
+        // Collect filter conditions
         if (step.filter) {
-          for (const condition of step.filter) {
-            const condSQL = this._generateFilterCondition(condition, alias);
-            if (condSQL) {
-              conditions.push(condSQL);
-            }
-          }
+          filters = step.filter;
         }
 
-        // Add temporal filtering
+        // Check for temporal marker
         if (step.temporal) {
-          conditions.push(`${alias}.valid_to IS NULL`);
+          temporal = true;
         }
 
-        joins.push({ table: step.table, alias, condition: joinCondition });
-
-        // Update source field for next iteration
+        // Get target field if specified in table ref
         if (step.targetField) {
-          sourceField = step.targetField;
+          targetField = step.targetField;
         }
       }
     }
 
-    // Build the EXISTS query
-    if (joins.length > 0) {
-      const joinSQL = joins.map(j => `${j.table} ${j.alias}`).join(', ');
-      const whereConditions = [
-        ...joins.filter(j => j.condition).map(j => j.condition),
-        ...conditions
-      ];
+    // Build WHERE conditions
+    const conditions = [];
 
-      // Add final user_id check if we have a target field
-      const lastStep = steps[steps.length - 1];
-      if (lastStep.type === 'field_ref' || lastStep.type === 'table_ref') {
-        const lastAlias = `t${steps.length - 2}`;
-        const targetField = lastStep.field || lastStep.targetField;
-        whereConditions.push(`${lastAlias}.${targetField} = p_user_id`);
+    // Add filter conditions
+    for (const filter of filters) {
+      if (filter.operator === '=' && filter.value.type === 'param') {
+        // field=$ means match the record's field value
+        conditions.push(`${targetTable}.${filter.field} = (p_record->>'${sourceField}')::int`);
+      } else if (filter.operator === '=') {
+        const value = this._formatValue(filter.value);
+        conditions.push(`${targetTable}.${filter.field} = ${value}`);
       }
-
-      sql = `EXISTS (
-        SELECT 1 FROM ${joinSQL}
-        WHERE ${whereConditions.join('\n          AND ')}
-      )`;
     }
 
-    return sql;
+    // Add temporal condition
+    if (temporal) {
+      conditions.push(`${targetTable}.valid_to IS NULL`);
+    }
+
+    // Add user_id check (final target)
+    if (targetField) {
+      conditions.push(`${targetTable}.${targetField} = p_user_id`);
+    }
+
+    // Build EXISTS query
+    const whereClause = conditions.length > 0
+      ? 'WHERE ' + conditions.join('\n          AND ')
+      : '';
+
+    return `EXISTS (
+        SELECT 1 FROM ${targetTable}
+        ${whereClause}
+      )`;
   }
 
   /**

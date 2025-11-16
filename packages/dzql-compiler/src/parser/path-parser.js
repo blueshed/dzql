@@ -209,6 +209,9 @@ export class PathParser {
    * @private
    */
   _parseTargetField(part) {
+    // Check for temporal marker before removing it
+    const hasTemporal = part.includes('{active}');
+
     // Remove temporal marker if present
     part = part.replace('{active}', '');
 
@@ -219,7 +222,7 @@ export class PathParser {
         type: 'table_ref',
         table: filterMatch[1],
         filter: this._parseFilter(filterMatch[2]),
-        temporal: part.includes('{active}'),
+        temporal: hasTemporal,
         targetField: filterMatch[3]
       };
     }
