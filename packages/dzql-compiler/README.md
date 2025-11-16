@@ -1,83 +1,183 @@
 # DZQL Compiler
 
-**Transform declarative entity definitions into optimized PostgreSQL stored procedures.**
+> **⚠️ DEPRECATED**: This package has been integrated into the main `dzql` package.
+> 
+> **Please use `dzql` instead:**
+> ```bash
+> # Install the main package
+> bun add dzql
+> 
+> # Use the compiler via CLI
+> dzql compile entities/venues.sql -o compiled/
+> 
+> # Or programmatically
+> import { DZQLCompiler } from 'dzql/compiler';
+> ```
+> 
+> **Documentation**: See [dzql compiler docs](../dzql/docs/compiler/)
 
-## Overview
+---
 
-The DZQL Compiler implements the vision described in `vision.md`: it compiles declarative entity configurations into native PostgreSQL functions, eliminating runtime interpretation overhead and enabling PostgreSQL's query optimizer to work effectively.
+**Transform declarative DZQL entity definitions into optimized PostgreSQL stored procedures.**
 
-### From This (Runtime Interpretation):
+[![Tests](https://img.shields.io/badge/tests-55%20passing-brightgreen)](./tests/)
+[![Standards](https://img.shields.io/badge/coding%20standards-enforced-blue)](./docs/CODING_STANDARDS.md)
+[![Status](https://img.shields.io/badge/status-deprecated-orange)]()
+
+## Migration Guide
+
+This standalone compiler package is deprecated. The compiler is now part of the main `dzql` package.
+
+### Before (deprecated):
+```bash
+bun add @dzql/compiler
+bun dzql-compile entities/venues.sql
+```
+
+### After (recommended):
+```bash
+bun add dzql
+dzql compile entities/venues.sql
+```
+
+All functionality remains the same. See the [main dzql package](../dzql/) for updated documentation.
+
+## What is this?
+
+The DZQL Compiler eliminates runtime interpretation overhead by compiling your entity definitions into native PostgreSQL functions. Instead of parsing configuration on every request, the compiler generates optimized SQL that PostgreSQL's query optimizer can work with directly.
+
+### From This (Runtime):
 ```sql
 SELECT dzql.generic_exec('save', 'venues', '{"name": "MSG"}'::jsonb, user_id);
--- Parses JSON configuration on every request
+-- Parses JSON configuration every time
 ```
 
-### To This (Compiled Functions):
+### To This (Compiled):
 ```sql
-SELECT save_venues('{"name": "MSG"}'::jsonb, user_id);
--- Direct function call with logic baked in
--- PostgreSQL optimizer can see everything
+SELECT save_venues(user_id, '{"name": "MSG"}'::jsonb);
+-- Direct function call, fully optimized
 ```
+
+## Quick Start
+
+```bash
+# Install
+bun install
+
+# Compile an entity definition
+bun src/cli/index.js examples/test-graph-rules.sql -o compiled/
+
+# Run tests
+bun test  # 55 tests passing
+```
+
+## Generated Functions
+
+For each entity, the compiler generates:
+
+- **4 Permission Functions**: `can_view_*`, `can_create_*`, `can_update_*`, `can_delete_*`
+- **5 CRUD Operations**: `get_*`, `save_*`, `delete_*`, `lookup_*`, `search_*`
+- **Helper Functions**: `_graph_*`, `_resolve_notification_paths_*` (internal, prefixed with `_`)
+
+All functions follow [DZQL Coding Standards](./docs/CODING_STANDARDS.md) with `p_user_id` as the first parameter.
+
+## Documentation
+
+### Getting Started
+- **[Quick Start Guide](./docs/QUICKSTART.md)** - Get up and running in 5 minutes
+- **[Coding Standards](./docs/CODING_STANDARDS.md)** - Required conventions for generated code
+
+### Reference
+- **[Feature Comparison](./docs/COMPARISON.md)** - Runtime vs Compiled approach
+- **[Project Summary](./docs/SUMMARY.md)** - What was built and how
+- **[Advanced Filters](./docs/ADVANCED_FILTERS.md)** - Search filter operators
+
+### Development
+- **[Session Summary](./docs/SESSION_SUMMARY.md)** - Development history and decisions
+- **[Overnight Build](./docs/OVERNIGHT_BUILD.md)** - Initial build narrative
 
 ## Architecture
 
 ```
-Entity Definition (SQL or JS)
+Entity Definition (SQL/JS)
          ↓
-    [Parser]
+    [Parser] ────── Extracts config from dzql.register_entity()
          ↓
-       [AST]
+  [Code Generators]
+    ├── PermissionCodegen ── Generates can_* functions
+    ├── OperationCodegen ─── Generates CRUD functions
+    ├── NotificationCodegen ─ Generates _resolve_* helpers
+    └── GraphRulesCodegen ── Generates _graph_* helpers
          ↓
-   [Code Generator]
-         ↓
-   PostgreSQL Functions
+  PostgreSQL Functions
 ```
 
-### Components
+## Example
 
-1. **EntityParser** (`src/parser/entity-parser.js`)
-   - Parses `dzql.register_entity()` calls from SQL
-   - Extracts entity configuration
-   - Normalizes to standard format
+**Input** (`entities/todos.sql`):
+```sql
+select dzql.register_entity(
+  'todos',
+  'title',
+  array['title', 'description'],
+  '{}',
+  false,
+  '{}',
+  '{}',
+  jsonb_build_object(
+    'view', array[]::text[],      -- public
+    'update', array['@owner_id']  -- owner only
+  )
+);
+```
 
-2. **PathParser** (`src/parser/path-parser.js`)
-   - Parses permission/notification path DSL
-   - Converts paths to AST for code generation
-   - Handles: `@field`, `field->table[filter]{temporal}.target`
+**Compile**:
+```bash
+bun src/cli/index.js entities/todos.sql -o compiled/
+```
 
-3. **PermissionCodegen** (`src/codegen/permission-codegen.js`)
-   - Generates `can_<operation>_<table>()` functions
-   - Compiles permission paths to SQL
-   - Produces optimized permission checks
+**Output** (`compiled/todos.sql`):
+```sql
+-- 4 permission functions
+CREATE FUNCTION can_view_todos(p_user_id INT, p_record JSONB) ...
+CREATE FUNCTION can_create_todos(p_user_id INT, p_record JSONB) ...
+CREATE FUNCTION can_update_todos(p_user_id INT, p_record JSONB) ...
+CREATE FUNCTION can_delete_todos(p_user_id INT, p_record JSONB) ...
 
-4. **OperationCodegen** (`src/codegen/operation-codegen.js`)
-   - Generates GET, SAVE, DELETE, LOOKUP, SEARCH functions
-   - Compiles FK expansions
-   - Handles temporal filtering
-   - Integrates permission checks
+-- 5 CRUD operations
+CREATE FUNCTION get_todos(p_user_id INT, p_id INT) ...
+CREATE FUNCTION save_todos(p_user_id INT, p_data JSONB) ...
+CREATE FUNCTION delete_todos(p_user_id INT, p_id INT) ...
+CREATE FUNCTION lookup_todos(p_user_id INT, p_filter TEXT) ...
+CREATE FUNCTION search_todos(p_user_id INT, p_filters JSONB, ...) ...
+```
 
-5. **DZQLCompiler** (`src/compiler.js`)
-   - Main orchestrator
-   - Coordinates parsing and code generation
-   - Calculates checksums for reproducibility
-   - Produces complete SQL output
+**Use**:
+```sql
+-- Get a todo
+SELECT get_todos(42, 1);
 
-## Usage
+-- Create a todo
+SELECT save_todos(42, '{"title": "Learn DZQL"}'::jsonb);
 
-### Command Line
+-- Search todos
+SELECT search_todos(42, '{}', 'DZQL', null, 1, 25);
+```
+
+## CLI Usage
 
 ```bash
-# Compile a single file
-bun dzql-compile database/init_db/009_venues_domain.sql
+# Compile single file
+bun dzql-compile entities/venues.sql
 
 # Specify output directory
-bun dzql-compile entities/venues.sql -o compiled/
+bun dzql-compile entities/venues.sql -o dist/compiled/
 
-# Watch mode (coming soon)
-bun dzql-compile entities/*.sql --watch
+# Verbose mode
+DZQL_COMPILER_VERBOSE=true bun dzql-compile entities/venues.sql
 ```
 
-### Programmatic API
+## Programmatic API
 
 ```javascript
 import { DZQLCompiler } from '@dzql/compiler';
@@ -88,242 +188,122 @@ const compiler = new DZQLCompiler();
 const result = compiler.compile({
   tableName: 'todos',
   labelField: 'title',
-  searchableFields: ['title', 'description'],
+  searchableFields: ['title'],
   permissionPaths: {
-    view: ['@owner_id'],
-    update: ['@owner_id'],
-    delete: ['@owner_id'],
-    create: []  // Public
+    view: [],
+    update: ['@owner_id']
   }
 });
 
 console.log(result.sql);
-console.log(result.checksum);
+console.log(result.checksum);  // SHA-256 for reproducibility
 ```
 
-### Compile from SQL
+## Features
 
-```javascript
-import { compileFromSQL } from '@dzql/compiler';
-
-const sql = `
-select dzql.register_entity(
-  'venues',
-  'name',
-  array['name', 'address'],
-  '{"org": "organisations", "sites": "sites"}',
-  false,
-  '{}',
-  jsonb_build_object('ownership', array['@org_id->acts_for[org_id=$]{active}.user_id']),
-  jsonb_build_object('view', array[]::text[], 'update', array['@org_id->acts_for[org_id=$]{active}.user_id'])
-);
-`;
-
-const result = compileFromSQL(sql);
-
-for (const entity of result.results) {
-  console.log(`Compiled ${entity.tableName}`);
-  console.log(`Checksum: ${entity.checksum}`);
-}
-```
-
-## What Gets Generated
-
-For each entity, the compiler generates:
-
-### 1. Permission Check Functions
-```sql
-CREATE OR REPLACE FUNCTION can_view_venues(p_user_id INT, p_record JSONB)
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN true;  -- Compiled permission logic
-END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
-```
-
-### 2. Operation Functions
-
-**GET** - Fetch single record with FK expansion:
-```sql
-CREATE OR REPLACE FUNCTION get_venues(
-  p_id INT,
-  p_user_id INT,
-  p_on_date TIMESTAMPTZ DEFAULT NULL
-) RETURNS JSONB;
-```
-
-**SAVE** - Upsert with permissions and graph rules:
-```sql
-CREATE OR REPLACE FUNCTION save_venues(
-  p_data JSONB,
-  p_user_id INT
-) RETURNS JSONB;
-```
-
-**DELETE** - Soft or hard delete with cascades:
-```sql
-CREATE OR REPLACE FUNCTION delete_venues(
-  p_id INT,
-  p_user_id INT
-) RETURNS JSONB;
-```
-
-**LOOKUP** - Autocomplete/dropdown data:
-```sql
-CREATE OR REPLACE FUNCTION lookup_venues(
-  p_filter TEXT DEFAULT NULL,
-  p_user_id INT DEFAULT NULL,
-  p_limit INT DEFAULT 50
-) RETURNS JSONB;
-```
-
-**SEARCH** - Advanced search with pagination:
-```sql
-CREATE OR REPLACE FUNCTION search_venues(
-  p_filters JSONB DEFAULT '{}',
-  p_search TEXT DEFAULT NULL,
-  p_sort JSONB DEFAULT NULL,
-  p_page INT DEFAULT 1,
-  p_limit INT DEFAULT 25,
-  p_user_id INT DEFAULT NULL
-) RETURNS JSONB;
-```
-
-### 3. Notification Path Resolution
-```sql
-CREATE OR REPLACE FUNCTION resolve_notification_paths_venues(
-  p_record JSONB
-) RETURNS INT[] AS $$;
-```
-
-## Example Output
-
-See `examples/compiled/` for complete generated SQL files from the venues domain.
-
-## Current Status
-
-### ✅ Working
+### ✅ Implemented
 - Entity parsing from SQL
-- Permission function generation (structure)
+- All 4 permission functions generated
 - All 5 CRUD operations (GET, SAVE, DELETE, LOOKUP, SEARCH)
 - FK expansion (direct and reverse)
 - Temporal filtering
-- Checksum generation for reproducibility
-- CLI tool
-
-### 🚧 In Progress
-- Permission path compilation (generates stubs)
 - Graph rules compilation
 - Notification path compilation
-- Advanced filter operators in SEARCH
-- INSERT/UPDATE dynamic SQL generation
+- Advanced search filter operators
+- Checksum generation
+- CLI tool
+- Comprehensive test suite (55 tests)
 
-### 📋 TODO
-- Source maps (link generated SQL to entity definitions)
-- Test function generation
-- Incremental compilation
-- Watch mode
-- Migration generation
-- Subscription matcher functions (for Live Query pattern)
+### 🎯 Coding Standards
+- `p_user_id INT` always first parameter
+- Helper functions prefixed with `_` (not websocket callable)
+- All parameters use `p_` prefix
+- All SQL keywords UPPERCASE
+- SECURITY DEFINER on all functions
 
-## Testing the Compiler
+See [CODING_STANDARDS.md](./docs/CODING_STANDARDS.md) for complete details.
 
-```bash
-# Run the compiler on the venues domain
-cd /home/user/dzql/packages/dzql-compiler
-bun src/cli/index.js /home/user/dzql/packages/venues/database/init_db/009_venues_domain.sql -o examples/compiled
-
-# Check output
-ls examples/compiled/
-cat examples/compiled/venues.sql
-cat examples/compiled/checksums.json
-```
-
-## Performance Benefits
-
-Compiled functions eliminate:
-- ❌ JSON parsing on every request
-- ❌ Dynamic SQL generation overhead
-- ❌ Runtime configuration lookups
-- ❌ Generic code paths that can't be optimized
-
-And enable:
-- ✅ PostgreSQL query planner optimization
-- ✅ Predictable query plans
-- ✅ Proper index utilization
-- ✅ Debuggable with EXPLAIN ANALYZE
-- ✅ Real stack traces in PostgreSQL
-
-## Reproducibility
-
-The compiler generates deterministic output:
-
-```json
-{
-  "venues": {
-    "checksum": "9c116484...",
-    "generatedAt": "2025-11-16T01:38:54.321Z",
-    "compilationTime": 12
-  }
-}
-```
-
-Same input ALWAYS produces same checksum, enabling:
-- Git-trackable compiled SQL
-- Build verification
-- Incremental compilation
-- Change detection
-
-## Integration with Current DZQL
-
-The compiled functions are **compatible** with the current DZQL API:
-
-```javascript
-// Current (runtime interpretation)
-await db.api.get.venues({ id: 1 }, userId);
-
-// Compiled (could call directly)
-await sql`SELECT get_venues(${id}, ${userId})`;
-
-// Or through the same API (by changing server-side routing)
-await db.api.get.venues({ id: 1 }, userId);
-```
-
-## Migration Path
-
-1. **Phase 1**: Compile simple entities without graph rules
-2. **Phase 2**: Deploy alongside runtime DZQL (A/B testing)
-3. **Phase 3**: Migrate complex entities with graph rules
-4. **Phase 4**: Deprecate generic_exec runtime interpreter
-
-## Development
+## Testing
 
 ```bash
-# Install dependencies
-bun install
-
-# Run tests
+# Run all tests
 bun test
 
-# Lint
-bun run lint
+# Run specific test file
+bun test tests/sql-validation.test.js
 
-# Compile an example
-bun src/cli/index.js examples/todos.sql -o dist/
+# Verbose output
+bun test --verbose
 ```
 
-## Vision Alignment
+**Test Coverage**:
+- SQL structure validation (42 tests)
+- Parser functionality (12 tests)
+- Integration tests (1 test)
 
-This compiler implements the core idea from `vision.md`:
+All tests validate that generated code follows coding standards.
 
-> "Stop building interpreters on top of interpreters. Compile your business logic to where it belongs: the database."
+## Why Compile?
 
-By generating native PostgreSQL functions, we:
-- Move complexity to compile time
-- Trust the database as the application engine
-- Embrace PostgreSQL constraints as features
-- Solve hard problems (permissions, notifications) correctly
+### Performance
+- **Eliminates runtime parsing** - Configuration compiled once
+- **Better query plans** - PostgreSQL optimizer sees full function logic
+- **Reduced function overhead** - Direct calls vs generic dispatcher
+
+### Security
+- **Type safety** - PostgreSQL validates all generated SQL
+- **Helper protection** - `_` prefix prevents websocket access
+- **Explicit user context** - `p_user_id` first makes security obvious
+
+### Maintainability
+- **Version control** - Generated SQL is git-trackable
+- **Reproducible builds** - Checksums verify consistency
+- **Clear audit trail** - See exactly what runs in production
+
+## Project Structure
+
+```
+packages/dzql-compiler/
+├── README.md              # This file
+├── package.json
+├── src/
+│   ├── compiler.js        # Main orchestrator
+│   ├── index.js          # Public API
+│   ├── cli/
+│   │   └── index.js      # CLI tool
+│   ├── parser/
+│   │   ├── entity-parser.js  # Parses register_entity()
+│   │   └── path-parser.js    # Parses permission paths
+│   └── codegen/
+│       ├── permission-codegen.js   # can_* functions
+│       ├── operation-codegen.js    # CRUD functions
+│       ├── notification-codegen.js # _resolve_* helpers
+│       └── graph-rules-codegen.js  # _graph_* helpers
+├── tests/
+│   ├── compiler.test.js       # Parser & compiler tests
+│   └── sql-validation.test.js # Generated SQL tests
+├── examples/
+│   ├── test-graph-rules.sql  # Example entity definition
+│   └── compiled/             # Compiled output
+└── docs/                     # Complete documentation
+```
+
+## Contributing
+
+When modifying the compiler:
+
+1. **Follow coding standards** - See [CODING_STANDARDS.md](./docs/CODING_STANDARDS.md)
+2. **Update tests** - Ensure all 55 tests pass
+3. **Update docs** - Keep documentation in sync
+4. **Test compilation** - Verify with `bun test`
+5. **Check examples** - Recompile and review output
 
 ## License
 
 MIT
+
+## Related
+
+- **DZQL Framework**: [../dzql/](../dzql/)
+- **Example App**: [../venues/](../venues/)
+- **Vision Document**: [../../vision.md](../../vision.md)

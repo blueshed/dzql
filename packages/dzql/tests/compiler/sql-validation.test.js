@@ -5,14 +5,14 @@
 
 import { describe, test, expect } from 'bun:test';
 import { readFileSync } from 'fs';
-import { compileFromSQL } from '../src/compiler.js';
+import { compileFromSQL } from '../../src/compiler/compiler.js';
 
 describe('SQL Validation Tests', () => {
   let compiledSQL;
   let compiledEntity;
 
   test('compiles test entity successfully', () => {
-    const entitySQL = readFileSync('./examples/test-graph-rules.sql', 'utf8');
+    const entitySQL = readFileSync('./tests/compiler/examples/test-graph-rules.sql', 'utf8');
     const result = compileFromSQL(entitySQL);
 
     expect(result.results.length).toBe(1);

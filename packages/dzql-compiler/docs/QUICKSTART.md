@@ -51,12 +51,14 @@ can_view_venues(p_user_id INT, p_record JSONB) → BOOLEAN
 
 ### CRUD Operations
 ```sql
-get_venues(p_id INT, p_user_id INT) → JSONB
-save_venues(p_data JSONB, p_user_id INT) → JSONB
-delete_venues(p_id INT, p_user_id INT) → JSONB
-lookup_venues(p_filter TEXT, p_user_id INT) → JSONB
-search_venues(p_filters JSONB, p_search TEXT, ...) → JSONB
+get_venues(p_user_id INT, p_id INT) → JSONB
+save_venues(p_user_id INT, p_data JSONB) → JSONB
+delete_venues(p_user_id INT, p_id INT) → JSONB
+lookup_venues(p_user_id INT, p_filter TEXT) → JSONB
+search_venues(p_user_id INT, p_filters JSONB, p_search TEXT, ...) → JSONB
 ```
+
+> **Note:** `p_user_id` is always the first parameter in all functions. See [CODING_STANDARDS.md](./CODING_STANDARDS.md).
 
 ## Example: Compile a Simple Entity
 
@@ -93,24 +95,24 @@ Result: `compiled/todos.sql` with 5 operations + 4 permission checks.
 Once deployed to PostgreSQL:
 
 ```sql
--- Get a todo
-SELECT get_todos(1, 42);  -- id=1, user_id=42
+-- Get a todo (p_user_id first, then p_id)
+SELECT get_todos(42, 1);  -- user_id=42, id=1
 
--- Create a todo
-SELECT save_todos('{"title": "Learn DZQL", "owner_id": 42}'::jsonb, 42);
+-- Create a todo (p_user_id first, then p_data)
+SELECT save_todos(42, '{"title": "Learn DZQL", "owner_id": 42}'::jsonb);
 
--- Search todos
+-- Search todos (p_user_id first)
 SELECT search_todos(
+  42,             -- user_id
   '{}',           -- filters
   'DZQL',         -- search text
   '{"field": "title", "order": "asc"}', -- sort
   1,              -- page
-  25,             -- limit
-  42              -- user_id
+  25              -- limit
 );
 
--- Delete a todo
-SELECT delete_todos(1, 42);
+-- Delete a todo (p_user_id first, then p_id)
+SELECT delete_todos(42, 1);
 ```
 
 ## Development Workflow
@@ -144,7 +146,7 @@ psql -U dzql -d dzql < compiled/my_entity.sql
 ### 4. Use
 
 ```sql
-SELECT save_my_entity('{"name": "Test"}'::jsonb, 1);
+SELECT save_my_entity(1, '{"name": "Test"}'::jsonb);  -- user_id first, then data
 ```
 
 ## Programmatic API
@@ -199,15 +201,15 @@ console.log(checksums.venues);
 ### Test Functions
 
 ```sql
--- Test permission check
+-- Test permission check (p_user_id first)
 SELECT can_update_venues(42, '{"org_id": 1}'::jsonb);
 
--- Test GET with FK expansion
-SELECT get_venues(1, 42);
+-- Test GET with FK expansion (p_user_id first, then p_id)
+SELECT get_venues(42, 1);
 -- Returns: { id: 1, name: "...", org: { id: 1, name: "..." }, sites: [...] }
 
--- Test SEARCH
-SELECT search_venues('{}', 'garden', null, 1, 10, 42);
+-- Test SEARCH (p_user_id first)
+SELECT search_venues(42, '{}', 'garden', null, 1, 10);
 -- Returns: { data: [...], total: 5, page: 1, limit: 10 }
 ```
 
@@ -293,11 +295,11 @@ DZQL_COMPILER_VERBOSE=true bun src/cli/index.js entities/my_entity.sql -o compil
 -- Enable query logging
 SET log_statement = 'all';
 
--- Test function
-SELECT get_venues(1, 42);
+-- Test function (p_user_id first)
+SELECT get_venues(42, 1);
 
 -- View execution plan
-EXPLAIN ANALYZE SELECT get_venues(1, 42);
+EXPLAIN ANALYZE SELECT get_venues(42, 1);
 ```
 
 ## Next Steps
