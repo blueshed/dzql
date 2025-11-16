@@ -1,0 +1,17 @@
+{
+  "users": {
+    "checksum": "89756c653922ccfe11489f0a10da2a69f8a622f414ab41ed7e2439713ce436d4",
+    "generatedAt": "2025-11-16T17:16:39.633Z",
+    "compilationTime": 1
+  },
+  "posts": {
+    "checksum": "8e844a361b291c85289b2a95384fc40894f2258d92da2b50b2f22d9fcd2b0ebe",
+    "generatedAt": "2025-11-16T17:16:39.633Z",
+    "compilationTime": 0
+  },
+  "comments": {
+    "checksum": "3891a929c0640103f7e1c25be9c361066705274b2ace16ae2e012475feb959cb",
+    "generatedAt": "2025-11-16T17:16:39.633Z",
+    "compilationTime": 0
+  }
+}

@@ -28,6 +28,7 @@ export class OperationCodegen {
    */
   generateGetFunction() {
     const fkExpansions = this._generateFKExpansions();
+    const filterSensitiveFields = this._generateSensitiveFieldFilter();
 
     return `-- GET operation for ${this.tableName}
 CREATE OR REPLACE FUNCTION get_${this.tableName}(
@@ -57,6 +58,7 @@ BEGIN
   END IF;
 
 ${fkExpansions}
+${filterSensitiveFields}
 
   RETURN v_result;
 END;
@@ -69,6 +71,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   generateSaveFunction() {
     const graphRulesCall = this._generateGraphRulesCall();
     const notificationSQL = this._generateNotificationSQL();
+    const filterSensitiveFields = this._generateSensitiveFieldFilter('v_output');
 
     return `-- SAVE operation for ${this.tableName}
 CREATE OR REPLACE FUNCTION save_${this.tableName}(
@@ -78,6 +81,7 @@ CREATE OR REPLACE FUNCTION save_${this.tableName}(
 DECLARE
   v_result ${this.tableName}%ROWTYPE;
   v_existing ${this.tableName}%ROWTYPE;
+  v_output JSONB;
   v_is_insert BOOLEAN := false;
   v_notify_users INT[];
 BEGIN
@@ -106,22 +110,36 @@ BEGIN
 
   -- Perform UPSERT
   IF v_is_insert THEN
-    INSERT INTO ${this.tableName} (
-      ${this._generateInsertColumns()}
-    ) VALUES (
-      ${this._generateInsertValues()}
-    ) RETURNING * INTO v_result;
+    -- Dynamic INSERT from JSONB
+    EXECUTE (
+      SELECT format(
+        'INSERT INTO ${this.tableName} (%s) VALUES (%s) RETURNING *',
+        string_agg(quote_ident(key), ', '),
+        string_agg(quote_nullable(value), ', ')
+      )
+      FROM jsonb_each_text(p_data) kv(key, value)
+    ) INTO v_result;
   ELSE
-    UPDATE ${this.tableName}
-    SET ${this._generateUpdateSet()}
-    WHERE id = (p_data->>'id')::int
-    RETURNING * INTO v_result;
+    -- Dynamic UPDATE from JSONB
+    EXECUTE (
+      SELECT format(
+        'UPDATE ${this.tableName} SET %s WHERE id = %L RETURNING *',
+        string_agg(quote_ident(key) || ' = ' || quote_nullable(value), ', '),
+        (p_data->>'id')::int
+      )
+      FROM jsonb_each_text(p_data) kv(key, value)
+      WHERE key != 'id'
+    ) INTO v_result;
   END IF;
 
 ${graphRulesCall}
 ${notificationSQL}
 
-  RETURN to_jsonb(v_result);
+  -- Prepare output (removing sensitive fields)
+  v_output := to_jsonb(v_result);
+${filterSensitiveFields}
+
+  RETURN v_output;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   }
@@ -131,7 +149,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
    */
   generateDeleteFunction() {
     const graphRulesCall = this._generateGraphRulesCall('delete');
-    const notificationSQL = this._generateNotificationSQL();
+    const notificationSQL = this._generateNotificationSQL('delete');
+    const filterSensitiveFields = this._generateSensitiveFieldFilter('v_output');
 
     const deleteSQL = this.entity.softDelete
       ? `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE id = p_id RETURNING * INTO v_result;`
@@ -144,6 +163,8 @@ CREATE OR REPLACE FUNCTION delete_${this.tableName}(
 ) RETURNS JSONB AS $$
 DECLARE
   v_result ${this.tableName}%ROWTYPE;
+  v_output JSONB;
+  v_notify_users INT[];
 BEGIN
   -- Fetch record first
   SELECT * INTO v_result
@@ -166,7 +187,11 @@ ${graphRulesCall}
 
 ${notificationSQL}
 
-  RETURN to_jsonb(v_result);
+  -- Prepare output (removing sensitive fields)
+  v_output := to_jsonb(v_result);
+${filterSensitiveFields}
+
+  RETURN v_output;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   }
@@ -207,6 +232,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     const searchConditions = searchFields.map(field =>
       `${field} ILIKE '%' || p_search || '%'`
     ).join(' OR ');
+    const filterSensitiveFieldsArray = this._generateSensitiveFieldFilterArray();
 
     return `-- SEARCH operation for ${this.tableName}
 CREATE OR REPLACE FUNCTION search_${this.tableName}(
@@ -290,6 +316,8 @@ BEGIN
     WHERE %s
     LIMIT %L OFFSET %L
   ', v_sort_field, v_sort_order, v_where_clause, p_limit, v_offset) INTO v_data;
+
+${filterSensitiveFieldsArray}
 
   RETURN jsonb_build_object(
     'data', v_data,
@@ -402,14 +430,58 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
    * Generate notification SQL
    * @private
    */
-  _generateNotificationSQL() {
-    if (!this.entity.notificationPaths || Object.keys(this.entity.notificationPaths).length === 0) {
-      return '';
+  _generateNotificationSQL(operation = 'save') {
+    const hasNotificationPaths = this.entity.notificationPaths && Object.keys(this.entity.notificationPaths).length > 0;
+
+    if (operation === 'save') {
+      return `
+  -- Resolve notification recipients
+  ${hasNotificationPaths ? `v_notify_users := _resolve_notification_paths_${this.tableName}(p_user_id, to_jsonb(v_result));` : 'v_notify_users := ARRAY[]::INT[];'}
+
+  -- Create event for real-time notifications
+  INSERT INTO dzql.events (
+    table_name,
+    op,
+    pk,
+    before,
+    after,
+    user_id,
+    notify_users
+  ) VALUES (
+    '${this.tableName}',
+    CASE WHEN v_is_insert THEN 'insert' ELSE 'update' END,
+    jsonb_build_object('id', v_result.id),
+    CASE WHEN NOT v_is_insert THEN to_jsonb(v_existing) ELSE NULL END,
+    to_jsonb(v_result),
+    p_user_id,
+    v_notify_users
+  );`;
+    } else if (operation === 'delete') {
+      return `
+  -- Resolve notification recipients
+  ${hasNotificationPaths ? `v_notify_users := _resolve_notification_paths_${this.tableName}(p_user_id, to_jsonb(v_result));` : 'v_notify_users := ARRAY[]::INT[];'}
+
+  -- Create event for real-time notifications
+  INSERT INTO dzql.events (
+    table_name,
+    op,
+    pk,
+    before,
+    after,
+    user_id,
+    notify_users
+  ) VALUES (
+    '${this.tableName}',
+    'delete',
+    jsonb_build_object('id', v_result.id),
+    to_jsonb(v_result),
+    NULL,
+    p_user_id,
+    v_notify_users
+  );`;
     }
 
-    return `
-  -- Resolve notification recipients
-  v_notify_users := _resolve_notification_paths_${this.tableName}(p_user_id, to_jsonb(v_result));`;
+    return '';
   }
 
   /**
@@ -445,6 +517,30 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
    */
   _singularize(word) {
     return word.endsWith('s') ? word.slice(0, -1) : word;
+  }
+
+  /**
+   * Generate SQL to filter out sensitive fields from a JSONB variable
+   * @param {string} varName - Name of the JSONB variable to filter (default: v_result)
+   * @private
+   */
+  _generateSensitiveFieldFilter(varName = 'v_result') {
+    return `
+  -- Remove sensitive fields (password_hash, etc.) from result
+  ${varName} := ${varName} - 'password_hash' - 'password' - 'secret' - 'token';`;
+  }
+
+  /**
+   * Generate SQL to filter out sensitive fields from array of JSONB objects
+   * @private
+   */
+  _generateSensitiveFieldFilterArray() {
+    return `
+  -- Remove sensitive fields from each record in the array
+  v_data := (
+    SELECT jsonb_agg(elem - 'password_hash' - 'password' - 'secret' - 'token')
+    FROM jsonb_array_elements(v_data) elem
+  );`;
   }
 }
 

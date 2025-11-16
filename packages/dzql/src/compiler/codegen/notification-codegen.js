@@ -146,6 +146,10 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
         if (step.targetField) {
           targetField = step.targetField;
         }
+      } else if (step.type === 'dot_path') {
+        // Handle dot path: posts.author_id
+        targetTable = step.fields[0];
+        targetField = step.fields[step.fields.length - 1];
       }
     }
 
@@ -160,6 +164,11 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
         const value = this._formatValue(filter.value);
         conditions.push(`${targetTable}.${filter.field} = ${value}`);
       }
+    }
+
+    // Default condition: join on source field
+    if (sourceField && targetTable && conditions.length === 0) {
+      conditions.push(`${targetTable}.id = (p_record->>'${sourceField}')::int`);
     }
 
     // Add temporal condition

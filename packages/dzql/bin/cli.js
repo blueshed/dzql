@@ -125,6 +125,141 @@ Examples:
 
       console.log(`\n📝 Writing compiled files to: ${options.output}`);
 
+      // Write core DZQL infrastructure
+      const coreSQL = `-- DZQL Core Schema and Events System
+
+CREATE SCHEMA IF NOT EXISTS dzql;
+
+-- Event Audit Table for real-time notifications
+CREATE TABLE IF NOT EXISTS dzql.events (
+  event_id bigserial PRIMARY KEY,
+  table_name text NOT NULL,
+  op text NOT NULL,              -- 'insert', 'update', 'delete'
+  pk jsonb NOT NULL,             -- primary key of affected record
+  before jsonb,                  -- old values (NULL for insert)
+  after jsonb,                   -- new values (NULL for delete)
+  user_id int,                   -- who made the change
+  notify_users int[],            -- who should be notified
+  at timestamptz DEFAULT now()   -- when the change occurred
+);
+
+CREATE INDEX IF NOT EXISTS dzql_events_table_pk_idx ON dzql.events (table_name, pk, at);
+CREATE INDEX IF NOT EXISTS dzql_events_event_id_idx ON dzql.events (event_id);
+
+-- Event notification trigger - sends real-time notifications via pg_notify
+CREATE OR REPLACE FUNCTION dzql.notify_event()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM pg_notify('dzql', jsonb_build_object(
+    'event_id', NEW.event_id,
+    'table', NEW.table_name,
+    'op', NEW.op,
+    'pk', NEW.pk,
+    'data', COALESCE(NEW.after, NEW.before),
+    'before', NEW.before,
+    'after', NEW.after,
+    'user_id', NEW.user_id,
+    'at', NEW.at,
+    'notify_users', NEW.notify_users
+  )::text);
+
+  RETURN NULL;
+END $$;
+
+DROP TRIGGER IF EXISTS dzql_events_notify ON dzql.events;
+CREATE TRIGGER dzql_events_notify
+  AFTER INSERT ON dzql.events
+  FOR EACH ROW EXECUTE FUNCTION dzql.notify_event();
+`;
+
+      writeFileSync(resolve(options.output, '000_dzql_core.sql'), coreSQL, 'utf-8');
+      console.log(`   ✓ 000_dzql_core.sql`);
+
+      // Extract schema SQL (everything before DZQL entity registrations)
+      const schemaSQL = sqlContent.split(/-- DZQL Entity Registrations|select dzql\.register_entity/i)[0].trim();
+      if (schemaSQL) {
+        writeFileSync(resolve(options.output, '001_schema.sql'), schemaSQL + '\n', 'utf-8');
+        console.log(`   ✓ 001_schema.sql`);
+      }
+
+      // Generate auth functions (required for WebSocket server)
+      const authSQL = `-- Authentication Functions
+-- Required for DZQL WebSocket server
+
+-- Enable pgcrypto extension for password hashing
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Register new user
+CREATE OR REPLACE FUNCTION register_user(p_email TEXT, p_password TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  user_id INT;
+  salt TEXT;
+  hash TEXT;
+BEGIN
+  -- Generate salt and hash password
+  salt := gen_salt('bf', 10);
+  hash := crypt(p_password, salt);
+
+  -- Insert user (assumes users table has: id, email, name, password_hash)
+  INSERT INTO users (email, name, password_hash)
+  VALUES (p_email, split_part(p_email, '@', 1), hash)
+  RETURNING id INTO user_id;
+
+  RETURN _profile(user_id);
+EXCEPTION
+  WHEN unique_violation THEN
+    RAISE EXCEPTION 'Email already exists' USING errcode = '23505';
+END $$;
+
+-- Login user
+CREATE OR REPLACE FUNCTION login_user(p_email TEXT, p_password TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  user_record RECORD;
+BEGIN
+  SELECT id, email, name, password_hash
+  INTO user_record
+  FROM users
+  WHERE email = p_email;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Invalid credentials' USING errcode = '28000';
+  END IF;
+
+  IF NOT (user_record.password_hash = crypt(p_password, user_record.password_hash)) THEN
+    RAISE EXCEPTION 'Invalid credentials' USING errcode = '28000';
+  END IF;
+
+  RETURN _profile(user_record.id);
+END $$;
+
+-- Get user profile (private function, called after login/register)
+CREATE OR REPLACE FUNCTION _profile(p_user_id INT)
+RETURNS JSONB
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT jsonb_build_object(
+    'user_id', id,
+    'email', email,
+    'name', name,
+    'created_at', created_at
+  )
+  FROM users
+  WHERE id = p_user_id;
+$$;
+`;
+
+      writeFileSync(resolve(options.output, '002_auth.sql'), authSQL, 'utf-8');
+      console.log(`   ✓ 002_auth.sql`);
+
       const checksums = {};
 
       for (const compiledResult of result.results) {
