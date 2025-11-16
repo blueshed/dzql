@@ -318,8 +318,36 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
       return '';
     }
 
-    // For now, just add a comment - full graph rules compilation is complex
-    return `  -- TODO: Execute graph rules for ${operation || 'save'}`;
+    // For DELETE operation
+    if (operation === 'delete') {
+      if (this.entity.graphRules.on_delete) {
+        return `
+  -- Execute graph rules: on_delete
+  PERFORM graph_${this.tableName}_on_delete(to_jsonb(v_result), p_user_id);`;
+      }
+      return '';
+    }
+
+    // For SAVE operation (create/update)
+    const calls = [];
+
+    if (this.entity.graphRules.on_create) {
+      calls.push(`
+  -- Execute graph rules: on_create (if insert)
+  IF v_is_insert THEN
+    PERFORM graph_${this.tableName}_on_create(to_jsonb(v_result), p_user_id);
+  END IF;`);
+    }
+
+    if (this.entity.graphRules.on_update) {
+      calls.push(`
+  -- Execute graph rules: on_update (if update)
+  IF NOT v_is_insert THEN
+    PERFORM graph_${this.tableName}_on_update(to_jsonb(v_existing), to_jsonb(v_result), p_user_id);
+  END IF;`);
+    }
+
+    return calls.join('');
   }
 
   /**

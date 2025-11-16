@@ -7,6 +7,7 @@ import { EntityParser } from './parser/entity-parser.js';
 import { generatePermissionFunctions } from './codegen/permission-codegen.js';
 import { generateOperations } from './codegen/operation-codegen.js';
 import { generateNotificationFunction } from './codegen/notification-codegen.js';
+import { generateGraphRuleFunctions } from './codegen/graph-rules-codegen.js';
 import crypto from 'crypto';
 
 export class DZQLCompiler {
@@ -53,6 +54,12 @@ export class DZQLCompiler {
     if (normalizedEntity.notificationPaths &&
         Object.keys(normalizedEntity.notificationPaths).length > 0) {
       sections.push(this._generateNotificationFunction(normalizedEntity));
+    }
+
+    // Graph rules (if needed)
+    if (normalizedEntity.graphRules &&
+        Object.keys(normalizedEntity.graphRules).length > 0) {
+      sections.push(this._generateGraphRuleFunctions(normalizedEntity));
     }
 
     // Combine all sections
@@ -155,6 +162,17 @@ export class DZQLCompiler {
     return generateNotificationFunction(
       entity.tableName,
       entity.notificationPaths
+    );
+  }
+
+  /**
+   * Generate graph rule functions
+   * @private
+   */
+  _generateGraphRuleFunctions(entity) {
+    return generateGraphRuleFunctions(
+      entity.tableName,
+      entity.graphRules
     );
   }
 
