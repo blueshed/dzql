@@ -6,6 +6,7 @@
 import { EntityParser } from './parser/entity-parser.js';
 import { generatePermissionFunctions } from './codegen/permission-codegen.js';
 import { generateOperations } from './codegen/operation-codegen.js';
+import { generateNotificationFunction } from './codegen/notification-codegen.js';
 import crypto from 'crypto';
 
 export class DZQLCompiler {
@@ -151,18 +152,10 @@ export class DZQLCompiler {
    * @private
    */
   _generateNotificationFunction(entity) {
-    return `-- Notification path resolution for ${entity.tableName}
-CREATE OR REPLACE FUNCTION resolve_notification_paths_${entity.tableName}(
-  p_record JSONB
-) RETURNS INT[] AS $$
-DECLARE
-  v_users INT[] := ARRAY[]::INT[];
-BEGIN
-  -- TODO: Compile notification paths
-  -- For now, return empty array
-  RETURN v_users;
-END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
+    return generateNotificationFunction(
+      entity.tableName,
+      entity.notificationPaths
+    );
   }
 
   /**
