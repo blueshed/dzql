@@ -103,27 +103,45 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
    * @private
    */
   _generatePathCheck(ast, recordVar, userIdVar) {
-    if (ast.type === 'direct') {
-      // Simple field check: @owner_id
+    // Handle direct field reference: @owner_id
+    if (ast.type === 'field_ref') {
       return `(${recordVar}->>'${ast.field}')::int = ${userIdVar}`;
     }
 
-    if (ast.type === 'traversal') {
-      // Complex traversal: @org_id->acts_for[org_id=$]{active}.user_id
-      const startValue = `(${recordVar}->>'${ast.start}')::int`;
-      const targetTable = ast.target.table;
-      const targetField = ast.target.field;
+    // Handle traversal with steps: @org_id->acts_for[org_id=$]{active}.user_id
+    if (ast.type === 'traversal' && ast.steps) {
+      const fieldRef = ast.steps[0];  // First step is the field reference
+      const tableRef = ast.steps[1];   // Second step is the table reference
 
-      // Build WHERE clause
-      const whereClauses = [`${targetTable}.${ast.target.joinField} = ${startValue}`];
-
-      // Add filter conditions
-      if (ast.filter) {
-        whereClauses.push(this._generateFilterSQL(ast.filter, targetTable));
+      if (!fieldRef || !tableRef || tableRef.type !== 'table_ref') {
+        return 'FALSE';
       }
 
-      // Add temporal marker
-      if (ast.temporal === 'active') {
+      const startField = fieldRef.field;
+      const targetTable = tableRef.table;
+      const targetField = tableRef.targetField;
+
+      const startValue = `(${recordVar}->>'${startField}')::int`;
+
+      // Build WHERE clause
+      const whereClauses = [];
+
+      // Add filter conditions from the table_ref
+      if (tableRef.filter && tableRef.filter.length > 0) {
+        for (const filterCondition of tableRef.filter) {
+          const field = filterCondition.field;
+          if (filterCondition.value.type === 'param') {
+            // Parameter reference: org_id=$
+            whereClauses.push(`${targetTable}.${field} = ${startValue}`);
+          } else {
+            // Literal value
+            whereClauses.push(`${targetTable}.${field} = '${filterCondition.value}'`);
+          }
+        }
+      }
+
+      // Add temporal marker if present
+      if (tableRef.temporal) {
         whereClauses.push(`${targetTable}.valid_to IS NULL`);
       }
 
