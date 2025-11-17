@@ -59,11 +59,10 @@ class WebSocketManager {
     this.pendingRequests = new Map();
     this.broadcastCallbacks = new Set();
     this.sidRequestHandlers = new Set();
+    this.subscriptions = new Map(); // subscription_id -> { callback, unsubscribe }
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = options.maxReconnectAttempts ?? 5;
     this.isShuttingDown = false;
-
-    // Ad
 
     // DZQL nested proxy API - matches server-side db.api pattern
     // Proxy handles both DZQL operations and custom functions
@@ -136,6 +135,18 @@ class WebSocketManager {
         // Return cached DZQL operation if it exists
         if (prop in target) {
           return target[prop];
+        }
+        // Handle subscribe_* methods specially
+        if (prop.startsWith('subscribe_')) {
+          return (params = {}, callback) => {
+            return this.subscribe(prop, params, callback);
+          };
+        }
+        // Handle unsubscribe_* methods
+        if (prop.startsWith('unsubscribe_')) {
+          return (params = {}) => {
+            return this.unsubscribe(prop, params);
+          };
         }
         // All other properties are treated as custom function calls
         return (params = {}) => {
@@ -314,6 +325,16 @@ class WebSocketManager {
         resolve(message.result);
       }
     } else {
+      // Handle subscription updates
+      if (message.method === "subscription:update") {
+        const { subscription_id, data } = message.params;
+        const sub = this.subscriptions.get(subscription_id);
+        if (sub && sub.callback) {
+          sub.callback(data);
+        }
+        return;
+      }
+
       // Handle broadcasts and SID requests
 
       // Check if this is a SID request from server
@@ -374,6 +395,70 @@ class WebSocketManager {
       this.pendingRequests.set(id, { resolve, reject });
       this.ws.send(JSON.stringify(message));
     });
+  }
+
+  /**
+   * Subscribe to a live query
+   *
+   * @param {string} method - Method name (subscribe_<subscribable>)
+   * @param {object} params - Subscription parameters
+   * @param {function} callback - Callback function for updates
+   * @returns {Promise<{data, subscription_id, unsubscribe}>} Initial data and unsubscribe function
+   *
+   * @example
+   * const { data, unsubscribe } = await ws.api.subscribe_venue_detail(
+   *   { venue_id: 1 },
+   *   (updated) => console.log('Updated:', updated)
+   * );
+   *
+   * // Use initial data
+   * console.log('Initial:', data);
+   *
+   * // Later: unsubscribe
+   * unsubscribe();
+   */
+  async subscribe(method, params = {}, callback) {
+    if (!callback || typeof callback !== 'function') {
+      throw new Error('Subscribe requires a callback function');
+    }
+
+    // Call server to register subscription
+    const result = await this.call(method, params);
+    const { subscription_id, data } = result;
+
+    // Create unsubscribe function
+    const unsubscribeFn = async () => {
+      const unsubMethod = method.replace('subscribe_', 'unsubscribe_');
+      await this.call(unsubMethod, params);
+      this.subscriptions.delete(subscription_id);
+    };
+
+    // Store callback for updates
+    this.subscriptions.set(subscription_id, {
+      callback,
+      unsubscribe: unsubscribeFn
+    });
+
+    // Return initial data and unsubscribe function
+    return {
+      data,
+      subscription_id,
+      unsubscribe: unsubscribeFn
+    };
+  }
+
+  /**
+   * Unsubscribe from a live query
+   *
+   * @param {string} method - Method name (unsubscribe_<subscribable>)
+   * @param {object} params - Subscription parameters
+   * @returns {Promise<{success: boolean}>}
+   *
+   * @example
+   * await ws.api.unsubscribe_venue_detail({ venue_id: 1 });
+   */
+  async unsubscribe(method, params = {}) {
+    return await this.call(method, params);
   }
 
   /**
