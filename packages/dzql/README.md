@@ -1,11 +1,12 @@
 # DZQL
 
-PostgreSQL-powered framework with automatic CRUD operations and real-time WebSocket synchronization.
+PostgreSQL-powered framework with automatic CRUD operations, live query subscriptions, and real-time WebSocket synchronization.
 
 ## Documentation
 
 - **[Getting Started Guide](docs/GETTING_STARTED.md)** - Complete tutorial with working todo app
 - **[API Reference](docs/REFERENCE.md)** - Complete API documentation
+- **[Live Query Subscriptions](../../docs/SUBSCRIPTIONS_QUICK_START.md)** - Real-time denormalized documents (NEW in v0.2.0)
 - **[Compiler Documentation](docs/compiler/)** - Entity compilation guide and coding standards
 - **[Claude Guide](docs/CLAUDE.md)** - Development guide for AI assistants
 - **[Venues Example](../venues/)** - Full working application
@@ -29,6 +30,12 @@ await ws.connect();
 // All 5 operations work automatically
 const user = await ws.api.save.users({ name: 'Alice' });
 const results = await ws.api.search.users({ filters: { name: 'alice' } });
+
+// NEW in v0.2.0: Live query subscriptions
+const { data, unsubscribe } = await ws.api.subscribe_venue_detail(
+  { venue_id: 123 },
+  (updated) => console.log('Venue changed!', updated)
+);
 ```
 
 ## DZQL Compiler
