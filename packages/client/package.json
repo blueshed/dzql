@@ -1,8 +1,12 @@
 {
-  "name": "client",
+  "name": "@dzql/admin",
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "exports": {
+    ".": "./src/createDZQLAdmin.js",
+    "./admin": "./src/createDZQLAdmin.js"
+  },
   "scripts": {
     "dev": "bunx vite",
     "build": "bunx vite build",
