@@ -1,34 +1,24 @@
+/**
+ * Legacy Profile Store - Adapter to Canonical useWsStore
+ *
+ * This store provides backward compatibility for existing components
+ * while using the canonical useWsStore internally.
+ */
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
-import { useWs } from "dzql/client";
-import { uiConfig } from './ui-config.js';
-import { useMetaStore } from './meta.js';
+import { computed } from 'vue'
+import { useWsStore } from 'dzql/client/stores'
+import { uiConfig } from './ui-config.js'
 
 export const useProfileStore = defineStore('profile', () => {
+  // Use canonical store
+  const wsStore = useWsStore()
 
-  const ws = useWs();
-  const profile = ref(null)
+  // Expose profile as computed from canonical store
+  const profile = computed(() => wsStore.profile)
 
-  ws.onBroadcast(async (method, params) => {
-    // Handle connection status updates
-    if (method === "connected") {
-      profile.value = params.profile || null;
-      console.log(`Connected`, profile.value);
-
-      return;
-    }
-  })
-
-  watch(()=> profile.value, async (value) => {
-    if(value){
-      // Fetch metadata via MetaStore when user logs in
-      const metaStore = useMetaStore()
-      await metaStore.fetchMetadata()
-    }
-  })
-
-  const connect = async () => {
-    await ws.connect(import.meta.env.DEV ? 'ws://localhost:3000/ws' : null)
+  // Proxy connect method
+  const connect = async (url) => {
+    await wsStore.connect(url)
   }
 
   return {

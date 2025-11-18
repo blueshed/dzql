@@ -1,13 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useWs } from 'dzql/client'
+import { useWsStore } from 'dzql/client/stores'
 
 const storeCache = new Map()
 
 export const useEntityStore = (entityName) => {
   if (!storeCache.has(entityName)) {
     const store = defineStore(`entity-${entityName}`, () => {
-      const ws = useWs()
+      // Use canonical store to get WebSocket instance
+      const wsStore = useWsStore()
+      const ws = wsStore.getWs()
 
       // State
       const records = ref([])

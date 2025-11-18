@@ -1,41 +1,43 @@
+/**
+ * Legacy Meta Store - Adapter to Canonical useAppStore
+ *
+ * This store provides backward compatibility for existing components
+ * while using the canonical useAppStore internally.
+ */
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { useWs } from 'dzql/client'
+import { computed } from 'vue'
+import { useAppStore, useWsStore } from 'dzql/client/stores'
 import { uiConfig } from './ui-config.js'
 import BoxIcon from 'feather-icons/dist/icons/box.svg?component'
 
 export const useMetaStore = defineStore('meta', () => {
-  const ws = useWs()
+  // Use canonical stores
+  const appStore = useAppStore()
+  const wsStore = useWsStore()
 
-  // State
-  const metadata = ref(null)
-  const loading = ref(false)
-  const error = ref(null)
-
-  // Fetch metadata via WebSocket
-  const fetchMetadata = async () => {
-    loading.value = true
-    error.value = null
-
-    try {
-      console.log('Fetching metadata via WebSocket...')
-      const result = await ws.api.get_entities_metadata()
-      metadata.value = result
-      console.log('Metadata fetched successfully:', result)
-    } catch (err) {
-      console.error('Failed to fetch metadata:', err)
-      error.value = err.message || 'Failed to fetch metadata'
-    } finally {
-      loading.value = false
+  // Adapter: map appStore state to legacy format
+  const metadata = computed(() => {
+    if (!appStore.entityMetadata || Object.keys(appStore.entityMetadata).length === 0) {
+      return null
     }
+    return {
+      entities: appStore.entityMetadata,
+      relations: [], // TODO: Extract from metadata if available
+      operations: ['get', 'save', 'delete', 'lookup', 'search']
+    }
+  })
+
+  const loading = computed(() => appStore.isLoadingMetadata)
+  const error = computed(() => null) // appStore doesn't expose error state
+
+  // Proxy fetch method
+  const fetchMetadata = async () => {
+    await appStore.fetchMetadata()
   }
 
   // Computed helpers
   const entities = computed(() => {
-    console.log('Computing entities from metadata:', metadata.value)
-    const result = metadata.value?.entities || {}
-    console.log('Entities object:', result)
-    return result
+    return metadata.value?.entities || {}
   })
 
   const entitiesList = computed(() => {
