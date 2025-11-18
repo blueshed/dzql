@@ -79,7 +79,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'save'])
+const emit = defineEmits(['update:modelValue', 'save', 'navigate'])
 
 const router = useRouter()
 const metaStore = useMetaStore()
@@ -188,13 +188,22 @@ function handleCancel() {
 
 function navigateToEntity() {
   if (props.modelValue) {
-    router.push({
-      name: 'entity-detail',
-      params: {
-        entity: props.referencedEntity,
-        id: props.modelValue
-      }
-    })
+    // Emit navigate event for parent components to handle (e.g., Air interface)
+    emit('navigate', props.referencedEntity, props.modelValue)
+
+    // Also use router for traditional navigation (e.g., main admin interface)
+    // This will silently fail if router is not available, which is fine
+    try {
+      router.push({
+        name: 'entity-detail',
+        params: {
+          entity: props.referencedEntity,
+          id: props.modelValue
+        }
+      })
+    } catch (err) {
+      // Router not available (e.g., in Air interface), that's ok
+    }
   }
 }
 </script>

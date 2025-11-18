@@ -99,6 +99,7 @@
                   v-model="record[column.column_name]"
                   v-bind="getCellProps(column)"
                   @save="(value) => handleCellSave(record, column.column_name, value)"
+                  @navigate="(entity, id) => handleNavigate(entity, id)"
                 />
               </td>
 
@@ -283,5 +284,16 @@ async function handleDelete(record) {
   } catch (err) {
     console.error('Failed to delete:', err)
   }
+}
+
+// Handle navigation from foreign key cells
+async function handleNavigate(entity, id) {
+  // Switch to the referenced entity
+  selectedEntity.value = entity
+
+  // Load records for that entity
+  await handleEntityChange()
+
+  // TODO: Could scroll to the specific record with that ID
 }
 </script>
