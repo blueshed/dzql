@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useWs } from 'dzql/client'
+import { useWsStore } from 'dzql/client/stores'
 import LoginView from './components/LoginView.vue'
 import Navbar from './components/Navbar.vue'
 import ThreePanelLayout from './components/ThreePanelLayout.vue'
@@ -9,11 +9,15 @@ import ContextPanel from './components/ContextPanel.vue'
 import ContentPanel from './components/ContentPanel.vue'
 import PropertiesPanel from './components/PropertiesPanel.vue'
 import HelloView from './components/hello.vue'
+import NotificationContainer from './components/NotificationContainer.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 
-const ws = useWs()
+const wsStore = useWsStore()
 const route = useRoute()
-const state = ref('connecting')
-const userProfile = ref(null)
+
+// Use canonical store state
+const state = computed(() => wsStore.appState)
+const userProfile = computed(() => wsStore.profile)
 
 // Computed labels for panels
 const pageTitle = computed(() => {
@@ -33,37 +37,24 @@ const propertiesLabel = computed(() => {
   return 'Properties'
 })
 
-onMounted(() => {
-  // Listen for the connected broadcast
-  ws.onBroadcast((method, params) => {
-    if (method === 'connected') {
-      userProfile.value = params.profile
-      state.value = params.profile ? 'content' : 'login'
-    }
-  })
-})
-
-const handleAuth = (profile) => {
-  userProfile.value = profile
-  state.value = 'content'
+const handleAuth = async (profile) => {
+  // Profile is already set by wsStore.login()
+  // Just trigger metadata fetch if needed
 }
 
 const handleLogout = async () => {
-  try {
-    await ws.call('logout')
-  } catch (err) {
-    console.error('Logout error:', err)
-  }
-  localStorage.removeItem('dzql_token')
-  userProfile.value = null
-  state.value = 'login'
-  // Reconnect to get fresh state
-  ws.connect()
+  await wsStore.logout()
 }
 </script>
 
 <template>
   <div class="min-h-screen bg-base-200">
+    <!-- Notification Container -->
+    <NotificationContainer />
+
+    <!-- Confirmation Dialog -->
+    <ConfirmDialog />
+
     <!-- Connecting State -->
     <div v-if="state === 'connecting'" class="hero min-h-screen">
       <div class="hero-content text-center">
@@ -77,8 +68,8 @@ const handleLogout = async () => {
     <!-- Login State -->
     <LoginView v-else-if="state === 'login'" @authenticated="handleAuth" />
 
-    <!-- Content State -->
-    <div v-else-if="state === 'content'" class="min-h-screen flex flex-col">
+    <!-- Content State (ready) -->
+    <div v-else-if="state === 'ready'" class="min-h-screen flex flex-col">
       <Navbar :user="userProfile" @logout="handleLogout" />
       <main class="flex-1 min-h-0">
         <ThreePanelLayout

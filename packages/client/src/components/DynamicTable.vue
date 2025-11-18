@@ -20,13 +20,27 @@
         <RefreshCwIcon v-else class="h-4 w-4" />
         Refresh
       </button>
+      <div class="dropdown dropdown-end">
+        <button
+          tabindex="0"
+          class="btn btn-secondary"
+          :disabled="!hasData"
+        >
+          <DownloadIcon class="h-4 w-4" />
+          Export
+        </button>
+        <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+          <li><a @click="handleExport('csv')">Export as CSV</a></li>
+          <li><a @click="handleExport('json')">Export as JSON</a></li>
+        </ul>
+      </div>
     </div>
 
     <!-- Error Alert -->
     <div v-if="error" class="alert alert-error">
       <XCircleIcon class="stroke-current shrink-0 h-6 w-6" />
       <span>{{ error }}</span>
-      <button @click="clearError" class="btn btn-sm btn-ghost">×</button>
+      <button @click="props.store.clearError()" class="btn btn-sm btn-ghost">×</button>
     </div>
 
     <!-- Loading State -->
@@ -57,7 +71,17 @@
         <tbody>
           <tr v-for="record in records" :key="record.id || record.pk">
             <td v-for="column in columns" :key="column.key" class="max-w-xs">
-              <div class="truncate" :title="getDisplayValue(record, column.key)">
+              <!-- Foreign Key Link -->
+              <button
+                v-if="column.isForeignKey && record[column.key]"
+                @click.stop="navigateToForeignKey(column.referencedEntity, record[column.key])"
+                class="link link-primary truncate"
+                :title="`View ${column.referencedEntity}: ${getDisplayValue(record, column.key)}`"
+              >
+                {{ getDisplayValue(record, column.key) }}
+              </button>
+              <!-- Regular Value -->
+              <div v-else class="truncate" :title="getDisplayValue(record, column.key)">
                 {{ getDisplayValue(record, column.key) }}
               </div>
             </td>
@@ -127,12 +151,17 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
+import { useMetaStore } from '../stores/meta'
+import { useExport } from '../composables/useExport'
+import { useNotifications } from '../composables/useNotifications'
 import RefreshCwIcon from '@feather-icons/refresh-cw.svg?component'
 import XCircleIcon from '@feather-icons/x-circle.svg?component'
 import EditIcon from '@feather-icons/edit-2.svg?component'
 import TrashIcon from '@feather-icons/trash-2.svg?component'
 import InboxIcon from '@feather-icons/inbox.svg?component'
 import PlusIcon from '@feather-icons/plus.svg?component'
+import DownloadIcon from '@feather-icons/download.svg?component'
 
 const props = defineProps({
   entity: {
@@ -147,15 +176,23 @@ const props = defineProps({
 
 const emit = defineEmits(['edit', 'create', 'delete'])
 
+const router = useRouter()
+const metaStore = useMetaStore()
+const { exportToCSV, exportToJSON } = useExport()
+const { success, error: notifyError } = useNotifications()
+
 // Local state
 const searchFilter = ref('')
-const sortField = ref('id')
+const sortField = ref(null)  // Don't assume 'id' exists - let user choose sort
 const sortOrder = ref('asc')
 
-// Store state - use storeToRefs for reactive state
-const { records, loading, error, searchResults, hasData, totalPages } = storeToRefs(props.store)
-// Methods don't need storeToRefs
-const { search, clearError } = props.store
+// Store state - use computed to make them reactive to store changes
+const records = computed(() => props.store.records)
+const loading = computed(() => props.store.loading)
+const error = computed(() => props.store.error)
+const searchResults = computed(() => props.store.searchResults)
+const hasData = computed(() => props.store.hasData)
+const totalPages = computed(() => props.store.totalPages)
 
 // Computed
 const columns = computed(() => {
@@ -165,13 +202,21 @@ const columns = computed(() => {
   const firstRecord = records.value[0]
   if (!firstRecord) return []
 
+  // Get foreign key information
+  const fkFields = metaStore.getForeignKeyFields(props.entity)
+
   return Object.keys(firstRecord)
     .filter(key => key !== 'id') // Hide ID column
     .slice(0, 6) // Limit columns for mobile
-    .map(key => ({
-      key,
-      label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-    }))
+    .map(key => {
+      const fk = fkFields.find(f => f.column === key)
+      return {
+        key,
+        label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        isForeignKey: !!fk,
+        referencedEntity: fk?.referencedEntity
+      }
+    })
 })
 
 // Methods
@@ -202,7 +247,7 @@ const performSearch = async () => {
     }
   }
 
-  await search(params)
+  await props.store.search(params)
 }
 
 const refresh = () => {
@@ -227,7 +272,7 @@ const goToPage = async (page) => {
     page
   }
 
-  await search(params)
+  await props.store.search(params)
 }
 
 const getDisplayValue = (record, key) => {
@@ -247,15 +292,41 @@ const createRecord = () => {
 }
 
 const deleteRecord = (record) => {
-  if (confirm(`Are you sure you want to delete this ${props.entity}?`)) {
-    emit('delete', record)
+  emit('delete', record)
+}
+
+const navigateToForeignKey = (entityName, id) => {
+  router.push(`/${entityName}/${id}`)
+}
+
+const handleExport = (format) => {
+  try {
+    const filename = `${props.entity}_${new Date().toISOString().split('T')[0]}`
+
+    if (format === 'csv') {
+      exportToCSV(records.value, `${filename}.csv`)
+      success('Data exported as CSV')
+    } else if (format === 'json') {
+      exportToJSON(records.value, `${filename}.json`)
+      success('Data exported as JSON')
+    }
+  } catch (err) {
+    console.error('Export failed:', err)
+    notifyError(err.message || 'Failed to export data')
   }
 }
 
-// Initialize
-onMounted(() => {
-  performSearch()
-})
+// Watch for store changes to trigger new search
+// When entity changes, a new store is passed in, so this will fire
+watch(() => props.store, (newStore, oldStore) => {
+  if (newStore !== oldStore) {
+    // Clear search filter and sort when switching entities
+    searchFilter.value = ''
+    sortField.value = null
+    sortOrder.value = 'asc'
+    performSearch()
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>

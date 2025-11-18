@@ -113,16 +113,14 @@
 
 <script setup>
 import { ref, computed, nextTick, onMounted } from 'vue'
-import { useWs } from 'dzql/client'
-import { useProfileStore } from '../stores/main'
+import { useWsStore } from 'dzql/client/stores'
 import CheckIcon from '@feather-icons/check.svg?component'
 import XIcon from '@feather-icons/x.svg?component'
 import EyeIcon from '@feather-icons/eye.svg?component'
 import EyeOffIcon from '@feather-icons/eye-off.svg?component'
 
 const emit = defineEmits(['authenticated'])
-const ws = useWs()
-const profileStore = useProfileStore()
+const wsStore = useWsStore()
 
 // Form state
 const mode = ref('login')
@@ -166,24 +164,18 @@ const handleSubmit = async () => {
   loading.value = true
 
   try {
-    const method = mode.value === 'login' ? 'login_user' : 'register_user'
-    const result = await ws.call(method, {
-      email: email.value,
-      password: password.value
-    })
+    // Use canonical store methods
+    const result = mode.value === 'login'
+      ? await wsStore.login({ email: email.value, password: password.value })
+      : await wsStore.register({ email: email.value, password: password.value })
 
-    if (result.token) {
-      localStorage.setItem('dzql_token', result.token)
-      profileStore.profile = result.profile
-
-      if (mode.value === 'register') {
-        success.value = 'Account created successfully!'
-        setTimeout(() => {
-          emit('authenticated', result.profile)
-        }, 1000)
-      } else {
+    if (mode.value === 'register') {
+      success.value = 'Account created successfully!'
+      setTimeout(() => {
         emit('authenticated', result.profile)
-      }
+      }, 1000)
+    } else {
+      emit('authenticated', result.profile)
     }
   } catch (err) {
     const message = err.message || 'Authentication failed'

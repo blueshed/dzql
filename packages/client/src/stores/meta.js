@@ -1,41 +1,80 @@
+/**
+ * Legacy Meta Store - Adapter to Canonical useAppStore
+ *
+ * This store provides backward compatibility for existing components
+ * while using the canonical useAppStore internally.
+ */
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import { useWs } from 'dzql/client'
+import { computed, ref } from 'vue'
+import { useAppStore, useWsStore } from 'dzql/client/stores'
 import { uiConfig } from './ui-config.js'
 import BoxIcon from 'feather-icons/dist/icons/box.svg?component'
 
 export const useMetaStore = defineStore('meta', () => {
-  const ws = useWs()
+  // Use canonical stores
+  const appStore = useAppStore()
+  const wsStore = useWsStore()
 
-  // State
-  const metadata = ref(null)
-  const loading = ref(false)
-  const error = ref(null)
+  // Store for relations (fetched alongside entities)
+  const relationsData = ref([])
 
-  // Fetch metadata via WebSocket
+  // Adapter: map appStore state to legacy format
+  const metadata = computed(() => {
+    if (!appStore.entityMetadata || Object.keys(appStore.entityMetadata).length === 0) {
+      return null
+    }
+    return {
+      entities: appStore.entityMetadata,
+      relations: relationsData.value,
+      operations: ['get', 'save', 'delete', 'lookup', 'search']
+    }
+  })
+
+  const loading = computed(() => appStore.isLoadingMetadata)
+  const error = computed(() => null) // appStore doesn't expose error state
+
+  // Override fetch method to call correct function name
   const fetchMetadata = async () => {
-    loading.value = true
-    error.value = null
+    const ws = wsStore.getWs()
+
+    if (!wsStore.isConnected) {
+      console.warn('[MetaStore] Cannot fetch metadata: not connected')
+      return
+    }
 
     try {
-      console.log('Fetching metadata via WebSocket...')
-      const result = await ws.api.get_entities_metadata()
-      metadata.value = result
-      console.log('Metadata fetched successfully:', result)
+      // Call the correct function name: get_entities_metadata (not 'meta')
+      const result = await ws.call('get_entities_metadata', {})
+
+      if (result && result.entities) {
+        // Map array or object format to appStore format
+        const entitiesObj = {}
+        if (Array.isArray(result.entities)) {
+          result.entities.forEach(entity => {
+            entitiesObj[entity.table_name] = entity
+          })
+        } else {
+          // Already in object format (from new get_entities_metadata function)
+          Object.assign(entitiesObj, result.entities)
+        }
+
+        // Update appStore state directly
+        appStore.entityMetadata = entitiesObj
+
+        // Extract relations from result
+        relationsData.value = result.relations || []
+
+        console.log('[MetaStore] Metadata loaded:', Object.keys(entitiesObj))
+        console.log('[MetaStore] Relations loaded:', relationsData.value.length, 'relationships')
+      }
     } catch (err) {
-      console.error('Failed to fetch metadata:', err)
-      error.value = err.message || 'Failed to fetch metadata'
-    } finally {
-      loading.value = false
+      console.error('[MetaStore] Failed to fetch metadata:', err)
     }
   }
 
   // Computed helpers
   const entities = computed(() => {
-    console.log('Computing entities from metadata:', metadata.value)
-    const result = metadata.value?.entities || {}
-    console.log('Entities object:', result)
-    return result
+    return metadata.value?.entities || {}
   })
 
   const entitiesList = computed(() => {
@@ -140,6 +179,12 @@ export const useMetaStore = defineStore('meta', () => {
     return Object.keys(temporalFields).length > 0
   }
 
+  // Check if entity has compound primary key
+  const isCompoundKey = (entityName) => {
+    const primaryKey = entities.value[entityName]?.primary_key || []
+    return primaryKey.length > 1
+  }
+
   return {
     // State
     metadata,
@@ -164,6 +209,7 @@ export const useMetaStore = defineStore('meta', () => {
     getForeignKeyFields,
     getLabelField,
     getSearchableFields,
-    isTemporalEntity
+    isTemporalEntity,
+    isCompoundKey
   }
 })
