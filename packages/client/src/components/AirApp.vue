@@ -31,6 +31,7 @@ const state = computed(() => wsStore.appState)
 
 const handleAuth = async (profile) => {
   // Profile is already set by wsStore.login()
-  // Fetch metadata  await metaStore.fetchMetadata()
+  // Fetch metadata
+  await metaStore.fetchMetadata()
 }
 </script>
