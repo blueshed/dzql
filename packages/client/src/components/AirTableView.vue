@@ -183,13 +183,20 @@ const visibleColumns = computed(() => {
       return true
     })
     .map(key => {
+      const value = firstRecord[key]
       const fk = fkFields.find(f => f.column === key)
+
+      // Detect foreign key by metadata OR by checking if value is an expanded object
+      const isFK = !!fk || (value && typeof value === 'object' && 'id' in value)
+      // Referenced entity: use metadata first, otherwise assume plural of column name
+      const refEntity = fk?.referencedEntity || (isFK ? `${key}s` : null)
+
       return {
         column_name: key,
-        data_type: typeof firstRecord[key],
-        is_nullable: firstRecord[key] === null,
-        isForeignKey: !!fk,
-        referencedEntity: fk?.referencedEntity
+        data_type: typeof value,
+        is_nullable: value === null,
+        isForeignKey: isFK,
+        referencedEntity: refEntity
       }
     })
 })
@@ -254,8 +261,8 @@ function getCellComponent(column) {
 function getCellValue(record, column) {
   const value = record[column.column_name]
 
-  // If it's a foreign key and the value is an object (expanded), extract the ID
-  if (column.isForeignKey && value && typeof value === 'object') {
+  // If value is an object with an id (expanded foreign key), extract the ID
+  if (value && typeof value === 'object' && 'id' in value) {
     return value.id
   }
 
