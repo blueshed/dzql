@@ -80,7 +80,7 @@ export function createDZQLAdmin(wsUrlOrConnection, options = {}) {
       {
         path: '/',
         name: 'home',
-        component: () => import('./components/HelloView.vue')
+        component: () => import('./components/hello.vue')
       },
       {
         path: '/:entity',
