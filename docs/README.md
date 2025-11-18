@@ -17,7 +17,9 @@ Guides for contributing to DZQL development:
 Design documents and system architecture:
 - [Permissions System](architecture/PERMISSIONS.md) - Path DSL grammar and permission model
 - [Project Roadmap](architecture/ROADMAP.md) - Development roadmap and future plans
+- [Execution Plan](architecture/EXECUTION_PLAN.md) - Detailed implementation plan for production readiness
 - [Canonical Stores](architecture/CANONICAL-STORES-SUMMARY.md) - Pinia store patterns
+- [Subscriptions Strategy](architecture/SUBSCRIPTIONS_STRATEGY.md) - Live query architecture
 
 ### Examples
 Example implementations and patterns:
