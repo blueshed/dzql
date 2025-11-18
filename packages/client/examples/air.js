@@ -32,6 +32,13 @@ const router = createRouter({
   ]
 })
 
+// Close any open dropdowns after navigation
+router.afterEach(() => {
+  if (document.activeElement) {
+    document.activeElement.blur()
+  }
+})
+
 const app = createApp(AirApp)
 
 app.use(pinia)

@@ -23,7 +23,6 @@
               <th class="bg-base-300 z-20 w-16">
                 <div class="dropdown dropdown-right">
                   <button
-                    ref="dropdownTrigger"
                     tabindex="0"
                     class="btn btn-ghost btn-xs"
                     title="Select entity"
@@ -163,7 +162,6 @@ const loading = ref(false)
 // Spreadsheet state
 const selectedEntity = ref(null)
 const recordsLoading = ref(false)
-const dropdownTrigger = ref(null)
 
 // Computed
 const entities = computed(() => Object.keys(metaStore.entities))
@@ -220,11 +218,6 @@ watch(() => route.params.entity, async (newEntity) => {
   selectedEntity.value = newEntity
   await handleEntityChange()
 }, { immediate: true })
-
-// Close dropdown after navigation
-router.afterEach(() => {
-  dropdownTrigger.value?.blur()
-})
 
 // Select entity from dropdown
 async function selectEntity(entity) {
