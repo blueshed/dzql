@@ -6,12 +6,10 @@
  */
 
 import { DZQLCompiler } from './src/compiler/compiler.js';
-import pg from 'pg';
-
-const { Pool } = pg;
+import postgres from 'postgres';
 
 const DB_URL = 'postgres://postgres@localhost:5432/dzql';
-const db = new Pool({ connectionString: DB_URL });
+const sql = postgres(DB_URL);
 
 console.log('=====================================');
 console.log('Subscription System Integration Test');
@@ -20,7 +18,7 @@ console.log('=====================================\n');
 try {
   // Step 1: Register subscribable
   console.log('Step 1: Registering subscribable...');
-  await db.query(`
+  await sql(`
     SELECT dzql.register_subscribable(
       'test_simple',
       '{"subscribe": ["@owner_id"]}'::jsonb,
@@ -47,7 +45,7 @@ try {
 
   // Step 3: Create test table
   console.log('Step 3: Creating test table...');
-  await db.query(`
+  await sql(`
     CREATE TABLE IF NOT EXISTS test_entity (
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
@@ -55,8 +53,8 @@ try {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
-  await db.query(`TRUNCATE test_entity RESTART IDENTITY;`);
-  await db.query(`
+  await sql(`TRUNCATE test_entity RESTART IDENTITY;`);
+  await sql(`
     INSERT INTO test_entity (id, name, owner_id)
     VALUES (1, 'Test Item', 100);
   `);
@@ -64,17 +62,17 @@ try {
 
   // Step 4: Deploy compiled functions
   console.log('Step 4: Deploying compiled functions...');
-  await db.query(result.sql);
+  await sql(result.sql);
   console.log('✓ Functions deployed\n');
 
   // Step 5: Test permission check
   console.log('Step 5: Testing permission check...');
-  const permResult = await db.query(`
+  const permResult = await sql(`
     SELECT test_simple_can_subscribe(100, '{"id": 1}'::jsonb) as can_subscribe;
   `);
   console.log(`  Owner (100) can subscribe: ${permResult.rows[0].can_subscribe}`);
 
-  const permResult2 = await db.query(`
+  const permResult2 = await sql(`
     SELECT test_simple_can_subscribe(999, '{"id": 1}'::jsonb) as can_subscribe;
   `);
   console.log(`  Non-owner (999) can subscribe: ${permResult2.rows[0].can_subscribe}`);
@@ -82,7 +80,7 @@ try {
 
   // Step 6: Test query function
   console.log('Step 6: Testing query function...');
-  const queryResult = await db.query(`
+  const queryResult = await sql(`
     SELECT get_test_simple('{"id": 1}'::jsonb, 100) as data;
   `);
   console.log('  Query result:', JSON.stringify(queryResult.rows[0].data, null, 2));
@@ -90,7 +88,7 @@ try {
 
   // Step 7: Test affected documents
   console.log('Step 7: Testing affected documents...');
-  const affectedResult = await db.query(`
+  const affectedResult = await sql(`
     SELECT test_simple_affected_documents(
       'test_entity',
       'update',
@@ -103,7 +101,7 @@ try {
 
   // Step 8: Verify subscribable in registry
   console.log('Step 8: Verifying subscribable registry...');
-  const listResult = await db.query(`
+  const listResult = await sql(`
     SELECT * FROM dzql.get_subscribables();
   `);
   console.log(`  Total subscribables registered: ${listResult.rows.length}`);
@@ -114,11 +112,11 @@ try {
 
   // Cleanup
   console.log('Cleanup: Removing test data...');
-  await db.query(`DROP TABLE IF EXISTS test_entity;`);
-  await db.query(`DELETE FROM dzql.subscribables WHERE name = 'test_simple';`);
-  await db.query(`DROP FUNCTION IF EXISTS test_simple_can_subscribe;`);
-  await db.query(`DROP FUNCTION IF EXISTS get_test_simple;`);
-  await db.query(`DROP FUNCTION IF EXISTS test_simple_affected_documents;`);
+  await sql(`DROP TABLE IF EXISTS test_entity;`);
+  await sql(`DELETE FROM dzql.subscribables WHERE name = 'test_simple';`);
+  await sql(`DROP FUNCTION IF EXISTS test_simple_can_subscribe;`);
+  await sql(`DROP FUNCTION IF EXISTS get_test_simple;`);
+  await sql(`DROP FUNCTION IF EXISTS test_simple_affected_documents;`);
   console.log('✓ Cleanup complete\n');
 
   console.log('=====================================');
