@@ -240,12 +240,13 @@ const handleAuth = async (profile) => {
 }
 
 // Watch route changes to update selected entity (only when ready)
-watch(() => route.params.entity, (newEntity) => {
+watch(() => route.params.entity, async (newEntity) => {
   if (state.value !== 'ready') return
-  if (newEntity && newEntity !== selectedEntity.value) {
-    selectedEntity.value = newEntity
-    handleEntityChange()
-  }
+  if (!newEntity) return
+  if (newEntity === selectedEntity.value) return
+
+  selectedEntity.value = newEntity
+  await handleEntityChange()
 })
 
 // Close dropdown after navigation
