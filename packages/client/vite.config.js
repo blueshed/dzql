@@ -45,7 +45,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         'zero-config': resolve(__dirname, 'examples/zero-config.html'),
-        'with-config': resolve(__dirname, 'examples/with-config.html'),
+        'with-config': resolve(__dirname, 'examples/with-config.html')
       }
     }
   },

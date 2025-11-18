@@ -30,6 +30,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
+import { useWs } from 'dzql/client'
 import App from './App.vue'
 
 /**
@@ -100,12 +101,26 @@ export function createDZQLAdmin(wsUrlOrConnection, options = {}) {
   // Provide config globally
   app.provide('dzqlConfig', config)
 
+  // Get WebSocket instance
+  const ws = useWs()
+  const wsUrl = typeof wsUrlOrConnection === 'string' ? wsUrlOrConnection : null
+
   return {
     app,
     router,
     pinia,
+    ws,
     mount(selector) {
-      return app.mount(selector)
+      const result = app.mount(selector)
+
+      // Connect after mounting so stores are initialized
+      if (wsUrl) {
+        ws.connect(wsUrl).catch(err => {
+          console.error('Failed to connect to WebSocket:', err)
+        })
+      }
+
+      return result
     }
   }
 }
