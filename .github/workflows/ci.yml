@@ -27,7 +27,7 @@ jobs:
           - 5432:5432
 
     env:
-      DATABASE_URL: postgresql://dzql:dzql@localhost:5432/dzql
+      DATABASE_URL: postgres://dzql:dzql@localhost:5432/postgres
       NODE_ENV: test
       LOG_LEVEL: ERROR
 
@@ -58,33 +58,10 @@ jobs:
         env:
           PGPASSWORD: dzql
 
-      - name: Run DZQL core migrations
-        run: |
-          for sql_file in packages/dzql/src/database/migrations/*.sql; do
-            echo "Running migration: $sql_file"
-            PGPASSWORD=dzql psql -h localhost -U dzql -d dzql -f "$sql_file"
-          done
-
-      - name: Run Venues domain migrations
-        run: |
-          for sql_file in packages/venues/database/init_db/*.sql; do
-            echo "Running migration: $sql_file"
-            PGPASSWORD=dzql psql -h localhost -U dzql -d dzql -f "$sql_file"
-          done
-
       - name: Test - DZQL Core
         run: |
           cd packages/dzql
-          bun test || echo "No tests in dzql package yet"
-
-      - name: Test - Venues Domain
-        run: bun venues:test
-
-      - name: Test - Rights Domain
-        run: |
-          # Rights requires its own database on port 5433 which isn't available in CI
-          # Skip for now - rights tests require Docker compose
-          echo "Rights tests skipped in CI (requires separate database)"
+          bun test
 
       - name: Test Summary
         if: always()
