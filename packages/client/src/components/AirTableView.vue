@@ -35,6 +35,7 @@
               <th class="bg-base-300 z-20 w-16">
                 <div class="dropdown dropdown-right">
                   <button
+                    ref="dropdownTrigger"
                     tabindex="0"
                     class="btn btn-ghost btn-xs"
                     title="Select entity"
@@ -176,6 +177,7 @@ const loading = ref(false)
 // Spreadsheet state
 const selectedEntity = ref(null)
 const recordsLoading = ref(false)
+const dropdownTrigger = ref(null)
 
 // Computed
 const entities = computed(() => Object.keys(metaStore.entities))
@@ -224,6 +226,9 @@ const handleAuth = async (profile) => {
 
 // Select entity from dropdown
 async function selectEntity(entity) {
+  // Blur the dropdown trigger to close the dropdown
+  dropdownTrigger.value?.blur()
+
   selectedEntity.value = entity
   await handleEntityChange()
 }
