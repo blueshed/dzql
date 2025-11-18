@@ -58,7 +58,12 @@ export const useMetaStore = defineStore('meta', () => {
         // Update appStore state directly
         appStore.entityMetadata = entitiesObj
         console.log('[MetaStore] Metadata loaded:', Object.keys(entitiesObj))
-      }
+
+        // Debug: log schema for first entity to see structure
+        const firstEntity = Object.keys(entitiesObj)[0]
+        if (firstEntity) {
+          console.log(`[MetaStore] Sample schema for ${firstEntity}:`, entitiesObj[firstEntity].schema)
+        }
     } catch (err) {
       console.error('[MetaStore] Failed to fetch metadata:', err)
     }
