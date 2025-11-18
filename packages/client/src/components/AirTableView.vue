@@ -191,7 +191,8 @@ const records = computed(() => entityStore.value?.records || [])
 // Handle authentication
 const handleAuth = async (profile) => {
   // Profile is already set by wsStore.login()
-  // Metadata should already be loaded by the meta store
+  // Fetch metadata
+  await metaStore.fetchMetadata()
 }
 
 // Handle entity change
