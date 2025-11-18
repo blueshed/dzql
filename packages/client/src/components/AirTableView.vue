@@ -166,19 +166,33 @@ const recordsLoading = ref(false)
 
 // Computed
 const entities = computed(() => Object.keys(metaStore.entities))
-const metadata = computed(() => selectedEntity.value ? metaStore.entities[selectedEntity.value] : null)
-const columns = computed(() => metadata.value?.schema || [])
-const relations = computed(() => metadata.value?.relationships || [])
 
-// Visible columns (exclude id since it's the row header)
+// Get columns from actual records (like DynamicTable does)
 const visibleColumns = computed(() => {
-  const filtered = columns.value.filter(col => {
-    if (col.column_name === 'id') return false
-    if (['created_at', 'updated_at', 'deleted_at'].includes(col.column_name)) return false
-    return true
-  })
-  console.log('Visible columns:', filtered.map(c => c.column_name))
-  return filtered
+  if (!records.value || records.value.length === 0) return []
+
+  const firstRecord = records.value[0]
+  if (!firstRecord) return []
+
+  // Get foreign key info
+  const fkFields = metaStore.getForeignKeyFields(selectedEntity.value)
+
+  return Object.keys(firstRecord)
+    .filter(key => {
+      if (key === 'id') return false
+      if (['created_at', 'updated_at', 'deleted_at'].includes(key)) return false
+      return true
+    })
+    .map(key => {
+      const fk = fkFields.find(f => f.column === key)
+      return {
+        column_name: key,
+        data_type: typeof firstRecord[key],
+        is_nullable: firstRecord[key] === null,
+        isForeignKey: !!fk,
+        referencedEntity: fk?.referencedEntity
+      }
+    })
 })
 
 // Entity store
@@ -211,19 +225,23 @@ async function handleEntityChange() {
 
 // Get cell component
 function getCellComponent(column) {
-  const cellType = getCellType(column, relations.value, selectedEntity.value)
+  // If it's already marked as a foreign key, use ForeignKeyCell
+  if (column.isForeignKey) {
+    return cellComponents.ForeignKeyCell
+  }
+
+  const cellType = getCellType(column, [], selectedEntity.value)
   return cellComponents[cellType.component] || cellComponents.TextCell
 }
 
 // Get cell props
 function getCellProps(column) {
-  const cellType = getCellType(column, relations.value, selectedEntity.value)
   const props = {
     columnName: column.column_name
   }
 
-  if (cellType.type === 'foreign-key') {
-    props.referencedEntity = cellType.referencedEntity
+  if (column.isForeignKey) {
+    props.referencedEntity = column.referencedEntity
   }
 
   return props
