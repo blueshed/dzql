@@ -367,7 +367,7 @@ See the [Roadmap](docs/architecture/ROADMAP.md) for details.
 - **License:** [MIT](LICENSE)
 - **Issues:** [GitHub Issues](https://github.com/blueshed/dzql/issues)
 - **Contributing:** [Contribution Guidelines](CONTRIBUTING.md)
-- **Changelog:** [Release History](CHANGELOG.md)
+- **Changelog:** [Release History](docs/releases/CHANGELOG.md)
 
 ---
 
