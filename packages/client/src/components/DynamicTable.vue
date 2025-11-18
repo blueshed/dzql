@@ -313,13 +313,16 @@ const handleExport = (format) => {
   }
 }
 
-// Watch for entity changes to trigger new search
-watch(() => props.entity, () => {
-  // Clear search filter when switching entities
-  searchFilter.value = ''
-  sortField.value = 'id'
-  sortOrder.value = 'asc'
-  performSearch()
+// Watch for store changes to trigger new search
+// When entity changes, a new store is passed in, so this will fire
+watch(() => props.store, (newStore, oldStore) => {
+  if (newStore !== oldStore) {
+    // Clear search filter when switching entities
+    searchFilter.value = ''
+    sortField.value = 'id'
+    sortOrder.value = 'asc'
+    performSearch()
+  }
 }, { immediate: true })
 </script>
 
