@@ -6,8 +6,8 @@
       :entity="selectedEntity"
       :available-columns="availableColumns"
       :hidden-columns="hiddenColumns"
-      :filter-count="0"
-      :sort-count="0"
+      :filter-count="activeFilters.length"
+      :sort-count="activeSorts.length"
       :row-height="rowHeight"
       @add-record="openAddRecordModal"
       @search="handleSearch"
@@ -45,7 +45,19 @@
         >
           <thead>
             <tr>
-              <!-- Top-left corner: Entity selector dropdown -->
+              <!-- Bulk select checkbox -->
+              <th class="bg-base-300 z-20 w-12">
+                <input
+                  type="checkbox"
+                  class="checkbox checkbox-sm"
+                  :checked="isAllSelected"
+                  :indeterminate="isSomeSelected"
+                  @change="toggleSelectAll"
+                  title="Select all"
+                />
+              </th>
+
+              <!-- Entity selector dropdown -->
               <th class="bg-base-300 z-20 w-16">
                 <div class="dropdown dropdown-right">
                   <button
@@ -74,11 +86,20 @@
               <th
                 v-for="column in displayedColumns"
                 :key="column.column_name"
-                class="bg-base-200"
+                class="bg-base-200 cursor-pointer select-none hover:bg-base-300 transition-colors"
+                @click="handleColumnSort(column.column_name, $event)"
+                :title="getSortTitle(column.column_name)"
               >
                 <div class="flex items-center gap-2">
                   <span>{{ formatColumnName(column.column_name) }}</span>
                   <span v-if="!column.is_nullable" class="text-error text-xs">*</span>
+                  <!-- Sort indicator -->
+                  <span v-if="getSortDirection(column.column_name)" class="text-xs opacity-60">
+                    {{ getSortDirection(column.column_name) === 'asc' ? '↑' : '↓' }}
+                  </span>
+                  <span v-if="getSortIndex(column.column_name) > 0" class="badge badge-xs">
+                    {{ getSortIndex(column.column_name) + 1 }}
+                  </span>
                 </div>
               </th>
 
@@ -106,10 +127,24 @@
               v-else
               v-for="record in filteredRecords"
               :key="record.id"
-              class="hover:bg-base-200/50"
+              class="hover:bg-base-200/50 cursor-pointer"
+              :class="{ 'bg-primary/10': selectedRecords.has(record.id) }"
             >
+              <!-- Bulk select checkbox -->
+              <td class="w-12" @click.stop>
+                <input
+                  type="checkbox"
+                  class="checkbox checkbox-sm"
+                  :checked="selectedRecords.has(record.id)"
+                  @change="toggleSelectRecord(record.id)"
+                />
+              </td>
+
               <!-- Row header: Primary key (read-only, no edit) -->
-              <th class="bg-base-300 font-mono text-xs text-base-content/60 w-16 text-center">
+              <th
+                class="bg-base-300 font-mono text-xs text-base-content/60 w-16 text-center"
+                @click="openRecordDetails(record)"
+              >
                 {{ record.id }}
               </th>
 
@@ -118,15 +153,18 @@
                 v-for="column in displayedColumns"
                 :key="`${record.id}-${column.column_name}`"
                 class="p-0"
+                @click="openRecordDetails(record)"
               >
-                <component
-                  :is="getCellComponent(column)"
-                  :model-value="getCellValue(record, column)"
-                  v-bind="getCellProps(column)"
-                  @update:model-value="(value) => handleCellUpdate(record, column.column_name, value)"
-                  @save="(value) => handleCellSave(record, column.column_name, value)"
-                  @navigate="(entity, id) => handleNavigate(entity, id)"
-                />
+                <div @click.stop>
+                  <component
+                    :is="getCellComponent(column)"
+                    :model-value="getCellValue(record, column)"
+                    v-bind="getCellProps(column)"
+                    @update:model-value="(value) => handleCellUpdate(record, column.column_name, value)"
+                    @save="(value) => handleCellSave(record, column.column_name, value)"
+                    @navigate="(entity, id) => handleNavigate(entity, id)"
+                  />
+                </div>
               </td>
 
               <!-- Actions -->
@@ -156,6 +194,61 @@
       :fields="formFields"
       @saved="handleRecordSaved"
     />
+
+    <!-- Filter Panel -->
+    <FilterPanel
+      v-if="selectedEntity"
+      ref="filterPanelRef"
+      v-model="showFilterPanel"
+      :columns="availableColumns"
+      @apply="handleApplyFilters"
+      @clear="handleClearFilters"
+    />
+
+    <!-- Record Details Panel -->
+    <RecordDetailsPanel
+      v-if="selectedEntity"
+      ref="detailsPanelRef"
+      v-model="showDetailsPanel"
+      :record="selectedRecord"
+      :fields="formFields"
+      @edit="handleEditFromDetails"
+      @delete="handleDeleteFromDetails"
+      @navigate="handleNavigate"
+    />
+
+    <!-- Bulk Actions Bar -->
+    <div
+      v-if="selectedRecords.size > 0"
+      class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50"
+    >
+      <div class="card bg-neutral text-neutral-content shadow-2xl">
+        <div class="card-body p-4 flex-row items-center gap-4">
+          <span class="font-semibold">
+            {{ selectedRecords.size }} record{{ selectedRecords.size > 1 ? 's' : '' }} selected
+          </span>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              class="btn btn-sm btn-error"
+              @click="handleBulkDelete"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-ghost"
+              @click="clearSelection"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -169,6 +262,11 @@ import { getCellType } from './cells/CellFactory'
 // Import air components
 import AirToolbar from './air/AirToolbar.vue'
 import RecordModal from './air/RecordModal.vue'
+import FilterPanel from './air/FilterPanel.vue'
+import RecordDetailsPanel from './air/RecordDetailsPanel.vue'
+
+// Import utilities
+import { applyFilters, applySorts } from '../utils/filterEngine.js'
 
 // Import cell components
 import TextCell from './cells/TextCell.vue'
@@ -207,6 +305,18 @@ const searchQuery = ref('')
 const hiddenColumns = ref([])
 const rowHeight = ref('normal')
 const recordModalRef = ref(null)
+
+// Phase 2 features
+const activeFilters = ref([])
+const activeSorts = ref([])
+const filterPanelRef = ref(null)
+const showFilterPanel = ref(false)
+
+// Phase 3 features
+const selectedRecords = ref(new Set())
+const selectedRecord = ref(null)
+const showDetailsPanel = ref(false)
+const detailsPanelRef = ref(null)
 
 // Computed
 const entities = computed(() => Object.keys(metaStore.entities))
@@ -256,27 +366,42 @@ const entityStore = computed(() => {
 
 const records = computed(() => entityStore.value?.records || [])
 
-// Phase 1: Filtered records (search)
+// Phase 1 + 2: Filtered and sorted records
 const filteredRecords = computed(() => {
-  if (!searchQuery.value || !records.value.length) {
-    return records.value
+  let result = records.value
+
+  // Apply search filter
+  if (searchQuery.value && result.length) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(record => {
+      return visibleColumns.value.some(column => {
+        const value = record[column.column_name]
+        if (value == null) return false
+        return String(value).toLowerCase().includes(query)
+      })
+    })
   }
 
-  const query = searchQuery.value.toLowerCase()
-  return records.value.filter(record => {
-    return visibleColumns.value.some(column => {
-      const value = record[column.column_name]
-      if (value == null) return false
-      return String(value).toLowerCase().includes(query)
-    })
-  })
+  // Apply advanced filters
+  if (activeFilters.value.length) {
+    result = applyFilters(result, activeFilters.value)
+  }
+
+  // Apply sorting
+  if (activeSorts.value.length) {
+    result = applySorts(result, activeSorts.value)
+  }
+
+  return result
 })
 
 // Phase 1: Available columns for toolbar
 const availableColumns = computed(() => {
   return visibleColumns.value.map(col => ({
     name: col.column_name,
-    label: formatColumnName(col.column_name)
+    label: formatColumnName(col.column_name),
+    dataType: col.data_type,
+    isForeignKey: col.isForeignKey
   }))
 })
 
@@ -319,6 +444,17 @@ const formFields = computed(() => {
       referencedEntity: col.referencedEntity
     }
   })
+})
+
+// Phase 3: Bulk selection helpers
+const isAllSelected = computed(() => {
+  return filteredRecords.value.length > 0 &&
+    filteredRecords.value.every(r => selectedRecords.value.has(r.id))
+})
+
+const isSomeSelected = computed(() => {
+  return !isAllSelected.value &&
+    filteredRecords.value.some(r => selectedRecords.value.has(r.id))
 })
 
 // Watch route changes to update selected entity
@@ -488,12 +624,166 @@ async function handleRecordSaved() {
   await handleEntityChange()
 }
 
-// Placeholder handlers for Phase 2 features
+// ============================================================
+// PHASE 2 HANDLERS
+// ============================================================
+
+// Filter handlers
 function toggleFilters() {
-  console.log('Filters panel - coming in Phase 2')
+  showFilterPanel.value = !showFilterPanel.value
+}
+
+function handleApplyFilters(filters) {
+  activeFilters.value = filters
+}
+
+function handleClearFilters() {
+  activeFilters.value = []
+}
+
+// Sort handlers
+function handleColumnSort(columnName, event) {
+  const shiftKey = event.shiftKey
+
+  if (!shiftKey) {
+    // Single column sort - replace all sorts
+    const existingSort = activeSorts.value.find(s => s.field === columnName)
+
+    if (!existingSort) {
+      // No sort on this column - add ascending
+      activeSorts.value = [{ field: columnName, direction: 'asc' }]
+    } else if (existingSort.direction === 'asc') {
+      // Currently ascending - change to descending
+      activeSorts.value = [{ field: columnName, direction: 'desc' }]
+    } else {
+      // Currently descending - remove sort
+      activeSorts.value = []
+    }
+  } else {
+    // Multi-column sort - add or update this column
+    const index = activeSorts.value.findIndex(s => s.field === columnName)
+
+    if (index === -1) {
+      // Add new sort
+      activeSorts.value.push({ field: columnName, direction: 'asc' })
+    } else {
+      const currentSort = activeSorts.value[index]
+      if (currentSort.direction === 'asc') {
+        // Change to descending
+        activeSorts.value[index] = { field: columnName, direction: 'desc' }
+      } else {
+        // Remove this sort
+        activeSorts.value.splice(index, 1)
+      }
+    }
+  }
+}
+
+function getSortDirection(columnName) {
+  const sort = activeSorts.value.find(s => s.field === columnName)
+  return sort?.direction || null
+}
+
+function getSortIndex(columnName) {
+  return activeSorts.value.findIndex(s => s.field === columnName)
+}
+
+function getSortTitle(columnName) {
+  const direction = getSortDirection(columnName)
+  const index = getSortIndex(columnName)
+
+  if (!direction) {
+    return 'Click to sort ascending, Shift+Click for multi-sort'
+  }
+
+  let title = `Sorted ${direction === 'asc' ? 'ascending' : 'descending'}`
+  if (index > 0) {
+    title += ` (${index + 1})`
+  }
+  title += '\nClick to change, Shift+Click for multi-sort'
+  return title
 }
 
 function toggleSort() {
-  console.log('Sort panel - coming in Phase 2')
+  // Clear all sorting
+  activeSorts.value = []
+}
+
+// ============================================================
+// PHASE 3 HANDLERS
+// ============================================================
+
+// Bulk selection handlers
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    // Deselect all
+    selectedRecords.value.clear()
+  } else {
+    // Select all filtered records
+    filteredRecords.value.forEach(record => {
+      selectedRecords.value.add(record.id)
+    })
+  }
+}
+
+function toggleSelectRecord(id) {
+  if (selectedRecords.value.has(id)) {
+    selectedRecords.value.delete(id)
+  } else {
+    selectedRecords.value.add(id)
+  }
+}
+
+function clearSelection() {
+  selectedRecords.value.clear()
+}
+
+async function handleBulkDelete() {
+  const count = selectedRecords.value.size
+  if (!confirm(`Are you sure you want to delete ${count} record${count > 1 ? 's' : ''}?`)) {
+    return
+  }
+
+  try {
+    // Delete all selected records
+    const deletePromises = Array.from(selectedRecords.value).map(id =>
+      entityStore.value.delete(id)
+    )
+    await Promise.all(deletePromises)
+
+    // Clear selection
+    selectedRecords.value.clear()
+
+    // Refresh data
+    await handleEntityChange()
+  } catch (err) {
+    console.error('Failed to delete records:', err)
+    alert('Failed to delete some records. Please try again.')
+  }
+}
+
+// Record details panel handlers
+function openRecordDetails(record) {
+  selectedRecord.value = record
+  showDetailsPanel.value = true
+}
+
+function handleEditFromDetails(record) {
+  // Open the record modal in edit mode
+  recordModalRef.value?.open()
+  // The modal should be populated with the record data
+  // This might need adjustment based on RecordModal implementation
+}
+
+async function handleDeleteFromDetails(record) {
+  try {
+    await entityStore.value.delete(record.id)
+    showDetailsPanel.value = false
+    selectedRecord.value = null
+    await handleEntityChange()
+  } catch (err) {
+    console.error('Failed to delete record:', err)
+    alert('Failed to delete record. Please try again.')
+  }
 }
 </script>
