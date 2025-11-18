@@ -31,18 +31,29 @@
         <table class="table table-pin-rows table-pin-cols table-xs">
           <thead>
             <tr>
-              <!-- Top-left corner: Entity selector -->
-              <th class="bg-base-300 z-20">
-                <select
-                  v-model="selectedEntity"
-                  class="select select-bordered select-xs w-full max-w-xs"
-                  @change="handleEntityChange"
-                >
-                  <option disabled :value="null">Select entity...</option>
-                  <option v-for="entity in entities" :key="entity" :value="entity">
-                    {{ formatEntityName(entity) }}
-                  </option>
-                </select>
+              <!-- Top-left corner: Entity selector dropdown -->
+              <th class="bg-base-300 z-20 w-16">
+                <div class="dropdown dropdown-right">
+                  <button
+                    tabindex="0"
+                    class="btn btn-ghost btn-xs"
+                    title="Select entity"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <ul tabindex="0" class="dropdown-content z-50 menu p-2 shadow-lg bg-base-100 rounded-box w-52 max-h-96 overflow-y-auto">
+                    <li v-for="entity in entities" :key="entity">
+                      <a
+                        @click="selectEntity(entity)"
+                        :class="{ 'active': entity === selectedEntity }"
+                      >
+                        {{ formatEntityName(entity) }}
+                      </a>
+                    </li>
+                  </ul>
+                </div>
               </th>
 
               <!-- Column headers -->
@@ -84,7 +95,7 @@
               class="hover:bg-base-200/50"
             >
               <!-- Row header: Primary key (read-only, no edit) -->
-              <th class="bg-base-300 font-mono text-sm text-base-content/60">
+              <th class="bg-base-300 font-mono text-xs text-base-content/60 w-16 text-center">
                 {{ record.id }}
               </th>
 
@@ -208,6 +219,12 @@ const handleAuth = async (profile) => {
   // Profile is already set by wsStore.login()
   // Fetch metadata
   await metaStore.fetchMetadata()
+}
+
+// Select entity from dropdown
+async function selectEntity(entity) {
+  selectedEntity.value = entity
+  await handleEntityChange()
 }
 
 // Handle entity change
