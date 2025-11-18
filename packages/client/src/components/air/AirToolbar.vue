@@ -8,13 +8,13 @@
     <!-- Center: Search and actions -->
     <div class="navbar-center flex-1 flex gap-2">
       <!-- Search box -->
-      <div class="form-control flex-1 max-w-md">
+      <div class="form-control flex-1 max-w-2xl">
         <div class="join">
           <input
             v-model="searchQuery"
             type="text"
             placeholder="Search records..."
-            class="input input-bordered input-sm join-item w-full"
+            class="input input-bordered input-sm join-item w-full min-w-3xs"
             @input="handleSearch"
           />
           <button
