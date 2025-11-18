@@ -61,9 +61,9 @@ All change detection happens in PostgreSQL - zero configuration needed on the se
 
 ## Next Steps
 
-- [Full Documentation](./LIVE_QUERY_SUBSCRIPTIONS.md)
-- [Permission Paths Guide](./PATH_DSL.md)
-- [Example Subscribables](../packages/dzql/examples/subscribables/)
+- [Full Documentation](../guides/subscriptions.md)
+- [Permission Paths Guide](../../../../docs/architecture/PERMISSIONS.md)
+- [API Reference](../reference/api.md)
 
 ## Common Patterns
 

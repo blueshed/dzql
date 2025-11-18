@@ -154,7 +154,7 @@ You now have:
 
 ## Next Steps
 
-- Read [CLIENT-STORES.md](./CLIENT-STORES.md) for complete API reference
+- Read [Client Stores Guide](../guides/client-stores.md) for complete API reference
 - Customize the App.vue template
 - Add your own components
 - Style with Tailwind/DaisyUI
@@ -179,5 +179,5 @@ Check `packages/client` for a complete working example.
 ## Help
 
 For more help, see:
-- [CLIENT-STORES.md](./CLIENT-STORES.md) - Complete documentation
+- [Client Stores Guide](../guides/client-stores.md) - Complete documentation
 - [GitHub Issues](https://github.com/blueshed/dzql/issues)

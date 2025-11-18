@@ -93,4 +93,4 @@ export TEST_DATABASE_URL=postgres://postgres@localhost:5432/dzql_test
 bun test
 ```
 
-See `docs/CLAUDE-WEB.md` for complete setup instructions.
+See `../../../../docs/development/CLAUDE-WEB.md` for complete setup instructions.

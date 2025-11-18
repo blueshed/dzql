@@ -1,6 +1,6 @@
 # DZQL API Reference
 
-Complete API documentation for DZQL framework. For tutorials, see [GETTING_STARTED.md](GETTING_STARTED.md). For AI development guide, see [CLAUDE.md](../../docs/CLAUDE.md).
+Complete API documentation for DZQL framework. For tutorials, see [Getting Started Tutorial](../getting-started/tutorial.md). For AI development guide, see [Claude Guide](../for-ai/claude-guide.md).
 
 ## Table of Contents
 
@@ -869,7 +869,7 @@ ws.onBroadcast((method, params) => {
 
 Subscribe to denormalized documents and receive automatic updates when underlying data changes. Subscriptions use a PostgreSQL-first architecture where all change detection happens in the database.
 
-For complete documentation, see **[Live Query Subscriptions Guide](../../../docs/LIVE_QUERY_SUBSCRIPTIONS.md)** and **[Quick Start](../../../docs/SUBSCRIPTIONS_QUICK_START.md)**.
+For complete documentation, see **[Live Query Subscriptions Guide](../guides/subscriptions.md)** and **[Quick Start](../getting-started/subscriptions-quick-start.md)**.
 
 ### Quick Example
 
@@ -997,8 +997,8 @@ SELECT dzql.register_subscribable(
 
 ### See Also
 
-- **[Live Query Subscriptions Guide](../../../docs/LIVE_QUERY_SUBSCRIPTIONS.md)** - Complete reference
-- **[Quick Start Guide](../../../docs/SUBSCRIPTIONS_QUICK_START.md)** - 5-minute tutorial
+- **[Live Query Subscriptions Guide](../guides/subscriptions.md)** - Complete reference
+- **[Quick Start Guide](../getting-started/subscriptions-quick-start.md)** - 5-minute tutorial
 - **[Permission Paths](#permission--notification-paths)** - Path DSL syntax
 
 ---
@@ -1093,7 +1093,7 @@ const result = await db.api.myCustomFunction({param: 'value'}, userId);
 
 ## See Also
 
-- [GETTING_STARTED.md](GETTING_STARTED.md) - Hands-on tutorial
-- [CLAUDE.md](../../docs/CLAUDE.md) - AI development guide
-- [README.md](../../README.md) - Project overview
-- [Venues Example](../venues/) - Complete working application
+- [Getting Started Tutorial](../getting-started/tutorial.md) - Hands-on tutorial
+- [Claude Guide](../for-ai/claude-guide.md) - AI development guide
+- [Project README](../../../../README.md) - Project overview
+- [Venues Example](../../../venues/) - Complete working application

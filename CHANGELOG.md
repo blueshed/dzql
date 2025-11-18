@@ -61,10 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Returns `{ data, subscription_id, unsubscribe }` object
 
 - **Documentation**
-  - Complete subscription guide at `docs/LIVE_QUERY_SUBSCRIPTIONS.md`
-  - Quick start guide at `docs/SUBSCRIPTIONS_QUICK_START.md`
+  - Complete subscription guide at `packages/dzql/docs/guides/subscriptions.md`
+  - Quick start guide at `packages/dzql/docs/getting-started/subscriptions-quick-start.md`
   - Updated API reference with subscription examples
-  - Strategy document for architecture decisions
+  - Strategy document at `docs/architecture/SUBSCRIPTIONS_STRATEGY.md`
 
 ### Performance
 - Subscription compilation: 1-3ms per subscribable

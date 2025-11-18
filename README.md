@@ -69,8 +69,8 @@ When your AI registers an entity with DZQL, it unlocks a powerful set of feature
 
 Your journey starts here. This documentation provides the conceptual overview you need to direct your AI.
 
-*   **[Getting Started](packages/dzql/GETTING_STARTED.md)**: A step-by-step tutorial to set up your first DZQL project.
-*   **[The DZQL Philosophy](docs/CLAUDE.md)**: A deeper look at the concepts behind the framework.
+*   **[Getting Started Tutorial](packages/dzql/docs/getting-started/tutorial.md)**: A step-by-step tutorial to set up your first DZQL project.
+*   **[Documentation Hub](packages/dzql/docs/)**: Complete user documentation, guides, and reference.
 *   **Example Applications**:
     *   **[Streaks](packages/streaks/domain.md)**: A social habit-tracking app.
     *   **[Venues](packages/venues/)**: A venue management system.
@@ -79,8 +79,9 @@ Your journey starts here. This documentation provides the conceptual overview yo
 
 This section contains the dense, precise technical details needed for code generation. Provide the relevant links to your AI assistant.
 
-*   **[Technical Reference](packages/dzql/REFERENCE.md)**: The complete API reference, including the `dzql.register_entity` function signature and all available operations.
-*   **[Permission Path DSL Grammar](docs/PERMISSIONS.md)**: The complete syntax for defining permission paths.
+*   **[Claude Guide](packages/dzql/docs/for-ai/claude-guide.md)**: Complete guide for AI-assisted DZQL development.
+*   **[API Reference](packages/dzql/docs/reference/api.md)**: The complete API reference, including the `dzql.register_entity` function signature and all available operations.
+*   **[Permission Path DSL Grammar](docs/architecture/PERMISSIONS.md)**: The complete syntax for defining permission paths.
 *   **[Database Schema & Migrations](packages/dzql/src/database/migrations/)**: The core database schema that DZQL builds upon.
 
 ---
@@ -91,6 +92,8 @@ This section contains the dense, precise technical details needed for code gener
 
 *   **License**: [MIT](LICENSE)
 *   **Issues**: [GitHub Issues](https://github.com/blueshed/dzql/issues)
-*   **Roadmap**: [Project Roadmap](docs/ROADMAP.md)
+*   **Roadmap**: [Project Roadmap](docs/architecture/ROADMAP.md)
+*   **Changelog**: [Release History](CHANGELOG.md)
+*   **Contributing**: [Contribution Guidelines](CONTRIBUTING.md)
 
-**Ready to build the future?** Start with the [Getting Started Guide](packages/dzql/GETTING_STARTED.md) 🚀
+**Ready to build the future?** Start with the [Getting Started Guide](packages/dzql/docs/getting-started/tutorial.md) 🚀

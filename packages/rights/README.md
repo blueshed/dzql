@@ -190,8 +190,8 @@ Events system generating proper composite key structures
 ## Related Documentation
 
 - **Test Coverage Analysis**: [TEST_COVERAGE.md](./TEST_COVERAGE.md)
-- **TDD Workflow**: [../../TDD_WORKFLOW.md](../../TDD_WORKFLOW.md)
-- **DZQL Reference**: [../dzql/REFERENCE.md](../dzql/REFERENCE.md)
+- **TDD Workflow**: [../../docs/development/TDD_WORKFLOW.md](../../docs/development/TDD_WORKFLOW.md)
+- **DZQL API Reference**: [../dzql/docs/reference/api.md](../dzql/docs/reference/api.md)
 - **GitHub Actions CI**: [../../.github/workflows/ci.yml](../../.github/workflows/ci.yml)
 
 ## Contributing

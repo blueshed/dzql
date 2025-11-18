@@ -60,8 +60,8 @@ const venues = await ws.api.search.venues({ limit: 50 })
 
 ## Documentation
 
-- **[Quick Start](../../../docs/CLIENT-QUICK-START.md)** - Get running in 5 minutes
-- **[Complete Guide](../../../docs/CLIENT-STORES.md)** - Full API reference and patterns
+- **[Quick Start](../../../docs/reference/client.md)** - Get running in 5 minutes
+- **[Complete Guide](../../../docs/guides/client-stores.md)** - Full API reference and patterns
 
 ## Files
 

@@ -114,11 +114,11 @@ Updated all references to use:
 - Correct file paths (`src/compiler/cli/` and `tests/subscriptions/`)
 
 **Updated Files**:
-- `packages/dzql/docs/SUBSCRIPTIONS_QUICK_START.md`
-- `packages/dzql/docs/REFERENCE.md`
-- `packages/dzql/docs/LIVE_QUERY_SUBSCRIPTIONS.md`
+- `packages/dzql/docs/getting-started/subscriptions-quick-start.md`
+- `packages/dzql/docs/reference/api.md`
+- `packages/dzql/docs/guides/subscriptions.md`
 - `docs/RELEASE_NOTES_v0.2.0.md`
-- `docs/TESTING_REPORT.md`
+- `docs/development/TESTING_REPORT.md`
 - `packages/dzql/README.md` - Added Testing section
 
 ## Breaking Changes

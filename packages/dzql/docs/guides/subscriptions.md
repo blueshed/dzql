@@ -529,7 +529,7 @@ ws.api.subscribe_venue_detail(
 
 ## See Also
 
-- [Vision Document](../vision.md) - Architecture overview and patterns
-- [Path DSL](./PATH_DSL.md) - Permission path syntax
-- [WebSocket API](./WEBSOCKET_API.md) - Full WebSocket protocol reference
-- [Compiler Reference](./COMPILER.md) - Code generation details
+- [Vision Document](../../../../vision.md) - Architecture overview and patterns
+- [Permission Paths](../../../../docs/architecture/PERMISSIONS.md) - Permission path DSL syntax
+- [Subscription Architecture](../../../../docs/architecture/SUBSCRIPTIONS_STRATEGY.md) - Design decisions
+- [Compiler Documentation](../compiler/) - Code generation and compilation guide
