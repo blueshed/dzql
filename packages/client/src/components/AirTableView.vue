@@ -230,6 +230,12 @@ const handleAuth = async (profile) => {
   if (route.params.entity) {
     selectedEntity.value = route.params.entity
     await handleEntityChange()
+  } else {
+    // Auto-select first entity if no route param
+    const firstEntity = Object.keys(metaStore.entities)[0]
+    if (firstEntity) {
+      router.push({ name: 'entity', params: { entity: firstEntity } })
+    }
   }
 }
 
