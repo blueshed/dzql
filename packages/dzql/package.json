@@ -1,12 +1,14 @@
 {
   "name": "dzql",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "PostgreSQL-powered framework with zero boilerplate CRUD operations and real-time WebSocket synchronization",
   "type": "module",
   "main": "src/server/index.js",
   "exports": {
     ".": "./src/server/index.js",
     "./client": "./src/client/ws.js",
+    "./client/stores": "./src/client/stores/index.js",
+    "./client/templates": "./src/client/templates/App.vue",
     "./server": "./src/server/index.js",
     "./db": "./src/server/db.js",
     "./compiler": "./src/compiler/index.js"

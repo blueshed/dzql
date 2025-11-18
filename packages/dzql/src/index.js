@@ -1,19 +1,40 @@
-// ZeroQL Framework - Main Entry Point
-export { createServer } from './server/index.js';
+#!/usr/bin/env bun
+/**
+ * DZQL Demo Server
+ *
+ * Minimal example server that serves demo.html and provides WebSocket functionality.
+ * Run with: bun packages/dzql/src/index.js
+ */
 
-// Re-export client utilities
-export { WebSocketManager, useWs } from './client/ws.js';
+import { createServer } from './server/index.js';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-// Re-export UI framework
-export { mount, state, Component } from './client/ui.js';
-export { loadUI, loadEntityUI } from './client/ui-loader.js';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-// Re-export database utilities for tests and custom functions
-export { sql, listen_sql, db } from './server/db.js';
-export { createWebSocketHandlers, verify_jwt_token } from './server/ws.js';
+// Path to demo.html
+const demoPath = join(__dirname, 'client/demo.html');
 
-// Re-export meta route for applications
-export { metaRoute } from './server/meta-route.js';
+// Create DZQL server with demo route
+const app = createServer({
+  port: 3000,
+  routes: {
+    '/': async () => {
+      const file = Bun.file(demoPath);
+      return new Response(file, {
+        headers: { 'Content-Type': 'text/html' }
+      });
+    },
+    '/demo': async () => {
+      const file = Bun.file(demoPath);
+      return new Response(file, {
+        headers: { 'Content-Type': 'text/html' }
+      });
+    }
+  }
+});
 
-// Re-export MCP route for Claude Code integration
-export { createMCPRoute } from './server/mcp.js';
+console.log('🚀 DZQL Demo Server running');
+console.log('📝 Visit http://localhost:3000 to see the demo');
+console.log('🔌 WebSocket available at ws://localhost:3000/ws');

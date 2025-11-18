@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DZQL Declarative UI - Dynamic Configuration Demo</title>
+    <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1>🚀 DZQL Declarative UI Framework</h1>
+            <p>Build adaptive, data-driven interfaces with JSON configurations</p>
+            <span id="connectionStatus" class="status disconnected">Disconnected</span>
+        </div>
+
+        <div class="config-selector">
+            <h2>📦 Pre-built UI Configurations</h2>
+            <div class="config-grid">
+                <div class="config-card" onclick="loadPrebuiltConfig('venue-manager')">
+                    <h3>🏛️ Venue Manager</h3>
+                    <p>Complete venue management interface with CRUD operations</p>
+                </div>
+                <div class="config-card" onclick="loadPrebuiltConfig('simple-search')">
+                    <h3>🔍 Simple Search</h3>
+                    <p>Basic search interface for any entity</p>
+                </div>
+                <div class="config-card" onclick="loadPrebuiltConfig('dashboard')">
+                    <h3>📊 Dashboard</h3>
+                    <p>Analytics dashboard with real-time updates</p>
+                </div>
+                <div class="config-card" onclick="loadPrebuiltConfig('form-builder')">
+                    <h3>📝 Dynamic Form</h3>
+                    <p>Configurable form with validation</p>
+                </div>
+            </div>
+            <div class="config-controls">
+                <button onclick="loadFromUrl()">Load from URL</button>
+                <button onclick="generateFromEntity()">Generate from Entity</button>
+                <button class="secondary" onclick="clearUI()">Clear UI</button>
+            </div>
+        </div>
+
+        <div class="inline-config">
+            <h2>✏️ Live JSON Configuration Editor</h2>
+            <textarea id="configEditor" placeholder="Paste or write your UI configuration JSON here...">{
+  "type": "container",
+  "class": "custom-ui",
+  "children": [
+    {
+      "type": "h1",
+      "text": "Hello DZQL!"
+    },
+    {
+      "type": "p",
+      "text": "Edit this JSON and click 'Apply Configuration' to see changes instantly."
+    },
+    {
+      "type": "button",
+      "text": "Click Me",
+      "onClick": {
+        "actions": [
+          {
+            "type": "alert",
+            "message": "Button clicked!"
+          }
+        ]
+      }
+    }
+  ]
+}</textarea>
+            <div style="margin-top: 10px;">
+                <button onclick="applyInlineConfig()">Apply Configuration</button>
+                <button class="secondary" onclick="formatJSON()">Format JSON</button>
+                <button class="secondary" onclick="validateJSON()">Validate JSON</button>
+            </div>
+            <div id="configError"></div>
+        </div>
+
+        <div id="app">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Connecting to DZQL...</p>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="demo.js"></script>
+</body>
+</html>

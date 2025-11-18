@@ -216,6 +216,111 @@ describe('DZQLCompiler', () => {
   });
 });
 
+  test('does not generate graph function calls when graph_rules is empty', () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: 'events',
+      labelField: 'title',
+      searchableFields: ['title', 'description'],
+      fkIncludes: { resource: 'resources' },
+      softDelete: false,
+      graphRules: {},  // Empty graph rules
+      notificationPaths: { ownership: ['@owner_id'] },
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: ['@owner_id'],
+        delete: ['@owner_id']
+      }
+    };
+
+    const result = compiler.compile(entity);
+
+    // Should NOT contain graph function calls when graph_rules is empty
+    expect(result.sql).not.toContain('_graph_events_on_create');
+    expect(result.sql).not.toContain('_graph_events_on_update');
+    expect(result.sql).not.toContain('_graph_events_on_delete');
+
+    // Should still contain the save function
+    expect(result.sql).toContain('CREATE OR REPLACE FUNCTION save_events');
+
+    // Should NOT contain PERFORM calls to graph functions
+    expect(result.sql).not.toContain('PERFORM _graph_events_on_create(');
+    expect(result.sql).not.toContain('PERFORM _graph_events_on_update(');
+    expect(result.sql).not.toContain('PERFORM _graph_events_on_delete(');
+  });
+
+  test('handles null and undefined configuration fields gracefully', () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: 'minimal',
+      labelField: 'name',
+      searchableFields: ['name'],
+      // Test with various empty/null/undefined values
+      fkIncludes: null,
+      temporalFields: undefined,
+      notificationPaths: {},
+      permissionPaths: {},
+      graphRules: null
+    };
+
+    const result = compiler.compile(entity);
+
+    // Should compile successfully
+    expect(result.tableName).toBe('minimal');
+    expect(result.sql).toContain('CREATE OR REPLACE FUNCTION get_minimal');
+    expect(result.sql).toContain('CREATE OR REPLACE FUNCTION save_minimal');
+
+    // Should not have any graph function calls
+    expect(result.sql).not.toContain('_graph_minimal_');
+
+    // Should still have permission functions (they're always generated)
+    expect(result.sql).toContain('can_view_minimal');
+    expect(result.sql).toContain('can_create_minimal');
+  });
+
+  test('generates graph function calls only when graph_rules has actions', () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: 'tasks',
+      labelField: 'title',
+      searchableFields: ['title'],
+      graphRules: {
+        on_create: {
+          notify_owner: {
+            description: 'Notify owner of new task',
+            actions: [
+              {
+                type: 'execute',
+                function: 'notify_user',
+                params: { user_id: '@owner_id', message: 'New task created' }
+              }
+            ]
+          }
+        }
+      },
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: ['@owner_id'],
+        delete: ['@owner_id']
+      }
+    };
+
+    const result = compiler.compile(entity);
+
+    // SHOULD contain graph function when rules have actions
+    expect(result.sql).toContain('CREATE OR REPLACE FUNCTION _graph_tasks_on_create');
+    expect(result.sql).toContain('PERFORM _graph_tasks_on_create(');
+
+    // Should NOT contain on_update or on_delete since they weren't defined
+    expect(result.sql).not.toContain('_graph_tasks_on_update');
+    expect(result.sql).not.toContain('_graph_tasks_on_delete');
+  });
+
 describe('Integration tests', () => {
   test('can compile venues domain', () => {
     const compiler = new DZQLCompiler();

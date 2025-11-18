@@ -22,6 +22,7 @@
     "rights:db": "cd packages/rights && bun db",
     "rights:logs": "bun run --cwd packages/rights db:logs",
     "down": "cd packages/venues && bun db:down && cd ../rights && bun db:down",
+    "demo": "cd packages/client/demo && bun --watch index.js",
     "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist packages/*/.turbo .turbo"
   },
   "devDependencies": {

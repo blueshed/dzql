@@ -386,6 +386,31 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   }
 
   /**
+   * Check if a trigger has any rules with actions
+   * @private
+   */
+  _hasGraphRuleActions(trigger) {
+    const rules = this.entity.graphRules[trigger];
+    if (!rules || typeof rules !== 'object') {
+      return false;
+    }
+
+    // Check if any rule has actions
+    for (const ruleConfig of Object.values(rules)) {
+      if (ruleConfig && ruleConfig.actions) {
+        const actions = Array.isArray(ruleConfig.actions)
+          ? ruleConfig.actions
+          : [ruleConfig.actions];
+        if (actions.length > 0) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Generate graph rules call
    * @private
    */
@@ -396,7 +421,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
 
     // For DELETE operation
     if (operation === 'delete') {
-      if (this.entity.graphRules.on_delete) {
+      if (this._hasGraphRuleActions('on_delete')) {
         return `
   -- Execute graph rules: on_delete
   PERFORM _graph_${this.tableName}_on_delete(p_user_id, to_jsonb(v_result));`;
@@ -407,7 +432,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     // For SAVE operation (create/update)
     const calls = [];
 
-    if (this.entity.graphRules.on_create) {
+    if (this._hasGraphRuleActions('on_create')) {
       calls.push(`
   -- Execute graph rules: on_create (if insert)
   IF v_is_insert THEN
@@ -415,7 +440,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   END IF;`);
     }
 
-    if (this.entity.graphRules.on_update) {
+    if (this._hasGraphRuleActions('on_update')) {
       calls.push(`
   -- Execute graph rules: on_update (if update)
   IF NOT v_is_insert THEN
