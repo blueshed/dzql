@@ -228,10 +228,8 @@ const handleAuth = async (profile) => {
 }
 
 // Watch route changes to update selected entity
-// Component handles three-phase display, watcher only runs when ready
+// Component only mounts when state === 'ready' (see template v-else-if)
 watch(() => route.params.entity, async (newEntity) => {
-  if (state.value !== 'ready') return
-
   if (!newEntity) {
     // No entity in route - auto-select first entity
     const firstEntity = Object.keys(metaStore.entities)[0]
