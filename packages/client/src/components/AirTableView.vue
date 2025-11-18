@@ -8,11 +8,11 @@
           <p class="text-sm text-base-content/60">Spreadsheet interface for your data</p>
           <div class="form-control">
             <label class="label">
-              <span class="label-text">Username</span>
+              <span class="label-text">Email</span>
             </label>
             <input
-              v-model="username"
-              type="text"
+              v-model="email"
+              type="email"
               class="input input-bordered"
               @keydown.enter="login"
             />
@@ -186,8 +186,8 @@ const wsStore = useWsStore()
 const metaStore = useMetaStore()
 
 // Auth state
-const username = ref('admin')
-const password = ref('admin')
+const email = ref('test@example.com')
+const password = ref('password123')
 const loading = ref(false)
 const error = ref(null)
 const isAuthenticated = ref(false)
@@ -227,8 +227,8 @@ async function login() {
     // Connect to WebSocket
     await wsStore.connect('ws://localhost:3000/ws')
 
-    // Login
-    await wsStore.login(username.value, password.value)
+    // Login with proper format
+    await wsStore.login({ email: email.value, password: password.value })
 
     // Fetch metadata
     await metaStore.fetchMetadata()
