@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { createPinia } from 'pinia'
 import { useProfileStore } from '../src/stores/main'
+import AirApp from '../src/components/AirApp.vue'
 import AirTableView from '../src/components/AirTableView.vue'
 import '../src/style.css'
 
@@ -31,7 +32,7 @@ const router = createRouter({
   ]
 })
 
-const app = createApp(AirTableView)
+const app = createApp(AirApp)
 
 app.use(pinia)
 app.use(router)

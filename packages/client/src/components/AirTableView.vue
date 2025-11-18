@@ -1,18 +1,6 @@
 <template>
   <div class="h-screen w-screen flex flex-col bg-base-200">
-    <!-- Connecting State -->
-    <div v-if="state === 'connecting'" class="flex-1 flex items-center justify-center">
-      <div class="text-center">
-        <span class="loading loading-spinner loading-lg text-primary"></span>
-        <p class="mt-4 text-base-content">Connecting to server...</p>
-      </div>
-    </div>
-
-    <!-- Login Screen -->
-    <LoginView v-else-if="state === 'login'" @authenticated="handleAuth" />
-
-    <!-- Spreadsheet View -->
-    <div v-else-if="state === 'ready'" class="flex-1 overflow-hidden">
+    <div class="flex-1 overflow-hidden">
       <!-- Loading state -->
       <div v-if="loading" class="flex items-center justify-center h-full">
         <span class="loading loading-spinner loading-lg"></span>
@@ -138,13 +126,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, markRaw, onMounted } from 'vue'
+import { ref, computed, watch, markRaw } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useWsStore } from 'dzql/client/stores'
 import { useMetaStore } from '../stores/meta'
 import { useEntityStore } from '../stores/entityFactory'
 import { getCellType } from './cells/CellFactory'
-import LoginView from './LoginView.vue'
 
 // Import cell components
 import TextCell from './cells/TextCell.vue'
@@ -170,11 +156,8 @@ const cellComponents = {
 
 const router = useRouter()
 const route = useRoute()
-const wsStore = useWsStore()
 const metaStore = useMetaStore()
 
-// Use canonical store state
-const state = computed(() => wsStore.appState)
 const loading = ref(false)
 
 // Spreadsheet state
@@ -220,34 +203,23 @@ const entityStore = computed(() => {
 
 const records = computed(() => entityStore.value?.records || [])
 
-// Handle authentication
-const handleAuth = async (profile) => {
-  // Profile is already set by wsStore.login()
-  // Fetch metadata
-  await metaStore.fetchMetadata()
-
-  // Now handle initial route - websocket is ready
-  const entityParam = route.params.entity
-  if (entityParam) {
-    selectedEntity.value = entityParam
-    await handleEntityChange()
-  } else {
-    // Auto-select first entity if no route param
+// Watch route changes to update selected entity
+// Component only mounts when state === 'ready', so websocket is connected
+watch(() => route.params.entity, async (newEntity) => {
+  if (!newEntity) {
+    // No entity in route - auto-select first entity
     const firstEntity = Object.keys(metaStore.entities)[0]
     if (firstEntity) {
       router.push({ name: 'entity', params: { entity: firstEntity } })
     }
+    return
   }
-}
 
-// Watch route changes to update selected entity (subsequent changes only)
-watch(() => route.params.entity, async (newEntity) => {
-  if (!newEntity) return
   if (newEntity === selectedEntity.value) return
 
   selectedEntity.value = newEntity
   await handleEntityChange()
-})
+}, { immediate: true })
 
 // Close dropdown after navigation
 router.afterEach(() => {
