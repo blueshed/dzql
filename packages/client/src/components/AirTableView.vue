@@ -139,6 +139,7 @@
 
 <script setup>
 import { ref, computed, watch, markRaw, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useWsStore } from 'dzql/client/stores'
 import { useMetaStore } from '../stores/meta'
 import { useEntityStore } from '../stores/entityFactory'
@@ -167,6 +168,8 @@ const cellComponents = {
   TextAreaCell: markRaw(TextAreaCell)
 }
 
+const router = useRouter()
+const route = useRoute()
 const wsStore = useWsStore()
 const metaStore = useMetaStore()
 
@@ -222,15 +225,29 @@ const handleAuth = async (profile) => {
   // Profile is already set by wsStore.login()
   // Fetch metadata
   await metaStore.fetchMetadata()
+
+  // Load entity from route if available
+  if (route.params.entity) {
+    selectedEntity.value = route.params.entity
+    await handleEntityChange()
+  }
 }
+
+// Watch route changes to update selected entity
+watch(() => route.params.entity, (newEntity) => {
+  if (newEntity && newEntity !== selectedEntity.value) {
+    selectedEntity.value = newEntity
+    handleEntityChange()
+  }
+})
 
 // Select entity from dropdown
 async function selectEntity(entity) {
   // Blur the dropdown trigger to close the dropdown
   dropdownTrigger.value?.blur()
 
-  selectedEntity.value = entity
-  await handleEntityChange()
+  // Update route instead of directly changing state
+  router.push({ name: 'entity', params: { entity } })
 }
 
 // Handle entity change
@@ -328,12 +345,7 @@ async function handleDelete(record) {
 
 // Handle navigation from foreign key cells
 async function handleNavigate(entity, id) {
-  // Switch to the referenced entity
-  selectedEntity.value = entity
-
-  // Load records for that entity
-  await handleEntityChange()
-
-  // TODO: Could scroll to the specific record with that ID
+  // Navigate using router - this will trigger the route watcher
+  router.push({ name: 'entity-record', params: { entity, id } })
 }
 </script>
