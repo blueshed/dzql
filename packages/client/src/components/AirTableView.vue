@@ -1,5 +1,24 @@
 <template>
   <div class="h-screen w-screen flex flex-col bg-base-200">
+    <!-- Toolbar -->
+    <AirToolbar
+      v-if="selectedEntity"
+      :entity="selectedEntity"
+      :available-columns="availableColumns"
+      :hidden-columns="hiddenColumns"
+      :filter-count="0"
+      :sort-count="0"
+      :row-height="rowHeight"
+      @add-record="openAddRecordModal"
+      @search="handleSearch"
+      @clear-search="clearSearch"
+      @toggle-filters="toggleFilters"
+      @toggle-sort="toggleSort"
+      @toggle-column="toggleColumn"
+      @show-all-columns="showAllColumns"
+      @set-row-height="setRowHeight"
+    />
+
     <div class="flex-1 overflow-hidden">
       <!-- Loading state -->
       <div v-if="loading" class="flex items-center justify-center h-full">
@@ -16,7 +35,14 @@
 
       <!-- Spreadsheet -->
       <div v-else class="h-full w-full overflow-auto">
-        <table class="table table-pin-rows table-pin-cols table-xs">
+        <table
+          class="table table-pin-rows table-pin-cols"
+          :class="{
+            'table-xs': rowHeight === 'compact',
+            'table-sm': rowHeight === 'normal',
+            'table-md': rowHeight === 'expanded'
+          }"
+        >
           <thead>
             <tr>
               <!-- Top-left corner: Entity selector dropdown -->
@@ -46,7 +72,7 @@
 
               <!-- Column headers -->
               <th
-                v-for="column in visibleColumns"
+                v-for="column in displayedColumns"
                 :key="column.column_name"
                 class="bg-base-200"
               >
@@ -78,7 +104,7 @@
             <!-- Data rows -->
             <tr
               v-else
-              v-for="record in records"
+              v-for="record in filteredRecords"
               :key="record.id"
               class="hover:bg-base-200/50"
             >
@@ -89,7 +115,7 @@
 
               <!-- Data cells -->
               <td
-                v-for="column in visibleColumns"
+                v-for="column in displayedColumns"
                 :key="`${record.id}-${column.column_name}`"
                 class="p-0"
               >
@@ -121,6 +147,15 @@
         </table>
       </div>
     </div>
+
+    <!-- Add/Edit Record Modal -->
+    <RecordModal
+      v-if="selectedEntity"
+      ref="recordModalRef"
+      :entity="selectedEntity"
+      :fields="formFields"
+      @saved="handleRecordSaved"
+    />
   </div>
 </template>
 
@@ -130,6 +165,10 @@ import { useRouter, useRoute } from 'vue-router'
 import { useMetaStore } from '../stores/meta'
 import { useEntityStore } from '../stores/entityFactory'
 import { getCellType } from './cells/CellFactory'
+
+// Import air components
+import AirToolbar from './air/AirToolbar.vue'
+import RecordModal from './air/RecordModal.vue'
 
 // Import cell components
 import TextCell from './cells/TextCell.vue'
@@ -162,6 +201,12 @@ const loading = ref(false)
 // Spreadsheet state
 const selectedEntity = ref(null)
 const recordsLoading = ref(false)
+
+// Phase 1 features
+const searchQuery = ref('')
+const hiddenColumns = ref([])
+const rowHeight = ref('normal')
+const recordModalRef = ref(null)
 
 // Computed
 const entities = computed(() => Object.keys(metaStore.entities))
@@ -210,6 +255,71 @@ const entityStore = computed(() => {
 })
 
 const records = computed(() => entityStore.value?.records || [])
+
+// Phase 1: Filtered records (search)
+const filteredRecords = computed(() => {
+  if (!searchQuery.value || !records.value.length) {
+    return records.value
+  }
+
+  const query = searchQuery.value.toLowerCase()
+  return records.value.filter(record => {
+    return visibleColumns.value.some(column => {
+      const value = record[column.column_name]
+      if (value == null) return false
+      return String(value).toLowerCase().includes(query)
+    })
+  })
+})
+
+// Phase 1: Available columns for toolbar
+const availableColumns = computed(() => {
+  return visibleColumns.value.map(col => ({
+    name: col.column_name,
+    label: formatColumnName(col.column_name)
+  }))
+})
+
+// Phase 1: Displayed columns (excluding hidden ones)
+const displayedColumns = computed(() => {
+  return visibleColumns.value.filter(
+    col => !hiddenColumns.value.includes(col.column_name)
+  )
+})
+
+// Phase 1: Form fields for add/edit modal
+const formFields = computed(() => {
+  if (!visibleColumns.value.length) return []
+
+  return visibleColumns.value.map(col => {
+    let fieldType = 'text'
+
+    // Determine field type
+    if (col.isForeignKey) {
+      fieldType = 'foreignkey'
+    } else if (col.data_type === 'number') {
+      fieldType = 'number'
+    } else if (col.data_type === 'boolean') {
+      fieldType = 'boolean'
+    } else if (col.column_name.includes('json') || col.column_name.includes('data')) {
+      fieldType = 'json'
+    } else if (col.column_name.includes('text') || col.column_name.includes('description')) {
+      fieldType = 'textarea'
+    } else if (col.column_name.includes('date') && !col.column_name.includes('datetime')) {
+      fieldType = 'date'
+    } else if (col.column_name.includes('datetime') || col.column_name.includes('timestamp')) {
+      fieldType = 'datetime'
+    }
+
+    return {
+      name: col.column_name,
+      label: formatColumnName(col.column_name),
+      type: fieldType,
+      required: !col.is_nullable,
+      referencedEntity: col.referencedEntity
+    }
+  })
+})
 
 // Watch route changes to update selected entity
 // Component only mounts when state === 'ready', so websocket is connected
@@ -334,5 +444,56 @@ async function handleDelete(record) {
 async function handleNavigate(entity, id) {
   // Navigate using router - this will trigger the route watcher
   router.push({ name: 'entity-record', params: { entity, id } })
+}
+
+// ============================================================
+// PHASE 1 HANDLERS
+// ============================================================
+
+// Search handlers
+function handleSearch(query) {
+  searchQuery.value = query
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+}
+
+// Column visibility handlers
+function toggleColumn(columnName) {
+  const index = hiddenColumns.value.indexOf(columnName)
+  if (index > -1) {
+    hiddenColumns.value.splice(index, 1)
+  } else {
+    hiddenColumns.value.push(columnName)
+  }
+}
+
+function showAllColumns() {
+  hiddenColumns.value = []
+}
+
+// Row height handler
+function setRowHeight(height) {
+  rowHeight.value = height
+}
+
+// Add record modal handlers
+function openAddRecordModal() {
+  recordModalRef.value?.open()
+}
+
+async function handleRecordSaved() {
+  // Refresh records after saving
+  await handleEntityChange()
+}
+
+// Placeholder handlers for Phase 2 features
+function toggleFilters() {
+  console.log('Filters panel - coming in Phase 2')
+}
+
+function toggleSort() {
+  console.log('Sort panel - coming in Phase 2')
 }
 </script>
