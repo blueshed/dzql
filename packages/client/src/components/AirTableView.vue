@@ -1,48 +1,18 @@
 <template>
   <div class="h-screen w-screen flex flex-col bg-base-200">
-    <!-- Login Screen -->
-    <div v-if="!isAuthenticated" class="flex-1 flex items-center justify-center">
-      <div class="card w-96 bg-base-100 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title">DZQL Air</h2>
-          <p class="text-sm text-base-content/60">Spreadsheet interface for your data</p>
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">Email</span>
-            </label>
-            <input
-              v-model="email"
-              type="email"
-              class="input input-bordered"
-              @keydown.enter="login"
-            />
-          </div>
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text">Password</span>
-            </label>
-            <input
-              v-model="password"
-              type="password"
-              class="input input-bordered"
-              @keydown.enter="login"
-            />
-          </div>
-          <div class="card-actions justify-end mt-4">
-            <button class="btn btn-primary" @click="login" :disabled="loading">
-              <span v-if="loading" class="loading loading-spinner loading-sm"></span>
-              <span v-else>Login</span>
-            </button>
-          </div>
-          <div v-if="error" class="alert alert-error mt-4">
-            <span>{{ error }}</span>
-          </div>
-        </div>
+    <!-- Connecting State -->
+    <div v-if="state === 'connecting'" class="flex-1 flex items-center justify-center">
+      <div class="text-center">
+        <span class="loading loading-spinner loading-lg text-primary"></span>
+        <p class="mt-4 text-base-content">Connecting to server...</p>
       </div>
     </div>
 
+    <!-- Login Screen -->
+    <LoginView v-else-if="state === 'login'" @authenticated="handleAuth" />
+
     <!-- Spreadsheet View -->
-    <div v-else class="flex-1 overflow-hidden">
+    <div v-else-if="state === 'ready'" class="flex-1 overflow-hidden">
       <!-- Loading state -->
       <div v-if="loading" class="flex items-center justify-center h-full">
         <span class="loading loading-spinner loading-lg"></span>
@@ -159,6 +129,7 @@ import { useWsStore } from 'dzql/client/stores'
 import { useMetaStore } from '../stores/meta'
 import { useEntityStore } from '../stores/entityFactory'
 import { getCellType } from './cells/CellFactory'
+import LoginView from './LoginView.vue'
 
 // Import cell components
 import TextCell from './cells/TextCell.vue'
@@ -185,12 +156,9 @@ const cellComponents = {
 const wsStore = useWsStore()
 const metaStore = useMetaStore()
 
-// Auth state
-const email = ref('test@example.com')
-const password = ref('password123')
+// Use canonical store state
+const state = computed(() => wsStore.appState)
 const loading = ref(false)
-const error = ref(null)
-const isAuthenticated = ref(false)
 
 // Spreadsheet state
 const selectedEntity = ref(null)
@@ -220,28 +188,10 @@ const entityStore = computed(() => {
 
 const records = computed(() => entityStore.value?.records || [])
 
-// Login
-async function login() {
-  loading.value = true
-  error.value = null
-
-  try {
-    // Connect to WebSocket
-    await wsStore.connect('ws://localhost:3000/ws')
-
-    // Login with proper format
-    await wsStore.login({ email: email.value, password: password.value })
-
-    // Fetch metadata
-    await metaStore.fetchMetadata()
-
-    isAuthenticated.value = true
-  } catch (err) {
-    console.error('Login failed:', err)
-    error.value = err.message || 'Login failed'
-  } finally {
-    loading.value = false
-  }
+// Handle authentication
+const handleAuth = async (profile) => {
+  // Profile is already set by wsStore.login()
+  // Metadata should already be loaded by the meta store
 }
 
 // Handle entity change
@@ -302,7 +252,6 @@ async function handleCellSave(record, columnName, value) {
     })
   } catch (err) {
     console.error('Failed to save cell:', err)
-    error.value = err.message || 'Failed to save'
   }
 }
 
@@ -314,7 +263,6 @@ async function handleDelete(record) {
     await entityStore.value.delete(record.id)
   } catch (err) {
     console.error('Failed to delete:', err)
-    error.value = err.message || 'Failed to delete'
   }
 }
 </script>
