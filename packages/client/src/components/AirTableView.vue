@@ -285,6 +285,8 @@ function getCellProps(column) {
 
   if (column.isForeignKey) {
     props.referencedEntity = column.referencedEntity
+    // Disable navigation for compound key entities (routing doesn't support them yet)
+    props.readonly = metaStore.isCompoundKey(column.referencedEntity)
   }
 
   return props

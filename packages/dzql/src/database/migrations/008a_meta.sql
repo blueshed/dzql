@@ -30,6 +30,13 @@ begin
       'temporal_fields', e.temporal_fields,
       'notification_paths', e.notification_paths,
       'permission_paths', e.permission_paths,
+      'primary_key', (
+        -- Get primary key columns
+        select jsonb_agg(a.attname order by a.attnum)
+        from pg_index i
+        join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any(i.indkey)
+        where i.indrelid = e.table_name::regclass and i.indisprimary
+      ),
       'schema', (
         -- Get column schema from information_schema
         select jsonb_agg(

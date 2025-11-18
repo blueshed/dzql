@@ -42,18 +42,23 @@
     <!-- Display mode: show label with link -->
     <div
       v-else
-      class="px-3 py-2 cursor-pointer hover:bg-base-200 rounded transition-colors flex items-center gap-2"
-      @click="startEdit"
+      :class="readonly ? 'px-3 py-2' : 'px-3 py-2 cursor-pointer hover:bg-base-200 rounded transition-colors'"
+      class="flex items-center gap-2"
+      @click="!readonly && startEdit()"
     >
       <span>{{ displayLabel || '—' }}</span>
       <button
-        v-if="modelValue"
+        v-if="modelValue && !readonly"
         type="button"
         class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100"
         @click.stop="navigateToEntity"
+        title="Navigate to record"
       >
         →
       </button>
+      <span v-if="readonly" class="text-xs text-base-content/40" title="Compound key - navigation not supported">
+        (compound key)
+      </span>
     </div>
   </div>
 </template>

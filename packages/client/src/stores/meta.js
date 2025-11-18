@@ -179,6 +179,12 @@ export const useMetaStore = defineStore('meta', () => {
     return Object.keys(temporalFields).length > 0
   }
 
+  // Check if entity has compound primary key
+  const isCompoundKey = (entityName) => {
+    const primaryKey = entities.value[entityName]?.primary_key || []
+    return primaryKey.length > 1
+  }
+
   return {
     // State
     metadata,
@@ -203,6 +209,7 @@ export const useMetaStore = defineStore('meta', () => {
     getForeignKeyFields,
     getLabelField,
     getSearchableFields,
-    isTemporalEntity
+    isTemporalEntity,
+    isCompoundKey
   }
 })
