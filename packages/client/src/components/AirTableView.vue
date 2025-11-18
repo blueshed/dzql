@@ -107,8 +107,9 @@
               >
                 <component
                   :is="getCellComponent(column)"
-                  v-model="record[column.column_name]"
+                  :model-value="getCellValue(record, column)"
                   v-bind="getCellProps(column)"
+                  @update:model-value="(value) => handleCellUpdate(record, column.column_name, value)"
                   @save="(value) => handleCellSave(record, column.column_name, value)"
                   @navigate="(entity, id) => handleNavigate(entity, id)"
                 />
@@ -250,6 +251,23 @@ function getCellComponent(column) {
 
   const cellType = getCellType(column, [], selectedEntity.value)
   return cellComponents[cellType.component] || cellComponents.TextCell
+}
+
+// Get cell value - handle expanded foreign keys
+function getCellValue(record, column) {
+  const value = record[column.column_name]
+
+  // If it's a foreign key and the value is an object (expanded), extract the ID
+  if (column.isForeignKey && value && typeof value === 'object') {
+    return value.id
+  }
+
+  return value
+}
+
+// Handle cell update
+function handleCellUpdate(record, columnName, value) {
+  record[columnName] = value
 }
 
 // Get cell props
