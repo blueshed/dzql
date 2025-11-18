@@ -29,7 +29,7 @@
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import { useWsStore, useAppStore } from 'dzql/client/stores'
 import App from './App.vue'
 
@@ -75,8 +75,9 @@ export function createDZQLAdmin(wsUrlOrConnection, options = {}) {
   app.use(pinia)
 
   // Create router with dynamic routes
+  // Use hash history to avoid conflicts with static file paths (like /examples/)
   const router = createRouter({
-    history: createWebHistory(config.router.base),
+    history: createWebHashHistory(),
     routes: [
       {
         path: '/',
