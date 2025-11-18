@@ -167,8 +167,8 @@ const recordsLoading = ref(false)
 // Computed
 const entities = computed(() => Object.keys(metaStore.entities))
 const metadata = computed(() => selectedEntity.value ? metaStore.entities[selectedEntity.value] : null)
-const columns = computed(() => metadata.value?.columns || [])
-const relations = computed(() => metadata.value?.relations || [])
+const columns = computed(() => metadata.value?.schema || [])
+const relations = computed(() => metadata.value?.relationships || [])
 
 // Visible columns (exclude id since it's the row header)
 const visibleColumns = computed(() => {
