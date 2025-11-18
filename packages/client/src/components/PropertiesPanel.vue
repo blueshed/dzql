@@ -38,7 +38,7 @@
           <select
             v-if="isForeignKey(field)"
             v-model="formData[field.column_name]"
-            class="select select-bordered w-full"
+            :class="['select select-bordered w-full', { 'select-error': validationErrors[field.column_name] }]"
             :required="!field.is_nullable"
           >
             <option :value="null">Select {{ formatLabel(field.column_name) }}</option>
@@ -64,7 +64,7 @@
             v-else-if="isNumberField(field)"
             type="number"
             v-model="formData[field.column_name]"
-            class="input input-bordered w-full"
+            :class="['input input-bordered w-full', { 'input-error': validationErrors[field.column_name] }]"
             :required="!field.is_nullable"
             :step="field.data_type === 'numeric' ? '0.01' : '1'"
           />
@@ -74,7 +74,7 @@
             v-else-if="isDateField(field)"
             type="date"
             v-model="formData[field.column_name]"
-            class="input input-bordered w-full"
+            :class="['input input-bordered w-full', { 'input-error': validationErrors[field.column_name] }]"
             :required="!field.is_nullable"
           />
 
@@ -83,7 +83,7 @@
             v-else-if="isDatetimeField(field)"
             type="datetime-local"
             v-model="formData[field.column_name]"
-            class="input input-bordered w-full"
+            :class="['input input-bordered w-full', { 'input-error': validationErrors[field.column_name] }]"
             :required="!field.is_nullable"
           />
 
@@ -91,7 +91,7 @@
           <textarea
             v-else-if="isTextArea(field)"
             v-model="formData[field.column_name]"
-            class="textarea textarea-bordered w-full"
+            :class="['textarea textarea-bordered w-full', { 'textarea-error': validationErrors[field.column_name] }]"
             :required="!field.is_nullable"
             rows="4"
           ></textarea>
@@ -101,13 +101,20 @@
             v-else
             type="text"
             v-model="formData[field.column_name]"
-            class="input input-bordered w-full"
+            :class="['input input-bordered w-full', { 'input-error': validationErrors[field.column_name] }]"
             :required="!field.is_nullable"
             :maxlength="field.character_maximum_length"
           />
 
+          <!-- Validation Error -->
+          <label v-if="validationErrors[field.column_name]" class="label">
+            <span class="label-text-alt text-error">
+              {{ validationErrors[field.column_name] }}
+            </span>
+          </label>
+
           <!-- Field hint/default -->
-          <label v-if="field.column_default" class="label">
+          <label v-else-if="field.column_default" class="label">
             <span class="label-text-alt text-base-content/50">
               Default: {{ field.column_default }}
             </span>
@@ -151,10 +158,12 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useMetaStore } from '../stores/meta'
 import { useEntityStore } from '../stores/entityFactory'
+import { useNotifications } from '../composables/useNotifications'
 
 const router = useRouter()
 const route = useRoute()
 const metaStore = useMetaStore()
+const { success, error: notifyError } = useNotifications()
 
 const props = defineProps({
   entity: {
@@ -173,6 +182,7 @@ const lookupOptions = ref({})
 const loading = ref(false)
 const saving = ref(false)
 const error = ref(null)
+const validationErrors = ref({})
 
 // Computed
 const isNew = computed(() => {
@@ -272,9 +282,39 @@ const loadLookupOptions = async () => {
   }
 }
 
+// Validate form
+const validateForm = () => {
+  validationErrors.value = {}
+  let isValid = true
+
+  editableFields.value.forEach(field => {
+    const value = formData.value[field.column_name]
+
+    // Check required fields
+    if (!field.is_nullable && (value === null || value === undefined || value === '')) {
+      validationErrors.value[field.column_name] = 'This field is required'
+      isValid = false
+    }
+
+    // Check max length for strings
+    if (field.character_maximum_length && typeof value === 'string' && value.length > field.character_maximum_length) {
+      validationErrors.value[field.column_name] = `Maximum length is ${field.character_maximum_length} characters`
+      isValid = false
+    }
+  })
+
+  return isValid
+}
+
 // Handle save
 const handleSave = async () => {
   if (!store.value) return
+
+  // Validate form
+  if (!validateForm()) {
+    notifyError('Please fix validation errors before saving')
+    return
+  }
 
   saving.value = true
   error.value = null
@@ -289,11 +329,18 @@ const handleSave = async () => {
 
     await store.value.save(dataToSave)
 
+    // Show success message
+    success(isNew.value
+      ? `${formatEntityName(props.entity)} created successfully`
+      : `${formatEntityName(props.entity)} updated successfully`
+    )
+
     // Navigate back to list
     router.push(`/${props.entity}`)
   } catch (err) {
     console.error('Save failed:', err)
     error.value = err.message || 'Failed to save'
+    notifyError(err.message || 'Failed to save')
   } finally {
     saving.value = false
   }

@@ -39,11 +39,15 @@ import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useMetaStore } from '../stores/meta'
 import { useEntityStore } from '../stores/entityFactory'
+import { useNotifications } from '../composables/useNotifications'
+import { useConfirmDialog } from '../composables/useConfirmDialog'
 import DynamicTable from './DynamicTable.vue'
 
 const router = useRouter()
 const route = useRoute()
 const metaStore = useMetaStore()
+const { success, error: notifyError } = useNotifications()
+const { confirmDelete } = useConfirmDialog()
 
 const props = defineProps({
   entity: {
@@ -96,12 +100,19 @@ const createNew = () => {
 
 // Handle delete
 const handleDelete = async (record) => {
+  const id = record.id || record[Object.keys(record)[0]]
+  const entityName = formatEntityName(props.entity)
+
+  // Show confirmation dialog
+  const confirmed = await confirmDelete(entityName)
+  if (!confirmed) return
+
   try {
-    const id = record.id || record[Object.keys(record)[0]]
     await store.value.delete(id)
-    console.log('Record deleted successfully')
+    success(`${entityName} deleted successfully`)
   } catch (error) {
     console.error('Delete failed:', error)
+    notifyError(error.message || 'Failed to delete')
   }
 }
 </script>

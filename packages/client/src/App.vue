@@ -9,6 +9,8 @@ import ContextPanel from './components/ContextPanel.vue'
 import ContentPanel from './components/ContentPanel.vue'
 import PropertiesPanel from './components/PropertiesPanel.vue'
 import HelloView from './components/hello.vue'
+import NotificationContainer from './components/NotificationContainer.vue'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 
 const ws = useWs()
 const route = useRoute()
@@ -64,6 +66,12 @@ const handleLogout = async () => {
 
 <template>
   <div class="min-h-screen bg-base-200">
+    <!-- Notification Container -->
+    <NotificationContainer />
+
+    <!-- Confirmation Dialog -->
+    <ConfirmDialog />
+
     <!-- Connecting State -->
     <div v-if="state === 'connecting'" class="hero min-h-screen">
       <div class="hero-content text-center">
