@@ -1,7 +1,7 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { readFileSync } from 'fs';
-import { compileSubscribablesFromSQL } from './src/compiler/compiler.js';
+import { compileSubscribablesFromSQL } from '../compiler.js';
 
 const sqlContent = readFileSync('./examples/subscribables/venue_detail_simple.sql', 'utf-8');
 
@@ -11,7 +11,7 @@ try {
   const result = compileSubscribablesFromSQL(sqlContent);
 
   console.log('Summary:', result.summary);
-  
+
   if (result.errors.length > 0) {
     console.log('\nErrors:');
     result.errors.forEach(err => {

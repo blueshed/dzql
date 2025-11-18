@@ -78,13 +78,58 @@ END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
     }
 
+    // Check if any path references root entity fields (needs database lookup)
+    const needsEntityLookup = subscribePaths.some(path => {
+      const ast = this.parser.parse(path);
+      return ast.type === 'direct_field' || ast.type === 'field_ref';
+    });
+
     // Generate permission check logic
     const checks = subscribePaths.map(path => {
       const ast = this.parser.parse(path);
-      return this._generatePathCheck(ast, 'p_params', 'p_user_id');
+      return this._generatePathCheck(ast, needsEntityLookup ? 'entity' : 'p_params', 'p_user_id');
     });
 
     const checkSQL = checks.join(' OR\n    ');
+
+    // If we need entity lookup, fetch it first
+    if (needsEntityLookup) {
+      const params = Object.keys(this.paramSchema);
+      const paramDeclarations = params.map(p => `  v_${p} ${this.paramSchema[p]};`).join('\n');
+      const paramExtractions = params.map(p =>
+        `  v_${p} := (p_params->>'${p}')::${this.paramSchema[p]};`
+      ).join('\n');
+
+      const rootFilter = this._generateRootFilter();
+
+      return `CREATE OR REPLACE FUNCTION ${this.name}_can_subscribe(
+  p_user_id INT,
+  p_params JSONB
+) RETURNS BOOLEAN AS $$
+DECLARE
+${paramDeclarations}
+  entity RECORD;
+BEGIN
+  -- Extract parameters
+${paramExtractions}
+
+  -- Fetch entity
+  SELECT * INTO entity
+  FROM ${this.rootEntity} root
+  WHERE ${rootFilter};
+
+  -- Entity not found
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
+
+  -- Check permissions
+  RETURN (
+    ${checkSQL}
+  );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
+    }
 
     return `CREATE OR REPLACE FUNCTION ${this.name}_can_subscribe(
   p_user_id INT,
@@ -104,7 +149,12 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
    */
   _generatePathCheck(ast, recordVar, userIdVar) {
     // Handle direct field reference: @owner_id
-    if (ast.type === 'field_ref') {
+    if (ast.type === 'direct_field' || ast.type === 'field_ref') {
+      // If recordVar is 'entity' (RECORD type), access directly
+      if (recordVar === 'entity') {
+        return `${recordVar}.${ast.field} = ${userIdVar}`;
+      }
+      // Otherwise it's p_params (JSONB type)
       return `(${recordVar}->>'${ast.field}')::int = ${userIdVar}`;
     }
 

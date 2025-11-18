@@ -55,6 +55,21 @@ const result = compiler.compileFromSQL(sqlContent);
 
 See **[Compiler Documentation](docs/compiler/)** for complete usage guide, coding standards, and advanced features.
 
+## Testing
+
+```bash
+# Start test database
+cd tests/test-utils && docker compose up -d
+
+# Run tests
+bun test
+
+# Stop database
+cd tests/test-utils && docker compose down
+```
+
+All tests use `bun:test` framework with automatic database setup/teardown. See **[tests/test-utils/README.md](tests/test-utils/README.md)** for details.
+
 ## License
 
 MIT

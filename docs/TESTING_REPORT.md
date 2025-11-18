@@ -72,8 +72,7 @@ Started with PostgreSQL 16 installed but not running. Required several configura
 
 **Command:**
 ```bash
-cd /home/user/dzql/packages/dzql
-node test-simple-subscribable.js
+bun packages/dzql/tests/subscriptions/test-simple-subscribable.js
 ```
 
 **Results:**

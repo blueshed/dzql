@@ -1,11 +1,11 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 /**
  * Compile subscribable and output SQL only (for piping to psql)
  */
 
 import { readFileSync } from 'fs';
-import { compileSubscribablesFromSQL } from './src/compiler/compiler.js';
+import { compileSubscribablesFromSQL } from '../compiler.js';
 
 const args = process.argv.slice(2);
 if (args.length === 0) {

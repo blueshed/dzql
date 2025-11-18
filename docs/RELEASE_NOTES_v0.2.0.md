@@ -64,7 +64,7 @@ Adding new subscribables requires **zero server code changes**:
 #### Compiler
 - `src/compiler/parser/subscribable-parser.js` - Parse subscribable definitions
 - `src/compiler/codegen/subscribable-codegen.js` - Generate PostgreSQL functions
-- `compile-subscribable.js` - CLI tool for compilation
+- `src/compiler/cli/compile-subscribable.js` - CLI tool for compilation
 
 #### Database
 - `src/database/migrations/009_subscriptions.sql` - Subscribables registry table
@@ -162,7 +162,7 @@ No migration needed for existing code. To start using subscriptions:
 
 3. **Compile and Deploy**
    ```bash
-   node packages/dzql/compile-subscribable.js my_subscribable.sql | psql $DATABASE_URL
+   bun packages/dzql/src/compiler/cli/compile-subscribable.js my_subscribable.sql | psql $DATABASE_URL
    ```
 
 4. **Use in Client**

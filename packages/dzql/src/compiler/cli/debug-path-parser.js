@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { PathParser } from './src/compiler/parser/path-parser.js';
 

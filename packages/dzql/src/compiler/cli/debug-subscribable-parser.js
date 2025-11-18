@@ -1,6 +1,6 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
-import { SubscribableParser } from './src/compiler/parser/subscribable-parser.js';
+import { SubscribableParser } from '../parser/subscribable-parser.js';
 import { readFileSync } from 'fs';
 
 const sqlContent = readFileSync('./examples/subscribables/venue_detail_simple.sql', 'utf-8');

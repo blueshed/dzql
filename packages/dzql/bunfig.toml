@@ -1,0 +1,9 @@
+# Bun test configuration for DZQL
+
+[test]
+# Set test timeout to 30 seconds (database tests can be slower)
+timeout = 30000
+
+# Coverage (optional - can enable with --coverage flag)
+# coverage = true
+# coverageDir = "./coverage"

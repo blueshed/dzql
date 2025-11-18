@@ -912,7 +912,7 @@ SELECT dzql.register_subscribable(
 
 ```bash
 # Compile subscribable to PostgreSQL functions
-node packages/dzql/compile-subscribable.js venue.sql | psql $DATABASE_URL
+bun packages/dzql/src/compiler/cli/compile-subscribable.js venue.sql | psql $DATABASE_URL
 ```
 
 This generates three functions:

@@ -20,7 +20,7 @@ SELECT dzql.register_subscribable(
 
 ```bash
 # Compile to PostgreSQL functions
-node packages/dzql/compile-subscribable.js my_subscribable.sql | psql $DATABASE_URL
+bun packages/dzql/src/compiler/cli/compile-subscribable.js my_subscribable.sql | psql $DATABASE_URL
 ```
 
 This creates 3 functions:

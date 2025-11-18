@@ -55,7 +55,7 @@ SELECT dzql.register_subscribable(
 
 ```bash
 # Compile subscribable to SQL functions
-node packages/dzql/compile-subscribable.js \
+bun packages/dzql/src/compiler/cli/compile-subscribable.js \
   examples/subscribables/venue_detail.sql \
   > /tmp/venue_detail.sql
 
@@ -524,7 +524,7 @@ ws.api.subscribe_venue_detail(
 3. Ensure parameter names match between schema and filters
 4. Test parser separately:
    ```bash
-   node packages/dzql/test-subscribable-parse.js
+   bun packages/dzql/tests/subscriptions/test-subscribable-parse.js
    ```
 
 ## See Also
