@@ -30,9 +30,38 @@ export const useMetaStore = defineStore('meta', () => {
   const loading = computed(() => appStore.isLoadingMetadata)
   const error = computed(() => null) // appStore doesn't expose error state
 
-  // Proxy fetch method
+  // Override fetch method to call correct function name
   const fetchMetadata = async () => {
-    await appStore.fetchMetadata()
+    const ws = wsStore.getWs()
+
+    if (!wsStore.isConnected) {
+      console.warn('[MetaStore] Cannot fetch metadata: not connected')
+      return
+    }
+
+    try {
+      // Call the correct function name: get_entities_metadata (not 'meta')
+      const result = await ws.call('get_entities_metadata', {})
+
+      if (result && result.entities) {
+        // Map array or object format to appStore format
+        const entitiesObj = {}
+        if (Array.isArray(result.entities)) {
+          result.entities.forEach(entity => {
+            entitiesObj[entity.table_name] = entity
+          })
+        } else {
+          // Already in object format (from new get_entities_metadata function)
+          Object.assign(entitiesObj, result.entities)
+        }
+
+        // Update appStore state directly
+        appStore.entityMetadata = entitiesObj
+        console.log('[MetaStore] Metadata loaded:', Object.keys(entitiesObj))
+      }
+    } catch (err) {
+      console.error('[MetaStore] Failed to fetch metadata:', err)
+    }
   }
 
   // Computed helpers

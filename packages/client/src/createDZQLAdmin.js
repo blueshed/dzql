@@ -30,7 +30,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHashHistory } from 'vue-router'
-import { useWsStore, useAppStore } from 'dzql/client/stores'
+import { useProfileStore } from './stores/main.js'
 import App from './App.vue'
 
 /**
@@ -120,31 +120,17 @@ export function createDZQLAdmin(wsUrlOrConnection, options = {}) {
       // Mount the app first so Pinia stores are available
       const result = app.mount(selector)
 
-      // Initialize using canonical pattern
-      const appStore = useAppStore()
-      const wsStore = useWsStore()
+      // Initialize using legacy store pattern (like original main.js)
+      const profileStore = useProfileStore()
 
-      // Set router so appStore can handle navigation
-      appStore.setRouter(router)
-
-      // Initialize app (connects WebSocket and fetches metadata)
+      // Connect to WebSocket - this will trigger metadata fetch via watch
       try {
-        await appStore.initialize({
-          wsUrl,
-          title: config.title
-        })
+        await profileStore.connect(wsUrl)
       } catch (err) {
-        console.error('[createDZQLAdmin] Failed to initialize:', err)
+        console.error('[createDZQLAdmin] Failed to connect:', err)
       }
 
       return result
-    },
-    // Expose stores for advanced use
-    getWsStore() {
-      return useWsStore()
-    },
-    getAppStore() {
-      return useAppStore()
     }
   }
 }
