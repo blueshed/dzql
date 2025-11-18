@@ -5,7 +5,8 @@ import '../src/style.css'
 import { createDZQLAdmin } from '../src/createDZQLAdmin.js'
 
 // That's it! One line creates a full admin interface
-const admin = createDZQLAdmin('ws://localhost:3000/ws')
+// Use relative path - Vite will proxy to ws://localhost:3000/ws in dev mode
+const admin = createDZQLAdmin('/ws')
 admin.mount('#app')
 
 // DZQL will:

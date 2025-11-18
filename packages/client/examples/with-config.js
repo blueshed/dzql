@@ -5,7 +5,8 @@ import '../src/style.css'
 import { createDZQLAdmin } from '../src/createDZQLAdmin.js'
 
 // Optional: Customize specific entities or UI preferences
-const admin = createDZQLAdmin('ws://localhost:3000/ws', {
+// Use relative path - Vite will proxy to ws://localhost:3000/ws in dev mode
+const admin = createDZQLAdmin('/ws', {
   // Global settings
   title: 'Venue Management System',
   theme: 'dark',

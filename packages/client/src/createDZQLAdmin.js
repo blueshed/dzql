@@ -103,7 +103,16 @@ export function createDZQLAdmin(wsUrlOrConnection, options = {}) {
 
   // Get WebSocket instance
   const ws = useWs()
-  const wsUrl = typeof wsUrlOrConnection === 'string' ? wsUrlOrConnection : null
+
+  // Convert relative paths to full WebSocket URLs for browser
+  let wsUrl = typeof wsUrlOrConnection === 'string' ? wsUrlOrConnection : null
+  if (wsUrl && typeof window !== 'undefined') {
+    // If it's a relative path (starts with /), convert to full ws:// URL
+    if (wsUrl.startsWith('/')) {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      wsUrl = `${protocol}//${window.location.host}${wsUrl}`
+    }
+  }
 
   return {
     app,
