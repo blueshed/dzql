@@ -313,10 +313,14 @@ const handleExport = (format) => {
   }
 }
 
-// Initialize
-onMounted(() => {
+// Watch for entity changes to trigger new search
+watch(() => props.entity, () => {
+  // Clear search filter when switching entities
+  searchFilter.value = ''
+  sortField.value = 'id'
+  sortOrder.value = 'asc'
   performSearch()
-})
+}, { immediate: true })
 </script>
 
 <style scoped>
