@@ -220,7 +220,9 @@ function toggleSort(field) {
 // Handle cell save
 async function handleCellSave(record, columnName, value) {
   try {
-    await props.store.update(record.id, {
+    // Use save method with the updated record data
+    await props.store.save({
+      ...record,
       [columnName]: value
     })
   } catch (err) {
@@ -256,7 +258,7 @@ async function handleDelete(record) {
 // Watch sort changes and reload data
 watch([sortField, sortDirection], () => {
   if (sortField.value) {
-    props.store.loadRecords({
+    props.store.search({
       sort: sortField.value,
       order: sortDirection.value
     })
@@ -265,6 +267,6 @@ watch([sortField, sortDirection], () => {
 
 // Load data on mount
 onMounted(() => {
-  props.store.loadRecords()
+  props.store.search()
 })
 </script>
