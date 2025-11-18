@@ -242,11 +242,13 @@ watch(() => route.params.entity, (newEntity) => {
   }
 })
 
+// Close dropdown after navigation
+router.afterEach(() => {
+  dropdownTrigger.value?.blur()
+})
+
 // Select entity from dropdown
 async function selectEntity(entity) {
-  // Blur the dropdown trigger to close the dropdown
-  dropdownTrigger.value?.blur()
-
   // Update route instead of directly changing state
   router.push({ name: 'entity', params: { entity } })
 }
