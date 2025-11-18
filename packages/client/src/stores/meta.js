@@ -5,7 +5,7 @@
  * while using the canonical useAppStore internally.
  */
 import { defineStore } from 'pinia'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useAppStore, useWsStore } from 'dzql/client/stores'
 import { uiConfig } from './ui-config.js'
 import BoxIcon from 'feather-icons/dist/icons/box.svg?component'
@@ -15,6 +15,9 @@ export const useMetaStore = defineStore('meta', () => {
   const appStore = useAppStore()
   const wsStore = useWsStore()
 
+  // Store for relations (fetched alongside entities)
+  const relationsData = ref([])
+
   // Adapter: map appStore state to legacy format
   const metadata = computed(() => {
     if (!appStore.entityMetadata || Object.keys(appStore.entityMetadata).length === 0) {
@@ -22,7 +25,7 @@ export const useMetaStore = defineStore('meta', () => {
     }
     return {
       entities: appStore.entityMetadata,
-      relations: [], // TODO: Extract from metadata if available
+      relations: relationsData.value,
       operations: ['get', 'save', 'delete', 'lookup', 'search']
     }
   })
@@ -57,13 +60,13 @@ export const useMetaStore = defineStore('meta', () => {
 
         // Update appStore state directly
         appStore.entityMetadata = entitiesObj
-        console.log('[MetaStore] Metadata loaded:', Object.keys(entitiesObj))
 
-        // Debug: log schema for first entity to see structure
-        const firstEntity = Object.keys(entitiesObj)[0]
-        if (firstEntity) {
-          console.log(`[MetaStore] Sample schema for ${firstEntity}:`, entitiesObj[firstEntity].schema)
-        }
+        // Extract relations from result
+        relationsData.value = result.relations || []
+
+        console.log('[MetaStore] Metadata loaded:', Object.keys(entitiesObj))
+        console.log('[MetaStore] Relations loaded:', relationsData.value.length, 'relationships')
+      }
     } catch (err) {
       console.error('[MetaStore] Failed to fetch metadata:', err)
     }

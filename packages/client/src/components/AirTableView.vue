@@ -180,16 +180,19 @@ const visibleColumns = computed(() => {
     .filter(key => {
       if (key === 'id') return false
       if (['created_at', 'updated_at', 'deleted_at'].includes(key)) return false
+      const value = firstRecord[key]
+      // Skip arrays (one-to-many relationships - not editable in this view)
+      if (Array.isArray(value)) return false
       return true
     })
     .map(key => {
       const value = firstRecord[key]
       const fk = fkFields.find(f => f.column === key)
 
-      // Detect foreign key by metadata OR by checking if value is an expanded object
-      const isFK = !!fk || (value && typeof value === 'object' && 'id' in value)
-      // Referenced entity: use metadata first, otherwise assume plural of column name
-      const refEntity = fk?.referencedEntity || (isFK ? `${key}s` : null)
+      // Only treat as foreign key if we have metadata for it
+      // (expanded objects without metadata are treated as regular cells)
+      const isFK = !!fk
+      const refEntity = fk?.referencedEntity || null
 
       return {
         column_name: key,
