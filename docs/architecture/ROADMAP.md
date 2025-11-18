@@ -1,8 +1,8 @@
 # DZQL Roadmap to 1.0
 
-## Current Status: Pre-Alpha (0.x)
+## Current Status: v0.2.1 (Beta)
 
-DZQL has a solid foundation with comprehensive features, but needs hardening and production readiness improvements before a 1.0 release.
+DZQL has a solid foundation with comprehensive features including live query subscriptions (v0.2.0) and entity compilation. The framework is approaching production readiness but needs additional hardening before a 1.0 release.
 
 ---
 
