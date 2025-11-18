@@ -8,7 +8,7 @@
     />
     <div class="drawer-side">
       <label :for="drawerId" class="drawer-overlay"></label>
-      <div class="bg-base-100 min-h-full w-96 p-6">
+      <div class="bg-base-100 min-h-full w-[500px] p-6">
         <!-- Header -->
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-2xl font-bold">Filters</h2>
