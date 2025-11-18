@@ -1,6 +1,7 @@
 /**
  * With-config example - optional customization
  */
+import '../src/style.css'
 import { createDZQLAdmin } from '../src/createDZQLAdmin.js'
 
 // Optional: Customize specific entities or UI preferences

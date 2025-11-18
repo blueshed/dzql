@@ -1,6 +1,7 @@
 /**
  * Zero-config example - the simplest possible DZQL admin setup
  */
+import '../src/style.css'
 import { createDZQLAdmin } from '../src/createDZQLAdmin.js'
 
 // That's it! One line creates a full admin interface
