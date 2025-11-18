@@ -30,7 +30,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
-import { useWs } from 'dzql/client'
+import { useWsStore, useAppStore } from 'dzql/client/stores'
 import App from './App.vue'
 
 /**
@@ -101,9 +101,6 @@ export function createDZQLAdmin(wsUrlOrConnection, options = {}) {
   // Provide config globally
   app.provide('dzqlConfig', config)
 
-  // Get WebSocket instance
-  const ws = useWs()
-
   // Convert relative paths to full WebSocket URLs for browser
   let wsUrl = typeof wsUrlOrConnection === 'string' ? wsUrlOrConnection : null
   if (wsUrl && typeof window !== 'undefined') {
@@ -118,18 +115,35 @@ export function createDZQLAdmin(wsUrlOrConnection, options = {}) {
     app,
     router,
     pinia,
-    ws,
-    mount(selector) {
+    async mount(selector) {
+      // Mount the app first so Pinia stores are available
       const result = app.mount(selector)
 
-      // Connect after mounting so stores are initialized
-      if (wsUrl) {
-        ws.connect(wsUrl).catch(err => {
-          console.error('Failed to connect to WebSocket:', err)
+      // Initialize using canonical pattern
+      const appStore = useAppStore()
+      const wsStore = useWsStore()
+
+      // Set router so appStore can handle navigation
+      appStore.setRouter(router)
+
+      // Initialize app (connects WebSocket and fetches metadata)
+      try {
+        await appStore.initialize({
+          wsUrl,
+          title: config.title
         })
+      } catch (err) {
+        console.error('[createDZQLAdmin] Failed to initialize:', err)
       }
 
       return result
+    },
+    // Expose stores for advanced use
+    getWsStore() {
+      return useWsStore()
+    },
+    getAppStore() {
+      return useAppStore()
     }
   }
 }
