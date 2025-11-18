@@ -1,5 +1,6 @@
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from 'vite'
+import { resolve } from 'path'
 import path from "path";
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite';
@@ -38,7 +39,24 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  // Multi-page app configuration
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        'zero-config': resolve(__dirname, 'examples/zero-config.html'),
+        'with-config': resolve(__dirname, 'examples/with-config.html'),
+      }
+    }
+  },
   server: {
-    port: 5173
+    port: 5173,
+    proxy: {
+      // Proxy WebSocket connections to DZQL server
+      '/ws': {
+        target: 'ws://localhost:3000',
+        ws: true
+      }
+    }
   }
 })
