@@ -225,25 +225,28 @@ const handleAuth = async (profile) => {
   // Profile is already set by wsStore.login()
   // Fetch metadata
   await metaStore.fetchMetadata()
-}
 
-// Watch route changes to update selected entity
-// Component only mounts after authentication, so websocket is always ready
-watch(() => route.params.entity, async (newEntity) => {
-  if (!newEntity) {
-    // No entity in route - auto-select first entity
+  // Now handle initial route
+  if (route.params.entity) {
+    selectedEntity.value = route.params.entity
+    await handleEntityChange()
+  } else {
+    // Auto-select first entity if no route param
     const firstEntity = Object.keys(metaStore.entities)[0]
     if (firstEntity) {
       router.push({ name: 'entity', params: { entity: firstEntity } })
     }
-    return
   }
+}
 
+// Watch route changes to update selected entity
+watch(() => route.params.entity, async (newEntity) => {
+  if (!newEntity) return
   if (newEntity === selectedEntity.value) return
 
   selectedEntity.value = newEntity
   await handleEntityChange()
-}, { immediate: true })
+})
 
 // Close dropdown after navigation
 router.afterEach(() => {
