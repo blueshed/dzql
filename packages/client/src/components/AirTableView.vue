@@ -233,8 +233,9 @@ const handleAuth = async (profile) => {
   }
 }
 
-// Watch route changes to update selected entity
+// Watch route changes to update selected entity (only when ready)
 watch(() => route.params.entity, (newEntity) => {
+  if (state.value !== 'ready') return
   if (newEntity && newEntity !== selectedEntity.value) {
     selectedEntity.value = newEntity
     handleEntityChange()
