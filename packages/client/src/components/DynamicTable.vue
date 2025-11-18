@@ -40,7 +40,7 @@
     <div v-if="error" class="alert alert-error">
       <XCircleIcon class="stroke-current shrink-0 h-6 w-6" />
       <span>{{ error }}</span>
-      <button @click="clearError" class="btn btn-sm btn-ghost">×</button>
+      <button @click="props.store.clearError()" class="btn btn-sm btn-ghost">×</button>
     </div>
 
     <!-- Loading State -->
@@ -186,10 +186,13 @@ const searchFilter = ref('')
 const sortField = ref('id')
 const sortOrder = ref('asc')
 
-// Store state - use storeToRefs for reactive state
-const { records, loading, error, searchResults, hasData, totalPages } = storeToRefs(props.store)
-// Methods don't need storeToRefs
-const { search, clearError } = props.store
+// Store state - use computed to make them reactive to store changes
+const records = computed(() => props.store.records)
+const loading = computed(() => props.store.loading)
+const error = computed(() => props.store.error)
+const searchResults = computed(() => props.store.searchResults)
+const hasData = computed(() => props.store.hasData)
+const totalPages = computed(() => props.store.totalPages)
 
 // Computed
 const columns = computed(() => {
@@ -244,7 +247,7 @@ const performSearch = async () => {
     }
   }
 
-  await search(params)
+  await props.store.search(params)
 }
 
 const refresh = () => {
@@ -269,7 +272,7 @@ const goToPage = async (page) => {
     page
   }
 
-  await search(params)
+  await props.store.search(params)
 }
 
 const getDisplayValue = (record, key) => {
