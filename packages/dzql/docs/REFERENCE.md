@@ -12,6 +12,7 @@ Complete API documentation for DZQL framework. For tutorials, see [GETTING_START
 - [Custom Functions](#custom-functions)
 - [Authentication](#authentication)
 - [Real-time Events](#real-time-events)
+- [Live Query Subscriptions](#live-query-subscriptions)
 - [Temporal Relationships](#temporal-relationships)
 - [Error Messages](#error-messages)
 
@@ -861,6 +862,144 @@ ws.onBroadcast((method, params) => {
   render();
 });
 ```
+
+---
+
+## Live Query Subscriptions
+
+Subscribe to denormalized documents and receive automatic updates when underlying data changes. Subscriptions use a PostgreSQL-first architecture where all change detection happens in the database.
+
+For complete documentation, see **[Live Query Subscriptions Guide](../../../docs/LIVE_QUERY_SUBSCRIPTIONS.md)** and **[Quick Start](../../../docs/SUBSCRIPTIONS_QUICK_START.md)**.
+
+### Quick Example
+
+```javascript
+// Subscribe to venue with all related data
+const { data, unsubscribe } = await ws.api.subscribe_venue_detail(
+  { venue_id: 123 },
+  (updatedVenue) => {
+    // Called automatically when venue, org, or sites change
+    console.log('Updated:', updatedVenue);
+    // updatedVenue = { id: 123, name: '...', org: {...}, sites: [...] }
+  }
+);
+
+// Initial data available immediately
+console.log('Initial:', data);
+
+// Later: cleanup
+await unsubscribe();
+```
+
+### Creating a Subscribable
+
+Define subscribables in SQL:
+
+```sql
+SELECT dzql.register_subscribable(
+  'venue_detail',                                               -- Name
+  '{"subscribe": ["@org_id->acts_for[org_id=$]{active}.user_id"]}'::jsonb,  -- Permissions
+  '{"venue_id": "int"}'::jsonb,                                -- Parameters
+  'venues',                                                     -- Root table
+  '{
+    "org": "organisations",
+    "sites": {"entity": "sites", "filter": "venue_id=$venue_id"}
+  }'::jsonb                                                     -- Relations
+);
+```
+
+### Compile and Deploy
+
+```bash
+# Compile subscribable to PostgreSQL functions
+node packages/dzql/compile-subscribable.js venue.sql | psql $DATABASE_URL
+```
+
+This generates three functions:
+- `venue_detail_can_subscribe(user_id, params)` - Permission check
+- `get_venue_detail(params, user_id)` - Query builder
+- `venue_detail_affected_documents(table, op, old, new)` - Change detector
+
+### Subscription Lifecycle
+
+1. **Subscribe**: Client calls `ws.api.subscribe_<name>(params, callback)`
+2. **Permission Check**: `<name>_can_subscribe()` validates access
+3. **Initial Query**: `get_<name>()` returns denormalized document
+4. **Register**: Server stores subscription in-memory
+5. **Database Change**: Any relevant table modification
+6. **Detect**: `<name>_affected_documents()` identifies affected subscriptions
+7. **Re-query**: `get_<name>()` fetches fresh data
+8. **Update**: Callback invoked with new data
+
+### Unsubscribe
+
+```javascript
+// Method 1: Use returned unsubscribe function
+const { unsubscribe } = await ws.api.subscribe_venue_detail(...);
+await unsubscribe();
+
+// Method 2: Direct unsubscribe call
+await ws.api.unsubscribe_venue_detail({ venue_id: 123 });
+```
+
+### Architecture Benefits
+
+- **PostgreSQL-First**: All logic executes in database, not application code
+- **Zero Configuration**: Pattern matching on method names - no server changes needed
+- **Type Safe**: Compiled functions validated at deploy time
+- **Efficient**: In-memory registry, PostgreSQL does matching
+- **Secure**: Permission paths enforced at database level
+- **Scalable**: Stateless server, can add instances freely
+
+### Common Patterns
+
+**Single Table:**
+```sql
+SELECT dzql.register_subscribable(
+  'user_settings',
+  '{"subscribe": ["@user_id"]}'::jsonb,
+  '{"user_id": "int"}'::jsonb,
+  'user_settings',
+  '{}'::jsonb
+);
+```
+
+**With Relations:**
+```sql
+SELECT dzql.register_subscribable(
+  'booking_detail',
+  '{"subscribe": ["@user_id"]}'::jsonb,
+  '{"booking_id": "int"}'::jsonb,
+  'bookings',
+  '{
+    "venue": "venues",
+    "customer": "users",
+    "items": {"entity": "booking_items", "filter": "booking_id=$booking_id"}
+  }'::jsonb
+);
+```
+
+**Multiple Permission Paths (OR logic):**
+```sql
+SELECT dzql.register_subscribable(
+  'venue_admin',
+  '{
+    "subscribe": [
+      "@owner_id",
+      "@org_id->acts_for[org_id=$]{active}.user_id"
+    ]
+  }'::jsonb,
+  '{"venue_id": "int"}'::jsonb,
+  'venues',
+  '{"sites": {"entity": "sites", "filter": "venue_id=$venue_id"}}'::jsonb
+);
+```
+
+### See Also
+
+- **[Live Query Subscriptions Guide](../../../docs/LIVE_QUERY_SUBSCRIPTIONS.md)** - Complete reference
+- **[Quick Start Guide](../../../docs/SUBSCRIPTIONS_QUICK_START.md)** - 5-minute tutorial
+- **[Permission Paths](#permission--notification-paths)** - Path DSL syntax
 
 ---
 

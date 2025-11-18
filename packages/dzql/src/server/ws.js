@@ -6,6 +6,12 @@ import {
   db,
 } from "./db.js";
 import { wsLogger, authLogger } from "./logger.js";
+import {
+  registerSubscription,
+  unregisterSubscription,
+  unregisterSubscriptionByParams,
+  removeConnectionSubscriptions
+} from "./subscriptions.js";
 
 // Environment configuration
 const JWT_SECRET_STRING = process.env.JWT_SECRET;
@@ -304,6 +310,57 @@ export function createRPCHandler(customHandlers = {}) {
         return create_rpc_response(id, result);
       }
 
+      // SUBSCRIPTION HANDLERS - Pattern match on method name
+      if (method.startsWith("subscribe_")) {
+        const subscribableName = method.replace("subscribe_", "");
+        wsLogger.debug(`Subscribe request: ${subscribableName}`, params);
+
+        try {
+          // Execute initial query (this also checks permissions)
+          const queryResult = await db.query(
+            `SELECT get_${subscribableName}($1, $2) as data`,
+            [params, ws.data.user_id]
+          );
+
+          const data = queryResult.rows[0]?.data;
+
+          // Register subscription in memory
+          const subscriptionId = registerSubscription(
+            subscribableName,
+            ws.data.user_id,
+            ws.data.connection_id,
+            params
+          );
+
+          const result = {
+            subscription_id: subscriptionId,
+            data
+          };
+
+          wsLogger.response(method, result, Date.now() - startTime);
+          return create_rpc_response(id, result);
+        } catch (error) {
+          wsLogger.error(`Subscribe failed for ${subscribableName}:`, error.message);
+          return create_rpc_error(id, -32603, error.message);
+        }
+      }
+
+      if (method.startsWith("unsubscribe_")) {
+        const subscribableName = method.replace("unsubscribe_", "");
+        wsLogger.debug(`Unsubscribe request: ${subscribableName}`, params);
+
+        // Remove subscription by params
+        const removed = unregisterSubscriptionByParams(
+          subscribableName,
+          ws.data.connection_id,
+          params
+        );
+
+        const result = { success: removed };
+        wsLogger.response(method, result, Date.now() - startTime);
+        return create_rpc_response(id, result);
+      }
+
       // Check for custom handlers
       if (customHandlers[method]) {
         wsLogger.debug(`Calling custom handler: ${method}`);
@@ -417,7 +474,14 @@ export function createWebSocketHandlers(options = {}) {
     close(ws) {
       const id = ws.data.connection_id;
       connections.delete(id);
-      wsLogger.info(`Connection closed: ${id?.slice(0, 8)}...`);
+
+      // Clean up all subscriptions for this connection
+      const removedCount = removeConnectionSubscriptions(id);
+      if (removedCount > 0) {
+        wsLogger.info(`Connection closed: ${id?.slice(0, 8)}... (${removedCount} subscriptions removed)`);
+      } else {
+        wsLogger.info(`Connection closed: ${id?.slice(0, 8)}...`);
+      }
 
       // Call custom disconnection handler
       if (onDisconnection) {
@@ -434,7 +498,7 @@ export function createWebSocketHandlers(options = {}) {
 
 // Broadcast message to all authenticated connections or specific client_ids
 export function createBroadcaster(connections) {
-  return function broadcastToConnections(message, client_ids = null) {
+  const broadcastToConnections = function(message, client_ids = null) {
     if (client_ids && Array.isArray(client_ids)) {
       // Send to specific user_ids
       for (const [id, ws] of connections) {
@@ -451,6 +515,18 @@ export function createBroadcaster(connections) {
       }
     }
   };
+
+  // Add helper function to send to a specific connection
+  broadcastToConnections.toConnection = function(connectionId, message) {
+    const ws = connections.get(connectionId);
+    if (ws && ws.readyState === 1) { // 1 = OPEN
+      ws.send(message);
+      return true;
+    }
+    return false;
+  };
+
+  return broadcastToConnections;
 }
 
 // Legacy export for backward compatibility

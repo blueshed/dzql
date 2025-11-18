@@ -2,11 +2,95 @@ import { createWebSocketHandlers, verify_jwt_token } from "./ws.js";
 import { closeConnections, setupListeners, sql, db } from "./db.js";
 import * as defaultApi from "./api.js";
 import { serverLogger, notifyLogger } from "./logger.js";
+import { getSubscriptionsBySubscribable, paramsMatch } from "./subscriptions.js";
 
 // Re-export commonly used utilities
 export { sql, db } from "./db.js";
 export { metaRoute } from "./meta-route.js";
 export { createMCPRoute } from "./mcp.js";
+
+/**
+ * Process subscription updates when a database event occurs
+ * Checks if any active subscriptions are affected and sends updates
+ * @param {Object} event - Database event {table, op, pk, before, after}
+ * @param {Function} broadcast - Broadcast function from WebSocket handlers
+ */
+async function processSubscriptionUpdates(event, broadcast) {
+  const { table, op, before, after } = event;
+
+  // Get all active subscriptions grouped by subscribable
+  const subscriptionsByName = getSubscriptionsBySubscribable();
+
+  if (subscriptionsByName.size === 0) {
+    return; // No active subscriptions
+  }
+
+  notifyLogger.debug(`Checking ${subscriptionsByName.size} subscribable(s) for affected subscriptions`);
+
+  // For each unique subscribable, check if this event affects any subscriptions
+  for (const [subscribableName, subs] of subscriptionsByName.entries()) {
+    try {
+      // Ask PostgreSQL which subscription instances are affected
+      const result = await db.query(
+        `SELECT ${subscribableName}_affected_documents($1, $2, $3, $4) as affected`,
+        [table, op, before, after]
+      );
+
+      const affectedParamSets = result.rows[0]?.affected;
+
+      if (!affectedParamSets || affectedParamSets.length === 0) {
+        continue; // This subscribable not affected
+      }
+
+      notifyLogger.debug(`${subscribableName}: ${affectedParamSets.length} param set(s) affected`);
+
+      // Match affected params to active subscriptions
+      for (const affectedParams of affectedParamSets) {
+        for (const sub of subs) {
+          // Check if this subscription matches the affected params
+          if (paramsMatch(sub.params, affectedParams)) {
+            try {
+              // Re-execute query to get updated data
+              const updated = await db.query(
+                `SELECT get_${subscribableName}($1, $2) as data`,
+                [sub.params, sub.user_id]
+              );
+
+              const data = updated.rows[0]?.data;
+
+              // Send update to specific connection
+              const message = JSON.stringify({
+                jsonrpc: "2.0",
+                method: "subscription:update",
+                params: {
+                  subscription_id: sub.subscriptionId,
+                  subscribable: subscribableName,
+                  data
+                }
+              });
+
+              const sent = broadcast.toConnection(sub.connection_id, message);
+              if (sent) {
+                notifyLogger.debug(`Sent update to subscription ${sub.subscriptionId.slice(0, 8)}...`);
+              } else {
+                notifyLogger.warn(`Failed to send update to connection ${sub.connection_id.slice(0, 8)}...`);
+              }
+            } catch (error) {
+              notifyLogger.error(`Failed to update subscription ${sub.subscriptionId}:`, error.message);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // If the subscribable function doesn't exist, just skip
+      if (error.message && error.message.includes('does not exist')) {
+        notifyLogger.debug(`Subscribable ${subscribableName} functions not found, skipping`);
+      } else {
+        notifyLogger.error(`Error processing subscriptions for ${subscribableName}:`, error.message);
+      }
+    }
+  }
+}
 
 /**
  * Create a DZQL server with WebSocket support, real-time updates, and automatic CRUD operations
@@ -97,10 +181,11 @@ export function createServer(options = {}) {
   });
 
   // Setup NOTIFY listeners for real-time events
-  setupListeners((event) => {
+  setupListeners(async (event) => {
     // Handle single dzql event with filtering
     const { notify_users, ...eventData } = event;
 
+    // PATTERN 2: Need to Know notifications (existing)
     // Create JSON-RPC notification
     const message = JSON.stringify({
       jsonrpc: "2.0",
@@ -118,6 +203,10 @@ export function createServer(options = {}) {
       notifyLogger.debug(`Broadcasting ${event.table}:${event.op} to all users`);
       broadcast(message);
     }
+
+    // PATTERN 1: Live Query subscriptions (new)
+    // Check if any subscriptions are affected by this event
+    await processSubscriptionUpdates(event, broadcast);
   });
 
   routes['/health'] = () => new Response("OK", { status: 200 });

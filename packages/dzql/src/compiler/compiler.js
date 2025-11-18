@@ -4,10 +4,12 @@
  */
 
 import { EntityParser } from './parser/entity-parser.js';
+import { SubscribableParser } from './parser/subscribable-parser.js';
 import { generatePermissionFunctions } from './codegen/permission-codegen.js';
 import { generateOperations } from './codegen/operation-codegen.js';
 import { generateNotificationFunction } from './codegen/notification-codegen.js';
 import { generateGraphRuleFunctions } from './codegen/graph-rules-codegen.js';
+import { generateSubscribable } from './codegen/subscribable-codegen.js';
 import crypto from 'crypto';
 
 export class DZQLCompiler {
@@ -18,6 +20,7 @@ export class DZQLCompiler {
       ...options
     };
     this.parser = new EntityParser();
+    this.subscribableParser = new SubscribableParser();
   }
 
   /**
@@ -80,6 +83,34 @@ export class DZQLCompiler {
   }
 
   /**
+   * Compile a subscribable definition to SQL
+   * @param {Object} subscribable - Subscribable configuration
+   * @returns {Object} Compilation result
+   */
+  compileSubscribable(subscribable) {
+    const startTime = Date.now();
+
+    // Normalize subscribable configuration
+    const normalized = typeof subscribable.name === 'string'
+      ? subscribable
+      : this.subscribableParser.parseFromObject(subscribable);
+
+    // Generate SQL
+    const sql = generateSubscribable(normalized);
+
+    // Calculate checksum
+    const checksum = this._calculateChecksum(sql);
+
+    return {
+      name: normalized.name,
+      sql,
+      checksum,
+      compilationTime: Date.now() - startTime,
+      generatedAt: new Date().toISOString()
+    };
+  }
+
+  /**
    * Compile multiple entities
    * @param {Array} entities - Array of entity configurations
    * @returns {Object} Compilation results
@@ -105,6 +136,38 @@ export class DZQLCompiler {
       errors,
       summary: {
         total: entities.length,
+        successful: results.length,
+        failed: errors.length
+      }
+    };
+  }
+
+  /**
+   * Compile multiple subscribables
+   * @param {Array} subscribables - Array of subscribable configurations
+   * @returns {Object} Compilation results
+   */
+  compileAllSubscribables(subscribables) {
+    const results = [];
+    const errors = [];
+
+    for (const subscribable of subscribables) {
+      try {
+        const result = this.compileSubscribable(subscribable);
+        results.push(result);
+      } catch (error) {
+        errors.push({
+          subscribable: subscribable.name || 'unknown',
+          error: error.message
+        });
+      }
+    }
+
+    return {
+      results,
+      errors,
+      summary: {
+        total: subscribables.length,
         successful: results.length,
         failed: errors.length
       }
@@ -138,6 +201,25 @@ export class DZQLCompiler {
     }
 
     return this.compileAll(entities);
+  }
+
+  /**
+   * Compile subscribables from SQL file
+   * @param {string} sqlContent - SQL file content
+   * @returns {Object} Compilation results
+   */
+  compileSubscribablesFromSQL(sqlContent) {
+    const subscribables = this.subscribableParser.parseAllFromSQL(sqlContent);
+
+    if (subscribables.length === 0) {
+      return {
+        results: [],
+        errors: [],
+        summary: { total: 0, successful: 0, failed: 0 }
+      };
+    }
+
+    return this.compileAllSubscribables(subscribables);
   }
 
   /**
@@ -225,4 +307,37 @@ export function compileAll(entities, options = {}) {
 export function compileFromSQL(sqlContent, options = {}) {
   const compiler = new DZQLCompiler(options);
   return compiler.compileFromSQL(sqlContent);
+}
+
+/**
+ * Compile a single subscribable
+ * @param {Object} subscribable - Subscribable configuration
+ * @param {Object} options - Compiler options
+ * @returns {Object} Compilation result
+ */
+export function compileSubscribable(subscribable, options = {}) {
+  const compiler = new DZQLCompiler(options);
+  return compiler.compileSubscribable(subscribable);
+}
+
+/**
+ * Compile multiple subscribables
+ * @param {Array} subscribables - Array of subscribable configurations
+ * @param {Object} options - Compiler options
+ * @returns {Object} Compilation results
+ */
+export function compileAllSubscribables(subscribables, options = {}) {
+  const compiler = new DZQLCompiler(options);
+  return compiler.compileAllSubscribables(subscribables);
+}
+
+/**
+ * Compile subscribables from SQL file content
+ * @param {string} sqlContent - SQL file content
+ * @param {Object} options - Compiler options
+ * @returns {Object} Compilation results
+ */
+export function compileSubscribablesFromSQL(sqlContent, options = {}) {
+  const compiler = new DZQLCompiler(options);
+  return compiler.compileSubscribablesFromSQL(sqlContent);
 }
