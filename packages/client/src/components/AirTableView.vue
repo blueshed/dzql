@@ -204,11 +204,13 @@ const relations = computed(() => metadata.value?.relations || [])
 
 // Visible columns (exclude id since it's the row header)
 const visibleColumns = computed(() => {
-  return columns.value.filter(col => {
+  const filtered = columns.value.filter(col => {
     if (col.column_name === 'id') return false
     if (['created_at', 'updated_at', 'deleted_at'].includes(col.column_name)) return false
     return true
   })
+  console.log('Visible columns:', filtered.map(c => c.column_name))
+  return filtered
 })
 
 // Entity store
