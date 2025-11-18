@@ -20,15 +20,12 @@
       </button>
     </div>
 
-    <!-- Table -->
-    <div class="flex-1 overflow-auto p-4">
-      <DynamicTable
+    <!-- Editable Grid -->
+    <div class="flex-1 overflow-hidden">
+      <EditableGrid
         v-if="entity && store"
         :entity="entity"
         :store="store"
-        @edit="handleRowClick"
-        @create="createNew"
-        @delete="handleDelete"
       />
     </div>
   </div>
@@ -41,7 +38,7 @@ import { useMetaStore } from '../stores/meta'
 import { useEntityStore } from '../stores/entityFactory'
 import { useNotifications } from '../composables/useNotifications'
 import { useConfirmDialog } from '../composables/useConfirmDialog'
-import DynamicTable from './DynamicTable.vue'
+import EditableGrid from './EditableGrid.vue'
 
 const router = useRouter()
 const route = useRoute()
