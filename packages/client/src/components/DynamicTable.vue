@@ -183,7 +183,7 @@ const { success, error: notifyError } = useNotifications()
 
 // Local state
 const searchFilter = ref('')
-const sortField = ref('id')
+const sortField = ref(null)  // Don't assume 'id' exists - let user choose sort
 const sortOrder = ref('asc')
 
 // Store state - use computed to make them reactive to store changes
@@ -320,9 +320,9 @@ const handleExport = (format) => {
 // When entity changes, a new store is passed in, so this will fire
 watch(() => props.store, (newStore, oldStore) => {
   if (newStore !== oldStore) {
-    // Clear search filter when switching entities
+    // Clear search filter and sort when switching entities
     searchFilter.value = ''
-    sortField.value = 'id'
+    sortField.value = null
     sortOrder.value = 'asc'
     performSearch()
   }
