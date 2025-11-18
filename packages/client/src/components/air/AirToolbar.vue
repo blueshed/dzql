@@ -14,7 +14,7 @@
             v-model="searchQuery"
             type="text"
             placeholder="Search records..."
-            class="input input-bordered input-sm join-item w-full"
+            class="input input-bordered input-sm join-item w-full min-w-3xs"
             @input="handleSearch"
           />
           <button
