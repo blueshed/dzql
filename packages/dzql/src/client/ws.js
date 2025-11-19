@@ -52,6 +52,7 @@ class WebSocketManager {
    *
    * @param {Object} [options={}] - Configuration options
    * @param {number} [options.maxReconnectAttempts=5] - Maximum reconnection attempts before giving up
+   * @param {string} [options.tokenName='dzql_token'] - Name of the localStorage key for JWT token
    */
   constructor(options = {}) {
     this.ws = null;
@@ -62,6 +63,7 @@ class WebSocketManager {
     this.subscriptions = new Map(); // subscription_id -> { callback, unsubscribe }
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = options.maxReconnectAttempts ?? 5;
+    this.tokenName = options.tokenName ?? 'dzql_token';
     this.isShuttingDown = false;
 
     // DZQL nested proxy API - matches server-side db.api pattern
@@ -265,7 +267,7 @@ class WebSocketManager {
 
       // Add JWT token as query parameter if available
       if (typeof localStorage !== 'undefined'){
-        const storedToken = localStorage.getItem("dzql_token");
+        const storedToken = localStorage.getItem(this.tokenName);
         if (storedToken) {
           wsUrl += `?token=${encodeURIComponent(storedToken)}`;
         }
