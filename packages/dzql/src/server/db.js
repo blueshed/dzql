@@ -10,11 +10,17 @@ const DB_MAX_CONNECTIONS = parseInt(process.env.DB_MAX_CONNECTIONS || "10", 10);
 const DB_IDLE_TIMEOUT = parseInt(process.env.DB_IDLE_TIMEOUT || "20", 10);
 const DB_CONNECT_TIMEOUT = parseInt(process.env.DB_CONNECT_TIMEOUT || "10", 10);
 
+// SSL configuration for Heroku and other hosted databases
+const sslConfig = process.env.DATABASE_SSL === 'true'
+  ? { rejectUnauthorized: false }  // Heroku uses self-signed certs
+  : undefined;
+
 // Main PostgreSQL connection for queries
 export const sql = postgres(DATABASE_URL, {
   max: DB_MAX_CONNECTIONS,
   idle_timeout: DB_IDLE_TIMEOUT,
   connect_timeout: DB_CONNECT_TIMEOUT,
+  ssl: sslConfig,
   // Suppress NOTICE messages in test environment
   onnotice: process.env.NODE_ENV === 'test' ? () => {} : undefined,
 });
@@ -24,6 +30,7 @@ export const listen_sql = postgres(DATABASE_URL, {
   max: 1,
   idle_timeout: 0,
   connect_timeout: DB_CONNECT_TIMEOUT,
+  ssl: sslConfig,
   // Suppress NOTICE messages in test environment
   onnotice: process.env.NODE_ENV === 'test' ? () => {} : undefined,
 });
