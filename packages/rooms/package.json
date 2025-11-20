@@ -6,6 +6,8 @@
   "type": "module",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.69.0",
-    "shell-quote": "^1.8.3"
+    "@google/generative-ai": "^0.24.1",
+    "shell-quote": "^1.8.3",
+    "ws": "^8.18.3"
   }
 }

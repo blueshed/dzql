@@ -47,9 +47,6 @@
   "author": "Peter Bunyan",
   "license": "MIT",
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
-    "concurrently": "^9.2.1",
-    "postgres": "^3.4.7",
-    "ws": "^8.18.3"
+    "concurrently": "^9.2.1"
   }
 }
