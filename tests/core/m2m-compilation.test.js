@@ -3,7 +3,7 @@
  */
 
 import { test, expect } from "bun:test";
-import { DZQLCompiler } from '../../src/compiler/compiler.js';
+import { DZQLCompiler } from '../../packages/dzql/src/compiler/compiler.js';
 
 test("Compiler generates M2M sync logic WITHOUT runtime loops", () => {
   const compiler = new DZQLCompiler();

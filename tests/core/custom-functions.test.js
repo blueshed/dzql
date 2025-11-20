@@ -2,8 +2,8 @@
  * Test custom function pass-through functionality
  */
 
-import { parseEntitiesFromSQL } from '../../src/compiler/parser/entity-parser.js';
-import { DZQLCompiler } from '../../src/compiler/compiler.js';
+import { parseEntitiesFromSQL } from '../../packages/dzql/src/compiler/parser/entity-parser.js';
+import { DZQLCompiler } from '../../packages/dzql/src/compiler/compiler.js';
 
 const testSQL = `
 -- Test entity with custom function

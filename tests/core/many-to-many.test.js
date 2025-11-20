@@ -2,8 +2,8 @@
  * Test Many-to-Many functionality
  */
 
-import { parseEntitiesFromSQL } from '../../src/compiler/parser/entity-parser.js';
-import { DZQLCompiler } from '../../src/compiler/compiler.js';
+import { parseEntitiesFromSQL } from '../../packages/dzql/src/compiler/parser/entity-parser.js';
+import { DZQLCompiler } from '../../packages/dzql/src/compiler/compiler.js';
 
 const testSQL = "SELECT dzql.register_entity('resources', 'title', ARRAY['title'], '{}', false, '{}', '{}', '{}', '{\"many_to_many\": {\"tags\": {\"junction_table\": \"resource_tags\", \"local_key\": \"resource_id\", \"foreign_key\": \"tag_id\", \"target_entity\": \"tags\", \"id_field\": \"tag_ids\", \"expand\": false}}}', '{}');";
 

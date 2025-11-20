@@ -8,7 +8,7 @@
  */
 
 import { test, expect, describe } from 'bun:test';
-import { DZQLCompiler } from '../../src/compiler/compiler.js';
+import { DZQLCompiler } from '../../packages/dzql/src/compiler/compiler.js';
 
 describe('Empty graph_rules integration test', () => {
   test('compiles entity with empty graph_rules from SQL without generating graph function calls', () => {

@@ -1,17 +1,7 @@
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
-import { TestDatabase } from '../test-utils/db.js';
+import { test, expect, describe, beforeAll } from 'bun:test';
+import { setupTests } from '../setup/test-helpers.js';
 
-let db;
-let sql;
-
-beforeAll(async () => {
-  db = new TestDatabase();
-  sql = await db.setup();
-});
-
-afterAll(async () => {
-  await db.teardown();
-});
+const { sql } = setupTests();
 
 describe('Subscribable Functions', () => {
   beforeAll(async () => {

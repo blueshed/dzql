@@ -2,8 +2,8 @@
  * Test field defaults functionality
  */
 
-import { parseEntitiesFromSQL } from '../../src/compiler/parser/entity-parser.js';
-import { DZQLCompiler } from '../../src/compiler/compiler.js';
+import { parseEntitiesFromSQL } from '../../packages/dzql/src/compiler/parser/entity-parser.js';
+import { DZQLCompiler } from '../../packages/dzql/src/compiler/compiler.js';
 
 const testSQL = "SELECT dzql.register_entity('resources', 'title', ARRAY['title'], '{}', false, '{}', '{}', '{}', '{}', '{\"owner_id\": \"@user_id\", \"created_by\": \"@user_id\", \"created_at\": \"@now\", \"status\": \"draft\"}');";
 

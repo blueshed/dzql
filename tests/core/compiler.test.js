@@ -1,7 +1,7 @@
 import { test, expect, describe } from 'bun:test';
-import { DZQLCompiler } from '../../src/compiler/compiler.js';
-import { EntityParser } from '../../src/compiler/parser/entity-parser.js';
-import { PathParser } from '../../src/compiler/parser/path-parser.js';
+import { DZQLCompiler } from '../../packages/dzql/src/compiler/compiler.js';
+import { EntityParser } from '../../packages/dzql/src/compiler/parser/entity-parser.js';
+import { PathParser } from '../../packages/dzql/src/compiler/parser/path-parser.js';
 
 describe('EntityParser', () => {
   test('parses simple register_entity call', () => {

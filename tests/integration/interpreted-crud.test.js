@@ -77,9 +77,9 @@ describe('Interpreted Mode - CRUD Operations', () => {
     `;
     const venueId = insertResult[0].id;
 
-    // Use generated get function
+    // Use generated get function - note: dzql.get_venues(p_args jsonb, p_user_id integer)
     const result = await sql`
-      SELECT get_venues(${testUserId}, ${venueId}) as venue
+      SELECT dzql.get_venues(${sql.json({id: venueId})}, ${testUserId}) as venue
     `;
 
     expect(result[0].venue).toBeDefined();
@@ -96,9 +96,9 @@ describe('Interpreted Mode - CRUD Operations', () => {
     };
 
     const result = await sql`
-      SELECT save_venues(
-        ${testUserId},
-        ${JSON.stringify(venueData)}::jsonb
+      SELECT dzql.save_venues(
+        ${sql.json({data: venueData})},
+        ${testUserId}
       ) as venue
     `;
 
@@ -125,9 +125,9 @@ describe('Interpreted Mode - CRUD Operations', () => {
     };
 
     const result = await sql`
-      SELECT save_venues(
-        ${testUserId},
-        ${JSON.stringify(updateData)}::jsonb
+      SELECT dzql.save_venues(
+        ${sql.json({data: updateData})},
+        ${testUserId}
       ) as venue
     `;
 
@@ -147,9 +147,9 @@ describe('Interpreted Mode - CRUD Operations', () => {
 
     // Search with pagination
     const result = await sql`
-      SELECT search_venues(
-        ${testUserId},
-        jsonb_build_object('limit', 3, 'offset', 0)
+      SELECT dzql.search_venues(
+        ${sql.json({limit: 3, offset: 0})},
+        ${testUserId}
       ) as result
     `;
 
@@ -167,9 +167,9 @@ describe('Interpreted Mode - CRUD Operations', () => {
     `;
 
     const result = await sql`
-      SELECT search_venues(
-        ${testUserId},
-        jsonb_build_object('filter', ${uniqueName})
+      SELECT dzql.search_venues(
+        ${sql.json({filter: uniqueName})},
+        ${testUserId}
       ) as result
     `;
 
@@ -186,9 +186,9 @@ describe('Interpreted Mode - CRUD Operations', () => {
     `;
 
     const result = await sql`
-      SELECT lookup_venues(
-        ${testUserId},
-        ${venueName}
+      SELECT dzql.lookup_venues(
+        ${sql.json({filter: venueName})},
+        ${testUserId}
       ) as results
     `;
 
@@ -209,7 +209,7 @@ describe('Interpreted Mode - CRUD Operations', () => {
 
     // Delete it
     const result = await sql`
-      SELECT delete_venues(${testUserId}, ${venueId}) as venue
+      SELECT dzql.delete_venues(${sql.json({id: venueId})}, ${testUserId}) as venue
     `;
 
     expect(result[0].venue.deleted_at).not.toBeNull();
@@ -241,7 +241,7 @@ describe('Interpreted Mode - CRUD Operations', () => {
 
     // Get venue (should expand org)
     const result = await sql`
-      SELECT get_venues(${testUserId}, ${venueId}) as venue
+      SELECT dzql.get_venues(${sql.json({id: venueId})}, ${testUserId}) as venue
     `;
 
     expect(result[0].venue.org).toBeDefined();

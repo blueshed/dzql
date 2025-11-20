@@ -1,4 +1,4 @@
-import { parseEntitiesFromSQL } from './packages/dzql/src/compiler/parser/entity-parser.js';
+import { parseEntitiesFromSQL } from '../../packages/dzql/src/compiler/parser/entity-parser.js';
 import fs from 'fs';
 
 const sql = fs.readFileSync('/Users/peterb/Workshop/hump/entities/calendar.sql', 'utf8');

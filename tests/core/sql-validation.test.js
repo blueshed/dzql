@@ -5,7 +5,7 @@
 
 import { describe, test, expect } from 'bun:test';
 import { readFileSync } from 'fs';
-import { compileFromSQL } from '../../src/compiler/compiler.js';
+import { compileFromSQL } from '../../packages/dzql/src/compiler/compiler.js';
 
 describe('SQL Validation Tests', () => {
   let compiledSQL;

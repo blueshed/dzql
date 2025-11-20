@@ -1,18 +1,8 @@
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
-import { TestDatabase } from '../test-utils/db.js';
-import { DZQLCompiler } from '../../src/compiler/compiler.js';
+import { test, expect, describe, beforeAll } from 'bun:test';
+import { setupTests } from '../setup/test-helpers.js';
+import { DZQLCompiler } from '../../packages/dzql/src/compiler/compiler.js';
 
-let db;
-let sql;
-
-beforeAll(async () => {
-  db = new TestDatabase();
-  sql = await db.setup();
-});
-
-afterAll(async () => {
-  await db.teardown();
-});
+const { sql } = setupTests();
 
 describe('Subscription System Integration', () => {
   let compiledSQL;

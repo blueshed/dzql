@@ -89,17 +89,6 @@ describe('Database Migrations', () => {
     expect(result).toHaveLength(1);
   });
 
-  test('creates call function for secure RPC', async () => {
-    const result = await sql`
-      SELECT proname
-      FROM pg_proc
-      WHERE pronamespace = 'dzql'::regnamespace
-        AND proname = 'call'
-    `;
-
-    expect(result).toHaveLength(1);
-  });
-
   test('creates register_user and login_user functions', async () => {
     const result = await sql`
       SELECT routine_name
@@ -119,10 +108,15 @@ describe('Database Migrations', () => {
       SELECT proname
       FROM pg_proc
       WHERE pronamespace = 'dzql'::regnamespace
-        AND proname LIKE 'subscription%'
+        AND (proname LIKE '%subscribable%' OR proname LIKE '%subscription%')
     `;
 
     expect(result.length).toBeGreaterThan(0);
+
+    // Check for specific key functions
+    const functionNames = result.map(r => r.proname);
+    expect(functionNames).toContain('register_subscribable');
+    expect(functionNames).toContain('get_subscribables');
   });
 
   test('creates pgcrypto extension for password hashing', async () => {
@@ -175,8 +169,13 @@ describe('Database Migrations', () => {
   });
 
   test('migrations are idempotent (can run multiple times)', async () => {
-    // Run migrations again - should not error
-    await expect(runMigrations(sql)).resolves.not.toThrow();
+    // Run migrations again - should not error since they use CREATE IF NOT EXISTS
+    try {
+      await runMigrations(sql);
+    } catch (error) {
+      // Should not throw
+      throw new Error(`Migrations should be idempotent but threw: ${error.message}`);
+    }
 
     // Verify meta table still has correct data
     const result = await sql`

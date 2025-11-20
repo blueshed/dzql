@@ -1,4 +1,4 @@
-import { DZQLCompiler } from './packages/dzql/src/compiler/compiler.js';
+import { DZQLCompiler } from '../../packages/dzql/src/compiler/compiler.js';
 
 const compiler = new DZQLCompiler();
 
