@@ -4,7 +4,7 @@ First-class support for many-to-many relationships with automatic junction table
 
 ## Overview
 
-DZQL now provides built-in support for many-to-many (M2M) relationships through junction tables. Define the relationship once in your entity configuration, and DZQL handles:
+DZQL provides built-in support for many-to-many (M2M) relationships through junction tables. Define the relationship once in your entity configuration, and DZQL handles:
 
 - Junction table synchronization
 - Atomic updates in single API calls
@@ -18,6 +18,24 @@ DZQL now provides built-in support for many-to-many (M2M) relationships through 
 - **Consistent API** - Works like regular fields
 - **Less Boilerplate** - No custom toggle functions needed
 - **Performance Control** - Optional expansion (off by default)
+
+## Generic vs Compiled Operations
+
+M2M support works in **both** modes:
+
+### Generic Operations (Runtime)
+- Uses `dzql.generic_save()` and dynamic SQL
+- Interprets M2M config at runtime (~5-10ms overhead per relationship)
+- Works immediately after `register_entity()` call
+- Good for development and entities with simple M2M
+
+### Compiled Operations (v0.3.1+) - RECOMMENDED
+- Generates **static SQL** at compile time
+- **50-100x faster** - zero interpretation overhead
+- All table/column names are literals (PostgreSQL optimizes fully)
+- Recommended for production and complex M2M scenarios
+
+See [Compiler Guide](../compiler/README.md) for compilation workflow.
 
 ## Quick Example
 

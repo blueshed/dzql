@@ -46,17 +46,11 @@ SELECT dzql.register_entity(
   array['title', 'description'],        -- Searchable fields
   '{}'::jsonb,                          -- FK includes
   false,                                -- Soft delete
-  '{}'::jsonb,                          -- Graph rules
-  jsonb_build_object(                   -- Notification paths
-    'owner', array['@user_id']
-  ),
-  jsonb_build_object(                   -- Permission paths
-    'view', array['@user_id'],
-    'create', array['@user_id'],
-    'update', array['@user_id'],
-    'delete', array['@user_id']
-  ),
-  '{}'::jsonb                           -- Temporal config
+  '{}'::jsonb,                          -- Temporal config
+  '{}'::jsonb,                          -- Notification paths
+  '{}'::jsonb,                          -- Permission paths
+  '{}'::jsonb,                          -- Graph rules (including M2M)
+  '{}'::jsonb                           -- Field defaults
 );
 ```
 
@@ -66,6 +60,51 @@ This generates 5 PostgreSQL functions:
 - `delete_todos(params, user_id)` - Delete record
 - `lookup_todos(params, user_id)` - Autocomplete
 - `search_todos(params, user_id)` - Search with filters
+
+## Compiler Features (v0.3.1+)
+
+The compiler generates **static, optimized SQL** with zero runtime interpretation:
+
+### Many-to-Many Relationships
+```sql
+SELECT dzql.register_entity(
+  'brands', 'name', ARRAY['name'],
+  '{}', false, '{}', '{}', '{}',
+  '{
+    "many_to_many": {
+      "tags": {
+        "junction_table": "brand_tags",
+        "local_key": "brand_id",
+        "foreign_key": "tag_id",
+        "target_entity": "tags",
+        "id_field": "tag_ids",
+        "expand": false
+      }
+    }
+  }',
+  '{}'
+);
+```
+
+**Generated code:** Static M2M sync blocks (50-100x faster than generic operations)
+- No runtime loops
+- All table/column names are literals
+- PostgreSQL can fully optimize and cache plans
+
+See [Many-to-Many Guide](../guides/many-to-many.md) for details.
+
+### Field Defaults
+```sql
+'{
+  "owner_id": "@user_id",
+  "created_at": "@now",
+  "status": "draft"
+}'
+```
+
+**Generated code:** Auto-populates fields on INSERT
+
+See [Field Defaults Guide](../guides/field-defaults.md) for details.
 
 ## Architecture
 

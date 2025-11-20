@@ -176,6 +176,9 @@ export class EntityParser {
   _parseJSON(str) {
     if (!str || str === '{}' || str === "'{}'") return {};
 
+    // Strip SQL comments before parsing
+    str = str.replace(/--[^\n]*/g, '').trim();
+
     // Handle jsonb_build_object(...) calls
     if (str.includes('jsonb_build_object')) {
       return this._parseJSONBuildObject(str);
@@ -184,9 +187,11 @@ export class EntityParser {
     // Handle JSON string literals
     if (str.startsWith("'") && str.endsWith("'")) {
       try {
-        return JSON.parse(str.slice(1, -1).replace(/''/g, "'"));
+        // Remove outer quotes and unescape SQL quotes
+        const jsonStr = str.slice(1, -1).replace(/''/g, "'");
+        return JSON.parse(jsonStr);
       } catch (e) {
-        console.warn('Failed to parse JSON:', str, e);
+        console.warn('Failed to parse JSON:', str.substring(0, 100) + '...', e);
         return {};
       }
     }
