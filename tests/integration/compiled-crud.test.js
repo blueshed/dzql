@@ -125,9 +125,9 @@ describe('Compiled Mode - db.api CRUD Operations', () => {
       await sql.unsafe(result.sql);
     }
 
-    // Create test users
-    const alice = await createTestUser(sql, 'alice@blog.com');
-    const bob = await createTestUser(sql, 'bob@blog.com');
+    // Create test users with unique emails
+    const alice = await createTestUser(sql);  // Uses testEmail() for uniqueness
+    const bob = await createTestUser(sql);    // Uses testEmail() for uniqueness
     aliceUserId = alice.user_id;
     bobUserId = bob.user_id;
 
@@ -138,7 +138,7 @@ describe('Compiled Mode - db.api CRUD Operations', () => {
     const createApiFunction = (fnName) => {
       return async (userId, params = {}) => {
         const result = await sql`
-          SELECT ${sql(fnName)}(${userId}, ${JSON.stringify(params)}::jsonb) as result
+          SELECT ${sql.unsafe(fnName)}(${userId}::int, ${sql.json(params)}) as result
         `;
         return result[0].result;
       };
