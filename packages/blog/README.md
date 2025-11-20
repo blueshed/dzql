@@ -1,39 +1,85 @@
 # DZQL Blog Example
 
-A simple blog application demonstrating DZQL's compiled workflow with real-time notifications.
+A simple blog application demonstrating DZQL's compiled workflow with real-time notifications and M2M relationships.
 
-## Quick Start
+## Two Workflows
+
+### Development (Delete & Rebuild)
+
+Fast iteration with a clean slate every time:
 
 ```bash
-# Compile entities to SQL
+# 1. Edit entities
+vim entities/blog.sql
+
+# 2. Compile
 bun run compile
 
-# Start PostgreSQL (loads init_db/*.sql automatically)
-bun run up
+# 3. Rebuild database (docker compose down -v destroys ALL data!)
+bun run db:rebuild
 
-# Connect to database
-bun run psql
+# 4. Test
+bun test
 ```
+
+**Use when:**
+- Starting development
+- Testing schema changes
+- No valuable data to preserve
+
+**Note:** `docker compose down -v` removes volumes, ensuring a true clean slate.
+
+### Production (Migrations)
+
+Incremental schema evolution preserving data:
+
+```bash
+# 1. Create migration
+bun run migrate:new add_post_categories
+
+# 2. Edit entities
+vim entities/blog.sql
+
+# 3. Compile to init_db/
+bun run compile
+
+# 4. Copy functions to migration
+# Edit migrations/00X_*.sql and paste from init_db/
+
+# 5. Apply migration
+bun run migrate:up
+```
+
+**Use when:**
+- Production database
+- Preserving existing data
+- Incremental changes
 
 ## What's Inside
 
 **Source:** `entities/blog.sql` contains:
-- CREATE TABLE statements (users, posts, comments)
+- CREATE TABLE statements (users, posts, comments, tags)
 - Seed data
-- DZQL entity registrations
+- DZQL entity registrations (with M2M support)
 
 **Compiled Output:** `init_db/` (auto-generated):
-- `000_dzql_core.sql` - DZQL infrastructure
+- `000_dzql_core.sql` - DZQL infrastructure (events, registry, entities table)
 - `001_schema.sql` - Tables & seed data (extracted from entities)
+- `002_auth.sql` - register_user, login_user functions
 - `users.sql` - CRUD functions
-- `posts.sql` - CRUD functions
+- `tags.sql` - CRUD functions
+- `posts.sql` - CRUD functions (with M2M tag support!)
 - `comments.sql` - CRUD functions
 
-## Workflow
+**Migrations:** `migrations/` (manual evolution):
+- `001_add_tags_to_posts.sql` - Example M2M migration
+- `README.md` - Migration guide
+
+## Development Workflow
 
 1. Edit `entities/blog.sql`
 2. Run `bun run compile` - generates SQL to `init_db/`
-3. Run `bun run down && bun run up` - restart database with new functions
+3. Run `bun run db:rebuild` - restart database with new functions
 
 ## Database
 

@@ -7,9 +7,13 @@
   "scripts": {
     "compile": "bun ../dzql/bin/cli.js compile entities/blog.sql -o init_db/",
     "up": "docker compose up -d",
-    "down": "docker compose down",
+    "down": "docker compose down -v",
+    "db:rebuild": "docker compose down -v && docker compose up -d",
     "psql": "docker compose exec postgres psql -U dzql -d dzql_blog",
-    "test": "bun test"
+    "test": "bun test",
+    "migrate:new": "bun ../dzql/bin/cli.js migrate:new",
+    "migrate:up": "DATABASE_URL=postgresql://dzql:dzql@localhost:5432/dzql_blog bun ../dzql/bin/cli.js migrate:up",
+    "migrate:status": "DATABASE_URL=postgresql://dzql:dzql@localhost:5432/dzql_blog bun ../dzql/bin/cli.js migrate:status"
   },
   "keywords": ["dzql", "sample", "example", "compiler"],
   "author": "DZQL Team",

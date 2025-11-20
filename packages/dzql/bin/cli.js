@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { resolve } from 'path';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
+import { resolve, join } from 'path';
 import { DZQLCompiler } from '../src/compiler/compiler.js';
+import postgres from 'postgres';
 
 const command = process.argv[2];
 const args = process.argv.slice(3);
@@ -21,6 +22,19 @@ switch (command) {
   case 'compile':
     await runCompile(args);
     break;
+  case 'migrate:new':
+  case 'migrate:init':
+    await runMigrateNew(args);
+    break;
+  case 'migrate:up':
+    await runMigrateUp(args);
+    break;
+  case 'migrate:down':
+    await runMigrateDown(args);
+    break;
+  case 'migrate:status':
+    await runMigrateStatus(args);
+    break;
   case '--version':
   case '-v':
     const pkg = await import('../package.json', { assert: { type: 'json' } });
@@ -31,17 +45,24 @@ switch (command) {
 DZQL CLI
 
 Usage:
-  dzql create <app-name>     Create a new DZQL application
-  dzql dev                   Start development server
-  dzql db:up                 Start PostgreSQL database
-  dzql db:down               Stop PostgreSQL database
-  dzql compile <input>       Compile entity definitions to SQL
-  dzql --version             Show version
+  dzql create <app-name>        Create a new DZQL application
+  dzql dev                      Start development server
+  dzql db:up                    Start PostgreSQL database
+  dzql db:down                  Stop PostgreSQL database
+  dzql compile <input>          Compile entity definitions to SQL
+
+  dzql migrate:new <name>       Create a new migration file
+  dzql migrate:up               Apply pending migrations
+  dzql migrate:down             Rollback last migration
+  dzql migrate:status           Show migration status
+
+  dzql --version                Show version
 
 Examples:
   dzql create my-venue-app
-  dzql dev
-  dzql compile database/init_db/009_venues_domain.sql -o compiled/
+  dzql compile entities/blog.sql -o init_db/
+  dzql migrate:new add_user_avatars
+  dzql migrate:up
 `);
 }
 
@@ -126,27 +147,57 @@ Examples:
       console.log(`\n📝 Writing compiled files to: ${options.output}`);
 
       // Write core DZQL infrastructure
-      const coreSQL = `-- DZQL Core Schema and Events System
+      const coreSQL = `-- DZQL Core Schema and Tables
 
 CREATE SCHEMA IF NOT EXISTS dzql;
+
+-- Meta information
+CREATE TABLE IF NOT EXISTS dzql.meta (
+  installed_at timestamptz DEFAULT now(),
+  version text NOT NULL
+);
+
+INSERT INTO dzql.meta (version) VALUES ('3.0.0') ON CONFLICT DO NOTHING;
+
+-- Entity Configuration Table
+CREATE TABLE IF NOT EXISTS dzql.entities (
+  table_name text PRIMARY KEY,
+  label_field text NOT NULL,
+  searchable_fields text[] NOT NULL,
+  fk_includes jsonb DEFAULT '{}',
+  soft_delete boolean DEFAULT false,
+  temporal_fields jsonb DEFAULT '{}',
+  notification_paths jsonb DEFAULT '{}',
+  permission_paths jsonb DEFAULT '{}',
+  graph_rules jsonb DEFAULT '{}',
+  field_defaults jsonb DEFAULT '{}',
+  many_to_many jsonb DEFAULT '{}'
+);
+
+-- Registry of callable functions
+CREATE TABLE IF NOT EXISTS dzql.registry (
+  fn_regproc regproc PRIMARY KEY,
+  description text
+);
 
 -- Event Audit Table for real-time notifications
 CREATE TABLE IF NOT EXISTS dzql.events (
   event_id bigserial PRIMARY KEY,
   table_name text NOT NULL,
-  op text NOT NULL,              -- 'insert', 'update', 'delete'
-  pk jsonb NOT NULL,             -- primary key of affected record
-  before jsonb,                  -- old values (NULL for insert)
-  after jsonb,                   -- new values (NULL for delete)
-  user_id int,                   -- who made the change
-  notify_users int[],            -- who should be notified
-  at timestamptz DEFAULT now()   -- when the change occurred
+  op text NOT NULL,
+  pk jsonb NOT NULL,
+  before jsonb,
+  after jsonb,
+  user_id int,
+  notify_users int[],
+  at timestamptz DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS dzql_events_table_pk_idx ON dzql.events (table_name, pk, at);
+CREATE INDEX IF NOT EXISTS dzql_events_user_idx ON dzql.events (user_id, at);
 CREATE INDEX IF NOT EXISTS dzql_events_event_id_idx ON dzql.events (event_id);
 
--- Event notification trigger - sends real-time notifications via pg_notify
+-- Event notification trigger
 CREATE OR REPLACE FUNCTION dzql.notify_event()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
@@ -162,7 +213,6 @@ BEGIN
     'at', NEW.at,
     'notify_users', NEW.notify_users
   )::text);
-
   RETURN NULL;
 END $$;
 
@@ -287,5 +337,280 @@ $$;
       console.error(error.stack);
     }
     process.exit(1);
+  }
+}
+
+// ============================================================================
+// Migration Commands
+// ============================================================================
+
+async function runMigrateNew(args) {
+  const migrationName = args[0];
+
+  if (!migrationName) {
+    console.error('Error: Migration name required');
+    console.log('Usage: dzql migrate:new <name>');
+    console.log('Example: dzql migrate:new add_user_avatars');
+    process.exit(1);
+  }
+
+  // Create migrations directory if it doesn't exist
+  const migrationsDir = './migrations';
+  if (!existsSync(migrationsDir)) {
+    mkdirSync(migrationsDir, { recursive: true });
+  }
+
+  // Find next migration number
+  const fs = await import('fs/promises');
+  const files = await fs.readdir(migrationsDir).catch(() => []);
+  const existingNumbers = files
+    .filter(f => /^\d{3}_/.test(f))
+    .map(f => parseInt(f.substring(0, 3)))
+    .filter(n => !isNaN(n));
+
+  const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+  const paddedNumber = String(nextNumber).padStart(3, '0');
+  const fileName = `${paddedNumber}_${migrationName}.sql`;
+  const filePath = resolve(migrationsDir, fileName);
+
+  if (existsSync(filePath)) {
+    console.error(`Error: Migration ${fileName} already exists`);
+    process.exit(1);
+  }
+
+  // Generate migration template
+  const template = `-- ============================================================================
+-- Migration ${paddedNumber}: ${migrationName.replace(/_/g, ' ')}
+-- Generated: ${new Date().toISOString().split('T')[0]}
+-- ============================================================================
+
+BEGIN;
+
+-- Part 1: Schema Changes
+-- ALTER TABLE example ADD COLUMN IF NOT EXISTS new_field TEXT;
+
+-- Part 2: Drop Old DZQL Functions (if updating entity)
+-- DROP FUNCTION IF EXISTS save_entity_name(INT, JSONB);
+-- DROP FUNCTION IF EXISTS get_entity_name(INT, INT, TIMESTAMPTZ);
+-- etc.
+
+-- Part 3: Install New Compiled Functions
+-- Compile your entities first: bun run compile
+-- Then paste the compiled function SQL here from init_db/entity_name.sql
+
+-- Part 4: Custom Functions (optional)
+-- CREATE OR REPLACE FUNCTION my_custom_function(
+--   p_user_id INT,
+--   p_params JSONB
+-- ) RETURNS JSONB AS $$
+-- BEGIN
+--   -- Your logic
+--   RETURN jsonb_build_object('result', 'success');
+-- END;
+-- $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Part 5: Register Custom Functions (optional)
+-- INSERT INTO dzql.registry (fn_regproc, description)
+-- VALUES
+--   ('my_custom_function'::regproc, 'Description of function')
+-- ON CONFLICT DO NOTHING;
+
+COMMIT;
+
+-- ============================================================================
+-- Rollback (for migrate:down support)
+-- ============================================================================
+-- To support rollback, add reverse operations in comments:
+--
+-- ROLLBACK INSTRUCTIONS:
+-- 1. Drop new functions
+-- 2. Restore old functions
+-- 3. Remove columns (if safe)
+-- 4. Drop tables (if safe)
+-- ============================================================================
+`;
+
+  writeFileSync(filePath, template, 'utf-8');
+
+  console.log(`\n✅ Created migration: ${fileName}`);
+  console.log(`📝 Edit: ${filePath}`);
+  console.log(`\n💡 Next steps:`);
+  console.log(`   1. Update your entity definitions (entities/*.sql)`);
+  console.log(`   2. Run: bun run compile (generates updated functions in init_db/)`);
+  console.log(`   3. Copy compiled functions into migration file`);
+  console.log(`   4. Test migration: psql $DATABASE_URL -f ${filePath}`);
+  console.log(`   5. Apply to production: dzql migrate:up\n`);
+}
+
+async function runMigrateUp(args) {
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    console.error('Error: DATABASE_URL environment variable not set');
+    console.log('Set it to your PostgreSQL connection string:');
+    console.log('  export DATABASE_URL="postgresql://user:pass@localhost:5432/dbname"');
+    process.exit(1);
+  }
+
+  const migrationsDir = './migrations';
+  if (!existsSync(migrationsDir)) {
+    console.error(`Error: Migrations directory not found: ${migrationsDir}`);
+    console.log('Create it with: dzql migrate:new <name>');
+    process.exit(1);
+  }
+
+  const sql = postgres(databaseUrl);
+
+  try {
+    console.log('🔌 Connected to database');
+
+    // 1. Create migrations table
+    await sql`
+      CREATE TABLE IF NOT EXISTS dzql.migrations (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        applied_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `;
+
+    // 2. Get applied migrations
+    const appliedRows = await sql`SELECT name, applied_at FROM dzql.migrations ORDER BY applied_at`;
+    const appliedMigrations = new Set(appliedRows.map(row => row.name));
+
+    if (appliedRows.length > 0) {
+      console.log('\n📋 Already applied migrations:');
+      appliedRows.forEach(row => {
+        console.log(`   ✓ ${row.name} (${new Date(row.applied_at).toISOString()})`);
+      });
+    } else {
+      console.log('\n📋 No migrations applied yet.');
+    }
+
+    // 3. Read migration files
+    console.log('📂 Reading migrations from:', migrationsDir);
+
+    const files = readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort(); // Alphabetical order (001, 002, 003...)
+
+    console.log(`\n📁 Found ${files.length} migration file(s)\n`);
+
+    // 4. Apply new migrations
+    let appliedCount = 0;
+    for (const file of files) {
+      if (appliedMigrations.has(file)) {
+        console.log(`   ⏭  Skipping ${file} (already applied)`);
+        continue;
+      }
+
+      console.log(`\n🚀 Applying migration: ${file}`);
+      const content = readFileSync(join(migrationsDir, file), 'utf-8');
+
+      try {
+        // Execute migration (it should have its own BEGIN/COMMIT)
+        await sql.unsafe(content);
+
+        // Record migration
+        await sql`INSERT INTO dzql.migrations (name) VALUES (${file})`;
+
+        console.log(`✅ Applied: ${file}`);
+        appliedCount++;
+      } catch (err) {
+        console.error(`\n❌ Failed to apply ${file}:`);
+        console.error(err.message);
+        console.error('\n💡 Check your migration file for errors.');
+        console.error('   If migration has BEGIN/COMMIT, it should have rolled back.');
+        process.exit(1);
+      }
+    }
+
+    if (appliedCount === 0) {
+      console.log('\n✨ No new migrations to apply. Database is up to date.');
+    } else {
+      console.log(`\n✨ Successfully applied ${appliedCount} migration(s).`);
+    }
+  } catch (err) {
+    console.error('❌ Migration failed:', err.message);
+    process.exit(1);
+  } finally {
+    await sql.end();
+  }
+}
+
+async function runMigrateDown(args) {
+  console.log('\n🚧 Migration:down command - Coming soon!');
+  console.log('\nThis command will:');
+  console.log('  1. Find last applied migration');
+  console.log('  2. Parse rollback instructions');
+  console.log('  3. Execute rollback');
+  console.log('  4. Remove from dzql.migrations table\n');
+}
+
+async function runMigrateStatus(args) {
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    console.error('Error: DATABASE_URL environment variable not set');
+    process.exit(1);
+  }
+
+  const migrationsDir = './migrations';
+  if (!existsSync(migrationsDir)) {
+    console.log('📂 No migrations directory found');
+    return;
+  }
+
+  const sql = postgres(databaseUrl);
+
+  try {
+    console.log('🔌 Connected to database\n');
+
+    // Create migrations table if it doesn't exist
+    await sql`
+      CREATE TABLE IF NOT EXISTS dzql.migrations (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        applied_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `;
+
+    // Get applied migrations
+    const appliedRows = await sql`SELECT name, applied_at FROM dzql.migrations ORDER BY applied_at`;
+    const appliedMigrations = new Set(appliedRows.map(row => row.name));
+
+    // Get all migration files
+    const files = readdirSync(migrationsDir)
+      .filter(f => f.endsWith('.sql'))
+      .sort();
+
+    console.log('📊 Migration Status\n');
+    console.log(`Total migrations: ${files.length}`);
+    console.log(`Applied: ${appliedRows.length}`);
+    console.log(`Pending: ${files.length - appliedRows.length}\n`);
+
+    if (appliedRows.length > 0) {
+      console.log('✅ Applied Migrations:');
+      appliedRows.forEach(row => {
+        console.log(`   ${row.name} - ${new Date(row.applied_at).toLocaleString()}`);
+      });
+    }
+
+    const pendingFiles = files.filter(f => !appliedMigrations.has(f));
+    if (pendingFiles.length > 0) {
+      console.log('\n⏳ Pending Migrations:');
+      pendingFiles.forEach(file => {
+        console.log(`   ${file}`);
+      });
+      console.log('\nRun "dzql migrate:up" to apply pending migrations.');
+    } else {
+      console.log('\n✨ Database is up to date.');
+    }
+
+    console.log();
+  } catch (err) {
+    console.error('❌ Failed to get migration status:', err.message);
+    process.exit(1);
+  } finally {
+    await sql.end();
   }
 }
