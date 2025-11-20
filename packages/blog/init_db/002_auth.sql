@@ -61,12 +61,7 @@ RETURNS JSONB
 LANGUAGE sql
 SECURITY DEFINER
 AS $$
-  SELECT jsonb_build_object(
-    'user_id', id,
-    'email', email,
-    'name', name,
-    'created_at', created_at
-  )
-  FROM users
+  SELECT jsonb_build_object('user_id', u.id) || (to_jsonb(u.*) - 'id' - 'password_hash' - 'password' - 'secret' - 'token')
+  FROM users u
   WHERE id = p_user_id;
 $$;
