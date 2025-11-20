@@ -80,12 +80,10 @@ export async function resetDatabase(sql) {
   console.log('🔄 Resetting database...');
 
   // Drop all tables in public schema
-  await sql`
-    DROP SCHEMA IF EXISTS public CASCADE;
-    CREATE SCHEMA public;
-    GRANT ALL ON SCHEMA public TO dzql_test;
-    GRANT ALL ON SCHEMA public TO public;
-  `;
+  await sql`DROP SCHEMA IF EXISTS public CASCADE`;
+  await sql`CREATE SCHEMA public`;
+  await sql`GRANT ALL ON SCHEMA public TO postgres`;
+  await sql`GRANT ALL ON SCHEMA public TO public`;
 
   // Drop dzql schema if exists
   await sql`DROP SCHEMA IF EXISTS dzql CASCADE`;
