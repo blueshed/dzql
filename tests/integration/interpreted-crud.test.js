@@ -97,7 +97,7 @@ describe('Interpreted Mode - CRUD Operations', () => {
 
     const result = await sql`
       SELECT dzql.save_venues(
-        ${sql.json({data: venueData})},
+        ${sql.json(venueData)},
         ${testUserId}
       ) as venue
     `;
@@ -126,7 +126,7 @@ describe('Interpreted Mode - CRUD Operations', () => {
 
     const result = await sql`
       SELECT dzql.save_venues(
-        ${sql.json({data: updateData})},
+        ${sql.json(updateData)},
         ${testUserId}
       ) as venue
     `;
@@ -168,7 +168,7 @@ describe('Interpreted Mode - CRUD Operations', () => {
 
     const result = await sql`
       SELECT dzql.search_venues(
-        ${sql.json({filter: uniqueName})},
+        ${sql.json({filters: {_search: uniqueName}})},
         ${testUserId}
       ) as result
     `;
@@ -212,8 +212,14 @@ describe('Interpreted Mode - CRUD Operations', () => {
       SELECT dzql.delete_venues(${sql.json({id: venueId})}, ${testUserId}) as venue
     `;
 
-    expect(result[0].venue.deleted_at).not.toBeNull();
+    expect(result[0].venue).toBeDefined();
     expect(result[0].venue.id).toBe(venueId);
+
+    // Verify it was soft deleted by checking the database directly
+    const checkResult = await sql`
+      SELECT deleted_at FROM venues WHERE id = ${venueId}
+    `;
+    expect(checkResult[0].deleted_at).not.toBeNull();
 
     // Verify it's not in regular search results
     const searchResult = await sql`

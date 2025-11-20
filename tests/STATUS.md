@@ -1,6 +1,6 @@
 # Test Suite Status - Updated
 
-## ✅ Currently Passing: 51/98 Core + Integration Tests
+## ✅ Currently Passing: 55/98 Core + Integration Tests
 
 ### Summary by Category
 
@@ -9,9 +9,9 @@
 | **Migrations** | 13 | 13 | ✅ 100% |
 | **Authentication** | 7 | 7 | ✅ 100% |
 | **Core (Compiler, Parser, etc.)** | 27 | 70 | 🟡 39% |
-| **Interpreted CRUD** | 4 | 8 | 🟡 50% |
+| **Interpreted CRUD** | 8 | 8 | ✅ 100% |
 | **Compiled CRUD** | 0 | TBD | 🔴 Not yet working |
-| **TOTAL** | **51** | **98** | **52% passing** |
+| **TOTAL** | **55** | **98** | **56% passing** |
 
 ## ✅ Fully Working Test Suites
 
@@ -45,9 +45,29 @@ All tests pass:
 - ✅ Password hash never exposed in results
 - ✅ _profile returns null for non-existent user
 
+### 3. Interpreted CRUD Tests (8/8) ✅
+**File**: `tests/integration/interpreted-crud.test.js`
+**Command**: `bun test tests/integration/interpreted-crud.test.js`
+
+All tests pass:
+- ✅ get_venues retrieves a venue by ID
+- ✅ save_venues creates a new venue
+- ✅ save_venues updates an existing venue
+- ✅ search_venues returns paginated results
+- ✅ search_venues supports filter parameter (using `filters: {_search: value}`)
+- ✅ lookup_venues returns value/label pairs
+- ✅ delete_venues soft deletes a venue
+- ✅ FK expansion includes related entity
+
+**Key Learnings:**
+- Generated CRUD functions use signature: `dzql.<operation>_<table>(p_args jsonb, p_user_id integer)`
+- Search filters use `filters: {_search: searchTerm}` not `filter: searchTerm`
+- Must use `sql.json()` for proper jsonb encoding
+- Delete operations set `deleted_at` timestamp
+
 ## 🟡 Partially Working Test Suites
 
-### 3. Core Tests (27/70) 🟡
+### 4. Core Tests (27/70) 🟡
 **Files**: `tests/core/*.test.js` (11 files)
 **Command**: `bun test tests/core/`
 
@@ -58,27 +78,6 @@ All tests pass:
 - 🟡 Other 10 files have mix of passing/failing tests
 - Import paths are fixed
 - Some tests may need database setup adjustments
-
-### 4. Interpreted CRUD Tests (4/8) 🟡
-**File**: `tests/integration/interpreted-crud.test.js`
-**Command**: `bun test tests/integration/interpreted-crud.test.js`
-
-**Passing Tests:**
-- ✅ get_venues retrieves a venue by ID
-- ✅ search_venues returns paginated results
-- ✅ lookup_venues returns value/label pairs
-- ✅ FK expansion includes related entity
-
-**Failing Tests:** (4)
-- 🔴 save_venues creates a new venue
-- 🔴 save_venues updates an existing venue
-- 🔴 search_venues supports filter parameter
-- 🔴 delete_venues soft deletes a venue
-
-**Known Issues:**
-- Save operations may need different parameter structure
-- Search filter may need different format
-- Delete test expects deleted_at but may return null
 
 ## 🔴 Not Yet Working
 
@@ -107,9 +106,9 @@ Not yet tested after fixes. Needs:
 bun run test:init
 
 # Run all passing tests together
-bun test tests/migrations/ tests/integration/auth.test.js
+bun test tests/migrations/ tests/integration/auth.test.js tests/integration/interpreted-crud.test.js
 
-# Result: 20/20 tests pass ✅
+# Result: 28/28 tests pass ✅
 ```
 
 ### Individual Suites
@@ -120,11 +119,11 @@ bun test tests/migrations/
 # Authentication - 7/7 passing ✅
 bun test tests/integration/auth.test.js
 
+# Interpreted CRUD - 8/8 passing ✅
+bun test tests/integration/interpreted-crud.test.js
+
 # Core - 27/70 passing 🟡
 bun test tests/core/
-
-# Interpreted CRUD - 4/8 passing 🟡
-bun test tests/integration/interpreted-crud.test.js
 ```
 
 ## Key Learnings
@@ -209,9 +208,9 @@ const saved = await sql`
 - ✅ Infrastructure: 100%
 - ✅ Migrations: 13/13 (100%)
 - ✅ Authentication: 7/7 (100%)
+- ✅ Interpreted CRUD: 8/8 (100%)
 - ✅ Core: 27/70 (39%)
-- ✅ Interpreted CRUD: 4/8 (50%)
 
-**Overall: 51/98 tests passing (52%)**
+**Overall: 55/98 tests passing (56%)**
 
-The foundation is solid. Half the tests pass. The patterns are established. Remaining work is incremental improvements following proven patterns.
+The foundation is solid and growing stronger. More than half the tests pass. Three complete test suites at 100%. The patterns are well-established. Remaining work is incremental improvements following proven patterns.
