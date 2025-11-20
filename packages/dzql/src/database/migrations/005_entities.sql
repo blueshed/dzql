@@ -579,7 +579,8 @@ CREATE OR REPLACE FUNCTION dzql.register_entity(
   p_temporal_fields jsonb DEFAULT '{}',
   p_notification_paths jsonb DEFAULT '{}',
   p_permission_paths jsonb DEFAULT '{}',
-  p_graph_rules jsonb DEFAULT '{}'
+  p_graph_rules jsonb DEFAULT '{}',
+  p_field_defaults jsonb DEFAULT '{}'
 ) RETURNS void
 LANGUAGE plpgsql AS $$
 DECLARE
@@ -587,6 +588,7 @@ DECLARE
   l_rule_name text;
   l_rule_config jsonb;
   l_action jsonb;
+  l_many_to_many jsonb;
 BEGIN
   -- Validate permission paths if provided
   IF p_permission_paths IS NOT NULL AND p_permission_paths != '{}' THEN
@@ -602,11 +604,14 @@ BEGIN
     END IF;
   END IF;
 
+  -- Extract many_to_many from graph_rules if present
+  l_many_to_many := COALESCE(p_graph_rules->'many_to_many', '{}'::jsonb);
+
   -- Insert or update entity configuration
   INSERT INTO dzql.entities
-    (table_name, label_field, searchable_fields, fk_includes, soft_delete, temporal_fields, notification_paths, permission_paths, graph_rules)
+    (table_name, label_field, searchable_fields, fk_includes, soft_delete, temporal_fields, notification_paths, permission_paths, graph_rules, field_defaults, many_to_many)
   VALUES
-    (p_table_name, p_label_field, p_searchable_fields, p_fk_includes, p_soft_delete, p_temporal_fields, p_notification_paths, p_permission_paths, p_graph_rules)
+    (p_table_name, p_label_field, p_searchable_fields, p_fk_includes, p_soft_delete, p_temporal_fields, p_notification_paths, p_permission_paths, p_graph_rules, p_field_defaults, l_many_to_many)
   ON CONFLICT (table_name) DO UPDATE SET
     label_field = EXCLUDED.label_field,
     searchable_fields = EXCLUDED.searchable_fields,
@@ -615,7 +620,9 @@ BEGIN
     temporal_fields = EXCLUDED.temporal_fields,
     notification_paths = EXCLUDED.notification_paths,
     permission_paths = EXCLUDED.permission_paths,
-    graph_rules = EXCLUDED.graph_rules;
+    graph_rules = EXCLUDED.graph_rules,
+    field_defaults = EXCLUDED.field_defaults,
+    many_to_many = EXCLUDED.many_to_many;
 
   -- Create API functions for this entity
   PERFORM dzql.create_entity_functions(p_table_name);

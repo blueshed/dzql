@@ -7,18 +7,25 @@ export class EntityParser {
   /**
    * Parse a dzql.register_entity() call from SQL
    * @param {string} sql - SQL containing register_entity call
-   * @returns {Object} Parsed entity configuration
+   * @param {number} startOffset - Optional starting position in SQL
+   * @returns {Object} Parsed entity configuration with custom functions
    */
-  parseFromSQL(sql) {
+  parseFromSQL(sql, startOffset = 0) {
     // Extract the register_entity call
-    const registerMatch = sql.match(/dzql\.register_entity\s*\(([\s\S]*?)\);/i);
+    const searchSql = sql.substring(startOffset);
+    const registerMatch = searchSql.match(/dzql\.register_entity\s*\(([\s\S]*?)\);/i);
     if (!registerMatch) {
       throw new Error('No register_entity call found in SQL');
     }
 
     const params = this._parseParameters(registerMatch[1]);
+    const config = this._buildEntityConfig(params);
 
-    return this._buildEntityConfig(params);
+    // Extract custom functions after this register_entity call
+    const registerEndPos = startOffset + registerMatch.index + registerMatch[0].length;
+    config.customFunctions = this._extractCustomFunctions(sql, registerEndPos);
+
+    return config;
   }
 
   /**
@@ -73,6 +80,11 @@ export class EntityParser {
    * @private
    */
   _buildEntityConfig(params) {
+    const graphRules = params[8] ? this._parseJSON(params[8]) : {};
+
+    // Extract many_to_many from graph_rules if present
+    const manyToMany = graphRules.many_to_many || {};
+
     const config = {
       tableName: this._cleanString(params[0]),
       labelField: this._cleanString(params[1]),
@@ -82,7 +94,9 @@ export class EntityParser {
       temporalFields: params[5] ? this._parseJSON(params[5]) : {},
       notificationPaths: params[6] ? this._parseJSON(params[6]) : {},
       permissionPaths: params[7] ? this._parseJSON(params[7]) : {},
-      graphRules: params[8] ? this._parseJSON(params[8]) : {}
+      graphRules: graphRules,
+      fieldDefaults: params[9] ? this._parseJSON(params[9]) : {},
+      manyToMany: manyToMany
     };
 
     return config;
@@ -251,11 +265,55 @@ export class EntityParser {
   }
 
   /**
+   * Extract custom functions defined after register_entity() call
+   * @private
+   * @param {string} sql - Full SQL content
+   * @param {number} startPos - Position after register_entity call
+   * @returns {Array<string>} Array of custom function SQL statements
+   */
+  _extractCustomFunctions(sql, startPos) {
+    // Find the next register_entity call or end of file
+    const nextEntityMatch = sql.substring(startPos).match(/dzql\.register_entity\s*\(/i);
+    const endPos = nextEntityMatch ? startPos + nextEntityMatch.index : sql.length;
+
+    // Extract the SQL between this entity and the next
+    const customSql = sql.substring(startPos, endPos).trim();
+    if (!customSql) return [];
+
+    const functions = [];
+
+    // Extract CREATE [OR REPLACE] FUNCTION statements
+    // Match from CREATE to the final semicolon of the function (including $$ delimiters)
+    const functionPattern = /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+[\s\S]*?(?:\$\$|\$[A-Za-z_][A-Za-z0-9_]*\$)\s*(?:LANGUAGE|;)[\s\S]*?;/gi;
+    let match;
+    while ((match = functionPattern.exec(customSql)) !== null) {
+      functions.push(match[0].trim());
+    }
+
+    // Extract INSERT INTO dzql.registry statements
+    const registryPattern = /INSERT\s+INTO\s+dzql\.registry\s+[\s\S]*?;/gi;
+    while ((match = registryPattern.exec(customSql)) !== null) {
+      functions.push(match[0].trim());
+    }
+
+    // Extract SELECT dzql.register_function() calls
+    const registerFunctionPattern = /SELECT\s+dzql\.register_function\s*\([\s\S]*?\)\s*;/gi;
+    while ((match = registerFunctionPattern.exec(customSql)) !== null) {
+      functions.push(match[0].trim());
+    }
+
+    return functions;
+  }
+
+  /**
    * Parse entity definition from JS object (for programmatic use)
    * @param {Object} entity - Entity definition object
    * @returns {Object} Normalized entity configuration
    */
   parseFromObject(entity) {
+    const graphRules = entity.graphRules || {};
+    const manyToMany = entity.manyToMany || graphRules.many_to_many || {};
+
     return {
       tableName: entity.tableName || entity.table,
       labelField: entity.labelField || 'name',
@@ -265,7 +323,10 @@ export class EntityParser {
       temporalFields: entity.temporalFields || {},
       notificationPaths: entity.notificationPaths || {},
       permissionPaths: entity.permissionPaths || {},
-      graphRules: entity.graphRules || {}
+      graphRules: graphRules,
+      fieldDefaults: entity.fieldDefaults || {},
+      manyToMany: manyToMany,
+      customFunctions: entity.customFunctions || []
     };
   }
 }
@@ -279,17 +340,16 @@ export function parseEntitiesFromSQL(sql) {
   const parser = new EntityParser();
   const entities = [];
 
-  // Find all register_entity calls
-  const registerCalls = sql.match(/dzql\.register_entity\s*\([\s\S]*?\);/gi);
+  // Find all register_entity calls with their positions
+  const registerPattern = /dzql\.register_entity\s*\(/gi;
+  let match;
+  let currentPos = 0;
 
-  if (!registerCalls) {
-    return entities;
-  }
-
-  for (const call of registerCalls) {
+  while ((match = registerPattern.exec(sql)) !== null) {
     try {
-      const entity = parser.parseFromSQL(call);
+      const entity = parser.parseFromSQL(sql, match.index);
       entities.push(entity);
+      currentPos = match.index + 1; // Move past this match
     } catch (error) {
       console.warn('Failed to parse entity:', error.message);
     }

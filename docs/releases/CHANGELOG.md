@@ -5,6 +5,80 @@ All notable changes to DZQL will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-11-20
+
+### Added
+
+#### Custom Function Pass-through
+- **Compiler** now automatically extracts and includes custom SQL functions defined after `register_entity()` calls
+- Eliminates manual duplication - define functions once in entity files
+- Supports `CREATE FUNCTION`, `INSERT INTO dzql.registry`, and `SELECT dzql.register_function()`
+- Functions stay with their related entities
+- Single source of truth for entity-related custom logic
+
+#### Field Defaults
+- New 10th parameter `p_field_defaults` in `register_entity()`
+- Auto-populate fields during INSERT operations (not UPDATE)
+- Supports variables: `@user_id`, `@now`, `@today`
+- Supports literal default values (e.g., `"draft"`, `0`, `true`)
+- Explicit values override defaults
+- Added `field_defaults` column to `dzql.entities` table
+- Reduces client boilerplate and prevents common errors
+- Improves security by server-controlling sensitive defaults
+
+#### Many-to-Many Relationships
+- First-class M2M support via `graph_rules.many_to_many` configuration
+- Automatic junction table synchronization in single atomic transaction
+- Single API call for entity + relationships (eliminates N+1 queries)
+- ID arrays always included in responses (e.g., `tag_ids: [1, 2, 3]`)
+- Optional full object expansion with `expand` flag (default: `false` for performance)
+- M2M expansion in `save_*`, `get_*`, and `search_*` operations
+- Added `many_to_many` column to `dzql.entities` table
+- Handles empty arrays (remove all), null/omitted (no change)
+- Proper type casting for junction table queries
+
+### Changed
+- **Schema**: `dzql.entities` table now has `field_defaults` and `many_to_many` columns
+- **API**: `dzql.register_entity()` signature extended with 10th parameter
+- **Compiler**: `EntityParser` now extracts custom functions, field defaults, and M2M configs
+- **Runtime**: `generic_save()` applies field defaults and syncs M2M junction tables
+- **Runtime**: `generic_get()` expands M2M relationships based on configuration
+- **Runtime**: `generic_search()` expands M2M relationships in result arrays
+- **Validation**: `dzql.validate_graph_rules()` skips `many_to_many` key (different structure)
+- **INSERT/UPDATE**: M2M ID fields automatically excluded from database operations
+
+### Documentation
+- Added `docs/guides/field-defaults.md` - Complete guide with use cases
+- Added `docs/guides/custom-functions.md` - Patterns and best practices
+- Added `docs/guides/many-to-many.md` - Comprehensive M2M documentation
+- Updated `docs/reference/api.md` - New parameters, M2M config, complete examples
+- Added `docs/plan.md` - Implementation plan and progress tracking
+- Added `docs/IMPLEMENTATION_SUMMARY.md` - Technical implementation details
+
+### Tests
+- Added `tests/compiler/custom-functions.test.js` - Parser-level tests
+- Added `tests/compiler/field-defaults.test.js` - Parser-level tests
+- Added `tests/compiler/many-to-many.test.js` - Parser-level tests
+- **Demo**: Added `packages/venues/tests/brands-tags-m2m.test.js` - 10 integration tests
+- **Demo**: Added `packages/venues/database/init_db/011_brands_tags.sql` - M2M example
+- **All 103 tests passing** (10 new M2M + 93 existing)
+
+### Performance
+- M2M with `expand: false` - Single query per record (fast, default)
+- M2M with `expand: true` - Additional JOIN per relationship (use for detail views only)
+- Field defaults - Negligible overhead (one-time resolution at INSERT)
+
+### Breaking Changes
+**None** - All features are opt-in and backwards compatible.
+
+### Migration Guide
+1. Update package: `bun update dzql`
+2. Restart database container (migrations run automatically)
+3. Optionally add new features to entity registrations
+4. No changes required to existing entities
+
+See implementation details in `docs/IMPLEMENTATION_SUMMARY.md`.
+
 ## [0.2.3] - 2025-01-19
 
 ### Changed

@@ -223,6 +223,62 @@ BEGIN
     END LOOP;
   END IF;
 
+  -- Expand many-to-many relationships (if configured)
+  IF l_entity_config.many_to_many IS NOT NULL AND l_entity_config.many_to_many != '{}'::jsonb THEN
+    DECLARE
+      l_m2m_key text;
+      l_m2m_config jsonb;
+      l_id_field text;
+      l_junction_table text;
+      l_local_key text;
+      l_foreign_key text;
+      l_target_entity text;
+      l_expand boolean;
+      l_record_id text;
+      l_id_array jsonb;
+      l_expanded_objects jsonb;
+    BEGIN
+      -- Get the primary key value from the result
+      l_record_id := l_result->>l_pk_cols[1];  -- Assume single PK for now
+
+      FOR l_m2m_key IN SELECT jsonb_object_keys(l_entity_config.many_to_many)
+      LOOP
+        l_m2m_config := l_entity_config.many_to_many->l_m2m_key;
+        l_id_field := l_m2m_config->>'id_field';
+        l_junction_table := l_m2m_config->>'junction_table';
+        l_local_key := l_m2m_config->>'local_key';
+        l_foreign_key := l_m2m_config->>'foreign_key';
+        l_target_entity := l_m2m_config->>'target_entity';
+        l_expand := COALESCE((l_m2m_config->>'expand')::boolean, false);
+
+        -- Always include array of IDs
+        EXECUTE format('
+          SELECT COALESCE(jsonb_agg(%I), ''[]''::jsonb)
+          FROM %I
+          WHERE %I = $1::int
+        ', l_foreign_key, l_junction_table, l_local_key)
+        INTO l_id_array
+        USING l_record_id;
+
+        l_result := l_result || jsonb_build_object(l_id_field, l_id_array);
+
+        -- Conditionally include expanded objects if expand: true
+        IF l_expand THEN
+          EXECUTE format('
+            SELECT COALESCE(jsonb_agg(to_jsonb(t.*)), ''[]''::jsonb)
+            FROM %I jt
+            JOIN %I t ON t.id = jt.%I
+            WHERE jt.%I = $1::int
+          ', l_junction_table, l_target_entity, l_foreign_key, l_local_key)
+          INTO l_expanded_objects
+          USING l_record_id;
+
+          l_result := l_result || jsonb_build_object(l_m2m_key, l_expanded_objects);
+        END IF;
+      END LOOP;
+    END;
+  END IF;
+
   RETURN l_result;
 END $$;
 
@@ -333,7 +389,29 @@ BEGIN
     LOOP
       -- Don't update any primary key columns
       IF NOT (l_col_name = ANY(l_pk_cols)) THEN
-        l_set_clauses := l_set_clauses || format('%I = %L', l_col_name, l_merged_data ->> l_col_name);
+        -- Skip M2M ID fields (they're not real table columns)
+        IF l_entity_config.many_to_many IS NOT NULL THEN
+          DECLARE
+            l_m2m_id_field text;
+            l_skip boolean := false;
+          BEGIN
+            FOR l_m2m_id_field IN
+              SELECT value->>'id_field'
+              FROM jsonb_each(l_entity_config.many_to_many)
+            LOOP
+              IF l_col_name = l_m2m_id_field THEN
+                l_skip := true;
+                EXIT;
+              END IF;
+            END LOOP;
+
+            IF NOT l_skip THEN
+              l_set_clauses := l_set_clauses || format('%I = %L', l_col_name, l_merged_data ->> l_col_name);
+            END IF;
+          END;
+        ELSE
+          l_set_clauses := l_set_clauses || format('%I = %L', l_col_name, l_merged_data ->> l_col_name);
+        END IF;
       END IF;
     END LOOP;
 
@@ -359,6 +437,38 @@ BEGIN
       l_args_json := l_args_json || jsonb_build_object('user_id', p_user_id);
     END IF;
 
+    -- Apply field defaults for INSERT (if configured)
+    IF l_entity_config.field_defaults IS NOT NULL AND l_entity_config.field_defaults != '{}' THEN
+      FOR l_col_name IN SELECT jsonb_object_keys(l_entity_config.field_defaults)
+      LOOP
+        -- Only apply default if field is not already provided
+        IF NOT (l_args_json ? l_col_name) THEN
+          DECLARE
+            l_default_value text;
+            l_resolved_value text;
+          BEGIN
+            l_default_value := l_entity_config.field_defaults->>l_col_name;
+
+            -- Resolve variable if it starts with @
+            IF l_default_value LIKE '@%' THEN
+              l_resolved_value := dzql.resolve_graph_variable(
+                l_default_value,
+                NULL,  -- no before record for INSERT
+                l_args_json,  -- current data being inserted
+                p_user_id
+              );
+            ELSE
+              -- Use literal value
+              l_resolved_value := l_default_value;
+            END IF;
+
+            -- Add to l_args_json
+            l_args_json := l_args_json || jsonb_build_object(l_col_name, l_resolved_value);
+          END;
+        END IF;
+      END LOOP;
+    END IF;
+
     -- Check create permission on new values
     l_operation := 'create';
     l_permission_record := l_args_json;
@@ -371,6 +481,28 @@ BEGIN
 
     FOR l_col_name IN SELECT jsonb_object_keys(l_args_json)
     LOOP
+      -- Skip M2M ID fields (they're not real table columns)
+      IF l_entity_config.many_to_many IS NOT NULL THEN
+        DECLARE
+          l_m2m_id_field text;
+          l_skip boolean := false;
+        BEGIN
+          FOR l_m2m_id_field IN
+            SELECT value->>'id_field'
+            FROM jsonb_each(l_entity_config.many_to_many)
+          LOOP
+            IF l_col_name = l_m2m_id_field THEN
+              l_skip := true;
+              EXIT;
+            END IF;
+          END LOOP;
+
+          IF l_skip THEN
+            CONTINUE;
+          END IF;
+        END;
+      END IF;
+
       IF l_args_json ->> l_col_name IS NOT NULL AND l_args_json ->> l_col_name != '' THEN
         l_cols := l_cols || quote_ident(l_col_name);
         l_vals := l_vals || quote_literal(l_args_json ->> l_col_name);
@@ -389,6 +521,109 @@ BEGIN
                       p_entity);
     EXECUTE l_sql_stmt INTO l_result;
 
+  END IF;
+
+  -- Sync many-to-many relationships (if configured)
+  IF l_entity_config.many_to_many IS NOT NULL AND l_entity_config.many_to_many != '{}'::jsonb THEN
+    DECLARE
+      l_m2m_key text;
+      l_m2m_config jsonb;
+      l_id_field text;
+      l_junction_table text;
+      l_local_key text;
+      l_foreign_key text;
+      l_record_id text;
+    BEGIN
+      -- Get the primary key value from the result
+      l_record_id := l_result->>l_pk_cols[1];  -- Assume single PK for now
+
+      FOR l_m2m_key IN SELECT jsonb_object_keys(l_entity_config.many_to_many)
+      LOOP
+        l_m2m_config := l_entity_config.many_to_many->l_m2m_key;
+        l_id_field := l_m2m_config->>'id_field';
+
+        -- Only sync if the ID field is present in the data
+        IF l_args_json ? l_id_field THEN
+          l_junction_table := l_m2m_config->>'junction_table';
+          l_local_key := l_m2m_config->>'local_key';
+          l_foreign_key := l_m2m_config->>'foreign_key';
+
+          -- Delete relationships not in new list
+          EXECUTE format('
+            DELETE FROM %I
+            WHERE %I = $1::int
+              AND %I <> ALL($2::int[])
+          ', l_junction_table, l_local_key, l_foreign_key)
+          USING l_record_id,
+                ARRAY(SELECT jsonb_array_elements_text(l_args_json->l_id_field))::int[];
+
+          -- Insert new relationships (ignore conflicts)
+          EXECUTE format('
+            INSERT INTO %I (%I, %I)
+            SELECT $1::int, value::int
+            FROM jsonb_array_elements_text($2)
+            ON CONFLICT DO NOTHING
+          ', l_junction_table, l_local_key, l_foreign_key)
+          USING l_record_id, l_args_json->l_id_field;
+        END IF;
+      END LOOP;
+    END;
+  END IF;
+
+  -- Expand many-to-many relationships in result (after sync)
+  IF l_entity_config.many_to_many IS NOT NULL AND l_entity_config.many_to_many != '{}'::jsonb THEN
+    DECLARE
+      l_m2m_key text;
+      l_m2m_config jsonb;
+      l_id_field text;
+      l_junction_table text;
+      l_local_key text;
+      l_foreign_key text;
+      l_target_entity text;
+      l_expand boolean;
+      l_record_id text;
+      l_id_array jsonb;
+      l_expanded_objects jsonb;
+    BEGIN
+      -- Get the primary key value from the result
+      l_record_id := l_result->>l_pk_cols[1];  -- Assume single PK for now
+
+      FOR l_m2m_key IN SELECT jsonb_object_keys(l_entity_config.many_to_many)
+      LOOP
+        l_m2m_config := l_entity_config.many_to_many->l_m2m_key;
+        l_id_field := l_m2m_config->>'id_field';
+        l_junction_table := l_m2m_config->>'junction_table';
+        l_local_key := l_m2m_config->>'local_key';
+        l_foreign_key := l_m2m_config->>'foreign_key';
+        l_target_entity := l_m2m_config->>'target_entity';
+        l_expand := COALESCE((l_m2m_config->>'expand')::boolean, false);
+
+        -- Always include array of IDs
+        EXECUTE format('
+          SELECT COALESCE(jsonb_agg(%I), ''[]''::jsonb)
+          FROM %I
+          WHERE %I = $1::int
+        ', l_foreign_key, l_junction_table, l_local_key)
+        INTO l_id_array
+        USING l_record_id;
+
+        l_result := l_result || jsonb_build_object(l_id_field, l_id_array);
+
+        -- Conditionally include expanded objects if expand: true
+        IF l_expand THEN
+          EXECUTE format('
+            SELECT COALESCE(jsonb_agg(to_jsonb(t.*)), ''[]''::jsonb)
+            FROM %I jt
+            JOIN %I t ON t.id = jt.%I
+            WHERE jt.%I = $1::int
+          ', l_junction_table, l_target_entity, l_foreign_key, l_local_key)
+          INTO l_expanded_objects
+          USING l_record_id;
+
+          l_result := l_result || jsonb_build_object(l_m2m_key, l_expanded_objects);
+        END IF;
+      END LOOP;
+    END;
   END IF;
 
   -- Execute graph rules for the appropriate operation

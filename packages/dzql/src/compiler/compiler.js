@@ -3,7 +3,7 @@
  * Main compiler class that orchestrates parsing and code generation
  */
 
-import { EntityParser } from './parser/entity-parser.js';
+import { EntityParser, parseEntitiesFromSQL } from './parser/entity-parser.js';
 import { SubscribableParser } from './parser/subscribable-parser.js';
 import { generatePermissionFunctions } from './codegen/permission-codegen.js';
 import { generateOperations } from './codegen/operation-codegen.js';
@@ -63,6 +63,12 @@ export class DZQLCompiler {
     if (normalizedEntity.graphRules &&
         Object.keys(normalizedEntity.graphRules).length > 0) {
       sections.push(this._generateGraphRuleFunctions(normalizedEntity));
+    }
+
+    // Custom functions (pass-through from entity definition)
+    if (normalizedEntity.customFunctions &&
+        normalizedEntity.customFunctions.length > 0) {
+      sections.push(this._generateCustomFunctionsSection(normalizedEntity));
     }
 
     // Combine all sections
@@ -180,24 +186,15 @@ export class DZQLCompiler {
    * @returns {Object} Compilation results
    */
   compileFromSQL(sqlContent) {
-    const registerCalls = sqlContent.match(/dzql\.register_entity\s*\([\s\S]*?\);/gi);
+    // Use parseEntitiesFromSQL to properly extract custom functions
+    const entities = parseEntitiesFromSQL(sqlContent);
 
-    if (!registerCalls) {
+    if (entities.length === 0) {
       return {
         results: [],
         errors: [],
         summary: { total: 0, successful: 0, failed: 0 }
       };
-    }
-
-    const entities = [];
-    for (const call of registerCalls) {
-      try {
-        const entity = this.parser.parseFromSQL(call);
-        entities.push(entity);
-      } catch (error) {
-        console.warn('Failed to parse entity:', error.message);
-      }
     }
 
     return this.compileAll(entities);
@@ -256,6 +253,19 @@ export class DZQLCompiler {
       entity.tableName,
       entity.graphRules
     );
+  }
+
+  /**
+   * Generate custom functions section (pass-through from entity definition)
+   * @private
+   */
+  _generateCustomFunctionsSection(entity) {
+    const header = `-- ============================================================================
+-- Custom Functions for: ${entity.tableName}
+-- Pass-through from entity definition
+-- ============================================================================`;
+
+    return header + '\n\n' + entity.customFunctions.join('\n\n');
   }
 
   /**

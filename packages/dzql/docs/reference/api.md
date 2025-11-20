@@ -235,7 +235,8 @@ SELECT dzql.register_entity(
   p_temporal_fields JSONB DEFAULT '{}'::jsonb,
   p_notification_paths JSONB DEFAULT '{}'::jsonb,
   p_permission_paths JSONB DEFAULT '{}'::jsonb,
-  p_graph_rules JSONB DEFAULT '{}'::jsonb
+  p_graph_rules JSONB DEFAULT '{}'::jsonb,
+  p_field_defaults JSONB DEFAULT '{}'::jsonb
 );
 ```
 
@@ -251,7 +252,8 @@ SELECT dzql.register_entity(
 | `p_temporal_fields` | JSONB | no | Temporal field config (valid_from/valid_to) |
 | `p_notification_paths` | JSONB | no | Who receives real-time updates |
 | `p_permission_paths` | JSONB | no | CRUD permission rules |
-| `p_graph_rules` | JSONB | no | Automatic relationship management |
+| `p_graph_rules` | JSONB | no | Automatic relationship management + M2M |
+| `p_field_defaults` | JSONB | no | Auto-populate fields on INSERT |
 
 ### FK Includes
 
@@ -302,7 +304,76 @@ const rights = await ws.api.get.contractor_rights({id: 1});
 const past = await ws.api.get.contractor_rights({id: 1, on_date: '2023-01-01'});
 ```
 
-### Example Registration
+### Field Defaults
+
+Auto-populate fields on INSERT with values or variables:
+
+```sql
+'{
+  "owner_id": "@user_id",     -- Current user ID
+  "created_by": "@user_id",   -- Current user ID
+  "created_at": "@now",       -- Current timestamp
+  "status": "draft"           -- Literal value
+}'
+```
+
+**Available variables:**
+- `@user_id` - Current user ID from `p_user_id`
+- `@now` - Current timestamp
+- `@today` - Current date
+- Literal values - Any JSON value (`"draft"`, `0`, `true`)
+
+**Behavior:**
+- Only applied on INSERT (not UPDATE)
+- Explicit values override defaults
+- Reduces client boilerplate
+
+See [Field Defaults Guide](../guides/field-defaults.md) for details.
+
+### Many-to-Many Relationships
+
+Configure M2M relationships via `graph_rules.many_to_many`:
+
+```sql
+'{
+  "many_to_many": {
+    "tags": {
+      "junction_table": "brand_tags",
+      "local_key": "brand_id",
+      "foreign_key": "tag_id",
+      "target_entity": "tags",
+      "id_field": "tag_ids",
+      "expand": false
+    }
+  }
+}'
+```
+
+**Client usage:**
+```javascript
+// Save with relationships in single call
+await api.save_brands({
+  data: {
+    name: "My Brand",
+    tag_ids: [1, 2, 3]  // Junction table synced atomically
+  }
+})
+
+// Response includes tag_ids array
+{ id: 5, name: "My Brand", tag_ids: [1, 2, 3] }
+```
+
+**Configuration:**
+- `junction_table` - Name of junction table
+- `local_key` - FK to this entity
+- `foreign_key` - FK to target entity
+- `target_entity` - Target table name
+- `id_field` - Field name for ID array
+- `expand` - Include full objects (default: false)
+
+See [Many-to-Many Guide](../guides/many-to-many.md) for details.
+
+### Example Registration (Basic)
 
 ```sql
 SELECT dzql.register_entity(
@@ -332,8 +403,81 @@ SELECT dzql.register_entity(
         }]
       }
     }
+  }',
+  '{}'                                   -- field defaults (none)
+);
+```
+
+### Example Registration (With All Features)
+
+```sql
+SELECT dzql.register_entity(
+  'resources',
+  'title',
+  ARRAY['title', 'description'],
+  '{"org": "organisations"}',            -- FK includes
+  false,                                 -- soft delete
+  '{}',                                  -- temporal
+  '{}',                                  -- notifications
+  '{                                     -- permissions
+    "view": [],
+    "create": [],
+    "update": ["@owner_id"],
+    "delete": ["@owner_id"]
+  }',
+  '{                                     -- graph rules
+    "many_to_many": {
+      "tags": {
+        "junction_table": "resource_tags",
+        "local_key": "resource_id",
+        "foreign_key": "tag_id",
+        "target_entity": "tags",
+        "id_field": "tag_ids",
+        "expand": false
+      },
+      "collaborators": {
+        "junction_table": "resource_collaborators",
+        "local_key": "resource_id",
+        "foreign_key": "user_id",
+        "target_entity": "users",
+        "id_field": "collaborator_ids",
+        "expand": true
+      }
+    }
+  }',
+  '{                                     -- field defaults
+    "owner_id": "@user_id",
+    "created_by": "@user_id",
+    "created_at": "@now",
+    "status": "draft"
   }'
 );
+```
+
+**Client usage:**
+```javascript
+// Single call with all features!
+const resource = await api.save_resources({
+  data: {
+    title: "My Resource",
+    tag_ids: [1, 2, 3],
+    collaborator_ids: [10, 20]
+    // owner_id, created_by, created_at, status auto-populated
+  }
+})
+
+// Response
+{
+  id: 1,
+  title: "My Resource",
+  owner_id: 123,              // From field defaults
+  created_by: 123,            // From field defaults
+  created_at: "2025-11-20...", // From field defaults
+  status: "draft",            // From field defaults
+  tag_ids: [1, 2, 3],         // M2M IDs
+  collaborator_ids: [10, 20], // M2M IDs
+  collaborators: [...]        // Full objects (expand: true)
+}
 ```
 
 ---

@@ -23,7 +23,9 @@ CREATE TABLE IF NOT EXISTS dzql.entities (
   temporal_fields jsonb DEFAULT '{}',    -- valid_from/valid_to field names for temporal filtering
   notification_paths jsonb DEFAULT '{}', -- paths to determine who gets notified
   permission_paths jsonb DEFAULT '{}',   -- paths to determine who has permission for operations
-  graph_rules jsonb DEFAULT '{}'         -- graph evolution rules for automatic relationship management
+  graph_rules jsonb DEFAULT '{}',        -- graph evolution rules for automatic relationship management
+  field_defaults jsonb DEFAULT '{}',     -- default values to auto-populate on INSERT
+  many_to_many jsonb DEFAULT '{}'        -- many-to-many relationship configurations
 );
 
 -- === Registry (allowlist of callable functions) ===

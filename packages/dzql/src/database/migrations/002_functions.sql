@@ -744,6 +744,11 @@ BEGIN
   -- Validate top-level trigger types
   FOR l_trigger_key, l_trigger_rules IN SELECT * FROM jsonb_each(p_rules)
   LOOP
+    -- Skip validation for many_to_many (different structure)
+    IF l_trigger_key = 'many_to_many' THEN
+      CONTINUE;
+    END IF;
+
     -- Check valid trigger types
     IF l_trigger_key NOT IN ('on_create', 'on_update', 'on_delete', 'on_field_change') THEN
       RAISE WARNING 'Invalid trigger type: %', l_trigger_key;
