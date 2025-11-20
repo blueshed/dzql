@@ -1,4 +1,4 @@
-import { test, expect, describe, beforeAll } from 'bun:test';
+import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
 import { setupTests } from '../setup/test-helpers.js';
 import { DZQLCompiler } from '../../packages/dzql/src/compiler/compiler.js';
 
