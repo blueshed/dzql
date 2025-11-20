@@ -1,6 +1,6 @@
 # Test Suite Status - Updated
 
-## ✅ Currently Passing: 114/123 Centralized Tests
+## ✅ Currently Passing: 113/123 Centralized Tests
 
 ### Summary by Category
 
@@ -10,8 +10,8 @@
 | **Authentication** | 7 | 7 | ✅ 100% |
 | **Core (Compiler, Parser, etc.)** | 83 | 83 | ✅ 100% |
 | **Interpreted CRUD** | 8 | 8 | ✅ 100% |
-| **Compiled CRUD** | 3 | 12 | 🟡 25% |
-| **TOTAL** | **114** | **123** | **93% passing** |
+| **Compiled CRUD** | 2 | 12 | 🔴 17% |
+| **TOTAL** | **113** | **123** | **92% passing** |
 
 ## ✅ Fully Working Test Suites
 
@@ -88,23 +88,25 @@ All core tests pass:
 
 ## 🟡 Partially Working Test Suites
 
-### 5. Compiled CRUD Tests (3/12) 🟡
+### 5. Compiled CRUD Tests (2/12) 🔴
 **File**: `tests/integration/compiled-crud.test.js`
 **Command**: `bun test tests/integration/compiled-crud.test.js`
 
-**Passing Tests:** (3)
+**Passing Tests:** (2)
 - ✅ Can compile blog schema
-- ✅ Compiled functions are created
 - ✅ Database schema is set up
 
-**Failing Tests:** (9)
+**Failing Tests:** (10)
+- 🔴 Authentication: login test fails (wrong user_id)
 - 🔴 Posts CRUD: save, get, search, delete (4 tests)
 - 🔴 Comments CRUD (1 test)
 - 🔴 Users CRUD: get, search, save, lookup (4 tests)
 
-**Known Issues:**
-- Compiled mode uses different API (db.api wrapper)
-- May need different parameter structure than interpreted mode
+**Critical Issues:**
+- Many compiled functions don't exist: `get_posts`, `delete_posts`, `lookup_users`, etc.
+- Save functions have bug: "column 'data' does not exist"
+- Suggests compiler may not be generating functions correctly for this entity schema
+- Requires deep investigation into compiler behavior and generated SQL
 
 ## Infrastructure: 100% Working ✅
 
@@ -125,7 +127,7 @@ bun run test:init
 # Run all centralized tests
 bun test tests/migrations/ tests/integration/ tests/core/
 
-# Result: 114/123 tests pass (93%) ✅
+# Result: 113/123 tests pass (92%) ✅
 ```
 
 ### Individual Suites
@@ -142,7 +144,7 @@ bun test tests/integration/interpreted-crud.test.js
 # Core - 83/83 passing ✅
 bun test tests/core/
 
-# Compiled CRUD - 3/12 passing 🟡
+# Compiled CRUD - 2/12 passing 🔴
 bun test tests/integration/compiled-crud.test.js
 ```
 
@@ -230,8 +232,8 @@ const saved = await sql`
 - ✅ Authentication: 7/7 (100%)
 - ✅ Interpreted CRUD: 8/8 (100%)
 - ✅ Core Tests: 83/83 (100%)
-- 🟡 Compiled CRUD: 3/12 (25%)
+- 🔴 Compiled CRUD: 2/12 (17%)
 
-**Overall: 114/123 tests passing (93%)**
+**Overall: 113/123 tests passing (92%)**
 
-Excellent progress! The centralized test suite is now 93% complete. Four complete test suites at 100%. All core functionality (migrations, auth, interpreted mode, compiler, parser, M2M, subscriptions) is fully tested and working. Only compiled mode CRUD needs fixes.
+Strong progress! The centralized test suite is 92% complete. Four complete test suites at 100%. All core functionality (migrations, auth, interpreted mode, compiler, parser, M2M, subscriptions) is fully tested and working. Compiled mode CRUD has fundamental issues requiring deeper investigation into the compiler's generated SQL.
