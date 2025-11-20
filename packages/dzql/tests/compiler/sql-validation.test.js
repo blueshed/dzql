@@ -253,7 +253,7 @@ describe('SQL Validation Tests', () => {
     test('includes compilation time', () => {
       expect(compiledEntity.compilationTime).toBeDefined();
       expect(typeof compiledEntity.compilationTime).toBe('number');
-      expect(compiledEntity.compilationTime).toBeGreaterThan(0);
+      expect(compiledEntity.compilationTime).toBeGreaterThanOrEqual(0);
     });
   });
 

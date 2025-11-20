@@ -30,6 +30,23 @@ CREATE TABLE IF NOT EXISTS comments (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- Tags table for categorizing posts
+CREATE TABLE IF NOT EXISTS tags (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(50) UNIQUE NOT NULL,
+  color VARCHAR(7) DEFAULT '#3788d8'
+);
+
+-- Junction table for post-tag many-to-many relationship
+CREATE TABLE IF NOT EXISTS post_tags (
+  post_id INT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  tag_id INT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (post_id, tag_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_tags_post_id ON post_tags(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_tags_tag_id ON post_tags(tag_id);
+
 -- Seed data will be added after auth functions are loaded
 -- See init_db/003_seed.sql for user registration
 
@@ -54,7 +71,24 @@ select dzql.register_entity(
   )
 );
 
--- Posts entity - blog posts
+-- Register tags entity first
+select dzql.register_entity(
+  'tags',
+  'name',
+  array['name'],
+  '{}',  -- no FK includes
+  false, -- hard delete
+  '{}',  -- no temporal
+  '{}',  -- no notifications
+  jsonb_build_object(
+    'view', array[]::text[],           -- Anyone can view tags
+    'create', array[]::text[],         -- Anyone can create tags
+    'update', array[]::text[],         -- Anyone can update tags
+    'delete', array[]::text[]          -- Anyone can delete tags
+  )
+);
+
+-- Posts entity - blog posts with M2M tags
 select dzql.register_entity(
   'posts',
   'title',
@@ -63,14 +97,26 @@ select dzql.register_entity(
     'author', 'users'  -- FK to users
   ),
   true,  -- soft delete (deleted_at)
-  '{}',  -- no reverse FK
-  '{}',  -- no notification paths (removed follows reference)
+  '{}',  -- no temporal
+  '{}',  -- no notification paths
   jsonb_build_object(
     'view', array[]::text[],           -- Anyone can view posts
     'create', array[]::text[],         -- Anyone can create posts
     'update', array['@author_id'],     -- Only author can update
     'delete', array['@author_id']      -- Only author can delete
-  )
+  ),
+  jsonb_build_object(
+    'many_to_many', jsonb_build_object(
+      'tags', jsonb_build_object(
+        'junction_table', 'post_tags',
+        'local_key', 'post_id',
+        'foreign_key', 'tag_id',
+        'target_entity', 'tags',
+        'id_field', 'tag_ids',
+        'expand', true  -- Include full tag objects in response
+      )
+    )
+  )  -- graph_rules with M2M
 );
 
 -- Comments entity - blog comments

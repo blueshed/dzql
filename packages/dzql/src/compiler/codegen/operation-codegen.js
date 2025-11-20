@@ -28,6 +28,7 @@ export class OperationCodegen {
    */
   generateGetFunction() {
     const fkExpansions = this._generateFKExpansions();
+    const m2mExpansionForGet = this._generateM2MExpansionForGet();
     const filterSensitiveFields = this._generateSensitiveFieldFilter();
 
     return `-- GET operation for ${this.tableName}
@@ -58,6 +59,7 @@ BEGIN
   END IF;
 
 ${fkExpansions}
+${m2mExpansionForGet}
 ${filterSensitiveFields}
 
   RETURN v_result;
@@ -72,6 +74,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     const graphRulesCall = this._generateGraphRulesCall();
     const notificationSQL = this._generateNotificationSQL();
     const filterSensitiveFields = this._generateSensitiveFieldFilter('v_output');
+    const m2mVariables = this._generateM2MVariableDeclarations();
+    const m2mExtraction = this._generateM2MExtraction();
+    const m2mSync = this._generateM2MSync();
+    const m2mExpansion = this._generateM2MExpansion();
 
     return `-- SAVE operation for ${this.tableName}
 CREATE OR REPLACE FUNCTION save_${this.tableName}(
@@ -84,7 +90,9 @@ DECLARE
   v_output JSONB;
   v_is_insert BOOLEAN := false;
   v_notify_users INT[];
+${m2mVariables}
 BEGIN
+${m2mExtraction}
   -- Determine if this is insert or update
   IF p_data->>'id' IS NULL THEN
     v_is_insert := true;
@@ -120,23 +128,32 @@ BEGIN
       FROM jsonb_each_text(p_data) kv(key, value)
     ) INTO v_result;
   ELSE
-    -- Dynamic UPDATE from JSONB
-    EXECUTE (
-      SELECT format(
-        'UPDATE ${this.tableName} SET %s WHERE id = %L RETURNING *',
-        string_agg(quote_ident(key) || ' = ' || quote_nullable(value), ', '),
-        (p_data->>'id')::int
-      )
-      FROM jsonb_each_text(p_data) kv(key, value)
-      WHERE key != 'id'
-    ) INTO v_result;
+    -- Dynamic UPDATE from JSONB (only if there are fields to update)
+    IF (SELECT COUNT(*) FROM jsonb_object_keys(p_data) WHERE jsonb_object_keys != 'id') > 0 THEN
+      EXECUTE (
+        SELECT format(
+          'UPDATE ${this.tableName} SET %s WHERE id = %L RETURNING *',
+          string_agg(quote_ident(key) || ' = ' || quote_nullable(value), ', '),
+          (p_data->>'id')::int
+        )
+        FROM jsonb_each_text(p_data) kv(key, value)
+        WHERE key != 'id'
+      ) INTO v_result;
+    ELSE
+      -- No fields to update (only M2M fields were provided), just fetch existing
+      v_result := v_existing;
+    END IF;
   END IF;
+
+${m2mSync}
+
+  -- Prepare output with M2M fields (BEFORE event creation for real-time notifications!)
+  v_output := to_jsonb(v_result);
+${m2mExpansion}
 
 ${graphRulesCall}
 ${notificationSQL}
 
-  -- Prepare output (removing sensitive fields)
-  v_output := to_jsonb(v_result);
 ${filterSensitiveFields}
 
   RETURN v_output;
@@ -233,6 +250,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
       `${field} ILIKE '%' || p_search || '%'`
     ).join(' OR ');
     const filterSensitiveFieldsArray = this._generateSensitiveFieldFilterArray();
+    const m2mSearchExpansion = this._generateM2MExpansionForSearch();
 
     return `-- SEARCH operation for ${this.tableName}
 CREATE OR REPLACE FUNCTION search_${this.tableName}(
@@ -311,8 +329,8 @@ BEGIN
 
   -- Get data
   EXECUTE format('
-    SELECT COALESCE(jsonb_agg(to_jsonb(t.*) ORDER BY %I %s), ''[]''::jsonb)
-    FROM ${this.tableName} t
+    SELECT COALESCE(jsonb_agg(${m2mSearchExpansion.selectExpression} ORDER BY %I %s), ''[]''::jsonb)
+    FROM ${this.tableName} t${m2mSearchExpansion.lateralJoins}
     WHERE %s
     LIMIT %L OFFSET %L
   ', v_sort_field, v_sort_order, v_where_clause, p_limit, v_offset) INTO v_data;
@@ -327,6 +345,251 @@ ${filterSensitiveFieldsArray}
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;`;
+  }
+
+  /**
+   * Generate M2M variable declarations
+   * COMPILE TIME: Loop to generate static variable declarations
+   * RUNTIME: No loops, just variables
+   * @private
+   */
+  _generateM2MVariableDeclarations() {
+    const manyToMany = this.entity.manyToMany || {};
+    if (Object.keys(manyToMany).length === 0) return '';
+
+    const declarations = [];
+
+    // COMPILE TIME LOOP: Generate separate variable for each M2M relationship
+    for (const [relationKey, config] of Object.entries(manyToMany)) {
+      const idField = config.id_field;
+      declarations.push(`  v_${idField} INT[];  -- M2M: ${relationKey}`);
+    }
+
+    return declarations.join('\n');
+  }
+
+  /**
+   * Generate M2M extraction logic
+   * COMPILE TIME: Loop to generate code
+   * RUNTIME: Separate IF blocks (NO loops!)
+   * @private
+   */
+  _generateM2MExtraction() {
+    const manyToMany = this.entity.manyToMany || {};
+    if (Object.keys(manyToMany).length === 0) return '';
+
+    const extractions = [];
+
+    // COMPILE TIME LOOP: Generate separate extraction block for each M2M
+    for (const [relationKey, config] of Object.entries(manyToMany)) {
+      const idField = config.id_field;
+
+      // Each M2M gets its own static IF block (no runtime loops!)
+      extractions.push(`
+  -- Extract M2M field: ${idField} (${relationKey})
+  IF p_data ? '${idField}' THEN
+    v_${idField} := ARRAY(SELECT jsonb_array_elements_text(p_data->'${idField}')::int);
+    p_data := p_data - '${idField}';  -- Remove from data (not a table column)
+  END IF;`);
+    }
+
+    return extractions.join('');
+  }
+
+  /**
+   * Generate M2M junction table sync logic
+   * COMPILE TIME: Loop to generate code
+   * RUNTIME: Direct SQL execution (NO loops!)
+   * @private
+   */
+  _generateM2MSync() {
+    const manyToMany = this.entity.manyToMany || {};
+    if (Object.keys(manyToMany).length === 0) return '';
+
+    const syncs = [];
+
+    // COMPILE TIME LOOP: Generate separate sync block for EACH relationship
+    for (const [relationKey, config] of Object.entries(manyToMany)) {
+      const idField = config.id_field;
+      const junctionTable = config.junction_table;
+      const localKey = config.local_key;
+      const foreignKey = config.foreign_key;
+
+      // Static SQL - all names known at compile time!
+      syncs.push(`
+  -- ============================================================================
+  -- M2M Sync: ${relationKey} (junction: ${junctionTable})
+  -- ============================================================================
+  IF v_${idField} IS NOT NULL THEN
+    -- Delete relationships not in new list
+    DELETE FROM ${junctionTable}
+    WHERE ${localKey} = v_result.id
+      AND (${foreignKey} <> ALL(v_${idField}) OR v_${idField} = '{}');
+
+    -- Insert new relationships (idempotent)
+    IF array_length(v_${idField}, 1) > 0 THEN
+      INSERT INTO ${junctionTable} (${localKey}, ${foreignKey})
+      SELECT v_result.id, unnest(v_${idField})
+      ON CONFLICT (${localKey}, ${foreignKey}) DO NOTHING;
+    END IF;
+  END IF;`);
+    }
+
+    return syncs.join('');
+  }
+
+  /**
+   * Generate M2M expansion in output (for SAVE function)
+   * COMPILE TIME: Loop to generate code
+   * RUNTIME: Direct SQL queries (NO loops!)
+   * Expands M2M fields into v_output BEFORE event creation (for real-time notifications)
+   * @private
+   */
+  _generateM2MExpansion() {
+    const manyToMany = this.entity.manyToMany || {};
+    if (Object.keys(manyToMany).length === 0) return '';
+
+    const expansions = [];
+
+    // COMPILE TIME LOOP: Generate code for each M2M relationship
+    for (const [relationKey, config] of Object.entries(manyToMany)) {
+      const idField = config.id_field;
+      const junctionTable = config.junction_table;
+      const localKey = config.local_key;
+      const foreignKey = config.foreign_key;
+      const targetEntity = config.target_entity;
+      const expand = config.expand || false;
+
+      // Always add ID array (static SQL) - use v_result.id since v_output is v_result as jsonb
+      expansions.push(`
+  -- Add M2M IDs: ${idField}
+  v_output := v_output || jsonb_build_object('${idField}',
+    (SELECT COALESCE(jsonb_agg(${foreignKey} ORDER BY ${foreignKey}), '[]'::jsonb)
+     FROM ${junctionTable} WHERE ${localKey} = v_result.id)
+  );`);
+
+      // Conditionally expand full objects (known at compile time!)
+      if (expand) {
+        expansions.push(`
+  -- Expand M2M objects: ${relationKey} (expand=true)
+  v_output := v_output || jsonb_build_object('${relationKey}',
+    (SELECT COALESCE(jsonb_agg(to_jsonb(t.*) ORDER BY t.id), '[]'::jsonb)
+     FROM ${junctionTable} jt
+     JOIN ${targetEntity} t ON t.id = jt.${foreignKey}
+     WHERE jt.${localKey} = v_result.id)
+  );`);
+      }
+    }
+
+    return expansions.join('');
+  }
+
+  /**
+   * Generate M2M expansion for SEARCH operation
+   * COMPILE TIME: Loop to generate LATERAL joins
+   * RUNTIME: Static joins (NO loops!)
+   * @private
+   */
+  _generateM2MExpansionForSearch() {
+    const manyToMany = this.entity.manyToMany || {};
+
+    if (Object.keys(manyToMany).length === 0) {
+      return {
+        lateralJoins: '',
+        selectExpression: 'to_jsonb(t.*)'
+      };
+    }
+
+    const lateralJoins = [];
+    const mergeExpressions = [];
+
+    // COMPILE TIME LOOP: Generate LATERAL join for each M2M relationship
+    for (const [relationKey, config] of Object.entries(manyToMany)) {
+      const idField = config.id_field;
+      const junctionTable = config.junction_table;
+      const localKey = config.local_key;
+      const foreignKey = config.foreign_key;
+      const targetEntity = config.target_entity;
+      const expand = config.expand || false;
+
+      // LATERAL join for ID array (static SQL)
+      lateralJoins.push(`
+    LEFT JOIN LATERAL (
+      SELECT COALESCE(jsonb_agg(${foreignKey} ORDER BY ${foreignKey}), ''[]''::jsonb) as ${idField}
+      FROM ${junctionTable}
+      WHERE ${localKey} = t.id
+    ) m2m_${idField} ON true`);
+
+      mergeExpressions.push(`jsonb_build_object(''${idField}'', m2m_${idField}.${idField})`);
+
+      // Optionally expand full objects
+      if (expand) {
+        lateralJoins.push(`
+    LEFT JOIN LATERAL (
+      SELECT COALESCE(jsonb_agg(to_jsonb(target.*) ORDER BY target.id), ''[]''::jsonb) as ${relationKey}
+      FROM ${junctionTable} jt
+      JOIN ${targetEntity} target ON target.id = jt.${foreignKey}
+      WHERE jt.${localKey} = t.id
+    ) m2m_${relationKey} ON true`);
+
+        mergeExpressions.push(`jsonb_build_object(''${relationKey}'', m2m_${relationKey}.${relationKey})`);
+      }
+    }
+
+    // Build the select expression that merges M2M fields
+    const selectExpression = mergeExpressions.length > 0
+      ? `to_jsonb(t.*) || ${mergeExpressions.join(' || ')}`
+      : 'to_jsonb(t.*)';
+
+    return {
+      lateralJoins: lateralJoins.join(''),
+      selectExpression
+    };
+  }
+
+  /**
+   * Generate M2M expansion for GET operation
+   * COMPILE TIME: Loop to generate code
+   * RUNTIME: Direct SQL queries (NO loops!)
+   * @private
+   */
+  _generateM2MExpansionForGet() {
+    const manyToMany = this.entity.manyToMany || {};
+    if (Object.keys(manyToMany).length === 0) return '';
+
+    const expansions = [];
+
+    // COMPILE TIME LOOP: Generate code for each M2M relationship
+    for (const [relationKey, config] of Object.entries(manyToMany)) {
+      const idField = config.id_field;
+      const junctionTable = config.junction_table;
+      const localKey = config.local_key;
+      const foreignKey = config.foreign_key;
+      const targetEntity = config.target_entity;
+      const expand = config.expand || false;
+
+      // Always add ID array (static SQL)
+      expansions.push(`
+  -- Add M2M IDs: ${idField}
+  v_result := v_result || jsonb_build_object('${idField}',
+    (SELECT COALESCE(jsonb_agg(${foreignKey} ORDER BY ${foreignKey}), '[]'::jsonb)
+     FROM ${junctionTable} WHERE ${localKey} = v_record.id)
+  );`);
+
+      // Conditionally expand full objects (known at compile time!)
+      if (expand) {
+        expansions.push(`
+  -- Expand M2M objects: ${relationKey} (expand=true)
+  v_result := v_result || jsonb_build_object('${relationKey}',
+    (SELECT COALESCE(jsonb_agg(to_jsonb(t.*) ORDER BY t.id), '[]'::jsonb)
+     FROM ${junctionTable} jt
+     JOIN ${targetEntity} t ON t.id = jt.${foreignKey}
+     WHERE jt.${localKey} = v_record.id)
+  );`);
+      }
+    }
+
+    return expansions.join('');
   }
 
   /**
@@ -460,10 +723,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
 
     if (operation === 'save') {
       return `
-  -- Resolve notification recipients
-  ${hasNotificationPaths ? `v_notify_users := _resolve_notification_paths_${this.tableName}(p_user_id, to_jsonb(v_result));` : 'v_notify_users := ARRAY[]::INT[];'}
+  -- Resolve notification recipients (use v_output with M2M fields!)
+  ${hasNotificationPaths ? `v_notify_users := _resolve_notification_paths_${this.tableName}(p_user_id, v_output);` : 'v_notify_users := ARRAY[]::INT[];'}
 
-  -- Create event for real-time notifications
+  -- Create event for real-time notifications (v_output includes M2M fields!)
   INSERT INTO dzql.events (
     table_name,
     op,
@@ -477,7 +740,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     CASE WHEN v_is_insert THEN 'insert' ELSE 'update' END,
     jsonb_build_object('id', v_result.id),
     CASE WHEN NOT v_is_insert THEN to_jsonb(v_existing) ELSE NULL END,
-    to_jsonb(v_result),
+    v_output,
     p_user_id,
     v_notify_users
   );`;
