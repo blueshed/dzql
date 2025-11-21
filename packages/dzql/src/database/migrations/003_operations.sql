@@ -867,6 +867,11 @@ BEGIN
 
   l_where_clause := l_where_clause || l_temporal_filter;
 
+  -- Add soft delete filter if enabled for this entity
+  IF l_entity_config.soft_delete THEN
+    l_where_clause := l_where_clause || ' AND t.deleted_at IS NULL';
+  END IF;
+
   IF l_is_compound_key AND l_entity_config.fk_includes IS NOT NULL AND l_entity_config.fk_includes != '{}' THEN
     -- For compound keys with FK includes, build full dereferenced labels
     l_sql_stmt := format(
