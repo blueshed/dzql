@@ -1,7 +1,7 @@
-import postgres from 'postgres';
-import { readFileSync } from 'fs';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import postgres from "postgres";
+import { readFileSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -22,7 +22,9 @@ export class TestDatabase {
     this.adminSql = null;
     this.testSql = null;
     this.dbName = `dzql_test_${process.pid}`;
-    this.baseUrl = getDatabaseUrl();
+    this.baseUrl =
+      process.env.DATABASE_URL ||
+      "postgres://dzql_test:dzql_test@localhost:5433/dzql_test";
   }
 
   /**
@@ -34,24 +36,29 @@ export class TestDatabase {
    */
   async setup() {
     try {
-      // Connect as admin to postgres database
-      const adminUrl = this.baseUrl.replace(/\/[^/]*$/, '/postgres');
-      this.adminSql = postgres(adminUrl, { max: 1 });
+      // Connect as admin to postgres database (suppress NOTICE messages)
+      const adminUrl = this.baseUrl.replace(/\/[^/]*$/, "/postgres");
+      this.adminSql = postgres(adminUrl, {
+        max: 1,
+        onnotice: () => {}, // Suppress NOTICE messages in tests
+      });
 
       // Drop and create fresh test database
       await this.adminSql.unsafe(`DROP DATABASE IF EXISTS ${this.dbName}`);
       await this.adminSql.unsafe(`CREATE DATABASE ${this.dbName}`);
 
-      // Connect to test database
+      // Connect to test database (suppress NOTICE messages)
       const testUrl = this.baseUrl.replace(/\/[^/]*$/, `/${this.dbName}`);
-      this.testSql = postgres(testUrl);
+      this.testSql = postgres(testUrl, {
+        onnotice: () => {}, // Suppress NOTICE messages in tests
+      });
 
       // Run migrations in order
       await this.runMigrations();
 
       return this.testSql;
     } catch (error) {
-      console.error('Failed to setup test database:', error.message);
+      console.error("Failed to setup test database:", error.message);
       throw error;
     }
   }
@@ -60,22 +67,25 @@ export class TestDatabase {
    * Run all DZQL migrations in order
    */
   async runMigrations() {
-    const migrationsDir = resolve(__dirname, '../../src/database/migrations');
+    const migrationsDir = resolve(
+      __dirname,
+      "../../packages/dzql/src/database/migrations",
+    );
     const migrations = [
-      '001_schema.sql',
-      '002_functions.sql',
-      '003_operations.sql',
-      '004_search.sql',
-      '005_entities.sql',
-      '006_auth.sql',
-      '007_events.sql',
-      '008_hello.sql',
-      '008a_meta.sql',
-      '009_subscriptions.sql'
+      "001_schema.sql",
+      "002_functions.sql",
+      "003_operations.sql",
+      "004_search.sql",
+      "005_entities.sql",
+      "006_auth.sql",
+      "007_events.sql",
+      "008_hello.sql",
+      "008a_meta.sql",
+      "009_subscriptions.sql",
     ];
 
     for (const migration of migrations) {
-      const sql = readFileSync(resolve(migrationsDir, migration), 'utf-8');
+      const sql = readFileSync(resolve(migrationsDir, migration), "utf-8");
       await this.testSql.unsafe(sql);
     }
   }
@@ -99,7 +109,7 @@ export class TestDatabase {
         await this.adminSql.end();
       }
     } catch (error) {
-      console.error('Failed to teardown test database:', error.message);
+      console.error("Failed to teardown test database:", error.message);
       // Don't throw - we want tests to complete even if cleanup fails
     }
   }
@@ -109,34 +119,14 @@ export class TestDatabase {
    * Automatically rolls back after test
    */
   async withTransaction(fn) {
-    await this.testSql.begin(async (tx) => {
-      await fn(tx);
-      // Automatic rollback at end of scope
-      throw new Error('ROLLBACK'); // Force rollback
-    }).catch((err) => {
-      if (err.message !== 'ROLLBACK') throw err;
-    });
+    await this.testSql
+      .begin(async (tx) => {
+        await fn(tx);
+        // Automatic rollback at end of scope
+        throw new Error("ROLLBACK"); // Force rollback
+      })
+      .catch((err) => {
+        if (err.message !== "ROLLBACK") throw err;
+      });
   }
-}
-
-/**
- * Get database URL based on environment
- *
- * Priority:
- * 1. TEST_DATABASE_URL (explicit override)
- * 2. DATABASE_URL (from .env)
- * 3. Default (works for Claude Web, Docker, Local)
- */
-function getDatabaseUrl() {
-  if (process.env.TEST_DATABASE_URL) {
-    return process.env.TEST_DATABASE_URL;
-  }
-
-  if (process.env.DATABASE_URL) {
-    return process.env.DATABASE_URL;
-  }
-
-  // Default for Docker/Local (with password)
-  // For Claude Web, set TEST_DATABASE_URL=postgres://postgres@localhost:5432/dzql_test
-  return 'postgres://postgres:postgres@localhost:5432/dzql_test';
 }

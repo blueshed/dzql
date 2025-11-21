@@ -3,28 +3,31 @@
  * Handles migrations, schema setup, and test data seeding
  */
 
-import postgres from 'postgres';
-import { readdir, readFile } from 'fs/promises';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import postgres from "postgres";
+import { readdir, readFile } from "fs/promises";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = join(__dirname, '../../packages/dzql/src/database/migrations');
+const MIGRATIONS_DIR = join(
+  __dirname,
+  "../../packages/dzql/src/database/migrations",
+);
 
 /**
  * Create a test database connection
- * Uses local PostgreSQL configured with trust authentication
  */
-export function createTestConnection(dbName = 'dzql_test') {
-  return postgres({
-    host: process.env.POSTGRES_HOST || 'localhost',
-    port: parseInt(process.env.POSTGRES_PORT || '5433'),
-    database: dbName,
-    username: process.env.POSTGRES_USER || 'postgres',
-    // No password needed with trust authentication
+export function createTestConnection(dbName = "dzql_test") {
+  // Use DATABASE_URL if provided, otherwise construct from dbName
+  const connectionString =
+    process.env.DATABASE_URL ||
+    `postgres://dzql_test:dzql_test@localhost:5433/${dbName}`;
+
+  return postgres(connectionString, {
     max: 10,
     idle_timeout: 20,
-    connect_timeout: 10
+    connect_timeout: 10,
+    onnotice: () => {}, // Suppress NOTICE messages in tests
   });
 }
 
@@ -32,27 +35,25 @@ export function createTestConnection(dbName = 'dzql_test') {
  * Run all migrations in order
  */
 export async function runMigrations(sql) {
-  console.log('🔄 Running migrations...');
+  console.log("🔄 Running migrations...");
 
   const files = await readdir(MIGRATIONS_DIR);
-  const sqlFiles = files
-    .filter(f => f.endsWith('.sql'))
-    .sort(); // Ensure migrations run in order
+  const sqlFiles = files.filter((f) => f.endsWith(".sql")).sort(); // Ensure migrations run in order
 
   for (const file of sqlFiles) {
     console.log(`  📄 Applying ${file}`);
-    const migrationSQL = await readFile(join(MIGRATIONS_DIR, file), 'utf-8');
+    const migrationSQL = await readFile(join(MIGRATIONS_DIR, file), "utf-8");
     await sql.unsafe(migrationSQL);
   }
 
-  console.log('✅ Migrations complete');
+  console.log("✅ Migrations complete");
 }
 
 /**
  * Clean all test data (but keep schema)
  */
 export async function cleanTestData(sql) {
-  console.log('🧹 Cleaning test data...');
+  console.log("🧹 Cleaning test data...");
 
   // Get all tables in public schema
   const tables = await sql`
@@ -70,25 +71,28 @@ export async function cleanTestData(sql) {
   // Clean dzql.events table
   await sql`TRUNCATE TABLE dzql.events CASCADE`;
 
-  console.log('✅ Test data cleaned');
+  console.log("✅ Test data cleaned");
 }
 
 /**
  * Drop and recreate the test database schema
  */
 export async function resetDatabase(sql) {
-  console.log('🔄 Resetting database...');
+  console.log("🔄 Resetting database...");
 
   // Drop all tables in public schema
   await sql`DROP SCHEMA IF EXISTS public CASCADE`;
   await sql`CREATE SCHEMA public`;
-  await sql`GRANT ALL ON SCHEMA public TO postgres`;
+
+  // Grant permissions to current user and public (works with dzql_test user)
+  const username = process.env.POSTGRES_USER || "dzql_test";
+  await sql.unsafe(`GRANT ALL ON SCHEMA public TO ${username}`);
   await sql`GRANT ALL ON SCHEMA public TO public`;
 
   // Drop dzql schema if exists
   await sql`DROP SCHEMA IF EXISTS dzql CASCADE`;
 
-  console.log('✅ Database reset complete');
+  console.log("✅ Database reset complete");
 }
 
 /**
@@ -110,7 +114,7 @@ export async function setupTestDatabase() {
 /**
  * Create a test user and return their ID
  */
-export async function createTestUser(sql, email, password = 'testpass123') {
+export async function createTestUser(sql, email, password = "testpass123") {
   const result = await sql`
     SELECT register_user(${email}, ${password}) as result
   `;
@@ -121,7 +125,7 @@ export async function createTestUser(sql, email, password = 'testpass123') {
  * Seed venues test data
  */
 export async function seedVenuesData(sql) {
-  console.log('🌱 Seeding venues test data...');
+  console.log("🌱 Seeding venues test data...");
 
   // Create schema if needed
   await sql`
@@ -199,14 +203,14 @@ export async function seedVenuesData(sql) {
     );
   `;
 
-  console.log('✅ Venues schema created');
+  console.log("✅ Venues schema created");
 }
 
 /**
  * Seed blog test data
  */
 export async function seedBlogData(sql) {
-  console.log('🌱 Seeding blog test data...');
+  console.log("🌱 Seeding blog test data...");
 
   // Create blog schema
   await sql`
@@ -258,27 +262,27 @@ export async function seedBlogData(sql) {
     ON CONFLICT (email) DO NOTHING
   `;
 
-  console.log('✅ Blog schema and seed data created');
+  console.log("✅ Blog schema and seed data created");
 }
 
 /**
  * Wait for database to be ready
  */
 export async function waitForDatabase(maxAttempts = 30) {
-  console.log('⏳ Waiting for database to be ready...');
+  console.log("⏳ Waiting for database to be ready...");
 
   for (let i = 0; i < maxAttempts; i++) {
     try {
       const sql = createTestConnection();
       await sql`SELECT 1`;
       await sql.end();
-      console.log('✅ Database is ready');
+      console.log("✅ Database is ready");
       return true;
     } catch (error) {
       if (i === maxAttempts - 1) {
         throw new Error(`Database not ready after ${maxAttempts} attempts`);
       }
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 }

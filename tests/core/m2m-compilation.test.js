@@ -27,9 +27,10 @@ test("Compiler generates M2M sync logic WITHOUT runtime loops", () => {
 
   const result = compiler.compile(entity);
 
-  console.log('\n=== GENERATED SAVE FUNCTION ===');
-  console.log(result.sql);
-  console.log('=== END ===\n');
+  // Uncomment to debug generated SQL:
+  // console.log('\n=== GENERATED SAVE FUNCTION ===');
+  // console.log(result.sql);
+  // console.log('=== END ===\n');
 
   // ✅ VERIFY: M2M variables declared (compile-time loop generated this)
   expect(result.sql).toContain('v_tag_ids INT[]');
@@ -104,9 +105,10 @@ test("Compiler handles multiple M2M relationships - generates separate blocks", 
 
   const result = compiler.compile(entity);
 
-  console.log('\n=== GENERATED SAVE FUNCTION (MULTIPLE M2M) ===');
-  console.log(result.sql);
-  console.log('=== END ===\n');
+  // Uncomment to debug generated SQL:
+  // console.log('\n=== GENERATED SAVE FUNCTION (MULTIPLE M2M) ===');
+  // console.log(result.sql);
+  // console.log('=== END ===\n');
 
   // ✅ VERIFY: 3 separate variable declarations (NOT a loop!)
   expect(result.sql).toContain('v_tag_ids INT[]');
@@ -168,9 +170,10 @@ test("GET function includes M2M fields", () => {
 
   const getFunction = getFunctionMatch[0];
 
-  console.log('\n=== GENERATED GET FUNCTION ===');
-  console.log(getFunction);
-  console.log('=== END ===\n');
+  // Uncomment to debug generated SQL:
+  // console.log('\n=== GENERATED GET FUNCTION ===');
+  // console.log(getFunction);
+  // console.log('=== END ===\n');
 
   // ✅ VERIFY: M2M fields added to result
   expect(getFunction).toContain("jsonb_build_object('tag_ids'");
@@ -220,9 +223,10 @@ test("SEARCH function includes M2M fields via LATERAL joins", () => {
 
   const searchFunction = searchFunctionMatch[0];
 
-  console.log('\n=== GENERATED SEARCH FUNCTION ===');
-  console.log(searchFunction);
-  console.log('=== END ===\n');
+  // Uncomment to debug generated SQL:
+  // console.log('\n=== GENERATED SEARCH FUNCTION ===');
+  // console.log(searchFunction);
+  // console.log('=== END ===\n');
 
   // ✅ VERIFY: LATERAL joins for M2M (static SQL!)
   expect(searchFunction).toContain('LEFT JOIN LATERAL');
