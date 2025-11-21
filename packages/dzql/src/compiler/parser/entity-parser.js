@@ -72,7 +72,17 @@ export class EntityParser {
       params.push(currentParam.trim());
     }
 
-    return params;
+    // Strip SQL comments (-- ...) from each parameter
+    return params.map(param => {
+      // Remove everything after -- (SQL line comment)
+      return param.split('\n').map(line => {
+        const commentIndex = line.indexOf('--');
+        if (commentIndex !== -1) {
+          return line.substring(0, commentIndex);
+        }
+        return line;
+      }).join('\n').trim();
+    });
   }
 
   /**

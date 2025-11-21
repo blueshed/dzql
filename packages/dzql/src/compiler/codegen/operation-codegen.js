@@ -523,24 +523,24 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
       // LATERAL join for ID array (static SQL)
       lateralJoins.push(`
     LEFT JOIN LATERAL (
-      SELECT COALESCE(jsonb_agg(${foreignKey} ORDER BY ${foreignKey}), ''''[]''''::jsonb) as ${idField}
+      SELECT COALESCE(jsonb_agg(${foreignKey} ORDER BY ${foreignKey}), ''[]''::jsonb) as ${idField}
       FROM ${junctionTable}
       WHERE ${localKey} = t.id
     ) m2m_${idField} ON true`);
 
-      mergeExpressions.push(`jsonb_build_object(''''''${idField}'''''', m2m_${idField}.${idField})`);
+      mergeExpressions.push(`jsonb_build_object(''${idField}'', m2m_${idField}.${idField})`);
 
       // Optionally expand full objects
       if (expand) {
         lateralJoins.push(`
     LEFT JOIN LATERAL (
-      SELECT COALESCE(jsonb_agg(to_jsonb(target.*) ORDER BY target.id), ''''[]''''::jsonb) as ${relationKey}
+      SELECT COALESCE(jsonb_agg(to_jsonb(target.*) ORDER BY target.id), ''[]''::jsonb) as ${relationKey}
       FROM ${junctionTable} jt
       JOIN ${targetEntity} target ON target.id = jt.${foreignKey}
       WHERE jt.${localKey} = t.id
     ) m2m_${relationKey} ON true`);
 
-        mergeExpressions.push(`jsonb_build_object(''''''${relationKey}'''''', m2m_${relationKey}.${relationKey})`);
+        mergeExpressions.push(`jsonb_build_object(''${relationKey}'', m2m_${relationKey}.${relationKey})`);
       }
     }
 

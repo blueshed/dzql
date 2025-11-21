@@ -12,12 +12,12 @@
  * Contract: TEST_CONTRACT.md Section 5
  */
 
-import { describe, test, expect, beforeAll } from 'bun:test';
-import { setupTests, createTestUser, testName } from '../setup/test-helpers.js';
+import { describe, test, expect, beforeAll } from "bun:test";
+import { setupTests, createTestUser, testName } from "../setup/test-helpers.js";
 
 const { sql } = setupTests();
 
-describe('Field Defaults (Generic Mode)', () => {
+describe("Field Defaults (Generic Mode)", () => {
   let testUserId;
 
   beforeAll(async () => {
@@ -68,10 +68,10 @@ describe('Field Defaults (Generic Mode)', () => {
     testUserId = user.user_id;
   });
 
-  test('@user_id resolves to current user', async () => {
+  test("@user_id resolves to current user", async () => {
     const task = await sql`
       SELECT dzql.save_tasks(${sql.json({
-        title: testName('Task')
+        title: testName("Task"),
       })}, ${testUserId}) as task
     `;
 
@@ -79,15 +79,17 @@ describe('Field Defaults (Generic Mode)', () => {
     expect(task[0].task.created_by).toBe(testUserId);
   });
 
-  test('@now resolves to current timestamp', async () => {
+  test("@now resolves to current timestamp", async () => {
     const before = new Date();
 
     const task = await sql`
       SELECT dzql.save_tasks(${sql.json({
-        title: testName('TimestampTask')
+        title: testName("TimestampTask"),
       })}, ${testUserId}) as task
     `;
 
+    // Sleep to ensure 'after' timestamp is captured after DB operation completes
+    await new Promise((resolve) => setTimeout(resolve, 10));
     const after = new Date();
     const createdAt = new Date(task[0].task.created_at);
 
@@ -95,63 +97,63 @@ describe('Field Defaults (Generic Mode)', () => {
     expect(createdAt.getTime()).toBeLessThanOrEqual(after.getTime());
   });
 
-  test('@today resolves to current date', async () => {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  test("@today resolves to current date", async () => {
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
 
     const task = await sql`
       SELECT dzql.save_tasks(${sql.json({
-        title: testName('DateTask')
+        title: testName("DateTask"),
       })}, ${testUserId}) as task
     `;
 
     expect(task[0].task.due_date).toBe(today);
   });
 
-  test('Literal string value is applied', async () => {
+  test("Literal string value is applied", async () => {
     const task = await sql`
       SELECT dzql.save_tasks(${sql.json({
-        title: testName('StatusTask')
+        title: testName("StatusTask"),
       })}, ${testUserId}) as task
     `;
 
-    expect(task[0].task.status).toBe('pending');
+    expect(task[0].task.status).toBe("pending");
   });
 
-  test('Literal number value is applied', async () => {
+  test("Literal number value is applied", async () => {
     const task = await sql`
       SELECT dzql.save_tasks(${sql.json({
-        title: testName('PriorityTask')
+        title: testName("PriorityTask"),
       })}, ${testUserId}) as task
     `;
 
     expect(task[0].task.priority).toBe(3);
   });
 
-  test('Explicit value overrides default', async () => {
+  test("Explicit value overrides default", async () => {
     const customUserId = 999;
-    const customDate = '2025-12-31';
+    const customDate = "2025-12-31";
 
     const task = await sql`
       SELECT dzql.save_tasks(${sql.json({
-        title: testName('CustomTask'),
+        title: testName("CustomTask"),
         owner_id: customUserId,
         due_date: customDate,
-        status: 'in-progress',
-        priority: 1
+        status: "in-progress",
+        priority: 1,
       })}, ${testUserId}) as task
     `;
 
     expect(task[0].task.owner_id).toBe(customUserId);
     expect(task[0].task.due_date).toBe(customDate);
-    expect(task[0].task.status).toBe('in-progress');
+    expect(task[0].task.status).toBe("in-progress");
     expect(task[0].task.priority).toBe(1);
   });
 
-  test('Defaults NOT applied on UPDATE', async () => {
+  test("Defaults NOT applied on UPDATE", async () => {
     // Create task with defaults
     const created = await sql`
       SELECT dzql.save_tasks(${sql.json({
-        title: testName('UpdateTask')
+        title: testName("UpdateTask"),
       })}, ${testUserId}) as task
     `;
     const taskId = created[0].task.id;
@@ -159,13 +161,13 @@ describe('Field Defaults (Generic Mode)', () => {
     const originalCreatedAt = created[0].task.created_at;
 
     // Wait a bit to ensure timestamp would be different if re-applied
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Update the task
     const updated = await sql`
       SELECT dzql.save_tasks(${sql.json({
         id: taskId,
-        title: 'Updated Title'
+        title: "Updated Title",
       })}, ${testUserId}) as task
     `;
 
@@ -174,10 +176,10 @@ describe('Field Defaults (Generic Mode)', () => {
     expect(updated[0].task.created_at).toBe(originalCreatedAt);
   });
 
-  test('All defaults applied together', async () => {
+  test("All defaults applied together", async () => {
     const task = await sql`
       SELECT dzql.save_tasks(${sql.json({
-        title: testName('AllDefaultsTask')
+        title: testName("AllDefaultsTask"),
       })}, ${testUserId}) as task
     `;
 
@@ -186,20 +188,20 @@ describe('Field Defaults (Generic Mode)', () => {
     expect(task[0].task.created_by).toBe(testUserId);
     expect(task[0].task.created_at).toBeDefined();
     expect(task[0].task.due_date).toBeDefined();
-    expect(task[0].task.status).toBe('pending');
+    expect(task[0].task.status).toBe("pending");
     expect(task[0].task.priority).toBe(3);
   });
 
-  test('Partial explicit values with remaining defaults', async () => {
+  test("Partial explicit values with remaining defaults", async () => {
     const task = await sql`
       SELECT dzql.save_tasks(${sql.json({
-        title: testName('MixedTask'),
-        status: 'urgent'  // Override this default
+        title: testName("MixedTask"),
+        status: "urgent", // Override this default
         // Other defaults should still apply
       })}, ${testUserId}) as task
     `;
 
-    expect(task[0].task.status).toBe('urgent'); // Explicit
+    expect(task[0].task.status).toBe("urgent"); // Explicit
     expect(task[0].task.owner_id).toBe(testUserId); // Default
     expect(task[0].task.priority).toBe(3); // Default
   });

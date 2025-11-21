@@ -15,20 +15,39 @@
  * This ONE test validates features work TOGETHER, not just individually.
  */
 
-import { describe, test, expect, beforeAll } from 'bun:test';
-import { DZQLCompiler } from '../../packages/dzql/src/compiler/index.js';
-import { setupTests, createTestUser, testEmail, testName } from '../setup/test-helpers.js';
+import { describe, test, expect, beforeAll } from "bun:test";
+import { DZQLCompiler } from "../../packages/dzql/src/compiler/index.js";
+import {
+  setupTests,
+  createTestUser,
+  testEmail,
+  testName,
+} from "../setup/test-helpers.js";
 
 const { sql } = setupTests();
 
-describe('End-to-End Integration: Compile → Install → CRUD', () => {
+describe("End-to-End Integration: Compile → Install → CRUD", () => {
   let aliceUserId;
   let bobUserId;
 
   beforeAll(async () => {
     // Create test schema
+    await sql`DROP FUNCTION IF EXISTS delete_resources CASCADE`;
+    await sql`DROP FUNCTION IF EXISTS save_resources CASCADE`;
+    await sql`DROP FUNCTION IF EXISTS get_resources CASCADE`;
+    await sql`DROP FUNCTION IF EXISTS search_resources CASCADE`;
+    await sql`DROP FUNCTION IF EXISTS lookup_resources CASCADE`;
+    await sql`DROP FUNCTION IF EXISTS can_view_resources CASCADE`;
+    await sql`DROP FUNCTION IF EXISTS can_create_resources CASCADE`;
+    await sql`DROP FUNCTION IF EXISTS can_update_resources CASCADE`;
+    await sql`DROP FUNCTION IF EXISTS can_delete_resources CASCADE`;
+    await sql`DROP TABLE IF EXISTS resource_tags CASCADE`;
+    await sql`DROP TABLE IF EXISTS resources CASCADE`;
+    await sql`DROP TABLE IF EXISTS tags CASCADE`;
+    await sql`DROP TABLE IF EXISTS users CASCADE`;
+
     await sql`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE users (
         id serial PRIMARY KEY,
         name text NOT NULL,
         email text UNIQUE NOT NULL,
@@ -38,7 +57,7 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
     `;
 
     await sql`
-      CREATE TABLE IF NOT EXISTS tags (
+      CREATE TABLE tags (
         id serial PRIMARY KEY,
         name text UNIQUE NOT NULL,
         created_at timestamptz DEFAULT now()
@@ -46,7 +65,7 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
     `;
 
     await sql`
-      CREATE TABLE IF NOT EXISTS resources (
+      CREATE TABLE resources (
         id serial PRIMARY KEY,
         title text NOT NULL,
         content text,
@@ -58,7 +77,7 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
     `;
 
     await sql`
-      CREATE TABLE IF NOT EXISTS resource_tags (
+      CREATE TABLE resource_tags (
         resource_id int REFERENCES resources(id) ON DELETE CASCADE,
         tag_id int REFERENCES tags(id) ON DELETE CASCADE,
         PRIMARY KEY (resource_id, tag_id)
@@ -114,8 +133,11 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
     const compiled = compiler.compileFromSQL(entitySQL);
 
     if (compiled.errors.length > 0) {
-      console.error('Compilation errors:', JSON.stringify(compiled.errors, null, 2));
-      throw new Error('Compilation failed: ' + JSON.stringify(compiled.errors));
+      console.error(
+        "Compilation errors:",
+        JSON.stringify(compiled.errors, null, 2),
+      );
+      throw new Error("Compilation failed: " + JSON.stringify(compiled.errors));
     }
 
     // Install compiled functions
@@ -123,20 +145,23 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
       try {
         await sql.unsafe(result.sql);
       } catch (err) {
-        console.error('Failed to execute generated SQL:');
-        console.error('First 2000 chars:', result.sql.substring(0, 2000));
-        console.error('Last 500 chars:', result.sql.substring(result.sql.length - 500));
+        console.error("Failed to execute generated SQL:");
+        console.error("First 2000 chars:", result.sql.substring(0, 2000));
+        console.error(
+          "Last 500 chars:",
+          result.sql.substring(result.sql.length - 500),
+        );
         throw err;
       }
     }
   });
 
-  test('Complete lifecycle: create → get → update → delete with M2M, defaults, events', async () => {
+  test("Complete lifecycle: create → get → update → delete with M2M, defaults, events", async () => {
     // 1. CREATE - Test field defaults + M2M sync
     const createData = {
-      title: testName('Resource'),
-      content: 'Test content',
-      tag_ids: [1, 2] // javascript, typescript
+      title: testName("Resource"),
+      content: "Test content",
+      tag_ids: [1, 2], // javascript, typescript
     };
 
     const created = await sql`
@@ -153,7 +178,7 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
     expect(resource.tag_ids).toEqual([1, 2]);
     expect(resource.tags).toBeArray();
     expect(resource.tags.length).toBe(2);
-    expect(resource.tags[0].name).toBeOneOf(['javascript', 'typescript']);
+    expect(resource.tags[0].name).toBeOneOf(["javascript", "typescript"]);
 
     // Validate event was created
     const events = await sql`
@@ -191,8 +216,8 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
     // 3. UPDATE - Test M2M sync (add tag, remove tag) + event
     const updateData = {
       id: resourceId,
-      title: 'Updated Title',
-      tag_ids: [2, 3] // keep typescript, replace javascript with python
+      title: "Updated Title",
+      tag_ids: [2, 3], // keep typescript, replace javascript with python
     };
 
     const updated = await sql`
@@ -200,7 +225,7 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
     `;
     const updatedResource = updated[0].result;
 
-    expect(updatedResource.title).toBe('Updated Title');
+    expect(updatedResource.title).toBe("Updated Title");
     expect(updatedResource.tag_ids).toEqual([2, 3]);
 
     // Validate junction table was synced correctly
@@ -209,7 +234,7 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
       WHERE resource_id = ${resourceId}
       ORDER BY tag_id
     `;
-    expect(junctionRows.map(r => r.tag_id)).toEqual([2, 3]);
+    expect(junctionRows.map((r) => r.tag_id)).toEqual([2, 3]);
 
     // Validate update event was created
     const updateEvents = await sql`
@@ -224,7 +249,7 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
     expect(updateEvents[0].before).toBeDefined();
     expect(updateEvents[0].after).toBeDefined();
     expect(updateEvents[0].before.title).toBe(createData.title);
-    expect(updateEvents[0].after.title).toBe('Updated Title');
+    expect(updateEvents[0].after.title).toBe("Updated Title");
     // Events should include M2M before/after state
     expect(updateEvents[0].before.tag_ids).toEqual([1, 2]);
     expect(updateEvents[0].after.tag_ids).toEqual([2, 3]);
@@ -237,9 +262,9 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
 
     expect(searchData.data).toBeArray();
     expect(searchData.total).toBeGreaterThan(0);
-    expect(searchData.data.some(r => r.id === resourceId)).toBe(true);
+    expect(searchData.data.some((r) => r.id === resourceId)).toBe(true);
     // Search results should include M2M
-    const found = searchData.data.find(r => r.id === resourceId);
+    const found = searchData.data.find((r) => r.id === resourceId);
     expect(found.tag_ids).toEqual([2, 3]);
 
     // 5. DELETE - Test soft delete + event
@@ -266,7 +291,7 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
     // 6. PERMISSIONS - Test that Bob can't update Alice's resource
     await expect(async () => {
       await sql`
-        SELECT save_resources(${bobUserId}, ${sql.json({ id: resourceId, title: 'Hacked' })}) as result
+        SELECT save_resources(${bobUserId}, ${sql.json({ id: resourceId, title: "Hacked" })}) as result
       `;
     }).toThrow(); // Should throw permission denied
   });

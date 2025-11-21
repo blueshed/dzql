@@ -15,12 +15,12 @@
  * These tests document the expected behavior once implemented.
  */
 
-import { describe, test, expect, beforeAll } from 'bun:test';
-import { setupTests, createTestUser, testName } from '../setup/test-helpers.js';
+import { describe, test, expect, beforeAll } from "bun:test";
+import { setupTests, createTestUser, testName } from "../setup/test-helpers.js";
 
 const { sql } = setupTests();
 
-describe('Graph Rules', () => {
+describe("Graph Rules", () => {
   let testUserId;
 
   beforeAll(async () => {
@@ -91,15 +91,73 @@ describe('Graph Rules', () => {
 
     const user = await createTestUser(sql);
     testUserId = user.user_id;
+
+    // Setup RESTRICT test tables (for non-skipped test below)
+    await sql`DROP TABLE IF EXISTS protected_children CASCADE`;
+    await sql`DROP TABLE IF EXISTS restricted_parents CASCADE`;
+    await sql`
+      CREATE TABLE restricted_parents (
+        id serial PRIMARY KEY,
+        name text NOT NULL
+      )
+    `;
+
+    await sql`
+      CREATE TABLE protected_children (
+        id serial PRIMARY KEY,
+        parent_id int NOT NULL,
+        label text NOT NULL
+      )
+    `;
+
+    await sql`
+      SELECT dzql.register_entity(
+        'restricted_parents',
+        'name',
+        array['name'],
+        '{}',
+        false,
+        '{}',
+        '{}',
+        jsonb_build_object(
+          'view', array[]::text[],
+          'create', array[]::text[],
+          'update', array[]::text[],
+          'delete', array[]::text[]
+        )
+      )
+    `;
+
+    await sql`
+      SELECT dzql.register_entity(
+        'protected_children',
+        'label',
+        array['label'],
+        '{"parent": "restricted_parents"}',
+        false,
+        jsonb_build_object(
+          'delete', jsonb_build_object(
+            'protected_children', 'RESTRICT'
+          )
+        ),
+        '{}',
+        jsonb_build_object(
+          'view', array[]::text[],
+          'create', array[]::text[],
+          'update', array[]::text[],
+          'delete', array[]::text[]
+        )
+      )
+    `;
   });
 
-  test.skip('TODO: CASCADE DELETE - deleting parent deletes children', async () => {
+  test.skip("TODO: CASCADE DELETE - deleting parent deletes children", async () => {
     // NOT IMPLEMENTED: Graph rules CASCADE not enforced
     // Create a blog post
     const post = await sql`
       SELECT dzql.save_blog_posts(${sql.json({
-        title: testName('Post'),
-        author_id: testUserId
+        title: testName("Post"),
+        author_id: testUserId,
       })}, ${testUserId}) as post
     `;
     const postId = post[0].post.id;
@@ -108,8 +166,8 @@ describe('Graph Rules', () => {
     const comment1 = await sql`
       SELECT dzql.save_comments(${sql.json({
         post_id: postId,
-        content: 'First comment',
-        author_id: testUserId
+        content: "First comment",
+        author_id: testUserId,
       })}, ${testUserId}) as comment
     `;
     const comment1Id = comment1[0].comment.id;
@@ -117,15 +175,15 @@ describe('Graph Rules', () => {
     const comment2 = await sql`
       SELECT dzql.save_comments(${sql.json({
         post_id: postId,
-        content: 'Second comment',
-        author_id: testUserId
+        content: "Second comment",
+        author_id: testUserId,
       })}, ${testUserId}) as comment
     `;
     const comment2Id = comment2[0].comment.id;
 
     // Delete the blog post
     await sql`
-      SELECT dzql.delete_blog_posts(${sql.json({id: postId})}, ${testUserId})
+      SELECT dzql.delete_blog_posts(${sql.json({ id: postId })}, ${testUserId})
     `;
 
     // Comments should be deleted (CASCADE)
@@ -135,13 +193,13 @@ describe('Graph Rules', () => {
     expect(remainingComments.length).toBe(0);
   });
 
-  test.skip('TODO: Multiple children cascade deleted', async () => {
+  test.skip("TODO: Multiple children cascade deleted", async () => {
     // NOT IMPLEMENTED: Graph rules CASCADE not enforced
     // Create post with many comments
     const post = await sql`
       SELECT dzql.save_blog_posts(${sql.json({
-        title: testName('MultiComment'),
-        author_id: testUserId
+        title: testName("MultiComment"),
+        author_id: testUserId,
       })}, ${testUserId}) as post
     `;
     const postId = post[0].post.id;
@@ -153,7 +211,7 @@ describe('Graph Rules', () => {
         SELECT dzql.save_comments(${sql.json({
           post_id: postId,
           content: `Comment ${i}`,
-          author_id: testUserId
+          author_id: testUserId,
         })}, ${testUserId}) as comment
       `;
       commentIds.push(comment[0].comment.id);
@@ -167,7 +225,7 @@ describe('Graph Rules', () => {
 
     // Delete post
     await sql`
-      SELECT dzql.delete_blog_posts(${sql.json({id: postId})}, ${testUserId})
+      SELECT dzql.delete_blog_posts(${sql.json({ id: postId })}, ${testUserId})
     `;
 
     // All comments should be gone
@@ -177,7 +235,7 @@ describe('Graph Rules', () => {
     expect(Number(afterDelete[0].count)).toBe(0);
   });
 
-  test.skip('TODO: SET NULL - deleting parent sets FK to null', async () => {
+  test.skip("TODO: SET NULL - deleting parent sets FK to null", async () => {
     // NOT IMPLEMENTED: Graph rules SET NULL not enforced
     // Create SET NULL test tables
     await sql`DROP TABLE IF EXISTS optional_refs CASCADE`;
@@ -240,7 +298,7 @@ describe('Graph Rules', () => {
     // Create parent
     const parent = await sql`
       SELECT dzql.save_nullable_parents(${sql.json({
-        name: testName('Parent')
+        name: testName("Parent"),
       })}, ${testUserId}) as parent
     `;
     const parentId = parent[0].parent.id;
@@ -249,14 +307,14 @@ describe('Graph Rules', () => {
     const child = await sql`
       SELECT dzql.save_optional_refs(${sql.json({
         parent_id: parentId,
-        label: 'Child'
+        label: "Child",
       })}, ${testUserId}) as child
     `;
     const childId = child[0].child.id;
 
     // Delete parent
     await sql`
-      SELECT dzql.delete_nullable_parents(${sql.json({id: parentId})}, ${testUserId})
+      SELECT dzql.delete_nullable_parents(${sql.json({ id: parentId })}, ${testUserId})
     `;
 
     // Child should still exist but parent_id should be NULL
@@ -267,70 +325,13 @@ describe('Graph Rules', () => {
     expect(updatedChild[0].parent_id).toBeNull();
   });
 
-  test.skip('TODO: RESTRICT - prevent delete if children exist', async () => {
+  test.skip("TODO: RESTRICT - prevent delete if children exist", async () => {
     // NOT IMPLEMENTED: Graph rules RESTRICT not enforced
-    // Create RESTRICT test tables
-    await sql`DROP TABLE IF EXISTS protected_children CASCADE`;
-    await sql`DROP TABLE IF EXISTS restricted_parents CASCADE`;
-    await sql`
-      CREATE TABLE restricted_parents (
-        id serial PRIMARY KEY,
-        name text NOT NULL
-      )
-    `;
-
-    await sql`
-      CREATE TABLE protected_children (
-        id serial PRIMARY KEY,
-        parent_id int NOT NULL,
-        label text NOT NULL
-      )
-    `;
-
-    await sql`
-      SELECT dzql.register_entity(
-        'restricted_parents',
-        'name',
-        array['name'],
-        '{}',
-        false,
-        '{}',
-        '{}',
-        jsonb_build_object(
-          'view', array[]::text[],
-          'create', array[]::text[],
-          'update', array[]::text[],
-          'delete', array[]::text[]
-        )
-      )
-    `;
-
-    await sql`
-      SELECT dzql.register_entity(
-        'protected_children',
-        'label',
-        array['label'],
-        '{"parent": "restricted_parents"}',
-        false,
-        jsonb_build_object(
-          'delete', jsonb_build_object(
-            'protected_children', 'RESTRICT'
-          )
-        ),
-        '{}',
-        jsonb_build_object(
-          'view', array[]::text[],
-          'create', array[]::text[],
-          'update', array[]::text[],
-          'delete', array[]::text[]
-        )
-      )
-    `;
-
+    // Tables and entities are now set up in beforeAll()
     // Create parent
     const parent = await sql`
       SELECT dzql.save_restricted_parents(${sql.json({
-        name: testName('RestrictParent')
+        name: testName("RestrictParent"),
       })}, ${testUserId}) as parent
     `;
     const parentId = parent[0].parent.id;
@@ -339,14 +340,14 @@ describe('Graph Rules', () => {
     await sql`
       SELECT dzql.save_protected_children(${sql.json({
         parent_id: parentId,
-        label: 'Child'
+        label: "Child",
       })}, ${testUserId})
     `;
 
     // Try to delete parent - should fail
     await expect(async () => {
       await sql`
-        SELECT dzql.delete_restricted_parents(${sql.json({id: parentId})}, ${testUserId})
+        SELECT dzql.delete_restricted_parents(${sql.json({ id: parentId })}, ${testUserId})
       `;
     }).toThrow();
 
@@ -357,18 +358,18 @@ describe('Graph Rules', () => {
     expect(checkParent.length).toBe(1);
   });
 
-  test('No children - RESTRICT allows delete', async () => {
+  test("No children - RESTRICT allows delete", async () => {
     // Create parent without children
     const parent = await sql`
       SELECT dzql.save_restricted_parents(${sql.json({
-        name: testName('NoChildren')
+        name: testName("NoChildren"),
       })}, ${testUserId}) as parent
     `;
     const parentId = parent[0].parent.id;
 
     // Delete should succeed (no children)
     await sql`
-      SELECT dzql.delete_restricted_parents(${sql.json({id: parentId})}, ${testUserId})
+      SELECT dzql.delete_restricted_parents(${sql.json({ id: parentId })}, ${testUserId})
     `;
 
     // Parent should be deleted
@@ -378,23 +379,23 @@ describe('Graph Rules', () => {
     expect(checkParent.length).toBe(0);
   });
 
-  test.skip('TODO: Multi-level CASCADE - grandchildren deleted', async () => {
+  test.skip("TODO: Multi-level CASCADE - grandchildren deleted", async () => {
     // Create 3-level hierarchy: post -> comment -> reply
     // Deleting post should cascade to comments and replies
     // This requires more complex graph rule setup
   });
 
-  test.skip('TODO: Mixed rules - CASCADE and SET NULL in same delete', async () => {
+  test.skip("TODO: Mixed rules - CASCADE and SET NULL in same delete", async () => {
     // One child uses CASCADE, another uses SET NULL
     // Both should work correctly when parent deleted
   });
 
-  test('Graph rules don\'t affect direct deletes', async () => {
+  test("Graph rules don't affect direct deletes", async () => {
     // Create post with comment
     const post = await sql`
       SELECT dzql.save_blog_posts(${sql.json({
-        title: testName('DirectDelete'),
-        author_id: testUserId
+        title: testName("DirectDelete"),
+        author_id: testUserId,
       })}, ${testUserId}) as post
     `;
     const postId = post[0].post.id;
@@ -402,15 +403,15 @@ describe('Graph Rules', () => {
     const comment = await sql`
       SELECT dzql.save_comments(${sql.json({
         post_id: postId,
-        content: 'Comment',
-        author_id: testUserId
+        content: "Comment",
+        author_id: testUserId,
       })}, ${testUserId}) as comment
     `;
     const commentId = comment[0].comment.id;
 
     // Directly delete the comment (not cascading from parent)
     await sql`
-      SELECT dzql.delete_comments(${sql.json({id: commentId})}, ${testUserId})
+      SELECT dzql.delete_comments(${sql.json({ id: commentId })}, ${testUserId})
     `;
 
     // Comment should be gone
@@ -426,7 +427,7 @@ describe('Graph Rules', () => {
     expect(checkPost.length).toBe(1);
   });
 
-  test.skip('TODO: CASCADE creates delete events for children', async () => {
+  test.skip("TODO: CASCADE creates delete events for children", async () => {
     // NOT IMPLEMENTED: Graph rules CASCADE not enforced
     // Clear events
     await sql`DELETE FROM dzql.events WHERE table_name IN ('blog_posts', 'comments')`;
@@ -434,8 +435,8 @@ describe('Graph Rules', () => {
     // Create post with comment
     const post = await sql`
       SELECT dzql.save_blog_posts(${sql.json({
-        title: testName('EventTest'),
-        author_id: testUserId
+        title: testName("EventTest"),
+        author_id: testUserId,
       })}, ${testUserId}) as post
     `;
     const postId = post[0].post.id;
@@ -443,15 +444,15 @@ describe('Graph Rules', () => {
     const comment = await sql`
       SELECT dzql.save_comments(${sql.json({
         post_id: postId,
-        content: 'Comment for events',
-        author_id: testUserId
+        content: "Comment for events",
+        author_id: testUserId,
       })}, ${testUserId}) as comment
     `;
     const commentId = comment[0].comment.id;
 
     // Delete post (should cascade to comment)
     await sql`
-      SELECT dzql.delete_blog_posts(${sql.json({id: postId})}, ${testUserId})
+      SELECT dzql.delete_blog_posts(${sql.json({ id: postId })}, ${testUserId})
     `;
 
     // Check delete events
