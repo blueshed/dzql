@@ -349,6 +349,11 @@ BEGIN
     l_where_clause := l_where_clause || format(' AND dzql.check_permission(%L, ''view'', %L, to_jsonb(t.*))', p_user_id, p_entity);
   END IF;
 
+  -- Add soft delete filter if enabled for this entity
+  IF l_entity_config.soft_delete THEN
+    l_where_clause := l_where_clause || ' AND t.deleted_at IS NULL';
+  END IF;
+
   -- Build base SQL
   l_base_sql := format('FROM %I t %s', p_entity, l_where_clause);
 

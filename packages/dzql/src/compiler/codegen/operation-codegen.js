@@ -78,6 +78,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     const m2mExtraction = this._generateM2MExtraction();
     const m2mSync = this._generateM2MSync();
     const m2mExpansion = this._generateM2MExpansion();
+    const fieldDefaults = this._generateFieldDefaults();
 
     return `-- SAVE operation for ${this.tableName}
 CREATE OR REPLACE FUNCTION save_${this.tableName}(
@@ -88,6 +89,7 @@ DECLARE
   v_result ${this.tableName}%ROWTYPE;
   v_existing ${this.tableName}%ROWTYPE;
   v_output JSONB;
+  v_before JSONB;
   v_is_insert BOOLEAN := false;
   v_notify_users INT[];
 ${m2mVariables}
@@ -116,6 +118,12 @@ ${m2mExtraction}
     END IF;
   END IF;
 
+  -- Expand M2M for existing record (for UPDATE events "before" field)
+  IF NOT v_is_insert THEN
+    v_before := to_jsonb(v_existing);
+${this._generateM2MExpansionForBefore()}
+  END IF;
+${fieldDefaults}
   -- Perform UPSERT
   IF v_is_insert THEN
     -- Dynamic INSERT from JSONB
@@ -548,6 +556,49 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   }
 
   /**
+   * Generate M2M expansion for existing record in SAVE (for "before" field)
+   * COMPILE TIME: Loop to generate code
+   * RUNTIME: Direct SQL queries (NO loops!)
+   * @private
+   */
+  _generateM2MExpansionForBefore() {
+    const manyToMany = this.entity.manyToMany || {};
+    if (Object.keys(manyToMany).length === 0) return '';
+
+    const expansions = [];
+
+    // COMPILE TIME LOOP: Generate code for each M2M relationship
+    for (const [relationKey, config] of Object.entries(manyToMany)) {
+      const idField = config.id_field;
+      const junctionTable = config.junction_table;
+      const localKey = config.local_key;
+      const foreignKey = config.foreign_key;
+      const targetEntity = config.target_entity;
+      const expand = config.expand || false;
+
+      // Always add ID array (static SQL)
+      expansions.push(`
+    v_before := v_before || jsonb_build_object('${idField}',
+      (SELECT COALESCE(jsonb_agg(${foreignKey} ORDER BY ${foreignKey}), '[]'::jsonb)
+       FROM ${junctionTable} WHERE ${localKey} = v_existing.id)
+    );`);
+
+      // Conditionally expand full objects (known at compile time!)
+      if (expand) {
+        expansions.push(`
+    v_before := v_before || jsonb_build_object('${relationKey}',
+      (SELECT COALESCE(jsonb_agg(to_jsonb(t.*) ORDER BY t.id), '[]'::jsonb)
+       FROM ${junctionTable} jt
+       JOIN ${targetEntity} t ON t.id = jt.${foreignKey}
+       WHERE jt.${localKey} = v_existing.id)
+    );`);
+      }
+    }
+
+    return expansions.join('');
+  }
+
+  /**
    * Generate M2M expansion for GET operation
    * COMPILE TIME: Loop to generate code
    * RUNTIME: Direct SQL queries (NO loops!)
@@ -616,19 +667,82 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   );`);
       } else {
         // Direct FK: single object
-        const fkField = key.endsWith('_id') ? key : key + '_id';
+        // Use JSONB to check field existence (like resolve_direct_fk)
         expansions.push(`
   -- Expand ${key} (foreign key)
-  IF v_record.${fkField} IS NOT NULL THEN
-    v_result := v_result || jsonb_build_object(
-      '${key}',
-      (SELECT to_jsonb(t.*) FROM ${targetTable} t WHERE t.id = v_record.${fkField})
-    );
-  END IF;`);
+  DECLARE
+    v_fk_id INT;
+  BEGIN
+    -- Try field name directly first, then with _id suffix
+    IF to_jsonb(v_record) ? '${key}' THEN
+      v_fk_id := v_record.${key};
+    ELSIF to_jsonb(v_record) ? '${key}_id' THEN
+      v_fk_id := v_record.${key}_id;
+    END IF;
+
+    IF v_fk_id IS NOT NULL THEN
+      v_result := v_result || jsonb_build_object(
+        '${key}',
+        (SELECT to_jsonb(t.*) FROM ${targetTable} t WHERE t.id = v_fk_id)
+      );
+    END IF;
+  END;`);
       }
     }
 
     return expansions.join('');
+  }
+
+  /**
+   * Generate field defaults application
+   * COMPILE TIME: Loop to generate code for each default
+   * RUNTIME: Direct value assignment (NO loops!)
+   * @private
+   */
+  _generateFieldDefaults() {
+    const fieldDefaults = this.entity.fieldDefaults || {};
+    if (Object.keys(fieldDefaults).length === 0) return '';
+
+    const defaults = [];
+
+    // COMPILE TIME LOOP: Generate separate IF block for each field default
+    for (const [fieldName, defaultValue] of Object.entries(fieldDefaults)) {
+      if (defaultValue.startsWith('@')) {
+        // Resolve variable defaults (@user_id, @now, @today)
+        const resolved = this._resolveDefaultVariable(defaultValue, fieldName);
+        defaults.push(`
+  -- Apply field default: ${fieldName} = ${defaultValue}
+  IF v_is_insert AND NOT (p_data ? '${fieldName}') THEN
+    p_data := p_data || jsonb_build_object('${fieldName}', ${resolved});
+  END IF;`);
+      } else {
+        // Literal default value
+        defaults.push(`
+  -- Apply field default: ${fieldName} = ${defaultValue}
+  IF v_is_insert AND NOT (p_data ? '${fieldName}') THEN
+    p_data := p_data || jsonb_build_object('${fieldName}', '${defaultValue}');
+  END IF;`);
+      }
+    }
+
+    return defaults.join('');
+  }
+
+  /**
+   * Resolve a variable default (@user_id, @now, @today) to SQL expression
+   * @private
+   */
+  _resolveDefaultVariable(variable, fieldName) {
+    switch (variable) {
+      case '@user_id':
+        return 'p_user_id';
+      case '@now':
+        return `to_char(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
+      case '@today':
+        return `to_char(CURRENT_DATE, 'YYYY-MM-DD')`;
+      default:
+        throw new Error(`Unknown field default variable: ${variable} for field ${fieldName}`);
+    }
   }
 
   /**
@@ -731,15 +845,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     table_name,
     op,
     pk,
-    before,
-    after,
+    data,
     user_id,
     notify_users
   ) VALUES (
     '${this.tableName}',
     CASE WHEN v_is_insert THEN 'insert' ELSE 'update' END,
     jsonb_build_object('id', v_result.id),
-    CASE WHEN NOT v_is_insert THEN to_jsonb(v_existing) ELSE NULL END,
     v_output,
     p_user_id,
     v_notify_users
@@ -754,15 +866,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     table_name,
     op,
     pk,
-    before,
-    after,
+    data,
     user_id,
     notify_users
   ) VALUES (
     '${this.tableName}',
     'delete',
     jsonb_build_object('id', v_result.id),
-    to_jsonb(v_result),
     NULL,
     p_user_id,
     v_notify_users

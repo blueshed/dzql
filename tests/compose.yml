@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dzql-test-db
+    environment:
+      POSTGRES_USER: dzql_test
+      POSTGRES_PASSWORD: dzql_test
+      POSTGRES_DB: dzql_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - dzql-test-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dzql_test -d dzql_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "log_statement=all"
+      - "-c"
+      - "log_destination=stderr"
+      - "-c"
+      - "logging_collector=off"
+
+volumes:
+  dzql-test-data:

@@ -22,7 +22,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "bun test",
+    "test": "bun test ../../tests/core/*.test.js",
     "prepublishOnly": "echo '✅ Publishing DZQL v0.3.5...'"
   },
   "dependencies": {

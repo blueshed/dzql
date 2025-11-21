@@ -749,7 +749,26 @@ BEGIN
       CONTINUE;
     END IF;
 
-    -- Check valid trigger types
+    -- Check for simpler CASCADE/SET NULL/RESTRICT format: {"delete": {"entity_name": "CASCADE"}}
+    IF l_trigger_key IN ('delete', 'update', 'create') AND jsonb_typeof(l_trigger_rules) = 'object' THEN
+      -- This is the simpler format - validate CASCADE/SET NULL/RESTRICT values
+      DECLARE
+        l_entity_name text;
+        l_action_value text;
+      BEGIN
+        FOR l_entity_name, l_action_value IN SELECT * FROM jsonb_each_text(l_trigger_rules)
+        LOOP
+          IF l_action_value NOT IN ('CASCADE', 'SET NULL', 'RESTRICT') THEN
+            RAISE WARNING 'Invalid graph rule action for entity %: %. Must be CASCADE, SET NULL, or RESTRICT', l_entity_name, l_action_value;
+            RETURN false;
+          END IF;
+        END LOOP;
+        -- Valid simpler format - skip complex validation
+        CONTINUE;
+      END;
+    END IF;
+
+    -- Check valid trigger types for complex format
     IF l_trigger_key NOT IN ('on_create', 'on_update', 'on_delete', 'on_field_change') THEN
       RAISE WARNING 'Invalid trigger type: %', l_trigger_key;
       RETURN false;
