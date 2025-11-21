@@ -353,10 +353,48 @@ describe("Event Validation", () => {
     expect(eventAfter.created_at).toBeDefined();
   });
 
-  test.skip("TODO: NOTIFY delivers events", async () => {
-    // Testing NOTIFY/LISTEN requires complex connection management
-    // The WebSocket layer tests this functionality in practice
-    // Skipping direct NOTIFY testing for now
+  test("NOTIFY delivers events", async () => {
+    // Create a separate connection for LISTEN
+    const listenSql = setupTests().sql;
+
+    // Array to capture notifications
+    const notifications = [];
+
+    // Set up LISTEN
+    await listenSql`LISTEN dzql`;
+
+    // Subscribe to notifications
+    await listenSql.listen("dzql", (payload) => {
+      notifications.push(JSON.parse(payload));
+    });
+
+    // Give LISTEN time to set up
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Perform an operation that triggers NOTIFY
+    const created = await sql`
+      SELECT dzql.save_products(${sql.json({
+        name: testName("NotifyTest"),
+        price: 99.99,
+        owner_id: testUserId,
+      })}, ${testUserId}) as product
+    `;
+    const productId = created[0].product.id;
+
+    // Wait for notification to be received
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Verify we received the notification
+    expect(notifications.length).toBeGreaterThan(0);
+
+    const notification = notifications[notifications.length - 1];
+    expect(notification.table).toBe("products");
+    expect(notification.op).toBe("insert");
+    expect(notification.after.id).toBe(productId);
+    expect(notification.after.name).toBe(created[0].product.name);
+
+    // Clean up - just unlisten, connection is shared
+    await listenSql`UNLISTEN dzql`;
   });
 
   test("Foreign keys NOT expanded in events (IDs only)", async () => {

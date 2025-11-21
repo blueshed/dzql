@@ -89,7 +89,7 @@ describe("Field Defaults (Generic Mode)", () => {
     `;
 
     // Sleep to ensure 'after' timestamp is captured after DB operation completes
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 50));
     const after = new Date();
     const createdAt = new Date(task[0].task.created_at);
 
