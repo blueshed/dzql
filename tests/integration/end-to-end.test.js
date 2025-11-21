@@ -83,7 +83,7 @@ describe('End-to-End Integration: Compile → Install → CRUD', () => {
         'resources',                                    -- table_name
         'title',                                        -- label_field
         array['title', 'content'],                      -- searchable_fields
-        '{"owner": "users", "created_by_user": "users"}', -- fk_includes
+        '{"owner": "users", "created_by": "users"}', -- fk_includes
         true,                                           -- soft_delete
         '{}',                                           -- temporal_fields
         '{}',                                           -- notification_paths
