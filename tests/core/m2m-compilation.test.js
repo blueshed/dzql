@@ -241,9 +241,9 @@ test("SEARCH function includes M2M fields via LATERAL joins", () => {
 
   // ✅ VERIFY: M2M fields merged with ||
   expect(searchFunction).toContain('to_jsonb(t.*) ||');
-  expect(searchFunction).toContain("jsonb_build_object(''tag_ids''");
-  expect(searchFunction).toContain("jsonb_build_object(''collaborator_ids''");
-  expect(searchFunction).toContain("jsonb_build_object(''collaborators''");
+  expect(searchFunction).toContain("jsonb_build_object(''''tag_ids''''");
+  expect(searchFunction).toContain("jsonb_build_object(''''collaborator_ids''''");
+  expect(searchFunction).toContain("jsonb_build_object(''''collaborators''''");
 
   // ❌ VERIFY: NO loops
   expect(searchFunction).not.toContain('FOR l_m2m_key IN');

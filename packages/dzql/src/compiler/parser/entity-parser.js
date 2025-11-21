@@ -108,11 +108,11 @@ export class EntityParser {
    */
   _cleanString(str) {
     if (!str) return '';
-    // Remove outer quotes, SQL comments, then any remaining quotes and whitespace
-    let cleaned = str.replace(/^['"]|['"]$/g, '');  // Remove outer quotes
-    cleaned = cleaned.replace(/--[^\n]*/g, '');     // Remove SQL comments
-    cleaned = cleaned.replace(/['"\s]+$/g, '');     // Remove trailing quotes/whitespace
-    return cleaned.trim();
+    // Remove SQL comments first, then outer quotes
+    let cleaned = str.replace(/--[^\n]*/g, '');     // Remove SQL comments
+    cleaned = cleaned.trim();                        // Remove whitespace
+    cleaned = cleaned.replace(/^['"]|['"]$/g, '');  // Remove outer quotes
+    return cleaned;
   }
 
   /**
