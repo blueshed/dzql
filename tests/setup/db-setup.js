@@ -18,7 +18,7 @@ const MIGRATIONS_DIR = join(__dirname, '../../packages/dzql/src/database/migrati
 export function createTestConnection(dbName = 'dzql_test') {
   return postgres({
     host: process.env.POSTGRES_HOST || 'localhost',
-    port: parseInt(process.env.POSTGRES_PORT || '5432'),
+    port: parseInt(process.env.POSTGRES_PORT || '5433'),
     database: dbName,
     username: process.env.POSTGRES_USER || 'postgres',
     // No password needed with trust authentication

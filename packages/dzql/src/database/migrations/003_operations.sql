@@ -370,6 +370,62 @@ BEGIN
     END IF;
   END IF;
 
+  -- Expand M2M relationships in existing record (for UPDATE events)
+  IF NOT l_is_insert AND l_existing_record IS NOT NULL AND l_entity_config.many_to_many IS NOT NULL AND l_entity_config.many_to_many != '{}'::jsonb THEN
+    DECLARE
+      l_m2m_key text;
+      l_m2m_config jsonb;
+      l_id_field text;
+      l_junction_table text;
+      l_local_key text;
+      l_foreign_key text;
+      l_target_entity text;
+      l_expand boolean;
+      l_record_id text;
+      l_id_array jsonb;
+      l_expanded_objects jsonb;
+    BEGIN
+      -- Get the primary key value from the existing record
+      l_record_id := l_existing_record->>l_pk_cols[1];  -- Assume single PK for now
+
+      FOR l_m2m_key IN SELECT jsonb_object_keys(l_entity_config.many_to_many)
+      LOOP
+        l_m2m_config := l_entity_config.many_to_many->l_m2m_key;
+        l_id_field := l_m2m_config->>'id_field';
+        l_junction_table := l_m2m_config->>'junction_table';
+        l_local_key := l_m2m_config->>'local_key';
+        l_foreign_key := l_m2m_config->>'foreign_key';
+        l_target_entity := l_m2m_config->>'target_entity';
+        l_expand := COALESCE((l_m2m_config->>'expand')::boolean, false);
+
+        -- Always include array of IDs
+        EXECUTE format('
+          SELECT COALESCE(jsonb_agg(%I), ''[]''::jsonb)
+          FROM %I
+          WHERE %I = $1::int
+        ', l_foreign_key, l_junction_table, l_local_key)
+        INTO l_id_array
+        USING l_record_id;
+
+        l_existing_record := l_existing_record || jsonb_build_object(l_id_field, l_id_array);
+
+        -- Conditionally include expanded objects if expand: true
+        IF l_expand THEN
+          EXECUTE format('
+            SELECT COALESCE(jsonb_agg(to_jsonb(t.*)), ''[]''::jsonb)
+            FROM %I jt
+            JOIN %I t ON t.id = jt.%I
+            WHERE jt.%I = $1::int
+          ', l_junction_table, l_target_entity, l_foreign_key, l_local_key)
+          INTO l_expanded_objects
+          USING l_record_id;
+
+          l_existing_record := l_existing_record || jsonb_build_object(l_m2m_key, l_expanded_objects);
+        END IF;
+      END LOOP;
+    END;
+  END IF;
+
   IF NOT l_is_insert THEN
     -- UPDATE: Merge with existing record
 
