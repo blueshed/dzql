@@ -11,12 +11,12 @@
  * Contract: https://github.com/dzql TEST_CONTRACT.md Section 4
  */
 
-import { describe, test, expect, beforeAll } from 'bun:test';
-import { setupTests, createTestUser } from '../setup/test-helpers.js';
+import { describe, test, expect, beforeAll } from "bun:test";
+import { setupTests, createTestUser } from "../setup/test-helpers.js";
 
 const { sql } = setupTests();
 
-describe('M2M Runtime (Generic Mode)', () => {
+describe("M2M Runtime (Generic Mode)", () => {
   let testUserId;
 
   beforeAll(async () => {
@@ -92,12 +92,12 @@ describe('M2M Runtime (Generic Mode)', () => {
     await sql`INSERT INTO tags (name) VALUES ('javascript'), ('typescript'), ('python'), ('rust') ON CONFLICT (name) DO NOTHING`;
   });
 
-  test('CREATE with tag_ids syncs junction table', async () => {
+  test("CREATE with tag_ids syncs junction table", async () => {
     const postData = {
-      title: 'Test Post',
-      content: 'Content here',
+      title: "Test Post",
+      content: "Content here",
       author_id: testUserId,
-      tag_ids: [1, 2] // javascript, typescript
+      tag_ids: [1, 2], // javascript, typescript
     };
 
     const result = await sql`
@@ -112,19 +112,19 @@ describe('M2M Runtime (Generic Mode)', () => {
     const junctionRows = await sql`
       SELECT tag_id FROM post_tags WHERE post_id = ${post.id} ORDER BY tag_id
     `;
-    expect(junctionRows.map(r => r.tag_id)).toEqual([1, 2]);
+    expect(junctionRows.map((r) => r.tag_id)).toEqual([1, 2]);
   });
 
-  test('UPDATE tag_ids adds and removes relationships atomically', async () => {
+  test("UPDATE tag_ids adds and removes relationships atomically", async () => {
     // Create post with tags [1, 2]
     const created = await sql`
-      SELECT dzql.save_posts(${sql.json({title: 'Update Test', author_id: testUserId, tag_ids: [1, 2]})}, ${testUserId}) as post
+      SELECT dzql.save_posts(${sql.json({ title: "Update Test", author_id: testUserId, tag_ids: [1, 2] })}, ${testUserId}) as post
     `;
     const postId = created[0].post.id;
 
     // Update to [2, 3] - keep 2, remove 1, add 3
     const updated = await sql`
-      SELECT dzql.save_posts(${sql.json({id: postId, tag_ids: [2, 3]})}, ${testUserId}) as post
+      SELECT dzql.save_posts(${sql.json({ id: postId, tag_ids: [2, 3] })}, ${testUserId}) as post
     `;
     const post = updated[0].post;
 
@@ -134,19 +134,19 @@ describe('M2M Runtime (Generic Mode)', () => {
     const junctionRows = await sql`
       SELECT tag_id FROM post_tags WHERE post_id = ${postId} ORDER BY tag_id
     `;
-    expect(junctionRows.map(r => r.tag_id)).toEqual([2, 3]);
+    expect(junctionRows.map((r) => r.tag_id)).toEqual([2, 3]);
   });
 
-  test('Empty array [] removes all relationships', async () => {
+  test("Empty array [] removes all relationships", async () => {
     // Create post with tags
     const created = await sql`
-      SELECT dzql.save_posts(${sql.json({title: 'Clear Test', author_id: testUserId, tag_ids: [1, 2, 3]})}, ${testUserId}) as post
+      SELECT dzql.save_posts(${sql.json({ title: "Clear Test", author_id: testUserId, tag_ids: [1, 2, 3] })}, ${testUserId}) as post
     `;
     const postId = created[0].post.id;
 
     // Update with empty array
     const updated = await sql`
-      SELECT dzql.save_posts(${sql.json({id: postId, tag_ids: []})}, ${testUserId}) as post
+      SELECT dzql.save_posts(${sql.json({ id: postId, tag_ids: [] })}, ${testUserId}) as post
     `;
     const post = updated[0].post;
 
@@ -159,32 +159,32 @@ describe('M2M Runtime (Generic Mode)', () => {
     expect(junctionRows.length).toBe(0);
   });
 
-  test('Omitting tag_ids leaves relationships unchanged', async () => {
+  test("Omitting tag_ids leaves relationships unchanged", async () => {
     // Create post with tags
     const created = await sql`
-      SELECT dzql.save_posts(${sql.json({title: 'Omit Test', author_id: testUserId, tag_ids: [1, 2]})}, ${testUserId}) as post
+      SELECT dzql.save_posts(${sql.json({ title: "Omit Test", author_id: testUserId, tag_ids: [1, 2] })}, ${testUserId}) as post
     `;
     const postId = created[0].post.id;
 
     // Update title without mentioning tag_ids
     const updated = await sql`
-      SELECT dzql.save_posts(${sql.json({id: postId, title: 'Updated Title'})}, ${testUserId}) as post
+      SELECT dzql.save_posts(${sql.json({ id: postId, title: "Updated Title" })}, ${testUserId}) as post
     `;
     const post = updated[0].post;
 
-    expect(post.title).toBe('Updated Title');
+    expect(post.title).toBe("Updated Title");
     expect(post.tag_ids).toEqual([1, 2]); // Should be unchanged
 
     // Verify junction table still has original tags
     const junctionRows = await sql`
       SELECT tag_id FROM post_tags WHERE post_id = ${postId} ORDER BY tag_id
     `;
-    expect(junctionRows.map(r => r.tag_id)).toEqual([1, 2]);
+    expect(junctionRows.map((r) => r.tag_id)).toEqual([1, 2]);
   });
 
-  test('expand=true includes full tag objects', async () => {
+  test("expand=true includes full tag objects", async () => {
     const created = await sql`
-      SELECT dzql.save_posts(${sql.json({title: 'Expand Test', author_id: testUserId, tag_ids: [1, 2]})}, ${testUserId}) as post
+      SELECT dzql.save_posts(${sql.json({ title: "Expand Test", author_id: testUserId, tag_ids: [1, 2] })}, ${testUserId}) as post
     `;
     const post = created[0].post;
 
@@ -192,19 +192,19 @@ describe('M2M Runtime (Generic Mode)', () => {
     expect(post.tag_ids).toEqual([1, 2]);
     expect(post.tags).toBeArray();
     expect(post.tags.length).toBe(2);
-    expect(post.tags[0]).toHaveProperty('id');
-    expect(post.tags[0]).toHaveProperty('name');
-    expect(['javascript', 'typescript']).toContain(post.tags[0].name);
+    expect(post.tags[0]).toHaveProperty("id");
+    expect(post.tags[0]).toHaveProperty("name");
+    expect(["javascript", "typescript"]).toContain(post.tags[0].name);
   });
 
-  test('GET returns M2M data', async () => {
+  test("GET returns M2M data", async () => {
     const created = await sql`
-      SELECT dzql.save_posts(${sql.json({title: 'GET Test', author_id: testUserId, tag_ids: [1, 3]})}, ${testUserId}) as post
+      SELECT dzql.save_posts(${sql.json({ title: "GET Test", author_id: testUserId, tag_ids: [1, 3] })}, ${testUserId}) as post
     `;
     const postId = created[0].post.id;
 
     const fetched = await sql`
-      SELECT dzql.get_posts(${sql.json({id: postId})}, ${testUserId}) as post
+      SELECT dzql.get_posts(${sql.json({ id: postId })}, ${testUserId}) as post
     `;
     const post = fetched[0].post;
 
@@ -213,13 +213,13 @@ describe('M2M Runtime (Generic Mode)', () => {
     expect(post.tags.length).toBe(2);
   });
 
-  test('SEARCH returns M2M data for all results', async () => {
+  test("SEARCH returns M2M data for all results", async () => {
     // Create posts with different tags
-    await sql`SELECT dzql.save_posts(${sql.json({title: 'Search 1', author_id: testUserId, tag_ids: [1]})}, ${testUserId})`;
-    await sql`SELECT dzql.save_posts(${sql.json({title: 'Search 2', author_id: testUserId, tag_ids: [1, 2]})}, ${testUserId})`;
+    await sql`SELECT dzql.save_posts(${sql.json({ title: "Search 1", author_id: testUserId, tag_ids: [1] })}, ${testUserId})`;
+    await sql`SELECT dzql.save_posts(${sql.json({ title: "Search 2", author_id: testUserId, tag_ids: [1, 2] })}, ${testUserId})`;
 
     const results = await sql`
-      SELECT dzql.search_posts(${sql.json({limit: 10})}, ${testUserId}) as result
+      SELECT dzql.search_posts(${sql.json({ limit: 10 })}, ${testUserId}) as result
     `;
     const searchData = results[0].result;
 
@@ -227,15 +227,15 @@ describe('M2M Runtime (Generic Mode)', () => {
     expect(searchData.data.length).toBeGreaterThan(0);
 
     // Every result should have tag_ids
-    searchData.data.forEach(post => {
-      expect(post).toHaveProperty('tag_ids');
+    searchData.data.forEach((post) => {
+      expect(post).toHaveProperty("tag_ids");
       expect(Array.isArray(post.tag_ids)).toBe(true);
     });
   });
 
-  test('Events include M2M data in after field', async () => {
+  test("Events include M2M data", async () => {
     const created = await sql`
-      SELECT dzql.save_posts(${sql.json({title: 'Event Test', author_id: testUserId, tag_ids: [1, 2]})}, ${testUserId}) as post
+      SELECT dzql.save_posts(${sql.json({ title: "Event Test", author_id: testUserId, tag_ids: [1, 2] })}, ${testUserId}) as post
     `;
     const postId = created[0].post.id;
 
@@ -250,25 +250,24 @@ describe('M2M Runtime (Generic Mode)', () => {
     `;
 
     expect(events.length).toBe(1);
-    expect(events[0].after).toBeDefined();
-    expect(events[0].after.tag_ids).toEqual([1, 2]);
-    expect(events[0].after.tags).toBeArray();
-    expect(events[0].after.tags.length).toBe(2);
+    expect(events[0].data).toBeDefined();
+    expect(events[0].data.tag_ids).toEqual([1, 2]);
+    expect(events[0].data.tags).toBeArray();
+    expect(events[0].data.tags.length).toBe(2);
   });
 
-  test('Update events include M2M before/after state', async () => {
-    // FIXED: l_existing_record in generic_save now expands M2M
+  test("Update events include M2M state", async () => {
     const created = await sql`
-      SELECT dzql.save_posts(${sql.json({title: 'Update Event Test', author_id: testUserId, tag_ids: [1, 2]})}, ${testUserId}) as post
+      SELECT dzql.save_posts(${sql.json({ title: "Update Event Test", author_id: testUserId, tag_ids: [1, 2] })}, ${testUserId}) as post
     `;
     const postId = created[0].post.id;
 
     // Update tags
     await sql`
-      SELECT dzql.save_posts(${sql.json({id: postId, tag_ids: [2, 3]})}, ${testUserId}) as post
+      SELECT dzql.save_posts(${sql.json({ id: postId, tag_ids: [2, 3] })}, ${testUserId}) as post
     `;
 
-    // Check update event
+    // Check update event - should have current state after update
     const events = await sql`
       SELECT * FROM dzql.events
       WHERE table_name = 'posts'
@@ -279,7 +278,6 @@ describe('M2M Runtime (Generic Mode)', () => {
     `;
 
     expect(events.length).toBe(1);
-    expect(events[0].before.tag_ids).toEqual([1, 2]);
-    expect(events[0].after.tag_ids).toEqual([2, 3]);
+    expect(events[0].data.tag_ids).toEqual([2, 3]);
   });
 });

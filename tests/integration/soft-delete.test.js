@@ -11,12 +11,12 @@
  * Contract: TEST_CONTRACT.md Section 12
  */
 
-import { describe, test, expect, beforeAll } from 'bun:test';
-import { setupTests, createTestUser, testName } from '../setup/test-helpers.js';
+import { describe, test, expect, beforeAll } from "bun:test";
+import { setupTests, createTestUser, testName } from "../setup/test-helpers.js";
 
 const { sql } = setupTests();
 
-describe('Soft Delete', () => {
+describe("Soft Delete", () => {
   let testUserId;
 
   beforeAll(async () => {
@@ -82,18 +82,18 @@ describe('Soft Delete', () => {
     testUserId = user.user_id;
   });
 
-  test('Soft delete sets deleted_at timestamp', async () => {
+  test("Soft delete sets deleted_at timestamp", async () => {
     const created = await sql`
       SELECT dzql.save_articles(${sql.json({
-        title: testName('ToDelete'),
-        author_id: testUserId
+        title: testName("ToDelete"),
+        author_id: testUserId,
       })}, ${testUserId}) as article
     `;
     const articleId = created[0].article.id;
 
     // Delete it
     const deleted = await sql`
-      SELECT dzql.delete_articles(${sql.json({id: articleId})}, ${testUserId}) as result
+      SELECT dzql.delete_articles(${sql.json({ id: articleId })}, ${testUserId}) as result
     `;
 
     // Check database directly
@@ -106,27 +106,27 @@ describe('Soft Delete', () => {
     expect(new Date(check[0].deleted_at)).toBeInstanceOf(Date);
   });
 
-  test('Soft deleted records excluded from search', async () => {
+  test("Soft deleted records excluded from search", async () => {
     // FIXED: generic_search now filters deleted_at IS NULL
     // Create two articles
     const article1 = await sql`
       SELECT dzql.save_articles(${sql.json({
-        title: testName('Active'),
-        author_id: testUserId
+        title: testName("Active"),
+        author_id: testUserId,
       })}, ${testUserId}) as article
     `;
 
     const article2 = await sql`
       SELECT dzql.save_articles(${sql.json({
-        title: testName('ToBeDeleted'),
-        author_id: testUserId
+        title: testName("ToBeDeleted"),
+        author_id: testUserId,
       })}, ${testUserId}) as article
     `;
     const article2Id = article2[0].article.id;
 
     // Delete article2
     await sql`
-      SELECT dzql.delete_articles(${sql.json({id: article2Id})}, ${testUserId})
+      SELECT dzql.delete_articles(${sql.json({ id: article2Id })}, ${testUserId})
     `;
 
     // Search should not return deleted article
@@ -134,23 +134,23 @@ describe('Soft Delete', () => {
       SELECT dzql.search_articles(${sql.json({})}, ${testUserId}) as result
     `;
 
-    const articleIds = search[0].result.data.map(a => a.id);
+    const articleIds = search[0].result.data.map((a) => a.id);
     expect(articleIds).not.toContain(article2Id);
   });
 
-  test('Soft deleted records excluded from lookup', async () => {
+  test("Soft deleted records excluded from lookup", async () => {
     // FIXED: generic_lookup now filters deleted_at IS NULL
     const created = await sql`
       SELECT dzql.save_articles(${sql.json({
-        title: testName('DeletedLookup'),
-        author_id: testUserId
+        title: testName("DeletedLookup"),
+        author_id: testUserId,
       })}, ${testUserId}) as article
     `;
     const articleId = created[0].article.id;
 
     // Delete it
     await sql`
-      SELECT dzql.delete_articles(${sql.json({id: articleId})}, ${testUserId})
+      SELECT dzql.delete_articles(${sql.json({ id: articleId })}, ${testUserId})
     `;
 
     // Lookup should not include deleted
@@ -158,44 +158,44 @@ describe('Soft Delete', () => {
       SELECT dzql.lookup_articles(${sql.json({})}, ${testUserId}) as result
     `;
 
-    const lookupIds = lookup[0].result.map(item => item.value);
+    const lookupIds = lookup[0].result.map((item) => item.value);
     expect(lookupIds).not.toContain(articleId);
   });
 
-  test('Can still retrieve soft deleted by ID (for audit)', async () => {
+  test("Can still retrieve soft deleted by ID (for audit)", async () => {
     const created = await sql`
       SELECT dzql.save_articles(${sql.json({
-        title: testName('AuditTest'),
-        author_id: testUserId
+        title: testName("AuditTest"),
+        author_id: testUserId,
       })}, ${testUserId}) as article
     `;
     const articleId = created[0].article.id;
 
     // Delete it
     await sql`
-      SELECT dzql.delete_articles(${sql.json({id: articleId})}, ${testUserId})
+      SELECT dzql.delete_articles(${sql.json({ id: articleId })}, ${testUserId})
     `;
 
     // Should still be able to get it by ID
     const fetched = await sql`
-      SELECT dzql.get_articles(${sql.json({id: articleId})}, ${testUserId}) as article
+      SELECT dzql.get_articles(${sql.json({ id: articleId })}, ${testUserId}) as article
     `;
 
     expect(fetched[0].article.id).toBe(articleId);
     expect(fetched[0].article.deleted_at).not.toBeNull();
   });
 
-  test('Hard delete removes row from database', async () => {
+  test("Hard delete removes row from database", async () => {
     const created = await sql`
       SELECT dzql.save_logs(${sql.json({
-        message: testName('HardDelete')
+        message: testName("HardDelete"),
       })}, ${testUserId}) as log
     `;
     const logId = created[0].log.id;
 
     // Delete it
     await sql`
-      SELECT dzql.delete_logs(${sql.json({id: logId})}, ${testUserId}) as result
+      SELECT dzql.delete_logs(${sql.json({ id: logId })}, ${testUserId}) as result
     `;
 
     // Row should be completely gone
@@ -206,18 +206,18 @@ describe('Soft Delete', () => {
     expect(check.length).toBe(0);
   });
 
-  test('Delete creates event with correct operation', async () => {
+  test("Delete creates event with correct operation", async () => {
     const created = await sql`
       SELECT dzql.save_articles(${sql.json({
-        title: testName('EventTest'),
-        author_id: testUserId
+        title: testName("EventTest"),
+        author_id: testUserId,
       })}, ${testUserId}) as article
     `;
     const articleId = created[0].article.id;
 
     // Delete it
     await sql`
-      SELECT dzql.delete_articles(${sql.json({id: articleId})}, ${testUserId})
+      SELECT dzql.delete_articles(${sql.json({ id: articleId })}, ${testUserId})
     `;
 
     // Check event was created
@@ -231,23 +231,22 @@ describe('Soft Delete', () => {
     `;
 
     expect(events.length).toBe(1);
-    expect(events[0].op).toBe('delete');
-    expect(events[0].before).toBeDefined();
-    expect(events[0].after).toBeNull();
+    expect(events[0].op).toBe("delete");
+    expect(events[0].data).toBeNull();
   });
 
-  test('Multiple soft deletes update timestamp', async () => {
+  test("Multiple soft deletes update timestamp", async () => {
     const created = await sql`
       SELECT dzql.save_articles(${sql.json({
-        title: testName('MultiDelete'),
-        author_id: testUserId
+        title: testName("MultiDelete"),
+        author_id: testUserId,
       })}, ${testUserId}) as article
     `;
     const articleId = created[0].article.id;
 
     // First delete
     await sql`
-      SELECT dzql.delete_articles(${sql.json({id: articleId})}, ${testUserId})
+      SELECT dzql.delete_articles(${sql.json({ id: articleId })}, ${testUserId})
     `;
 
     const firstCheck = await sql`
@@ -255,11 +254,11 @@ describe('Soft Delete', () => {
     `;
     const firstDeletedAt = firstCheck[0].deleted_at;
 
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Delete again (should update timestamp)
     await sql`
-      SELECT dzql.delete_articles(${sql.json({id: articleId})}, ${testUserId})
+      SELECT dzql.delete_articles(${sql.json({ id: articleId })}, ${testUserId})
     `;
 
     const secondCheck = await sql`
@@ -268,7 +267,7 @@ describe('Soft Delete', () => {
     const secondDeletedAt = secondCheck[0].deleted_at;
 
     expect(new Date(secondDeletedAt).getTime()).toBeGreaterThan(
-      new Date(firstDeletedAt).getTime()
+      new Date(firstDeletedAt).getTime(),
     );
   });
 });

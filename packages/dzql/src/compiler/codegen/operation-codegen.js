@@ -845,15 +845,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     table_name,
     op,
     pk,
-    before,
-    after,
+    data,
     user_id,
     notify_users
   ) VALUES (
     '${this.tableName}',
     CASE WHEN v_is_insert THEN 'insert' ELSE 'update' END,
     jsonb_build_object('id', v_result.id),
-    CASE WHEN NOT v_is_insert THEN v_before ELSE NULL END,
     v_output,
     p_user_id,
     v_notify_users
@@ -868,15 +866,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     table_name,
     op,
     pk,
-    before,
-    after,
+    data,
     user_id,
     notify_users
   ) VALUES (
     '${this.tableName}',
     'delete',
     jsonb_build_object('id', v_result.id),
-    to_jsonb(v_result),
     NULL,
     p_user_id,
     v_notify_users

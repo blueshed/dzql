@@ -10,15 +10,12 @@ CREATE OR REPLACE FUNCTION dzql.notify_event()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
   -- Send real-time notification to single channel
-  -- For DELETE operations, send the 'before' data since 'after' is NULL
   PERFORM pg_notify('dzql', jsonb_build_object(
     'event_id', NEW.event_id,
     'table', NEW.table_name,
     'op', NEW.op,
     'pk', NEW.pk,
-    'data', COALESCE(NEW.after, NEW.before),
-    'before', NEW.before,
-    'after', NEW.after,
+    'data', NEW.data,
     'user_id', NEW.user_id,
     'at', NEW.at,
     'notify_users', NEW.notify_users

@@ -22,7 +22,7 @@ afterAll(async () => {
 });
 
 describe("Streak Counters & Milestones", () => {
-  
+
   test("first log sets streaks to 1", async () => {
     const streak = await db.api.save.streaks({ user_id: aliceId, name: PREFIX + "_Counter Test 1" }, aliceId);
     const today = new Date().toISOString().split('T')[0];
@@ -118,22 +118,22 @@ describe("Streak Counters & Milestones", () => {
 
     await db.api.save.streak_logs({ streak_id: streak.id, log_date: day1.toISOString().split('T')[0] }, aliceId);
     await db.api.save.streak_logs({ streak_id: streak.id, log_date: day2.toISOString().split('T')[0] }, aliceId);
-    
+
     // This log should hit the milestone of 3
     await db.api.save.streak_logs({ streak_id: streak.id, log_date: day3.toISOString().split('T')[0] }, aliceId);
 
     const events = await sql`
-      SELECT * FROM dzql.events 
-      WHERE table_name = 'streaks' 
-        AND op = 'milestone' 
-        AND (after->>'streak_id')::int = ${streak.id}
+      SELECT * FROM dzql.events
+      WHERE table_name = 'streaks'
+        AND op = 'milestone'
+        AND (data->>'streak_id')::int = ${streak.id}
     `;
-    
+
     expect(events.length).toBe(1);
     const event = events[0];
     expect(event.op).toBe("milestone");
-    expect(event.after.milestone).toBe(3);
-    expect(event.after.streak_id).toBe(streak.id);
+    expect(event.data.milestone).toBe(3);
+    expect(event.data.streak_id).toBe(streak.id);
     expect(event.user_id).toBe(aliceId);
   });
 

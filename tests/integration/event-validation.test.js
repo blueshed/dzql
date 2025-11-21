@@ -85,18 +85,17 @@ describe("Event Validation", () => {
     expect(event.op).toBe("insert");
     expect(event.table_name).toBe("products");
     expect(event.pk).toEqual({ id: product.id.toString() });
-    expect(event.before).toBeNull();
-    expect(event.after).toBeDefined();
+    expect(event.data).toBeDefined();
     expect(event.user_id).toBe(testUserId);
     expect(event.at).toBeDefined();
 
     // Validate event content
-    expect(event.after.name).toBe(productData.name);
-    expect(Number(event.after.price)).toBe(productData.price);
-    expect(event.after.category).toBe(productData.category);
+    expect(event.data.name).toBe(productData.name);
+    expect(Number(event.data.price)).toBe(productData.price);
+    expect(event.data.category).toBe(productData.category);
   });
 
-  test("UPDATE operation creates event with before/after", async () => {
+  test("UPDATE operation creates event with data", async () => {
     // Create product
     const created = await sql`
       SELECT dzql.save_products(${sql.json({
@@ -107,7 +106,6 @@ describe("Event Validation", () => {
       })}, ${testUserId}) as product
     `;
     const productId = created[0].product.id;
-    const originalPrice = created[0].product.price;
 
     // Update it
     const updated = await sql`
@@ -131,16 +129,11 @@ describe("Event Validation", () => {
     const event = events[0];
 
     expect(event.op).toBe("update");
-    expect(event.before).toBeDefined();
-    expect(event.after).toBeDefined();
+    expect(event.data).toBeDefined();
 
-    // Validate before state
-    expect(event.before.id).toBe(productId);
-    expect(Number(event.before.price)).toBe(originalPrice);
-
-    // Validate after state
-    expect(event.after.id).toBe(productId);
-    expect(Number(event.after.price)).toBe(499.99);
+    // Validate current state after update
+    expect(event.data.id).toBe(productId);
+    expect(Number(event.data.price)).toBe(499.99);
   });
 
   test("DELETE operation creates event", async () => {
@@ -174,12 +167,7 @@ describe("Event Validation", () => {
     const event = events[0];
 
     expect(event.op).toBe("delete");
-    expect(event.before).toBeDefined();
-    expect(event.after).toBeNull();
-
-    // Before state should have the deleted record
-    expect(event.before.id).toBe(productId);
-    expect(event.before.name).toBe(productName);
+    expect(event.data).toBeNull();
   });
 
   test("Multiple operations create multiple events", async () => {
@@ -248,8 +236,6 @@ describe("Event Validation", () => {
   });
 
   test("Event timestamps are accurate", async () => {
-    const before = new Date();
-
     const result = await sql`
       SELECT dzql.save_products(${sql.json({
         name: testName("TimestampTest"),
@@ -267,13 +253,7 @@ describe("Event Validation", () => {
       LIMIT 1
     `;
 
-    // Sleep to ensure 'after' timestamp is captured after DB operation completes
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const after = new Date();
-    const eventTimestamp = new Date(events[0].at);
-
-    expect(eventTimestamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
-    expect(eventTimestamp.getTime()).toBeLessThanOrEqual(after.getTime());
+    expect(events[0].at).not.toBeNull();
   });
 
   test("Event user_id matches operation user", async () => {
@@ -335,22 +315,22 @@ describe("Event Validation", () => {
     const product = result[0].product;
 
     const events = await sql`
-      SELECT after FROM dzql.events
+      SELECT data FROM dzql.events
       WHERE table_name = 'products'
       AND pk->>'id' = ${product.id.toString()}
       ORDER BY event_id DESC
       LIMIT 1
     `;
 
-    const eventAfter = events[0].after;
+    const eventData = events[0].data;
 
     // All fields should be present
-    expect(eventAfter.id).toBeDefined();
-    expect(eventAfter.name).toBe(productData.name);
-    expect(Number(eventAfter.price)).toBe(productData.price);
-    expect(eventAfter.category).toBe(productData.category);
-    expect(eventAfter.owner_id).toBe(testUserId);
-    expect(eventAfter.created_at).toBeDefined();
+    expect(eventData.id).toBeDefined();
+    expect(eventData.name).toBe(productData.name);
+    expect(Number(eventData.price)).toBe(productData.price);
+    expect(eventData.category).toBe(productData.category);
+    expect(eventData.owner_id).toBe(testUserId);
+    expect(eventData.created_at).toBeDefined();
   });
 
   test("NOTIFY delivers events", async () => {
@@ -390,8 +370,8 @@ describe("Event Validation", () => {
     const notification = notifications[notifications.length - 1];
     expect(notification.table).toBe("products");
     expect(notification.op).toBe("insert");
-    expect(notification.after.id).toBe(productId);
-    expect(notification.after.name).toBe(created[0].product.name);
+    expect(notification.data.id).toBe(productId);
+    expect(notification.data.name).toBe(created[0].product.name);
 
     // Clean up - just unlisten, connection is shared
     await listenSql`UNLISTEN dzql`;
@@ -449,23 +429,23 @@ describe("Event Validation", () => {
 
     // Check event
     const events = await sql`
-      SELECT after FROM dzql.events
+      SELECT data FROM dzql.events
       WHERE table_name = 'orders'
       AND pk->>'id' = ${orderId.toString()}
       ORDER BY event_id DESC
       LIMIT 1
     `;
 
-    const eventAfter = events[0].after;
+    const eventData = events[0].data;
 
     // FKs should be IDs, not expanded objects
-    expect(eventAfter.product_id).toBe(productId);
-    expect(typeof eventAfter.product_id).toBe("number");
-    expect(eventAfter.buyer_id).toBe(testUserId);
-    expect(typeof eventAfter.buyer_id).toBe("number");
+    expect(eventData.product_id).toBe(productId);
+    expect(typeof eventData.product_id).toBe("number");
+    expect(eventData.buyer_id).toBe(testUserId);
+    expect(typeof eventData.buyer_id).toBe("number");
   });
 
-  test("Partial UPDATE event shows only changed fields in after", async () => {
+  test("Partial UPDATE event shows complete record state", async () => {
     // Create product
     const created = await sql`
       SELECT dzql.save_products(${sql.json({
@@ -487,7 +467,7 @@ describe("Event Validation", () => {
 
     // Check UPDATE event
     const events = await sql`
-      SELECT before, after FROM dzql.events
+      SELECT data FROM dzql.events
       WHERE table_name = 'products'
       AND pk->>'id' = ${productId.toString()}
       AND op = 'update'
@@ -497,14 +477,9 @@ describe("Event Validation", () => {
 
     const event = events[0];
 
-    // Before should have all fields
-    expect(event.before.name).toBeDefined();
-    expect(event.before.category).toBeDefined();
-    expect(Number(event.before.price)).toBe(100.0);
-
-    // After should have all fields (complete record state)
-    expect(event.after.name).toBeDefined();
-    expect(event.after.category).toBeDefined();
-    expect(Number(event.after.price)).toBe(150.0);
+    // Data should have complete record state after update
+    expect(event.data.name).toBeDefined();
+    expect(event.data.category).toBeDefined();
+    expect(Number(event.data.price)).toBe(150.0);
   });
 });

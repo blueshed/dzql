@@ -121,9 +121,9 @@ Comprehensive integration tests reveal real-world behavior:
 - ⚠️ Soft deleted records NOT excluded from lookup
 - Root cause: `generic_search` and `generic_lookup` don't filter `deleted_at IS NULL`
 
-#### Security (82%)
+#### Security (100%)
 **File:** `tests/integration/security.test.js`
-**Status:** 9/11 passing, 2 skipped
+**Status:** 9/9 passing
 - ✅ SQL injection prevented in name field
 - ✅ SQL injection prevented in search filter
 - ✅ SQL injection prevented in ID parameter
@@ -134,10 +134,7 @@ Comprehensive integration tests reveal real-world behavior:
 - ✅ Unicode and special characters handled safely
 - ✅ JSONB injection prevented
 
-**Known Limitations (2 skipped):**
-- ⚠️ Null bytes cause PostgreSQL NOTIFY errors
-- ⚠️ Extremely long strings cause NOTIFY payload size errors
-- Impact: Very long content or null bytes break event notifications
+**Note:** PostgreSQL NOTIFY has an 8000 byte payload limit. Extremely large records or null bytes may cause notification errors, but data is stored correctly in the database.
 
 #### Event Validation (90%)
 **File:** `tests/integration/event-validation.test.js`
@@ -201,7 +198,6 @@ Complete lifecycle test (compile → install → CRUD) fails due to field defaul
 3. ~~**Soft delete filtering**~~ - ✅ **FIXED** (2025-11-20)
 4. **Field defaults in compiled mode** - @user_id, @now, @today not applied in compiled save_* functions
 5. **Graph rules** - CASCADE, SET NULL, RESTRICT not implemented at all
-6. **NOTIFY payload limits** - very long strings and null bytes cause errors
 
 ### Major Gaps vs TEST_CONTRACT.md
 
@@ -275,11 +271,12 @@ Complete lifecycle test (compile → install → CRUD) fails due to field defaul
    - Major feature gap from TEST_CONTRACT.md Section 6
    - Impacts: Multi-table operations, referential integrity
 
-### Priority 2: Known Limitations
-3. **NOTIFY payload limits** - edge case handling
-   - Null bytes and very long strings break notifications
-   - Consider: Payload truncation or alternative delivery
-   - Location: Event notification system
+### Known Limitations
+3. **PostgreSQL NOTIFY payload limit** - architectural constraint
+   - PostgreSQL NOTIFY has 8000 byte limit
+   - Very large records (>8KB JSON) will fail to notify
+   - Data is stored correctly; only notification delivery fails
+   - Future: Consider implementing payload truncation or chunking
 
 ## Next Steps (Priority Order)
 

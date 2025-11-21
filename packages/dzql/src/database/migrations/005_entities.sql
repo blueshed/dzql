@@ -125,15 +125,13 @@ BEGIN
     table_name,
     op,
     pk,
-    before,
-    after,
+    data,
     user_id,
     notify_users
   ) VALUES (
     p_entity,
     'insert',
     jsonb_build_object('id', p_data->>'id'),
-    NULL,
     p_data,
     p_user_id,
     dzql.resolve_notification_paths(p_entity, p_data)
@@ -179,20 +177,17 @@ BEGIN
   EXECUTE l_sql_stmt;
 
   -- Create event for graph rule action
-  -- Note: We don't have the before/after data here, just logging the update occurred
   INSERT INTO dzql.events (
     table_name,
     op,
     pk,
-    before,
-    after,
+    data,
     user_id,
     notify_users
   ) VALUES (
     p_entity,
     'update',
     p_match,
-    NULL,  -- We don't have the before state in this context
     p_data,
     p_user_id,
     '[]'::int[]  -- Graph rule updates don't have notification paths
@@ -232,15 +227,13 @@ BEGIN
     table_name,
     op,
     pk,
-    before,
-    after,
+    data,
     user_id,
     notify_users
   ) VALUES (
     p_entity,
     'delete',
     p_match,
-    NULL,  -- We don't have the before state in this context
     NULL,
     p_user_id,
     '[]'::int[]  -- Graph rule deletes don't have notification paths

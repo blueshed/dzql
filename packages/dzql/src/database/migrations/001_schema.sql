@@ -38,10 +38,9 @@ CREATE TABLE IF NOT EXISTS dzql.registry (
 CREATE TABLE IF NOT EXISTS dzql.events (
   event_id bigserial PRIMARY KEY,
   table_name text NOT NULL,
-  op text NOT NULL,              -- 'INSERT', 'UPDATE', 'DELETE'
+  op text NOT NULL,              -- 'insert', 'update', 'delete'
   pk jsonb NOT NULL,             -- primary key of affected record
-  before jsonb,                  -- old values (NULL for INSERT)
-  after jsonb,                   -- new values (NULL for DELETE)
+  data jsonb,                    -- record state after this event (NULL for delete)
   user_id int,                   -- who made the change
   notify_users int[],            -- who should be notified (NULL = everyone)
   at timestamptz DEFAULT now()  -- when the change occurred

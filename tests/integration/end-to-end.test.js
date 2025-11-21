@@ -191,10 +191,9 @@ describe("End-to-End Integration: Compile → Install → CRUD", () => {
     `;
     expect(events.length).toBe(1);
     expect(events[0].user_id).toBe(aliceUserId);
-    expect(events[0].after).toBeDefined();
+    expect(events[0].data).toBeDefined();
     // Event should include M2M data
-    expect(events[0].after.tag_ids).toEqual([1, 2]);
-    expect(events[0].before).toBeNull();
+    expect(events[0].data.tag_ids).toEqual([1, 2]);
 
     const resourceId = resource.id;
 
@@ -246,13 +245,10 @@ describe("End-to-End Integration: Compile → Install → CRUD", () => {
       LIMIT 1
     `;
     expect(updateEvents.length).toBe(1);
-    expect(updateEvents[0].before).toBeDefined();
-    expect(updateEvents[0].after).toBeDefined();
-    expect(updateEvents[0].before.title).toBe(createData.title);
-    expect(updateEvents[0].after.title).toBe("Updated Title");
-    // Events should include M2M before/after state
-    expect(updateEvents[0].before.tag_ids).toEqual([1, 2]);
-    expect(updateEvents[0].after.tag_ids).toEqual([2, 3]);
+    expect(updateEvents[0].data).toBeDefined();
+    expect(updateEvents[0].data.title).toBe("Updated Title");
+    // Events should include M2M current state
+    expect(updateEvents[0].data.tag_ids).toEqual([2, 3]);
 
     // 4. SEARCH - Test filtering
     const searchResults = await sql`
@@ -285,8 +281,7 @@ describe("End-to-End Integration: Compile → Install → CRUD", () => {
       LIMIT 1
     `;
     expect(deleteEvents.length).toBe(1);
-    expect(deleteEvents[0].before).toBeDefined();
-    expect(deleteEvents[0].after).toBeNull();
+    expect(deleteEvents[0].data).toBeNull();
 
     // 6. PERMISSIONS - Test that Bob can't update Alice's resource
     await expect(async () => {

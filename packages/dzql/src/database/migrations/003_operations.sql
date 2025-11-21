@@ -711,8 +711,7 @@ BEGIN
     table_name,
     op,
     pk,
-    before,
-    after,
+    data,
     user_id,
     notify_users
   ) VALUES (
@@ -722,7 +721,6 @@ BEGIN
       SELECT jsonb_object_agg(col, l_result ->> col)
       FROM unnest(l_pk_cols) AS col
     ),
-    CASE WHEN NOT l_is_insert THEN l_existing_record ELSE NULL END,
     l_result,
     p_user_id,
     dzql.resolve_notification_paths(p_entity, l_result)
@@ -931,8 +929,7 @@ BEGIN
     table_name,
     op,
     pk,
-    before,
-    after,
+    data,
     user_id,
     notify_users
   ) VALUES (
@@ -942,7 +939,6 @@ BEGIN
       SELECT jsonb_object_agg(col, l_record ->> col)
       FROM unnest(l_pk_cols) AS col
     ),
-    l_record,
     NULL,
     p_user_id,
     dzql.resolve_notification_paths(p_entity, l_record)
