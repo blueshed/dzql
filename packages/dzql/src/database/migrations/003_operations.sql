@@ -445,12 +445,14 @@ BEGIN
     LOOP
       -- Don't update any primary key columns
       IF NOT (l_col_name = ANY(l_pk_cols)) THEN
-        -- Skip M2M ID fields (they're not real table columns)
+        -- Skip M2M ID fields and expanded fields (they're not real table columns)
         IF l_entity_config.many_to_many IS NOT NULL THEN
           DECLARE
             l_m2m_id_field text;
+            l_m2m_key text;
             l_skip boolean := false;
           BEGIN
+            -- Skip M2M ID fields (e.g., tag_ids)
             FOR l_m2m_id_field IN
               SELECT value->>'id_field'
               FROM jsonb_each(l_entity_config.many_to_many)
@@ -460,6 +462,19 @@ BEGIN
                 EXIT;
               END IF;
             END LOOP;
+
+            -- Skip M2M expanded fields (e.g., tags)
+            IF NOT l_skip THEN
+              FOR l_m2m_key IN
+                SELECT key
+                FROM jsonb_each(l_entity_config.many_to_many)
+              LOOP
+                IF l_col_name = l_m2m_key THEN
+                  l_skip := true;
+                  EXIT;
+                END IF;
+              END LOOP;
+            END IF;
 
             IF NOT l_skip THEN
               l_set_clauses := l_set_clauses || format('%I = %L', l_col_name, l_merged_data ->> l_col_name);
