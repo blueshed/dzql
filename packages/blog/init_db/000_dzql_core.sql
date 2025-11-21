@@ -37,8 +37,7 @@ CREATE TABLE IF NOT EXISTS dzql.events (
   table_name text NOT NULL,
   op text NOT NULL,
   pk jsonb NOT NULL,
-  before jsonb,
-  after jsonb,
+  data jsonb,
   user_id int,
   notify_users int[],
   at timestamptz DEFAULT now()
@@ -57,9 +56,7 @@ BEGIN
     'table', NEW.table_name,
     'op', NEW.op,
     'pk', NEW.pk,
-    'data', COALESCE(NEW.after, NEW.before),
-    'before', NEW.before,
-    'after', NEW.after,
+    'data', NEW.data,
     'user_id', NEW.user_id,
     'at', NEW.at,
     'notify_users', NEW.notify_users
