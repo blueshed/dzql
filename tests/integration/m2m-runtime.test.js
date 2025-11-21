@@ -256,9 +256,8 @@ describe('M2M Runtime (Generic Mode)', () => {
     expect(events[0].after.tags.length).toBe(2);
   });
 
-  test.skip('TODO: Update events include M2M before/after state', async () => {
-    // KNOWN BUG: l_existing_record in generic_save doesn't expand M2M
-    // Need to add M2M expansion for l_existing_record before creating event
+  test('Update events include M2M before/after state', async () => {
+    // FIXED: l_existing_record in generic_save now expands M2M
     const created = await sql`
       SELECT dzql.save_posts(${sql.json({title: 'Update Event Test', author_id: testUserId, tag_ids: [1, 2]})}, ${testUserId}) as post
     `;

@@ -106,8 +106,8 @@ describe('Soft Delete', () => {
     expect(new Date(check[0].deleted_at)).toBeInstanceOf(Date);
   });
 
-  test.skip('TODO: Soft deleted records excluded from search', async () => {
-    // KNOWN BUG: generic_search doesn't filter deleted_at IS NULL
+  test('Soft deleted records excluded from search', async () => {
+    // FIXED: generic_search now filters deleted_at IS NULL
     // Create two articles
     const article1 = await sql`
       SELECT dzql.save_articles(${sql.json({
@@ -138,8 +138,8 @@ describe('Soft Delete', () => {
     expect(articleIds).not.toContain(article2Id);
   });
 
-  test.skip('TODO: Soft deleted records excluded from lookup', async () => {
-    // KNOWN BUG: generic_lookup doesn't filter deleted_at IS NULL
+  test('Soft deleted records excluded from lookup', async () => {
+    // FIXED: generic_lookup now filters deleted_at IS NULL
     const created = await sql`
       SELECT dzql.save_articles(${sql.json({
         title: testName('DeletedLookup'),
