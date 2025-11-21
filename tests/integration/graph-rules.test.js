@@ -74,17 +74,18 @@ describe("Graph Rules", () => {
         array['content'],
         '{"post": "blog_posts"}',
         false,
-        jsonb_build_object(
-          'delete', jsonb_build_object(
-            'comments', 'CASCADE'
-          )
-        ),
-        '{}',
+        '{}',  -- temporal_fields
+        '{}',  -- notification_paths
         jsonb_build_object(
           'view', array[]::text[],
           'create', array[]::text[],
           'update', array[]::text[],
           'delete', array[]::text[]
+        ),
+        jsonb_build_object(
+          'delete', jsonb_build_object(
+            'comments', 'CASCADE'
+          )
         )
       )
     `;
@@ -135,24 +136,24 @@ describe("Graph Rules", () => {
         array['label'],
         '{"parent": "restricted_parents"}',
         false,
-        jsonb_build_object(
-          'delete', jsonb_build_object(
-            'protected_children', 'RESTRICT'
-          )
-        ),
-        '{}',
+        '{}',  -- temporal_fields
+        '{}',  -- notification_paths
         jsonb_build_object(
           'view', array[]::text[],
           'create', array[]::text[],
           'update', array[]::text[],
           'delete', array[]::text[]
+        ),
+        jsonb_build_object(
+          'delete', jsonb_build_object(
+            'protected_children', 'RESTRICT'
+          )
         )
       )
     `;
   });
 
-  test.skip("TODO: CASCADE DELETE - deleting parent deletes children", async () => {
-    // NOT IMPLEMENTED: Graph rules CASCADE not enforced
+  test("CASCADE DELETE - deleting parent deletes children", async () => {
     // Create a blog post
     const post = await sql`
       SELECT dzql.save_blog_posts(${sql.json({
@@ -193,8 +194,7 @@ describe("Graph Rules", () => {
     expect(remainingComments.length).toBe(0);
   });
 
-  test.skip("TODO: Multiple children cascade deleted", async () => {
-    // NOT IMPLEMENTED: Graph rules CASCADE not enforced
+  test("Multiple children cascade deleted", async () => {
     // Create post with many comments
     const post = await sql`
       SELECT dzql.save_blog_posts(${sql.json({
@@ -235,7 +235,7 @@ describe("Graph Rules", () => {
     expect(Number(afterDelete[0].count)).toBe(0);
   });
 
-  test.skip("TODO: SET NULL - deleting parent sets FK to null", async () => {
+  test(" SET NULL - deleting parent sets FK to null", async () => {
     // NOT IMPLEMENTED: Graph rules SET NULL not enforced
     // Create SET NULL test tables
     await sql`DROP TABLE IF EXISTS optional_refs CASCADE`;
@@ -280,17 +280,18 @@ describe("Graph Rules", () => {
         array['label'],
         '{"parent": "nullable_parents"}',
         false,
-        jsonb_build_object(
-          'delete', jsonb_build_object(
-            'optional_refs', 'SET NULL'
-          )
-        ),
-        '{}',
+        '{}',  -- temporal_fields
+        '{}',  -- notification_paths
         jsonb_build_object(
           'view', array[]::text[],
           'create', array[]::text[],
           'update', array[]::text[],
           'delete', array[]::text[]
+        ),
+        jsonb_build_object(
+          'delete', jsonb_build_object(
+            'optional_refs', 'SET NULL'
+          )
         )
       )
     `;
@@ -325,7 +326,7 @@ describe("Graph Rules", () => {
     expect(updatedChild[0].parent_id).toBeNull();
   });
 
-  test.skip("TODO: RESTRICT - prevent delete if children exist", async () => {
+  test(" RESTRICT - prevent delete if children exist", async () => {
     // NOT IMPLEMENTED: Graph rules RESTRICT not enforced
     // Tables and entities are now set up in beforeAll()
     // Create parent
@@ -379,13 +380,13 @@ describe("Graph Rules", () => {
     expect(checkParent.length).toBe(0);
   });
 
-  test.skip("TODO: Multi-level CASCADE - grandchildren deleted", async () => {
+  test(" Multi-level CASCADE - grandchildren deleted", async () => {
     // Create 3-level hierarchy: post -> comment -> reply
     // Deleting post should cascade to comments and replies
     // This requires more complex graph rule setup
   });
 
-  test.skip("TODO: Mixed rules - CASCADE and SET NULL in same delete", async () => {
+  test(" Mixed rules - CASCADE and SET NULL in same delete", async () => {
     // One child uses CASCADE, another uses SET NULL
     // Both should work correctly when parent deleted
   });
@@ -427,7 +428,7 @@ describe("Graph Rules", () => {
     expect(checkPost.length).toBe(1);
   });
 
-  test.skip("TODO: CASCADE creates delete events for children", async () => {
+  test(" CASCADE creates delete events for children", async () => {
     // NOT IMPLEMENTED: Graph rules CASCADE not enforced
     // Clear events
     await sql`DELETE FROM dzql.events WHERE table_name IN ('blog_posts', 'comments')`;

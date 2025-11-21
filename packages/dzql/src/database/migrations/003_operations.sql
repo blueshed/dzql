@@ -807,6 +807,106 @@ BEGIN
     RAISE EXCEPTION 'Permission denied: delete on %', p_entity;
   END IF;
 
+  -- Apply CASCADE/SET NULL/RESTRICT rules from child entities
+  DECLARE
+    l_child_entity record;
+    l_child_graph_rules jsonb;
+    l_delete_rules jsonb;
+    l_rule_name text;
+    l_rule_action text;
+    l_fk_field text;
+    l_fk_key text;
+    l_child_count int;
+  BEGIN
+    -- Find all entities that reference this entity
+    FOR l_child_entity IN
+      SELECT * FROM dzql.entities
+      WHERE fk_includes IS NOT NULL
+        AND fk_includes != '{}'
+    LOOP
+      -- Check if this child entity has an FK pointing to the entity being deleted
+      FOR l_fk_key IN SELECT jsonb_object_keys(l_child_entity.fk_includes)
+      LOOP
+        IF l_child_entity.fk_includes->>l_fk_key = p_entity THEN
+          -- This child entity references the parent being deleted
+          l_child_graph_rules := l_child_entity.graph_rules;
+
+          IF l_child_graph_rules IS NOT NULL AND l_child_graph_rules != '{}' THEN
+            l_delete_rules := l_child_graph_rules->'delete';
+
+            IF l_delete_rules IS NOT NULL AND l_delete_rules != '{}' THEN
+              -- Check rules for this child entity
+              FOR l_rule_name, l_rule_action IN SELECT * FROM jsonb_each_text(l_delete_rules)
+              LOOP
+                -- The rule_name should match the child entity name
+                IF l_rule_name = l_child_entity.table_name THEN
+                  -- Determine FK field name (try direct match then _id suffix)
+                  l_fk_field := l_fk_key;
+                  IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = l_child_entity.table_name
+                    AND column_name = l_fk_field
+                  ) THEN
+                    l_fk_field := l_fk_key || '_id';
+                  END IF;
+
+                  -- Apply the rule action
+                  CASE l_rule_action
+                    WHEN 'CASCADE' THEN
+                      -- Delete child records via generic_delete to trigger events
+                      DECLARE
+                        l_child_record record;
+                      BEGIN
+                        FOR l_child_record IN
+                          EXECUTE format(
+                            'SELECT * FROM %I WHERE %I = %L',
+                            l_child_entity.table_name,
+                            l_fk_field,
+                            l_record->>'id'
+                          )
+                        LOOP
+                          -- Call generic_delete for each child to ensure events are created
+                          PERFORM dzql.generic_delete(
+                            l_child_entity.table_name,
+                            jsonb_build_object('id', l_child_record.id),
+                            p_user_id
+                          );
+                        END LOOP;
+                      END;
+
+                    WHEN 'SET NULL' THEN
+                      -- Set FK to NULL in child records
+                      EXECUTE format(
+                        'UPDATE %I SET %I = NULL WHERE %I = %L',
+                        l_child_entity.table_name,
+                        l_fk_field,
+                        l_fk_field,
+                        l_record->>'id'
+                      );
+
+                    WHEN 'RESTRICT' THEN
+                      -- Check if children exist, prevent delete if so
+                      EXECUTE format(
+                        'SELECT COUNT(*) FROM %I WHERE %I = %L',
+                        l_child_entity.table_name,
+                        l_fk_field,
+                        l_record->>'id'
+                      ) INTO l_child_count;
+
+                      IF l_child_count > 0 THEN
+                        RAISE EXCEPTION 'Cannot delete % - % child records exist in %',
+                          p_entity, l_child_count, l_child_entity.table_name;
+                      END IF;
+                  END CASE;
+                END IF;
+              END LOOP;
+            END IF;
+          END IF;
+        END IF;
+      END LOOP;
+    END LOOP;
+  END;
+
   -- Execute graph rules for delete
   l_graph_rules_result := dzql.execute_graph_rules(
     p_entity,
