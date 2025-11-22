@@ -9,9 +9,10 @@ import { sql, db } from "./db.js";
 const DEFAULT_USER_ID = 1;
 
 /**
- * Discover available entities from dzql.entities table
+ * Discover available entities from dzql.entities table or compiled functions
  */
 async function discoverEntities() {
+  // First try dzql.entities table (runtime mode)
   const result = await sql`
     SELECT table_name, label_field, searchable_fields
     FROM dzql.entities
@@ -19,13 +20,36 @@ async function discoverEntities() {
   `;
 
   const entities = {};
-  for (const row of result) {
-    const searchFields = row.searchable_fields?.join(", ") || "none";
-    entities[row.table_name] = {
-      label: row.label_field,
-      searchable: row.searchable_fields || [],
-      description: `Entity: ${row.table_name} (label: ${row.label_field}, searchable: ${searchFields})`,
-    };
+
+  if (result.length > 0) {
+    // Runtime mode - use dzql.entities table
+    for (const row of result) {
+      const searchFields = row.searchable_fields?.join(", ") || "none";
+      entities[row.table_name] = {
+        label: row.label_field,
+        searchable: row.searchable_fields || [],
+        description: `Entity: ${row.table_name} (label: ${row.label_field}, searchable: ${searchFields})`,
+      };
+    }
+  } else {
+    // Compiled mode - discover from function names
+    const functions = await sql`
+      SELECT DISTINCT substring(proname from 'search_(.+)') as entity_name
+      FROM pg_proc
+      WHERE pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+      AND proname LIKE 'search_%'
+      AND substring(proname from 'search_(.+)') IS NOT NULL
+      ORDER BY entity_name
+    `;
+
+    for (const row of functions) {
+      const entityName = row.entity_name;
+      entities[entityName] = {
+        label: 'id',  // Default, since we can't know from functions alone
+        searchable: [],
+        description: `Entity: ${entityName} (compiled mode)`,
+      };
+    }
   }
 
   return entities;

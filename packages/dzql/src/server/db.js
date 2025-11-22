@@ -173,50 +173,14 @@ export async function setupListeners(callback) {
   }
 }
 
-// Cache for mode detection (null = not checked, true = compiled, false = runtime)
-let isCompiledMode = null;
-
-// Auto-detect if we're in compiled or runtime mode
-async function detectMode() {
-  if (isCompiledMode !== null) {
-    return isCompiledMode;
-  }
-
-  try {
-    // Check if dzql.generic_exec exists
-    const result = await sql`
-      SELECT 1 FROM pg_proc
-      WHERE proname = 'generic_exec'
-      AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'dzql')
-      LIMIT 1
-    `;
-    isCompiledMode = result.length === 0; // If no results, it's compiled mode
-    dbLogger.trace(isCompiledMode ? 'Detected compiled mode' : 'Detected runtime mode');
-  } catch (error) {
-    // If there's an error checking, assume runtime mode
-    isCompiledMode = false;
-    dbLogger.trace('Error detecting mode, assuming runtime mode');
-  }
-
-  return isCompiledMode;
-}
-
-// DZQL Generic Operations
+// DZQL Generic Operations - Try compiled functions first, fall back to generic_exec
 export async function callDZQLOperation(operation, entity, args, userId) {
   dbLogger.trace(`DZQL ${operation}.${entity} for user ${userId}`);
 
-  const compiled = await detectMode();
+  const compiledFunctionName = `${operation}_${entity}`;
 
-  if (!compiled) {
-    // Runtime mode - use generic_exec
-    const result = await sql`
-      SELECT dzql.generic_exec(${operation}, ${entity}, ${args}, ${userId}) as result
-    `;
-    return result[0].result;
-  } else {
-    // Compiled mode - call compiled function directly
-    const compiledFunctionName = `${operation}_${entity}`;
-
+  try {
+    // Try compiled function first
     // Different operations have different signatures:
     // - search: search_entity(p_user_id, p_filters, p_search, p_sort, p_page, p_limit)
     // - get: get_entity(p_user_id, p_id, p_on_date)
@@ -259,6 +223,17 @@ export async function callDZQLOperation(operation, entity, args, userId) {
     } else {
       throw new Error(`Unknown operation: ${operation}`);
     }
+  } catch (error) {
+    // If compiled function doesn't exist, fall back to generic_exec
+    if (error.message?.includes('does not exist') || error.code === '42883') {
+      dbLogger.trace(`Compiled function ${compiledFunctionName} not found, trying generic_exec`);
+      const result = await sql`
+        SELECT dzql.generic_exec(${operation}, ${entity}, ${args}, ${userId}) as result
+      `;
+      return result[0].result;
+    }
+    // Re-throw other errors
+    throw error;
   }
 }
 
