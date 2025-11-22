@@ -12,6 +12,15 @@ const LOG_LEVELS = {
 // Default log level from environment or INFO
 const DEFAULT_LEVEL = process.env.LOG_LEVEL?.toUpperCase() || "INFO";
 
+// Detect if running in CLI context (invokej/tasks.js)
+const isCliContext = () => {
+  // Check if main module contains 'tasks.js' or 'invokej'
+  const mainModule = process.argv[1] || '';
+  return mainModule.includes('tasks.js') ||
+         mainModule.includes('invokej') ||
+         mainModule.includes('invj');
+};
+
 // Parse LOG_CATEGORIES from environment
 // Format: "ws:debug,db:trace,auth:info" or "*:debug" for all
 const parseCategories = () => {
@@ -20,8 +29,9 @@ const parseCategories = () => {
 
   if (!envCategories) {
     // Default settings for development vs production
-    if (process.env.NODE_ENV === "production") {
-      categories["*"] = LOG_LEVELS.WARN;
+    // CLI context defaults to ERROR level unless explicitly configured
+    if (process.env.NODE_ENV === "production" || isCliContext()) {
+      categories["*"] = LOG_LEVELS.ERROR;  // Only errors in production/CLI
     } else if (process.env.NODE_ENV === "test") {
       categories["*"] = LOG_LEVELS.ERROR;
     } else {
@@ -220,8 +230,11 @@ export const timed = async (category, operation, fn) => {
   }
 };
 
-// Log configuration on startup (only in development)
-if (process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test") {
+// Log configuration on startup (only in development and when explicitly debugging)
+// Suppress banner if LOG_CATEGORIES is not set (user doesn't care about logging config)
+if (process.env.NODE_ENV !== "production" &&
+    process.env.NODE_ENV !== "test" &&
+    process.env.LOG_CATEGORIES) {
   const config = getConfig();
   console.log(colors.bright + "=== Logger Configuration ===" + colors.reset);
   console.log("Categories:", config.categories);

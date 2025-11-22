@@ -35,7 +35,10 @@ export const listen_sql = postgres(DATABASE_URL, {
   onnotice: process.env.NODE_ENV === 'test' ? () => {} : undefined,
 });
 
-dbLogger.info(`Database connected: ${DATABASE_URL.replace(/\/\/.*@/, '//***@')}`);
+// Only log connection info in development
+if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
+  dbLogger.info(`Database connected: ${DATABASE_URL.replace(/\/\/.*@/, '//***@')}`);
+}
 
 // Cache for function parameter metadata
 const functionParamCache = new Map();
@@ -170,13 +173,93 @@ export async function setupListeners(callback) {
   }
 }
 
+// Cache for mode detection (null = not checked, true = compiled, false = runtime)
+let isCompiledMode = null;
+
+// Auto-detect if we're in compiled or runtime mode
+async function detectMode() {
+  if (isCompiledMode !== null) {
+    return isCompiledMode;
+  }
+
+  try {
+    // Check if dzql.generic_exec exists
+    const result = await sql`
+      SELECT 1 FROM pg_proc
+      WHERE proname = 'generic_exec'
+      AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'dzql')
+      LIMIT 1
+    `;
+    isCompiledMode = result.length === 0; // If no results, it's compiled mode
+    dbLogger.trace(isCompiledMode ? 'Detected compiled mode' : 'Detected runtime mode');
+  } catch (error) {
+    // If there's an error checking, assume runtime mode
+    isCompiledMode = false;
+    dbLogger.trace('Error detecting mode, assuming runtime mode');
+  }
+
+  return isCompiledMode;
+}
+
 // DZQL Generic Operations
 export async function callDZQLOperation(operation, entity, args, userId) {
   dbLogger.trace(`DZQL ${operation}.${entity} for user ${userId}`);
-  const result = await sql`
-    SELECT dzql.generic_exec(${operation}, ${entity}, ${args}, ${userId}) as result
-  `;
-  return result[0].result;
+
+  const compiled = await detectMode();
+
+  if (!compiled) {
+    // Runtime mode - use generic_exec
+    const result = await sql`
+      SELECT dzql.generic_exec(${operation}, ${entity}, ${args}, ${userId}) as result
+    `;
+    return result[0].result;
+  } else {
+    // Compiled mode - call compiled function directly
+    const compiledFunctionName = `${operation}_${entity}`;
+
+    // Different operations have different signatures:
+    // - search: search_entity(p_user_id, p_filters, p_search, p_sort, p_page, p_limit)
+    // - get: get_entity(p_user_id, p_id, p_on_date)
+    // - save: save_entity(p_user_id, p_data, p_on_date)
+    // - delete: delete_entity(p_user_id, p_id)
+    // - lookup: lookup_entity(p_user_id, p_term, p_limit)
+
+    if (operation === 'search') {
+      // Extract search parameters from args
+      const filters = args.filters || args.p_filters || {};
+      const search = args.search || null;
+      const sort = args.sort || null;
+      const page = args.page || 1;
+      const limit = args.limit || 25;
+
+      const result = await sql.unsafe(`
+        SELECT ${compiledFunctionName}($1::int, $2::jsonb, $3::text, $4::jsonb, $5::int, $6::int) as result
+      `, [userId, filters, search, sort, page, limit]);
+      return result[0].result;
+    } else if (operation === 'get') {
+      const result = await sql.unsafe(`
+        SELECT ${compiledFunctionName}($1::int, $2::int, NULL) as result
+      `, [userId, args.id]);
+      return result[0].result;
+    } else if (operation === 'save') {
+      const result = await sql.unsafe(`
+        SELECT ${compiledFunctionName}($1::int, $2::jsonb, NULL) as result
+      `, [userId, args]);
+      return result[0].result;
+    } else if (operation === 'delete') {
+      const result = await sql.unsafe(`
+        SELECT ${compiledFunctionName}($1::int, $2::int) as result
+      `, [userId, args.id]);
+      return result[0].result;
+    } else if (operation === 'lookup') {
+      const result = await sql.unsafe(`
+        SELECT ${compiledFunctionName}($1::int, $2::text, $3::int) as result
+      `, [userId, args.term || '', args.limit || 10]);
+      return result[0].result;
+    } else {
+      throw new Error(`Unknown operation: ${operation}`);
+    }
+  }
 }
 
 // DZQL nested proxy factory

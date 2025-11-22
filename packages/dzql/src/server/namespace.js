@@ -1,3 +1,8 @@
+// Suppress logger output for CLI usage - MUST be set before any imports
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'production';
+}
+
 import { sql, db } from "./db.js";
 
 // Default user for CLI operations
