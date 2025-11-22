@@ -11,7 +11,8 @@
     "./client/templates": "./src/client/templates/App.vue",
     "./server": "./src/server/index.js",
     "./db": "./src/server/db.js",
-    "./compiler": "./src/compiler/index.js"
+    "./compiler": "./src/compiler/index.js",
+    "./namespace": "./src/server/namespace.js"
   },
   "files": [
     "bin/**/*.js",
