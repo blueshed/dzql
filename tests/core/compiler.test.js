@@ -320,6 +320,220 @@ test("generates graph function calls only when graph_rules has actions", () => {
   expect(result.sql).not.toContain("_graph_tasks_on_delete");
 });
 
+describe("Graph Rules", () => {
+  test("generates notify actions in graph rules", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "posts",
+      labelField: "title",
+      searchableFields: ["title", "content"],
+      fkIncludes: { author: "users" },
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: ["@author_id"],
+        delete: ["@author_id"],
+      },
+      graphRules: {
+        on_create: {
+          notify_followers: {
+            description: "Notify author followers",
+            actions: [
+              {
+                type: "notify",
+                users: ["@author_id"],
+                message: "New post created",
+                data: { post_id: "@id" },
+              },
+            ],
+          },
+        },
+      },
+      fieldDefaults: {
+        author_id: "@user_id",
+        created_at: "@now",
+        status: "draft",
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check for notify action SQL generation
+    expect(result.sql).toContain("INSERT INTO dzql.events");
+    expect(result.sql).toContain("notify_users");
+
+    // Check for graph function generation
+    expect(result.sql).toContain("_graph_posts_on_create");
+  });
+
+  test("generates condition evaluation with @before/@after variables", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "posts",
+      labelField: "title",
+      searchableFields: ["title"],
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: ["@author_id"],
+        delete: ["@author_id"],
+      },
+      graphRules: {
+        on_update: {
+          notify_on_publish: {
+            description: "Notify when status changes to published",
+            condition: "@before.status != @after.status AND @after.status = 'published'",
+            actions: [
+              {
+                type: "notify",
+                users: ["@author_id"],
+                message: "Post published",
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check for condition evaluation code with p_old_record and p_new_record
+    expect(result.sql).toContain("p_old_record->>'status'");
+    expect(result.sql).toContain("p_new_record->>'status'");
+    expect(result.sql).toContain("IF");
+    expect(result.sql).toContain("_graph_posts_on_update");
+  });
+
+  test("supports complex user paths in notify actions", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "posts",
+      labelField: "title",
+      searchableFields: ["title"],
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: [],
+        delete: [],
+      },
+      graphRules: {
+        on_update: {
+          notify_followers: {
+            description: "Notify followers via complex path",
+            actions: [
+              {
+                type: "notify",
+                users: ["@author_id->users.followers"],
+                message: "Post updated",
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check for resolve_notification_path call for complex paths
+    expect(result.sql).toContain("resolve_notification_path");
+  });
+});
+
+describe("Field Defaults", () => {
+  test("generates field defaults with custom field references", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "resources",
+      labelField: "name",
+      searchableFields: ["name"],
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: [],
+        delete: [],
+      },
+      fieldDefaults: {
+        owner_id: "@user_id",
+        created_by: "@user_id",
+        created_at: "@now",
+        modified_by: "@created_by", // References another field
+        status: "draft",
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check for field reference resolution
+    expect(result.sql).toContain("p_data->>'created_by'");
+
+    // Check for built-in variables
+    expect(result.sql).toContain("p_user_id");
+    expect(result.sql).toContain("NOW()");
+  });
+
+  test("generates built-in variable field defaults", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "tasks",
+      labelField: "title",
+      searchableFields: ["title"],
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: [],
+        delete: [],
+      },
+      fieldDefaults: {
+        created_by: "@user_id",
+        created_at: "@now",
+        due_date: "@today",
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check for variable substitution
+    expect(result.sql).toContain("p_user_id");
+    expect(result.sql).toContain("NOW()");
+    expect(result.sql).toContain("CURRENT_DATE");
+  });
+});
+
+describe("Permission Paths", () => {
+  test("generates temporal filtering with {active} marker", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "venues",
+      labelField: "name",
+      searchableFields: ["name"],
+      fkIncludes: { org: "organisations" },
+      permissionPaths: {
+        view: [],
+        create: ["@org_id->acts_for[org_id=$]{active}.user_id"],
+        update: ["@org_id->acts_for[org_id=$]{active}.user_id"],
+        delete: ["@org_id->acts_for[org_id=$]{active}.user_id"],
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check for temporal filtering
+    expect(result.sql).toContain("valid_from");
+    expect(result.sql).toContain("valid_to");
+
+    // Check for proper temporal conditions
+    expect(result.sql).toContain("valid_from <= NOW()");
+    expect(result.sql).toContain("valid_to > NOW()");
+    expect(result.sql).toContain("valid_to IS NULL");
+  });
+});
+
 describe("Integration tests", () => {
   test("can compile venues domain", () => {
     const compiler = new DZQLCompiler();
