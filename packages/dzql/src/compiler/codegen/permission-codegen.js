@@ -228,7 +228,11 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
 
     // Add temporal condition
     if (temporal) {
-      conditions.push(`${targetTable}.valid_to IS NULL`);
+      // Add temporal filtering for {active} marker
+      // Assumes standard field names: valid_from and valid_to
+      // This matches the interpreter's behavior in resolve_path_segment (002_functions.sql:316)
+      conditions.push(`${targetTable}.valid_from <= NOW()`);
+      conditions.push(`(${targetTable}.valid_to > NOW() OR ${targetTable}.valid_to IS NULL)`);
     }
 
     // Add user_id check (final target)
