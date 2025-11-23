@@ -39,24 +39,43 @@ export class GraphRulesCodegen {
     const operation = trigger.replace('on_', '');  // on_create -> create
     const functionName = `_graph_${this.tableName}_${trigger}`;
 
-    const actionBlocks = [];
+    const ruleBlocks = [];
 
     // Process each rule
     for (const [ruleName, ruleConfig] of Object.entries(rules)) {
       const description = ruleConfig.description || ruleName;
+      const condition = ruleConfig.condition;
       const actions = Array.isArray(ruleConfig.actions)
         ? ruleConfig.actions
         : (ruleConfig.actions ? [ruleConfig.actions] : []);
 
+      const actionBlocks = [];
       for (const action of actions) {
         const actionSQL = this._generateAction(action, ruleName, description);
         if (actionSQL) {
           actionBlocks.push(actionSQL);
         }
       }
+
+      if (actionBlocks.length === 0) {
+        continue;  // Skip rules with no actions
+      }
+
+      // Wrap actions in condition IF block if condition is present
+      if (condition) {
+        const conditionSQL = this._generateCondition(condition, operation);
+        const ruleBlock = `  -- Rule: ${ruleName}
+  IF ${conditionSQL} THEN
+${actionBlocks.join('\n\n')}
+  END IF;`;
+        ruleBlocks.push(ruleBlock);
+      } else {
+        // No condition - add actions directly
+        ruleBlocks.push(...actionBlocks);
+      }
     }
 
-    if (actionBlocks.length === 0) {
+    if (ruleBlocks.length === 0) {
       return null;  // No actions, no function
     }
 
@@ -72,7 +91,7 @@ CREATE OR REPLACE FUNCTION ${functionName}(
   ${params}
 ) RETURNS VOID AS $$
 BEGIN
-${actionBlocks.join('\n\n')}
+${ruleBlocks.join('\n\n')}
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   }
@@ -99,6 +118,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
 
       case 'execute':
         return this._generateExecuteAction(action, comment);
+
+      case 'notify':
+        return this._generateNotifyAction(action, comment);
 
       default:
         console.warn('Unknown action type:', action.type);
@@ -209,6 +231,140 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
 
     return `${comment}
   PERFORM ${functionName}(${paramSQL});`;
+  }
+
+  /**
+   * Generate NOTIFY action
+   * Creates an event that will be broadcast to specified users
+   * @private
+   */
+  _generateNotifyAction(action, comment) {
+    const users = action.users || [];
+    const message = action.message || '';
+    const data = action.data || {};
+
+    // Build user ID array resolution
+    let userIdSQL = 'ARRAY[]::INT[]';
+
+    if (users.length > 0) {
+      // Users can be paths like "@post_id->posts.author_id" or direct field refs like "@author_id"
+      const userPaths = [];
+
+      for (const userPath of users) {
+        if (userPath.startsWith('@') && !userPath.includes('->')) {
+          // Simple field reference: @author_id
+          const fieldName = userPath.substring(1);
+          userPaths.push(`(p_record->>'${fieldName}')::int`);
+        } else if (userPath.startsWith('@') && userPath.includes('->')) {
+          // Complex path: @post_id->posts.author_id - use runtime resolver
+          userPaths.push(`dzql.resolve_notification_path('${this.tableName}', p_record, '${userPath}')`);
+        } else {
+          // Literal user ID
+          userPaths.push(`${userPath}`);
+        }
+      }
+
+      if (userPaths.length === 1 && !userPaths[0].includes('resolve_notification_path')) {
+        // Single simple field - wrap in array
+        userIdSQL = `ARRAY[${userPaths[0]}]`;
+      } else if (userPaths.length === 1) {
+        // Single path resolution (already returns array)
+        userIdSQL = userPaths[0];
+      } else {
+        // Multiple paths - need to combine arrays
+        userIdSQL = `(${userPaths.map(p =>
+          p.includes('resolve_notification_path')
+            ? p
+            : `ARRAY[${p}]`
+        ).join(' || ')})`;
+      }
+    }
+
+    // Build notification data object
+    const dataFields = [];
+    dataFields.push(`'type', 'graph_rule_notification'`);
+    dataFields.push(`'table', '${this.tableName}'`);
+
+    if (message) {
+      dataFields.push(`'message', ${this._resolveValue(message)}`);
+    }
+
+    // Add custom data fields
+    for (const [key, value] of Object.entries(data)) {
+      dataFields.push(`'${key}', ${this._resolveValue(value)}`);
+    }
+
+    const dataSQL = dataFields.length > 0
+      ? `jsonb_build_object(${dataFields.join(', ')})`
+      : "'{}'::jsonb";
+
+    return `${comment}
+  -- Create notification event
+  INSERT INTO dzql.events (
+    table_name,
+    op,
+    pk,
+    data,
+    user_id,
+    notify_users
+  ) VALUES (
+    '${this.tableName}',
+    'notify',
+    jsonb_build_object('id', (p_record->>'id')::int),
+    ${dataSQL},
+    p_user_id,
+    ${userIdSQL}
+  );`;
+  }
+
+  /**
+   * Generate condition SQL from condition string
+   * Supports @before.field, @after.field, @user_id, @id
+   * @private
+   */
+  _generateCondition(condition, operation) {
+    let conditionSQL = condition;
+
+    // Replace @before.field references (for update/delete)
+    conditionSQL = conditionSQL.replace(/@before\.(\w+)/g, (match, field) => {
+      return `(p_old_record->>'${field}')`;
+    });
+
+    // Replace @after.field references (for update)
+    conditionSQL = conditionSQL.replace(/@after\.(\w+)/g, (match, field) => {
+      if (operation === 'update') {
+        return `(p_new_record->>'${field}')`;
+      } else {
+        return `(p_record->>'${field}')`;
+      }
+    });
+
+    // Replace @field references (current record)
+    conditionSQL = conditionSQL.replace(/@(\w+)(?!\w)/g, (match, field) => {
+      if (field === 'user_id') {
+        return 'p_user_id';
+      } else if (field === 'id') {
+        // Use appropriate record based on operation
+        if (operation === 'update') {
+          return `(p_new_record->>'id')`;
+        } else if (operation === 'delete') {
+          return `(p_old_record->>'id')`;
+        } else {
+          return `(p_record->>'id')`;
+        }
+      } else {
+        // Field from current record
+        if (operation === 'update') {
+          return `(p_new_record->>'${field}')`;
+        } else if (operation === 'delete') {
+          return `(p_old_record->>'${field}')`;
+        } else {
+          return `(p_record->>'${field}')`;
+        }
+      }
+    });
+
+    return conditionSQL;
   }
 
   /**
