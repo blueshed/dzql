@@ -270,8 +270,7 @@ AND valid_from <= COALESCE(p_on_date, NOW())
 AND (valid_to > COALESCE(p_on_date, NOW()) OR valid_to IS NULL)
 ```
 
-**Missing in Compiler**:
-- ❌ `{active}` marker in permission/notification paths (interpreter feature)
+**v0.4.1 Update**: The `{active}` marker is now fully supported in the compiler for permission and notification paths.
 
 ---
 
@@ -481,10 +480,9 @@ valid_from <= NOW() AND (valid_to > NOW() OR valid_to IS NULL)
 - Immediate feedback on entity changes
 - Easy debugging with dynamic SQL
 
-✅ **Complex Graph Rules**
-- Need `notify` actions
-- Need conditional execution
-- Need dynamic path resolution
+✅ **Highly Dynamic Graph Rules**
+- Need fully dynamic path resolution at runtime
+- Complex multi-hop relationships not known at compile time
 
 ✅ **Compound Primary Keys**
 - Better support for multi-column PKs
