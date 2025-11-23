@@ -729,10 +729,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   }
 
   /**
-   * Resolve a variable default (@user_id, @now, @today) to SQL expression
+   * Resolve a variable default (@user_id, @now, @today, @field_name) to SQL expression
    * @private
    */
   _resolveDefaultVariable(variable, fieldName) {
+    // Handle built-in variables
     switch (variable) {
       case '@user_id':
         return 'p_user_id';
@@ -740,9 +741,16 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
         return `to_char(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`;
       case '@today':
         return `to_char(CURRENT_DATE, 'YYYY-MM-DD')`;
-      default:
-        throw new Error(`Unknown field default variable: ${variable} for field ${fieldName}`);
     }
+
+    // Handle field references: @other_field
+    if (variable.startsWith('@')) {
+      const referencedField = variable.substring(1);
+      // Reference to another field in the data being inserted
+      return `(p_data->>'${referencedField}')`;
+    }
+
+    throw new Error(`Unknown field default variable: ${variable} for field ${fieldName}`);
   }
 
   /**
