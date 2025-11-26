@@ -31,12 +31,12 @@ async function processSubscriptionUpdates(event, broadcast) {
   for (const [subscribableName, subs] of subscriptionsByName.entries()) {
     try {
       // Ask PostgreSQL which subscription instances are affected
-      const result = await db.query(
+      const result = await sql.unsafe(
         `SELECT ${subscribableName}_affected_documents($1, $2, $3, $4) as affected`,
         [table, op, before, after]
       );
 
-      const affectedParamSets = result.rows[0]?.affected;
+      const affectedParamSets = result[0]?.affected;
 
       if (!affectedParamSets || affectedParamSets.length === 0) {
         continue; // This subscribable not affected
@@ -51,12 +51,12 @@ async function processSubscriptionUpdates(event, broadcast) {
           if (paramsMatch(sub.params, affectedParams)) {
             try {
               // Re-execute query to get updated data
-              const updated = await db.query(
+              const updated = await sql.unsafe(
                 `SELECT get_${subscribableName}($1, $2) as data`,
                 [sub.params, sub.user_id]
               );
 
-              const data = updated.rows[0]?.data;
+              const data = updated[0]?.data;
 
               // Send update to specific connection
               const message = JSON.stringify({

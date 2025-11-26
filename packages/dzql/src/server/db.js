@@ -224,8 +224,13 @@ export async function callDZQLOperation(operation, entity, args, userId) {
       throw new Error(`Unknown operation: ${operation}`);
     }
   } catch (error) {
-    // If compiled function doesn't exist, fall back to generic_exec
-    if (error.message?.includes('does not exist') || error.code === '42883') {
+    // Only fall back if the COMPILED function itself doesn't exist
+    // Don't fall back for other "does not exist" errors (e.g., missing tables, downstream functions)
+    const isMissingCompiledFunction =
+      (error.message?.includes('does not exist') || error.code === '42883') &&
+      error.message?.includes(compiledFunctionName);
+
+    if (isMissingCompiledFunction) {
       dbLogger.trace(`Compiled function ${compiledFunctionName} not found, trying generic_exec`);
       const result = await sql`
         SELECT dzql.generic_exec(${operation}, ${entity}, ${args}, ${userId}) as result

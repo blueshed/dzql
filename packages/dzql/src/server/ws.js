@@ -4,6 +4,7 @@ import {
   callUserFunction,
   getUserProfile,
   db,
+  sql,
 } from "./db.js";
 import { wsLogger, authLogger } from "./logger.js";
 import {
@@ -317,12 +318,12 @@ export function createRPCHandler(customHandlers = {}) {
 
         try {
           // Execute initial query (this also checks permissions)
-          const queryResult = await db.query(
+          const queryResult = await sql.unsafe(
             `SELECT get_${subscribableName}($1, $2) as data`,
             [params, ws.data.user_id]
           );
 
-          const data = queryResult.rows[0]?.data;
+          const data = queryResult[0]?.data;
 
           // Register subscription in memory
           const subscriptionId = registerSubscription(
