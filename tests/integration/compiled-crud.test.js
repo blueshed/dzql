@@ -208,9 +208,10 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
     }
 
     // Special auth functions
-    db.api.register_user = async ({ email, password }) => {
+    db.api.register_user = async ({ email, password, name = null }) => {
+      const extra = name ? { name } : { name: email.split("@")[0] };
       const result =
-        await sql`SELECT register_user(${email}, ${password}) as result`;
+        await sql`SELECT register_user(${email}, ${password}, ${sql.json(extra)}) as result`;
       return result[0].result;
     };
 

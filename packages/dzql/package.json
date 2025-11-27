@@ -1,6 +1,6 @@
 {
   "name": "dzql",
-  "version": "0.4.4",
+  "version": "0.4.6",
   "description": "PostgreSQL-powered framework with zero boilerplate CRUD operations and real-time WebSocket synchronization",
   "type": "module",
   "main": "src/server/index.js",
@@ -19,6 +19,7 @@
     "src/**/*.js",
     "src/database/migrations/**/*.sql",
     "docs/**/*.md",
+    "docs/examples/*.sql",
     "README.md",
     "LICENSE"
   ],

@@ -2,7 +2,7 @@
  * Test helper utilities
  */
 
-import { createTestConnection, cleanTestData } from './db-setup.js';
+import { createTestConnection, cleanTestData } from "./db-setup.js";
 
 /**
  * Global test database connection
@@ -53,21 +53,21 @@ export function setupTests() {
   // Return helper object
   return {
     sql,
-    cleanData: () => cleanTestData(sql)
+    cleanData: () => cleanTestData(sql),
   };
 }
 
 /**
  * Generate unique test email
  */
-export function testEmail(prefix = 'test') {
+export function testEmail(prefix = "test") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}@test.com`;
 }
 
 /**
  * Generate unique test name
  */
-export function testName(prefix = 'Test') {
+export function testName(prefix = "Test") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
@@ -83,7 +83,9 @@ export async function retryOperation(operation, maxRetries = 3) {
     } catch (error) {
       lastError = error;
       if (i < maxRetries - 1) {
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 100));
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.pow(2, i) * 100),
+        );
       }
     }
   }
@@ -106,7 +108,7 @@ export async function assertThrows(fn, expectedCode = null) {
   }
 
   if (!threw) {
-    throw new Error('Expected function to throw an error');
+    throw new Error("Expected function to throw an error");
   }
 
   if (expectedCode && error.code !== expectedCode) {
@@ -118,14 +120,30 @@ export async function assertThrows(fn, expectedCode = null) {
 
 /**
  * Create a test user and return their profile
+ * @param {object} sql - Database connection
+ * @param {string} email - Email address (optional, generates random if not provided)
+ * @param {string} password - Password (default: testpass123)
+ * @param {object} extra - Extra fields to pass to register_user (e.g., { name: 'Test' })
+ *                         If not provided, defaults to { name: email_prefix } for compatibility
+ *                         with test schemas that have name NOT NULL
  */
-export async function createTestUser(sql, email = null, password = 'testpass123') {
+export async function createTestUser(
+  sql,
+  email = null,
+  password = "testpass123",
+  extra = null,
+) {
   if (!email) {
     email = testEmail();
   }
 
+  // Default to including name for compatibility with test schemas that have name NOT NULL
+  if (extra === null) {
+    extra = { name: email.split("@")[0] };
+  }
+
   const result = await sql`
-    SELECT register_user(${email}, ${password}) as result
+    SELECT register_user(${email}, ${password}, ${sql.json(extra)}) as result
   `;
 
   return result[0].result;

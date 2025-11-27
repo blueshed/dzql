@@ -10,6 +10,7 @@ import { generateOperations } from './codegen/operation-codegen.js';
 import { generateNotificationFunction } from './codegen/notification-codegen.js';
 import { generateGraphRuleFunctions } from './codegen/graph-rules-codegen.js';
 import { generateSubscribable } from './codegen/subscribable-codegen.js';
+import { generateAuthFunctions } from './codegen/auth-codegen.js';
 import crypto from 'crypto';
 
 export class DZQLCompiler {
@@ -52,6 +53,12 @@ export class DZQLCompiler {
     // Operation functions
     const operationSQL = generateOperations(normalizedEntity);
     sections.push(operationSQL);
+
+    // Auth functions (only for users table)
+    const authSQL = generateAuthFunctions(normalizedEntity);
+    if (authSQL) {
+      sections.push(authSQL);
+    }
 
     // Notification path resolution (if needed)
     if (normalizedEntity.notificationPaths &&

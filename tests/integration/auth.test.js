@@ -4,7 +4,7 @@
  */
 
 import { test, expect, afterAll, beforeAll } from "bun:test";
-import { setupTests, testEmail, assertThrows } from '../setup/test-helpers.js';
+import { setupTests, testEmail, assertThrows } from "../setup/test-helpers.js";
 
 const { sql } = setupTests();
 
@@ -12,16 +12,8 @@ const { sql } = setupTests();
 const testUsers = [];
 
 beforeAll(async () => {
-  // Ensure users table exists (migrations should have created it)
-  await sql`
-    CREATE TABLE IF NOT EXISTS users (
-      id serial PRIMARY KEY,
-      name text NOT NULL,
-      email text UNIQUE NOT NULL,
-      password_hash text NOT NULL,
-      created_at timestamptz DEFAULT now()
-    )
-  `;
+  // Users table is created by migrations (006_auth.sql)
+  // The table only has: id, email, password_hash (name is optional, added by application)
 });
 
 afterAll(async () => {
@@ -35,7 +27,7 @@ afterAll(async () => {
 });
 
 test("register_user function creates new user", async () => {
-  const email = testEmail('auth-register');
+  const email = testEmail("auth-register");
   testUsers.push(email);
 
   const result = await sql`
@@ -45,14 +37,12 @@ test("register_user function creates new user", async () => {
   expect(result[0].result).toBeDefined();
   expect(result[0].result.email).toBe(email);
   expect(result[0].result.user_id).toBeDefined();
-  expect(result[0].result.name).toBe(email.split('@')[0]); // email prefix
-  expect(result[0].result.created_at).toBeDefined();
   // Ensure password_hash is not exposed
   expect(result[0].result.password_hash).toBeUndefined();
 });
 
 test("login_user function authenticates correctly", async () => {
-  const email = testEmail('auth-login');
+  const email = testEmail("auth-login");
   testUsers.push(email);
 
   // First register a user
@@ -68,13 +58,11 @@ test("login_user function authenticates correctly", async () => {
   expect(result[0].result).toBeDefined();
   expect(result[0].result.email).toBe(email);
   expect(result[0].result.user_id).toBeDefined();
-  expect(result[0].result.name).toBe(email.split('@')[0]);
-  expect(result[0].result.created_at).toBeDefined();
   expect(result[0].result.password_hash).toBeUndefined();
 });
 
 test("_profile function returns user profile", async () => {
-  const email = testEmail('auth-profile');
+  const email = testEmail("auth-profile");
   testUsers.push(email);
 
   // First register a user
@@ -91,13 +79,11 @@ test("_profile function returns user profile", async () => {
   expect(result[0].result).toBeDefined();
   expect(result[0].result.email).toBe(email);
   expect(result[0].result.user_id).toBe(userId);
-  expect(result[0].result.name).toBe(email.split('@')[0]);
-  expect(result[0].result.created_at).toBeDefined();
   expect(result[0].result.password_hash).toBeUndefined();
 });
 
 test("login_user rejects invalid credentials", async () => {
-  const email = testEmail('auth-invalid');
+  const email = testEmail("auth-invalid");
   testUsers.push(email);
 
   // Test login with non-existent email
@@ -105,7 +91,7 @@ test("login_user rejects invalid credentials", async () => {
     async () => {
       await sql`SELECT login_user('nonexistent@example.com', 'password123')`;
     },
-    '28000' // Invalid authorization
+    "28000", // Invalid authorization
   );
 
   // Register a user
@@ -116,12 +102,12 @@ test("login_user rejects invalid credentials", async () => {
     async () => {
       await sql`SELECT login_user(${email}, 'wrongpassword')`;
     },
-    '28000' // Invalid authorization
+    "28000", // Invalid authorization
   );
 });
 
 test("register_user rejects duplicate email", async () => {
-  const email = testEmail('auth-duplicate');
+  const email = testEmail("auth-duplicate");
   testUsers.push(email);
 
   // First register a user
@@ -135,12 +121,12 @@ test("register_user rejects duplicate email", async () => {
     async () => {
       await sql`SELECT register_user(${email}, 'password456')`;
     },
-    '23505' // Unique violation
+    "23505", // Unique violation
   );
 });
 
 test("register_user hashes password securely", async () => {
-  const email = testEmail('auth-hash');
+  const email = testEmail("auth-hash");
   testUsers.push(email);
 
   await sql`SELECT register_user(${email}, 'password123')`;
@@ -151,7 +137,7 @@ test("register_user hashes password securely", async () => {
   `;
 
   expect(result[0].password_hash).toBeDefined();
-  expect(result[0].password_hash).not.toBe('password123');
+  expect(result[0].password_hash).not.toBe("password123");
   // bcrypt hashes start with $2a$, $2b$, or $2y$
   expect(result[0].password_hash).toMatch(/^\$2[aby]\$/);
 });
