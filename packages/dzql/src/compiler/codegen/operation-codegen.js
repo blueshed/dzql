@@ -267,7 +267,8 @@ CREATE OR REPLACE FUNCTION search_${this.tableName}(
   p_search TEXT DEFAULT NULL,
   p_sort JSONB DEFAULT NULL,
   p_page INT DEFAULT 1,
-  p_limit INT DEFAULT 25
+  p_limit INT DEFAULT 25,
+  p_on_date TIMESTAMPTZ DEFAULT NULL
 ) RETURNS JSONB AS $$
 DECLARE
   v_data JSONB;
@@ -280,8 +281,10 @@ DECLARE
   v_filter JSONB;
   v_operator TEXT;
   v_value JSONB;
+  v_on_date TIMESTAMPTZ;
 BEGIN
   v_offset := (p_page - 1) * p_limit;
+  v_on_date := COALESCE(p_on_date, NOW());
 
   -- Extract sort parameters
   v_sort_field := COALESCE(p_sort->>'field', '${this.entity.labelField}');
@@ -329,8 +332,7 @@ BEGIN
     v_where_clause := v_where_clause || ' AND (${searchConditions})';
   END IF;
 
-  -- Add temporal filter
-  v_where_clause := v_where_clause || '${this._generateTemporalFilter().replace(/\n/g, ' ')}';
+  -- Add temporal filter${this._generateTemporalFilterForSearch()}
 
   -- Get total count
   EXECUTE format('SELECT COUNT(*) FROM ${this.tableName} WHERE %s', v_where_clause) INTO v_total;
@@ -754,7 +756,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   }
 
   /**
-   * Generate temporal filter
+   * Generate temporal filter for static SQL (GET, LOOKUP)
    * @private
    */
   _generateTemporalFilter() {
@@ -768,6 +770,23 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     return `
     AND ${validFrom} <= COALESCE(p_on_date, NOW())
     AND (${validTo} > COALESCE(p_on_date, NOW()) OR ${validTo} IS NULL)`;
+  }
+
+  /**
+   * Generate temporal filter for SEARCH function (dynamic SQL with EXECUTE)
+   * Uses format() to properly interpolate the v_on_date variable
+   * @private
+   */
+  _generateTemporalFilterForSearch() {
+    if (!this.entity.temporalFields || Object.keys(this.entity.temporalFields).length === 0) {
+      return '';
+    }
+
+    const validFrom = this.entity.temporalFields.valid_from || 'valid_from';
+    const validTo = this.entity.temporalFields.valid_to || 'valid_to';
+
+    return `
+  v_where_clause := v_where_clause || format(' AND ${validFrom} <= %L AND (${validTo} > %L OR ${validTo} IS NULL)', v_on_date, v_on_date);`;
   }
 
   /**
