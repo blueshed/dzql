@@ -59,17 +59,20 @@ See **[Compiler Documentation](docs/compiler/)** for complete usage guide, codin
 ## Testing
 
 ```bash
-# Start test database
-cd tests/test-utils && docker compose up -d
+# From repository root - start test database
+docker compose up -d
+
+# Initialize test database
+bun run test:init
 
 # Run tests
 bun test
 
 # Stop database
-cd tests/test-utils && docker compose down
+docker compose down
 ```
 
-All tests use `bun:test` framework with automatic database setup/teardown. See **[tests/test-utils/README.md](tests/test-utils/README.md)** for details.
+All tests use `bun:test` framework. See **[tests/README.md](../../tests/README.md)** for details.
 
 ## License
 
