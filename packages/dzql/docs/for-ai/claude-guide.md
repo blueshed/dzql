@@ -2,6 +2,38 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Quick Reference Card
+
+```
+DZQL QUICK REFERENCE
+====================
+
+5 Operations:     get, save, delete, lookup, search
+2 Modes:          Interpreter (runtime) | Compiler (static SQL)
+Client API:       ws.api.{operation}.{entity}(params)
+Server API:       db.api.{operation}.{entity}(params, userId)
+
+Entity Registration:
+  dzql.register_entity(
+    table_name,           -- 'todos'
+    label_field,          -- 'title' (for lookups)
+    searchable_fields,    -- ARRAY['title', 'description']
+    fk_includes,          -- '{"org": "organisations"}'
+    soft_delete,          -- false
+    temporal_fields,      -- '{}'
+    notification_paths,   -- '{"ownership": ["@org_id->acts_for..."]}'
+    permission_paths,     -- '{"view": [], "create": [...]}'
+    graph_rules,          -- '{"on_create": {...}, "many_to_many": {...}}'
+    field_defaults        -- '{"owner_id": "@user_id"}'
+  )
+
+M2M id_field naming:  tag_ids (singular + _ids), NOT tags_ids
+Permission [] = public, omitted = denied
+Path syntax: @field->table[filter]{temporal}.target_field
+
+Compile: dzql compile entities.sql -o compiled/
+```
+
 ## Project Overview
 
 DZQL is a PostgreSQL-powered framework that eliminates CRUD boilerplate by providing automatic database operations, real-time WebSocket synchronization, and graph-based relationship management. The core concept: register an entity in PostgreSQL and instantly get 5 standard operations (get, save, delete, lookup, search) plus real-time notifications with zero code.

@@ -161,6 +161,23 @@ SELECT dzql.register_entity(
 | `id_field` | Yes | Field name for ID array in API | `"tag_ids"` |
 | `expand` | No | Include full objects (default: false) | `false` or `true` |
 
+### Naming Convention for `id_field`
+
+**Important:** The `id_field` should use the **singular** form of the target entity, not plural:
+
+| Target Entity | Correct `id_field` | Wrong |
+|---------------|-------------------|-------|
+| `tags` | `tag_ids` | `tags_ids` |
+| `roles` | `role_ids` | `roles_ids` |
+| `categories` | `category_ids` | `categories_ids` |
+| `users` | `user_ids` | `users_ids` |
+
+This convention matches common ORM patterns and is more readable:
+- `tag_ids: [1, 2, 3]` reads as "tag IDs"
+- `tags_ids: [1, 2, 3]` reads awkwardly as "tags IDs"
+
+Using the wrong naming will cause the M2M sync to fail because the generated code looks for a field name that doesn't match what clients send.
+
 ### The `expand` Flag
 
 Controls whether full related objects are included in responses:

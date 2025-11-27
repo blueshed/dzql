@@ -7,7 +7,7 @@ PostgreSQL-powered framework with automatic CRUD operations, live query subscrip
 - **[Documentation Hub](docs/)** - Complete documentation index
 - **[Getting Started Tutorial](docs/getting-started/tutorial.md)** - Complete tutorial with working todo app
 - **[API Reference](docs/reference/api.md)** - Complete API documentation
-- **[Live Query Subscriptions](docs/getting-started/subscriptions-quick-start.md)** - Real-time denormalized documents (NEW in v0.2.0)
+- **[Live Query Subscriptions](docs/getting-started/subscriptions-quick-start.md)** - Real-time denormalized documents
 - **[Compiler Documentation](docs/compiler/)** - Entity compilation guide and coding standards
 - **[Claude Guide](docs/for-ai/claude-guide.md)** - Development guide for AI assistants
 - **[Venues Example](../venues/)** - Full working application
@@ -32,7 +32,7 @@ await ws.connect();
 const user = await ws.api.save.users({ name: 'Alice' });
 const results = await ws.api.search.users({ filters: { name: 'alice' } });
 
-// NEW in v0.2.0: Live query subscriptions
+// Live query subscriptions
 const { data, unsubscribe } = await ws.api.subscribe_venue_detail(
   { venue_id: 123 },
   (updated) => console.log('Venue changed!', updated)

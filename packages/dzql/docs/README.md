@@ -7,6 +7,7 @@ Complete documentation for the DZQL PostgreSQL-powered framework.
 New to DZQL? Start here:
 
 - **[Tutorial](getting-started/tutorial.md)** - Complete step-by-step guide with a working todo app
+- **[Interpreter vs Compiler](guides/interpreter-vs-compiler.md)** - Understand the two execution modes
 - **[Subscriptions Quick Start](getting-started/subscriptions-quick-start.md)** - Get real-time subscriptions working in 5 minutes
 
 ## 📖 Guides
@@ -14,6 +15,9 @@ New to DZQL? Start here:
 Feature-specific guides and how-tos:
 
 - **[Live Query Subscriptions](guides/subscriptions.md)** - Real-time denormalized documents
+- **[Many-to-Many Relationships](guides/many-to-many.md)** - Junction table management
+- **[Field Defaults](guides/field-defaults.md)** - Auto-populate fields on create
+- **[Custom Functions](guides/custom-functions.md)** - Extend with PostgreSQL or Bun functions
 - **[Client Stores](guides/client-stores.md)** - Pinia store patterns for Vue.js
 
 ## 📘 Reference
@@ -29,7 +33,7 @@ Complete API documentation:
 - [Quickstart](compiler/QUICKSTART.md) - Get started with the DZQL compiler
 - [Advanced Filters](compiler/ADVANCED_FILTERS.md) - Complex search operators
 - [Coding Standards](compiler/CODING_STANDARDS.md) - Best practices for DZQL code
-- [Comparison](compiler/COMPARISON.md) - DZQL vs other approaches
+- [Comparison](compiler/COMPARISON.md) - Runtime vs compiled side-by-side
 
 ## 🤖 For AI Assistants
 
@@ -40,28 +44,6 @@ Complete API documentation:
 - [npm Package](https://www.npmjs.com/package/dzql)
 - [GitHub Repository](https://github.com/blueshed/dzql)
 - [Issue Tracker](https://github.com/blueshed/dzql/issues)
-- [Changelog](../../../CHANGELOG.md)
-- [Contributing](../../../CONTRIBUTING.md)
-
-## 🏗️ Architecture
-
-Looking for architecture and design docs? See the [repository docs](../../../docs/):
-
-- [Permissions System](../../../docs/architecture/PERMISSIONS.md)
-- [Project Roadmap](../../../docs/architecture/ROADMAP.md)
-- [Subscription Architecture](../../../docs/architecture/SUBSCRIPTIONS_STRATEGY.md)
-
-## 🧪 Development
-
-Contributing to DZQL? See development documentation:
-
-- [TDD Workflow](../../../docs/development/TDD_WORKFLOW.md)
-- [WebSocket Testing](../../../docs/development/WEBSOCKET_TESTING.md)
-- [Claude Web Setup](../../../docs/development/CLAUDE-WEB.md)
-
-## 📦 Package Contents
-
-This documentation is published with the npm package. For repository-wide documentation (contributors, development workflow, architecture), see [`/docs/`](../../../docs/) in the repository root.
 
 ## Need Help?
 
