@@ -6,17 +6,11 @@ The DZQL Compiler transforms declarative entity definitions into optimized Postg
 
 - **[Quickstart Guide](QUICKSTART.md)** - Get started with the compiler in 5 minutes
 
-## Guides
+## Reference
 
 - **[Advanced Filters](ADVANCED_FILTERS.md)** - Complex search operators and patterns
 - **[Coding Standards](CODING_STANDARDS.md)** - Best practices for DZQL code
-
-## Reference
-
-- **[Comparison](COMPARISON.md)** - How DZQL compares to other approaches
-- **[Session Summary](SESSION_SUMMARY.md)** - Development session documentation
-- **[Summary](SUMMARY.md)** - Compiler overview and architecture
-- **[Overnight Build](OVERNIGHT_BUILD.md)** - Batch compilation process
+- **[Comparison](COMPARISON.md)** - Runtime vs compiled side-by-side
 
 ## Using the Compiler
 

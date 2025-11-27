@@ -28,7 +28,7 @@ Live Query Subscriptions (Pattern 1 from vision.md) enable clients to subscribe 
 Create a SQL file with your subscribable definition:
 
 ```sql
--- examples/subscribables/venue_detail.sql
+-- examples/venue-detail-subscribable.sql
 SELECT dzql.register_subscribable(
   'venue_detail',
   '{"subscribe": ["@org_id->acts_for[org_id=$]{active}.user_id"]}'::jsonb,
@@ -56,7 +56,7 @@ SELECT dzql.register_subscribable(
 ```bash
 # Compile subscribable to SQL functions
 bun packages/dzql/src/compiler/cli/compile-subscribable.js \
-  examples/subscribables/venue_detail.sql \
+  examples/venue-detail-subscribable.sql \
   > /tmp/venue_detail.sql
 
 # Deploy to database
