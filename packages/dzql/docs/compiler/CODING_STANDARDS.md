@@ -72,6 +72,72 @@ CREATE FUNCTION lookup_users(p_user_id INT, p_filter TEXT, ...)
 CREATE FUNCTION search_users(p_user_id INT, p_filters JSONB, ...)
 ```
 
+## JSON vs JSONB for Function Parameters
+
+### External API Parameters: Use JSON
+
+When defining function parameters that accept JSON from external callers (API boundary), use `JSON` type (text-based) rather than `JSONB`. This allows callers to pass `JSON.stringify(options)` as a plain string without needing special serialization like `sql.json()`.
+
+```sql
+-- ✅ CORRECT - JSON for external input parameters
+CREATE FUNCTION register_user(
+  p_email TEXT,
+  p_password TEXT,
+  p_options JSON DEFAULT NULL  -- Accepts plain JSON string from API
+)
+
+-- ❌ WRONG - JSONB requires special serialization from clients
+CREATE FUNCTION register_user(
+  p_email TEXT,
+  p_password TEXT,
+  p_options JSONB DEFAULT NULL  -- Harder to call from JavaScript
+)
+```
+
+### Internal Operations: Cast to JSONB
+
+Inside the function, cast to JSONB if you need JSONB operators (`->`, `->>`, `-`, `||`, `?`, etc.):
+
+```sql
+CREATE FUNCTION register_user(p_email TEXT, p_password TEXT, p_options JSON DEFAULT NULL)
+RETURNS JSONB AS $$
+DECLARE
+  v_insert_data JSONB;
+BEGIN
+  v_insert_data := jsonb_build_object('email', p_email);
+  
+  IF p_options IS NOT NULL THEN
+    -- Cast to JSONB for internal operations
+    v_insert_data := (p_options::jsonb - 'id' - 'password') || v_insert_data;
+  END IF;
+  
+  -- ...
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### Table Columns: Use JSONB
+
+Table columns should still use `JSONB` for efficient storage and indexing:
+
+```sql
+-- ✅ CORRECT - JSONB for table columns
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  metadata JSONB DEFAULT '{}'  -- Efficient storage & indexing
+);
+```
+
+### Summary
+
+| Context | Type | Reason |
+|---------|------|--------|
+| Function input parameters | `JSON` | Easy to pass from JavaScript (`JSON.stringify()`) |
+| Internal function operations | `::jsonb` cast | Access to JSONB operators |
+| Table columns | `JSONB` | Efficient storage and indexing |
+
+This pattern - **JSON for input parameters, JSONB for storage** - eliminates serialization confusion at the API boundary.
+
 ## Function Categories
 
 ### Public API Functions (No underscore)

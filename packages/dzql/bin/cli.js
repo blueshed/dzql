@@ -240,7 +240,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Register new user
 -- p_options: optional JSON object with additional fields to set on the user record
-CREATE OR REPLACE FUNCTION register_user(p_email TEXT, p_password TEXT, p_options JSONB DEFAULT NULL)
+CREATE OR REPLACE FUNCTION register_user(p_email TEXT, p_password TEXT, p_options JSON DEFAULT NULL)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -256,9 +256,10 @@ BEGIN
   v_hash := crypt(p_password, v_salt);
 
   -- Build insert data: options fields + email + password_hash
+  -- Cast p_options to JSONB for internal operations (JSON type is for API boundary convenience)
   v_insert_data := jsonb_build_object('email', p_email, 'password_hash', v_hash);
   IF p_options IS NOT NULL THEN
-    v_insert_data := (p_options - 'id' - 'email' - 'password_hash' - 'password') || v_insert_data;
+    v_insert_data := (p_options::jsonb - 'id' - 'email' - 'password_hash' - 'password') || v_insert_data;
   END IF;
 
   -- Dynamic INSERT from JSONB
