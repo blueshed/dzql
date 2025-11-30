@@ -230,33 +230,48 @@ CREATE TRIGGER dzql_events_notify
       }
 
       // Generate auth functions (required for WebSocket server)
-      const authSQL = `-- Authentication Functions
+      // This is a fallback for when there's no users entity - otherwise users.sql has these
+      const authSQL = `-- Authentication Functions (fallback)
 -- Required for DZQL WebSocket server
+-- Note: If you have a users entity, auth functions are in users.sql instead
 
 -- Enable pgcrypto extension for password hashing
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Register new user
-CREATE OR REPLACE FUNCTION register_user(p_email TEXT, p_password TEXT)
+-- p_options: optional JSON object with additional fields to set on the user record
+CREATE OR REPLACE FUNCTION register_user(p_email TEXT, p_password TEXT, p_options JSONB DEFAULT NULL)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  user_id INT;
-  salt TEXT;
-  hash TEXT;
+  v_user_id INT;
+  v_salt TEXT;
+  v_hash TEXT;
+  v_insert_data JSONB;
 BEGIN
   -- Generate salt and hash password
-  salt := gen_salt('bf', 10);
-  hash := crypt(p_password, salt);
+  v_salt := gen_salt('bf', 10);
+  v_hash := crypt(p_password, v_salt);
 
-  -- Insert user (assumes users table has: id, email, name, password_hash)
-  INSERT INTO users (email, name, password_hash)
-  VALUES (p_email, split_part(p_email, '@', 1), hash)
-  RETURNING id INTO user_id;
+  -- Build insert data: options fields + email + password_hash
+  v_insert_data := jsonb_build_object('email', p_email, 'password_hash', v_hash);
+  IF p_options IS NOT NULL THEN
+    v_insert_data := (p_options - 'id' - 'email' - 'password_hash' - 'password') || v_insert_data;
+  END IF;
 
-  RETURN _profile(user_id);
+  -- Dynamic INSERT from JSONB
+  EXECUTE (
+    SELECT format(
+      'INSERT INTO users (%s) VALUES (%s) RETURNING id',
+      string_agg(quote_ident(key), ', '),
+      string_agg(quote_nullable(value), ', ')
+    )
+    FROM jsonb_each_text(v_insert_data) kv(key, value)
+  ) INTO v_user_id;
+
+  RETURN _profile(v_user_id);
 EXCEPTION
   WHEN unique_violation THEN
     RAISE EXCEPTION 'Email already exists' USING errcode = '23505';
@@ -269,10 +284,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  user_record RECORD;
+  v_user_record RECORD;
 BEGIN
-  SELECT id, email, name, password_hash
-  INTO user_record
+  SELECT id, email, password_hash
+  INTO v_user_record
   FROM users
   WHERE email = p_email;
 
@@ -280,14 +295,15 @@ BEGIN
     RAISE EXCEPTION 'Invalid credentials' USING errcode = '28000';
   END IF;
 
-  IF NOT (user_record.password_hash = crypt(p_password, user_record.password_hash)) THEN
+  IF NOT (v_user_record.password_hash = crypt(p_password, v_user_record.password_hash)) THEN
     RAISE EXCEPTION 'Invalid credentials' USING errcode = '28000';
   END IF;
 
-  RETURN _profile(user_record.id);
+  RETURN _profile(v_user_record.id);
 END $$;
 
 -- Get user profile (private function, called after login/register)
+-- Returns all columns except sensitive fields
 CREATE OR REPLACE FUNCTION _profile(p_user_id INT)
 RETURNS JSONB
 LANGUAGE sql
@@ -299,8 +315,12 @@ AS $$
 $$;
 `;
 
-      writeFileSync(resolve(options.output, '002_auth.sql'), authSQL, 'utf-8');
-      console.log(`   ✓ 002_auth.sql`);
+      // Only generate 002_auth.sql if there's no users entity (which has its own auth functions)
+      const hasUsersEntity = result.results.some(r => r.tableName === 'users');
+      if (!hasUsersEntity) {
+        writeFileSync(resolve(options.output, '002_auth.sql'), authSQL, 'utf-8');
+        console.log(`   ✓ 002_auth.sql`);
+      }
 
       const checksums = {};
 

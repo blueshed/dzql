@@ -6,8 +6,6 @@
 -- using the DZQL compiler's M2M support.
 -- ============================================================================
 
-BEGIN;
-
 -- Part 1: Create new tables
 CREATE TABLE IF NOT EXISTS tags (
   id SERIAL PRIMARY KEY,
@@ -56,8 +54,6 @@ DROP FUNCTION IF EXISTS search_posts(INT, JSONB, TEXT, JSONB, INT, INT);
 
 -- Part 5: Install tags entity functions
 -- (Copy from init_db/tags.sql)
-
-COMMIT;
 
 -- ============================================================================
 -- Migration Applied Successfully

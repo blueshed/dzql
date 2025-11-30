@@ -10,8 +10,8 @@ beforeAll(async () => {
   // Ensure user 1 has acts_for relationships for test organizations
   // First, check if user 1 exists, if not create it
   await sql`
-    INSERT INTO users (id, email, name, password_hash)
-    VALUES (1, 'test@test.com', 'Test User', 'hash')
+    INSERT INTO users (id, email, password_hash)
+    VALUES (1, 'test@test.com', 'hash')
     ON CONFLICT (id) DO NOTHING
   `;
 });

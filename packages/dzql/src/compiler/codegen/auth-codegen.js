@@ -28,6 +28,9 @@ export class AuthCodegen {
     }
 
     return [
+      '-- Enable pgcrypto extension for password hashing',
+      'CREATE EXTENSION IF NOT EXISTS pgcrypto;',
+      '',
       this._generateProfileFunction(),
       this._generateRegisterFunction(),
       this._generateLoginFunction()
@@ -57,16 +60,16 @@ $$;`;
 
   /**
    * Generate register_user function
-   * Supports optional extra fields via JSON parameter
+   * Supports optional fields via JSON parameter
    * @private
    */
   _generateRegisterFunction() {
     return `-- ============================================================================
 -- Auth: register_user function for ${this.tableName}
--- p_extra: optional JSON object with additional fields to set on the user record
+-- p_options: optional JSON object with additional fields to set on the user record
 -- Example: register_user('test@example.com', 'password', '{"name": "Test User"}')
 -- ============================================================================
-CREATE OR REPLACE FUNCTION register_user(p_email TEXT, p_password TEXT, p_extra JSONB DEFAULT '{}')
+CREATE OR REPLACE FUNCTION register_user(p_email TEXT, p_password TEXT, p_options JSONB DEFAULT NULL)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -81,9 +84,11 @@ BEGIN
   v_salt := gen_salt('bf', 10);
   v_hash := crypt(p_password, v_salt);
 
-  -- Build insert data: extra fields + email + password_hash (extra cannot override core fields)
-  v_insert_data := (p_extra - 'id' - 'email' - 'password_hash' - 'password')
-                   || jsonb_build_object('email', p_email, 'password_hash', v_hash);
+  -- Build insert data: options fields + email + password_hash (options cannot override core fields)
+  v_insert_data := jsonb_build_object('email', p_email, 'password_hash', v_hash);
+  IF p_options IS NOT NULL THEN
+    v_insert_data := (p_options - 'id' - 'email' - 'password_hash' - 'password') || v_insert_data;
+  END IF;
 
   -- Dynamic INSERT from JSONB (same pattern as compiled save functions)
   EXECUTE (

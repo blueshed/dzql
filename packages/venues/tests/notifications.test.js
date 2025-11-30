@@ -11,11 +11,11 @@ beforeAll(async () => {
 
   // Create test users
   await sql`
-    INSERT INTO users (id, email, name, password_hash) VALUES
-    (101, 'venue.owner@test.com', 'Venue Owner', 'hash'),
-    (102, 'event.manager@test.com', 'Event Manager', 'hash'),
-    (103, 'sponsor@test.com', 'Sponsor User', 'hash'),
-    (104, 'contractor@test.com', 'Contractor User', 'hash')
+    INSERT INTO users (id, email, password_hash) VALUES
+    (101, 'venue.owner@test.com', 'hash'),
+    (102, 'event.manager@test.com', 'hash'),
+    (103, 'sponsor@test.com', 'hash'),
+    (104, 'contractor@test.com', 'hash')
     ON CONFLICT DO NOTHING
   `;
 

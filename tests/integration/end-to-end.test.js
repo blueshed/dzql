@@ -17,12 +17,7 @@
 
 import { describe, test, expect, beforeAll } from "bun:test";
 import { DZQLCompiler } from "../../packages/dzql/src/compiler/index.js";
-import {
-  setupTests,
-  createTestUser,
-  testEmail,
-  testName,
-} from "../setup/test-helpers.js";
+import { setupTests, testEmail, testName } from "../setup/test-helpers.js";
 
 const { sql } = setupTests();
 
@@ -31,7 +26,7 @@ describe("End-to-End Integration: Compile → Install → CRUD", () => {
   let bobUserId;
 
   beforeAll(async () => {
-    // Create test schema
+    // Create test schema - use e2e_ prefixed tables to avoid conflicts with other tests
     await sql`DROP FUNCTION IF EXISTS delete_resources CASCADE`;
     await sql`DROP FUNCTION IF EXISTS save_resources CASCADE`;
     await sql`DROP FUNCTION IF EXISTS get_resources CASCADE`;
@@ -43,11 +38,11 @@ describe("End-to-End Integration: Compile → Install → CRUD", () => {
     await sql`DROP FUNCTION IF EXISTS can_delete_resources CASCADE`;
     await sql`DROP TABLE IF EXISTS resource_tags CASCADE`;
     await sql`DROP TABLE IF EXISTS resources CASCADE`;
-    await sql`DROP TABLE IF EXISTS tags CASCADE`;
-    await sql`DROP TABLE IF EXISTS users CASCADE`;
+    await sql`DROP TABLE IF EXISTS e2e_tags CASCADE`;
+    await sql`DROP TABLE IF EXISTS e2e_users CASCADE`;
 
     await sql`
-      CREATE TABLE users (
+      CREATE TABLE e2e_users (
         id serial PRIMARY KEY,
         name text NOT NULL,
         email text UNIQUE NOT NULL,
@@ -57,7 +52,7 @@ describe("End-to-End Integration: Compile → Install → CRUD", () => {
     `;
 
     await sql`
-      CREATE TABLE tags (
+      CREATE TABLE e2e_tags (
         id serial PRIMARY KEY,
         name text UNIQUE NOT NULL,
         created_at timestamptz DEFAULT now()
@@ -69,8 +64,8 @@ describe("End-to-End Integration: Compile → Install → CRUD", () => {
         id serial PRIMARY KEY,
         title text NOT NULL,
         content text,
-        owner_id int REFERENCES users(id),
-        created_by int REFERENCES users(id),
+        owner_id int REFERENCES e2e_users(id),
+        created_by int REFERENCES e2e_users(id),
         created_at timestamptz DEFAULT now(),
         deleted_at timestamptz
       )
@@ -79,21 +74,29 @@ describe("End-to-End Integration: Compile → Install → CRUD", () => {
     await sql`
       CREATE TABLE resource_tags (
         resource_id int REFERENCES resources(id) ON DELETE CASCADE,
-        tag_id int REFERENCES tags(id) ON DELETE CASCADE,
+        tag_id int REFERENCES e2e_tags(id) ON DELETE CASCADE,
         PRIMARY KEY (resource_id, tag_id)
       )
     `;
 
-    // Create test users
-    const alice = await createTestUser(sql);
-    const bob = await createTestUser(sql);
-    aliceUserId = alice.user_id;
-    bobUserId = bob.user_id;
+    // Create test users directly in e2e_users table (not using core register_user)
+    const aliceResult = await sql`
+      INSERT INTO e2e_users (name, email, password_hash)
+      VALUES ('Alice', ${testEmail("alice")}, 'dummy')
+      RETURNING id
+    `;
+    aliceUserId = aliceResult[0].id;
 
-    // Create some tags (if they don't exist)
+    const bobResult = await sql`
+      INSERT INTO e2e_users (name, email, password_hash)
+      VALUES ('Bob', ${testEmail("bob")}, 'dummy')
+      RETURNING id
+    `;
+    bobUserId = bobResult[0].id;
+
+    // Create some tags
     await sql`
-      INSERT INTO tags (name) VALUES ('javascript'), ('typescript'), ('python')
-      ON CONFLICT (name) DO NOTHING
+      INSERT INTO e2e_tags (name) VALUES ('javascript'), ('typescript'), ('python')
     `;
 
     // Define entity with M2M, field defaults, permissions
@@ -102,7 +105,7 @@ describe("End-to-End Integration: Compile → Install → CRUD", () => {
         'resources',                                    -- table_name
         'title',                                        -- label_field
         array['title', 'content'],                      -- searchable_fields
-        '{"owner": "users", "created_by": "users"}', -- fk_includes
+        '{"owner": "e2e_users", "created_by": "e2e_users"}', -- fk_includes
         true,                                           -- soft_delete
         '{}',                                           -- temporal_fields
         '{}',                                           -- notification_paths
@@ -118,7 +121,7 @@ describe("End-to-End Integration: Compile → Install → CRUD", () => {
               'junction_table', 'resource_tags',
               'local_key', 'resource_id',
               'foreign_key', 'tag_id',
-              'target_entity', 'tags',
+              'target_entity', 'e2e_tags',
               'id_field', 'tag_ids',
               'expand', true
             )

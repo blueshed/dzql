@@ -82,6 +82,47 @@ async function login() {
 </template>
 ```
 
+**Registration with options (e.g., organisation name):**
+```vue
+<script setup>
+import { ref } from 'vue'
+import { useWsStore } from 'dzql/client/stores'
+
+const wsStore = useWsStore()
+const email = ref('')
+const password = ref('')
+const orgName = ref('')
+
+async function register() {
+  try {
+    await wsStore.register({
+      email: email.value,
+      password: password.value,
+      options: { org_name: orgName.value }
+    })
+  } catch (err) {
+    alert(err.message)
+  }
+}
+</script>
+
+<template>
+  <form @submit.prevent="register">
+    <input v-model="email" type="email" placeholder="Email" required />
+    <input v-model="password" type="password" placeholder="Password" required />
+    <input v-model="orgName" type="text" placeholder="Organisation Name" />
+    <button type="submit">Register</button>
+  </form>
+</template>
+```
+
+The `options` parameter allows passing additional JSONB data to the `register_user` and `login_user` PostgreSQL functions. This is useful for:
+- Organisation name during registration
+- Device ID for login tracking
+- Any custom fields your auth functions support
+
+See [API Reference - Authentication](./api.md#authentication) for details on configuring your PostgreSQL functions.
+
 ## 4. Setup main.js
 
 **src/main.js:**

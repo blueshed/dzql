@@ -90,6 +90,7 @@ describe("Graph Rules", () => {
       )
     `;
 
+    // Core users table has no name column, no need for extra fields
     const user = await createTestUser(sql);
     testUserId = user.user_id;
 

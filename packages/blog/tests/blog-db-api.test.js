@@ -24,11 +24,13 @@ describe('Blog Application - DZQL db.api', () => {
       const uniqueEmail = `user${Date.now()}@test.com`;
       const profile = await db.api.register_user({
         email: uniqueEmail,
-        password: 'testpass123'
+        password: 'testpass123',
+        options: { name: 'Test User' }
       });
 
       expect(profile).toHaveProperty('user_id');
       expect(profile).toHaveProperty('email', uniqueEmail);
+      expect(profile).toHaveProperty('name', 'Test User');
       expect(profile).not.toHaveProperty('password_hash');
     });
 

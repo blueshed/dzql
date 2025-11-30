@@ -635,7 +635,8 @@ invokej dzql.lookup organisations '{"query": "acme"}'
 ### Real-time Events
 - Listen using `ws.onBroadcast((method, params) => {})`
 - Method format: `{table}:{operation}` (e.g., "venues:update")
-- Params include: `{table, op, pk, before, after, user_id, at}`
+- Params include: `{table, op, pk, data, user_id, at}`
+- `data` contains: new state for insert/update, `null` for delete
 - Target users via notification paths or broadcast to all
 
 ### Permissions
@@ -684,8 +685,7 @@ TABLE dzql.events {
   table_name TEXT NOT NULL,
   op TEXT NOT NULL,          -- 'insert' | 'update' | 'delete'
   pk JSONB NOT NULL,         -- Primary key: {id: 1}
-  before JSONB,              -- Old values (null for insert)
-  after JSONB,               -- New values (null for delete)
+  data JSONB,                -- Record data (new state for insert/update, null for delete)
   user_id INT,               -- Who made the change
   notify_users INT[],        -- Who to notify (null = all)
   at TIMESTAMPTZ DEFAULT NOW()
@@ -753,43 +753,46 @@ try {
   table: 'venues',              // Table name
   op: 'insert',                 // Operation: 'insert' | 'update' | 'delete'
   pk: {id: 1},                  // Primary key object
-  before: {                     // Old values (null for insert)
-    id: 1,
-    name: 'Old Name',
-    address: 'Old Address'
-  },
-  after: {                      // New values (null for delete)
+  data: {                       // Record data (new state for insert/update, null for delete)
     id: 1,
     name: 'New Name',
     address: 'New Address'
   },
   user_id: 123,                 // User who made the change
-  at: '2025-01-01T12:00:00Z',  // Timestamp
-  notify_users: [1, 2, 3]       // Targeted users (null = all authenticated)
+  at: '2025-01-01T12:00:00Z'   // Timestamp
 }
 ```
+
+**Event data by operation:**
+| Operation | `data` field contains |
+|-----------|----------------------|
+| `insert` | Full new record |
+| `update` | Full updated record (new state only) |
+| `delete` | `null` |
+
+**Note:** The `notify_users` field is used internally for routing but is stripped from the broadcast message sent to clients.
 
 ### Using Event Data
 
 ```javascript
 ws.onBroadcast((method, params) => {
+  const { table, op, pk, data } = params;
+  
   // For insert
   if (method === 'venues:insert') {
-    const newRecord = params.after;
-    // params.before is null
+    const newRecord = data;
   }
   
   // For update
   if (method === 'venues:update') {
-    const oldRecord = params.before;
-    const newRecord = params.after;
-    // Compare to detect what changed
+    const updatedRecord = data;
+    // Note: only new state is available, not the previous state
   }
   
   // For delete
   if (method === 'venues:delete') {
-    const deletedRecord = params.before;
-    // params.after is null
+    // data is null for delete, use pk to identify the deleted record
+    const deletedId = pk.id;
   }
 });
 ```

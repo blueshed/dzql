@@ -41,8 +41,6 @@ test("WebSocket login and basic functionality", async () => {
     expect(loginResult.profile).toBeDefined();
     expect(loginResult.profile.user_id).toBeDefined();
     expect(loginResult.profile.email).toBe("websocket-test@example.com");
-    expect(loginResult.profile.name).toBe("websocket-test");
-    expect(loginResult.profile.created_at).toBeDefined();
 
     // Test DZQL get operation
     const org = await ws.api.get.organisations({ id: 1 });

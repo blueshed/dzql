@@ -16,8 +16,6 @@ test("register_user function", async () => {
   expect(result[0].result).toBeDefined();
   expect(result[0].result.email).toBe("auth-test-1@example.com");
   expect(result[0].result.user_id).toBeDefined();
-  expect(result[0].result.name).toBe("auth-test-1"); // email prefix
-  expect(result[0].result.created_at).toBeDefined();
 });
 
 test("login_user function", async () => {
@@ -33,8 +31,6 @@ test("login_user function", async () => {
   expect(result[0].result).toBeDefined();
   expect(result[0].result.email).toBe("auth-test-2@example.com");
   expect(result[0].result.user_id).toBeDefined();
-  expect(result[0].result.name).toBe("auth-test-2");
-  expect(result[0].result.created_at).toBeDefined();
 });
 
 test("_profile function", async () => {
@@ -51,8 +47,6 @@ test("_profile function", async () => {
   expect(result[0].result).toBeDefined();
   expect(result[0].result.email).toBe("auth-test-3@example.com");
   expect(result[0].result.user_id).toBe(userId);
-  expect(result[0].result.name).toBe("auth-test-3");
-  expect(result[0].result.created_at).toBeDefined();
 });
 
 test("login_user function - invalid credentials", async () => {

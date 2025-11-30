@@ -892,6 +892,25 @@ const result = await ws.api.register_user({
 });
 ```
 
+**With options (for extended registration):**
+```javascript
+const result = await ws.api.register_user({
+  email: 'user@example.com',
+  password: 'secure-password',
+  options: {
+    org_name: 'Acme Corp',
+    role: 'admin'
+  }
+});
+```
+
+**Parameters:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | string | yes | User email address |
+| `password` | string | yes | User password |
+| `options` | object | no | Additional JSONB data passed to `register_user()` function |
+
 **Returns:**
 ```javascript
 {
@@ -900,6 +919,17 @@ const result = await ws.api.register_user({
   token: 'eyJ...',
   profile: {...}
 }
+```
+
+**Note:** The `options` parameter requires your `register_user` PostgreSQL function to accept a third parameter:
+```sql
+CREATE OR REPLACE FUNCTION register_user(
+  p_email TEXT,
+  p_password TEXT,
+  p_options JSONB DEFAULT NULL
+) RETURNS JSONB AS $$
+  -- Access options: p_options->>'org_name'
+$$;
 ```
 
 ### Login
@@ -911,7 +941,37 @@ const result = await ws.api.login_user({
 });
 ```
 
+**With options:**
+```javascript
+const result = await ws.api.login_user({
+  email: 'user@example.com',
+  password: 'password',
+  options: {
+    device_id: 'abc123',
+    remember_me: true
+  }
+});
+```
+
+**Parameters:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `email` | string | yes | User email address |
+| `password` | string | yes | User password |
+| `options` | object | no | Additional JSONB data passed to `login_user()` function |
+
 **Returns:** Same as register
+
+**Note:** The `options` parameter requires your `login_user` PostgreSQL function to accept a third parameter:
+```sql
+CREATE OR REPLACE FUNCTION login_user(
+  p_email TEXT,
+  p_password TEXT,
+  p_options JSONB DEFAULT NULL
+) RETURNS JSONB AS $$
+  -- Access options: p_options->>'device_id'
+$$;
+```
 
 ### Logout
 
@@ -980,27 +1040,34 @@ unsubscribe();
   table: 'venues',
   op: 'insert' | 'update' | 'delete',
   pk: {id: 1},           // Primary key
-  before: {...},         // Old values (null for insert)
-  after: {...},          // New values (null for delete)
+  data: {...},           // Record data (new state for insert/update, null for delete)
   user_id: 123,          // Who made the change
-  at: '2025-01-01T...',  // Timestamp
-  notify_users: [1, 2]   // Who to notify (null = all)
+  at: '2025-01-01T...'   // Timestamp
 }
 ```
+
+**Event data by operation:**
+| Operation | `data` field contains |
+|-----------|----------------------|
+| `insert` | Full new record |
+| `update` | Full updated record (new state only) |
+| `delete` | `null` |
+
+**Note:** The `notify_users` field is used internally for routing but is stripped from the broadcast message sent to clients.
 
 ### Event Handling Pattern
 
 ```javascript
 ws.onBroadcast((method, params) => {
-  const data = params.after || params.before;
+  const { table, op, pk, data } = params;
   
   if (method === 'todos:insert') {
     state.todos.push(data);
   } else if (method === 'todos:update') {
-    const idx = state.todos.findIndex(t => t.id === data.id);
+    const idx = state.todos.findIndex(t => t.id === pk.id);
     if (idx !== -1) state.todos[idx] = data;
   } else if (method === 'todos:delete') {
-    state.todos = state.todos.filter(t => t.id !== data.id);
+    state.todos = state.todos.filter(t => t.id !== pk.id);
   }
   
   render();

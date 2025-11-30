@@ -231,6 +231,7 @@ export function createRPCHandler(customHandlers = {}) {
           "login_user",
           params.email,
           params.password,
+          params.options || null,
         );
 
         // On successful auth, set user_id on WebSocket connection
@@ -268,6 +269,7 @@ export function createRPCHandler(customHandlers = {}) {
           "register_user",
           params.email,
           params.password,
+          params.options || null,
         );
 
         // On successful registration, set user_id on WebSocket connection

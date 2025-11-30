@@ -105,9 +105,8 @@ describe("Security", () => {
   test("Password hash never exposed in results", async () => {
     // Create a user directly
     const uniqueEmail = testEmail("security");
-    const name = uniqueEmail.split("@")[0];
     const result = await sql`
-      SELECT register_user(${uniqueEmail}, 'password123', ${sql.json({ name })}) as user
+      SELECT register_user(${uniqueEmail}, 'password123') as user
     `;
 
     // Result should never contain password_hash

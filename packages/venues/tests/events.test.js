@@ -212,12 +212,10 @@ describe("DZQL Real-time Events", () => {
             expect(params.table).toBe("products");
             expect(params.event_id).toBeDefined();
 
-            // Verify deleted record data is included
-            expect(params.data).toBeDefined();
-            expect(params.data.id).toBe(productToDelete.id);
-            expect(params.data.name).toBe(productName);
-            expect(params.data.price).toBe(99.0);
-            expect(params.data.org_id).toBe(testOrg.id);
+            // For delete events, data is null but pk contains the primary key
+            expect(params.data).toBeNull();
+            expect(params.pk).toBeDefined();
+            expect(parseInt(params.pk.id)).toBe(productToDelete.id);
 
             client.offBroadcast(listener);
             clearTimeout(timeout);

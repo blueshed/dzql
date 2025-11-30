@@ -8,7 +8,7 @@ DECLARE
 BEGIN
   -- Register Alice (password: password123)
   BEGIN
-    v_alice_profile := register_user('alice@blog.com', 'password123');
+    v_alice_profile := register_user('alice@blog.com', 'password123', '{"name": "Alice"}');
     RAISE NOTICE 'Created user: %', v_alice_profile->>'email';
   EXCEPTION
     WHEN unique_violation THEN
@@ -17,7 +17,7 @@ BEGIN
 
   -- Register Bob (password: password123)
   BEGIN
-    v_bob_profile := register_user('bob@blog.com', 'password123');
+    v_bob_profile := register_user('bob@blog.com', 'password123', '{"name": "Bob"}');
     RAISE NOTICE 'Created user: %', v_bob_profile->>'email';
   EXCEPTION
     WHEN unique_violation THEN

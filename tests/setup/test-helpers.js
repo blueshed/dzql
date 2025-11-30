@@ -124,8 +124,7 @@ export async function assertThrows(fn, expectedCode = null) {
  * @param {string} email - Email address (optional, generates random if not provided)
  * @param {string} password - Password (default: testpass123)
  * @param {object} extra - Extra fields to pass to register_user (e.g., { name: 'Test' })
- *                         If not provided, defaults to { name: email_prefix } for compatibility
- *                         with test schemas that have name NOT NULL
+ *                         If not provided, no extra fields are passed (core users table has no name)
  */
 export async function createTestUser(
   sql,
@@ -137,14 +136,16 @@ export async function createTestUser(
     email = testEmail();
   }
 
-  // Default to including name for compatibility with test schemas that have name NOT NULL
-  if (extra === null) {
-    extra = { name: email.split("@")[0] };
+  // Only pass extra if explicitly provided - core users table has no name column
+  if (extra !== null) {
+    const result = await sql`
+      SELECT register_user(${email}, ${password}, ${sql.json(extra)}) as result
+    `;
+    return result[0].result;
   }
 
   const result = await sql`
-    SELECT register_user(${email}, ${password}, ${sql.json(extra)}) as result
+    SELECT register_user(${email}, ${password}) as result
   `;
-
   return result[0].result;
 }

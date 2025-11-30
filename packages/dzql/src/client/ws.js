@@ -23,6 +23,13 @@
  *   password: 'password123'
  * });
  *
+ * // Register with options (e.g., organisation name)
+ * const session = await ws.api.register_user({
+ *   email: 'user@example.com',
+ *   password: 'password123',
+ *   options: { org_name: 'Acme Corp' }
+ * });
+ *
  * // CRUD operations
  * const venue = await ws.api.get.venues({ id: 1 });
  * const created = await ws.api.save.venues({ name: 'New Venue' });

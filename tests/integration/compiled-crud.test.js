@@ -6,12 +6,7 @@
 
 import { describe, test, expect, beforeAll } from "bun:test";
 import { DZQLCompiler } from "../../packages/dzql/src/compiler/index.js";
-import {
-  setupTests,
-  createTestUser,
-  testEmail,
-  testName,
-} from "../setup/test-helpers.js";
+import { setupTests, testEmail, testName } from "../setup/test-helpers.js";
 
 const { sql } = setupTests();
 
@@ -21,14 +16,14 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
   let db;
 
   beforeAll(async () => {
-    // Create blog schema
-    await sql`DROP TABLE IF EXISTS comments CASCADE`;
-    await sql`DROP TABLE IF EXISTS posts CASCADE`;
-    await sql`DROP TABLE IF EXISTS tags CASCADE`;
-    await sql`DROP TABLE IF EXISTS users CASCADE`;
+    // Create blog schema - use blog_ prefix to avoid conflicts with other tests
+    await sql`DROP TABLE IF EXISTS blog_comments CASCADE`;
+    await sql`DROP TABLE IF EXISTS blog_posts CASCADE`;
+    await sql`DROP TABLE IF EXISTS blog_tags CASCADE`;
+    await sql`DROP TABLE IF EXISTS blog_users CASCADE`;
 
     await sql`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE blog_users (
         id serial PRIMARY KEY,
         name text NOT NULL,
         email text UNIQUE NOT NULL,
@@ -38,29 +33,29 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
     `;
 
     await sql`
-      CREATE TABLE IF NOT EXISTS posts (
+      CREATE TABLE blog_posts (
         id serial PRIMARY KEY,
         title text NOT NULL,
         content text NOT NULL,
         summary text,
-        author_id int REFERENCES users(id),
+        author_id int REFERENCES blog_users(id),
         created_at timestamptz DEFAULT now(),
         deleted_at timestamptz
       )
     `;
 
     await sql`
-      CREATE TABLE IF NOT EXISTS comments (
+      CREATE TABLE blog_comments (
         id serial PRIMARY KEY,
         content text NOT NULL,
-        post_id int REFERENCES posts(id),
-        author_id int REFERENCES users(id),
+        post_id int REFERENCES blog_posts(id),
+        author_id int REFERENCES blog_users(id),
         created_at timestamptz DEFAULT now()
       )
     `;
 
     await sql`
-      CREATE TABLE IF NOT EXISTS tags (
+      CREATE TABLE blog_tags (
         id serial PRIMARY KEY,
         name text UNIQUE NOT NULL,
         created_at timestamptz DEFAULT now()
@@ -72,7 +67,7 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
 
     const entitiesSQL = `
       SELECT dzql.register_entity(
-        'users',
+        'blog_users',
         'name',
         array['name', 'email'],
         '{}',
@@ -88,10 +83,10 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
       );
 
       SELECT dzql.register_entity(
-        'posts',
+        'blog_posts',
         'title',
         array['title', 'content', 'summary'],
-        '{"author": "users"}',
+        '{"author": "blog_users"}',
         true,
         '{}',
         '{}',
@@ -104,10 +99,10 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
       );
 
       SELECT dzql.register_entity(
-        'comments',
+        'blog_comments',
         'content',
         array['content'],
-        '{"author": "users", "post": "posts"}',
+        '{"author": "blog_users", "post": "blog_posts"}',
         false,
         '{}',
         '{}',
@@ -120,7 +115,7 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
       );
 
       SELECT dzql.register_entity(
-        'tags',
+        'blog_tags',
         'name',
         array['name'],
         '{}',
@@ -135,17 +130,26 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
       await sql.unsafe(result.sql);
     }
 
-    // Create test users with unique emails
-    const alice = await createTestUser(sql); // Uses testEmail() for uniqueness
-    const bob = await createTestUser(sql); // Uses testEmail() for uniqueness
-    aliceUserId = alice.user_id;
-    bobUserId = bob.user_id;
+    // Create test users directly in blog_users table
+    const aliceResult = await sql`
+      INSERT INTO blog_users (name, email, password_hash)
+      VALUES ('Alice', ${testEmail("alice")}, 'dummy')
+      RETURNING id
+    `;
+    aliceUserId = aliceResult[0].id;
+
+    const bobResult = await sql`
+      INSERT INTO blog_users (name, email, password_hash)
+      VALUES ('Bob', ${testEmail("bob")}, 'dummy')
+      RETURNING id
+    `;
+    bobUserId = bobResult[0].id;
 
     // Create db.api wrapper
     db = { api: {} };
 
     // Register compiled API functions with correct signatures
-    const entities = ["users", "posts", "comments", "tags"];
+    const entities = ["blog_users", "blog_posts", "blog_comments", "blog_tags"];
 
     for (const entity of entities) {
       // save_* takes (user_id, data jsonb)
@@ -206,50 +210,19 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
         return result[0].results;
       };
     }
-
-    // Special auth functions
-    db.api.register_user = async ({ email, password, name = null }) => {
-      const extra = name ? { name } : { name: email.split("@")[0] };
-      const result =
-        await sql`SELECT register_user(${email}, ${password}, ${sql.json(extra)}) as result`;
-      return result[0].result;
-    };
-
-    db.api.login_user = async ({ email, password }) => {
-      const result =
-        await sql`SELECT login_user(${email}, ${password}) as result`;
-      return result[0].result;
-    };
   });
 
-  describe("Authentication via compiled db.api", () => {
-    test("register_user creates new user without exposing password_hash", async () => {
-      const uniqueEmail = testEmail("compiled");
-      const profile = await db.api.register_user({
-        email: uniqueEmail,
-        password: "testpass123",
-      });
-
-      expect(profile).toHaveProperty("user_id");
-      expect(profile).toHaveProperty("email", uniqueEmail);
-      expect(profile).not.toHaveProperty("password_hash");
-    });
-
-    // Note: login tests removed - alice/bob emails are now random via testEmail()
-    // so we can't hardcode them for login tests
-  });
-
-  describe("Posts CRUD via compiled db.api", () => {
+  describe("Blog Posts CRUD via compiled db.api", () => {
     let postId;
 
-    test("save_posts creates new post", async () => {
+    test("save_blog_posts creates new post", async () => {
       const postData = {
         title: testName("Post"),
         content: "This is the content of my post.",
         summary: "Post summary",
         author_id: aliceUserId,
       };
-      const post = await db.api.save_posts(aliceUserId, postData);
+      const post = await db.api.save_blog_posts(aliceUserId, postData);
 
       expect(post).toHaveProperty("id");
       expect(post).toHaveProperty("title", postData.title);
@@ -259,29 +232,29 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
       postId = post.id;
     });
 
-    test("get_posts returns post", async () => {
-      const post = await db.api.get_posts(aliceUserId, postId);
+    test("get_blog_posts returns post", async () => {
+      const post = await db.api.get_blog_posts(aliceUserId, postId);
 
       expect(post).toHaveProperty("id", postId);
       expect(post).toHaveProperty("title");
     });
 
-    test("search_posts finds posts", async () => {
-      const response = await db.api.search_posts(aliceUserId, {});
+    test("search_blog_posts finds posts", async () => {
+      const response = await db.api.search_blog_posts(aliceUserId, {});
 
       expect(response.data).toBeArray();
       expect(response.data.length).toBeGreaterThan(0);
       expect(response.total).toBeGreaterThan(0);
     });
 
-    test("delete_posts soft deletes post", async () => {
-      const post = await db.api.delete_posts(aliceUserId, postId);
+    test("delete_blog_posts soft deletes post", async () => {
+      const post = await db.api.delete_blog_posts(aliceUserId, postId);
 
       expect(post.deleted_at).not.toBeNull();
     });
   });
 
-  describe("Comments CRUD via compiled db.api", () => {
+  describe("Blog Comments CRUD via compiled db.api", () => {
     let postId;
     let commentId;
 
@@ -292,17 +265,17 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
         content: "Content",
         author_id: aliceUserId,
       };
-      const post = await db.api.save_posts(aliceUserId, postData);
+      const post = await db.api.save_blog_posts(aliceUserId, postData);
       postId = post.id;
     });
 
-    test("save_comments creates new comment", async () => {
+    test("save_blog_comments creates new comment", async () => {
       const commentData = {
         content: "Great post!",
         post_id: postId,
         author_id: bobUserId,
       };
-      const comment = await db.api.save_comments(bobUserId, commentData);
+      const comment = await db.api.save_blog_comments(bobUserId, commentData);
 
       expect(comment).toHaveProperty("id");
       expect(comment).toHaveProperty("content", "Great post!");
@@ -312,15 +285,15 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
       commentId = comment.id;
     });
 
-    test("get_comments returns comment", async () => {
-      const comment = await db.api.get_comments(bobUserId, commentId);
+    test("get_blog_comments returns comment", async () => {
+      const comment = await db.api.get_blog_comments(bobUserId, commentId);
 
       expect(comment).toHaveProperty("id", commentId);
       expect(comment).toHaveProperty("content", "Great post!");
     });
 
-    test("search_comments finds comments with filter", async () => {
-      const response = await db.api.search_comments(aliceUserId, {
+    test("search_blog_comments finds comments with filter", async () => {
+      const response = await db.api.search_blog_comments(aliceUserId, {
         filters: { post_id: postId },
       });
 
@@ -330,16 +303,16 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
     });
   });
 
-  describe("Users CRUD via compiled db.api", () => {
-    test("get_users returns user without password_hash", async () => {
-      const user = await db.api.get_users(aliceUserId, aliceUserId);
+  describe("Blog Users CRUD via compiled db.api", () => {
+    test("get_blog_users returns user without password_hash", async () => {
+      const user = await db.api.get_blog_users(aliceUserId, aliceUserId);
 
       expect(user).toHaveProperty("id", aliceUserId);
       expect(user).not.toHaveProperty("password_hash");
     });
 
-    test("search_users returns users without password_hash", async () => {
-      const response = await db.api.search_users(aliceUserId, {});
+    test("search_blog_users returns users without password_hash", async () => {
+      const response = await db.api.search_blog_users(aliceUserId, {});
 
       expect(response.data).toBeArray();
       expect(response.data.length).toBeGreaterThan(0);
@@ -353,22 +326,22 @@ describe("Compiled Mode - db.api CRUD Operations", () => {
       });
     });
 
-    test("save_users creates new user", async () => {
+    test("save_blog_users creates new user", async () => {
       const uniqueEmail = testEmail("new-user");
       const userData = {
         name: testName("User"),
         email: uniqueEmail,
         password_hash: "dummy",
       };
-      const user = await db.api.save_users(aliceUserId, userData);
+      const user = await db.api.save_blog_users(aliceUserId, userData);
 
       expect(user).toHaveProperty("id");
       expect(user).toHaveProperty("email", uniqueEmail);
       expect(user).not.toHaveProperty("password_hash");
     });
 
-    test("lookup_users returns value/label pairs", async () => {
-      const results = await db.api.lookup_users(aliceUserId, null); // null filter = all users
+    test("lookup_blog_users returns value/label pairs", async () => {
+      const results = await db.api.lookup_blog_users(aliceUserId, null); // null filter = all users
 
       expect(results).toBeArray();
       expect(results.length).toBeGreaterThan(0);

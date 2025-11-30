@@ -5,12 +5,10 @@
 create extension if not exists pgcrypto;
 
 -- === Users Table ===
--- Core auth table with optional name field
--- Applications can add additional columns as needed
+-- Minimal auth table - applications can add columns via migrations
 -- Note: created_at is tracked via the action log, not here
 create table if not exists users (
   id serial primary key,
-  name text,
   email text unique not null,
   password_hash text not null
 );
@@ -18,9 +16,9 @@ create table if not exists users (
 -- === Auth Functions ===
 
 -- Register new user
--- p_extra: optional JSON object with additional fields to set on the user record
+-- p_options: optional JSON object with additional fields to set on the user record
 -- Example: register_user('test@example.com', 'password', '{"name": "Test User"}')
-create or replace function register_user(p_email text, p_password text, p_extra jsonb default '{}')
+create or replace function register_user(p_email text, p_password text, p_options jsonb default null)
 returns jsonb
 language plpgsql
 security definer
@@ -35,9 +33,11 @@ begin
   v_salt := gen_salt('bf', 10);
   v_hash := crypt(p_password, v_salt);
 
-  -- Build insert data: extra fields + email + password_hash (extra cannot override core fields)
-  v_insert_data := (p_extra - 'id' - 'email' - 'password_hash' - 'password')
-                   || jsonb_build_object('email', p_email, 'password_hash', v_hash);
+  -- Build insert data: options fields + email + password_hash (options cannot override core fields)
+  v_insert_data := jsonb_build_object('email', p_email, 'password_hash', v_hash);
+  if p_options is not null then
+    v_insert_data := (p_options - 'id' - 'email' - 'password_hash' - 'password') || v_insert_data;
+  end if;
 
   -- Dynamic INSERT from JSONB (same pattern as compiled save functions)
   execute (

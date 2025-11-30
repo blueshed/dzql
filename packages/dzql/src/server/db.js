@@ -54,7 +54,13 @@ export async function setCache(key, data) {
 }
 
 // Auth helpers
-export async function callAuthFunction(method, email, password) {
+export async function callAuthFunction(method, email, password, options = null) {
+  if (options !== null) {
+    const result = await sql`
+      SELECT ${sql(method)}(${email}, ${password}, ${options}) as result
+    `;
+    return result[0].result;
+  }
   const result = await sql`
     SELECT ${sql(method)}(${email}, ${password}) as result
   `;
@@ -207,7 +213,7 @@ export async function callDZQLOperation(operation, entity, args, userId) {
       return result[0].result;
     } else if (operation === 'save') {
       const result = await sql.unsafe(`
-        SELECT ${compiledFunctionName}($1::int, $2::jsonb, NULL) as result
+        SELECT ${compiledFunctionName}($1::int, $2::jsonb) as result
       `, [userId, args]);
       return result[0].result;
     } else if (operation === 'delete') {
@@ -380,7 +386,7 @@ export const db = {
           // Special handling for auth functions that don't require userId
           if (prop === 'register_user' || prop === 'login_user') {
             // For auth functions, first param is the args object
-            return callAuthFunction(prop, userIdOrArgs.email, userIdOrArgs.password);
+            return callAuthFunction(prop, userIdOrArgs.email, userIdOrArgs.password, userIdOrArgs.options || null);
           }
 
           // For other functions, userId is required as first parameter
