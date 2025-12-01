@@ -87,6 +87,23 @@ SELECT dzql.register_entity(
 
 See [Many-to-Many Guide](../guides/many-to-many.md) for details.
 
+### Composite Primary Keys
+```sql
+SELECT dzql.register_entity(
+  'product_task_template_dependencies', 'template_id', ARRAY[]::text[],
+  '{}', false, '{}', '{}', '{}',
+  '{
+    "primary_key": ["template_id", "depends_on_template_id"]
+  }',
+  '{}'
+);
+```
+
+**Generated code:** Event records use all primary key columns
+- Default assumes `id` column
+- Composite keys generate `jsonb_build_object('col1', v_result.col1, 'col2', v_result.col2)`
+- Required for junction tables and other composite PK scenarios
+
 ### Field Defaults
 ```sql
 '{

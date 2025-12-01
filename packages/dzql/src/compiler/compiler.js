@@ -258,7 +258,8 @@ export class DZQLCompiler {
   _generateGraphRuleFunctions(entity) {
     return generateGraphRuleFunctions(
       entity.tableName,
-      entity.graphRules
+      entity.graphRules,
+      entity.primaryKey
     );
   }
 

@@ -95,6 +95,9 @@ export class EntityParser {
     // Extract many_to_many from graph_rules if present
     const manyToMany = graphRules.many_to_many || {};
 
+    // Extract primary_key from graph_rules if present (defaults to ['id'])
+    const primaryKey = graphRules.primary_key || ['id'];
+
     const config = {
       tableName: this._cleanString(params[0]),
       labelField: this._cleanString(params[1]),
@@ -106,7 +109,8 @@ export class EntityParser {
       permissionPaths: params[7] ? this._parseJSON(params[7]) : {},
       graphRules: graphRules,
       fieldDefaults: params[9] ? this._parseJSON(params[9]) : {},
-      manyToMany: manyToMany
+      manyToMany: manyToMany,
+      primaryKey: Array.isArray(primaryKey) ? primaryKey : [primaryKey]
     };
 
     return config;
@@ -328,6 +332,8 @@ export class EntityParser {
   parseFromObject(entity) {
     const graphRules = entity.graphRules || {};
     const manyToMany = entity.manyToMany || graphRules.many_to_many || {};
+    // Primary key can be specified directly on entity or in graphRules (defaults to ['id'])
+    const primaryKey = entity.primaryKey || graphRules.primary_key || ['id'];
 
     return {
       tableName: entity.tableName || entity.table,
@@ -341,6 +347,7 @@ export class EntityParser {
       graphRules: graphRules,
       fieldDefaults: entity.fieldDefaults || {},
       manyToMany: manyToMany,
+      primaryKey: Array.isArray(primaryKey) ? primaryKey : [primaryKey],
       customFunctions: entity.customFunctions || []
     };
   }

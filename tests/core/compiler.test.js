@@ -384,7 +384,8 @@ describe("Graph Rules", () => {
         on_update: {
           notify_on_publish: {
             description: "Notify when status changes to published",
-            condition: "@before.status != @after.status AND @after.status = 'published'",
+            condition:
+              "@before.status != @after.status AND @after.status = 'published'",
             actions: [
               {
                 type: "notify",
@@ -584,5 +585,149 @@ describe("Integration tests", () => {
 
     // Check notification resolution
     expect(sql).toContain("resolve_notification_paths_venues");
+  });
+});
+
+describe("Composite Primary Keys", () => {
+  test("parses primary_key from graphRules", () => {
+    const parser = new EntityParser();
+    const entity = parser.parseFromObject({
+      tableName: "product_task_template_dependencies",
+      labelField: "template_id",
+      primaryKey: ["template_id", "depends_on_template_id"],
+    });
+
+    expect(entity.primaryKey).toEqual([
+      "template_id",
+      "depends_on_template_id",
+    ]);
+  });
+
+  test("defaults primaryKey to ['id'] when not specified", () => {
+    const parser = new EntityParser();
+    const entity = parser.parseFromObject({
+      tableName: "todos",
+      labelField: "title",
+    });
+
+    expect(entity.primaryKey).toEqual(["id"]);
+  });
+
+  test("generates composite primary key in event pk field", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "product_task_template_dependencies",
+      labelField: "template_id",
+      searchableFields: [],
+      primaryKey: ["template_id", "depends_on_template_id"],
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: [],
+        delete: [],
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check that the pk field uses composite primary key
+    expect(result.sql).toContain(
+      "jsonb_build_object('template_id', v_result.template_id, 'depends_on_template_id', v_result.depends_on_template_id)",
+    );
+
+    // Should NOT contain the old hardcoded 'id' pattern for pk
+    expect(result.sql).not.toContain("jsonb_build_object('id', v_result.id)");
+  });
+
+  test("generates simple primary key when only one column", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "todos",
+      labelField: "title",
+      searchableFields: ["title"],
+      primaryKey: ["id"],
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: [],
+        delete: [],
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check that single-column pk still works
+    expect(result.sql).toContain("jsonb_build_object('id', v_result.id)");
+  });
+
+  test("generates composite pk in graph rules notify action", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "product_task_template_dependencies",
+      labelField: "template_id",
+      searchableFields: [],
+      primaryKey: ["template_id", "depends_on_template_id"],
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: [],
+        delete: [],
+      },
+      graphRules: {
+        on_create: {
+          notify_on_create: {
+            description: "Notify on dependency creation",
+            actions: [
+              {
+                type: "notify",
+                users: ["@created_by"],
+                message: "Dependency created",
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check that graph rules also use composite pk
+    expect(result.sql).toContain(
+      "jsonb_build_object('template_id', (p_record->>'template_id')::int, 'depends_on_template_id', (p_record->>'depends_on_template_id')::int)",
+    );
+  });
+
+  test("parses primary_key from SQL graphRules", () => {
+    const compiler = new DZQLCompiler();
+
+    const sql = `
+      select dzql.register_entity(
+        'product_task_template_dependencies',
+        'template_id',
+        array[]::text[],
+        '{}',
+        false,
+        '{}',
+        '{}',
+        '{}',
+        jsonb_build_object(
+          'primary_key', array['template_id', 'depends_on_template_id']
+        )
+      );
+    `;
+
+    const result = compiler.compileFromSQL(sql);
+
+    expect(result.summary.successful).toBe(1);
+
+    const compiledSQL = result.results[0].sql;
+
+    // Check that composite pk is used
+    expect(compiledSQL).toContain(
+      "jsonb_build_object('template_id', v_result.template_id, 'depends_on_template_id', v_result.depends_on_template_id)",
+    );
   });
 });

@@ -4,9 +4,10 @@
  */
 
 export class GraphRulesCodegen {
-  constructor(tableName, graphRules) {
+  constructor(tableName, graphRules, primaryKey = ['id']) {
     this.tableName = tableName;
     this.graphRules = graphRules;
+    this.primaryKey = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
   }
 
   /**
@@ -234,6 +235,20 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   }
 
   /**
+   * Generate jsonb_build_object for primary key columns from a JSONB record variable
+   * Supports composite primary keys
+   * @param {string} recordVar - The JSONB record variable name (e.g., 'p_record')
+   * @private
+   */
+  _generatePKBuildObject(recordVar = 'p_record') {
+    // Build jsonb_build_object with all primary key columns
+    // e.g., jsonb_build_object('id', (p_record->>'id')::int)
+    // or    jsonb_build_object('template_id', (p_record->>'template_id')::int, 'depends_on_template_id', (p_record->>'depends_on_template_id')::int)
+    const pairs = this.primaryKey.map(col => `'${col}', (${recordVar}->>'${col}')::int`);
+    return `jsonb_build_object(${pairs.join(', ')})`;
+  }
+
+  /**
    * Generate NOTIFY action
    * Creates an event that will be broadcast to specified users
    * @private
@@ -298,6 +313,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
       ? `jsonb_build_object(${dataFields.join(', ')})`
       : "'{}'::jsonb";
 
+    const pkBuildObject = this._generatePKBuildObject('p_record');
+
     return `${comment}
   -- Create notification event
   INSERT INTO dzql.events (
@@ -310,7 +327,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   ) VALUES (
     '${this.tableName}',
     'notify',
-    jsonb_build_object('id', (p_record->>'id')::int),
+    ${pkBuildObject},
     ${dataSQL},
     p_user_id,
     ${userIdSQL}
@@ -407,9 +424,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
  * Generate graph rule functions for an entity
  * @param {string} tableName - Table name
  * @param {Object} graphRules - Graph rules object
+ * @param {Array<string>} primaryKey - Primary key column(s) (defaults to ['id'])
  * @returns {string} SQL for graph rule functions
  */
-export function generateGraphRuleFunctions(tableName, graphRules) {
-  const codegen = new GraphRulesCodegen(tableName, graphRules);
+export function generateGraphRuleFunctions(tableName, graphRules, primaryKey = ['id']) {
+  const codegen = new GraphRulesCodegen(tableName, graphRules, primaryKey);
   return codegen.generate();
 }

@@ -856,11 +856,28 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   }
 
   /**
+   * Generate jsonb_build_object for primary key columns
+   * Supports composite primary keys by building an object with all pk columns
+   * @param {string} recordVar - The record variable name (e.g., 'v_result', 'v_existing')
+   * @private
+   */
+  _generatePKBuildObject(recordVar = 'v_result') {
+    const primaryKey = this.entity.primaryKey || ['id'];
+
+    // Build jsonb_build_object with all primary key columns
+    // e.g., jsonb_build_object('id', v_result.id)
+    // or    jsonb_build_object('template_id', v_result.template_id, 'depends_on_template_id', v_result.depends_on_template_id)
+    const pairs = primaryKey.map(col => `'${col}', ${recordVar}.${col}`);
+    return `jsonb_build_object(${pairs.join(', ')})`;
+  }
+
+  /**
    * Generate notification SQL
    * @private
    */
   _generateNotificationSQL(operation = 'save') {
     const hasNotificationPaths = this.entity.notificationPaths && Object.keys(this.entity.notificationPaths).length > 0;
+    const pkBuildObject = this._generatePKBuildObject('v_result');
 
     if (operation === 'save') {
       return `
@@ -878,7 +895,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   ) VALUES (
     '${this.tableName}',
     CASE WHEN v_is_insert THEN 'insert' ELSE 'update' END,
-    jsonb_build_object('id', v_result.id),
+    ${pkBuildObject},
     v_output,
     p_user_id,
     v_notify_users
@@ -899,7 +916,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   ) VALUES (
     '${this.tableName}',
     'delete',
-    jsonb_build_object('id', v_result.id),
+    ${pkBuildObject},
     NULL,
     p_user_id,
     v_notify_users

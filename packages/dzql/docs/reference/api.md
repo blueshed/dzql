@@ -252,8 +252,13 @@ SELECT dzql.register_entity(
 | `p_temporal_fields` | JSONB | no | Temporal field config (valid_from/valid_to) |
 | `p_notification_paths` | JSONB | no | Who receives real-time updates |
 | `p_permission_paths` | JSONB | no | CRUD permission rules |
-| `p_graph_rules` | JSONB | no | Automatic relationship management + M2M |
+| `p_graph_rules` | JSONB | no | Automatic relationship management, M2M, and primary_key |
 | `p_field_defaults` | JSONB | no | Auto-populate fields on INSERT |
+
+**Note:** `p_graph_rules` can include:
+- `primary_key` - Array of column names for composite primary keys (default: `["id"]`)
+- `many_to_many` - M2M relationship configurations
+- `on_create`, `on_update`, `on_delete` - Graph rule triggers
 
 ### FK Includes
 
@@ -329,6 +334,39 @@ Auto-populate fields on INSERT with values or variables:
 - Reduces client boilerplate
 
 See [Field Defaults Guide](../guides/field-defaults.md) for details.
+
+### Composite Primary Keys
+
+For tables with composite primary keys (not just `id`), specify the primary key columns via `graph_rules.primary_key`:
+
+```sql
+'{
+  "primary_key": ["template_id", "depends_on_template_id"]
+}'
+```
+
+**Or in JavaScript:**
+```javascript
+{
+  tableName: "product_task_template_dependencies",
+  primaryKey: ["template_id", "depends_on_template_id"],
+  // ...
+}
+```
+
+**Default:** `["id"]` - assumes a single `id` column as primary key.
+
+**Why this matters:** The compiler generates event records with a `pk` field containing the primary key values. Without this configuration, tables with composite primary keys would fail with "record has no field id" errors.
+
+**Generated SQL (composite):**
+```sql
+jsonb_build_object('template_id', v_result.template_id, 'depends_on_template_id', v_result.depends_on_template_id)
+```
+
+**Generated SQL (simple, default):**
+```sql
+jsonb_build_object('id', v_result.id)
+```
 
 ### Many-to-Many Relationships
 
