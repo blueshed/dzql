@@ -346,6 +346,13 @@ $$;
       writeFileSync(checksumsFile, JSON.stringify(checksums, null, 2), 'utf-8');
 
       console.log(`   ✓ checksums.json`);
+
+      // Write drop-semantics.json (drag-and-drop manifest for canvas UI)
+      if (result.dropSemantics) {
+        const semanticsFile = resolve(options.output, 'drop-semantics.json');
+        writeFileSync(semanticsFile, JSON.stringify(result.dropSemantics, null, 2), 'utf-8');
+        console.log(`   ✓ drop-semantics.json`);
+      }
     }
 
     console.log(`\n✅ Compilation complete!\n`);

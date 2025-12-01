@@ -11,6 +11,7 @@ import { generateNotificationFunction } from './codegen/notification-codegen.js'
 import { generateGraphRuleFunctions } from './codegen/graph-rules-codegen.js';
 import { generateSubscribable } from './codegen/subscribable-codegen.js';
 import { generateAuthFunctions } from './codegen/auth-codegen.js';
+import { generateDropSemantics } from './codegen/drop-semantics-codegen.js';
 import crypto from 'crypto';
 
 export class DZQLCompiler {
@@ -190,7 +191,7 @@ export class DZQLCompiler {
   /**
    * Compile from SQL file
    * @param {string} sqlContent - SQL file content
-   * @returns {Object} Compilation results
+   * @returns {Object} Compilation results with dropSemantics
    */
   compileFromSQL(sqlContent) {
     // Use parseEntitiesFromSQL to properly extract custom functions
@@ -200,11 +201,20 @@ export class DZQLCompiler {
       return {
         results: [],
         errors: [],
-        summary: { total: 0, successful: 0, failed: 0 }
+        summary: { total: 0, successful: 0, failed: 0 },
+        dropSemantics: { entities: {} }
       };
     }
 
-    return this.compileAll(entities);
+    const compilationResult = this.compileAll(entities);
+
+    // Generate drop semantics from all parsed entities
+    const dropSemantics = generateDropSemantics(entities);
+
+    return {
+      ...compilationResult,
+      dropSemantics
+    };
   }
 
   /**
