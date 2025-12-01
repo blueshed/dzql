@@ -179,6 +179,20 @@ export async function setupListeners(callback) {
   }
 }
 
+// Helper to detect if args contains a composite primary key (pk object or multiple PK fields, no 'id')
+function isCompositePK(args) {
+  // If args has a 'pk' object, it's explicitly a composite PK call
+  if (args.pk && typeof args.pk === 'object') {
+    return true;
+  }
+  // If args has no 'id' field but has other fields, assume composite PK
+  // (the compiled function will validate the actual PK fields)
+  if (args.id === undefined && Object.keys(args).length > 0) {
+    return true;
+  }
+  return false;
+}
+
 // DZQL Generic Operations - Try compiled functions first, fall back to generic_exec
 export async function callDZQLOperation(operation, entity, args, userId) {
   dbLogger.trace(`DZQL ${operation}.${entity} for user ${userId}`);
@@ -189,9 +203,9 @@ export async function callDZQLOperation(operation, entity, args, userId) {
     // Try compiled function first
     // Different operations have different signatures:
     // - search: search_entity(p_user_id, p_filters, p_search, p_sort, p_page, p_limit)
-    // - get: get_entity(p_user_id, p_id, p_on_date)
+    // - get: get_entity(p_user_id, p_id, p_on_date) OR get_entity(p_user_id, p_pk, p_on_date) for composite PKs
     // - save: save_entity(p_user_id, p_data, p_on_date)
-    // - delete: delete_entity(p_user_id, p_id)
+    // - delete: delete_entity(p_user_id, p_id) OR delete_entity(p_user_id, p_pk) for composite PKs
     // - lookup: lookup_entity(p_user_id, p_term, p_limit)
 
     if (operation === 'search') {
@@ -207,6 +221,15 @@ export async function callDZQLOperation(operation, entity, args, userId) {
       `, [userId, filters, search, sort, page, limit]);
       return result[0].result;
     } else if (operation === 'get') {
+      // Support composite primary keys: pass pk object or full args as JSONB
+      if (isCompositePK(args)) {
+        const pk = args.pk || args;  // Use explicit pk object or treat all args as PK fields
+        const result = await sql.unsafe(`
+          SELECT ${compiledFunctionName}($1::int, $2::jsonb, NULL) as result
+        `, [userId, pk]);
+        return result[0].result;
+      }
+      // Simple PK (id)
       const result = await sql.unsafe(`
         SELECT ${compiledFunctionName}($1::int, $2::int, NULL) as result
       `, [userId, args.id]);
@@ -217,6 +240,15 @@ export async function callDZQLOperation(operation, entity, args, userId) {
       `, [userId, args]);
       return result[0].result;
     } else if (operation === 'delete') {
+      // Support composite primary keys: pass pk object or full args as JSONB
+      if (isCompositePK(args)) {
+        const pk = args.pk || args;  // Use explicit pk object or treat all args as PK fields
+        const result = await sql.unsafe(`
+          SELECT ${compiledFunctionName}($1::int, $2::jsonb) as result
+        `, [userId, pk]);
+        return result[0].result;
+      }
+      // Simple PK (id)
       const result = await sql.unsafe(`
         SELECT ${compiledFunctionName}($1::int, $2::int) as result
       `, [userId, args.id]);

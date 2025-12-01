@@ -7,6 +7,8 @@ export class OperationCodegen {
   constructor(entity) {
     this.entity = entity;
     this.tableName = entity.tableName;
+    this.primaryKey = entity.primaryKey || ['id'];
+    this.isCompositePK = this.primaryKey.length > 1 || this.primaryKey[0] !== 'id';
   }
 
   /**
@@ -31,6 +33,49 @@ export class OperationCodegen {
     const m2mExpansionForGet = this._generateM2MExpansionForGet();
     const filterSensitiveFields = this._generateSensitiveFieldFilter();
 
+    // For composite PKs, accept JSONB containing all PK fields
+    // For simple PKs, accept INT for backwards compatibility
+    if (this.isCompositePK) {
+      const whereClause = this.primaryKey.map(col => `${col} = (p_pk->>'${col}')::int`).join(' AND ');
+      const pkDescription = this.primaryKey.join(', ');
+
+      return `-- GET operation for ${this.tableName} (composite primary key: ${pkDescription})
+CREATE OR REPLACE FUNCTION get_${this.tableName}(
+  p_user_id INT,
+  p_pk JSONB,
+  p_on_date TIMESTAMPTZ DEFAULT NULL
+) RETURNS JSONB AS $$
+DECLARE
+  v_result JSONB;
+  v_record ${this.tableName}%ROWTYPE;
+BEGIN
+  -- Fetch the record by composite primary key
+  SELECT * INTO v_record
+  FROM ${this.tableName}
+  WHERE ${whereClause}${this._generateTemporalFilter()};
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Record not found: % with pk=%', '${this.tableName}', p_pk;
+  END IF;
+
+  -- Convert to JSONB
+  v_result := to_jsonb(v_record);
+
+  -- Check view permission
+  IF NOT can_view_${this.tableName}(p_user_id, v_result) THEN
+    RAISE EXCEPTION 'Permission denied: view on ${this.tableName}';
+  END IF;
+
+${fkExpansions}
+${m2mExpansionForGet}
+${filterSensitiveFields}
+
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;`;
+    }
+
+    // Simple PK (id column) - original signature for backwards compatibility
     return `-- GET operation for ${this.tableName}
 CREATE OR REPLACE FUNCTION get_${this.tableName}(
   p_user_id INT,
@@ -177,6 +222,56 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     const notificationSQL = this._generateNotificationSQL('delete');
     const filterSensitiveFields = this._generateSensitiveFieldFilter('v_output');
 
+    // For composite PKs, accept JSONB containing all PK fields
+    if (this.isCompositePK) {
+      const whereClause = this.primaryKey.map(col => `${col} = (p_pk->>'${col}')::int`).join(' AND ');
+      const pkDescription = this.primaryKey.join(', ');
+
+      const deleteSQL = this.entity.softDelete
+        ? `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE ${whereClause} RETURNING * INTO v_result;`
+        : `DELETE FROM ${this.tableName} WHERE ${whereClause} RETURNING * INTO v_result;`;
+
+      return `-- DELETE operation for ${this.tableName} (composite primary key: ${pkDescription})
+CREATE OR REPLACE FUNCTION delete_${this.tableName}(
+  p_user_id INT,
+  p_pk JSONB
+) RETURNS JSONB AS $$
+DECLARE
+  v_result ${this.tableName}%ROWTYPE;
+  v_output JSONB;
+  v_notify_users INT[];
+BEGIN
+  -- Fetch record first by composite primary key
+  SELECT * INTO v_result
+  FROM ${this.tableName}
+  WHERE ${whereClause};
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Record not found: % with pk=%', '${this.tableName}', p_pk;
+  END IF;
+
+  -- Check delete permission
+  IF NOT can_delete_${this.tableName}(p_user_id, to_jsonb(v_result)) THEN
+    RAISE EXCEPTION 'Permission denied: delete on ${this.tableName}';
+  END IF;
+
+${graphRulesCall}
+
+  -- Perform delete
+  ${deleteSQL}
+
+${notificationSQL}
+
+  -- Prepare output (removing sensitive fields)
+  v_output := to_jsonb(v_result);
+${filterSensitiveFields}
+
+  RETURN v_output;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;`;
+    }
+
+    // Simple PK (id column) - original signature for backwards compatibility
     const deleteSQL = this.entity.softDelete
       ? `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE id = p_id RETURNING * INTO v_result;`
       : `DELETE FROM ${this.tableName} WHERE id = p_id RETURNING * INTO v_result;`;

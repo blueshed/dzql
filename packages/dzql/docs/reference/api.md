@@ -368,6 +368,31 @@ jsonb_build_object('template_id', v_result.template_id, 'depends_on_template_id'
 jsonb_build_object('id', v_result.id)
 ```
 
+**API Usage with Composite Keys:**
+
+For entities with composite primary keys, the `get` and `delete` operations accept a JSONB object instead of an integer `id`:
+
+```javascript
+// Get by composite key
+const dependency = await ws.api.get.product_task_template_dependencies({
+  template_id: 1,
+  depends_on_template_id: 2
+});
+
+// Delete by composite key
+await ws.api.delete.product_task_template_dependencies({
+  template_id: 1,
+  depends_on_template_id: 2
+});
+
+// Or using explicit pk object
+await ws.api.delete.product_task_template_dependencies({
+  pk: { template_id: 1, depends_on_template_id: 2 }
+});
+```
+
+**Note:** Entities with simple `id` primary keys continue to use `{id: 1}` for backwards compatibility.
+
 ### Many-to-Many Relationships
 
 Configure M2M relationships via `graph_rules.many_to_many`:

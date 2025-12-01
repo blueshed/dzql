@@ -181,7 +181,8 @@ describe("DZQLCompiler", () => {
   });
 
   test("checksum is deterministic", () => {
-    const compiler = new DZQLCompiler();
+    // Disable header comments which include timestamps that change between calls
+    const compiler = new DZQLCompiler({ includeComments: false });
 
     const entity = {
       tableName: "todos",
@@ -729,5 +730,100 @@ describe("Composite Primary Keys", () => {
     expect(compiledSQL).toContain(
       "jsonb_build_object('template_id', v_result.template_id, 'depends_on_template_id', v_result.depends_on_template_id)",
     );
+  });
+
+  test("generates composite pk GET function with JSONB parameter", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "product_task_template_dependencies",
+      labelField: "template_id",
+      searchableFields: [],
+      primaryKey: ["template_id", "depends_on_template_id"],
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: [],
+        delete: [],
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check GET function signature uses p_pk JSONB instead of p_id INT
+    expect(result.sql).toContain(
+      "CREATE OR REPLACE FUNCTION get_product_task_template_dependencies(",
+    );
+    expect(result.sql).toContain("p_pk JSONB");
+    expect(result.sql).not.toMatch(
+      /get_product_task_template_dependencies\([^)]*p_id INT/,
+    );
+
+    // Check WHERE clause uses composite key
+    expect(result.sql).toContain("template_id = (p_pk->>'template_id')::int");
+    expect(result.sql).toContain(
+      "depends_on_template_id = (p_pk->>'depends_on_template_id')::int",
+    );
+  });
+
+  test("generates composite pk DELETE function with JSONB parameter", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "product_task_template_dependencies",
+      labelField: "template_id",
+      searchableFields: [],
+      primaryKey: ["template_id", "depends_on_template_id"],
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: [],
+        delete: [],
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check DELETE function signature uses p_pk JSONB instead of p_id INT
+    expect(result.sql).toContain(
+      "CREATE OR REPLACE FUNCTION delete_product_task_template_dependencies(",
+    );
+    expect(result.sql).toContain("p_pk JSONB");
+    expect(result.sql).not.toMatch(
+      /delete_product_task_template_dependencies\([^)]*p_id INT/,
+    );
+
+    // Check WHERE clause uses composite key
+    expect(result.sql).toContain(
+      "template_id = (p_pk->>'template_id')::int AND depends_on_template_id = (p_pk->>'depends_on_template_id')::int",
+    );
+  });
+
+  test("simple pk entities still use p_id INT for backwards compatibility", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "todos",
+      labelField: "title",
+      searchableFields: ["title"],
+      primaryKey: ["id"],
+      permissionPaths: {
+        view: [],
+        create: [],
+        update: [],
+        delete: [],
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check GET function uses p_id INT
+    expect(result.sql).toMatch(/get_todos\(\s*p_user_id INT,\s*p_id INT/);
+
+    // Check DELETE function uses p_id INT
+    expect(result.sql).toMatch(/delete_todos\(\s*p_user_id INT,\s*p_id INT/);
+
+    // Should use WHERE id = p_id
+    expect(result.sql).toContain("WHERE id = p_id");
   });
 });
