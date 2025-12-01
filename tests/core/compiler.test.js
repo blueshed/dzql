@@ -534,6 +534,106 @@ describe("Permission Paths", () => {
     expect(result.sql).toContain("valid_to > NOW()");
     expect(result.sql).toContain("valid_to IS NULL");
   });
+
+  test("generates two-hop permission path with subquery", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "product_task_templates",
+      labelField: "name",
+      searchableFields: ["name"],
+      permissionPaths: {
+        view: [],
+        create: [
+          "@product_id->products.organisation_id->acts_for[organisation_id=$,role=write].user_id",
+        ],
+        update: [
+          "@product_id->products.organisation_id->acts_for[organisation_id=$,role=write].user_id",
+        ],
+        delete: [
+          "@product_id->products.organisation_id->acts_for[organisation_id=$,role=write].user_id",
+        ],
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check that the path resolves through intermediate table
+    expect(result.sql).toContain(
+      "SELECT organisation_id FROM products WHERE id = (p_record->>'product_id')::int",
+    );
+
+    // Check filter conditions are applied to final table
+    expect(result.sql).toContain("acts_for.role = 'write'");
+    expect(result.sql).toContain("acts_for.user_id = p_user_id");
+  });
+
+  test("generates three-hop permission path with nested subqueries", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "product_task_template_dependencies",
+      labelField: "template_id",
+      searchableFields: [],
+      permissionPaths: {
+        view: [],
+        create: [
+          "@template_id->product_task_templates.product_id->products.organisation_id->acts_for[organisation_id=$,role=write].user_id",
+        ],
+        update: [
+          "@template_id->product_task_templates.product_id->products.organisation_id->acts_for[organisation_id=$,role=write].user_id",
+        ],
+        delete: [
+          "@template_id->product_task_templates.product_id->products.organisation_id->acts_for[organisation_id=$,role=write].user_id",
+        ],
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Check that the path resolves through all intermediate tables
+    // Inner: template_id -> product_task_templates.product_id
+    expect(result.sql).toContain(
+      "SELECT product_id FROM product_task_templates WHERE id = (p_record->>'template_id')::int",
+    );
+
+    // Outer: product_id -> products.organisation_id
+    expect(result.sql).toContain(
+      "SELECT organisation_id FROM products WHERE id = (SELECT product_id FROM product_task_templates",
+    );
+
+    // Final check against acts_for
+    expect(result.sql).toContain("acts_for.organisation_id =");
+    expect(result.sql).toContain("acts_for.role = 'write'");
+    expect(result.sql).toContain("acts_for.user_id = p_user_id");
+  });
+
+  test("single-hop path still works correctly", () => {
+    const compiler = new DZQLCompiler();
+
+    const entity = {
+      tableName: "todos",
+      labelField: "title",
+      searchableFields: ["title"],
+      permissionPaths: {
+        view: [],
+        create: ["@org_id->acts_for[org_id=$].user_id"],
+        update: ["@org_id->acts_for[org_id=$].user_id"],
+        delete: ["@org_id->acts_for[org_id=$].user_id"],
+      },
+    };
+
+    const result = compiler.compile(entity);
+
+    // Single hop should directly use the record field
+    expect(result.sql).toContain(
+      "acts_for.org_id = (p_record->>'org_id')::int",
+    );
+    expect(result.sql).toContain("acts_for.user_id = p_user_id");
+
+    // Should NOT have nested subqueries
+    expect(result.sql).not.toContain("SELECT org_id FROM");
+  });
 });
 
 describe("Integration tests", () => {

@@ -171,55 +171,62 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
 
   /**
    * Generate traversal check: @org_id->acts_for[org_id=$]{active}.user_id
+   * Supports multi-hop paths like: @product_id->products.organisation_id->acts_for[organisation_id=$].user_id
    * @private
    */
   _generateTraversalCheck(ast) {
     const steps = ast.steps;
 
-    // Extract components from the path
-    let sourceField = null;
-    let targetTable = null;
-    let targetField = null;
-    let filters = [];
-    let temporal = false;
-
-    for (const step of steps) {
-      if (step.type === 'field_ref') {
-        if (!sourceField) {
-          // First field reference is the source
-          sourceField = step.field;
-        } else {
-          // Last field reference is the target
-          targetField = step.field;
-        }
-      } else if (step.type === 'table_ref') {
-        targetTable = step.table;
-
-        // Collect filter conditions
-        if (step.filter) {
-          filters = step.filter;
-        }
-
-        // Check for temporal marker
-        if (step.temporal) {
-          temporal = true;
-        }
-
-        // Get target field if specified in table ref
-        if (step.targetField) {
-          targetField = step.targetField;
-        }
-      }
+    // First step should be the source field reference
+    if (steps.length === 0 || steps[0].type !== 'field_ref') {
+      return 'false';
     }
 
-    // Build WHERE conditions
+    const sourceField = steps[0].field;
+
+    // Collect all table_ref steps (these are the hops)
+    const tableSteps = steps.filter(s => s.type === 'table_ref');
+
+    if (tableSteps.length === 0) {
+      return 'false';
+    }
+
+    // Build the value expression that resolves through intermediate tables
+    // Start with the record's source field
+    let valueExpr = `(p_record->>'${sourceField}')::int`;
+
+    // Process intermediate hops (all but the last table_ref)
+    // Each intermediate hop needs a subquery to resolve to the next field
+    for (let i = 0; i < tableSteps.length - 1; i++) {
+      const hop = tableSteps[i];
+      const table = hop.table;
+      const targetField = hop.targetField;
+
+      if (!targetField) {
+        // If no target field specified, assume 'id' for the lookup
+        // This shouldn't normally happen in well-formed paths
+        continue;
+      }
+
+      // Build subquery: (SELECT targetField FROM table WHERE id = previousValue)
+      valueExpr = `(SELECT ${targetField} FROM ${table} WHERE id = ${valueExpr})`;
+    }
+
+    // The last table_ref is where we do the EXISTS check
+    const finalStep = tableSteps[tableSteps.length - 1];
+    const targetTable = finalStep.table;
+    const targetField = finalStep.targetField;
+    const filters = finalStep.filter || [];
+    const temporal = finalStep.temporal || false;
+
+    // Build WHERE conditions for the final EXISTS query
     const conditions = [];
 
     // Add filter conditions
     for (const filter of filters) {
       if (filter.operator === '=' && filter.value.type === 'param') {
-        // field=$ means match the record's field value
-        conditions.push(`${targetTable}.${filter.field} = (p_record->>'${sourceField}')::int`);
+        // field=$ means match the resolved value from the path
+        conditions.push(`${targetTable}.${filter.field} = ${valueExpr}`);
       } else if (filter.operator === '=') {
         const value = this._formatValue(filter.value);
         conditions.push(`${targetTable}.${filter.field} = ${value}`);
@@ -228,9 +235,6 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
 
     // Add temporal condition
     if (temporal) {
-      // Add temporal filtering for {active} marker
-      // Assumes standard field names: valid_from and valid_to
-      // This matches the interpreter's behavior in resolve_path_segment (002_functions.sql:316)
       conditions.push(`${targetTable}.valid_from <= NOW()`);
       conditions.push(`(${targetTable}.valid_to > NOW() OR ${targetTable}.valid_to IS NULL)`);
     }
