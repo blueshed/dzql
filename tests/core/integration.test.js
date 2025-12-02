@@ -135,6 +135,9 @@ describe("Subscription System Integration", () => {
       expect(schema.root).toBe("test_entity");
       expect(schema.paths).toBeDefined();
       expect(schema.paths.test_entity).toBe(".");
+      // Verify scopeTables is embedded for compiled mode
+      expect(schema.scopeTables).toBeDefined();
+      expect(schema.scopeTables).toContain("test_entity");
     });
   });
 

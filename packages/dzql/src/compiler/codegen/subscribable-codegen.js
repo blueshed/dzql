@@ -238,11 +238,13 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
     // Build relation subqueries
     const relationSelects = this._generateRelationSelects();
 
-    // Build schema with path mapping (baked in at compile time)
+    // Build schema with path mapping and scope tables (baked in at compile time)
     const pathMapping = this.buildPathMapping();
+    const scopeTables = this.extractScopeTables();
     const schemaJson = JSON.stringify({
       root: this.rootEntity,
-      paths: pathMapping
+      paths: pathMapping,
+      scopeTables: scopeTables
     });
 
     return `CREATE OR REPLACE FUNCTION get_${this.name}(

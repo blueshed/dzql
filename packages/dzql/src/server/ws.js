@@ -12,7 +12,8 @@ import {
   unregisterSubscription,
   unregisterSubscriptionByParams,
   removeConnectionSubscriptions,
-  getSubscribableMetadata
+  getSubscribableMetadata,
+  cacheSubscribableMetadata
 } from "./subscriptions.js";
 
 // Environment configuration
@@ -332,9 +333,18 @@ export function createRPCHandler(customHandlers = {}) {
           // Compiled: { data, schema } | Interpreted: just the data object
           let data, schema;
           if (queryData && queryData.schema && queryData.data !== undefined) {
-            // Compiled mode - schema is embedded
+            // Compiled mode - schema is embedded (includes scopeTables)
             data = queryData.data;
             schema = queryData.schema;
+            // Cache scopeTables for event filtering
+            if (schema.scopeTables) {
+              cacheSubscribableMetadata(subscribableName, {
+                scopeTables: schema.scopeTables,
+                pathMapping: schema.paths,
+                rootEntity: schema.root,
+                relations: {}
+              });
+            }
           } else {
             // Interpreted mode - fetch schema from metadata table
             data = queryData;

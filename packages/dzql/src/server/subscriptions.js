@@ -221,50 +221,55 @@ export function getAllSubscriptions() {
  * @returns {Promise<{scopeTables: string[], pathMapping: object, rootEntity: string, relations: object}>}
  */
 export async function getSubscribableMetadata(subscribableName, sql) {
-  // Check cache first
+  // Check cache first (compiled mode populates this from embedded schema)
   if (subscribableMetadataCache.has(subscribableName)) {
     return subscribableMetadataCache.get(subscribableName);
   }
 
-  // Fetch from database
-  const result = await sql`
-    SELECT scope_tables, root_entity, relations
-    FROM dzql.subscribables
-    WHERE name = ${subscribableName}
-  `;
+  // Interpreted mode: fetch from database table
+  try {
+    const result = await sql`
+      SELECT scope_tables, root_entity, relations
+      FROM dzql.subscribables
+      WHERE name = ${subscribableName}
+    `;
 
-  if (!result || result.length === 0) {
-    // Return empty metadata if subscribable not found
-    const emptyMetadata = {
-      scopeTables: [],
-      pathMapping: {},
-      rootEntity: null,
-      relations: {}
-    };
-    return emptyMetadata;
+    if (result && result.length > 0) {
+      const { scope_tables, root_entity, relations } = result[0];
+
+      // Build path mapping from relations
+      const pathMapping = buildPathMappingFromRelations(root_entity, relations);
+
+      const metadata = {
+        scopeTables: scope_tables || [],
+        pathMapping,
+        rootEntity: root_entity,
+        relations: relations || {}
+      };
+
+      // Cache for future use
+      subscribableMetadataCache.set(subscribableName, metadata);
+
+      wsLogger.debug(`Cached metadata for subscribable ${subscribableName}:`, {
+        scopeTables: metadata.scopeTables,
+        pathMapping: metadata.pathMapping
+      });
+
+      return metadata;
+    }
+  } catch (e) {
+    // Table doesn't exist or query failed
+    wsLogger.debug(`Failed to fetch metadata for ${subscribableName}: ${e.message}`);
   }
 
-  const { scope_tables, root_entity, relations } = result[0];
-
-  // Build path mapping from relations
-  const pathMapping = buildPathMappingFromRelations(root_entity, relations);
-
-  const metadata = {
-    scopeTables: scope_tables || [],
-    pathMapping,
-    rootEntity: root_entity,
-    relations: relations || {}
+  // Return empty metadata if nothing found (compiled mode without prior subscribe)
+  const emptyMetadata = {
+    scopeTables: [],
+    pathMapping: {},
+    rootEntity: null,
+    relations: {}
   };
-
-  // Cache for future use
-  subscribableMetadataCache.set(subscribableName, metadata);
-
-  wsLogger.debug(`Cached metadata for subscribable ${subscribableName}:`, {
-    scopeTables: metadata.scopeTables,
-    pathMapping: metadata.pathMapping
-  });
-
-  return metadata;
+  return emptyMetadata;
 }
 
 /**
@@ -320,6 +325,18 @@ export function clearSubscribableMetadataCache(subscribableName = null) {
     subscribableMetadataCache.clear();
     wsLogger.debug('Cleared all subscribable metadata cache');
   }
+}
+
+/**
+ * Cache subscribable metadata (used by compiled mode to store embedded schema)
+ * @param {string} subscribableName - Name of the subscribable
+ * @param {object} metadata - Metadata to cache
+ */
+export function cacheSubscribableMetadata(subscribableName, metadata) {
+  subscribableMetadataCache.set(subscribableName, metadata);
+  wsLogger.debug(`Cached compiled metadata for ${subscribableName}:`, {
+    scopeTables: metadata.scopeTables
+  });
 }
 
 /**
