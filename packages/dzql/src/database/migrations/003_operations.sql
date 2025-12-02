@@ -925,6 +925,7 @@ BEGIN
 
 
   -- Create event for the delete operation
+  -- Include l_record as data so _affected_documents can resolve which subscriptions to update
   INSERT INTO dzql.events (
     table_name,
     op,
@@ -939,7 +940,7 @@ BEGIN
       SELECT jsonb_object_agg(col, l_record ->> col)
       FROM unnest(l_pk_cols) AS col
     ),
-    NULL,
+    l_record,
     p_user_id,
     dzql.resolve_notification_paths(p_entity, l_record)
   );
