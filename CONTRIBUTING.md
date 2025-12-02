@@ -245,14 +245,12 @@ To publish a new version of the dzql package:
 # 1. Commit all changes first
 git add -A && git commit -m "fix: description of changes"
 
-# 2. Bump version in the PACKAGE directory (not root!)
+# 2. Bump version and publish from the PACKAGE directory (not root!)
 cd packages/dzql
-npm version patch  # or minor/major
-
-# 3. Publish with bun
+bun version patch  # or minor/major
 bun publish --access public
 
-# 4. Commit and push the version bump
+# 3. Commit and push the version bump
 cd ../..
 git add -A && git commit -m "v0.x.x" && git push
 ```
