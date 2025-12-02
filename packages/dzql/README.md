@@ -2,23 +2,28 @@
 
 PostgreSQL-powered framework with automatic CRUD operations, live query subscriptions, and real-time WebSocket synchronization.
 
-## Documentation
-
-- **[Documentation Hub](docs/)** - Complete documentation index
-- **[Getting Started Tutorial](docs/getting-started/tutorial.md)** - Complete tutorial with working todo app
-- **[API Reference](docs/reference/api.md)** - Complete API documentation
-- **[Live Query Subscriptions](docs/getting-started/subscriptions-quick-start.md)** - Real-time denormalized documents
-- **[Compiler Documentation](docs/compiler/)** - Entity compilation guide and coding standards
-- **[Claude Guide](docs/for-ai/claude-guide.md)** - Development guide for AI assistants
-- **[Venues Example](../venues/)** - Full working application
-
-## Quick Install
+## Quick Start
 
 ```bash
 bun add dzql
-# or
-npm install dzql
+
+export DATABASE_URL="postgresql://user:pass@localhost:5432/mydb"
+bunx dzql db:init
+
+bunx dzql compile entities.sql -o init_db/
+psql $DATABASE_URL -f init_db/*.sql
 ```
+
+See **[Quick Start Guide](docs/getting-started/quickstart.md)** for the full 5-minute setup.
+
+## Documentation
+
+- **[Quick Start](docs/getting-started/quickstart.md)** - 5-minute setup
+- **[Full Tutorial](docs/getting-started/tutorial.md)** - Complete tutorial with working app
+- **[API Reference](docs/reference/api.md)** - Complete API documentation
+- **[Subscriptions](docs/getting-started/subscriptions-quick-start.md)** - Real-time denormalized documents
+- **[Compiler Guide](docs/compiler/)** - Entity compilation and coding standards
+- **[Claude Guide](docs/for-ai/claude-guide.md)** - Development guide for AI assistants
 
 ## Quick Example
 

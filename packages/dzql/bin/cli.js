@@ -16,8 +16,8 @@ switch (command) {
   case 'dev':
     console.log('🚧 Dev command coming soon');
     break;
-  case 'db:up':
-    console.log('🚧 Database commands coming soon');
+  case 'db:init':
+    await runDbInit(args);
     break;
   case 'compile':
     await runCompile(args);
@@ -44,25 +44,24 @@ switch (command) {
     console.log(`
 DZQL CLI
 
-Usage:
-  dzql create <app-name>        Create a new DZQL application
-  dzql dev                      Start development server
-  dzql db:up                    Start PostgreSQL database
-  dzql db:down                  Stop PostgreSQL database
-  dzql compile <input>          Compile entity definitions to SQL
+Quick Start:
+  1. dzql db:init              Initialize database with DZQL core (~70 lines SQL)
+  2. dzql compile app.sql      Compile your entities to PostgreSQL functions
+  3. psql < compiled/*.sql     Apply the compiled SQL to your database
+
+Commands:
+  dzql db:init                  Initialize database with DZQL core schema
+  dzql compile <input>          Compile entity definitions to SQL functions
 
   dzql migrate:new <name>       Create a new migration file
   dzql migrate:up               Apply pending migrations
-  dzql migrate:down             Rollback last migration
   dzql migrate:status           Show migration status
 
   dzql --version                Show version
 
 Examples:
-  dzql create my-venue-app
+  dzql db:init
   dzql compile entities/blog.sql -o init_db/
-  dzql migrate:new add_user_avatars
-  dzql migrate:up
 `);
 }
 
@@ -661,6 +660,66 @@ async function runMigrateStatus(args) {
     console.log();
   } catch (err) {
     console.error('❌ Failed to get migration status:', err.message);
+    process.exit(1);
+  } finally {
+    await sql.end();
+  }
+}
+
+// ============================================================================
+// Database Initialization
+// ============================================================================
+
+async function runDbInit(args) {
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    console.error('Error: DATABASE_URL environment variable not set');
+    console.log('Set it to your PostgreSQL connection string:');
+    console.log('  export DATABASE_URL="postgresql://user:pass@localhost:5432/dbname"');
+    process.exit(1);
+  }
+
+  console.log('\n🚀 DZQL Database Initialization\n');
+
+  const sql = postgres(databaseUrl);
+
+  try {
+    console.log('🔌 Connected to database');
+
+    // Read the core SQL file
+    const coreSQL = readFileSync(
+      new URL('../src/database/dzql-core.sql', import.meta.url),
+      'utf-8'
+    );
+
+    console.log('📦 Applying DZQL core schema...');
+    await sql.unsafe(coreSQL);
+
+    // Check version
+    const version = await sql`SELECT version FROM dzql.meta ORDER BY installed_at DESC LIMIT 1`;
+    console.log(`✅ DZQL core initialized (v${version[0]?.version || 'unknown'})`);
+
+    console.log(`
+Next steps:
+  1. Create your entity definitions (schema + DZQL registrations)
+  2. Compile: dzql compile entities.sql -o compiled/
+  3. Apply:  psql $DATABASE_URL -f compiled/*.sql
+
+Example entity file (entities.sql):
+  -- Schema
+  CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    name TEXT
+  );
+
+  -- DZQL Registration
+  SELECT dzql.register_entity('users', 'name', ARRAY['name', 'email']);
+`);
+
+  } catch (err) {
+    console.error('❌ Initialization failed:', err.message);
     process.exit(1);
   } finally {
     await sql.end();
