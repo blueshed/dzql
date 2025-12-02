@@ -355,6 +355,36 @@ $$;
       }
     }
 
+    // Compile subscribables (if any register_subscribable calls exist)
+    const subscribableResult = compiler.compileSubscribablesFromSQL(sqlContent);
+
+    if (subscribableResult.results.length > 0) {
+      console.log(`\n📊 Subscribable Compilation:`);
+      console.log(`   Total subscribables: ${subscribableResult.summary.total}`);
+      console.log(`   Successful: ${subscribableResult.summary.successful}`);
+      console.log(`   Failed: ${subscribableResult.summary.failed}`);
+
+      if (subscribableResult.errors.length > 0) {
+        console.log(`\n❌ Subscribable Errors:`);
+        for (const error of subscribableResult.errors) {
+          console.log(`   - ${error.subscribable}: ${error.error}`);
+        }
+      }
+
+      // Ensure output directory exists
+      if (!existsSync(options.output)) {
+        mkdirSync(options.output, { recursive: true });
+      }
+
+      console.log(`\n📝 Writing subscribable files to: ${options.output}`);
+
+      for (const subResult of subscribableResult.results) {
+        const outputFile = resolve(options.output, `${subResult.name}.sql`);
+        writeFileSync(outputFile, subResult.sql, 'utf-8');
+        console.log(`   ✓ ${subResult.name}.sql`);
+      }
+    }
+
     console.log(`\n✅ Compilation complete!\n`);
   } catch (error) {
     console.error(`\n❌ Compilation failed:`, error.message);
