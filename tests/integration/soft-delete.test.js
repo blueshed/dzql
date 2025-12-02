@@ -232,7 +232,9 @@ describe("Soft Delete", () => {
 
     expect(events.length).toBe(1);
     expect(events[0].op).toBe("delete");
-    expect(events[0].data).toBeNull();
+    // DELETE events now include full record data for subscription resolution
+    expect(events[0].data).not.toBeNull();
+    expect(events[0].data.id).toBeDefined();
   });
 
   test("Multiple soft deletes update timestamp", async () => {

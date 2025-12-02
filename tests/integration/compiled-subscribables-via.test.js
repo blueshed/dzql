@@ -193,7 +193,6 @@ describe("Compiled Subscribables - Via Relations", () => {
         SELECT test_product_catalogue_affected_documents(
           'test_organisations',
           'UPDATE',
-          '{"id": 1}'::jsonb,
           '{"id": 1}'::jsonb
         ) as affected
       `;
@@ -207,7 +206,6 @@ describe("Compiled Subscribables - Via Relations", () => {
         SELECT test_product_catalogue_affected_documents(
           'test_products',
           'INSERT',
-          '{"id": 4, "organisation_id": 1}'::jsonb,
           '{"id": 4, "organisation_id": 1}'::jsonb
         ) as affected
       `;
@@ -223,7 +221,6 @@ describe("Compiled Subscribables - Via Relations", () => {
         SELECT test_product_catalogue_affected_documents(
           'test_product_faces',
           'INSERT',
-          '{"id": 4, "product_id": 1}'::jsonb,
           '{"id": 4, "product_id": 1}'::jsonb
         ) as affected
       `;
@@ -237,7 +234,6 @@ describe("Compiled Subscribables - Via Relations", () => {
         SELECT test_product_catalogue_affected_documents(
           'test_product_faces',
           'INSERT',
-          '{"id": 5, "product_id": 3}'::jsonb,
           '{"id": 5, "product_id": 3}'::jsonb
         ) as affected
       `;
@@ -253,7 +249,6 @@ describe("Compiled Subscribables - Via Relations", () => {
         SELECT test_product_catalogue_affected_documents(
           'test_face_products',
           'INSERT',
-          '{"id": 3, "face_id": 1}'::jsonb,
           '{"id": 3, "face_id": 1}'::jsonb
         ) as affected
       `;
@@ -267,7 +262,6 @@ describe("Compiled Subscribables - Via Relations", () => {
         SELECT test_product_catalogue_affected_documents(
           'test_face_products',
           'UPDATE',
-          '{"id": 2, "face_id": 3}'::jsonb,
           '{"id": 2, "face_id": 3}'::jsonb
         ) as affected
       `;
@@ -283,7 +277,6 @@ describe("Compiled Subscribables - Via Relations", () => {
         SELECT test_product_catalogue_affected_documents(
           'users',
           'INSERT',
-          '{"id": 1}'::jsonb,
           '{"id": 1}'::jsonb
         ) as affected
       `;

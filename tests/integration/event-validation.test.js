@@ -167,7 +167,9 @@ describe("Event Validation", () => {
     const event = events[0];
 
     expect(event.op).toBe("delete");
-    expect(event.data).toBeNull();
+    // DELETE events now include the full record data for subscription resolution
+    expect(event.data).not.toBeNull();
+    expect(event.data.id).toBeDefined();
   });
 
   test("Multiple operations create multiple events", async () => {
