@@ -404,12 +404,11 @@ async function runMigrateNew(args) {
   }
 
   // Generate migration template
+  // Note: No BEGIN/COMMIT - postgres.js handles transactions automatically
   const template = `-- ============================================================================
 -- Migration ${paddedNumber}: ${migrationName.replace(/_/g, ' ')}
 -- Generated: ${new Date().toISOString().split('T')[0]}
 -- ============================================================================
-
-BEGIN;
 
 -- Part 1: Schema Changes
 -- ALTER TABLE example ADD COLUMN IF NOT EXISTS new_field TEXT;
@@ -439,8 +438,6 @@ BEGIN;
 -- VALUES
 --   ('my_custom_function'::regproc, 'Description of function')
 -- ON CONFLICT DO NOTHING;
-
-COMMIT;
 
 -- ============================================================================
 -- Rollback (for migrate:down support)

@@ -167,11 +167,8 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
         return 'FALSE';
       }
 
-      const startField = fieldRef.field;
       const targetTable = tableRef.table;
       const targetField = tableRef.targetField;
-
-      const startValue = `(${recordVar}->>'${startField}')::int`;
 
       // Build WHERE clause
       const whereClauses = [];
@@ -181,8 +178,10 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
         for (const filterCondition of tableRef.filter) {
           const field = filterCondition.field;
           if (filterCondition.value.type === 'param') {
-            // Parameter reference: org_id=$
-            whereClauses.push(`${targetTable}.${field} = ${startValue}`);
+            // Parameter reference: org_id=$ means use the filter field name as the param key
+            // e.g., acts_for[organisation_id=$] -> (p_params->>'organisation_id')::int
+            const paramValue = `(${recordVar}->>'${field}')::int`;
+            whereClauses.push(`${targetTable}.${field} = ${paramValue}`);
           } else {
             // Literal value
             whereClauses.push(`${targetTable}.${field} = '${filterCondition.value}'`);
@@ -301,7 +300,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
       const relIncludes = typeof relConfig === 'object' ? relConfig.include : null;
 
       // Build filter condition
-      let filterSQL = this._generateRelationFilter(relFilter, relEntity);
+      let filterSQL = this._generateRelationFilter(relFilter, relEntity, relConfig);
 
       // Build nested includes if any
       let nestedSelect = 'row_to_json(rel.*)';
@@ -334,11 +333,17 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   /**
    * Generate filter for relation subquery
    * @private
+   * @param {string|null} filter - Optional filter expression
+   * @param {string} relEntity - Related entity table name
+   * @param {Object} relConfig - Full relation config (may contain foreignKey)
    */
-  _generateRelationFilter(filter, relEntity) {
+  _generateRelationFilter(filter, relEntity, relConfig) {
     if (!filter) {
-      // Default: foreign key to root
-      return `rel.${this.rootEntity}_id = root.id`;
+      // Use explicit foreignKey from config, or default to root_id
+      const fk = (typeof relConfig === 'object' && relConfig.foreignKey)
+        ? relConfig.foreignKey
+        : `${this.rootEntity}_id`;
+      return `rel.${fk} = root.id`;
     }
 
     // Parse filter expression like "venue_id=$venue_id"
