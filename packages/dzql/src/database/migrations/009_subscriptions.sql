@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS dzql.subscribables (
   param_schema JSONB NOT NULL DEFAULT '{}'::jsonb,
   root_entity TEXT NOT NULL,
   relations JSONB NOT NULL DEFAULT '{}'::jsonb,
+  scope_tables TEXT[] NOT NULL DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -34,6 +35,9 @@ COMMENT ON COLUMN dzql.subscribables.root_entity IS
 
 COMMENT ON COLUMN dzql.subscribables.relations IS
   'Related entities to include (e.g., {"org": "organisations", "sites": {"entity": "sites", "filter": "venue_id=$venue_id"}})';
+
+COMMENT ON COLUMN dzql.subscribables.scope_tables IS
+  'Array of table names that are in scope for this subscribable (root + all relations). Used for efficient event filtering.';
 
 -- Index for quick lookups
 CREATE INDEX IF NOT EXISTS idx_subscribables_root_entity
@@ -110,6 +114,7 @@ RETURNS TABLE (
   param_schema JSONB,
   root_entity TEXT,
   relations JSONB,
+  scope_tables TEXT[],
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 ) AS $$
@@ -121,6 +126,7 @@ BEGIN
     s.param_schema,
     s.root_entity,
     s.relations,
+    s.scope_tables,
     s.created_at,
     s.updated_at
   FROM dzql.subscribables s
@@ -139,6 +145,7 @@ RETURNS TABLE (
   param_schema JSONB,
   root_entity TEXT,
   relations JSONB,
+  scope_tables TEXT[],
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 ) AS $$
@@ -150,6 +157,7 @@ BEGIN
     s.param_schema,
     s.root_entity,
     s.relations,
+    s.scope_tables,
     s.created_at,
     s.updated_at
   FROM dzql.subscribables s
@@ -168,6 +176,7 @@ RETURNS TABLE (
   param_schema JSONB,
   root_entity TEXT,
   relations JSONB,
+  scope_tables TEXT[],
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 ) AS $$
@@ -179,6 +188,7 @@ BEGIN
     s.param_schema,
     s.root_entity,
     s.relations,
+    s.scope_tables,
     s.created_at,
     s.updated_at
   FROM dzql.subscribables s

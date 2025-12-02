@@ -19,7 +19,9 @@ Live Query Subscriptions (Pattern 1 from vision.md) enable clients to subscribe 
    - `get_<name>(params, user_id)` - Query function
    - `<name>_affected_documents(table, op, old, new)` - Change detection
 3. **Subscribe**: Client calls `ws.api.subscribe_<name>(params, callback)`
-4. **Update**: Database changes trigger NOTIFY → server asks PostgreSQL which subscriptions are affected → server re-queries and sends updates
+4. **Update**: Database changes trigger NOTIFY → server forwards atomic events → client applies patches locally
+
+> **Note**: DZQL uses [Atomic Updates](./atomic-updates.md) for efficient real-time sync. Instead of re-querying the full document on every change, the server forwards the raw event and the client patches its local copy. This reduces network traffic and preserves client-side UI state.
 
 ## Quick Start
 

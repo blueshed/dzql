@@ -11,7 +11,8 @@ import {
   registerSubscription,
   unregisterSubscription,
   unregisterSubscriptionByParams,
-  removeConnectionSubscriptions
+  removeConnectionSubscriptions,
+  getSubscribableMetadata
 } from "./subscriptions.js";
 
 // Environment configuration
@@ -327,6 +328,9 @@ export function createRPCHandler(customHandlers = {}) {
 
           const data = queryResult[0]?.data;
 
+          // Get subscribable metadata for schema (path mapping for atomic updates)
+          const metadata = await getSubscribableMetadata(subscribableName, sql);
+
           // Register subscription in memory
           const subscriptionId = registerSubscription(
             subscribableName,
@@ -335,9 +339,15 @@ export function createRPCHandler(customHandlers = {}) {
             params
           );
 
+          // Build result with schema for client-side patching
           const result = {
             subscription_id: subscriptionId,
-            data
+            data,
+            // Include schema for atomic update support
+            schema: {
+              root: metadata.rootEntity,
+              paths: metadata.pathMapping
+            }
           };
 
           wsLogger.response(method, result, Date.now() - startTime);

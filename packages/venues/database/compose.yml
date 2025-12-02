@@ -17,9 +17,12 @@ services:
       - ../../dzql/src/database/migrations/007_events.sql:/docker-entrypoint-initdb.d/007_events.sql:ro
       - ../../dzql/src/database/migrations/008_hello.sql:/docker-entrypoint-initdb.d/008_hello.sql:ro
       - ../../dzql/src/database/migrations/008a_meta.sql:/docker-entrypoint-initdb.d/008a_meta.sql:ro
+      - ../../dzql/src/database/migrations/009_subscriptions.sql:/docker-entrypoint-initdb.d/009_subscriptions.sql:ro
+      - ../../dzql/src/database/migrations/010_atomic_updates.sql:/docker-entrypoint-initdb.d/010_atomic_updates.sql:ro
+      - ../../dzql/src/database/migrations/010_fix_m2m_events.sql:/docker-entrypoint-initdb.d/010_fix_m2m_events.sql:ro
       # Domain-specific migrations
-      - ./init_db/009_venues_domain.sql:/docker-entrypoint-initdb.d/009_venues_domain.sql:ro
-      - ./init_db/010_brands_artwork.sql:/docker-entrypoint-initdb.d/010_brands_artwork.sql:ro
-      - ./init_db/011_brands_tags.sql:/docker-entrypoint-initdb.d/011_brands_tags.sql:ro
+      - ./init_db/009_venues_domain.sql:/docker-entrypoint-initdb.d/020_venues_domain.sql:ro
+      - ./init_db/010_brands_artwork.sql:/docker-entrypoint-initdb.d/021_brands_artwork.sql:ro
+      - ./init_db/011_brands_tags.sql:/docker-entrypoint-initdb.d/022_brands_tags.sql:ro
     ports:
       - "5432:5432"

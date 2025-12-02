@@ -2,7 +2,7 @@ import { createWebSocketHandlers, verify_jwt_token } from "./ws.js";
 import { closeConnections, setupListeners, sql, db } from "./db.js";
 import * as defaultApi from "./api.js";
 import { serverLogger, notifyLogger } from "./logger.js";
-import { getSubscriptionsBySubscribable, paramsMatch } from "./subscriptions.js";
+import { getSubscriptionsBySubscribable, paramsMatch, getSubscribableScopeTables } from "./subscriptions.js";
 
 // Re-export commonly used utilities
 export { sql, db } from "./db.js";
@@ -11,12 +11,12 @@ export { createMCPRoute } from "./mcp.js";
 
 /**
  * Process subscription updates when a database event occurs
- * Checks if any active subscriptions are affected and sends updates
+ * Forwards atomic events to affected subscriptions for client-side patching
  * @param {Object} event - Database event {table, op, pk, before, after}
  * @param {Function} broadcast - Broadcast function from WebSocket handlers
  */
 async function processSubscriptionUpdates(event, broadcast) {
-  const { table, op, before, after } = event;
+  const { table, op, pk, before, after } = event;
 
   // Get all active subscriptions grouped by subscribable
   const subscriptionsByName = getSubscriptionsBySubscribable();
@@ -30,6 +30,14 @@ async function processSubscriptionUpdates(event, broadcast) {
   // For each unique subscribable, check if this event affects any subscriptions
   for (const [subscribableName, subs] of subscriptionsByName.entries()) {
     try {
+      // Check if this table is in scope for this subscribable
+      // This is an optimization to avoid calling _affected_documents for unrelated tables
+      const scopeTables = await getSubscribableScopeTables(subscribableName, sql);
+      if (scopeTables.length > 0 && !scopeTables.includes(table)) {
+        notifyLogger.debug(`Table ${table} not in scope for ${subscribableName}, skipping`);
+        continue;
+      }
+
       // Ask PostgreSQL which subscription instances are affected
       const result = await sql.unsafe(
         `SELECT ${subscribableName}_affected_documents($1, $2, $3, $4) as affected`,
@@ -42,7 +50,7 @@ async function processSubscriptionUpdates(event, broadcast) {
         continue; // This subscribable not affected
       }
 
-      notifyLogger.debug(`${subscribableName}: ${affectedParamSets.length} param set(s) affected`);
+      notifyLogger.debug(`${subscribableName}: ${affectedParamSets.length} param set(s) affected by ${table}:${op}`);
 
       // Match affected params to active subscriptions
       for (const affectedParams of affectedParamSets) {
@@ -50,33 +58,32 @@ async function processSubscriptionUpdates(event, broadcast) {
           // Check if this subscription matches the affected params
           if (paramsMatch(sub.params, affectedParams)) {
             try {
-              // Re-execute query to get updated data
-              const updated = await sql.unsafe(
-                `SELECT get_${subscribableName}($1, $2) as data`,
-                [sub.params, sub.user_id]
-              );
-
-              const data = updated[0]?.data;
-
-              // Send update to specific connection
+              // Forward atomic event instead of re-querying the full document
+              // Client will apply the patch to their local copy
               const message = JSON.stringify({
                 jsonrpc: "2.0",
-                method: "subscription:update",
+                method: "subscription:event",
                 params: {
                   subscription_id: sub.subscriptionId,
                   subscribable: subscribableName,
-                  data
+                  event: {
+                    table,
+                    op,
+                    pk,
+                    data: after,
+                    before
+                  }
                 }
               });
 
               const sent = broadcast.toConnection(sub.connection_id, message);
               if (sent) {
-                notifyLogger.debug(`Sent update to subscription ${sub.subscriptionId.slice(0, 8)}...`);
+                notifyLogger.debug(`Sent atomic event to subscription ${sub.subscriptionId.slice(0, 8)}... (${table}:${op})`);
               } else {
-                notifyLogger.warn(`Failed to send update to connection ${sub.connection_id.slice(0, 8)}...`);
+                notifyLogger.warn(`Failed to send event to connection ${sub.connection_id.slice(0, 8)}...`);
               }
             } catch (error) {
-              notifyLogger.error(`Failed to update subscription ${sub.subscriptionId}:`, error.message);
+              notifyLogger.error(`Failed to send event to subscription ${sub.subscriptionId}:`, error.message);
             }
           }
         }

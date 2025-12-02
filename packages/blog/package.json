@@ -8,7 +8,7 @@
     "compile": "bun ../dzql/bin/cli.js compile entities/blog.sql -o init_db/",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down -v",
-    "db:rebuild": "docker compose down -v && docker compose up -d",
+    "db:rebuild": "docker compose down -v && docker compose up -d && sleep 5 && bun run migrate:up",
     "psql": "docker compose exec postgres psql -U dzql -d dzql_blog",
     "migrate:new": "bun ../dzql/bin/cli.js migrate:new",
     "migrate:up": "DATABASE_URL=postgresql://dzql:dzql@localhost:5432/dzql_blog bun ../dzql/bin/cli.js migrate:up",

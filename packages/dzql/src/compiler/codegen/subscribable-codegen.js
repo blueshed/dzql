@@ -433,6 +433,71 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
         jsonb_build_object('${firstParam}', COALESCE((p_new->>'${relFK}')::int, (p_old->>'${relFK}')::int))
       ];`;
   }
+
+  /**
+   * Extract all tables in scope for this subscribable
+   * Used for efficient event filtering - only events from these tables need consideration
+   * @returns {string[]} Array of table names
+   */
+  extractScopeTables() {
+    const tables = new Set([this.rootEntity]);
+
+    const extractFromRelations = (relations) => {
+      for (const [relName, relConfig] of Object.entries(relations || {})) {
+        const entity = typeof relConfig === 'string' ? relConfig : relConfig.entity;
+        if (entity) tables.add(entity);
+
+        // Handle nested relations (include or relations)
+        if (typeof relConfig === 'object') {
+          if (relConfig.include) {
+            extractFromRelations(relConfig.include);
+          }
+          if (relConfig.relations) {
+            extractFromRelations(relConfig.relations);
+          }
+        }
+      }
+    };
+
+    extractFromRelations(this.relations);
+    return Array.from(tables);
+  }
+
+  /**
+   * Build path mapping for client-side patching
+   * Maps table names to their path in the document structure
+   * @returns {Object} Map of table name -> document path
+   */
+  buildPathMapping() {
+    const paths = {};
+
+    // Root entity maps to top level
+    paths[this.rootEntity] = '.';
+
+    const buildPaths = (relations, parentPath = '') => {
+      for (const [relName, relConfig] of Object.entries(relations || {})) {
+        const entity = typeof relConfig === 'string' ? relConfig : relConfig.entity;
+        const currentPath = parentPath ? `${parentPath}.${relName}` : relName;
+
+        if (entity) {
+          paths[entity] = currentPath;
+        }
+
+        // Handle nested relations
+        if (typeof relConfig === 'object') {
+          if (relConfig.include) {
+            buildPaths(relConfig.include, currentPath);
+          }
+          if (relConfig.relations) {
+            buildPaths(relConfig.relations, currentPath);
+          }
+        }
+      }
+    };
+
+    buildPaths(this.relations);
+    return paths;
+  }
 }
 
 /**
@@ -443,4 +508,24 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
 export function generateSubscribable(subscribable) {
   const codegen = new SubscribableCodegen(subscribable);
   return codegen.generate();
+}
+
+/**
+ * Extract scope tables from subscribable config
+ * @param {Object} subscribable - Subscribable configuration
+ * @returns {string[]} Array of table names in scope
+ */
+export function extractScopeTables(subscribable) {
+  const codegen = new SubscribableCodegen(subscribable);
+  return codegen.extractScopeTables();
+}
+
+/**
+ * Build path mapping from subscribable config
+ * @param {Object} subscribable - Subscribable configuration
+ * @returns {Object} Map of table name -> document path
+ */
+export function buildPathMapping(subscribable) {
+  const codegen = new SubscribableCodegen(subscribable);
+  return codegen.buildPathMapping();
 }

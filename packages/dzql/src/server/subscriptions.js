@@ -19,6 +19,12 @@ const subscriptions = new Map();
 const connectionSubscriptions = new Map();
 
 /**
+ * Cache for subscribable metadata (scope tables, path mappings)
+ * Structure: subscribable_name -> { scopeTables, pathMapping, rootEntity, relations }
+ */
+const subscribableMetadataCache = new Map();
+
+/**
  * Register a new subscription
  * @param {string} subscribableName - Name of the subscribable
  * @param {number} userId - User ID
@@ -206,4 +212,123 @@ export function getAllSubscriptions() {
     id,
     ...sub
   }));
+}
+
+/**
+ * Get subscribable metadata (scope tables, path mapping) with caching
+ * @param {string} subscribableName - Name of the subscribable
+ * @param {function} sql - Database query function
+ * @returns {Promise<{scopeTables: string[], pathMapping: object, rootEntity: string, relations: object}>}
+ */
+export async function getSubscribableMetadata(subscribableName, sql) {
+  // Check cache first
+  if (subscribableMetadataCache.has(subscribableName)) {
+    return subscribableMetadataCache.get(subscribableName);
+  }
+
+  // Fetch from database
+  const result = await sql`
+    SELECT scope_tables, root_entity, relations
+    FROM dzql.subscribables
+    WHERE name = ${subscribableName}
+  `;
+
+  if (!result || result.length === 0) {
+    // Return empty metadata if subscribable not found
+    const emptyMetadata = {
+      scopeTables: [],
+      pathMapping: {},
+      rootEntity: null,
+      relations: {}
+    };
+    return emptyMetadata;
+  }
+
+  const { scope_tables, root_entity, relations } = result[0];
+
+  // Build path mapping from relations
+  const pathMapping = buildPathMappingFromRelations(root_entity, relations);
+
+  const metadata = {
+    scopeTables: scope_tables || [],
+    pathMapping,
+    rootEntity: root_entity,
+    relations: relations || {}
+  };
+
+  // Cache for future use
+  subscribableMetadataCache.set(subscribableName, metadata);
+
+  wsLogger.debug(`Cached metadata for subscribable ${subscribableName}:`, {
+    scopeTables: metadata.scopeTables,
+    pathMapping: metadata.pathMapping
+  });
+
+  return metadata;
+}
+
+/**
+ * Build path mapping from relations configuration
+ * Maps table names to their document path for client-side patching
+ * @param {string} rootEntity - Root table name
+ * @param {object} relations - Relations configuration
+ * @returns {object} - Map of table name -> document path
+ */
+function buildPathMappingFromRelations(rootEntity, relations) {
+  const paths = {};
+
+  // Root entity maps to top level
+  if (rootEntity) {
+    paths[rootEntity] = '.';
+  }
+
+  const buildPaths = (rels, parentPath = '') => {
+    for (const [relName, relConfig] of Object.entries(rels || {})) {
+      const entity = typeof relConfig === 'string' ? relConfig : relConfig?.entity;
+      const currentPath = parentPath ? `${parentPath}.${relName}` : relName;
+
+      if (entity) {
+        paths[entity] = currentPath;
+      }
+
+      // Handle nested relations
+      if (typeof relConfig === 'object' && relConfig !== null) {
+        if (relConfig.include) {
+          buildPaths(relConfig.include, currentPath);
+        }
+        if (relConfig.relations) {
+          buildPaths(relConfig.relations, currentPath);
+        }
+      }
+    }
+  };
+
+  buildPaths(relations);
+  return paths;
+}
+
+/**
+ * Clear the subscribable metadata cache
+ * Called when subscribables are reregistered or updated
+ * @param {string} [subscribableName] - Optional: clear specific subscribable, or all if not provided
+ */
+export function clearSubscribableMetadataCache(subscribableName = null) {
+  if (subscribableName) {
+    subscribableMetadataCache.delete(subscribableName);
+    wsLogger.debug(`Cleared metadata cache for ${subscribableName}`);
+  } else {
+    subscribableMetadataCache.clear();
+    wsLogger.debug('Cleared all subscribable metadata cache');
+  }
+}
+
+/**
+ * Get scope tables for a subscribable (convenience function)
+ * @param {string} subscribableName - Name of the subscribable
+ * @param {function} sql - Database query function
+ * @returns {Promise<string[]>} - Array of table names in scope
+ */
+export async function getSubscribableScopeTables(subscribableName, sql) {
+  const metadata = await getSubscribableMetadata(subscribableName, sql);
+  return metadata.scopeTables;
 }

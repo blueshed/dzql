@@ -334,12 +334,24 @@ class WebSocketManager {
         resolve(message.result);
       }
     } else {
-      // Handle subscription updates
+      // Handle subscription updates (legacy full document replacement)
       if (message.method === "subscription:update") {
         const { subscription_id, data } = message.params;
         const sub = this.subscriptions.get(subscription_id);
         if (sub && sub.callback) {
+          // Update local data and call callback
+          sub.localData = data;
           sub.callback(data);
+        }
+        return;
+      }
+
+      // Handle atomic subscription events (new efficient patching)
+      if (message.method === "subscription:event") {
+        const { subscription_id, event } = message.params;
+        const sub = this.subscriptions.get(subscription_id);
+        if (sub) {
+          this.applyAtomicUpdate(sub, event);
         }
         return;
       }
@@ -359,6 +371,117 @@ class WebSocketManager {
         callback(message.method, message.params);
       });
     }
+  }
+
+  /**
+   * Apply an atomic update to a subscription's local data
+   * @private
+   * @param {Object} sub - Subscription object with localData, schema, callback
+   * @param {Object} event - Event with table, op, pk, data, before
+   */
+  applyAtomicUpdate(sub, event) {
+    const { table, op, pk, data, before } = event;
+    const { schema, localData, callback } = sub;
+
+    // Fallback: if no schema or localData, we can't apply atomic updates
+    if (!schema || !localData) {
+      console.warn('Cannot apply atomic update: missing schema or localData');
+      // If we have data, just call callback with it as a fallback
+      if (data) {
+        callback(data);
+      }
+      return;
+    }
+
+    const path = schema.paths?.[table];
+    if (!path) {
+      console.warn(`Unknown table ${table} for subscribable, cannot apply patch`);
+      return;
+    }
+
+    // Apply the update based on where the table lives in the document
+    if (path === '.' || table === schema.root) {
+      // Root entity changed
+      this.applyRootUpdate(localData, schema.root, op, data, before);
+    } else {
+      // Relation changed - find and update in nested structure
+      this.applyRelationUpdate(localData, path, op, pk, data);
+    }
+
+    // Trigger callback with updated document
+    callback(localData);
+  }
+
+  /**
+   * Apply update to root entity
+   * @private
+   */
+  applyRootUpdate(localData, rootKey, op, data, before) {
+    if (op === 'update' && data) {
+      // Merge update into root entity
+      if (localData[rootKey]) {
+        Object.assign(localData[rootKey], data);
+      }
+    } else if (op === 'delete') {
+      // Mark root as deleted (or set to null)
+      localData[rootKey] = null;
+    }
+    // insert at root level would be a new document, handled by initial subscribe
+  }
+
+  /**
+   * Apply update to a relation (nested array)
+   * @private
+   */
+  applyRelationUpdate(localData, path, op, pk, data) {
+    const arr = this.getArrayAtPath(localData, path);
+    if (!arr || !Array.isArray(arr)) {
+      console.warn(`Could not find array at path ${path}`);
+      return;
+    }
+
+    if (op === 'insert' && data) {
+      arr.push(data);
+    } else if (op === 'update' && data && pk) {
+      const idx = arr.findIndex(item => this.pkMatch(item, pk));
+      if (idx !== -1) {
+        Object.assign(arr[idx], data);
+      } else {
+        // Item not found, might be a new item that passes the filter - add it
+        arr.push(data);
+      }
+    } else if (op === 'delete' && pk) {
+      const idx = arr.findIndex(item => this.pkMatch(item, pk));
+      if (idx !== -1) {
+        arr.splice(idx, 1);
+      }
+    }
+  }
+
+  /**
+   * Get array at a dot-separated path in an object
+   * @private
+   */
+  getArrayAtPath(obj, path) {
+    const parts = path.split('.');
+    let current = obj;
+    for (const part of parts) {
+      if (!current || typeof current !== 'object') return null;
+      current = current[part];
+    }
+    return current;
+  }
+
+  /**
+   * Check if an item matches a primary key
+   * @private
+   */
+  pkMatch(item, pk) {
+    if (!item || !pk) return false;
+    for (const [key, value] of Object.entries(pk)) {
+      if (item[key] !== value) return false;
+    }
+    return true;
   }
 
   attemptReconnect() {
@@ -409,19 +532,23 @@ class WebSocketManager {
   /**
    * Subscribe to a live query
    *
+   * Subscribes to real-time updates for a document. The server returns the initial
+   * data along with a schema that enables efficient atomic updates (patching).
+   *
    * @param {string} method - Method name (subscribe_<subscribable>)
    * @param {object} params - Subscription parameters
    * @param {function} callback - Callback function for updates
-   * @returns {Promise<{data, subscription_id, unsubscribe}>} Initial data and unsubscribe function
+   * @returns {Promise<{data, subscription_id, schema, unsubscribe}>} Initial data, schema, and unsubscribe function
    *
    * @example
-   * const { data, unsubscribe } = await ws.api.subscribe_venue_detail(
+   * const { data, schema, unsubscribe } = await ws.api.subscribe_venue_detail(
    *   { venue_id: 1 },
    *   (updated) => console.log('Updated:', updated)
    * );
    *
    * // Use initial data
    * console.log('Initial:', data);
+   * console.log('Schema:', schema); // { root: 'venues', paths: { venues: '.', sites: 'sites', ... } }
    *
    * // Later: unsubscribe
    * unsubscribe();
@@ -433,7 +560,7 @@ class WebSocketManager {
 
     // Call server to register subscription
     const result = await this.call(method, params);
-    const { subscription_id, data } = result;
+    const { subscription_id, data, schema } = result;
 
     // Create unsubscribe function
     const unsubscribeFn = async () => {
@@ -442,16 +569,19 @@ class WebSocketManager {
       this.subscriptions.delete(subscription_id);
     };
 
-    // Store callback for updates
+    // Store callback, schema, and local data for atomic updates
     this.subscriptions.set(subscription_id, {
       callback,
-      unsubscribe: unsubscribeFn
+      unsubscribe: unsubscribeFn,
+      schema,           // Schema for path mapping (enables atomic updates)
+      localData: data   // Local copy for patching
     });
 
-    // Return initial data and unsubscribe function
+    // Return initial data, schema, and unsubscribe function
     return {
       data,
       subscription_id,
+      schema,
       unsubscribe: unsubscribeFn
     };
   }

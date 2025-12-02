@@ -82,6 +82,7 @@ export class TestDatabase {
       "008_hello.sql",
       "008a_meta.sql",
       "009_subscriptions.sql",
+      "010_atomic_updates.sql",
     ];
 
     for (const migration of migrations) {
