@@ -77,16 +77,8 @@ services:
       POSTGRES_PASSWORD: dzql
       POSTGRES_DB: dzql
     volumes:
-      - ./node_modules/dzql/src/database/migrations/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
-      - ./node_modules/dzql/src/database/migrations/002_functions.sql:/docker-entrypoint-initdb.d/002_functions.sql:ro
-      - ./node_modules/dzql/src/database/migrations/003_operations.sql:/docker-entrypoint-initdb.d/003_operations.sql:ro
-      - ./node_modules/dzql/src/database/migrations/004_search.sql:/docker-entrypoint-initdb.d/004_search.sql:ro
-      - ./node_modules/dzql/src/database/migrations/005_entities.sql:/docker-entrypoint-initdb.d/005_entities.sql:ro
-      - ./node_modules/dzql/src/database/migrations/006_auth.sql:/docker-entrypoint-initdb.d/006_auth.sql:ro
-      - ./node_modules/dzql/src/database/migrations/007_events.sql:/docker-entrypoint-initdb.d/007_events.sql:ro
-      - ./node_modules/dzql/src/database/migrations/008_hello.sql:/docker-entrypoint-initdb.d/008_hello.sql:ro
-      - ./node_modules/dzql/src/database/migrations/008a_meta.sql:/docker-entrypoint-initdb.d/008a_meta.sql:ro
-      - ./init_db/001_domain.sql:/docker-entrypoint-initdb.d/010_domain.sql:ro
+      # Mount your compiled SQL files
+      - ./init_db:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -96,19 +88,53 @@ services:
       retries: 5
 ```
 
-**For monorepo projects** (like the venues example), use relative paths:
-```yaml
-volumes:
-  - ../../dzql/src/database/migrations/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
-  # ... etc
+### 4. Initialize Database
+
+**Option A: Using CLI (recommended)**
+```bash
+# Start PostgreSQL
+docker compose up -d
+
+# Initialize DZQL core (~70 lines of SQL)
+export DATABASE_URL="postgresql://dzql:dzql@localhost:5432/dzql"
+bunx dzql db:init
 ```
 
-Start PostgreSQL:
+**Option B: Using compiled SQL files**
 ```bash
+# Compile your entities first
+bunx dzql compile init_db/001_domain.sql -o init_db/
+
+# Start PostgreSQL (it will auto-apply files from init_db/)
 docker compose up -d
 ```
 
-### 4. Database Schema
+The compiled approach generates standalone SQL files that don't require any additional DZQL migrations.
+
+<details>
+<summary>Legacy: Interpreter mode setup (for development only)</summary>
+
+If you need interpreter mode for rapid prototyping, mount the full migration set:
+
+```yaml
+volumes:
+  - ./node_modules/dzql/src/database/migrations/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+  - ./node_modules/dzql/src/database/migrations/002_functions.sql:/docker-entrypoint-initdb.d/002_functions.sql:ro
+  - ./node_modules/dzql/src/database/migrations/003_operations.sql:/docker-entrypoint-initdb.d/003_operations.sql:ro
+  - ./node_modules/dzql/src/database/migrations/004_search.sql:/docker-entrypoint-initdb.d/004_search.sql:ro
+  - ./node_modules/dzql/src/database/migrations/005_entities.sql:/docker-entrypoint-initdb.d/005_entities.sql:ro
+  - ./node_modules/dzql/src/database/migrations/006_auth.sql:/docker-entrypoint-initdb.d/006_auth.sql:ro
+  - ./node_modules/dzql/src/database/migrations/007_events.sql:/docker-entrypoint-initdb.d/007_events.sql:ro
+  - ./node_modules/dzql/src/database/migrations/008_hello.sql:/docker-entrypoint-initdb.d/008_hello.sql:ro
+  - ./node_modules/dzql/src/database/migrations/008a_meta.sql:/docker-entrypoint-initdb.d/008a_meta.sql:ro
+  - ./init_db/001_domain.sql:/docker-entrypoint-initdb.d/010_domain.sql:ro
+```
+
+This is ~4,300 lines of SQL vs ~70 lines for compiled mode. Only use interpreter mode if you need instant entity changes without recompilation.
+
+</details>
+
+### 5. Database Schema
 
 Create `init_db/001_domain.sql`:
 
@@ -132,7 +158,7 @@ SELECT dzql.register_entity(
 );
 ```
 
-### 5. Server
+### 6. Server
 
 Create `index.js`:
 
@@ -150,7 +176,7 @@ const server = createServer({
 console.log(`🚀 DZQL Server running on http://localhost:${server.port}`);
 ```
 
-### 6. HTML
+### 7. HTML
 
 Create `public/index.html`:
 
@@ -220,7 +246,7 @@ Create `public/index.html`:
 </html>
 ```
 
-### 7. CSS
+### 8. CSS
 
 Create `public/index.css`:
 
@@ -401,7 +427,7 @@ button {
 }
 ```
 
-### 8. JavaScript
+### 9. JavaScript
 
 Create `public/app.js`:
 
@@ -623,7 +649,7 @@ window.handleLogout = async () => {
 init();
 ```
 
-### 9. Package.json
+### 10. Package.json
 
 ```json
 {

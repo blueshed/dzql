@@ -16,8 +16,8 @@ switch (command) {
   case 'dev':
     console.log('🚧 Dev command coming soon');
     break;
-  case 'db:up':
-    console.log('🚧 Database commands coming soon');
+  case 'db:init':
+    await runDbInit(args);
     break;
   case 'compile':
     await runCompile(args);
@@ -44,25 +44,31 @@ switch (command) {
     console.log(`
 DZQL CLI
 
-Usage:
-  dzql create <app-name>        Create a new DZQL application
-  dzql dev                      Start development server
-  dzql db:up                    Start PostgreSQL database
-  dzql db:down                  Stop PostgreSQL database
-  dzql compile <input>          Compile entity definitions to SQL
+Quick Start (3 steps):
+  1. dzql db:init              Initialize database with DZQL core (~70 lines SQL)
+  2. dzql compile app.sql      Compile your entities to PostgreSQL functions
+  3. psql < compiled/*.sql     Apply the compiled SQL to your database
+
+Commands:
+  dzql db:init                  Initialize database with DZQL core schema
+  dzql compile <input>          Compile entity definitions to SQL functions
 
   dzql migrate:new <name>       Create a new migration file
   dzql migrate:up               Apply pending migrations
-  dzql migrate:down             Rollback last migration
   dzql migrate:status           Show migration status
 
   dzql --version                Show version
 
 Examples:
-  dzql create my-venue-app
+  # Initialize and compile a blog app
+  dzql db:init
   dzql compile entities/blog.sql -o init_db/
-  dzql migrate:new add_user_avatars
-  dzql migrate:up
+
+  # Apply compiled SQL
+  psql $DATABASE_URL -f init_db/000_dzql_core.sql
+  psql $DATABASE_URL -f init_db/001_schema.sql
+  psql $DATABASE_URL -f init_db/users.sql
+  psql $DATABASE_URL -f init_db/posts.sql
 `);
 }
 
@@ -148,7 +154,9 @@ Examples:
 
       // Write core DZQL infrastructure
       const coreSQL = `-- DZQL Core Schema and Tables
+-- This is the ONLY foundation required for DZQL compiled mode
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE SCHEMA IF NOT EXISTS dzql;
 
 -- Meta information
@@ -661,6 +669,135 @@ async function runMigrateStatus(args) {
     console.log();
   } catch (err) {
     console.error('❌ Failed to get migration status:', err.message);
+    process.exit(1);
+  } finally {
+    await sql.end();
+  }
+}
+
+// ============================================================================
+// Database Initialization
+// ============================================================================
+
+async function runDbInit(args) {
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    console.error('Error: DATABASE_URL environment variable not set');
+    console.log('Set it to your PostgreSQL connection string:');
+    console.log('  export DATABASE_URL="postgresql://user:pass@localhost:5432/dbname"');
+    process.exit(1);
+  }
+
+  console.log('\n🚀 DZQL Database Initialization\n');
+
+  const sql = postgres(databaseUrl);
+
+  try {
+    console.log('🔌 Connected to database');
+
+    // The minimal core SQL - this is ALL that's needed for compiled mode
+    const coreSQL = `
+-- DZQL Core - Minimal Foundation (v3.0.0)
+-- This is the ONLY SQL required for DZQL compiled mode
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE SCHEMA IF NOT EXISTS dzql;
+
+-- Version tracking
+CREATE TABLE IF NOT EXISTS dzql.meta (
+  installed_at timestamptz DEFAULT now(),
+  version text NOT NULL
+);
+INSERT INTO dzql.meta (version) VALUES ('3.0.0') ON CONFLICT DO NOTHING;
+
+-- Entity registry
+CREATE TABLE IF NOT EXISTS dzql.entities (
+  table_name text PRIMARY KEY,
+  label_field text NOT NULL,
+  searchable_fields text[] NOT NULL,
+  fk_includes jsonb DEFAULT '{}',
+  soft_delete boolean DEFAULT false,
+  temporal_fields jsonb DEFAULT '{}',
+  notification_paths jsonb DEFAULT '{}',
+  permission_paths jsonb DEFAULT '{}',
+  graph_rules jsonb DEFAULT '{}',
+  field_defaults jsonb DEFAULT '{}',
+  many_to_many jsonb DEFAULT '{}'
+);
+
+-- Function allowlist
+CREATE TABLE IF NOT EXISTS dzql.registry (
+  fn_regproc regproc PRIMARY KEY,
+  description text
+);
+
+-- Event audit table (for real-time NOTIFY/LISTEN)
+CREATE TABLE IF NOT EXISTS dzql.events (
+  event_id bigserial PRIMARY KEY,
+  table_name text NOT NULL,
+  op text NOT NULL,
+  pk jsonb NOT NULL,
+  data jsonb,
+  user_id int,
+  notify_users int[],
+  at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS dzql_events_at_idx ON dzql.events (at);
+CREATE INDEX IF NOT EXISTS dzql_events_table_pk_idx ON dzql.events (table_name, pk, at);
+
+-- NOTIFY trigger for real-time updates
+CREATE OR REPLACE FUNCTION dzql.notify_event()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM pg_notify('dzql', jsonb_build_object(
+    'event_id', NEW.event_id,
+    'table', NEW.table_name,
+    'op', NEW.op,
+    'pk', NEW.pk,
+    'data', NEW.data,
+    'user_id', NEW.user_id,
+    'at', NEW.at,
+    'notify_users', NEW.notify_users
+  )::text);
+  RETURN NULL;
+END $$;
+
+DROP TRIGGER IF EXISTS dzql_events_notify ON dzql.events;
+CREATE TRIGGER dzql_events_notify
+  AFTER INSERT ON dzql.events
+  FOR EACH ROW EXECUTE FUNCTION dzql.notify_event();
+    `;
+
+    console.log('📦 Applying DZQL core schema (~70 lines)...');
+    await sql.unsafe(coreSQL);
+
+    // Check version
+    const version = await sql`SELECT version FROM dzql.meta LIMIT 1`;
+    console.log(`✅ DZQL core initialized (v${version[0]?.version || '3.0.0'})`);
+
+    console.log(`
+Next steps:
+  1. Create your entity definitions (schema + DZQL registrations)
+  2. Compile: dzql compile entities.sql -o compiled/
+  3. Apply:  psql $DATABASE_URL -f compiled/*.sql
+
+Example entity file (entities.sql):
+  -- Schema
+  CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    name TEXT,
+    password_hash TEXT
+  );
+
+  -- DZQL Registration
+  SELECT dzql.register_entity('users', 'name', ARRAY['name', 'email']);
+`);
+
+  } catch (err) {
+    console.error('❌ Initialization failed:', err.message);
     process.exit(1);
   } finally {
     await sql.end();

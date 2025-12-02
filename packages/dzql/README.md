@@ -2,23 +2,34 @@
 
 PostgreSQL-powered framework with automatic CRUD operations, live query subscriptions, and real-time WebSocket synchronization.
 
+## Quick Start (5 minutes)
+
+```bash
+# Install
+bun add dzql
+
+# Initialize database (~70 lines of SQL)
+export DATABASE_URL="postgresql://user:pass@localhost:5432/mydb"
+bunx dzql db:init
+
+# Compile your entities
+bunx dzql compile entities.sql -o init_db/
+
+# Apply compiled SQL
+psql $DATABASE_URL -f init_db/*.sql
+```
+
+That's it. You now have a real-time API with automatic CRUD for all your entities.
+
 ## Documentation
 
-- **[Documentation Hub](docs/)** - Complete documentation index
-- **[Getting Started Tutorial](docs/getting-started/tutorial.md)** - Complete tutorial with working todo app
+- **[Quick Start Guide](docs/getting-started/quickstart.md)** - 5-minute setup (recommended)
+- **[Full Tutorial](docs/getting-started/tutorial.md)** - Complete tutorial with working todo app
 - **[API Reference](docs/reference/api.md)** - Complete API documentation
 - **[Live Query Subscriptions](docs/getting-started/subscriptions-quick-start.md)** - Real-time denormalized documents
 - **[Compiler Documentation](docs/compiler/)** - Entity compilation guide and coding standards
 - **[Claude Guide](docs/for-ai/claude-guide.md)** - Development guide for AI assistants
 - **[Venues Example](../venues/)** - Full working application
-
-## Quick Install
-
-```bash
-bun add dzql
-# or
-npm install dzql
-```
 
 ## Quick Example
 
