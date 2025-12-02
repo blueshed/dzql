@@ -1001,6 +1001,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   ${hasNotificationPaths ? `v_notify_users := _resolve_notification_paths_${this.tableName}(p_user_id, to_jsonb(v_result));` : 'v_notify_users := ARRAY[]::INT[];'}
 
   -- Create event for real-time notifications
+  -- Include full record data so _affected_documents can resolve subscription FKs
   INSERT INTO dzql.events (
     table_name,
     op,
@@ -1012,7 +1013,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     '${this.tableName}',
     'delete',
     ${pkBuildObject},
-    NULL,
+    to_jsonb(v_result),
     p_user_id,
     v_notify_users
   );`;

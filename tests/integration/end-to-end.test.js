@@ -284,7 +284,9 @@ describe("End-to-End Integration: Compile → Install → CRUD", () => {
       LIMIT 1
     `;
     expect(deleteEvents.length).toBe(1);
-    expect(deleteEvents[0].data).toBeNull();
+    // DELETE events now include full record data for subscription resolution
+    expect(deleteEvents[0].data).not.toBeNull();
+    expect(deleteEvents[0].data.id).toBeDefined();
 
     // 6. PERMISSIONS - Test that Bob can't update Alice's resource
     await expect(async () => {
