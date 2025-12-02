@@ -1,6 +1,6 @@
-import { test, expect, describe, beforeAll, afterAll } from 'bun:test';
-import { TestDatabase } from '../setup/TestDatabase.js';
-import { DZQLCompiler } from '../../packages/dzql/src/compiler/compiler.js';
+import { test, expect, describe, beforeAll, afterAll } from "bun:test";
+import { TestDatabase } from "../setup/TestDatabase.js";
+import { DZQLCompiler } from "../../packages/dzql/src/compiler/compiler.js";
 
 let db;
 let sql;
@@ -14,7 +14,7 @@ afterAll(async () => {
   await db.teardown();
 });
 
-describe('Subscription System Integration', () => {
+describe("Subscription System Integration", () => {
   let compiledSQL;
 
   beforeAll(async () => {
@@ -58,11 +58,11 @@ describe('Subscription System Integration', () => {
     // Compile subscribable
     const compiler = new DZQLCompiler();
     const subscribable = {
-      name: 'test_simple',
-      permissionPaths: { subscribe: ['@owner_id'] },
-      paramSchema: { id: 'int' },
-      rootEntity: 'test_entity',
-      relations: {}
+      name: "test_simple",
+      permissionPaths: { subscribe: ["@owner_id"] },
+      paramSchema: { id: "int" },
+      rootEntity: "test_entity",
+      relations: {},
     };
 
     const result = compiler.compileSubscribable(subscribable);
@@ -81,25 +81,25 @@ describe('Subscription System Integration', () => {
     await sql`DROP FUNCTION IF EXISTS test_simple_affected_documents`;
   });
 
-  test('subscribable is registered', async () => {
+  test("subscribable is registered", async () => {
     const result = await sql`
       SELECT * FROM dzql.get_subscribables() WHERE name = 'test_simple'
     `;
 
     expect(result).toHaveLength(1);
-    expect(result[0].name).toBe('test_simple');
-    expect(result[0].root_entity).toBe('test_entity');
+    expect(result[0].name).toBe("test_simple");
+    expect(result[0].root_entity).toBe("test_entity");
   });
 
-  test('compiler generates SQL successfully', () => {
+  test("compiler generates SQL successfully", () => {
     expect(compiledSQL).toBeDefined();
-    expect(compiledSQL).toContain('test_simple_can_subscribe');
-    expect(compiledSQL).toContain('get_test_simple');
-    expect(compiledSQL).toContain('test_simple_affected_documents');
+    expect(compiledSQL).toContain("test_simple_can_subscribe");
+    expect(compiledSQL).toContain("get_test_simple");
+    expect(compiledSQL).toContain("test_simple_affected_documents");
   });
 
-  describe('Permission Checking', () => {
-    test('owner can subscribe', async () => {
+  describe("Permission Checking", () => {
+    test("owner can subscribe", async () => {
       const result = await sql`
         SELECT test_simple_can_subscribe(100, '{"id": 1}'::jsonb) as can_subscribe
       `;
@@ -107,7 +107,7 @@ describe('Subscription System Integration', () => {
       expect(result[0].can_subscribe).toBe(true);
     });
 
-    test('non-owner cannot subscribe', async () => {
+    test("non-owner cannot subscribe", async () => {
       const result = await sql`
         SELECT test_simple_can_subscribe(999, '{"id": 1}'::jsonb) as can_subscribe
       `;
@@ -116,23 +116,30 @@ describe('Subscription System Integration', () => {
     });
   });
 
-  describe('Query Function', () => {
-    test('returns document for authorized user', async () => {
+  describe("Query Function", () => {
+    test("returns document for authorized user", async () => {
       const result = await sql`
-        SELECT get_test_simple('{"id": 1}'::jsonb, 100) as data
+        SELECT get_test_simple('{"id": 1}'::jsonb, 100) as result
       `;
 
-      const data = result[0].data;
+      // Compiled functions return { data, schema }
+      const { data, schema } = result[0].result;
       expect(data).toBeDefined();
       expect(data.test_entity).toBeDefined();
       expect(data.test_entity.id).toBe(1);
-      expect(data.test_entity.name).toBe('Test Item');
+      expect(data.test_entity.name).toBe("Test Item");
       expect(data.test_entity.owner_id).toBe(100);
+
+      // Verify schema is embedded
+      expect(schema).toBeDefined();
+      expect(schema.root).toBe("test_entity");
+      expect(schema.paths).toBeDefined();
+      expect(schema.paths.test_entity).toBe(".");
     });
   });
 
-  describe('Change Detection', () => {
-    test('identifies affected subscriptions for updates', async () => {
+  describe("Change Detection", () => {
+    test("identifies affected subscriptions for updates", async () => {
       const result = await sql`
         SELECT test_simple_affected_documents(
           'test_entity',
@@ -147,7 +154,7 @@ describe('Subscription System Integration', () => {
       expect(affected[0].id).toBe(1);
     });
 
-    test('returns empty for other tables', async () => {
+    test("returns empty for other tables", async () => {
       const result = await sql`
         SELECT test_simple_affected_documents(
           'other_table',

@@ -238,13 +238,20 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
     // Build relation subqueries
     const relationSelects = this._generateRelationSelects();
 
+    // Build schema with path mapping (baked in at compile time)
+    const pathMapping = this.buildPathMapping();
+    const schemaJson = JSON.stringify({
+      root: this.rootEntity,
+      paths: pathMapping
+    });
+
     return `CREATE OR REPLACE FUNCTION get_${this.name}(
   p_params JSONB,
   p_user_id INT
 ) RETURNS JSONB AS $$
 DECLARE
 ${paramDeclarations}
-  v_result JSONB;
+  v_data JSONB;
 BEGIN
   -- Extract parameters
 ${paramExtractions}
@@ -258,11 +265,15 @@ ${paramExtractions}
   SELECT jsonb_build_object(
     '${this.rootEntity}', row_to_json(root.*)${relationSelects}
   )
-  INTO v_result
+  INTO v_data
   FROM ${this.rootEntity} root
   WHERE ${rootFilter};
 
-  RETURN v_result;
+  -- Return data with embedded schema for atomic updates
+  RETURN jsonb_build_object(
+    'data', v_data,
+    'schema', '${schemaJson}'::jsonb
+  );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   }

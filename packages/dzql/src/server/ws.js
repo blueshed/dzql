@@ -322,14 +322,28 @@ export function createRPCHandler(customHandlers = {}) {
         try {
           // Execute initial query (this also checks permissions)
           const queryResult = await sql.unsafe(
-            `SELECT get_${subscribableName}($1, $2) as data`,
+            `SELECT get_${subscribableName}($1, $2) as result`,
             [params, ws.data.user_id]
           );
 
-          const data = queryResult[0]?.data;
+          const queryData = queryResult[0]?.result;
 
-          // Get subscribable metadata for schema (path mapping for atomic updates)
-          const metadata = await getSubscribableMetadata(subscribableName, sql);
+          // Check if compiled function returned embedded schema
+          // Compiled: { data, schema } | Interpreted: just the data object
+          let data, schema;
+          if (queryData && queryData.schema && queryData.data !== undefined) {
+            // Compiled mode - schema is embedded
+            data = queryData.data;
+            schema = queryData.schema;
+          } else {
+            // Interpreted mode - fetch schema from metadata table
+            data = queryData;
+            const metadata = await getSubscribableMetadata(subscribableName, sql);
+            schema = {
+              root: metadata.rootEntity,
+              paths: metadata.pathMapping
+            };
+          }
 
           // Register subscription in memory
           const subscriptionId = registerSubscription(
@@ -343,11 +357,7 @@ export function createRPCHandler(customHandlers = {}) {
           const result = {
             subscription_id: subscriptionId,
             data,
-            // Include schema for atomic update support
-            schema: {
-              root: metadata.rootEntity,
-              paths: metadata.pathMapping
-            }
+            schema
           };
 
           wsLogger.response(method, result, Date.now() - startTime);
