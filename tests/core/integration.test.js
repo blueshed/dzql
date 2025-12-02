@@ -147,7 +147,6 @@ describe("Subscription System Integration", () => {
         SELECT test_simple_affected_documents(
           'test_entity',
           'update',
-          '{"id": 1, "name": "Old"}'::jsonb,
           '{"id": 1, "name": "New"}'::jsonb
         ) as affected
       `;
@@ -162,7 +161,6 @@ describe("Subscription System Integration", () => {
         SELECT test_simple_affected_documents(
           'other_table',
           'update',
-          '{"id": 1}'::jsonb,
           '{"id": 1}'::jsonb
         ) as affected
       `;

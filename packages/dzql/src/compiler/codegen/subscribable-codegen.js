@@ -487,8 +487,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     return `CREATE OR REPLACE FUNCTION ${this.name}_affected_documents(
   p_table_name TEXT,
   p_op TEXT,
-  p_old JSONB,
-  p_new JSONB
+  p_data JSONB
 ) RETURNS JSONB[] AS $$
 DECLARE
   v_affected JSONB[];
@@ -516,7 +515,7 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
     return `-- Root entity (${this.rootEntity}) changed
     WHEN '${this.rootEntity}' THEN
       v_affected := ARRAY[
-        jsonb_build_object('${firstParam}', COALESCE((p_new->>'id')::int, (p_old->>'id')::int))
+        jsonb_build_object('${firstParam}', (p_data->>'id')::int)
       ];`;
   }
 
@@ -567,7 +566,7 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
       SELECT ARRAY_AGG(DISTINCT jsonb_build_object('${firstParam}', ${prevAlias}.${firstParam}))
       INTO v_affected
       ${joins.join('\n      ')}
-      WHERE via_0.${viaColumn} = COALESCE((p_new->>'${relFK}')::int, (p_old->>'${relFK}')::int);`;
+      WHERE via_0.${viaColumn} = (p_data->>'${relFK}')::int;`;
       }
 
       // Single-hop via
@@ -577,7 +576,7 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
       SELECT ARRAY_AGG(DISTINCT jsonb_build_object('${firstParam}', via_tbl.${firstParam}))
       INTO v_affected
       FROM ${viaTable} via_tbl
-      WHERE via_tbl.${viaColumn} = COALESCE((p_new->>'${relFK}')::int, (p_old->>'${relFK}')::int);`;
+      WHERE via_tbl.${viaColumn} = (p_data->>'${relFK}')::int;`;
     }
 
     if (nestedIncludes) {
@@ -589,13 +588,13 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
       INTO v_affected
       FROM ${relEntity} rel
       JOIN ${Object.keys(nestedIncludes)[0]} parent ON parent.id = rel.${Object.keys(nestedIncludes)[0]}_id
-      WHERE rel.id = COALESCE((p_new->>'id')::int, (p_old->>'id')::int);`;
+      WHERE rel.id = (p_data->>'id')::int;`;
     }
 
     return `-- Related entity (${relEntity}) changed
     WHEN '${relEntity}' THEN
       v_affected := ARRAY[
-        jsonb_build_object('${firstParam}', COALESCE((p_new->>'${relFK}')::int, (p_old->>'${relFK}')::int))
+        jsonb_build_object('${firstParam}', (p_data->>'${relFK}')::int)
       ];`;
   }
 

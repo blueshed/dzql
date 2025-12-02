@@ -39,10 +39,10 @@ async function processSubscriptionUpdates(event, broadcast) {
       }
 
       // Ask PostgreSQL which subscription instances are affected
-      // Pass data for both old/new - COALESCE in the function handles it
+      // Pass (table, op, data) - the data contains pk and fields needed to resolve affected documents
       const result = await sql.unsafe(
-        `SELECT ${subscribableName}_affected_documents($1, $2, $3, $4) as affected`,
-        [table, op, data, data]
+        `SELECT ${subscribableName}_affected_documents($1, $2, $3) as affected`,
+        [table, op, data]
       );
 
       const affectedParamSets = result[0]?.affected;
