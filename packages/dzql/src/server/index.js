@@ -12,11 +12,11 @@ export { createMCPRoute } from "./mcp.js";
 /**
  * Process subscription updates when a database event occurs
  * Forwards atomic events to affected subscriptions for client-side patching
- * @param {Object} event - Database event {table, op, pk, before, after}
+ * @param {Object} event - Database event {table, op, pk, data}
  * @param {Function} broadcast - Broadcast function from WebSocket handlers
  */
 async function processSubscriptionUpdates(event, broadcast) {
-  const { table, op, pk, before, after } = event;
+  const { table, op, pk, data } = event;
 
   // Get all active subscriptions grouped by subscribable
   const subscriptionsByName = getSubscriptionsBySubscribable();
@@ -39,9 +39,10 @@ async function processSubscriptionUpdates(event, broadcast) {
       }
 
       // Ask PostgreSQL which subscription instances are affected
+      // Pass data for both old/new - COALESCE in the function handles it
       const result = await sql.unsafe(
         `SELECT ${subscribableName}_affected_documents($1, $2, $3, $4) as affected`,
-        [table, op, before, after]
+        [table, op, data, data]
       );
 
       const affectedParamSets = result[0]?.affected;
@@ -70,8 +71,7 @@ async function processSubscriptionUpdates(event, broadcast) {
                     table,
                     op,
                     pk,
-                    data: after,
-                    before
+                    data
                   }
                 }
               });
