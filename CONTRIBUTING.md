@@ -237,6 +237,28 @@ DZQL puts business logic in the database:
 - Minimize round trips
 - Profile before optimizing
 
+## Publishing
+
+To publish a new version of the dzql package:
+
+```bash
+# 1. Commit all changes first
+git add -A && git commit -m "fix: description of changes"
+
+# 2. Bump version in the PACKAGE directory (not root!)
+cd packages/dzql
+npm version patch  # or minor/major
+
+# 3. Publish with bun
+bun publish --access public
+
+# 4. Commit and push the version bump
+cd ../..
+git add -A && git commit -m "v0.x.x" && git push
+```
+
+**Important**: The version lives in `packages/dzql/package.json`, NOT the root `package.json`. The root is for the monorepo workspace only.
+
 ## Getting Help
 
 - **Issues**: [GitHub Issues](https://github.com/blueshed/dzql/issues)
