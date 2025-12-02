@@ -358,6 +358,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
 
   /**
    * Generate JOIN clause for via relations
+   * Handles multi-hop via chains by looking up each intermediate table
    * @private
    * @param {Object} relConfig - Relation config with via property
    * @returns {Object} { joinClause, whereClause }
@@ -369,16 +370,80 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     // Parse via: "products.id" -> table: products, column: id
     const [viaTable, viaColumn] = via.split('.');
 
-    // Use first param key as the FK column on the via table (e.g., organisation_id)
+    // Build the join chain by following via references
+    const joinClauses = [];
+    const viaChain = this._buildViaChain(viaTable);
+
+    // First join: rel -> first via table
+    joinClauses.push(`JOIN ${viaTable} via_${viaTable} ON rel.${fk} = via_${viaTable}.${viaColumn}`);
+
+    // Additional joins for multi-hop
+    for (let i = 0; i < viaChain.length; i++) {
+      const current = viaChain[i];
+      const next = viaChain[i + 1];
+
+      if (next) {
+        // Join current via table to next via table
+        joinClauses.push(`JOIN ${next.table} via_${next.table} ON via_${current.table}.${current.fk} = via_${next.table}.${next.column}`);
+      }
+    }
+
+    // Final WHERE clause connects to root
+    const lastVia = viaChain.length > 0 ? viaChain[viaChain.length - 1] : { table: viaTable };
     const params = Object.keys(this.paramSchema);
     const rootFK = params[0] || `${this.rootEntity}_id`;
+    const whereClause = `via_${lastVia.table}.${rootFK} = root.id`;
 
-    // rel.foreignKey = viaTable.viaColumn
-    // viaTable.rootFK = root.id
-    const joinClause = `JOIN ${viaTable} via_${viaTable} ON rel.${fk} = via_${viaTable}.${viaColumn}`;
-    const whereClause = `via_${viaTable}.${rootFK} = root.id`;
+    return { joinClause: joinClauses.join('\n      '), whereClause };
+  }
 
-    return { joinClause, whereClause };
+  /**
+   * Build the via chain from a starting table back to root
+   * @private
+   * @param {string} startTable - The table to start from
+   * @returns {Array} Chain of {table, fk, column} objects
+   */
+  _buildViaChain(startTable) {
+    const chain = [];
+    let currentTable = startTable;
+
+    // Find the relation config for this table
+    const findRelConfig = (tableName) => {
+      for (const [relName, relConfig] of Object.entries(this.relations)) {
+        if (typeof relConfig === 'object' && relConfig.entity === tableName) {
+          return relConfig;
+        }
+        if (relName === tableName && typeof relConfig === 'object') {
+          return relConfig;
+        }
+      }
+      return null;
+    };
+
+    // Follow via chain until we reach a table without via (direct to root)
+    let relConfig = findRelConfig(currentTable);
+    while (relConfig && relConfig.via) {
+      const [nextTable, nextColumn] = relConfig.via.split('.');
+      chain.push({
+        table: currentTable,
+        fk: relConfig.foreignKey,
+        column: nextColumn
+      });
+      currentTable = nextTable;
+      relConfig = findRelConfig(currentTable);
+    }
+
+    // Add final table (direct connection to root)
+    if (currentTable !== startTable) {
+      const finalConfig = findRelConfig(currentTable);
+      chain.push({
+        table: currentTable,
+        fk: finalConfig ? finalConfig.foreignKey : `${this.rootEntity}_id`,
+        column: 'id'
+      });
+    }
+
+    return chain;
   }
 
   /**
@@ -475,6 +540,37 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
     // Handle via relations: need to traverse via path to root
     if (relVia) {
       const [viaTable, viaColumn] = relVia.split('.');
+      const viaChain = this._buildViaChain(viaTable);
+
+      // Build multi-hop join chain for affected documents
+      if (viaChain.length > 1) {
+        // Multi-hop: need to join through intermediate tables
+        const joins = [];
+        const pathDesc = [relEntity, ...viaChain.map(v => v.table), this.rootEntity].join(' -> ');
+
+        // First table in chain
+        let prevAlias = 'via_0';
+        joins.push(`FROM ${viaTable} ${prevAlias}`);
+
+        // Join through chain
+        for (let i = 0; i < viaChain.length - 1; i++) {
+          const current = viaChain[i];
+          const next = viaChain[i + 1];
+          const nextAlias = `via_${i + 1}`;
+          joins.push(`JOIN ${next.table} ${nextAlias} ON ${prevAlias}.${current.fk} = ${nextAlias}.${next.column}`);
+          prevAlias = nextAlias;
+        }
+
+        return `-- Via relation (${relEntity} via chain) changed
+    WHEN '${relEntity}' THEN
+      -- Traverse via path: ${pathDesc}
+      SELECT ARRAY_AGG(DISTINCT jsonb_build_object('${firstParam}', ${prevAlias}.${firstParam}))
+      INTO v_affected
+      ${joins.join('\n      ')}
+      WHERE via_0.${viaColumn} = COALESCE((p_new->>'${relFK}')::int, (p_old->>'${relFK}')::int);`;
+      }
+
+      // Single-hop via
       return `-- Via relation (${relEntity} via ${viaTable}) changed
     WHEN '${relEntity}' THEN
       -- Traverse via path: ${relEntity} -> ${viaTable} -> ${this.rootEntity}

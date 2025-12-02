@@ -154,8 +154,8 @@ export class SubscribableParser {
     try {
       // Remove ::jsonb cast
       let cleaned = str.replace(/::jsonb$/i, '');
-      // Remove outer quotes if it's a string literal
-      cleaned = cleaned.replace(/^'(.*)'$/, '$1');
+      // Remove outer quotes if it's a string literal (handles multi-line with [\s\S])
+      cleaned = cleaned.replace(/^'([\s\S]*)'$/, '$1');
       // Unescape internal quotes
       cleaned = cleaned.replace(/''/g, "'");
 
