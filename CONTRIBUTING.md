@@ -247,7 +247,7 @@ git add -A && git commit -m "fix: description of changes"
 
 # 2. Bump version and publish from the PACKAGE directory (not root!)
 cd packages/dzql
-bun version patch  # or minor/major
+npm version patch  # or minor/major (bun doesn't have version command)
 bun publish --access public
 
 # 3. Commit and push the version bump
