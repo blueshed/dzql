@@ -318,7 +318,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
       if (relIncludes) {
         const nestedFields = Object.entries(relIncludes).map(([nestedName, nestedEntity]) => {
           return `'${nestedName}', (
-          SELECT jsonb_agg(row_to_json(nested.*))
+          SELECT COALESCE(jsonb_agg(row_to_json(nested.*)), '[]'::jsonb)
           FROM ${nestedEntity} nested
           WHERE nested.${relEntity}_id = rel.id
         )`;
@@ -334,23 +334,23 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
       if (relVia) {
         const { joinClause, whereClause } = this._generateViaJoin(relConfig);
         return `,
-    '${relName}', (
+    '${relName}', COALESCE((
       SELECT jsonb_agg(${nestedSelect})
       FROM ${relEntity} rel
       ${joinClause}
       WHERE ${whereClause}
-    )`;
+    ), '[]'::jsonb)`;
       }
 
       // Direct relation (no via)
       let filterSQL = this._generateRelationFilter(relFilter, relEntity, relConfig);
 
       return `,
-    '${relName}', (
+    '${relName}', COALESCE((
       SELECT jsonb_agg(${nestedSelect})
       FROM ${relEntity} rel
       WHERE ${filterSQL}
-    )`;
+    ), '[]'::jsonb)`;
     }).join('');
 
     return selects;

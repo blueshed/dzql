@@ -181,9 +181,9 @@ describe("Compiled Subscribables - Via Relations", () => {
       const data = result[0].result.data;
       expect(data.products).toHaveLength(1);
       expect(data.products[0].name).toBe("Product C");
-      // Org 2 has no faces or face_products
-      expect(data.product_faces).toBeNull();
-      expect(data.face_products).toBeNull();
+      // Org 2 has no faces or face_products - returns empty arrays, not null
+      expect(data.product_faces).toHaveLength(0);
+      expect(data.face_products).toHaveLength(0);
     });
   });
 
