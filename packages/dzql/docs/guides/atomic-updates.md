@@ -87,16 +87,16 @@ The callback receives the updated local document, preserving any UI state.
 
 ## Scope Tables
 
-Each subscribable tracks which tables are "in scope" - tables that can affect the document:
+Each subscribable tracks which tables are "in scope" - tables that can affect the document. This enables an optimization: events from tables not in scope are immediately skipped, avoiding unnecessary `_affected_documents()` calls.
+
+### Interpreted Mode (Runtime)
+
+In interpreted mode, scope tables are stored in the `dzql.subscribables` table:
 
 ```sql
 SELECT scope_tables FROM dzql.subscribables WHERE name = 'venue_detail';
 -- Returns: ['venues', 'organisations', 'sites', 'packages']
 ```
-
-This enables an optimization: events from tables not in scope are immediately skipped, avoiding unnecessary `_affected_documents()` calls.
-
-### Automatic Extraction
 
 Scope tables are automatically extracted when registering a subscribable:
 
@@ -114,6 +114,36 @@ SELECT dzql.register_subscribable(
 
 -- scope_tables automatically set to: ['venues', 'organisations', 'sites']
 ```
+
+### Compiled Mode (Static SQL)
+
+In compiled mode, scope tables are embedded directly in the `get_<name>()` function return value. No `dzql.subscribables` table is required.
+
+The compiled function returns:
+```json
+{
+  "data": { ... },
+  "schema": {
+    "root": "organisations",
+    "paths": {
+      "organisations": ".",
+      "products": "products"
+    },
+    "scopeTables": ["organisations", "products"]
+  }
+}
+```
+
+When a client subscribes:
+1. Server calls `get_<name>(params, user_id)`
+2. Server extracts the embedded schema (including `scopeTables`)
+3. Server caches the metadata for event filtering
+4. Client receives `data` and `schema` for client-side patching
+
+**Important**: The scope tables are only cached after the first subscribe call. This means:
+- The `dzql.subscribables` table is not needed for compiled deployments
+- Event filtering works correctly once at least one client has subscribed
+- If no clients have subscribed, events will still be processed (the scope check is skipped when cache is empty)
 
 ## Path Mapping
 
@@ -200,7 +230,22 @@ No code changes required - the system is backward compatible.
 
 ## Debugging
 
-### Check Scope Tables
+### Check Schema (Compiled Mode)
+
+Subscribe and log the full schema including scopeTables:
+
+```javascript
+const { data, schema } = await ws.api.subscribe_product_catalogue(
+  { organisation_id: 1 },
+  () => {}
+);
+console.log('Schema:', schema);
+// Expected: { root: 'organisations', paths: {...}, scopeTables: [...] }
+```
+
+If `schema.root` is null or `schema.scopeTables` is missing, ensure you're using dzql >= 0.5.10 and have recompiled your subscribable functions.
+
+### Check Scope Tables (Interpreted Mode)
 
 ```sql
 SELECT name, scope_tables 
@@ -210,23 +255,35 @@ WHERE name = 'your_subscribable';
 
 ### Verify Path Mapping
 
-Subscribe and log the schema:
-
 ```javascript
 const { schema } = await ws.api.subscribe_venue_detail(
   { venue_id: 1 },
   () => {}
 );
 console.log('Path mapping:', schema.paths);
+// Should map each table to its document path
 ```
 
 ### Server Logs
 
 Enable debug logging to see atomic events:
 
+```bash
+LOG_CATEGORIES="notify:debug" bun run server
 ```
-Sent atomic event to subscription abc123... (sites:update)
+
+You should see:
 ```
+Cached compiled metadata for product_catalogue: { scopeTables: ['organisations', 'products'] }
+product_catalogue: 1 param set(s) affected by products:update
+Sent atomic event to subscription abc123... (products:update)
+```
+
+### Common Issues
+
+1. **`schema.root` is null**: Update to dzql >= 0.5.10 and recompile your subscribables
+2. **No updates pushed**: Check that scopeTables includes the changed table
+3. **Metadata not cached**: Ensure at least one client has subscribed before events occur
 
 ## Limitations
 
