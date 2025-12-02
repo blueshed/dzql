@@ -311,9 +311,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
       const relEntity = typeof relConfig === 'string' ? relConfig : relConfig.entity;
       const relFilter = typeof relConfig === 'object' ? relConfig.filter : null;
       const relIncludes = typeof relConfig === 'object' ? relConfig.include : null;
-
-      // Build filter condition
-      let filterSQL = this._generateRelationFilter(relFilter, relEntity, relConfig);
+      const relVia = typeof relConfig === 'object' ? relConfig.via : null;
 
       // Build nested includes if any
       let nestedSelect = 'row_to_json(rel.*)';
@@ -332,6 +330,21 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
       )`;
       }
 
+      // Handle via relations with JOINs
+      if (relVia) {
+        const { joinClause, whereClause } = this._generateViaJoin(relConfig);
+        return `,
+    '${relName}', (
+      SELECT jsonb_agg(${nestedSelect})
+      FROM ${relEntity} rel
+      ${joinClause}
+      WHERE ${whereClause}
+    )`;
+      }
+
+      // Direct relation (no via)
+      let filterSQL = this._generateRelationFilter(relFilter, relEntity, relConfig);
+
       return `,
     '${relName}', (
       SELECT jsonb_agg(${nestedSelect})
@@ -341,6 +354,31 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     }).join('');
 
     return selects;
+  }
+
+  /**
+   * Generate JOIN clause for via relations
+   * @private
+   * @param {Object} relConfig - Relation config with via property
+   * @returns {Object} { joinClause, whereClause }
+   */
+  _generateViaJoin(relConfig) {
+    const via = relConfig.via;
+    const fk = relConfig.foreignKey;
+
+    // Parse via: "products.id" -> table: products, column: id
+    const [viaTable, viaColumn] = via.split('.');
+
+    // Use first param key as the FK column on the via table (e.g., organisation_id)
+    const params = Object.keys(this.paramSchema);
+    const rootFK = params[0] || `${this.rootEntity}_id`;
+
+    // rel.foreignKey = viaTable.viaColumn
+    // viaTable.rootFK = root.id
+    const joinClause = `JOIN ${viaTable} via_${viaTable} ON rel.${fk} = via_${viaTable}.${viaColumn}`;
+    const whereClause = `via_${viaTable}.${rootFK} = root.id`;
+
+    return { joinClause, whereClause };
   }
 
   /**
@@ -426,12 +464,25 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
     const relFK = typeof relConfig === 'object' && relConfig.foreignKey
       ? relConfig.foreignKey
       : `${this.rootEntity}_id`;
+    const relVia = typeof relConfig === 'object' ? relConfig.via : null;
 
     const params = Object.keys(this.paramSchema);
     const firstParam = params[0] || 'id';
 
     // Check if this is a nested relation (has parent FK)
     const nestedIncludes = typeof relConfig === 'object' ? relConfig.include : null;
+
+    // Handle via relations: need to traverse via path to root
+    if (relVia) {
+      const [viaTable, viaColumn] = relVia.split('.');
+      return `-- Via relation (${relEntity} via ${viaTable}) changed
+    WHEN '${relEntity}' THEN
+      -- Traverse via path: ${relEntity} -> ${viaTable} -> ${this.rootEntity}
+      SELECT ARRAY_AGG(DISTINCT jsonb_build_object('${firstParam}', via_tbl.${firstParam}))
+      INTO v_affected
+      FROM ${viaTable} via_tbl
+      WHERE via_tbl.${viaColumn} = COALESCE((p_new->>'${relFK}')::int, (p_old->>'${relFK}')::int);`;
+    }
 
     if (nestedIncludes) {
       // Nested relation: need to traverse up to root
@@ -464,6 +515,12 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
       for (const [relName, relConfig] of Object.entries(relations || {})) {
         const entity = typeof relConfig === 'string' ? relConfig : relConfig.entity;
         if (entity) tables.add(entity);
+
+        // Extract table from via path: "products.id" -> "products"
+        if (typeof relConfig === 'object' && relConfig.via) {
+          const viaTable = relConfig.via.split('.')[0];
+          tables.add(viaTable);
+        }
 
         // Handle nested relations (include or relations)
         if (typeof relConfig === 'object') {
