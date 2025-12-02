@@ -1,6 +1,6 @@
 {
   "name": "dzql",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "description": "PostgreSQL-powered framework with zero boilerplate CRUD operations and real-time WebSocket synchronization",
   "type": "module",
   "main": "src/server/index.js",
