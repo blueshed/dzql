@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS dzql.subscribables (
   name TEXT PRIMARY KEY,
   permission_paths JSONB NOT NULL DEFAULT '{}'::jsonb,
   param_schema JSONB NOT NULL DEFAULT '{}'::jsonb,
-  root_entity TEXT NOT NULL,
+  root_entity TEXT,  -- NULL allowed for dashboard mode (pure collections)
   relations JSONB NOT NULL DEFAULT '{}'::jsonb,
   scope_tables TEXT[] NOT NULL DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -31,7 +31,7 @@ COMMENT ON COLUMN dzql.subscribables.param_schema IS
   'Parameter schema defining subscription key (e.g., {"venue_id": "int"})';
 
 COMMENT ON COLUMN dzql.subscribables.root_entity IS
-  'Root table for the subscribable document';
+  'Root table for the subscribable document. NULL for dashboard mode (pure collections).';
 
 COMMENT ON COLUMN dzql.subscribables.relations IS
   'Related entities to include (e.g., {"org": "organisations", "sites": {"entity": "sites", "filter": "venue_id=$venue_id"}})';

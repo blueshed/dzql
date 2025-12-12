@@ -16,8 +16,12 @@ DECLARE
   v_entity TEXT;
   v_nested JSONB;
 BEGIN
-  -- Start with root entity
-  v_tables := ARRAY[p_root_entity];
+  -- Start with root entity (may be NULL for dashboard mode)
+  IF p_root_entity IS NOT NULL AND p_root_entity != '' THEN
+    v_tables := ARRAY[p_root_entity];
+  ELSE
+    v_tables := ARRAY[]::TEXT[];
+  END IF;
 
   -- Return early if no relations
   IF p_relations IS NULL OR p_relations = '{}'::jsonb THEN
@@ -85,8 +89,11 @@ BEGIN
     RAISE EXCEPTION 'Subscribable name cannot be empty';
   END IF;
 
-  IF p_root_entity IS NULL OR p_root_entity = '' THEN
-    RAISE EXCEPTION 'Root entity cannot be empty';
+  -- NULL root_entity is allowed for dashboard mode (pure collections)
+  -- But if relations is also empty, that's an error
+  IF (p_root_entity IS NULL OR p_root_entity = '') AND
+     (p_relations IS NULL OR p_relations = '{}'::jsonb) THEN
+    RAISE EXCEPTION 'Subscribable must have either a root entity or relations';
   END IF;
 
   -- Extract scope tables from root entity and relations
@@ -106,7 +113,7 @@ BEGIN
     p_name,
     COALESCE(p_permission_paths, '{}'::jsonb),
     COALESCE(p_param_schema, '{}'::jsonb),
-    p_root_entity,
+    NULLIF(p_root_entity, ''),  -- Store empty string as NULL
     COALESCE(p_relations, '{}'::jsonb),
     v_scope_tables,
     NOW(),

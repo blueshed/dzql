@@ -21,4 +21,8 @@ export class Tasks {
   constructor() {
     this.dzql = new DzqlNamespace();
   }
+
+  async publish(c) {
+    await c.run("cd packages/dzql && bun publish --access public");
+  }
 }

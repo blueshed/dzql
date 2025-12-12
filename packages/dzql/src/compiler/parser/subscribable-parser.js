@@ -129,6 +129,8 @@ export class SubscribableParser {
    */
   _cleanString(str) {
     if (!str) return '';
+    // Handle SQL NULL keyword - return empty string for null values
+    if (str.trim().toUpperCase() === 'NULL') return '';
     // Remove outer quotes, SQL comments, then any remaining quotes and whitespace
     let cleaned = str.replace(/^['"]|['"]$/g, '');  // Remove outer quotes
     cleaned = cleaned.replace(/--[^\n]*/g, '');     // Remove SQL comments

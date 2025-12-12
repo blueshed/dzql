@@ -12,6 +12,18 @@ export class OperationCodegen {
   }
 
   /**
+   * Determine appropriate type cast for a column name
+   * Only casts to int if column is 'id' or ends with '_id'
+   * @private
+   */
+  _getTypeCast(columnName) {
+    if (columnName === 'id' || columnName.endsWith('_id')) {
+      return '::int';
+    }
+    return '';
+  }
+
+  /**
    * Generate all operation functions
    * @returns {string} SQL for all operations
    */
@@ -36,7 +48,7 @@ export class OperationCodegen {
     // For composite PKs, accept JSONB containing all PK fields
     // For simple PKs, accept INT for backwards compatibility
     if (this.isCompositePK) {
-      const whereClause = this.primaryKey.map(col => `${col} = (p_pk->>'${col}')::int`).join(' AND ');
+      const whereClause = this.primaryKey.map(col => `${col} = (p_pk->>'${col}')${this._getTypeCast(col)}`).join(' AND ');
       const pkDescription = this.primaryKey.join(', ');
 
       return `-- GET operation for ${this.tableName} (composite primary key: ${pkDescription})
@@ -125,6 +137,21 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     const m2mExpansion = this._generateM2MExpansion();
     const fieldDefaults = this._generateFieldDefaults();
 
+    // For composite PKs, generate a different function signature and logic
+    if (this.isCompositePK) {
+      return this._generateCompositePKSaveFunction({
+        graphRulesCall,
+        notificationSQL,
+        filterSensitiveFields,
+        m2mVariables,
+        m2mExtraction,
+        m2mSync,
+        m2mExpansion,
+        fieldDefaults
+      });
+    }
+
+    // Simple PK (id column) - original implementation for backwards compatibility
     return `-- SAVE operation for ${this.tableName}
 CREATE OR REPLACE FUNCTION save_${this.tableName}(
   p_user_id INT,
@@ -215,6 +242,145 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   }
 
   /**
+   * Generate SAVE function for composite primary keys
+   * Uses INSERT ... ON CONFLICT DO UPDATE (UPSERT) to avoid race conditions
+   * @private
+   */
+  _generateCompositePKSaveFunction(helpers) {
+    const {
+      graphRulesCall,
+      notificationSQL,
+      filterSensitiveFields,
+      m2mVariables,
+      m2mExtraction,
+      m2mSync,
+      m2mExpansion,
+      fieldDefaults
+    } = helpers;
+
+    const pkDescription = this.primaryKey.join(', ');
+
+    // Generate WHERE clause for composite PK lookup (used for permission checks and v_before)
+    // e.g., "entity_type = (p_data->>'entity_type') AND entity_id = (p_data->>'entity_id')::int"
+    const whereClause = this.primaryKey.map(col => {
+      return `${col} = (p_data->>'${col}')${this._getTypeCast(col)}`;
+    }).join(' AND ');
+
+    // Check if all PK fields are present in p_data
+    const pkNullCheck = this.primaryKey.map(col => `p_data->>'${col}' IS NULL`).join(' OR ');
+
+    // Build the list of PK field names for exclusion from SET clause
+    const pkFieldsExclusion = this.primaryKey.map(col => `jsonb_object_keys != '${col}'`).join(' AND ');
+
+    // For M2M sync and expansion, we need to reference the PK fields from v_result
+    const m2mSyncCompositePK = this._generateM2MSyncCompositePK();
+    const m2mExpansionCompositePK = this._generateM2MExpansionCompositePK();
+    const m2mExpansionForBeforeCompositePK = this._generateM2MExpansionForBeforeCompositePK();
+
+    // Generate ON CONFLICT clause for composite PK
+    // e.g., "(entity_type, entity_id)"
+    const onConflictPK = `(${this.primaryKey.join(', ')})`;
+
+    return `-- SAVE operation for ${this.tableName} (composite primary key: ${pkDescription})
+-- Uses UPSERT (INSERT ... ON CONFLICT DO UPDATE) to prevent race conditions
+CREATE OR REPLACE FUNCTION save_${this.tableName}(
+  p_user_id INT,
+  p_data JSONB
+) RETURNS JSONB AS $$
+DECLARE
+  v_result ${this.tableName}%ROWTYPE;
+  v_existing ${this.tableName}%ROWTYPE;
+  v_output JSONB;
+  v_before JSONB;
+  v_is_insert BOOLEAN := false;
+  v_notify_users INT[];
+  v_columns TEXT;
+  v_values TEXT;
+  v_update_set TEXT;
+${m2mVariables}
+BEGIN
+${m2mExtraction}
+  -- Check if this might be an update (all PK fields present)
+  -- We still need to check for existing record for permission checks and v_before
+  IF NOT (${pkNullCheck}) THEN
+    SELECT * INTO v_existing
+    FROM ${this.tableName}
+    WHERE ${whereClause};
+
+    IF FOUND THEN
+      -- Check update permission on existing record
+      IF NOT can_update_${this.tableName}(p_user_id, to_jsonb(v_existing)) THEN
+        RAISE EXCEPTION 'Permission denied: update on ${this.tableName}';
+      END IF;
+      -- Store before state for M2M expansion
+      v_before := to_jsonb(v_existing);
+${m2mExpansionForBeforeCompositePK}
+    ELSE
+      -- Record doesn't exist yet, this will be an insert
+      IF NOT can_create_${this.tableName}(p_user_id, p_data) THEN
+        RAISE EXCEPTION 'Permission denied: create on ${this.tableName}';
+      END IF;
+    END IF;
+  ELSE
+    -- Missing PK fields - must be a new insert
+    IF NOT can_create_${this.tableName}(p_user_id, p_data) THEN
+      RAISE EXCEPTION 'Permission denied: create on ${this.tableName}';
+    END IF;
+  END IF;
+${fieldDefaults}
+  -- Build column and value lists for UPSERT
+  SELECT
+    string_agg(quote_ident(key), ', '),
+    string_agg(quote_nullable(value), ', ')
+  INTO v_columns, v_values
+  FROM jsonb_each_text(p_data) kv(key, value);
+
+  -- Build UPDATE SET clause (excluding PK columns)
+  SELECT string_agg(quote_ident(key) || ' = EXCLUDED.' || quote_ident(key), ', ')
+  INTO v_update_set
+  FROM jsonb_each_text(p_data) kv(key, value)
+  WHERE ${this.primaryKey.map(col => `key != '${col}'`).join(' AND ')};
+
+  -- Perform atomic UPSERT to avoid race conditions
+  IF v_update_set IS NOT NULL AND v_update_set != '' THEN
+    -- Has non-PK fields to update
+    EXECUTE format(
+      'INSERT INTO ${this.tableName} (%s) VALUES (%s) ' ||
+      'ON CONFLICT ${onConflictPK} DO UPDATE SET %s ' ||
+      'RETURNING *',
+      v_columns, v_values, v_update_set
+    ) INTO v_result;
+  ELSE
+    -- Only PK fields provided - insert or return existing
+    EXECUTE format(
+      'INSERT INTO ${this.tableName} (%s) VALUES (%s) ' ||
+      'ON CONFLICT ${onConflictPK} DO UPDATE SET ${this.primaryKey[0]} = EXCLUDED.${this.primaryKey[0]} ' ||
+      'RETURNING *',
+      v_columns, v_values
+    ) INTO v_result;
+  END IF;
+
+  -- Determine if this was an insert by checking if v_existing was found
+  -- (if v_existing was NOT FOUND, then this was an insert)
+  v_is_insert := v_existing.${this.primaryKey[0]} IS NULL;
+
+${m2mSyncCompositePK}
+
+  -- Prepare output with M2M fields (BEFORE event creation for real-time notifications!)
+  v_output := to_jsonb(v_result);
+${m2mExpansionCompositePK}
+
+${graphRulesCall}
+${notificationSQL}
+
+${filterSensitiveFields}
+
+  RETURN v_output;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;`;
+  }
+
+  /**
    * Generate DELETE function
    */
   generateDeleteFunction() {
@@ -224,7 +390,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
 
     // For composite PKs, accept JSONB containing all PK fields
     if (this.isCompositePK) {
-      const whereClause = this.primaryKey.map(col => `${col} = (p_pk->>'${col}')::int`).join(' AND ');
+      const whereClause = this.primaryKey.map(col => `${col} = (p_pk->>'${col}')${this._getTypeCast(col)}`).join(' AND ');
       const pkDescription = this.primaryKey.join(', ');
 
       const deleteSQL = this.entity.softDelete
@@ -734,6 +900,129 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
      JOIN ${targetEntity} t ON t.id = jt.${foreignKey}
      WHERE jt.${localKey} = v_record.id)
   );`);
+      }
+    }
+
+    return expansions.join('');
+  }
+
+  /**
+   * Generate M2M sync for composite primary keys
+   * For tables with composite PKs, M2M relationships are rare but possible
+   * @private
+   */
+  _generateM2MSyncCompositePK() {
+    const manyToMany = this.entity.manyToMany || {};
+    if (Object.keys(manyToMany).length === 0) return '';
+
+    // For composite PKs, we need to build a composite key reference
+    // This is a rare case - most tables with composite PKs are junction tables themselves
+    const syncs = [];
+
+    for (const [relationKey, config] of Object.entries(manyToMany)) {
+      const idField = config.id_field;
+      const junctionTable = config.junction_table;
+      const localKey = config.local_key;
+      const foreignKey = config.foreign_key;
+
+      // For composite PK tables with M2M, we'd need a different junction table structure
+      // This is an edge case - log a warning comment in the generated SQL
+      syncs.push(`
+  -- ============================================================================
+  -- M2M Sync: ${relationKey} (junction: ${junctionTable}) - COMPOSITE PK
+  -- Note: M2M on composite PK tables requires junction table to reference all PK columns
+  -- ============================================================================
+  IF v_${idField} IS NOT NULL THEN
+    -- Delete relationships not in new list (using first PK column as reference)
+    DELETE FROM ${junctionTable}
+    WHERE ${localKey} = v_result.${this.primaryKey[0]}
+      AND (${foreignKey} <> ALL(v_${idField}) OR v_${idField} = '{}');
+
+    -- Insert new relationships (idempotent)
+    IF array_length(v_${idField}, 1) > 0 THEN
+      INSERT INTO ${junctionTable} (${localKey}, ${foreignKey})
+      SELECT v_result.${this.primaryKey[0]}, unnest(v_${idField})
+      ON CONFLICT (${localKey}, ${foreignKey}) DO NOTHING;
+    END IF;
+  END IF;`);
+    }
+
+    return syncs.join('');
+  }
+
+  /**
+   * Generate M2M expansion for composite primary keys (for SAVE output)
+   * @private
+   */
+  _generateM2MExpansionCompositePK() {
+    const manyToMany = this.entity.manyToMany || {};
+    if (Object.keys(manyToMany).length === 0) return '';
+
+    const expansions = [];
+
+    for (const [relationKey, config] of Object.entries(manyToMany)) {
+      const idField = config.id_field;
+      const junctionTable = config.junction_table;
+      const localKey = config.local_key;
+      const foreignKey = config.foreign_key;
+      const targetEntity = config.target_entity;
+      const expand = config.expand || false;
+
+      // Use first PK column for M2M lookups
+      expansions.push(`
+  -- Add M2M IDs: ${idField} (composite PK table)
+  v_output := v_output || jsonb_build_object('${idField}',
+    (SELECT COALESCE(jsonb_agg(${foreignKey} ORDER BY ${foreignKey}), '[]'::jsonb)
+     FROM ${junctionTable} WHERE ${localKey} = v_result.${this.primaryKey[0]})
+  );`);
+
+      if (expand) {
+        expansions.push(`
+  -- Expand M2M objects: ${relationKey} (expand=true, composite PK table)
+  v_output := v_output || jsonb_build_object('${relationKey}',
+    (SELECT COALESCE(jsonb_agg(to_jsonb(t.*) ORDER BY t.id), '[]'::jsonb)
+     FROM ${junctionTable} jt
+     JOIN ${targetEntity} t ON t.id = jt.${foreignKey}
+     WHERE jt.${localKey} = v_result.${this.primaryKey[0]})
+  );`);
+      }
+    }
+
+    return expansions.join('');
+  }
+
+  /**
+   * Generate M2M expansion for "before" record with composite primary keys
+   * @private
+   */
+  _generateM2MExpansionForBeforeCompositePK() {
+    const manyToMany = this.entity.manyToMany || {};
+    if (Object.keys(manyToMany).length === 0) return '';
+
+    const expansions = [];
+
+    for (const [relationKey, config] of Object.entries(manyToMany)) {
+      const idField = config.id_field;
+      const junctionTable = config.junction_table;
+      const localKey = config.local_key;
+      const foreignKey = config.foreign_key;
+      const targetEntity = config.target_entity;
+      const expand = config.expand || false;
+
+      expansions.push(`
+    v_before := v_before || jsonb_build_object('${idField}',
+      (SELECT COALESCE(jsonb_agg(${foreignKey} ORDER BY ${foreignKey}), '[]'::jsonb)
+       FROM ${junctionTable} WHERE ${localKey} = v_existing.${this.primaryKey[0]})
+    );`);
+
+      if (expand) {
+        expansions.push(`
+    v_before := v_before || jsonb_build_object('${relationKey}',
+      (SELECT COALESCE(jsonb_agg(to_jsonb(t.*) ORDER BY t.id), '[]'::jsonb)
+       FROM ${junctionTable} jt
+       JOIN ${targetEntity} t ON t.id = jt.${foreignKey}
+       WHERE jt.${localKey} = v_existing.${this.primaryKey[0]})
+    );`);
       }
     }
 

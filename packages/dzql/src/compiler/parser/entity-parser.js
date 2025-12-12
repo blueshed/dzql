@@ -218,11 +218,40 @@ export class EntityParser {
    * @private
    */
   _parseJSONBuildObject(str) {
-    // Extract the content between jsonb_build_object( and )
-    const match = str.match(/jsonb_build_object\s*\(([\s\S]*)\)/i);
-    if (!match) return {};
+    // Find the matching closing parenthesis for jsonb_build_object(
+    // Cannot use greedy regex as it matches the LAST ) not the matching one
+    const startMatch = str.match(/jsonb_build_object\s*\(/i);
+    if (!startMatch) return {};
 
-    const content = match[1];
+    const startIndex = startMatch.index + startMatch[0].length;
+    let depth = 1;
+    let inString = false;
+    let stringChar = null;
+    let endIndex = startIndex;
+
+    for (let i = startIndex; i < str.length && depth > 0; i++) {
+      const char = str[i];
+      const prev = i > 0 ? str[i - 1] : '';
+
+      if ((char === "'" || char === '"') && prev !== '\\') {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+          stringChar = null;
+        }
+      }
+
+      if (!inString) {
+        if (char === '(') depth++;
+        if (char === ')') depth--;
+      }
+
+      endIndex = i;
+    }
+
+    const content = str.substring(startIndex, endIndex);
     const params = this._parseParameters(content);
     const result = {};
 
@@ -260,10 +289,40 @@ export class EntityParser {
    * @private
    */
   _parseJSONBuildArray(str) {
-    const match = str.match(/jsonb_build_array\s*\(([\s\S]*)\)/i);
-    if (!match) return [];
+    // Find the matching closing parenthesis for jsonb_build_array(
+    // Cannot use greedy regex as it matches the LAST ) not the matching one
+    const startMatch = str.match(/jsonb_build_array\s*\(/i);
+    if (!startMatch) return [];
 
-    const content = match[1];
+    const startIndex = startMatch.index + startMatch[0].length;
+    let depth = 1;
+    let inString = false;
+    let stringChar = null;
+    let endIndex = startIndex;
+
+    for (let i = startIndex; i < str.length && depth > 0; i++) {
+      const char = str[i];
+      const prev = i > 0 ? str[i - 1] : '';
+
+      if ((char === "'" || char === '"') && prev !== '\\') {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+          stringChar = null;
+        }
+      }
+
+      if (!inString) {
+        if (char === '(') depth++;
+        if (char === ')') depth--;
+      }
+
+      endIndex = i;
+    }
+
+    const content = str.substring(startIndex, endIndex);
     const params = this._parseParameters(content);
 
     return params.map(param => {

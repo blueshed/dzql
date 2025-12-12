@@ -247,6 +247,70 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;`;
       scopeTables: scopeTables
     });
 
+    // Pure collection mode: no rootEntity, only relations
+    if (!this.rootEntity) {
+      // Build relation-only selects (strip leading comma)
+      const collectionSelects = this._generateCollectionOnlySelects();
+
+      return `CREATE OR REPLACE FUNCTION get_${this.name}(
+  p_params JSONB,
+  p_user_id INT
+) RETURNS JSONB AS $$
+DECLARE
+  v_data JSONB;
+BEGIN
+  -- Check access control
+  IF NOT ${this.name}_can_subscribe(p_user_id, p_params) THEN
+    RAISE EXCEPTION 'Permission denied';
+  END IF;
+
+  -- Build document with collections only (no root entity)
+  SELECT jsonb_build_object(
+    ${collectionSelects}
+  )
+  INTO v_data;
+
+  -- Return data with embedded schema for atomic updates
+  RETURN jsonb_build_object(
+    'data', v_data,
+    'schema', '${schemaJson}'::jsonb
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;`;
+    }
+
+    // Dashboard mode: empty paramSchema with rootEntity means aggregate root as array
+    if (params.length === 0) {
+      return `CREATE OR REPLACE FUNCTION get_${this.name}(
+  p_params JSONB,
+  p_user_id INT
+) RETURNS JSONB AS $$
+DECLARE
+  v_data JSONB;
+BEGIN
+  -- Check access control
+  IF NOT ${this.name}_can_subscribe(p_user_id, p_params) THEN
+    RAISE EXCEPTION 'Permission denied';
+  END IF;
+
+  -- Build document with root as array (dashboard mode)
+  SELECT jsonb_build_object(
+    '${this.rootEntity}', COALESCE((
+      SELECT jsonb_agg(row_to_json(root.*))
+      FROM ${this.rootEntity} root
+    ), '[]'::jsonb)${relationSelects}
+  )
+  INTO v_data;
+
+  -- Return data with embedded schema for atomic updates
+  RETURN jsonb_build_object(
+    'data', v_data,
+    'schema', '${schemaJson}'::jsonb
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;`;
+    }
+
     return `CREATE OR REPLACE FUNCTION get_${this.name}(
   p_params JSONB,
   p_user_id INT
@@ -357,6 +421,33 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
   }
 
   /**
+   * Generate collection-only selects (no root entity)
+   * Used when rootEntity is null/empty - pure collection mode
+   * @private
+   */
+  _generateCollectionOnlySelects() {
+    if (Object.keys(this.relations).length === 0) {
+      return "'_empty', '{}'::jsonb";
+    }
+
+    const selects = Object.entries(this.relations).map(([relName, relConfig]) => {
+      const relEntity = typeof relConfig === 'string' ? relConfig : relConfig.entity;
+      const relFilter = typeof relConfig === 'object' ? relConfig.filter : null;
+
+      // For collection mode, filter should be TRUE or we fetch all
+      const filterSQL = relFilter === 'TRUE' ? 'TRUE' : 'TRUE';
+
+      return `'${relName}', COALESCE((
+      SELECT jsonb_agg(row_to_json(rel.*))
+      FROM ${relEntity} rel
+      WHERE ${filterSQL}
+    ), '[]'::jsonb)`;
+    });
+
+    return selects.join(',\n    ');
+  }
+
+  /**
    * Generate JOIN clause for via relations
    * Handles multi-hop via chains by looking up each intermediate table
    * @private
@@ -462,6 +553,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
       return `rel.${fk} = root.id`;
     }
 
+    // Dashboard collection: filter="TRUE" means fetch ALL rows (no FK filter)
+    if (filter === 'TRUE') {
+      return 'TRUE';
+    }
+
     // Parse filter expression like "venue_id=$venue_id"
     // Replace $param with v_param variable
     return filter.replace(/\$(\w+)/g, 'v_$1');
@@ -473,13 +569,21 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
    */
   _generateAffectedDocumentsFunction() {
     const cases = [];
+    const seenEntities = new Set();
 
-    // Case 1: Root entity changed
-    cases.push(this._generateRootAffectedCase());
+    // Case 1: Root entity changed (only if rootEntity exists)
+    if (this.rootEntity) {
+      cases.push(this._generateRootAffectedCase());
+      seenEntities.add(this.rootEntity);
+    }
 
-    // Case 2: Related entities changed
+    // Case 2: Related entities changed (skip duplicates)
     for (const [relName, relConfig] of Object.entries(this.relations)) {
-      cases.push(this._generateRelationAffectedCase(relName, relConfig));
+      const relEntity = typeof relConfig === 'string' ? relConfig : relConfig.entity;
+      if (!seenEntities.has(relEntity)) {
+        cases.push(this._generateRelationAffectedCase(relName, relConfig));
+        seenEntities.add(relEntity);
+      }
     }
 
     const casesSQL = cases.join('\n\n    ');
@@ -510,7 +614,15 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
    */
   _generateRootAffectedCase() {
     const params = Object.keys(this.paramSchema);
-    const firstParam = params[0] || 'id';
+
+    // Dashboard mode: empty paramSchema means notify ALL subscribers
+    if (params.length === 0) {
+      return `-- Root entity (${this.rootEntity}) changed - dashboard mode, notify all
+    WHEN '${this.rootEntity}' THEN
+      v_affected := ARRAY['{}'::jsonb];`;
+    }
+
+    const firstParam = params[0];
 
     return `-- Root entity (${this.rootEntity}) changed
     WHEN '${this.rootEntity}' THEN
@@ -529,9 +641,18 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
       ? relConfig.foreignKey
       : `${this.rootEntity}_id`;
     const relVia = typeof relConfig === 'object' ? relConfig.via : null;
+    const relFilter = typeof relConfig === 'object' ? relConfig.filter : null;
 
     const params = Object.keys(this.paramSchema);
     const firstParam = params[0] || 'id';
+
+    // Dashboard collection: filter="TRUE" means notify ALL subscribers
+    // This relation is independent from the root entity
+    if (relFilter === 'TRUE') {
+      return `-- Dashboard collection (${relEntity}) - notify all subscribers
+    WHEN '${relEntity}' THEN
+      v_affected := ARRAY['{}'::jsonb];`;
+    }
 
     // Check if this is a nested relation (has parent FK)
     const nestedIncludes = typeof relConfig === 'object' ? relConfig.include : null;
@@ -604,7 +725,10 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
    * @returns {string[]} Array of table names
    */
   extractScopeTables() {
-    const tables = new Set([this.rootEntity]);
+    const tables = new Set();
+    if (this.rootEntity) {
+      tables.add(this.rootEntity);
+    }
 
     const extractFromRelations = (relations) => {
       for (const [relName, relConfig] of Object.entries(relations || {})) {
@@ -641,8 +765,10 @@ $$ LANGUAGE plpgsql IMMUTABLE;`;
   buildPathMapping() {
     const paths = {};
 
-    // Root entity maps to top level
-    paths[this.rootEntity] = '.';
+    // Root entity maps to top level (only if it exists)
+    if (this.rootEntity) {
+      paths[this.rootEntity] = '.';
+    }
 
     const buildPaths = (relations, parentPath = '') => {
       for (const [relName, relConfig] of Object.entries(relations || {})) {

@@ -52,7 +52,7 @@ export class GraphRulesCodegen {
 
       const actionBlocks = [];
       for (const action of actions) {
-        const actionSQL = this._generateAction(action, ruleName, description);
+        const actionSQL = this._generateAction(action, ruleName, description, operation);
         if (actionSQL) {
           actionBlocks.push(actionSQL);
         }
@@ -99,29 +99,33 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
 
   /**
    * Generate SQL for a single action
+   * @param {Object} action - The action configuration
+   * @param {string} ruleName - The rule name
+   * @param {string} description - The rule description
+   * @param {string} operation - The operation context ('create', 'update', 'delete')
    * @private
    */
-  _generateAction(action, ruleName, description) {
+  _generateAction(action, ruleName, description, operation) {
     const comment = `  -- ${description}`;
 
     switch (action.type) {
       case 'create':
-        return this._generateCreateAction(action, comment);
+        return this._generateCreateAction(action, comment, operation);
 
       case 'update':
-        return this._generateUpdateAction(action, comment);
+        return this._generateUpdateAction(action, comment, operation);
 
       case 'delete':
-        return this._generateDeleteAction(action, comment);
+        return this._generateDeleteAction(action, comment, operation);
 
       case 'validate':
-        return this._generateValidateAction(action, comment);
+        return this._generateValidateAction(action, comment, operation);
 
       case 'execute':
-        return this._generateExecuteAction(action, comment);
+        return this._generateExecuteAction(action, comment, operation);
 
       case 'notify':
-        return this._generateNotifyAction(action, comment);
+        return this._generateNotifyAction(action, comment, operation);
 
       default:
         console.warn('Unknown action type:', action.type);
@@ -133,7 +137,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
    * Generate CREATE action
    * @private
    */
-  _generateCreateAction(action, comment) {
+  _generateCreateAction(action, comment, operation) {
     const entity = action.entity;
     const data = action.data;
 
@@ -142,7 +146,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
 
     for (const [field, value] of Object.entries(data)) {
       fields.push(field);
-      values.push(this._resolveValue(value));
+      values.push(this._resolveValue(value, operation));
     }
 
     return `${comment}
@@ -154,19 +158,19 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
    * Generate UPDATE action
    * @private
    */
-  _generateUpdateAction(action, comment) {
+  _generateUpdateAction(action, comment, operation) {
     const entity = action.entity;
     const data = action.data;
     const match = action.match;
 
     const setClauses = [];
     for (const [field, value] of Object.entries(data)) {
-      setClauses.push(`${field} = ${this._resolveValue(value)}`);
+      setClauses.push(`${field} = ${this._resolveValue(value, operation)}`);
     }
 
     const whereClauses = [];
     for (const [field, value] of Object.entries(match)) {
-      whereClauses.push(`${field} = ${this._resolveValue(value)}`);
+      whereClauses.push(`${field} = ${this._resolveValue(value, operation)}`);
     }
 
     return `${comment}
@@ -179,13 +183,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
    * Generate DELETE action
    * @private
    */
-  _generateDeleteAction(action, comment) {
+  _generateDeleteAction(action, comment, operation) {
     const entity = action.entity;
     const match = action.match;
 
     const whereClauses = [];
     for (const [field, value] of Object.entries(match)) {
-      whereClauses.push(`${field} = ${this._resolveValue(value)}`);
+      whereClauses.push(`${field} = ${this._resolveValue(value, operation)}`);
     }
 
     return `${comment}
@@ -197,14 +201,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
    * Generate VALIDATE action
    * @private
    */
-  _generateValidateAction(action, comment) {
+  _generateValidateAction(action, comment, operation) {
     const functionName = action.function;
     const params = action.params || {};
     const errorMessage = action.error_message || 'Validation failed';
 
     const paramList = [];
     for (const [key, value] of Object.entries(params)) {
-      paramList.push(`${key} => ${this._resolveValue(value)}`);
+      paramList.push(`${key} => ${this._resolveValue(value, operation)}`);
     }
 
     const paramSQL = paramList.length > 0 ? paramList.join(', ') : '';
@@ -219,13 +223,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
    * Generate EXECUTE action
    * @private
    */
-  _generateExecuteAction(action, comment) {
+  _generateExecuteAction(action, comment, operation) {
     const functionName = action.function;
     const params = action.params || {};
 
     const paramList = [];
     for (const [key, value] of Object.entries(params)) {
-      paramList.push(`${key} => ${this._resolveValue(value)}`);
+      paramList.push(`${key} => ${this._resolveValue(value, operation)}`);
     }
 
     const paramSQL = paramList.length > 0 ? paramList.join(', ') : '';
@@ -253,10 +257,15 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
    * Creates an event that will be broadcast to specified users
    * @private
    */
-  _generateNotifyAction(action, comment) {
+  _generateNotifyAction(action, comment, operation) {
     const users = action.users || [];
     const message = action.message || '';
     const data = action.data || {};
+
+    // Determine the correct record variable based on operation
+    const recordVar = operation === 'delete' ? 'p_old_record'
+      : operation === 'update' ? 'p_new_record'
+      : 'p_record';
 
     // Build user ID array resolution
     let userIdSQL = 'ARRAY[]::INT[]';
@@ -269,10 +278,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
         if (userPath.startsWith('@') && !userPath.includes('->')) {
           // Simple field reference: @author_id
           const fieldName = userPath.substring(1);
-          userPaths.push(`(p_record->>'${fieldName}')::int`);
+          userPaths.push(`(${recordVar}->>'${fieldName}')::int`);
         } else if (userPath.startsWith('@') && userPath.includes('->')) {
           // Complex path: @post_id->posts.author_id - use runtime resolver
-          userPaths.push(`dzql.resolve_notification_path('${this.tableName}', p_record, '${userPath}')`);
+          userPaths.push(`dzql.resolve_notification_path('${this.tableName}', ${recordVar}, '${userPath}')`);
         } else {
           // Literal user ID
           userPaths.push(`${userPath}`);
@@ -301,19 +310,19 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     dataFields.push(`'table', '${this.tableName}'`);
 
     if (message) {
-      dataFields.push(`'message', ${this._resolveValue(message)}`);
+      dataFields.push(`'message', ${this._resolveValue(message, operation)}`);
     }
 
     // Add custom data fields
     for (const [key, value] of Object.entries(data)) {
-      dataFields.push(`'${key}', ${this._resolveValue(value)}`);
+      dataFields.push(`'${key}', ${this._resolveValue(value, operation)}`);
     }
 
     const dataSQL = dataFields.length > 0
       ? `jsonb_build_object(${dataFields.join(', ')})`
       : "'{}'::jsonb";
 
-    const pkBuildObject = this._generatePKBuildObject('p_record');
+    const pkBuildObject = this._generatePKBuildObject(recordVar);
 
     return `${comment}
   -- Create notification event
@@ -386,9 +395,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
 
   /**
    * Resolve a value (variable reference or literal)
+   * @param {string|number} value - The value to resolve
+   * @param {string} operation - The operation context ('create', 'update', 'delete')
    * @private
    */
-  _resolveValue(value) {
+  _resolveValue(value, operation = 'create') {
     if (typeof value !== 'string') {
       // Number or other type
       return value;
@@ -410,8 +421,14 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
           return 'NOW()';
 
         default:
-          // Field reference from record
-          return `(p_record->>'${varName}')`;
+          // Field reference from record - use correct variable based on operation
+          if (operation === 'delete') {
+            return `(p_old_record->>'${varName}')`;
+          } else if (operation === 'update') {
+            return `(p_new_record->>'${varName}')`;
+          } else {
+            return `(p_record->>'${varName}')`;
+          }
       }
     }
 

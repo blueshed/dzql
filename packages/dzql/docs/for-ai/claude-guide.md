@@ -23,9 +23,15 @@ Entity Registration:
     temporal_fields,      -- '{}'
     notification_paths,   -- '{"ownership": ["@org_id->acts_for..."]}'
     permission_paths,     -- '{"view": [], "create": [...]}'
-    graph_rules,          -- '{"on_create": {...}, "many_to_many": {...}}'
+    graph_rules,          -- '{"on_create": {...}, "many_to_many": {...}, "primary_key": [...]}'
     field_defaults        -- '{"owner_id": "@user_id"}'
   )
+
+Composite Primary Keys:
+  graph_rules: '{"primary_key": ["entity_type", "entity_id"]}'
+  - GET/DELETE accept JSONB: get_table(user_id, '{"col1": "val", "col2": 123}')
+  - SAVE detects insert/update by checking if all PK fields exist
+  - Columns ending with _id are cast to ::int, others stay text
 
 M2M id_field naming:  tag_ids (singular + _ids), NOT tags_ids
 Permission [] = public, omitted = denied

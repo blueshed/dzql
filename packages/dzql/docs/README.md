@@ -16,6 +16,7 @@ Feature-specific guides and how-tos:
 
 - **[Live Query Subscriptions](guides/subscriptions.md)** - Real-time denormalized documents
 - **[Many-to-Many Relationships](guides/many-to-many.md)** - Junction table management
+- **[Composite Primary Keys](guides/composite-primary-keys.md)** - Tables with compound keys
 - **[Field Defaults](guides/field-defaults.md)** - Auto-populate fields on create
 - **[Custom Functions](guides/custom-functions.md)** - Extend with PostgreSQL or Bun functions
 - **[Client Stores](guides/client-stores.md)** - Pinia store patterns for Vue.js
