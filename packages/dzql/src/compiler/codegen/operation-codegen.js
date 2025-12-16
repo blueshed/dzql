@@ -575,7 +575,7 @@ BEGIN
           WHEN 'lte' THEN
             v_where_clause := v_where_clause || format(' AND %I <= %L', v_field, v_value #>> '{}');
           WHEN 'in' THEN
-            v_where_clause := v_where_clause || format(' AND %I = ANY(%L::TEXT[])', v_field,
+            v_where_clause := v_where_clause || format(' AND %I::TEXT = ANY(%L)', v_field,
               (SELECT array_agg(value #>> '{}') FROM jsonb_array_elements(v_value) AS value));
           WHEN 'ilike' THEN
             v_where_clause := v_where_clause || format(' AND %I ILIKE %L', v_field, v_value #>> '{}');

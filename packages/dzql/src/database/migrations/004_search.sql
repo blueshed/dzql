@@ -61,7 +61,7 @@ BEGIN
 
       WHEN 'in' THEN
         IF jsonb_typeof(l_op_value) = 'array' THEN
-          l_clauses := l_clauses || format('%I = ANY(%L)',
+          l_clauses := l_clauses || format('%I::TEXT = ANY(%L)',
             p_column_name,
             ARRAY(SELECT jsonb_array_elements_text(l_op_value))
           );
@@ -69,7 +69,7 @@ BEGIN
 
       WHEN 'not_in' THEN
         IF jsonb_typeof(l_op_value) = 'array' THEN
-          l_clauses := l_clauses || format('%I != ALL(%L)',
+          l_clauses := l_clauses || format('%I::TEXT != ALL(%L)',
             p_column_name,
             ARRAY(SELECT jsonb_array_elements_text(l_op_value))
           );
