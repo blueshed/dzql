@@ -2,18 +2,9 @@ import { WebSocketServer, Database, loadManifest } from "tzql";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
-// Load environment variables
-const config = {
-  port: parseInt(process.env.PORT || "3000"),
-  database: {
-    host: process.env.DB_HOST || "localhost",
-    port: parseInt(process.env.DB_PORT || "5432"),
-    database: process.env.DB_NAME || "tzql",
-    user: process.env.DB_USER || "tzql",
-    password: process.env.DB_PASSWORD || "tzql",
-  },
-  jwtSecret: process.env.JWT_SECRET || "change-me-in-production",
-};
+// Configuration from environment
+const port = parseInt(process.env.PORT || "3000");
+const databaseUrl = process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/my-tzql-app";
 
 // Load the compiled manifest
 const manifestPath = resolve(import.meta.dir, "dist/runtime/manifest.json");
@@ -21,14 +12,14 @@ const manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
 loadManifest(manifest);
 
 // Initialize database connection
-const db = new Database(config.database);
+const db = new Database(databaseUrl);
 
 // Initialize WebSocket server
 const wsServer = new WebSocketServer(db);
 
 // Start server
 const server = Bun.serve({
-  port: config.port,
+  port,
 
   fetch(req, server) {
     const url = new URL(req.url);
@@ -62,5 +53,5 @@ const server = Bun.serve({
   websocket: wsServer.handlers,
 });
 
-console.log(`Server running at http://localhost:${config.port}`);
-console.log(`WebSocket endpoint: ws://localhost:${config.port}/ws`);
+console.log(`Server running at http://localhost:${port}`);
+console.log(`WebSocket endpoint: ws://localhost:${port}/ws`);

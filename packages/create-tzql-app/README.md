@@ -2,20 +2,19 @@
 
 A real-time database application built with [TZQL](https://github.com/blueshed/dzql).
 
-## Quick Start
+## Create a New Project
 
 ```bash
-# Install dependencies
+bun create blueshed/dzql/packages/create-tzql-app my-app
+cd my-app
 bun install
-
-# Compile the domain and start the database
 bun run setup
-
-# Start the development server
 bun run dev
 ```
 
 Open http://localhost:3000 to see your app.
+
+The project name (`my-app`) becomes your database name automatically.
 
 ## Project Structure
 
@@ -107,16 +106,12 @@ ws.send(JSON.stringify({
 
 ## Environment Variables
 
-Create a `.env` file for configuration:
+The `.env` file is created automatically from `.env.example`:
 
 ```env
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/my-app
 PORT=3000
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=tzql
-DB_USER=tzql
-DB_PASSWORD=tzql
-JWT_SECRET=your-secret-key
+JWT_SECRET=change-me-in-production
 ```
 
 ## Learn More

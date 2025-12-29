@@ -14,11 +14,13 @@
   },
   "dependencies": {
     "tzql": "^0.0.1",
-    "postgres": "^3.4.3",
-    "dotenv": "^16.4.5"
+    "postgres": "^3.4.3"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "typescript": "^5.0.0"
+  },
+  "bun-create": {
+    "postinstall": "bun run scripts/setup.ts"
   }
 }
