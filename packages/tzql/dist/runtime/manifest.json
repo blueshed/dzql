@@ -741,9 +741,12 @@
       "graphRules": {
         "onCreate": [
           {
-            "type": "create",
-            "entity": "acts_for",
-            "data": {
+            "trigger": "create",
+            "action": "create",
+            "target": "acts_for",
+            "ruleName": "establish_ownership",
+            "description": "Creator becomes owner",
+            "params": {
               "user_id": "@user_id",
               "org_id": "@id",
               "valid_from": "@today"
@@ -753,27 +756,33 @@
         "onUpdate": [],
         "onDelete": [
           {
-            "type": "delete",
+            "trigger": "delete",
+            "action": "delete",
             "target": "acts_for",
+            "ruleName": "cleanup_relationships",
+            "description": "Cascading delete for related entities",
             "params": {
               "org_id": "@id"
             }
           },
           {
-            "type": "delete",
+            "trigger": "delete",
+            "action": "delete",
             "target": "venues",
+            "ruleName": "cleanup_relationships",
+            "description": "Cascading delete for related entities",
             "params": {
               "org_id": "@id"
             }
           },
           {
-            "type": "update",
+            "trigger": "delete",
+            "action": "update",
             "target": "packages",
+            "ruleName": "cleanup_relationships",
+            "description": "Cascading delete for related entities",
             "params": {
               "sponsor_org_id": "@id"
-            },
-            "data": {
-              "sponsor_org_id": null
             }
           }
         ]

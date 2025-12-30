@@ -1,41 +1,147 @@
-import { DomainIR, EntityIR, SubscribableIR, IncludeIR, CustomFunctionIR } from "../../shared/ir.js";
+import type {
+  DomainConfig,
+  EntityConfig,
+  SubscribableConfig,
+  IncludeConfig,
+  GraphRuleActionConfig,
+  GraphRuleConfig,
+  ManyToManyConfig,
+  DomainIR,
+  EntityIR,
+  SubscribableIR,
+  IncludeIR,
+  CustomFunctionIR,
+  ManyToManyIR,
+  GraphRuleIR
+} from "../../shared/ir.js";
 
-export function generateIR(rawDomain: any): DomainIR {
+/**
+ * Parses a graph rule config into IR format.
+ * Handles both formats:
+ * 1. Direct: { actions: [...] }
+ * 2. Named: { rule_name: { description, condition, actions } }
+ */
+function parseGraphRules(rules: Record<string, GraphRuleConfig> | { actions: GraphRuleActionConfig[] } | undefined): GraphRuleIR[] {
+  if (!rules) return [];
+
+  const allActions: GraphRuleIR[] = [];
+
+  // Helper to extract target from action config
+  const getTarget = (action: GraphRuleActionConfig): string => {
+    // For validate/execute, use 'function'; for delete/update use 'target'; for create use 'entity'; for reactor use 'name'
+    return action.function || action.target || action.entity || action.name || '';
+  };
+
+  // Helper to build a GraphRuleIR from an action config
+  const buildRuleIR = (
+    action: GraphRuleActionConfig,
+    ruleName?: string,
+    ruleDescription?: string,
+    ruleCondition?: string
+  ): GraphRuleIR => {
+    return {
+      trigger: 'create', // Will be set by caller
+      action: action.type as 'create' | 'update' | 'delete' | 'reactor' | 'validate' | 'execute',
+      target: getTarget(action),
+      ruleName,
+      description: ruleDescription,
+      condition: ruleCondition,
+      params: action.params || action.data || {},
+      match: action.match,
+      error_message: action.error_message
+    };
+  };
+
+  // Case 1: Direct rule (has 'actions' at top level)
+  if ('actions' in rules && Array.isArray(rules.actions)) {
+    for (const action of rules.actions) {
+      allActions.push(buildRuleIR(action));
+    }
+    return allActions;
+  }
+
+  // Case 2: Named rules (iterate values)
+  for (const [ruleName, ruleConfig] of Object.entries(rules)) {
+    if (ruleConfig && typeof ruleConfig === 'object' && 'actions' in ruleConfig && Array.isArray(ruleConfig.actions)) {
+      for (const action of ruleConfig.actions) {
+        allActions.push(buildRuleIR(
+          action,
+          ruleName,
+          ruleConfig.description,
+          ruleConfig.condition
+        ));
+      }
+    }
+  }
+
+  return allActions;
+}
+
+/**
+ * Parses include config (handles both string shorthand and full object)
+ */
+function parseIncludes(rawIncludes: Record<string, string | IncludeConfig> | undefined): Record<string, IncludeIR> {
+  const parsed: Record<string, IncludeIR> = {};
+  if (!rawIncludes) return parsed;
+
+  for (const [key, val] of Object.entries(rawIncludes)) {
+    // Handle shorthand string: "org": "organisations"
+    if (typeof val === 'string') {
+      parsed[key] = {
+        relation: key,
+        entity: val,
+        includes: {}
+      };
+    } else {
+      // Handle full object: "sites": { entity: "sites", ... }
+      parsed[key] = {
+        relation: key,
+        entity: val.entity || key,
+        filter: val.filter,
+        includes: parseIncludes(val.includes as Record<string, string | IncludeConfig> | undefined)
+      };
+    }
+  }
+  return parsed;
+}
+
+/**
+ * Generates IR from a typed domain configuration
+ */
+export function generateIR(domain: DomainConfig): DomainIR {
   const entities: Record<string, EntityIR> = {};
 
   // --- ENTITIES ---
-  for (const [name, config] of Object.entries(rawDomain.entities)) {
-    const rawSchema = (config as any).schema || {};
-    const columns = [];
+  for (const [name, config] of Object.entries(domain.entities)) {
+    const columns: Array<{ name: string; type: string; isArray: boolean }> = [];
     const pk: string[] = [];
 
     // Parse Schema
-    for (const [colName, colType] of Object.entries(rawSchema)) {
-      const typeStr = colType as string;
+    for (const [colName, colType] of Object.entries(config.schema)) {
       columns.push({
         name: colName,
-        type: typeStr,
-        isArray: typeStr.includes('[]')
+        type: colType,
+        isArray: colType.includes('[]')
       });
 
-      if (typeStr.toUpperCase().includes('PRIMARY KEY')) {
+      if (colType.toUpperCase().includes('PRIMARY KEY')) {
         pk.push(colName);
       }
     }
 
     // Check for explicit primaryKey array in config (for composite PKs)
-    const explicitPK = (config as any).primaryKey;
-    if (explicitPK && Array.isArray(explicitPK) && explicitPK.length > 0) {
+    if (config.primaryKey && Array.isArray(config.primaryKey) && config.primaryKey.length > 0) {
       pk.length = 0; // Clear any auto-detected PKs
-      pk.push(...explicitPK);
+      pk.push(...config.primaryKey);
     }
 
-    // Default PK if none found (Postgres usually defaults to 'id' but we should be explicit)
+    // Default PK if none found
     if (pk.length === 0 && columns.some(c => c.name === 'id')) {
-        pk.push('id');
+      pk.push('id');
     }
 
-    const rawPerms = (config as any).permissions || {};
+    // Parse permissions
+    const rawPerms = config.permissions || {};
     const permissions = {
       view: rawPerms.view || [],
       create: rawPerms.create || [],
@@ -44,35 +150,28 @@ export function generateIR(rawDomain: any): DomainIR {
     };
 
     // Parse Graph Rules
-    const rawRules = (config as any).graphRules || {};
-    const parseRules = (rules: any) => {
-        if (!rules) return [];
-        // Case 1: Direct rule (has actions)
-        if (rules.actions && Array.isArray(rules.actions)) return rules.actions;
+    const rawRules = config.graphRules || {};
 
-        // Case 2: Map of rules (iterate values)
-        const allActions = [];
-        for (const key in rules) {
-            const ruleConfig = rules[key];
-            if (ruleConfig && ruleConfig.actions && Array.isArray(ruleConfig.actions)) {
-                allActions.push(...ruleConfig.actions);
-            }
-        }
-        return allActions;
-    };
+    const onCreateRules = parseGraphRules(rawRules.on_create);
+    onCreateRules.forEach(r => r.trigger = 'create');
+
+    const onUpdateRules = parseGraphRules(rawRules.on_update);
+    onUpdateRules.forEach(r => r.trigger = 'update');
+
+    const onDeleteRules = parseGraphRules(rawRules.on_delete);
+    onDeleteRules.forEach(r => r.trigger = 'delete');
 
     // Parse M2M relationships
-    const rawM2M = (config as any).manyToMany || {};
-    const manyToMany: Record<string, any> = {};
+    const rawM2M = config.manyToMany || {};
+    const manyToMany: Record<string, ManyToManyIR> = {};
     for (const [relationKey, m2mConfig] of Object.entries(rawM2M)) {
-      const m2m = m2mConfig as any;
       manyToMany[relationKey] = {
-        junctionTable: m2m.junctionTable,
-        localKey: m2m.localKey,
-        foreignKey: m2m.foreignKey,
-        targetEntity: m2m.targetEntity,
-        idField: m2m.idField,
-        expand: m2m.expand || false
+        junctionTable: m2mConfig.junctionTable,
+        localKey: m2mConfig.localKey,
+        foreignKey: m2mConfig.foreignKey,
+        targetEntity: m2mConfig.targetEntity,
+        idField: m2mConfig.idField,
+        expand: m2mConfig.expand || false
       };
     }
 
@@ -81,18 +180,18 @@ export function generateIR(rawDomain: any): DomainIR {
       table: name,
       primaryKey: pk,
       columns,
-      labelField: (config as any).label || 'id',
-      softDelete: (config as any).softDelete || false,
-      managed: (config as any).managed !== false, // Default to true, only false if explicitly set
-      hidden: (config as any).hidden || [],
-      fieldDefaults: (config as any).fieldDefaults || {},
+      labelField: config.label || 'id',
+      softDelete: config.softDelete || false,
+      managed: config.managed !== false, // Default to true, only false if explicitly set
+      hidden: config.hidden || [],
+      fieldDefaults: config.fieldDefaults || {},
       permissions,
       relationships: {},
       manyToMany,
       graphRules: {
-        onCreate: parseRules(rawRules.on_create),
-        onUpdate: parseRules(rawRules.on_update),
-        onDelete: parseRules(rawRules.on_delete)
+        onCreate: onCreateRules,
+        onUpdate: onUpdateRules,
+        onDelete: onDeleteRules
       }
     };
   }
@@ -100,43 +199,15 @@ export function generateIR(rawDomain: any): DomainIR {
   // --- SUBSCRIBABLES ---
   const subscribables: Record<string, SubscribableIR> = {};
 
-  if (rawDomain.subscribables) {
-    for (const [name, config] of Object.entries(rawDomain.subscribables)) {
-      const raw = config as any;
-
-      const parseIncludes = (rawIncludes: any): Record<string, IncludeIR> => {
-        const parsed: Record<string, IncludeIR> = {};
-        if (!rawIncludes) return parsed;
-
-        for (const [key, val] of Object.entries(rawIncludes)) {
-          // Handle shorthand string: "org": "organisations"
-          if (typeof val === 'string') {
-            parsed[key] = {
-              relation: key,
-              entity: val,
-              includes: {}
-            };
-          } else {
-            // Handle full object: "sites": { entity: "sites", ... }
-            const obj = val as any;
-            parsed[key] = {
-              relation: key,
-              entity: obj.entity || key, // Fallback to key if entity missing (e.g. sites: { filter... })
-              filter: obj.filter,
-              includes: parseIncludes(obj.includes)
-            };
-          }
-        }
-        return parsed;
-      };
-
+  if (domain.subscribables) {
+    for (const [name, config] of Object.entries(domain.subscribables)) {
       subscribables[name] = {
         name,
-        params: raw.params || {},
-        root: raw.root || { entity: '', key: '' },
-        includes: parseIncludes(raw.includes),
-        scopeTables: raw.scopeTables || [], // Could perform auto-discovery here too
-        canSubscribe: raw.canSubscribe || []
+        params: config.params || {},
+        root: config.root || { entity: '', key: '' },
+        includes: parseIncludes(config.includes as Record<string, string | IncludeConfig> | undefined),
+        scopeTables: config.scopeTables || [],
+        canSubscribe: config.canSubscribe || []
       };
     }
   }
@@ -144,8 +215,8 @@ export function generateIR(rawDomain: any): DomainIR {
   // --- CUSTOM FUNCTIONS ---
   const customFunctions: CustomFunctionIR[] = [];
 
-  if (rawDomain.customFunctions) {
-    for (const fn of rawDomain.customFunctions) {
+  if (domain.customFunctions) {
+    for (const fn of domain.customFunctions) {
       customFunctions.push({
         name: fn.name,
         sql: fn.sql,

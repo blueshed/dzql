@@ -1,0 +1,24 @@
+{
+  "name": "{{name}}",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch server.ts",
+    "compile": "bunx dzql domain.ts",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "bun run compile && psql $DATABASE_URL -f dist/db/migrations/*.sql"
+  },
+  "dependencies": {
+    "dzql": "^0.6.0",
+    "postgres": "^3.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  },
+  "bun-create": {
+    "postinstall": ["./setup.sh", "rm setup.sh"],
+    "start": "bun run dev"
+  }
+}

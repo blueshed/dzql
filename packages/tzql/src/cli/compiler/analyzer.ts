@@ -1,12 +1,17 @@
-export function analyzeDomain(domain: any) {
+import type { DomainConfig, EntityConfig, SubscribableConfig, IncludeConfig } from "../../shared/ir.js";
+
+/**
+ * Analyzes a domain configuration for errors and inconsistencies
+ */
+export function analyzeDomain(domain: DomainConfig): string[] {
   const errors: string[] = [];
   const entities = domain.entities;
-  const subscribables = domain.subscribables;
+  const subscribables = domain.subscribables || {};
 
   // 1. Validate Subscribables
   for (const [subName, subConfig] of Object.entries(subscribables)) {
-    const rootEntity = (subConfig as any).root?.entity;
-    
+    const rootEntity = subConfig.root?.entity;
+
     // Check root entity existence
     if (!rootEntity) {
       errors.push(`Subscribable '${subName}' missing root entity.`);
@@ -15,13 +20,13 @@ export function analyzeDomain(domain: any) {
     }
 
     // Recursively check includes
-    const validateIncludes = (includes: any, parentEntity: string) => {
+    const validateIncludes = (includes: Record<string, string | IncludeConfig> | undefined, parentEntity: string) => {
       if (!includes) return;
-      
+
       for (const [relName, relConfig] of Object.entries(includes)) {
-        const targetEntity = typeof relConfig === 'string' 
-            ? relConfig 
-            : (relConfig as any).entity;
+        const targetEntity = typeof relConfig === 'string'
+            ? relConfig
+            : relConfig.entity;
 
         if (!targetEntity) {
            errors.push(`Relation '${relName}' in '${subName}' missing target entity.`);
@@ -30,17 +35,16 @@ export function analyzeDomain(domain: any) {
         if (!entities[targetEntity]) {
           errors.push(`Relation '${relName}' in '${subName}' references unknown entity '${targetEntity}'.`);
         }
-        
-        // TODO: Check if the FK relationship actually exists in the schema
-        
-        if ((relConfig as any).includes) {
-          validateIncludes((relConfig as any).includes, targetEntity);
+
+        // Recursively validate nested includes
+        if (typeof relConfig !== 'string' && relConfig.includes) {
+          validateIncludes(relConfig.includes, targetEntity);
         }
       }
     };
 
-    if ((subConfig as any).includes) {
-      validateIncludes((subConfig as any).includes, rootEntity);
+    if (subConfig.includes) {
+      validateIncludes(subConfig.includes, rootEntity);
     }
   }
 

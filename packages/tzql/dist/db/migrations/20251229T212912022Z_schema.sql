@@ -304,7 +304,7 @@ BEGIN
     
   -- Graph Rule: Create acts_for
   INSERT INTO acts_for (user_id, org_id, valid_from)
-  VALUES (CASE WHEN p_user_id IS NOT NULL THEN p_user_id ELSE NULL END, (v_result->>'id')::int, CURRENT_DATE);
+  VALUES (p_user_id, (v_result->>'id')::int, CURRENT_DATE);
 
   END IF;
 
@@ -358,10 +358,15 @@ BEGIN
   -- Graph Rules (Pre-delete cascades)
   
   -- Graph Rule: Delete acts_for
-  DELETE FROM acts_for WHERE org_id = (p_pk->>'id')::int;
+  DELETE FROM acts_for WHERE org_id = (v_old_data->>'id')::int;
 
   -- Graph Rule: Delete venues
-  DELETE FROM venues WHERE org_id = (p_pk->>'id')::int;
+  DELETE FROM venues WHERE org_id = (v_old_data->>'id')::int;
+
+  -- Graph Rule: Update packages
+  UPDATE packages
+  SET sponsor_org_id = (v_old_data->>'id')::int
+  WHERE TRUE;
 
 
   -- Perform Delete

@@ -1,9 +1,10 @@
 {
-  "name": "tzql",
-  "version": "0.0.1",
+  "name": "dzql",
+  "version": "0.6.0",
+  "description": "Database-first real-time framework with TypeScript support",
   "type": "module",
   "bin": {
-    "tzql": "./src/cli/index.ts"
+    "dzql": "./src/cli/index.ts"
   },
   "scripts": {
     "dev": "bun run src/cli/index.ts",

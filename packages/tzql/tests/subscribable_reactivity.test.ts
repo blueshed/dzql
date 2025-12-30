@@ -47,18 +47,18 @@ describe("Subscribable Store Reactivity", () => {
     const manifest = generateManifest(ir);
     const code = generateSubscribableStore(manifest, "venue_detail");
 
-    // Should use ref({}) for documents
-    expect(code).toContain("const documents = ref({});");
+    // Should use typed ref for documents
+    expect(code).toContain("const documents: Ref<Record<string, DocumentWrapper<Record<string, unknown>>>> = ref({});");
 
     // Should add plain object with empty data object to documents.value (preserves reactivity)
     expect(code).toContain("documents.value[key] = { data: {}, loading: true, ready };");
 
     // Should merge initial data into existing object via Object.assign (preserves reactivity)
-    expect(code).toContain("Object.assign(documents.value[key].data, eventData);");
+    expect(code).toContain("Object.assign(documents.value[key].data, eventData");
     expect(code).toContain("documents.value[key].loading = false;");
 
-    // Should have unbind function
-    expect(code).toContain("function unbind(params)");
+    // Should have typed unbind function
+    expect(code).toContain("function unbind(params: VenueDetailParams)");
 
     // Should NOT pre-wrap in ref()
     expect(code).not.toContain("const docState = ref(");

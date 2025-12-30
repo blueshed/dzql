@@ -8,22 +8,9 @@
  * 3. <name>_affected_keys(p_table, p_op, p_data) - Determines which subscriptions are affected
  */
 
-export interface SubscribableIR {
-  name: string;
-  params: Record<string, string>;
-  root: { entity: string; key: string };
-  includes: Record<string, IncludeIR>;
-  scopeTables: string[];
-  canSubscribe?: string[];
-}
+import type { SubscribableIR, IncludeIR, EntityIR } from "../../shared/ir.js";
 
-export interface IncludeIR {
-  entity: string;
-  filter?: Record<string, string>;
-  includes?: Record<string, IncludeIR>;
-}
-
-export function generateSubscribableSQL(name: string, sub: SubscribableIR, entities: Record<string, any> = {}): string {
+export function generateSubscribableSQL(name: string, sub: SubscribableIR, entities: Record<string, EntityIR> = {}): string {
   const sections: string[] = [];
 
   sections.push(generateHeader(name, sub));
@@ -195,11 +182,18 @@ function compileSubscribePermission(entityName: string, rule: string, rootKey: s
   return 'FALSE'; // Default deny
 }
 
+/** Column info from EntityIR */
+interface ColumnInfo {
+  name: string;
+  type: string;
+  isArray: boolean;
+}
+
 /**
  * Build a SQL expression to select visible columns (excluding hidden) from a table.
  * Returns row_to_json(alias.*) if no hidden fields, otherwise builds explicit jsonb_build_object.
  */
-function buildVisibleRowJson(alias: string, entityName: string, entities: Record<string, any>): string {
+function buildVisibleRowJson(alias: string, entityName: string, entities: Record<string, EntityIR>): string {
   const entity = entities[entityName];
   const hidden = entity?.hidden || [];
 
@@ -208,18 +202,18 @@ function buildVisibleRowJson(alias: string, entityName: string, entities: Record
   }
 
   // Build explicit column list excluding hidden fields
-  const columns = entity.columns || [];
-  const visibleCols = columns.filter((c: any) => !hidden.includes(c.name));
+  const columns: ColumnInfo[] = entity?.columns || [];
+  const visibleCols = columns.filter((c: ColumnInfo) => !hidden.includes(c.name));
 
   if (visibleCols.length === 0) {
     return `row_to_json(${alias}.*)`;
   }
 
-  const pairs = visibleCols.map((c: any) => `'${c.name}', ${alias}.${c.name}`).join(', ');
+  const pairs = visibleCols.map((c: ColumnInfo) => `'${c.name}', ${alias}.${c.name}`).join(', ');
   return `jsonb_build_object(${pairs})`;
 }
 
-function generateGetFunction(name: string, sub: SubscribableIR, entities: Record<string, any> = {}): string {
+function generateGetFunction(name: string, sub: SubscribableIR, entities: Record<string, EntityIR> = {}): string {
   const paramNames = Object.keys(sub.params);
   const paramDecls = paramNames.map(p => `  v_${p} ${sub.params[p]};`).join('\n');
   const paramExtracts = paramNames.map(p =>
@@ -294,7 +288,7 @@ function generateRelationSelects(
   rootEntity: string,
   parentAlias: string = 'root',
   paramNames: string[] = [],
-  entities: Record<string, any> = {}
+  entities: Record<string, EntityIR> = {}
 ): string {
   if (!includes || Object.keys(includes).length === 0) {
     return '';
@@ -392,7 +386,7 @@ function generateRelationSelects(
 function generateNestedSelects(
   includes: Record<string, IncludeIR>,
   parentEntity: string,
-  entities: Record<string, any> = {}
+  entities: Record<string, EntityIR> = {}
 ): string {
   if (!includes || Object.keys(includes).length === 0) {
     return '';

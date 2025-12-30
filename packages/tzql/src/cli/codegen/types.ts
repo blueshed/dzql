@@ -129,7 +129,7 @@ function mapPostgresToTs(pgType: string): string {
       const base = pgType.slice(0, -2);
       return mapPostgresToTs(base) + '[]';
   }
-  
+
   // Simple map
   for (const [key, val] of Object.entries(TYPE_MAP)) {
       if (pgType.toLowerCase().includes(key)) return val;
@@ -138,5 +138,5 @@ function mapPostgresToTs(pgType: string): string {
 }
 
 function toPascalCase(str: string) {
-    return str.replace(/(^|_)([a-z])/g, (g) => g.at(-1).toUpperCase());
+    return str.replace(/(^|_)([a-z])/g, (g) => (g.at(-1) ?? '').toUpperCase());
 }

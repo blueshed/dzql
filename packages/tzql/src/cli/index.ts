@@ -130,16 +130,12 @@ async function main() {
       const clientDir = resolve(outputDir, "client");
       mkdirSync(clientDir, { recursive: true });
 
-      // Generate Core SDK
-      const clientCode = generateClientSDK(manifest, false); // JS implementation
-      const clientTypes = generateClientSDK(manifest, true); // D.TS interface
-
-      writeFileSync(resolve(clientDir, `ws.js`), clientCode);
-      writeFileSync(resolve(clientDir, `ws.d.ts`), clientTypes);
+      // Generate Core SDK as TypeScript
+      const clientCode = generateClientSDK(manifest);
+      writeFileSync(resolve(clientDir, `ws.ts`), clientCode);
 
       // Generate Index
-      writeFileSync(resolve(clientDir, `index.js`), `export * from './ws.js';`);
-      writeFileSync(resolve(clientDir, `index.d.ts`), `export * from './ws.js';`);
+      writeFileSync(resolve(clientDir, `index.ts`), `export * from './ws.js';`);
 
       console.log(`[Generated] Client SDK in ${clientDir}`);
 
@@ -149,7 +145,7 @@ async function main() {
 
       for (const subName of Object.keys(ir.subscribables)) {
           const storeCode = generateSubscribableStore(manifest, subName);
-          const fileName = `use${subName.replace(/(^|_)([a-z])/g, (g) => g.at(-1).toUpperCase())}Store.js`;
+          const fileName = `use${subName.replace(/(^|_)([a-z])/g, (g) => g.at(-1)!.toUpperCase())}Store.ts`;
           writeFileSync(resolve(storeDir, fileName), storeCode);
       }
       console.log(`[Generated] ${Object.keys(ir.subscribables).length} Pinia Stores in ${storeDir}`);

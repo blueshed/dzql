@@ -1,5 +1,13 @@
 import { compilePermission } from "../compiler/permissions.js";
 import { compileGraphRules } from "../compiler/graph_rules.js";
+import type { EntityIR, ManyToManyIR } from "../../shared/ir.js";
+
+/** Column info from EntityIR */
+interface ColumnInfo {
+  name: string;
+  type: string;
+  isArray: boolean;
+}
 
 /**
  * Generate a jsonb_build_object expression that excludes hidden fields.
@@ -8,7 +16,7 @@ import { compileGraphRules } from "../compiler/graph_rules.js";
  * @param columns - All columns from entityIR
  * @param hidden - Array of hidden field names
  */
-function buildVisibleJsonb(alias: string, columns: Array<{name: string}>, hidden: string[] = []): string {
+function buildVisibleJsonb(alias: string, columns: ColumnInfo[], hidden: string[] = []): string {
   if (!hidden || hidden.length === 0) {
     return `to_jsonb(${alias}.*)`;
   }
@@ -114,8 +122,8 @@ $$;
 `;
 }
 
-export function generateSchemaSQL(name: string, entityIR: any) {
-  const columns = entityIR.columns.map((c: any) => {
+export function generateSchemaSQL(name: string, entityIR: EntityIR): string {
+  const columns = entityIR.columns.map((c: ColumnInfo) => {
     return `${c.name} ${c.type}`;
   }).join(',\n  ');
 
@@ -127,8 +135,8 @@ CREATE TABLE IF NOT EXISTS ${name} (
 }
 
 // === SAVE FUNCTION (Upsert) ===
-export function generateSaveFunction(name: string, entityIR: any) {
-  const cols = entityIR.columns.map((c: any) => c.name);
+export function generateSaveFunction(name: string, entityIR: EntityIR): string {
+  const cols = entityIR.columns.map((c: ColumnInfo) => c.name);
   const pkFields = entityIR.primaryKey.length > 0 ? entityIR.primaryKey : ['id'];
   const pk = pkFields[0]; // For backwards compatibility with single PK
   const isCompositePK = pkFields.length > 1;
@@ -137,15 +145,15 @@ export function generateSaveFunction(name: string, entityIR: any) {
 
   // Build INSERT columns/values
   // Exclude serial columns from INSERT (let DB handle sequence)
-  const insertCols = entityIR.columns.filter((c: any) => {
+  const insertCols = entityIR.columns.filter((c: ColumnInfo) => {
       const isSerial = c.type.toLowerCase().includes('serial');
       return !isSerial;
   });
 
-  const colList = insertCols.map((c: any) => c.name).join(', ');
+  const colList = insertCols.map((c: ColumnInfo) => c.name).join(', ');
 
   // Build value list with field defaults support
-  const valList = insertCols.map((c: any) => {
+  const valList = insertCols.map((c: ColumnInfo) => {
     let cast = '';
     if (c.type.includes('int') || c.type.includes('serial')) cast = '::int';
     else if (c.type.includes('timestamp')) cast = '::timestamptz';
@@ -174,8 +182,8 @@ export function generateSaveFunction(name: string, entityIR: any) {
 
   // Build UPDATE SET clause (Partial Update) - exclude all PK fields
   const updateSetClause = entityIR.columns
-    .filter((c: any) => !pkFields.includes(c.name))
-    .map((c: any) => {
+    .filter((c: ColumnInfo) => !pkFields.includes(c.name))
+    .map((c: ColumnInfo) => {
       let cast = '';
       if (c.type.includes('int') || c.type.includes('serial')) cast = '::int';
       else if (c.type.includes('timestamp')) cast = '::timestamptz';
@@ -189,7 +197,7 @@ export function generateSaveFunction(name: string, entityIR: any) {
 
   // Build composite PK handling
   const pkExistsCheck = pkFields.map(f => {
-    const col = entityIR.columns.find((c: any) => c.name === f);
+    const col = entityIR.columns.find((c: ColumnInfo) => c.name === f);
     let cast = '::int';
     if (col) {
       if (col.type.includes('text') || col.type.includes('varchar')) cast = '';
@@ -227,18 +235,18 @@ export function generateSaveFunction(name: string, entityIR: any) {
     : '';
 
   // M2M Support
-  const m2m = entityIR.manyToMany || {};
+  const m2m: Record<string, ManyToManyIR> = entityIR.manyToMany || {};
   const m2mKeys = Object.keys(m2m);
 
   // M2M variable declarations
   const m2mVarDeclarations = m2mKeys.map(key => {
-    const config = m2m[key];
+    const config: ManyToManyIR = m2m[key];
     return `  v_${config.idField} INT[];`;
   }).join('\n');
 
   // M2M extraction (remove from p_data before INSERT/UPDATE)
   const m2mExtraction = m2mKeys.map(key => {
-    const config = m2m[key];
+    const config: ManyToManyIR = m2m[key];
     return `
   -- M2M: Extract ${key} IDs
   IF p_data ? '${config.idField}' THEN
@@ -250,7 +258,7 @@ export function generateSaveFunction(name: string, entityIR: any) {
   // M2M sync (after INSERT/UPDATE) - uses first PK field for M2M local key
   // Note: M2M typically uses a single local key (the entity's ID), not composite PK
   const m2mSync = m2mKeys.map(key => {
-    const config = m2m[key];
+    const config: ManyToManyIR = m2m[key];
     return `
   -- M2M Sync: ${key} (junction: ${config.junctionTable})
   IF v_${config.idField} IS NOT NULL THEN
@@ -270,7 +278,7 @@ export function generateSaveFunction(name: string, entityIR: any) {
 
   // M2M expansion (add to output)
   const m2mExpansion = m2mKeys.map(key => {
-    const config = m2m[key];
+    const config: ManyToManyIR = m2m[key];
     let sql = `
   -- M2M: Add ${config.idField} to output
   v_result := v_result || jsonb_build_object('${config.idField}',
@@ -364,7 +372,7 @@ $$;
 }
 
 // === DELETE FUNCTION (Cascade or Soft Delete) ===
-export function generateDeleteFunction(name: string, entityIR: any) {
+export function generateDeleteFunction(name: string, entityIR: EntityIR): string {
   const pkFields = entityIR.primaryKey.length > 0 ? entityIR.primaryKey : ['id'];
   const pk = pkFields[0];
   const softDelete = entityIR.softDelete || false;
@@ -372,7 +380,7 @@ export function generateDeleteFunction(name: string, entityIR: any) {
 
   // Build composite PK handling
   const pkWhereClause = pkFields.map(f => {
-    const col = entityIR.columns.find((c: any) => c.name === f);
+    const col = entityIR.columns.find((c: ColumnInfo) => c.name === f);
     let cast = '::int';
     if (col) {
       if (col.type.includes('text') || col.type.includes('varchar')) cast = '';
@@ -455,14 +463,14 @@ $$;
 }
 
 // === GET FUNCTION ===
-export function generateGetFunction(name: string, entityIR: any) {
+export function generateGetFunction(name: string, entityIR: EntityIR): string {
   const pkFields = entityIR.primaryKey.length > 0 ? entityIR.primaryKey : ['id'];
   const pk = pkFields[0];
   const hidden = entityIR.hidden || [];
 
   // Build composite PK handling
   const pkWhereClause = pkFields.map(f => {
-    const col = entityIR.columns.find((c: any) => c.name === f);
+    const col = entityIR.columns.find((c: ColumnInfo) => c.name === f);
     let cast = '::int';
     if (col) {
       if (col.type.includes('text') || col.type.includes('varchar')) cast = '';
@@ -480,11 +488,11 @@ export function generateGetFunction(name: string, entityIR: any) {
   const selectExpr = buildVisibleJsonb(name, entityIR.columns, hidden);
 
   // M2M expansion for GET
-  const m2m = entityIR.manyToMany || {};
+  const m2m: Record<string, ManyToManyIR> = entityIR.manyToMany || {};
   const m2mKeys = Object.keys(m2m);
 
   const m2mExpansion = m2mKeys.map(key => {
-    const config = m2m[key];
+    const config: ManyToManyIR = m2m[key];
     let sql = `
   -- M2M: Add ${config.idField} to result
   v_result := v_result || jsonb_build_object('${config.idField}',
@@ -530,7 +538,7 @@ $$;
 }
 
 // === SEARCH FUNCTION ===
-export function generateSearchFunction(name: string, entityIR: any) {
+export function generateSearchFunction(name: string, entityIR: EntityIR): string {
   const pk = entityIR.primaryKey[0] || 'id';
   const softDelete = entityIR.softDelete || false;
   const hidden = entityIR.hidden || [];
@@ -546,12 +554,12 @@ export function generateSearchFunction(name: string, entityIR: any) {
   const labelField = entityIR.labelField || 'id';
 
   // M2M expansion for SEARCH using LATERAL joins
-  const m2m = entityIR.manyToMany || {};
+  const m2m: Record<string, ManyToManyIR> = entityIR.manyToMany || {};
   const m2mKeys = Object.keys(m2m);
 
   // Build LATERAL joins for each M2M relationship
   const m2mLateralJoins = m2mKeys.map(key => {
-    const config = m2m[key];
+    const config: ManyToManyIR = m2m[key];
     let sql = `
       LEFT JOIN LATERAL (
         SELECT COALESCE(jsonb_agg(${config.foreignKey} ORDER BY ${config.foreignKey}), ''[]''::jsonb) as ${config.idField}
@@ -680,7 +688,7 @@ $$;
 }
 
 // === AGGREGATE GENERATOR ===
-export function generateEntitySQL(name: string, entityIR: any) {
+export function generateEntitySQL(name: string, entityIR: EntityIR): string {
   return [
     generateSaveFunction(name, entityIR),
     generateDeleteFunction(name, entityIR),

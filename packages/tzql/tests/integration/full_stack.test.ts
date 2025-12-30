@@ -34,7 +34,7 @@ function compileVenuesExample() {
 
 // Pre-process the generated client to fix the import path for testing
 function patchGeneratedClient() {
-  const clientPath = resolve(DIST_ROOT, "client/ws.js");
+  const clientPath = resolve(DIST_ROOT, "client/ws.ts");
   if (!existsSync(clientPath)) return;
 
   const content = readFileSync(clientPath, "utf8");
@@ -66,7 +66,7 @@ describe.skipIf(!DIST_EXISTS)("Full Stack V2 Integration (Runtime + Client + Pin
   beforeAll(async () => {
     // Dynamic imports for optional dependencies
     const { createPinia, setActivePinia } = await import("pinia");
-    const clientPath = resolve(DIST_ROOT, "client/ws.js");
+    const clientPath = resolve(DIST_ROOT, "client/ws.ts");
     ws = (await import(clientPath)).ws;
 
     // 1. Setup DB
@@ -152,7 +152,7 @@ describe.skipIf(!DIST_EXISTS)("Full Stack V2 Integration (Runtime + Client + Pin
     setActivePinia(createPinia());
 
     // Import generated store
-    const storePath = resolve(DIST_ROOT, "client/stores/useVenueDetailStore.js");
+    const storePath = resolve(DIST_ROOT, "client/stores/useVenueDetailStore.ts");
     const mod = await import(storePath);
     useVenueDetailStore = mod.useVenueDetailStore;
   });

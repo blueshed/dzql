@@ -20,11 +20,13 @@ describe("Subscribable Store Generation", () => {
     console.log("------------------------------------");
 
     expect(code).toContain("useVenueDetailStore");
+    // Check for TypeScript interface
+    expect(code).toContain("export interface VenueDetailParams");
     // Check for nested table handling
     expect(code).toContain("case 'sites':");
     expect(code).toContain("case 'allocations':");
-    // Check for parent lookup logic
-    expect(code).toContain("const parent = doc.sites.find");
+    // Check for parent lookup logic with type annotation
+    expect(code).toContain("const parent = doc.sites?.find");
   });
 
   test("should generate async bind function that awaits first data", () => {
@@ -33,21 +35,21 @@ describe("Subscribable Store Generation", () => {
 
     const code = generateSubscribableStore(manifest, "venue_detail");
 
-    // Check that bind is async
-    expect(code).toContain("async function bind(params)");
+    // Check that bind is async with typed params
+    expect(code).toContain("async function bind(params: VenueDetailParams)");
     // Check for Promise-based ready signal
-    expect(code).toContain("const ready = new Promise");
+    expect(code).toContain("const ready = new Promise<void>");
     expect(code).toContain("resolveReady()");
     // Check that bind awaits ready
     expect(code).toContain("await ready");
     // Check that plain object with empty data is stored (preserves reactivity on merge)
     expect(code).toContain("{ data: {}, loading: true, ready }");
     // Check initial data is merged via Object.assign to preserve reactivity
-    expect(code).toContain("Object.assign(documents.value[key].data, eventData)");
+    expect(code).toContain("Object.assign(documents.value[key].data, eventData");
     // Check existing subscription handling waits for ready
     expect(code).toContain("await existing.ready");
-    // Check unbind function exists
-    expect(code).toContain("function unbind(params)");
+    // Check unbind function exists with typed params
+    expect(code).toContain("function unbind(params: VenueDetailParams)");
   });
 
   test("should generate flat SQL structure for nested includes", () => {
