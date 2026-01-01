@@ -2,6 +2,10 @@
   "name": "dzql",
   "version": "0.6.2",
   "description": "Database-first real-time framework with TypeScript support",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blueshed/dzql"
+  },
   "type": "module",
   "bin": {
     "dzql": "./src/cli/index.ts"
