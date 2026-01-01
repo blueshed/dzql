@@ -1,0 +1,37 @@
+{
+  "name": "create-dzql",
+  "version": "0.6.3",
+  "private": false,
+  "bin": {
+    "create-dzql": "./index.ts"
+  },
+  "files": [
+    "index.ts",
+    "domain.ts",
+    "compose.yml",
+    "package.json",
+    ".env.example",
+    ".gitignore",
+    "README.md",
+    "setup.sh",
+    "server",
+    "client"
+  ],
+  "workspaces": ["client", "server"],
+  "scripts": {
+    "compile": "bunx dzql domain.ts -o generated",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down -v",
+    "db:rebuild": "bun run compile && docker compose down -v && docker compose up -d",
+    "dev": "concurrently -n server,client -c blue,green \"bun run --filter server dev\" \"bun run --filter client dev\""
+  },
+  "dependencies": {
+    "dzql": "^0.6.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "bun-create": {
+    "postinstall": ["./setup.sh", "rm setup.sh"]
+  }
+}
