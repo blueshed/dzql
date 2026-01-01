@@ -1,4 +1,4 @@
-# TZQL v2 Gap Analysis TODO
+# DZQL v2 Gap Analysis TODO
 
 Gap analysis comparing v1 tests to v2 functionality. Updated 2024-12-17.
 

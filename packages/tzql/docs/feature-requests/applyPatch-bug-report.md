@@ -1,4 +1,4 @@
-# tzql Bug Report
+# DZQL Bug Report
 
 ## Generated Store applyPatch Doesn't Match Data Structure
 
@@ -79,7 +79,7 @@ to_jsonb(rel.*) || jsonb_build_object(...)
 
 ## Environment
 
-- tzql version: local development (linked)
+- dzql version: local development (linked)
 - Database: PostgreSQL 17 (Docker)
 - Client: Vue 3 + Pinia + TypeScript
 - Runtime: Bun

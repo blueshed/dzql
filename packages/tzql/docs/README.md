@@ -1,6 +1,20 @@
-# TZQL: The Compile-Only Realtime Database Framework
+# DZQL: The Compile-Only Realtime Database Framework
 
-TZQL ("The Zero Query Language") is a PostgreSQL-native framework for building realtime, reactive applications without the runtime overhead or complexity of traditional ORMs or BaaS solutions.
+DZQL ("Database Zero Query Language") is a PostgreSQL-native framework for building realtime, reactive applications without the runtime overhead or complexity of traditional ORMs or BaaS solutions.
+
+## Quick Start
+
+The fastest way to get started is with `bun create`:
+
+```bash
+bun create dzql my-app
+cd my-app
+bun install
+bun run db:rebuild
+bun run dev
+```
+
+This creates a full-stack app with Vue/Vite frontend, DZQL server, and PostgreSQL database.
 
 ## The Problem
 
@@ -10,11 +24,11 @@ Building realtime apps is hard. You typically have to:
 3.  **Handle Atomicity:** Ensure that complex operations (e.g., "Create Order + Reserve Inventory + Notify User") happen in a single transaction.
 4.  **Optimistic Updates:** Write complex client-side logic to "guess" the server's response, often leading to data divergence.
 
-## The TZQL Solution
+## The DZQL Solution
 
-TZQL takes a radically different approach: **Compilation**.
+DZQL takes a radically different approach: **Compilation**.
 
-Instead of a heavy runtime framework, you define your **Domain Schema** (Entities, Relationships, Permissions) in a simple TypeScript configuration. TZQL compiles this definition into:
+Instead of a heavy runtime framework, you define your **Domain Schema** (Entities, Relationships, Permissions) in a simple TypeScript configuration. DZQL compiles this definition into:
 
 1.  **Optimized SQL:** Specialized PostgreSQL functions (`save_order`, `get_product`) with *inlined* permission checks and *atomic* graph operations.
 2.  **Type-Safe Client SDK:** A generated TypeScript client that knows your exact API surface.
@@ -28,7 +42,9 @@ Instead of a heavy runtime framework, you define your **Domain Schema** (Entitie
 *   **Realtime by Default:** Every database write emits an atomic event batch. The client SDK automatically patches your local state. No "refetching" required.
 *   **JavaScript/TypeScript Native:** Define your schema in code you understand, get full type safety end-to-end.
 
-## Quick Start
+## Manual Setup
+
+If you prefer to set up manually instead of using `bun create dzql`:
 
 ### 1. Define your Domain (`domain.ts`)
 
@@ -51,13 +67,13 @@ export const subscribables = {
 ### 2. Compile
 
 ```bash
-bun run tzql compile domain.ts -o src/generated
+bunx dzql domain.ts -o generated
 ```
 
 ### 3. Use in Client
 
 ```typescript
-import { usePostFeedStore } from '@/generated/client/stores';
+import { usePostFeedStore } from '@generated/client/stores';
 
 const feed = usePostFeedStore();
 // Automatically fetches data AND subscribes to realtime updates
@@ -76,10 +92,10 @@ const { data, loading } = await feed.bind({ user_id: 1 });
 ## Package Exports
 
 ```typescript
-import { ... } from 'tzql';           // Runtime server
-import { ... } from 'tzql/client';    // WebSocket client SDK  
-import { ... } from 'tzql/compiler';  // CLI compiler
-import { TzqlNamespace } from 'tzql/namespace';  // CLI/invokej integration
+import { ... } from 'dzql';           // Runtime server
+import { ... } from 'dzql/client';    // WebSocket client SDK  
+import { ... } from 'dzql/compiler';  // CLI compiler
+import { DzqlNamespace } from 'dzql/namespace';  // CLI/invokej integration
 ```
 
 ## Client Connection & Authentication
@@ -96,7 +112,7 @@ When a client connects to the WebSocket server, it immediately receives a `conne
 ### Client API
 
 ```typescript
-import { WebSocketManager } from 'tzql/client';
+import { WebSocketManager } from 'dzql/client';
 
 const ws = new WebSocketManager();
 await ws.connect('ws://localhost:3000/ws');
@@ -131,7 +147,7 @@ await ws.logout();  // Clears token and user state
 
 ## Generated Pinia Subscribable Stores
 
-TZQL generates Pinia stores for each subscribable that handle:
+DZQL generates Pinia stores for each subscribable that handle:
 - Initial data fetch via WebSocket subscription
 - Automatic realtime patching when related data changes
 - Deduplication of subscriptions by parameter key

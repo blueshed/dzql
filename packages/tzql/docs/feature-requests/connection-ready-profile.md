@@ -4,7 +4,7 @@
 
 ## Summary
 
-When a client connects to the tzql WebSocket server, the server should immediately send a connection:ready message containing the authenticated user profile (or null if not authenticated).
+When a client connects to the DZQL WebSocket server, the server should immediately send a connection:ready message containing the authenticated user profile (or null if not authenticated).
 
 ## Current Behavior
 

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useTzql } from '@/composables/useTzql'
+import { useDzql } from '@/composables/useDzql'
 
-const { ws } = useTzql()
+const { ws } = useDzql()
 
 const posts = ref<any[]>([])
 const loading = ref(true)

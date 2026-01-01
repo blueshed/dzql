@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useTzql } from '@/composables/useTzql'
+import { useDzql } from '@/composables/useDzql'
 
-const { login, register } = useTzql()
+const { login, register } = useDzql()
 
 const isRegistering = ref(false)
 const name = ref('')

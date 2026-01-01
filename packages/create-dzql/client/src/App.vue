@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useTzql } from '@/composables/useTzql'
+import { useDzql } from '@/composables/useDzql'
 import LoginView from '@/components/LoginView.vue'
 
-const { ready, user, logout } = useTzql()
+const { ready, user, logout } = useDzql()
 </script>
 
 <template>

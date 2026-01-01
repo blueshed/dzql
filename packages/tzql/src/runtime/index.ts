@@ -90,7 +90,7 @@ const server = serve({
     if (server.upgrade(req, { data: { token } })) {
         return;
     }
-    return new Response("TZQL Runtime Active", { status: 200 });
+    return new Response("DZQL Runtime Active", { status: 200 });
   },
   websocket: wsServer.handlers
 });

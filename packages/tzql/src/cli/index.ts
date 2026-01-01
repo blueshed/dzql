@@ -11,9 +11,15 @@ import { writeFileSync, mkdirSync, copyFileSync, rmSync } from "fs";
 import { resolve, dirname } from "path";
 
 const args = process.argv.slice(2);
-const command = args[0];
-const input = args[1];
+let command = args[0];
+let input = args[1];
 let outputDir = "dist"; // Default output directory
+
+// If first arg looks like a file (ends with .ts or .js), treat it as compile target
+if (command && (command.endsWith('.ts') || command.endsWith('.js'))) {
+  input = command;
+  command = 'compile';
+}
 
 // Parse optional output directory flag
 const outputFlagIndex = args.indexOf('-o');
@@ -26,11 +32,11 @@ if (outputFlagIndex > -1 && args[outputFlagIndex + 1]) {
 }
 
 async function main() {
-  console.log("TZQL Compiler v0.0.1");
+  console.log("DZQL Compiler v0.6.0");
 
   if (command === "compile") {
     if (!input) {
-      console.error("Usage: tzql compile <file>");
+      console.error("Usage: dzql <file> or dzql compile <file>");
       process.exit(1);
     }
 
@@ -88,10 +94,6 @@ async function main() {
 
       // Phase 4: Generate Manifest
       const manifest = generateManifest(ir);
-      console.log(`[Compiler] Manifest functions: ${Object.keys(manifest.functions).length}`);
-      if (!manifest.functions['subscribe_venue_detail']) {
-          console.error("[Compiler] ERROR: subscribe_venue_detail missing from manifest functions!");
-      }
 
       // --- OUTPUT GENERATION ---
 

@@ -1,6 +1,24 @@
-# TZQL Project Setup Guide
+# DZQL Project Setup Guide
 
-Complete guide for setting up a Vue/Pinia client project with TZQL.
+Complete guide for setting up a Vue/Pinia client project with DZQL.
+
+## Quick Start
+
+The fastest way to get started is with `bun create`:
+
+```bash
+bun create dzql my-app
+cd my-app
+bun install
+bun run db:rebuild
+bun run dev
+```
+
+This creates a full-stack app with the structure described below.
+
+## Manual Setup
+
+If you prefer to set up manually:
 
 ## Project Structure
 
@@ -8,7 +26,7 @@ Complete guide for setting up a Vue/Pinia client project with TZQL.
 my-app/
 ├── package.json          # Workspaces root
 ├── bun.lock              # Single lockfile
-├── domain.js             # TZQL domain definition
+├── domain.js             # DZQL domain definition
 ├── .env                  # Environment variables
 ├── compose.yml           # PostgreSQL for development
 ├── generated/            # DO NOT EDIT - compiled output
@@ -25,7 +43,7 @@ my-app/
 │       ├── composables/
 │       ├── components/
 │       └── views/
-└── server/               # TZQL server workspace
+└── server/               # DZQL server workspace
     ├── package.json
     └── index.ts
 ```
@@ -40,14 +58,14 @@ Root `package.json`:
   "private": true,
   "workspaces": ["src", "server"],
   "scripts": {
-    "compile": "tzql compile domain.js -o generated",
+    "compile": "bunx dzql domain.js -o generated",
     "db": "docker compose down -v && docker compose up -d",
     "logs": "docker compose logs -f",
     "dev": "concurrently -n server,client -c blue,green \"bun run --filter @my-app/server dev\" \"bun run --filter @my-app/client dev\""
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "tzql": "link:tzql"
+    "dzql": "^0.6.0"
   }
 }
 ```
@@ -87,7 +105,7 @@ Server `server/package.json`:
     "dev": "cd .. && bun run server/index.ts"
   },
   "dependencies": {
-    "tzql": "link:tzql"
+    "dzql": "^0.6.0"
   }
 }
 ```
@@ -99,7 +117,13 @@ Server `server/package.json`:
 Server `server/index.ts`:
 
 ```typescript
-import "tzql";
+import { createServer } from "dzql";
+
+const server = createServer({
+  port: process.env.PORT || 3000,
+});
+
+console.log(`DZQL Server running on port ${server.port}`);
 ```
 
 ## 2. Docker Compose for PostgreSQL
@@ -140,7 +164,7 @@ MANIFEST_PATH=./generated/runtime/manifest.json
 JWT_SECRET=dev-secret-change-in-production
 
 # Client (Vite)
-VITE_TZQL_TOKEN_NAME=myapp_token
+VITE_DZQL_TOKEN_NAME=myapp_token
 ```
 
 ## 4. Vite Configuration
@@ -165,7 +189,7 @@ export default defineConfig({
     host: '0.0.0.0',
     allowedHosts: ['host.docker.internal'],
     
-    // Proxy WebSocket to TZQL server
+    // Proxy WebSocket to DZQL server
     proxy: {
       '/ws': {
         target: 'ws://localhost:3000',
@@ -180,7 +204,7 @@ export default defineConfig({
 
 - `host: '0.0.0.0'` - Binds to all interfaces, required for Docker access
 - `allowedHosts: ['host.docker.internal']` - Allows Playwright MCP (running in Docker) to connect
-- `proxy: { '/ws': ... }` - Client connects to `/ws` on Vite's port, proxied to TZQL server on port 3000
+- `proxy: { '/ws': ... }` - Client connects to `/ws` on Vite's port, proxied to DZQL server on port 3000
 
 **For Playwright MCP testing:** Navigate to `http://host.docker.internal:5173`
 
@@ -203,7 +227,7 @@ export default defineConfig({
 
 ## 6. Authentication Composable
 
-`src/src/composables/useTzql.ts`:
+`src/src/composables/useDzql.ts`:
 
 ```typescript
 import { ref } from 'vue'
@@ -213,7 +237,7 @@ const ready = ref(false)
 const user = ref<any>(null)
 const connectionError = ref<string | null>(null)
 
-export function useTzql() {
+export function useDzql() {
   async function connect(url?: string) {
     try {
       connectionError.value = null
@@ -269,15 +293,15 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
-import { useTzql } from './composables/useTzql'
+import { useDzql } from './composables/useDzql'
 
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)
 app.mount('#app')
 
-// Connect to TZQL server
-const { connect } = useTzql()
+// Connect to DZQL server
+const { connect } = useDzql()
 connect()
 ```
 
@@ -287,10 +311,10 @@ connect()
 
 ```vue
 <script setup lang="ts">
-import { useTzql } from '@/composables/useTzql'
+import { useDzql } from '@/composables/useDzql'
 import LoginModal from '@/components/LoginModal.vue'
 
-const { ready, user, logout } = useTzql()
+const { ready, user, logout } = useDzql()
 </script>
 
 <template>
@@ -323,11 +347,11 @@ const { ready, user, logout } = useTzql()
 <script setup lang="ts">
 import { computed, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
-import { useTzql } from '@/composables/useTzql'
+import { useDzql } from '@/composables/useDzql'
 import { useVenueDetailStore } from '@generated/client/stores/useVenueDetailStore.js'
 
 const route = useRoute()
-const { ws } = useTzql()
+const { ws } = useDzql()
 const store = useVenueDetailStore()
 
 const venueId = computed(() => Number(route.params.id))
@@ -367,11 +391,11 @@ async function deleteSite(id: number) {
 Create `tasks.js` in the project root to enable CLI database operations:
 
 ```javascript
-import { TzqlNamespace } from "tzql/namespace";
+import { DzqlNamespace } from "dzql/namespace";
 
 export class Tasks {
   constructor() {
-    this.tzql = new TzqlNamespace();
+    this.dzql = new DzqlNamespace();
   }
 }
 ```
@@ -382,25 +406,25 @@ This integrates with `invj` to provide direct database access:
 # List available commands
 invj -l
 
-# Available tzql commands:
-#   tzql:entities              - List all entities
-#   tzql:subscribables         - List all subscribables
-#   tzql:functions             - List all functions
-#   tzql:search <entity> [json] - Search records
-#   tzql:get <entity> [json]    - Get single record
-#   tzql:save <entity> [json]   - Create/update record
-#   tzql:delete <entity> [json] - Delete record
-#   tzql:lookup <entity> [json] - Autocomplete lookup
-#   tzql:call <func> [json]     - Call custom function
-#   tzql:subscribe <name> [json] - Get subscribable data
+# Available dzql commands:
+#   dzql:entities              - List all entities
+#   dzql:subscribables         - List all subscribables
+#   dzql:functions             - List all functions
+#   dzql:search <entity> [json] - Search records
+#   dzql:get <entity> [json]    - Get single record
+#   dzql:save <entity> [json]   - Create/update record
+#   dzql:delete <entity> [json] - Delete record
+#   dzql:lookup <entity> [json] - Autocomplete lookup
+#   dzql:call <func> [json]     - Call custom function
+#   dzql:subscribe <name> [json] - Get subscribable data
 
 # Examples
-invj tzql:entities
-invj tzql:search venues
-invj tzql:search venues '{"org_id": 1}'
-invj tzql:get venues '{"id": 1}'
-invj tzql:save venues '{"org_id": 1, "name": "New Venue", "address": "123 Main St"}'
-invj tzql:delete venues '{"id": 1}'
+invj dzql:entities
+invj dzql:search venues
+invj dzql:search venues '{"org_id": 1}'
+invj dzql:get venues '{"id": 1}'
+invj dzql:save venues '{"org_id": 1, "name": "New Venue", "address": "123 Main St"}'
+invj dzql:delete venues '{"id": 1}'
 ```
 
 ## Development Workflow
@@ -418,15 +442,15 @@ bun run dev
 
 After `bun run db`, the database initializes with migrations automatically. After domain changes, run `bun run compile` then restart the server.
 
-## Linking TZQL for Local Development
+## Linking DZQL for Local Development
 
-If developing TZQL locally:
+If developing DZQL locally:
 
 ```bash
-cd /path/to/tzql
+cd /path/to/dzql
 bun link
 
 cd /path/to/my-app
-# tzql is already in package.json as "link:tzql"
+# dzql is already in package.json as "link:dzql"
 bun install
 ```

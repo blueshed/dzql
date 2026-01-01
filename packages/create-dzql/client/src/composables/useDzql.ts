@@ -6,7 +6,7 @@ const ready = ref(false)
 const user = ref<any>(null)
 const connectionError = ref<string | null>(null)
 
-export function useTzql() {
+export function useDzql() {
   async function connect(url?: string) {
     try {
       connectionError.value = null

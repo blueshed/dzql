@@ -1,10 +1,22 @@
-# TZQL Guide for AI Assistants
+# DZQL Guide for AI Assistants
 
-This document defines the patterns and conventions for generating valid TZQL domain definitions. Use this guide when asked to "Create a TZQL app" or "Add an entity".
+This document defines the patterns and conventions for generating valid DZQL domain definitions. Use this guide when asked to "Create a DZQL app" or "Add an entity".
+
+## Quick Start
+
+The fastest way to create a new DZQL app:
+
+```bash
+bun create dzql my-app
+cd my-app
+bun install
+bun run db:rebuild
+bun run dev
+```
 
 ## Core Concept: The Domain Definition
 
-A TZQL application is defined by a single TypeScript/JavaScript module exporting `entities` and `subscribables`.
+A DZQL application is defined by a single TypeScript/JavaScript module exporting `entities` and `subscribables`.
 
 ### 1. Entity Definition Pattern
 
@@ -276,7 +288,7 @@ Use `type: 'reactor'` for anything that requires Node.js (Email, Stripe, AI proc
 
 ## Custom Functions
 
-TZQL supports two types of custom functions that can be called via RPC:
+DZQL supports two types of custom functions that can be called via RPC:
 
 ### 1. SQL Custom Functions
 
@@ -355,7 +367,7 @@ JavaScript custom functions run in the Bun/Node runtime. They are ideal for:
 
 ```typescript
 // server.ts or wherever you start your runtime
-import { registerJsFunction } from 'tzql/runtime';
+import { registerJsFunction } from 'dzql/runtime';
 
 // Simple function
 registerJsFunction('hello_world', async (ctx) => {
@@ -459,7 +471,7 @@ interface JsFunctionContext {
 
 ## Unmanaged Entities (Junction Tables)
 
-For junction tables used in many-to-many relationships, you typically don't want TZQL to generate CRUD functions. These tables are managed via the M2M relationship on the parent entity.
+For junction tables used in many-to-many relationships, you typically don't want DZQL to generate CRUD functions. These tables are managed via the M2M relationship on the parent entity.
 
 Use `managed: false` to skip CRUD generation:
 
@@ -523,7 +535,7 @@ When a client connects to the WebSocket server, it immediately receives a `conne
 ### WebSocketManager API
 
 ```typescript
-import { WebSocketManager } from 'tzql/client';
+import { WebSocketManager } from 'dzql/client';
 
 const ws = new WebSocketManager();
 await ws.connect('ws://localhost:3000/ws');
@@ -568,38 +580,38 @@ await ws.logout();  // Clears token, user state, and reconnects
 
 ## CLI Integration with Namespace
 
-TZQL provides a namespace export for CLI tools like `invokej` to interact with the database directly without going through the WebSocket runtime.
+DZQL provides a namespace export for CLI tools like `invokej` to interact with the database directly without going through the WebSocket runtime.
 
 ### Setup
 
 ```typescript
 // cli.ts or server-side script
-import { TzqlNamespace } from 'tzql/namespace';
+import { DzqlNamespace } from 'dzql/namespace';
 import postgres from 'postgres';
 
 const sql = postgres(process.env.DATABASE_URL);
 const manifest = await import('./dist/runtime/manifest.json');
 
-const tzql = new TzqlNamespace(sql, manifest);
+const dzql = new DzqlNamespace(sql, manifest);
 ```
 
 ### CRUD Operations
 
 ```typescript
 // Get a record
-const venue = await tzql.get('venues', { id: 1 }, userId);
+const venue = await dzql.get('venues', { id: 1 }, userId);
 
 // Save (create or update)
-const newVenue = await tzql.save('venues', { name: 'New Venue', org_id: 1 }, userId);
+const newVenue = await dzql.save('venues', { name: 'New Venue', org_id: 1 }, userId);
 
 // Delete
-const deleted = await tzql.delete('venues', { id: 1 }, userId);
+const deleted = await dzql.delete('venues', { id: 1 }, userId);
 
 // Search with filters
-const venues = await tzql.search('venues', { org_id: 1, limit: 10 }, userId);
+const venues = await dzql.search('venues', { org_id: 1, limit: 10 }, userId);
 
 // Lookup for autocomplete
-const options = await tzql.lookup('venues', { q: 'test' }, userId);
+const options = await dzql.lookup('venues', { q: 'test' }, userId);
 ```
 
 ### Ad-hoc Function Calls
@@ -608,17 +620,17 @@ Call any function in the manifest directly:
 
 ```typescript
 // Call a custom function
-const result = await tzql.call('calculate_org_stats', { org_id: 1 }, userId);
+const result = await dzql.call('calculate_org_stats', { org_id: 1 }, userId);
 
 // Call a subscribable getter
-const detail = await tzql.call('get_venue_detail', { venue_id: 1 }, userId);
+const detail = await dzql.call('get_venue_detail', { venue_id: 1 }, userId);
 ```
 
 ### List Available Functions
 
 ```typescript
 // Get all functions from manifest
-const functions = tzql.functions();
+const functions = dzql.functions();
 // Returns: ['login_user', 'register_user', 'get_venues', 'save_venues', ...]
 ```
 
@@ -627,11 +639,11 @@ const functions = tzql.functions();
 The namespace is designed for use with `invokej`, a CLI tool for invoking functions:
 
 ```bash
-# In your invokej configuration, register the TZQL namespace
-invokej tzql:get venues '{"id": 1}'
-invokej tzql:save venues '{"name": "Updated Venue", "id": 1}'
-invokej tzql:call calculate_org_stats '{"org_id": 1}'
-invokej tzql:functions
+# In your invokej configuration, register the DZQL namespace
+invokej dzql:get venues '{"id": 1}'
+invokej dzql:save venues '{"name": "Updated Venue", "id": 1}'
+invokej dzql:call calculate_org_stats '{"org_id": 1}'
+invokej dzql:functions
 ```
 
 **Key Points:**

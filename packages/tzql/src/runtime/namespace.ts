@@ -1,16 +1,16 @@
 /**
- * TZQL Namespace for invokej integration
+ * DZQL Namespace for invokej integration
  *
- * Provides CLI-style access to TZQL operations via the compiled manifest.
+ * Provides CLI-style access to DZQL operations via the compiled manifest.
  * Each method outputs JSON to console and closes the connection before returning.
  *
  * Setup - add to your tasks.js:
  * ```js
- * import { TzqlNamespace } from 'tzql/namespace';
+ * import { DzqlNamespace } from 'dzql/namespace';
  *
  * export class Tasks {
  *   constructor() {
- *     this.tzql = new TzqlNamespace();
+ *     this.dzql = new DzqlNamespace();
  *   }
  * }
  * ```
@@ -18,32 +18,32 @@
  * Available Commands:
  *
  * Discovery:
- *   invj tzql:entities                              # List all entities
- *   invj tzql:subscribables                         # List all subscribables
- *   invj tzql:functions                             # List all manifest functions
+ *   invj dzql:entities                              # List all entities
+ *   invj dzql:subscribables                         # List all subscribables
+ *   invj dzql:functions                             # List all manifest functions
  *
  * Entity CRUD:
- *   invj tzql:search venues '{"query": "test"}'     # Search with filters
- *   invj tzql:get venues '{"id": 1}'                # Get by primary key
- *   invj tzql:save venues '{"name": "New", "org_id": 1}'  # Create (no id)
- *   invj tzql:save venues '{"id": 1, "name": "Updated"}'  # Update (with id)
- *   invj tzql:delete venues '{"id": 1}'             # Delete by primary key
- *   invj tzql:lookup venues '{"query": "test"}'     # Lookup for dropdowns
+ *   invj dzql:search venues '{"query": "test"}'     # Search with filters
+ *   invj dzql:get venues '{"id": 1}'                # Get by primary key
+ *   invj dzql:save venues '{"name": "New", "org_id": 1}'  # Create (no id)
+ *   invj dzql:save venues '{"id": 1, "name": "Updated"}'  # Update (with id)
+ *   invj dzql:delete venues '{"id": 1}'             # Delete by primary key
+ *   invj dzql:lookup venues '{"query": "test"}'     # Lookup for dropdowns
  *
  * Subscribables:
- *   invj tzql:subscribe venue_detail '{"venue_id": 1}'  # Get snapshot
+ *   invj dzql:subscribe venue_detail '{"venue_id": 1}'  # Get snapshot
  *
  * Ad-hoc Function Calls:
- *   invj tzql:call login_user '{"email": "x", "password": "y"}'
- *   invj tzql:call register_user '{"email": "x", "password": "y"}'
- *   invj tzql:call get_venue_detail '{"venue_id": 1}'
- *   invj tzql:call save_venues '{"name": "Test", "org_id": 1}'
+ *   invj dzql:call login_user '{"email": "x", "password": "y"}'
+ *   invj dzql:call register_user '{"email": "x", "password": "y"}'
+ *   invj dzql:call get_venue_detail '{"venue_id": 1}'
+ *   invj dzql:call save_venues '{"name": "Test", "org_id": 1}'
  *
  * Environment:
  *   DATABASE_URL - PostgreSQL connection string (default: postgres://localhost:5432/dzql)
  *
  * Requirements:
- *   - Run 'tzql compile' first to generate dist/runtime/manifest.json
+ *   - Run 'dzql compile' first to generate dist/runtime/manifest.json
  */
 
 import postgres from "postgres";
@@ -74,7 +74,7 @@ function loadManifestFromDisk(): Manifest {
   // Fall back to default paths
   const paths = [
     join(process.cwd(), "dist/runtime/manifest.json"),
-    join(process.cwd(), "packages/tzql/dist/runtime/manifest.json"),
+    join(process.cwd(), "generated/runtime/manifest.json"),
   ];
 
   for (const path of paths) {
@@ -85,7 +85,7 @@ function loadManifestFromDisk(): Manifest {
   }
 
   throw new Error(
-    "Manifest not found. Set MANIFEST_PATH env var or run 'tzql compile' to generate dist/runtime/manifest.json"
+    "Manifest not found. Set MANIFEST_PATH env var or run 'dzql compile' to generate dist/runtime/manifest.json"
   );
 }
 
@@ -122,9 +122,9 @@ function discoverSubscribables(manifest: Manifest): Record<string, { params: Rec
 }
 
 /**
- * TZQL operations namespace for invokej
+ * DZQL operations namespace for invokej
  */
-export class TzqlNamespace {
+export class DzqlNamespace {
   private userId: number;
   private sql: postgres.Sql | null = null;
   private manifest: Manifest | null = null;
@@ -225,13 +225,13 @@ export class TzqlNamespace {
 
   /**
    * Search an entity
-   * @example invj tzql:search venues '{"query": "test"}'
+   * @example invj dzql:search venues '{"query": "test"}'
    */
   async search(_context: any, entity?: string, argsJson: string = "{}"): Promise<void> {
     if (!entity) {
       console.error("Error: entity name required");
-      console.error("Usage: invj tzql:search <entity> '<json_args>'");
-      console.error('Example: invj tzql:search venues \'{"query": "test"}\'');
+      console.error("Usage: invj dzql:search <entity> '<json_args>'");
+      console.error('Example: invj dzql:search venues \'{"query": "test"}\'');
       await this.cleanup();
       process.exit(1);
     }
@@ -258,13 +258,13 @@ export class TzqlNamespace {
 
   /**
    * Get entity by ID
-   * @example invj tzql:get venues '{"id": 1}'
+   * @example invj dzql:get venues '{"id": 1}'
    */
   async get(_context: any, entity?: string, argsJson: string = "{}"): Promise<void> {
     if (!entity) {
       console.error("Error: entity name required");
-      console.error("Usage: invj tzql:get <entity> '<json_args>'");
-      console.error('Example: invj tzql:get venues \'{"id": 1}\'');
+      console.error("Usage: invj dzql:get <entity> '<json_args>'");
+      console.error('Example: invj dzql:get venues \'{"id": 1}\'');
       await this.cleanup();
       process.exit(1);
     }
@@ -291,13 +291,13 @@ export class TzqlNamespace {
 
   /**
    * Save (create or update) entity
-   * @example invj tzql:save venues '{"name": "New Venue", "org_id": 1}'
+   * @example invj dzql:save venues '{"name": "New Venue", "org_id": 1}'
    */
   async save(_context: any, entity?: string, argsJson: string = "{}"): Promise<void> {
     if (!entity) {
       console.error("Error: entity name required");
-      console.error("Usage: invj tzql:save <entity> '<json_args>'");
-      console.error('Example: invj tzql:save venues \'{"name": "Test Venue", "org_id": 1}\'');
+      console.error("Usage: invj dzql:save <entity> '<json_args>'");
+      console.error('Example: invj dzql:save venues \'{"name": "Test Venue", "org_id": 1}\'');
       await this.cleanup();
       process.exit(1);
     }
@@ -324,13 +324,13 @@ export class TzqlNamespace {
 
   /**
    * Delete entity by ID
-   * @example invj tzql:delete venues '{"id": 1}'
+   * @example invj dzql:delete venues '{"id": 1}'
    */
   async delete(_context: any, entity?: string, argsJson: string = "{}"): Promise<void> {
     if (!entity) {
       console.error("Error: entity name required");
-      console.error("Usage: invj tzql:delete <entity> '<json_args>'");
-      console.error('Example: invj tzql:delete venues \'{"id": 1}\'');
+      console.error("Usage: invj dzql:delete <entity> '<json_args>'");
+      console.error('Example: invj dzql:delete venues \'{"id": 1}\'');
       await this.cleanup();
       process.exit(1);
     }
@@ -357,13 +357,13 @@ export class TzqlNamespace {
 
   /**
    * Lookup entity (for dropdowns/autocomplete)
-   * @example invj tzql:lookup organisations '{"query": "acme"}'
+   * @example invj dzql:lookup organisations '{"query": "acme"}'
    */
   async lookup(_context: any, entity?: string, argsJson: string = "{}"): Promise<void> {
     if (!entity) {
       console.error("Error: entity name required");
-      console.error("Usage: invj tzql:lookup <entity> '<json_args>'");
-      console.error('Example: invj tzql:lookup organisations \'{"query": "acme"}\'');
+      console.error("Usage: invj dzql:lookup <entity> '<json_args>'");
+      console.error('Example: invj dzql:lookup organisations \'{"query": "acme"}\'');
       await this.cleanup();
       process.exit(1);
     }
@@ -390,13 +390,13 @@ export class TzqlNamespace {
 
   /**
    * Get subscribable snapshot
-   * @example invj tzql:subscribe venue_detail '{"venue_id": 1}'
+   * @example invj dzql:subscribe venue_detail '{"venue_id": 1}'
    */
   async subscribe(_context: any, name?: string, argsJson: string = "{}"): Promise<void> {
     if (!name) {
       console.error("Error: subscribable name required");
-      console.error("Usage: invj tzql:subscribe <name> '<json_args>'");
-      console.error('Example: invj tzql:subscribe venue_detail \'{"venue_id": 1}\'');
+      console.error("Usage: invj dzql:subscribe <name> '<json_args>'");
+      console.error('Example: invj dzql:subscribe venue_detail \'{"venue_id": 1}\'');
       await this.cleanup();
       process.exit(1);
     }
@@ -423,15 +423,15 @@ export class TzqlNamespace {
 
   /**
    * Call any function in the manifest by name
-   * @example invj tzql:call login_user '{"email": "test@example.com", "password": "secret"}'
-   * @example invj tzql:call get_venue_detail '{"venue_id": 1}'
+   * @example invj dzql:call login_user '{"email": "test@example.com", "password": "secret"}'
+   * @example invj dzql:call get_venue_detail '{"venue_id": 1}'
    */
   async call(_context: any, funcName?: string, argsJson: string = "{}"): Promise<void> {
     if (!funcName) {
       console.error("Error: function name required");
-      console.error("Usage: invj tzql:call <function_name> '<json_args>'");
-      console.error('Example: invj tzql:call login_user \'{"email": "test@example.com", "password": "secret"}\'');
-      console.error('Example: invj tzql:call get_venue_detail \'{"venue_id": 1}\'');
+      console.error("Usage: invj dzql:call <function_name> '<json_args>'");
+      console.error('Example: invj dzql:call login_user \'{"email": "test@example.com", "password": "secret"}\'');
+      console.error('Example: invj dzql:call get_venue_detail \'{"venue_id": 1}\'');
       await this.cleanup();
       process.exit(1);
     }
@@ -458,7 +458,7 @@ export class TzqlNamespace {
 
   /**
    * List all available functions in the manifest
-   * @example invj tzql:functions
+   * @example invj dzql:functions
    */
   async functions(_context?: any): Promise<void> {
     try {

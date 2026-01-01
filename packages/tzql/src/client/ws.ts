@@ -1,4 +1,4 @@
-// Core WebSocket Manager for TZQL Client
+// Core WebSocket Manager for DZQL Client
 // Handles connection, auth, reconnects, and message dispatching.
 // This is a pure transport layer - it does not manage or cache data.
 
@@ -10,17 +10,17 @@ export interface WebSocketOptions {
 
 // Get default token name from environment (build-time injection)
 function getDefaultTokenName(): string {
-  // Vite: import.meta.env.VITE_TZQL_TOKEN_NAME
+  // Vite: import.meta.env.VITE_DZQL_TOKEN_NAME
   // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_TZQL_TOKEN_NAME) {
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_DZQL_TOKEN_NAME) {
     // @ts-ignore
-    return import.meta.env.VITE_TZQL_TOKEN_NAME;
+    return import.meta.env.VITE_DZQL_TOKEN_NAME;
   }
-  // Node/bundlers: process.env.TZQL_TOKEN_NAME
-  if (typeof process !== 'undefined' && process.env?.TZQL_TOKEN_NAME) {
-    return process.env.TZQL_TOKEN_NAME;
+  // Node/bundlers: process.env.DZQL_TOKEN_NAME
+  if (typeof process !== 'undefined' && process.env?.DZQL_TOKEN_NAME) {
+    return process.env.DZQL_TOKEN_NAME;
   }
-  return 'tzql_token';
+  return 'dzql_token';
 }
 
 export class WebSocketManager {
@@ -32,7 +32,7 @@ export class WebSocketManager {
   protected readyCallbacks = new Set<(user: any) => void>();
   protected reconnectAttempts = 0;
   protected maxReconnectAttempts = 5;
-  protected tokenName = 'tzql_token';
+  protected tokenName = 'dzql_token';
   protected isShuttingDown = false;
 
   // Connection state
@@ -123,7 +123,7 @@ export class WebSocketManager {
 
       this.ws.onopen = () => {
         clearTimeout(connectionTimeout);
-        console.log('[TZQL] Connected to ' + wsUrl);
+        console.log('[DZQL] Connected to ' + wsUrl);
         this.reconnectAttempts = 0;
         resolve();
       };
@@ -133,12 +133,12 @@ export class WebSocketManager {
           const message = JSON.parse(event.data);
           this.handleMessage(message);
         } catch (error) {
-          console.error("[TZQL] Failed to parse message:", error);
+          console.error("[DZQL] Failed to parse message:", error);
         }
       };
 
       this.ws.onclose = () => {
-        console.log("[TZQL] Disconnected");
+        console.log("[DZQL] Disconnected");
         if (!this.isShuttingDown) {
           this.attemptReconnect();
         }
@@ -146,7 +146,7 @@ export class WebSocketManager {
 
       this.ws.onerror = (error) => {
         clearTimeout(connectionTimeout);
-        console.error("[TZQL] Connection error:", error);
+        console.error("[DZQL] Connection error:", error);
         reject(error);
       };
     });
@@ -157,7 +157,7 @@ export class WebSocketManager {
       this.reconnectAttempts++;
       const delay = 1000 * this.reconnectAttempts;
       setTimeout(() => {
-        console.log('[TZQL] Reconnecting (' + this.reconnectAttempts + ')...');
+        console.log('[DZQL] Reconnecting (' + this.reconnectAttempts + ')...');
         this.connect();
       }, delay);
     }

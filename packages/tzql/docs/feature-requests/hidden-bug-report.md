@@ -1,6 +1,6 @@
-# tzql Bug Report
+# DZQL Bug Report
 
-Bugs discovered while building the Venues application with tzql.
+Bugs discovered while building the Venues application with DZQL.
 
 ---
 
@@ -97,7 +97,7 @@ Updated `compileSubscribePermission` in `subscribable_sql.ts` to map param names
 
 ## Environment
 
-- tzql version: (linked local development version)
+- dzql version: (linked local development version)
 - Database: PostgreSQL 17 (via Docker)
 - Client: Vue 3 + Pinia + TypeScript
 - Runtime: Bun
@@ -106,6 +106,6 @@ Updated `compileSubscribePermission` in `subscribable_sql.ts` to map param names
 
 ## Related Files
 
-Detailed bug documents created in tzql docs:
+Detailed bug documents created in dzql docs:
 - `/packages/tzql/docs/feature-requests/hidden-fields-in-subscribables.md`
 - `/packages/tzql/docs/feature-requests/subscribable-param-key-bug.md`
