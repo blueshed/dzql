@@ -21,36 +21,30 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/dzql@') || (github.event_name == 'workflow_dispatch' && (inputs.package == 'dzql' || inputs.package == 'both'))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Publish dzql
         run: npm publish --provenance --access public
         working-directory: packages/tzql
-        env:
-          NPM_CONFIG_WORKSPACES: false
 
   publish-create-dzql:
     if: startsWith(github.ref, 'refs/tags/create-dzql@') || (github.event_name == 'workflow_dispatch' && (inputs.package == 'create-dzql' || inputs.package == 'both'))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Publish create-dzql
         run: npm publish --provenance --access public
         working-directory: packages/create-dzql
-        env:
-          NPM_CONFIG_WORKSPACES: false
