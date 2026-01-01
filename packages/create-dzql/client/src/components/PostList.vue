@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useDzql } from '@/composables/useDzql'
 
 const { ws } = useDzql()
@@ -15,8 +15,9 @@ const showForm = ref(false)
 async function loadPosts() {
   loading.value = true
   try {
-    const result = await ws.call('search_posts', { limit: 50 })
-    posts.value = result || []
+    // Use get_posts_feed which includes author data
+    const result = await ws.call('get_posts_feed', {})
+    posts.value = result?.posts || []
   } catch (e: any) {
     error.value = e.message
   } finally {
