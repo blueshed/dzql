@@ -1,6 +1,6 @@
 {
   "name": "create-dzql",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "private": false,
   "bin": {
     "create-dzql": "./index.ts"
@@ -17,7 +17,10 @@
     "server",
     "client"
   ],
-  "workspaces": ["client", "server"],
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "scripts": {
     "compile": "bunx dzql domain.ts -o generated",
     "db:up": "docker compose up -d",
@@ -32,6 +35,9 @@
     "concurrently": "^9.1.0"
   },
   "bun-create": {
-    "postinstall": ["./setup.sh", "rm setup.sh"]
+    "postinstall": [
+      "./setup.sh",
+      "rm setup.sh"
+    ]
   }
 }
