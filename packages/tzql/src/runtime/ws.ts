@@ -148,6 +148,8 @@ export class WebSocketServer {
              // Auto-generate token for auth methods
              if (req.method === 'login_user' || req.method === 'register_user') {
                  const token = await signToken({ user_id: result.user_id, role: 'user' });
+                 // Update connection's userId for subsequent calls
+                 ws.data.userId = result.user_id;
                  // Return profile + token
                  ws.send(JSON.stringify({ id: req.id, result: { ...result, token } }));
              } else {

@@ -18,16 +18,16 @@ describe("Client SDK Generation", () => {
     const tsCode = generateClientSDK(mockManifest);
 
     // Check imports
-    expect(tsCode).toContain("import { WebSocketManager } from 'tzql/client'");
+    expect(tsCode).toContain("import { WebSocketManager } from 'dzql/client'");
 
     // Check interface definition
-    expect(tsCode).toContain("export interface TzqlAPI {");
+    expect(tsCode).toContain("export interface DzqlAPI {");
     expect(tsCode).toContain("save_posts: (params: SavePostsParams) => Promise<Posts>");
     expect(tsCode).toContain("get_posts: (params: PostsPK) => Promise<Posts | null>");
 
     // Check class definition
     expect(tsCode).toContain("export class GeneratedWebSocketManager extends WebSocketManager");
-    expect(tsCode).toContain("api: TzqlAPI");
+    expect(tsCode).toContain("api: DzqlAPI");
 
     // Check API implementation
     expect(tsCode).toContain("this.call('save_posts', params)");

@@ -1,5 +1,5 @@
 /**
- * Tests for TzqlNamespace - invokej integration
+ * Tests for DzqlNamespace - invokej integration
  *
  * These tests verify the namespace works correctly with the manifest
  * and can execute CRUD operations against a real database.
@@ -16,7 +16,7 @@ import { join } from "path";
 
 const blogDomain = { entities, subscribables: {} };
 
-describe("TzqlNamespace", () => {
+describe("DzqlNamespace", () => {
   let db: V2TestDatabase;
   let sql: any;
   let testManifestPath: string;
@@ -140,8 +140,8 @@ describe("TzqlNamespace", () => {
   }
 
   test("entities() lists available entities", async () => {
-    const { TzqlNamespace } = await import("../src/runtime/namespace.js");
-    const ns = new TzqlNamespace();
+    const { DzqlNamespace } = await import("../src/runtime/namespace.js");
+    const ns = new DzqlNamespace();
 
     const restore = setupMocks();
 
@@ -162,8 +162,8 @@ describe("TzqlNamespace", () => {
   });
 
   test("functions() lists available functions", async () => {
-    const { TzqlNamespace } = await import("../src/runtime/namespace.js");
-    const ns = new TzqlNamespace();
+    const { DzqlNamespace } = await import("../src/runtime/namespace.js");
+    const ns = new DzqlNamespace();
 
     const restore = setupMocks();
 
@@ -188,8 +188,8 @@ describe("TzqlNamespace", () => {
   });
 
   test("save() creates a new entity", async () => {
-    const { TzqlNamespace } = await import("../src/runtime/namespace.js");
-    const ns = new TzqlNamespace(1); // userId = 1
+    const { DzqlNamespace } = await import("../src/runtime/namespace.js");
+    const ns = new DzqlNamespace(1); // userId = 1
 
     const restore = setupMocks();
 
@@ -222,8 +222,8 @@ describe("TzqlNamespace", () => {
     `;
     const postId = created[0].id;
 
-    const { TzqlNamespace } = await import("../src/runtime/namespace.js");
-    const ns = new TzqlNamespace(1);
+    const { DzqlNamespace } = await import("../src/runtime/namespace.js");
+    const ns = new DzqlNamespace(1);
 
     const restore = setupMocks();
 
@@ -250,8 +250,8 @@ describe("TzqlNamespace", () => {
       VALUES ('Search Post 1', 'Content', 1), ('Search Post 2', 'More', 1)
     `;
 
-    const { TzqlNamespace } = await import("../src/runtime/namespace.js");
-    const ns = new TzqlNamespace(1);
+    const { DzqlNamespace } = await import("../src/runtime/namespace.js");
+    const ns = new DzqlNamespace(1);
 
     const restore = setupMocks();
 
@@ -279,8 +279,8 @@ describe("TzqlNamespace", () => {
     `;
     const postId = created[0].id;
 
-    const { TzqlNamespace } = await import("../src/runtime/namespace.js");
-    const ns = new TzqlNamespace(1); // userId must match author_id
+    const { DzqlNamespace } = await import("../src/runtime/namespace.js");
+    const ns = new DzqlNamespace(1); // userId must match author_id
 
     const restore = setupMocks();
 
@@ -308,8 +308,8 @@ describe("TzqlNamespace", () => {
   });
 
   test("call() executes arbitrary manifest function", async () => {
-    const { TzqlNamespace } = await import("../src/runtime/namespace.js");
-    const ns = new TzqlNamespace(1);
+    const { DzqlNamespace } = await import("../src/runtime/namespace.js");
+    const ns = new DzqlNamespace(1);
 
     const restore = setupMocks();
 
@@ -338,8 +338,8 @@ describe("TzqlNamespace", () => {
   });
 
   test("call() with unknown function returns error", async () => {
-    const { TzqlNamespace } = await import("../src/runtime/namespace.js");
-    const ns = new TzqlNamespace(1);
+    const { DzqlNamespace } = await import("../src/runtime/namespace.js");
+    const ns = new DzqlNamespace(1);
 
     const restore = setupMocks();
 
@@ -360,8 +360,8 @@ describe("TzqlNamespace", () => {
   });
 
   test("search() without entity shows usage", async () => {
-    const { TzqlNamespace } = await import("../src/runtime/namespace.js");
-    const ns = new TzqlNamespace(1);
+    const { DzqlNamespace } = await import("../src/runtime/namespace.js");
+    const ns = new DzqlNamespace(1);
 
     const restore = setupMocks();
 
@@ -377,8 +377,8 @@ describe("TzqlNamespace", () => {
   });
 
   test("save() with invalid JSON shows error", async () => {
-    const { TzqlNamespace } = await import("../src/runtime/namespace.js");
-    const ns = new TzqlNamespace(1);
+    const { DzqlNamespace } = await import("../src/runtime/namespace.js");
+    const ns = new DzqlNamespace(1);
 
     const restore = setupMocks();
 

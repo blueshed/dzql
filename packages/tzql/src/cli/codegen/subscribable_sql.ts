@@ -223,7 +223,7 @@ function generateGetFunction(name: string, sub: SubscribableIR, entities: Record
   // Handle special @user_id root key
   const rootKey = sub.root.key;
   const isUserIdRoot = rootKey === '@user_id';
-  const rootWhereValue = isUserIdRoot ? 'p_user_id' : `v_${rootKey}`;
+  const isList = !rootKey; // No key means it's a list subscribable
 
   // Build root select expression excluding hidden fields
   const rootSelectExpr = buildVisibleRowJson('root', sub.root.entity, entities);
@@ -239,7 +239,67 @@ function generateGetFunction(name: string, sub: SubscribableIR, entities: Record
     scopeTables: sub.scopeTables
   }).replace(/'/g, "''"); // Escape single quotes for SQL
 
-  return `CREATE OR REPLACE FUNCTION dzql_v2.get_${name}(
+  // Build WHERE clause based on root filter and key
+  const whereConditions: string[] = [];
+  if (rootKey) {
+    const rootWhereValue = isUserIdRoot ? 'p_user_id' : `v_${rootKey}`;
+    whereConditions.push(`root.id = ${rootWhereValue}`);
+  }
+  if (sub.root.filter) {
+    for (const [field, value] of Object.entries(sub.root.filter)) {
+      if (typeof value === 'boolean') {
+        whereConditions.push(`root.${field} = ${value}`);
+      } else if (typeof value === 'string') {
+        whereConditions.push(`root.${field} = '${value}'`);
+      } else {
+        whereConditions.push(`root.${field} = ${value}`);
+      }
+    }
+  }
+  const whereClause = whereConditions.length > 0
+    ? `WHERE ${whereConditions.join(' AND ')}`
+    : '';
+
+  if (isList) {
+    // List subscribable - return array of records with nested includes
+    return `CREATE OR REPLACE FUNCTION dzql_v2.get_${name}(
+  p_params JSONB,
+  p_user_id INT
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = dzql_v2, public
+AS $$
+DECLARE
+${paramDecls}
+  v_data JSONB;
+BEGIN
+  -- Extract parameters
+${paramExtracts}
+
+  -- Check access control
+  IF NOT dzql_v2.${name}_can_subscribe(p_user_id, p_params) THEN
+    RAISE EXCEPTION 'permission_denied';
+  END IF;
+
+  -- Build list of documents with nested relations
+  SELECT COALESCE(jsonb_agg(
+    to_jsonb(root.*) || jsonb_build_object(${relationSelects ? relationSelects.slice(1) : ''})
+  ), '[]'::jsonb)
+  INTO v_data
+  FROM ${sub.root.entity} root
+  ${whereClause};
+
+  -- Return data with embedded schema for atomic updates
+  RETURN jsonb_build_object(
+    '${sub.root.entity}', v_data,
+    'schema', '${schemaJson}'::jsonb
+  );
+END;
+$$;`;
+  } else {
+    // Single record subscribable
+    return `CREATE OR REPLACE FUNCTION dzql_v2.get_${name}(
   p_params JSONB,
   p_user_id INT
 ) RETURNS JSONB
@@ -265,7 +325,7 @@ ${paramExtracts}
   )
   INTO v_data
   FROM ${sub.root.entity} root
-  WHERE root.id = ${rootWhereValue};
+  ${whereClause};
 
   -- Return data with embedded schema for atomic updates
   RETURN jsonb_build_object(
@@ -274,6 +334,7 @@ ${paramExtracts}
   );
 END;
 $$;`;
+  }
 }
 
 function singularize(name: string): string {

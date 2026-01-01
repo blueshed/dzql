@@ -1,0 +1,1562 @@
+{
+  "version": "2.0.0",
+  "functions": {
+    "login_user": {
+      "schema": "dzql_v2",
+      "name": "login_user",
+      "args": [
+        "p_params"
+      ],
+      "returnType": "jsonb"
+    },
+    "register_user": {
+      "schema": "dzql_v2",
+      "name": "register_user",
+      "args": [
+        "p_params"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_users": {
+      "schema": "dzql_v2",
+      "name": "get_users",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "save_users": {
+      "schema": "dzql_v2",
+      "name": "save_users",
+      "args": [
+        "p_user_id",
+        "p_data"
+      ],
+      "returnType": "jsonb"
+    },
+    "delete_users": {
+      "schema": "dzql_v2",
+      "name": "delete_users",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "search_users": {
+      "schema": "dzql_v2",
+      "name": "search_users",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "lookup_users": {
+      "schema": "dzql_v2",
+      "name": "lookup_users",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_organisations": {
+      "schema": "dzql_v2",
+      "name": "get_organisations",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "save_organisations": {
+      "schema": "dzql_v2",
+      "name": "save_organisations",
+      "args": [
+        "p_user_id",
+        "p_data"
+      ],
+      "returnType": "jsonb"
+    },
+    "delete_organisations": {
+      "schema": "dzql_v2",
+      "name": "delete_organisations",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "search_organisations": {
+      "schema": "dzql_v2",
+      "name": "search_organisations",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "lookup_organisations": {
+      "schema": "dzql_v2",
+      "name": "lookup_organisations",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_acts_for": {
+      "schema": "dzql_v2",
+      "name": "get_acts_for",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "save_acts_for": {
+      "schema": "dzql_v2",
+      "name": "save_acts_for",
+      "args": [
+        "p_user_id",
+        "p_data"
+      ],
+      "returnType": "jsonb"
+    },
+    "delete_acts_for": {
+      "schema": "dzql_v2",
+      "name": "delete_acts_for",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "search_acts_for": {
+      "schema": "dzql_v2",
+      "name": "search_acts_for",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "lookup_acts_for": {
+      "schema": "dzql_v2",
+      "name": "lookup_acts_for",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_venues": {
+      "schema": "dzql_v2",
+      "name": "get_venues",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "save_venues": {
+      "schema": "dzql_v2",
+      "name": "save_venues",
+      "args": [
+        "p_user_id",
+        "p_data"
+      ],
+      "returnType": "jsonb"
+    },
+    "delete_venues": {
+      "schema": "dzql_v2",
+      "name": "delete_venues",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "search_venues": {
+      "schema": "dzql_v2",
+      "name": "search_venues",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "lookup_venues": {
+      "schema": "dzql_v2",
+      "name": "lookup_venues",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_sites": {
+      "schema": "dzql_v2",
+      "name": "get_sites",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "save_sites": {
+      "schema": "dzql_v2",
+      "name": "save_sites",
+      "args": [
+        "p_user_id",
+        "p_data"
+      ],
+      "returnType": "jsonb"
+    },
+    "delete_sites": {
+      "schema": "dzql_v2",
+      "name": "delete_sites",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "search_sites": {
+      "schema": "dzql_v2",
+      "name": "search_sites",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "lookup_sites": {
+      "schema": "dzql_v2",
+      "name": "lookup_sites",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_products": {
+      "schema": "dzql_v2",
+      "name": "get_products",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "save_products": {
+      "schema": "dzql_v2",
+      "name": "save_products",
+      "args": [
+        "p_user_id",
+        "p_data"
+      ],
+      "returnType": "jsonb"
+    },
+    "delete_products": {
+      "schema": "dzql_v2",
+      "name": "delete_products",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "search_products": {
+      "schema": "dzql_v2",
+      "name": "search_products",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "lookup_products": {
+      "schema": "dzql_v2",
+      "name": "lookup_products",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_packages": {
+      "schema": "dzql_v2",
+      "name": "get_packages",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "save_packages": {
+      "schema": "dzql_v2",
+      "name": "save_packages",
+      "args": [
+        "p_user_id",
+        "p_data"
+      ],
+      "returnType": "jsonb"
+    },
+    "delete_packages": {
+      "schema": "dzql_v2",
+      "name": "delete_packages",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "search_packages": {
+      "schema": "dzql_v2",
+      "name": "search_packages",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "lookup_packages": {
+      "schema": "dzql_v2",
+      "name": "lookup_packages",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_allocations": {
+      "schema": "dzql_v2",
+      "name": "get_allocations",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "save_allocations": {
+      "schema": "dzql_v2",
+      "name": "save_allocations",
+      "args": [
+        "p_user_id",
+        "p_data"
+      ],
+      "returnType": "jsonb"
+    },
+    "delete_allocations": {
+      "schema": "dzql_v2",
+      "name": "delete_allocations",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "search_allocations": {
+      "schema": "dzql_v2",
+      "name": "search_allocations",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "lookup_allocations": {
+      "schema": "dzql_v2",
+      "name": "lookup_allocations",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_contractor_rights": {
+      "schema": "dzql_v2",
+      "name": "get_contractor_rights",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "save_contractor_rights": {
+      "schema": "dzql_v2",
+      "name": "save_contractor_rights",
+      "args": [
+        "p_user_id",
+        "p_data"
+      ],
+      "returnType": "jsonb"
+    },
+    "delete_contractor_rights": {
+      "schema": "dzql_v2",
+      "name": "delete_contractor_rights",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "search_contractor_rights": {
+      "schema": "dzql_v2",
+      "name": "search_contractor_rights",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "lookup_contractor_rights": {
+      "schema": "dzql_v2",
+      "name": "lookup_contractor_rights",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_brands": {
+      "schema": "dzql_v2",
+      "name": "get_brands",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "save_brands": {
+      "schema": "dzql_v2",
+      "name": "save_brands",
+      "args": [
+        "p_user_id",
+        "p_data"
+      ],
+      "returnType": "jsonb"
+    },
+    "delete_brands": {
+      "schema": "dzql_v2",
+      "name": "delete_brands",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "search_brands": {
+      "schema": "dzql_v2",
+      "name": "search_brands",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "lookup_brands": {
+      "schema": "dzql_v2",
+      "name": "lookup_brands",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_artwork": {
+      "schema": "dzql_v2",
+      "name": "get_artwork",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "save_artwork": {
+      "schema": "dzql_v2",
+      "name": "save_artwork",
+      "args": [
+        "p_user_id",
+        "p_data"
+      ],
+      "returnType": "jsonb"
+    },
+    "delete_artwork": {
+      "schema": "dzql_v2",
+      "name": "delete_artwork",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "search_artwork": {
+      "schema": "dzql_v2",
+      "name": "search_artwork",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "lookup_artwork": {
+      "schema": "dzql_v2",
+      "name": "lookup_artwork",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_tags": {
+      "schema": "dzql_v2",
+      "name": "get_tags",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "save_tags": {
+      "schema": "dzql_v2",
+      "name": "save_tags",
+      "args": [
+        "p_user_id",
+        "p_data"
+      ],
+      "returnType": "jsonb"
+    },
+    "delete_tags": {
+      "schema": "dzql_v2",
+      "name": "delete_tags",
+      "args": [
+        "p_user_id",
+        "p_pk"
+      ],
+      "returnType": "jsonb"
+    },
+    "search_tags": {
+      "schema": "dzql_v2",
+      "name": "search_tags",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "lookup_tags": {
+      "schema": "dzql_v2",
+      "name": "lookup_tags",
+      "args": [
+        "p_user_id",
+        "p_query"
+      ],
+      "returnType": "jsonb"
+    },
+    "get_venue_detail": {
+      "schema": "dzql_v2",
+      "name": "get_venue_detail",
+      "args": [
+        "p_params",
+        "p_user_id"
+      ],
+      "returnType": "jsonb"
+    },
+    "venue_detail_can_subscribe": {
+      "schema": "dzql_v2",
+      "name": "venue_detail_can_subscribe",
+      "args": [
+        "p_user_id",
+        "p_params"
+      ],
+      "returnType": "boolean"
+    },
+    "subscribe_venue_detail": {
+      "schema": "dzql_v2",
+      "name": "subscribe_venue_detail",
+      "args": [
+        "p_params"
+      ],
+      "returnType": "jsonb",
+      "isSubscription": true
+    },
+    "get_org_dashboard": {
+      "schema": "dzql_v2",
+      "name": "get_org_dashboard",
+      "args": [
+        "p_params",
+        "p_user_id"
+      ],
+      "returnType": "jsonb"
+    },
+    "org_dashboard_can_subscribe": {
+      "schema": "dzql_v2",
+      "name": "org_dashboard_can_subscribe",
+      "args": [
+        "p_user_id",
+        "p_params"
+      ],
+      "returnType": "boolean"
+    },
+    "subscribe_org_dashboard": {
+      "schema": "dzql_v2",
+      "name": "subscribe_org_dashboard",
+      "args": [
+        "p_params"
+      ],
+      "returnType": "jsonb",
+      "isSubscription": true
+    },
+    "get_my_profile": {
+      "schema": "dzql_v2",
+      "name": "get_my_profile",
+      "args": [
+        "p_params",
+        "p_user_id"
+      ],
+      "returnType": "jsonb"
+    },
+    "my_profile_can_subscribe": {
+      "schema": "dzql_v2",
+      "name": "my_profile_can_subscribe",
+      "args": [
+        "p_user_id",
+        "p_params"
+      ],
+      "returnType": "boolean"
+    },
+    "subscribe_my_profile": {
+      "schema": "dzql_v2",
+      "name": "subscribe_my_profile",
+      "args": [
+        "p_params"
+      ],
+      "returnType": "jsonb",
+      "isSubscription": true
+    }
+  },
+  "entities": {
+    "users": {
+      "name": "users",
+      "table": "users",
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "serial PRIMARY KEY",
+          "isArray": false
+        },
+        {
+          "name": "name",
+          "type": "text NOT NULL",
+          "isArray": false
+        },
+        {
+          "name": "email",
+          "type": "text UNIQUE NOT NULL",
+          "isArray": false
+        },
+        {
+          "name": "password_hash",
+          "type": "text NOT NULL",
+          "isArray": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz DEFAULT now()",
+          "isArray": false
+        }
+      ],
+      "labelField": "name",
+      "softDelete": false,
+      "managed": true,
+      "hidden": [
+        "password_hash"
+      ],
+      "fieldDefaults": {},
+      "permissions": {
+        "view": [],
+        "create": [],
+        "update": [
+          "@id"
+        ],
+        "delete": [
+          "@id"
+        ]
+      },
+      "relationships": {},
+      "manyToMany": {},
+      "graphRules": {
+        "onCreate": [],
+        "onUpdate": [],
+        "onDelete": []
+      }
+    },
+    "organisations": {
+      "name": "organisations",
+      "table": "organisations",
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "serial PRIMARY KEY",
+          "isArray": false
+        },
+        {
+          "name": "name",
+          "type": "text UNIQUE NOT NULL",
+          "isArray": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "isArray": false
+        }
+      ],
+      "labelField": "name",
+      "softDelete": false,
+      "managed": true,
+      "hidden": [],
+      "fieldDefaults": {},
+      "permissions": {
+        "view": [],
+        "create": [],
+        "update": [
+          "@id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "delete": [
+          "@id->acts_for[org_id=$]{active}.user_id"
+        ]
+      },
+      "relationships": {},
+      "manyToMany": {},
+      "graphRules": {
+        "onCreate": [
+          {
+            "trigger": "create",
+            "action": "create",
+            "target": "acts_for",
+            "ruleName": "establish_ownership",
+            "description": "Creator becomes owner",
+            "params": {
+              "user_id": "@user_id",
+              "org_id": "@id",
+              "valid_from": "@today"
+            }
+          }
+        ],
+        "onUpdate": [],
+        "onDelete": [
+          {
+            "trigger": "delete",
+            "action": "delete",
+            "target": "acts_for",
+            "ruleName": "cleanup_relationships",
+            "description": "Cascading delete for related entities",
+            "params": {
+              "org_id": "@id"
+            }
+          },
+          {
+            "trigger": "delete",
+            "action": "delete",
+            "target": "venues",
+            "ruleName": "cleanup_relationships",
+            "description": "Cascading delete for related entities",
+            "params": {
+              "org_id": "@id"
+            }
+          },
+          {
+            "trigger": "delete",
+            "action": "update",
+            "target": "packages",
+            "ruleName": "cleanup_relationships",
+            "description": "Cascading delete for related entities",
+            "params": {
+              "sponsor_org_id": "@id"
+            }
+          }
+        ]
+      }
+    },
+    "acts_for": {
+      "name": "acts_for",
+      "table": "acts_for",
+      "primaryKey": [
+        "user_id",
+        "org_id",
+        "valid_from"
+      ],
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "int NOT NULL REFERENCES users(id)",
+          "isArray": false
+        },
+        {
+          "name": "org_id",
+          "type": "int NOT NULL REFERENCES organisations(id) ON DELETE CASCADE",
+          "isArray": false
+        },
+        {
+          "name": "valid_from",
+          "type": "date NOT NULL DEFAULT current_date",
+          "isArray": false
+        },
+        {
+          "name": "valid_to",
+          "type": "date",
+          "isArray": false
+        },
+        {
+          "name": "active",
+          "type": "boolean DEFAULT true",
+          "isArray": false
+        }
+      ],
+      "labelField": "org_id",
+      "softDelete": false,
+      "managed": true,
+      "hidden": [],
+      "fieldDefaults": {},
+      "permissions": {
+        "view": [],
+        "create": [],
+        "update": [],
+        "delete": []
+      },
+      "relationships": {},
+      "manyToMany": {},
+      "graphRules": {
+        "onCreate": [],
+        "onUpdate": [],
+        "onDelete": []
+      }
+    },
+    "venues": {
+      "name": "venues",
+      "table": "venues",
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "serial PRIMARY KEY",
+          "isArray": false
+        },
+        {
+          "name": "org_id",
+          "type": "int NOT NULL REFERENCES organisations(id) ON DELETE CASCADE",
+          "isArray": false
+        },
+        {
+          "name": "name",
+          "type": "text UNIQUE NOT NULL",
+          "isArray": false
+        },
+        {
+          "name": "address",
+          "type": "text NOT NULL",
+          "isArray": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "isArray": false
+        }
+      ],
+      "labelField": "name",
+      "softDelete": false,
+      "managed": true,
+      "hidden": [],
+      "fieldDefaults": {},
+      "permissions": {
+        "view": [],
+        "create": [
+          "@org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "update": [
+          "@org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "delete": [
+          "@org_id->acts_for[org_id=$]{active}.user_id"
+        ]
+      },
+      "relationships": {},
+      "manyToMany": {},
+      "graphRules": {
+        "onCreate": [],
+        "onUpdate": [],
+        "onDelete": []
+      }
+    },
+    "sites": {
+      "name": "sites",
+      "table": "sites",
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "serial PRIMARY KEY",
+          "isArray": false
+        },
+        {
+          "name": "venue_id",
+          "type": "int NOT NULL REFERENCES venues(id)",
+          "isArray": false
+        },
+        {
+          "name": "name",
+          "type": "text NOT NULL",
+          "isArray": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "isArray": false
+        }
+      ],
+      "labelField": "name",
+      "softDelete": false,
+      "managed": true,
+      "hidden": [],
+      "fieldDefaults": {},
+      "permissions": {
+        "view": [],
+        "create": [
+          "@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "update": [
+          "@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "delete": [
+          "@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id"
+        ]
+      },
+      "relationships": {},
+      "manyToMany": {},
+      "graphRules": {
+        "onCreate": [],
+        "onUpdate": [],
+        "onDelete": []
+      }
+    },
+    "products": {
+      "name": "products",
+      "table": "products",
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "serial PRIMARY KEY",
+          "isArray": false
+        },
+        {
+          "name": "org_id",
+          "type": "int NOT NULL REFERENCES organisations(id) ON DELETE CASCADE",
+          "isArray": false
+        },
+        {
+          "name": "name",
+          "type": "text UNIQUE NOT NULL",
+          "isArray": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "isArray": false
+        },
+        {
+          "name": "price",
+          "type": "decimal(10, 2) NOT NULL DEFAULT 0.00",
+          "isArray": false
+        },
+        {
+          "name": "created_by",
+          "type": "int REFERENCES users(id)",
+          "isArray": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "isArray": false
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamptz",
+          "isArray": false
+        }
+      ],
+      "labelField": "name",
+      "softDelete": true,
+      "managed": true,
+      "hidden": [],
+      "fieldDefaults": {
+        "created_by": "@user_id",
+        "created_at": "@now"
+      },
+      "permissions": {
+        "view": [],
+        "create": [
+          "@org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "update": [
+          "@org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "delete": [
+          "@org_id->acts_for[org_id=$]{active}.user_id"
+        ]
+      },
+      "relationships": {},
+      "manyToMany": {},
+      "graphRules": {
+        "onCreate": [],
+        "onUpdate": [],
+        "onDelete": []
+      }
+    },
+    "packages": {
+      "name": "packages",
+      "table": "packages",
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "serial PRIMARY KEY",
+          "isArray": false
+        },
+        {
+          "name": "owner_org_id",
+          "type": "int NOT NULL REFERENCES organisations(id) ON DELETE CASCADE",
+          "isArray": false
+        },
+        {
+          "name": "sponsor_org_id",
+          "type": "int REFERENCES organisations(id) ON DELETE SET NULL",
+          "isArray": false
+        },
+        {
+          "name": "name",
+          "type": "text NOT NULL",
+          "isArray": false
+        },
+        {
+          "name": "price",
+          "type": "decimal(10, 2) NOT NULL DEFAULT 0.00",
+          "isArray": false
+        },
+        {
+          "name": "status",
+          "type": "text NOT NULL DEFAULT 'draft'",
+          "isArray": false
+        }
+      ],
+      "labelField": "name",
+      "softDelete": false,
+      "managed": true,
+      "hidden": [],
+      "fieldDefaults": {},
+      "permissions": {
+        "view": [
+          "@owner_org_id->acts_for[org_id=$]{active}.user_id",
+          "@sponsor_org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "create": [
+          "@owner_org_id->acts_for[org_id=$]{active}.user_id",
+          "@sponsor_org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "update": [
+          "@owner_org_id->acts_for[org_id=$]{active}.user_id",
+          "@sponsor_org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "delete": [
+          "@owner_org_id->acts_for[org_id=$]{active}.user_id"
+        ]
+      },
+      "relationships": {},
+      "manyToMany": {},
+      "graphRules": {
+        "onCreate": [],
+        "onUpdate": [],
+        "onDelete": []
+      }
+    },
+    "allocations": {
+      "name": "allocations",
+      "table": "allocations",
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "serial PRIMARY KEY",
+          "isArray": false
+        },
+        {
+          "name": "package_id",
+          "type": "int NOT NULL REFERENCES packages(id)",
+          "isArray": false
+        },
+        {
+          "name": "site_id",
+          "type": "int NOT NULL REFERENCES sites(id)",
+          "isArray": false
+        },
+        {
+          "name": "from_date",
+          "type": "date NOT NULL",
+          "isArray": false
+        },
+        {
+          "name": "to_date",
+          "type": "date NOT NULL",
+          "isArray": false
+        }
+      ],
+      "labelField": "id",
+      "softDelete": false,
+      "managed": true,
+      "hidden": [],
+      "fieldDefaults": {},
+      "permissions": {
+        "view": [
+          "@site_id->sites.venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id",
+          "@package_id->packages.owner_org_id->acts_for[org_id=$]{active}.user_id",
+          "@package_id->packages.sponsor_org_id->acts_for[org_id=$]{active}.user_id",
+          "contractor_rights[package_id=@package_id]{active}.contractor_org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "create": [
+          "@site_id->sites.venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "update": [
+          "@site_id->sites.venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id",
+          "@package_id->packages.owner_org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "delete": [
+          "@site_id->sites.venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id"
+        ]
+      },
+      "relationships": {},
+      "manyToMany": {},
+      "graphRules": {
+        "onCreate": [],
+        "onUpdate": [],
+        "onDelete": []
+      }
+    },
+    "contractor_rights": {
+      "name": "contractor_rights",
+      "table": "contractor_rights",
+      "primaryKey": [
+        "contractor_org_id",
+        "package_id",
+        "valid_from"
+      ],
+      "columns": [
+        {
+          "name": "contractor_org_id",
+          "type": "int NOT NULL REFERENCES organisations(id) ON DELETE CASCADE",
+          "isArray": false
+        },
+        {
+          "name": "sponsor_org_id",
+          "type": "int NOT NULL REFERENCES organisations(id) ON DELETE CASCADE",
+          "isArray": false
+        },
+        {
+          "name": "package_id",
+          "type": "int NOT NULL REFERENCES packages(id) ON DELETE CASCADE",
+          "isArray": false
+        },
+        {
+          "name": "valid_from",
+          "type": "date NOT NULL DEFAULT current_date",
+          "isArray": false
+        },
+        {
+          "name": "valid_to",
+          "type": "date",
+          "isArray": false
+        }
+      ],
+      "labelField": "contractor_org_id",
+      "softDelete": false,
+      "managed": true,
+      "hidden": [],
+      "fieldDefaults": {},
+      "permissions": {
+        "view": [],
+        "create": [
+          "@sponsor_org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "update": [
+          "@sponsor_org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "delete": [
+          "@sponsor_org_id->acts_for[org_id=$]{active}.user_id"
+        ]
+      },
+      "relationships": {},
+      "manyToMany": {},
+      "graphRules": {
+        "onCreate": [],
+        "onUpdate": [],
+        "onDelete": []
+      }
+    },
+    "brands": {
+      "name": "brands",
+      "table": "brands",
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "serial PRIMARY KEY",
+          "isArray": false
+        },
+        {
+          "name": "org_id",
+          "type": "int NOT NULL REFERENCES organisations(id) ON DELETE CASCADE",
+          "isArray": false
+        },
+        {
+          "name": "name",
+          "type": "text NOT NULL",
+          "isArray": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "isArray": false
+        }
+      ],
+      "labelField": "name",
+      "softDelete": false,
+      "managed": true,
+      "hidden": [],
+      "fieldDefaults": {},
+      "permissions": {
+        "view": [],
+        "create": [
+          "@org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "update": [
+          "@org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "delete": [
+          "@org_id->acts_for[org_id=$]{active}.user_id"
+        ]
+      },
+      "relationships": {},
+      "manyToMany": {
+        "tags": {
+          "junctionTable": "brand_tags",
+          "localKey": "brand_id",
+          "foreignKey": "tag_id",
+          "targetEntity": "tags",
+          "idField": "tag_ids",
+          "expand": false
+        }
+      },
+      "graphRules": {
+        "onCreate": [],
+        "onUpdate": [],
+        "onDelete": []
+      }
+    },
+    "artwork": {
+      "name": "artwork",
+      "table": "artwork",
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "serial PRIMARY KEY",
+          "isArray": false
+        },
+        {
+          "name": "brand_id",
+          "type": "int NOT NULL REFERENCES brands(id) ON DELETE CASCADE",
+          "isArray": false
+        },
+        {
+          "name": "url",
+          "type": "text NOT NULL",
+          "isArray": false
+        },
+        {
+          "name": "ratio",
+          "type": "decimal(10, 4) NOT NULL",
+          "isArray": false
+        }
+      ],
+      "labelField": "url",
+      "softDelete": false,
+      "managed": true,
+      "hidden": [],
+      "fieldDefaults": {},
+      "permissions": {
+        "view": [],
+        "create": [
+          "@brand_id->brands.org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "update": [
+          "@brand_id->brands.org_id->acts_for[org_id=$]{active}.user_id"
+        ],
+        "delete": [
+          "@brand_id->brands.org_id->acts_for[org_id=$]{active}.user_id"
+        ]
+      },
+      "relationships": {},
+      "manyToMany": {},
+      "graphRules": {
+        "onCreate": [],
+        "onUpdate": [],
+        "onDelete": []
+      }
+    },
+    "tags": {
+      "name": "tags",
+      "table": "tags",
+      "primaryKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": "serial PRIMARY KEY",
+          "isArray": false
+        },
+        {
+          "name": "name",
+          "type": "text NOT NULL UNIQUE",
+          "isArray": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "isArray": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "isArray": false
+        }
+      ],
+      "labelField": "name",
+      "softDelete": false,
+      "managed": true,
+      "hidden": [],
+      "fieldDefaults": {},
+      "permissions": {
+        "view": [],
+        "create": [],
+        "update": [],
+        "delete": []
+      },
+      "relationships": {},
+      "manyToMany": {},
+      "graphRules": {
+        "onCreate": [],
+        "onUpdate": [],
+        "onDelete": []
+      }
+    },
+    "brand_tags": {
+      "name": "brand_tags",
+      "table": "brand_tags",
+      "primaryKey": [
+        "brand_id",
+        "tag_id"
+      ],
+      "columns": [
+        {
+          "name": "brand_id",
+          "type": "int NOT NULL REFERENCES brands(id) ON DELETE CASCADE",
+          "isArray": false
+        },
+        {
+          "name": "tag_id",
+          "type": "int NOT NULL REFERENCES tags(id) ON DELETE CASCADE",
+          "isArray": false
+        }
+      ],
+      "labelField": "id",
+      "softDelete": false,
+      "managed": false,
+      "hidden": [],
+      "fieldDefaults": {},
+      "permissions": {
+        "view": [],
+        "create": [],
+        "update": [],
+        "delete": []
+      },
+      "relationships": {},
+      "manyToMany": {},
+      "graphRules": {
+        "onCreate": [],
+        "onUpdate": [],
+        "onDelete": []
+      }
+    }
+  },
+  "subscribables": {
+    "venue_detail": {
+      "name": "venue_detail",
+      "params": {
+        "venue_id": "int"
+      },
+      "root": {
+        "entity": "venues",
+        "key": "venue_id"
+      },
+      "includes": {
+        "org": {
+          "relation": "org",
+          "entity": "organisations",
+          "includes": {}
+        },
+        "sites": {
+          "relation": "sites",
+          "entity": "sites",
+          "includes": {
+            "allocations": {
+              "relation": "allocations",
+              "entity": "allocations",
+              "includes": {}
+            }
+          }
+        }
+      },
+      "scopeTables": [
+        "venues",
+        "organisations",
+        "sites",
+        "allocations"
+      ],
+      "canSubscribe": [
+        "@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id"
+      ]
+    },
+    "org_dashboard": {
+      "name": "org_dashboard",
+      "params": {
+        "org_id": "int"
+      },
+      "root": {
+        "entity": "organisations",
+        "key": "org_id"
+      },
+      "includes": {
+        "venues": {
+          "relation": "venues",
+          "entity": "venues",
+          "filter": {
+            "org_id": "@org_id"
+          },
+          "includes": {
+            "sites": {
+              "relation": "sites",
+              "entity": "sites",
+              "includes": {}
+            }
+          }
+        },
+        "products": {
+          "relation": "products",
+          "entity": "products",
+          "filter": {
+            "org_id": "@org_id"
+          },
+          "includes": {}
+        },
+        "packages": {
+          "relation": "packages",
+          "entity": "packages",
+          "filter": {
+            "owner_org_id": "@org_id"
+          },
+          "includes": {}
+        },
+        "brands": {
+          "relation": "brands",
+          "entity": "brands",
+          "filter": {
+            "org_id": "@org_id"
+          },
+          "includes": {
+            "artwork": {
+              "relation": "artwork",
+              "entity": "artwork",
+              "includes": {}
+            }
+          }
+        }
+      },
+      "scopeTables": [
+        "organisations",
+        "venues",
+        "sites",
+        "products",
+        "packages",
+        "brands",
+        "artwork"
+      ],
+      "canSubscribe": [
+        "@org_id->acts_for[org_id=$]{active}.user_id"
+      ]
+    },
+    "my_profile": {
+      "name": "my_profile",
+      "params": {},
+      "root": {
+        "entity": "users",
+        "key": "@user_id"
+      },
+      "includes": {
+        "memberships": {
+          "relation": "memberships",
+          "entity": "acts_for",
+          "filter": {
+            "user_id": "@user_id"
+          },
+          "includes": {
+            "org": {
+              "relation": "org",
+              "entity": "organisations",
+              "includes": {}
+            }
+          }
+        }
+      },
+      "scopeTables": [
+        "users",
+        "acts_for",
+        "organisations"
+      ],
+      "canSubscribe": []
+    }
+  }
+}
