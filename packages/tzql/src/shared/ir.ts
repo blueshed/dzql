@@ -161,7 +161,7 @@ export interface GraphRuleIR {
   ruleName?: string; // The name of the rule (for comments)
   description?: string; // Human-readable description
   condition?: string; // e.g., "@before.status = 'draft' AND @after.status = 'posted'"
-  params: Record<string, string>; // Data for create, or params for reactor/validate/execute
+  params: Record<string, string | null>; // Data for create, or params for reactor/validate/execute
   match?: Record<string, string>; // WHERE clause for update/delete actions
   error_message?: string; // Error message for validate action
 }
@@ -172,6 +172,7 @@ export interface SubscribableIR {
   root: {
     entity: string;
     key: string;
+    filter?: Record<string, string | boolean | number>;
   };
   includes: Record<string, IncludeIR>;
   scopeTables: string[];

@@ -11,7 +11,7 @@ export async function handleRequest(
   db: DBClient,
   method: string,
   params: any,
-  userId: number
+  userId: number | null
 ) {
   // 1. Check for JS function handler first (takes precedence)
   if (hasJsFunction(method)) {

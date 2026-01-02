@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { generateCoreSQL, generateEntitySQL } from "../src/cli/codegen/sql.js"; 
+import { generateCoreSQL, generateEntitySQL } from "../src/cli/codegen/sql.js";
 import { generateManifest } from "../src/cli/codegen/manifest.js";
 import { generateIR } from "../src/cli/compiler/ir.js";
 
@@ -8,15 +8,21 @@ const mockEntityIR = {
   table: "posts",
   primaryKey: ["id"],
   columns: [
-    { name: "id", type: "serial PRIMARY KEY" },
-    { name: "title", type: "text NOT NULL" }
+    { name: "id", type: "serial PRIMARY KEY", isArray: false },
+    { name: "title", type: "text NOT NULL", isArray: false }
   ],
   permissions: {
     create: [],
-    view: []
+    view: [],
+    update: [],
+    delete: []
   },
+  relationships: {},
+  manyToMany: {},
   graphRules: {
-    onCreate: []
+    onCreate: [],
+    onUpdate: [],
+    onDelete: []
   }
 };
 
@@ -56,15 +62,15 @@ describe("Manifest Generation", () => {
     });
 
     const manifest = generateManifest(ir);
-    
+
     expect(manifest.version).toBe("2.0.0");
     expect(manifest.functions).toBeDefined();
-    
+
     // Check allowlist
     expect(manifest.functions["save_posts"]).toBeDefined();
     expect(manifest.functions["get_posts"]).toBeDefined();
     expect(manifest.functions["delete_posts"]).toBeDefined();
-    
+
     // Check signatures (basic check for now)
     expect(manifest.functions["save_posts"].args).toEqual(["p_user_id", "p_data"]);
   });

@@ -16,5 +16,6 @@
     "forceConsistentCasingInFileNames": true,
     "allowJs": true,
     "types": ["bun-types"]
-  }
+  },
+  "exclude": ["dist", "node_modules"]
 }

@@ -1,6 +1,7 @@
 // TZQL Entity Definition Example
+import type { DomainConfig } from '../src/shared/ir.js';
 
-export const entities = {
+export const entities: DomainConfig['entities'] = {
   posts: {
     schema: {
       id: 'serial PRIMARY KEY',
@@ -17,9 +18,12 @@ export const entities = {
     },
     graphRules: {
       on_create: {
-        actions: [
-          { type: 'reactor', name: 'notify_subscribers', params: { post_id: '@id' } }
-        ]
+        notify_on_post: {
+          description: 'Notify subscribers when a post is created',
+          actions: [
+            { type: 'reactor', name: 'notify_subscribers', params: { post_id: '@id' } }
+          ]
+        }
       }
     }
   },

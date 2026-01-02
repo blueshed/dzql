@@ -9,7 +9,8 @@ const validDomain = {
   },
   subscribables: {
     user_posts: {
-      root: { entity: "users" },
+      params: { user_id: "int" },
+      root: { entity: "users", key: "user_id" },
       includes: {
         posts: { entity: "posts" }
       }
@@ -23,7 +24,8 @@ const invalidDomain = {
   },
   subscribables: {
     broken_feed: {
-      root: { entity: "users" },
+      params: { user_id: "int" },
+      root: { entity: "users", key: "user_id" },
       includes: {
         posts: { entity: "missing_posts" } // <--- Reference to missing entity
       }

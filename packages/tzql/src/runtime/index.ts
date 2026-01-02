@@ -87,7 +87,7 @@ const server = serve({
     const url = new URL(req.url);
 
     // Extract token from query params for WebSocket connections
-    const token = url.searchParams.get("token");
+    const token = url.searchParams.get("token") ?? undefined;
 
     if (server.upgrade(req, { data: { token } })) {
       return;

@@ -7,7 +7,11 @@ import type { GraphRuleIR } from "../../shared/ir.js";
  * @param trigger - The trigger context ('create', 'update', 'delete')
  * @param castToInt - Whether to cast the result to integer (for FK columns)
  */
-function resolveValue(value: string, trigger: string, castToInt: boolean = false): string {
+function resolveValue(value: string | null, trigger: string, castToInt: boolean = false): string {
+  if (value === null) {
+    return 'NULL';
+  }
+
   if (typeof value !== 'string') {
     return String(value);
   }

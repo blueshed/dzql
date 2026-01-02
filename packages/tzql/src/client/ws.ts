@@ -49,7 +49,7 @@ export class WebSocketManager {
 
   async login(credentials: any) {
     try {
-      const result = await this.call('login_user', credentials);
+      const result = await this.call('login_user', credentials) as { token?: string };
       if (result && result.token) {
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem(this.tokenName, result.token);
@@ -69,7 +69,7 @@ export class WebSocketManager {
   async register(credentials: any, options: any = {}) {
     try {
       const params = { ...credentials, options };
-      const result = await this.call('register_user', params);
+      const result = await this.call('register_user', params) as { token?: string };
       if (result && result.token) {
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem(this.tokenName, result.token);
@@ -98,9 +98,10 @@ export class WebSocketManager {
 
       let wsUrl = url;
       if (!wsUrl) {
-        if (typeof window !== "undefined") {
-          const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-          wsUrl = protocol + "//" + window.location.host + "/ws";
+        if (typeof globalThis !== "undefined" && "window" in globalThis) {
+          const win = globalThis as unknown as { location: { protocol: string; host: string } };
+          const protocol = win.location.protocol === "https:" ? "wss:" : "ws:";
+          wsUrl = protocol + "//" + win.location.host + "/ws";
         } else {
           wsUrl = "ws://localhost:3000/ws";
         }

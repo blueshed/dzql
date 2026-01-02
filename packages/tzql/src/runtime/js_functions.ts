@@ -2,7 +2,7 @@
 // Allows registering JS/Bun functions that can be called via RPC
 
 export interface JsFunctionContext {
-  userId: number;
+  userId: number | null;
   params: any;
   db: {
     query(sql: string, params?: any[]): Promise<any[]>;

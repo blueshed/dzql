@@ -8,10 +8,10 @@ import { wsLogger, authLogger, logWsAccess } from "./logger.js";
 const WS_MAX_MESSAGE_SIZE = parseInt(process.env.WS_MAX_MESSAGE_SIZE || "1048576", 10); // 1MB default
 
 interface WSContext {
-  id: string;
+  id?: string;  // Set in handleOpen
   userId?: number;
-  subscriptions: Set<string>; // Set of subscription IDs
-  lastPing: number;
+  subscriptions?: Set<string>; // Set of subscription IDs, set in handleOpen
+  lastPing?: number;  // Set in handleOpen
   token?: string; // Token passed from URL query params during upgrade
 }
 
@@ -143,7 +143,7 @@ export class WebSocketServer {
 
             // Register subscription
             const subId = `${subscribableName}:${JSON.stringify(req.params)}`;
-            ws.data.subscriptions.add(subId);
+            ws.data.subscriptions?.add(subId);
 
             // Return snapshot with subscription_id and schema
             ws.send(JSON.stringify({
@@ -202,7 +202,9 @@ export class WebSocketServer {
   }
 
   private handleClose(ws: ServerWebSocket<WSContext>) {
-    this.connections.delete(ws.data.id);
+    if (ws.data.id) {
+      this.connections.delete(ws.data.id);
+    }
     wsLogger.info(`Client ${ws.data.id} disconnected`);
   }
 
