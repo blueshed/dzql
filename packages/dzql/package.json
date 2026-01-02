@@ -25,8 +25,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "bun test ../../tests/core/*.test.js",
-    "prepublishOnly": "echo '✅ Publishing DZQL...'  "
+    "test": "docker compose -f tests/compose.yml up -d && sleep 3 && bun test tests/core/ tests/integration/",
+    "test:down": "docker compose -f tests/compose.yml down -v",
+    "prepublishOnly": "echo '✅ Publishing DZQL...'"
   },
   "dependencies": {
     "jose": "^6.1.0",

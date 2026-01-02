@@ -1,21 +1,18 @@
 {
   "name": "dzql-monorepo",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "type": "module",
-  "description": "DZQL - PostgreSQL-powered framework with zero boilerplate",
+  "description": "DZQL - Database-first, real-time framework for PostgreSQL",
   "workspaces": [
-    "packages/*"
+    "packages/dzql",
+    "packages/tzql",
+    "packages/create-dzql"
   ],
   "scripts": {
-    "client": "cd packages/client && bun run dev",
-    "server": "cd packages/venues && bun run dev",
-    "dev": "concurrently -n \"client,server\" -c \"blue,green\" \"bun run client\" \"bun run server\"",
-    "venues": "cd packages/venues && bun dev",
-    "rights": "cd packages/rights && bun dev",
-    "down": "cd tests && docker compose down && cd ../packages/venues && bun db:down && cd ../rights && bun db:down && cd ../blog && bun db:down",
-    "test": "docker compose -f tests/compose.yml up -d && sleep 5 && bun test tests/core/ tests/integration/ tests/migrations/",
-    "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist packages/*/.turbo .turbo"
+    "test": "cd packages/dzql && bun run test",
+    "test:tzql": "cd packages/tzql && bun test",
+    "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -31,14 +28,10 @@
     "postgresql",
     "websocket",
     "real-time",
-    "crud",
-    "api",
-    "framework",
-    "zero-boilerplate"
+    "typescript",
+    "compiler",
+    "framework"
   ],
   "author": "Peter Bunyan",
-  "license": "MIT",
-  "dependencies": {
-    "concurrently": "^9.2.1"
-  }
+  "license": "MIT"
 }
