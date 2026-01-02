@@ -86,8 +86,8 @@ export const useOrgDashboardStore = defineStore('sub-org_dashboard', () => {
         handleArrayPatch(doc.venues, event);
         break;
       case 'sites':
-        if (event.data && event.data.venue_id) {
-          const parent = doc.venues?.find((p: { id: number }) => p.id === event.data.venue_id);
+        if (event.data && (event.data as any).venue_id) {
+          const parent = (doc.venues as any[])?.find((p: any) => p.id === (event.data as any).venue_id);
           if (parent && parent.sites) {
             handleArrayPatch(parent.sites, event);
           }
@@ -103,8 +103,8 @@ export const useOrgDashboardStore = defineStore('sub-org_dashboard', () => {
         handleArrayPatch(doc.brands, event);
         break;
       case 'artwork':
-        if (event.data && event.data.brand_id) {
-          const parent = doc.brands?.find((p: { id: number }) => p.id === event.data.brand_id);
+        if (event.data && (event.data as any).brand_id) {
+          const parent = (doc.brands as any[])?.find((p: any) => p.id === (event.data as any).brand_id);
           if (parent && parent.artwork) {
             handleArrayPatch(parent.artwork, event);
           }
@@ -113,15 +113,15 @@ export const useOrgDashboardStore = defineStore('sub-org_dashboard', () => {
     }
   }
 
-  function handleArrayPatch(arr: unknown[] | undefined, event: PatchEvent): void {
+  function handleArrayPatch(arr: any, event: PatchEvent): void {
     if (!arr || !Array.isArray(arr)) return;
     const pkValue = event.pk?.id;
-    const idx = arr.findIndex((i: unknown) => (i as { id: number }).id === pkValue);
+    const idx = arr.findIndex((i: any) => i?.id === pkValue);
 
     if (event.op === 'insert') {
       if (idx === -1 && event.data) arr.push(event.data);
     } else if (event.op === 'update') {
-      if (idx !== -1 && event.data) Object.assign(arr[idx] as object, event.data);
+      if (idx !== -1 && event.data) Object.assign(arr[idx], event.data);
     } else if (event.op === 'delete') {
       if (idx !== -1) arr.splice(idx, 1);
     }

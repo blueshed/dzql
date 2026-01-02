@@ -59,8 +59,8 @@ export function generateSubscribableStore(manifest: Manifest, subName: string): 
 
           cases.push(
             `      case '${entityName}':\n` +
-            `        if (event.data && event.data.${fkField}) {\n` +
-            `          const parent = doc.${level1Rel}?.find((p: { id: number }) => p.id === event.data.${fkField});\n` +
+            `        if (event.data && (event.data as any).${fkField}) {\n` +
+            `          const parent = (doc.${level1Rel} as any[])?.find((p: any) => p.id === (event.data as any).${fkField});\n` +
             `          if (parent && parent.${key}) {\n` +
             `            handleArrayPatch(parent.${key}, event);\n` +
             `          }\n` +
@@ -164,15 +164,15 @@ ${patchCases}
     }
   }
 
-  function handleArrayPatch(arr: unknown[] | undefined, event: PatchEvent): void {
+  function handleArrayPatch(arr: any, event: PatchEvent): void {
     if (!arr || !Array.isArray(arr)) return;
     const pkValue = event.pk?.id;
-    const idx = arr.findIndex((i: unknown) => (i as { id: number }).id === pkValue);
+    const idx = arr.findIndex((i: any) => i?.id === pkValue);
 
     if (event.op === 'insert') {
       if (idx === -1 && event.data) arr.push(event.data);
     } else if (event.op === 'update') {
-      if (idx !== -1 && event.data) Object.assign(arr[idx] as object, event.data);
+      if (idx !== -1 && event.data) Object.assign(arr[idx], event.data);
     } else if (event.op === 'delete') {
       if (idx !== -1) arr.splice(idx, 1);
     }

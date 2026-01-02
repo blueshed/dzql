@@ -86,8 +86,8 @@ export const useMyProfileStore = defineStore('sub-my_profile', () => {
         handleArrayPatch(doc.memberships, event);
         break;
       case 'organisations':
-        if (event.data && event.data.membership_id) {
-          const parent = doc.memberships?.find((p: { id: number }) => p.id === event.data.membership_id);
+        if (event.data && (event.data as any).membership_id) {
+          const parent = (doc.memberships as any[])?.find((p: any) => p.id === (event.data as any).membership_id);
           if (parent && parent.org) {
             handleArrayPatch(parent.org, event);
           }
@@ -96,15 +96,15 @@ export const useMyProfileStore = defineStore('sub-my_profile', () => {
     }
   }
 
-  function handleArrayPatch(arr: unknown[] | undefined, event: PatchEvent): void {
+  function handleArrayPatch(arr: any, event: PatchEvent): void {
     if (!arr || !Array.isArray(arr)) return;
     const pkValue = event.pk?.id;
-    const idx = arr.findIndex((i: unknown) => (i as { id: number }).id === pkValue);
+    const idx = arr.findIndex((i: any) => i?.id === pkValue);
 
     if (event.op === 'insert') {
       if (idx === -1 && event.data) arr.push(event.data);
     } else if (event.op === 'update') {
-      if (idx !== -1 && event.data) Object.assign(arr[idx] as object, event.data);
+      if (idx !== -1 && event.data) Object.assign(arr[idx], event.data);
     } else if (event.op === 'delete') {
       if (idx !== -1) arr.splice(idx, 1);
     }

@@ -17,6 +17,7 @@
   "files": [
     "bin/**/*.js",
     "src/**/*.js",
+    "src/**/*.d.ts",
     "src/database/**/*.sql",
     "docs/**/*.md",
     "docs/examples/*.sql",

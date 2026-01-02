@@ -26,7 +26,7 @@ describe("Subscribable Store Generation", () => {
     expect(code).toContain("case 'sites':");
     expect(code).toContain("case 'allocations':");
     // Check for parent lookup logic with type annotation
-    expect(code).toContain("const parent = doc.sites?.find");
+    expect(code).toContain("const parent = (doc.sites as any[])?.find");
   });
 
   test("should generate async bind function that awaits first data", () => {

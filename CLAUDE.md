@@ -30,7 +30,25 @@ Making existing tests pass is NOT the same as testing the feature.
 ## Commands
 
 - `bun run test` - Run all tests (starts Docker container automatically)
-- `cd packages/dzql && npm version patch && bun publish --access public` - Publish (only after user approval)
+
+## Publishing
+
+Publishing is done via GitHub Actions, triggered by git tags. Do NOT publish directly.
+
+**To publish a new version:**
+
+1. Update version in the package's `package.json`
+2. Commit the changes
+3. Create and push a git tag:
+   ```bash
+   git tag dzql@0.6.4   # or tzql@0.1.0, create-dzql@0.1.0
+   git push origin dzql@0.6.4
+   ```
+4. GitHub Actions will automatically publish to npm using OIDC trusted publishing
+
+**Tag format:** `<package-name>@<version>` (e.g., `dzql@0.6.5`, `create-dzql@0.6.5`)
+
+**Version sync:** `dzql` and `create-dzql` should always have the same version number.
 
 ## Events
 

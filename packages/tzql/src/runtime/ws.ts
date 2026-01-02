@@ -3,6 +3,9 @@ import { handleRequest } from "./server.js"; // The secure router
 import { verifyToken, signToken } from "./auth.js";
 import { Database } from "./db.js";
 
+// WebSocket configuration
+const WS_MAX_MESSAGE_SIZE = parseInt(process.env.WS_MAX_MESSAGE_SIZE || "1048576", 10); // 1MB default
+
 interface WSContext {
   id: string;
   userId?: number;
@@ -17,18 +20,27 @@ export class WebSocketServer {
 
   constructor(db: Database) {
     this.db = db;
-    // Start heartbeat interval
-    setInterval(() => this.heartbeat(), 30000);
   }
 
-  // Bun.serve websocket handler hooks
-  get handlers() {
+  // Bun.serve websocket configuration object
+  get websocket() {
     return {
+      // WebSocket options for Bun
+      perMessageDeflate: true,
+      maxPayloadLength: WS_MAX_MESSAGE_SIZE,
+      idleTimeout: 0, // No idle timeout - realtime connections stay open indefinitely
+
+      // Handler hooks
       open: (ws: ServerWebSocket<WSContext>) => this.handleOpen(ws),
       message: (ws: ServerWebSocket<WSContext>, message: string) => this.handleMessage(ws, message),
       close: (ws: ServerWebSocket<WSContext>) => this.handleClose(ws),
       drain: (ws: ServerWebSocket<WSContext>) => {}
     };
+  }
+
+  // Legacy alias for backwards compatibility
+  get handlers() {
+    return this.websocket;
   }
 
   private async handleOpen(ws: ServerWebSocket<WSContext>) {
@@ -171,17 +183,6 @@ export class WebSocketServer {
   private handleClose(ws: ServerWebSocket<WSContext>) {
     this.connections.delete(ws.data.id);
     console.log(`[WS] Client ${ws.data.id} disconnected`);
-  }
-
-  private heartbeat() {
-    const now = Date.now();
-    for (const [id, ws] of this.connections) {
-        if (now - ws.data.lastPing > 60000) {
-            console.log(`[WS] Client ${id} timed out`);
-            ws.close();
-            this.connections.delete(id);
-        }
-    }
   }
 
   public broadcast(message: string) {

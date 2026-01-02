@@ -89,8 +89,8 @@ export const useVenueDetailStore = defineStore('sub-venue_detail', () => {
         handleArrayPatch(doc.sites, event);
         break;
       case 'allocations':
-        if (event.data && event.data.site_id) {
-          const parent = doc.sites?.find((p: { id: number }) => p.id === event.data.site_id);
+        if (event.data && (event.data as any).site_id) {
+          const parent = (doc.sites as any[])?.find((p: any) => p.id === (event.data as any).site_id);
           if (parent && parent.allocations) {
             handleArrayPatch(parent.allocations, event);
           }
@@ -99,15 +99,15 @@ export const useVenueDetailStore = defineStore('sub-venue_detail', () => {
     }
   }
 
-  function handleArrayPatch(arr: unknown[] | undefined, event: PatchEvent): void {
+  function handleArrayPatch(arr: any, event: PatchEvent): void {
     if (!arr || !Array.isArray(arr)) return;
     const pkValue = event.pk?.id;
-    const idx = arr.findIndex((i: unknown) => (i as { id: number }).id === pkValue);
+    const idx = arr.findIndex((i: any) => i?.id === pkValue);
 
     if (event.op === 'insert') {
       if (idx === -1 && event.data) arr.push(event.data);
     } else if (event.op === 'update') {
-      if (idx !== -1 && event.data) Object.assign(arr[idx] as object, event.data);
+      if (idx !== -1 && event.data) Object.assign(arr[idx], event.data);
     } else if (event.op === 'delete') {
       if (idx !== -1) arr.splice(idx, 1);
     }

@@ -35,8 +35,7 @@ export function generateClientSDK(manifest: Manifest): string {
     if (isSubscription) {
       // subscribe_venue_detail -> VenueDetailParams
       paramType = `${pascalEntity}Params`;
-      returnType = 'void';
-      return `  ${funcName}: (params: ${paramType}, callback: (data: unknown) => void) => Promise<() => ${returnType}>;`;
+      return `  ${funcName}: (params: ${paramType}, callback: (data: unknown) => void) => Promise<{ data: unknown; subscription_id: string; schema: unknown; unsubscribe: () => Promise<void> }>;`;
     } else if (op === 'get' && entityExists) {
       // get_venue_detail (subscribable getter) vs get_venues (entity getter)
       if (manifest.subscribables?.[entity]) {
@@ -78,16 +77,16 @@ ${apiMethods}
 
 /** Extended WebSocket manager with typed API */
 export class GeneratedWebSocketManager extends WebSocketManager {
-  api: DzqlAPI;
+  declare api: DzqlAPI;
 
-  constructor(options: { url?: string; reconnect?: boolean } = {}) {
+  constructor(options: { maxReconnectAttempts?: number; tokenName?: string } = {}) {
     super(options);
     this.api = {
 ${regularFunctions.map(([funcName]) =>
-      `      ${funcName}: (params: Record<string, unknown>) => this.call('${funcName}', params),`
+      `      ${funcName}: (params: any) => this.call('${funcName}', params),`
 ).join('\n')}
 ${subscriptionFunctions.map(([funcName]) =>
-      `      ${funcName}: (params: Record<string, unknown>, callback: (data: unknown) => void) => this.subscribe('${funcName}', params, callback),`
+      `      ${funcName}: (params: any, callback: (data: any) => void) => this.subscribe('${funcName}', params, callback),`
 ).join('\n')}
     } as DzqlAPI;
   }

@@ -16,7 +16,7 @@ async function loadPosts() {
   loading.value = true
   try {
     // Use get_posts_feed which includes author data
-    const result = await ws.call('get_posts_feed', {})
+    const result = await ws.api.get_posts_feed({}) as any
     posts.value = result?.posts || []
   } catch (e: any) {
     error.value = e.message
@@ -29,11 +29,11 @@ async function createPost() {
   if (!newPostTitle.value.trim()) return
 
   try {
-    await ws.call('save_posts', {
+    await ws.api.save_posts({
       title: newPostTitle.value,
       content: newPostContent.value,
       published: true
-    })
+    } as any)
     newPostTitle.value = ''
     newPostContent.value = ''
     showForm.value = false
@@ -47,7 +47,7 @@ async function deletePost(id: number) {
   if (!confirm('Delete this post?')) return
 
   try {
-    await ws.call('delete_posts', { id })
+    await ws.api.delete_posts({ id })
     await loadPosts()
   } catch (e: any) {
     error.value = e.message
