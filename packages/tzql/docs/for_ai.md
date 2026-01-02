@@ -535,28 +535,24 @@ When a client connects to the WebSocket server, it immediately receives a `conne
 ### WebSocketManager API
 
 ```typescript
-import { WebSocketManager } from 'dzql/client';
+import { ws } from '@generated/client/ws';
 
-const ws = new WebSocketManager();
-await ws.connect('ws://localhost:3000/ws');
+await ws.connect('/ws');
 
-// Connection state properties
-ws.ready  // boolean - true after connection:ready received
-ws.user   // user profile object or null if anonymous
+// Authentication via typed API
+const user = await ws.api.login_user({ email: '...', password: '...' });
+// Token is returned in response - store in localStorage
+if (user.token) {
+  localStorage.setItem('dzql_token', user.token);
+}
 
-// Register callback for ready state (called immediately if already ready)
-const unsubscribe = ws.onReady((user) => {
-  if (user) {
-    console.log('Authenticated as:', user.email);
-  } else {
-    console.log('Anonymous connection');
-  }
-});
+const newUser = await ws.api.register_user({ name: '...', email: '...', password: '...' });
+// Token is returned in response
 
-// Authentication methods
-await ws.login({ email: '...', password: '...' });   // Stores token in localStorage
-await ws.register({ email: '...', password: '...' }); // Stores token in localStorage
-await ws.logout();  // Clears token, user state, and reconnects
+// Logout - clear token and disconnect
+localStorage.removeItem('dzql_token');
+ws.disconnect();
+await ws.connect('/ws');  // Reconnect without token
 ```
 
 ### Vue/Pinia Usage Pattern
