@@ -2,7 +2,7 @@
 -- Subscribable: venue_detail
 -- Root Entity: venues
 -- Scope Tables: venues, organisations, sites, allocations
--- Generated: 2026-01-02T10:48:37.922Z
+-- Generated: 2026-01-02T10:52:28.999Z
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION dzql_v2.venue_detail_can_subscribe(
@@ -125,7 +125,7 @@ $$;
 -- Subscribable: org_dashboard
 -- Root Entity: organisations
 -- Scope Tables: organisations, venues, sites, products, packages, brands, artwork
--- Generated: 2026-01-02T10:48:37.922Z
+-- Generated: 2026-01-02T10:52:29.000Z
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION dzql_v2.org_dashboard_can_subscribe(
@@ -276,7 +276,7 @@ $$;
 -- Subscribable: my_profile
 -- Root Entity: users
 -- Scope Tables: users, acts_for, organisations
--- Generated: 2026-01-02T10:48:37.922Z
+-- Generated: 2026-01-02T10:52:29.000Z
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION dzql_v2.my_profile_can_subscribe(

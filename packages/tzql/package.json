@@ -10,17 +10,36 @@
   "bin": {
     "dzql": "./src/cli/index.ts"
   },
-  "scripts": {
-    "dev": "bun run src/cli/index.ts",
-    "test": "bun test",
-    "build": "bun build ./src/cli/index.ts --outdir ./dist/cli --target node"
-  },
   "exports": {
     ".": "./src/runtime/index.ts",
     "./client": "./src/client/index.ts",
     "./compiler": "./src/cli/index.ts",
     "./namespace": "./src/runtime/namespace.ts"
   },
+  "files": [
+    "src",
+    "docs",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "bun test"
+  },
+  "keywords": [
+    "postgresql",
+    "postgres",
+    "websocket",
+    "real-time",
+    "realtime",
+    "database",
+    "bun",
+    "vue",
+    "pinia",
+    "typescript",
+    "compiler",
+    "codegen"
+  ],
+  "author": "Peter Bunyan",
+  "license": "MIT",
   "dependencies": {
     "postgres": "^3.4.3",
     "dotenv": "^16.4.5",
@@ -34,5 +53,8 @@
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
   }
 }
