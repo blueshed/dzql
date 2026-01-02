@@ -1,7 +1,9 @@
-// venues-domain.js - v2 format
-// Complete domain definition: all tables, all config
+// venues.ts - Complete domain definition for venue management
+// Demonstrates: all entity features, permissions, graph rules, M2M, subscribables
 
-export const entities = {
+import type { DomainConfig } from '../src/shared/ir.js';
+
+export const entities: DomainConfig['entities'] = {
 
   // === Users ===
   users: {
@@ -61,7 +63,7 @@ export const entities = {
           actions: [
             { type: 'delete', target: 'acts_for', params: { org_id: '@id' } },
             { type: 'delete', target: 'venues', params: { org_id: '@id' } },
-            { type: 'update', target: 'packages', params: { sponsor_org_id: '@id' }, data: { sponsor_org_id: null } } // SET NULL example
+            { type: 'update', target: 'packages', params: { sponsor_org_id: '@id' }, data: { sponsor_org_id: null } }
           ]
         }
       }
@@ -75,7 +77,7 @@ export const entities = {
       org_id: 'int NOT NULL REFERENCES organisations(id) ON DELETE CASCADE',
       valid_from: 'date NOT NULL DEFAULT current_date',
       valid_to: 'date',
-      active: 'boolean DEFAULT true' // Added for permission check compatibility
+      active: 'boolean DEFAULT true'
     },
     primaryKey: ['user_id', 'org_id', 'valid_from'],
     label: 'org_id',
@@ -151,16 +153,14 @@ export const entities = {
       price: 'decimal(10, 2) NOT NULL DEFAULT 0.00',
       created_by: 'int REFERENCES users(id)',
       created_at: 'timestamptz',
-      deleted_at: 'timestamptz'  // For soft delete
+      deleted_at: 'timestamptz'
     },
     label: 'name',
     searchable: ['name', 'description'],
     includes: {
       org: 'organisations'
     },
-    // Soft delete - sets deleted_at instead of DELETE
     softDelete: true,
-    // Auto-populate on INSERT
     fieldDefaults: {
       created_by: '@user_id',
       created_at: '@now'
@@ -391,14 +391,13 @@ export const entities = {
     indexes: [
       'CREATE INDEX idx_brand_tags_tag_id ON brand_tags(tag_id)'
     ],
-    // Junction tables typically don't need DZQL CRUD - managed via M2M
     managed: false
   }
 
 };
 
 // === Subscribables (real-time documents) ===
-export const subscribables = {
+export const subscribables: DomainConfig['subscribables'] = {
 
   // Venue detail - venue with org, sites, and allocations
   venue_detail: {
@@ -418,9 +417,7 @@ export const subscribables = {
         }
       }
     },
-    // Tables that affect this document - for subscription routing
     scopeTables: ['venues', 'organisations', 'sites', 'allocations'],
-    // Who can subscribe
     canSubscribe: ['@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id']
   },
 
@@ -463,23 +460,23 @@ export const subscribables = {
 
   // User profile - current user's orgs and roles
   my_profile: {
-    params: {},  // No params - uses current user
+    params: {},
     root: {
       entity: 'users',
-      key: '@user_id'  // Built-in: current user
+      key: '@user_id'
     },
     includes: {
       memberships: {
         entity: 'acts_for',
         filter: { user_id: '@user_id' },
-        temporal: true,  // Only active memberships
+        temporal: true,
         includes: {
           org: 'organisations'
         }
       }
     },
     scopeTables: ['users', 'acts_for', 'organisations'],
-    canSubscribe: []  // Anyone authenticated can subscribe to their own profile
+    canSubscribe: []
   }
 
 };

@@ -12,7 +12,7 @@ export interface GraphRuleActionConfig {
   target?: string;           // Target entity for update/delete actions
   name?: string;             // Reactor name for reactor type
   function?: string;         // Function name for validate/execute
-  data?: Record<string, string>;   // Data for create/update (field -> @variable)
+  data?: Record<string, string | null>;   // Data for create/update (field -> @variable or null)
   match?: Record<string, string>;  // Match condition for update/delete
   params?: Record<string, string>; // Parameters for reactor/validate/execute
   error_message?: string;    // Error message for validate
@@ -30,6 +30,7 @@ export interface IncludeConfig {
   entity: string;
   filter?: Record<string, string>;
   includes?: Record<string, string | IncludeConfig>;
+  temporal?: boolean;  // Only include active temporal records
 }
 
 /** Many-to-many relationship configuration */

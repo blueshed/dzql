@@ -12,7 +12,7 @@ const DIST_ROOT = resolve(PACKAGE_ROOT, "dist");
 
 // Compile the venues example before tests run
 function compileVenuesExample() {
-  const examplePath = resolve(PACKAGE_ROOT, "examples/venues.js");
+  const examplePath = resolve(PACKAGE_ROOT, "examples/venues.ts");
   const compilerPath = resolve(PACKAGE_ROOT, "src/cli/index.ts");
 
   console.log("[Test] Compiling venues example...");
@@ -111,7 +111,9 @@ describe.skipIf(!DIST_EXISTS)("Full Stack V2 Integration (Runtime + Client + Pin
         PORT: "3001", // Test port
         DATABASE_URL: testDbUrl,
         MANIFEST_PATH: manifestPath,
-        JWT_SECRET: "test-secret"
+        JWT_SECRET: "test-secret",
+        NODE_ENV: "development", // Override test environment so logger outputs INFO level
+        LOG_CATEGORIES: "server:info,runtime:info" // Ensure server startup message is visible
       },
       stdout: "pipe",
       stderr: "pipe"
@@ -137,7 +139,7 @@ describe.skipIf(!DIST_EXISTS)("Full Stack V2 Integration (Runtime + Client + Pin
               if (done) break;
               const text = new TextDecoder().decode(value);
               console.log("[Server]", text.trim());
-              if (text.includes("Server listening") && !serverReady) {
+              if ((text.includes("Server listening") || text.includes("listening on port")) && !serverReady) {
                 serverReady = true;
                 resolve();
               }
