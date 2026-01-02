@@ -2,12 +2,31 @@
 import { useDzql } from '@/composables/useDzql'
 import LoginView from '@/components/LoginView.vue'
 
-const { ready, user, logout } = useDzql()
+const { ready, user, logout, connectionError, connect } = useDzql()
+
+function retry() {
+  connect()
+}
 </script>
 
 <template>
+  <!-- Connection Error -->
+  <div v-if="connectionError" class="min-h-screen flex items-center justify-center bg-gray-100">
+    <div class="text-center max-w-md">
+      <div class="text-red-500 text-5xl mb-4">!</div>
+      <h2 class="text-xl font-semibold text-gray-800 mb-2">Connection Failed</h2>
+      <p class="text-gray-600 mb-4">{{ connectionError }}</p>
+      <button
+        @click="retry"
+        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
+      >
+        Retry
+      </button>
+    </div>
+  </div>
+
   <!-- Phase 1: Connecting -->
-  <div v-if="!ready" class="min-h-screen flex items-center justify-center bg-gray-100">
+  <div v-else-if="!ready" class="min-h-screen flex items-center justify-center bg-gray-100">
     <div class="text-center">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
       <p class="mt-4 text-gray-600">Connecting...</p>
