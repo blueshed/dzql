@@ -1,6 +1,6 @@
 {
   "name": "dzql",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "Database-first real-time framework with TypeScript support",
   "repository": {
     "type": "git",
@@ -18,7 +18,9 @@
   },
   "files": [
     "src",
-    "docs",
+    "docs/README.md",
+    "docs/project-setup.md",
+    "docs/for_ai.md",
     "README.md"
   ],
   "scripts": {
