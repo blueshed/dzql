@@ -5,6 +5,7 @@ import { WebSocketServer } from "./ws.js";
 import { loadManifest } from "./manifest_loader.js";
 import { readFileSync } from "fs";
 import { resolve } from "path";
+import { runtimeLogger, notifyLogger, serverLogger } from "./logger.js";
 
 // Re-export JS function registration API for custom functions
 export { registerJsFunction, type JsFunctionHandler, type JsFunctionContext } from "./js_functions.js";
@@ -26,9 +27,9 @@ try {
   const manifestContent = readFileSync(manifestPath, "utf-8");
   const manifest = JSON.parse(manifestContent);
   loadManifest(manifest);
-  console.log(`[Runtime] Loaded Manifest v${manifest.version}`);
+  runtimeLogger.info(`Loaded Manifest v${manifest.version}`);
 } catch (e) {
-  console.warn(`[Runtime] Warning: Could not load manifest from ${MANIFEST_PATH}. Ensure you have compiled the project.`);
+  runtimeLogger.warn(`Could not load manifest from ${MANIFEST_PATH}. Ensure you have compiled the project.`);
 }
 
 // 3. Initialize WebSocket Server
@@ -36,12 +37,12 @@ const wsServer = new WebSocketServer(db);
 
 // 4. Start Commit Listener (Realtime)
 async function startListener() {
-  console.log("[Runtime] Setting up LISTEN on dzql_v2 channel...");
+  runtimeLogger.info("Setting up LISTEN on dzql_v2 channel...");
   await db.listen("dzql_v2", async (payload) => {
-    console.log(`[Runtime] RAW NOTIFY received:`, payload);
+    notifyLogger.debug(`RAW NOTIFY received:`, payload);
     try {
       const { commit_id } = JSON.parse(payload);
-      console.log(`[Runtime] Received Commit: ${commit_id}`);
+      notifyLogger.debug(`Received Commit: ${commit_id}`);
 
       // Fetch events
       const events = await db.query(`
@@ -67,12 +68,13 @@ async function startListener() {
           }
         });
         wsServer.broadcast(message);
+        notifyLogger.trace(`Broadcast ${event.op} on ${event.table_name}`);
       }
-    } catch (e) {
-      console.error("[Runtime] Listener Error:", e);
+    } catch (e: any) {
+      notifyLogger.error("Listener Error:", e.message);
     }
   });
-  console.log("[Runtime] Listening for DB Events...");
+  runtimeLogger.info("Listening for DB Events...");
 }
 
 // Wait for listener to be ready before starting server
@@ -88,11 +90,11 @@ const server = serve({
     const token = url.searchParams.get("token");
 
     if (server.upgrade(req, { data: { token } })) {
-        return;
+      return;
     }
     return new Response("DZQL Runtime Active", { status: 200 });
   },
   websocket: wsServer.handlers
 });
 
-console.log(`[Runtime] Server listening on port ${PORT}`);
+serverLogger.info(`Server listening on port ${PORT}`);
