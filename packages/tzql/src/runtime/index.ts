@@ -93,7 +93,11 @@ function processEventNotifications(event: {
     for (const [subscribableName, subs] of subscriptionsByName.entries()) {
       for (const sub of subs) {
         const paramValues = Object.values(sub.params);
-        const subKey = `${subscribableName}:${paramValues.join(':')}`;
+        // For subscribables with no params, the key is just the name
+        // For subscribables with params, the key is name:param1:param2:...
+        const subKey = paramValues.length > 0
+          ? `${subscribableName}:${paramValues.join(':')}`
+          : subscribableName;
 
         if (affected_keys.includes(subKey)) {
           // Send entity broadcast (not subscription:event) so global dispatcher can route it

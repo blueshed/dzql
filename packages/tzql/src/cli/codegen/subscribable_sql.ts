@@ -512,10 +512,18 @@ function generateNestedSelects(
 function generateAffectedKeysFunction(name: string, sub: SubscribableIR): string {
   const cases: string[] = [];
   const paramKey = sub.root.key;
+  const hasParams = Object.keys(sub.params).length > 0;
 
   // Root entity case
-  cases.push(`    WHEN '${sub.root.entity}' THEN
+  // For subscribables with no params (list feeds), just return the subscribable name
+  // For subscribables with params, include the root entity's id
+  if (hasParams) {
+    cases.push(`    WHEN '${sub.root.entity}' THEN
       RETURN ARRAY['${name}:' || (p_data->>'id')];`);
+  } else {
+    cases.push(`    WHEN '${sub.root.entity}' THEN
+      RETURN ARRAY['${name}'];`);
+  }
 
   // Get singular form of root entity for FK fields
   const singularRootEntity = singularize(sub.root.entity);
@@ -552,18 +560,30 @@ function generateAffectedKeysFunction(name: string, sub: SubscribableIR): string
       const parentRel = relationships[parentEntity]?.[relEntity];
       const fkField = parentRel?.fkOnParent || `${relName}_id`;
 
-      cases.push(`    WHEN '${relEntity}' THEN
+      if (hasParams) {
+        cases.push(`    WHEN '${relEntity}' THEN
       -- Nested: traverse via ${parentEntity}.${fkField}
       SELECT ARRAY_AGG('${name}:' || parent.${singularRootEntity}_id)
       INTO v_keys
       FROM ${parentEntity} parent
       WHERE parent.${fkField} = (p_data->>'id')::int;
       RETURN COALESCE(v_keys, ARRAY[]::text[]);`);
+      } else {
+        // No params - just return the subscribable name
+        cases.push(`    WHEN '${relEntity}' THEN
+      RETURN ARRAY['${name}'];`);
+      }
     } else {
       // Direct child of root - use the FK on child that points to root
       const keyField = fkOnChild || `${singularRootEntity}_id`;
-      cases.push(`    WHEN '${relEntity}' THEN
+      if (hasParams) {
+        cases.push(`    WHEN '${relEntity}' THEN
       RETURN ARRAY['${name}:' || (p_data->>'${keyField}')];`);
+      } else {
+        // No params - just return the subscribable name
+        cases.push(`    WHEN '${relEntity}' THEN
+      RETURN ARRAY['${name}'];`);
+      }
     }
 
     // Recurse for nested includes
