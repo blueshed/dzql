@@ -1,6 +1,6 @@
 {
   "name": "create-dzql",
-  "version": "0.6.11",
+  "version": "0.6.12",
   "description": "Create a new DZQL application",
   "repository": {
     "type": "git",
