@@ -26,6 +26,8 @@ packages/
 
 **Test-Driven Development:** Write tests first. Add failing tests for new features or bugs, then implement until they pass. This ensures the feature works and prevents regressions.
 
+**End-to-End Verification:** Before publishing, always test in a real app (like the berty sample at `/Users/peterb/Workshop/berty`). Unit tests passing does not guarantee the feature works end-to-end. Use Playwright to verify real-time features like subscriptions actually work in the browser.
+
 ## Publishing
 
 Publishing is done via GitHub Actions, triggered by git tags. Do NOT publish directly.
