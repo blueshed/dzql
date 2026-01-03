@@ -53,6 +53,12 @@ import type { Manifest, FunctionDef } from "../cli/codegen/manifest.js";
 // Default user for CLI operations
 const DEFAULT_USER_ID = 1;
 
+/** Context interface compatible with invoket - kept minimal to avoid dependency */
+export interface Context {
+  cwd: string;
+  run(command: string, options?: { echo?: boolean }): Promise<unknown>;
+}
+
 /** Query parameters for search operations */
 export interface SearchParams {
   query?: string;
@@ -224,7 +230,7 @@ export class DzqlNamespace {
    * List all available entities
    * @example invt dzql:entities
    */
-  async entities(_context: unknown): Promise<void> {
+  async entities(c: Context): Promise<void> {
     try {
       const { manifest } = await this.init();
       const entities = discoverEntities(manifest);
@@ -241,7 +247,7 @@ export class DzqlNamespace {
    * List all available subscribables
    * @example invt dzql:subscribables
    */
-  async subscribables(_context: unknown): Promise<void> {
+  async subscribables(c: Context): Promise<void> {
     try {
       const { manifest } = await this.init();
       const subscribables = discoverSubscribables(manifest);
@@ -258,7 +264,7 @@ export class DzqlNamespace {
    * Search an entity
    * @example invt dzql:search venues '{"query": "test"}'
    */
-  async search(_context: unknown, entity: string, params: SearchParams = {}): Promise<void> {
+  async search(c: Context, entity: string, params: SearchParams = {}): Promise<void> {
     try {
       const result = await this.executeFunction(`search_${entity}`, params);
       console.log(JSON.stringify({ success: true, result }, null, 2));
@@ -274,7 +280,7 @@ export class DzqlNamespace {
    * Get entity by ID
    * @example invt dzql:get venues '{"id": 1}'
    */
-  async get(_context: unknown, entity: string, pk: PkParams): Promise<void> {
+  async get(c: Context, entity: string, pk: PkParams): Promise<void> {
     try {
       const result = await this.executeFunction(`get_${entity}`, pk);
       console.log(JSON.stringify({ success: true, result }, null, 2));
@@ -290,7 +296,7 @@ export class DzqlNamespace {
    * Save (create or update) entity
    * @example invt dzql:save venues '{"name": "New Venue", "org_id": 1}'
    */
-  async save(_context: unknown, entity: string, data: CallParams): Promise<void> {
+  async save(c: Context, entity: string, data: CallParams): Promise<void> {
     try {
       const result = await this.executeFunction(`save_${entity}`, data);
       console.log(JSON.stringify({ success: true, result }, null, 2));
@@ -306,7 +312,7 @@ export class DzqlNamespace {
    * Delete entity by ID
    * @example invt dzql:delete venues '{"id": 1}'
    */
-  async delete(_context: unknown, entity: string, pk: PkParams): Promise<void> {
+  async delete(c: Context, entity: string, pk: PkParams): Promise<void> {
     try {
       const result = await this.executeFunction(`delete_${entity}`, pk);
       console.log(JSON.stringify({ success: true, result }, null, 2));
@@ -322,7 +328,7 @@ export class DzqlNamespace {
    * Lookup entity (for dropdowns/autocomplete)
    * @example invt dzql:lookup organisations '{"query": "acme"}'
    */
-  async lookup(_context: unknown, entity: string, params: SearchParams = {}): Promise<void> {
+  async lookup(c: Context, entity: string, params: SearchParams = {}): Promise<void> {
     try {
       const result = await this.executeFunction(`lookup_${entity}`, params);
       console.log(JSON.stringify({ success: true, result }, null, 2));
@@ -338,7 +344,7 @@ export class DzqlNamespace {
    * Get subscribable snapshot
    * @example invt dzql:subscribe venue_detail '{"venue_id": 1}'
    */
-  async subscribe(_context: unknown, name: string, params: CallParams = {}): Promise<void> {
+  async subscribe(c: Context, name: string, params: CallParams = {}): Promise<void> {
     try {
       const result = await this.executeFunction(`get_${name}`, params);
       console.log(JSON.stringify({ success: true, result }, null, 2));
@@ -355,7 +361,7 @@ export class DzqlNamespace {
    * @example invt dzql:call login_user '{"email": "test@example.com", "password": "secret"}'
    * @example invt dzql:call get_venue_detail '{"venue_id": 1}'
    */
-  async call(_context: unknown, funcName: string, params: CallParams = {}): Promise<void> {
+  async call(c: Context, funcName: string, params: CallParams = {}): Promise<void> {
     try {
       const result = await this.executeFunction(funcName, params);
       console.log(JSON.stringify({ success: true, result }, null, 2));
@@ -371,7 +377,7 @@ export class DzqlNamespace {
    * List all available functions in the manifest
    * @example invt dzql:functions
    */
-  async functions(_context: unknown): Promise<void> {
+  async functions(c: Context): Promise<void> {
     try {
       const { manifest } = await this.init();
       const functions: Record<string, { args: string[]; returnType: string }> = {};

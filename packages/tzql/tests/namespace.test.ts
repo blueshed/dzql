@@ -13,8 +13,15 @@ import { generateIR } from "../src/cli/compiler/ir.js";
 import { entities } from "../examples/blog.js";
 import { writeFileSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
+import type { Context } from "../src/runtime/namespace.js";
 
 const blogDomain = { entities, subscribables: {} };
+
+// Mock Context for testing
+const mockContext: Context = {
+  cwd: process.cwd(),
+  run: async () => ({ stdout: "", stderr: "", code: 0, ok: true, failed: false })
+};
 
 describe("DzqlNamespace", () => {
   let db: V2TestDatabase;
@@ -146,7 +153,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.entities(null);
+      await ns.entities(mockContext);
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -168,7 +175,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.functions(null);
+      await ns.functions(mockContext);
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -194,7 +201,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.save(null, "posts", { title: "Test Post", content: "Hello", author_id: 1 });
+      await ns.save(mockContext, "posts", { title: "Test Post", content: "Hello", author_id: 1 });
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -224,7 +231,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.get(null, "posts", { id: postId });
+      await ns.get(mockContext, "posts", { id: postId });
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -252,7 +259,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.search(null, "posts", { limit: 10 });
+      await ns.search(mockContext, "posts", { limit: 10 });
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -281,7 +288,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.delete(null, "posts", { id: postId });
+      await ns.delete(mockContext, "posts", { id: postId });
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -310,7 +317,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.call(null, "save_posts", { title: "Call Test", content: "Via call()", author_id: 1 });
+      await ns.call(mockContext, "save_posts", { title: "Call Test", content: "Via call()", author_id: 1 });
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -336,7 +343,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.call(null, "nonexistent_function", {});
+      await ns.call(mockContext, "nonexistent_function", {});
     } catch (e: any) {
       if (e.message !== "EXIT") {
         throw e;
