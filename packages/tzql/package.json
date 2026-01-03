@@ -1,6 +1,6 @@
 {
   "name": "dzql",
-  "version": "0.6.10",
+  "version": "0.6.11",
   "description": "Database-first real-time framework with TypeScript support",
   "repository": {
     "type": "git",
