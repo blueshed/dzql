@@ -1,43 +1,42 @@
 /**
- * DZQL Namespace for invokej integration
+ * DZQL Namespace for invoket integration
  *
  * Provides CLI-style access to DZQL operations via the compiled manifest.
  * Each method outputs JSON to console and closes the connection before returning.
  *
- * Setup - add to your tasks.js:
- * ```js
- * import { DzqlNamespace } from 'dzql/namespace';
+ * Setup - add to your tasks.ts:
+ * ```ts
+ * import { Context } from "invoket/context";
+ * import { DzqlNamespace } from "dzql/namespace";
  *
  * export class Tasks {
- *   constructor() {
- *     this.dzql = new DzqlNamespace();
- *   }
+ *   dzql = new DzqlNamespace();
  * }
  * ```
  *
  * Available Commands:
  *
  * Discovery:
- *   invj dzql:entities                              # List all entities
- *   invj dzql:subscribables                         # List all subscribables
- *   invj dzql:functions                             # List all manifest functions
+ *   invt dzql:entities                              # List all entities
+ *   invt dzql:subscribables                         # List all subscribables
+ *   invt dzql:functions                             # List all manifest functions
  *
  * Entity CRUD:
- *   invj dzql:search venues '{"query": "test"}'     # Search with filters
- *   invj dzql:get venues '{"id": 1}'                # Get by primary key
- *   invj dzql:save venues '{"name": "New", "org_id": 1}'  # Create (no id)
- *   invj dzql:save venues '{"id": 1, "name": "Updated"}'  # Update (with id)
- *   invj dzql:delete venues '{"id": 1}'             # Delete by primary key
- *   invj dzql:lookup venues '{"query": "test"}'     # Lookup for dropdowns
+ *   invt dzql:search venues '{"query": "test"}'     # Search with filters
+ *   invt dzql:get venues '{"id": 1}'                # Get by primary key
+ *   invt dzql:save venues '{"name": "New", "org_id": 1}'  # Create (no id)
+ *   invt dzql:save venues '{"id": 1, "name": "Updated"}'  # Update (with id)
+ *   invt dzql:delete venues '{"id": 1}'             # Delete by primary key
+ *   invt dzql:lookup venues '{"query": "test"}'     # Lookup for dropdowns
  *
  * Subscribables:
- *   invj dzql:subscribe venue_detail '{"venue_id": 1}'  # Get snapshot
+ *   invt dzql:subscribe venue_detail '{"venue_id": 1}'  # Get snapshot
  *
  * Ad-hoc Function Calls:
- *   invj dzql:call login_user '{"email": "x", "password": "y"}'
- *   invj dzql:call register_user '{"email": "x", "password": "y"}'
- *   invj dzql:call get_venue_detail '{"venue_id": 1}'
- *   invj dzql:call save_venues '{"name": "Test", "org_id": 1}'
+ *   invt dzql:call login_user '{"email": "x", "password": "y"}'
+ *   invt dzql:call register_user '{"email": "x", "password": "y"}'
+ *   invt dzql:call get_venue_detail '{"venue_id": 1}'
+ *   invt dzql:call save_venues '{"name": "Test", "org_id": 1}'
  *
  * Environment:
  *   DATABASE_URL - PostgreSQL connection string (default: postgres://localhost:5432/dzql)
@@ -53,6 +52,27 @@ import type { Manifest, FunctionDef } from "../cli/codegen/manifest.js";
 
 // Default user for CLI operations
 const DEFAULT_USER_ID = 1;
+
+/** Query parameters for search operations */
+export interface SearchParams {
+  query?: string;
+  filters?: Record<string, unknown>;
+  sort_field?: string;
+  sort_order?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+}
+
+/** Primary key for get/delete operations */
+export interface PkParams {
+  id?: number;
+  [key: string]: unknown;
+}
+
+/** Generic params for any operation */
+export interface CallParams {
+  [key: string]: unknown;
+}
 
 /**
  * Load manifest from MANIFEST_PATH env var or default locations
@@ -122,7 +142,16 @@ function discoverSubscribables(manifest: Manifest): Record<string, { params: Rec
 }
 
 /**
- * DZQL operations namespace for invokej
+ * DZQL operations namespace for invoket
+ *
+ * Use with invoket task runner:
+ * ```ts
+ * import { DzqlNamespace } from "dzql/namespace";
+ *
+ * export class Tasks {
+ *   dzql = new DzqlNamespace();
+ * }
+ * ```
  */
 export class DzqlNamespace {
   private userId: number;
@@ -193,8 +222,9 @@ export class DzqlNamespace {
 
   /**
    * List all available entities
+   * @example invt dzql:entities
    */
-  async entities(_context?: any): Promise<void> {
+  async entities(_context: unknown): Promise<void> {
     try {
       const { manifest } = await this.init();
       const entities = discoverEntities(manifest);
@@ -209,8 +239,9 @@ export class DzqlNamespace {
 
   /**
    * List all available subscribables
+   * @example invt dzql:subscribables
    */
-  async subscribables(_context?: any): Promise<void> {
+  async subscribables(_context: unknown): Promise<void> {
     try {
       const { manifest } = await this.init();
       const subscribables = discoverSubscribables(manifest);
@@ -225,28 +256,11 @@ export class DzqlNamespace {
 
   /**
    * Search an entity
-   * @example invj dzql:search venues '{"query": "test"}'
+   * @example invt dzql:search venues '{"query": "test"}'
    */
-  async search(_context: any, entity?: string, argsJson: string = "{}"): Promise<void> {
-    if (!entity) {
-      console.error("Error: entity name required");
-      console.error("Usage: invj dzql:search <entity> '<json_args>'");
-      console.error('Example: invj dzql:search venues \'{"query": "test"}\'');
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    let args: any;
+  async search(_context: unknown, entity: string, params: SearchParams = {}): Promise<void> {
     try {
-      args = JSON.parse(argsJson);
-    } catch {
-      console.error("Error: arguments must be valid JSON");
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    try {
-      const result = await this.executeFunction(`search_${entity}`, args);
+      const result = await this.executeFunction(`search_${entity}`, params);
       console.log(JSON.stringify({ success: true, result }, null, 2));
       await this.cleanup();
     } catch (error: any) {
@@ -258,28 +272,11 @@ export class DzqlNamespace {
 
   /**
    * Get entity by ID
-   * @example invj dzql:get venues '{"id": 1}'
+   * @example invt dzql:get venues '{"id": 1}'
    */
-  async get(_context: any, entity?: string, argsJson: string = "{}"): Promise<void> {
-    if (!entity) {
-      console.error("Error: entity name required");
-      console.error("Usage: invj dzql:get <entity> '<json_args>'");
-      console.error('Example: invj dzql:get venues \'{"id": 1}\'');
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    let args: any;
+  async get(_context: unknown, entity: string, pk: PkParams): Promise<void> {
     try {
-      args = JSON.parse(argsJson);
-    } catch {
-      console.error("Error: arguments must be valid JSON");
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    try {
-      const result = await this.executeFunction(`get_${entity}`, args);
+      const result = await this.executeFunction(`get_${entity}`, pk);
       console.log(JSON.stringify({ success: true, result }, null, 2));
       await this.cleanup();
     } catch (error: any) {
@@ -291,28 +288,11 @@ export class DzqlNamespace {
 
   /**
    * Save (create or update) entity
-   * @example invj dzql:save venues '{"name": "New Venue", "org_id": 1}'
+   * @example invt dzql:save venues '{"name": "New Venue", "org_id": 1}'
    */
-  async save(_context: any, entity?: string, argsJson: string = "{}"): Promise<void> {
-    if (!entity) {
-      console.error("Error: entity name required");
-      console.error("Usage: invj dzql:save <entity> '<json_args>'");
-      console.error('Example: invj dzql:save venues \'{"name": "Test Venue", "org_id": 1}\'');
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    let args: any;
+  async save(_context: unknown, entity: string, data: CallParams): Promise<void> {
     try {
-      args = JSON.parse(argsJson);
-    } catch {
-      console.error("Error: arguments must be valid JSON");
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    try {
-      const result = await this.executeFunction(`save_${entity}`, args);
+      const result = await this.executeFunction(`save_${entity}`, data);
       console.log(JSON.stringify({ success: true, result }, null, 2));
       await this.cleanup();
     } catch (error: any) {
@@ -324,28 +304,11 @@ export class DzqlNamespace {
 
   /**
    * Delete entity by ID
-   * @example invj dzql:delete venues '{"id": 1}'
+   * @example invt dzql:delete venues '{"id": 1}'
    */
-  async delete(_context: any, entity?: string, argsJson: string = "{}"): Promise<void> {
-    if (!entity) {
-      console.error("Error: entity name required");
-      console.error("Usage: invj dzql:delete <entity> '<json_args>'");
-      console.error('Example: invj dzql:delete venues \'{"id": 1}\'');
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    let args: any;
+  async delete(_context: unknown, entity: string, pk: PkParams): Promise<void> {
     try {
-      args = JSON.parse(argsJson);
-    } catch {
-      console.error("Error: arguments must be valid JSON");
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    try {
-      const result = await this.executeFunction(`delete_${entity}`, args);
+      const result = await this.executeFunction(`delete_${entity}`, pk);
       console.log(JSON.stringify({ success: true, result }, null, 2));
       await this.cleanup();
     } catch (error: any) {
@@ -357,28 +320,11 @@ export class DzqlNamespace {
 
   /**
    * Lookup entity (for dropdowns/autocomplete)
-   * @example invj dzql:lookup organisations '{"query": "acme"}'
+   * @example invt dzql:lookup organisations '{"query": "acme"}'
    */
-  async lookup(_context: any, entity?: string, argsJson: string = "{}"): Promise<void> {
-    if (!entity) {
-      console.error("Error: entity name required");
-      console.error("Usage: invj dzql:lookup <entity> '<json_args>'");
-      console.error('Example: invj dzql:lookup organisations \'{"query": "acme"}\'');
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    let args: any;
+  async lookup(_context: unknown, entity: string, params: SearchParams = {}): Promise<void> {
     try {
-      args = JSON.parse(argsJson);
-    } catch {
-      console.error("Error: arguments must be valid JSON");
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    try {
-      const result = await this.executeFunction(`lookup_${entity}`, args);
+      const result = await this.executeFunction(`lookup_${entity}`, params);
       console.log(JSON.stringify({ success: true, result }, null, 2));
       await this.cleanup();
     } catch (error: any) {
@@ -390,28 +336,11 @@ export class DzqlNamespace {
 
   /**
    * Get subscribable snapshot
-   * @example invj dzql:subscribe venue_detail '{"venue_id": 1}'
+   * @example invt dzql:subscribe venue_detail '{"venue_id": 1}'
    */
-  async subscribe(_context: any, name?: string, argsJson: string = "{}"): Promise<void> {
-    if (!name) {
-      console.error("Error: subscribable name required");
-      console.error("Usage: invj dzql:subscribe <name> '<json_args>'");
-      console.error('Example: invj dzql:subscribe venue_detail \'{"venue_id": 1}\'');
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    let args: any;
+  async subscribe(_context: unknown, name: string, params: CallParams = {}): Promise<void> {
     try {
-      args = JSON.parse(argsJson);
-    } catch {
-      console.error("Error: arguments must be valid JSON");
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    try {
-      const result = await this.executeFunction(`get_${name}`, args);
+      const result = await this.executeFunction(`get_${name}`, params);
       console.log(JSON.stringify({ success: true, result }, null, 2));
       await this.cleanup();
     } catch (error: any) {
@@ -423,30 +352,12 @@ export class DzqlNamespace {
 
   /**
    * Call any function in the manifest by name
-   * @example invj dzql:call login_user '{"email": "test@example.com", "password": "secret"}'
-   * @example invj dzql:call get_venue_detail '{"venue_id": 1}'
+   * @example invt dzql:call login_user '{"email": "test@example.com", "password": "secret"}'
+   * @example invt dzql:call get_venue_detail '{"venue_id": 1}'
    */
-  async call(_context: any, funcName?: string, argsJson: string = "{}"): Promise<void> {
-    if (!funcName) {
-      console.error("Error: function name required");
-      console.error("Usage: invj dzql:call <function_name> '<json_args>'");
-      console.error('Example: invj dzql:call login_user \'{"email": "test@example.com", "password": "secret"}\'');
-      console.error('Example: invj dzql:call get_venue_detail \'{"venue_id": 1}\'');
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    let args: any;
+  async call(_context: unknown, funcName: string, params: CallParams = {}): Promise<void> {
     try {
-      args = JSON.parse(argsJson);
-    } catch {
-      console.error("Error: arguments must be valid JSON");
-      await this.cleanup();
-      process.exit(1);
-    }
-
-    try {
-      const result = await this.executeFunction(funcName, args);
+      const result = await this.executeFunction(funcName, params);
       console.log(JSON.stringify({ success: true, result }, null, 2));
       await this.cleanup();
     } catch (error: any) {
@@ -458,9 +369,9 @@ export class DzqlNamespace {
 
   /**
    * List all available functions in the manifest
-   * @example invj dzql:functions
+   * @example invt dzql:functions
    */
-  async functions(_context?: any): Promise<void> {
+  async functions(_context: unknown): Promise<void> {
     try {
       const { manifest } = await this.init();
       const functions: Record<string, { args: string[]; returnType: string }> = {};

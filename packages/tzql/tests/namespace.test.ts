@@ -1,5 +1,5 @@
 /**
- * Tests for DzqlNamespace - invokej integration
+ * Tests for DzqlNamespace - invoket integration
  *
  * These tests verify the namespace works correctly with the manifest
  * and can execute CRUD operations against a real database.
@@ -146,7 +146,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.entities();
+      await ns.entities(null);
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -168,7 +168,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.functions();
+      await ns.functions(null);
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -194,11 +194,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.save(
-        null,
-        "posts",
-        JSON.stringify({ title: "Test Post", content: "Hello", author_id: 1 })
-      );
+      await ns.save(null, "posts", { title: "Test Post", content: "Hello", author_id: 1 });
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -228,7 +224,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.get(null, "posts", JSON.stringify({ id: postId }));
+      await ns.get(null, "posts", { id: postId });
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -256,7 +252,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.search(null, "posts", JSON.stringify({ limit: 10 }));
+      await ns.search(null, "posts", { limit: 10 });
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -285,7 +281,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.delete(null, "posts", JSON.stringify({ id: postId }));
+      await ns.delete(null, "posts", { id: postId });
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -314,11 +310,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.call(
-        null,
-        "save_posts",
-        JSON.stringify({ title: "Call Test", content: "Via call()", author_id: 1 })
-      );
+      await ns.call(null, "save_posts", { title: "Call Test", content: "Via call()", author_id: 1 });
     } catch (e: any) {
       if (e.message !== "EXIT") throw e;
     } finally {
@@ -344,7 +336,7 @@ describe("DzqlNamespace", () => {
     const restore = setupMocks();
 
     try {
-      await ns.call(null, "nonexistent_function", "{}");
+      await ns.call(null, "nonexistent_function", {});
     } catch (e: any) {
       if (e.message !== "EXIT") {
         throw e;
@@ -357,39 +349,5 @@ describe("DzqlNamespace", () => {
     expect(errorResult).not.toBeNull();
     expect(errorResult.success).toBe(false);
     expect(errorResult.error).toContain("not found in manifest");
-  });
-
-  test("search() without entity shows usage", async () => {
-    const { DzqlNamespace } = await import("../src/runtime/namespace.js");
-    const ns = new DzqlNamespace(1);
-
-    const restore = setupMocks();
-
-    try {
-      await ns.search(null, undefined, "{}");
-    } catch (e: any) {
-      if (e.message !== "EXIT") throw e;
-    } finally {
-      restore();
-    }
-
-    expect(consoleErrorOutput.some((msg) => msg.includes("entity name required"))).toBe(true);
-  });
-
-  test("save() with invalid JSON shows error", async () => {
-    const { DzqlNamespace } = await import("../src/runtime/namespace.js");
-    const ns = new DzqlNamespace(1);
-
-    const restore = setupMocks();
-
-    try {
-      await ns.save(null, "posts", "not valid json");
-    } catch (e: any) {
-      if (e.message !== "EXIT") throw e;
-    } finally {
-      restore();
-    }
-
-    expect(consoleErrorOutput.some((msg) => msg.includes("valid JSON"))).toBe(true);
   });
 });

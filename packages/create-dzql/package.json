@@ -19,6 +19,7 @@
     ".gitignore",
     "README.md",
     "setup.sh",
+    "tasks.ts",
     "server",
     "client"
   ],
@@ -34,7 +35,8 @@
     "dev": "concurrently -n server,client -c blue,green \"bun run --filter server dev\" \"bun run --filter client dev\""
   },
   "dependencies": {
-    "dzql": "^0.6.1"
+    "dzql": "^0.6.1",
+    "invoket": "^0.1.2"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
