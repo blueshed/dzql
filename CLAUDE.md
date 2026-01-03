@@ -26,7 +26,53 @@ packages/
 
 **Test-Driven Development:** Write tests first. Add failing tests for new features or bugs, then implement until they pass. This ensures the feature works and prevents regressions.
 
-**End-to-End Verification:** Before publishing, always test in a real app (like the berty sample at `/Users/peterb/Workshop/berty`). Unit tests passing does not guarantee the feature works end-to-end. Use Playwright to verify real-time features like subscriptions actually work in the browser.
+**End-to-End Verification:** Before publishing, always test in a real app. Unit tests passing does not guarantee the feature works end-to-end. Use Playwright to verify real-time features like subscriptions actually work in the browser.
+
+### Testing the create-dzql Template
+
+Before publishing changes to `create-dzql`, test by creating a sample app using the local template:
+
+```bash
+# 1. Create test app from local template
+cd /tmp
+rm -rf dzql-test-app
+bun /Users/peterb/Workshop/blueshed/dzql/packages/create-dzql/index.ts dzql-test-app
+cd dzql-test-app
+
+# 2. Install dependencies
+bun install
+
+# 3. Compile and start database
+bun run db:rebuild
+
+# 4. Start dev servers
+bun run dev
+```
+
+Then use Playwright (via MCP Docker) to test at `http://host.docker.internal:5173`:
+
+1. **Register a user**: Click "Create one", fill name/email/password, submit
+2. **Create a post**: Click "New Post", navigate to `/posts/new`, fill title/content, click Publish
+3. **Verify real-time**: Post should appear in list immediately (no refresh needed)
+4. **Edit a post**: Click "Edit" on your post, modify content, save - verify update appears
+5. **Delete a post**: Click "Delete", confirm - verify post is removed from list
+
+**Key things to verify:**
+- Real-time updates work (posts appear/update/disappear without refresh)
+- Edit button only shows for posts you authored
+- Routes work: `/`, `/posts/new`, `/posts/:id/edit`
+
+### Cleanup
+
+```bash
+# Kill dev servers first (vite processes left running in background)
+pkill -f "vite" 2>/dev/null
+
+# Stop and remove test app
+cd /tmp/dzql-test-app
+docker compose down -v
+cd /tmp && rm -rf dzql-test-app
+```
 
 ## Publishing
 

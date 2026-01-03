@@ -1,6 +1,6 @@
 import { compilePermission } from "../compiler/permissions.js";
 import { compileGraphRules } from "../compiler/graph_rules.js";
-import type { EntityIR, ManyToManyIR } from "../../shared/ir.js";
+import type { EntityIR, ManyToManyIR, IncludeIR } from "../../shared/ir.js";
 
 /** Column info from EntityIR */
 interface ColumnInfo {
@@ -313,6 +313,32 @@ export function generateSaveFunction(name: string, entityIR: EntityIR): string {
     return sql;
   }).join('\n');
 
+  // FK expansion (add related objects to output for real-time events)
+  // Only expand direct FKs (where key_id column exists), not reverse FKs (child arrays)
+  const includes: Record<string, IncludeIR> = entityIR.includes || {};
+  const includeKeys = Object.keys(includes);
+  const fkExpansion = includeKeys.map(key => {
+    const config: IncludeIR = includes[key];
+    const targetEntity = config.entity;
+    const fkField = `${key}_id`; // Convention: author -> author_id
+
+    // Only expand if this is a direct FK (key_id column exists)
+    const hasFkColumn = entityIR.columns.some((c: ColumnInfo) => c.name === fkField);
+
+    if (hasFkColumn) {
+      // Direct FK: single object expansion (e.g., author_id -> author object)
+      return `
+  -- FK: Add ${key} to output (from ${fkField})
+  IF (v_result->>'${fkField}') IS NOT NULL THEN
+    v_result := v_result || jsonb_build_object('${key}',
+      (SELECT to_jsonb(t.*) FROM ${targetEntity} t WHERE t.id = (v_result->>'${fkField}')::int));
+  END IF;`;
+    }
+    // Skip reverse FKs - they would require querying child tables which may not exist
+    // and are not needed for the primary use case of expanding the saved record
+    return '';
+  }).filter(s => s).join('\n');
+
   return `
 CREATE OR REPLACE FUNCTION dzql_v2.save_${name}(p_user_id int, p_data jsonb)
 RETURNS jsonb
@@ -365,6 +391,7 @@ ${m2mExtraction}
   END IF;
 ${m2mSync}
 ${m2mExpansion}
+${fkExpansion}
 
   -- Resolve notification recipients
   v_notify_users := dzql_v2.${name}_notify_users(p_user_id, v_result);

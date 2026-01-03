@@ -37,7 +37,8 @@ export function useDzql() {
   async function login(email: string, password: string) {
     const result = await ws.api.login_user({ email, password }) as any
     if (result?.user_id) {
-      user.value = result
+      // Normalize user object: use 'id' for consistency with entity references
+      user.value = { ...result, id: result.user_id }
       if (result.token) {
         localStorage.setItem('dzql_token', result.token)
       }
@@ -48,7 +49,8 @@ export function useDzql() {
   async function register(name: string, email: string, password: string) {
     const result = await ws.api.register_user({ name, email, password }) as any
     if (result?.user_id) {
-      user.value = result
+      // Normalize user object: use 'id' for consistency with entity references
+      user.value = { ...result, id: result.user_id }
       if (result.token) {
         localStorage.setItem('dzql_token', result.token)
       }

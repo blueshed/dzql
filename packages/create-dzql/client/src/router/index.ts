@@ -8,6 +8,16 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: PostList
+    },
+    {
+      path: '/posts/new',
+      name: 'newPost',
+      component: () => import('@/components/PostForm.vue')
+    },
+    {
+      path: '/posts/:id/edit',
+      name: 'editPost',
+      component: () => import('@/components/PostForm.vue')
     }
   ]
 })

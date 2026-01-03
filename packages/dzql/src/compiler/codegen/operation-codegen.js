@@ -135,6 +135,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
     const m2mExtraction = this._generateM2MExtraction();
     const m2mSync = this._generateM2MSync();
     const m2mExpansion = this._generateM2MExpansion();
+    const fkExpansionForSave = this._generateFKExpansionsForSave();
     const fieldDefaults = this._generateFieldDefaults();
 
     // For composite PKs, generate a different function signature and logic
@@ -147,6 +148,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
         m2mExtraction,
         m2mSync,
         m2mExpansion,
+        fkExpansionForSave,
         fieldDefaults
       });
     }
@@ -227,9 +229,10 @@ ${fieldDefaults}
 
 ${m2mSync}
 
-  -- Prepare output with M2M fields (BEFORE event creation for real-time notifications!)
+  -- Prepare output with M2M and FK fields (BEFORE event creation for real-time notifications!)
   v_output := to_jsonb(v_result);
 ${m2mExpansion}
+${fkExpansionForSave}
 
 ${graphRulesCall}
 ${notificationSQL}
@@ -255,6 +258,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
       m2mExtraction,
       m2mSync,
       m2mExpansion,
+      fkExpansionForSave,
       fieldDefaults
     } = helpers;
 
@@ -366,9 +370,10 @@ ${fieldDefaults}
 
 ${m2mSyncCompositePK}
 
-  -- Prepare output with M2M fields (BEFORE event creation for real-time notifications!)
+  -- Prepare output with M2M and FK fields (BEFORE event creation for real-time notifications!)
   v_output := to_jsonb(v_result);
 ${m2mExpansionCompositePK}
+${fkExpansionForSave}
 
 ${graphRulesCall}
 ${notificationSQL}
@@ -1073,6 +1078,45 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`;
       );
     END IF;
   END;`);
+      }
+    }
+
+    return expansions.join('');
+  }
+
+  /**
+   * Generate FK expansions for SAVE (expands into v_output for event notifications)
+   * This ensures real-time events contain the full presentation object with related data
+   * @private
+   */
+  _generateFKExpansionsForSave() {
+    if (!this.entity.fkIncludes || Object.keys(this.entity.fkIncludes).length === 0) {
+      return '';
+    }
+
+    const expansions = [];
+
+    for (const [key, targetTable] of Object.entries(this.entity.fkIncludes)) {
+      if (key === targetTable) {
+        // Reverse FK: child array
+        expansions.push(`
+  -- Expand ${key} (child array) for event notification
+  v_output := v_output || jsonb_build_object(
+    '${key}',
+    (SELECT COALESCE(jsonb_agg(to_jsonb(t.*)), '[]'::jsonb)
+     FROM ${targetTable} t
+     WHERE t.${this._singularize(this.tableName)}_id = v_result.id)
+  );`);
+      } else {
+        // Direct FK: single object
+        expansions.push(`
+  -- Expand ${key} (foreign key) for event notification
+  IF v_result.${key}_id IS NOT NULL THEN
+    v_output := v_output || jsonb_build_object(
+      '${key}',
+      (SELECT to_jsonb(t.*) FROM ${targetTable} t WHERE t.id = v_result.${key}_id)
+    );
+  END IF;`);
       }
     }
 

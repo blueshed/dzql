@@ -130,6 +130,7 @@ export interface EntityIR {
     delete: string[];
   };
   relationships: Record<string, RelationshipIR>;
+  includes: Record<string, IncludeIR>; // FK expansions (e.g., author: users)
   manyToMany: Record<string, ManyToManyIR>;
   graphRules: {
     onCreate: GraphRuleIR[];

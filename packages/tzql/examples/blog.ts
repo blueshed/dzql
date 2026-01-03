@@ -2,13 +2,32 @@
 import type { DomainConfig } from '../src/shared/ir.js';
 
 export const entities: DomainConfig['entities'] = {
+  users: {
+    schema: {
+      id: 'serial PRIMARY KEY',
+      name: 'text',
+      email: 'text UNIQUE NOT NULL',
+      password_hash: 'text NOT NULL'
+    },
+    label: 'name',
+    hidden: ['password_hash'],
+    permissions: {
+      view: [],
+      create: [],
+      update: ['@id'],
+      delete: ['@id']
+    }
+  },
   posts: {
     schema: {
       id: 'serial PRIMARY KEY',
       title: 'text NOT NULL',
       content: 'text',
-      author_id: 'int NOT NULL', // In a real app, this would reference users(id)
+      author_id: 'int NOT NULL REFERENCES users(id)',
       created_at: 'timestamptz DEFAULT now()'
+    },
+    includes: {
+      author: 'users'  // FK expansion: include author object
     },
     permissions: {
       view: [], // Public
@@ -32,7 +51,11 @@ export const entities: DomainConfig['entities'] = {
       id: 'serial PRIMARY KEY',
       post_id: 'int NOT NULL REFERENCES posts(id) ON DELETE CASCADE',
       content: 'text NOT NULL',
-      author_id: 'int NOT NULL'
+      author_id: 'int NOT NULL REFERENCES users(id)'
+    },
+    includes: {
+      author: 'users',  // FK expansion: include author object
+      post: 'posts'     // FK expansion: include post object
     },
     permissions: {
       view: [],

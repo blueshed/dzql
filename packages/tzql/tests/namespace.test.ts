@@ -39,26 +39,23 @@ describe("DzqlNamespace", () => {
     // Generate and apply SQL
     const ir = generateIR(blogDomain);
     const coreSQL = generateCoreSQL();
+    const usersSchema = generateSchemaSQL("users", ir.entities.users);
     const postsSchema = generateSchemaSQL("posts", ir.entities.posts);
     const commentsSchema = generateSchemaSQL("comments", ir.entities.comments);
+    const usersSQL = generateEntitySQL("users", ir.entities.users);
     const postsSQL = generateEntitySQL("posts", ir.entities.posts);
     const commentsSQL = generateEntitySQL("comments", ir.entities.comments);
 
     await db.applySQL(coreSQL);
+    await db.applySQL(usersSchema);
     await db.applySQL(postsSchema);
     await db.applySQL(commentsSchema);
+    await db.applySQL(usersSQL);
     await db.applySQL(postsSQL);
     await db.applySQL(commentsSQL);
 
-    // Create users table for auth functions
-    await db.applySQL(`
-      CREATE TABLE IF NOT EXISTS users (
-        id serial PRIMARY KEY,
-        email text UNIQUE NOT NULL,
-        password_hash text NOT NULL,
-        name text
-      )
-    `);
+    // Create a test user for FK relationships using register_user
+    await sql`SELECT dzql_v2.register_user(${sql.json({ name: 'Test Author', email: 'test@example.com', password: 'password123' })})`;
 
     // Generate manifest and write to temp location
     const manifest = generateManifest(ir);

@@ -175,6 +175,9 @@ export function generateIR(domain: DomainConfig): DomainIR {
       };
     }
 
+    // Parse includes (FK expansions)
+    const includes = parseIncludes(config.includes as Record<string, string | IncludeConfig> | undefined);
+
     entities[name] = {
       name,
       table: name,
@@ -187,6 +190,7 @@ export function generateIR(domain: DomainConfig): DomainIR {
       fieldDefaults: config.fieldDefaults || {},
       permissions,
       relationships: {},
+      includes,
       manyToMany,
       graphRules: {
         onCreate: onCreateRules,
