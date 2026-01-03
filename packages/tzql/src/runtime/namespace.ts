@@ -380,12 +380,12 @@ export class DzqlNamespace {
   async functions(c: Context): Promise<void> {
     try {
       const { manifest } = await this.init();
-      const functions: Record<string, { args: string[]; returnType: string }> = {};
+      const functions: Record<string, { schema: string; args: string[] }> = {};
 
       for (const [name, fn] of Object.entries(manifest.functions)) {
         functions[name] = {
+          schema: fn.schema,
           args: fn.args,
-          returnType: fn.returnType,
         };
       }
 

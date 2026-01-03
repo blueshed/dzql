@@ -57,37 +57,26 @@ This compiles the domain and restarts PostgreSQL with a fresh database.
 | `bun run compile` | Compile domain.ts to generated/ |
 | `bun run db:up` | Start PostgreSQL |
 | `bun run db:down` | Stop PostgreSQL and remove data |
+| `bun run db:logs` | View database logs |
 | `bun run db:rebuild` | Compile + restart database (clean slate) |
 
-## Task Runner (invoket)
+## CLI Data Operations (invoket)
 
-This project includes [invoket](https://github.com/blueshed/invoket) for CLI task automation. Run tasks with `bunx invt`:
+This project includes [invoket](https://github.com/blueshed/invoket) for CLI database operations via `tasks.ts`:
 
 ```bash
-# List all available tasks
-bunx invt --list
-
-# Development tasks
-bunx invt compile          # Compile domain
-bunx invt dev              # Start dev servers
-bunx invt server           # Start only backend
-bunx invt client           # Start only frontend
-
-# Database tasks
-bunx invt db:up            # Start PostgreSQL
-bunx invt db:down          # Stop and remove data
-bunx invt db:rebuild       # Compile + restart fresh
-bunx invt db:logs          # View database logs
-bunx invt db:psql          # Connect with psql
+# List available commands
+invt --list
 
 # DZQL data operations
-bunx invt dzql:entities    # List all entities
-bunx invt dzql:functions   # List all functions
-bunx invt dzql:search users                      # Search users
-bunx invt dzql:get posts '{"id": 1}'             # Get post by ID
-bunx invt dzql:save posts '{"title": "Hello"}'   # Create/update post
-bunx invt dzql:delete posts '{"id": 1}'          # Delete post
-bunx invt dzql:call login_user '{"email": ".."}' # Call any function
+invt dzql:entities                          # List all entities
+invt dzql:subscribables                     # List all subscribables
+invt dzql:functions                         # List all functions
+invt dzql:search users                      # Search users
+invt dzql:get posts '{"id": 1}'             # Get post by ID
+invt dzql:save posts '{"title": "Hello"}'   # Create/update post
+invt dzql:delete posts '{"id": 1}'          # Delete post
+invt dzql:call login_user '{"email": ".."}' # Call any function
 ```
 
 ### Custom Tasks
@@ -96,19 +85,15 @@ Add your own tasks to `tasks.ts`:
 
 ```typescript
 import { Context } from "invoket/context";
+import { DzqlNamespace } from "dzql/namespace";
 
 export class Tasks {
-  // ... existing tasks
+  dzql = new DzqlNamespace();
 
   /** Deploy to production */
   async deploy(c: Context) {
     await c.run("bun run build", { echo: true });
     await c.run("rsync -avz dist/ server:/var/www/app/", { echo: true });
-  }
-
-  /** Run database backup */
-  async backup(c: Context) {
-    await c.run("docker compose exec postgres pg_dump -U postgres {{name}} > backup.sql", { echo: true });
   }
 }
 ```

@@ -31,6 +31,7 @@
     "compile": "bunx dzql domain.ts -o generated",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down -v",
+    "db:logs": "docker compose logs -f",
     "db:rebuild": "bun run compile && docker compose down -v && docker compose up -d",
     "dev": "concurrently -n server,client -c blue,green \"bun run --filter server dev\" \"bun run --filter client dev\""
   },
