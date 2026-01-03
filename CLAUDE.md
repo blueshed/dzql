@@ -19,9 +19,12 @@ packages/
 
 ## Testing
 
-- Run tests: `cd packages/dzql && bun run test`
-- Tests run against Docker PostgreSQL (see `packages/dzql/tests/compose.yml`)
-- Follow patterns in `packages/dzql/tests/integration/auth.test.js`
+- Run tests: `cd packages/tzql && bun run test`
+- Tests run against Docker PostgreSQL (see `packages/tzql/compose.yml`)
+- Follow patterns in `packages/tzql/tests/integration/`
+- The test script handles Docker lifecycle: starts fresh, runs tests, tears down
+
+**Test-Driven Development:** Write tests first. Add failing tests for new features or bugs, then implement until they pass. This ensures the feature works and prevents regressions.
 
 ## Publishing
 

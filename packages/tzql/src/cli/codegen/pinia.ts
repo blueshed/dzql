@@ -60,14 +60,6 @@ export interface ${pascalName} {
 ${columnTypes}
 }
 
-/** Event payload for table changes */
-export interface TableChangedPayload {
-  table: string;
-  operation: 'insert' | 'update' | 'delete';
-  pk: { ${pkField}: ${pkType} };
-  data: ${pascalName} | null;
-}
-
 export const use${pascalName}Store = defineStore('${entityName}-store', () => {
   const records: Ref<${pascalName}[]> = ref([]);
   const loading: Ref<boolean> = ref(false);
@@ -132,32 +124,36 @@ export const use${pascalName}Store = defineStore('${entityName}-store', () => {
     }
   }
 
-  function table_changed(payload: TableChangedPayload): void {
-    if (payload.table === '${entityName}') {
-      const pkValue = payload.pk?.${pkField};
-      const existingIndex = records.value.findIndex((r: ${pascalName}) => r.${pkField} === pkValue);
+  // Broadcast handler - automatically registered with ws
+  function table_changed(table: string, op: string, pk: Record<string, unknown>, data: ${pascalName} | null): void {
+    if (table !== '${entityName}') return;
 
-      switch (payload.operation) {
-        case 'insert':
-          if (payload.data && existingIndex === -1) {
-            records.value.push(payload.data);
-          }
-          break;
-        case 'update':
-          if (payload.data && existingIndex !== -1) {
-            Object.assign(records.value[existingIndex], payload.data);
-          } else if (payload.data) {
-            records.value.push(payload.data);
-          }
-          break;
-        case 'delete':
-          if (existingIndex !== -1) {
-            records.value.splice(existingIndex, 1);
-          }
-          break;
-      }
+    const pkValue = pk?.${pkField} as ${pkType};
+    const existingIndex = records.value.findIndex((r) => r.${pkField} === pkValue);
+
+    switch (op) {
+      case 'insert':
+        if (data && existingIndex === -1) {
+          records.value.push(data);
+        }
+        break;
+      case 'update':
+        if (data && existingIndex !== -1) {
+          Object.assign(records.value[existingIndex], data);
+        } else if (data) {
+          records.value.push(data);
+        }
+        break;
+      case 'delete':
+        if (existingIndex !== -1) {
+          records.value.splice(existingIndex, 1);
+        }
+        break;
     }
   }
+
+  // Self-register with WebSocket for broadcasts
+  ws.registerStore(table_changed);
 
   return {
     records,

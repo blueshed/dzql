@@ -53,12 +53,15 @@ describe("Subscribable Store Reactivity", () => {
     // Should add plain object with empty data object to documents.value (preserves reactivity)
     expect(code).toContain("documents.value[key] = { data: {}, loading: true, ready };");
 
-    // Should merge initial data into existing object via Object.assign (preserves reactivity)
-    expect(code).toContain("Object.assign(documents.value[key].data, eventData");
+    // Should merge initial data into existing object via Object.assign (preserves reactivity, unwraps envelope)
+    expect(code).toContain("Object.assign(documents.value[key].data, result.data);");
     expect(code).toContain("documents.value[key].loading = false;");
 
     // Should have typed unbind function
     expect(code).toContain("function unbind(params: VenueDetailParams)");
+
+    // Should have table_changed handler for broadcasts
+    expect(code).toContain("function table_changed(table: string, op: string,");
 
     // Should NOT pre-wrap in ref()
     expect(code).not.toContain("const docState = ref(");

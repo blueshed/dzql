@@ -278,32 +278,75 @@ console.log(store.documents);
 
 ### How Realtime Works
 
-The WebSocket is a pure transport layer - it does not manage or cache data. Stores own their data.
+DZQL uses a simple, unified broadcast pattern for all stores:
 
-When data changes in the database:
-1. PostgreSQL triggers emit atomic events to the `dzql_v2.events` table
-2. The runtime calls `*_affected_keys()` to find which subscriptions are affected
-3. Events are broadcast to subscribed clients via WebSocket
-4. The **store's** `subscription_event` function receives the event
-5. The store's `applyPatch` function updates its local document in-place
-6. Vue reactivity updates the UI automatically
+1. **Database events:** PostgreSQL triggers emit events to `dzql_v2.events`
+2. **Server broadcasts:** Runtime sends `{table}:{op}` messages (e.g., `venues:update`) to clients based on:
+   - **Subscriptions:** Connections with matching `affected_keys`
+   - **Notifications:** Users in `notify_users` (from entity notification paths)
+3. **Auto-dispatch:** The WebSocket client routes broadcasts to registered store handlers
+4. **Store updates:** Each store's `table_changed` method applies updates to local data
+5. **Vue reactivity:** UI updates automatically
 
-**No refetching required** - changes are applied incrementally via patching.
+**No refetching required** - changes are applied incrementally.
 
-### Patch Events
+### The `table_changed` Pattern
 
-The store receives events with this structure:
+Every generated store implements `table_changed` and self-registers with the WebSocket client:
+
+```typescript
+// Generated store (simplified)
+export const useVenuesStore = defineStore('venues-store', () => {
+  const records = ref([]);
+
+  function table_changed(table: string, op: string, pk: Record<string, unknown>, data: unknown) {
+    if (table !== 'venues') return;
+    // Update records based on op (insert/update/delete)
+  }
+
+  // Self-register - no manual setup needed!
+  ws.registerStore(table_changed);
+
+  return { records, get, save, search, table_changed };
+});
+```
+
+**User code - just works:**
+```typescript
+const venuesStore = useVenuesStore();  // Auto-registers for broadcasts
+await venuesStore.search({ org_id: 1 });
+// records update automatically when broadcasts arrive - no setup needed!
+```
+
+### Broadcast Message Format
 
 ```typescript
 {
-  table: 'sites',           // Which table changed
-  op: 'insert' | 'update' | 'delete',
-  pk: { id: 123 },          // Primary key of affected row
-  data: { ... }             // Full row data
+  "jsonrpc": "2.0",
+  "method": "venues:update",  // {table}:{op}
+  "params": {
+    "pk": { "id": 123 },
+    "data": { "id": 123, "name": "Updated Venue", ... }
+  }
 }
 ```
 
-The generated `applyPatch` function routes events to the correct location in the document graph based on the subscribable's `includes` structure.
+### Entity Notifications
+
+Entities can define `notifications` paths to specify who receives broadcasts:
+
+```typescript
+export const entities = {
+  venues: {
+    schema: { id: 'serial PRIMARY KEY', org_id: 'int', name: 'text' },
+    notifications: {
+      members: ['@org_id->acts_for[org_id=$]{active}.user_id']
+    }
+  }
+};
+```
+
+When a venue is created/updated/deleted, all active members of that org receive the broadcast.
 
 ## Why "Compile-Only"?
 

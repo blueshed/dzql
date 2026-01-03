@@ -262,9 +262,59 @@ for (const [key, docState] of Object.entries(store.documents)) {
 - Same params = same cached subscription (deduplication by JSON key)
 - The `ready` Promise is stored for repeat callers to await
 - **Stores own their data** - the WebSocket is just transport
-- Realtime patches are applied by the store's `applyPatch()` function
 - Data is reactive - changes trigger Vue reactivity automatically
-- The store routes patch events by table name to the correct location in the document graph
+
+### How Realtime Works
+
+DZQL uses a unified `table_changed` pattern for all stores:
+
+1. **Database events:** PostgreSQL triggers emit events to `dzql_v2.events`
+2. **Server broadcasts:** Runtime sends `{table}:{op}` messages (e.g., `venues:update`) to clients
+3. **Auto-dispatch:** WebSocket client routes broadcasts to registered store handlers
+4. **Store updates:** Each store's `table_changed` method applies updates to local data
+
+**Stores self-register - no manual setup needed:**
+
+```typescript
+// Generated store (simplified)
+export const useVenuesStore = defineStore('venues-store', () => {
+  const records = ref([]);
+
+  function table_changed(table: string, op: string, pk: Record<string, unknown>, data: unknown) {
+    if (table !== 'venues') return;
+    // Update records based on op (insert/update/delete)
+  }
+
+  // Self-register with WebSocket
+  ws.registerStore(table_changed);
+
+  return { records, get, save, search, table_changed };
+});
+```
+
+**User code - just works:**
+```typescript
+const venuesStore = useVenuesStore();  // Auto-registers for broadcasts
+await venuesStore.search({ org_id: 1 });
+// records update automatically when broadcasts arrive!
+```
+
+### Entity Notifications
+
+Entities can define `notifications` paths to specify who receives broadcasts:
+
+```javascript
+export const entities = {
+  venues: {
+    schema: { id: 'serial PRIMARY KEY', org_id: 'int', name: 'text' },
+    notifications: {
+      members: ['@org_id->acts_for[org_id=$]{active}.user_id']
+    }
+  }
+};
+```
+
+When a venue is created/updated/deleted, all active members of that org receive the broadcast
 
 ### Common Patterns
 

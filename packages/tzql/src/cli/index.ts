@@ -3,7 +3,7 @@ import { loadDomain } from "./compiler/loader.js";
 import { analyzeDomain } from "./compiler/analyzer.js";
 import { generateIR } from "./compiler/ir.js";
 import { generateCoreSQL, generateEntitySQL, generateSchemaSQL } from "./codegen/sql.js";
-import { generateSubscribableSQL } from "./codegen/subscribable_sql.js";
+import { generateSubscribableSQL, generateComputeAffectedKeysFunction } from "./codegen/subscribable_sql.js";
 import { generateManifest } from "./codegen/manifest.js";
 import { generateSubscribableStore } from "./codegen/subscribable_store.js";
 import { generateClientSDK } from "./codegen/client.js";
@@ -80,10 +80,13 @@ async function main() {
 
       // Generate subscribable SQL functions
       const subscribableSQL: string[] = [];
+      const subscribableNames = Object.keys(ir.subscribables);
       for (const [name, subIR] of Object.entries(ir.subscribables)) {
         console.log(`[Compiler] Generating SQL for subscribable: ${name}`);
         subscribableSQL.push(generateSubscribableSQL(name, subIR as any, ir.entities));
       }
+      // Generate central compute_affected_keys function that aggregates all subscribables
+      subscribableSQL.push(generateComputeAffectedKeysFunction(subscribableNames));
 
       // Collect custom functions SQL
       const customFunctionSQL: string[] = [];

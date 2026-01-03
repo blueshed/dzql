@@ -10,16 +10,17 @@ describe("Venues Store Generation", () => {
   test("should generate venues store", () => {
     const ir = generateIR(venuesDomain);
     const manifest = generateManifest(ir);
-    
+
     // Generate the store for the 'venues' entity
     const code = generatePiniaStore(manifest, "venues");
-    
+
     console.log("--- GENERATED VENUES STORE ---");
     console.log(code);
     console.log("------------------------------");
-    
+
     expect(code).toContain("useVenuesStore");
     expect(code).toContain("ws.api.save_venues");
-    expect(code).toContain("table_changed");
+    expect(code).toContain("function table_changed(table: string, op: string,");
+    expect(code).toContain("if (table !== 'venues') return;");
   });
 });

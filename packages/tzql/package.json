@@ -24,7 +24,9 @@
     "README.md"
   ],
   "scripts": {
-    "test": "bun test"
+    "test": "bun run test:setup && bun test; bun run test:teardown",
+    "test:setup": "docker compose down -v && docker compose up -d --wait",
+    "test:teardown": "docker compose down -v"
   },
   "keywords": [
     "postgresql",

@@ -387,6 +387,8 @@ async function deleteSite(id: number) {
 </script>
 ```
 
+**How realtime works:** Stores self-register with the WebSocket client on creation. When the server broadcasts `{table}:{op}` messages (e.g., `sites:insert`), each store's `table_changed` handler automatically applies the update to local data. No manual dispatcher setup required - just use the store and it works.
+
 ## 10. CLI Database Access with invj
 
 Create `tasks.js` in the project root to enable CLI database operations:

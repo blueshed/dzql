@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { V2TestDatabase } from "./setup.js";
 import { generateIR } from "../../src/cli/compiler/ir.js";
-import { generateSearchFunction, generateSaveFunction, generateGetFunction } from "../../src/cli/codegen/sql.js";
+import { generateSearchFunction, generateSaveFunction, generateGetFunction, generateEntitySQL } from "../../src/cli/codegen/sql.js";
 import { compilePermission } from "../../src/cli/compiler/permissions.js";
 import { handleRequest } from "../../src/runtime/server.js";
 import { registerJsFunction, clearJsFunctions } from "../../src/runtime/js_functions.js";
@@ -35,8 +35,25 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
         data jsonb,
         old_data jsonb,
         user_id int,
+        affected_keys text[] DEFAULT ARRAY[]::text[],
+        notify_users int[] DEFAULT ARRAY[]::int[],
         created_at timestamptz DEFAULT now()
       )
+    `;
+    // Default compute_affected_keys function (returns empty array)
+    await sql`
+      CREATE OR REPLACE FUNCTION dzql_v2.compute_affected_keys(
+        p_table TEXT,
+        p_op TEXT,
+        p_data JSONB
+      ) RETURNS TEXT[]
+      LANGUAGE plpgsql
+      IMMUTABLE
+      AS $$
+      BEGIN
+        RETURN ARRAY[]::text[];
+      END;
+      $$
     `;
 
     // Create test tables
@@ -266,15 +283,10 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
 
   describe("M2M Relationships", () => {
     beforeAll(async () => {
-      // Generate and apply brands functions with M2M
+      // Generate and apply brands functions with M2M (includes notification function)
       const brandsIR = ir.entities.brands;
-      const brandsSaveSQL = generateSaveFunction("brands", brandsIR);
-      const brandsGetSQL = generateGetFunction("brands", brandsIR);
-      const brandsSearchSQL = generateSearchFunction("brands", brandsIR);
-
-      await sql.unsafe(brandsSaveSQL);
-      await sql.unsafe(brandsGetSQL);
-      await sql.unsafe(brandsSearchSQL);
+      const brandsSQL = generateEntitySQL("brands", brandsIR);
+      await sql.unsafe(brandsSQL);
     });
 
     test("M2M expansion in GET includes tag_ids array", async () => {
@@ -364,20 +376,10 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
         )
       `;
 
-      // Generate and apply products functions with soft delete
+      // Generate and apply products functions with soft delete (includes notification function)
       const productsIR = ir.entities.products;
-      const productsSaveSQL = generateSaveFunction("products", productsIR);
-      const productsGetSQL = generateGetFunction("products", productsIR);
-      const productsSearchSQL = generateSearchFunction("products", productsIR);
-
-      await sql.unsafe(productsSaveSQL);
-      await sql.unsafe(productsGetSQL);
-      await sql.unsafe(productsSearchSQL);
-
-      // Need to create delete function separately since it's not in generateEntitySQL individually
-      const { generateDeleteFunction } = await import("../../src/cli/codegen/sql.js");
-      const productsDeleteSQL = generateDeleteFunction("products", productsIR);
-      await sql.unsafe(productsDeleteSQL);
+      const productsSQL = generateEntitySQL("products", productsIR);
+      await sql.unsafe(productsSQL);
     });
 
     test("Soft delete sets deleted_at timestamp instead of removing row", async () => {
@@ -539,19 +541,10 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
   describe("Composite Primary Keys", () => {
     beforeAll(async () => {
       // acts_for table already exists with composite PK (user_id, org_id, valid_from)
-      // Generate and apply acts_for functions
+      // Generate and apply acts_for functions (includes notification function)
       const actsForIR = ir.entities.acts_for;
-      const actsForSaveSQL = generateSaveFunction("acts_for", actsForIR);
-      const actsForGetSQL = generateGetFunction("acts_for", actsForIR);
-      const actsForSearchSQL = generateSearchFunction("acts_for", actsForIR);
-
-      await sql.unsafe(actsForSaveSQL);
-      await sql.unsafe(actsForGetSQL);
-      await sql.unsafe(actsForSearchSQL);
-
-      const { generateDeleteFunction } = await import("../../src/cli/codegen/sql.js");
-      const actsForDeleteSQL = generateDeleteFunction("acts_for", actsForIR);
-      await sql.unsafe(actsForDeleteSQL);
+      const actsForSQL = generateEntitySQL("acts_for", actsForIR);
+      await sql.unsafe(actsForSQL);
     });
 
     test("SAVE with composite PK inserts new record", async () => {

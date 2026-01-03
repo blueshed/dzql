@@ -50,11 +50,27 @@ CREATE TABLE IF NOT EXISTS dzql_v2.events (
   data jsonb,
   old_data jsonb,
   user_id int,
+  affected_keys text[] DEFAULT ARRAY[]::text[],
+  notify_users int[] DEFAULT ARRAY[]::int[],
   created_at timestamptz DEFAULT now()
 );
 
 -- Commit Sequence
 CREATE SEQUENCE IF NOT EXISTS dzql_v2.commit_seq;
+
+-- Default compute_affected_keys (returns empty array, overwritten when subscribables exist)
+CREATE OR REPLACE FUNCTION dzql_v2.compute_affected_keys(
+  p_table TEXT,
+  p_op TEXT,
+  p_data JSONB
+) RETURNS TEXT[]
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+BEGIN
+  RETURN ARRAY[]::text[];
+END;
+$$;
 
 -- === AUTH FUNCTIONS ===
 
@@ -309,6 +325,7 @@ DECLARE
   v_old_data jsonb;
   v_commit_id bigint;
   v_op text;
+  v_notify_users int[];
 ${m2mVarDeclarations}
 BEGIN
   v_commit_id := nextval('dzql_v2.commit_seq');
@@ -349,8 +366,11 @@ ${m2mExtraction}
 ${m2mSync}
 ${m2mExpansion}
 
-  -- Emit Event
-  INSERT INTO dzql_v2.events (commit_id, table_name, op, pk, data, old_data, user_id)
+  -- Resolve notification recipients
+  v_notify_users := dzql_v2.${name}_notify_users(p_user_id, v_result);
+
+  -- Emit Event with pre-computed affected keys and notify users
+  INSERT INTO dzql_v2.events (commit_id, table_name, op, pk, data, old_data, user_id, affected_keys, notify_users)
   VALUES (
     v_commit_id,
     '${name}',
@@ -358,7 +378,9 @@ ${m2mExpansion}
     ${pkJsonbExpr},
     v_result,
     v_old_data, -- NULL for insert
-    p_user_id
+    p_user_id,
+    dzql_v2.compute_affected_keys('${name}', v_op, v_result),
+    v_notify_users
   );
 
   -- Notify Runtime
@@ -419,6 +441,7 @@ AS $$
 DECLARE
   v_old_data jsonb;
   v_commit_id bigint;
+  v_notify_users int[];
 BEGIN
   v_commit_id := nextval('dzql_v2.commit_seq');
 
@@ -440,8 +463,11 @@ BEGIN
   -- Perform ${softDelete ? 'Soft ' : ''}Delete
   ${deleteOperation};
 
-  -- Emit Event (always 'delete' operation for client-side removal)
-  INSERT INTO dzql_v2.events (commit_id, table_name, op, pk, data, old_data, user_id)
+  -- Resolve notification recipients
+  v_notify_users := dzql_v2.${name}_notify_users(p_user_id, v_old_data);
+
+  -- Emit Event with pre-computed affected keys and notify users (always 'delete' operation for client-side removal)
+  INSERT INTO dzql_v2.events (commit_id, table_name, op, pk, data, old_data, user_id, affected_keys, notify_users)
   VALUES (
     v_commit_id,
     '${name}',
@@ -449,7 +475,9 @@ BEGIN
     ${pkJsonbExpr},
     v_old_data,  -- Include full data for subscription resolution
     v_old_data,
-    p_user_id
+    p_user_id,
+    dzql_v2.compute_affected_keys('${name}', 'delete', v_old_data),
+    v_notify_users
   );
 
   -- Notify Runtime
@@ -689,7 +717,11 @@ $$;
 
 // === AGGREGATE GENERATOR ===
 export function generateEntitySQL(name: string, entityIR: EntityIR): string {
+  // Import here to avoid circular dependency
+  const { generateNotificationFunction } = require('./notification.js');
+
   return [
+    generateNotificationFunction(name, entityIR),
     generateSaveFunction(name, entityIR),
     generateDeleteFunction(name, entityIR),
     generateGetFunction(name, entityIR),

@@ -1,29 +1,37 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { usePostsFeedStore } from '@generated/client/stores/usePostsFeedStore'
 import { useDzql } from '@/composables/useDzql'
 
 const { ws } = useDzql()
+const store = usePostsFeedStore()
 
-const posts = ref<any[]>([])
+// Bind to the store - it handles all patching internally
+const doc = ref<any>(null)
 const loading = ref(true)
 const error = ref('')
+
+// Computed posts from store document
+const posts = computed(() => doc.value?.data?.posts || [])
 
 const newPostTitle = ref('')
 const newPostContent = ref('')
 const showForm = ref(false)
 
-async function loadPosts() {
-  loading.value = true
+onMounted(async () => {
   try {
-    // Use get_posts_feed which includes author data
-    const result = await ws.api.get_posts_feed({}) as any
-    posts.value = result?.posts || []
+    const wrapper = await store.bind({})
+    doc.value = wrapper
+    loading.value = false
   } catch (e: any) {
     error.value = e.message
-  } finally {
     loading.value = false
   }
-}
+})
+
+onUnmounted(() => {
+  store.unbind({})
+})
 
 async function createPost() {
   if (!newPostTitle.value.trim()) return
@@ -37,7 +45,6 @@ async function createPost() {
     newPostTitle.value = ''
     newPostContent.value = ''
     showForm.value = false
-    await loadPosts()
   } catch (e: any) {
     error.value = e.message
   }
@@ -48,14 +55,10 @@ async function deletePost(id: number) {
 
   try {
     await ws.api.delete_posts({ id })
-    await loadPosts()
   } catch (e: any) {
     error.value = e.message
   }
 }
-
-// Load posts on mount
-loadPosts()
 </script>
 
 <template>

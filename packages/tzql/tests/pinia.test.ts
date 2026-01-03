@@ -20,7 +20,7 @@ const mockDomainConfig = {
 const mockManifest = generateManifest(generateIR(mockDomainConfig));
 
 describe("Pinia Store Generation", () => {
-  test("should generate a Pinia store with basic CRUD and table_changed", () => {
+  test("should generate a Pinia store with basic CRUD and broadcast handlers", () => {
     const piniaCode = generatePiniaStore(mockManifest, "posts");
 
     // Check TypeScript imports
@@ -30,7 +30,6 @@ describe("Pinia Store Generation", () => {
 
     // Check type definitions
     expect(piniaCode).toContain("export interface Posts {");
-    expect(piniaCode).toContain("export interface TableChangedPayload {");
 
     // Check store definition
     expect(piniaCode).toContain("export const usePostsStore = defineStore('posts-store', () => {");
@@ -41,8 +40,8 @@ describe("Pinia Store Generation", () => {
     expect(piniaCode).toContain("async function remove(id: number): Promise<Posts>");
     expect(piniaCode).toContain("async function search(query:");
 
-    // Check table_changed handler
-    expect(piniaCode).toContain("function table_changed(payload: TableChangedPayload): void");
-    expect(piniaCode).toContain("if (payload.table === 'posts')");
+    // Check table_changed handler (called by global dispatcher)
+    expect(piniaCode).toContain("function table_changed(table: string, op: string, pk: Record<string, unknown>, data:");
+    expect(piniaCode).toContain("if (table !== 'posts') return;");
   });
 });

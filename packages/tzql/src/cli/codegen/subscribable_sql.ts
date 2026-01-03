@@ -292,7 +292,7 @@ ${paramExtracts}
 
   -- Return data with embedded schema for atomic updates
   RETURN jsonb_build_object(
-    '${sub.root.entity}', v_data,
+    'data', jsonb_build_object('${sub.root.entity}', v_data),
     'schema', '${schemaJson}'::jsonb
   );
 END;
@@ -521,33 +521,49 @@ function generateAffectedKeysFunction(name: string, sub: SubscribableIR): string
   const singularRootEntity = singularize(sub.root.entity);
 
   // Related entity cases
+  // Track FK relationships: parentEntity -> { childEntity: { fkOnParent, fkOnChild } }
+  const relationships: Record<string, Record<string, { fkOnParent: string }>> = {};
+
   const addRelationCase = (relName: string, relConfig: IncludeIR, parentEntity: string) => {
     const relEntity = relConfig.entity;
     const filter = relConfig.filter || {};
 
-    // Find the FK field that points to root (use singular form)
-    let fkField = `${singularRootEntity}_id`;
+    // Find the FK field on parent that points to child
+    // For includes like `org: 'organisations'`, the FK is `org_id` on the parent
+    // For includes like `{ entity: 'comments', filter: { post_id: '@id' } }`, the FK is on child
+    let fkOnParent = `${relName}_id`; // Default: relation name + _id (e.g., org -> org_id)
+
+    // Check if filter references @id - if so, the FK is on the child pointing to parent
+    let fkOnChild: string | null = null;
     for (const [field, value] of Object.entries(filter)) {
       if (value === '@id' || value === `@${paramKey}`) {
-        fkField = field;
+        fkOnChild = field; // e.g., user_id, venue_id
         break;
       }
     }
 
-    const singularParent = singularize(parentEntity);
+    // Store relationship for nested lookups
+    if (!relationships[parentEntity]) relationships[parentEntity] = {};
+    relationships[parentEntity][relEntity] = { fkOnParent };
 
-    // For nested relations, we need to traverse up
+    // For nested relations, we need to traverse up via the FK on parent
     if (parentEntity !== sub.root.entity) {
+      // Get the FK that parent uses to reference this child entity
+      const parentRel = relationships[parentEntity]?.[relEntity];
+      const fkField = parentRel?.fkOnParent || `${relName}_id`;
+
       cases.push(`    WHEN '${relEntity}' THEN
-      -- Nested: traverse via ${parentEntity}
+      -- Nested: traverse via ${parentEntity}.${fkField}
       SELECT ARRAY_AGG('${name}:' || parent.${singularRootEntity}_id)
       INTO v_keys
       FROM ${parentEntity} parent
-      WHERE parent.id = (p_data->>'${singularParent}_id')::int;
+      WHERE parent.${fkField} = (p_data->>'id')::int;
       RETURN COALESCE(v_keys, ARRAY[]::text[]);`);
     } else {
+      // Direct child of root - use the FK on child that points to root
+      const keyField = fkOnChild || `${singularRootEntity}_id`;
       cases.push(`    WHEN '${relEntity}' THEN
-      RETURN ARRAY['${name}:' || (p_data->>'${fkField}')];`);
+      RETURN ARRAY['${name}:' || (p_data->>'${keyField}')];`);
     }
 
     // Recurse for nested includes
@@ -578,6 +594,47 @@ ${cases.join('\n')}
     ELSE
       RETURN ARRAY[]::text[];
   END CASE;
+END;
+$$;`;
+}
+
+/**
+ * Generate the central compute_affected_keys function that aggregates all subscribable affected keys.
+ * This is called from save/delete functions to compute all affected subscription keys at write time.
+ */
+export function generateComputeAffectedKeysFunction(subscribableNames: string[]): string {
+  if (subscribableNames.length === 0) {
+    return `-- No subscribables defined, empty compute_affected_keys function
+CREATE OR REPLACE FUNCTION dzql_v2.compute_affected_keys(
+  p_table TEXT,
+  p_op TEXT,
+  p_data JSONB
+) RETURNS TEXT[]
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+BEGIN
+  RETURN ARRAY[]::text[];
+END;
+$$;`;
+  }
+
+  const calls = subscribableNames.map(name =>
+    `dzql_v2.${name}_affected_keys(p_table, p_op, p_data)`
+  ).join(' || ');
+
+  return `-- Central function to compute all affected subscription keys
+-- Called from save/delete functions at write time
+CREATE OR REPLACE FUNCTION dzql_v2.compute_affected_keys(
+  p_table TEXT,
+  p_op TEXT,
+  p_data JSONB
+) RETURNS TEXT[]
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+BEGIN
+  RETURN ${calls};
 END;
 $$;`;
 }

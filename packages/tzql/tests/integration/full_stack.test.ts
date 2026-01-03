@@ -113,7 +113,7 @@ describe.skipIf(!DIST_EXISTS)("Full Stack V2 Integration (Runtime + Client + Pin
         MANIFEST_PATH: manifestPath,
         JWT_SECRET: "test-secret",
         NODE_ENV: "development", // Override test environment so logger outputs INFO level
-        LOG_CATEGORIES: "server:info,runtime:info" // Ensure server startup message is visible
+        LOG_CATEGORIES: "server:info,runtime:info,notify:debug,ws:debug" // Ensure server startup message is visible
       },
       stdout: "pipe",
       stderr: "pipe"
@@ -153,7 +153,7 @@ describe.skipIf(!DIST_EXISTS)("Full Stack V2 Integration (Runtime + Client + Pin
     // 3. Setup Pinia
     setActivePinia(createPinia());
 
-    // Import generated store
+    // Import generated store - it self-registers with ws for broadcasts
     const storePath = resolve(DIST_ROOT, "client/stores/useVenueDetailStore.ts");
     const mod = await import(storePath);
     useVenueDetailStore = mod.useVenueDetailStore;

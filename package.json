@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "test": "cd packages/tzql && bun test",
-    "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist"
+    "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist",
+    "cache:clear": "bun pm cache rm"
   },
   "devDependencies": {
     "@types/bun": "latest"

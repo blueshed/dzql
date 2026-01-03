@@ -131,6 +131,15 @@ const { data } = await store.bind({ post_id: 1 });
 // data is reactive - updates automatically when post or comments change
 ```
 
+## Docker Playwright Testing
+
+When running Playwright tests from a Docker container, use `host.docker.internal` instead of `localhost` to access services running on the host machine:
+
+```typescript
+// In your Playwright test
+await page.goto('http://host.docker.internal:5173');
+```
+
 ## Learn More
 
 - [DZQL Documentation](https://github.com/blueshed/dzql)
