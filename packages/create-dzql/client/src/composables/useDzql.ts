@@ -13,12 +13,19 @@ export function useDzql() {
 
       await ws.connect(url || '/ws')
 
-      // Connection successful - check if we have a stored token
-      const token = localStorage.getItem('dzql_token')
-      if (token) {
-        // Token was sent with connection, user should be authenticated
-        // The server sends back the user profile on connection:ready
-      }
+      // Wait for connection:ready and sync user state
+      await new Promise<void>((resolve) => {
+        if (ws.ready) {
+          user.value = ws.user
+          resolve()
+        } else {
+          const unsub = ws.onReady((u: any) => {
+            user.value = u
+            unsub()
+            resolve()
+          })
+        }
+      })
 
       ready.value = true
     } catch (e: any) {
