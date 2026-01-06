@@ -203,14 +203,32 @@ function buildFinalExistsCheck(finalHop: string, valueExpr: string): string {
     conditions.push(`${targetTable}.id = ${valueExpr}`);
   }
 
-  // Temporal/active condition
+  // Temporal/active condition - may have multiple comma-separated parts
+  // e.g., {active} or {role='admin'} or {active,role=admin}
   if (condition) {
-    // Handle simple boolean condition like {active}
-    if (condition.match(/^[a-zA-Z0-9_]+$/)) {
-      conditions.push(`${targetTable}.${condition} = true`);
-    } else {
-      // Handle complex condition like {role='admin'}
-      conditions.push(`${targetTable}.${condition}`);
+    // Split by comma for multiple conditions
+    const conditionParts = condition.split(',').map(c => c.trim());
+    for (const part of conditionParts) {
+      // Handle simple boolean condition like {active}
+      if (part.match(/^[a-zA-Z0-9_]+$/)) {
+        conditions.push(`${targetTable}.${part} = true`);
+      } else {
+        // Handle complex condition like role='admin' or role=admin
+        // Convert role=admin to role = 'admin' for proper SQL
+        const eqMatch = part.match(/^([a-zA-Z0-9_]+)=(.+)$/);
+        if (eqMatch) {
+          const field = eqMatch[1];
+          let value = eqMatch[2];
+          // If value is already quoted, use as-is; otherwise quote it
+          if (!value.startsWith("'") && !value.match(/^\d+$/)) {
+            value = `'${value}'`;
+          }
+          conditions.push(`${targetTable}.${field} = ${value}`);
+        } else {
+          // Fallback: use as-is (e.g., complex expression)
+          conditions.push(`${targetTable}.${part}`);
+        }
+      }
     }
   }
 

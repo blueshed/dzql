@@ -23,12 +23,12 @@ const mockContext = {
 };
 
 describe("Permission Compiler", () => {
-  
+
   test("should compile simple owner check", () => {
     // Rule: @author_id == @user_id
     // Context: posts table
     const sql = compilePermission('posts', '@author_id', mockContext);
-    
+
     // Should generate: (p_data->>'author_id')::int = p_user_id
     expect(sql).toContain("(p_data->>'author_id')::int = p_user_id");
   });
@@ -48,8 +48,16 @@ describe("Permission Compiler", () => {
   test("should compile condition", () => {
     // Rule: @org_id->acts_for[org_id=$]{role='admin'}.user_id
     const sql = compilePermission('posts', "@org_id->acts_for[org_id=$]{role='admin'}.user_id", mockContext);
-    
-    expect(sql).toContain("acts_for.role='admin'");
+
+    expect(sql).toContain("acts_for.role = 'admin'");
+  });
+
+  test("should compile multiple conditions", () => {
+    // Rule: @org_id->acts_for[org_id=$]{active,role=admin}.user_id
+    const sql = compilePermission('posts', "@org_id->acts_for[org_id=$]{active,role=admin}.user_id", mockContext);
+
+    expect(sql).toContain("acts_for.active = true");
+    expect(sql).toContain("acts_for.role = 'admin'");
   });
 
 });
