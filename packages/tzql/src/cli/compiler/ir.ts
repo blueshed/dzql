@@ -12,7 +12,8 @@ import type {
   IncludeIR,
   CustomFunctionIR,
   ManyToManyIR,
-  GraphRuleIR
+  GraphRuleIR,
+  AuthIR
 } from "../../shared/ir.js";
 
 /**
@@ -224,14 +225,68 @@ export function generateIR(domain: DomainConfig): DomainIR {
       customFunctions.push({
         name: fn.name,
         sql: fn.sql,
-        args: fn.args || ['p_user_id', 'p_params']
+        args: fn.args || ['p_user_id', 'p_params'],
+        params: fn.params,
+        returns: fn.returns
       });
     }
+  }
+
+  // --- AUTH CONFIG ---
+  // Generate default auth config based on users entity if not provided
+  let auth: AuthIR | undefined;
+
+  if (domain.auth) {
+    // Use explicit auth config
+    auth = {
+      userFields: domain.auth.userFields || {},
+      loginParams: domain.auth.loginParams || { email: 'string', password: 'string' },
+      registerParams: domain.auth.registerParams || { email: 'string', password: 'string' }
+    };
+  } else if (entities['users']) {
+    // Derive auth config from users entity
+    const usersEntity = entities['users'];
+    const hiddenFields = new Set(usersEntity.hidden || []);
+    hiddenFields.add('password_hash');
+    hiddenFields.add('password');
+
+    // Map user columns to TypeScript types (excluding hidden fields)
+    const userFields: Record<string, string> = {
+      user_id: 'number'  // Always include user_id
+    };
+
+    for (const col of usersEntity.columns) {
+      if (!hiddenFields.has(col.name) && col.name !== 'id') {
+        userFields[col.name] = mapPgTypeToTsType(col.type);
+      }
+    }
+
+    auth = {
+      userFields,
+      loginParams: { email: 'string', password: 'string' },
+      registerParams: { email: 'string', password: 'string' }
+    };
   }
 
   return {
     entities,
     subscribables,
-    customFunctions
+    customFunctions,
+    auth
   };
+}
+
+/**
+ * Maps PostgreSQL column type to TypeScript type string
+ */
+function mapPgTypeToTsType(pgType: string): string {
+  const lower = pgType.toLowerCase();
+  if (lower.includes('int') || lower.includes('serial') || lower.includes('decimal') || lower.includes('numeric')) {
+    return 'number';
+  }
+  if (lower.includes('bool')) {
+    return 'boolean';
+  }
+  // Default to string for text, timestamps, etc.
+  return 'string';
 }

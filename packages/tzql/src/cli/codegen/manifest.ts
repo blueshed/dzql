@@ -1,10 +1,12 @@
-import { DomainIR, EntityIR, SubscribableIR } from "../../shared/ir.js";
+import { DomainIR, EntityIR, SubscribableIR, AuthIR, CustomFunctionIR } from "../../shared/ir.js";
 
 export interface Manifest {
   version: string;
   functions: Record<string, FunctionDef>;
   entities: Record<string, EntityIR>;
   subscribables: Record<string, SubscribableIR>;
+  auth?: AuthIR;
+  customFunctions?: CustomFunctionIR[];
 }
 
 export interface FunctionDef {
@@ -90,6 +92,8 @@ export function generateManifest(ir: DomainIR): Manifest {
     version: "2.0.0",
     functions,
     entities: ir.entities, // Pass through for client generator
-    subscribables: ir.subscribables
+    subscribables: ir.subscribables,
+    auth: ir.auth,
+    customFunctions: ir.customFunctions
   };
 }

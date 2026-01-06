@@ -10,7 +10,7 @@
     "packages/create-dzql"
   ],
   "scripts": {
-    "test": "cd packages/tzql && bun test",
+    "test": "cd packages/tzql && bun run test",
     "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist",
     "cache:clear": "bun pm cache rm"
   },

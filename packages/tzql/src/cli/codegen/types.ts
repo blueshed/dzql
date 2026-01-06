@@ -1,4 +1,4 @@
-import { EntityIR, SubscribableIR } from "../../shared/ir.js";
+import { EntityIR, SubscribableIR, AuthIR, CustomFunctionIR } from "../../shared/ir.js";
 
 const TYPE_MAP: Record<string, string> = {
   'text': 'string',
@@ -19,6 +19,7 @@ const PARAM_TYPE_MAP: Record<string, string> = {
   'integer': 'number',
   'text': 'string',
   'string': 'string',
+  'number': 'number',
   'boolean': 'boolean',
   'date': 'string',
   'timestamptz': 'string'
@@ -26,7 +27,9 @@ const PARAM_TYPE_MAP: Record<string, string> = {
 
 export function generateTypeDefinitions(
   entities: Record<string, EntityIR>,
-  subscribables?: Record<string, SubscribableIR>
+  subscribables?: Record<string, SubscribableIR>,
+  auth?: AuthIR,
+  customFunctions?: CustomFunctionIR[]
 ): string {
   let output = "";
 
@@ -49,6 +52,7 @@ export type FilterValue<T> = T | FilterOperators<T>;
 
 `;
 
+  // --- Entity Types ---
   for (const [name, entity] of Object.entries(entities)) {
     const pascalName = toPascalCase(name);
 
@@ -106,17 +110,107 @@ export type FilterValue<T> = T | FilterOperators<T>;
 }\n\n`;
   }
 
-  // --- Subscribable Params ---
+  // --- Subscribable Params and Result Types ---
   if (subscribables) {
     for (const [name, sub] of Object.entries(subscribables)) {
       const pascalName = toPascalCase(name);
 
+      // Params interface
       output += `export interface ${pascalName}Params {\n`;
       for (const [paramName, paramType] of Object.entries(sub.params)) {
         const tsType = PARAM_TYPE_MAP[paramType as string] || 'any';
         output += `  ${paramName}: ${tsType};\n`;
       }
       output += `}\n\n`;
+
+      // Result interface (extends root entity with includes)
+      const rootEntity = sub.root?.entity;
+      const rootEntityPascal = rootEntity ? toPascalCase(rootEntity) : null;
+
+      if (rootEntityPascal && entities[rootEntity]) {
+        output += `export interface ${pascalName}Result extends ${rootEntityPascal} {\n`;
+
+        // Add includes as optional fields
+        if (sub.includes) {
+          for (const [includeKey, includeIR] of Object.entries(sub.includes)) {
+            const includeEntity = includeIR.entity;
+            const includeEntityPascal = toPascalCase(includeEntity);
+
+            // Determine if it's an array (one-to-many) or single (many-to-one)
+            // For now, assume arrays unless the include key matches a FK pattern
+            const isArray = !includeKey.endsWith('_id') && includeKey !== rootEntity;
+            const includeType = isArray ? `${includeEntityPascal}[]` : includeEntityPascal;
+
+            output += `  ${includeKey}?: ${includeType};\n`;
+          }
+        }
+
+        output += `}\n\n`;
+      }
+    }
+  }
+
+  // --- Auth Types ---
+  if (auth) {
+    // AuthUser interface
+    output += `export interface AuthUser {\n`;
+    for (const [fieldName, fieldType] of Object.entries(auth.userFields)) {
+      const tsType = PARAM_TYPE_MAP[fieldType] || fieldType;
+      output += `  ${fieldName}: ${tsType};\n`;
+    }
+    output += `}\n\n`;
+
+    // LoginParams interface
+    output += `export interface LoginParams {\n`;
+    for (const [paramName, paramType] of Object.entries(auth.loginParams)) {
+      const tsType = PARAM_TYPE_MAP[paramType] || paramType;
+      output += `  ${paramName}: ${tsType};\n`;
+    }
+    output += `}\n\n`;
+
+    // LoginResult interface
+    output += `export interface LoginResult extends AuthUser {\n`;
+    output += `  token: string;\n`;
+    output += `}\n\n`;
+
+    // RegisterParams interface
+    output += `export interface RegisterParams {\n`;
+    for (const [paramName, paramType] of Object.entries(auth.registerParams)) {
+      const tsType = PARAM_TYPE_MAP[paramType] || paramType;
+      output += `  ${paramName}: ${tsType};\n`;
+    }
+    output += `}\n\n`;
+
+    // RegisterResult interface
+    output += `export interface RegisterResult extends AuthUser {\n`;
+    output += `  token: string;\n`;
+    output += `}\n\n`;
+  }
+
+  // --- Custom Function Types ---
+  if (customFunctions) {
+    for (const fn of customFunctions) {
+      const pascalName = toPascalCase(fn.name);
+
+      // Generate params interface if params are defined
+      if (fn.params && Object.keys(fn.params).length > 0) {
+        output += `export interface ${pascalName}Params {\n`;
+        for (const [paramName, paramType] of Object.entries(fn.params)) {
+          const tsType = PARAM_TYPE_MAP[paramType] || paramType;
+          output += `  ${paramName}: ${tsType};\n`;
+        }
+        output += `}\n\n`;
+      }
+
+      // Generate result interface if returns is an object
+      if (fn.returns && typeof fn.returns === 'object') {
+        output += `export interface ${pascalName}Result {\n`;
+        for (const [fieldName, fieldType] of Object.entries(fn.returns)) {
+          const tsType = PARAM_TYPE_MAP[fieldType] || fieldType;
+          output += `  ${fieldName}: ${tsType};\n`;
+        }
+        output += `}\n\n`;
+      }
     }
   }
 

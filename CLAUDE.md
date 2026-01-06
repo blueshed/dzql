@@ -9,11 +9,10 @@ Before working on this codebase, read:
 
 ```
 packages/
-├── dzql/          # Core runtime (published as 'dzql')
-│   ├── src/       # Server, client, database migrations
-│   ├── docs/      # Documentation
+├── dzql/          # Legacy runtime (deprecated, kept for reference)
+├── tzql/          # Main package (published as 'dzql' on npm)
+│   ├── src/       # Compiler, runtime, client
 │   └── tests/     # Integration tests
-├── tzql/          # TypeScript compiler (CLI is 'dzql')
 └── create-dzql/   # Starter template (bun create dzql)
 ```
 
@@ -89,9 +88,9 @@ Publishing is done via GitHub Actions, triggered by git tags. Do NOT publish dir
    ```
 4. GitHub Actions will automatically publish to npm using OIDC trusted publishing
 
-**Tag format:** `<package-name>@<version>` (e.g., `dzql@0.6.9`, `create-dzql@0.6.9`)
+**Tag format:** `<package-name>@<version>` (e.g., `dzql@0.6.17`, `create-dzql@0.6.17`)
 
-**Version sync:** `dzql` and `create-dzql` should always have the same version number.
+**Version sync:** `tzql` (published as `dzql`) and `create-dzql` should always have the same version number.
 
 ## Events
 

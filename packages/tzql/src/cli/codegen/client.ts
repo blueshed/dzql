@@ -15,8 +15,27 @@ export function generateClientSDK(manifest: Manifest): string {
   const subscriptionFunctions = Object.entries(manifest.functions)
     .filter(([_, def]) => def.isSubscription);
 
-  // Generate entity types
-  const typeDefs = generateTypeDefinitions(manifest.entities, manifest.subscribables);
+  // Build a map of custom functions with typed params/returns
+  const typedCustomFunctions = new Map<string, { hasParams: boolean; hasReturns: boolean; returnsScalar: boolean }>();
+  if (manifest.customFunctions) {
+    for (const fn of manifest.customFunctions) {
+      const hasParams = fn.params && Object.keys(fn.params).length > 0;
+      const hasReturns = fn.returns !== undefined;
+      const returnsScalar = typeof fn.returns === 'string';
+      typedCustomFunctions.set(fn.name, { hasParams: !!hasParams, hasReturns, returnsScalar });
+    }
+  }
+
+  // Generate entity types (now with auth, subscribable results, and custom function types)
+  const typeDefs = generateTypeDefinitions(
+    manifest.entities,
+    manifest.subscribables,
+    manifest.auth,
+    manifest.customFunctions
+  );
+
+  // Check if we have auth types
+  const hasAuth = manifest.auth !== undefined;
 
   // Generate API interface with proper types
   const apiMethods = Object.entries(manifest.functions).map(([funcName, def]) => {
@@ -29,18 +48,34 @@ export function generateClientSDK(manifest: Manifest): string {
     // Check if this entity exists in manifest
     const entityExists = manifest.entities[entity];
 
+    // Check if this is a subscribable
+    const subscribableExists = manifest.subscribables?.[entity];
+
     let paramType = 'Record<string, unknown>';
     let returnType = 'unknown';
 
+    // Handle auth functions
+    if (funcName === 'login_user' && hasAuth) {
+      return `  ${funcName}: (params: LoginParams) => Promise<LoginResult>;`;
+    }
+    if (funcName === 'register_user' && hasAuth) {
+      return `  ${funcName}: (params: RegisterParams) => Promise<RegisterResult>;`;
+    }
+
+    // Handle subscriptions
     if (isSubscription) {
-      // subscribe_venue_detail -> VenueDetailParams
+      // subscribe_venue_detail -> VenueDetailParams, VenueDetailResult
       paramType = `${pascalEntity}Params`;
-      return `  ${funcName}: (params: ${paramType}, callback: (data: unknown) => void) => Promise<{ data: unknown; subscription_id: string; schema: unknown; unsubscribe: () => Promise<void> }>;`;
-    } else if (op === 'get' && entityExists) {
+      const resultType = subscribableExists ? `${pascalEntity}Result` : 'unknown';
+      return `  ${funcName}: (params: ${paramType}, callback: (data: ${resultType}) => void) => Promise<{ data: ${resultType}; subscription_id: string; schema: unknown; unsubscribe: () => Promise<void> }>;`;
+    }
+
+    // Handle entity CRUD operations
+    if (op === 'get' && entityExists) {
       // get_venue_detail (subscribable getter) vs get_venues (entity getter)
-      if (manifest.subscribables?.[entity]) {
+      if (subscribableExists) {
         paramType = `${pascalEntity}Params`;
-        returnType = 'unknown';
+        returnType = `${pascalEntity}Result`;
       } else {
         paramType = `${pascalEntity}PK`;
         returnType = `${pascalEntity} | null`;
@@ -58,7 +93,24 @@ export function generateClientSDK(manifest: Manifest): string {
       paramType = `Lookup${pascalEntity}Params`;
       returnType = `${pascalEntity}[]`;
     }
-    // Custom functions and auth functions stay as Record<string, unknown>
+
+    // Handle custom functions with typed params/returns
+    const customFnInfo = typedCustomFunctions.get(funcName);
+    if (customFnInfo) {
+      const pascalFuncName = toPascalCase(funcName);
+      if (customFnInfo.hasParams) {
+        paramType = `${pascalFuncName}Params`;
+      }
+      if (customFnInfo.hasReturns) {
+        if (customFnInfo.returnsScalar) {
+          // Find the scalar type from the manifest
+          const fn = manifest.customFunctions?.find(f => f.name === funcName);
+          returnType = fn?.returns as string || 'unknown';
+        } else {
+          returnType = `${pascalFuncName}Result`;
+        }
+      }
+    }
 
     return `  ${funcName}: (params: ${paramType}) => Promise<${returnType}>;`;
   }).join('\n');

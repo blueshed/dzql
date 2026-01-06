@@ -100,6 +100,20 @@ export interface CustomFunctionConfig {
   name: string;
   sql: string;
   args?: string[];
+  /** Parameter types for TypeScript generation: { paramName: 'number' | 'string' | ... } */
+  params?: Record<string, string>;
+  /** Return type: either an object shape or a scalar type name */
+  returns?: Record<string, string> | string;
+}
+
+/** Auth configuration for TypeScript type generation */
+export interface AuthConfig {
+  /** Fields returned by auth functions (user profile shape) */
+  userFields?: Record<string, string>;
+  /** Login function parameter types */
+  loginParams?: Record<string, string>;
+  /** Register function parameter types */
+  registerParams?: Record<string, string>;
 }
 
 /** Complete domain configuration as provided in domain file */
@@ -107,6 +121,7 @@ export interface DomainConfig {
   entities: Record<string, EntityConfig>;
   subscribables?: Record<string, SubscribableConfig>;
   customFunctions?: CustomFunctionConfig[];
+  auth?: AuthConfig;
 }
 
 // ============================================
@@ -191,10 +206,25 @@ export interface CustomFunctionIR {
   name: string;
   sql: string;
   args?: string[];  // For manifest allowlist
+  /** Parameter types for TypeScript generation */
+  params?: Record<string, string>;
+  /** Return type: either an object shape or a scalar type name */
+  returns?: Record<string, string> | string;
+}
+
+/** Auth IR for TypeScript type generation */
+export interface AuthIR {
+  /** Fields returned by auth functions (user profile shape) */
+  userFields: Record<string, string>;
+  /** Login function parameter types */
+  loginParams: Record<string, string>;
+  /** Register function parameter types */
+  registerParams: Record<string, string>;
 }
 
 export interface DomainIR {
   entities: Record<string, EntityIR>;
   subscribables: Record<string, SubscribableIR>;
   customFunctions: CustomFunctionIR[];
+  auth?: AuthIR;
 }
