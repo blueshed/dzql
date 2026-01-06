@@ -57,6 +57,11 @@ bun run dev
 
 **IMPORTANT:** The `bun link dzql` step is critical - without it, `bun install` fetches the published npm version, not your local changes. Always verify you're testing local code, not the old published version.
 
+**Verify local code is linked:** After `bun run db:rebuild`, check the generated manifest to confirm your changes are present:
+```bash
+cat .dzql/manifest.json | head -20
+```
+
 Then use Playwright (via MCP Docker) to test at `http://host.docker.internal:5173`:
 
 1. **Register a user**: Click "Create one", fill name/email/password, submit
@@ -72,15 +77,23 @@ Then use Playwright (via MCP Docker) to test at `http://host.docker.internal:517
 
 ### Cleanup
 
+**IMPORTANT:** Always clean up after E2E testing to avoid polluting your environment.
+
 ```bash
-# Kill dev servers first (vite processes left running in background)
+# 1. Kill dev servers first (vite processes left running in background)
 pkill -f "vite" 2>/dev/null
 
-# Stop and remove test app
+# 2. Stop and remove test app
 cd /tmp/dzql-test-app
 docker compose down -v
 cd /tmp && rm -rf dzql-test-app
+
+# 3. Remove the global bun link
+cd /Users/peterb/Workshop/blueshed/dzql/packages/tzql
+bun unlink
 ```
+
+The `bun unlink` step removes the global link so future projects use the published npm version, not your local code.
 
 ## Publishing
 
