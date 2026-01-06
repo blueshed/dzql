@@ -133,14 +133,18 @@ export type FilterValue<T> = T | FilterOperators<T>;
 
         // Add includes as optional fields
         if (sub.includes) {
+          const rootEntityIR = entities[rootEntity];
+          const rootColumns = new Set(rootEntityIR.columns.map(c => c.name));
+
           for (const [includeKey, includeIR] of Object.entries(sub.includes)) {
             const includeEntity = includeIR.entity;
             const includeEntityPascal = toPascalCase(includeEntity);
 
-            // Determine if it's an array (one-to-many) or single (many-to-one)
-            // For now, assume arrays unless the include key matches a FK pattern
-            const isArray = !includeKey.endsWith('_id') && includeKey !== rootEntity;
-            const includeType = isArray ? `${includeEntityPascal}[]` : includeEntityPascal;
+            // Determine if it's many-to-one (singular) or one-to-many (array)
+            // If root entity has a column `{includeKey}_id`, it's many-to-one
+            const fkColumn = `${includeKey}_id`;
+            const isManyToOne = rootColumns.has(fkColumn);
+            const includeType = isManyToOne ? includeEntityPascal : `${includeEntityPascal}[]`;
 
             output += `  ${includeKey}?: ${includeType};\n`;
           }
