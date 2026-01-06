@@ -47,7 +47,8 @@ export function useDzql() {
   }
 
   async function register(name: string, email: string, password: string) {
-    const result = await ws.api.register_user({ name, email, password }) as any
+    // Pass name in options - register_user(p_email, p_password, p_options)
+    const result = await ws.api.register_user({ email, password, options: { name } }) as any
     if (result?.user_id) {
       // Normalize user object: use 'id' for consistency with entity references
       user.value = { ...result, id: result.user_id }

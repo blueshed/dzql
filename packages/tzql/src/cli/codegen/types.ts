@@ -22,7 +22,8 @@ const PARAM_TYPE_MAP: Record<string, string> = {
   'number': 'number',
   'boolean': 'boolean',
   'date': 'string',
-  'timestamptz': 'string'
+  'timestamptz': 'string',
+  'object': 'Record<string, unknown>'
 };
 
 export function generateTypeDefinitions(
@@ -177,7 +178,9 @@ export type FilterValue<T> = T | FilterOperators<T>;
     output += `export interface RegisterParams {\n`;
     for (const [paramName, paramType] of Object.entries(auth.registerParams)) {
       const tsType = PARAM_TYPE_MAP[paramType] || paramType;
-      output += `  ${paramName}: ${tsType};\n`;
+      // options is optional (p_options jsonb DEFAULT NULL)
+      const optional = paramName === 'options' ? '?' : '';
+      output += `  ${paramName}${optional}: ${tsType};\n`;
     }
     output += `}\n\n`;
 

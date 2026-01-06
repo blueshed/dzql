@@ -53,8 +53,8 @@ export async function handleRequest(
   try {
     // Construct params array based on manifest definition
     // args: ["p_user_id", "p_data"] -> [$1, $2]
-    // args: ["p_params"] -> [$2] (since $2 is the data param)
-    // We map: p_user_id -> userId ($1), p_data/p_pk/p_params -> params ($2)
+    // args: ["p_email", "p_password"] -> extract from params object
+    // We map: p_user_id -> userId, p_data/p_pk/p_params -> params (jsonb), individual args -> params[key]
 
     const dbParams = [];
     const sqlArgs = [];
@@ -66,7 +66,15 @@ export async function handleRequest(
             dbParams.push(userId);
             sqlArgs.push(`$${dbParams.length}`);
         } else if (arg === 'p_data' || arg === 'p_pk' || arg === 'p_query' || arg === 'p_params') {
+            // Pass entire params object as jsonb
             dbParams.push(params);
+            sqlArgs.push(`$${dbParams.length}`);
+        } else if (arg.startsWith('p_')) {
+            // Individual param: extract from params object by field name
+            // e.g., p_email -> params.email, p_password -> params.password, p_options -> params.options
+            const fieldName = arg.slice(2); // Remove 'p_' prefix
+            const value = params?.[fieldName];
+            dbParams.push(value !== undefined ? value : null);
             sqlArgs.push(`$${dbParams.length}`);
         } else {
             // Unknown arg? Pass null

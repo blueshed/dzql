@@ -7,7 +7,7 @@
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach, spyOn } from "bun:test";
 import { V2TestDatabase } from "./integration/setup.js";
-import { generateCoreSQL, generateEntitySQL, generateSchemaSQL } from "../src/cli/codegen/sql.js";
+import { generateCoreSQL, generateAuthSQL, generateEntitySQL, generateSchemaSQL } from "../src/cli/codegen/sql.js";
 import { generateManifest } from "../src/cli/codegen/manifest.js";
 import { generateIR } from "../src/cli/compiler/ir.js";
 import { entities } from "../examples/blog.js";
@@ -50,12 +50,15 @@ describe("DzqlNamespace", () => {
     await db.applySQL(usersSchema);
     await db.applySQL(postsSchema);
     await db.applySQL(commentsSchema);
+    // Auth functions must come after users table is created
+    const authSQL = generateAuthSQL();
+    await db.applySQL(authSQL);
     await db.applySQL(usersSQL);
     await db.applySQL(postsSQL);
     await db.applySQL(commentsSQL);
 
     // Create a test user for FK relationships using register_user
-    await sql`SELECT dzql_v2.register_user(${sql.json({ name: 'Test Author', email: 'test@example.com', password: 'password123' })})`;
+    await sql`SELECT dzql_v2.register_user('test@example.com', 'password123', ${sql.json({ name: 'Test Author' })})`;
 
     // Generate manifest and write to temp location
     const manifest = generateManifest(ir);

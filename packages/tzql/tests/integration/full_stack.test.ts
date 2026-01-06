@@ -177,8 +177,8 @@ describe.skipIf(!DIST_EXISTS)("Full Stack V2 Integration (Runtime + Client + Pin
   });
 
   test("should register and login", async () => {
-    // Register
-    const reg = await ws.register({ email: "tester@example.com", password: "password123" });
+    // Register (venues example requires name in options)
+    const reg = await ws.register({ email: "tester@example.com", password: "password123" }, { name: "Test User" });
     expect(reg.user_id).toBeDefined();
 
     // Login

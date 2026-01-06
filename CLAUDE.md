@@ -29,24 +29,33 @@ packages/
 
 ### Testing the create-dzql Template
 
-Before publishing changes to `create-dzql`, test by creating a sample app using the local template:
+Before publishing changes to `create-dzql` or `tzql`, test by creating a sample app using the local template **with local packages linked**:
 
 ```bash
-# 1. Create test app from local template
+# 1. Link local dzql package globally
+cd /Users/peterb/Workshop/blueshed/dzql/packages/tzql
+bun link
+
+# 2. Create test app from local template
 cd /tmp
 rm -rf dzql-test-app
 bun /Users/peterb/Workshop/blueshed/dzql/packages/create-dzql/index.ts dzql-test-app
 cd dzql-test-app
 
-# 2. Install dependencies
+# 3. Link local dzql into the test app (uses local code, not npm published version)
+bun link dzql
+
+# 4. Install remaining dependencies
 bun install
 
-# 3. Compile and start database
+# 5. Compile and start database
 bun run db:rebuild
 
-# 4. Start dev servers
+# 6. Start dev servers
 bun run dev
 ```
+
+**IMPORTANT:** The `bun link dzql` step is critical - without it, `bun install` fetches the published npm version, not your local changes. Always verify you're testing local code, not the old published version.
 
 Then use Playwright (via MCP Docker) to test at `http://host.docker.internal:5173`:
 

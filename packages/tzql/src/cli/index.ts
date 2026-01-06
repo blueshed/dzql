@@ -2,7 +2,7 @@
 import { loadDomain } from "./compiler/loader.js";
 import { analyzeDomain } from "./compiler/analyzer.js";
 import { generateIR } from "./compiler/ir.js";
-import { generateCoreSQL, generateEntitySQL, generateSchemaSQL } from "./codegen/sql.js";
+import { generateCoreSQL, generateAuthSQL, generateEntitySQL, generateSchemaSQL } from "./codegen/sql.js";
 import { generateSubscribableSQL, generateComputeAffectedKeysFunction } from "./codegen/subscribable_sql.js";
 import { generateManifest } from "./codegen/manifest.js";
 import { generateSubscribableStore } from "./codegen/subscribable_store.js";
@@ -107,10 +107,14 @@ async function main() {
       writeFileSync(resolve(dbDir, `000_core.sql`), coreSQL);
       const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
 
-      // Combine entity SQL with custom functions
-      const schemaContent = customFunctionSQL.length > 0
-        ? entitySQL.join('\n') + '\n\n-- Custom Functions\n' + customFunctionSQL.join('\n\n')
-        : entitySQL.join('\n');
+      // Combine entity SQL with auth functions and custom functions
+      // Auth functions must come after schema (they depend on users table)
+      const authSQL = generateAuthSQL();
+      let schemaContent = entitySQL.join('\n');
+      schemaContent += '\n\n-- Auth Functions\n' + authSQL;
+      if (customFunctionSQL.length > 0) {
+        schemaContent += '\n\n-- Custom Functions\n' + customFunctionSQL.join('\n\n');
+      }
       writeFileSync(resolve(dbDir, `${timestamp}_schema.sql`), schemaContent);
 
       if (customFunctionSQL.length > 0) {

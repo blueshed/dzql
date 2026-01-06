@@ -71,11 +71,40 @@ BEGIN
   RETURN ARRAY[]::text[];
 END;
 $$;
+`;
+}
 
--- === AUTH FUNCTIONS ===
+/**
+ * Generate auth SQL functions.
+ * These depend on the 'users' table existing, so must be applied after schema.
+ */
+export function generateAuthSQL() {
+  return `
+-- === AUTH SYSTEM ===
+-- These functions depend on a 'users' table being created by the domain schema.
+-- The users table must have: id (serial PK), email (text unique), password_hash (text)
+-- Additional columns can be added and will be returned by _profile() automatically.
 
--- Register User
-CREATE OR REPLACE FUNCTION dzql_v2.register_user(p_params jsonb)
+-- Get user profile (private function)
+-- Returns all user columns except sensitive fields (password_hash, password, secret, token)
+-- This allows the users table to have any additional columns without modifying this function
+CREATE OR REPLACE FUNCTION dzql_v2._profile(p_user_id int)
+RETURNS jsonb
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = dzql_v2, public
+AS $$
+  SELECT jsonb_build_object('user_id', u.id) || (to_jsonb(u.*) - 'id' - 'password_hash' - 'password' - 'secret' - 'token')
+  FROM users u
+  WHERE id = p_user_id;
+$$;
+
+-- Register new user
+-- p_email: User's email address (must be unique)
+-- p_password: User's password (will be hashed)
+-- p_options: Optional JSON object with additional fields to set on the user record
+-- Example: register_user('test@example.com', 'password', '{"name": "Test User"}')
+CREATE OR REPLACE FUNCTION dzql_v2.register_user(p_email text, p_password text, p_options jsonb DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -83,37 +112,46 @@ SET search_path = dzql_v2, public
 AS $$
 DECLARE
   v_user_id int;
-  v_email text;
-  v_password text;
-  v_name text;
-  v_options jsonb;
+  v_salt text;
+  v_hash text;
+  v_insert_data jsonb;
 BEGIN
-  v_email := p_params->>'email';
-  v_password := p_params->>'password';
-  v_name := COALESCE(p_params->>'name', v_email);
-  v_options := COALESCE(p_params->'options', '{}'::jsonb);
-
-  IF v_email IS NULL OR v_password IS NULL THEN
+  IF p_email IS NULL OR p_password IS NULL THEN
     RAISE EXCEPTION 'validation_error: email and password required';
   END IF;
 
-  INSERT INTO users (email, password_hash, name)
-  VALUES (v_email, crypt(v_password, gen_salt('bf')), v_name)
-  RETURNING id INTO v_user_id;
+  -- Generate salt and hash password
+  v_salt := gen_salt('bf', 10);
+  v_hash := crypt(p_password, v_salt);
 
-  -- TODO: Handle v_options if needed (e.g. creating orgs)
+  -- Build insert data: options fields + email + password_hash (options cannot override core fields)
+  v_insert_data := jsonb_build_object('email', p_email, 'password_hash', v_hash);
+  IF p_options IS NOT NULL THEN
+    v_insert_data := (p_options - 'id' - 'email' - 'password_hash' - 'password') || v_insert_data;
+  END IF;
 
-  -- Return minimal profile (Token generation happens in Runtime layer)
-  RETURN jsonb_build_object(
-    'user_id', v_user_id,
-    'email', v_email,
-    'name', v_name
-  );
+  -- Dynamic INSERT from JSONB (same pattern as compiled save functions)
+  EXECUTE (
+    SELECT format(
+      'INSERT INTO users (%s) VALUES (%s) RETURNING id',
+      string_agg(quote_ident(key), ', '),
+      string_agg(quote_nullable(value), ', ')
+    )
+    FROM jsonb_each_text(v_insert_data) kv(key, value)
+  ) INTO v_user_id;
+
+  -- Return profile (Token generation happens in Runtime layer)
+  RETURN dzql_v2._profile(v_user_id);
+EXCEPTION
+  WHEN unique_violation THEN
+    RAISE EXCEPTION 'validation_error: Email already exists' USING ERRCODE = '23505';
 END;
 $$;
 
--- Login User
-CREATE OR REPLACE FUNCTION dzql_v2.login_user(p_params jsonb)
+-- Login user
+-- p_email: User's email address
+-- p_password: User's password
+CREATE OR REPLACE FUNCTION dzql_v2.login_user(p_email text, p_password text)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -122,17 +160,20 @@ AS $$
 DECLARE
   v_user record;
 BEGIN
-  SELECT * INTO v_user FROM users WHERE email = p_params->>'email';
+  SELECT id, email, password_hash
+  INTO v_user
+  FROM users
+  WHERE email = p_email;
 
-  IF v_user IS NULL OR v_user.password_hash != crypt(p_params->>'password', v_user.password_hash) THEN
-    RAISE EXCEPTION 'permission_denied: invalid credentials';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'permission_denied: invalid credentials' USING ERRCODE = '28000';
   END IF;
 
-  RETURN jsonb_build_object(
-    'user_id', v_user.id,
-    'email', v_user.email,
-    'name', v_user.name
-  );
+  IF NOT (v_user.password_hash = crypt(p_password, v_user.password_hash)) THEN
+    RAISE EXCEPTION 'permission_denied: invalid credentials' USING ERRCODE = '28000';
+  END IF;
+
+  RETURN dzql_v2._profile(v_user.id);
 END;
 $$;
 `;

@@ -20,9 +20,9 @@ export interface FunctionDef {
 
 export function generateManifest(ir: DomainIR): Manifest {
   const functions: Record<string, FunctionDef> = {
-    // Built-in Auth Functions
-    login_user: { schema: 'dzql_v2', name: 'login_user', args: ['p_params'], returnType: 'jsonb' },
-    register_user: { schema: 'dzql_v2', name: 'register_user', args: ['p_params'], returnType: 'jsonb' }
+    // Built-in Auth Functions (individual params, not jsonb)
+    login_user: { schema: 'dzql_v2', name: 'login_user', args: ['p_email', 'p_password'], returnType: 'jsonb' },
+    register_user: { schema: 'dzql_v2', name: 'register_user', args: ['p_email', 'p_password', 'p_options'], returnType: 'jsonb' }
   };
 
   for (const [name, entity] of Object.entries(ir.entities)) {

@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
 import { V2TestDatabase } from "./setup.js";
-import { generateCoreSQL, generateEntitySQL, generateSchemaSQL } from "../../src/cli/codegen/sql.js";
+import { generateCoreSQL, generateAuthSQL, generateEntitySQL, generateSchemaSQL } from "../../src/cli/codegen/sql.js";
 import { generateIR } from "../../src/cli/compiler/ir.js";
 import { entities } from "../../examples/blog.js";
 
@@ -31,12 +31,15 @@ describe("V2 Database Integration (Real Postgres)", () => {
       await db.applySQL(usersSchema);
       await db.applySQL(postsSchema);
       await db.applySQL(commentsSchema);
+      // Auth functions must come after users table is created
+      const authSQL = generateAuthSQL();
+      await db.applySQL(authSQL);
       await db.applySQL(usersSQL);
       await db.applySQL(postsSQL);
       await db.applySQL(commentsSQL);
 
       // 3. Create a test user for FK relationships using register_user
-      const userResult = await sql`SELECT dzql_v2.register_user(${sql.json({ name: 'Test Author', email: 'test@example.com', password: 'password123' })}) as data`;
+      const userResult = await sql`SELECT dzql_v2.register_user('test@example.com', 'password123', ${sql.json({ name: 'Test Author' })}) as data`;
       // Update userId reference - register_user returns the new user_id
       const testUserId = userResult[0].data.user_id;
     } catch (e) {

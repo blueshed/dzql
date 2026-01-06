@@ -241,7 +241,7 @@ export function generateIR(domain: DomainConfig): DomainIR {
     auth = {
       userFields: domain.auth.userFields || {},
       loginParams: domain.auth.loginParams || { email: 'string', password: 'string' },
-      registerParams: domain.auth.registerParams || { email: 'string', password: 'string' }
+      registerParams: domain.auth.registerParams || { email: 'string', password: 'string', options: 'object' }
     };
   } else if (entities['users']) {
     // Derive auth config from users entity
@@ -264,7 +264,7 @@ export function generateIR(domain: DomainConfig): DomainIR {
     auth = {
       userFields,
       loginParams: { email: 'string', password: 'string' },
-      registerParams: { email: 'string', password: 'string' }
+      registerParams: { email: 'string', password: 'string', options: 'object' }
     };
   }
 
