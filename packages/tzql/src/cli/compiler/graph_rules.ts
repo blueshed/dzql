@@ -1,6 +1,37 @@
 import type { GraphRuleIR } from "../../shared/ir.js";
 
 /**
+ * Parses params that may be a string or object into a normalized object.
+ * String format: "field1=source1,field2,field3=source3"
+ * - "field=source" maps field to @source
+ * - "field" alone maps field to @field (or @id for the new record's id)
+ */
+function parseParams(params: Record<string, string> | string | undefined): Record<string, string> {
+  if (!params) return {};
+
+  if (typeof params === 'object') {
+    return params;
+  }
+
+  // Parse string format: "org_id=@id,user_id=@user_id" or "organisation_id=sponsor_id,campaign_id"
+  const result: Record<string, string> = {};
+  for (const part of params.split(',')) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+
+    if (trimmed.includes('=')) {
+      const [field, source] = trimmed.split('=').map(s => s.trim());
+      // Ensure source starts with @ for variable references
+      result[field] = source.startsWith('@') ? source : `@${source}`;
+    } else {
+      // Field alone means use @field as source (or @id for 'id')
+      result[trimmed] = `@${trimmed}`;
+    }
+  }
+  return result;
+}
+
+/**
  * Resolves a value reference (like @id, @user_id, @before.field, @after.field)
  * into the appropriate SQL expression based on the trigger context.
  * @param value - The value to resolve (may be @variable or literal)
@@ -110,7 +141,7 @@ export function compileGraphRules(entity: string, trigger: string, rules: GraphR
     // === REACTOR ===
     if (rule.action === 'reactor') {
       const name = rule.target;
-      const params = rule.params || {};
+      const params = parseParams(rule.params);
 
       // Build JSON object using jsonb_build_object
       const jsonArgs: string[] = [];
@@ -139,7 +170,7 @@ export function compileGraphRules(entity: string, trigger: string, rules: GraphR
     // === CREATE SIDE EFFECT ===
     if (rule.action === 'create') {
       const target = rule.target;
-      const data = rule.params || {};
+      const data = parseParams(rule.params);
       const cols: string[] = [];
       const vals: string[] = [];
 
@@ -159,8 +190,8 @@ export function compileGraphRules(entity: string, trigger: string, rules: GraphR
     // === UPDATE SIDE EFFECT ===
     if (rule.action === 'update') {
       const target = rule.target;
-      const data = rule.params || {};
-      const match = rule.match || {};
+      const data = parseParams(rule.params);
+      const match = parseParams(rule.match);
 
       const setClauses: string[] = [];
       for (const [key, val] of Object.entries(data)) {
@@ -186,7 +217,11 @@ export function compileGraphRules(entity: string, trigger: string, rules: GraphR
     // === DELETE CASCADE ===
     if (rule.action === 'delete') {
       const target = rule.target;
-      const match = rule.match || rule.params || {};
+      // Try match first, fall back to params
+      let match = parseParams(rule.match);
+      if (Object.keys(match).length === 0) {
+        match = parseParams(rule.params);
+      }
       const whereClauses: string[] = [];
 
       for (const [key, val] of Object.entries(match)) {
@@ -204,7 +239,7 @@ export function compileGraphRules(entity: string, trigger: string, rules: GraphR
     // === VALIDATE ===
     if (rule.action === 'validate') {
       const functionName = rule.target;
-      const params = rule.params || {};
+      const params = parseParams(rule.params);
       const errorMessage = rule.error_message || 'Validation failed';
 
       const paramList: string[] = [];
@@ -224,7 +259,7 @@ export function compileGraphRules(entity: string, trigger: string, rules: GraphR
     // === EXECUTE ===
     if (rule.action === 'execute') {
       const functionName = rule.target;
-      const params = rule.params || {};
+      const params = parseParams(rule.params);
 
       const paramList: string[] = [];
       for (const [key, val] of Object.entries(params)) {
