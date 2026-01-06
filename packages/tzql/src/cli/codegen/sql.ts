@@ -583,6 +583,31 @@ export function generateGetFunction(name: string, entityIR: EntityIR): string {
   // Build SELECT expression excluding hidden fields
   const selectExpr = buildVisibleJsonb(name, entityIR.columns, hidden);
 
+  // FK expansion for GET (only direct FKs where {key}_id column exists)
+  // Reverse FK expansion (one-to-many) should be handled by subscribables for complex queries
+  const includes: Record<string, IncludeIR> = entityIR.includes || {};
+  const includeKeys = Object.keys(includes);
+  const fkExpansion = includeKeys.map(key => {
+    const config: IncludeIR = includes[key];
+    const targetEntity = config.entity;
+    const fkField = `${key}_id`; // Convention: author -> author_id
+
+    // Only expand direct FKs (key_id column exists on this entity)
+    const hasFkColumn = entityIR.columns.some((c: ColumnInfo) => c.name === fkField);
+
+    if (hasFkColumn) {
+      // Direct FK: single object expansion (e.g., author_id -> author object)
+      return `
+  -- FK: Add ${key} to result (from ${fkField})
+  IF (v_result->>'${fkField}') IS NOT NULL THEN
+    v_result := v_result || jsonb_build_object('${key}',
+      (SELECT to_jsonb(t.*) FROM ${targetEntity} t WHERE t.id = (v_result->>'${fkField}')::int));
+  END IF;`;
+    }
+    // Skip reverse FKs - use subscribables for complex document graphs
+    return '';
+  }).filter(s => s).join('\n');
+
   // M2M expansion for GET
   const m2m: Record<string, ManyToManyIR> = entityIR.manyToMany || {};
   const m2mKeys = Object.keys(m2m);
@@ -625,6 +650,7 @@ BEGIN
   IF v_result IS NULL THEN
     RETURN NULL;
   END IF;
+${fkExpansion}
 ${m2mExpansion}
 
   RETURN v_result;

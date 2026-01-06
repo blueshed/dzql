@@ -71,10 +71,13 @@ const { data } = await store.bind({ author_id: 1 });
 
 | Concept | What it does |
 |---------|--------------|
-| **Entities** | Database tables with CRUD operations |
+| **Entities** | Database tables with CRUD operations (get, save, delete, search, lookup) |
+| **Get = Rich Document** | `get` returns FK expansions and M2M relationships - a complete document |
+| **Subscribables** | For complex queries with realtime sync (one-to-many, nested includes) |
 | **Permissions** | Row-level security compiled to SQL |
-| **Subscribables** | Realtime data shapes for UI components |
 | **Graph Rules** | Side effects on create/update/delete |
+
+**Progression:** Start with `get` for simple documents. Move to subscribables when you need one-to-many relationships or realtime updates across multiple tables.
 
 ## What Gets Generated
 

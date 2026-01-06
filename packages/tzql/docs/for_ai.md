@@ -144,6 +144,85 @@ view: ['@author_id', '@org_id->acts_for[org_id=$].user_id']
   └── Starting field on current entity
 ```
 
+## CRUD Operations
+
+Every entity gets 5 operations: `get`, `save`, `delete`, `search`, `lookup`.
+
+### Get - Rich Document
+
+`get` returns a **rich document** with FK and M2M expansions:
+
+```typescript
+// Entity with includes and manyToMany
+posts: {
+  schema: { id: 'serial PRIMARY KEY', author_id: 'int', org_id: 'int', title: 'text' },
+  includes: { author: 'users', org: 'organisations' },
+  manyToMany: { tags: { junctionTable: 'post_tags', ... } }
+}
+
+// get_posts({ id: 1 }) returns:
+{
+  id: 1,
+  author_id: 5,
+  org_id: 2,
+  title: 'Hello',
+  author: { id: 5, name: 'Alice', email: '...' },  // Direct FK expanded
+  org: { id: 2, name: 'Acme Corp' },               // Direct FK expanded
+  tag_ids: [1, 3, 7],                               // M2M IDs
+  tags: [{ id: 1, name: 'tech' }, ...]             // M2M expanded (if expand: true)
+}
+```
+
+**Key insight:** `get` is already a rich document. Use it as the starting point. Only move to subscribables when you need:
+- One-to-many (reverse FK) expansion
+- Complex nested includes
+- Realtime updates across multiple tables
+
+### Save - Atomic with Side Effects
+
+`save` handles insert/update, M2M sync, and graph rules in one transaction:
+
+```typescript
+// Insert (no id)
+await ws.api.save_posts({ title: 'New', author_id: 1, tag_ids: [1, 2] });
+
+// Update (has id) - partial update, only provided fields change
+await ws.api.save_posts({ id: 1, title: 'Updated' });
+
+// M2M sync happens automatically
+await ws.api.save_posts({ id: 1, tag_ids: [3, 4] });  // Replaces old tags
+```
+
+Returns the full document with FK/M2M expansions.
+
+### Search - Filtered List
+
+```typescript
+await ws.api.search_posts({
+  filters: { org_id: { eq: 1 }, title: { ilike: '%hello%' } },
+  sort_field: 'created_at',
+  sort_order: 'desc',
+  limit: 20,
+  offset: 0
+});
+```
+
+Filter operators: `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `in`, `not_in`, `ilike`, `is_null`.
+
+### Lookup - Autocomplete
+
+```typescript
+await ws.api.lookup_posts({ q: 'hel' });  // Returns [{label: 'Hello World', value: 1}, ...]
+```
+
+Uses the entity's `label` field for display.
+
+### Delete
+
+```typescript
+await ws.api.delete_posts({ id: 1 });  // Hard delete or soft delete based on entity config
+```
+
 ## Subscribable Definition
 
 Subscribables define realtime data shapes for UI components.
