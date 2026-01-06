@@ -67,8 +67,14 @@ async function main() {
 
       // Phase 3: Generate SQL
       const coreSQL = generateCoreSQL();
+
+      // Topologically sort entities by FK dependencies
+      // Entities must be created before entities that reference them
+      const sortedEntityNames = topologicalSortEntities(ir.entities);
+
       const entitySQL: string[] = [];
-      for (const [name, entityIR] of Object.entries(ir.entities)) {
+      for (const name of sortedEntityNames) {
+        const entityIR = ir.entities[name];
         entitySQL.push(generateSchemaSQL(name, entityIR));
         // Skip CRUD generation for unmanaged entities (e.g., junction tables)
         if (entityIR.managed !== false) {
@@ -171,3 +177,71 @@ async function main() {
 }
 
 main();
+
+/**
+ * Topologically sort entities based on FK dependencies.
+ * Entities that are referenced by others come first.
+ * Uses Kahn's algorithm for topological sorting.
+ */
+function topologicalSortEntities(entities: Record<string, any>): string[] {
+  const entityNames = Object.keys(entities);
+
+  // Build dependency graph: entity -> entities it depends on (references)
+  const dependencies: Record<string, Set<string>> = {};
+  const dependents: Record<string, Set<string>> = {};
+
+  for (const name of entityNames) {
+    dependencies[name] = new Set();
+    dependents[name] = new Set();
+  }
+
+  // Parse REFERENCES from column types
+  for (const name of entityNames) {
+    const entity = entities[name];
+    for (const col of entity.columns || []) {
+      const match = col.type?.match(/REFERENCES\s+(\w+)/i);
+      if (match) {
+        const referencedEntity = match[1];
+        // Only track dependencies to entities we're managing
+        if (entityNames.includes(referencedEntity)) {
+          dependencies[name].add(referencedEntity);
+          dependents[referencedEntity].add(name);
+        }
+      }
+    }
+  }
+
+  // Kahn's algorithm
+  const result: string[] = [];
+  const noIncoming: string[] = [];
+
+  // Find entities with no dependencies (no incoming edges)
+  for (const name of entityNames) {
+    if (dependencies[name].size === 0) {
+      noIncoming.push(name);
+    }
+  }
+
+  while (noIncoming.length > 0) {
+    const node = noIncoming.shift()!;
+    result.push(node);
+
+    // Remove this node from the graph
+    for (const dependent of dependents[node]) {
+      dependencies[dependent].delete(node);
+      if (dependencies[dependent].size === 0) {
+        noIncoming.push(dependent);
+      }
+    }
+  }
+
+  // Check for cycles
+  if (result.length !== entityNames.length) {
+    const remaining = entityNames.filter(n => !result.includes(n));
+    console.warn(`[Compiler] Warning: Circular FK dependencies detected among: ${remaining.join(', ')}`);
+    // Add remaining entities anyway (they may have circular refs)
+    result.push(...remaining);
+  }
+
+  return result;
+}
