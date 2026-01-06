@@ -3,18 +3,24 @@
 ## Read the Documentation First
 
 Before working on this codebase, read:
-- `packages/dzql/docs/for-ai/claude-guide.md` - **Comprehensive AI guide for this codebase**
+- `packages/tzql/docs/for_ai.md` - **AI guide for domain definitions and patterns**
+- `packages/tzql/docs/README.md` - General documentation
+- `packages/tzql/docs/project-setup.md` - Project setup guide
+- `packages/create-dzql/README.md` - Starter template documentation
 
 ## Project Structure
 
 ```
 packages/
-├── dzql/          # Legacy runtime (deprecated, kept for reference)
+├── dzql/          # Legacy runtime (deprecated, DO NOT USE)
 ├── tzql/          # Main package (published as 'dzql' on npm)
 │   ├── src/       # Compiler, runtime, client
+│   ├── docs/      # Documentation
 │   └── tests/     # Integration tests
 └── create-dzql/   # Starter template (bun create dzql)
 ```
+
+**Important:** The `packages/dzql` folder contains the old interpreter-based runtime. All new development uses `packages/tzql` which compiles TypeScript domain definitions to SQL.
 
 ## Testing
 
