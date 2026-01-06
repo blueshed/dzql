@@ -278,6 +278,89 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
   });
 
   // ============================================================
+  // FK EXPANSION IN GET TESTS
+  // ============================================================
+
+  describe("FK Expansion in GET", () => {
+    beforeAll(async () => {
+      // Generate and apply venues functions (includes FK expansion for org)
+      const venuesIR = ir.entities.venues;
+      const venuesSQL = generateEntitySQL("venues", venuesIR);
+      await sql.unsafe(venuesSQL);
+    });
+
+    test("GET expands direct FK to full object", async () => {
+      // Venue A has org_id = 1 (Org A)
+      const result = await sql`SELECT dzql_v2.get_venues(1, '{"id": 1}'::jsonb)`;
+      const venue = result[0].get_venues;
+
+      expect(venue).toBeDefined();
+      expect(venue.id).toBe(1);
+      expect(venue.name).toBe("Venue A");
+      expect(venue.org_id).toBe(1);
+
+      // FK expansion: org should be the full organisation object
+      expect(venue.org).toBeDefined();
+      expect(venue.org.id).toBe(1);
+      expect(venue.org.name).toBe("Org A");
+    });
+
+    test("GET with null FK does not expand", async () => {
+      // Create a test table with nullable FK for this test
+      await sql`
+        CREATE TABLE IF NOT EXISTS test_nullable_fk (
+          id serial PRIMARY KEY,
+          org_id int REFERENCES organisations(id),
+          name text NOT NULL
+        )
+      `;
+      await sql`INSERT INTO test_nullable_fk (name) VALUES ('No Org')`;
+
+      // Create a minimal IR for this test (matching the real IR structure)
+      const testIR = {
+        columns: [
+          { name: 'id', type: 'serial PRIMARY KEY', nullable: false },
+          { name: 'org_id', type: 'int', nullable: true },
+          { name: 'name', type: 'text', nullable: false }
+        ],
+        primaryKey: ['id'],
+        label: 'name',
+        searchable: ['name'],
+        includes: { org: { entity: 'organisations' } },
+        softDelete: false,
+        permissions: { view: [] },
+        fieldDefaults: {},
+        hidden: [],
+        m2m: [],
+        notifications: {},
+        graphRules: {}
+      };
+
+      const testSQL = generateGetFunction("test_nullable_fk", testIR);
+      await sql.unsafe(testSQL);
+
+      const result = await sql`SELECT dzql_v2.get_test_nullable_fk(1, '{"id": 1}'::jsonb)`;
+      const record = result[0].get_test_nullable_fk;
+
+      expect(record).toBeDefined();
+      expect(record.org_id).toBeNull();
+      // org should not be present when FK is null
+      expect(record.org).toBeUndefined();
+    });
+
+    test("GET does not expand reverse FK (one-to-many)", async () => {
+      // venues has includes: { org: 'organisations', sites: 'sites' }
+      // org is a direct FK (org_id column exists) - should be expanded
+      // sites is a reverse FK (no sites_id column) - should NOT be expanded
+      const result = await sql`SELECT dzql_v2.get_venues(1, '{"id": 1}'::jsonb)`;
+      const venue = result[0].get_venues;
+
+      expect(venue.org).toBeDefined(); // direct FK expanded
+      expect(venue.sites).toBeUndefined(); // reverse FK not expanded (use subscribables)
+    });
+  });
+
+  // ============================================================
   // M2M RELATIONSHIPS TESTS
   // ============================================================
 
