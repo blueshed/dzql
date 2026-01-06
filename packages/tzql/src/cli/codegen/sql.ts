@@ -179,9 +179,23 @@ $$;
 `;
 }
 
-export function generateSchemaSQL(name: string, entityIR: EntityIR): string {
+/**
+ * Generate CREATE TABLE SQL for an entity.
+ * @param name - Entity/table name
+ * @param entityIR - Entity IR definition
+ * @param circularFKs - Set of "table.column" strings for circular FK columns to defer
+ */
+export function generateSchemaSQL(name: string, entityIR: EntityIR, circularFKs?: Set<string>): string {
   const columns = entityIR.columns.map((c: ColumnInfo) => {
-    return `${c.name} ${c.type}`;
+    let colType = c.type;
+
+    // If this column is part of a circular FK, strip the REFERENCES clause
+    // The constraint will be added later via ALTER TABLE
+    if (circularFKs && circularFKs.has(`${name}.${c.name}`)) {
+      colType = stripFKReferences(colType);
+    }
+
+    return `${c.name} ${colType}`;
   }).join(',\n  ');
 
   return `
@@ -189,6 +203,17 @@ CREATE TABLE IF NOT EXISTS ${name} (
   ${columns}
 );
 `;
+}
+
+/**
+ * Remove REFERENCES clause from a column type for deferred FK creation.
+ * Preserves NOT NULL, DEFAULT, and other modifiers.
+ * e.g., "int NOT NULL REFERENCES users(id) ON DELETE CASCADE" -> "int NOT NULL"
+ */
+function stripFKReferences(columnType: string): string {
+  return columnType
+    .replace(/\s*REFERENCES\s+\w+(\([^)]+\))?(\s+ON\s+(DELETE|UPDATE)\s+(CASCADE|SET NULL|SET DEFAULT|RESTRICT|NO ACTION))*/gi, '')
+    .trim();
 }
 
 // === SAVE FUNCTION (Upsert) ===
