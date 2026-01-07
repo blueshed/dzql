@@ -105,9 +105,20 @@ The `bun unlink` step removes the global link so future projects use the publish
 
 Publishing is done via GitHub Actions, triggered by git tags. Do NOT publish directly.
 
-**To publish a new version:**
+**WARNING: The npm package name is `dzql`, NOT `tzql`. Always tag as `dzql@X.Y.Z`**
 
-1. Update version in the package's `package.json`
+### Pre-Publish Checklist
+
+**STOP. Before creating a git tag, verify ALL of these:**
+
+- [ ] Tag format is `dzql@X.Y.Z` (NOT `tzql@` - the folder is tzql but npm package is dzql)
+- [ ] Version updated in `packages/tzql/package.json`
+- [ ] All tests pass (`cd packages/tzql && bun run test`)
+- [ ] Changes committed and pushed
+
+### Steps
+
+1. Update version in `packages/tzql/package.json`
 2. Commit the changes
 3. Create and push a git tag:
    ```bash
@@ -116,7 +127,7 @@ Publishing is done via GitHub Actions, triggered by git tags. Do NOT publish dir
    ```
 4. GitHub Actions will automatically publish to npm using OIDC trusted publishing
 
-**Tag format:** `<package-name>@<version>` (e.g., `dzql@0.6.17`, `create-dzql@0.6.17`)
+**Tag format:** `dzql@<version>` or `create-dzql@<version>`
 
 **Version sync:** `tzql` (published as `dzql`) and `create-dzql` should always have the same version number.
 
