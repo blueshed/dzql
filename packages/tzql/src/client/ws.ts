@@ -92,6 +92,18 @@ export class WebSocketManager {
     this.ws?.close();
   }
 
+  /**
+   * Disconnect the WebSocket connection.
+   * Use this when you need to close the connection without logging out.
+   */
+  disconnect() {
+    this.isShuttingDown = true;
+    this.ready = false;
+    this.ws?.close();
+    this.ws = null;
+    this.isShuttingDown = false;
+  }
+
   connect(url: string | null = null, timeout = 5000): Promise<void> {
     return new Promise((resolve, reject) => {
       this.ready = false;
