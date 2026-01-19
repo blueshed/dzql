@@ -7,8 +7,13 @@ import { generateSubscribableSQL, generateComputeAffectedKeysFunction } from "./
 import { generateManifest } from "./codegen/manifest.js";
 import { generateSubscribableStore } from "./codegen/subscribable_store.js";
 import { generateClientSDK } from "./codegen/client.js";
-import { writeFileSync, mkdirSync, copyFileSync, rmSync } from "fs";
+import { writeFileSync, mkdirSync, copyFileSync, rmSync, readFileSync } from "fs";
 import { resolve, dirname } from "path";
+
+// Read version from package.json
+const packageJsonPath = resolve(dirname(import.meta.url.replace('file://', '')), '../../package.json');
+const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+const VERSION = packageJson.version;
 
 const args = process.argv.slice(2);
 let command = args[0];
@@ -32,7 +37,7 @@ if (outputFlagIndex > -1 && args[outputFlagIndex + 1]) {
 }
 
 async function main() {
-  console.log("DZQL Compiler v0.6.0");
+  console.log(`DZQL Compiler v${VERSION}`);
 
   if (command === "compile") {
     if (!input) {
