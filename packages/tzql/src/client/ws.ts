@@ -7,13 +7,16 @@ export interface WebSocketOptions {
   tokenName?: string;
 }
 
+// Declare process for TypeScript in browser contexts (runtime check still needed)
+declare const process: { env?: Record<string, string | undefined> } | undefined;
+
 function getDefaultTokenName(): string {
-  // @ts-ignore
+  // @ts-ignore - Vite injects import.meta.env at build time
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_DZQL_TOKEN_NAME) {
     // @ts-ignore
     return import.meta.env.VITE_DZQL_TOKEN_NAME;
   }
-  if (typeof process !== 'undefined' && process.env?.DZQL_TOKEN_NAME) {
+  if (typeof process !== 'undefined' && process?.env?.DZQL_TOKEN_NAME) {
     return process.env.DZQL_TOKEN_NAME;
   }
   return 'dzql_token';
@@ -241,15 +244,20 @@ export class WebSocketManager {
    */
   private applyRelationUpdate(doc: any, path: string, op: string, pk: any, data: any) {
     const parts = path.split('.');
+    if (parts.length === 0) return;
+
     let target = doc;
 
     // Navigate to parent
     for (let i = 0; i < parts.length - 1; i++) {
-      target = target?.[parts[i]];
+      const part = parts[i];
+      if (part === undefined) return;
+      target = target?.[part];
       if (!target) return;
     }
 
     const key = parts[parts.length - 1];
+    if (key === undefined) return;
     const arr = target[key];
 
     if (!Array.isArray(arr)) return;
@@ -317,10 +325,6 @@ export class WebSocketManager {
    * @returns Unsubscribe function
    */
   onBroadcast(callback: (method: string, params: { pk: any; data: any }) => void): () => void {
-    const handler = (params: any) => {
-      // The method name is stored on the callback context
-    };
-
     // Use a special marker to track broadcast handlers
     const broadcastHandler = { callback, marker: 'broadcast' as const };
     if (!this._broadcastHandlers) {
@@ -345,7 +349,11 @@ export class WebSocketManager {
   /**
    * Subscribe to a subscribable document
    */
-  async subscribe(method: string, params: any, callback: (data: any) => void): Promise<() => void> {
+  async subscribe(
+    method: string,
+    params: any,
+    callback: (data: any) => void
+  ): Promise<{ data: any; subscription_id: string; schema: unknown; unsubscribe: () => Promise<void> }> {
     const result = await this.call(method, params) as {
       subscription_id: string;
       data: any;
@@ -362,10 +370,22 @@ export class WebSocketManager {
     // Call callback with initial data
     callback(result.data);
 
-    // Return unsubscribe function
-    return () => {
+    // Create unsubscribe function
+    const unsubscribe = async () => {
       this.subscriptions.delete(result.subscription_id);
-      this.call(`unsubscribe_${method.replace('subscribe_', '')}`, params).catch(() => {});
+      try {
+        await this.call(`unsubscribe_${method.replace('subscribe_', '')}`, params);
+      } catch {
+        // Ignore unsubscribe errors (e.g., if connection is closed)
+      }
+    };
+
+    // Return full subscription info
+    return {
+      data: result.data,
+      subscription_id: result.subscription_id,
+      schema: result.schema || {},
+      unsubscribe
     };
   }
 }
