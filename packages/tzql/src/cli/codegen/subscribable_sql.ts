@@ -43,6 +43,8 @@ function generateHeader(name: string, sub: SubscribableIR): string {
 
 function generateCanSubscribeFunction(name: string, sub: SubscribableIR): string {
   const subscribePaths = sub.canSubscribe || [];
+  const rootKey = sub.root.key;
+  const isList = !rootKey; // No key means it's a list subscribable
 
   // If no paths, it's public
   if (subscribePaths.length === 0) {
@@ -61,10 +63,31 @@ END;
 $$;`;
   }
 
+  // List subscribables with permission paths: check authentication only
+  // (Row-level filtering happens in the query, not the permission check)
+  if (isList) {
+    return `CREATE OR REPLACE FUNCTION dzql_v2.${name}_can_subscribe(
+  p_user_id INT,
+  p_params JSONB
+) RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = dzql_v2, public
+AS $$
+BEGIN
+  -- List subscribable: user must be authenticated
+  -- Row-level access is filtered in the get function
+  RETURN p_user_id IS NOT NULL;
+END;
+$$;`;
+  }
+
+  // Single-entity subscribable: check permissions against specific root entity
   // Generate permission checks using RECORD dot notation
   // Pass the root key so we can map param references to root entity's id
   const compiledChecks = subscribePaths.map(path =>
-    compileSubscribePermission(sub.root.entity, path, sub.root.key)
+    compileSubscribePermission(sub.root.entity, path, rootKey)
   );
 
   // If all checks compile to FALSE (unsupported paths), fall back to authenticated users
@@ -81,8 +104,6 @@ $$;`;
   ).join('\n');
 
   // Determine how to reference the root key in the WHERE clause
-  // Validation already done at top of generateSubscribableSQL
-  const rootKey = sub.root.key;
   const rootKeyExpr = rootKey.startsWith('@')
     ? `p_${rootKey.slice(1)}`  // @user_id -> p_user_id
     : `v_${rootKey}`;          // venue_id -> v_venue_id
@@ -240,8 +261,8 @@ function generateGetFunction(name: string, sub: SubscribableIR, entities: Record
 
   // Handle special @ prefixed root keys (e.g., @user_id -> p_user_id)
   const rootKey = sub.root.key;
-  const isSpecialKey = rootKey.startsWith('@');
   const isList = !rootKey; // No key means it's a list subscribable
+  const isSpecialKey = rootKey?.startsWith('@') ?? false;
 
   // Build root select expression excluding hidden fields
   const rootSelectExpr = buildVisibleRowJson('root', sub.root.entity, entities);

@@ -51,9 +51,13 @@ sub_name: {
 }
 
 ROOT KEY RULES:
-- key: 'venue_id' -> must have params: { venue_id: 'int' }
-- key: '@user_id' -> uses current user, no param needed
-- key: '' or omit -> list subscribable (returns filtered array)
+- key: 'venue_id' -> must have params: { venue_id: 'int' } -> returns single entity
+- key: '@user_id' -> uses current user, no param needed -> returns single entity
+- key: '' or omit -> list subscribable -> returns array of entities
+
+SUBSCRIBABLE TYPES:
+1. Single Entity: has root.key, returns one document with includes
+2. List Subscribable: no root.key, returns array of documents
 ```
 
 ## Entity Definition
@@ -232,6 +236,10 @@ await ws.api.delete_posts({ id: 1 });  // Hard delete or soft delete based on en
 
 Subscribables define realtime data shapes for UI components.
 
+### Single Entity Subscribable
+
+Returns one document with nested includes:
+
 ```typescript
 export const subscribables = {
   // Name becomes: subscribe_venue_detail, get_venue_detail, useVenueDetailStore
@@ -258,6 +266,34 @@ export const subscribables = {
 
     // Who can subscribe
     canSubscribe: ['@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id']
+  }
+};
+```
+
+### List Subscribable
+
+Returns an array of entities. Omit `root.key` to create a list:
+
+```typescript
+export const subscribables = {
+  // Returns all venues the user can access
+  my_venues: {
+    params: {},  // No params needed
+
+    root: {
+      entity: 'venues'
+      // NO KEY - this makes it a list subscribable
+    },
+
+    includes: {
+      org: 'organisations'  // Each venue gets its org expanded
+    },
+
+    scopeTables: ['venues', 'organisations'],
+
+    // Empty = authenticated users only
+    // Row-level filtering happens in the query based on user context
+    canSubscribe: []
   }
 };
 ```

@@ -72,4 +72,55 @@ describe("Subscribable Store Generation", () => {
     // The allocations are nested inside the flat sites object
     expect(sql).toContain("'allocations', COALESCE((");
   });
+
+  test("should generate SQL for list subscribable (no root key)", () => {
+    // List subscribable: returns filtered array, no specific entity lookup
+    const listDomain = {
+      entities: {
+        venues: {
+          schema: {
+            id: 'serial PRIMARY KEY',
+            org_id: 'int NOT NULL',
+            name: 'text NOT NULL'
+          }
+        },
+        acts_for: {
+          schema: {
+            user_id: 'int NOT NULL',
+            org_id: 'int NOT NULL',
+            active: 'boolean DEFAULT true'
+          },
+          primaryKey: ['user_id', 'org_id']
+        }
+      },
+      subscribables: {
+        my_venues: {
+          params: {},  // No params
+          root: {
+            entity: 'venues'
+            // NO KEY - this is a list subscribable
+          },
+          includes: {},
+          scopeTables: ['venues'],
+          canSubscribe: []  // Authenticated users only
+        }
+      }
+    };
+
+    const ir = generateIR(listDomain);
+    const sub = ir.subscribables.my_venues;
+
+    // This should NOT throw - list subscribables are valid
+    const sql = generateSubscribableSQL("my_venues", sub, ir.entities);
+
+    console.log("--- GENERATED LIST SQL ---");
+    console.log(sql);
+    console.log("--------------------------");
+
+    // Check it generates valid SQL for list subscribables
+    expect(sql).toContain("get_my_venues");
+    expect(sql).toContain("my_venues_can_subscribe");
+    // List subscribable returns array, not single object
+    expect(sql).toContain("jsonb_agg");
+  });
 });
