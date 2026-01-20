@@ -11,6 +11,17 @@
 import type { SubscribableIR, IncludeIR, EntityIR } from "../../shared/ir.js";
 
 export function generateSubscribableSQL(name: string, sub: SubscribableIR, entities: Record<string, EntityIR> = {}): string {
+  // Validate: if root.key is set, it must exist in params or start with '@'
+  const rootKey = sub.root.key;
+  const paramNames = Object.keys(sub.params);
+  if (rootKey && !rootKey.startsWith('@') && !paramNames.includes(rootKey)) {
+    throw new Error(
+      `[Compiler] Subscribable '${name}' has root.key='${rootKey}' but no matching param. ` +
+      `Either add '${rootKey}' to params, use '@user_id' for user-scoped subscribables, ` +
+      `or remove the key for list subscribables.`
+    );
+  }
+
   const sections: string[] = [];
 
   sections.push(generateHeader(name, sub));
@@ -69,6 +80,13 @@ $$;`;
     `  v_${p} := (p_params->>'${p}')::${sub.params[p]};`
   ).join('\n');
 
+  // Determine how to reference the root key in the WHERE clause
+  // Validation already done at top of generateSubscribableSQL
+  const rootKey = sub.root.key;
+  const rootKeyExpr = rootKey.startsWith('@')
+    ? `p_${rootKey.slice(1)}`  // @user_id -> p_user_id
+    : `v_${rootKey}`;          // venue_id -> v_venue_id
+
   return `CREATE OR REPLACE FUNCTION dzql_v2.${name}_can_subscribe(
   p_user_id INT,
   p_params JSONB
@@ -88,7 +106,7 @@ ${paramExtracts}
   -- Fetch root entity
   SELECT * INTO v_root
   FROM ${sub.root.entity}
-  WHERE id = v_${sub.root.key};
+  WHERE id = ${rootKeyExpr};
 
   IF NOT FOUND THEN
     RETURN FALSE;
@@ -220,9 +238,9 @@ function generateGetFunction(name: string, sub: SubscribableIR, entities: Record
     `  v_${p} := (p_params->>'${p}')::${sub.params[p]};`
   ).join('\n');
 
-  // Handle special @user_id root key
+  // Handle special @ prefixed root keys (e.g., @user_id -> p_user_id)
   const rootKey = sub.root.key;
-  const isUserIdRoot = rootKey === '@user_id';
+  const isSpecialKey = rootKey.startsWith('@');
   const isList = !rootKey; // No key means it's a list subscribable
 
   // Build root select expression excluding hidden fields
@@ -242,7 +260,7 @@ function generateGetFunction(name: string, sub: SubscribableIR, entities: Record
   // Build WHERE clause based on root filter and key
   const whereConditions: string[] = [];
   if (rootKey) {
-    const rootWhereValue = isUserIdRoot ? 'p_user_id' : `v_${rootKey}`;
+    const rootWhereValue = isSpecialKey ? `p_${rootKey.slice(1)}` : `v_${rootKey}`;
     whereConditions.push(`root.id = ${rootWhereValue}`);
   }
   if (sub.root.filter) {

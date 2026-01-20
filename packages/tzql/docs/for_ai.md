@@ -44,11 +44,16 @@ SUBSCRIBABLE PATTERN
 ====================
 sub_name: {
   params: { param: 'type' },
-  root: { entity: 'table', key: 'param' },
+  root: { entity: 'table', key: 'param' },  // key must be in params, or '@user_id', or empty for lists
   includes: { rel: { entity: 'table', includes: {...} } },
   scopeTables: ['all', 'affected', 'tables'],
   canSubscribe: ['permission_path']
 }
+
+ROOT KEY RULES:
+- key: 'venue_id' -> must have params: { venue_id: 'int' }
+- key: '@user_id' -> uses current user, no param needed
+- key: '' or omit -> list subscribable (returns filtered array)
 ```
 
 ## Entity Definition
@@ -235,7 +240,7 @@ export const subscribables = {
 
     root: {
       entity: 'venues',
-      key: 'venue_id'  // Maps param to entity PK
+      key: 'venue_id'  // Must match a param name
     },
 
     includes: {

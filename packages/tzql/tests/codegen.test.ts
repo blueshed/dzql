@@ -82,6 +82,44 @@ describe("Manifest Generation", () => {
 // Regression tests for bug fixes
 describe("Bug Fixes", () => {
 
+  // BUG REPORT: Undeclared variable in subscribable permission check
+  // When a subscribable has root.key='id' but no 'id' param defined,
+  // the generated SQL references v_id which is never declared.
+  // See bug-report.md for full details.
+  test("subscribable with root.key not in params should not generate undeclared variable", () => {
+    // Reproduce the bug: subscribable with root.key='id' but no params
+    const buggySubscribable = {
+      name: 'venue_my_venues',
+      params: {}, // No params - v_id will never be declared!
+      root: {
+        entity: 'venues',
+        key: 'id'  // References 'id' but no 'id' param exists
+      },
+      includes: {},
+      scopeTables: ['venues'],
+      canSubscribe: []
+    };
+
+    // The bug: generated SQL contains "WHERE root.id = v_id" but v_id is never declared
+    // This should either throw a compiler error OR not use v_id at all
+
+    let sql: string;
+    let threwError = false;
+    try {
+      sql = generateSubscribableSQL("venue_my_venues", buggySubscribable, {});
+    } catch (e) {
+      threwError = true;
+    }
+
+    // Either it threw an error (valid fix), or it generated SQL without undeclared v_id
+    if (!threwError) {
+      // SQL was generated - v_id must NOT be used without being declared
+      // The bug manifests as "= v_id" appearing in SQL without "v_id" in DECLARE
+      expect(sql!).not.toContain("= v_id");
+    }
+    // If it threw, that's also a valid fix (compiler rejects invalid definition)
+  });
+
   // Bug 1: Subscribable _can_subscribe function generates correct SQL
   // The function should properly fetch the root entity and check permissions
   test("subscribable _can_subscribe should generate correct SQL structure", () => {
