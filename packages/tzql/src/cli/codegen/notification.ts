@@ -71,7 +71,7 @@ BEGIN
 ${pathSQL}
 
   -- Return unique user IDs (excluding the acting user to avoid self-notification)
-  RETURN ARRAY(SELECT DISTINCT unnest(v_users) WHERE unnest != p_user_id);
+  RETURN ARRAY(SELECT DISTINCT u FROM unnest(v_users) AS u WHERE u != p_user_id);
 END;
 $$;`;
 }

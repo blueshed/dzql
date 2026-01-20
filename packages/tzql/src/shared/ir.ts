@@ -152,6 +152,7 @@ export interface EntityIR {
     onUpdate: GraphRuleIR[];
     onDelete: GraphRuleIR[];
   };
+  notifications?: Record<string, string[]>; // Notification paths for real-time updates
 }
 
 export interface ManyToManyIR {

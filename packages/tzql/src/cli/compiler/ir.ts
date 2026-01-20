@@ -197,7 +197,8 @@ export function generateIR(domain: DomainConfig): DomainIR {
         onCreate: onCreateRules,
         onUpdate: onUpdateRules,
         onDelete: onDeleteRules
-      }
+      },
+      notifications: config.notifications
     };
   }
 

@@ -1,81 +1,88 @@
-# DZQL Bug Report: Permission check in search functions uses unbound variable in dynamic SQL
+# DZQL Compiler Bugs
 
-## Summary
+## Bug 1: Variable not parameterized in subscribable permission check
 
-The `search_*` functions generate dynamic SQL that references `p_user_id` as a literal identifier instead of parameterizing it, causing a "column does not exist" error at runtime.
+### Summary
 
-## Affected Code
+The `venue_my_venues_can_subscribe` function references PL/pgSQL variable `v_id` directly in a SQL string, causing a "column does not exist" error.
 
-**File:** `src/cli/codegen/sql.ts` (search function generation)
+## Error
 
-**Generated output example:** `generated/db/migrations/*_schema.sql` line ~2451
+```
+PostgresError: column "v_id" does not exist
+  hint: "Perhaps you meant to reference the column \"venues.id\".",
+  where: "PL/pgSQL function venue_my_venues_can_subscribe(integer,jsonb) line 10 at SQL statement
+          PL/pgSQL function get_venue_my_venues(jsonb,integer) line 10 at IF",
+  internal_query: "SELECT * FROM venues WHERE id = v_id"
+```
+
+## Cause
+
+The generated function builds a SQL query that references the PL/pgSQL variable `v_id` as if it were a column name:
 
 ```sql
-EXECUTE format('
-  SELECT COALESCE(jsonb_agg(to_jsonb(t.*)), ''[]''::jsonb)
-  FROM (
-    SELECT * FROM venues
-    WHERE (EXISTS (SELECT 1 FROM acts_fors WHERE acts_fors.org_id = venues.owner_id AND acts_fors.active = true AND acts_fors.user_id = p_user_id)) %s
-    ORDER BY %I %s
-    LIMIT %L OFFSET %L
-  ) t
-', v_where_clause, v_sort_field, v_sort_order, ...);
+SELECT * FROM venues WHERE id = v_id
 ```
 
-## Problem
+This should either:
+1. Use a parameterized query with `USING` clause in `EXECUTE`
+2. Interpolate the value directly: `WHERE id = ' || v_id || '`
 
-Inside `EXECUTE format(...)`, the string `p_user_id` is treated as a column reference in the executed SQL context, not as the PL/pgSQL variable from the outer function scope.
+## Location
 
-PostgreSQL error:
+Generated file: `generated/db/migrations/*_subscribables.sql`
+Function: `dzql_v2.venue_my_venues_can_subscribe(integer, jsonb)`
+
+## Related
+
+This is similar to the previously fixed `p_user_id` bug in search functions (fixed in DZQL v0.6.28). The same pattern needs to be applied to subscribable permission check functions.
+
+### Reproduction
+
+1. Define a document subscribable with a permission filter
+2. Compile with `bunx dzql`
+3. Call `subscribe_venue_my_venues` from client
+4. Error occurs in `venue_my_venues_can_subscribe`
+
+---
+
+## Bug 2: Notification paths not compiled into _notify_users functions
+
+### Summary
+
+Entity notification paths defined in the model are not being compiled into the generated `*_notify_users` functions. All notify functions return empty arrays.
+
+### Expected
+
+Venue has notification path in entities.ts:
+```typescript
+notifications: {
+  owner: ["@owner_id->acts_fors[org_id=$]{active}.user_id"],
+},
 ```
-PostgresError: column "p_user_id" does not exist
-hint: Perhaps you meant to reference the column "acts_fors.user_id".
-```
 
-## Root Cause
+The generated `venues_notify_users` function should compile this path and return user IDs of members in the owning organisation.
 
-The permission compiler (`src/cli/compiler/permissions.ts`) generates:
+### Actual
+
 ```sql
-acts_fors.user_id = p_user_id
+CREATE OR REPLACE FUNCTION dzql_v2.venues_notify_users(
+  p_user_id INT,
+  p_data JSONB
+) RETURNS INT[]
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN ARRAY[]::INT[];  -- Empty! Path not compiled
+END;
+$$;
 ```
 
-This is correct for static SQL but incorrect when embedded in dynamic SQL via `EXECUTE`.
+### Impact
 
-## Solution
+Users don't receive realtime notifications when data they have access to changes. The notification system is non-functional.
 
-Option A: Use `USING` clause to pass `p_user_id` as a parameter:
-```sql
-EXECUTE format('
-  SELECT ...
-  WHERE (EXISTS (SELECT 1 FROM acts_fors WHERE acts_fors.org_id = venues.owner_id AND acts_fors.active = true AND acts_fors.user_id = $1)) %s
-  ...
-', v_where_clause, ...) USING p_user_id;
-```
+### Location
 
-Option B: Interpolate `p_user_id` value into the format string:
-```sql
-EXECUTE format('
-  SELECT ...
-  WHERE (EXISTS (SELECT 1 FROM acts_fors WHERE acts_fors.org_id = venues.owner_id AND acts_fors.active = true AND acts_fors.user_id = %L)) %s
-  ...
-', p_user_id, v_where_clause, ...);
-```
-
-Option A is preferred as it avoids SQL injection and is cleaner.
-
-## Steps to Reproduce
-
-1. Define an entity with a permission path that traverses to `user_id`:
-   ```typescript
-   permissions: {
-     view: ['@owner_id->acts_fors[org_id=$]{active}.user_id']
-   }
-   ```
-
-2. Compile and call `search_*` function
-
-3. Error occurs because `p_user_id` is unbound in dynamic SQL context
-
-## Affected Functions
-
-All `search_*` functions that have view permissions with traversal paths ending in `.user_id`.
+Generated file: `generated/db/migrations/*_schema.sql`
+All `*_notify_users` functions are affected.
