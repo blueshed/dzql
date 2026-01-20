@@ -141,6 +141,19 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
     await sql`INSERT INTO tags (name, color) VALUES ('Tag1', 'red'), ('Tag2', 'blue'), ('Tag3', 'green')`;
     await sql`INSERT INTO brands (org_id, name) VALUES (1, 'Brand A')`;
     await sql`INSERT INTO brand_tags (brand_id, tag_id) VALUES (1, 1), (1, 2)`;
+
+    // Create packages table (has view permissions with traversal paths)
+    await sql`
+      CREATE TABLE IF NOT EXISTS packages (
+        id serial PRIMARY KEY,
+        owner_org_id int NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+        sponsor_org_id int REFERENCES organisations(id) ON DELETE SET NULL,
+        name text NOT NULL,
+        price decimal(10, 2) NOT NULL DEFAULT 0.00,
+        status text NOT NULL DEFAULT 'draft'
+      )
+    `;
+    await sql`INSERT INTO packages (owner_org_id, sponsor_org_id, name, price) VALUES (1, 2, 'Package A', 100.00), (2, 1, 'Package B', 200.00)`;
   });
 
   afterAll(async () => {
@@ -204,6 +217,20 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
       expect(venues.length).toBe(2);
       expect(venues[0].name).toBe("Venue C");
       expect(venues[1].name).toBe("Venue B");
+    });
+
+    test("search with view permission traversal path (packages)", async () => {
+      // packages has view: ['@owner_org_id->acts_for[org_id=$]{active}.user_id', '@sponsor_org_id->acts_for[org_id=$]{active}.user_id']
+      // This tests that p_user_id is properly bound in dynamic SQL
+      const packagesSearchSQL = generateSearchFunction("packages", ir.entities.packages);
+      await sql.unsafe(packagesSearchSQL);
+
+      // User 1 is in acts_for for org 1 and org 2
+      // Package A: owner_org_id=1, sponsor_org_id=2 -> user 1 can see (member of both)
+      // Package B: owner_org_id=2, sponsor_org_id=1 -> user 1 can see (member of both)
+      const result = await sql`SELECT dzql_v2.search_packages(1, '{}'::jsonb)`;
+      const packages = result[0].search_packages;
+      expect(packages.length).toBe(2);
     });
   });
 

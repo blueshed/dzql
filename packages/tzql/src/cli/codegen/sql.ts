@@ -690,9 +690,13 @@ export function generateSearchFunction(name: string, entityIR: EntityIR): string
   const softDelete = entityIR.softDelete || false;
   const hidden = entityIR.hidden || [];
 
-  const viewPerm = entityIR.permissions?.view?.length > 0
+  // For dynamic SQL in EXECUTE, we need to use $1 instead of p_user_id
+  // because p_user_id is a PL/pgSQL variable, not visible inside EXECUTE
+  const viewPermRaw = entityIR.permissions?.view?.length > 0
     ? entityIR.permissions.view.map((rule: string) => compilePermission(name, rule, null, name)).join(' OR ')
     : 'TRUE';
+  // Replace p_user_id with $1 for use in EXECUTE ... USING p_user_id
+  const viewPerm = viewPermRaw.replace(/p_user_id/g, '$1');
 
   // Soft delete filter - exclude deleted records from search
   const softDeleteFilter = softDelete ? ' AND deleted_at IS NULL' : '';
@@ -815,6 +819,7 @@ BEGIN
   END LOOP;
 
   -- Execute dynamic query (sort inside subquery for correct LIMIT behavior)
+  -- Use USING clause to pass p_user_id as $1 for permission checks
   EXECUTE format('
     SELECT COALESCE(jsonb_agg(${selectExpr}), ''[]''::jsonb)
     FROM (
@@ -826,7 +831,8 @@ BEGIN
   ', v_where_clause, v_sort_field, v_sort_order,
      COALESCE((p_query->>'limit')::int, 10),
      COALESCE((p_query->>'offset')::int, 0))
-  INTO v_results;
+  INTO v_results
+  USING p_user_id;
 
   RETURN v_results;
 END;
