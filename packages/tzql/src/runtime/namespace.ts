@@ -223,6 +223,12 @@ export class DzqlNamespace {
 
     const query = `SELECT ${qualifiedName}(${sqlArgs.join(", ")}) as result`;
     const rows = await sql.unsafe(query, dbParams);
+
+    // Handle search/lookup functions that return SETOF jsonb (array of rows)
+    if (fnName.startsWith('search_') || fnName.startsWith('lookup_')) {
+      return rows.map((r: any) => r.result).filter((i: any) => i !== null);
+    }
+
     return rows[0]?.result;
   }
 
