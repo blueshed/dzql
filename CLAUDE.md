@@ -113,6 +113,8 @@ Publishing is done via GitHub Actions, triggered by git tags. Do NOT publish dir
 
 - [ ] Tag format is `dzql@X.Y.Z` (NOT `tzql@` - the folder is tzql but npm package is dzql)
 - [ ] Version updated in `packages/tzql/package.json`
+- [ ] Version updated in `packages/create-dzql/package.json` (both the package version AND the dzql dependency)
+- [ ] TypeScript compiles without errors (`cd packages/tzql && bunx tsc --noEmit`)
 - [ ] All tests pass (`cd packages/tzql && bun run test`)
 - [ ] Changes committed and pushed
 
