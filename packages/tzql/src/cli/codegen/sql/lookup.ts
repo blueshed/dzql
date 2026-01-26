@@ -23,7 +23,7 @@ export function generateLookupFunction(name: string, entityIR: EntityIR): string
 
   // Build ILIKE conditions for searchable fields
   const searchConditions = searchable
-    .map(field => `t.${field}::TEXT ILIKE $2`)
+    .map((field: string) => `t.${field}::TEXT ILIKE $2`)
     .join(' OR ');
 
   return `

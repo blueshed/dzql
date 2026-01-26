@@ -136,6 +136,7 @@ export interface EntityIR {
   primaryKey: string[];
   columns: Array<{ name: string; type: string; isArray: boolean }>;
   labelField?: string;
+  searchable?: string[];
   softDelete?: boolean;
   managed?: boolean; // If false, skip CRUD function generation (for junction tables)
   hidden?: string[]; // Fields to exclude from query results (e.g., password_hash)

@@ -185,6 +185,7 @@ export function generateIR(domain: DomainConfig): DomainIR {
       primaryKey: pk,
       columns,
       labelField: config.label || 'id',
+      searchable: config.searchable,
       softDelete: config.softDelete || false,
       managed: config.managed !== false, // Default to true, only false if explicitly set
       hidden: config.hidden || [],
