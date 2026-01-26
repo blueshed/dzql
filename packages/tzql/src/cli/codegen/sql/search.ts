@@ -88,34 +88,74 @@ BEGIN
   v_sort_order := COALESCE(p_query->>'sort_order', 'asc');
 
   -- Build WHERE clause from filters
+  -- Note: We avoid ::TEXT casts to preserve index usage on numeric/date columns
+  -- The %L format specifier handles proper escaping for all types
   FOR v_field, v_filter IN SELECT * FROM jsonb_each(v_filters)
   LOOP
     -- Handle simple value (exact match)
-    IF jsonb_typeof(v_filter) IN ('string', 'number', 'boolean') THEN
-      v_where_clause := v_where_clause || format(' AND %I::TEXT = %L', v_field, v_filter #>> '{}');
-    ELSE
+    IF jsonb_typeof(v_filter) = 'number' THEN
+      -- Numeric: compare without casting
+      v_where_clause := v_where_clause || format(' AND %I = %s', v_field, v_filter);
+    ELSIF jsonb_typeof(v_filter) = 'boolean' THEN
+      -- Boolean: compare directly
+      v_where_clause := v_where_clause || format(' AND %I = %s', v_field, v_filter);
+    ELSIF jsonb_typeof(v_filter) = 'string' THEN
+      -- String: use proper quoting
+      v_where_clause := v_where_clause || format(' AND %I = %L', v_field, v_filter #>> '{}');
+    ELSIF jsonb_typeof(v_filter) = 'object' THEN
       -- Handle operator-based filters
       FOR v_operator, v_value IN SELECT * FROM jsonb_each(v_filter)
       LOOP
         CASE v_operator
           WHEN 'eq' THEN
-            v_where_clause := v_where_clause || format(' AND %I::TEXT = %L', v_field, v_value #>> '{}');
+            IF jsonb_typeof(v_value) = 'number' THEN
+              v_where_clause := v_where_clause || format(' AND %I = %s', v_field, v_value);
+            ELSE
+              v_where_clause := v_where_clause || format(' AND %I = %L', v_field, v_value #>> '{}');
+            END IF;
           WHEN 'ne' THEN
-            v_where_clause := v_where_clause || format(' AND %I::TEXT != %L', v_field, v_value #>> '{}');
+            IF jsonb_typeof(v_value) = 'number' THEN
+              v_where_clause := v_where_clause || format(' AND %I != %s', v_field, v_value);
+            ELSE
+              v_where_clause := v_where_clause || format(' AND %I != %L', v_field, v_value #>> '{}');
+            END IF;
           WHEN 'gt' THEN
-            v_where_clause := v_where_clause || format(' AND %I > %L', v_field, v_value #>> '{}');
+            IF jsonb_typeof(v_value) = 'number' THEN
+              v_where_clause := v_where_clause || format(' AND %I > %s', v_field, v_value);
+            ELSE
+              v_where_clause := v_where_clause || format(' AND %I > %L', v_field, v_value #>> '{}');
+            END IF;
           WHEN 'gte' THEN
-            v_where_clause := v_where_clause || format(' AND %I >= %L', v_field, v_value #>> '{}');
+            IF jsonb_typeof(v_value) = 'number' THEN
+              v_where_clause := v_where_clause || format(' AND %I >= %s', v_field, v_value);
+            ELSE
+              v_where_clause := v_where_clause || format(' AND %I >= %L', v_field, v_value #>> '{}');
+            END IF;
           WHEN 'lt' THEN
-            v_where_clause := v_where_clause || format(' AND %I < %L', v_field, v_value #>> '{}');
+            IF jsonb_typeof(v_value) = 'number' THEN
+              v_where_clause := v_where_clause || format(' AND %I < %s', v_field, v_value);
+            ELSE
+              v_where_clause := v_where_clause || format(' AND %I < %L', v_field, v_value #>> '{}');
+            END IF;
           WHEN 'lte' THEN
-            v_where_clause := v_where_clause || format(' AND %I <= %L', v_field, v_value #>> '{}');
+            IF jsonb_typeof(v_value) = 'number' THEN
+              v_where_clause := v_where_clause || format(' AND %I <= %s', v_field, v_value);
+            ELSE
+              v_where_clause := v_where_clause || format(' AND %I <= %L', v_field, v_value #>> '{}');
+            END IF;
           WHEN 'in' THEN
-            v_where_clause := v_where_clause || format(' AND %I::TEXT = ANY(%L)', v_field,
-              (SELECT array_agg(value #>> '{}') FROM jsonb_array_elements(v_value) AS value));
+            -- For IN, we need to handle arrays - cast elements appropriately
+            IF jsonb_typeof(v_value->0) = 'number' THEN
+              v_where_clause := v_where_clause || format(' AND %I = ANY(ARRAY(SELECT (jsonb_array_elements(%L))::int))', v_field, v_value);
+            ELSE
+              v_where_clause := v_where_clause || format(' AND %I = ANY(ARRAY(SELECT jsonb_array_elements_text(%L)))', v_field, v_value);
+            END IF;
           WHEN 'not_in' THEN
-            v_where_clause := v_where_clause || format(' AND %I::TEXT != ALL(%L)', v_field,
-              (SELECT array_agg(value #>> '{}') FROM jsonb_array_elements(v_value) AS value));
+            IF jsonb_typeof(v_value->0) = 'number' THEN
+              v_where_clause := v_where_clause || format(' AND %I != ALL(ARRAY(SELECT (jsonb_array_elements(%L))::int))', v_field, v_value);
+            ELSE
+              v_where_clause := v_where_clause || format(' AND %I != ALL(ARRAY(SELECT jsonb_array_elements_text(%L)))', v_field, v_value);
+            END IF;
           WHEN 'like' THEN
             v_where_clause := v_where_clause || format(' AND %I LIKE %L', v_field, v_value #>> '{}');
           WHEN 'ilike' THEN

@@ -9,6 +9,7 @@
  */
 
 import type { SubscribableIR, IncludeIR, EntityIR } from "../../shared/ir.js";
+import { parsePath } from "../compiler/paths.js";
 
 export function generateSubscribableSQL(name: string, sub: SubscribableIR, entities: Record<string, EntityIR> = {}): string {
   // Validate: if root.key is set, it must exist in params or start with '@'
@@ -144,6 +145,7 @@ $$;`;
 /**
  * Compile permission for subscribable can_subscribe function.
  * Uses RECORD dot notation since v_root is a RECORD, not JSONB.
+ * Supports unlimited traversal depth using the shared path parser.
  *
  * @param entityName - The root entity name
  * @param rule - The permission rule (e.g., "@org_id->acts_for[org_id=$]{active}.user_id")
@@ -156,69 +158,79 @@ function compileSubscribePermission(entityName: string, rule: string, rootKey: s
     return field === rootKey ? 'id' : field;
   };
 
-  // Case 1: Simple Field Check (@org_id)
-  // Implies: EXISTS (SELECT 1 FROM acts_for WHERE acts_for.org_id = v_root.id AND acts_for.user_id = p_user_id)
-  if (rule.match(/^@[a-zA-Z0-9_]+$/)) {
-    const field = rule.substring(1);
+  // Parse the path using the shared parser
+  const parsed = parsePath(rule);
+
+  if (!parsed.isValid) {
+    console.warn(`[Compiler] Warning: Invalid permission path '${rule}': ${parsed.error}`);
+    return 'FALSE';
+  }
+
+  // TRUE/FALSE literals
+  if (parsed.hops.length === 0) {
+    return rule === 'TRUE' || rule === 'true' ? 'TRUE' : 'FALSE';
+  }
+
+  // Simple field reference: @org_id implies checking acts_for membership
+  if (parsed.hops.length === 1 && parsed.hops[0].type === 'field') {
+    const field = parsed.hops[0].field!;
     const rootField = resolveField(field);
-    // For simple field checks, we check acts_for membership
-    // The acts_for join uses the original field name (org_id), but v_root uses resolved field (id)
     return `EXISTS (SELECT 1 FROM acts_for WHERE acts_for.${field} = v_root.${rootField} AND acts_for.user_id = p_user_id AND acts_for.active)`;
   }
 
-  // Case 2: Graph Traversal (@field->table[filter]{condition}.user_id)
-  if (rule.includes('->')) {
-    const parts = rule.split('->');
-    const startField = parts[0].substring(1); // Remove @
-    const rootField = resolveField(startField);
+  // Traversal path - build EXISTS with nested subqueries for unlimited hops
+  // Start with the field from v_root
+  const startField = parsed.startField!;
+  const rootField = resolveField(startField);
 
-    // Multi-level paths not fully supported
-    if (parts.length > 2) {
-      console.warn(`[Compiler] Warning: Multi-level permission path '${rule}' not fully supported.`);
-      return 'FALSE';
+  // Build value expression starting from v_root
+  let valueExpr = `v_root.${rootField}`;
+
+  // Process intermediate hops (all but first field and last final)
+  for (let i = 1; i < parsed.hops.length - 1; i++) {
+    const hop = parsed.hops[i];
+    if (hop.type === 'table' && hop.table && hop.outputField) {
+      valueExpr = `(SELECT ${hop.outputField} FROM ${hop.table} WHERE id = ${valueExpr})`;
     }
-
-    const targetPart = parts[1];
-
-    const tableMatch = targetPart.match(/^([a-zA-Z0-9_]+)/);
-    if (!tableMatch) return 'FALSE';
-    const targetTable = tableMatch[1];
-
-    // Extract filter: [org_id=$]
-    const filterMatch = targetPart.match(/\[([a-zA-Z0-9_]+)=\$\]/);
-    const joinField = filterMatch ? filterMatch[1] : null;
-
-    // Extract condition: {active}
-    const condMatch = targetPart.match(/\{([^}]+)\}/);
-    const condition = condMatch ? condMatch[1] : null;
-
-    let sql = `EXISTS (SELECT 1 FROM ${targetTable} WHERE `;
-
-    // Join Clause - use RECORD dot notation
-    // The target table uses its own column name (e.g., acts_for.org_id)
-    // The root uses the resolved field (e.g., v_root.id when startField matches rootKey)
-    if (joinField) {
-      sql += `${targetTable}.${joinField} = v_root.${rootField}`;
-    } else {
-      // Implicit join: table.id = v_root.field
-      sql += `${targetTable}.id = v_root.${rootField}`;
-    }
-
-    // User Check
-    if (rule.endsWith('.user_id')) {
-      sql += ` AND ${targetTable}.user_id = p_user_id`;
-    }
-
-    // Condition
-    if (condition) {
-      sql += ` AND ${targetTable}.${condition}`;
-    }
-
-    sql += `)`;
-    return sql;
   }
 
-  return 'FALSE'; // Default deny
+  // Final hop - build EXISTS check
+  const finalHop = parsed.hops[parsed.hops.length - 1];
+  if (finalHop.type !== 'final' || !finalHop.table) {
+    return 'FALSE';
+  }
+
+  const conditions: string[] = [];
+
+  // Join condition
+  if (finalHop.filter && finalHop.filter.value === '$') {
+    conditions.push(`${finalHop.table}.${finalHop.filter.field} = ${valueExpr}`);
+  } else {
+    conditions.push(`${finalHop.table}.id = ${valueExpr}`);
+  }
+
+  // User check
+  if (finalHop.outputField === 'user_id') {
+    conditions.push(`${finalHop.table}.user_id = p_user_id`);
+  } else if (finalHop.outputField) {
+    conditions.push(`${finalHop.table}.${finalHop.outputField} = p_user_id`);
+  }
+
+  // Additional conditions from {active} or {role=admin}
+  for (const cond of finalHop.conditions || []) {
+    if (cond.type === 'boolean') {
+      conditions.push(`${finalHop.table}.${cond.field} = true`);
+    } else if (cond.type === 'equality') {
+      if (cond.value === 'NULL') {
+        conditions.push(`${finalHop.table}.${cond.field} IS NULL`);
+      } else {
+        const value = cond.value!.match(/^\d+$/) ? cond.value : `'${cond.value}'`;
+        conditions.push(`${finalHop.table}.${cond.field} = ${value}`);
+      }
+    }
+  }
+
+  return `EXISTS (SELECT 1 FROM ${finalHop.table} WHERE ${conditions.join(' AND ')})`;
 }
 
 /** Column info from EntityIR */
