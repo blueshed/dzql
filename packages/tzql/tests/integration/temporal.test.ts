@@ -338,7 +338,7 @@ describe("Temporal Entities with refField", () => {
         })}) as docs
       `;
 
-      const docs = result[0].docs;
+      const docs = result.map((r: any) => r.docs);
       expect(docs.length).toBe(1);
       expect(docs[0].title).toBe('Search Test Updated');
     });
@@ -362,7 +362,7 @@ describe("Temporal Entities with refField", () => {
         })}) as docs
       `;
 
-      expect(result[0].docs.length).toBe(0);
+      expect(result.length).toBe(0);
     });
   });
 

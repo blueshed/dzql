@@ -120,7 +120,7 @@ describe("Subscribable Store Generation", () => {
     // Check it generates valid SQL for list subscribables
     expect(sql).toContain("get_my_venues");
     expect(sql).toContain("my_venues_can_subscribe");
-    // List subscribable returns array, not single object
-    expect(sql).toContain("jsonb_agg");
+    // List subscribable returns stream, not single object
+    expect(sql).toContain("RETURNS SETOF JSONB");
   });
 });

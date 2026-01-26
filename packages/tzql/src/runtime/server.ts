@@ -85,7 +85,56 @@ export async function handleRequest(
 
     const sql = `SELECT ${qualifiedName}(${sqlArgs.join(', ')}) as result`;
     const rows = await db.query(sql, dbParams);
-    return rows[0].result;
+
+    // 5. Post-Processing & Schema Attachment (for Subscribables)
+    const subName = method.startsWith('get_') ? method.slice(4) : null;
+    const subscribable = subName ? manifest.subscribables[subName] : null;
+
+    if (subscribable) {
+      // ... (existing code) ...
+      // It's a subscribable getter!
+      const pathMapping: Record<string, string> = {};
+      pathMapping[subscribable.root.entity] = '.';
+      
+      const buildPaths = (incl: any, parent: string) => {
+        for (const [relName, relConfig] of Object.entries(incl || {})) {
+          const currentPath = parent ? `${parent}.${relName}` : relName;
+          pathMapping[(relConfig as any).entity] = currentPath;
+          if ((relConfig as any).includes) buildPaths((relConfig as any).includes, currentPath);
+        }
+      };
+      buildPaths(subscribable.includes, '');
+
+      const schema = {
+        root: subscribable.root.entity,
+        paths: pathMapping,
+        scopeTables: subscribable.scopeTables
+      };
+
+      let data: any;
+      if (!subscribable.root.key) {
+        // List Subscribable: Aggregate rows in Bun
+        const items = rows.map((r: any) => r.result).filter((i: any) => i !== null);
+        data = { [subscribable.root.entity]: items };
+      } else {
+        // Single Item Subscribable
+        data = rows[0]?.result || null;
+      }
+
+      return { data, schema };
+    }
+
+    // 6. Handle Search/Lookup (List results)
+    if (method.startsWith('search_') || method.startsWith('lookup_')) {
+        console.log(`[Runtime] Handling search/lookup: ${method}, rows:`, rows.length);
+        const results = rows.map((r: any) => r.result).filter((i: any) => i !== null);
+        console.log(`[Runtime] Mapped results type:`, Array.isArray(results) ? 'Array' : typeof results);
+        return results;
+    }
+
+    // Standard CRUD (get/save/delete) -> return single row result
+    return rows[0]?.result;
+
   } catch (err: any) {
     // 5. Error Sanitization
     console.error(`[Runtime] DB Error executing ${method}:`, err);

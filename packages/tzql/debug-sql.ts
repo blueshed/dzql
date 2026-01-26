@@ -12,6 +12,11 @@ console.log("\n=== VENUES ENTITY SQL ===\n");
 const venuesIR = ir.entities['venues'];
 console.log(generateEntitySQL('venues', venuesIR));
 
+// 4. Generate Search SQL for 'venues'
+const { generateSearchFunction } = require("./src/cli/codegen/sql/search.js");
+console.log("\n=== SEARCH VENUES SQL ===\n");
+console.log(generateSearchFunction('venues', venuesIR));
+
 // 3. Generate SQL for 'venue_detail' subscribable
 console.log("\n=== VENUE DETAIL SUBSCRIBABLE SQL ===\n");
 const venueDetailIR = ir.subscribables['venue_detail'];

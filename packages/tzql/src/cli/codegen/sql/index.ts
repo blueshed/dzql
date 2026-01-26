@@ -18,6 +18,7 @@ export { generateSaveFunction } from "./save.js";
 export { generateDeleteFunction } from "./delete.js";
 export { generateGetFunction, generateHistoryFunction } from "./get.js";
 export { generateSearchFunction } from "./search.js";
+export { generateLookupFunction } from "./lookup.js";
 export { buildVisibleJsonb, getCastForType, stripFKReferences } from "./utils.js";
 export type { ColumnInfo, EntityIR, ManyToManyIR, IncludeIR } from "./types.js";
 
@@ -26,6 +27,7 @@ import { generateSaveFunction } from "./save.js";
 import { generateDeleteFunction } from "./delete.js";
 import { generateGetFunction, generateHistoryFunction } from "./get.js";
 import { generateSearchFunction } from "./search.js";
+import { generateLookupFunction } from "./lookup.js";
 
 // === AGGREGATE GENERATOR ===
 export function generateEntitySQL(name: string, entityIR: EntityIR): string {
@@ -37,7 +39,8 @@ export function generateEntitySQL(name: string, entityIR: EntityIR): string {
     generateSaveFunction(name, entityIR),
     generateDeleteFunction(name, entityIR),
     generateGetFunction(name, entityIR),
-    generateSearchFunction(name, entityIR)
+    generateSearchFunction(name, entityIR),
+    generateLookupFunction(name, entityIR)
   ];
 
   // Add history function for temporal entities with refField

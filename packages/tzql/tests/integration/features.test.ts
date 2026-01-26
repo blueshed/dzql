@@ -173,47 +173,47 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
 
     test("simple filter (exact match)", async () => {
       const result = await sql`SELECT dzql_v2.search_venues(1, '{"filters": {"org_id": 1}}'::jsonb)`;
-      const venues = result[0].search_venues;
+      const venues = result.map((r: any) => r.search_venues);
       expect(venues.length).toBe(2);
       expect(venues.every((v: any) => v.org_id === 1)).toBe(true);
     });
 
     test("'in' operator with integer array", async () => {
       const result = await sql`SELECT dzql_v2.search_venues(1, '{"filters": {"id": {"in": [1, 2]}}}'::jsonb)`;
-      const venues = result[0].search_venues;
+      const venues = result.map((r: any) => r.search_venues);
       expect(venues.length).toBe(2);
       expect(venues.map((v: any) => v.id).sort()).toEqual([1, 2]);
     });
 
     test("'in' operator with FK column", async () => {
       const result = await sql`SELECT dzql_v2.search_venues(1, '{"filters": {"org_id": {"in": [1, 2]}}}'::jsonb)`;
-      const venues = result[0].search_venues;
+      const venues = result.map((r: any) => r.search_venues);
       expect(venues.length).toBe(3);
     });
 
     test("'not_in' operator", async () => {
       const result = await sql`SELECT dzql_v2.search_venues(1, '{"filters": {"id": {"not_in": [1, 2]}}}'::jsonb)`;
-      const venues = result[0].search_venues;
+      const venues = result.map((r: any) => r.search_venues);
       expect(venues.length).toBe(1);
       expect(venues[0].id).toBe(3);
     });
 
     test("'ilike' operator for text search", async () => {
       const result = await sql`SELECT dzql_v2.search_venues(1, '{"filters": {"name": {"ilike": "%venue%"}}}'::jsonb)`;
-      const venues = result[0].search_venues;
+      const venues = result.map((r: any) => r.search_venues);
       expect(venues.length).toBe(3);
     });
 
     test("'gt' and 'lt' operators", async () => {
       const result = await sql`SELECT dzql_v2.search_venues(1, '{"filters": {"id": {"gt": 1, "lt": 3}}}'::jsonb)`;
-      const venues = result[0].search_venues;
+      const venues = result.map((r: any) => r.search_venues);
       expect(venues.length).toBe(1);
       expect(venues[0].id).toBe(2);
     });
 
     test("sorting and pagination", async () => {
       const result = await sql`SELECT dzql_v2.search_venues(1, '{"sort_field": "name", "sort_order": "desc", "limit": 2}'::jsonb)`;
-      const venues = result[0].search_venues;
+      const venues = result.map((r: any) => r.search_venues);
       expect(venues.length).toBe(2);
       expect(venues[0].name).toBe("Venue C");
       expect(venues[1].name).toBe("Venue B");
@@ -229,7 +229,7 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
       // Package A: owner_org_id=1, sponsor_org_id=2 -> user 1 can see (member of both)
       // Package B: owner_org_id=2, sponsor_org_id=1 -> user 1 can see (member of both)
       const result = await sql`SELECT dzql_v2.search_packages(1, '{}'::jsonb)`;
-      const packages = result[0].search_packages;
+      const packages = result.map((r: any) => r.search_packages);
       expect(packages.length).toBe(2);
     });
   });
@@ -459,7 +459,7 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
 
     test("M2M expansion in SEARCH includes tag_ids for each result", async () => {
       const result = await sql`SELECT dzql_v2.search_brands(1, '{"filters": {"org_id": 1}}'::jsonb)`;
-      const brands = result[0].search_brands;
+      const brands = result.map((r: any) => r.search_brands);
 
       expect(brands.length).toBeGreaterThan(0);
       brands.forEach((brand: any) => {
@@ -539,7 +539,7 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
 
       // Search should not return deleted
       const search = await sql`SELECT dzql_v2.search_products(1, '{"filters": {"org_id": 1}}'::jsonb)`;
-      const products = search[0].search_products;
+      const products = search.map((r: any) => r.search_products);
       const productIds = products.map((p: any) => p.id);
       expect(productIds).not.toContain(deletedId);
     });

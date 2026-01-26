@@ -109,6 +109,7 @@ generated/
 
 - [Domain Modeling Guide](./for_ai.md) - Entity and permission patterns
 - [Project Setup](./project-setup.md) - Manual setup and configuration
+- [Architecture Roadmap](./futures.md) - Performance and scaling plan
 - [Feature Requests](./feature-requests/) - Roadmap and proposals
 
 ## Package Exports

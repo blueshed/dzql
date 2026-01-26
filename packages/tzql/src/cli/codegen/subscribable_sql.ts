@@ -312,18 +312,19 @@ function generateGetFunction(name: string, sub: SubscribableIR, entities: Record
     : '';
 
   if (isList) {
-    // List subscribable - return array of records with nested includes
+    // List subscribable - return set of documents (STREAMING compatible)
+    // The Runtime will aggregate these or stream them.
+    // Schema metadata should be attached by the Runtime from the manifest.
     return `CREATE OR REPLACE FUNCTION dzql_v2.get_${name}(
   p_params JSONB,
   p_user_id INT
-) RETURNS JSONB
+) RETURNS SETOF JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = dzql_v2, public
 AS $$
 DECLARE
 ${paramDecls}
-  v_data JSONB;
 BEGIN
   -- Extract parameters
 ${paramExtracts}
@@ -333,23 +334,15 @@ ${paramExtracts}
     RAISE EXCEPTION 'permission_denied';
   END IF;
 
-  -- Build list of documents with nested relations
-  SELECT COALESCE(jsonb_agg(
-    to_jsonb(root.*) || jsonb_build_object(${relationSelects ? relationSelects.slice(1) : ''})
-  ), '[]'::jsonb)
-  INTO v_data
+  -- Return stream of documents
+  RETURN QUERY
+  SELECT to_jsonb(root.*) || jsonb_build_object(${relationSelects ? relationSelects.slice(1) : ''})
   FROM ${sub.root.entity} root
   ${whereClause};
-
-  -- Return data with embedded schema for atomic updates
-  RETURN jsonb_build_object(
-    'data', jsonb_build_object('${sub.root.entity}', v_data),
-    'schema', '${schemaJson}'::jsonb
-  );
 END;
 $$;`;
   } else {
-    // Single record subscribable
+    // Single record subscribable - return single JSONB
     return `CREATE OR REPLACE FUNCTION dzql_v2.get_${name}(
   p_params JSONB,
   p_user_id INT
@@ -378,11 +371,8 @@ ${paramExtracts}
   FROM ${sub.root.entity} root
   ${whereClause};
 
-  -- Return data with embedded schema for atomic updates
-  RETURN jsonb_build_object(
-    'data', v_data,
-    'schema', '${schemaJson}'::jsonb
-  );
+  -- Return data
+  RETURN v_data;
 END;
 $$;`;
   }

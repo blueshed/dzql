@@ -66,13 +66,12 @@ export function generateSearchFunction(name: string, entityIR: EntityIR): string
 
   return `
 CREATE OR REPLACE FUNCTION dzql_v2.search_${name}(p_user_id int, p_query jsonb)
-RETURNS jsonb
+RETURNS SETOF jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = dzql_v2, public
 AS $$
 DECLARE
-  v_results jsonb;
   v_filters jsonb;
   v_sort_field text;
   v_sort_order text;
@@ -175,9 +174,9 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Execute dynamic query
-  EXECUTE format('
-    SELECT COALESCE(jsonb_agg(${selectExpr}), ''[]''::jsonb)
+  -- Execute dynamic query and return set of jsonb
+  RETURN QUERY EXECUTE format('
+    SELECT ${selectExpr}
     FROM (
       SELECT * FROM ${name}
       WHERE (${viewPerm})${softDeleteFilter}${temporalFilter} %s
@@ -187,10 +186,7 @@ BEGIN
   ', v_where_clause, v_sort_field, v_sort_order,
      COALESCE((p_query->>'limit')::int, 10),
      COALESCE((p_query->>'offset')::int, 0))
-  INTO v_results
   USING p_user_id;
-
-  RETURN v_results;
 END;
 $$;
 `;

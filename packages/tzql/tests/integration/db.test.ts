@@ -176,12 +176,14 @@ describe("V2 Database Integration (Real Postgres)", () => {
     // Search
     const userId = 1;
     const result = await sql`
-      SELECT dzql_v2.search_posts(${userId}, ${sql.json({ limit: 5 })}) as data
+      SELECT dzql_v2.search_posts(${userId}, ${sql.json({ limit: 5 })})
     `;
 
-    expect(result[0].data).toBeArray();
-    expect(result[0].data.length).toBeGreaterThan(0);
-    expect(result[0].data[0].title).toBe("Get Test");
+    const posts = result.map((r: any) => r.search_posts);
+
+    expect(posts).toBeArray();
+    expect(posts.length).toBeGreaterThan(0);
+    expect(posts[0].title).toBe("Get Test");
   });
 
   test("should include FK expansions in save event data", async () => {
