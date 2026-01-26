@@ -189,6 +189,7 @@ export function generateIR(domain: DomainConfig): DomainIR {
       managed: config.managed !== false, // Default to true, only false if explicitly set
       hidden: config.hidden || [],
       fieldDefaults: config.fieldDefaults || {},
+      temporal: config.temporal,
       permissions,
       relationships: {},
       includes,

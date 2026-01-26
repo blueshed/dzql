@@ -24,6 +24,7 @@ entity_name: {
   hidden: ['password_hash'], // Exclude from API responses
   managed: true,             // false = skip CRUD generation
   softDelete: false,         // true = use deleted_at
+  temporal: { ... },         // For versioned entities with validity periods
   permissions: { view, create, update, delete },
   includes: { rel: 'entity' },      // FK expansions
   manyToMany: { ... },
@@ -31,14 +32,43 @@ entity_name: {
   notifications: { ... }
 }
 
+TEMPORAL ENTITY PATTERN
+=======================
+temporal: {
+  refField: 'ref',           // Stable identifier across versions
+  validFrom: 'valid_from',   // Period start column
+  validTo: 'valid_to',       // Period end column (NULL = current)
+  sequence: 'table_ref_seq'  // Optional: custom sequence name
+}
+// Generates: save (creates new version), get (by ref/id/as_of), history, search (current only)
+
 PERMISSION DSL
 ==============
 []                                    = Deny all
 ['TRUE']                              = Public access
 ['@author_id']                        = @user_id == @author_id
 ['@author_id == @user_id']            = Explicit equality
-['@org_id->acts_for[org_id=$].user_id']        = Traversal
-['@org_id->acts_for[org_id=$]{active}.user_id'] = With temporal filter
+['@org_id->acts_for[org_id=$].user_id']        = Single-hop traversal
+['@org_id->acts_for[org_id=$]{active}.user_id'] = With condition filter
+
+CONDITION FILTERS
+=================
+{active}                    = Boolean: active = true
+{role=admin}                = Equality: role = 'admin'
+{valid_to=NULL}             = NULL check: valid_to IS NULL
+{active,role=owner}         = Multiple: active = true AND role = 'owner'
+
+TRAVERSAL DEPTH (Unlimited)
+===========================
+Single:  @org_id->acts_for[org_id=$]{active}.user_id
+2-hop:   @venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id
+3-hop:   @site_id->sites.venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id
+N-hop:   @pkg_id->packages.occasion_id->occasions.venue_id->venues.org_id->user_orgs[org_id=$].user_id
+
+TABLE-FIRST PATTERN
+===================
+rights[package_id=@package_id]{active}.org_id->user_orgs[org_id=$].user_id
+// When traversal starts from a lookup table, not a field on the current entity
 
 SUBSCRIBABLE PATTERN
 ====================
@@ -541,3 +571,105 @@ posts: {
   // search_posts excludes deleted_at IS NOT NULL by default
 }
 ```
+
+### Temporal Entities (Versioned Records)
+
+For entities that need full history with point-in-time queries:
+
+```typescript
+documents: {
+  schema: {
+    id: 'serial PRIMARY KEY',           // Version PK (auto-increment)
+    ref: 'int NOT NULL',                // Stable identifier across versions
+    title: 'text NOT NULL',
+    content: 'text',
+    author_id: 'int REFERENCES users(id)',
+    valid_from: 'timestamptz NOT NULL DEFAULT now()',
+    valid_to: 'timestamptz'             // NULL = current version
+  },
+
+  temporal: {
+    refField: 'ref',         // Stable identifier field
+    validFrom: 'valid_from', // Period start
+    validTo: 'valid_to'      // Period end (NULL = current)
+    // sequence: 'documents_ref_seq'  // Optional: custom sequence
+  },
+
+  permissions: {
+    view: ['TRUE'],
+    create: ['@author_id'],
+    update: ['@author_id'],
+    delete: ['@author_id']
+  }
+}
+```
+
+**Generated Operations:**
+
+```typescript
+// INSERT - creates first version, assigns ref from sequence
+await ws.api.save_documents({ title: 'Draft', content: '...' });
+// Returns: { id: 1, ref: 1, title: 'Draft', valid_from: '2024-...', valid_to: null }
+
+// UPDATE - closes current version, inserts new version with same ref
+await ws.api.save_documents({ ref: 1, title: 'Final', content: '...' });
+// Old version: valid_to set to now()
+// New version: { id: 2, ref: 1, title: 'Final', valid_from: now(), valid_to: null }
+
+// GET by ref - returns current version (valid_to IS NULL)
+await ws.api.get_documents({ ref: 1 });
+
+// GET by id - returns specific version
+await ws.api.get_documents({ id: 1 });
+
+// GET at point-in-time
+await ws.api.get_documents({ ref: 1, as_of: '2024-01-15T00:00:00Z' });
+
+// SEARCH - only returns current versions (valid_to IS NULL)
+await ws.api.search_documents({ filters: { author_id: { eq: 5 } } });
+
+// HISTORY - returns all versions for a ref, ordered by valid_from
+await ws.api.history_documents({ ref: 1 });
+
+// DELETE - closes current version (sets valid_to), no hard delete
+await ws.api.delete_documents({ ref: 1 });
+```
+
+**Use Cases:**
+- Audit trails with full change history
+- Legal documents requiring point-in-time retrieval
+- Configuration versioning
+- Content management with drafts and published versions
+
+## CLI Tools
+
+### Compile Domain
+
+```bash
+bunx dzql domain.ts                    # Output to ./dist
+bunx dzql domain.ts -o ./generated     # Custom output directory
+bunx dzql compile domain.ts            # Explicit compile command
+```
+
+### Validate Paths
+
+Validate all permission and notification paths without running the full compiler:
+
+```bash
+bunx dzql validate-paths domain.ts
+```
+
+Output:
+```
+✓ posts.permissions.view[0]: valid
+✓ posts.permissions.update[0]: valid
+✗ posts.notifications[0]: unknown table 'acts_forr'
+✓ venue_detail.permissions.view[0]: valid
+
+52 paths validated, 1 error
+```
+
+**Use Cases:**
+- Pre-commit validation of path syntax
+- CI/CD pipeline checks
+- Debugging permission compilation issues

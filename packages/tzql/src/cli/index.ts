@@ -7,6 +7,7 @@ import { generateSubscribableSQL, generateComputeAffectedKeysFunction } from "./
 import { generateManifest } from "./codegen/manifest.js";
 import { generateSubscribableStore } from "./codegen/subscribable_store.js";
 import { generateClientSDK } from "./codegen/client.js";
+import { validatePaths } from "./compiler/path-validator.js";
 import { writeFileSync, mkdirSync, copyFileSync, rmSync, readFileSync } from "fs";
 import { resolve, dirname } from "path";
 
@@ -186,8 +187,42 @@ async function main() {
       console.error(e);
       process.exit(1);
     }
+  } else if (command === "validate-paths") {
+    if (!input) {
+      console.error("Usage: dzql validate-paths <file>");
+      process.exit(1);
+    }
+
+    try {
+      const fullInputPath = resolve(process.cwd(), input);
+      const domain = await loadDomain(fullInputPath);
+
+      const results = validatePaths(domain);
+
+      let hasErrors = false;
+      for (const result of results) {
+        const status = result.valid ? '✓' : '✗';
+        const location = `${result.entity}.${result.pathType}[${result.pathIndex}]`;
+
+        if (result.valid) {
+          console.log(`${status} ${location}: valid`);
+        } else {
+          console.log(`${status} ${location}: ${result.error}`);
+          hasErrors = true;
+        }
+      }
+
+      console.log(`\n${results.length} paths validated, ${results.filter(r => !r.valid).length} errors`);
+
+      if (hasErrors) {
+        process.exit(1);
+      }
+    } catch (e) {
+      console.error(e);
+      process.exit(1);
+    }
   } else {
-    console.log("Unknown command. Try 'compile'.");
+    console.log("Unknown command. Try 'compile' or 'validate-paths'.");
   }
 }
 

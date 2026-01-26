@@ -6,7 +6,7 @@ import type { GraphRuleIR } from "../../shared/ir.js";
  * - "field=source" maps field to @source
  * - "field" alone maps field to @field (or @id for the new record's id)
  */
-function parseParams(params: Record<string, string> | string | undefined): Record<string, string> {
+function parseParams(params: Record<string, string | null> | string | undefined): Record<string, string | null> {
   if (!params) return {};
 
   if (typeof params === 'object') {

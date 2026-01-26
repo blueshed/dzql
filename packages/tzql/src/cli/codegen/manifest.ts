@@ -47,6 +47,17 @@ export function generateManifest(ir: DomainIR): Manifest {
         returnType: 'jsonb'
       };
     }
+
+    // Add history function for temporal entities with refField
+    if (entity.temporal?.refField) {
+      const historyFuncName = `get_${name}_history`;
+      functions[historyFuncName] = {
+        schema: 'dzql_v2',
+        name: historyFuncName,
+        args: ['p_user_id', 'p_pk'],
+        returnType: 'jsonb'
+      };
+    }
   }
 
   for (const [subName, subIR] of Object.entries(ir.subscribables)) {

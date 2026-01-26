@@ -51,10 +51,12 @@ export interface PermissionPathsConfig {
   delete?: string[];
 }
 
-/** Temporal fields configuration */
+/** Temporal fields configuration for versioned entities */
 export interface TemporalConfig {
-  validFrom: string;
-  validTo: string;
+  refField?: string;     // Stable identifier across versions (e.g., 'ref') - if omitted, no versioning
+  validFrom: string;     // Period start column (e.g., 'valid_from')
+  validTo: string;       // Period end column, NULL = current (e.g., 'valid_to')
+  sequence?: string;     // Custom sequence name (defaults to {table}_ref_seq)
 }
 
 /** Graph rules grouped by trigger */
@@ -89,7 +91,7 @@ export interface EntityConfig {
 /** Subscribable configuration as provided in domain file */
 export interface SubscribableConfig {
   params: Record<string, string>;
-  root: { entity: string; key: string };
+  root: { entity: string; key?: string };  // key is optional for list subscribables
   includes?: Record<string, string | IncludeConfig>;
   scopeTables?: string[];
   canSubscribe?: string[];
@@ -138,6 +140,7 @@ export interface EntityIR {
   managed?: boolean; // If false, skip CRUD function generation (for junction tables)
   hidden?: string[]; // Fields to exclude from query results (e.g., password_hash)
   fieldDefaults?: Record<string, string>;
+  temporal?: TemporalConfig; // For versioned entities with validity periods
   permissions: {
     view: string[];
     create: string[];
@@ -188,7 +191,7 @@ export interface SubscribableIR {
   params: Record<string, string>;
   root: {
     entity: string;
-    key: string;
+    key?: string;  // Optional for list subscribables
     filter?: Record<string, string | boolean | number>;
   };
   includes: Record<string, IncludeIR>;

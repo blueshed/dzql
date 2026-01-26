@@ -346,21 +346,24 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
       // Create a minimal IR for this test (matching the real IR structure)
       const testIR = {
         columns: [
-          { name: 'id', type: 'serial PRIMARY KEY', nullable: false },
-          { name: 'org_id', type: 'int', nullable: true },
-          { name: 'name', type: 'text', nullable: false }
+          { name: 'id', type: 'serial PRIMARY KEY', isArray: false },
+          { name: 'org_id', type: 'int', isArray: false },
+          { name: 'name', type: 'text', isArray: false }
         ],
         primaryKey: ['id'],
         label: 'name',
         searchable: ['name'],
-        includes: { org: { entity: 'organisations' } },
+        includes: { org: { relation: 'org', entity: 'organisations' } },
         softDelete: false,
-        permissions: { view: [] },
+        permissions: { view: [], create: [], update: [], delete: [] },
         fieldDefaults: {},
         hidden: [],
-        m2m: [],
+        name: 'test_nullable_fk',
+        table: 'test_nullable_fk',
+        relationships: {},
+        manyToMany: {},
         notifications: {},
-        graphRules: {}
+        graphRules: { onCreate: [], onUpdate: [], onDelete: [] }
       };
 
       const testSQL = generateGetFunction("test_nullable_fk", testIR);
