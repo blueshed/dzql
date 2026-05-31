@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install
+
+      - run: bunx tsc --noEmit
+
+      # tests/webview.test.ts drives Bun.WebView, which needs a Chrome/Chromium
+      # on the runner. ubuntu-latest ships google-chrome-stable; point Bun at it
+      # explicitly so a future runner-image change fails loudly here, not at
+      # publish time.
+      - name: Locate Chrome for Bun.WebView
+        run: |
+          chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium || true)"
+          if [ -z "$chrome" ]; then echo "No Chrome/Chromium found on runner" >&2; exit 1; fi
+          echo "BUN_CHROME_PATH=$chrome" >> "$GITHUB_ENV"
+
+      - run: bun test

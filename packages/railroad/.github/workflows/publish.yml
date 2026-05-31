@@ -17,6 +17,14 @@ jobs:
 
       - run: bun install
 
+      # tests/webview.test.ts needs a browser for Bun.WebView; ubuntu-latest
+      # ships google-chrome-stable. Fail loudly if a future image drops it.
+      - name: Locate Chrome for Bun.WebView
+        run: |
+          chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium-browser || command -v chromium || true)"
+          if [ -z "$chrome" ]; then echo "No Chrome/Chromium found on runner" >&2; exit 1; fi
+          echo "BUN_CHROME_PATH=$chrome" >> "$GITHUB_ENV"
+
       - run: bun test
 
       - run: bunx tsc --noEmit
