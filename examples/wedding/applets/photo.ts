@@ -1,0 +1,119 @@
+// The photo applet: the crowd drawn from its props -- rows by proportion, bombers at the edges --
+// and redrawn on every render that changes them, a newcomer walking in from the nearest side, the
+// names coming down on the day. A tap on a figure sends the write its entry carries (open that
+// guest's drawer; go to that family). The drawing is a string, so the server's tests can check it
+// without a browser; only the mounting below touches the DOM.
+
+import { registerApplet } from "../../../src/applets";
+import type { PatchOp } from "../../../src/json-patch";
+import { esc } from "../views/html";
+import { arrange, figure, print, type Spec } from "./figure";
+
+export type Tap = { doc: string; op: PatchOp };
+
+export interface PhotoEntry {
+  key: string;
+  spec: Spec;
+  /** A maybe stands in the photo as a ghost; so does a waiting ask in the family. */
+  ghost?: boolean;
+  /** Not in the photo: faded and still (the board shows everyone). */
+  out?: boolean;
+  /** A traffic light at the feet: the household's answer (the board). */
+  mark?: string;
+  /** A family figure standing for this many: the count at its shoulder. */
+  count?: number;
+  /** What a tap on the figure writes, if anything. */
+  tap?: Tap;
+}
+
+export interface PhotoProps {
+  entries: PhotoEntry[];
+  label: string;
+  /** The names are on the chests: the day has come. */
+  reveal?: boolean;
+}
+
+const n = (x: number): string => x.toFixed(1);
+
+/** The photo as one SVG. `arriving` are the keys that walk in; `descend` makes the names come down from the top. */
+export function photoSvg(entries: PhotoEntry[], label: string, arriving: Set<string> = new Set(), descend = false): string {
+  const { slots, box } = arrange(entries.map((e) => e.spec));
+  const marked = entries.some((e) => e.mark);
+  const viewBox = `${box.x.toFixed(0)} ${box.y.toFixed(0)} ${box.w.toFixed(0)} ${(box.h + (marked ? 12 : 0)).toFixed(0)}`;
+  let revealed = 0;
+  const figures = slots.map((slot) => {
+    const entry = entries[slot.k]!;
+    const s = entry.spec;
+    const classes = [entry.ghost && "ghost", entry.out && "out"].filter((c): c is string => typeof c === "string");
+    // the name lives in the body so it rides a bounce or a lunge, and scales with the figure
+    const chest = s.name
+      ? descend
+        ? print(s.name, s.top, "print descend").replace('class="print descend"', `class="print descend" style="--drop: ${((box.y - (slot.y + 73 * slot.s)) / slot.s).toFixed(0)}px; --i: ${revealed++}"`)
+        : print(s.name, s.top)
+      : undefined;
+    let inner: string;
+    if (slot.from) {
+      // a bomber's lunge begins beyond the frame's edge, however far that is from their place
+      const away =
+        slot.from === "right" ? (box.x + box.w - slot.x) / slot.s
+        : slot.from === "left" ? -(slot.x - box.x + 100 * slot.s) / slot.s
+        : (box.y + box.h - slot.y) / slot.s; // from below: the head starts at the bottom edge
+      inner = figure(s, { from: slot.from, classes, print: chest, style: `--lunge-from: ${away.toFixed(0)}px` });
+    } else if (arriving.has(entry.key)) {
+      // everyone else walks in from the nearest side, at their row's depth
+      const fromLeft = slot.x + 50 * slot.s < box.x + box.w / 2;
+      const away = fromLeft ? -(slot.x - box.x + 100 * slot.s) / slot.s : (box.x + box.w - slot.x) / slot.s;
+      inner = `<g class="walk" style="--walk-from: ${away.toFixed(0)}px">${figure(s, { classes: [...classes, "walking"], print: chest })}</g>`;
+    } else {
+      inner = figure(s, { classes, print: chest });
+    }
+    const tap = entry.tap ? ` role="button" tabindex="0" data-key="${esc(entry.key)}"` : "";
+    const mark = entry.mark ? `<circle class="mark mark-${esc(entry.mark)}" cx="50" cy="147" r="4.5"/>` : "";
+    const count = entry.count && entry.count > 1 ? `<g class="count"><circle cx="82" cy="46" r="10"/><text x="82" y="49.5" text-anchor="middle">${entry.count}</text></g>` : "";
+    return `<g class="slot" transform="translate(${n(slot.x)} ${n(slot.y)}) scale(${slot.s.toFixed(3)})"${tap}>${mark}${count}${inner}</g>`;
+  });
+  return `<svg class="photo" viewBox="${viewBox}" aria-label="${esc(label)}">${figures.join("")}</svg>`;
+}
+
+const state = new WeakMap<HTMLElement, { props: PhotoProps; revealed: boolean }>();
+
+function draw(el: HTMLElement, props: PhotoProps, arriving: Set<string>, descend: boolean): void {
+  el.innerHTML = photoSvg(props.entries, props.label, arriving, descend);
+  // once the walk is over, the attitude takes over
+  for (const walk of el.querySelectorAll<SVGGElement>(".walk")) {
+    walk.addEventListener("animationend", (e) => {
+      if ((e as AnimationEvent).animationName === "walk-in") walk.querySelector(".fig")?.classList.remove("walking");
+    });
+  }
+}
+
+registerApplet("photo", {
+  mount(el, ctx) {
+    const props = ctx.props as PhotoProps;
+    state.set(el, { props, revealed: !!props.reveal });
+    draw(el, props, new Set(), !!props.reveal);
+    const tap = (target: Element | null) => {
+      const key = target?.closest<SVGGElement>("[data-key]")?.dataset.key;
+      const entry = key === undefined ? undefined : state.get(el)?.props.entries.find((e) => e.key === key);
+      if (entry?.tap) ctx.send(entry.tap.doc, [entry.tap.op]);
+    };
+    el.addEventListener("click", (e) => tap(e.target as Element));
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        tap(document.activeElement);
+      }
+    });
+    return () => state.delete(el);
+  },
+  update(el, next) {
+    const props = next as PhotoProps;
+    const prev = state.get(el);
+    if (!prev) return;
+    const before = new Set(prev.props.entries.map((e) => e.key));
+    const arriving = new Set(props.entries.filter((e) => !before.has(e.key)).map((e) => e.key));
+    const descend = !!props.reveal && !prev.revealed;
+    state.set(el, { props, revealed: !!props.reveal });
+    draw(el, props, arriving, descend);
+  },
+});

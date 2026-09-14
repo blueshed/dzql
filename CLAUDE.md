@@ -1,10 +1,12 @@
 # CLAUDE.md
 
-Bun only — never `node`, `npm`, or `yarn`. Run tests with `bun test --coverage`, aiming for 100%. Verify every bug fix by reverting it, confirming the new test fails, then restoring it.
+Bun only — never `node`, `npm`, or `yarn`. Run tests with `bun run test` (or `DB_PATH=:memory: bun test --coverage`), aiming for 100%. Verify every bug fix by reverting it, confirming the new test fails, then restoring it.
 
 ## Architecture
 
 eta is a kernel plus examples. `src/` is the generic kernel: it has no idea "chat" exists, and never imports anything under `examples/`. Each `examples/<name>/` is a complete, self-contained app built on the kernel; adding a new one (e.g. `examples/wedding/`) never requires editing anything in `src/`.
+
+Before adding or extending an example, use the `eta-app` skill (`.claude/skills/eta-app/`) — it has the step-by-step checklist and a full reference (`Concept`/`Example` contracts, document `patch()`/inverse pattern, ledger/undo mechanics, wire protocol, applet lifecycle).
 
 - Kernel: `migrations/0001_ledger.sql` → `src/ledger.ts` (records every patch + inverse; `nextUndo` derives undo's cursor from it, no separate state) → `src/concepts/concept.ts` (the `Concept` contract: `render?`/`resolveDoc`/`permit`/`write`/`replay?`/`onOpen?`/`onClose?`; concepts talk to each other only through `src/concepts/bus.ts` events, never by importing each other's internals) → `src/concepts/index.ts`'s `assemble(example)` (wires one example's concepts together, appending the kernel's own ledger concept) → `src/server.ts`'s `createServer(example, port?)` (generic `{doc, ops}` dispatcher; no per-feature branches) → `src/client/` (browser: `app.ts` forwards `data-write` gestures and morphs renders via `morph.ts`; it knows nothing about any specific applet -- an example registers its own).
 - An example (`examples/<name>/`): its own `migrations/*.sql` (applied under its own namespace, see below) → its own `documents/*.ts` (SQL read/write against its own `db.ts`; `patch()` is the only write path, computing each op's inverse) → its own `concepts/*.ts` (the same `Concept` contract as the kernel's) → its own `applets/*.ts` (client-side components, registered into the kernel's `src/applets.ts` registry) → its own `client/` (an `index.html` that loads a `main.ts` which registers the example's applets, then imports the kernel's `src/client/app`) → `index.ts`, which exports `example: Example` -- the one thing the kernel needs to run it.

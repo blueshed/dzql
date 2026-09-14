@@ -6,6 +6,12 @@
       "runtimeExecutable": "bun",
       "runtimeArgs": ["--watch", "src/start.ts"],
       "port": 3000
+    },
+    {
+      "name": "wedding",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "dev:wedding"],
+      "port": 3001
     }
   ]
 }

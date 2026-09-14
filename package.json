@@ -1,10 +1,11 @@
 {
   "name": "eta",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/start.ts",
+    "dev:wedding": "ETA_EXAMPLE=wedding PORT=3001 bun --watch src/start.ts",
     "start": "nohup bun src/start.ts > ${LOG_FILE:-server.log} 2>&1 & disown",
     "stop": "kill $(cat ${PID_FILE:-server.pid})",
     "cli": "bun src/cli.ts",

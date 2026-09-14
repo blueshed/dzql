@@ -26,5 +26,5 @@ export type Example = {
   /** The page served at "/", via Bun's HTML import. */
   index: HTMLBundle;
   /** Extra HTTP routes this example needs (e.g. serving uploaded pictures). Merged into the kernel's routes; a kernel route of the same path wins. */
-  routes?: Record<string, Bun.BaseRouteValue | RouteHandler>;
+  routes?: Record<string, Bun.Serve.BaseRouteValue | RouteHandler>;
 };

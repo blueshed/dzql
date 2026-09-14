@@ -26,7 +26,12 @@ function isApplet(node: ChildNode): node is Element {
 
 function sameType(a: ChildNode, b: ChildNode): boolean {
   if (a.nodeType !== b.nodeType) return false;
-  return isElement(a) && isElement(b) ? a.tagName === b.tagName : true;
+  if (!isElement(a) || !isElement(b)) return true;
+  if (a.tagName !== b.tagName) return false;
+  // An applet's element is only ever reused for the same applet. Matched positionally with a
+  // plain element (or another applet), its hand-managed children -- which the morph never
+  // descends into -- would survive under the new element's attributes.
+  return a.getAttribute("data-applet") === b.getAttribute("data-applet");
 }
 
 function key(node: ChildNode): string | undefined {

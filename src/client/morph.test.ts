@@ -122,6 +122,19 @@ describe("morph", () => {
     expect(result).toBe(false);
   });
 
+  test("an applet in the same position as a plain element (or another applet) is replaced, never reused", async () => {
+    const result = await run(`
+      root.innerHTML = '<div data-applet="x"><svg class="managed"></svg></div>';
+      let removed;
+      window.morph(root, '<div class="rows"><div class="row">plain</div></div>', { onAppletRemoved: (el) => { removed = el.dataset.applet; } });
+      const plain = root.firstChild.outerHTML;
+      root.innerHTML = '<div data-applet="x"><svg class="managed"></svg></div>';
+      window.morph(root, '<div data-applet="y"></div>');
+      return { plain, removed, other: root.firstChild.outerHTML };
+    `);
+    expect(result).toEqual({ plain: '<div class="rows"><div class="row">plain</div></div>', removed: "x", other: '<div data-applet="y"></div>' });
+  });
+
   test("a removed applet fires onAppletRemoved before being taken out of the DOM", async () => {
     const result = await run(`
       root.innerHTML = '<div data-applet="x"></div><p>after</p>';
