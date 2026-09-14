@@ -1,1 +1,0 @@
-ALTER TABLE ledger ADD COLUMN undoes INTEGER REFERENCES ledger(id);

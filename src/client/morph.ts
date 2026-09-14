@@ -42,18 +42,15 @@ function morphAttributes(old: Element, next: Element): void {
   }
 }
 
-function parseProps(el: Element): unknown {
-  return el.getAttribute("data-props") ? JSON.parse(el.getAttribute("data-props")!) : undefined;
-}
-
 // An applet's subtree is the applet's: reconcile the element itself, but
 // never descend into its children -- a morph diffing "the new HTML" against
 // DOM the applet manages by hand would fight it for its own children.
 function morphApplet(old: Element, next: Element, hooks: MorphHooks): void {
   const before = old.getAttribute("data-props");
   morphAttributes(old, next);
-  if (hooks.onAppletPropsChanged && old.getAttribute("data-props") !== before) {
-    hooks.onAppletPropsChanged(old, parseProps(old));
+  const after = old.getAttribute("data-props");
+  if (hooks.onAppletPropsChanged && after !== before) {
+    hooks.onAppletPropsChanged(old, after ? JSON.parse(after) : undefined);
   }
 }
 

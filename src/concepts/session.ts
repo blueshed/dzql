@@ -41,6 +41,21 @@ function renderNameForm(): string {
 // {name, room}.
 const WRITABLE_PATHS = new Set(["/name", "/room", "/undo"]);
 
+// Echoes a session document's ops to its own connection (direct, unlike a
+// room's broadcast) and lets other concepts react, e.g. room membership.
+function echoAndNotify(
+  ws: ServerWebSocket<ConnectionData>,
+  before: sessionDoc.SessionDocument,
+  version: number,
+  applied: PatchOp[],
+) {
+  if (applied.length > 0) {
+    ws.send(patchMessage("session", version, applied));
+    sessionPatched.emit({ ws, before, applied });
+  }
+  return { version, applied };
+}
+
 export const session: Concept = {
   docType: "session",
   render(sessionId) {
@@ -65,23 +80,14 @@ export const session: Concept = {
 
     if (ops.some((op) => op.path === "/undo")) {
       const outcome = undo(id);
-      if (!outcome) return { version: 0, applied: [] };
-
-      if (outcome.docType === "session") {
-        ws.send(patchMessage("session", outcome.version, outcome.applied));
-        sessionPatched.emit({ ws, before, applied: outcome.applied });
-        return { version: outcome.version, applied: outcome.applied };
+      if (outcome?.docType === "room") {
+        undoApplied.emit(outcome);
+        return { version: outcome.version, applied: outcome.applied, rendered: true };
       }
-
-      undoApplied.emit(outcome);
-      return { version: outcome.version, applied: outcome.applied, rendered: true };
+      return echoAndNotify(ws, before, outcome?.version ?? 0, outcome?.applied ?? []);
     }
 
     const result = sessionDoc.patch(id, ops);
-    if (result.applied.length > 0) {
-      ws.send(patchMessage("session", result.version, result.applied));
-      sessionPatched.emit({ ws, before, applied: result.applied });
-    }
-    return result;
+    return echoAndNotify(ws, before, result.version, result.applied);
   },
 };

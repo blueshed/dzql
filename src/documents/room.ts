@@ -1,7 +1,7 @@
 import { db } from "../db";
 import type { PatchOp } from "../json-patch";
 import { parsePointer } from "../json-pointer";
-import { record } from "../ledger";
+import { prefixDoc, record } from "../ledger";
 
 export type ChatMessage = { name: string; text: string; sentAt: number };
 export type RoomDocument = { transcript: ChatMessage[] };
@@ -79,6 +79,6 @@ export function patch(name: string, ops: PatchOp[], sessionId: string, undoes?: 
     }
   }
 
-  const version = record(`room:${name}`, applied, inverse, sessionId, undoes);
+  const version = record(prefixDoc("room", name), applied, inverse, sessionId, undoes);
   return { version, applied, added };
 }

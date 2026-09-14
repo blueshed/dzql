@@ -93,12 +93,20 @@ function peopleIn(room: string): string[] {
   return [...new Set(names.filter((n): n is string => n !== null))];
 }
 
-// Every connection in the room can see the room document, so (unlike a
-// session's own doc) this is a broadcast, not a direct send.
-function broadcastPatch(room: string, version: number, ops: PatchOp[]) {
+// Every connection in the room can see the room document, so any change to
+// it -- a write, an undo -- asks the whole room to re-render, not just
+// whoever caused it.
+function notifyRoom(room: string): void {
+  renderRequested.emit(roomSockets(room));
+}
+
+// Echoes a room document's ops to everyone who can see it, then asks them
+// to re-render. Shared by a direct write and by undo landing on this doc.
+function echoAndNotify(room: string, version: number, ops: PatchOp[]): void {
   if (ops.length === 0) return;
   const payload = patchMessage("room", version, ops);
   for (const ws of roomSockets(room)) ws.send(payload);
+  notifyRoom(room);
 }
 
 // "Joining"/"leaving" a room is now just a session document write (its
@@ -111,29 +119,26 @@ sessionPatched.on(({ ws, before, applied }) => {
 
     if (before.room && before.room !== newRoom) {
       leaveRoom(before.room, ws);
-      renderRequested.emit(roomSockets(before.room));
+      notifyRoom(before.room);
     }
     if (newRoom) {
       joinRoom(newRoom, ws);
-      renderRequested.emit(roomSockets(newRoom));
+      notifyRoom(newRoom);
     }
   }
 
   const loggedOut = applied.some((op) => op.path === "/name" && op.op === "remove");
   if (loggedOut && before.room) {
     leaveRoom(before.room, ws);
-    renderRequested.emit(roomSockets(before.room));
+    notifyRoom(before.room);
   }
 });
 
 // Undo is triggered through the session doc (see concepts/session.ts) but
 // may land on a room's document -- react to that the same way a direct
-// room write would, echoing the patch and refreshing the view for everyone
-// currently in the room, not just whoever pressed undo.
+// room write would.
 undoApplied.on(({ docType, docId, version, applied }) => {
-  if (docType !== "room" || applied.length === 0) return;
-  broadcastPatch(docId, version, applied);
-  renderRequested.emit(roomSockets(docId));
+  if (docType === "room") echoAndNotify(docId, version, applied);
 });
 
 export const room: Concept = {
@@ -161,10 +166,7 @@ export const room: Concept = {
     const prepared = ops.map((op) => ({ ...op, value: { name, text: String(op.value ?? "").trim() } }));
 
     const result = roomDoc.patch(roomName, prepared, ws.data.sessionId);
-    if (result.applied.length > 0) {
-      broadcastPatch(roomName, result.version, result.applied);
-      renderRequested.emit(roomSockets(roomName));
-    }
+    echoAndNotify(roomName, result.version, result.applied);
     return { ...result, rendered: result.applied.length > 0 };
   },
   onOpen(ws) {
@@ -175,7 +177,7 @@ export const room: Concept = {
     const { room: current } = sessionDoc.read(ws.data.sessionId);
     if (current) {
       leaveRoom(current, ws);
-      renderRequested.emit(roomSockets(current));
+      notifyRoom(current);
     }
   },
 };

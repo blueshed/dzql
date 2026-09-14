@@ -1,7 +1,7 @@
 import { db } from "../db";
 import type { PatchOp } from "../json-patch";
 import { parsePointer } from "../json-pointer";
-import { record } from "../ledger";
+import { prefixDoc, record } from "../ledger";
 import { ensureExists } from "./room";
 
 export type SessionDocument = { name: string | null; room: string | null };
@@ -79,6 +79,6 @@ export function patch(id: string, ops: PatchOp[], undoes?: number): SessionPatch
     }
   }
 
-  const version = record(`session:${id}`, applied, inverse, id, undoes);
+  const version = record(prefixDoc("session", id), applied, inverse, id, undoes);
   return { version, applied };
 }

@@ -1,28 +1,35 @@
 # eta
 
-A thin server-rendered chat app: the server owns all state as SQL-backed
-documents, every change is a JSON Patch recorded in a ledger, and the
-client's only job is to swap in the HTML it's sent (morphed, not replaced)
-and forward `data-write` gestures back over a websocket.
+A tiny real-time chat app built around one idea: HTML is the only
+vocabulary. The server renders, the client morphs, and every change is a
+JSON Patch recorded in a SQL ledger.
+
+- **Documents, not endpoints.** Session and room state live in SQLite; a
+  document's `patch()` is the only way to write it, `read()` is a single
+  query.
+- **The write is the truth.** An element declares what it writes
+  (`data-write='{"doc":"room","op":"add","path":"/transcript/-"}'`); the
+  server permits it, applies it, echoes the ops, then renders.
+- **Undo, for free.** Every patch records its inverse in the ledger.
+  Pressing Undo walks a session's own writes backward, one at a time.
+- **The client only morphs.** No framework, no virtual DOM — a hand-rolled
+  diff reconciles the existing tree against new server HTML, so focus,
+  caret, and scroll survive a re-render that isn't about you.
 
 ## Running
 
-This project uses Bun, not Node or npm.
+Bun only — no Node, no npm.
 
 ```
 bun install
-bun run dev     # bun --watch src/start.ts, in the foreground
-bun run start   # same, detached (writes server.pid, logs to server.log)
-bun run stop    # kills the pid in server.pid
+bun run dev     # foreground, --watch
+bun run start   # detached (server.pid, server.log)
+bun run stop
 bun run test    # bun test --coverage
 ```
 
-## Legibility
+## Poking at it
 
-Two calls exist so a person can answer "what happened" without adding a
-log line. From the wire, sending `{"type":"inspect"}` gets back this
-connection's session, the documents it currently sees (session, and room
-if it's in one) with each one's version and the latest ledger entry behind
-it. From the browser console, `window.eta.inspect()` reports what the
-client itself has seen: the docs it holds (`window.eta.docs()`) plus the
-last write it sent and whether the server echoed it back.
+- `window.eta.docs()` — documents this tab has seen, with version and recent ops.
+- `window.eta.inspect()` — the above, plus the last write this tab sent and whether it was echoed.
+- Send `{"type":"inspect"}` over the websocket to ask the server the same question from its side: this connection's session, the docs it sees, and the latest ledger entry behind each.

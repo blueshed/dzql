@@ -47,6 +47,16 @@ function currentVersion(doc: string): number {
   return currentVersionStmt.get(doc)?.version ?? 0;
 }
 
+/** The ledger's `doc` column is always `<docType>:<docId>` -- one shared convention, defined once. */
+export function prefixDoc(docType: string, docId: string): string {
+  return `${docType}:${docId}`;
+}
+
+export function splitDoc(doc: string): { docType: string; docId: string } {
+  const separator = doc.indexOf(":");
+  return { docType: doc.slice(0, separator), docId: doc.slice(separator + 1) };
+}
+
 function toEntry(row: {
   id: number;
   doc: string;

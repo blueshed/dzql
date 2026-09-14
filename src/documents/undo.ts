@@ -1,5 +1,5 @@
 import type { PatchOp } from "../json-patch";
-import { nextUndo } from "../ledger";
+import { nextUndo, splitDoc } from "../ledger";
 import * as roomDoc from "./room";
 import * as sessionDoc from "./session";
 
@@ -15,9 +15,7 @@ export function undo(sessionId: string): UndoResult | undefined {
   const entry = nextUndo(sessionId);
   if (!entry) return undefined;
 
-  const separator = entry.doc.indexOf(":");
-  const docType = entry.doc.slice(0, separator);
-  const docId = entry.doc.slice(separator + 1);
+  const { docType, docId } = splitDoc(entry.doc);
 
   if (docType === "session") {
     const result = sessionDoc.patch(docId, entry.inverse, entry.id);

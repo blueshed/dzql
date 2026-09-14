@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-09-14
+
+### Changed
+
+- Merged migration `0004_ledger_undo.sql` into `0003_ledger.sql`: still in development, with no deployed database whose upgrade path needs preserving, so the ledger's `undoes` column belongs in its `CREATE TABLE` rather than a follow-up `ALTER TABLE`.
+- DRY pass over the code the change request grew: the `<docType>:<docId>` ledger key convention was a string template repeated in three files and hand-parsed in a fourth — centralized as `prefixDoc`/`splitDoc` in `ledger.ts`. `concepts/room.ts`'s repeated "echo the ops, then ask the room to re-render" sequence (a direct write, and undo landing on the room doc) is now one `echoAndNotify` helper; `concepts/session.ts`'s three near-identical echo-and-return branches in `write()` collapsed into the same pattern. `client/morph.ts` no longer reads an applet's `data-props` attribute three times to compare it against itself. No behavior changed; full suite still green at 100% coverage, plus a live two-browser smoke test.
+
+- Rewrote `README.md` (a human-facing description of what eta is and how to run it) and `CLAUDE.md` (a concise map of the architecture and the change request's constraints, for whichever agent picks this up next).
+
+### Removed
+
+- `CHANGEREQUEST.md`: all six requests are implemented; kept out of git throughout per the working agreement with the session that wrote it.
+
 ## [0.13.0] - 2026-09-14
 
 ### Added
