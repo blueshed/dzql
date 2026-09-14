@@ -1,11 +1,32 @@
 import { applets } from "./applets";
 import "./applets/room-picker"; // registers itself; app.ts only knows the generic mount contract
+import type { PatchOp } from "./json-patch";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
+const MAX_OPS_KEPT_PER_DOC = 5;
 
 const app = document.querySelector<HTMLElement>("#app")!;
 let socket: WebSocket | undefined;
+
+// What the client has seen of each document's writes: not domain state, just
+// an echo log, so a person at the console can read the session back.
+const docs = new Map<string, { version: number; ops: PatchOp[] }>();
+
+function recordPatch(doc: string, version: number, ops: PatchOp[]) {
+  const state = docs.get(doc) ?? { version: 0, ops: [] };
+  state.version = version;
+  state.ops = [...state.ops, ...ops].slice(-MAX_OPS_KEPT_PER_DOC);
+  docs.set(doc, state);
+}
+
+declare global {
+  interface Window {
+    eta?: { docs(): Record<string, { version: number; ops: PatchOp[] }> };
+  }
+}
+
+window.eta = { docs: () => Object.fromEntries(docs) };
 
 const mounted = new Map<HTMLElement, () => void>();
 
@@ -91,6 +112,7 @@ function connect(delay = RECONNECT_DELAY_MS) {
     const message = JSON.parse(event.data);
     if (message.type === "render") render(message.html, message.selector);
     else if (message.type === "append") appendHtml(message.selector, message.html);
+    else if (message.type === "patch") recordPatch(message.doc, message.version, message.ops);
   });
 
   socket.addEventListener("close", () => {

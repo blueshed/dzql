@@ -3,8 +3,10 @@ import * as roomDoc from "../documents/room";
 import type { ChatMessage } from "../documents/room";
 import * as sessionDoc from "../documents/session";
 import type { ConnectionData } from "../connection";
+import { patchMessage } from "../json-patch";
+import type { PatchOp } from "../json-patch";
 import type { Concept } from "./concept";
-import { sessionEnded } from "./session";
+import { echoOwnSession, sessionEnded } from "./session";
 
 // Which live connections are currently subscribed to which room, for
 // broadcast. Not persisted data (see documents/room.ts for that) and not
@@ -96,6 +98,14 @@ function broadcastMessage(room: string, message: ChatMessage) {
   for (const ws of roomSockets(room)) ws.send(payload);
 }
 
+// Every connection in the room can see the room document, so (unlike a
+// session's own doc) this is a broadcast, not a direct send.
+function broadcastPatch(room: string, version: number, ops: PatchOp[]) {
+  if (ops.length === 0) return;
+  const payload = patchMessage(`room:${room}`, version, ops);
+  for (const ws of roomSockets(room)) ws.send(payload);
+}
+
 // The room concept doesn't need session to call into it — it reacts to the
 // fact that a session ended on its own, since it's the one that cares.
 sessionEnded.on(({ ws, sessionId }) => {
@@ -113,7 +123,8 @@ export const room: Concept = {
       const newRoom = String(payload.room ?? "").trim();
       if (!name || !newRoom) return; // a logged-out session (e.g. a stale second tab) can't join a room
 
-      sessionDoc.patch(ws.data.sessionId, [{ op: "replace", path: "/room", value: newRoom }]);
+      const result = sessionDoc.patch(ws.data.sessionId, [{ op: "replace", path: "/room", value: newRoom }]);
+      echoOwnSession(ws, result);
 
       if (previousRoom) leaveRoom(previousRoom, ws);
       joinRoom(newRoom, ws);
@@ -125,7 +136,8 @@ export const room: Concept = {
       const { room: current } = sessionDoc.read(ws.data.sessionId);
       if (!current) return;
 
-      sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/room" }]);
+      const result = sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/room" }]);
+      echoOwnSession(ws, result);
       leaveRoom(current, ws);
       broadcastPeople(current);
     },
@@ -134,12 +146,15 @@ export const room: Concept = {
       const text = String(payload.text ?? "").trim();
       if (!name || !current || !text) return false;
 
-      const added = roomDoc.patch(
+      const { version, applied, added } = roomDoc.patch(
         current,
         [{ op: "add", path: "/transcript/-", value: { name, text } }],
         ws.data.sessionId,
       );
-      if (added) broadcastMessage(current, added);
+      if (added) {
+        broadcastPatch(current, version, applied);
+        broadcastMessage(current, added);
+      }
       return true; // already broadcast a targeted append; skip the automatic full render
     },
   },

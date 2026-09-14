@@ -33,8 +33,10 @@ export function read(name: string, limit = 50): RoomDocument {
   return { transcript };
 }
 
-/** Applies a patch and returns the appended message, if this patch added one. */
-export function patch(name: string, ops: PatchOp[], sessionId: string): ChatMessage | undefined {
+export type RoomPatchResult = { version: number; applied: PatchOp[]; added?: ChatMessage };
+
+/** Applies a patch, returning the new version, the ops that actually took effect, and the appended message if any. */
+export function patch(name: string, ops: PatchOp[], sessionId: string): RoomPatchResult {
   let added: ChatMessage | undefined;
   const applied: PatchOp[] = [];
   const inverse: PatchOp[] = [];
@@ -46,6 +48,8 @@ export function patch(name: string, ops: PatchOp[], sessionId: string): ChatMess
     const value = op.value as { name: string; text: string };
     // The index the new message lands at in the full (unpaginated) history,
     // not read()'s limited view, so the inverse stays correct regardless of limit.
+    // This index is only stable as long as nothing before it has been removed
+    // since — undo (walking a session's own writes newest-first) relies on that.
     const index = countStmt.get(name)?.count ?? 0;
     const sentAt = Date.now();
     insertMessageStmt.run(name, value.name, value.text, sentAt);
@@ -55,6 +59,6 @@ export function patch(name: string, ops: PatchOp[], sessionId: string): ChatMess
     inverse.unshift({ op: "remove", path: `/transcript/${index}` });
   }
 
-  record(`room:${name}`, applied, inverse, sessionId);
-  return added;
+  const version = record(`room:${name}`, applied, inverse, sessionId);
+  return { version, applied, added };
 }

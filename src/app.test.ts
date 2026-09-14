@@ -243,4 +243,32 @@ describe("app.ts in a real browser", () => {
 
     await waitFor(viewB, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes(text));
   });
+
+  test("eta.docs() gains an add /transcript/- op when another browser sends a message", async () => {
+    await using viewA = new Bun.WebView();
+    await using viewB = new Bun.WebView();
+
+    await viewA.navigate(server.url.toString());
+    await viewB.navigate(server.url.toString());
+
+    await submitName(viewA, `EchoA-${crypto.randomUUID()}`);
+    await submitName(viewB, `EchoB-${crypto.randomUUID()}`);
+
+    const room = crypto.randomUUID();
+    await joinRoom(viewA, room);
+    await joinRoom(viewB, room);
+
+    const text = `echo test ${crypto.randomUUID()}`;
+    await sendChatMessage(viewA, text);
+
+    const gainedOp = `window.eta.docs()['room:${room}']?.ops.some(
+      (op) => op.op === "add" && op.path === "/transcript/-" && op.value.text === ${JSON.stringify(text)}
+    ) ?? false`;
+    await waitFor(viewB, gainedOp, (v) => v === true);
+
+    // the version tracked alongside it is a real, positive document version, not just a message counter
+    const version = await viewB.evaluate(`window.eta.docs()['room:${room}']?.version`);
+    expect(typeof version).toBe("number");
+    expect(version as number).toBeGreaterThan(0);
+  });
 });

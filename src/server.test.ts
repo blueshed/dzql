@@ -11,23 +11,53 @@ afterAll(() => {
   server.stop(true);
 });
 
+type WireMessage = { type: string; html: string; selector?: string; doc?: string; version?: number; ops?: unknown[] };
+
+// A persistent per-socket FIFO queue, not a fresh {once:true} listener per
+// nextMessage() call: two messages sent back-to-back by the server (e.g. the
+// patch echo immediately followed by its render) can both dispatch before
+// test code re-subscribes after awaiting the first, silently dropping one.
+const queues = new WeakMap<WebSocket, WireMessage[]>();
+const waiters = new WeakMap<WebSocket, ((message: WireMessage) => void)[]>();
+
 function connect(cookie?: string): WebSocket {
   const url = new URL("/ws", server.url);
   url.protocol = "ws:";
   const options = cookie ? { headers: { Cookie: cookie } } : undefined;
   // tsconfig's DOM lib shadows Bun's WebSocket type, which supports `headers` at runtime.
   // @ts-expect-error
-  return new WebSocket(url, options);
+  const ws: WebSocket = new WebSocket(url, options);
+
+  const queue: WireMessage[] = [];
+  const pending: ((message: WireMessage) => void)[] = [];
+  queues.set(ws, queue);
+  waiters.set(ws, pending);
+
+  ws.addEventListener("message", (event) => {
+    const message = JSON.parse(event.data as string) as WireMessage;
+    const waiter = pending.shift();
+    if (waiter) waiter(message);
+    else queue.push(message);
+  });
+
+  return ws;
 }
 
 function opened(ws: WebSocket): Promise<void> {
   return new Promise((resolve) => ws.addEventListener("open", () => resolve(), { once: true }));
 }
 
-function nextMessage(ws: WebSocket): Promise<{ type: string; html: string; selector?: string }> {
-  return new Promise((resolve) =>
-    ws.addEventListener("message", (event) => resolve(JSON.parse(event.data as string)), { once: true }),
-  );
+function nextMessage(ws: WebSocket): Promise<WireMessage> {
+  const queue = queues.get(ws)!;
+  if (queue.length > 0) return Promise.resolve(queue.shift()!);
+  return new Promise((resolve) => waiters.get(ws)!.push(resolve));
+}
+
+/** Consumes the next message and asserts its type, so a wrong sequence fails clearly instead of as a content mismatch. */
+async function expectMessage(ws: WebSocket, type: string): Promise<WireMessage> {
+  const message = await nextMessage(ws);
+  expect(message.type).toBe(type);
+  return message;
 }
 
 describe("routes", () => {
@@ -58,8 +88,7 @@ describe("websocket session protocol", () => {
   test("a new connection is greeted with the name form", async () => {
     const ws = connect();
     await opened(ws);
-    const message = await nextMessage(ws);
-    expect(message.type).toBe("render");
+    const message = await expectMessage(ws, "render");
     expect(message.html).toContain('data-event="set-name"');
     ws.close();
   });
@@ -67,12 +96,13 @@ describe("websocket session protocol", () => {
   test("invalid JSON is ignored instead of crashing the connection", async () => {
     const ws = connect();
     await opened(ws);
-    await nextMessage(ws); // initial name form
+    await expectMessage(ws, "render"); // initial name form
 
     ws.send("not-json{{{"); // produces no response; the server must not crash
 
     ws.send(JSON.stringify({ name: "set-name", payload: { name: "Still here" } }));
-    const message = await nextMessage(ws);
+    await expectMessage(ws, "patch"); // echo of the write
+    const message = await expectMessage(ws, "render");
 
     expect(message.html).toContain("Still here");
     ws.close();
@@ -81,10 +111,11 @@ describe("websocket session protocol", () => {
   test("a set-name event without a payload does not crash the connection", async () => {
     const ws = connect();
     await opened(ws);
-    await nextMessage(ws); // initial name form
+    await expectMessage(ws, "render"); // initial name form
 
     ws.send(JSON.stringify({ name: "set-name" })); // missing `payload`
-    const message = await nextMessage(ws);
+    // rejected (blank name): no patch echo, just the unchanged render
+    const message = await expectMessage(ws, "render");
 
     expect(message.html).toContain('data-event="set-name"'); // no name was set
     ws.close();
@@ -93,10 +124,11 @@ describe("websocket session protocol", () => {
   test("set-name renders a room selector with the escaped name", async () => {
     const ws = connect();
     await opened(ws);
-    await nextMessage(ws); // initial name form
+    await expectMessage(ws, "render"); // initial name form
 
     ws.send(JSON.stringify({ name: "set-name", payload: { name: "<b>Ada</b>" } }));
-    const message = await nextMessage(ws);
+    await expectMessage(ws, "patch"); // echo of the write; asserted precisely in the test below
+    const message = await expectMessage(ws, "render");
 
     expect(message.html).toContain("&lt;b&gt;Ada&lt;/b&gt;");
     expect(message.html).toContain('data-event="logout"');
@@ -104,18 +136,36 @@ describe("websocket session protocol", () => {
     ws.close();
   });
 
+  test("the patch echo for set-name carries the doc, version, and applied op", async () => {
+    const ws = connect();
+    await opened(ws);
+    await expectMessage(ws, "render");
+
+    ws.send(JSON.stringify({ name: "set-name", payload: { name: "Ada" } }));
+    const patch = await expectMessage(ws, "patch");
+
+    expect(patch.doc).toMatch(/^session:/);
+    expect(patch.version).toBe(1);
+    expect(patch.ops).toEqual([{ op: "replace", path: "/name", value: "Ada" }]);
+
+    await expectMessage(ws, "render");
+    ws.close();
+  });
+
   test("join-room renders the chat view for that room", async () => {
     const ws = connect();
     await opened(ws);
-    await nextMessage(ws); // initial name form
+    await expectMessage(ws, "render"); // initial name form
 
     ws.send(JSON.stringify({ name: "set-name", payload: { name: "Ada" } }));
-    await nextMessage(ws); // room selector
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render"); // room selector
 
     const room = crypto.randomUUID();
     ws.send(JSON.stringify({ name: "join-room", payload: { room } }));
-    await nextMessage(ws); // people broadcast for the room just joined
-    const message = await nextMessage(ws); // the full chat view
+    await expectMessage(ws, "patch"); // echo of the session's /room write
+    await expectMessage(ws, "render"); // people broadcast for the room just joined
+    const message = await expectMessage(ws, "render"); // the full chat view
 
     expect(message.html).toContain(`#${room}`);
     expect(message.html).toContain('data-event="send-message"');
@@ -126,15 +176,18 @@ describe("websocket session protocol", () => {
   test("leave-room returns to the room selector", async () => {
     const ws = connect();
     await opened(ws);
-    await nextMessage(ws);
+    await expectMessage(ws, "render");
     ws.send(JSON.stringify({ name: "set-name", payload: { name: "Ada" } }));
-    await nextMessage(ws);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
     ws.send(JSON.stringify({ name: "join-room", payload: { room: crypto.randomUUID() } }));
-    await nextMessage(ws); // people broadcast
-    await nextMessage(ws); // full chat view
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render"); // people broadcast
+    await expectMessage(ws, "render"); // full chat view
 
     ws.send(JSON.stringify({ name: "leave-room", payload: {} }));
-    const message = await nextMessage(ws);
+    await expectMessage(ws, "patch"); // echo of the session's /room removal
+    const message = await expectMessage(ws, "render");
 
     expect(message.html).toContain('data-applet="room-picker"');
     ws.close();
@@ -143,13 +196,15 @@ describe("websocket session protocol", () => {
   test("logout clears the session and re-renders the name form", async () => {
     const ws = connect();
     await opened(ws);
-    await nextMessage(ws);
+    await expectMessage(ws, "render");
 
     ws.send(JSON.stringify({ name: "set-name", payload: { name: "Grace" } }));
-    await nextMessage(ws);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
 
     ws.send(JSON.stringify({ name: "logout", payload: {} }));
-    const message = await nextMessage(ws);
+    await expectMessage(ws, "patch"); // echo of the /name removal
+    const message = await expectMessage(ws, "render");
 
     expect(message.html).toContain('data-event="set-name"');
     ws.close();
@@ -160,20 +215,23 @@ describe("websocket session protocol", () => {
 
     const first = connect(cookie);
     await opened(first);
-    await nextMessage(first);
+    await expectMessage(first, "render");
     first.send(JSON.stringify({ name: "set-name", payload: { name: "Ada" } }));
-    await nextMessage(first);
+    await expectMessage(first, "patch");
+    await expectMessage(first, "render");
     first.send(JSON.stringify({ name: "logout", payload: {} }));
-    await nextMessage(first);
+    await expectMessage(first, "patch");
+    await expectMessage(first, "render");
     first.close();
 
     const second = connect(cookie);
     await opened(second);
-    const reopened = await nextMessage(second);
+    const reopened = await expectMessage(second, "render");
     expect(reopened.html).toContain('data-event="set-name"');
 
     second.send(JSON.stringify({ name: "set-name", payload: { name: "Ada again" } }));
-    const message = await nextMessage(second);
+    await expectMessage(second, "patch");
+    const message = await expectMessage(second, "render");
 
     expect(message.html).toContain("Ada again");
     second.close();
@@ -184,25 +242,29 @@ describe("websocket session protocol", () => {
 
     const first = connect(cookie);
     await opened(first);
-    await nextMessage(first);
+    await expectMessage(first, "render");
     first.send(JSON.stringify({ name: "set-name", payload: { name: "Ada" } }));
-    await nextMessage(first);
+    await expectMessage(first, "patch");
+    await expectMessage(first, "render");
     first.send(JSON.stringify({ name: "logout", payload: {} }));
-    await nextMessage(first);
+    await expectMessage(first, "patch");
+    await expectMessage(first, "render");
 
     // a second, stale tab shares the same session cookie and still has its old room-selector UI open
     const second = connect(cookie);
     await opened(second);
-    await nextMessage(second); // name form: this session is logged out
+    await expectMessage(second, "render"); // name form: this session is logged out
 
     const room = crypto.randomUUID();
     second.send(JSON.stringify({ name: "join-room", payload: { room } }));
-    const rejected = await nextMessage(second);
+    // rejected (logged out): no patch echo, just the unchanged render
+    const rejected = await expectMessage(second, "render");
     expect(rejected.html).toContain('data-event="set-name"'); // still logged out, not in `room`
 
     // reactivating afterward must not reveal a room leaked by the rejected join
     second.send(JSON.stringify({ name: "set-name", payload: { name: "Ada again" } }));
-    const reactivated = await nextMessage(second);
+    await expectMessage(second, "patch");
+    const reactivated = await expectMessage(second, "render");
     expect(reactivated.html).toContain('data-applet="room-picker"'); // room selector, not a chat view
 
     first.close();
@@ -214,14 +276,15 @@ describe("websocket session protocol", () => {
 
     const first = connect(cookie);
     await opened(first);
-    await nextMessage(first);
+    await expectMessage(first, "render");
     first.send(JSON.stringify({ name: "set-name", payload: { name: "Linus" } }));
-    await nextMessage(first);
+    await expectMessage(first, "patch");
+    await expectMessage(first, "render");
     first.close();
 
     const second = connect(cookie);
     await opened(second);
-    const message = await nextMessage(second);
+    const message = await expectMessage(second, "render");
     expect(message.html).toContain("Linus");
     second.close();
   });
@@ -230,12 +293,14 @@ describe("websocket session protocol", () => {
 describe("chat", () => {
   async function login(ws: WebSocket, name: string, room: string): Promise<void> {
     await opened(ws);
-    await nextMessage(ws); // initial name form
+    await expectMessage(ws, "render"); // initial name form
     ws.send(JSON.stringify({ name: "set-name", payload: { name } }));
-    await nextMessage(ws); // room selector
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render"); // room selector
     ws.send(JSON.stringify({ name: "join-room", payload: { room } }));
-    await nextMessage(ws); // people broadcast for the room just joined
-    await nextMessage(ws); // the full chat view
+    await expectMessage(ws, "patch"); // echo of the session's /room write
+    await expectMessage(ws, "render"); // people broadcast for the room just joined
+    await expectMessage(ws, "render"); // the full chat view
   }
 
   test("a room's people list updates live as someone else joins and leaves", async () => {
@@ -282,7 +347,7 @@ describe("chat", () => {
     b.close();
   });
 
-  test("send-message broadcasts to every connected room member", async () => {
+  test("send-message broadcasts to every connected room member, echoing the write first", async () => {
     const room = crypto.randomUUID();
     const a = connect();
     await login(a, "Alice", room);
@@ -293,17 +358,21 @@ describe("chat", () => {
     await bJoined; // people broadcast triggered by Bob joining, not this test's focus
 
     const uniqueText = `hello from alice ${crypto.randomUUID()}`;
-    const bReceived = nextMessage(b); // subscribe before sending, to avoid a race
+    const bPatch = nextMessage(b); // subscribe before sending, to avoid a race
     a.send(JSON.stringify({ name: "send-message", payload: { text: uniqueText } }));
-    const aReceived = await nextMessage(a);
-    const bMessage = await bReceived;
+
+    const aPatch = await expectMessage(a, "patch");
+    expect(aPatch.doc).toBe(`room:${room}`);
+    expect(aPatch.ops).toEqual([{ op: "add", path: "/transcript/-", value: { name: "Alice", text: uniqueText } }]);
+    const aReceived = await expectMessage(a, "append");
+
+    expect(await bPatch).toMatchObject({ type: "patch", doc: `room:${room}` });
+    const bMessage = await expectMessage(b, "append");
 
     // a granular append, not a full view re-render
-    expect(aReceived.type).toBe("append");
     expect(aReceived.selector).toBe(".messages");
     expect(aReceived.html).not.toContain('data-event="send-message"');
     expect(aReceived.html).toContain(uniqueText);
-    expect(bMessage.type).toBe("append");
     expect(bMessage.html).toContain(uniqueText);
     a.close();
     b.close();
@@ -314,14 +383,14 @@ describe("chat", () => {
     await login(ws, "Blank", crypto.randomUUID());
 
     ws.send(JSON.stringify({ name: "send-message", payload: { text: "   " } }));
-    const blankResponse = await nextMessage(ws);
-    expect(blankResponse.type).toBe("render"); // no-op falls through to the normal full render
+    // rejected (blank text): no patch echo, just the unchanged full render
+    await expectMessage(ws, "render");
 
     const uniqueText = `after blank ${crypto.randomUUID()}`;
     ws.send(JSON.stringify({ name: "send-message", payload: { text: uniqueText } }));
-    const message = await nextMessage(ws);
+    await expectMessage(ws, "patch");
+    const message = await expectMessage(ws, "append");
 
-    expect(message.type).toBe("append");
     expect(message.html).toContain(uniqueText);
     ws.close();
   });
@@ -342,9 +411,9 @@ describe("chat", () => {
 
     const uniqueText = `still works after b left ${crypto.randomUUID()}`;
     a.send(JSON.stringify({ name: "send-message", payload: { text: uniqueText } }));
-    const message = await nextMessage(a);
+    await expectMessage(a, "patch");
+    const message = await expectMessage(a, "append");
 
-    expect(message.type).toBe("append");
     expect(message.html).toContain(uniqueText);
     a.close();
   });

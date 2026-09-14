@@ -31,7 +31,9 @@ export function read(id: string): SessionDocument {
   return row ? JSON.parse(row.doc) : { name: null, room: null };
 }
 
-export function patch(id: string, ops: PatchOp[]): number {
+export type SessionPatchResult = { version: number; applied: PatchOp[] };
+
+export function patch(id: string, ops: PatchOp[]): SessionPatchResult {
   const applied: PatchOp[] = [];
   const inverse: PatchOp[] = [];
 
@@ -63,5 +65,6 @@ export function patch(id: string, ops: PatchOp[]): number {
     }
   }
 
-  return record(`session:${id}`, applied, inverse, id);
+  const version = record(`session:${id}`, applied, inverse, id);
+  return { version, applied };
 }

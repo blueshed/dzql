@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-09-14
+
+### Added
+
+- Echo the write (request 2 of the change request): when a document is patched, every connection that can see it now receives `{type: "patch", doc, version, ops}` *before* the HTML that follows. A session document's echo goes only to its own connection (direct send); a room document's echo broadcasts to every connection currently in that room, same audience as the existing `.people`/`.messages` broadcasts. `documents/session.ts::patch()` and `documents/room.ts::patch()` now return `{version, applied, ...}` — `applied` is only the ops that actually took effect, so the echo (and, later, the ledger) never claims a rejected write happened.
+- The client keeps what it's seen, per document: the latest version and the last 5 ops, in memory, exposed as `window.eta.docs()` — a person at the console can read the session back without a log line for it.
+
+### Fixed
+
+- `server.test.ts`'s message helper created a fresh `{once: true}` listener per call, which had a latent race: two messages sent back-to-back by the server (now routine, with the patch echo landing immediately before its render) could both arrive before test code re-subscribed after awaiting the first, silently dropping one. Replaced with a persistent per-socket FIFO queue — messages are never lost regardless of when a test asks for them.
+
 ## [0.8.0] - 2026-09-14
 
 ### Added

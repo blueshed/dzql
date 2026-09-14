@@ -1,6 +1,7 @@
 import type { ServerWebSocket } from "bun";
 import * as sessionDoc from "../documents/session";
 import type { ConnectionData } from "../connection";
+import { patchMessage } from "../json-patch";
 import { createEvent } from "./bus";
 import type { Concept } from "./concept";
 
@@ -16,14 +17,23 @@ function renderNameForm(): string {
   `;
 }
 
+// Only this connection's own session can ever see its session document, so
+// the echo is a direct send rather than a broadcast (compare room's).
+export function echoOwnSession(ws: ServerWebSocket<ConnectionData>, result: sessionDoc.SessionPatchResult) {
+  if (result.applied.length === 0) return;
+  ws.send(patchMessage(`session:${ws.data.sessionId}`, result.version, result.applied));
+}
+
 export const session: Concept = {
   events: {
     "set-name": (ws, payload) => {
-      sessionDoc.patch(ws.data.sessionId, [{ op: "replace", path: "/name", value: payload.name }]);
+      const result = sessionDoc.patch(ws.data.sessionId, [{ op: "replace", path: "/name", value: payload.name }]);
+      echoOwnSession(ws, result);
     },
     logout: (ws) => {
       sessionEnded.emit({ ws, sessionId: ws.data.sessionId });
-      sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/name" }]);
+      const result = sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/name" }]);
+      echoOwnSession(ws, result);
     },
   },
   render(sessionId) {

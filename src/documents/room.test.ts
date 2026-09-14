@@ -7,17 +7,19 @@ describe("room document", () => {
     expect(read(crypto.randomUUID())).toEqual({ transcript: [] });
   });
 
-  test("patching /transcript/- appends a message and returns it", () => {
+  test("patching /transcript/- appends a message and returns it, with the new version", () => {
     const room = crypto.randomUUID();
-    const added = patch(
+    const result = patch(
       room,
       [{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "hello" } }],
       "session-1",
     );
 
-    expect(added?.name).toBe("Ada");
-    expect(added?.text).toBe("hello");
-    expect(typeof added?.sentAt).toBe("number");
+    expect(result.version).toBe(1);
+    expect(result.applied).toEqual([{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "hello" } }]);
+    expect(result.added?.name).toBe("Ada");
+    expect(result.added?.text).toBe("hello");
+    expect(typeof result.added?.sentAt).toBe("number");
     expect(read(room).transcript.map((m) => `${m.name}: ${m.text}`)).toEqual(["Ada: hello"]);
   });
 
@@ -40,7 +42,9 @@ describe("room document", () => {
 
   test("an unrecognized op is ignored and returns no added message", () => {
     const room = crypto.randomUUID();
-    expect(patch(room, [{ op: "remove", path: "/transcript/0" }], "session-1")).toBeUndefined();
+    const result = patch(room, [{ op: "remove", path: "/transcript/0" }], "session-1");
+    expect(result.added).toBeUndefined();
+    expect(result.applied).toEqual([]);
     expect(read(room).transcript).toEqual([]);
   });
 

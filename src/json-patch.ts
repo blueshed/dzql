@@ -4,3 +4,8 @@ export type PatchOp = {
   path: string;
   value?: unknown;
 };
+
+/** The wire echo of a write: sent to every connection that can see `doc`, before any HTML. */
+export function patchMessage(doc: string, version: number, ops: PatchOp[]): string {
+  return JSON.stringify({ type: "patch", doc, version, ops });
+}
