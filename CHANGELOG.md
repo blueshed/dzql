@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-09-14
+
+### Added
+
+- `PID_FILE` and `MIGRATIONS_DIR` env vars, both with the same defaults as before (`server.pid`, `migrations/` next to the source). `bun run stop`'s hardcoded `server.pid` now reads the same `PID_FILE` env var `pid.ts` does, so the two can't drift out of sync. Documented alongside the existing vars in `.env.example`.
+- CLI: a `--session <file>` (or `--session=<file>`) flag overrides the default `.eta-session` file, so separate invocations can act as separate people -- e.g. `watch` as one identity in one terminal while sending as another elsewhere.
+
 ## [0.16.1] - 2026-09-14
 
 ### Changed

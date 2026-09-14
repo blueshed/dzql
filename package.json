@@ -1,12 +1,12 @@
 {
   "name": "eta",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "bun --watch src/start.ts",
     "start": "nohup bun --watch src/start.ts > server.log 2>&1 & disown",
-    "stop": "kill $(cat server.pid)",
+    "stop": "kill $(cat ${PID_FILE:-server.pid})",
     "cli": "bun src/cli.ts",
     "test": "DB_PATH=:memory: bun test --coverage"
   },

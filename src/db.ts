@@ -3,4 +3,4 @@ import { migrate } from "./migrate";
 
 export const db = new Database(process.env.DB_PATH ?? "db.sqlite");
 
-migrate(db, `${import.meta.dir}/../migrations`);
+migrate(db, process.env.MIGRATIONS_DIR ?? `${import.meta.dir}/../migrations`);

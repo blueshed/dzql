@@ -23,6 +23,27 @@ export function parseCommand(argv: string[]): Command | undefined {
   return name && name in WRITERS ? WRITERS[name]!(rest.join(" ")) : undefined;
 }
 
+export const DEFAULT_SESSION_FILE = ".eta-session";
+
+/**
+ * Pulls a `--session <file>` (or `--session=<file>`) flag out of argv,
+ * wherever it appears, so separate invocations can act as separate people --
+ * e.g. `watch` as one identity in one terminal, commands as another elsewhere.
+ */
+export function extractSessionFile(argv: string[]): { sessionFile: string; rest: string[] } {
+  const rest: string[] = [];
+  let sessionFile = DEFAULT_SESSION_FILE;
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
+    if (arg === "--session") sessionFile = argv[++i] ?? sessionFile;
+    else if (arg.startsWith("--session=")) sessionFile = arg.slice("--session=".length);
+    else rest.push(arg);
+  }
+
+  return { sessionFile, rest };
+}
+
 function opText(op: PatchOp): string {
   return op.value !== undefined ? `${op.op} ${op.path} ${JSON.stringify(op.value)}` : `${op.op} ${op.path}`;
 }

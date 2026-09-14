@@ -2,7 +2,16 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { connectCli, formatInspection, loadOrCreateSessionCookie, parseCommand, runCommand, watch } from "./commands";
+import {
+  connectCli,
+  DEFAULT_SESSION_FILE,
+  extractSessionFile,
+  formatInspection,
+  loadOrCreateSessionCookie,
+  parseCommand,
+  runCommand,
+  watch,
+} from "./commands";
 import { createServer } from "../server";
 
 describe("parseCommand", () => {
@@ -47,6 +56,40 @@ describe("parseCommand", () => {
   test("an unrecognized or missing command is undefined", () => {
     expect(parseCommand([])).toBeUndefined();
     expect(parseCommand(["nonsense"])).toBeUndefined();
+  });
+});
+
+describe("extractSessionFile", () => {
+  test("defaults to the default session file when no flag is present", () => {
+    expect(extractSessionFile(["name", "Ada"])).toEqual({
+      sessionFile: DEFAULT_SESSION_FILE,
+      rest: ["name", "Ada"],
+    });
+  });
+
+  test("pulls a `--session <file>` flag out, wherever it appears", () => {
+    expect(extractSessionFile(["--session", "alice.session", "name", "Ada"])).toEqual({
+      sessionFile: "alice.session",
+      rest: ["name", "Ada"],
+    });
+    expect(extractSessionFile(["name", "Ada", "--session", "alice.session"])).toEqual({
+      sessionFile: "alice.session",
+      rest: ["name", "Ada"],
+    });
+  });
+
+  test("accepts `--session=<file>` too", () => {
+    expect(extractSessionFile(["watch", "--session=bob.session"])).toEqual({
+      sessionFile: "bob.session",
+      rest: ["watch"],
+    });
+  });
+
+  test("a `--session` with nothing after it falls back to the default", () => {
+    expect(extractSessionFile(["name", "Ada", "--session"])).toEqual({
+      sessionFile: DEFAULT_SESSION_FILE,
+      rest: ["name", "Ada"],
+    });
   });
 });
 

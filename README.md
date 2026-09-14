@@ -48,3 +48,11 @@ bun run cli watch     # streams patches for the room you're in until you stop it
 ```
 
 Identity persists across invocations in a local `.eta-session` file (a cookie jar of one), the same way a browser tab would. Point it at a non-default server with `ETA_URL=ws://host:port`.
+
+Pass `--session <file>` to use a different identity — e.g. `watch` as one person in one terminal while sending as another elsewhere:
+
+```
+bun run cli name Alice --session alice.session
+bun run cli name Bob --session bob.session
+bun run cli watch --session alice.session
+```
