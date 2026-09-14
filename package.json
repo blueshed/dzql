@@ -1,0 +1,14 @@
+{
+  "name": "eta",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/server.ts",
+    "start": "nohup bun --watch src/server.ts > server.log 2>&1 & disown",
+    "stop": "kill $(cat server.pid)"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
