@@ -2,7 +2,7 @@ import * as roomDoc from "./documents/room";
 import * as sessionDoc from "./documents/session";
 import { joinRoom, leaveRoom, roomSockets } from "./rooms";
 import type { SessionData } from "./session";
-import { renderFor, renderMessage } from "./views";
+import { renderFor, renderMessage, renderPeople } from "./views";
 import index from "./index.html";
 
 function pushRender(ws: Bun.ServerWebSocket<SessionData>) {
@@ -11,6 +11,12 @@ function pushRender(ws: Bun.ServerWebSocket<SessionData>) {
 
 function broadcastMessage(room: string, message: roomDoc.ChatMessage) {
   const payload = JSON.stringify({ type: "append", selector: ".messages", html: renderMessage(message) });
+  for (const ws of roomSockets(room)) ws.send(payload);
+}
+
+function broadcastPeople(room: string) {
+  const html = renderPeople(roomDoc.read(room).people);
+  const payload = JSON.stringify({ type: "render", selector: ".people", html });
   for (const ws of roomSockets(room)) ws.send(payload);
 }
 
@@ -57,13 +63,19 @@ export function createServer(port: number | string = process.env.PORT ?? 3000) {
         if (event.name === "set-name") {
           sessionDoc.patch(ws.data.sessionId, [{ op: "replace", path: "/name", value: event.payload?.name }]);
         } else if (event.name === "join-room") {
+          const previousRoom = sessionDoc.read(ws.data.sessionId).room;
           sessionDoc.patch(
             ws.data.sessionId,
             [{ op: "replace", path: "/room", value: event.payload?.room }],
             ws,
           );
+          if (previousRoom) broadcastPeople(previousRoom);
+          const { room } = sessionDoc.read(ws.data.sessionId);
+          if (room) broadcastPeople(room);
         } else if (event.name === "leave-room") {
+          const { room } = sessionDoc.read(ws.data.sessionId);
           sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/room" }], ws);
+          if (room) broadcastPeople(room);
         } else if (event.name === "send-message") {
           const { name, room } = sessionDoc.read(ws.data.sessionId);
           const text = String(event.payload?.text ?? "").trim();
@@ -73,14 +85,19 @@ export function createServer(port: number | string = process.env.PORT ?? 3000) {
             return;
           }
         } else if (event.name === "logout") {
+          const { room } = sessionDoc.read(ws.data.sessionId);
           sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/name" }], ws);
+          if (room) broadcastPeople(room);
         }
 
         pushRender(ws);
       },
       close(ws) {
         const { room } = sessionDoc.read(ws.data.sessionId);
-        if (room) leaveRoom(room, ws);
+        if (room) {
+          leaveRoom(room, ws);
+          broadcastPeople(room);
+        }
       },
     },
     development: process.env.NODE_ENV !== "production",

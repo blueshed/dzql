@@ -114,7 +114,8 @@ describe("websocket session protocol", () => {
 
     const room = crypto.randomUUID();
     ws.send(JSON.stringify({ name: "join-room", payload: { room } }));
-    const message = await nextMessage(ws);
+    await nextMessage(ws); // people broadcast for the room just joined
+    const message = await nextMessage(ws); // the full chat view
 
     expect(message.html).toContain(`#${room}`);
     expect(message.html).toContain('data-event="send-message"');
@@ -129,7 +130,8 @@ describe("websocket session protocol", () => {
     ws.send(JSON.stringify({ name: "set-name", payload: { name: "Ada" } }));
     await nextMessage(ws);
     ws.send(JSON.stringify({ name: "join-room", payload: { room: crypto.randomUUID() } }));
-    await nextMessage(ws);
+    await nextMessage(ws); // people broadcast
+    await nextMessage(ws); // full chat view
 
     ws.send(JSON.stringify({ name: "leave-room", payload: {} }));
     const message = await nextMessage(ws);
@@ -202,31 +204,42 @@ describe("chat", () => {
     ws.send(JSON.stringify({ name: "set-name", payload: { name } }));
     await nextMessage(ws); // room selector
     ws.send(JSON.stringify({ name: "join-room", payload: { room } }));
-    await nextMessage(ws);
+    await nextMessage(ws); // people broadcast for the room just joined
+    await nextMessage(ws); // the full chat view
   }
 
-  test("a room's people list includes everyone currently joined", async () => {
+  test("a room's people list updates live as someone else joins and leaves", async () => {
     const room = crypto.randomUUID();
     const a = connect();
     await login(a, "Alice", room);
+
+    const joined = nextMessage(a); // subscribe before Bob joins, to avoid a race
     const b = connect();
     await login(b, "Bob", room);
 
-    // force a fresh render for `a`; presence isn't broadcast live on join, only reflected on the next render
-    a.send(JSON.stringify({ name: "send-message", payload: { text: "   " } }));
-    const message = await nextMessage(a);
+    const joinedUpdate = await joined;
+    expect(joinedUpdate.type).toBe("render");
+    expect(joinedUpdate.selector).toBe(".people");
+    expect(joinedUpdate.html).toBe("Alice, Bob");
 
-    expect(message.html).toContain('<p class="people">Alice, Bob</p>');
-    a.close();
+    const left = nextMessage(a);
     b.close();
+    const leftUpdate = await left;
+    expect(leftUpdate.selector).toBe(".people");
+    expect(leftUpdate.html).toBe("Alice");
+
+    a.close();
   });
 
   test("send-message broadcasts to every connected room member", async () => {
     const room = crypto.randomUUID();
     const a = connect();
     await login(a, "Alice", room);
+
+    const bJoined = nextMessage(a); // subscribe before Bob joins, to avoid missing the broadcast
     const b = connect();
     await login(b, "Bob", room);
+    await bJoined; // people broadcast triggered by Bob joining, not this test's focus
 
     const uniqueText = `hello from alice ${crypto.randomUUID()}`;
     const bReceived = nextMessage(b); // subscribe before sending, to avoid a race
@@ -266,11 +279,15 @@ describe("chat", () => {
     const room = crypto.randomUUID();
     const a = connect();
     await login(a, "RoomLeaverA", room);
+
+    const bJoined = nextMessage(a); // subscribe before B joins, to avoid missing the broadcast
     const b = connect();
     await login(b, "RoomLeaverB", room);
+    await bJoined; // people broadcast triggered by B joining, not this test's focus
 
+    const bLeft = nextMessage(a); // subscribe before B closes, to avoid missing the broadcast
     b.close();
-    await Bun.sleep(50); // let the server's close handler run
+    await bLeft; // people broadcast triggered by B leaving, not this test's focus
 
     const uniqueText = `still works after b left ${crypto.randomUUID()}`;
     a.send(JSON.stringify({ name: "send-message", payload: { text: uniqueText } }));

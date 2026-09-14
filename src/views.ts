@@ -37,6 +37,10 @@ export function renderMessage(message: ChatMessage): string {
   return `<li><strong>${escapeHtml(message.name)}:</strong> ${escapeHtml(message.text)}</li>`;
 }
 
+export function renderPeople(people: string[]): string {
+  return people.map(escapeHtml).join(", ");
+}
+
 function renderChat(name: string, room: string, people: string[], messages: ChatMessage[]): string {
   return `
     <div class="user-bar">
@@ -45,7 +49,7 @@ function renderChat(name: string, room: string, people: string[], messages: Chat
       <button data-event="leave-room">Change room</button>
       <button data-event="logout">Log out</button>
     </div>
-    <p class="people">${people.map(escapeHtml).join(", ")}</p>
+    <p class="people">${renderPeople(people)}</p>
     <ul class="messages" data-autoscroll>${messages.map(renderMessage).join("")}</ul>
     <form data-event="send-message">
       <input name="text" autocomplete="off" required autofocus />
