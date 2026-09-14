@@ -104,4 +104,29 @@ describe("session document", () => {
     expect(result.applied).toEqual([]);
     expect(history(`session:${id}`)).toEqual([]);
   });
+
+  test("logging out while in a room produces an inverse that restores both /name and /room", () => {
+    const id = crypto.randomUUID();
+    const room = crypto.randomUUID();
+
+    patch(id, [{ op: "replace", path: "/name", value: "Ada" }]);
+    patch(id, [{ op: "replace", path: "/room", value: room }]);
+    patch(id, [{ op: "remove", path: "/name" }]);
+
+    const entries = history(`session:${id}`);
+    expect(entries[0]?.inverse).toEqual([
+      { op: "replace", path: "/name", value: "Ada" },
+      { op: "replace", path: "/room", value: room },
+    ]);
+  });
+
+  test("logging out while in no room produces an inverse that only restores /name", () => {
+    const id = crypto.randomUUID();
+
+    patch(id, [{ op: "replace", path: "/name", value: "Ada" }]);
+    patch(id, [{ op: "remove", path: "/name" }]);
+
+    const entries = history(`session:${id}`);
+    expect(entries[0]?.inverse).toEqual([{ op: "replace", path: "/name", value: "Ada" }]);
+  });
 });

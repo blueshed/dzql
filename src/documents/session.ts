@@ -48,8 +48,14 @@ export function patch(id: string, ops: PatchOp[]): SessionPatchResult {
       applied.push(op);
       inverse.unshift({ op: "replace", path: "/name", value: before.name });
     } else if (field === "name" && op.op === "remove") {
+      // Logout clears both name and room in one statement (see revokeStmt),
+      // so its inverse must restore both, or undo would leave the session
+      // named but orphaned from the room it was in.
       revokeStmt.run(Date.now(), id);
       applied.push(op);
+      if (before.room !== null) {
+        inverse.unshift({ op: "replace", path: "/room", value: before.room });
+      }
       inverse.unshift({ op: "replace", path: "/name", value: before.name });
     } else if (field === "room" && op.op !== "remove") {
       const room = String(op.value ?? "").trim();
