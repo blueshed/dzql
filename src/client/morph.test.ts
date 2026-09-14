@@ -152,3 +152,29 @@ describe("morph", () => {
     expect(result).toEqual({ inputValue: "al", suggestions: ["alpha"] });
   });
 });
+
+describe("formValue", () => {
+  test("a single-field form's value is that field's raw value, unchanged", async () => {
+    const result = await run(`
+      root.innerHTML = '<form><input name="text" value="hello"></form>';
+      return window.formValue(root.querySelector("form"));
+    `);
+    expect(result).toBe("hello");
+  });
+
+  test("a multi-field form's value is a record of its named fields", async () => {
+    const result = await run(`
+      root.innerHTML = '<form><input name="a" value="1"><input name="b" value="2"></form>';
+      return window.formValue(root.querySelector("form"));
+    `);
+    expect(result).toEqual({ a: "1", b: "2" });
+  });
+
+  test("a form with no named fields has an undefined value", async () => {
+    const result = await run(`
+      root.innerHTML = '<form><button type="submit">Go</button></form>';
+      return window.formValue(root.querySelector("form"));
+    `);
+    expect(result).toBeUndefined();
+  });
+});

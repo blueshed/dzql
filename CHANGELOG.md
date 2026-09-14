@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-09-14
+
+### Changed
+
+- A form's value on submit is no longer scalar-or-nothing: a single named field still sends its raw value, but a form with more than one named field now sends a record of all of them (`src/client/form-value.ts`). Every form up to now has had exactly one field, so nothing currently rendered changes behavior -- this is for the next thing built on eta, which won't get to day two before needing it.
+
 ## [0.19.0] - 2026-09-14
 
 ### Changed

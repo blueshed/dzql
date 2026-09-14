@@ -1,6 +1,7 @@
 import { applets } from "../applets";
 import "../applets/room-picker"; // registers itself; app.ts only knows the generic mount contract
 import type { PatchOp } from "../json-patch";
+import { formValue } from "./form-value";
 import { morph } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
@@ -99,7 +100,8 @@ function send(doc: string, ops: PatchOp[]) {
 let pendingReset: { form: HTMLFormElement; doc: string } | undefined;
 
 // An element says what it writes via data-write; a form's field is the
-// value, a button/li's data-value is the value, nothing else goes up.
+// value (or a record of its fields, if it has more than one), a button/li's
+// data-value is the value, nothing else goes up.
 app.addEventListener("submit", (event) => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
@@ -107,10 +109,8 @@ app.addEventListener("submit", (event) => {
   const spec = form.dataset.write;
   if (!spec) return;
   const { doc, op, path } = JSON.parse(spec) as WriteSpec;
-  const values = [...new FormData(form).values()];
-  const value = values.length === 1 ? values[0] : undefined;
   pendingReset = { form, doc };
-  send(doc, [{ op, path, value }]);
+  send(doc, [{ op, path, value: formValue(form) }]);
 });
 
 app.addEventListener("click", (event) => {
