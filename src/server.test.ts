@@ -90,7 +90,7 @@ describe("websocket session protocol", () => {
     ws.close();
   });
 
-  test("set-name renders a chat view with the escaped name", async () => {
+  test("set-name renders a room selector with the escaped name", async () => {
     const ws = connect();
     await opened(ws);
     await nextMessage(ws); // initial name form
@@ -100,7 +100,41 @@ describe("websocket session protocol", () => {
 
     expect(message.html).toContain("&lt;b&gt;Ada&lt;/b&gt;");
     expect(message.html).toContain('data-event="logout"');
+    expect(message.html).toContain('data-event="join-room"');
+    ws.close();
+  });
+
+  test("join-room renders the chat view for that room", async () => {
+    const ws = connect();
+    await opened(ws);
+    await nextMessage(ws); // initial name form
+
+    ws.send(JSON.stringify({ name: "set-name", payload: { name: "Ada" } }));
+    await nextMessage(ws); // room selector
+
+    const room = crypto.randomUUID();
+    ws.send(JSON.stringify({ name: "join-room", payload: { room } }));
+    const message = await nextMessage(ws);
+
+    expect(message.html).toContain(`#${room}`);
     expect(message.html).toContain('data-event="send-message"');
+    expect(message.html).toContain('data-event="leave-room"');
+    ws.close();
+  });
+
+  test("leave-room returns to the room selector", async () => {
+    const ws = connect();
+    await opened(ws);
+    await nextMessage(ws);
+    ws.send(JSON.stringify({ name: "set-name", payload: { name: "Ada" } }));
+    await nextMessage(ws);
+    ws.send(JSON.stringify({ name: "join-room", payload: { room: crypto.randomUUID() } }));
+    await nextMessage(ws);
+
+    ws.send(JSON.stringify({ name: "leave-room", payload: {} }));
+    const message = await nextMessage(ws);
+
+    expect(message.html).toContain('data-event="join-room"');
     ws.close();
   });
 
@@ -162,18 +196,21 @@ describe("websocket session protocol", () => {
 });
 
 describe("chat", () => {
-  async function login(ws: WebSocket, name: string): Promise<void> {
+  async function login(ws: WebSocket, name: string, room: string): Promise<void> {
     await opened(ws);
     await nextMessage(ws); // initial name form
     ws.send(JSON.stringify({ name: "set-name", payload: { name } }));
+    await nextMessage(ws); // room selector
+    ws.send(JSON.stringify({ name: "join-room", payload: { room } }));
     await nextMessage(ws);
   }
 
   test("send-message broadcasts to every connected room member", async () => {
+    const room = crypto.randomUUID();
     const a = connect();
-    await login(a, `Alice-${crypto.randomUUID()}`);
+    await login(a, "Alice", room);
     const b = connect();
-    await login(b, `Bob-${crypto.randomUUID()}`);
+    await login(b, "Bob", room);
 
     const uniqueText = `hello from alice ${crypto.randomUUID()}`;
     const bReceived = nextMessage(b); // subscribe before sending, to avoid a race
@@ -188,7 +225,7 @@ describe("chat", () => {
 
   test("send-message with blank text does not crash and does not stop further messages", async () => {
     const ws = connect();
-    await login(ws, `Blank-${crypto.randomUUID()}`);
+    await login(ws, "Blank", crypto.randomUUID());
 
     ws.send(JSON.stringify({ name: "send-message", payload: { text: "   " } }));
     await nextMessage(ws);
@@ -202,10 +239,11 @@ describe("chat", () => {
   });
 
   test("closing a connection removes it from the room without breaking future broadcasts", async () => {
+    const room = crypto.randomUUID();
     const a = connect();
-    await login(a, `RoomLeaverA-${crypto.randomUUID()}`);
+    await login(a, "RoomLeaverA", room);
     const b = connect();
-    await login(b, `RoomLeaverB-${crypto.randomUUID()}`);
+    await login(b, "RoomLeaverB", room);
 
     b.close();
     await Bun.sleep(50); // let the server's close handler run

@@ -28,7 +28,8 @@ app.addEventListener("click", (event) => {
   const target = (event.target as Element).closest<HTMLElement>("[data-event]");
   if (!target || target.tagName === "FORM") return;
   event.preventDefault();
-  send(target.dataset.event!, {});
+  const { event: eventName, ...payload } = target.dataset;
+  send(eventName!, payload);
 });
 
 function connect(delay = RECONNECT_DELAY_MS) {

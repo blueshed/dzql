@@ -28,6 +28,7 @@ async function waitFor(
 }
 
 const NAME_FORM_VISIBLE = `document.querySelector('[data-event="set-name"]') !== null`;
+const ROOM_FORM_VISIBLE = `document.querySelector('#room') !== null`;
 const USER_LABEL = `document.querySelector('.user-label')?.textContent ?? null`;
 const MESSAGES_TEXT = `document.querySelector('.messages')?.textContent ?? ""`;
 
@@ -35,6 +36,13 @@ async function submitName(view: Bun.WebView, name: string) {
   await waitFor(view, NAME_FORM_VISIBLE, (v) => v === true);
   await view.click("#name");
   await view.type(name);
+  await view.click("button[type=submit]");
+}
+
+async function joinRoom(view: Bun.WebView, room: string) {
+  await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
+  await view.click("#room");
+  await view.type(room);
   await view.click("button[type=submit]");
 }
 
@@ -80,11 +88,24 @@ describe("app.ts in a real browser", () => {
     await waitFor(view, NAME_FORM_VISIBLE, (v) => v === true);
   });
 
+  test("joining a room then changing room returns to the room selector", async () => {
+    await using view = new Bun.WebView();
+    await view.navigate(server.url.toString());
+    await submitName(view, `Chatter-${crypto.randomUUID()}`);
+    await joinRoom(view, crypto.randomUUID());
+
+    await waitFor(view, `document.querySelector('[data-event="send-message"]') !== null`, (v) => v === true);
+
+    await view.click("[data-event=leave-room]");
+
+    await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
+  });
+
   test("a sent chat message appears in the message list", async () => {
     await using view = new Bun.WebView();
     await view.navigate(server.url.toString());
     await submitName(view, `Chatter-${crypto.randomUUID()}`);
-    await waitFor(view, USER_LABEL, (v) => typeof v === "string" && v.length > 0);
+    await joinRoom(view, crypto.randomUUID());
 
     const text = `hello room ${crypto.randomUUID()}`;
     await sendChatMessage(view, text);
@@ -93,7 +114,7 @@ describe("app.ts in a real browser", () => {
     expect(messages).toContain(text);
   });
 
-  test("a message sent from one browser appears live in another browser's room", async () => {
+  test("a message sent from one browser appears live in another browser in the same room", async () => {
     await using viewA = new Bun.WebView();
     await using viewB = new Bun.WebView();
 
@@ -102,8 +123,10 @@ describe("app.ts in a real browser", () => {
 
     await submitName(viewA, `A-${crypto.randomUUID()}`);
     await submitName(viewB, `B-${crypto.randomUUID()}`);
-    await waitFor(viewA, USER_LABEL, (v) => typeof v === "string" && v.length > 0);
-    await waitFor(viewB, USER_LABEL, (v) => typeof v === "string" && v.length > 0);
+
+    const room = crypto.randomUUID();
+    await joinRoom(viewA, room);
+    await joinRoom(viewB, room);
 
     const text = `broadcast test ${crypto.randomUUID()}`;
     await sendChatMessage(viewA, text);

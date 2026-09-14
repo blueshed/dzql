@@ -1,6 +1,6 @@
 import type { ServerWebSocket } from "bun";
 import { describe, expect, test } from "bun:test";
-import { addMessage, getMessages, joinRoom, leaveRoom, roomSockets } from "./rooms";
+import { joinRoom, leaveRoom, roomSockets } from "./rooms";
 import type { SessionData } from "./session";
 
 function fakeSocket(): ServerWebSocket<SessionData> {
@@ -31,28 +31,7 @@ describe("rooms", () => {
     expect(() => leaveRoom(crypto.randomUUID(), fakeSocket())).not.toThrow();
   });
 
-  test("addMessage appends to the room's message list in order", () => {
-    const room = crypto.randomUUID();
-
-    addMessage(room, "Ada", "hello");
-    addMessage(room, "Grace", "hi Ada");
-
-    const messages = getMessages(room);
-    expect(messages.map((m) => `${m.name}: ${m.text}`)).toEqual(["Ada: hello", "Grace: hi Ada"]);
-  });
-
-  test("getMessages on a fresh room returns an empty array", () => {
-    expect(getMessages(crypto.randomUUID())).toEqual([]);
-  });
-
-  test("addMessage caps history at the most recent 50 messages", () => {
-    const room = crypto.randomUUID();
-
-    for (let i = 0; i < 55; i++) addMessage(room, "Bot", `message ${i}`);
-
-    const messages = getMessages(room);
-    expect(messages).toHaveLength(50);
-    expect(messages[0]?.text).toBe("message 5");
-    expect(messages.at(-1)?.text).toBe("message 54");
+  test("roomSockets on a fresh room returns an empty set", () => {
+    expect(roomSockets(crypto.randomUUID()).size).toBe(0);
   });
 });
