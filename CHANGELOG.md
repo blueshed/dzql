@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.7] - 2026-09-14
+
+### Changed
+
+- The dark green terminal theme was hardcoded (`color-scheme: dark`) regardless of the desktop's actual appearance setting. Colors are now CSS custom properties with a light default and a `prefers-color-scheme: dark` override, and `color-scheme: light dark` lets native form controls follow suit — the app now matches daylight/dark desktop settings instead of always looking like a terminal at night.
+
 ## [0.10.6] - 2026-09-14
 
 ### Changed
