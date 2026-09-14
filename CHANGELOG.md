@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.1] - 2026-09-14
+
+### Added
+
+- Measured what request 5 (morph, don't replace) costs on the wire (`scripts/measure-render-cost.ts`, not a test -- a report): removing `append` means a room write now sends every other member a patch echo plus a full re-render, instead of a patch echo plus one appended `<li>`. At 100 messages and 5 members: 279 B before, 3140 B after -- about 11x. It plateaus rather than growing unbounded, since `documents/room.ts::read()` caps the rendered transcript at 50 messages regardless of total history. Numbers and methodology in the README under "Cost". Not fixed here, per the request: the number is the deliverable, not a regression.
+
 ## [0.20.0] - 2026-09-14
 
 ### Changed

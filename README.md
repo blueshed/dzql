@@ -28,6 +28,26 @@ bun run stop
 bun run test    # bun test --coverage
 ```
 
+## Cost
+
+Morphing (request 5) removed the granular `append` message: a room write now
+sends every *other* member a patch echo plus a full re-render of the chat
+view, where before it sent a patch echo plus one appended `<li>`. Measured
+with a room at 100 messages and 5 members (`bun scripts/measure-render-cost.ts`),
+bytes sent to each other member per message sent:
+
+| | patch echo | second message | total |
+|---|---|---|---|
+| before (append) | 159 B | 120 B | 279 B |
+| after (full render) | 159 B | 2981 B | 3140 B |
+
+About 11x more per message. It doesn't keep growing with history, though:
+`documents/room.ts::read()` caps the transcript at 50 messages regardless of
+how many exist, so the render payload plateaus there (measured ~2971 B at
+50 messages, ~3030 B at 200) rather than growing unbounded. Not fixed here —
+see the CHANGELOG for the candidate (render just the new item when the
+write was a single append, else the whole view) and why it isn't free.
+
 ## Poking at it
 
 - `window.eta.docs()` — documents this tab has seen, with version and recent ops.
