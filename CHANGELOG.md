@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.0] - 2026-09-14
+
+### Changed
+
+- Undo's wire shape: `{"doc":"session","op":"add","path":"/undo"}` was a verb wearing a path -- `/undo` isn't a session field. It's now `{"doc":"ledger","op":"remove","path":"/latest"}`: a new `ledger` concept (`concepts/ledger.ts`) whose document is this session's own cursor into its ledger entries, and "remove the latest [undoable one]" is what undo actually does. Which entry "/latest" resolves to is still decided server-side (`documents/undo.ts`), so the client never needs to know or track an id -- no new client-side domain state.
+- `ledger` is excluded from `concepts/index.ts`'s render/inspect list: it has no view of its own and no `ledger:<id>` document to report a version for (real entries live under `session:<id>`/`room:<name>`). It's only ever reached by docType, for writes. `Concept.render` is now optional, matching `onOpen`/`onClose`, so a concept like this one doesn't need a stub that's never called.
+
 ## [0.18.0] - 2026-09-14
 
 ### Changed

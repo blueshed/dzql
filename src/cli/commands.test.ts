@@ -43,8 +43,8 @@ describe("parseCommand", () => {
     });
     expect(parseCommand(["undo"])).toEqual({
       kind: "write",
-      doc: "session",
-      ops: [{ op: "add", path: "/undo" }],
+      doc: "ledger",
+      ops: [{ op: "remove", path: "/latest" }],
     });
   });
 

@@ -7,8 +7,8 @@ export type WriteResult = { version: number; applied: PatchOp[]; rendered?: bool
 export type Concept = {
   /** The document type name this concept owns on the wire (e.g. "session", "room"). */
   docType: string;
-  /** Returns this concept's view of the current session, or `undefined` to defer to the next concept. */
-  render(sessionId: string): string | undefined;
+  /** Returns this concept's view of the current session, or `undefined` to defer to the next concept. Omit if this concept has no view of its own (e.g. it's reached only by docType, like ledger). */
+  render?(sessionId: string): string | undefined;
   /** Resolves the concrete document id this connection currently sees for its own docType, or undefined if none. */
   resolveDoc(ws: ServerWebSocket<ConnectionData>): string | undefined;
   /** May this connection apply `op` to the document it resolves? */

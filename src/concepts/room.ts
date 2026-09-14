@@ -6,8 +6,9 @@ import type { ConnectionData } from "../connection";
 import { patchMessage } from "../json-patch";
 import type { PatchOp } from "../json-patch";
 import type { Concept } from "./concept";
+import { undoApplied } from "./ledger";
 import { renderRequested } from "./render";
-import { sessionPatched, undoApplied } from "./session";
+import { sessionPatched } from "./session";
 
 // Which live connections are currently subscribed to which room, for
 // broadcast. Not persisted data (see documents/room.ts for that) and not
@@ -49,7 +50,7 @@ function renderRoomSelector(name: string, rooms: string[]): string {
   return `
     <div class="user-bar">
       <span class="user-label">${escapeHtml(name)}</span>
-      <button data-write='{"doc":"session","op":"add","path":"/undo"}'>Undo</button>
+      <button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>Undo</button>
       <button data-write='{"doc":"session","op":"remove","path":"/name"}'>Log out</button>
     </div>
     <h2>Rooms</h2>
@@ -70,7 +71,7 @@ function renderChat(name: string, room: string, people: string[], messages: Chat
     <div class="user-bar">
       <span class="user-label">${escapeHtml(name)}</span>
       <span class="room-label">#${escapeHtml(room)}</span>
-      <button data-write='{"doc":"session","op":"add","path":"/undo"}'>Undo</button>
+      <button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>Undo</button>
       <button data-write='{"doc":"session","op":"remove","path":"/room"}'>Change room</button>
       <button data-write='{"doc":"session","op":"remove","path":"/name"}'>Log out</button>
     </div>
@@ -134,7 +135,7 @@ sessionPatched.on(({ ws, before, applied }) => {
   }
 });
 
-// Undo is triggered through the session doc (see concepts/session.ts) but
+// Undo is triggered through the ledger doc (see concepts/ledger.ts) but
 // may land on a room's document -- react to that the same way a direct
 // room write would.
 undoApplied.on(({ docType, docId, version, applied }) => {

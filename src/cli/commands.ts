@@ -12,7 +12,7 @@ const WRITERS: Record<string, (arg: string) => Command> = {
   leave: () => ({ kind: "write", doc: "session", ops: [{ op: "remove", path: "/room" }] }),
   logout: () => ({ kind: "write", doc: "session", ops: [{ op: "remove", path: "/name" }] }),
   send: (arg) => ({ kind: "write", doc: "room", ops: [{ op: "add", path: "/transcript/-", value: arg }] }),
-  undo: () => ({ kind: "write", doc: "session", ops: [{ op: "add", path: "/undo" }] }),
+  undo: () => ({ kind: "write", doc: "ledger", ops: [{ op: "remove", path: "/latest" }] }),
 };
 
 /** Maps a CLI invocation's argv (after the script name) to a wire command. */

@@ -361,7 +361,7 @@ describe("websocket write protocol", () => {
     await expectMessage(ws, "patch");
     await expectMessage(ws, "render"); // room selector
 
-    write(ws, "session", [{ op: "add", path: "/undo" }]);
+    write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const undonePatch = await expectMessage(ws, "patch");
     expect(undonePatch.doc).toBe("session");
     expect(undonePatch.ops).toEqual([{ op: "remove", path: "/name" }]);
@@ -384,19 +384,19 @@ describe("websocket write protocol", () => {
     await expectMessage(ws, "render"); // people broadcast for the room just joined
     await expectMessage(ws, "render"); // full chat view
 
-    write(ws, "session", [{ op: "add", path: "/undo" }]);
+    write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const firstUndo = await expectMessage(ws, "patch");
     expect(firstUndo.ops).toEqual([{ op: "remove", path: "/room" }]); // back to the room selector
     await expectMessage(ws, "render");
 
-    write(ws, "session", [{ op: "add", path: "/undo" }]);
+    write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const secondUndo = await expectMessage(ws, "patch");
     expect(secondUndo.ops).toEqual([{ op: "remove", path: "/name" }]); // not a redo of the room join
     const rendered = await expectMessage(ws, "render");
     expect(rendered.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
 
     // nothing left to undo: a third press just re-renders the current state
-    write(ws, "session", [{ op: "add", path: "/undo" }]);
+    write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const noOp = await expectMessage(ws, "render");
     expect(noOp.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
 
@@ -420,7 +420,7 @@ describe("websocket write protocol", () => {
     await opened(second);
     await expectMessage(second, "render"); // name form: this session is logged out
 
-    write(second, "session", [{ op: "add", path: "/undo" }]);
+    write(second, "ledger", [{ op: "remove", path: "/latest" }]);
     // rejected by permit (logged out): no patch echo, just the unchanged render
     const rejected = await expectMessage(second, "render");
     expect(rejected.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
@@ -593,7 +593,7 @@ describe("chat", () => {
     // Alice presses undo: her last write was the second message, so that's what goes.
     const bPatch = nextMessage(b); // subscribe before undo, to avoid a race
     const bRender = nextMessage(b);
-    write(a, "session", [{ op: "add", path: "/undo" }]);
+    write(a, "ledger", [{ op: "remove", path: "/latest" }]);
 
     const aPatch = await expectMessage(a, "patch");
     expect(aPatch.doc).toBe("room");
