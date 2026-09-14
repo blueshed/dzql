@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { history } from "../ledger";
 import { patch, read } from "./session";
 
 describe("session document", () => {
@@ -79,5 +80,26 @@ describe("session document", () => {
     const id = crypto.randomUUID();
     expect(() => patch(id, [{ op: "replace", path: "/nope", value: "x" }])).not.toThrow();
     expect(read(id)).toEqual({ name: null, room: null });
+  });
+
+  test("patch returns the new version and records it in the same ledger table as room patches", () => {
+    const id = crypto.randomUUID();
+
+    const v1 = patch(id, [{ op: "replace", path: "/name", value: "Ada" }]);
+    expect(v1).toBe(1);
+
+    const entries = history(`session:${id}`);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.sessionId).toBe(id);
+    expect(entries[0]?.inverse).toEqual([{ op: "replace", path: "/name", value: null }]);
+  });
+
+  test("a patch that changes nothing does not record a ledger entry or bump the version", () => {
+    const id = crypto.randomUUID();
+
+    const version = patch(id, [{ op: "replace", path: "/name", value: "   " }]);
+
+    expect(version).toBe(0);
+    expect(history(`session:${id}`)).toEqual([]);
   });
 });

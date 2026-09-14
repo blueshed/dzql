@@ -1,0 +1,10 @@
+CREATE TABLE ledger (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  doc TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  ops TEXT NOT NULL,
+  inverse TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  at INTEGER NOT NULL,
+  UNIQUE(doc, version)
+);

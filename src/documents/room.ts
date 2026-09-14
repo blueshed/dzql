@@ -1,6 +1,7 @@
 import { db } from "../db";
 import type { PatchOp } from "../json-patch";
 import { parsePointer } from "../json-pointer";
+import { record } from "../ledger";
 
 export type ChatMessage = { name: string; text: string; sentAt: number };
 export type RoomDocument = { transcript: ChatMessage[] };
@@ -9,6 +10,7 @@ const ensureStmt = db.query<unknown, [string, number]>(
   "INSERT INTO rooms (name, created_at) VALUES (?, ?) ON CONFLICT(name) DO NOTHING",
 );
 const listStmt = db.query<{ name: string }, []>("SELECT name FROM rooms ORDER BY created_at ASC");
+const countStmt = db.query<{ count: number }, [string]>("SELECT COUNT(*) AS count FROM messages WHERE room = ?");
 const transcriptStmt = db.query<{ doc: string }, [string, number]>(`
   SELECT json_group_array(json_object('name', name, 'text', text, 'sentAt', sent_at)) AS doc
   FROM (SELECT name, text, sent_at FROM messages WHERE room = ? ORDER BY id DESC LIMIT ?)
@@ -32,18 +34,27 @@ export function read(name: string, limit = 50): RoomDocument {
 }
 
 /** Applies a patch and returns the appended message, if this patch added one. */
-export function patch(name: string, ops: PatchOp[]): ChatMessage | undefined {
+export function patch(name: string, ops: PatchOp[], sessionId: string): ChatMessage | undefined {
   let added: ChatMessage | undefined;
+  const applied: PatchOp[] = [];
+  const inverse: PatchOp[] = [];
 
   for (const op of ops) {
     const segments = parsePointer(op.path);
     if (op.op !== "add" || segments[0] !== "transcript" || segments[1] !== "-") continue;
 
     const value = op.value as { name: string; text: string };
+    // The index the new message lands at in the full (unpaginated) history,
+    // not read()'s limited view, so the inverse stays correct regardless of limit.
+    const index = countStmt.get(name)?.count ?? 0;
     const sentAt = Date.now();
     insertMessageStmt.run(name, value.name, value.text, sentAt);
     added = { name: value.name, text: value.text, sentAt };
+
+    applied.push(op);
+    inverse.unshift({ op: "remove", path: `/transcript/${index}` });
   }
 
+  record(`room:${name}`, applied, inverse, sessionId);
   return added;
 }

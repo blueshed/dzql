@@ -1,6 +1,7 @@
 import { db } from "../db";
 import type { PatchOp } from "../json-patch";
 import { parsePointer } from "../json-pointer";
+import { record } from "../ledger";
 import { ensureExists } from "./room";
 
 export type SessionDocument = { name: string | null; room: string | null };
@@ -30,23 +31,37 @@ export function read(id: string): SessionDocument {
   return row ? JSON.parse(row.doc) : { name: null, room: null };
 }
 
-export function patch(id: string, ops: PatchOp[]): void {
+export function patch(id: string, ops: PatchOp[]): number {
+  const applied: PatchOp[] = [];
+  const inverse: PatchOp[] = [];
+
   for (const op of ops) {
     const [field] = parsePointer(op.path);
+    const before = read(id);
 
     if (field === "name" && op.op !== "remove") {
       const name = String(op.value ?? "").trim();
-      if (name) upsertNameStmt.run(id, name, Date.now());
+      if (!name) continue;
+      upsertNameStmt.run(id, name, Date.now());
+      applied.push(op);
+      inverse.unshift({ op: "replace", path: "/name", value: before.name });
     } else if (field === "name" && op.op === "remove") {
       revokeStmt.run(Date.now(), id);
+      applied.push(op);
+      inverse.unshift({ op: "replace", path: "/name", value: before.name });
     } else if (field === "room" && op.op !== "remove") {
       const room = String(op.value ?? "").trim();
-      if (room) {
-        ensureExists(room);
-        joinRoomStmt.run(id, room, Date.now());
-      }
+      if (!room) continue;
+      ensureExists(room);
+      joinRoomStmt.run(id, room, Date.now());
+      applied.push(op);
+      inverse.unshift({ op: "replace", path: "/room", value: before.room });
     } else if (field === "room" && op.op === "remove") {
       clearRoomStmt.run(id);
+      applied.push(op);
+      inverse.unshift({ op: "replace", path: "/room", value: before.room });
     }
   }
+
+  return record(`session:${id}`, applied, inverse, id);
 }

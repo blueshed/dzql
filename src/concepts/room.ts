@@ -134,7 +134,11 @@ export const room: Concept = {
       const text = String(payload.text ?? "").trim();
       if (!name || !current || !text) return false;
 
-      const added = roomDoc.patch(current, [{ op: "add", path: "/transcript/-", value: { name, text } }]);
+      const added = roomDoc.patch(
+        current,
+        [{ op: "add", path: "/transcript/-", value: { name, text } }],
+        ws.data.sessionId,
+      );
       if (added) broadcastMessage(current, added);
       return true; // already broadcast a targeted append; skip the automatic full render
     },
