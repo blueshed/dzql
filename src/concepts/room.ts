@@ -85,7 +85,9 @@ function renderChat(name: string, room: string, people: string[], messages: Chat
 // living in documents/room.ts, which only knows about the SQL-backed transcript.
 function peopleIn(room: string): string[] {
   const names = [...roomSockets(room)].map((ws) => sessionDoc.read(ws.data.sessionId).name);
-  return names.filter((n): n is string => n !== null);
+  // The same session can hold more than one socket (multiple tabs), which
+  // must not show up as the same person listed twice.
+  return [...new Set(names.filter((n): n is string => n !== null))];
 }
 
 function broadcastPeople(room: string) {

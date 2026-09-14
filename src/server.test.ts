@@ -353,6 +353,39 @@ describe("chat", () => {
     a.close();
   });
 
+  test("presence dedupes multiple tabs for the same session, and one tab closing doesn't drop it while another remains", async () => {
+    const room = crypto.randomUUID();
+    const cookie = `session_id=${crypto.randomUUID()}`;
+
+    const a = connect(cookie);
+    await login(a, "Alice", room);
+
+    // a second tab for the same session: already logged in and in the room via the shared
+    // cookie, so onOpen joins it directly without a session write.
+    const b = connect(cookie);
+    await opened(b);
+    await expectMessage(b, "render"); // full chat view
+
+    const aJoined = nextMessage(a); // subscribe before Carol joins, to avoid a race
+    const bJoined = nextMessage(b);
+    const c = connect();
+    await login(c, "Carol", room);
+
+    const aJoinedUpdate = await aJoined;
+    expect(aJoinedUpdate.selector).toBe(".people");
+    expect(aJoinedUpdate.html).toBe("Alice, Carol"); // not "Alice, Alice, Carol": two sockets, one person
+    expect((await bJoined).html).toBe("Alice, Carol");
+
+    const aStillThere = nextMessage(a); // subscribe before b's tab closes
+    b.close();
+    const stillThereUpdate = await aStillThere;
+    expect(stillThereUpdate.selector).toBe(".people");
+    expect(stillThereUpdate.html).toBe("Alice, Carol"); // Alice's other tab is still in the room
+
+    a.close();
+    c.close();
+  });
+
   test("logging out while in a room leaves it, broadcasting presence to the remaining members", async () => {
     const room = crypto.randomUUID();
     const a = connect();
