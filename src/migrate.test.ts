@@ -61,4 +61,24 @@ describe("migrate", () => {
 
     rmSync(dir, { recursive: true });
   });
+
+  test("a migration that fails partway rolls back cleanly and is not recorded", () => {
+    const dir = tempMigrationsDir({
+      "0001_partial.sql": "CREATE TABLE good (id INTEGER);\nTHIS IS NOT VALID SQL;",
+    });
+    const db = new Database(":memory:");
+
+    expect(() => migrate(db, dir)).toThrow();
+
+    const tables = db
+      .query<{ name: string }, []>("SELECT name FROM sqlite_master WHERE type = 'table'")
+      .all()
+      .map((row) => row.name);
+    expect(tables).not.toContain("good"); // rolled back, not left half-applied
+
+    const applied = db.query<{ name: string }, []>("SELECT name FROM _migrations").all();
+    expect(applied).toEqual([]); // failed migration is not recorded
+
+    rmSync(dir, { recursive: true });
+  });
 });

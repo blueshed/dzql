@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-09-14
+
+### Fixed
+
+- Migrations now apply each file's statements and its `_migrations` bookkeeping row in one transaction. Previously a migration that failed partway (bad SQL, a constraint violation) could leave the schema half-applied with no record of the attempt, so the next run would neither retry nor recognize the mismatch. A failure now rolls back cleanly, leaving nothing behind to apply or to explain.
+
 ## [0.10.0] - 2026-09-14
 
 ### Changed
