@@ -154,16 +154,15 @@ export const room: Concept = {
   resolveDoc(ws) {
     return sessionDoc.read(ws.data.sessionId).room ?? undefined;
   },
+  // May this connection write this path? Whether the value itself is valid
+  // (e.g. non-blank text) is documents/room.ts::patch()'s call, not this one's.
   permit(ws, op) {
     if (op.path !== "/transcript/-" || op.op !== "add") return false;
-    const { name } = sessionDoc.read(ws.data.sessionId);
-    if (!name) return false;
-    const text = String(op.value ?? "").trim();
-    return text.length > 0;
+    return sessionDoc.read(ws.data.sessionId).name !== null;
   },
   write(ws, roomName, ops) {
     const { name } = sessionDoc.read(ws.data.sessionId);
-    const prepared = ops.map((op) => ({ ...op, value: { name, text: String(op.value ?? "").trim() } }));
+    const prepared = ops.map((op) => ({ ...op, value: { name, text: op.value } }));
 
     const result = roomDoc.patch(roomName, prepared, ws.data.sessionId);
     echoAndNotify(roomName, result.version, result.applied);

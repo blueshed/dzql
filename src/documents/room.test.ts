@@ -23,6 +23,27 @@ describe("room document", () => {
     expect(read(room).transcript.map((m) => `${m.name}: ${m.text}`)).toEqual(["Ada: hello"]);
   });
 
+  test("blank or whitespace-only text is ignored and returns no added message", () => {
+    const room = crypto.randomUUID();
+    const result = patch(room, [{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "   " } }], "session-1");
+
+    expect(result.added).toBeUndefined();
+    expect(result.applied).toEqual([]);
+    expect(read(room).transcript).toEqual([]);
+  });
+
+  test("leading and trailing whitespace is trimmed from a message's text", () => {
+    const room = crypto.randomUUID();
+    const result = patch(
+      room,
+      [{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "  hello  " } }],
+      "session-1",
+    );
+
+    expect(result.added?.text).toBe("hello");
+    expect(read(room).transcript.map((m) => m.text)).toEqual(["hello"]);
+  });
+
   test("messages read back in chronological order", () => {
     const room = crypto.randomUUID();
     patch(room, [{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "first" } }], "session-1");

@@ -620,7 +620,7 @@ describe("chat", () => {
     await login(ws, "Blank", crypto.randomUUID());
 
     write(ws, "room", [{ op: "add", path: "/transcript/-", value: "   " }]);
-    // rejected by permit (blank text): no patch echo, just the unchanged full render
+    // rejected by documents/room.ts::patch() (blank text): no patch echo, just the unchanged full render
     await expectMessage(ws, "render");
 
     const uniqueText = `after blank ${crypto.randomUUID()}`;

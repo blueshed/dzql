@@ -51,14 +51,16 @@ export function patch(name: string, ops: PatchOp[], sessionId: string, undoes?: 
 
     if (op.op === "add" && segments[1] === "-") {
       const value = op.value as { name: string; text: string };
+      const text = String(value.text ?? "").trim();
+      if (!text) continue;
       // The index the new message lands at in the full (unpaginated) history,
       // not read()'s limited view, so the inverse stays correct regardless of limit.
       // This index is only stable as long as nothing before it has been removed
       // since — undo (walking a session's own writes newest-first) relies on that.
       const index = countStmt.get(name)?.count ?? 0;
       const sentAt = Date.now();
-      insertMessageStmt.run(name, value.name, value.text, sentAt);
-      added = { name: value.name, text: value.text, sentAt };
+      insertMessageStmt.run(name, value.name, text, sentAt);
+      added = { name: value.name, text, sentAt };
 
       applied.push(op);
       inverse.unshift({ op: "remove", path: `/transcript/${index}` });

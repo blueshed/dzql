@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-09-14
+
+### Changed
+
+- A room message's "is this text valid" rule lived twice: `concepts/room.ts`'s `permit()` trimmed and length-checked it, then `write()` trimmed it again to build the value passed on. Moved the check into `documents/room.ts::patch()` instead, the same place `documents/session.ts` already owns blank name/room checks -- `permit()` now only answers "may this connection write this path" (is it `/transcript/-`, is the session logged in), and the document owns what a valid value is. Added a document-level test for both the blank-is-ignored and the trim-survives-a-valid-message cases.
+
 ## [0.17.1] - 2026-09-14
 
 ### Added
