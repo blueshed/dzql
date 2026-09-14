@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-09-14
+
+### Changed
+
+- Gestures are writes (request 3): the named wire events (`set-name`, `join-room`, `leave-room`, `logout`, `send-message`) are gone. An element now says what it writes: `<form data-write='{"doc":"session","op":"replace","path":"/name"}'>` (a form's field is the value), `<button data-write='{"doc":"session","op":"remove","path":"/room"}'>` (no value), `<li data-write='...' data-value="general">` (a `data-value` is the value). The client sends one shape up, always: `{doc, ops}`, where `doc` is a bare type name ("session" | "room") — never a concrete id, since a connection only ever sees its own session and the room it's currently in.
+- The server resolves `doc` for the connection (a concept's `resolveDoc`), checks the concept's `permit` for each op, applies through the document's `patch()`, and echoes — one generic pipeline in `server.ts`, no per-event dispatch table. `Concept` shrank from an `events` map to `render`, `resolveDoc`, `permit`, `write` (`write` covers apply + side effects + echo, since only the owning concept knows its own document's audience and side effects).
+- "Joining"/"leaving" a room is now a *consequence* of a session document write, not an event of its own: `session` emits `sessionPatched` after any successful write to its own document, and `room` subscribes to react to `/room` changes (and `/name` removal, for logout) — the same event-bus pattern already used for ending a session, generalized.
+- The patch echo's `doc` field is now the bare type too (`"session"`/`"room"`), not the internally-prefixed ledger id — a connection only ever holds one document of each type, so `window.eta.docs()` is keyed the same way.
+
+### Fixed
+
+- Refactoring `join-room`'s guard into `permit()` initially dropped the check that a session must be logged in before it can write `/room` — reintroducing the exact stale-tab session leak fixed earlier. Caught before committing by re-deriving the message sequence from the spec and checking it against the existing regression test; `permit` now requires an active session for `/room` writes, same as before.
+
 ## [0.9.0] - 2026-09-14
 
 ### Added

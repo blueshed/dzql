@@ -7,7 +7,7 @@ registerApplet("room-picker", {
     const { rooms } = ctx.props as Props;
 
     el.innerHTML = `
-      <form data-event="join-room">
+      <form data-write='{"doc":"session","op":"replace","path":"/room"}'>
         <input id="room" name="room" type="text" placeholder="Join or create a room" autocomplete="off" autofocus required />
       </form>
       <ul class="room-picker-suggestions"></ul>
@@ -23,8 +23,8 @@ registerApplet("room-picker", {
       const items = matches.map((room) => {
         const li = document.createElement("li");
         li.textContent = room;
-        li.dataset.event = "join-room";
-        li.dataset.room = room;
+        li.dataset.write = JSON.stringify({ doc: "session", op: "replace", path: "/room" });
+        li.dataset.value = room;
         return li;
       });
 

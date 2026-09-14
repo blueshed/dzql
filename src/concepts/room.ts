@@ -6,7 +6,7 @@ import type { ConnectionData } from "../connection";
 import { patchMessage } from "../json-patch";
 import type { PatchOp } from "../json-patch";
 import type { Concept } from "./concept";
-import { echoOwnSession, sessionEnded } from "./session";
+import { sessionPatched } from "./session";
 
 // Which live connections are currently subscribed to which room, for
 // broadcast. Not persisted data (see documents/room.ts for that) and not
@@ -48,7 +48,7 @@ function renderRoomSelector(name: string, rooms: string[]): string {
   return `
     <div class="user-bar">
       <span class="user-label">${escapeHtml(name)}</span>
-      <button data-event="logout">Log out</button>
+      <button data-write='{"doc":"session","op":"remove","path":"/name"}'>Log out</button>
     </div>
     <h2>Rooms</h2>
     <div data-applet="room-picker" data-props="${props}"></div>
@@ -68,12 +68,12 @@ function renderChat(name: string, room: string, people: string[], messages: Chat
     <div class="user-bar">
       <span class="user-label">${escapeHtml(name)}</span>
       <span class="room-label">#${escapeHtml(room)}</span>
-      <button data-event="leave-room">Change room</button>
-      <button data-event="logout">Log out</button>
+      <button data-write='{"doc":"session","op":"remove","path":"/room"}'>Change room</button>
+      <button data-write='{"doc":"session","op":"remove","path":"/name"}'>Log out</button>
     </div>
     <p class="people">${renderPeople(people)}</p>
     <ul class="messages" data-autoscroll>${messages.map(renderMessage).join("")}</ul>
-    <form data-event="send-message">
+    <form data-write='{"doc":"room","op":"add","path":"/transcript/-"}'>
       <input name="text" autocomplete="off" required autofocus />
       <button type="submit">Send</button>
     </form>
@@ -88,7 +88,7 @@ function peopleIn(room: string): string[] {
   return names.filter((n): n is string => n !== null);
 }
 
-export function broadcastPeople(room: string) {
+function broadcastPeople(room: string) {
   const payload = JSON.stringify({ type: "render", selector: ".people", html: renderPeople(peopleIn(room)) });
   for (const ws of roomSockets(room)) ws.send(payload);
 }
@@ -102,62 +102,37 @@ function broadcastMessage(room: string, message: ChatMessage) {
 // session's own doc) this is a broadcast, not a direct send.
 function broadcastPatch(room: string, version: number, ops: PatchOp[]) {
   if (ops.length === 0) return;
-  const payload = patchMessage(`room:${room}`, version, ops);
+  const payload = patchMessage("room", version, ops);
   for (const ws of roomSockets(room)) ws.send(payload);
 }
 
-// The room concept doesn't need session to call into it — it reacts to the
-// fact that a session ended on its own, since it's the one that cares.
-sessionEnded.on(({ ws, sessionId }) => {
-  const { room: current } = sessionDoc.read(sessionId);
-  if (current) {
-    leaveRoom(current, ws);
-    broadcastPeople(current);
+// "Joining"/"leaving" a room is now just a session document write (its
+// /room field changing) -- room reacts to that fact instead of owning a
+// join-room/leave-room event of its own.
+sessionPatched.on(({ ws, before, applied }) => {
+  for (const op of applied) {
+    if (op.path !== "/room") continue;
+    const newRoom = op.op === "remove" ? undefined : String(op.value ?? "").trim() || undefined;
+
+    if (before.room && before.room !== newRoom) {
+      leaveRoom(before.room, ws);
+      broadcastPeople(before.room);
+    }
+    if (newRoom) {
+      joinRoom(newRoom, ws);
+      broadcastPeople(newRoom);
+    }
+  }
+
+  const loggedOut = applied.some((op) => op.path === "/name" && op.op === "remove");
+  if (loggedOut && before.room) {
+    leaveRoom(before.room, ws);
+    broadcastPeople(before.room);
   }
 });
 
 export const room: Concept = {
-  events: {
-    "join-room": (ws, payload) => {
-      const { name, room: previousRoom } = sessionDoc.read(ws.data.sessionId);
-      const newRoom = String(payload.room ?? "").trim();
-      if (!name || !newRoom) return; // a logged-out session (e.g. a stale second tab) can't join a room
-
-      const result = sessionDoc.patch(ws.data.sessionId, [{ op: "replace", path: "/room", value: newRoom }]);
-      echoOwnSession(ws, result);
-
-      if (previousRoom) leaveRoom(previousRoom, ws);
-      joinRoom(newRoom, ws);
-
-      if (previousRoom) broadcastPeople(previousRoom);
-      broadcastPeople(newRoom);
-    },
-    "leave-room": (ws) => {
-      const { room: current } = sessionDoc.read(ws.data.sessionId);
-      if (!current) return;
-
-      const result = sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/room" }]);
-      echoOwnSession(ws, result);
-      leaveRoom(current, ws);
-      broadcastPeople(current);
-    },
-    "send-message": (ws, payload) => {
-      const { name, room: current } = sessionDoc.read(ws.data.sessionId);
-      const text = String(payload.text ?? "").trim();
-      if (!name || !current || !text) return false;
-
-      const { version, applied, added } = roomDoc.patch(
-        current,
-        [{ op: "add", path: "/transcript/-", value: { name, text } }],
-        ws.data.sessionId,
-      );
-      if (added) {
-        broadcastPatch(current, version, applied);
-        broadcastMessage(current, added);
-      }
-      return true; // already broadcast a targeted append; skip the automatic full render
-    },
-  },
+  docType: "room",
   render(sessionId) {
     const { name, room: current } = sessionDoc.read(sessionId);
     if (!name) return undefined; // not reached in practice: the session concept always renders first
@@ -165,6 +140,25 @@ export const room: Concept = {
 
     const { transcript } = roomDoc.read(current);
     return renderChat(name, current, peopleIn(current), transcript);
+  },
+  resolveDoc(ws) {
+    return sessionDoc.read(ws.data.sessionId).room ?? undefined;
+  },
+  permit(ws, op) {
+    if (op.path !== "/transcript/-" || op.op !== "add") return false;
+    const { name } = sessionDoc.read(ws.data.sessionId);
+    if (!name) return false;
+    const text = String(op.value ?? "").trim();
+    return text.length > 0;
+  },
+  write(ws, roomName, ops) {
+    const { name } = sessionDoc.read(ws.data.sessionId);
+    const prepared = ops.map((op) => ({ ...op, value: { name, text: String(op.value ?? "").trim() } }));
+
+    const result = roomDoc.patch(roomName, prepared, ws.data.sessionId);
+    if (result.applied.length > 0) broadcastPatch(roomName, result.version, result.applied);
+    if (result.added) broadcastMessage(roomName, result.added);
+    return { ...result, rendered: Boolean(result.added) };
   },
   onOpen(ws) {
     const { room: current } = sessionDoc.read(ws.data.sessionId);

@@ -27,10 +27,13 @@ async function waitFor(
   throw new Error(`Timed out waiting for \`${script}\`; last value: ${JSON.stringify(last)}`);
 }
 
-const NAME_FORM_VISIBLE = `document.querySelector('[data-event="set-name"]') !== null`;
+const NAME_FORM_VISIBLE = `document.querySelector('#name') !== null`;
 const ROOM_FORM_VISIBLE = `document.querySelector('#room') !== null`;
 const USER_LABEL = `document.querySelector('.user-label')?.textContent ?? null`;
 const MESSAGES_TEXT = `document.querySelector('.messages')?.textContent ?? ""`;
+const LOGOUT_SELECTOR = `[data-write='{"doc":"session","op":"remove","path":"/name"}']`;
+const LEAVE_ROOM_SELECTOR = `[data-write='{"doc":"session","op":"remove","path":"/room"}']`;
+const SEND_MESSAGE_FORM_VISIBLE = `document.querySelector('[data-write=\\'{"doc":"room","op":"add","path":"/transcript/-"}\\']') !== null`;
 
 async function submitName(view: Bun.WebView, name: string) {
   await waitFor(view, NAME_FORM_VISIBLE, (v) => v === true);
@@ -83,7 +86,7 @@ describe("app.ts in a real browser", () => {
     await submitName(view, "Linus");
     await waitFor(view, USER_LABEL, (v) => v === "Linus");
 
-    await view.click("[data-event=logout]");
+    await view.click(LOGOUT_SELECTOR);
 
     await waitFor(view, NAME_FORM_VISIBLE, (v) => v === true);
   });
@@ -94,9 +97,9 @@ describe("app.ts in a real browser", () => {
     await submitName(view, `Chatter-${crypto.randomUUID()}`);
     await joinRoom(view, crypto.randomUUID());
 
-    await waitFor(view, `document.querySelector('[data-event="send-message"]') !== null`, (v) => v === true);
+    await waitFor(view, SEND_MESSAGE_FORM_VISIBLE, (v) => v === true);
 
-    await view.click("[data-event=leave-room]");
+    await view.click(LEAVE_ROOM_SELECTOR);
 
     await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
   });
@@ -109,9 +112,9 @@ describe("app.ts in a real browser", () => {
     const alpha = `alpha-${crypto.randomUUID()}`;
     const beta = `beta-${crypto.randomUUID()}`;
     await joinRoom(view, alpha);
-    await view.click("[data-event=leave-room]");
+    await view.click(LEAVE_ROOM_SELECTOR);
     await joinRoom(view, beta);
-    await view.click("[data-event=leave-room]");
+    await view.click(LEAVE_ROOM_SELECTOR);
 
     await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
     await view.click("#room");
@@ -134,7 +137,7 @@ describe("app.ts in a real browser", () => {
 
     const target = `click-target-${crypto.randomUUID()}`;
     await joinRoom(view, target); // creates it
-    await view.click("[data-event=leave-room]");
+    await view.click(LEAVE_ROOM_SELECTOR);
 
     await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
     await view.click("#room");
@@ -261,13 +264,15 @@ describe("app.ts in a real browser", () => {
     const text = `echo test ${crypto.randomUUID()}`;
     await sendChatMessage(viewA, text);
 
-    const gainedOp = `window.eta.docs()['room:${room}']?.ops.some(
+    // request 3 onward: doc is the bare type ("room"), not a concrete id -- a
+    // connection only ever sees one room doc at a time, so no id is needed.
+    const gainedOp = `window.eta.docs()['room']?.ops.some(
       (op) => op.op === "add" && op.path === "/transcript/-" && op.value.text === ${JSON.stringify(text)}
     ) ?? false`;
     await waitFor(viewB, gainedOp, (v) => v === true);
 
     // the version tracked alongside it is a real, positive document version, not just a message counter
-    const version = await viewB.evaluate(`window.eta.docs()['room:${room}']?.version`);
+    const version = await viewB.evaluate(`window.eta.docs()['room']?.version`);
     expect(typeof version).toBe("number");
     expect(version as number).toBeGreaterThan(0);
   });

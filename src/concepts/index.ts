@@ -7,6 +7,8 @@ import { session } from "./session";
 // "no room yet" makes sense.
 export const concepts: Concept[] = [session, room];
 
+export const conceptsByDocType = new Map(concepts.map((concept) => [concept.docType, concept]));
+
 export function renderFor(sessionId: string): string {
   for (const concept of concepts) {
     const html = concept.render(sessionId);

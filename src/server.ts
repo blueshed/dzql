@@ -1,12 +1,11 @@
-import { concepts, renderFor } from "./concepts";
+import { concepts, conceptsByDocType, renderFor } from "./concepts";
 import type { ConnectionData } from "./connection";
+import type { PatchOp } from "./json-patch";
 import index from "./index.html";
 
 function pushRender(ws: Bun.ServerWebSocket<ConnectionData>) {
   ws.send(JSON.stringify({ type: "render", html: renderFor(ws.data.sessionId) }));
 }
-
-const eventHandlers = new Map(concepts.flatMap((concept) => Object.entries(concept.events)));
 
 export function createServer(port: number | string = process.env.PORT ?? 3000) {
   const server = Bun.serve<ConnectionData>({
@@ -39,17 +38,26 @@ export function createServer(port: number | string = process.env.PORT ?? 3000) {
         for (const concept of concepts) concept.onOpen?.(ws);
         pushRender(ws);
       },
-      message(ws, message) {
-        let event: { name?: string; payload?: Record<string, unknown> };
+      message(ws, raw) {
+        let message: { doc?: string; ops?: PatchOp[] };
         try {
-          event = JSON.parse(String(message));
+          message = JSON.parse(String(raw));
         } catch {
           return;
         }
 
-        const handler = event.name ? eventHandlers.get(event.name) : undefined;
-        const skipRender = handler?.(ws, event.payload ?? {});
-        if (!skipRender) pushRender(ws);
+        const concept = message.doc ? conceptsByDocType.get(message.doc) : undefined;
+        const ops = message.ops ?? [];
+        let rendered = false;
+
+        if (concept && ops.length > 0) {
+          const docId = concept.resolveDoc(ws);
+          if (docId && ops.every((op) => concept.permit(ws, op))) {
+            rendered = Boolean(concept.write(ws, docId, ops).rendered);
+          }
+        }
+
+        if (!rendered) pushRender(ws);
       },
       close(ws) {
         for (const concept of concepts) concept.onClose?.(ws);

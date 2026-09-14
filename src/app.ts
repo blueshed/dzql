@@ -82,26 +82,34 @@ function appendHtml(selector: string, html: string) {
   applyPostUpdateBehaviors(target);
 }
 
-function send(name: string, payload: Record<string, unknown> = {}) {
-  socket?.send(JSON.stringify({ name, payload }));
+type WriteSpec = { doc: string; op: PatchOp["op"]; path: string };
+
+function send(doc: string, ops: PatchOp[]) {
+  socket?.send(JSON.stringify({ doc, ops }));
 }
 
+// An element says what it writes via data-write; a form's field is the
+// value, a button/li's data-value is the value, nothing else goes up.
 app.addEventListener("submit", (event) => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
   event.preventDefault();
-  const eventName = form.dataset.event;
-  if (!eventName) return;
-  send(eventName, Object.fromEntries(new FormData(form)));
+  const spec = form.dataset.write;
+  if (!spec) return;
+  const { doc, op, path } = JSON.parse(spec) as WriteSpec;
+  const values = [...new FormData(form).values()];
+  const value = values.length === 1 ? values[0] : undefined;
+  send(doc, [{ op, path, value }]);
   form.reset();
 });
 
 app.addEventListener("click", (event) => {
-  const target = (event.target as Element).closest<HTMLElement>("[data-event]");
+  const target = (event.target as Element).closest<HTMLElement>("[data-write]");
   if (!target || target.tagName === "FORM") return;
   event.preventDefault();
-  const { event: eventName, ...payload } = target.dataset;
-  send(eventName!, payload);
+  const { doc, op, path } = JSON.parse(target.dataset.write!) as WriteSpec;
+  const value = target.dataset.value;
+  send(doc, value !== undefined ? [{ op, path, value }] : [{ op, path }]);
 });
 
 function connect(delay = RECONNECT_DELAY_MS) {

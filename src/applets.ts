@@ -1,6 +1,8 @@
+import type { PatchOp } from "./json-patch";
+
 export type AppletContext = {
   props: unknown;
-  send: (name: string, payload?: Record<string, unknown>) => void;
+  send: (doc: string, ops: PatchOp[]) => void;
 };
 
 export type Applet = {
