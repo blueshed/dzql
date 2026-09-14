@@ -43,7 +43,7 @@ async function joinRoom(view: Bun.WebView, room: string) {
   await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
   await view.click("#room");
   await view.type(room);
-  await view.click("button[type=submit]");
+  await view.press("Enter");
 }
 
 async function sendChatMessage(view: Bun.WebView, text: string) {
@@ -99,6 +99,59 @@ describe("app.ts in a real browser", () => {
     await view.click("[data-event=leave-room]");
 
     await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
+  });
+
+  test("the room picker filters suggestions as you type, without a round trip", async () => {
+    await using view = new Bun.WebView();
+    await view.navigate(server.url.toString());
+    await submitName(view, `Filter-${crypto.randomUUID()}`);
+
+    const alpha = `alpha-${crypto.randomUUID()}`;
+    const beta = `beta-${crypto.randomUUID()}`;
+    await joinRoom(view, alpha);
+    await view.click("[data-event=leave-room]");
+    await joinRoom(view, beta);
+    await view.click("[data-event=leave-room]");
+
+    await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
+    await view.click("#room");
+    await view.type("alpha");
+
+    const suggestions = await waitFor(
+      view,
+      `[...document.querySelectorAll('.room-picker-suggestions li')].map(li => li.textContent)`,
+      (v) => Array.isArray(v) && v.includes(alpha),
+    );
+
+    expect(suggestions).toContain(alpha);
+    expect(suggestions).not.toContain(beta);
+  });
+
+  test("clicking a suggested room joins it", async () => {
+    await using view = new Bun.WebView();
+    await view.navigate(server.url.toString());
+    await submitName(view, `Clicker-${crypto.randomUUID()}`);
+
+    const target = `click-target-${crypto.randomUUID()}`;
+    await joinRoom(view, target); // creates it
+    await view.click("[data-event=leave-room]");
+
+    await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
+    await view.click("#room");
+    await view.type(target);
+    await waitFor(
+      view,
+      `document.querySelector('.room-picker-suggestions li')?.textContent ?? null`,
+      (v) => v === target,
+    );
+
+    await view.click(".room-picker-suggestions li");
+
+    await waitFor(
+      view,
+      `document.querySelector('.room-label')?.textContent ?? ""`,
+      (v) => typeof v === "string" && v.includes(target),
+    );
   });
 
   test("a sent chat message appears in the message list", async () => {

@@ -1,23 +1,52 @@
+import { applets } from "./applets";
+import "./applets/room-picker"; // registers itself; app.ts only knows the generic mount contract
+
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
 
 const app = document.querySelector<HTMLElement>("#app")!;
 let socket: WebSocket | undefined;
 
+const mounted = new Map<HTMLElement, () => void>();
+
+function unmountAll() {
+  for (const cleanup of mounted.values()) cleanup();
+  mounted.clear();
+}
+
+function mountApplets() {
+  app.querySelectorAll<HTMLElement>("[data-applet]").forEach((el) => {
+    if (mounted.has(el)) return;
+    const applet = applets[el.dataset.applet!];
+    if (!applet) return;
+    const props = el.dataset.props ? JSON.parse(el.dataset.props) : undefined;
+    const cleanup = applet.mount(el, { props, send });
+    mounted.set(el, cleanup ?? (() => {}));
+  });
+}
+
+function resolveTarget(selector: string): HTMLElement | null {
+  return selector === "#app" ? app : app.querySelector<HTMLElement>(selector);
+}
+
 function applyPostUpdateBehaviors() {
   app.querySelector<HTMLElement>("[autofocus]")?.focus();
   app.querySelectorAll<HTMLElement>("[data-autoscroll]").forEach((el) => {
     el.scrollTop = el.scrollHeight;
   });
+  mountApplets();
 }
 
-function render(html: string) {
-  app.innerHTML = html;
+function render(html: string, selector = "#app") {
+  const target = resolveTarget(selector);
+  if (!target) return;
+  if (target === app) unmountAll();
+  target.innerHTML = html;
   applyPostUpdateBehaviors();
 }
 
 function appendHtml(selector: string, html: string) {
-  const target = app.querySelector(selector);
+  const target = resolveTarget(selector);
   if (!target) return;
   target.insertAdjacentHTML("beforeend", html);
   applyPostUpdateBehaviors();
@@ -51,7 +80,7 @@ function connect(delay = RECONNECT_DELAY_MS) {
 
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
-    if (message.type === "render") render(message.html);
+    if (message.type === "render") render(message.html, message.selector);
     else if (message.type === "append") appendHtml(message.selector, message.html);
   });
 

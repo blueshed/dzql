@@ -100,7 +100,7 @@ describe("websocket session protocol", () => {
 
     expect(message.html).toContain("&lt;b&gt;Ada&lt;/b&gt;");
     expect(message.html).toContain('data-event="logout"');
-    expect(message.html).toContain('data-event="join-room"');
+    expect(message.html).toContain('data-applet="room-picker"');
     ws.close();
   });
 
@@ -134,7 +134,7 @@ describe("websocket session protocol", () => {
     ws.send(JSON.stringify({ name: "leave-room", payload: {} }));
     const message = await nextMessage(ws);
 
-    expect(message.html).toContain('data-event="join-room"');
+    expect(message.html).toContain('data-applet="room-picker"');
     ws.close();
   });
 

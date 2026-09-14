@@ -19,23 +19,15 @@ function renderNameForm(): string {
   `;
 }
 
-function renderRoomButton(room: string): string {
-  return `<li><button data-event="join-room" data-room="${escapeHtml(room)}">${escapeHtml(room)}</button></li>`;
-}
-
 function renderRoomSelector(name: string, rooms: string[]): string {
+  const props = escapeHtml(JSON.stringify({ rooms }));
   return `
     <div class="user-bar">
       <span class="user-label">${escapeHtml(name)}</span>
       <button data-event="logout">Log out</button>
     </div>
     <h2>Rooms</h2>
-    ${rooms.length ? `<ul class="room-list">${rooms.map(renderRoomButton).join("")}</ul>` : "<p>No rooms yet &mdash; start one below.</p>"}
-    <form data-event="join-room">
-      <label for="room">Join or create a room</label>
-      <input id="room" name="room" autocomplete="off" autofocus required />
-      <button type="submit">Join</button>
-    </form>
+    <div data-applet="room-picker" data-props="${props}"></div>
   `;
 }
 
