@@ -24,7 +24,7 @@ function opened(ws: WebSocket): Promise<void> {
   return new Promise((resolve) => ws.addEventListener("open", () => resolve(), { once: true }));
 }
 
-function nextMessage(ws: WebSocket): Promise<{ type: string; html: string }> {
+function nextMessage(ws: WebSocket): Promise<{ type: string; html: string; selector?: string }> {
   return new Promise((resolve) =>
     ws.addEventListener("message", (event) => resolve(JSON.parse(event.data as string)), { once: true }),
   );
@@ -216,9 +216,15 @@ describe("chat", () => {
     const bReceived = nextMessage(b); // subscribe before sending, to avoid a race
     a.send(JSON.stringify({ name: "send-message", payload: { text: uniqueText } }));
     const aReceived = await nextMessage(a);
+    const bMessage = await bReceived;
 
+    // a granular append, not a full view re-render
+    expect(aReceived.type).toBe("append");
+    expect(aReceived.selector).toBe(".messages");
+    expect(aReceived.html).not.toContain('data-event="send-message"');
     expect(aReceived.html).toContain(uniqueText);
-    expect((await bReceived).html).toContain(uniqueText);
+    expect(bMessage.type).toBe("append");
+    expect(bMessage.html).toContain(uniqueText);
     a.close();
     b.close();
   });
@@ -228,12 +234,14 @@ describe("chat", () => {
     await login(ws, "Blank", crypto.randomUUID());
 
     ws.send(JSON.stringify({ name: "send-message", payload: { text: "   " } }));
-    await nextMessage(ws);
+    const blankResponse = await nextMessage(ws);
+    expect(blankResponse.type).toBe("render"); // no-op falls through to the normal full render
 
     const uniqueText = `after blank ${crypto.randomUUID()}`;
     ws.send(JSON.stringify({ name: "send-message", payload: { text: uniqueText } }));
     const message = await nextMessage(ws);
 
+    expect(message.type).toBe("append");
     expect(message.html).toContain(uniqueText);
     ws.close();
   });
@@ -252,6 +260,7 @@ describe("chat", () => {
     a.send(JSON.stringify({ name: "send-message", payload: { text: uniqueText } }));
     const message = await nextMessage(a);
 
+    expect(message.type).toBe("append");
     expect(message.html).toContain(uniqueText);
     a.close();
   });

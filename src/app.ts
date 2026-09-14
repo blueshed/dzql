@@ -4,11 +4,23 @@ const MAX_RECONNECT_DELAY_MS = 10_000;
 const app = document.querySelector<HTMLElement>("#app")!;
 let socket: WebSocket | undefined;
 
+function applyPostUpdateBehaviors() {
+  app.querySelector<HTMLElement>("[autofocus]")?.focus();
+  app.querySelectorAll<HTMLElement>("[data-autoscroll]").forEach((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
+}
+
 function render(html: string) {
   app.innerHTML = html;
-  app.querySelector<HTMLElement>("[autofocus]")?.focus();
-  const messages = app.querySelector(".messages");
-  if (messages) messages.scrollTop = messages.scrollHeight;
+  applyPostUpdateBehaviors();
+}
+
+function appendHtml(selector: string, html: string) {
+  const target = app.querySelector(selector);
+  if (!target) return;
+  target.insertAdjacentHTML("beforeend", html);
+  applyPostUpdateBehaviors();
 }
 
 function send(name: string, payload: Record<string, unknown> = {}) {
@@ -22,6 +34,7 @@ app.addEventListener("submit", (event) => {
   const eventName = form.dataset.event;
   if (!eventName) return;
   send(eventName, Object.fromEntries(new FormData(form)));
+  form.reset();
 });
 
 app.addEventListener("click", (event) => {
@@ -39,6 +52,7 @@ function connect(delay = RECONNECT_DELAY_MS) {
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
     if (message.type === "render") render(message.html);
+    else if (message.type === "append") appendHtml(message.selector, message.html);
   });
 
   socket.addEventListener("close", () => {

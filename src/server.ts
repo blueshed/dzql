@@ -1,5 +1,6 @@
 import {
   addMessage,
+  type ChatMessage,
   clearSession,
   ensureRoom,
   getSessionName,
@@ -10,15 +11,16 @@ import {
 } from "./db";
 import { joinRoom, leaveRoom, roomSockets } from "./rooms";
 import type { SessionData } from "./session";
-import { renderFor } from "./views";
+import { renderFor, renderMessage } from "./views";
 import index from "./index.html";
 
 function pushRender(ws: Bun.ServerWebSocket<SessionData>) {
   ws.send(JSON.stringify({ type: "render", html: renderFor(ws.data.sessionId) }));
 }
 
-function broadcastRoom(room: string) {
-  for (const ws of roomSockets(room)) pushRender(ws);
+function broadcastMessage(room: string, message: ChatMessage) {
+  const payload = JSON.stringify({ type: "append", selector: ".messages", html: renderMessage(message) });
+  for (const ws of roomSockets(room)) ws.send(payload);
 }
 
 export function createServer(port: number | string = process.env.PORT ?? 3000) {
@@ -84,8 +86,7 @@ export function createServer(port: number | string = process.env.PORT ?? 3000) {
           const room = getSessionRoom(ws.data.sessionId);
           const text = String(event.payload?.text ?? "").trim();
           if (name && room && text) {
-            addMessage(room, name, text);
-            broadcastRoom(room);
+            broadcastMessage(room, addMessage(room, name, text));
             return;
           }
         } else if (event.name === "logout") {

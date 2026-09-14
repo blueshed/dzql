@@ -90,8 +90,10 @@ export function listRooms(): string[] {
 
 export type ChatMessage = { name: string; text: string; sentAt: number };
 
-export function addMessage(room: string, name: string, text: string): void {
-  insertMessageStmt.run(room, name, text, Date.now());
+export function addMessage(room: string, name: string, text: string): ChatMessage {
+  const sentAt = Date.now();
+  insertMessageStmt.run(room, name, text, sentAt);
+  return { name, text, sentAt };
 }
 
 export function getMessages(room: string, limit = 50): ChatMessage[] {

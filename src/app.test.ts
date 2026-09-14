@@ -114,6 +114,25 @@ describe("app.ts in a real browser", () => {
     expect(messages).toContain(text);
   });
 
+  test("new messages are appended without replacing the existing message list DOM node", async () => {
+    await using view = new Bun.WebView();
+    await view.navigate(server.url.toString());
+    await submitName(view, `Persist-${crypto.randomUUID()}`);
+    await joinRoom(view, crypto.randomUUID());
+
+    await sendChatMessage(view, "first message");
+    await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("first message"));
+
+    // tag the live node; a full re-render would replace it and lose this
+    await view.evaluate(`document.querySelector('.messages').dataset.marker = "untouched"`);
+
+    await sendChatMessage(view, "second message");
+    await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("second message"));
+
+    const marker = await view.evaluate(`document.querySelector('.messages').dataset.marker`);
+    expect(marker).toBe("untouched");
+  });
+
   test("a message sent from one browser appears live in another browser in the same room", async () => {
     await using viewA = new Bun.WebView();
     await using viewB = new Bun.WebView();
