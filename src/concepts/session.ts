@@ -1,7 +1,10 @@
+import type { ServerWebSocket } from "bun";
 import * as sessionDoc from "../documents/session";
-import { leaveRoom } from "../rooms";
+import type { SessionData } from "../session";
+import { createEvent } from "./bus";
 import type { Concept } from "./concept";
-import { broadcastPeople } from "./room";
+
+export const sessionEnded = createEvent<{ ws: ServerWebSocket<SessionData>; sessionId: string }>();
 
 function renderNameForm(): string {
   return `
@@ -19,12 +22,8 @@ export const session: Concept = {
       sessionDoc.patch(ws.data.sessionId, [{ op: "replace", path: "/name", value: payload.name }]);
     },
     logout: (ws) => {
-      const { room } = sessionDoc.read(ws.data.sessionId);
+      sessionEnded.emit({ ws, sessionId: ws.data.sessionId });
       sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/name" }]);
-      if (room) {
-        leaveRoom(room, ws);
-        broadcastPeople(room);
-      }
     },
   },
   render(sessionId) {

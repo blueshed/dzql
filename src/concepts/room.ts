@@ -3,6 +3,7 @@ import type { ChatMessage } from "../documents/room";
 import * as sessionDoc from "../documents/session";
 import { joinRoom, leaveRoom, roomSockets } from "../rooms";
 import type { Concept } from "./concept";
+import { sessionEnded } from "./session";
 
 function escapeHtml(value: string): string {
   return value
@@ -67,6 +68,16 @@ function broadcastMessage(room: string, message: ChatMessage) {
   const payload = JSON.stringify({ type: "append", selector: ".messages", html: renderMessage(message) });
   for (const ws of roomSockets(room)) ws.send(payload);
 }
+
+// The room concept doesn't need session to call into it — it reacts to the
+// fact that a session ended on its own, since it's the one that cares.
+sessionEnded.on(({ ws, sessionId }) => {
+  const { room: current } = sessionDoc.read(sessionId);
+  if (current) {
+    leaveRoom(current, ws);
+    broadcastPeople(current);
+  }
+});
 
 export const room: Concept = {
   events: {
