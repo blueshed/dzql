@@ -33,3 +33,18 @@ bun run test    # bun test --coverage
 - `window.eta.docs()` — documents this tab has seen, with version and recent ops.
 - `window.eta.inspect()` — the above, plus the last write this tab sent and whether it was echoed.
 - Send `{"type":"inspect"}` over the websocket to ask the server the same question from its side: this connection's session, the docs it sees, and the latest ledger entry behind each.
+
+## CLI
+
+A terminal client for the same protocol — it never touches rendered HTML, only ops and `inspect`, since those are what's actually true.
+
+```
+bun run cli name Ada
+bun run cli room lobby
+bun run cli send "hello"
+bun run cli undo
+bun run cli inspect
+bun run cli watch     # streams patches for the room you're in until you stop it
+```
+
+Identity persists across invocations in a local `.eta-session` file (a cookie jar of one), the same way a browser tab would. Point it at a non-default server with `ETA_URL=ws://host:port`.

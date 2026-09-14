@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-09-14
+
+### Added
+
+- A CLI (`bun run cli`): `name`, `room`, `leave`, `logout`, `send`, `undo`, `inspect`, and `watch`, talking the same `{doc, ops}`/`{type:"inspect"}` protocol the browser does. It never touches rendered HTML — only ops and `inspect`, proving the document/ledger layer stands on its own without a browser. Identity persists across invocations via a local `.eta-session` file, the same role a browser cookie plays. `src/cli.ts` is a thin, untested entry point (argv, process I/O) in the same spirit as `start.ts`; the actual command logic lives in `src/cli/commands.ts` and is tested against a real server, same discipline as everywhere else.
+
 ## [0.15.0] - 2026-09-14
 
 ### Changed
