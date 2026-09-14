@@ -109,10 +109,10 @@ sessionEnded.on(({ ws, sessionId }) => {
 export const room: Concept = {
   events: {
     "join-room": (ws, payload) => {
+      const { name, room: previousRoom } = sessionDoc.read(ws.data.sessionId);
       const newRoom = String(payload.room ?? "").trim();
-      if (!newRoom) return;
+      if (!name || !newRoom) return; // a logged-out session (e.g. a stale second tab) can't join a room
 
-      const previousRoom = sessionDoc.read(ws.data.sessionId).room;
       sessionDoc.patch(ws.data.sessionId, [{ op: "replace", path: "/room", value: newRoom }]);
 
       if (previousRoom) leaveRoom(previousRoom, ws);

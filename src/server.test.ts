@@ -179,6 +179,36 @@ describe("websocket session protocol", () => {
     second.close();
   });
 
+  test("a stale tab cannot join a room after the session has logged out elsewhere", async () => {
+    const cookie = `session_id=${crypto.randomUUID()}`;
+
+    const first = connect(cookie);
+    await opened(first);
+    await nextMessage(first);
+    first.send(JSON.stringify({ name: "set-name", payload: { name: "Ada" } }));
+    await nextMessage(first);
+    first.send(JSON.stringify({ name: "logout", payload: {} }));
+    await nextMessage(first);
+
+    // a second, stale tab shares the same session cookie and still has its old room-selector UI open
+    const second = connect(cookie);
+    await opened(second);
+    await nextMessage(second); // name form: this session is logged out
+
+    const room = crypto.randomUUID();
+    second.send(JSON.stringify({ name: "join-room", payload: { room } }));
+    const rejected = await nextMessage(second);
+    expect(rejected.html).toContain('data-event="set-name"'); // still logged out, not in `room`
+
+    // reactivating afterward must not reveal a room leaked by the rejected join
+    second.send(JSON.stringify({ name: "set-name", payload: { name: "Ada again" } }));
+    const reactivated = await nextMessage(second);
+    expect(reactivated.html).toContain('data-applet="room-picker"'); // room selector, not a chat view
+
+    first.close();
+    second.close();
+  });
+
   test("reconnecting with the same session cookie remembers the name", async () => {
     const cookie = `session_id=${crypto.randomUUID()}`;
 

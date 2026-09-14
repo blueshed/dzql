@@ -14,8 +14,15 @@ function unmountAll() {
   mounted.clear();
 }
 
-function mountApplets() {
-  app.querySelectorAll<HTMLElement>("[data-applet]").forEach((el) => {
+// `target` itself may carry the matched attribute (e.g. <ul class="messages" data-autoscroll>
+// is the append target), not just contain it, so check both rather than only descendants.
+function matchesOrContains<T extends Element>(root: Element, selector: string): T[] {
+  const self = root.matches(selector) ? [root as unknown as T] : [];
+  return [...self, ...root.querySelectorAll<T>(selector)];
+}
+
+function mountApplets(scope: HTMLElement) {
+  matchesOrContains<HTMLElement>(scope, "[data-applet]").forEach((el) => {
     if (mounted.has(el)) return;
     const applet = applets[el.dataset.applet!];
     if (!applet) return;
@@ -29,12 +36,14 @@ function resolveTarget(selector: string): HTMLElement | null {
   return selector === "#app" ? app : app.querySelector<HTMLElement>(selector);
 }
 
-function applyPostUpdateBehaviors() {
-  app.querySelector<HTMLElement>("[autofocus]")?.focus();
-  app.querySelectorAll<HTMLElement>("[data-autoscroll]").forEach((el) => {
+// Scoped to `target`, not the whole page: an unrelated update elsewhere (e.g. a
+// presence-only render of .people) must not steal focus or reset scroll position.
+function applyPostUpdateBehaviors(target: HTMLElement) {
+  matchesOrContains<HTMLElement>(target, "[autofocus]")[0]?.focus();
+  matchesOrContains<HTMLElement>(target, "[data-autoscroll]").forEach((el) => {
     el.scrollTop = el.scrollHeight;
   });
-  mountApplets();
+  mountApplets(target);
 }
 
 function render(html: string, selector = "#app") {
@@ -42,14 +51,14 @@ function render(html: string, selector = "#app") {
   if (!target) return;
   if (target === app) unmountAll();
   target.innerHTML = html;
-  applyPostUpdateBehaviors();
+  applyPostUpdateBehaviors(target);
 }
 
 function appendHtml(selector: string, html: string) {
   const target = resolveTarget(selector);
   if (!target) return;
   target.insertAdjacentHTML("beforeend", html);
-  applyPostUpdateBehaviors();
+  applyPostUpdateBehaviors(target);
 }
 
 function send(name: string, payload: Record<string, unknown> = {}) {

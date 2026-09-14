@@ -186,6 +186,44 @@ describe("app.ts in a real browser", () => {
     expect(marker).toBe("untouched");
   });
 
+  test("a presence-only update does not reset the message list scroll position", async () => {
+    await using viewA = new Bun.WebView();
+    await using viewB = new Bun.WebView();
+
+    await viewA.navigate(server.url.toString());
+    await submitName(viewA, `ScrollA-${crypto.randomUUID()}`);
+    const room = crypto.randomUUID();
+    await joinRoom(viewA, room);
+
+    for (let i = 0; i < 15; i++) {
+      await sendChatMessage(viewA, `filler message ${i}`);
+    }
+    await waitFor(viewA, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("filler message 14"));
+
+    // confirm the list actually overflows, so scrollTop 0 vs "at the bottom" is a real distinction
+    const overflows = await viewA.evaluate(
+      `document.querySelector('.messages').scrollHeight > document.querySelector('.messages').clientHeight`,
+    );
+    expect(overflows).toBe(true);
+
+    // scroll away from the bottom, simulating a user reading older messages
+    await viewA.evaluate(`document.querySelector('.messages').scrollTop = 0`);
+    const scrollTopScript = `document.querySelector('.messages').scrollTop`;
+    expect((await viewA.evaluate(scrollTopScript)) as number).toBe(0);
+
+    // someone else joining the room triggers a .people-only broadcast to viewA, unrelated to .messages
+    await viewB.navigate(server.url.toString());
+    await submitName(viewB, `ScrollB-${crypto.randomUUID()}`);
+    await joinRoom(viewB, room);
+    await waitFor(
+      viewA,
+      `document.querySelector('.people')?.textContent ?? ""`,
+      (v) => typeof v === "string" && v.includes("ScrollB"),
+    );
+
+    expect((await viewA.evaluate(scrollTopScript)) as number).toBe(0);
+  });
+
   test("a message sent from one browser appears live in another browser in the same room", async () => {
     await using viewA = new Bun.WebView();
     await using viewB = new Bun.WebView();
