@@ -1,24 +1,12 @@
-import * as roomDoc from "./documents/room";
-import * as sessionDoc from "./documents/session";
-import { joinRoom, leaveRoom, roomSockets } from "./rooms";
+import { concepts, renderFor } from "./concepts";
 import type { SessionData } from "./session";
-import { renderFor, renderMessage, renderPeople } from "./views";
 import index from "./index.html";
 
 function pushRender(ws: Bun.ServerWebSocket<SessionData>) {
   ws.send(JSON.stringify({ type: "render", html: renderFor(ws.data.sessionId) }));
 }
 
-function broadcastMessage(room: string, message: roomDoc.ChatMessage) {
-  const payload = JSON.stringify({ type: "append", selector: ".messages", html: renderMessage(message) });
-  for (const ws of roomSockets(room)) ws.send(payload);
-}
-
-function broadcastPeople(room: string) {
-  const html = renderPeople(roomDoc.read(room).people);
-  const payload = JSON.stringify({ type: "render", selector: ".people", html });
-  for (const ws of roomSockets(room)) ws.send(payload);
-}
+const eventHandlers = new Map(concepts.flatMap((concept) => Object.entries(concept.events)));
 
 export function createServer(port: number | string = process.env.PORT ?? 3000) {
   const server = Bun.serve<SessionData>({
@@ -48,8 +36,7 @@ export function createServer(port: number | string = process.env.PORT ?? 3000) {
     },
     websocket: {
       open(ws) {
-        const { room } = sessionDoc.read(ws.data.sessionId);
-        if (room) joinRoom(room, ws);
+        for (const concept of concepts) concept.onOpen?.(ws);
         pushRender(ws);
       },
       message(ws, message) {
@@ -60,44 +47,12 @@ export function createServer(port: number | string = process.env.PORT ?? 3000) {
           return;
         }
 
-        if (event.name === "set-name") {
-          sessionDoc.patch(ws.data.sessionId, [{ op: "replace", path: "/name", value: event.payload?.name }]);
-        } else if (event.name === "join-room") {
-          const previousRoom = sessionDoc.read(ws.data.sessionId).room;
-          sessionDoc.patch(
-            ws.data.sessionId,
-            [{ op: "replace", path: "/room", value: event.payload?.room }],
-            ws,
-          );
-          if (previousRoom) broadcastPeople(previousRoom);
-          const { room } = sessionDoc.read(ws.data.sessionId);
-          if (room) broadcastPeople(room);
-        } else if (event.name === "leave-room") {
-          const { room } = sessionDoc.read(ws.data.sessionId);
-          sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/room" }], ws);
-          if (room) broadcastPeople(room);
-        } else if (event.name === "send-message") {
-          const { name, room } = sessionDoc.read(ws.data.sessionId);
-          const text = String(event.payload?.text ?? "").trim();
-          if (name && room && text) {
-            const added = roomDoc.patch(room, [{ op: "add", path: "/transcript/-", value: { name, text } }]);
-            if (added) broadcastMessage(room, added);
-            return;
-          }
-        } else if (event.name === "logout") {
-          const { room } = sessionDoc.read(ws.data.sessionId);
-          sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/name" }], ws);
-          if (room) broadcastPeople(room);
-        }
-
-        pushRender(ws);
+        const handler = event.name ? eventHandlers.get(event.name) : undefined;
+        const skipRender = handler?.(ws, event.payload ?? {});
+        if (!skipRender) pushRender(ws);
       },
       close(ws) {
-        const { room } = sessionDoc.read(ws.data.sessionId);
-        if (room) {
-          leaveRoom(room, ws);
-          broadcastPeople(room);
-        }
+        for (const concept of concepts) concept.onClose?.(ws);
       },
     },
     development: process.env.NODE_ENV !== "production",
