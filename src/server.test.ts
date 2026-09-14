@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "./json-patch";
+import { history } from "./ledger";
 import { createServer } from "./server";
 
 let server: ReturnType<typeof createServer>;
@@ -298,6 +299,83 @@ describe("websocket write protocol", () => {
     second.close();
   });
 
+  test("undo walks back a session's own last write", async () => {
+    const ws = connect();
+    await opened(ws);
+    await expectMessage(ws, "render");
+
+    write(ws, "session", [{ op: "replace", path: "/name", value: "Ada" }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render"); // room selector
+
+    write(ws, "session", [{ op: "add", path: "/undo" }]);
+    const undonePatch = await expectMessage(ws, "patch");
+    expect(undonePatch.doc).toBe("session");
+    expect(undonePatch.ops).toEqual([{ op: "remove", path: "/name" }]);
+    const rendered = await expectMessage(ws, "render");
+    expect(rendered.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // logged out again
+
+    ws.close();
+  });
+
+  test("undo is a cursor, not a toggle: pressing it twice walks back two writes", async () => {
+    const ws = connect();
+    await opened(ws);
+    await expectMessage(ws, "render");
+
+    write(ws, "session", [{ op: "replace", path: "/name", value: "Ada" }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
+    write(ws, "session", [{ op: "replace", path: "/room", value: "general" }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render"); // people broadcast for the room just joined
+    await expectMessage(ws, "render"); // full chat view
+
+    write(ws, "session", [{ op: "add", path: "/undo" }]);
+    const firstUndo = await expectMessage(ws, "patch");
+    expect(firstUndo.ops).toEqual([{ op: "remove", path: "/room" }]); // back to the room selector
+    await expectMessage(ws, "render");
+
+    write(ws, "session", [{ op: "add", path: "/undo" }]);
+    const secondUndo = await expectMessage(ws, "patch");
+    expect(secondUndo.ops).toEqual([{ op: "remove", path: "/name" }]); // not a redo of the room join
+    const rendered = await expectMessage(ws, "render");
+    expect(rendered.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
+
+    // nothing left to undo: a third press just re-renders the current state
+    write(ws, "session", [{ op: "add", path: "/undo" }]);
+    const noOp = await expectMessage(ws, "render");
+    expect(noOp.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
+
+    ws.close();
+  });
+
+  test("a stale tab cannot undo after the session has logged out elsewhere", async () => {
+    const cookie = `session_id=${crypto.randomUUID()}`;
+
+    const first = connect(cookie);
+    await opened(first);
+    await expectMessage(first, "render");
+    write(first, "session", [{ op: "replace", path: "/name", value: "Ada" }]);
+    await expectMessage(first, "patch");
+    await expectMessage(first, "render");
+    write(first, "session", [{ op: "remove", path: "/name" }]);
+    await expectMessage(first, "patch");
+    await expectMessage(first, "render");
+
+    const second = connect(cookie);
+    await opened(second);
+    await expectMessage(second, "render"); // name form: this session is logged out
+
+    write(second, "session", [{ op: "add", path: "/undo" }]);
+    // rejected by permit (logged out): no patch echo, just the unchanged render
+    const rejected = await expectMessage(second, "render");
+    expect(rejected.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
+
+    first.close();
+    second.close();
+  });
+
   test("reconnecting with the same session cookie remembers the name", async () => {
     const cookie = `session_id=${crypto.randomUUID()}`;
 
@@ -434,6 +512,60 @@ describe("chat", () => {
     expect(aReceived.html).not.toContain("data-write");
     expect(aReceived.html).toContain(uniqueText);
     expect(bMessage.html).toContain(uniqueText);
+    a.close();
+    b.close();
+  });
+
+  test("undo removes a session's own last chat message, updating every connection in the room", async () => {
+    const room = crypto.randomUUID();
+    const a = connect();
+    await login(a, "Alice", room);
+
+    const bJoined = nextMessage(a); // subscribe before Bob joins, to avoid missing the broadcast
+    const b = connect();
+    await login(b, "Bob", room);
+    await bJoined; // people broadcast triggered by Bob joining, not this test's focus
+
+    const firstText = `first ${crypto.randomUUID()}`;
+    const secondText = `second ${crypto.randomUUID()}`;
+
+    let bIncoming = nextMessage(b); // subscribe before sending, to avoid a race
+    write(a, "room", [{ op: "add", path: "/transcript/-", value: firstText }]);
+    await expectMessage(a, "patch");
+    await expectMessage(a, "append");
+    await bIncoming; // Bob's patch echo
+    await expectMessage(b, "append");
+
+    bIncoming = nextMessage(b);
+    write(a, "room", [{ op: "add", path: "/transcript/-", value: secondText }]);
+    await expectMessage(a, "patch");
+    await expectMessage(a, "append");
+    await bIncoming;
+    await expectMessage(b, "append");
+
+    // Alice presses undo: her last write was the second message, so that's what goes.
+    const bPatch = nextMessage(b); // subscribe before undo, to avoid a race
+    const bRender = nextMessage(b);
+    write(a, "session", [{ op: "add", path: "/undo" }]);
+
+    const aPatch = await expectMessage(a, "patch");
+    expect(aPatch.doc).toBe("room");
+    expect(aPatch.ops).toEqual([{ op: "remove", path: "/transcript/1" }]);
+    const aRender = await expectMessage(a, "render");
+    expect(aRender.selector).toBe(".messages");
+    expect(aRender.html).toContain(firstText);
+    expect(aRender.html).not.toContain(secondText);
+
+    expect(await bPatch).toMatchObject({ type: "patch", doc: "room" });
+    const bRenderMessage = await bRender;
+    expect(bRenderMessage.selector).toBe(".messages");
+    expect(bRenderMessage.html).toContain(firstText);
+    expect(bRenderMessage.html).not.toContain(secondText);
+
+    const entries = history(`room:${room}`);
+    expect(entries).toHaveLength(3); // two sends, one undo
+    expect(entries[0]?.ops).toEqual([{ op: "remove", path: "/transcript/1" }]);
+
     a.close();
     b.close();
   });

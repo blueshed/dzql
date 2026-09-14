@@ -33,7 +33,15 @@ export function read(id: string): SessionDocument {
 
 export type SessionPatchResult = { version: number; applied: PatchOp[] };
 
-export function patch(id: string, ops: PatchOp[]): SessionPatchResult {
+// A `replace` inverse can't restore "no value" (patch() treats a blank/null
+// value as invalid and ignores it) -- restoring a field that was previously
+// unset must be expressed as `remove`, or undo of a session's very first
+// name-set or room-join would silently do nothing.
+function restoreOp(path: string, value: string | null): PatchOp {
+  return value !== null ? { op: "replace", path, value } : { op: "remove", path };
+}
+
+export function patch(id: string, ops: PatchOp[], undoes?: number): SessionPatchResult {
   const applied: PatchOp[] = [];
   const inverse: PatchOp[] = [];
 
@@ -46,7 +54,7 @@ export function patch(id: string, ops: PatchOp[]): SessionPatchResult {
       if (!name) continue;
       upsertNameStmt.run(id, name, Date.now());
       applied.push(op);
-      inverse.unshift({ op: "replace", path: "/name", value: before.name });
+      inverse.unshift(restoreOp("/name", before.name));
     } else if (field === "name" && op.op === "remove") {
       // Logout clears both name and room in one statement (see revokeStmt),
       // so its inverse must restore both, or undo would leave the session
@@ -54,23 +62,23 @@ export function patch(id: string, ops: PatchOp[]): SessionPatchResult {
       revokeStmt.run(Date.now(), id);
       applied.push(op);
       if (before.room !== null) {
-        inverse.unshift({ op: "replace", path: "/room", value: before.room });
+        inverse.unshift(restoreOp("/room", before.room));
       }
-      inverse.unshift({ op: "replace", path: "/name", value: before.name });
+      inverse.unshift(restoreOp("/name", before.name));
     } else if (field === "room" && op.op !== "remove") {
       const room = String(op.value ?? "").trim();
       if (!room) continue;
       ensureExists(room);
       joinRoomStmt.run(id, room, Date.now());
       applied.push(op);
-      inverse.unshift({ op: "replace", path: "/room", value: before.room });
+      inverse.unshift(restoreOp("/room", before.room));
     } else if (field === "room" && op.op === "remove") {
       clearRoomStmt.run(id);
       applied.push(op);
-      inverse.unshift({ op: "replace", path: "/room", value: before.room });
+      inverse.unshift(restoreOp("/room", before.room));
     }
   }
 
-  const version = record(`session:${id}`, applied, inverse, id);
+  const version = record(`session:${id}`, applied, inverse, id, undoes);
   return { version, applied };
 }

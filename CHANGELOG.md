@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-09-14
+
+### Added
+
+- Undo (request 4): a session's last write, walked back. `undo(sessionId)` finds the newest not-yet-undone entry this session wrote in the ledger, to any document, and applies its `inverse` as a new patch — so the undo is itself in the ledger and echoed. It's a cursor, not a toggle: `nextUndo`'s query excludes both entries already undone and undo-entries themselves, so pressing it repeatedly walks further back instead of toggling the same write on and off. One "Undo" button in the user bar, wired as `{"doc":"session","op":"add","path":"/undo"}` — undo is a per-session cursor, not a real field on the session document, but it's triggered through it since a session only ever has one.
+- `documents/room.ts::patch()` now applies `remove /transcript/<index>` ops (previously only `add .../-` was implemented), needed so undo can actually walk back a sent message. Only reachable via undo: the room concept's `permit()` still never allows a bare "remove" write from the wire.
+
+### Fixed
+
+- Two of `documents/session.ts`'s computed inverses could restore a field to `null` via `{ op: "replace", value: null }` — but `patch()` treats a blank/null value as invalid and ignores it, so undoing a session's very first name-set or room-join would silently do nothing instead of logging out or leaving the room. Restoring "no value" is now expressed as `remove`, not `replace` with `null`.
+
 ## [0.10.7] - 2026-09-14
 
 ### Changed

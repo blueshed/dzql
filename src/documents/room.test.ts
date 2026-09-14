@@ -40,11 +40,37 @@ describe("room document", () => {
     expect(read(room, 2).transcript.map((m) => m.text)).toEqual(["message 3", "message 4"]);
   });
 
-  test("an unrecognized op is ignored and returns no added message", () => {
+  test("removing /transcript/N with nothing at that index is ignored and returns no added message", () => {
     const room = crypto.randomUUID();
     const result = patch(room, [{ op: "remove", path: "/transcript/0" }], "session-1");
     expect(result.added).toBeUndefined();
     expect(result.applied).toEqual([]);
+    expect(read(room).transcript).toEqual([]);
+  });
+
+  test("removing /transcript/N deletes that message, with an inverse that re-adds it", () => {
+    const room = crypto.randomUUID();
+    patch(room, [{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "first" } }], "session-1");
+    patch(room, [{ op: "add", path: "/transcript/-", value: { name: "Grace", text: "second" } }], "session-2");
+
+    const result = patch(room, [{ op: "remove", path: "/transcript/1" }], "session-2");
+
+    expect(result.applied).toEqual([{ op: "remove", path: "/transcript/1" }]);
+    expect(read(room).transcript.map((m) => m.text)).toEqual(["first"]);
+
+    const entries = history(`room:${room}`);
+    expect(entries[0]?.inverse).toEqual([
+      { op: "add", path: "/transcript/-", value: { name: "Grace", text: "second" } },
+    ]);
+  });
+
+  test("a write can be attributed as undoing an earlier ledger entry", () => {
+    const room = crypto.randomUUID();
+    patch(room, [{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "first" } }], "session-1");
+    const original = history(`room:${room}`)[0]!;
+
+    patch(room, original.inverse, "session-1", original.id);
+
     expect(read(room).transcript).toEqual([]);
   });
 
@@ -71,10 +97,26 @@ describe("room document", () => {
     expect(entries[1]?.inverse).toEqual([{ op: "remove", path: "/transcript/0" }]);
   });
 
-  test("an ignored (unrecognized) op does not record a ledger entry", () => {
+  test("removing from an empty room does not record a ledger entry", () => {
     const room = crypto.randomUUID();
     patch(room, [{ op: "remove", path: "/transcript/0" }], "session-1");
 
     expect(history(`room:${room}`)).toEqual([]);
+  });
+
+  test("ops outside /transcript and malformed transcript indices are ignored", () => {
+    const room = crypto.randomUUID();
+    const result = patch(
+      room,
+      [
+        { op: "replace", path: "/name", value: "nope" },
+        { op: "remove", path: "/transcript/not-a-number" },
+        { op: "remove", path: "/transcript/-1" },
+      ],
+      "session-1",
+    );
+
+    expect(result.applied).toEqual([]);
+    expect(read(room).transcript).toEqual([]);
   });
 });

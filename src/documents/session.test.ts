@@ -92,7 +92,9 @@ describe("session document", () => {
     const entries = history(`session:${id}`);
     expect(entries).toHaveLength(1);
     expect(entries[0]?.sessionId).toBe(id);
-    expect(entries[0]?.inverse).toEqual([{ op: "replace", path: "/name", value: null }]);
+    // Not `{ op: "replace", value: null }`: patch() treats a blank/null value as
+    // invalid and ignores it, so restoring "no name" must be a real removal.
+    expect(entries[0]?.inverse).toEqual([{ op: "remove", path: "/name" }]);
   });
 
   test("a patch that changes nothing does not record a ledger entry or bump the version", () => {
