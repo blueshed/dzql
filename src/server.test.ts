@@ -13,7 +13,7 @@ afterAll(() => {
   server.stop(true);
 });
 
-type WireMessage = { type: string; html: string; selector?: string; doc?: string; version?: number; ops?: unknown[] };
+type WireMessage = { type: string; html: string; doc?: string; version?: number; ops?: unknown[] };
 
 // A persistent per-socket FIFO queue, not a fresh {once:true} listener per
 // nextMessage() call: two messages sent back-to-back by the server (e.g. a
@@ -419,14 +419,12 @@ describe("chat", () => {
 
     const joinedUpdate = await joined;
     expect(joinedUpdate.type).toBe("render");
-    expect(joinedUpdate.selector).toBe(".people");
-    expect(joinedUpdate.html).toBe("Alice, Bob");
+    expect(joinedUpdate.html).toContain('<p class="people">Alice, Bob</p>');
 
     const left = nextMessage(a);
     b.close();
     const leftUpdate = await left;
-    expect(leftUpdate.selector).toBe(".people");
-    expect(leftUpdate.html).toBe("Alice");
+    expect(leftUpdate.html).toContain('<p class="people">Alice</p>');
 
     a.close();
   });
@@ -450,15 +448,14 @@ describe("chat", () => {
     await login(c, "Carol", room);
 
     const aJoinedUpdate = await aJoined;
-    expect(aJoinedUpdate.selector).toBe(".people");
-    expect(aJoinedUpdate.html).toBe("Alice, Carol"); // not "Alice, Alice, Carol": two sockets, one person
-    expect((await bJoined).html).toBe("Alice, Carol");
+    // not "Alice, Alice, Carol": two sockets, one person
+    expect(aJoinedUpdate.html).toContain('<p class="people">Alice, Carol</p>');
+    expect((await bJoined).html).toContain('<p class="people">Alice, Carol</p>');
 
     const aStillThere = nextMessage(a); // subscribe before b's tab closes
     b.close();
     const stillThereUpdate = await aStillThere;
-    expect(stillThereUpdate.selector).toBe(".people");
-    expect(stillThereUpdate.html).toBe("Alice, Carol"); // Alice's other tab is still in the room
+    expect(stillThereUpdate.html).toContain('<p class="people">Alice, Carol</p>'); // Alice's other tab is still in the room
 
     a.close();
     c.close();
@@ -478,8 +475,7 @@ describe("chat", () => {
     write(b, "session", [{ op: "remove", path: "/name" }]);
     const bLeftUpdate = await bLeft;
 
-    expect(bLeftUpdate.selector).toBe(".people");
-    expect(bLeftUpdate.html).toBe("Alice");
+    expect(bLeftUpdate.html).toContain('<p class="people">Alice</p>');
 
     a.close();
     b.close();
@@ -497,21 +493,17 @@ describe("chat", () => {
 
     const uniqueText = `hello from alice ${crypto.randomUUID()}`;
     const bPatch = nextMessage(b); // subscribe before sending, to avoid a race
+    const bRender = nextMessage(b);
     write(a, "room", [{ op: "add", path: "/transcript/-", value: uniqueText }]);
 
     const aPatch = await expectMessage(a, "patch");
     expect(aPatch.doc).toBe("room");
     expect(aPatch.ops).toEqual([{ op: "add", path: "/transcript/-", value: { name: "Alice", text: uniqueText } }]);
-    const aReceived = await expectMessage(a, "append");
+    const aRender = await expectMessage(a, "render");
+    expect(aRender.html).toContain(uniqueText);
 
     expect(await bPatch).toMatchObject({ type: "patch", doc: "room" });
-    const bMessage = await expectMessage(b, "append");
-
-    // a granular append, not a full view re-render
-    expect(aReceived.selector).toBe(".messages");
-    expect(aReceived.html).not.toContain("data-write");
-    expect(aReceived.html).toContain(uniqueText);
-    expect(bMessage.html).toContain(uniqueText);
+    expect((await bRender).html).toContain(uniqueText);
     a.close();
     b.close();
   });
@@ -530,18 +522,20 @@ describe("chat", () => {
     const secondText = `second ${crypto.randomUUID()}`;
 
     let bIncoming = nextMessage(b); // subscribe before sending, to avoid a race
+    let bRenderIncoming = nextMessage(b);
     write(a, "room", [{ op: "add", path: "/transcript/-", value: firstText }]);
     await expectMessage(a, "patch");
-    await expectMessage(a, "append");
+    await expectMessage(a, "render");
     await bIncoming; // Bob's patch echo
-    await expectMessage(b, "append");
+    await bRenderIncoming;
 
     bIncoming = nextMessage(b);
+    bRenderIncoming = nextMessage(b);
     write(a, "room", [{ op: "add", path: "/transcript/-", value: secondText }]);
     await expectMessage(a, "patch");
-    await expectMessage(a, "append");
+    await expectMessage(a, "render");
     await bIncoming;
-    await expectMessage(b, "append");
+    await bRenderIncoming;
 
     // Alice presses undo: her last write was the second message, so that's what goes.
     const bPatch = nextMessage(b); // subscribe before undo, to avoid a race
@@ -552,13 +546,11 @@ describe("chat", () => {
     expect(aPatch.doc).toBe("room");
     expect(aPatch.ops).toEqual([{ op: "remove", path: "/transcript/1" }]);
     const aRender = await expectMessage(a, "render");
-    expect(aRender.selector).toBe(".messages");
     expect(aRender.html).toContain(firstText);
     expect(aRender.html).not.toContain(secondText);
 
     expect(await bPatch).toMatchObject({ type: "patch", doc: "room" });
     const bRenderMessage = await bRender;
-    expect(bRenderMessage.selector).toBe(".messages");
     expect(bRenderMessage.html).toContain(firstText);
     expect(bRenderMessage.html).not.toContain(secondText);
 
@@ -581,7 +573,7 @@ describe("chat", () => {
     const uniqueText = `after blank ${crypto.randomUUID()}`;
     write(ws, "room", [{ op: "add", path: "/transcript/-", value: uniqueText }]);
     await expectMessage(ws, "patch");
-    const message = await expectMessage(ws, "append");
+    const message = await expectMessage(ws, "render");
 
     expect(message.html).toContain(uniqueText);
     ws.close();
@@ -619,7 +611,7 @@ describe("chat", () => {
     const uniqueText = `still works after b left ${crypto.randomUUID()}`;
     write(a, "room", [{ op: "add", path: "/transcript/-", value: uniqueText }]);
     await expectMessage(a, "patch");
-    const message = await expectMessage(a, "append");
+    const message = await expectMessage(a, "render");
 
     expect(message.html).toContain(uniqueText);
     a.close();

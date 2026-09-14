@@ -1,6 +1,7 @@
 import { applets } from "../applets";
 import "../applets/room-picker"; // registers itself; app.ts only knows the generic mount contract
 import type { PatchOp } from "../json-patch";
+import { morph } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -39,20 +40,8 @@ window.eta = {
 
 const mounted = new Map<HTMLElement, () => void>();
 
-function unmountAll() {
-  for (const cleanup of mounted.values()) cleanup();
-  mounted.clear();
-}
-
-// `target` itself may carry the matched attribute (e.g. <ul class="messages" data-autoscroll>
-// is the append target), not just contain it, so check both rather than only descendants.
-function matchesOrContains<T extends Element>(root: Element, selector: string): T[] {
-  const self = root.matches(selector) ? [root as unknown as T] : [];
-  return [...self, ...root.querySelectorAll<T>(selector)];
-}
-
-function mountApplets(scope: HTMLElement) {
-  matchesOrContains<HTMLElement>(scope, "[data-applet]").forEach((el) => {
+function mountApplets() {
+  app.querySelectorAll<HTMLElement>("[data-applet]").forEach((el) => {
     if (mounted.has(el)) return;
     const applet = applets[el.dataset.applet!];
     if (!applet) return;
@@ -62,33 +51,33 @@ function mountApplets(scope: HTMLElement) {
   });
 }
 
-function resolveTarget(selector: string): HTMLElement | null {
-  return selector === "#app" ? app : app.querySelector<HTMLElement>(selector);
+function onAppletRemoved(el: Element) {
+  mounted.get(el as HTMLElement)?.();
+  mounted.delete(el as HTMLElement);
 }
 
-// Scoped to `target`, not the whole page: an unrelated update elsewhere (e.g. a
-// presence-only render of .people) must not steal focus or reset scroll position.
-function applyPostUpdateBehaviors(target: HTMLElement) {
-  matchesOrContains<HTMLElement>(target, "[autofocus]")[0]?.focus();
-  matchesOrContains<HTMLElement>(target, "[data-autoscroll]").forEach((el) => {
-    el.scrollTop = el.scrollHeight;
+function onAppletPropsChanged(el: Element, props: unknown) {
+  applets[(el as HTMLElement).dataset.applet!]?.update?.(el as HTMLElement, props);
+}
+
+// A render morphs the existing tree instead of replacing it, so an element a
+// person is focused on, typing into, or has scrolled survives a render that
+// doesn't concern it -- see morph.ts. [data-applet] elements are a boundary
+// the morph never descends into (see onAppletRemoved/onAppletPropsChanged);
+// mounting a newly-appeared one still happens here, same as before.
+function render(html: string) {
+  const autoscrolled = [...app.querySelectorAll<HTMLElement>("[data-autoscroll]")];
+  const before = autoscrolled.map((el) => el.childNodes.length);
+
+  morph(app, html, { onAppletRemoved, onAppletPropsChanged });
+  mountApplets();
+
+  // Only pin to the bottom if this render actually added content here --
+  // an unrelated update (someone else's presence, an undo elsewhere) must
+  // not yank the scroll position out from under someone reading history.
+  autoscrolled.forEach((el, i) => {
+    if (app.contains(el) && el.childNodes.length > before[i]) el.scrollTop = el.scrollHeight;
   });
-  mountApplets(target);
-}
-
-function render(html: string, selector = "#app") {
-  const target = resolveTarget(selector);
-  if (!target) return;
-  if (target === app) unmountAll();
-  target.innerHTML = html;
-  applyPostUpdateBehaviors(target);
-}
-
-function appendHtml(selector: string, html: string) {
-  const target = resolveTarget(selector);
-  if (!target) return;
-  target.insertAdjacentHTML("beforeend", html);
-  applyPostUpdateBehaviors(target);
 }
 
 type WriteSpec = { doc: string; op: PatchOp["op"]; path: string };
@@ -96,6 +85,10 @@ type WriteSpec = { doc: string; op: PatchOp["op"]; path: string };
 function send(doc: string, ops: PatchOp[]) {
   socket?.send(JSON.stringify({ doc, ops }));
 }
+
+// A form resets on the echo of its own write, not on submit, so a refused
+// or lost write hands the person's text back instead of silently eating it.
+let pendingReset: { form: HTMLFormElement; doc: string } | undefined;
 
 // An element says what it writes via data-write; a form's field is the
 // value, a button/li's data-value is the value, nothing else goes up.
@@ -108,8 +101,8 @@ app.addEventListener("submit", (event) => {
   const { doc, op, path } = JSON.parse(spec) as WriteSpec;
   const values = [...new FormData(form).values()];
   const value = values.length === 1 ? values[0] : undefined;
+  pendingReset = { form, doc };
   send(doc, [{ op, path, value }]);
-  form.reset();
 });
 
 app.addEventListener("click", (event) => {
@@ -133,9 +126,15 @@ function connect() {
 
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
-    if (message.type === "render") render(message.html, message.selector);
-    else if (message.type === "append") appendHtml(message.selector, message.html);
-    else if (message.type === "patch") recordPatch(message.doc, message.version, message.ops);
+    if (message.type === "render") {
+      render(message.html);
+    } else if (message.type === "patch") {
+      recordPatch(message.doc, message.version, message.ops);
+      if (pendingReset && pendingReset.doc === message.doc && message.ops.length > 0) {
+        pendingReset.form.reset();
+        pendingReset = undefined;
+      }
+    }
   });
 
   socket.addEventListener("close", () => {

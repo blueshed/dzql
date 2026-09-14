@@ -6,6 +6,7 @@ import type { ConnectionData } from "../connection";
 import { patchMessage } from "../json-patch";
 import type { PatchOp } from "../json-patch";
 import type { Concept } from "./concept";
+import { renderRequested } from "./render";
 import { sessionPatched, undoApplied } from "./session";
 
 // Which live connections are currently subscribed to which room, for
@@ -92,29 +93,6 @@ function peopleIn(room: string): string[] {
   return [...new Set(names.filter((n): n is string => n !== null))];
 }
 
-function broadcastPeople(room: string) {
-  const payload = JSON.stringify({ type: "render", selector: ".people", html: renderPeople(peopleIn(room)) });
-  for (const ws of roomSockets(room)) ws.send(payload);
-}
-
-function broadcastMessage(room: string, message: ChatMessage) {
-  const payload = JSON.stringify({ type: "append", selector: ".messages", html: renderMessage(message) });
-  for (const ws of roomSockets(room)) ws.send(payload);
-}
-
-// Undo has no granular "remove at index" wire vocabulary of its own (that
-// would be inventing a node set); it re-renders the whole list instead,
-// same as any other transcript change that isn't a plain append.
-function broadcastMessages(room: string) {
-  const { transcript } = roomDoc.read(room);
-  const payload = JSON.stringify({
-    type: "render",
-    selector: ".messages",
-    html: transcript.map(renderMessage).join(""),
-  });
-  for (const ws of roomSockets(room)) ws.send(payload);
-}
-
 // Every connection in the room can see the room document, so (unlike a
 // session's own doc) this is a broadcast, not a direct send.
 function broadcastPatch(room: string, version: number, ops: PatchOp[]) {
@@ -133,29 +111,29 @@ sessionPatched.on(({ ws, before, applied }) => {
 
     if (before.room && before.room !== newRoom) {
       leaveRoom(before.room, ws);
-      broadcastPeople(before.room);
+      renderRequested.emit(roomSockets(before.room));
     }
     if (newRoom) {
       joinRoom(newRoom, ws);
-      broadcastPeople(newRoom);
+      renderRequested.emit(roomSockets(newRoom));
     }
   }
 
   const loggedOut = applied.some((op) => op.path === "/name" && op.op === "remove");
   if (loggedOut && before.room) {
     leaveRoom(before.room, ws);
-    broadcastPeople(before.room);
+    renderRequested.emit(roomSockets(before.room));
   }
 });
 
 // Undo is triggered through the session doc (see concepts/session.ts) but
 // may land on a room's document -- react to that the same way a direct
-// room write would, echoing the patch and refreshing the transcript for
-// everyone currently in the room, not just whoever pressed undo.
+// room write would, echoing the patch and refreshing the view for everyone
+// currently in the room, not just whoever pressed undo.
 undoApplied.on(({ docType, docId, version, applied }) => {
   if (docType !== "room" || applied.length === 0) return;
   broadcastPatch(docId, version, applied);
-  broadcastMessages(docId);
+  renderRequested.emit(roomSockets(docId));
 });
 
 export const room: Concept = {
@@ -183,9 +161,11 @@ export const room: Concept = {
     const prepared = ops.map((op) => ({ ...op, value: { name, text: String(op.value ?? "").trim() } }));
 
     const result = roomDoc.patch(roomName, prepared, ws.data.sessionId);
-    if (result.applied.length > 0) broadcastPatch(roomName, result.version, result.applied);
-    if (result.added) broadcastMessage(roomName, result.added);
-    return { ...result, rendered: Boolean(result.added) };
+    if (result.applied.length > 0) {
+      broadcastPatch(roomName, result.version, result.applied);
+      renderRequested.emit(roomSockets(roomName));
+    }
+    return { ...result, rendered: result.applied.length > 0 };
   },
   onOpen(ws) {
     const { room: current } = sessionDoc.read(ws.data.sessionId);
@@ -195,7 +175,7 @@ export const room: Concept = {
     const { room: current } = sessionDoc.read(ws.data.sessionId);
     if (current) {
       leaveRoom(current, ws);
-      broadcastPeople(current);
+      renderRequested.emit(roomSockets(current));
     }
   },
 };

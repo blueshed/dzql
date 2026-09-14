@@ -1,4 +1,5 @@
 import { concepts, conceptsByDocType, renderFor } from "./concepts";
+import { renderRequested } from "./concepts/render";
 import type { ConnectionData } from "./connection";
 import type { PatchOp } from "./json-patch";
 import index from "./client/index.html";
@@ -6,6 +7,10 @@ import index from "./client/index.html";
 function pushRender(ws: Bun.ServerWebSocket<ConnectionData>) {
   ws.send(JSON.stringify({ type: "render", html: renderFor(ws.data.sessionId) }));
 }
+
+renderRequested.on((sockets) => {
+  for (const ws of sockets) pushRender(ws);
+});
 
 export function createServer(port: number | string = process.env.PORT ?? 3000) {
   const server = Bun.serve<ConnectionData>({

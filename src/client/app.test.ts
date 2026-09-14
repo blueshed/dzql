@@ -192,7 +192,30 @@ describe("app.ts in a real browser", () => {
     expect(messages).toContain(text);
   });
 
-  test("new messages are appended without replacing the existing message list DOM node", async () => {
+  test("a sent message clears the input, but a rejected (blank) one hands the text back", async () => {
+    await using view = new Bun.WebView();
+    await view.navigate(server.url.toString());
+    await submitName(view, `Typist-${crypto.randomUUID()}`);
+    await joinRoom(view, crypto.randomUUID());
+
+    // whitespace-only passes the input's `required` check but is rejected server-side
+    // (no patch echo), so the form must not reset -- the write was refused, not lost.
+    await view.click("input[name=text]");
+    await view.type("   ");
+    await view.click("button[type=submit]");
+    await Bun.sleep(200);
+    expect((await view.evaluate(`document.querySelector('input[name=text]').value`)) as string).toBe("   ");
+
+    await view.evaluate(`document.querySelector('input[name=text]').value = ""`);
+    const text = `real message ${crypto.randomUUID()}`;
+    await sendChatMessage(view, text);
+    await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes(text));
+
+    // this write was echoed (applied), so the form resets
+    expect((await view.evaluate(`document.querySelector('input[name=text]').value`)) as string).toBe("");
+  });
+
+  test("new messages are morphed in without replacing the existing message list DOM node", async () => {
     await using view = new Bun.WebView();
     await view.navigate(server.url.toString());
     await submitName(view, `Persist-${crypto.randomUUID()}`);
@@ -201,13 +224,15 @@ describe("app.ts in a real browser", () => {
     await sendChatMessage(view, "first message");
     await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("first message"));
 
-    // tag the live node; a full re-render would replace it and lose this
-    await view.evaluate(`document.querySelector('.messages').dataset.marker = "untouched"`);
+    // Tag the live node with a JS property (not an attribute -- morph legitimately
+    // reconciles attributes against the server HTML, which would strip one). A
+    // replaced node would come back without this; a morphed one keeps it.
+    await view.evaluate(`document.querySelector('.messages')._probe = "untouched"`);
 
     await sendChatMessage(view, "second message");
     await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("second message"));
 
-    const marker = await view.evaluate(`document.querySelector('.messages').dataset.marker`);
+    const marker = await view.evaluate(`document.querySelector('.messages')._probe`);
     expect(marker).toBe("untouched");
   });
 
@@ -267,6 +292,39 @@ describe("app.ts in a real browser", () => {
     await sendChatMessage(viewA, text);
 
     await waitFor(viewB, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes(text));
+  });
+
+  test("browser A's half-typed message and caret survive a re-render triggered by browser B", async () => {
+    await using viewA = new Bun.WebView();
+    await using viewB = new Bun.WebView();
+
+    await viewA.navigate(server.url.toString());
+    await viewB.navigate(server.url.toString());
+
+    await submitName(viewA, `TypistA-${crypto.randomUUID()}`);
+    await submitName(viewB, `TypistB-${crypto.randomUUID()}`);
+
+    const room = crypto.randomUUID();
+    await joinRoom(viewA, room);
+    await joinRoom(viewB, room);
+
+    const halfMessage = "half a mess";
+    await viewA.click("input[name=text]");
+    await viewA.type(halfMessage);
+    await viewA.evaluate(`document.querySelector('input[name=text]').setSelectionRange(3, 3)`);
+
+    const text = `from B ${crypto.randomUUID()}`;
+    await sendChatMessage(viewB, text);
+
+    // A re-renders as a consequence of B's message -- morphing, not replacing,
+    // is what should let its own half-typed text and caret survive that.
+    await waitFor(viewA, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes(text));
+
+    expect((await viewA.evaluate(`document.querySelector('input[name=text]').value`)) as string).toBe(halfMessage);
+    expect(
+      (await viewA.evaluate(`document.activeElement === document.querySelector('input[name=text]')`)) as boolean,
+    ).toBe(true);
+    expect((await viewA.evaluate(`document.querySelector('input[name=text]').selectionStart`)) as number).toBe(3);
   });
 
   test("eta.docs() gains an add /transcript/- op when another browser sends a message", async () => {

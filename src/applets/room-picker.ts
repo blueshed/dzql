@@ -2,9 +2,16 @@ import { registerApplet } from "../applets";
 
 type Props = { rooms: string[] };
 
+// The applet manages its own container by hand (see the [data-applet]
+// boundary in morph.ts), so its live state -- the current rooms list and
+// how to re-render against it -- lives here, addressable by element, for
+// update() to reach after a props change without losing the typed filter.
+const instances = new WeakMap<HTMLElement, { rooms: string[]; render(): void }>();
+
 registerApplet("room-picker", {
   mount(el, ctx) {
-    const { rooms } = ctx.props as Props;
+    const state = { rooms: (ctx.props as Props).rooms, render: () => {} };
+    instances.set(el, state);
 
     el.innerHTML = `
       <form data-write='{"doc":"session","op":"replace","path":"/room"}'>
@@ -16,9 +23,9 @@ registerApplet("room-picker", {
     const input = el.querySelector("input")!;
     const list = el.querySelector("ul")!;
 
-    function renderSuggestions() {
+    state.render = () => {
       const query = input.value.trim().toLowerCase();
-      const matches = query ? rooms.filter((room) => room.toLowerCase().includes(query)) : rooms;
+      const matches = query ? state.rooms.filter((room) => room.toLowerCase().includes(query)) : state.rooms;
 
       const items = matches.map((room) => {
         const li = document.createElement("li");
@@ -36,9 +43,17 @@ registerApplet("room-picker", {
       }
 
       list.replaceChildren(...items);
-    }
+    };
 
-    input.addEventListener("input", renderSuggestions);
-    renderSuggestions();
+    input.addEventListener("input", state.render);
+    state.render();
+
+    return () => instances.delete(el);
+  },
+  update(el, props) {
+    const state = instances.get(el);
+    if (!state) return;
+    state.rooms = (props as Props).rooms;
+    state.render(); // re-filter against the new list, leaving the typed query untouched
   },
 });

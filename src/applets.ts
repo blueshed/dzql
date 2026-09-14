@@ -7,6 +7,8 @@ export type AppletContext = {
 
 export type Applet = {
   mount(el: HTMLElement, ctx: AppletContext): void | (() => void);
+  /** Called instead of a remount when a mounted applet's element survives a render but its data-props changed. */
+  update?(el: HTMLElement, props: unknown): void;
 };
 
 export const applets: Record<string, Applet> = {};
