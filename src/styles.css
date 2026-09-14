@@ -1,8 +1,43 @@
 :root {
-  color-scheme: light dark;
-  font-family: system-ui, sans-serif;
+  color-scheme: dark;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 body {
-  margin: 2rem;
+  margin: 0;
+  min-height: 100vh;
+  background: #0b0f0b;
+  color: #d8f5d8;
+}
+
+#app {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+#app input,
+#app button {
+  font: inherit;
+  background: #111;
+  color: inherit;
+  border: 1px solid #2f6f2f;
+  padding: 0.4rem 0.6rem;
+}
+
+#app button {
+  background: #143214;
+  cursor: pointer;
+}
+
+#app form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.user-bar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
 }
