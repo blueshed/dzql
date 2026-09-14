@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "eta",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--watch", "src/start.ts"],
+      "port": 3000
+    }
+  ]
+}
