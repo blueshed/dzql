@@ -1,0 +1,14 @@
+CREATE TABLE rooms (
+  name TEXT PRIMARY KEY,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  room TEXT NOT NULL,
+  name TEXT NOT NULL,
+  text TEXT NOT NULL,
+  sent_at INTEGER NOT NULL
+);
+
+ALTER TABLE sessions ADD COLUMN room TEXT;

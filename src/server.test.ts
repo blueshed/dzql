@@ -205,6 +205,22 @@ describe("chat", () => {
     await nextMessage(ws);
   }
 
+  test("a room's people list includes everyone currently joined", async () => {
+    const room = crypto.randomUUID();
+    const a = connect();
+    await login(a, "Alice", room);
+    const b = connect();
+    await login(b, "Bob", room);
+
+    // force a fresh render for `a`; presence isn't broadcast live on join, only reflected on the next render
+    a.send(JSON.stringify({ name: "send-message", payload: { text: "   " } }));
+    const message = await nextMessage(a);
+
+    expect(message.html).toContain('<p class="people">Alice, Bob</p>');
+    a.close();
+    b.close();
+  });
+
   test("send-message broadcasts to every connected room member", async () => {
     const room = crypto.randomUUID();
     const a = connect();

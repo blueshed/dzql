@@ -1,14 +1,5 @@
-import {
-  addMessage,
-  type ChatMessage,
-  clearSession,
-  ensureRoom,
-  getSessionName,
-  getSessionRoom,
-  leaveCurrentRoom,
-  setSessionName,
-  setSessionRoom,
-} from "./db";
+import * as roomDoc from "./documents/room";
+import * as sessionDoc from "./documents/session";
 import { joinRoom, leaveRoom, roomSockets } from "./rooms";
 import type { SessionData } from "./session";
 import { renderFor, renderMessage } from "./views";
@@ -18,7 +9,7 @@ function pushRender(ws: Bun.ServerWebSocket<SessionData>) {
   ws.send(JSON.stringify({ type: "render", html: renderFor(ws.data.sessionId) }));
 }
 
-function broadcastMessage(room: string, message: ChatMessage) {
+function broadcastMessage(room: string, message: roomDoc.ChatMessage) {
   const payload = JSON.stringify({ type: "append", selector: ".messages", html: renderMessage(message) });
   for (const ws of roomSockets(room)) ws.send(payload);
 }
@@ -51,7 +42,7 @@ export function createServer(port: number | string = process.env.PORT ?? 3000) {
     },
     websocket: {
       open(ws) {
-        const room = getSessionRoom(ws.data.sessionId);
+        const { room } = sessionDoc.read(ws.data.sessionId);
         if (room) joinRoom(room, ws);
         pushRender(ws);
       },
@@ -64,41 +55,31 @@ export function createServer(port: number | string = process.env.PORT ?? 3000) {
         }
 
         if (event.name === "set-name") {
-          const name = String(event.payload?.name ?? "").trim();
-          if (name) setSessionName(ws.data.sessionId, name);
+          sessionDoc.patch(ws.data.sessionId, [{ op: "replace", path: "/name", value: event.payload?.name }]);
         } else if (event.name === "join-room") {
-          const room = String(event.payload?.room ?? "").trim();
-          if (room) {
-            const previousRoom = getSessionRoom(ws.data.sessionId);
-            if (previousRoom) leaveRoom(previousRoom, ws);
-            ensureRoom(room);
-            setSessionRoom(ws.data.sessionId, room);
-            joinRoom(room, ws);
-          }
+          sessionDoc.patch(
+            ws.data.sessionId,
+            [{ op: "replace", path: "/room", value: event.payload?.room }],
+            ws,
+          );
         } else if (event.name === "leave-room") {
-          const room = getSessionRoom(ws.data.sessionId);
-          if (room) {
-            leaveRoom(room, ws);
-            leaveCurrentRoom(ws.data.sessionId);
-          }
+          sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/room" }], ws);
         } else if (event.name === "send-message") {
-          const name = getSessionName(ws.data.sessionId);
-          const room = getSessionRoom(ws.data.sessionId);
+          const { name, room } = sessionDoc.read(ws.data.sessionId);
           const text = String(event.payload?.text ?? "").trim();
           if (name && room && text) {
-            broadcastMessage(room, addMessage(room, name, text));
+            const added = roomDoc.patch(room, [{ op: "add", path: "/transcript/-", value: { name, text } }]);
+            if (added) broadcastMessage(room, added);
             return;
           }
         } else if (event.name === "logout") {
-          const room = getSessionRoom(ws.data.sessionId);
-          if (room) leaveRoom(room, ws);
-          clearSession(ws.data.sessionId);
+          sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/name" }], ws);
         }
 
         pushRender(ws);
       },
       close(ws) {
-        const room = getSessionRoom(ws.data.sessionId);
+        const { room } = sessionDoc.read(ws.data.sessionId);
         if (room) leaveRoom(room, ws);
       },
     },

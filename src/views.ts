@@ -1,4 +1,6 @@
-import { type ChatMessage, getMessages, getSessionName, getSessionRoom, listRooms } from "./db";
+import type { ChatMessage } from "./documents/room";
+import * as roomDoc from "./documents/room";
+import * as sessionDoc from "./documents/session";
 
 function escapeHtml(value: string): string {
   return value
@@ -35,7 +37,7 @@ export function renderMessage(message: ChatMessage): string {
   return `<li><strong>${escapeHtml(message.name)}:</strong> ${escapeHtml(message.text)}</li>`;
 }
 
-function renderChat(name: string, room: string, messages: ChatMessage[]): string {
+function renderChat(name: string, room: string, people: string[], messages: ChatMessage[]): string {
   return `
     <div class="user-bar">
       <span class="user-label">${escapeHtml(name)}</span>
@@ -43,6 +45,7 @@ function renderChat(name: string, room: string, messages: ChatMessage[]): string
       <button data-event="leave-room">Change room</button>
       <button data-event="logout">Log out</button>
     </div>
+    <p class="people">${people.map(escapeHtml).join(", ")}</p>
     <ul class="messages" data-autoscroll>${messages.map(renderMessage).join("")}</ul>
     <form data-event="send-message">
       <input name="text" autocomplete="off" required autofocus />
@@ -52,11 +55,10 @@ function renderChat(name: string, room: string, messages: ChatMessage[]): string
 }
 
 export function renderFor(sessionId: string): string {
-  const name = getSessionName(sessionId);
+  const { name, room } = sessionDoc.read(sessionId);
   if (!name) return renderNameForm();
+  if (!room) return renderRoomSelector(name, roomDoc.list());
 
-  const room = getSessionRoom(sessionId);
-  if (!room) return renderRoomSelector(name, listRooms());
-
-  return renderChat(name, room, getMessages(room));
+  const { people, transcript } = roomDoc.read(room);
+  return renderChat(name, room, people, transcript);
 }
