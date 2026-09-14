@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.5] - 2026-09-14
+
+### Fixed
+
+- `renderFor`'s fallback throw (no concept produced a view) was unreachable in normal operation, since session and room together cover every state, leaving `concepts/index.ts` short of the project's 100% coverage standard. `renderFor` now takes an optional concepts list, defaulting to the real one, so a test can pass an empty list to exercise the throw without changing production behavior.
+
 ## [0.10.4] - 2026-09-14
 
 ### Fixed
