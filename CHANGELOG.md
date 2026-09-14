@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-09-14
+
+### Added
+
+- Legibility (request 6, the last of the change request): a `{"type":"inspect"}` wire request answers with this connection's session, the documents it currently sees with their versions, and the latest ledger entry behind each one (`concepts/index.ts::inspectFor`). `window.eta.inspect()` answers the same question from the client's side: the docs it holds, plus the last write it sent and whether the server echoed it back. Both exist so a person can answer "what happened" without adding a log line; documented in the new README, each with its own test.
+
 ## [0.12.0] - 2026-09-14
 
 ### Changed

@@ -21,12 +21,18 @@ function recordPatch(doc: string, version: number, ops: PatchOp[]) {
   docs.set(doc, state);
 }
 
+// The last write this client sent and whether the server echoed it back --
+// not domain state, just enough to answer "did that even go through" from
+// the console.
+let lastSent: { doc: string; ops: PatchOp[]; echoed: boolean } | undefined;
+
 declare global {
   interface Window {
     eta?: {
       docs(): Record<string, { version: number; ops: PatchOp[] }>;
       reconnectDelay(): number;
       socket(): WebSocket | undefined;
+      inspect(): { docs: Record<string, { version: number; ops: PatchOp[] }>; lastSent: typeof lastSent };
     };
   }
 }
@@ -36,6 +42,7 @@ window.eta = {
   docs: () => Object.fromEntries(docs),
   reconnectDelay: () => reconnectDelay,
   socket: () => socket,
+  inspect: () => ({ docs: Object.fromEntries(docs), lastSent }),
 };
 
 const mounted = new Map<HTMLElement, () => void>();
@@ -83,6 +90,7 @@ function render(html: string) {
 type WriteSpec = { doc: string; op: PatchOp["op"]; path: string };
 
 function send(doc: string, ops: PatchOp[]) {
+  lastSent = { doc, ops, echoed: false };
   socket?.send(JSON.stringify({ doc, ops }));
 }
 
@@ -130,6 +138,7 @@ function connect() {
       render(message.html);
     } else if (message.type === "patch") {
       recordPatch(message.doc, message.version, message.ops);
+      if (lastSent && lastSent.doc === message.doc && message.ops.length > 0) lastSent.echoed = true;
       if (pendingReset && pendingReset.doc === message.doc && message.ops.length > 0) {
         pendingReset.form.reset();
         pendingReset = undefined;

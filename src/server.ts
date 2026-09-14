@@ -1,4 +1,4 @@
-import { concepts, conceptsByDocType, renderFor } from "./concepts";
+import { concepts, conceptsByDocType, inspectFor, renderFor } from "./concepts";
 import { renderRequested } from "./concepts/render";
 import type { ConnectionData } from "./connection";
 import type { PatchOp } from "./json-patch";
@@ -44,10 +44,15 @@ export function createServer(port: number | string = process.env.PORT ?? 3000) {
         pushRender(ws);
       },
       message(ws, raw) {
-        let message: { doc?: string; ops?: PatchOp[] };
+        let message: { type?: string; doc?: string; ops?: PatchOp[] };
         try {
           message = JSON.parse(String(raw));
         } catch {
+          return;
+        }
+
+        if (message.type === "inspect") {
+          ws.send(JSON.stringify({ type: "inspect", ...inspectFor(ws) }));
           return;
         }
 

@@ -356,4 +356,23 @@ describe("app.ts in a real browser", () => {
     expect(typeof version).toBe("number");
     expect(version as number).toBeGreaterThan(0);
   });
+
+  test("eta.inspect() reports the last write sent and whether it was echoed", async () => {
+    await using view = new Bun.WebView();
+    await view.navigate(server.url.toString());
+    await submitName(view, `Inspector-${crypto.randomUUID()}`);
+    await joinRoom(view, crypto.randomUUID());
+
+    const text = `inspect this ${crypto.randomUUID()}`;
+    await sendChatMessage(view, text);
+    await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes(text));
+
+    const lastSentDoc = await waitFor(view, `window.eta.inspect().lastSent?.doc ?? null`, (v) => v === "room");
+    expect(lastSentDoc).toBe("room");
+
+    const echoed = await waitFor(view, `window.eta.inspect().lastSent?.echoed ?? false`, (v) => v === true);
+    expect(echoed).toBe(true);
+
+    expect((await view.evaluate(`"room" in window.eta.inspect().docs`)) as boolean).toBe(true);
+  });
 });

@@ -139,6 +139,59 @@ describe("websocket write protocol", () => {
     ws.close();
   });
 
+  test("inspect answers with this connection's session and the docs it sees, each with its ledger head", async () => {
+    const ws = connect();
+    await opened(ws);
+    await expectMessage(ws, "render");
+
+    write(ws, "session", [{ op: "replace", path: "/name", value: "Ada" }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
+
+    const room = crypto.randomUUID();
+    write(ws, "session", [{ op: "replace", path: "/room", value: room }]);
+    await expectMessage(ws, "patch"); // echo of the session's /room write
+    await expectMessage(ws, "render"); // people broadcast for the room just joined
+    await expectMessage(ws, "render"); // the full chat view
+
+    const uniqueText = `inspect me ${crypto.randomUUID()}`;
+    write(ws, "room", [{ op: "add", path: "/transcript/-", value: uniqueText }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
+
+    ws.send(JSON.stringify({ type: "inspect" }));
+    const inspection = await expectMessage(ws, "inspect");
+
+    expect((inspection as unknown as { session: { name: string; room: string } }).session).toEqual({
+      name: "Ada",
+      room,
+    });
+    const docsSeen = (inspection as unknown as { docs: { doc: string; version: number; head?: unknown }[] }).docs;
+    const sessionDoc = docsSeen.find((d) => d.doc === "session");
+    const roomDoc = docsSeen.find((d) => d.doc === "room");
+    expect(sessionDoc?.version).toBeGreaterThan(0);
+    expect(roomDoc?.version).toBeGreaterThan(0);
+    expect(roomDoc?.head).toMatchObject({
+      ops: [{ op: "add", path: "/transcript/-", value: { name: "Ada", text: uniqueText } }],
+    });
+
+    ws.close();
+  });
+
+  test("inspect on a fresh connection sees only the session doc, with no ledger head yet", async () => {
+    const ws = connect();
+    await opened(ws);
+    await expectMessage(ws, "render");
+
+    ws.send(JSON.stringify({ type: "inspect" }));
+    const inspection = await expectMessage(ws, "inspect");
+
+    const docsSeen = (inspection as unknown as { docs: { doc: string; version: number; head?: unknown }[] }).docs;
+    expect(docsSeen).toEqual([{ doc: "session", version: 0, head: undefined }]);
+
+    ws.close();
+  });
+
   test("an unknown doc is ignored without crashing", async () => {
     const ws = connect();
     await opened(ws);
