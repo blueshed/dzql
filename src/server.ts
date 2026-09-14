@@ -1,22 +1,46 @@
-import { concepts, conceptsByDocType, inspectFor, renderFor } from "./concepts";
+import { assemble } from "./concepts";
 import { renderRequested } from "./concepts/render";
 import type { ConnectionData } from "./connection";
+import type { Example } from "./example";
 import type { PatchOp } from "./json-patch";
-import index from "./client/index.html";
 
-function pushRender(ws: Bun.ServerWebSocket<ConnectionData>) {
-  ws.send(JSON.stringify({ type: "render", html: renderFor(ws.data.sessionId) }));
-}
+// One example per process is an invariant: a running eta process serves
+// exactly one example, and this tracks which (so the renderRequested
+// listener below -- registered once, not once per createServer call -- knows
+// what to render through no matter which concept's code fired it). It's
+// cleared when that example's server(s) are all stopped, so a test suite
+// that creates one example's server, stops it, then creates a *different*
+// example's server (as the kernel's own generic tests and an example's own
+// tests do, in the same process) doesn't trip the guard below.
+let active: { example: Example; assembled: ReturnType<typeof assemble> } | undefined;
 
 renderRequested.on((sockets) => {
-  for (const ws of sockets) pushRender(ws);
+  if (!active) return; // unreachable in practice: nothing can fire this before a server exists
+  for (const ws of sockets) {
+    ws.send(JSON.stringify({ type: "render", html: active.assembled.renderFor(ws.data.sessionId) }));
+  }
 });
 
-export function createServer(port: number | string = process.env.PORT ?? 3000) {
+export function createServer(example: Example, port: number | string = process.env.PORT ?? 3000) {
+  if (active && active.example !== example) {
+    throw new Error(
+      `createServer was already called with a different example ("${active.example.name}"); ` +
+        `a process may only ever serve one example at a time.`,
+    );
+  }
+  const assembled = assemble(example);
+  active = { example, assembled };
+  const { concepts, byDocType, inspectFor, renderFor } = assembled;
+
+  function pushRender(ws: Bun.ServerWebSocket<ConnectionData>) {
+    ws.send(JSON.stringify({ type: "render", html: renderFor(ws.data.sessionId) }));
+  }
+
   const server = Bun.serve<ConnectionData>({
     port,
     routes: {
-      "/": index,
+      ...example.routes,
+      "/": example.index,
       "/api/health": () => Response.json({ ok: true }),
       "/ws": (req: Bun.BunRequest, server: Bun.Server<ConnectionData>) => {
         const sessionId = req.cookies.get("session_id") ?? crypto.randomUUID();
@@ -56,7 +80,7 @@ export function createServer(port: number | string = process.env.PORT ?? 3000) {
           return;
         }
 
-        const concept = message.doc ? conceptsByDocType.get(message.doc) : undefined;
+        const concept = message.doc ? byDocType.get(message.doc) : undefined;
         const ops = message.ops ?? [];
         let rendered = false;
 
@@ -75,6 +99,12 @@ export function createServer(port: number | string = process.env.PORT ?? 3000) {
     },
     development: process.env.NODE_ENV !== "production",
   });
+
+  const stop = server.stop.bind(server);
+  server.stop = ((...args: Parameters<typeof server.stop>) => {
+    if (active?.example === example) active = undefined;
+    return stop(...args);
+  }) as typeof server.stop;
 
   return server;
 }

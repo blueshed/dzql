@@ -1,7 +1,7 @@
 import { db } from "../db";
-import type { PatchOp } from "../json-patch";
-import { parsePointer } from "../json-pointer";
-import { prefixDoc, record } from "../ledger";
+import type { PatchOp } from "../../../src/json-patch";
+import { parsePointer } from "../../../src/json-pointer";
+import { prefixDoc, record } from "../../../src/ledger";
 import { ensureExists } from "./room";
 
 export type SessionDocument = { name: string | null; room: string | null };

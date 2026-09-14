@@ -132,25 +132,6 @@ describe("morph", () => {
     expect(result).toEqual({ removed: "x", remaining: 1 });
   });
 
-  test("the real room-picker applet's update() reuses the element and preserves the typed filter", async () => {
-    const result = await run(`
-      const el = document.createElement("div");
-      el.dataset.applet = "room-picker";
-      root.appendChild(el);
-
-      window.applets["room-picker"].mount(el, { props: { rooms: ["alpha", "beta"] }, send: () => {} });
-      const input = el.querySelector("input");
-      input.value = "al";
-      input.dispatchEvent(new Event("input"));
-
-      window.applets["room-picker"].update(el, { rooms: ["alpha", "gamma"] });
-
-      const suggestions = [...el.querySelectorAll(".room-picker-suggestions li")].map((li) => li.textContent);
-      return { inputValue: input.value, suggestions };
-    `);
-    // "al" still matches "alpha" in the new list; "gamma" is filtered out, same as before the props changed
-    expect(result).toEqual({ inputValue: "al", suggestions: ["alpha"] });
-  });
 });
 
 describe("formValue", () => {

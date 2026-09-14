@@ -1,4 +1,4 @@
-import { registerApplet } from "../applets";
+import { registerApplet } from "../../../src/applets";
 
 type Props = { rooms: string[] };
 

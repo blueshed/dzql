@@ -2,12 +2,11 @@ import type { ServerWebSocket } from "bun";
 import * as roomDoc from "../documents/room";
 import type { ChatMessage } from "../documents/room";
 import * as sessionDoc from "../documents/session";
-import type { ConnectionData } from "../connection";
-import { patchMessage } from "../json-patch";
-import type { PatchOp } from "../json-patch";
-import type { Concept } from "./concept";
-import { undoApplied } from "./ledger";
-import { renderRequested } from "./render";
+import type { ConnectionData } from "../../../src/connection";
+import { patchMessage } from "../../../src/json-patch";
+import type { PatchOp } from "../../../src/json-patch";
+import type { Concept } from "../../../src/concepts/concept";
+import { renderRequested } from "../../../src/concepts/render";
 import { sessionPatched } from "./session";
 
 // Which live connections are currently subscribed to which room, for
@@ -58,27 +57,40 @@ function renderRoomSelector(name: string, rooms: string[]): string {
   `;
 }
 
-function renderMessage(message: ChatMessage): string {
-  return `<li><strong>${escapeHtml(message.name)}:</strong> ${escapeHtml(message.text)}</li>`;
+// A message is a bubble: yours on the right in the button tint, everyone
+// else's on the left with a monogram, the name shown only on the first of a
+// run so a back-and-forth doesn't repeat it on every line.
+function renderMessage(message: ChatMessage, index: number, messages: ChatMessage[], viewer: string): string {
+  const mine = message.name === viewer;
+  const firstOfRun = index === 0 || messages[index - 1]!.name !== message.name;
+  const name = escapeHtml(message.name);
+  const nameLine = !mine && firstOfRun ? `<span class="name">${name}</span>` : "";
+  return (
+    `<li${mine ? ' class="mine"' : ""}>` +
+    `<span class="avatar" aria-hidden="true">${escapeHtml(message.name.charAt(0).toUpperCase())}</span>` +
+    `<div class="body">${nameLine}<span class="bubble">${escapeHtml(message.text)}</span></div>` +
+    `</li>`
+  );
 }
 
-function renderPeople(people: string[]): string {
-  return people.map(escapeHtml).join(", ");
+function renderPeople(people: string[], viewer: string): string {
+  return people
+    .map((person) => `<span${person === viewer ? ' class="me"' : ""}>${escapeHtml(person)}</span>`)
+    .join("");
 }
 
 function renderChat(name: string, room: string, people: string[], messages: ChatMessage[]): string {
   return `
     <div class="user-bar">
-      <span class="user-label">${escapeHtml(name)}</span>
       <span class="room-label">#${escapeHtml(room)}</span>
+      <p class="people">${renderPeople(people, name)}</p>
       <button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>Undo</button>
-      <button data-write='{"doc":"session","op":"remove","path":"/room"}'>Change room</button>
+      <button data-write='{"doc":"session","op":"remove","path":"/room"}'>Room</button>
       <button data-write='{"doc":"session","op":"remove","path":"/name"}'>Log out</button>
     </div>
-    <p class="people">${renderPeople(people)}</p>
-    <ul class="messages" data-autoscroll>${messages.map(renderMessage).join("")}</ul>
+    <ul class="messages" data-autoscroll>${messages.map((m, i) => renderMessage(m, i, messages, name)).join("")}</ul>
     <form data-write='{"doc":"room","op":"add","path":"/transcript/-"}'>
-      <input name="text" autocomplete="off" required autofocus />
+      <input name="text" autocomplete="off" required autofocus placeholder="Message #${escapeHtml(room)}" />
       <button type="submit">Send</button>
     </form>
   `;
@@ -135,13 +147,6 @@ sessionPatched.on(({ ws, before, applied }) => {
   }
 });
 
-// Undo is triggered through the ledger doc (see concepts/ledger.ts) but
-// may land on a room's document -- react to that the same way a direct
-// room write would.
-undoApplied.on(({ docType, docId, version, applied }) => {
-  if (docType === "room") echoAndNotify(docId, version, applied);
-});
-
 export const room: Concept = {
   docType: "room",
   render(sessionId) {
@@ -168,6 +173,20 @@ export const room: Concept = {
     const result = roomDoc.patch(roomName, prepared, ws.data.sessionId);
     echoAndNotify(roomName, result.version, result.applied);
     return { ...result, rendered: result.applied.length > 0 };
+  },
+  // Undo landing back on the room document (e.g. a sent message walked
+  // back): apply the ledger's inverse ops directly -- skipping permit(),
+  // since this isn't a fresh request against the normal writable surface --
+  // then echo and notify exactly as a direct write would. `rendered: true`
+  // unconditionally, same as a direct write's broadcast: every connection in
+  // the room besides the one that pressed undo needs the fresh render this
+  // already triggered via notifyRoom, and the one that did gets it from the
+  // dispatcher's own render fallback since this only skips *its* automatic
+  // render, not anyone else's.
+  replay(ws, roomName, ops, undoes) {
+    const result = roomDoc.patch(roomName, ops, ws.data.sessionId, undoes);
+    echoAndNotify(roomName, result.version, result.applied);
+    return { ...result, rendered: true };
   },
   onOpen(ws) {
     const { room: current } = sessionDoc.read(ws.data.sessionId);

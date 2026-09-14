@@ -1,10 +1,12 @@
 // Measures what request 5 (morph, don't replace) actually costs on the
 // wire: a room write now broadcasts a patch echo *and* a full re-render to
 // every member, where before it broadcast a patch echo and a single
-// appended <li>. Not a test -- a report. Run with `bun scripts/measure-render-cost.ts`.
-import { patch as patchRoom } from "../src/documents/room";
-import { patchMessage } from "../src/json-patch";
-import { createServer } from "../src/server";
+// appended <li>. Not a test -- a report. Run with
+// `bun examples/chat/scripts/measure-render-cost.ts`.
+import { patch as patchRoom } from "../documents/room";
+import { patchMessage } from "../../../src/json-patch";
+import { createServer } from "../../../src/server";
+import { example } from "../index";
 
 const MEMBERS = 5;
 const HISTORY = 100;
@@ -25,7 +27,7 @@ for (let i = 0; i < HISTORY - 1; i++) {
   patchRoom(room, [{ op: "add", path: "/transcript/-", value: { name: "Seed", text: `message ${i}` } }], "seed");
 }
 
-const server = createServer(0);
+const server = createServer(example, 0);
 
 // A persistent per-socket FIFO queue, not a fresh {once:true} listener per
 // nextMessage() call -- two messages sent back-to-back (a patch echo

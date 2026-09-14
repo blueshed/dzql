@@ -1,0 +1,212 @@
+:root {
+  color-scheme: light dark;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --bg: #f4faf4;
+  --fg: #0b3d0b;
+  --border: #6fae6f;
+  --input-bg: #ffffff;
+  --button-bg: #dff0df;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0f0b;
+    --fg: #d8f5d8;
+    --border: #2f6f2f;
+    --input-bg: #111;
+    --button-bg: #143214;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+#app {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 2rem;
+  box-sizing: border-box;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+#app input,
+#app button {
+  font: inherit;
+  background: var(--input-bg);
+  color: inherit;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.4rem 0.6rem;
+}
+
+#app input:focus-visible,
+#app button:focus-visible {
+  outline: 2px solid var(--border);
+  outline-offset: 1px;
+}
+
+#app button {
+  background: var(--button-bg);
+  cursor: pointer;
+}
+
+#app form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+#app .messages + form input,
+#app .messages + form button {
+  border-radius: 999px;
+}
+
+#app .messages + form input {
+  flex-grow: 1;
+  padding: 0.55rem 0.9rem;
+}
+
+#app .messages + form button {
+  padding: 0.55rem 1rem;
+}
+
+.user-bar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.user-bar .room-label {
+  font-weight: 700;
+  font-size: 1.05em;
+  margin-right: auto;
+}
+
+.people {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin: 0 0.5rem 0 0;
+  padding: 0;
+}
+
+.people span {
+  font-size: 0.8em;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  background: var(--input-bg);
+}
+
+.people span.me {
+  background: var(--button-bg);
+}
+
+.messages {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  flex-grow: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* Anchors a short transcript to the bottom. Not justify-content: flex-end,
+   which in a scrolling flex column pushes the overflow above the scroll
+   origin and makes older messages unreachable. */
+.messages > li:first-child {
+  margin-top: auto;
+}
+
+.messages li {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  max-width: 75%;
+}
+
+.messages li.mine {
+  align-self: flex-end;
+}
+
+.messages .avatar {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75em;
+  font-weight: 700;
+}
+
+.messages li.mine .avatar {
+  display: none;
+}
+
+.messages .body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.messages .name {
+  font-size: 0.8em;
+  opacity: 0.7;
+  padding-left: 0.25rem;
+}
+
+.messages li.mine .name {
+  display: none;
+}
+
+.messages .bubble {
+  border: 1px solid var(--border);
+  border-radius: 12px 12px 12px 2px;
+  padding: 0.5rem 0.75rem;
+  line-height: 1.4;
+  background: var(--input-bg);
+  overflow-wrap: anywhere;
+}
+
+.messages li.mine .bubble {
+  border-radius: 12px 12px 2px 12px;
+  background: var(--button-bg);
+}
+
+.room-picker-suggestions {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.room-picker-suggestions li {
+  border: 1px solid var(--border);
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+
+.room-picker-suggestions li.hint {
+  opacity: 0.7;
+  cursor: default;
+  border-style: dashed;
+}

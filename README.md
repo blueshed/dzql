@@ -1,8 +1,11 @@
 # eta
 
-A tiny real-time chat app built around one idea: HTML is the only
-vocabulary. The server renders, the client morphs, and every change is a
-JSON Patch recorded in a SQL ledger.
+A tiny kernel for building real-time, server-rendered apps, built around one
+idea: HTML is the only vocabulary. The server renders, the client morphs,
+and every change is a JSON Patch recorded in a SQL ledger. `src/` is the
+generic kernel; it knows nothing about any specific app. `examples/chat/` is
+the first example built on it -- a real-time chat -- and a second example
+can be added under `examples/<name>/` without editing anything in `src/`.
 
 - **Documents, not endpoints.** Session and room state live in SQLite; a
   document's `patch()` is the only way to write it, `read()` is a single
@@ -22,19 +25,25 @@ Bun only — no Node, no npm.
 
 ```
 bun install
-bun run dev     # foreground, --watch
+bun run dev     # foreground, --watch (chat, by default)
 bun run start   # detached (server.pid, server.log)
 bun run stop
 bun run test    # bun test --coverage
 ```
+
+Which example runs is `ETA_EXAMPLE` (default `chat`): `ETA_EXAMPLE=chat bun run dev`. It
+resolves `examples/<name>/index.ts`'s `example` export. The chat app itself
+lives entirely under `examples/chat/` — its documents, concepts, applets,
+client, and migrations; `src/` never imports from it.
 
 ## Cost
 
 Morphing (request 5) removed the granular `append` message: a room write now
 sends every *other* member a patch echo plus a full re-render of the chat
 view, where before it sent a patch echo plus one appended `<li>`. Measured
-with a room at 100 messages and 5 members (`bun scripts/measure-render-cost.ts`),
-bytes sent to each other member per message sent:
+with a room at 100 messages and 5 members
+(`bun examples/chat/scripts/measure-render-cost.ts`), bytes sent to each
+other member per message sent:
 
 | | patch echo | second message | total |
 |---|---|---|---|
@@ -52,11 +61,20 @@ write was a single append, else the whole view) and why it isn't free.
 
 - `window.eta.docs()` — documents this tab has seen, with version and recent ops.
 - `window.eta.inspect()` — the above, plus the last write this tab sent and whether it was echoed.
-- Send `{"type":"inspect"}` over the websocket to ask the server the same question from its side: this connection's session, the docs it sees, and the latest ledger entry behind each.
+- Send `{"type":"inspect"}` over the websocket to ask the server the same question from its side: the docs this connection sees, each with its version and the latest ledger entry behind it.
 
 ## CLI
 
-A terminal client for the same protocol — it never touches rendered HTML, only ops and `inspect`, since those are what's actually true.
+A terminal client for the same protocol — it never touches rendered HTML, only ops and `inspect`, since those are what's actually true. The kernel itself only knows a few doc-agnostic commands:
+
+```
+bun run cli undo
+bun run cli inspect
+bun run cli watch                          # streams patches until you stop it
+bun run cli write <doc> <op> <path> [value]
+```
+
+`ETA_EXAMPLE` (default `chat`) also picks which example's own short verbs (its `cli.ts`, if it has one) are available alongside those. Chat's are `name`, `room`, `leave`, `logout`, and `send`:
 
 ```
 bun run cli name Ada
@@ -64,7 +82,6 @@ bun run cli room lobby
 bun run cli send "hello"
 bun run cli undo
 bun run cli inspect
-bun run cli watch     # streams patches for the room you're in until you stop it
 ```
 
 Identity persists across invocations in a local `.eta-session` file (a cookie jar of one), the same way a browser tab would. Point it at a non-default server with `ETA_URL=ws://host:port`.

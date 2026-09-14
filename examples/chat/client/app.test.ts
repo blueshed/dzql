@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { createServer } from "../server";
+import { createServer } from "../../../src/server";
+import { example } from "../index";
 
 let server: ReturnType<typeof createServer>;
 
 beforeAll(() => {
-  server = createServer(0);
+  server = createServer(example, 0);
 });
 
 afterAll(() => {
@@ -272,6 +273,27 @@ describe("app.ts in a real browser", () => {
     );
 
     expect((await viewA.evaluate(scrollTopScript)) as number).toBe(0);
+  });
+
+  test("a room with history opens scrolled to the newest message, not the oldest", async () => {
+    await using viewA = new Bun.WebView();
+    await viewA.navigate(server.url.toString());
+    await submitName(viewA, `Fresh-${crypto.randomUUID()}`);
+    const room = crypto.randomUUID();
+    await joinRoom(viewA, room);
+    for (let i = 0; i < 15; i++) {
+      await sendChatMessage(viewA, `history ${i}`);
+    }
+    await waitFor(viewA, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("history 14"));
+
+    // Reload: the first render already contains the whole transcript, so
+    // nothing "grew" -- the list itself is what's new, and it must start at
+    // the bottom.
+    await viewA.navigate(server.url.toString());
+    await waitFor(viewA, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("history 14"));
+    const m = `document.querySelector('.messages')`;
+    expect(await viewA.evaluate(`${m}.scrollHeight > ${m}.clientHeight`)).toBe(true);
+    expect(await viewA.evaluate(`${m}.scrollTop + ${m}.clientHeight >= ${m}.scrollHeight - 1`)).toBe(true);
   });
 
   test("a message sent from one browser appears live in another browser in the same room", async () => {

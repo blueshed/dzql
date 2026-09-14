@@ -1,10 +1,10 @@
 import type { ServerWebSocket } from "bun";
 import * as sessionDoc from "../documents/session";
-import type { ConnectionData } from "../connection";
-import { patchMessage } from "../json-patch";
-import type { PatchOp } from "../json-patch";
-import { createEvent } from "./bus";
-import type { Concept } from "./concept";
+import type { ConnectionData } from "../../../src/connection";
+import { patchMessage } from "../../../src/json-patch";
+import type { PatchOp } from "../../../src/json-patch";
+import { createEvent } from "../../../src/concepts/bus";
+import type { Concept } from "../../../src/concepts/concept";
 
 // Fires after any successful write to a session document, so other concepts
 // can react to what changed (e.g. room membership) without session needing
@@ -68,6 +68,16 @@ export const session: Concept = {
   write(ws, id, ops) {
     const before = sessionDoc.read(id);
     const result = sessionDoc.patch(id, ops);
+    return echoSessionPatch(ws, before, result.version, result.applied);
+  },
+  // Undo landing back on the session document (e.g. re-logging-in a name
+  // that was just removed): apply the ledger's inverse ops directly --
+  // skipping permit(), since this isn't a fresh request against the normal
+  // writable surface -- then echo exactly as a direct write would, so room
+  // membership still reacts (see concepts/room.ts's sessionPatched listener).
+  replay(ws, id, ops, undoes) {
+    const before = sessionDoc.read(id);
+    const result = sessionDoc.patch(id, ops, undoes);
     return echoSessionPatch(ws, before, result.version, result.applied);
   },
 };

@@ -6,21 +6,46 @@ export type Command =
   | { kind: "inspect" }
   | { kind: "watch" };
 
-const WRITERS: Record<string, (arg: string) => Command> = {
-  name: (arg) => ({ kind: "write", doc: "session", ops: [{ op: "replace", path: "/name", value: arg }] }),
-  room: (arg) => ({ kind: "write", doc: "session", ops: [{ op: "replace", path: "/room", value: arg }] }),
-  leave: () => ({ kind: "write", doc: "session", ops: [{ op: "remove", path: "/room" }] }),
-  logout: () => ({ kind: "write", doc: "session", ops: [{ op: "remove", path: "/name" }] }),
-  send: (arg) => ({ kind: "write", doc: "room", ops: [{ op: "add", path: "/transcript/-", value: arg }] }),
-  undo: () => ({ kind: "write", doc: "ledger", ops: [{ op: "remove", path: "/latest" }] }),
-};
+/**
+ * An example's own short verbs (e.g. chat's `name`, `room`, `send`), mapping
+ * a command's remaining argv to the wire write it means. Loaded dynamically
+ * by src/cli.ts from that example's own cli.ts (see ETA_EXAMPLE) when that file exists -- the
+ * kernel itself knows only the doc-agnostic commands below.
+ */
+export type Aliases = Record<string, (args: string[]) => { doc: string; ops: PatchOp[] }>;
+
+const OPS = new Set<PatchOp["op"]>(["add", "replace", "remove"]);
+
+function isPatchOpKind(value: string): value is PatchOp["op"] {
+  return OPS.has(value as PatchOp["op"]);
+}
+
+/** `write <doc> <op> <path> [value]` -- a write names a document and a JSON Pointer path, never a function name, same as the wire protocol itself. */
+function parseWrite(rest: string[]): Command | undefined {
+  const [doc, op, path, ...valueParts] = rest;
+  if (!doc || !op || !path || !isPatchOpKind(op)) return undefined;
+  const value = valueParts.length > 0 ? valueParts.join(" ") : undefined;
+  const ops: PatchOp[] = value !== undefined ? [{ op, path, value }] : [{ op, path }];
+  return { kind: "write", doc, ops };
+}
+
+// The one write every example shares, since it's not a domain concern: undo
+// is a remove on the ledger's own cursor document (see concepts/ledger.ts),
+// not a per-example verb.
+const undo = (): Command => ({ kind: "write", doc: "ledger", ops: [{ op: "remove", path: "/latest" }] });
 
 /** Maps a CLI invocation's argv (after the script name) to a wire command. */
-export function parseCommand(argv: string[]): Command | undefined {
+export function parseCommand(argv: string[], aliases: Aliases = {}): Command | undefined {
   const [name, ...rest] = argv;
   if (name === "inspect") return { kind: "inspect" };
   if (name === "watch") return { kind: "watch" };
-  return name && name in WRITERS ? WRITERS[name]!(rest.join(" ")) : undefined;
+  if (name === "undo") return undo();
+  if (name === "write") return parseWrite(rest);
+  if (name && name in aliases) {
+    const { doc, ops } = aliases[name]!(rest);
+    return { kind: "write", doc, ops };
+  }
+  return undefined;
 }
 
 export const DEFAULT_SESSION_FILE = ".eta-session";
@@ -49,19 +74,17 @@ function opText(op: PatchOp): string {
 }
 
 export type Inspection = {
-  session: { name: string | null; room: string | null };
   docs: { doc: string; version: number; head?: { ops: PatchOp[] } }[];
 };
 
-/** Renders an inspect response as the CLI's plain-text output -- ops, not HTML. */
+/** Renders an inspect response as the CLI's plain-text output -- ops, not HTML, and generic over whatever docs this example's concepts report. */
 export function formatInspection(inspection: Inspection): string {
-  const { name, room } = inspection.session;
-  const lines = [`session  name=${name ?? "-"}  room=${room ?? "-"}`];
-  for (const doc of inspection.docs) {
-    const last = doc.head ? `  last: ${doc.head.ops.map(opText).join(", ")}` : "";
-    lines.push(`${doc.doc.padEnd(8)} v${doc.version}${last}`);
-  }
-  return lines.join("\n");
+  return inspection.docs
+    .map((doc) => {
+      const last = doc.head ? `  last: ${doc.head.ops.map(opText).join(", ")}` : "";
+      return `${doc.doc.padEnd(8)} v${doc.version}${last}`;
+    })
+    .join("\n");
 }
 
 /** Reuses a session id saved at `file` across invocations, minting one on first use -- a cookie jar of one. */

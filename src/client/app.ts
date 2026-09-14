@@ -1,5 +1,4 @@
 import { applets } from "../applets";
-import "../applets/room-picker"; // registers itself; app.ts only knows the generic mount contract
 import type { PatchOp } from "../json-patch";
 import { formValue } from "./form-value";
 import { morph } from "./morph";
@@ -74,18 +73,19 @@ function onAppletPropsChanged(el: Element, props: unknown) {
 // the morph never descends into (see onAppletRemoved/onAppletPropsChanged);
 // mounting a newly-appeared one still happens here, same as before.
 function render(html: string) {
-  const autoscrolled = [...app.querySelectorAll<HTMLElement>("[data-autoscroll]")];
-  const before = autoscrolled.map((el) => el.childNodes.length);
+  const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
 
   morph(app, html, { onAppletRemoved, onAppletPropsChanged });
   mountApplets();
 
-  // Only pin to the bottom if this render actually added content here --
-  // an unrelated update (someone else's presence, an undo elsewhere) must
-  // not yank the scroll position out from under someone reading history.
-  autoscrolled.forEach((el, i) => {
-    if (app.contains(el) && el.childNodes.length > before[i]) el.scrollTop = el.scrollHeight;
-  });
+  // Pin to the bottom only when this render actually added content here, or
+  // the element itself just appeared (a fresh load, entering a room) -- an
+  // unrelated update (someone else's presence, an undo elsewhere) must not
+  // yank the scroll position out from under someone reading history.
+  for (const el of app.querySelectorAll<HTMLElement>("[data-autoscroll]")) {
+    const was = before.get(el);
+    if (was === undefined || el.childNodes.length > was) el.scrollTop = el.scrollHeight;
+  }
 }
 
 type WriteSpec = { doc: string; op: PatchOp["op"]; path: string };

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { history } from "../ledger";
+import { history } from "../../../src/ledger";
 import { patch, read } from "./session";
 
 describe("session document", () => {
