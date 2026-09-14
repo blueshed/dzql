@@ -22,11 +22,20 @@ function recordPatch(doc: string, version: number, ops: PatchOp[]) {
 
 declare global {
   interface Window {
-    eta?: { docs(): Record<string, { version: number; ops: PatchOp[] }> };
+    eta?: {
+      docs(): Record<string, { version: number; ops: PatchOp[] }>;
+      reconnectDelay(): number;
+      socket(): WebSocket | undefined;
+    };
   }
 }
 
-window.eta = { docs: () => Object.fromEntries(docs) };
+let reconnectDelay = RECONNECT_DELAY_MS;
+window.eta = {
+  docs: () => Object.fromEntries(docs),
+  reconnectDelay: () => reconnectDelay,
+  socket: () => socket,
+};
 
 const mounted = new Map<HTMLElement, () => void>();
 
@@ -112,9 +121,15 @@ app.addEventListener("click", (event) => {
   send(doc, value !== undefined ? [{ op, path, value }] : [{ op, path }]);
 });
 
-function connect(delay = RECONNECT_DELAY_MS) {
+function connect() {
   const url = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`;
   socket = new WebSocket(url);
+
+  // A successful connection means prior turbulence is over: the next drop,
+  // whenever it happens, should retry promptly rather than inherit an old backoff.
+  socket.addEventListener("open", () => {
+    reconnectDelay = RECONNECT_DELAY_MS;
+  });
 
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
@@ -125,7 +140,8 @@ function connect(delay = RECONNECT_DELAY_MS) {
 
   socket.addEventListener("close", () => {
     render("Disconnected. Reconnecting&hellip;");
-    setTimeout(() => connect(Math.min(delay * 2, MAX_RECONNECT_DELAY_MS)), delay);
+    setTimeout(connect, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY_MS);
   });
 
   socket.addEventListener("error", () => socket?.close());

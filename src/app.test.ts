@@ -79,6 +79,28 @@ describe("app.ts in a real browser", () => {
     expect(label).toBe("Grace");
   });
 
+  test("reconnection backoff resets after a successful reconnect, rather than compounding", async () => {
+    await using view = new Bun.WebView();
+    await view.navigate(server.url.toString());
+
+    const socketOpen = `window.eta?.socket()?.readyState === WebSocket.OPEN`;
+    const reconnectDelay = `window.eta?.reconnectDelay()`;
+
+    await waitFor(view, socketOpen, (v) => v === true);
+    expect((await view.evaluate(reconnectDelay)) as number).toBe(1000);
+
+    // drop the connection: the backoff scales up, then the (real, always-up) server
+    // lets the client reconnect on its own.
+    await view.evaluate(`window.eta.socket().close()`);
+    const escalated = await waitFor(view, reconnectDelay, (v) => v === 2000);
+    expect(escalated).toBe(2000);
+    await waitFor(view, socketOpen, (v) => v === true);
+
+    // the reconnect just succeeded: the backoff must be reset to the initial delay,
+    // not left at the escalated value it reached while disconnected.
+    expect((await view.evaluate(reconnectDelay)) as number).toBe(1000);
+  });
+
   test("logout clears the session and shows the name form again", async () => {
     await using view = new Bun.WebView();
     await view.navigate(server.url.toString());

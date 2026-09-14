@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.4] - 2026-09-14
+
+### Fixed
+
+- The client's reconnect backoff never reset after a successful reconnect: a client that had scaled up to the 10s maximum during a period of network turbulence would still wait 10s on its very next drop, hours later, instead of retrying promptly. `connect()`'s backoff is now shared module state that resets to the initial delay on the socket's `open` event.
+
+### Added
+
+- `window.eta.socket()` exposes the live WebSocket and `window.eta.reconnectDelay()` its current backoff — a person at the console can now see connection state directly, in the same spirit as `window.eta.docs()`.
+
 ## [0.10.3] - 2026-09-14
 
 ### Fixed
