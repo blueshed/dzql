@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-09-14
+
+### Changed
+
+- Reordered the migrations: ledger first, then sessions, then rooms. The ledger is generic infrastructure with no dependency on either document (`session_id` is a plain column, not a foreign key); rooms is the demo-specific concept and already depended on sessions existing (it adds the `room` column to it), so it has to come last. Renumbered `0003_ledger.sql` → `0001_ledger.sql`, `0001_sessions.sql` → `0002_sessions.sql`, `0002_rooms.sql` → `0003_rooms.sql`. Verified against a fresh file-backed database.
+
 ## [0.14.0] - 2026-09-14
 
 ### Changed
