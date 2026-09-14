@@ -1,10 +1,10 @@
 import type { ServerWebSocket } from "bun";
 import * as sessionDoc from "../documents/session";
-import type { SessionData } from "../session";
+import type { ConnectionData } from "../connection";
 import { createEvent } from "./bus";
 import type { Concept } from "./concept";
 
-export const sessionEnded = createEvent<{ ws: ServerWebSocket<SessionData>; sessionId: string }>();
+export const sessionEnded = createEvent<{ ws: ServerWebSocket<ConnectionData>; sessionId: string }>();
 
 function renderNameForm(): string {
   return `

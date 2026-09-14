@@ -1,20 +1,20 @@
 import { concepts, renderFor } from "./concepts";
-import type { SessionData } from "./session";
+import type { ConnectionData } from "./connection";
 import index from "./index.html";
 
-function pushRender(ws: Bun.ServerWebSocket<SessionData>) {
+function pushRender(ws: Bun.ServerWebSocket<ConnectionData>) {
   ws.send(JSON.stringify({ type: "render", html: renderFor(ws.data.sessionId) }));
 }
 
 const eventHandlers = new Map(concepts.flatMap((concept) => Object.entries(concept.events)));
 
 export function createServer(port: number | string = process.env.PORT ?? 3000) {
-  const server = Bun.serve<SessionData>({
+  const server = Bun.serve<ConnectionData>({
     port,
     routes: {
       "/": index,
       "/api/health": () => Response.json({ ok: true }),
-      "/ws": (req: Bun.BunRequest, server: Bun.Server<SessionData>) => {
+      "/ws": (req: Bun.BunRequest, server: Bun.Server<ConnectionData>) => {
         const sessionId = req.cookies.get("session_id") ?? crypto.randomUUID();
         if (!req.cookies.has("session_id")) {
           req.cookies.set("session_id", sessionId, {

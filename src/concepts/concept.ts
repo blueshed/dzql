@@ -1,8 +1,8 @@
 import type { ServerWebSocket } from "bun";
-import type { SessionData } from "../session";
+import type { ConnectionData } from "../connection";
 
 export type EventHandler = (
-  ws: ServerWebSocket<SessionData>,
+  ws: ServerWebSocket<ConnectionData>,
   payload: Record<string, unknown>,
 ) => boolean | void;
 
@@ -11,6 +11,6 @@ export type Concept = {
   events: Record<string, EventHandler>;
   /** Returns this concept's view of the current session, or `undefined` to defer to the next concept. */
   render(sessionId: string): string | undefined;
-  onOpen?(ws: ServerWebSocket<SessionData>): void;
-  onClose?(ws: ServerWebSocket<SessionData>): void;
+  onOpen?(ws: ServerWebSocket<ConnectionData>): void;
+  onClose?(ws: ServerWebSocket<ConnectionData>): void;
 };
