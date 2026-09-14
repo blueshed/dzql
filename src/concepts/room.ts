@@ -1,9 +1,36 @@
+import type { ServerWebSocket } from "bun";
 import * as roomDoc from "../documents/room";
 import type { ChatMessage } from "../documents/room";
 import * as sessionDoc from "../documents/session";
-import { joinRoom, leaveRoom, roomSockets } from "../rooms";
+import type { SessionData } from "../session";
 import type { Concept } from "./concept";
 import { sessionEnded } from "./session";
+
+// Which live connections are currently subscribed to which room, for
+// broadcast. Not persisted data (see documents/room.ts for that) and not
+// needed outside this concept, so it lives here rather than its own module.
+const roomSocketSets = new Map<string, Set<ServerWebSocket<SessionData>>>();
+
+function getSocketSet(roomId: string): Set<ServerWebSocket<SessionData>> {
+  let sockets = roomSocketSets.get(roomId);
+  if (!sockets) {
+    sockets = new Set();
+    roomSocketSets.set(roomId, sockets);
+  }
+  return sockets;
+}
+
+function joinRoom(roomId: string, ws: ServerWebSocket<SessionData>): void {
+  getSocketSet(roomId).add(ws);
+}
+
+function leaveRoom(roomId: string, ws: ServerWebSocket<SessionData>): void {
+  roomSocketSets.get(roomId)?.delete(ws);
+}
+
+function roomSockets(roomId: string): Set<ServerWebSocket<SessionData>> {
+  return getSocketSet(roomId);
+}
 
 function escapeHtml(value: string): string {
   return value
