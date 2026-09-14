@@ -6,6 +6,9 @@ let socket: WebSocket | undefined;
 
 function render(html: string) {
   app.innerHTML = html;
+  app.querySelector<HTMLElement>("[autofocus]")?.focus();
+  const messages = app.querySelector(".messages");
+  if (messages) messages.scrollTop = messages.scrollHeight;
 }
 
 function send(name: string, payload: Record<string, unknown> = {}) {

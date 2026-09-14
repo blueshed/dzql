@@ -29,11 +29,18 @@ async function waitFor(
 
 const NAME_FORM_VISIBLE = `document.querySelector('[data-event="set-name"]') !== null`;
 const USER_LABEL = `document.querySelector('.user-label')?.textContent ?? null`;
+const MESSAGES_TEXT = `document.querySelector('.messages')?.textContent ?? ""`;
 
 async function submitName(view: Bun.WebView, name: string) {
   await waitFor(view, NAME_FORM_VISIBLE, (v) => v === true);
   await view.click("#name");
   await view.type(name);
+  await view.click("button[type=submit]");
+}
+
+async function sendChatMessage(view: Bun.WebView, text: string) {
+  await view.click("input[name=text]");
+  await view.type(text);
   await view.click("button[type=submit]");
 }
 
@@ -71,5 +78,36 @@ describe("app.ts in a real browser", () => {
     await view.click("[data-event=logout]");
 
     await waitFor(view, NAME_FORM_VISIBLE, (v) => v === true);
+  });
+
+  test("a sent chat message appears in the message list", async () => {
+    await using view = new Bun.WebView();
+    await view.navigate(server.url.toString());
+    await submitName(view, `Chatter-${crypto.randomUUID()}`);
+    await waitFor(view, USER_LABEL, (v) => typeof v === "string" && v.length > 0);
+
+    const text = `hello room ${crypto.randomUUID()}`;
+    await sendChatMessage(view, text);
+
+    const messages = await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes(text));
+    expect(messages).toContain(text);
+  });
+
+  test("a message sent from one browser appears live in another browser's room", async () => {
+    await using viewA = new Bun.WebView();
+    await using viewB = new Bun.WebView();
+
+    await viewA.navigate(server.url.toString());
+    await viewB.navigate(server.url.toString());
+
+    await submitName(viewA, `A-${crypto.randomUUID()}`);
+    await submitName(viewB, `B-${crypto.randomUUID()}`);
+    await waitFor(viewA, USER_LABEL, (v) => typeof v === "string" && v.length > 0);
+    await waitFor(viewB, USER_LABEL, (v) => typeof v === "string" && v.length > 0);
+
+    const text = `broadcast test ${crypto.randomUUID()}`;
+    await sendChatMessage(viewA, text);
+
+    await waitFor(viewB, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes(text));
   });
 });

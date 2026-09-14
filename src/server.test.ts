@@ -90,7 +90,7 @@ describe("websocket session protocol", () => {
     ws.close();
   });
 
-  test("set-name renders a user bar with the escaped name", async () => {
+  test("set-name renders a chat view with the escaped name", async () => {
     const ws = connect();
     await opened(ws);
     await nextMessage(ws); // initial name form
@@ -100,6 +100,7 @@ describe("websocket session protocol", () => {
 
     expect(message.html).toContain("&lt;b&gt;Ada&lt;/b&gt;");
     expect(message.html).toContain('data-event="logout"');
+    expect(message.html).toContain('data-event="send-message"');
     ws.close();
   });
 
@@ -157,5 +158,63 @@ describe("websocket session protocol", () => {
     const message = await nextMessage(second);
     expect(message.html).toContain("Linus");
     second.close();
+  });
+});
+
+describe("chat", () => {
+  async function login(ws: WebSocket, name: string): Promise<void> {
+    await opened(ws);
+    await nextMessage(ws); // initial name form
+    ws.send(JSON.stringify({ name: "set-name", payload: { name } }));
+    await nextMessage(ws);
+  }
+
+  test("send-message broadcasts to every connected room member", async () => {
+    const a = connect();
+    await login(a, `Alice-${crypto.randomUUID()}`);
+    const b = connect();
+    await login(b, `Bob-${crypto.randomUUID()}`);
+
+    const uniqueText = `hello from alice ${crypto.randomUUID()}`;
+    const bReceived = nextMessage(b); // subscribe before sending, to avoid a race
+    a.send(JSON.stringify({ name: "send-message", payload: { text: uniqueText } }));
+    const aReceived = await nextMessage(a);
+
+    expect(aReceived.html).toContain(uniqueText);
+    expect((await bReceived).html).toContain(uniqueText);
+    a.close();
+    b.close();
+  });
+
+  test("send-message with blank text does not crash and does not stop further messages", async () => {
+    const ws = connect();
+    await login(ws, `Blank-${crypto.randomUUID()}`);
+
+    ws.send(JSON.stringify({ name: "send-message", payload: { text: "   " } }));
+    await nextMessage(ws);
+
+    const uniqueText = `after blank ${crypto.randomUUID()}`;
+    ws.send(JSON.stringify({ name: "send-message", payload: { text: uniqueText } }));
+    const message = await nextMessage(ws);
+
+    expect(message.html).toContain(uniqueText);
+    ws.close();
+  });
+
+  test("closing a connection removes it from the room without breaking future broadcasts", async () => {
+    const a = connect();
+    await login(a, `RoomLeaverA-${crypto.randomUUID()}`);
+    const b = connect();
+    await login(b, `RoomLeaverB-${crypto.randomUUID()}`);
+
+    b.close();
+    await Bun.sleep(50); // let the server's close handler run
+
+    const uniqueText = `still works after b left ${crypto.randomUUID()}`;
+    a.send(JSON.stringify({ name: "send-message", payload: { text: uniqueText } }));
+    const message = await nextMessage(a);
+
+    expect(message.html).toContain(uniqueText);
+    a.close();
   });
 });
