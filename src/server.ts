@@ -1,7 +1,7 @@
 import { concepts, conceptsByDocType, renderFor } from "./concepts";
 import type { ConnectionData } from "./connection";
 import type { PatchOp } from "./json-patch";
-import index from "./index.html";
+import index from "./client/index.html";
 
 function pushRender(ws: Bun.ServerWebSocket<ConnectionData>) {
   ws.send(JSON.stringify({ type: "render", html: renderFor(ws.data.sessionId) }));
