@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { createServer } from "./server";
+import { createServer } from "../server";
 
 let server: ReturnType<typeof createServer>;
 

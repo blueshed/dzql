@@ -1,6 +1,6 @@
-import { applets } from "./applets";
-import "./applets/room-picker"; // registers itself; app.ts only knows the generic mount contract
-import type { PatchOp } from "./json-patch";
+import { applets } from "../applets";
+import "../applets/room-picker"; // registers itself; app.ts only knows the generic mount contract
+import type { PatchOp } from "../json-patch";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
