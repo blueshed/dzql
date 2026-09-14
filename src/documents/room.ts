@@ -1,11 +1,9 @@
 import { db } from "../db";
 import type { PatchOp } from "../json-patch";
 import { parsePointer } from "../json-pointer";
-import { roomSockets } from "../rooms";
-import { read as readSession } from "./session";
 
 export type ChatMessage = { name: string; text: string; sentAt: number };
-export type RoomDocument = { people: string[]; transcript: ChatMessage[] };
+export type RoomDocument = { transcript: ChatMessage[] };
 
 const ensureStmt = db.query<unknown, [string, number]>(
   "INSERT INTO rooms (name, created_at) VALUES (?, ?) ON CONFLICT(name) DO NOTHING",
@@ -27,15 +25,10 @@ export function list(): string[] {
   return listStmt.all().map((row) => row.name);
 }
 
-function people(name: string): string[] {
-  const names = [...roomSockets(name)].map((ws) => readSession(ws.data.sessionId).name);
-  return names.filter((n): n is string => n !== null);
-}
-
 export function read(name: string, limit = 50): RoomDocument {
   const row = transcriptStmt.get(name, limit);
   const transcript: ChatMessage[] = row ? JSON.parse(row.doc).reverse() : [];
-  return { people: people(name), transcript };
+  return { transcript };
 }
 
 /** Applies a patch and returns the appended message, if this patch added one. */

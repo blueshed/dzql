@@ -50,9 +50,16 @@ function renderChat(name: string, room: string, people: string[], messages: Chat
   `;
 }
 
+// Presence is live connection state, not persisted data, so it's assembled
+// here (from the socket registry + a session lookup per socket) rather than
+// living in documents/room.ts, which only knows about the SQL-backed transcript.
+function peopleIn(room: string): string[] {
+  const names = [...roomSockets(room)].map((ws) => sessionDoc.read(ws.data.sessionId).name);
+  return names.filter((n): n is string => n !== null);
+}
+
 export function broadcastPeople(room: string) {
-  const html = renderPeople(roomDoc.read(room).people);
-  const payload = JSON.stringify({ type: "render", selector: ".people", html });
+  const payload = JSON.stringify({ type: "render", selector: ".people", html: renderPeople(peopleIn(room)) });
   for (const ws of roomSockets(room)) ws.send(payload);
 }
 
@@ -64,16 +71,25 @@ function broadcastMessage(room: string, message: ChatMessage) {
 export const room: Concept = {
   events: {
     "join-room": (ws, payload) => {
+      const newRoom = String(payload.room ?? "").trim();
+      if (!newRoom) return;
+
       const previousRoom = sessionDoc.read(ws.data.sessionId).room;
-      sessionDoc.patch(ws.data.sessionId, [{ op: "replace", path: "/room", value: payload.room }], ws);
+      sessionDoc.patch(ws.data.sessionId, [{ op: "replace", path: "/room", value: newRoom }]);
+
+      if (previousRoom) leaveRoom(previousRoom, ws);
+      joinRoom(newRoom, ws);
+
       if (previousRoom) broadcastPeople(previousRoom);
-      const { room: joined } = sessionDoc.read(ws.data.sessionId);
-      if (joined) broadcastPeople(joined);
+      broadcastPeople(newRoom);
     },
     "leave-room": (ws) => {
       const { room: current } = sessionDoc.read(ws.data.sessionId);
-      sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/room" }], ws);
-      if (current) broadcastPeople(current);
+      if (!current) return;
+
+      sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/room" }]);
+      leaveRoom(current, ws);
+      broadcastPeople(current);
     },
     "send-message": (ws, payload) => {
       const { name, room: current } = sessionDoc.read(ws.data.sessionId);
@@ -90,8 +106,8 @@ export const room: Concept = {
     if (!name) return undefined; // not reached in practice: the session concept always renders first
     if (!current) return renderRoomSelector(name, roomDoc.list());
 
-    const { people, transcript } = roomDoc.read(current);
-    return renderChat(name, current, people, transcript);
+    const { transcript } = roomDoc.read(current);
+    return renderChat(name, current, peopleIn(current), transcript);
   },
   onOpen(ws) {
     const { room: current } = sessionDoc.read(ws.data.sessionId);

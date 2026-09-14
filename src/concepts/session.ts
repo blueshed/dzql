@@ -1,4 +1,5 @@
 import * as sessionDoc from "../documents/session";
+import { leaveRoom } from "../rooms";
 import type { Concept } from "./concept";
 import { broadcastPeople } from "./room";
 
@@ -19,8 +20,11 @@ export const session: Concept = {
     },
     logout: (ws) => {
       const { room } = sessionDoc.read(ws.data.sessionId);
-      sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/name" }], ws);
-      if (room) broadcastPeople(room);
+      sessionDoc.patch(ws.data.sessionId, [{ op: "remove", path: "/name" }]);
+      if (room) {
+        leaveRoom(room, ws);
+        broadcastPeople(room);
+      }
     },
   },
   render(sessionId) {

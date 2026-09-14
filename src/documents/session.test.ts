@@ -1,12 +1,5 @@
-import type { ServerWebSocket } from "bun";
 import { describe, expect, test } from "bun:test";
 import { patch, read } from "./session";
-import { roomSockets } from "../rooms";
-import type { SessionData } from "../session";
-
-function fakeSocket(): ServerWebSocket<SessionData> {
-  return {} as ServerWebSocket<SessionData>;
-}
 
 describe("session document", () => {
   test("a fresh session id reads as an empty document", () => {
@@ -25,56 +18,51 @@ describe("session document", () => {
     expect(read(id)).toEqual({ name: null, room: null });
   });
 
-  test("patching /room joins the room and updates the document", () => {
+  test("patching /room sets the room, upserting the row if it didn't exist", () => {
     const id = crypto.randomUUID();
-    const ws = fakeSocket();
     const room = crypto.randomUUID();
 
-    patch(id, [{ op: "replace", path: "/name", value: "Ada" }]);
-    patch(id, [{ op: "replace", path: "/room", value: room }], ws);
+    patch(id, [{ op: "replace", path: "/room", value: room }]);
 
-    expect(read(id)).toEqual({ name: "Ada", room });
-    expect(roomSockets(room).has(ws)).toBe(true);
+    expect(read(id)).toEqual({ name: null, room });
   });
 
-  test("switching rooms leaves the previous room's socket set", () => {
+  test("a blank room is ignored", () => {
     const id = crypto.randomUUID();
-    const ws = fakeSocket();
+    patch(id, [{ op: "replace", path: "/room", value: "   " }]);
+    expect(read(id).room).toBeNull();
+  });
+
+  test("switching rooms updates the document to the new room", () => {
+    const id = crypto.randomUUID();
     const first = crypto.randomUUID();
     const second = crypto.randomUUID();
 
-    patch(id, [{ op: "replace", path: "/room", value: first }], ws);
-    patch(id, [{ op: "replace", path: "/room", value: second }], ws);
+    patch(id, [{ op: "replace", path: "/room", value: first }]);
+    patch(id, [{ op: "replace", path: "/room", value: second }]);
 
-    expect(roomSockets(first).has(ws)).toBe(false);
-    expect(roomSockets(second).has(ws)).toBe(true);
     expect(read(id).room).toBe(second);
   });
 
-  test("removing /room leaves the room and clears it from the document", () => {
+  test("removing /room clears it from the document", () => {
     const id = crypto.randomUUID();
-    const ws = fakeSocket();
     const room = crypto.randomUUID();
 
-    patch(id, [{ op: "replace", path: "/room", value: room }], ws);
-    patch(id, [{ op: "remove", path: "/room" }], ws);
+    patch(id, [{ op: "replace", path: "/room", value: room }]);
+    patch(id, [{ op: "remove", path: "/room" }]);
 
     expect(read(id).room).toBeNull();
-    expect(roomSockets(room).has(ws)).toBe(false);
   });
 
-  test("removing /name logs out: clears name, room, and room membership", () => {
+  test("removing /name logs out: clears both name and room", () => {
     const id = crypto.randomUUID();
-    const ws = fakeSocket();
     const room = crypto.randomUUID();
 
     patch(id, [{ op: "replace", path: "/name", value: "Ada" }]);
-    patch(id, [{ op: "replace", path: "/room", value: room }], ws);
-
-    patch(id, [{ op: "remove", path: "/name" }], ws);
+    patch(id, [{ op: "replace", path: "/room", value: room }]);
+    patch(id, [{ op: "remove", path: "/name" }]);
 
     expect(read(id)).toEqual({ name: null, room: null });
-    expect(roomSockets(room).has(ws)).toBe(false);
   });
 
   test("a session can set a name again after logging out (reactivation, not gone forever)", () => {

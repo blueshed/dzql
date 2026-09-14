@@ -231,6 +231,27 @@ describe("chat", () => {
     a.close();
   });
 
+  test("logging out while in a room leaves it, broadcasting presence to the remaining members", async () => {
+    const room = crypto.randomUUID();
+    const a = connect();
+    await login(a, "Alice", room);
+
+    const bJoined = nextMessage(a); // subscribe before Bob joins, to avoid missing the broadcast
+    const b = connect();
+    await login(b, "Bob", room);
+    await bJoined; // people broadcast triggered by Bob joining, not this test's focus
+
+    const bLeft = nextMessage(a); // subscribe before Bob logs out
+    b.send(JSON.stringify({ name: "logout", payload: {} }));
+    const bLeftUpdate = await bLeft;
+
+    expect(bLeftUpdate.selector).toBe(".people");
+    expect(bLeftUpdate.html).toBe("Alice");
+
+    a.close();
+    b.close();
+  });
+
   test("send-message broadcasts to every connected room member", async () => {
     const room = crypto.randomUUID();
     const a = connect();

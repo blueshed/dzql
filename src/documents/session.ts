@@ -1,9 +1,6 @@
-import type { ServerWebSocket } from "bun";
 import { db } from "../db";
 import type { PatchOp } from "../json-patch";
 import { parsePointer } from "../json-pointer";
-import { joinRoom, leaveRoom } from "../rooms";
-import type { SessionData } from "../session";
 import { ensureExists } from "./room";
 
 export type SessionDocument = { name: string | null; room: string | null };
@@ -33,20 +30,7 @@ export function read(id: string): SessionDocument {
   return row ? JSON.parse(row.doc) : { name: null, room: null };
 }
 
-function setRoom(id: string, room: string | null, ws: ServerWebSocket<SessionData> | undefined) {
-  const previous = read(id).room;
-  if (previous && ws) leaveRoom(previous, ws);
-
-  if (room) {
-    ensureExists(room);
-    if (ws) joinRoom(room, ws);
-    joinRoomStmt.run(id, room, Date.now());
-  } else {
-    clearRoomStmt.run(id);
-  }
-}
-
-export function patch(id: string, ops: PatchOp[], ws?: ServerWebSocket<SessionData>): void {
+export function patch(id: string, ops: PatchOp[]): void {
   for (const op of ops) {
     const [field] = parsePointer(op.path);
 
@@ -54,13 +38,15 @@ export function patch(id: string, ops: PatchOp[], ws?: ServerWebSocket<SessionDa
       const name = String(op.value ?? "").trim();
       if (name) upsertNameStmt.run(id, name, Date.now());
     } else if (field === "name" && op.op === "remove") {
-      setRoom(id, null, ws);
       revokeStmt.run(Date.now(), id);
     } else if (field === "room" && op.op !== "remove") {
       const room = String(op.value ?? "").trim();
-      if (room) setRoom(id, room, ws);
+      if (room) {
+        ensureExists(room);
+        joinRoomStmt.run(id, room, Date.now());
+      }
     } else if (field === "room" && op.op === "remove") {
-      setRoom(id, null, ws);
+      clearRoomStmt.run(id);
     }
   }
 }
