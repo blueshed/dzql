@@ -86,9 +86,10 @@ function householdBox(v: HouseholdView, trail: Crumb[]): string {
   const plusOne =
     named < h.plus_ones &&
     `<form class="tool-form"${write("household", "add", "/guests/-")}><input class="field" name="name" placeholder="Their name" aria-label="Our plus-one's name" autocomplete="off" required><button type="submit" class="tool add">${icon("plus")}Name our plus-one</button></form>`;
+  const deadline = v.open && v.w.deadline ? `<p class="note">Answers by ${esc(formatDay(v.w.deadline))}.</p>` : "";
   return boxPage(
     trail,
-    [speechBubble(h)],
+    [speechBubble(h), deadline],
     [
       // the guests, whole: read as the photo or the list, a row's coming on the row, ✎ the drawer; no page beneath
       cell({ name: "guests", mark: "users", count: h.guests.length, big: true, tools: h.guests.length ? readingSwitch("guests", reading(v, "guests"), ["photo", "list"]) : undefined, body: guestsBody(v) }),

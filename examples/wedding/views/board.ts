@@ -90,6 +90,7 @@ function rootBox(v: BoardView, trail: Crumb[]): string {
     `<div class="names"><form class="field-form" data-write-on="blur">${field("/name1", "name1", b.name1, "The first name", "one name")}<span class="amp">&amp;</span>${field("/name2", "name2", b.name2, "The second name", "the other")}</form></div>`,
     `<div class="when-where"><form class="field-form" data-write-on="blur">${field("/day", "day", b.day, "The day", "2027-04-02")}${field("/venue", "venue", b.venue ?? "", "The place", "where")}</form></div>`,
     `<p class="when">${esc(formatDay(b.day))}</p>`,
+    b.deadline && `<p class="note">Answers by ${esc(formatDay(b.deadline))}.</p>`,
     b.picture_key ? picture(b.picture_key, "") : `<p class="note">No photograph yet.</p>`,
     `<div class="welcome-tools">${pictureField("/picture_key", b.picture_key)}</div>`,
     `</div>`,
