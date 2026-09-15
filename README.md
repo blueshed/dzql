@@ -42,24 +42,33 @@ client, and migrations; `src/` never imports from it.
 
 ## Cost
 
-Morphing (request 5) removed the granular `append` message: a room write now
-sends every *other* member a patch echo plus a full re-render of the chat
-view, where before it sent a patch echo plus one appended `<li>`. Measured
-with a room at 100 messages and 5 members
-(`bun examples/chat/scripts/measure-render-cost.ts`), bytes sent to each
-other member per message sent:
+A write reaches every connection that sees its document as a patch echo and then a render. From
+0.12.0 (morph, don't replace) to 0.23.0 the render was always the whole page; since 0.24.0 a concept
+may answer with the delta in HTML's terms instead -- `Concept.fragments` -- and the page is the
+fallback. Measured with each example's own script (`DB_PATH=:memory: bun
+examples/<name>/scripts/measure-render-cost.ts`):
 
-| | patch echo | second message | total |
+Chat, a room at 100 messages and 5 members, bytes sent to each *other* member per message:
+
+| | patch echo | render | total |
 |---|---|---|---|
-| before (append) | 159 B | 120 B | 279 B |
-| after (full render) | 159 B | 2981 B | 3140 B |
+| 0.4.0 (append) | 159 B | 120 B | 279 B |
+| 0.12.0 to 0.23.0 (full page) | 159 B | 7373 B | 7532 B |
+| 0.24.0 (fragment: one `<li>`) | 159 B | 268 B | 427 B |
 
-About 11x more per message. It doesn't keep growing with history, though:
-`documents/room.ts::read()` caps the transcript at 50 messages regardless of
-how many exist, so the render payload plateaus there (measured ~2971 B at
-50 messages, ~3030 B at 200) rather than growing unbounded. Not fixed here —
-see the CHANGELOG for the candidate (render just the new item when the
-write was a single append, else the whole view) and why it isn't free.
+The wedding, one guest's top changed to green, bytes sent to each viewer:
+
+| viewer | 0.23.0 (full page) | 0.24.0 (fragments) |
+|---|---|---|
+| the sender, drawer open | 14146 B | 1918 B |
+| the same household, a second tab on its box | 11387 B | 1441 B |
+| the couple, on their home | 8912 B | 123 B (the patch alone) |
+| another household, on its box | 10879 B | 0 B |
+| another household, on the everyone page | 3781 B | 1612 B |
+
+An applet's props still go whole (the photo re-sends every figure for one changed top), and every
+connection is still asked -- the answer is now often nothing, but the fan-out is the same. Those
+are the change request's items 7 and 1.
 
 ## Poking at it
 

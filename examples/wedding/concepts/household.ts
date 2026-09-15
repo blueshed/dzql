@@ -3,8 +3,10 @@ import * as sessionDoc from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import { patchMessage, type PatchOp } from "../../../src/json-patch";
 import type { Concept, WriteResult } from "../../../src/concepts/concept";
-import { renderRequested } from "../../../src/concepts/render";
-import { householdPages } from "../views/household";
+import { renderRequested, type HtmlOp } from "../../../src/concepts/render";
+import * as boardDoc from "../documents/board";
+import { boardPhoto, familyGuestRow, familyPhoto, reading as boardReading } from "../views/board";
+import { dressMount, everyonePhoto, familyPhoto as ownPhoto, guestRow, householdPages, menuMount, reading, type HouseholdView } from "../views/household";
 import * as presence from "./presence";
 
 // A household's document, written by the household that arrived by its code. Nearly everything
@@ -27,33 +29,41 @@ const RULES: Rule[] = [
   { path: /^\/claims\/\d+$/, ops: ["remove"] },
 ];
 
-/** Echoes a household document's ops to everyone who sees it, then asks everyone to re-render. Shared by a direct write and by undo landing on this doc. */
-function echoAndNotify(code: string, version: number, applied: PatchOp[]): void {
-  if (applied.length === 0) return;
-  const payload = patchMessage("household", version, applied);
+/** Echoes a household document's ops to everyone who sees it, then asks everyone to bring their page up to date -- naming the write, so `fragments` below can say what that means per page. Shared by a direct write and by undo landing on this doc. */
+function echoAndNotify(code: string, result: WriteResult): void {
+  if (result.applied.length === 0) return;
+  const payload = patchMessage("household", result.version, result.applied);
   for (const ws of presence.seeingHousehold(code)) ws.send(payload);
-  renderRequested.emit(presence.everyone());
+  renderRequested.emit({ sockets: presence.everyone(), write: { docType: "household", docId: code, result } });
 }
+
+/** Everything a household's pages read, for this session. */
+function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined {
+  const h = householdDoc.read(session.code!);
+  if (!h) return undefined;
+  return {
+    session,
+    h,
+    w: weddingDoc.wedding(),
+    courses: weddingDoc.courses(),
+    gifts: weddingDoc.gifts(),
+    events: weddingDoc.events(),
+    places: weddingDoc.places(),
+    photo: weddingDoc.photo(),
+    open: weddingDoc.answersOpen(),
+    names: weddingDoc.namesRevealed(),
+  };
+}
+
+const replace = (target: string, html: string): HtmlOp => ({ op: "replace", target, html });
 
 export const household: Concept = {
   docType: "household",
   render(sessionId) {
     const session = sessionDoc.read(sessionId);
     if (session.kind !== "household") return undefined;
-    const h = householdDoc.read(session.code!);
-    if (!h) return undefined; // unreachable in practice: read() only reports a kind for a code that exists
-    return householdPages({
-      session,
-      h,
-      w: weddingDoc.wedding(),
-      courses: weddingDoc.courses(),
-      gifts: weddingDoc.gifts(),
-      events: weddingDoc.events(),
-      places: weddingDoc.places(),
-      photo: weddingDoc.photo(),
-      open: weddingDoc.answersOpen(),
-      names: weddingDoc.namesRevealed(),
-    });
+    const v = viewFor(session);
+    return v && householdPages(v); // v is always there in practice: read() only reports a kind for a code that exists
   },
   resolveDoc(ws) {
     const session = sessionDoc.read(ws.data.sessionId);
@@ -74,7 +84,7 @@ export const household: Concept = {
   },
   write(ws, code, ops): WriteResult {
     const result = householdDoc.patch(code, ops, ws.data.sessionId);
-    echoAndNotify(code, result.version, result.applied);
+    echoAndNotify(code, result);
     return { ...result, rendered: result.applied.length > 0 };
   },
   // Undo landing back on this household: apply the ledger's inverse ops directly -- skipping
@@ -82,7 +92,66 @@ export const household: Concept = {
   // notify exactly as a direct write would.
   replay(ws, code, ops, undoes): WriteResult {
     const result = householdDoc.patch(code, ops, ws.data.sessionId, undoes);
-    echoAndNotify(code, result.version, result.applied);
+    echoAndNotify(code, result);
     return { ...result, rendered: result.applied.length > 0 };
+  },
+  // The delta in HTML's terms, for the two writes that happen most -- a look changing, a
+  // choice made -- which touch only the applets and rows that show that guest. Per viewer:
+  // the household itself sees its family photo, the open drawer, or a row of the list; the
+  // couple see the board's photo or a family's box; every other household sees nothing, unless
+  // it is looking at the photo of everyone. Any other write declines, and the page goes out.
+  fragments(ws, code, result): HtmlOp[] | undefined {
+    const guests = new Set<number>();
+    let looks = false;
+    let choices = false;
+    for (const op of result.applied) {
+      const m = /^\/guests\/(\d+)\/(minifigure|choices)\//.exec(op.path);
+      if (!m) return undefined;
+      guests.add(Number(m[1]));
+      if (m[2] === "minifigure") looks = true;
+      else choices = true;
+    }
+    const session = sessionDoc.read(ws.data.sessionId);
+    const [head, second, third] = (session.ui.page ?? "").split("/");
+    const ops: HtmlOp[] = [];
+
+    if (session.kind === "household") {
+      const v = viewFor(session)!;
+      const own = session.code === code;
+      if (head === "everyone") {
+        if (looks) ops.push(replace("#everyone-photo", everyonePhoto(v, second ?? null)));
+      } else if (own && !head) {
+        if (reading(v, "guests") === "photo") {
+          if (looks) ops.push(replace("#family-photo", ownPhoto(v)));
+        } else if (choices) {
+          for (const g of v.h.guests) if (guests.has(g.id)) ops.push(replace(`#guest-${g.id}`, guestRow(v, g)));
+        }
+        const focused = v.h.guests.find((g) => g.id === session.ui.focus);
+        if (focused && guests.has(focused.id)) {
+          if (looks) ops.push(replace(`#dress-${focused.id}`, dressMount(v, focused)));
+          if (choices) ops.push(replace(`#menu-${focused.id}`, menuMount(v, focused)));
+        }
+      }
+      return ops;
+    }
+
+    if (session.kind === "couple") {
+      const b = boardDoc.read(session.code!)!;
+      const h = b.households.find((x) => x.code === code);
+      if (!h) return undefined;
+      const v = { session, b };
+      if (head === "households" && second === undefined) {
+        if (looks && boardReading(v, "households") === "photo") ops.push(replace("#board-photo", boardPhoto(v)));
+      } else if (head === "households" && second === String(h.id) && third === undefined) {
+        if (boardReading(v, `family-${h.id}`) === "photo") {
+          if (looks) ops.push(replace("#family-photo", familyPhoto(h)));
+        } else if (choices) {
+          for (const g of h.guests) if (guests.has(g.id)) ops.push(replace(`#guest-${g.id}`, familyGuestRow(v, g)));
+        }
+      }
+      return ops;
+    }
+
+    return undefined;
   },
 };

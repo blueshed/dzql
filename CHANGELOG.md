@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-09-15
+
+### Changed
+
+- Presence is a plain write, not a bare re-render: chat's room concept applies `add /people/-` (a name arriving) and `remove /people/<index>` (a name leaving) to the room document on join/leave, echoed to everyone else in the room exactly like a transcript op -- a patch, then (with 0.24.0's fragments) a `replace` of `#people` instead of the whole page. Never recorded to the ledger (undoing an arrival is nonsense; change-request.md item 5). Two side effects worth naming: (1) the announcing socket doesn't get its own presence echo -- it's about to see the room in its own full render anyway, so a solo join into a fresh room now sends *nothing* extra, not even a wasted re-render; (2) a redundant tab closing (another tab of the same session is still in the room) now sends nothing to anyone, where before every open/close blindly re-rendered the whole room regardless of whether the visible list actually changed. `documents/room.ts`'s multi-tab dedup logic (`peopleWith`) has to substitute the departing socket's pre-write name for a logout specifically, since its session row is already revoked by the time the presence check runs.
+- `inspect` takes a `limit` (`{"type":"inspect","limit":n}`) and answers with that many ledger entries per document (`InspectDoc.entries: LedgerEntry[]`, oldest excluded beyond `limit`) instead of just the latest (`head` is gone). Default is 1, the longstanding behavior. The CLI's `watch` now catches up on each doc's recent history (`formatHistory`, oldest first) before following live patches, and both `inspect` and `watch` accept a `--limit <n>` flag (`extractLimit`) to ask for more. Change-request.md item 8, in full.
+
+## [0.24.0] - 2026-09-15
+
+### Changed
+
+- Fragment renders: a write can go out as the delta in HTML's terms instead of the whole page. `Concept.fragments?(ws, docId, result)` answers, per connection, with HTML ops -- `replace` (morph one element), `add` (append inside one), `remove` -- or `[]` (nothing on that page changed: nothing is sent), or `undefined` (the whole page, as before). A `renderRequested` emit may now name the write (`{ sockets, write: { docType, docId, result } }`); a bare iterable still asks for full renders. The client (`src/client/app.ts`) morphs each target in place (`morphElement` in `morph.ts`), mounts what appeared and pins what grew, exactly as after a full render. This is the granular vocabulary 0.12.0 removed when undo needed a word for *removing* an element and there was only `append`; it comes back with that word, and with the full render as the fallback wherever a concept declines. Measured (`DB_PATH=:memory: bun examples/<name>/scripts/measure-render-cost.ts`):
+  - **Chat**, 100 messages, 5 members, bytes to each other member per message: 7,532 before (patch + page) to 427 after (patch + one `<li>`). The `<li>` is 268 B now against 120 B for 0.4.0's append, because a message is a bubble with an avatar and a name line since 0.22.0.
+  - **The wedding**, one guest's top changed to green: the sender with the drawer open 14,146 to 1,918 (the family photo and the dressing sheet); a second tab on the box 11,387 to 1,441; the couple on their home 8,912 to 123 (the patch echo alone: nothing on their page shows a look); another household on its box 10,879 to 0; another on the everyone page 3,781 to 1,612 (the photo's new props). Chat answers every room write (a message appended; an undone message removed, and the one after it redrawn since it may now start a run). The wedding answers a look or a choice, per viewer's page and reading, and declines the rest; the board declines everything, for now.
+  - The applets' props go whole (the photo re-sends every figure for one changed top), so an applet-heavy page sits an order under the page rather than two; and fan-out is unchanged: every connection is still asked, only the answer is now often nothing. Both are the change request's items 7 and 1.
+- Chat's transcript carries message ids (`<li id="m<id>">`, `ChatMessage.id`) and the room's `patch()` returns the message an undo `removed`, which `fragments` needs to name it.
+
 ## [0.23.0] - 2026-09-14
 
 ### Added

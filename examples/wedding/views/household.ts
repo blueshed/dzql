@@ -3,7 +3,7 @@
 // beneath, each › from its compartment; and the drawers: a guest's (dress the figure, choose the
 // meal), a gift's (claim it), the answer's. Which page and which drawer is the session's word.
 
-import type { HouseholdDocument } from "../documents/household";
+import type { Guest, HouseholdDocument } from "../documents/household";
 import type { SessionDocument } from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { Course, Gift, Wedding } from "../documents/wedding";
@@ -12,7 +12,7 @@ import type { DressProps } from "../applets/dress";
 import type { MenuProps } from "../applets/menu";
 import { esc, join, nav, write } from "./html";
 import { icon } from "./icons";
-import { familiesPhoto, familyEntries, photoApplet, type Family, type PhotoEntry } from "./photo";
+import { familiesPhoto, familyEntries, photoApplet, photoMount, type Family, type PhotoEntry } from "./photo";
 import {
   answerSays,
   answerWord,
@@ -102,30 +102,35 @@ function householdBox(v: HouseholdView, trail: Crumb[]): string {
   );
 }
 
-const reading = (v: HouseholdView, key: string, fallback = "photo"): string => v.session.ui.reading?.[key] ?? fallback;
+export const reading = (v: HouseholdView, key: string, fallback = "photo"): string => v.session.ui.reading?.[key] ?? fallback;
+
+/** The family photo's mount: every guest, a waiting ask as a ghost. Replaced alone when a look changes. */
+export const familyPhoto = (v: HouseholdView): string => photoMount("family-photo", familyEntries(v.h), "your household, as minifigures");
+
+/** One guest as a row of the list reading: the name (✎ the drawer), their choices on one line, coming on the row. Replaced alone when a choice changes. */
+export function guestRow(v: HouseholdView, g: Guest): string {
+  return join(
+    `<div class="row-line guest" id="guest-${g.id}"><div>`,
+    `<button class="name-link" type="button"${write("session", "replace", "/focus", g.id)}>${esc(g.name)}${pencil()}</button>`,
+    `<p class="note">${esc(choicesLine(g, v.courses))}</p></div>`,
+    comingPills((value) => write("household", "replace", `/guests/${g.id}/coming`, value), g.coming, !v.open),
+    "</div>",
+  );
+}
 
 /** The household's guests in the current reading, the photo or the list, whole in the box's compartment. */
 function guestsBody(v: HouseholdView): string {
   const { h } = v;
   if (reading(v, "guests") === "photo") {
     return join(
-      h.guests.length ? photoApplet(familyEntries(h), "your household, as minifigures") : `<p class="note">Nobody is named on your invitation yet.</p>`,
+      h.guests.length ? `<div class="reading photo-reading">${familyPhoto(v)}</div>` : `<p class="note">Nobody is named on your invitation yet.</p>`,
       h.guests.length > 0 && `<p class="note">Tap anyone to dress them and choose their meal.</p>`,
     );
   }
-  const rows = h.guests.map((g) =>
-    join(
-      `<div class="row-line guest"><div>`,
-      `<button class="name-link" type="button"${write("session", "replace", "/focus", g.id)}>${esc(g.name)}${pencil()}</button>`,
-      `<p class="note">${esc(choicesLine(g, v.courses))}</p></div>`,
-      comingPills((value) => write("household", "replace", `/guests/${g.id}/coming`, value), g.coming, !v.open),
-      "</div>",
-    ),
-  );
   const ghosts = h.asks
     .filter((a) => a.reply === null)
     .map((a) => `<div class="row-line guest ghost-row"><div><span class="what">${esc(a.name)}</span><p class="note">a waiting ask — not a guest yet</p></div><span class="taken">waiting</span></div>`);
-  return `<div class="rows">${rows.join("")}${ghosts.join("")}</div>`;
+  return `<div class="rows">${h.guests.map((g) => guestRow(v, g)).join("")}${ghosts.join("")}</div>`;
 }
 
 // ───────────────────────────── the collections ─────────────────────────────
@@ -169,8 +174,8 @@ function giftsCollection(v: HouseholdView, trail: Crumb[]): string {
   });
 }
 
-/** Everyone in the photo: the wedding's guests whose households said yes, a maybe as a ghost; beyond EVERYONE_UP_TO, one figure per family, › into a family. */
-function everyonePage(v: HouseholdView, trail: Crumb[], familyKey: string | null): string {
+/** Everyone in the photo, as families: the wedding's guests whose households said yes, a maybe as a ghost, grouped by household. */
+function everyoneFamilies(v: HouseholdView): Map<string, Family> {
   const byFamily = new Map<string, Family>();
   for (const r of v.photo) {
     const state = weddingDoc.inPhoto(r);
@@ -181,14 +186,28 @@ function everyonePage(v: HouseholdView, trail: Crumb[], familyKey: string | null
     f.members.push(entry);
     byFamily.set(key, f);
   }
+  return byFamily;
+}
+
+/** The everyone photo's mount, at whichever level the crowd and the open family put it. Replaced alone when a look changes. */
+export function everyonePhoto(v: HouseholdView, familyKey: string | null): string {
+  const byFamily = everyoneFamilies(v);
+  const open = familyKey && byFamily.has(familyKey) ? familyKey : null;
+  const { entries, label } = familiesPhoto([...byFamily.values()], open);
+  return photoMount("everyone-photo", entries, label, v.names);
+}
+
+/** Everyone in the photo; beyond EVERYONE_UP_TO, one figure per family, › into a family. */
+function everyonePage(v: HouseholdView, trail: Crumb[], familyKey: string | null): string {
+  const byFamily = everyoneFamilies(v);
   const families = [...byFamily.values()];
   const total = families.reduce((n, f) => n + f.members.length, 0);
   const open = familyKey && byFamily.has(familyKey) ? familyKey : null;
-  const { entries, label, level, shown } = familiesPhoto(families, open);
+  const { level, shown } = familiesPhoto(families, open);
   const here: Crumb[] = [...trail, open ? { label: "Everyone", page: "everyone" } : { label: "Everyone" }];
   if (open) here.push({ label: "One family" });
   return collectionPage(here, {
-    body: total ? photoApplet(entries, label, { reveal: v.names, framed: true }) : `<p class="note">Nobody yet.</p>`,
+    body: total ? `<div class="reading photo-reading framed">${everyonePhoto(v, familyKey)}</div>` : `<p class="note">Nobody yet.</p>`,
     note:
       level === "families" ? `${total} in the photo, in ${shown} families. Tap a family to see them. Nobody knows whose is whose until the day.`
       : level === "family" ? `One family, ${shown} of them.`
@@ -199,26 +218,34 @@ function everyonePage(v: HouseholdView, trail: Crumb[], familyKey: string | null
 
 // ───────────────────────────── the drawers ─────────────────────────────
 
+/** The dressing applet's mount for one guest. Replaced alone when their look changes. */
+export function dressMount(v: HouseholdView, g: Guest): string {
+  const dress: DressProps = { guestId: g.id, spec: specOf(g.minifigure), firstName: firstNameOf(g.name), out: isGuestOut(g, v.h) };
+  return `<div id="dress-${g.id}" data-applet="dress" data-props="${esc(JSON.stringify(dress))}"></div>`;
+}
+
+/** The menu applet's mount for one guest. Replaced alone when a choice changes. */
+export function menuMount(v: HouseholdView, g: Guest): string {
+  const menu: MenuProps = {
+    guestId: g.id,
+    firstName: firstNameOf(g.name),
+    courses: v.courses.map((c) => ({ id: c.id, name: c.name, dishes: c.dishes.map(({ id, name, dietary }) => ({ id, name, dietary })), drinks: c.drinks.map(({ id, name }) => ({ id, name })) })),
+    choices: g.choices,
+    out: isGuestOut(g, v.h),
+    locked: !v.open,
+  };
+  return `<div id="menu-${g.id}" data-applet="menu" data-props="${esc(JSON.stringify(menu))}"></div>`;
+}
+
 /** The guest's drawer: the head with the name, the dressing sheet, the hint, and their choices beneath -- the two applets, given what they need. */
 function guestSheet(v: HouseholdView): string {
   const focus = v.session.ui.focus;
   const g = focus === undefined ? undefined : v.h.guests.find((x) => x.id === focus);
   if (!g) return "";
-  const firstName = firstNameOf(g.name);
-  const out = isGuestOut(g, v.h);
-  const dress: DressProps = { guestId: g.id, spec: specOf(g.minifigure), firstName, out };
-  const menu: MenuProps = {
-    guestId: g.id,
-    firstName,
-    courses: v.courses.map((c) => ({ id: c.id, name: c.name, dishes: c.dishes.map(({ id, name, dietary }) => ({ id, name, dietary })), drinks: c.drinks.map(({ id, name }) => ({ id, name })) })),
-    choices: g.choices,
-    out,
-    locked: !v.open,
-  };
   const body = join(
-    `<div class="figure-box"><div data-applet="dress" data-props="${esc(JSON.stringify(dress))}"></div></div>`,
-    `<p class="hint">Touch ${esc(firstName)}’s hair, face, top, arms or legs to change them.</p>`,
-    `<div data-applet="menu" data-props="${esc(JSON.stringify(menu))}"></div>`,
+    `<div class="figure-box">${dressMount(v, g)}</div>`,
+    `<p class="hint">Touch ${esc(firstNameOf(g.name))}’s hair, face, top, arms or legs to change them.</p>`,
+    menuMount(v, g),
   );
   return sheet("guest-sheet", g.name, body, write("session", "remove", "/focus"), "guest-sheet");
 }

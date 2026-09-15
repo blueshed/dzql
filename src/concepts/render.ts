@@ -1,10 +1,27 @@
 import type { ServerWebSocket } from "bun";
 import type { ConnectionData } from "../connection";
 import { createEvent } from "./bus";
+import type { WriteResult } from "./concept";
 
-// Fires whenever a set of connections needs a fresh render pushed -- e.g.
-// after a room-wide change (a message, presence, an undo). Full renders are
-// cheap to broadcast now that the client morphs instead of replacing, so
-// there's no separate granular wire vocabulary for "someone joined" or "a
-// message arrived": everyone affected just gets asked to re-render.
-export const renderRequested = createEvent<Iterable<ServerWebSocket<ConnectionData>>>();
+/**
+ * A delta in HTML's own terms: what a render sends instead of the whole page when a concept
+ * can say which elements a write touched. `replace` morphs the target element with `html`
+ * (one element); `add` appends `html` inside the target; `remove` takes the target out. The
+ * target is a selector, in practice an id.
+ */
+export type HtmlOp = { op: "replace" | "add"; target: string; html: string } | { op: "remove"; target: string };
+
+/** A write, as a render request carries it: the concept that owns the document decides, per connection, what the write means for its page. */
+export type RenderWrite = { docType: string; docId: string; result: WriteResult };
+
+export type RenderRequest = { sockets: Iterable<ServerWebSocket<ConnectionData>>; write?: RenderWrite };
+
+// Fires whenever a set of connections needs bringing up to date -- after a write to a
+// document they see, an undo, a presence change. A bare iterable of sockets asks for a full
+// render of each; a request that names the write lets the owning concept answer with HTML
+// ops instead (Concept.fragments), or with nothing at all when the write changed nothing on
+// that connection's page. The full render is the fallback whenever a concept declines.
+export const renderRequested = createEvent<Iterable<ServerWebSocket<ConnectionData>> | RenderRequest>();
+
+export const renderMessage = (html: string): string => JSON.stringify({ type: "render", html });
+export const fragmentsMessage = (ops: HtmlOp[]): string => JSON.stringify({ type: "render", ops });

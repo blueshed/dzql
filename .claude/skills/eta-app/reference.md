@@ -69,7 +69,7 @@ export type Example = {
   concepts: Concept[];      // render order; kernel appends its own ledger concept after these
   active(sessionId: string): boolean; // may this session write at all right now?
   index: HTMLBundle;        // served at "/"
-  routes?: Record<string, Bun.BaseRouteValue | RouteHandler>; // merged in; a kernel route of the same path wins
+  routes?: Record<string, Bun.Serve.BaseRouteValue | RouteHandler>; // merged in; a kernel route of the same path wins
 };
 ```
 
@@ -111,6 +111,7 @@ export type Concept = {
   permit(ws, op: PatchOp): boolean;   // may this connection apply op?
   write(ws, docId: string, ops: PatchOp[]): WriteResult; // apply + echo + side effects
   replay?(ws, docId: string, ops: PatchOp[], undoes: number): WriteResult; // undo's write, skipping permit()
+  fragments?(ws, docId: string, result: WriteResult): HtmlOp[] | undefined; // the delta in HTML's terms, per connection; [] = nothing changed here; undefined = send the page
   onOpen?(ws): void;
   onClose?(ws): void;
 };
@@ -143,6 +144,23 @@ replay(ws, roomName, ops, undoes) {
 If a new example's concept broadcasts to more than one connection, set
 `rendered: true` on any write path that already pushed its own render —
 otherwise the writer gets rendered twice per write.
+
+### `fragments` — the delta in HTML's terms
+
+A full page per write is the default and the fallback. A concept that can say which elements a
+write touched answers `fragments(ws, docId, result)` with HTML ops instead:
+
+```ts
+type HtmlOp = { op: "replace" | "add"; target: string; html: string } | { op: "remove"; target: string };
+```
+
+`replace` morphs one element (give it an id); `add` appends inside one; `remove` takes one out.
+`[]` means nothing on this connection's page changed and nothing is sent; `undefined` declines
+and the page goes out. For the kernel to ask, the concept's `echoAndNotify` must name the write
+in its render request: `renderRequested.emit({ sockets, write: { docType, docId, result } })`.
+Chat answers every room write (`examples/chat/concepts/room.ts`); the wedding answers a look or
+a choice per viewer's page and declines the rest (`examples/wedding/concepts/household.ts`).
+Anything the applet shows goes as its new `data-props`, whole.
 
 Concepts never import each other's internals — they talk only through
 `src/concepts/bus.ts` events (`createEvent()`/`.on()`/`.emit()`). Example:
@@ -209,6 +227,19 @@ value" (a field that was previously unset) must be a `remove`, or undoing a
 first-ever write would silently do nothing. See `restoreOp()` in
 `documents/session.ts` for the pattern.
 
+## Opting a write out of the ledger
+
+A document is off the ledger by omission, not by a flag: if its `patch()` never calls
+`record()`, its version stays 0 (or, for a write that calls `record()` sometimes and not others,
+simply doesn't advance on the calls that skip it) and `nextUndo()` never finds anything to walk
+back for it. Two real examples: `examples/wedding/documents/session.ts`'s `patch()` never records
+at all (a visit's page/drawer state isn't the wedding's history -- undo there means "take back my
+last answer," never "go back a page"); `examples/chat/concepts/room.ts`'s presence ops
+(`add /people/-`, `remove /people/<index>`) are sent as plain room patches but built and echoed
+without ever touching `record()` (undoing an arrival is nonsense). There's no `Concept`-level
+flag for this today -- if the kernel ever needs to ask "is this document on the ledger" generically
+rather than each document answering by omission, `Concept.ledger?: false` is the shape.
+
 ## The ledger and undo
 
 `src/ledger.ts` is the single source of truth for undo — there's no separate
@@ -266,8 +297,10 @@ HTML is the only vocabulary on the wire — no JSON tree of app state, ever.
   morphed in) or `{"type": "patch", "doc", "version", "ops"}` (an echo of
   what was just applied, recorded into the client's `window.eta.docs()`
   op-log — the *only* client-side domain state allowed).
-- `{"type": "inspect"}` -> `{"type": "inspect", "docs": [...]}`: legibility
-  without a log line, built by `assemble()`'s `inspectFor`.
+- `{"type": "inspect", "limit"?: n}` -> `{"type": "inspect", "docs": [{doc, version, entries}, ...]}`:
+  legibility without a log line, built by `assemble()`'s `inspectFor`. `entries` is that many of
+  the document's most recent ledger rows (default 1, i.e. just the latest); the CLI's `watch`
+  asks for more to catch up on history before following live patches.
 
 An element declares what it writes via `data-write='{"doc":...,"op":...,"path":...}'`:
 

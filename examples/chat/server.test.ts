@@ -1,12 +1,14 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
+import type { HtmlOp } from "../../src/concepts/render";
 import { history } from "../../src/ledger";
+import { read as readRoom } from "./documents/room";
 import { createServer } from "../../src/server";
 import { example } from "./index";
 
 /** The names in a render's people chips, whichever one is marked as the viewer's own. */
 function peopleIn(html: string): string[] {
-  const chips = html.match(/<p class="people">(.*?)<\/p>/)?.[1] ?? "";
+  const chips = html.match(/<p class="people"[^>]*>(.*?)<\/p>/)?.[1] ?? "";
   return [...chips.matchAll(/<span[^>]*>([^<]*)<\/span>/g)].map((m) => m[1]!);
 }
 
@@ -22,6 +24,9 @@ afterAll(() => {
 });
 
 type WireMessage = { type: string; html: string; doc?: string; version?: number; ops?: unknown[] };
+
+/** A render's HTML, whether it came as the whole page or as fragment ops. */
+const htmlOf = (m: WireMessage): string => m.html ?? (m.ops as HtmlOp[]).map((o) => ("html" in o ? o.html : "")).join("");
 
 // A persistent per-socket FIFO queue, not a fresh {once:true} listener per
 // nextMessage() call: two messages sent back-to-back by the server (e.g. a
@@ -74,6 +79,22 @@ function write(ws: WebSocket, doc: string, ops: PatchOp[]) {
   ws.send(JSON.stringify({ doc, ops }));
 }
 
+/** Nothing arrives for `ws` in a short window -- used to prove a write that changed nothing on
+ * this connection's page (item 8: a redundant tab closing) sent it nothing, not a wasted render. */
+async function expectQuiet(ws: WebSocket): Promise<void> {
+  await Bun.sleep(30);
+  expect(queues.get(ws)!).toEqual([]);
+}
+
+/** A presence change (join/leave) reaches someone already in the room as a patch, then a
+ * fragment render -- subscribed before the triggering action, so neither message is missed, and
+ * resolving to the render for assertions on the resulting people list. */
+function presenceUpdate(ws: WebSocket): Promise<WireMessage> {
+  const patch = nextMessage(ws);
+  const render = nextMessage(ws);
+  return patch.then(() => render);
+}
+
 describe("routes", () => {
   test("/ serves the index page", async () => {
     const res = await fetch(new URL("/", server.url));
@@ -103,7 +124,7 @@ describe("websocket write protocol", () => {
     const ws = connect();
     await opened(ws);
     const message = await expectMessage(ws, "render");
-    expect(message.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
+    expect(htmlOf(message)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
     ws.close();
   });
 
@@ -118,7 +139,7 @@ describe("websocket write protocol", () => {
     await expectMessage(ws, "patch");
     const message = await expectMessage(ws, "render");
 
-    expect(message.html).toContain("Still here");
+    expect(htmlOf(message)).toContain("Still here");
     ws.close();
   });
 
@@ -130,7 +151,7 @@ describe("websocket write protocol", () => {
     write(ws, "session", []);
     const message = await expectMessage(ws, "render");
 
-    expect(message.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
+    expect(htmlOf(message)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
     ws.close();
   });
 
@@ -143,7 +164,7 @@ describe("websocket write protocol", () => {
     // rejected (blank name): no patch echo, just the unchanged render
     const message = await expectMessage(ws, "render");
 
-    expect(message.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // no name was set
+    expect(htmlOf(message)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // no name was set
     ws.close();
   });
 
@@ -159,8 +180,7 @@ describe("websocket write protocol", () => {
     const room = crypto.randomUUID();
     write(ws, "session", [{ op: "replace", path: "/room", value: room }]);
     await expectMessage(ws, "patch"); // echo of the session's /room write
-    await expectMessage(ws, "render"); // people broadcast for the room just joined
-    await expectMessage(ws, "render"); // the full chat view
+    await expectMessage(ws, "render"); // the full chat view: alone in a fresh room, nobody to tell
 
     const uniqueText = `inspect me ${crypto.randomUUID()}`;
     write(ws, "room", [{ op: "add", path: "/transcript/-", value: uniqueText }]);
@@ -170,19 +190,19 @@ describe("websocket write protocol", () => {
     ws.send(JSON.stringify({ type: "inspect" }));
     const inspection = await expectMessage(ws, "inspect");
 
-    const docsSeen = (inspection as unknown as { docs: { doc: string; version: number; head?: unknown }[] }).docs;
+    const docsSeen = (inspection as unknown as { docs: { doc: string; version: number; entries?: unknown[] }[] }).docs;
     const sessionDoc = docsSeen.find((d) => d.doc === "session");
     const roomDoc = docsSeen.find((d) => d.doc === "room");
     expect(sessionDoc?.version).toBeGreaterThan(0);
     expect(roomDoc?.version).toBeGreaterThan(0);
-    expect(roomDoc?.head).toMatchObject({
+    expect(roomDoc?.entries?.[0]).toMatchObject({
       ops: [{ op: "add", path: "/transcript/-", value: { name: "Ada", text: uniqueText } }],
     });
 
     ws.close();
   });
 
-  test("inspect on a fresh connection sees only the session doc, with no ledger head yet", async () => {
+  test("inspect on a fresh connection sees only the session doc, with no ledger history yet", async () => {
     const ws = connect();
     await opened(ws);
     await expectMessage(ws, "render");
@@ -190,8 +210,8 @@ describe("websocket write protocol", () => {
     ws.send(JSON.stringify({ type: "inspect" }));
     const inspection = await expectMessage(ws, "inspect");
 
-    const docsSeen = (inspection as unknown as { docs: { doc: string; version: number; head?: unknown }[] }).docs;
-    expect(docsSeen).toEqual([{ doc: "session", version: 0, head: undefined }]);
+    const docsSeen = (inspection as unknown as { docs: { doc: string; version: number; entries?: unknown[] }[] }).docs;
+    expect(docsSeen).toEqual([{ doc: "session", version: 0, entries: [] }]);
 
     ws.close();
   });
@@ -215,9 +235,9 @@ describe("websocket write protocol", () => {
     await expectMessage(ws, "patch"); // echo of the write; asserted precisely below
     const message = await expectMessage(ws, "render");
 
-    expect(message.html).toContain("&lt;b&gt;Ada&lt;/b&gt;");
-    expect(message.html).toContain('data-write=\'{"doc":"session","op":"remove","path":"/name"}\'');
-    expect(message.html).toContain('data-applet="room-picker"');
+    expect(htmlOf(message)).toContain("&lt;b&gt;Ada&lt;/b&gt;");
+    expect(htmlOf(message)).toContain('data-write=\'{"doc":"session","op":"remove","path":"/name"}\'');
+    expect(htmlOf(message)).toContain('data-applet="room-picker"');
     ws.close();
   });
 
@@ -249,12 +269,11 @@ describe("websocket write protocol", () => {
     const room = crypto.randomUUID();
     write(ws, "session", [{ op: "replace", path: "/room", value: room }]);
     await expectMessage(ws, "patch"); // echo of the session's /room write
-    await expectMessage(ws, "render"); // people broadcast for the room just joined
-    const message = await expectMessage(ws, "render"); // the full chat view
+    const message = await expectMessage(ws, "render"); // the full chat view: alone, nobody to tell
 
-    expect(message.html).toContain(`#${room}`);
-    expect(message.html).toContain('data-write=\'{"doc":"room","op":"add","path":"/transcript/-"}\'');
-    expect(message.html).toContain('data-write=\'{"doc":"session","op":"remove","path":"/room"}\'');
+    expect(htmlOf(message)).toContain(`#${room}`);
+    expect(htmlOf(message)).toContain('data-write=\'{"doc":"room","op":"add","path":"/transcript/-"}\'');
+    expect(htmlOf(message)).toContain('data-write=\'{"doc":"session","op":"remove","path":"/room"}\'');
     ws.close();
   });
 
@@ -280,13 +299,13 @@ describe("websocket write protocol", () => {
     write(second, "session", [{ op: "replace", path: "/room", value: room }]);
     // rejected by permit (logged out): no patch echo, just the unchanged render
     const rejected = await expectMessage(second, "render");
-    expect(rejected.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // still logged out
+    expect(htmlOf(rejected)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // still logged out
 
     // reactivating afterward must not reveal a room leaked by the rejected write
     write(second, "session", [{ op: "replace", path: "/name", value: "Ada again" }]);
     await expectMessage(second, "patch");
     const reactivated = await expectMessage(second, "render");
-    expect(reactivated.html).toContain('data-applet="room-picker"'); // room selector, not a chat view
+    expect(htmlOf(reactivated)).toContain('data-applet="room-picker"'); // room selector, not a chat view
 
     first.close();
     second.close();
@@ -301,14 +320,13 @@ describe("websocket write protocol", () => {
     await expectMessage(ws, "render");
     write(ws, "session", [{ op: "replace", path: "/room", value: crypto.randomUUID() }]);
     await expectMessage(ws, "patch");
-    await expectMessage(ws, "render"); // people broadcast
-    await expectMessage(ws, "render"); // full chat view
+    await expectMessage(ws, "render"); // full chat view: alone in a fresh room, nobody to tell
 
     write(ws, "session", [{ op: "remove", path: "/room" }]);
     await expectMessage(ws, "patch"); // echo of the session's /room removal
     const message = await expectMessage(ws, "render");
 
-    expect(message.html).toContain('data-applet="room-picker"');
+    expect(htmlOf(message)).toContain('data-applet="room-picker"');
     ws.close();
   });
 
@@ -325,7 +343,7 @@ describe("websocket write protocol", () => {
     await expectMessage(ws, "patch"); // echo of the /name removal
     const message = await expectMessage(ws, "render");
 
-    expect(message.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
+    expect(htmlOf(message)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
     ws.close();
   });
 
@@ -346,13 +364,13 @@ describe("websocket write protocol", () => {
     const second = connect(cookie);
     await opened(second);
     const reopened = await expectMessage(second, "render");
-    expect(reopened.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
+    expect(htmlOf(reopened)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
 
     write(second, "session", [{ op: "replace", path: "/name", value: "Ada again" }]);
     await expectMessage(second, "patch");
     const message = await expectMessage(second, "render");
 
-    expect(message.html).toContain("Ada again");
+    expect(htmlOf(message)).toContain("Ada again");
     second.close();
   });
 
@@ -370,7 +388,7 @@ describe("websocket write protocol", () => {
     expect(undonePatch.doc).toBe("session");
     expect(undonePatch.ops).toEqual([{ op: "remove", path: "/name" }]);
     const rendered = await expectMessage(ws, "render");
-    expect(rendered.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // logged out again
+    expect(htmlOf(rendered)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // logged out again
 
     ws.close();
   });
@@ -385,8 +403,7 @@ describe("websocket write protocol", () => {
     await expectMessage(ws, "render");
     write(ws, "session", [{ op: "replace", path: "/room", value: "general" }]);
     await expectMessage(ws, "patch");
-    await expectMessage(ws, "render"); // people broadcast for the room just joined
-    await expectMessage(ws, "render"); // full chat view
+    await expectMessage(ws, "render"); // full chat view: alone in the room, nobody to tell
 
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const firstUndo = await expectMessage(ws, "patch");
@@ -397,12 +414,12 @@ describe("websocket write protocol", () => {
     const secondUndo = await expectMessage(ws, "patch");
     expect(secondUndo.ops).toEqual([{ op: "remove", path: "/name" }]); // not a redo of the room join
     const rendered = await expectMessage(ws, "render");
-    expect(rendered.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
+    expect(htmlOf(rendered)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
 
     // nothing left to undo: a third press just re-renders the current state
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const noOp = await expectMessage(ws, "render");
-    expect(noOp.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
+    expect(htmlOf(noOp)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
 
     ws.close();
   });
@@ -427,7 +444,7 @@ describe("websocket write protocol", () => {
     write(second, "ledger", [{ op: "remove", path: "/latest" }]);
     // rejected by permit (logged out): no patch echo, just the unchanged render
     const rejected = await expectMessage(second, "render");
-    expect(rejected.html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
+    expect(htmlOf(rejected)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
 
     first.close();
     second.close();
@@ -447,7 +464,7 @@ describe("websocket write protocol", () => {
     const second = connect(cookie);
     await opened(second);
     const message = await expectMessage(second, "render");
-    expect(message.html).toContain("Linus");
+    expect(htmlOf(message)).toContain("Linus");
     second.close();
   });
 });
@@ -461,8 +478,9 @@ describe("chat", () => {
     await expectMessage(ws, "render"); // room selector
     write(ws, "session", [{ op: "replace", path: "/room", value: room }]);
     await expectMessage(ws, "patch"); // echo of the session's /room write
-    await expectMessage(ws, "render"); // people broadcast for the room just joined
-    await expectMessage(ws, "render"); // the full chat view
+    // the full chat view; a presence broadcast to whoever else is already there doesn't come
+    // back to the joiner itself, so there's nothing else to drain here
+    await expectMessage(ws, "render");
   }
 
   test("a room's people list updates live as someone else joins and leaves", async () => {
@@ -470,18 +488,18 @@ describe("chat", () => {
     const a = connect();
     await login(a, "Alice", room);
 
-    const joined = nextMessage(a); // subscribe before Bob joins, to avoid a race
+    const joined = presenceUpdate(a); // subscribe before Bob joins, to avoid a race
     const b = connect();
     await login(b, "Bob", room);
 
     const joinedUpdate = await joined;
-    expect(joinedUpdate.type).toBe("render");
-    expect(peopleIn(joinedUpdate.html)).toEqual(["Alice", "Bob"]);
+    expect(joinedUpdate.ops).toMatchObject([{ op: "replace", target: "#people" }]);
+    expect(peopleIn(htmlOf(joinedUpdate))).toEqual(["Alice", "Bob"]);
 
-    const left = nextMessage(a);
+    const left = presenceUpdate(a);
     b.close();
     const leftUpdate = await left;
-    expect(peopleIn(leftUpdate.html)).toEqual(["Alice"]);
+    expect(peopleIn(htmlOf(leftUpdate))).toEqual(["Alice"]);
 
     a.close();
   });
@@ -499,20 +517,27 @@ describe("chat", () => {
     await opened(b);
     await expectMessage(b, "render"); // full chat view
 
-    const aJoined = nextMessage(a); // subscribe before Carol joins, to avoid a race
-    const bJoined = nextMessage(b);
+    const aJoined = presenceUpdate(a); // subscribe before Carol joins, to avoid a race
+    const bJoined = presenceUpdate(b);
     const c = connect();
     await login(c, "Carol", room);
 
     const aJoinedUpdate = await aJoined;
     // not "Alice, Alice, Carol": two sockets, one person
-    expect(peopleIn(aJoinedUpdate.html)).toEqual(["Alice", "Carol"]);
-    expect(peopleIn((await bJoined).html)).toEqual(["Alice", "Carol"]);
+    expect(peopleIn(htmlOf(aJoinedUpdate))).toEqual(["Alice", "Carol"]);
+    expect(peopleIn(htmlOf(await bJoined))).toEqual(["Alice", "Carol"]);
 
-    const aStillThere = nextMessage(a); // subscribe before b's tab closes
+    // b's tab closing doesn't change who's visibly in the room (a's tab is still Alice's), so
+    // nothing goes out at all -- not even a wasted re-render, unlike before item 8.
     b.close();
-    const stillThereUpdate = await aStillThere;
-    expect(peopleIn(stillThereUpdate.html)).toEqual(["Alice", "Carol"]); // Alice's other tab is still in the room
+    await expectQuiet(a);
+    await expectQuiet(c);
+
+    // proof the room still shows both, not just the absence of a message: an unrelated write
+    // gets a fresh render of the current state.
+    write(a, "session", []);
+    const stillThere = await expectMessage(a, "render");
+    expect(peopleIn(htmlOf(stillThere))).toEqual(["Alice", "Carol"]);
 
     a.close();
     c.close();
@@ -523,16 +548,16 @@ describe("chat", () => {
     const a = connect();
     await login(a, "Alice", room);
 
-    const bJoined = nextMessage(a); // subscribe before Bob joins, to avoid missing the broadcast
+    const bJoined = presenceUpdate(a); // subscribe before Bob joins, to avoid missing the broadcast
     const b = connect();
     await login(b, "Bob", room);
     await bJoined; // people broadcast triggered by Bob joining, not this test's focus
 
-    const bLeft = nextMessage(a); // subscribe before Bob logs out
+    const bLeft = presenceUpdate(a); // subscribe before Bob logs out
     write(b, "session", [{ op: "remove", path: "/name" }]);
     const bLeftUpdate = await bLeft;
 
-    expect(peopleIn(bLeftUpdate.html)).toEqual(["Alice"]);
+    expect(peopleIn(htmlOf(bLeftUpdate))).toEqual(["Alice"]);
 
     a.close();
     b.close();
@@ -543,7 +568,7 @@ describe("chat", () => {
     const a = connect();
     await login(a, "Alice", room);
 
-    const bJoined = nextMessage(a); // subscribe before Bob joins, to avoid missing the broadcast
+    const bJoined = presenceUpdate(a); // subscribe before Bob joins, to avoid missing the broadcast
     const b = connect();
     await login(b, "Bob", room);
     await bJoined; // people broadcast triggered by Bob joining, not this test's focus
@@ -556,11 +581,14 @@ describe("chat", () => {
     const aPatch = await expectMessage(a, "patch");
     expect(aPatch.doc).toBe("room");
     expect(aPatch.ops).toEqual([{ op: "add", path: "/transcript/-", value: { name: "Alice", text: uniqueText } }]);
+    // the render is a fragment: the one <li>, appended to the transcript
     const aRender = await expectMessage(a, "render");
-    expect(aRender.html).toContain(uniqueText);
+    expect(aRender.ops).toMatchObject([{ op: "add", target: "#messages" }]);
+    expect(htmlOf(aRender)).toContain(uniqueText);
+    expect(htmlOf(aRender)).not.toContain("<form"); // not the page
 
     expect(await bPatch).toMatchObject({ type: "patch", doc: "room" });
-    expect((await bRender).html).toContain(uniqueText);
+    expect(htmlOf(await bRender)).toContain(uniqueText);
     a.close();
     b.close();
   });
@@ -570,7 +598,7 @@ describe("chat", () => {
     const a = connect();
     await login(a, "Alice", room);
 
-    const bJoined = nextMessage(a); // subscribe before Bob joins, to avoid missing the broadcast
+    const bJoined = presenceUpdate(a); // subscribe before Bob joins, to avoid missing the broadcast
     const b = connect();
     await login(b, "Bob", room);
     await bJoined; // people broadcast triggered by Bob joining, not this test's focus
@@ -594,7 +622,9 @@ describe("chat", () => {
     await bIncoming;
     await bRenderIncoming;
 
-    // Alice presses undo: her last write was the second message, so that's what goes.
+    // Alice presses undo: her last write was the second message, so that's what goes -- as a
+    // fragment render: the one <li> removed, nothing else, for everyone in the room.
+    const secondId = readRoom(room).transcript[1]!.id;
     const bPatch = nextMessage(b); // subscribe before undo, to avoid a race
     const bRender = nextMessage(b);
     write(a, "ledger", [{ op: "remove", path: "/latest" }]);
@@ -603,17 +633,33 @@ describe("chat", () => {
     expect(aPatch.doc).toBe("room");
     expect(aPatch.ops).toEqual([{ op: "remove", path: "/transcript/1" }]);
     const aRender = await expectMessage(a, "render");
-    expect(aRender.html).toContain(firstText);
-    expect(aRender.html).not.toContain(secondText);
+    expect(aRender.ops).toEqual([{ op: "remove", target: `#m${secondId}` }]);
 
     expect(await bPatch).toMatchObject({ type: "patch", doc: "room" });
-    const bRenderMessage = await bRender;
-    expect(bRenderMessage.html).toContain(firstText);
-    expect(bRenderMessage.html).not.toContain(secondText);
+    expect((await bRender).ops).toEqual([{ op: "remove", target: `#m${secondId}` }]);
 
     const entries = history(`room:${room}`);
     expect(entries).toHaveLength(3); // two sends, one undo
     expect(entries[0]?.ops).toEqual([{ op: "remove", path: "/transcript/1" }]);
+
+    // Bob sends after Alice's first; Alice undoes her first: Bob's message now starts a run, so
+    // its <li> is redrawn (with his name) beside the removal.
+    let aIncoming = nextMessage(a);
+    let aRenderIncoming = nextMessage(a);
+    write(b, "room", [{ op: "add", path: "/transcript/-", value: "bob after" }]);
+    await expectMessage(b, "patch");
+    await expectMessage(b, "render");
+    await aIncoming;
+    await aRenderIncoming;
+    const [firstId, bobId] = readRoom(room).transcript.map((m) => m.id);
+    const bRender2 = nextMessage(b);
+    write(a, "ledger", [{ op: "remove", path: "/latest" }]);
+    await expectMessage(a, "patch");
+    const aUndo = await expectMessage(a, "render");
+    expect(aUndo.ops).toMatchObject([{ op: "remove", target: `#m${firstId}` }, { op: "replace", target: `#m${bobId}` }]);
+    expect(htmlOf(aUndo)).toContain('<span class="name">Bob</span>');
+    expect(await bRender2).toMatchObject({ type: "patch" }); // Bob's echo of Alice's undo
+    expect((await nextMessage(b)).ops).toMatchObject([{ op: "remove", target: `#m${firstId}` }, { op: "replace", target: `#m${bobId}` }]);
 
     a.close();
     b.close();
@@ -632,7 +678,7 @@ describe("chat", () => {
     await expectMessage(ws, "patch");
     const message = await expectMessage(ws, "render");
 
-    expect(message.html).toContain(uniqueText);
+    expect(htmlOf(message)).toContain(uniqueText);
     ws.close();
   });
 
@@ -647,7 +693,7 @@ describe("chat", () => {
     write(ws, "room", [{ op: "add", path: "/transcript/-", value: "hello?" }]);
     // rejected: resolveDoc finds no current room, so permit/write are never reached
     const message = await expectMessage(ws, "render");
-    expect(message.html).toContain('data-applet="room-picker"');
+    expect(htmlOf(message)).toContain('data-applet="room-picker"');
     ws.close();
   });
 
@@ -656,12 +702,12 @@ describe("chat", () => {
     const a = connect();
     await login(a, "RoomLeaverA", room);
 
-    const bJoined = nextMessage(a); // subscribe before B joins, to avoid missing the broadcast
+    const bJoined = presenceUpdate(a); // subscribe before B joins, to avoid missing the broadcast
     const b = connect();
     await login(b, "RoomLeaverB", room);
     await bJoined; // people broadcast triggered by B joining, not this test's focus
 
-    const bLeft = nextMessage(a); // subscribe before B closes, to avoid missing the broadcast
+    const bLeft = presenceUpdate(a); // subscribe before B closes, to avoid missing the broadcast
     b.close();
     await bLeft; // people broadcast triggered by B leaving, not this test's focus
 
@@ -670,7 +716,7 @@ describe("chat", () => {
     await expectMessage(a, "patch");
     const message = await expectMessage(a, "render");
 
-    expect(message.html).toContain(uniqueText);
+    expect(htmlOf(message)).toContain(uniqueText);
     a.close();
   });
 });

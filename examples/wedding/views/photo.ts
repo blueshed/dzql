@@ -15,10 +15,14 @@ export const ghostSpec = (name: string): Spec => ({
   skin: "#E9E1CD", hair: "none", hair_color: "#E9E1CD", top: "#E9E1CD", legs: "#E9E1CD", face: "smile", attitude: "nodding", name,
 });
 
+/** The photo applet's mount point, keyed by `id` so a fragment render can replace just it. */
+export function photoMount(id: string, entries: PhotoEntry[], label: string, reveal = false): string {
+  return `<div id="${esc(id)}" data-applet="photo" data-props="${esc(JSON.stringify({ entries, label, reveal }))}"></div>`;
+}
+
 /** The photo applet's mount point, in its frame. */
-export function photoApplet(entries: PhotoEntry[], label: string, opts: { reveal?: boolean; framed?: boolean } = {}): string {
-  const props = JSON.stringify({ entries, label, reveal: !!opts.reveal });
-  return `<div class="reading photo-reading${opts.framed ? " framed" : ""}"><div data-applet="photo" data-props="${esc(props)}"></div></div>`;
+export function photoApplet(id: string, entries: PhotoEntry[], label: string, opts: { reveal?: boolean; framed?: boolean } = {}): string {
+  return `<div class="reading photo-reading${opts.framed ? " framed" : ""}">${photoMount(id, entries, label, !!opts.reveal)}</div>`;
 }
 
 /** The household's guests as photo entries -- a tap opens the guest's drawer -- with a waiting ask as a ghost that leads to the asks. */

@@ -5,14 +5,16 @@
 // the chat example's own morph-applet test for one that mounts a real applet
 // against this same morph.ts).
 import { formValue } from "./form-value";
-import { morph } from "./morph";
+import { morph, morphElement } from "./morph";
 
 declare global {
   interface Window {
     morph: typeof morph;
+    morphElement: typeof morphElement;
     formValue: typeof formValue;
   }
 }
 
 window.morph = morph;
+window.morphElement = morphElement;
 window.formValue = formValue;

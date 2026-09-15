@@ -122,6 +122,24 @@ describe("morph", () => {
     expect(result).toBe(false);
   });
 
+  test("morphElement reconciles one element against one element's HTML: in place for the same tag, swapped otherwise, gone for none", async () => {
+    const result = await run(`
+      root.innerHTML = '<ul id="list"><li id="a" class="old">A</li></ul><p>keep</p>';
+      const li = root.querySelector('#a');
+      li._probe = true;
+      window.morphElement(li, '<li id="a" class="new">A2</li>');
+      const same = root.querySelector('#a')._probe === true && root.querySelector('#a').className === 'new' && root.querySelector('#a').textContent === 'A2';
+      window.morphElement(root.querySelector('#a'), '<div id="a"><span data-applet="x"></span></div>');
+      const swapped = root.querySelector('#list').firstChild.tagName;
+      let removed = [];
+      window.morphElement(root.querySelector('#a'), '<b id="a">b</b>', { onAppletRemoved: (el) => removed.push(el.dataset.applet) });
+      const applet = root.querySelector('#a').tagName;
+      window.morphElement(root.querySelector('#a'), '');
+      return { same, swapped, removed, applet, left: root.innerHTML };
+    `);
+    expect(result).toEqual({ same: true, swapped: "DIV", removed: ["x"], applet: "B", left: '<ul id="list"></ul><p>keep</p>' });
+  });
+
   test("an applet in the same position as a plain element (or another applet) is replaced, never reused", async () => {
     const result = await run(`
       root.innerHTML = '<div data-applet="x"><svg class="managed"></svg></div>';

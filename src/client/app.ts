@@ -1,7 +1,8 @@
 import { applets } from "../applets";
 import type { PatchOp } from "../json-patch";
 import { formValue } from "./form-value";
-import { morph } from "./morph";
+import type { HtmlOp } from "../concepts/render";
+import { morph, morphElement, removeNode } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -72,10 +73,39 @@ function onAppletPropsChanged(el: Element, props: unknown) {
 // doesn't concern it -- see morph.ts. [data-applet] elements are a boundary
 // the morph never descends into (see onAppletRemoved/onAppletPropsChanged);
 // mounting a newly-appeared one still happens here, same as before.
+const hooks = { onAppletRemoved, onAppletPropsChanged };
+
 function render(html: string) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
 
-  morph(app, html, { onAppletRemoved, onAppletPropsChanged });
+  morph(app, html, hooks);
+  settle(before);
+}
+
+// A fragment render: the delta in HTML's terms (see src/concepts/render.ts). Each op names an
+// element by selector; a target the page no longer has is skipped -- the next full render puts
+// things right, as it would after a reconnect.
+function applyFragments(ops: HtmlOp[]) {
+  const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
+
+  for (const op of ops) {
+    const target = app.querySelector(op.target);
+    if (!target) continue;
+    if (op.op === "replace") {
+      morphElement(target, op.html, hooks);
+    } else if (op.op === "add") {
+      const holder = document.createElement("template");
+      holder.innerHTML = op.html;
+      target.append(holder.content);
+    } else {
+      removeNode(target, hooks);
+    }
+  }
+  settle(before);
+}
+
+// After any render, full or fragment: mount what appeared, and pin what grew.
+function settle(before: Map<HTMLElement, number>) {
   mountApplets();
 
   // Pin to the bottom only when this render actually added content here, or
@@ -135,7 +165,8 @@ function connect() {
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
     if (message.type === "render") {
-      render(message.html);
+      if (message.ops) applyFragments(message.ops);
+      else render(message.html);
     } else if (message.type === "patch") {
       recordPatch(message.doc, message.version, message.ops);
       if (lastSent && lastSent.doc === message.doc && message.ops.length > 0) lastSent.echoed = true;

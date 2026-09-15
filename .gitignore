@@ -6,3 +6,4 @@ server.log
 *.sqlite-shm
 *.sqlite-wal
 .eta-session*
+.DS_Store

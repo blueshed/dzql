@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
+import type { HtmlOp } from "../../src/concepts/render";
 import { history, prefixDoc } from "../../src/ledger";
 import { createServer } from "../../src/server";
 import * as boardDoc from "./documents/board";
@@ -24,7 +25,14 @@ afterAll(() => {
   server.stop(true);
 });
 
-type WireMessage = { type: string; html: string; doc?: string; version?: number; ops?: PatchOp[]; docs?: { doc: string; version: number }[] };
+type WireMessage = {
+  type: string;
+  html: string;
+  doc?: string;
+  version?: number;
+  ops?: PatchOp[] | HtmlOp[];
+  docs?: { doc: string; version: number }[];
+};
 
 // A persistent per-socket FIFO queue, not a fresh {once:true} listener per nextMessage() call: two
 // messages sent back-to-back by the server (a patch echo immediately followed by its render) can
@@ -321,6 +329,70 @@ describe("a household", () => {
     await expectMessage(ws, "render");
     await expectQuiet(ws);
     ws.close();
+  });
+
+  test("a look or a choice goes out as fragments: the pieces that show that guest, per viewer, and nothing to anyone else", async () => {
+    const guest = householdDoc.read(code)!.guests[0]!.id;
+    const mine = await enter(code);
+    const list = await enter(code);
+    const everyone = await enter("OKAFOR");
+    const elsewhere = await enter("OKAFOR");
+    const board = await enter("DASH");
+    const family = await enter("DASH");
+    const home = await enter("DASH");
+    const welcome = connect(); // no code yet: still asked, and answered with its page
+    await opened(welcome);
+    await expectMessage(welcome, "render");
+    const page = async (ws: WebSocket, ops: PatchOp[]) => {
+      write(ws, "session", ops);
+      await expectMessage(ws, "patch");
+      await expectMessage(ws, "render");
+    };
+    await page(mine, [{ op: "replace", path: "/focus", value: guest }]);
+    await page(list, [{ op: "replace", path: "/reading/guests", value: "list" }]);
+    await page(everyone, [{ op: "replace", path: "/page", value: "everyone" }]);
+    await page(elsewhere, [{ op: "replace", path: "/page", value: "gifts" }]);
+    await page(board, [{ op: "replace", path: "/page", value: "households" }]);
+    await page(family, [{ op: "replace", path: "/page", value: `households/${hid}` }]);
+    const targets = async (ws: WebSocket) => ((await expectMessage(ws, "render")).ops as { target: string }[]).map((o) => o.target);
+
+    // a look: the family photo and the open drawer's dress for the household, the photo of everyone, the board's and the family's photos for the couple
+    write(mine, "household", [{ op: "replace", path: `/guests/${guest}/minifigure/hair`, value: "curls" }]);
+    await expectMessage(mine, "patch");
+    expect(await targets(mine)).toEqual(["#family-photo", `#dress-${guest}`]);
+    await expectMessage(list, "patch");
+    await expectQuiet(list); // the list reading shows no looks
+    expect(await targets(everyone)).toEqual(["#everyone-photo"]);
+    await expectQuiet(elsewhere);
+    await expectMessage(board, "patch");
+    expect(await targets(board)).toEqual(["#board-photo"]);
+    await expectMessage(family, "patch");
+    expect(await targets(family)).toEqual(["#family-photo"]);
+    await expectMessage(home, "patch");
+    await expectQuiet(home);
+    expect((await expectMessage(welcome, "render")).html).toContain("at-welcome");
+
+    // a choice: the drawer's menu and the list's row for the household, the family's row for the couple, nothing for the photos
+    await page(family, [{ op: "replace", path: `/reading/family-${hid}`, value: "list" }]);
+    write(mine, "household", [{ op: "replace", path: `/guests/${guest}/choices/2/dish`, value: 5 }]);
+    await expectMessage(mine, "patch");
+    expect(await targets(mine)).toEqual([`#menu-${guest}`]);
+    await expectMessage(list, "patch");
+    expect(await targets(list)).toEqual([`#guest-${guest}`]);
+    await expectQuiet(everyone);
+    await expectMessage(board, "patch");
+    await expectQuiet(board);
+    await expectMessage(family, "patch");
+    expect(await targets(family)).toEqual([`#guest-${guest}`]);
+
+    // anything else still goes out whole
+    write(mine, "household", [{ op: "replace", path: "/message", value: "whole page" }]);
+    await expectMessage(mine, "patch");
+    expect((await expectMessage(mine, "render")).html).toContain("whole page");
+    expect((await expectMessage(elsewhere, "render")).html).toBeDefined();
+
+    householdDoc.patch(code, [{ op: "remove", path: `/guests/${guest}/choices/2/dish` }, { op: "replace", path: `/guests/${guest}/minifigure/hair`, value: "none" }], "setup");
+    for (const ws of [mine, list, everyone, elsewhere, board, family, home, welcome]) ws.close();
   });
 
   test("inspect reports the session and the household this connection sees", async () => {

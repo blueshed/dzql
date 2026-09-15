@@ -6,7 +6,7 @@ import { history, prefixDoc } from "../ledger";
 import type { Concept } from "./concept";
 import { createLedgerConcept } from "./ledger";
 
-export type InspectDoc = { doc: string; version: number; head?: LedgerEntry };
+export type InspectDoc = { doc: string; version: number; entries: LedgerEntry[] };
 export type Inspection = { docs: InspectDoc[] };
 
 export type Assembled = {
@@ -15,7 +15,7 @@ export type Assembled = {
   /** Every concept above, indexed by the docType it owns -- what server.ts's dispatcher resolves a `{doc, ops}` write against. */
   byDocType: Map<string, Concept>;
   renderFor(sessionId: string): string;
-  inspectFor(ws: ServerWebSocket<ConnectionData>): Inspection;
+  inspectFor(ws: ServerWebSocket<ConnectionData>, limit?: number): Inspection;
 };
 
 /**
@@ -47,19 +47,19 @@ export function assemble(example: Example): Assembled {
     throw new Error(`no concept produced a view for session ${sessionId}`);
   }
 
-  // Legibility: what this connection can currently see, and the latest
-  // ledger entry behind each of those documents -- so a person can answer
-  // "what happened" from the wire, without adding a log line. Ledger itself
-  // is excluded (no render() the fallback path needs it for, and no
-  // ledger:<id> document to report a version for -- real entries live
-  // under the owning document's own key).
-  function inspectFor(ws: ServerWebSocket<ConnectionData>): Inspection {
+  // Legibility: what this connection can currently see, and its most recent ledger entries --
+  // so a person (or a late-joining `watch`) can answer "what happened" from the wire, without
+  // adding a log line. `limit` (default 1, the longstanding "just the head" behavior) is how far
+  // back to look; a watcher catching up before it watches asks for more. Ledger itself is
+  // excluded (no render() the fallback path needs it for, and no ledger:<id> document to report
+  // a version for -- real entries live under the owning document's own key).
+  function inspectFor(ws: ServerWebSocket<ConnectionData>, limit = 1): Inspection {
     const docs: InspectDoc[] = [];
     for (const concept of example.concepts) {
       const docId = concept.resolveDoc(ws);
       if (docId === undefined) continue;
-      const [head] = history(prefixDoc(concept.docType, docId), 1);
-      docs.push({ doc: concept.docType, version: head?.version ?? 0, head });
+      const entries = history(prefixDoc(concept.docType, docId), limit);
+      docs.push({ doc: concept.docType, version: entries[0]?.version ?? 0, entries });
     }
     return { docs };
   }

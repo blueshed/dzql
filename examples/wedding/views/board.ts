@@ -9,7 +9,7 @@ import type { SessionDocument } from "../documents/session";
 import { boxPage, cell, collectionPage, leaveTool, readingSwitch, sheet, tool, undoTool, type Crumb } from "./bento";
 import { esc, join, nav, write } from "./html";
 import { icon } from "./icons";
-import { familiesPhoto, familyEntries, photoApplet, type Family, type PhotoEntry } from "./photo";
+import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
 import {
   answerOf,
   answerSays,
@@ -107,7 +107,7 @@ function rootBox(v: BoardView, trail: Crumb[]): string {
 
 // ───────────────────────────── the households ─────────────────────────────
 
-const reading = (v: BoardView, key: string): string => v.session.ui.reading?.[key] ?? "photo";
+export const reading = (v: BoardView, key: string): string => v.session.ui.reading?.[key] ?? "photo";
 
 const chaseLink = (h: HouseholdDocument): string =>
   `<a class="chase-link" href="mailto:${esc(h.email)}?subject=${encodeURIComponent("Just checking in")}">${icon("mail")}chase</a>`;
@@ -131,13 +131,24 @@ function boardFamilies(households: HouseholdDocument[]): Family[] {
   return families;
 }
 
+/** The board's photo of families: its mount, replaced alone when a look changes. */
+export function boardPhoto(v: BoardView): string {
+  const { entries, label } = familiesPhoto(boardFamilies(v.b.households), null);
+  return photoMount("board-photo", entries, label);
+}
+
+/** A family's photo as the couple read it, no taps. Replaced alone when a look changes. */
+export const familyPhoto = (h: HouseholdDocument): string => photoMount("family-photo", familyEntries(h, false), `${h.code}, as minifigures`);
+
+/** A family's guest as a row: name, choices, whether coming. Replaced alone when a choice changes. */
+export const familyGuestRow = (v: BoardView, g: HouseholdDocument["guests"][number]): string =>
+  `<div class="row-line stay" id="guest-${g.id}"><div><span class="what">${esc(g.name)}</span><p class="note">${esc(choicesLine(g, v.b.courses))}</p></div><span class="said">${g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming"}</span></div>`;
+
 function householdsCollection(v: BoardView, trail: Crumb[]): string {
   const { b } = v;
   let body: string;
   if (reading(v, "households") === "photo") {
-    const families = boardFamilies(b.households);
-    const { entries, label } = familiesPhoto(families, null);
-    body = families.length ? photoApplet(entries, label) : `<p class="note">Nobody invited yet.</p>`;
+    body = boardFamilies(b.households).length ? `<div class="reading photo-reading">${boardPhoto(v)}</div>` : `<p class="note">Nobody invited yet.</p>`;
   } else {
     const rank: Record<string, number> = { none: 0, maybe: 1, yes: 2, no: 3 };
     const rows = [...b.households].sort((x, y) => rank[answerOf(x)]! - rank[answerOf(y)]! || x.code.localeCompare(y.code));
@@ -185,13 +196,8 @@ function familyBox(v: BoardView, h: HouseholdDocument, trail: Crumb[]): string {
   const key = `family-${h.id}`;
   const guests =
     reading(v, key) === "photo"
-      ? h.guests.length ? photoApplet(familyEntries(h, false), `${h.code}, as minifigures`) : `<p class="note">Nobody named yet.</p>`
-      : `<div class="rows">${h.guests
-          .map(
-            (g) =>
-              `<div class="row-line stay"><div><span class="what">${esc(g.name)}</span><p class="note">${esc(choicesLine(g, v.b.courses))}</p></div><span class="said">${g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming"}</span></div>`,
-          )
-          .join("")}</div>`;
+      ? h.guests.length ? `<div class="reading photo-reading">${familyPhoto(h)}</div>` : `<p class="note">Nobody named yet.</p>`
+      : `<div class="rows">${h.guests.map((g) => familyGuestRow(v, g)).join("")}</div>`;
   const plusOnes = `<form class="tool-form"${write("board", "replace", `/households/${h.id}/plus_ones`)}><label class="when" for="plus-ones">Plus-ones</label><input class="field short" id="plus-ones" name="plus_ones" type="number" min="0" value="${h.plus_ones}"><button type="submit" class="ghost save">Save</button></form>`;
   return boxPage(
     trail,

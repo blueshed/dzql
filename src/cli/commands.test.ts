@@ -11,7 +11,9 @@ import { createServer } from "../server";
 import {
   connectCli,
   DEFAULT_SESSION_FILE,
+  extractLimit,
   extractSessionFile,
+  formatHistory,
   formatInspection,
   loadOrCreateSessionCookie,
   parseCommand,
@@ -110,10 +112,14 @@ describe("extractSessionFile", () => {
 });
 
 describe("formatInspection", () => {
-  test("renders each doc's type, version, and last ops as plain text, generically", () => {
+  test("renders each doc's type, version, and last (most recent) ops as plain text, generically", () => {
     const text = formatInspection({
       docs: [
-        { doc: "widget", version: 2, head: { ops: [{ op: "replace", path: "/color", value: "blue" }] } },
+        {
+          doc: "widget",
+          version: 2,
+          entries: [{ ops: [{ op: "replace", path: "/color", value: "blue" }] }, { ops: [{ op: "replace", path: "/color", value: "red" }] }],
+        },
         { doc: "gadget", version: 1 },
       ],
     });
@@ -123,13 +129,50 @@ describe("formatInspection", () => {
 
   test("a value-less op (e.g. remove) formats without a trailing value", () => {
     const text = formatInspection({
-      docs: [{ doc: "widget", version: 1, head: { ops: [{ op: "remove", path: "/color" }] } }],
+      docs: [{ doc: "widget", version: 1, entries: [{ ops: [{ op: "remove", path: "/color" }] }] }],
     });
     expect(text).toContain("last: remove /color");
   });
 
   test("no docs at all formats as an empty string", () => {
     expect(formatInspection({ docs: [] })).toBe("");
+  });
+});
+
+describe("formatHistory", () => {
+  test("lists a doc's entries oldest first, one line each", () => {
+    const lines = formatHistory({
+      doc: "widget",
+      entries: [
+        { ops: [{ op: "replace", path: "/color", value: "red" }] }, // newest (history() orders DESC)
+        { ops: [{ op: "replace", path: "/color", value: "blue" }] }, // oldest
+      ],
+    });
+    expect(lines).toEqual(['widget  replace /color "blue"', 'widget  replace /color "red"']);
+  });
+
+  test("no entries formats as no lines", () => {
+    expect(formatHistory({ doc: "widget" })).toEqual([]);
+  });
+});
+
+describe("extractLimit", () => {
+  test("no flag leaves limit undefined", () => {
+    expect(extractLimit(["watch"])).toEqual({ limit: undefined, rest: ["watch"] });
+  });
+
+  test("pulls a `--limit <n>` flag out, wherever it appears", () => {
+    expect(extractLimit(["--limit", "5", "watch"])).toEqual({ limit: 5, rest: ["watch"] });
+    expect(extractLimit(["watch", "--limit", "5"])).toEqual({ limit: 5, rest: ["watch"] });
+  });
+
+  test("accepts `--limit=<n>` too", () => {
+    expect(extractLimit(["inspect", "--limit=10"])).toEqual({ limit: 10, rest: ["inspect"] });
+  });
+
+  test("a non-numeric or missing value leaves limit undefined", () => {
+    expect(extractLimit(["--limit", "nonsense", "watch"])).toEqual({ limit: undefined, rest: ["watch"] });
+    expect(extractLimit(["--limit"])).toEqual({ limit: undefined, rest: [] });
   });
 });
 
@@ -225,7 +268,7 @@ describe("cli against a real server", () => {
 
     const widget = inspection.docs.find((d) => d.doc === "widget");
     expect(widget?.version).toBeGreaterThan(0);
-    expect(widget?.head?.ops).toEqual([{ op: "replace", path: "/color", value: "blue" }]);
+    expect(widget?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "/color", value: "blue" }]);
 
     ws.close();
   });
@@ -238,18 +281,36 @@ describe("cli against a real server", () => {
     const afterUndo = await runCommand(ws, parseCommand(["undo"])!);
 
     const widget = afterUndo.docs.find((d) => d.doc === "widget");
-    expect(widget?.head?.ops).toEqual([{ op: "replace", path: "/color", value: "" }]);
+    expect(widget?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "/color", value: "" }]);
 
     ws.close();
   });
 
-  test("a plain inspect with no prior write reports the doc it sees, with no ledger head yet", async () => {
+  test("a plain inspect with no prior write reports the doc it sees, with no ledger history yet", async () => {
     const cookie = `session_id=${crypto.randomUUID()}`;
     const ws = await connectCli(url(), cookie);
 
     const inspection = await runCommand(ws, parseCommand(["inspect"])!);
 
-    expect(inspection.docs).toEqual([{ doc: "widget", version: 0, head: undefined }]);
+    expect(inspection.docs).toEqual([{ doc: "widget", version: 0, entries: [] }]);
+
+    ws.close();
+  });
+
+  test("a limit passed to runCommand asks the server for that many entries", async () => {
+    const cookie = `session_id=${crypto.randomUUID()}`;
+    const ws = await connectCli(url(), cookie);
+
+    await runCommand(ws, parseCommand(["write", "widget", "replace", "/color", "red"])!);
+    await runCommand(ws, parseCommand(["write", "widget", "replace", "/color", "green"])!);
+    const inspection = await runCommand(ws, parseCommand(["write", "widget", "replace", "/color", "blue"])!, 3);
+
+    const widget = inspection.docs.find((d) => d.doc === "widget");
+    expect(widget?.entries?.map((e) => e.ops)).toEqual([
+      [{ op: "replace", path: "/color", value: "blue" }],
+      [{ op: "replace", path: "/color", value: "green" }],
+      [{ op: "replace", path: "/color", value: "red" }],
+    ]);
 
     ws.close();
   });

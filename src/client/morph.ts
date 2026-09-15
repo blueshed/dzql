@@ -72,7 +72,7 @@ function morphNode(old: ChildNode, next: ChildNode, hooks: MorphHooks): void {
   }
 }
 
-function removeNode(node: ChildNode, hooks: MorphHooks): void {
+export function removeNode(node: ChildNode, hooks: MorphHooks): void {
   if (isApplet(node)) hooks.onAppletRemoved?.(node);
   for (const applet of isElement(node) ? node.querySelectorAll("[data-applet]") : []) {
     hooks.onAppletRemoved?.(applet);
@@ -121,4 +121,26 @@ export function morph(target: Element, html: string, hooks: MorphHooks = {}): vo
   const next = document.createElement(target.tagName);
   next.innerHTML = html;
   morphChildren(target, next, hooks);
+}
+
+/**
+ * Reconciles one existing element against the HTML of one element -- a fragment render's
+ * `replace`. Same tag (and same applet, if any) is morphed in place; anything else is swapped
+ * for the new element, applets inside the old one cleaned up first.
+ */
+export function morphElement(old: Element, html: string, hooks: MorphHooks = {}): void {
+  const holder = document.createElement("template");
+  holder.innerHTML = html;
+  const next = holder.content.firstElementChild;
+  if (!next) {
+    removeNode(old, hooks);
+    return;
+  }
+  if (sameType(old, next)) {
+    morphNode(old, next, hooks);
+  } else {
+    old.replaceWith(next.cloneNode(true));
+    if (isApplet(old)) hooks.onAppletRemoved?.(old);
+    for (const applet of old.querySelectorAll("[data-applet]")) hooks.onAppletRemoved?.(applet);
+  }
 }

@@ -1,5 +1,5 @@
 import { assemble } from "./concepts";
-import { renderRequested } from "./concepts/render";
+import { fragmentsMessage, renderMessage, renderRequested } from "./concepts/render";
 import type { ConnectionData } from "./connection";
 import type { Example } from "./example";
 import type { PatchOp } from "./json-patch";
@@ -14,10 +14,19 @@ import type { PatchOp } from "./json-patch";
 // tests do, in the same process) doesn't trip the guard below.
 let active: { example: Example; assembled: ReturnType<typeof assemble> } | undefined;
 
-renderRequested.on((sockets) => {
+renderRequested.on((request) => {
   if (!active) return; // unreachable in practice: nothing can fire this before a server exists
+  const { sockets, write } = "sockets" in request ? request : { sockets: request, write: undefined };
+  const owner = write ? active.assembled.byDocType.get(write.docType) : undefined;
   for (const ws of sockets) {
-    ws.send(JSON.stringify({ type: "render", html: active.assembled.renderFor(ws.data.sessionId) }));
+    // The owning concept may say exactly what changed on this page (HTML ops), or that nothing
+    // did; only when it declines does the whole page go out.
+    const ops = write && owner?.fragments?.(ws, write.docId, write.result);
+    if (ops) {
+      if (ops.length > 0) ws.send(fragmentsMessage(ops));
+    } else {
+      ws.send(renderMessage(active.assembled.renderFor(ws.data.sessionId)));
+    }
   }
 });
 
@@ -33,7 +42,7 @@ export function createServer(example: Example, port: number | string = process.e
   const { concepts, byDocType, inspectFor, renderFor } = assembled;
 
   function pushRender(ws: Bun.ServerWebSocket<ConnectionData>) {
-    ws.send(JSON.stringify({ type: "render", html: renderFor(ws.data.sessionId) }));
+    ws.send(renderMessage(renderFor(ws.data.sessionId)));
   }
 
   const server = Bun.serve<ConnectionData>({
@@ -68,7 +77,7 @@ export function createServer(example: Example, port: number | string = process.e
         pushRender(ws);
       },
       message(ws, raw) {
-        let message: { type?: string; doc?: string; ops?: PatchOp[] };
+        let message: { type?: string; doc?: string; ops?: PatchOp[]; limit?: number };
         try {
           message = JSON.parse(String(raw));
         } catch {
@@ -76,7 +85,7 @@ export function createServer(example: Example, port: number | string = process.e
         }
 
         if (message.type === "inspect") {
-          ws.send(JSON.stringify({ type: "inspect", ...inspectFor(ws) }));
+          ws.send(JSON.stringify({ type: "inspect", ...inspectFor(ws, message.limit) }));
           return;
         }
 

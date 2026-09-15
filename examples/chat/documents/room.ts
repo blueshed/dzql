@@ -3,7 +3,7 @@ import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { prefixDoc, record } from "../../../src/ledger";
 
-export type ChatMessage = { name: string; text: string; sentAt: number };
+export type ChatMessage = { id: number; name: string; text: string; sentAt: number };
 export type RoomDocument = { transcript: ChatMessage[] };
 
 const ensureStmt = db.query<unknown, [string, number]>(
@@ -12,14 +12,14 @@ const ensureStmt = db.query<unknown, [string, number]>(
 const listStmt = db.query<{ name: string }, []>("SELECT name FROM rooms ORDER BY created_at ASC");
 const countStmt = db.query<{ count: number }, [string]>("SELECT COUNT(*) AS count FROM messages WHERE room = ?");
 const transcriptStmt = db.query<{ doc: string }, [string, number]>(`
-  SELECT json_group_array(json_object('name', name, 'text', text, 'sentAt', sent_at)) AS doc
-  FROM (SELECT name, text, sent_at FROM messages WHERE room = ? ORDER BY id DESC LIMIT ?)
+  SELECT json_group_array(json_object('id', id, 'name', name, 'text', text, 'sentAt', sent_at)) AS doc
+  FROM (SELECT id, name, text, sent_at FROM messages WHERE room = ? ORDER BY id DESC LIMIT ?)
 `);
 const insertMessageStmt = db.query<unknown, [string, string, string, number]>(
   "INSERT INTO messages (room, name, text, sent_at) VALUES (?, ?, ?, ?)",
 );
-const messageAtIndexStmt = db.query<{ id: number; name: string; text: string }, [string, number]>(`
-  SELECT id, name, text FROM messages WHERE room = ? ORDER BY id ASC LIMIT 1 OFFSET ?
+const messageAtIndexStmt = db.query<{ id: number; name: string; text: string; sentAt: number }, [string, number]>(`
+  SELECT id, name, text, sent_at AS sentAt FROM messages WHERE room = ? ORDER BY id ASC LIMIT 1 OFFSET ?
 `);
 const deleteMessageStmt = db.query<unknown, [number]>("DELETE FROM messages WHERE id = ?");
 
@@ -37,11 +37,12 @@ export function read(name: string, limit = 50): RoomDocument {
   return { transcript };
 }
 
-export type RoomPatchResult = { version: number; applied: PatchOp[]; added?: ChatMessage };
+export type RoomPatchResult = { version: number; applied: PatchOp[]; added?: ChatMessage; removed?: ChatMessage };
 
-/** Applies a patch, returning the new version, the ops that actually took effect, and the appended message if any. */
+/** Applies a patch, returning the new version, the ops that actually took effect, and the appended (or, via undo, removed) message if any. */
 export function patch(name: string, ops: PatchOp[], sessionId: string, undoes?: number): RoomPatchResult {
   let added: ChatMessage | undefined;
+  let removed: ChatMessage | undefined;
   const applied: PatchOp[] = [];
   const inverse: PatchOp[] = [];
 
@@ -59,8 +60,8 @@ export function patch(name: string, ops: PatchOp[], sessionId: string, undoes?: 
       // since — undo (walking a session's own writes newest-first) relies on that.
       const index = countStmt.get(name)?.count ?? 0;
       const sentAt = Date.now();
-      insertMessageStmt.run(name, value.name, text, sentAt);
-      added = { name: value.name, text, sentAt };
+      const { lastInsertRowid } = insertMessageStmt.run(name, value.name, text, sentAt);
+      added = { id: Number(lastInsertRowid), name: value.name, text, sentAt };
 
       applied.push(op);
       inverse.unshift({ op: "remove", path: `/transcript/${index}` });
@@ -72,6 +73,7 @@ export function patch(name: string, ops: PatchOp[], sessionId: string, undoes?: 
       const message = messageAtIndexStmt.get(name, index);
       if (!message) continue;
       deleteMessageStmt.run(message.id);
+      removed = message;
 
       applied.push(op);
       // Re-adding lands at the end of the transcript, not back at its
@@ -82,5 +84,5 @@ export function patch(name: string, ops: PatchOp[], sessionId: string, undoes?: 
   }
 
   const version = record(prefixDoc("room", name), applied, inverse, sessionId, undoes);
-  return { version, applied, added };
+  return { version, applied, added, removed };
 }

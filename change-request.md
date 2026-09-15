@@ -94,6 +94,11 @@ coverage from the browser: `Bun.WebView` cannot report it today, so this waits o
 
 ## 5. Session writes and the ledger
 
+*Done, 0.25.0: the sentence is in `concepts/concept.ts`'s `write()` doc comment and in the
+skill's reference.md ("Opting a write out of the ledger"), now with a second real example
+besides the wedding's session document -- chat's own presence ops (item 8) are off the ledger
+the same way.*
+
 **What.** A document can say it is not the ledger's.
 
 **Why.** The wedding's `session` document (the code, the page, the open drawer) records nothing
@@ -115,8 +120,43 @@ own `/pictures/*` route; the key that lands on a row is a plain document write, 
 any other. That used `Example.routes` exactly as intended and needed nothing generic. A kernel
 "assets" seam would be a solution to a problem one example has once.
 
+## 7. The delta, in HTML's terms
+
+*Done, 0.24.0, and measured (README, "Cost").* The history in the changelog shows the cause:
+0.4.0 had `append`, undo (0.11.0) needed a word for removing an element, and 0.12.0 answered by
+removing the granular vocabulary rather than adding the word. `Concept.fragments` brings it back
+with `replace`, `add` and `remove`, the full page as the fallback. What it does not do: an
+applet's props go whole, and every connection is still asked (item 1). Two small follow-ups
+the wedding shows: the board concept declines everything, and a fragment that names a target the
+page no longer has is skipped rather than answered with the page.
+
+## 8. The wire says less than the page: presence and history
+
+*Done, 0.25.0.* Both halves landed as described below, plus one thing the "How" didn't say: the
+announcing socket is excluded from its own presence echo (it's about to get a full render of the
+room it just joined/left anyway), which as a side effect means a solo join into a fresh room, or
+a redundant tab closing while another of the same session's tabs remains, now sends nothing at
+all rather than a wasted re-render.
+
+**What.** Presence becomes a document write, and a document's history can be asked for over the wire.
+
+**Why.** Someone entering or leaving a room reaches every other connection as a full render with
+no op: the room concept keeps a socket registry and asks the room to re-render. That breaks the
+rule that a write names a document and a path, and it means a watcher on the wire (the CLI's
+`watch`) never sees arrivals or departures. The wedding copied the same registry
+(`concepts/presence.ts`). Separately, a watcher that joins late sees only what happens next:
+`inspect` reports a document's head, not its transcript, and the only way to read what was
+said before is a render, which the CLI never touches.
+
+**How.** Presence: the room concept applies `add /people/-` and `remove /people/<index>` to the
+room on join and leave, and echoes them like any other op; not on the ledger (undoing an arrival
+is nonsense), which makes item 5 concrete. With item 7 in place the echo renders the people chips
+as a fragment instead of the page. History: `inspect` takes a `limit`, and answers with that many
+ledger entries per document instead of the head alone, so a watcher can catch up before it watches.
+
 ## Order
 
-1 first: it removes code from both examples and settles a question every future example has.
-2 next: it is the thing a person editing the wedding's lists feels. 4 is a morning's tidy. 3 is
-worth doing only if a third example wants links. 5 is a paragraph.
+5, 7, and 8 are done. 1 next: it removes code from both examples and settles a question every
+future example has, and with 7 in place it is what turns "nothing to send" into "nobody to ask".
+2 after that: it is the thing a person editing the wedding's lists feels. 4 is a morning's tidy.
+3 is worth doing only if a third example wants links.

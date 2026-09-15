@@ -69,9 +69,9 @@ describe("chat's cli against a real server", () => {
 
     const session = afterSend.docs.find((d) => d.doc === "session");
     const room = afterSend.docs.find((d) => d.doc === "room");
-    expect(session?.head?.ops).toEqual([{ op: "replace", path: "/room", value: "lobby" }]);
+    expect(session?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "/room", value: "lobby" }]);
     expect(room?.version).toBeGreaterThan(0);
-    expect(room?.head?.ops).toEqual([{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "hello" } }]);
+    expect(room?.entries?.[0]?.ops).toEqual([{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "hello" } }]);
 
     ws.close();
   });
@@ -84,7 +84,7 @@ describe("chat's cli against a real server", () => {
     const afterUndo = await runCommand(ws, parseCommand(["undo"], aliases)!);
 
     const session = afterUndo.docs.find((d) => d.doc === "session");
-    expect(session?.head?.ops).toEqual([{ op: "remove", path: "/name" }]);
+    expect(session?.entries?.[0]?.ops).toEqual([{ op: "remove", path: "/name" }]);
 
     ws.close();
   });
@@ -95,7 +95,7 @@ describe("chat's cli against a real server", () => {
 
     const inspection = await runCommand(ws, parseCommand(["inspect"], aliases)!);
 
-    expect(inspection.docs).toEqual([{ doc: "session", version: 0, head: undefined }]);
+    expect(inspection.docs).toEqual([{ doc: "session", version: 0, entries: [] }]);
 
     ws.close();
   });

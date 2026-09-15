@@ -32,11 +32,13 @@ const RULES: Rule[] = [
   { path: new RegExp(`^/courses/\\d+/${CHILD}/\\d+/\\w+$`), ops: ["replace", "remove"] },
 ];
 
-function echoAndNotify(version: number, applied: PatchOp[]): void {
-  if (applied.length === 0) return;
-  const payload = patchMessage("board", version, applied);
+// No `fragments` here yet: the couple's writes are rare beside a household's, and each one
+// changes counts and lists on many pages, so every page goes out whole.
+function echoAndNotify(code: string, result: WriteResult): void {
+  if (result.applied.length === 0) return;
+  const payload = patchMessage("board", result.version, result.applied);
   for (const ws of presence.seeingBoard()) ws.send(payload);
-  renderRequested.emit(presence.everyone());
+  renderRequested.emit({ sockets: presence.everyone(), write: { docType: "board", docId: code, result } });
 }
 
 export const board: Concept = {
@@ -58,12 +60,12 @@ export const board: Concept = {
   },
   write(ws, code, ops): WriteResult {
     const result = boardDoc.patch(code, ops, ws.data.sessionId);
-    echoAndNotify(result.version, result.applied);
+    echoAndNotify(code, result);
     return { ...result, rendered: result.applied.length > 0 };
   },
   replay(ws, code, ops, undoes): WriteResult {
     const result = boardDoc.patch(code, ops, ws.data.sessionId, undoes);
-    echoAndNotify(result.version, result.applied);
+    echoAndNotify(code, result);
     return { ...result, rendered: result.applied.length > 0 };
   },
 };

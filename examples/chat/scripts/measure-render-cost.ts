@@ -1,8 +1,7 @@
-// Measures what request 5 (morph, don't replace) actually costs on the
-// wire: a room write now broadcasts a patch echo *and* a full re-render to
-// every member, where before it broadcast a patch echo and a single
-// appended <li>. Not a test -- a report. Run with
-// `bun examples/chat/scripts/measure-render-cost.ts`.
+// Measures what a room write costs on the wire for every other member: a patch echo and
+// then whatever the render is -- a full page (0.12.0 to 0.23.0) or, since fragment renders,
+// the one appended <li>. Not a test -- a report. Run with
+// `DB_PATH=:memory: bun examples/chat/scripts/measure-render-cost.ts`.
 import { patch as patchRoom } from "../documents/room";
 import { patchMessage } from "../../../src/json-patch";
 import { createServer } from "../../../src/server";
@@ -102,10 +101,12 @@ await nextMessage(sender!); // sender's own render
 
 let afterPatchBytes = 0;
 let afterRenderBytes = 0;
+let renderKind = "";
 for (const [patchP, renderP] of incoming) {
   const [patchRaw, renderRaw] = await Promise.all([patchP, renderP]);
   afterPatchBytes += Buffer.byteLength(patchRaw, "utf8");
   afterRenderBytes += Buffer.byteLength(renderRaw, "utf8");
+  renderKind = JSON.parse(renderRaw).ops ? "fragment render (one <li>)" : "full render";
 }
 
 const afterPatchAvg = afterPatchBytes / others.length;
@@ -120,9 +121,9 @@ const beforeBytes = Buffer.byteLength(patchPayload, "utf8") + Buffer.byteLength(
 
 console.log(`Room: ${HISTORY} messages, ${MEMBERS} members. Bytes sent to each *other* member per message:`);
 console.log(`  before (request 2-4, patch + append): ${beforeBytes} B`);
-console.log(`  after  (request 5, patch + full render): ${(afterPatchAvg + afterRenderAvg).toFixed(0)} B`);
-console.log(`    patch echo:  ${afterPatchAvg.toFixed(0)} B (unchanged by request 5)`);
-console.log(`    full render: ${afterRenderAvg.toFixed(0)} B (was ${Buffer.byteLength(appendPayload, "utf8")} B as an append)`);
+console.log(`  now    (patch + ${renderKind}): ${(afterPatchAvg + afterRenderAvg).toFixed(0)} B`);
+console.log(`    patch echo:  ${afterPatchAvg.toFixed(0)} B`);
+console.log(`    render:      ${afterRenderAvg.toFixed(0)} B (was ${Buffer.byteLength(appendPayload, "utf8")} B as an append)`);
 
 for (const ws of members) ws.close();
 server.stop(true);

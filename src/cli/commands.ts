@@ -69,22 +69,47 @@ export function extractSessionFile(argv: string[]): { sessionFile: string; rest:
   return { sessionFile, rest };
 }
 
+/**
+ * Pulls a `--limit <n>` (or `--limit=<n>`) flag out of argv, wherever it appears -- how many
+ * ledger entries per doc `inspect` reports, or `watch` prints to catch up before it follows live
+ * patches. Default (undefined here, 1 on the wire) is today's longstanding "just the latest".
+ */
+export function extractLimit(argv: string[]): { limit: number | undefined; rest: string[] } {
+  const rest: string[] = [];
+  let limit: number | undefined;
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!;
+    if (arg === "--limit") limit = Number(argv[++i]) || limit;
+    else if (arg.startsWith("--limit=")) limit = Number(arg.slice("--limit=".length)) || limit;
+    else rest.push(arg);
+  }
+
+  return { limit, rest };
+}
+
 function opText(op: PatchOp): string {
   return op.value !== undefined ? `${op.op} ${op.path} ${JSON.stringify(op.value)}` : `${op.op} ${op.path}`;
 }
 
 export type Inspection = {
-  docs: { doc: string; version: number; head?: { ops: PatchOp[] } }[];
+  docs: { doc: string; version: number; entries?: { ops: PatchOp[] }[] }[];
 };
 
-/** Renders an inspect response as the CLI's plain-text output -- ops, not HTML, and generic over whatever docs this example's concepts report. */
+/** Renders an inspect response as the CLI's plain-text output -- ops, not HTML, and generic over whatever docs this example's concepts report. Only the most recent entry shows on this line; `formatHistory` lists the rest. */
 export function formatInspection(inspection: Inspection): string {
   return inspection.docs
     .map((doc) => {
-      const last = doc.head ? `  last: ${doc.head.ops.map(opText).join(", ")}` : "";
+      const head = doc.entries?.[0];
+      const last = head ? `  last: ${head.ops.map(opText).join(", ")}` : "";
       return `${doc.doc.padEnd(8)} v${doc.version}${last}`;
     })
     .join("\n");
+}
+
+/** One doc's entries, oldest first, one line each -- what a `watch` catching up prints before it starts following live patches. */
+export function formatHistory(doc: { doc: string; entries?: { ops: PatchOp[] }[] }): string[] {
+  return [...(doc.entries ?? [])].reverse().map((entry) => `${doc.doc}  ${entry.ops.map(opText).join(", ")}`);
 }
 
 /** Reuses a session id saved at `file` across invocations, minting one on first use -- a cookie jar of one. */
@@ -108,8 +133,8 @@ export function connectCli(url: string, cookie: string): Promise<WebSocket> {
   });
 }
 
-/** Sends a command (if it writes) followed by an inspect request, and resolves with that inspection. */
-export function runCommand(ws: WebSocket, command: Command): Promise<Inspection> {
+/** Sends a command (if it writes) followed by an inspect request, and resolves with that inspection. `limit` asks for that many ledger entries per doc instead of just the latest. */
+export function runCommand(ws: WebSocket, command: Command, limit?: number): Promise<Inspection> {
   return new Promise((resolve) => {
     ws.addEventListener("message", function onMessage(event) {
       const message = JSON.parse(String(event.data));
@@ -119,7 +144,7 @@ export function runCommand(ws: WebSocket, command: Command): Promise<Inspection>
     });
 
     if (command.kind === "write") ws.send(JSON.stringify({ doc: command.doc, ops: command.ops }));
-    ws.send(JSON.stringify({ type: "inspect" }));
+    ws.send(JSON.stringify({ type: "inspect", limit }));
   });
 }
 

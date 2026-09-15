@@ -5,6 +5,7 @@ import index from "./server.test.fixture.html";
 import type { PatchOp } from "./json-patch";
 import { patchMessage } from "./json-patch";
 import { prefixDoc, record } from "./ledger";
+import { renderRequested } from "./concepts/render";
 import { createServer } from "./server";
 
 // A tiny, self-contained concept + example -- not chat, not anything under
@@ -37,8 +38,13 @@ function applyOps(id: string, ops: PatchOp[]): { applied: PatchOp[]; inverse: Pa
 function noteWrite(ws: Bun.ServerWebSocket<{ sessionId: string }>, id: string, ops: PatchOp[], undoes?: number): WriteResult {
   const { applied, inverse } = applyOps(id, ops);
   const version = record(prefixDoc("note", id), applied, inverse, ws.data.sessionId, undoes);
-  if (applied.length > 0) ws.send(patchMessage("note", version, applied));
-  return { version, applied };
+  const result: WriteResult = { version, applied };
+  if (applied.length > 0) {
+    ws.send(patchMessage("note", version, applied));
+    // Ask for the render through the bus, naming the write, so `fragments` below gets its say.
+    renderRequested.emit({ sockets: [ws], write: { docType: "note", docId: id, result } });
+  }
+  return { ...result, rendered: applied.length > 0 };
 }
 
 const noteConcept: Concept = {
@@ -57,6 +63,14 @@ const noteConcept: Concept = {
   },
   replay(ws, id, ops, undoes) {
     return noteWrite(ws, id, ops, undoes);
+  },
+  // Text beginning "frag" is answered as one HTML op; "quiet" as nothing at all; anything
+  // else declines, and the kernel sends the page.
+  fragments(ws, id) {
+    const { text } = readNote(id);
+    if (text.startsWith("frag")) return [{ op: "replace", target: ".note", html: `<p class="note">${text}</p>` }];
+    if (text.startsWith("quiet")) return [];
+    return undefined;
   },
 };
 
@@ -166,6 +180,29 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
+  test("a concept's fragments are sent instead of the page; nothing is sent when it says nothing changed; the page when it declines", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+
+    write(ws, "note", [{ op: "replace", path: "/text", value: "frag one" }]);
+    await expectMessage(ws, "patch");
+    const fragment = await expectMessage(ws, "render");
+    expect(fragment.html).toBeUndefined();
+    expect(fragment.ops).toEqual([{ op: "replace", target: ".note", html: '<p class="note">frag one</p>' }]);
+
+    write(ws, "note", [{ op: "replace", path: "/text", value: "quiet" }]);
+    await expectMessage(ws, "patch");
+    // no render follows: the next thing this connection hears is the next write's echo
+    write(ws, "note", [{ op: "replace", path: "/text", value: "plain" }]);
+    await expectMessage(ws, "patch");
+    const page = await expectMessage(ws, "render");
+    expect(page.ops).toBeUndefined();
+    expect(page.html).toContain("plain");
+
+    ws.close();
+  });
+
   test("inspect reports the note doc's version and last ops, generically", async () => {
     const ws = connect(server);
     await opened(ws);
@@ -178,10 +215,10 @@ describe("createServer, generically (no example from the examples directory invo
     ws.send(JSON.stringify({ type: "inspect" }));
     const inspection = await expectMessage(ws, "inspect");
 
-    const docs = (inspection as unknown as { docs: { doc: string; version: number; head?: unknown }[] }).docs;
+    const docs = (inspection as unknown as { docs: { doc: string; version: number; entries?: unknown[] }[] }).docs;
     const note = docs.find((d) => d.doc === "note");
     expect(note?.version).toBeGreaterThan(0);
-    expect(note?.head).toMatchObject({ ops: [{ op: "replace", path: "/text", value: "inspect me" }] });
+    expect(note?.entries?.[0]).toMatchObject({ ops: [{ op: "replace", path: "/text", value: "inspect me" }] });
 
     ws.close();
   });
