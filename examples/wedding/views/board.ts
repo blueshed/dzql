@@ -62,7 +62,7 @@ export function boardPages(v: BoardView): string {
   } else {
     page = rootBox(v, trail);
   }
-  return frame(false, join(page, keepSheet(v)));
+  return frame(false, join(page, keepSheet(v)), v.session.ui.page ?? "");
 }
 
 // ───────────────────────────── the home ─────────────────────────────

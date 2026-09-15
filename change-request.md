@@ -89,6 +89,21 @@ attribute, which the last render wrote.
 
 ## 3. Where a tab is
 
+*Done, 0.32.0.* Landed as the smallest version described below, plus one thing it didn't quite
+spell out: a reopened link needs the *server* to answer with the page at all, so `src/server.ts`
+gained a `"/*": example.index` fallback alongside its exact routes -- the server still resolves
+nothing about the path (it hands back the identical shell for any path, same as `"/"`), only the
+client reads it. `src/client/app.ts`'s `syncPage()` reads `[data-page]`/`data-page-write` from
+anywhere in `#app` after every full render (not strictly the first child, for robustness) and
+mirrors it into `history.pushState`/`popstate` exactly as specified, with one refinement the "How"
+didn't need to spell out: on the very first render after a fresh connect, the URL might already
+disagree with the session (a shared link, a reload after `history.pushState` moved the address
+bar) -- that first render catches the *session* up to the URL with the declared write, rather than
+snapping the URL back to the session's still-default page and losing what the link asked for.
+Wired into the wedding only (`views/shared.ts`'s `frame()` takes an optional `page`, passed by
+`views/household.ts` and `views/board.ts`; the pre-login welcome has none). Chat's `room` was left
+alone, per the "grates less there" in the Why below.
+
 **What.** The page a tab is on lives in the URL, not only on the session document.
 
 **Why.** The wedding keeps the page (`household/asks`, `households/3`) on the session, so going
@@ -334,5 +349,4 @@ one line.
 
 ## Order
 
-1, 2, 4, 5, 7, 8, 10, and 11 are done. 3 is what's left, worth doing only if a third example
-wants links.
+All of 1 through 11 are done (6 is a permanent no-op, recorded so nobody adds one).

@@ -60,7 +60,7 @@ export function householdPages(v: HouseholdView): string {
     : head === "stay" ? collectionPage([...trail, { label: "Where to stay" }], { body: placeRows(v.places), foot: [undoTool(), redoTool(), leaveTool()] })
     : head === "everyone" ? everyonePage(v, trail, second ?? null)
     : householdBox(v, trail);
-  return frame(false, join(page, guestSheet(v), giftSheet(v), answerSheet(v)));
+  return frame(false, join(page, guestSheet(v), giftSheet(v), answerSheet(v)), v.session.ui.page ?? "");
 }
 
 // ───────────────────────────── the box ─────────────────────────────

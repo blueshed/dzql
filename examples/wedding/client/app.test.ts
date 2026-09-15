@@ -81,6 +81,32 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('.cell.big [data-applet="photo"] svg') !== null`, (v) => v === true);
   });
 
+  test("the page follows into the URL; the browser's back button sends the session there; reopening a link catches the session up to it", async () => {
+    await using view = new Bun.WebView();
+    await enter(view, code);
+    expect(await view.evaluate(`location.pathname`)).toBe("/");
+
+    // navigating via the UI is a session write, as always -- the URL follows it
+    await view.evaluate(`document.querySelector('[data-value="gifts"]').click()`);
+    await waitFor(view, `location.pathname`, (v) => v === "/gifts");
+    await waitFor(view, CRUMBS, (v) => typeof v === "string" && v.includes("Gifts"));
+
+    // the browser's own back button: a popstate, not a click in the page -- the session follows
+    // the URL back, rather than the URL being the only thing that moved (every household page's
+    // crumbs include the household's own code, so the absence of "Gifts" is what distinguishes
+    // having actually left that page from the URL having merely changed underneath it)
+    await view.evaluate(`history.back()`);
+    await waitFor(view, `location.pathname`, (v) => v === "/");
+    await waitFor(view, CRUMBS, (v) => typeof v === "string" && v.includes(code) && !v.includes("Gifts"));
+
+    // reopening a link to a page while already signed in (the session cookie survives, same as a
+    // reload): the URL is what was actually asked for, so the session catches up to it, rather
+    // than a fresh render of the session's still-current page snapping the URL back to "/"
+    await view.navigate(`${server.url}stay`);
+    await waitFor(view, `location.pathname`, (v) => v === "/stay");
+    await waitFor(view, CRUMBS, (v) => typeof v === "string" && v.includes("Where to stay"));
+  });
+
   test("the answer: the pencil opens the drawer, an option writes it, the bubble shows it, Undo takes it back", async () => {
     await using view = new Bun.WebView();
     await enter(view, code);

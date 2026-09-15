@@ -123,9 +123,15 @@ export function placeRows(places: Place[], open?: (id: number) => string): strin
     .join("")}</div>`;
 }
 
-/** The whole of #app: the flowers along the foot behind everything, then the site. */
-export function frame(atWelcome: boolean, body: string): string {
-  return `<div class="flowers" aria-hidden="true"></div><div class="site${atWelcome ? " at-welcome" : ""}">${body}</div>`;
+/**
+ * The whole of #app: the flowers along the foot behind everything, then the site. `page`, when a
+ * household or the couple has one, is the session's own page as `data-page`/`data-page-write` --
+ * the kernel client mirrors it into the URL and sends this write back on the browser's own
+ * back/forward (change-request.md item 3). Pre-login (the welcome), there is no page to follow.
+ */
+export function frame(atWelcome: boolean, body: string, page?: string): string {
+  const pageAttrs = page === undefined ? "" : ` data-page="${esc(page)}" data-page-write='${JSON.stringify({ doc: "session", op: "replace", path: "/page" })}'`;
+  return `<div class="flowers" aria-hidden="true"></div><div class="site${atWelcome ? " at-welcome" : ""}"${pageAttrs}>${body}</div>`;
 }
 
 /** A guest's coming, both states always shown, the current one filled. `locked` after the deadline. */

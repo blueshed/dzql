@@ -146,7 +146,7 @@ describe("createServer, generically (no example from the examples directory invo
     server.stop(true);
   });
 
-  test("/ serves the example's page, /api/health answers, unknown routes 404", async () => {
+  test("/ serves the example's page, /api/health answers, and any other path serves the same page (item 3: a page in the URL is the client's to read, not a route the server resolves)", async () => {
     const page = await fetch(new URL("/", server.url));
     expect(page.status).toBe(200);
     expect(page.headers.get("content-type")).toContain("text/html");
@@ -155,8 +155,9 @@ describe("createServer, generically (no example from the examples directory invo
     expect(health.status).toBe(200);
     expect(await health.json()).toEqual({ ok: true });
 
-    const missing = await fetch(new URL("/nope", server.url));
-    expect(missing.status).toBe(404);
+    const other = await fetch(new URL("/nope", server.url));
+    expect(other.status).toBe(200);
+    expect(other.headers.get("content-type")).toContain("text/html");
   });
 
   test("a non-upgrade request to /ws is rejected", async () => {

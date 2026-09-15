@@ -75,11 +75,51 @@ function onAppletPropsChanged(el: Element, props: unknown) {
 // mounting a newly-appeared one still happens here, same as before.
 const hooks = { onAppletRemoved, onAppletPropsChanged };
 
+// Where a tab is (change-request.md item 3): an example may mark some element within #app with
+// `data-page` (the session's own idea of the page) and `data-page-write` (the write that sets
+// it) -- the kernel knows nothing about what a "page" means, only that this pair, when present,
+// should be mirrored into the URL so the back button and a shared link work. `knownPage` is
+// undefined until the first full render, which is also the only time the URL might already
+// disagree with the session (a shared link, a reload): then the session is caught up to the URL
+// instead of the other way round, since the URL is what the person actually asked for.
+let knownPage: string | undefined;
+let pageWrite: WriteSpec | undefined;
+
+function syncPage() {
+  const el = app.querySelector<HTMLElement>("[data-page]");
+  if (!el) return;
+  const page = el.dataset.page!;
+  if (el.dataset.pageWrite) pageWrite = JSON.parse(el.dataset.pageWrite) as WriteSpec;
+
+  if (knownPage === undefined) {
+    const urlPage = decodeURI(location.pathname.slice(1));
+    if (urlPage !== page && pageWrite) {
+      knownPage = urlPage; // the URL already says this; nothing to push once the session catches up
+      send(pageWrite.doc, [{ op: pageWrite.op, path: pageWrite.path, value: urlPage }]);
+    } else {
+      knownPage = page;
+      history.replaceState({ page }, "", "/" + encodeURI(page));
+    }
+    return;
+  }
+  if (page !== knownPage) {
+    knownPage = page;
+    history.pushState({ page }, "", "/" + encodeURI(page));
+  }
+}
+
+window.addEventListener("popstate", () => {
+  const page = decodeURI(location.pathname.slice(1));
+  knownPage = page;
+  if (pageWrite) send(pageWrite.doc, [{ op: pageWrite.op, path: pageWrite.path, value: page }]);
+});
+
 function render(html: string) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
 
   morph(app, html, hooks);
   settle(before);
+  syncPage();
 }
 
 // A fragment render: the delta in HTML's terms (see src/compartments/render.ts). Each op names an

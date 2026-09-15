@@ -435,6 +435,34 @@ are automatically pinned to the bottom on render if new child nodes were
 added, without disturbing scroll position during presence or other unrelated
 updates.
 
+### Where a tab is: `data-page` and `data-page-write`
+
+An example that keeps "which page a tab is on" on the session (the wedding's
+`household/asks`, `households/3`) can put that page in the URL too, so the browser's back button
+and a shared link work. Mark any element within `#app` with both:
+
+```html
+<div data-page="households/3" data-page-write='{"doc":"session","op":"replace","path":"/page"}'>
+```
+
+The kernel reads this after every full render and mirrors `data-page` into `history.pushState`;
+on `popstate` (the back/forward buttons) it reads the URL's own page back out and sends
+`data-page-write`'s write with that value. The session document stays the one place the page
+actually lives — a reload lands where the tab was even with cookies alone — the URL just follows
+it, and follows it back. On the very first render after a fresh connect, if the URL already names
+a page the session doesn't have (someone opened a link while already signed in), the *session* is
+caught up to the URL, not the other way round — otherwise the render that follows connecting would
+snap the address bar back to the session's default and the link would have done nothing.
+
+For a reopened or shared link to reach the client to read at all, the server has to answer *some*
+page to any path — see `src/server.ts`'s `"/*": example.index` fallback, which is generic and
+already there; nothing about it is per-example. The wedding wires the mechanism itself into
+`views/shared.ts`'s `frame()` (an optional `page` parameter, passed by `views/household.ts` and
+`views/board.ts`; the pre-login welcome has no page yet). This is opt-in per example — chat's
+`room` on the session was left alone (change-request.md item 3's Why explains why it grates less
+there); skip it entirely unless the back button or a shareable link is something the example
+actually wants.
+
 ## Applets — the escape hatch for client-side state
 
 Three ways an applet's data reaches it, from cheapest to dearest on the wire:

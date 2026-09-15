@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.32.0] - 2026-09-15
+
+### Changed
+
+- **Where a tab is** (change-request.md item 3). An example may mark an element within `#app`
+  with `data-page` (the session's own page) and `data-page-write` (the write that sets it); the
+  kernel client mirrors that into `history.pushState` on every full render and, on `popstate`,
+  sends the declared write with the URL's own page -- so the back/forward buttons and a shared
+  link now work, without the kernel knowing what a "page" is. `src/server.ts` gained a
+  `"/*": example.index` fallback so a reopened or shared link actually reaches the client to read
+  (the server still doesn't resolve anything about the path). The wedding's welcome, household,
+  and board pages (`views/shared.ts`'s `frame()`) declare it; chat's `room` was left alone. On a
+  fresh connect whose URL already names a page the session doesn't have yet, the session is
+  caught up to the URL rather than the URL snapping back to the session's default.
+
 ## [0.31.0] - 2026-09-15
 
 ### Changed
