@@ -14,6 +14,10 @@ const listStmt = db.query<{ symbol: string }, [string]>("SELECT symbol FROM watc
 const insertStmt = db.query<unknown, [string, string, number]>("INSERT INTO watchlists (session_id, symbol, seq) VALUES (?, ?, ?)");
 const deleteStmt = db.query<unknown, [string, string]>("DELETE FROM watchlists WHERE session_id = ? AND symbol = ?");
 const maxSeqStmt = db.query<{ seq: number | null }, [string]>("SELECT MAX(seq) AS seq FROM watchlists WHERE session_id = ?");
+// A redo of a drop (that drop's inverse's own inverse) is an indexed add -- back at the row's own
+// place, not appended. permit() never lets an indexed add through the wire, only replay sends
+// one, so this renumbers every row from that position on to make room.
+const updateSeqStmt = db.query<unknown, [number, string, string]>("UPDATE watchlists SET seq = ? WHERE session_id = ? AND symbol = ?");
 
 export function read(sessionId: string): WatchlistDocument {
   return { symbols: listStmt.all(sessionId).map((r) => r.symbol) };
@@ -37,14 +41,27 @@ export const patch = db.transaction(function patch(sessionId: string, ops: Patch
       insertStmt.run(sessionId, symbol, (maxSeqStmt.get(sessionId)?.seq ?? 0) + 1);
       applied.push({ ...op, value: symbol });
       inverse.unshift({ op: "remove", path: `/symbols/${symbols.length}` });
+    } else if (op.op === "add") {
+      // Only reachable via replay: an indexed add, putting a dropped symbol back at its own row.
+      const index = Number(key);
+      const symbol = String(op.value ?? "").trim().toUpperCase();
+      if (!Number.isInteger(index) || index < 0 || index > symbols.length || !symbol || !has(symbol) || symbols.includes(symbol)) continue;
+      const next = [...symbols.slice(0, index), symbol, ...symbols.slice(index)];
+      for (const [i, s] of next.entries()) {
+        if (s === symbol) insertStmt.run(sessionId, symbol, i + 1);
+        else updateSeqStmt.run(i + 1, sessionId, s);
+      }
+      applied.push({ ...op, value: symbol });
+      inverse.unshift({ op: "remove", path: `/symbols/${index}` });
     } else if (op.op === "remove") {
       const index = Number(key);
       const symbol = Number.isInteger(index) ? symbols[index] : undefined;
       if (symbol === undefined) continue;
       deleteStmt.run(sessionId, symbol);
       applied.push(op);
-      // Coming back lands at the end, not its old place -- enough for undo, which never re-inverts this.
-      inverse.unshift({ op: "add", path: "/symbols/-", value: symbol });
+      // Back at its own row, not appended, so a redo (this inverse's own inverse) restores the
+      // list exactly, not just the symbol.
+      inverse.unshift({ op: "add", path: `/symbols/${index}`, value: symbol });
     }
   }
 

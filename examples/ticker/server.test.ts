@@ -140,7 +140,7 @@ describe("the ticker", () => {
     expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "remove", path: "/symbols/0" }] });
     await expectMessage(a, "render");
     write(a, "ledger", [{ op: "add", path: "/latest" }]);
-    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "add", path: "/symbols/-", value: "ECHO" }] });
+    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "add", path: "/symbols/0", value: "ECHO" }] });
     await expectMessage(a, "render");
     a.close();
     b.close();
