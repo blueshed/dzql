@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.26.0] - 2026-09-15
+
+### Added
+
+- **Redo.** The ledger's cursor walked forward again: `nextRedo(sessionId)` (`src/ledger.ts`) finds the newest undo this session made that nothing has walked back since, unless a fresh write has come after it; replaying its inverse is the original write over, recorded as undoing the undo. Chains of `undoes` alternate direction by depth (even: a write or a redo; odd: an undo), and the tip of a chain is what counts -- one recursive query, no new state. On the wire it is `{"doc":"ledger","op":"add","path":"/latest"}` beside undo's `remove`; the CLI gains `redo`; chat and the wedding gain a Redo button.
+- **An applet may take a document's patches.** `Applet.patch?(el, ops)` (`src/applets.ts`): an applet whose element names a document in `data-doc` is handed that document's ops as the client receives the echo, with no HTML sent -- the delta is the update. The concept answers `fragments` with `[]` for such a page, so nothing follows the patch. This is the third tier of render (the page; a fragment; the patch itself), and the one that makes a data feed cost what a data feed costs.
+- **`examples/ticker/`**, the third example: a price board. One shared document, the market (a quote per symbol; a tick is `replace /<SYMBOL>/price`, from a feed that runs while anyone is connected, or typed through the wire or the CLI, every tick on the ledger and undoable); a watchlist per session (`add /symbols/-`, `remove /symbols/<index>`, the writes Undo and Redo walk here); a board applet that draws the watched symbols as an SVG table with a sparkline each and takes ticks straight from the patch; and a Swiss railway clock applet, drawn and driven in the browser with nothing crossing the wire after the page (the seconds hand sweeps the minute in 58.5 s and waits at twelve). Measured (`DB_PATH=:memory: TICK_MS=0 bun examples/ticker/scripts/measure-render-cost.ts`): one tick is 104 B to each viewer, the patch alone, against 41 B for the same tick as a bare JSON feed. `bun run dev:ticker` serves it on port 3002; `TICK_MS` and `CLOCK_TZ` in `.env.example`.
+- The README leads with what eta is made of and why to choose it, with the numbers.
+
 ## [0.25.0] - 2026-09-15
 
 ### Changed

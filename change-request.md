@@ -154,6 +154,16 @@ is nonsense), which makes item 5 concrete. With item 7 in place the echo renders
 as a fragment instead of the page. History: `inspect` takes a `limit`, and answers with that many
 ledger entries per document instead of the head alone, so a watcher can catch up before it watches.
 
+## 9. The patch itself, into an applet
+
+*Done, 0.26.0, and measured (README, "Cost").* Item 7 sent the delta as HTML; for an applet whose
+props are a document's subtree, the delta is already the update, and the HTML was the change sent
+twice. `Applet.patch` with `data-doc` on the mount: the client hands the echo to the applet, the
+concept's `fragments` says nothing follows. A tick on the ticker is 104 bytes to each viewer against
+41 as a bare feed. What it does not do: an applet still gets whole props when they change by a
+fragment (item 7's caveat), and the client's kernel does not yet apply an op to props for the
+applet -- each applet does its own, which is right while there are two of them.
+
 ## Order
 
 5, 7, and 8 are done. 1 next: it removes code from both examples and settles a question every

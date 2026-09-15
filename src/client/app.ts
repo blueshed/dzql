@@ -169,6 +169,11 @@ function connect() {
       else render(message.html);
     } else if (message.type === "patch") {
       recordPatch(message.doc, message.version, message.ops);
+      // An applet watching this document takes the ops itself (see Applet.patch): the delta is
+      // its update, and no render need follow.
+      for (const el of mounted.keys()) {
+        if (el.dataset.doc === message.doc) applets[el.dataset.applet!]?.patch?.(el, message.ops);
+      }
       if (lastSent && lastSent.doc === message.doc && message.ops.length > 0) lastSent.echoed = true;
       if (pendingReset && pendingReset.doc === message.doc && message.ops.length > 0) {
         pendingReset.form.reset();

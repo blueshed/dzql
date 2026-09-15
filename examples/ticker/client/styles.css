@@ -1,0 +1,57 @@
+/* A trading screen: dark, monospace, the numbers doing the talking. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0e14;
+  --panel: #121722;
+  --fg: #d7dde8;
+  --muted: #7d8794;
+  --line: #232a38;
+  --amber: #f0b429;
+  --up: #3fb950;
+  --down: #f85149;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+body { margin: 0; background: var(--bg); color: var(--fg); }
+main#app { max-width: 56rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+h1 { font-size: 1.1rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--amber); margin: 0; }
+h2 { font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin: 1.5rem 0 0.5rem; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+input, button { font: inherit; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 0.4rem 0.7rem; }
+button { cursor: pointer; }
+button:hover { border-color: var(--amber); }
+.note { color: var(--muted); font-size: 0.8rem; }
+code { color: var(--amber); }
+
+/* the watchlist */
+.watchlist ul { list-style: none; margin: 0 0 0.75rem; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.watchlist li { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 0.2rem 0.3rem 0.2rem 0.8rem; }
+.watchlist .drop { border: 0; background: transparent; color: var(--muted); padding: 0 0.4rem; line-height: 1; }
+.watchlist .drop:hover { color: var(--down); }
+.watchlist form { display: flex; gap: 0.5rem; }
+.watchlist .tools { display: flex; gap: 0.5rem; margin: 0.75rem 0 0; }
+
+/* the board */
+.market .empty { color: var(--muted); background: var(--panel); border: 1px dashed var(--line); border-radius: 6px; padding: 1rem; margin: 0; }
+svg.board { display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem 0; font-size: 14px; }
+svg.board text { fill: var(--fg); }
+svg.board .symbol { font-weight: 700; fill: var(--amber); }
+svg.board .name { fill: var(--muted); font-size: 12px; }
+svg.board .price { font-weight: 700; }
+svg.board .change { font-size: 12px; }
+svg.board .row.up .change, svg.board .row.up .spark { color: var(--up); fill: var(--up); }
+svg.board .row.down .change, svg.board .row.down .spark { color: var(--down); fill: var(--down); }
+svg.board .row.flat .change, svg.board .row.flat .spark { color: var(--muted); fill: var(--muted); }
+/* a tick flashes its row: the class arrives fresh with each redraw, so the animation restarts */
+svg.board .row.up .price { animation: flash-up 0.9s ease-out; }
+svg.board .row.down .price { animation: flash-down 0.9s ease-out; }
+@keyframes flash-up { from { fill: var(--up); } to { fill: var(--fg); } }
+@keyframes flash-down { from { fill: var(--down); } to { fill: var(--fg); } }
+
+/* the clock: a station clock in the corner, white face, black hands, the red seconds hand */
+svg.clock .face { fill: #f4f4f2; stroke: #222; stroke-width: 1.5; }
+svg.clock .marks rect { fill: #111; }
+svg.clock .hand rect { fill: #111; }
+svg.clock .hand.second rect, svg.clock .hand.second circle { fill: #e0261b; }
+svg.clock .pin { fill: #111; }
+svg.clock .label { font-size: 6px; fill: #555; letter-spacing: 0.1em; }
+@media (prefers-reduced-motion: reduce) { svg.board .price { animation: none !important; } }

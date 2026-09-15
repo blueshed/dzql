@@ -324,6 +324,20 @@ updates.
 
 ## Applets — the escape hatch for client-side state
 
+Three ways an applet's data reaches it, from cheapest to dearest on the wire:
+
+1. **Props once, then the document's own patches.** The element names the document
+   (`<div data-applet="board" data-doc="ticker" data-props=...>`), the applet implements
+   `patch(el, ops)`, and the concept's `fragments` answers `[]` for that page: after the first
+   render only the patch echo crosses the wire (`examples/ticker/applets/board.ts`). Use it when
+   the applet's props are a subtree of one document and the document changes often.
+2. **New props on a fragment render.** The concept replaces the applet's element as a fragment
+   with new `data-props`; the morph calls `update(el, props)` (`examples/wedding/applets/photo.ts`).
+3. **New props on a full render.** The default, when a concept has no `fragments`.
+
+An applet with nothing of the app in it -- a clock -- takes its props once and never hears from
+the server again (`examples/ticker/applets/clock.ts`).
+
 Most UI is plain HTML + `data-write`, morphed in on every render — no applet
 needed. Reach for an applet (`src/applets.ts`) only when something needs
 live state a re-render would otherwise blow away (e.g. `room-picker`'s
@@ -333,6 +347,7 @@ typed filter surviving a props update).
 export type Applet = {
   mount(el: HTMLElement, ctx: AppletContext): void | (() => void); // returns optional cleanup
   update?(el: HTMLElement, props: unknown): void; // called instead of remount if the element survives with new data-props
+  patch?(el: HTMLElement, ops: PatchOp[]): void; // the ops of the document named in data-doc, as they are echoed
 };
 ```
 

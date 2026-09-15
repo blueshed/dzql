@@ -1,24 +1,41 @@
 # eta
 
-A tiny kernel for building real-time, server-rendered apps, built around one
-idea: HTML is the only vocabulary. The server renders, the client morphs,
-and every change is a JSON Patch recorded in a SQL ledger. `src/` is the
-generic kernel; it knows nothing about any specific app. `examples/chat/` is
-the first example built on it -- a real-time chat -- and `examples/wedding/`
-the second -- a site for one wedding, with Lego minifigures. Another can be
-added under `examples/<name>/` without editing anything in `src/`.
+A kernel for live, multi-person apps, made of three things that compose:
 
-- **Documents, not endpoints.** Session and room state live in SQLite; a
-  document's `patch()` is the only way to write it, `read()` is a single
-  query.
-- **The write is the truth.** An element declares what it writes
-  (`data-write='{"doc":"room","op":"add","path":"/transcript/-"}'`); the
-  server permits it, applies it, echoes the ops, then renders.
-- **Undo, for free.** Every patch records its inverse in the ledger.
-  Pressing Undo walks a session's own writes backward, one at a time.
-- **The client only morphs.** No framework, no virtual DOM — a hand-rolled
-  diff reconciles the existing tree against new server HTML, so focus,
-  caret, and scroll survive a re-render that isn't about you.
+- **Documents.** The whole app is documents in SQLite, each with one `read()` and one `patch()`.
+  A write is a patch: a document, a JSON Pointer path, a value. Because every write is a patch,
+  every write has an inverse, and the ledger keeps both.
+- **Render.** A concept turns a document into HTML for one person. The server is the only
+  renderer; the browser keeps that HTML alive by morphing, so a re-render never disturbs what
+  someone is doing, and a render can be as small as the change.
+- **Applets.** Where a page needs behaviour of its own -- a figure being dressed, a price board
+  moving -- an applet takes its data as props, answers with writes, and can take a document's
+  patches straight off the wire.
+
+Three examples prove the three are enough, and each needed nothing in `src/` it did not already
+have: `examples/chat/`, a room with people in it; `examples/wedding/`, a site for one wedding with
+a Lego minifigure builder and a live photo of everyone coming; `examples/ticker/`, a price board
+and a Swiss railway clock, both drawn in the browser.
+
+## Why eta
+
+- **Undo and redo, for free.** Every patch records its inverse. Undo walks a session's own writes
+  back, redo walks them forward again, and a removed course comes back with its dishes, because
+  the inverse was written once when the write was.
+- **A legible wire.** Only documents, patches and HTML cross it. A person with a terminal can
+  `watch` an app and read what happened, `inspect` any document's history, or `undo` from the
+  CLI, with no browser open.
+- **Almost no client.** The kernel's client is 2.3 KB gzipped: a morph and an applet registry.
+  The wedding's, with four applets and the figure, is 8 KB. There is no framework to learn.
+- **Zero infrastructure.** Bun and SQLite, one process, one file. A multi-person live app deploys
+  without a queue, a cache or a build step.
+- **Measured, not claimed.** What a write costs on the wire is a number in this README, from a
+  script you can run: a chat message is 427 bytes to each other member, a price tick 104, a
+  guest's changed top on the wedding nothing at all to the households it does not concern.
+
+It is for small teams and solo builders making live apps where reversibility and legibility
+matter more than scale: a wedding, a booking board, a classroom, an ops console. It is not a
+CDN-scale consumer product, and does not try to be.
 
 ## Running
 
@@ -28,6 +45,7 @@ Bun only — no Node, no npm.
 bun install
 bun run dev     # foreground, --watch (chat, by default)
 bun run dev:wedding  # the wedding, on port 3001
+bun run dev:ticker   # the board, on port 3002
 bun run start   # detached (server.pid, server.log)
 bun run stop
 bun run test    # bun test --coverage
@@ -36,9 +54,9 @@ bun run test    # bun test --coverage
 Which example runs is `ETA_EXAMPLE` (default `chat`): `ETA_EXAMPLE=wedding bun run dev`. It
 resolves `examples/<name>/index.ts`'s `example` export. The wedding's demo codes are
 `DASH` (the couple), `OKAFOR` and `BEN` (two households); `REVEAL=1` shows the names in
-the photo before the day. The chat app itself
-lives entirely under `examples/chat/` — its documents, concepts, applets,
-client, and migrations; `src/` never imports from it.
+the photo before the day. The ticker's feed ticks every `TICK_MS` (500) while anyone is
+connected; `CLOCK_TZ` sets the clock. Each example lives entirely under its own directory --
+documents, concepts, applets, client, migrations; `src/` never imports from any of them.
 
 ## Cost
 
@@ -66,9 +84,20 @@ The wedding, one guest's top changed to green, bytes sent to each viewer:
 | another household, on its box | 10879 B | 0 B |
 | another household, on the everyone page | 3781 B | 1612 B |
 
-An applet's props still go whole (the photo re-sends every figure for one changed top), and every
-connection is still asked -- the answer is now often nothing, but the fan-out is the same. Those
-are the change request's items 7 and 1.
+The ticker, one price tick, five viewers watching the symbol, bytes sent to each:
+
+| | bytes |
+|---|---|
+| the tick as a bare JSON feed (`{s, p, t}`), for comparison | 41 B |
+| eta: the patch echo, and nothing else | 104 B |
+
+No render follows a tick: the board applet names the market document (`data-doc="ticker"`) and
+takes the ops itself (`Applet.patch`), so the delta is the update. The clock costs nothing after
+the page: it is drawn and driven in the browser, where the time is.
+
+An applet's props still go whole when they change (the wedding's photo re-sends every figure for
+one changed top), and every connection is still asked -- the answer is now often nothing, but the
+fan-out is the same. Those are the change request's items 7 and 1.
 
 ## Poking at it
 
