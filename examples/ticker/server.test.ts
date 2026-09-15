@@ -169,11 +169,32 @@ describe("the ticker", () => {
     ws.close();
   });
 
-  test("inspect reports the market and this session's watchlist", async () => {
+  test("the clock: the page carries the session's zone and every zone to choose from; a city is a write the applet takes itself; undo and redo walk it", async () => {
+    const ws = connect();
+    await opened(ws);
+    const { html } = await expectMessage(ws, "render");
+    expect(html).toContain('id="clock" data-applet="clock" data-doc="clock" data-props="{&quot;tz&quot;:&quot;Europe/Zurich&quot;}"');
+    expect(html).toContain('<option value="Asia/Tokyo">Tokyo, Asia (UTC+09:00)</option>');
+    write(ws, "clock", [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }]);
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }] });
+    await expectQuiet(ws); // the applet took it: no render
+    write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Europe/Zurich" }] });
+    write(ws, "ledger", [{ op: "add", path: "/latest" }]);
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }] });
+    await expectQuiet(ws);
+    write(ws, "clock", [{ op: "replace", path: "/tz", value: "Mars/Base" }]);
+    await expectMessage(ws, "render"); // permitted, not applied: the page, no patch
+    write(ws, "clock", [{ op: "remove", path: "/tz" }]);
+    await expectMessage(ws, "render"); // refused
+    ws.close();
+  });
+
+  test("inspect reports the market, this session's watchlist and its clock", async () => {
     const ws = await open();
     ws.send(JSON.stringify({ type: "inspect" }));
     const inspection = (await expectMessage(ws, "inspect")) as unknown as { docs: { doc: string }[] };
-    expect(inspection.docs.map((d) => d.doc)).toEqual(["ticker", "watchlist"]);
+    expect(inspection.docs.map((d) => d.doc)).toEqual(["ticker", "watchlist", "clock"]);
     ws.close();
   });
 });

@@ -50,5 +50,10 @@ describe("the ticker in a real browser", () => {
     await Bun.sleep(300);
     const b = await view.evaluate(`document.querySelector('svg.clock .hand.second').getAttribute('transform')`);
     expect(a).not.toBe(b);
+
+    // a city chosen: the clock document's write, taken by the applet -- the name on the face changes, no render
+    await view.evaluate(`(() => { const i = document.querySelector('input[name=tz]'); i.value = 'Asia/Tokyo'; i.form.requestSubmit(); })()`);
+    await waitFor(view, `document.querySelector('svg.clock .label').textContent`, (v) => v === "Tokyo");
+    expect(await view.evaluate(`window.eta.docs().clock.ops.length`)).toBe(1);
   }, 15000);
 });

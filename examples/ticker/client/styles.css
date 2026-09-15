@@ -15,7 +15,12 @@ body { margin: 0; background: var(--bg); color: var(--fg); }
 main#app { max-width: 56rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
 h1 { font-size: 1.1rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--amber); margin: 0; }
 h2 { font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin: 1.5rem 0 0.5rem; }
-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.clock-section { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; }
+.clock-section .caption { margin: 0; font-size: 0.8rem; color: var(--muted); letter-spacing: 0.08em; }
+.clock-section form.city { display: flex; gap: 0.35rem; }
+.clock-section form.city input { width: 11rem; font-size: 0.85rem; padding: 0.3rem 0.5rem; }
+.clock-section form.city button { font-size: 0.85rem; padding: 0.3rem 0.6rem; }
 input, button { font: inherit; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 0.4rem 0.7rem; }
 button { cursor: pointer; }
 button:hover { border-color: var(--amber); }

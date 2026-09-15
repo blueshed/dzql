@@ -1,4 +1,5 @@
 import type { ServerWebSocket } from "bun";
+import * as clockDoc from "../documents/clock";
 import * as market from "../documents/market";
 import * as watchlistDoc from "../documents/watchlist";
 import type { ConnectionData } from "../../../src/connection";
@@ -57,7 +58,7 @@ const TICK_PATH = /^\/[A-Z0-9.]+\/price$/;
 export const ticker: Concept = {
   docType: "ticker",
   render(sessionId) {
-    return page(watchlistDoc.read(sessionId), market.read());
+    return page(watchlistDoc.read(sessionId), market.read(), clockDoc.read(sessionId));
   },
   resolveDoc() {
     return market.MARKET; // everyone sees the one market

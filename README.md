@@ -55,7 +55,7 @@ Which example runs is `ETA_EXAMPLE` (default `chat`): `ETA_EXAMPLE=wedding bun r
 resolves `examples/<name>/index.ts`'s `example` export. The wedding's demo codes are
 `DASH` (the couple), `OKAFOR` and `BEN` (two households); `REVEAL=1` shows the names in
 the photo before the day. The ticker's feed ticks every `TICK_MS` (500) while anyone is
-connected; `CLOCK_TZ` sets the clock. Each example lives entirely under its own directory --
+connected; `CLOCK_TZ` is the city a new visitor's clock shows. Each example lives entirely under its own directory --
 documents, concepts, applets, client, migrations; `src/` never imports from any of them.
 
 ## Cost
@@ -92,8 +92,9 @@ The ticker, one price tick, five viewers watching the symbol, bytes sent to each
 | eta: the patch echo, and nothing else | 104 B |
 
 No render follows a tick: the board applet names the market document (`data-doc="ticker"`) and
-takes the ops itself (`Applet.patch`), so the delta is the update. The clock costs nothing after
-the page: it is drawn and driven in the browser, where the time is.
+takes the ops itself (`Applet.patch`), so the delta is the update. The clock is the same shape:
+it is drawn and driven in the browser, where the time is, and when you choose another city the
+only thing that crosses the wire is the clock document's `replace /tz`, which the applet takes.
 
 An applet's props still go whole when they change (the wedding's photo re-sends every figure for
 one changed top), and every connection is still asked -- the answer is now often nothing, but the

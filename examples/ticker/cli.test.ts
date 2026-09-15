@@ -7,6 +7,8 @@ describe("ticker's cli aliases", () => {
     expect(parseCommand(["add", "alph"], aliases)).toEqual({ kind: "write", doc: "watchlist", ops: [{ op: "add", path: "/symbols/-", value: "alph" }] });
     expect(parseCommand(["drop", "1"], aliases)).toEqual({ kind: "write", doc: "watchlist", ops: [{ op: "remove", path: "/symbols/1" }] });
     expect(parseCommand(["tick", "alph", "190.5"], aliases)).toEqual({ kind: "write", doc: "ticker", ops: [{ op: "replace", path: "/ALPH/price", value: 190.5 }] });
+    expect(parseCommand(["city", "Asia/Tokyo"], aliases)).toEqual({ kind: "write", doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }] });
+    expect(parseCommand(["city"], aliases)).toEqual({ kind: "write", doc: "clock", ops: [{ op: "replace", path: "/tz", value: "" }] });
     expect(parseCommand(["tick"], aliases)).toEqual({ kind: "write", doc: "ticker", ops: [{ op: "replace", path: "//price", value: NaN }] });
     expect(parseCommand(["add"], aliases)).toEqual({ kind: "write", doc: "watchlist", ops: [{ op: "add", path: "/symbols/-", value: "" }] });
     expect(parseCommand(["drop"], aliases)).toEqual({ kind: "write", doc: "watchlist", ops: [{ op: "remove", path: "/symbols/" }] });

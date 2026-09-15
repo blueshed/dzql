@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SWEEP_S, clockSvg, handsAt, partsIn } from "./clock";
+import { SWEEP_S, cityOf, clockSvg, handsAt, partsIn, tzAfter } from "./clock";
 
 describe("clock", () => {
   test("the hands: the hour hand between hours, the minute hand on the minute, the seconds hand sweeping the dial in SWEEP_S and waiting at the top", () => {
@@ -10,14 +10,20 @@ describe("clock", () => {
     expect(handsAt(0, 0, 59.9).second).toBe(360); // the stop: held at twelve until the minute
   });
 
-  test("the face has sixty marks, twelve of them large, three hands and an optional label", () => {
+  test("the face has sixty marks, twelve of them large, three hands and the city's name", () => {
     const svg = clockSvg("Zurich");
     expect((svg.match(/<rect/g) ?? []).length).toBe(60 + 3);
     expect((svg.match(/height="12"/g) ?? []).length).toBe(12);
     expect(svg).toContain('class="hand second"');
     expect(svg).toContain(">Zurich</text>");
-    expect(clockSvg()).not.toContain("<text");
     expect(clockSvg("<b>")).toContain("&lt;b>");
+  });
+
+  test("the city is the zone's last segment, spoken; the zone after the clock's ops is its last replace", () => {
+    expect(cityOf("America/New_York")).toBe("New York");
+    expect(cityOf("UTC")).toBe("UTC");
+    expect(tzAfter("Europe/Zurich", [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }, { op: "remove", path: "/tz" }, { op: "replace", path: "/x", value: "y" }])).toBe("Asia/Tokyo");
+    expect(tzAfter("Europe/Zurich", [])).toBe("Europe/Zurich");
   });
 
   test("the wall-clock parts in a time zone", () => {
