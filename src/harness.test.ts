@@ -18,9 +18,18 @@ describe("stories harness", () => {
     print(report);
   }, 30000);
 
-  test("a story by nobody in the cast is a failure, not a crash", async () => {
-    const report = await run(example, { cast: stories.cast, stories: [{ name: "a ghost speaks", as: "ghost", does: { doc: "room", ops: [] }, seen: {} }] });
-    expect(report.failed).toBe(1);
+  test("a story by nobody in the cast, or seen by nobody who could, is a failure, not a crash", async () => {
+    process.env.STORY_DIFF = "1"; // the excerpt under a failure is for the builder; make sure it prints
+    const report = await run(example, {
+      cast: stories.cast,
+      stories: [
+        { name: "a ghost speaks", as: "ghost", does: { doc: "room", ops: [] }, seen: {} },
+        { name: "Ada says hello and nobody, who is nowhere, sees it", as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/transcript/-", value: "hi" }] }, seen: { nobody: "" }, unseen: ["cy"] },
+      ],
+    });
+    delete process.env.STORY_DIFF;
+    expect(report.failed).toBe(2);
     expect(report.outcomes[0]!.failures[0]).toContain("ghost");
+    expect(report.outcomes[1]!.failures).toContain('nobody did not see it on ""');
   }, 30000);
 });

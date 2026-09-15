@@ -26,45 +26,62 @@ needs neither a model beside it nor a copy of the document in the browser to com
 
 ## A story
 
-A story is told in the wire's own words and no others: a session, a write, and where it is seen.
-Here are three from the wedding, in the shape the first `stories.ts` will correct:
+A story is told in the wire's own words and no others: a session, a write, and who then sees it,
+where. Three from the wedding's `stories.ts`:
 
 ```ts
 // The cast: a session each, and the writes that put it where the stories find it.
-const cast = {
-  couple:  { code: "DASH",   page: "board" },
-  okafors: { code: "OKAFOR", page: "household/guests" },
-  ben:     { code: "BEN",    page: "household" },
-};
+cast: {
+  couple:  [session("/code", "DASH")],
+  okafors: [session("/code", "OKAFOR")],
+  benToo:  [session("/code", "BEN")], // Ben's household, a second tab
+  stranger: [],
+},
+// Where a member must be to notice, in this example's own words: a page, and after " @ " what
+// else the tray holds there (a drawer open, a list reading).
+at: (where) => ...one session write...,
 
-story("Mrs Okafor turns her daughter's top green, and the couple see it on the board", {
+story("Femi's top turns green, and the photo everyone watches changes", {
   as: "okafors",
-  does: { doc: "household", ops: [{ op: "replace", path: "/guests/1/minifigure/top", value: "green" }] },
-  seen: { okafors: "household", couple: "board" },
-  unseen: ["ben"],
+  does: household("replace", "/guests/2/minifigure/top", "#7FAE4E"),
+  seen: { okafors: "", couple: "households", benToo: "everyone" },
 });
 
-story("The Okafors say yes, and their figures walk into everyone's photo", {
+story("The Okafors leave the caterer a note, and only the couple read it", {
   as: "okafors",
-  does: { doc: "household", ops: [{ op: "replace", path: "/answer", value: "yes" }] },
-  seen: { okafors: "household", couple: "board", ben: "board" },
+  does: household("replace", "/message", "Ada is vegetarian."),
+  seen: { okafors: "", couple: "households/1" },
+  unseen: ["ben", "benToo"],
 });
 
 story("A household cannot change the couple's welcome", {
   as: "ben",
-  cannot: { doc: "board", ops: [{ op: "replace", path: "/message", value: "Hi" }] },
+  cannot: board("replace", "/message", "Hi"),
 });
 ```
 
 Every word in those is one eta already has. `as` is a session. `does` is a `{doc, ops}` message,
-exactly as the browser or the CLI would send it. `seen` names, for each member of the cast who
-should notice, the compartment that shows it; `unseen` names who should not. `cannot` is a
-refusal: the permit table's other half, told as a sentence. Undo is a story too, and a redo, and
-the harness runs them for free: every `does` is followed by its undo and its redo, and the seeing
-must hold in reverse.
+exactly as the browser or the CLI would send it. `seen` names who should notice and where: a page,
+and whatever else the example's `at` understands, because a person sees only the page they are on
+and a story says where its change shows; in an example with one page (chat's is the room; the
+ticker has one), `seen` is just a list of names. `unseen` names who must notice nothing, where the
+cast left them; anyone in neither is not asked, since a home page with counts on it changes for
+many reasons and a story asserts only what it says. `cannot` is a refusal: the permit table's
+other half, told as a sentence, whichever layer refuses (the permit, a document that finds nothing
+to change, a session with no document to resolve). Undo is a story too, and a redo, and the
+harness runs them for free: every `does` is followed by its undo and its redo, and the seeing
+must hold in reverse -- unless the ledger says the write is a fact (a tick), which undo must
+leave alone, or the author has since gone (logged out), who has no undo to press.
 
 The sentence at the front is the story's name and its whole value to a customer. It is what you
 scroll through with the groom and ask "is this true?". The object after it is what runs.
+
+*Learned from the first run (15 September).* The shape was first written with `seen` naming a
+compartment. The wedding showed that a household's whole page is one compartment and the couple's
+another, so the word carried nothing; what decided whether someone noticed was the page they were
+on, and for choices and coming, the reading of the list. `seen` now names where. And `unseen` was
+first every member not in `seen`; the wedding's home pages, with their counts and the photo,
+noticed nearly everything, so silence now means silence.
 
 ## What falls out
 
@@ -76,8 +93,8 @@ Given a pile of stories, these are not written; they are read off:
   compartment that should be derived first.
 - **The audience.** Who sees a document is who the stories say sees it. The change request's
   item 1 asked for a method on the compartment; it is better as a fact of the stories.
-- **The compartments.** The places on the page are the places stories name in `seen`. A
-  compartment nobody's story sees is not a compartment.
+- **The pages and their places.** Where a change shows is where stories say it shows. A page
+  nobody's story sees is not a page, and a compartment nobody's story sees is not a compartment.
 - **The documents and their shapes.** The paths written say what a document holds; the values
   say what the paths refer to. Entities come last, as hjeli says they should.
 - **The two canons, run.** Canon 1 is every `seen` checked on that person's page. Canon 2 is
@@ -151,10 +168,5 @@ says whether they were written right.
 - **Values.** A story writes a value; the harness needs it to be a real one (guest index 1 must
   exist). The cast's setup writes are where that is made true, and they may grow longer than the
   stories. If they do, the seed is wrong, not the story.
-- **Applets.** A tick is seen by the board applet, not by a compartment's render. `seen` may
-  need to name an applet's props as well as a compartment's element.
 - **Who tells the ticker's stories.** `as: "feed"` is a session that is not a person. Presence
   has the same shape: a join is a story told by the socket.
-- **The negative space.** `unseen` lists who should not notice. Whether the harness should
-  assume everyone not in `seen` is unseen, or only those named, is the difference between a strict
-  canon and a lenient one. Start strict and see which stories complain.

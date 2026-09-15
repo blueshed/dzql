@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.34.0] - 2026-09-15
+
+### Changed
+
+- **`seen` names where.** The first run of the stories (0.33.0) showed that naming a compartment
+  in `seen` carried nothing -- a household's whole page is one compartment -- and that what
+  decided whether someone noticed was the page they were on, and for choices and coming, the
+  reading of the list. So `Seen` is now a list of names (left where the cast put them: chat, the
+  ticker) or a record of name to *where*, in the example's own grammar, and `Stories.at(where)`
+  is the write that puts a member there; the harness sends it before it looks. The wedding's
+  `at` takes `"page @ key=value, ..."` -- `focus=2`, `keep=courses/1`, `reading.guests=list`.
+  And `unseen` is now only who the story names: anyone in neither list is not asked, since a home
+  page with counts on it changes for many reasons and a story asserts only what it says
+  (stories.md, "Learned from the first run"). Two wedding stories were retold as refusals, since
+  the seed has no reply to withdraw and no wine to change one's mind about. The wedding goes from
+  21 of 51 to 49 of 51; the two left are findings: the welcome does not show the couple's message,
+  and a future deadline is shown to nobody. Chat's and the ticker's one failure each stand too:
+  redo re-adds a message under a new id, and undo of a drop re-adds the symbol at the end.
+
 ## [0.33.0] - 2026-09-15
 
 ### Added

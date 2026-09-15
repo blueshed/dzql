@@ -7,17 +7,19 @@ import type { Stories, Story, Write } from "./stories";
 // Runs an example's stories against it, over real sockets, and reports by story name. See
 // stories.md ("The harness"). Canon 1 is checked here: for every member of the cast, a fresh
 // render from the tables before and after the story, compared -- so a change that reaches a page
-// through an applet's patch (a tick) counts the same as one that reaches it as HTML. Then the
-// story is undone and redone as its author, and the pages must go back and forth with it; a
-// write the ledger calls a fact (undoable = 0) must survive its undo instead. A `cannot` must
-// change no page and add nothing to the ledger. Each story runs inside one database transaction
-// that is rolled back afterwards, so every story starts from the cast alone.
+// through an applet's patch (a tick) counts the same as one that reaches it as HTML. A member a
+// story says sees it on a page is put on that page first (`Stories.page`), since a person sees
+// only the page they are on. Then the story is undone and redone as its author, and the pages
+// must go back and forth with it; a write the ledger calls a fact (undoable = 0) must survive its
+// undo instead, and an author the example no longer counts as active (logged out) gets no undo.
+// A `cannot` must change no page and add nothing to the ledger. Each story runs inside one
+// database transaction that is rolled back afterwards, so every story starts from the cast alone.
 
 export type Outcome = { name: string; failures: string[] };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number };
 
 type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; last: number };
-type Snapshot = Map<string, { page: string; parts: Map<string, string | undefined> }>;
+type Snapshot = Map<string, string>;
 
 const SETTLE_MS = Number(process.env.STORY_SETTLE_MS ?? 40);
 const SETTLE_CAP_MS = 2000;
@@ -35,17 +37,10 @@ function ledgerMax(): number {
 export async function run(example: Example, stories: Stories): Promise<Report> {
   const server = createServer(example, 0);
   const { renderFor } = assemble(example);
-  const places = example.compartments;
   const outcomes: Outcome[] = [];
 
   function snapshot(cast: Member[]): Snapshot {
-    const snap: Snapshot = new Map();
-    for (const m of cast) {
-      const parts = new Map<string, string | undefined>();
-      for (const c of places) parts.set(c.docType, c.render?.(m.sessionId));
-      snap.set(m.name, { page: renderFor(m.sessionId), parts });
-    }
-    return snap;
+    return new Map(cast.map((m) => [m.name, renderFor(m.sessionId)]));
   }
 
   async function connect(name: string): Promise<Member> {
@@ -80,11 +75,11 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   }
 
   function differs(a: Snapshot, b: Snapshot, name: string): boolean {
-    return a.get(name)!.page !== b.get(name)!.page;
+    return a.get(name) !== b.get(name);
   }
 
   function compare(a: Snapshot, b: Snapshot, cast: Member[], what: string, failures: string[]): void {
-    for (const m of cast) if (differs(a, b, m.name)) failures.push(`${what}: ${m.name}'s page differs${excerpt(a.get(m.name)!.page, b.get(m.name)!.page)}`);
+    for (const m of cast) if (differs(a, b, m.name)) failures.push(`${what}: ${m.name}'s page differs${excerpt(a.get(m.name)!, b.get(m.name)!)}`);
   }
 
   async function tell(story: Story): Promise<Outcome> {
@@ -99,30 +94,38 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       const who = cast.find((m) => m.name === story.as);
       if (!who) return { name: story.name, failures: [`no one in the cast is called ${story.as}`] };
 
-      const before = snapshot(cast);
-      const ledgerBefore = ledgerMax();
-
       if ("cannot" in story) {
+        const before = snapshot(cast);
+        const ledgerBefore = ledgerMax();
         await send(cast, who, story.cannot);
-        const after = snapshot(cast);
-        compare(before, after, cast, "refused, but", failures);
+        compare(before, snapshot(cast), cast, "refused, but", failures);
         if (ledgerMax() !== ledgerBefore) failures.push("refused, but the ledger moved");
         return { name: story.name, failures };
       }
 
+      // Who should notice, and where: a list leaves them where the cast put them; a record puts
+      // each where it says, in the example's own grammar for "where" (`Stories.at`).
+      const seen = new Map<string, string | undefined>(Array.isArray(story.seen) ? story.seen.map((n) => [n, undefined]) : Object.entries(story.seen));
+      for (const [name, where] of seen) {
+        const m = cast.find((c) => c.name === name);
+        if (!m) failures.push(`no one in the cast is called ${name}`);
+        else if (where !== undefined && stories.at) await send(cast, m, stories.at(where));
+      }
+
+      const before = snapshot(cast);
+      const ledgerBefore = ledgerMax();
       who.inbox.length = 0;
       await send(cast, who, story.does);
       if (process.env.STORY_TRACE) for (const raw of who.inbox) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
       const after = snapshot(cast);
       const entries = ledgerSinceStmt.all(ledgerBefore);
 
+      // Only what the story says is asked: `seen` must notice, `unseen` must not; anyone in
+      // neither is left alone (a home page with counts on it changes for many reasons).
       for (const m of cast) {
-        const place = story.seen[m.name];
-        if (place !== undefined) {
-          if (!differs(before, after, m.name)) failures.push(`${m.name} did not see it`);
-          else if (after.get(m.name)!.parts.get(place) !== undefined && before.get(m.name)!.parts.get(place) === after.get(m.name)!.parts.get(place))
-            failures.push(`${m.name} saw it, but not in ${place}`);
-        } else if (differs(before, after, m.name)) failures.push(`${m.name} noticed, and should not have`);
+        if (seen.has(m.name)) {
+          if (!differs(before, after, m.name)) failures.push(`${m.name} did not see it${where(seen.get(m.name))}`);
+        } else if (story.unseen?.includes(m.name) && differs(before, after, m.name)) failures.push(`${m.name} noticed, and should not have`);
       }
 
       if (entries.length === 0) return { name: story.name, failures }; // off the ledger: nothing to undo
@@ -162,6 +165,10 @@ export function print(report: Report): void {
     for (const f of o.failures) console.log(`        ${f}`);
   }
   console.log(`\n${report.passed} passed, ${report.failed} failed`);
+}
+
+function where(page: string | undefined): string {
+  return page === undefined ? "" : ` on ${JSON.stringify(page)}`;
 }
 
 /** With STORY_DIFF set, where two pages first part company -- for the builder, not the report. */
