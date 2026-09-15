@@ -229,11 +229,68 @@ nothing; the box does the composing and the render does the filling.
    rules 1 to 4 as a second commit, with chat and the wedding as the proof and the ticker's
    measured numbers unchanged (a tick still renders nothing).
 
+## 11. A patch is one transaction
+
+*Done, 0.28.0.* Every document's `patch()` (chat's room and session; the ticker's clock, market
+and watchlist; the wedding's household, board and session) is now `db.transaction(function
+patch(...) {...})`, signature and every call site unchanged. `src/db.ts` sets `PRAGMA
+journal_mode = WAL` once, before migrations. The proof: `examples/chat/documents/room.test.ts`
+mocks `record()` to throw once (`bun:test`'s `mock.module`, careful to snapshot the real exports
+*before* mocking -- the module's own binding is live, so restoring from it after the mock is
+installed just spreads the mock back in) and asserts the message insert that came before it rolls
+back too; reverting the wrapper was confirmed to fail that test, then restored. `write`/`replay`
+in `server.ts` stay unwrapped, as planned.
+
+**What.** A document's `patch()` commits its statements, its ledger row and the version it
+returns together, or not at all.
+
+**Why.** Today every statement in a `patch()` is its own autocommit, and `record()` is one more
+after them. A throw between the last table write and the ledger insert leaves the table changed
+with no inverse, and undo can never reach it; a throw between two statements of one patch leaves
+half a write. Nothing catches either. The stored-function line this kernel descends from --
+dzql's compiled functions, simple's `*_doc`, epsilon's dispatch -- never had this gap, because a
+function body in Postgres is one transaction. The fix has to sit in the document, not the
+dispatcher: the ticker's feed and the wedding's picture route reach `patch()` without passing
+through `server.ts`.
+
+It is also the cost question answered on the write side. With no pragmas set, SQLite journals and
+syncs every autocommit statement; a chat message is two of those, a guest add in the wedding
+more. One transaction is one sync, which is what a stored function paid.
+
+**How.** One wrapper per document, the signature and every call site unchanged:
+
+```ts
+export const patch = db.transaction(function patch(name: string, ops: PatchOp[], sessionId: string, undoes?: number): RoomPatchResult {
+  ...
+});
+```
+
+Every document that records on the ledger (chat's room and session; the ticker's clock, market
+and watchlist; the wedding's household and board) and the wedding's session, which records
+nothing but has more than one statement. Nested calls become savepoints in `bun:sqlite`, so a
+compartment that one day patches two documents inside a transaction of its own still gets one
+commit. The proof: a test that makes `record()` throw once, calls `patch()`, and finds the table
+unchanged and the version where it was; revert the wrapper and it must fail. CLAUDE.md's "patch()
+is the only write path" gains "and one transaction"; the skill's reference says the same under
+the `patch()` pattern.
+
+And `PRAGMA journal_mode = WAL` in `src/db.ts`, once, after the database opens: a transaction then
+appends to the log and syncs once on commit instead of rewriting pages through a rollback journal,
+and readers never wait on a writer. Two files appear beside `db.sqlite`, already in `.gitignore`;
+an in-memory database answers the pragma with `memory` and is unchanged, so the test suite sees
+nothing. The measure scripts should not change, since nothing on the wire does; the number that
+changes is the time a `patch()` takes, which nobody has measured and which this item does not
+promise.
+
+**Not this.** Not the dispatcher wrapping `write` and `replay`. A compartment sends its echo and
+emits the render inside `write`, so a rollback there would follow a message already sent; that
+is only right once the kernel does the echoing (item 1, and item 10's rule 2), and then it is
+one line.
+
 ## Order
 
-5, 7, 8, and 10 are done. 11 next, as the same sitting's third commit: it touches only the
-documents, which 10 did not move. 1 for what 10 leaves (a document seen by more than its own
-tray) -- with 10 done, a compartment that renders into a keyed element is the audience question
-answered for the common case, and with 7 in place it is what turns "nothing to send" into "nobody
-to ask". 2 after that: it is the thing a person editing the wedding's lists feels. 4 is a
-morning's tidy. 3 is worth doing only if a third example wants links.
+5, 7, 8, 10, and 11 are done. 1 next: a document seen by more than its own tray -- with 10 done,
+a compartment that renders into a keyed element is the audience question answered for the common
+case, and with 7 in place it is what turns "nothing to send" into "nobody to ask". 2 after that:
+it is the thing a person editing the wedding's lists feels. 4 is a morning's tidy. 3 is worth
+doing only if a third example wants links.

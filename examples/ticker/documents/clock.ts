@@ -40,8 +40,8 @@ export function read(sessionId: string): ClockDocument {
 
 export type ClockPatchResult = { version: number; applied: PatchOp[] };
 
-/** `replace /tz` with a zone the runtime knows; anything else does not apply. */
-export function patch(sessionId: string, ops: PatchOp[], undoes?: number): ClockPatchResult {
+/** `replace /tz` with a zone the runtime knows; anything else does not apply. One transaction: every statement here, the ledger row, and the version it returns commit together or not at all. */
+export const patch = db.transaction(function patch(sessionId: string, ops: PatchOp[], undoes?: number): ClockPatchResult {
   const applied: PatchOp[] = [];
   const inverse: PatchOp[] = [];
 
@@ -58,4 +58,4 @@ export function patch(sessionId: string, ops: PatchOp[], undoes?: number): Clock
 
   const version = record(prefixDoc("clock", sessionId), applied, inverse, sessionId, undoes);
   return { version, applied };
-}
+});

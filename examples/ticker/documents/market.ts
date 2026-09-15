@@ -34,8 +34,8 @@ export function has(symbol: string): boolean {
 
 export type MarketPatchResult = { version: number; applied: PatchOp[] };
 
-/** Applies ticks: `replace /<SYMBOL>/price` with a positive number, to a symbol the market has. */
-export function patch(ops: PatchOp[], sessionId: string): MarketPatchResult {
+/** Applies ticks: `replace /<SYMBOL>/price` with a positive number, to a symbol the market has. One transaction: every statement here, the ledger row, and the version it returns commit together or not at all. */
+export const patch = db.transaction(function patch(ops: PatchOp[], sessionId: string): MarketPatchResult {
   const applied: PatchOp[] = [];
   const inverse: PatchOp[] = [];
 
@@ -55,4 +55,4 @@ export function patch(ops: PatchOp[], sessionId: string): MarketPatchResult {
 
   const version = record(prefixDoc("ticker", MARKET), applied, inverse, sessionId, undefined, false);
   return { version, applied };
-}
+});

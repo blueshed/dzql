@@ -265,6 +265,16 @@ value" (a field that was previously unset) must be a `remove`, or undoing a
 first-ever write would silently do nothing. See `restoreOp()` in
 `documents/session.ts` for the pattern.
 
+`patch()` is one transaction (change-request.md item 11): wrap the exported function itself in
+`db.transaction(...)`, keeping its own name for stack traces and every call site unchanged --
+`export const patch = db.transaction(function patch(id, ops, ...) { ... });`. Every statement the
+function runs (including, through a helper like `householdDoc.addGuest`, a different document's)
+and the `record()` call at the end commit together or roll back together; `bun:sqlite` turns a
+transaction called from inside another into a savepoint, so this composes for free. `src/db.ts`
+also sets `PRAGMA journal_mode = WAL` once, right after the database opens -- one sync per commit
+instead of one per statement, and readers stop waiting on a writer; an in-memory database (the
+test suite's) answers it with `"memory"` and is otherwise unchanged.
+
 ## Opting a write out of the ledger
 
 A document is off the ledger by omission, not by a flag: if its `patch()` never calls

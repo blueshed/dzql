@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2026-09-15
+
+### Changed
+
+- **A patch is one transaction** (change-request.md item 11). Every document's `patch()` -- chat's
+  room and session; the ticker's clock, market and watchlist; the wedding's household, board and
+  session -- is now `export const patch = db.transaction(function patch(...) {...})`, signature
+  and every call site unchanged. Before, each statement inside a `patch()` (and `record()` after
+  them) was its own autocommit: a throw partway through left a half-applied write, or a table
+  changed with no ledger inverse to undo it by. Nested `patch()` calls (a household's own,
+  reached through the wedding board's helpers) become savepoints in `bun:sqlite`, so this
+  composes for free. Proof: `examples/chat/documents/room.test.ts` mocks `record()` to throw
+  once and asserts the message insert that came before it rolls back too (verified by reverting
+  the wrapper and watching that test fail). `src/db.ts` also sets `PRAGMA journal_mode = WAL`
+  once, before migrations: one sync per commit instead of one per statement, and readers no
+  longer wait on a writer; an in-memory database (the test suite's) answers the pragma with
+  `"memory"` and is otherwise unchanged, so nothing on the wire or in the measured costs moves.
+  `write`/`replay` in `server.ts` stay unwrapped -- a compartment sends its echo and asks for a
+  render from inside `write`, so rolling that back would chase a message already sent.
+
 ## [0.27.0] - 2026-09-15
 
 ### Changed

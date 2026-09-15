@@ -21,7 +21,8 @@ export function read(sessionId: string): WatchlistDocument {
 
 export type WatchlistPatchResult = { version: number; applied: PatchOp[] };
 
-export function patch(sessionId: string, ops: PatchOp[], undoes?: number): WatchlistPatchResult {
+/** One transaction: every statement here, the ledger row, and the version it returns commit together or not at all. */
+export const patch = db.transaction(function patch(sessionId: string, ops: PatchOp[], undoes?: number): WatchlistPatchResult {
   const applied: PatchOp[] = [];
   const inverse: PatchOp[] = [];
 
@@ -49,4 +50,4 @@ export function patch(sessionId: string, ops: PatchOp[], undoes?: number): Watch
 
   const version = record(prefixDoc("watchlist", sessionId), applied, inverse, sessionId, undoes);
   return { version, applied };
-}
+});

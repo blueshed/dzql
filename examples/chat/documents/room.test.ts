@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
+import * as ledger from "../../../src/ledger";
 import { history } from "../../../src/ledger";
 import { ensureExists, list, patch, read } from "./room";
 
@@ -123,6 +124,33 @@ describe("room document", () => {
     patch(room, [{ op: "remove", path: "/transcript/0" }], "session-1");
 
     expect(history(`room:${room}`)).toEqual([]);
+  });
+
+  test("a patch is one transaction: if record() throws, nothing it did commits (change-request.md item 11)", () => {
+    const room = crypto.randomUUID();
+    const versionBefore = history(`room:${room}`)[0]?.version ?? 0;
+    // Snapshot the real exports *before* mocking -- `ledger` is a live binding, so restoring
+    // via `{ ...ledger }` after the mock is installed would just spread the mock back in.
+    const real = { ...ledger };
+
+    mock.module("../../../src/ledger", () => ({
+      ...real,
+      record: () => {
+        throw new Error("simulated ledger failure");
+      },
+    }));
+
+    try {
+      expect(() =>
+        patch(room, [{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "boom" } }], "session-1"),
+      ).toThrow("simulated ledger failure");
+    } finally {
+      mock.module("../../../src/ledger", () => real);
+    }
+
+    // the message insert that came before record()'s throw rolled back with it
+    expect(read(room).transcript).toEqual([]);
+    expect(history(`room:${room}`)[0]?.version ?? 0).toBe(versionBefore);
   });
 
   test("ops outside /transcript and malformed transcript indices are ignored", () => {

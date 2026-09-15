@@ -49,8 +49,9 @@ function save(id: string, doc: SessionDocument): void {
 
 export type SessionPatchResult = { version: number; applied: PatchOp[] };
 
-/** Applies a patch. No ledger entry (see the header), so the version is always 0. */
-export function patch(id: string, ops: PatchOp[]): SessionPatchResult {
+/** Applies a patch. No ledger entry (see the header), so the version is always 0. One
+ * transaction all the same: this loop's several statements commit together or not at all. */
+export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): SessionPatchResult {
   const applied: PatchOp[] = [];
 
   for (const op of ops) {
@@ -106,4 +107,4 @@ export function patch(id: string, ops: PatchOp[]): SessionPatchResult {
   }
 
   return { version: 0, applied };
-}
+});

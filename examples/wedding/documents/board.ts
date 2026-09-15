@@ -379,8 +379,8 @@ function applyOne(w: Wedding, op: PatchOp): PatchOp[] | undefined {
 
 export type BoardPatchResult = { version: number; applied: PatchOp[] };
 
-/** Applies a patch to the wedding with this code, recording it (and its inverse) on the ledger. */
-export function patch(code: string, ops: PatchOp[], sessionId: string, undoes?: number): BoardPatchResult {
+/** Applies a patch to the wedding with this code, recording it (and its inverse) on the ledger. One transaction: every statement here (including a household's own, reached through the helpers above), the ledger row, and the version it returns commit together or not at all. */
+export const patch = db.transaction(function patch(code: string, ops: PatchOp[], sessionId: string, undoes?: number): BoardPatchResult {
   const applied: PatchOp[] = [];
   const inverse: PatchOp[] = [];
 
@@ -395,4 +395,4 @@ export function patch(code: string, ops: PatchOp[], sessionId: string, undoes?: 
 
   const version = record(prefixDoc("board", code), applied, inverse, sessionId, undoes);
   return { version, applied };
-}
+});

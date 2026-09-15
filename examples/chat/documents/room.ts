@@ -39,8 +39,8 @@ export function read(name: string, limit = 50): RoomDocument {
 
 export type RoomPatchResult = { version: number; applied: PatchOp[]; added?: ChatMessage; removed?: ChatMessage };
 
-/** Applies a patch, returning the new version, the ops that actually took effect, and the appended (or, via undo, removed) message if any. */
-export function patch(name: string, ops: PatchOp[], sessionId: string, undoes?: number): RoomPatchResult {
+/** Applies a patch, returning the new version, the ops that actually took effect, and the appended (or, via undo, removed) message if any. One transaction: every statement here, the ledger row, and the version it returns commit together or not at all. */
+export const patch = db.transaction(function patch(name: string, ops: PatchOp[], sessionId: string, undoes?: number): RoomPatchResult {
   let added: ChatMessage | undefined;
   let removed: ChatMessage | undefined;
   const applied: PatchOp[] = [];
@@ -85,4 +85,4 @@ export function patch(name: string, ops: PatchOp[], sessionId: string, undoes?: 
 
   const version = record(prefixDoc("room", name), applied, inverse, sessionId, undoes);
   return { version, applied, added, removed };
-}
+});

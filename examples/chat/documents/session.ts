@@ -41,7 +41,8 @@ function restoreOp(path: string, value: string | null): PatchOp {
   return value !== null ? { op: "replace", path, value } : { op: "remove", path };
 }
 
-export function patch(id: string, ops: PatchOp[], undoes?: number): SessionPatchResult {
+/** One transaction: every statement here, the ledger row, and the version it returns commit together or not at all. */
+export const patch = db.transaction(function patch(id: string, ops: PatchOp[], undoes?: number): SessionPatchResult {
   const applied: PatchOp[] = [];
   const inverse: PatchOp[] = [];
 
@@ -81,4 +82,4 @@ export function patch(id: string, ops: PatchOp[], undoes?: number): SessionPatch
 
   const version = record(prefixDoc("session", id), applied, inverse, id, undoes);
   return { version, applied };
-}
+});
