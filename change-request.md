@@ -198,6 +198,27 @@ the tray, not a compartment, so neither is "a concept with no render" any more.
 **Not this.** Not a component model. A compartment holds nothing in the browser and composes
 nothing; the box does the composing and the render does the filling.
 
+**The contract**, for whoever builds it:
+
+1. A compartment's `render(sessionId)` returns the HTML of its own place on the page, or
+   `undefined` to defer, as `Concept.render` does today. The kernel wraps what it returns in
+   `<div id="c-<docType>">` and the page is the compartments in order. A compartment may still
+   return the whole page (the welcome, before a code): it is then the only one rendered, and its
+   wrapper is the page.
+2. After a write to a document, the kernel re-renders the owning compartment's element for every
+   connection that sees the document (item 1's audience; `renderRequested` with the write, as
+   now) as a single `replace` of `#c-<docType>` -- unless the compartment answers `fragments`
+   itself, in which case its answer stands, `[]` included. So `fragments` becomes the exception,
+   not the rule, and the default cost of a write is one compartment, never the page.
+3. The tray is the session: it renders the ground (the crumbs, the tools, the drawer that is
+   open) and is not a compartment; the ledger renders nothing and is not one either. Both keep
+   the same contract minus `render`, and `Example.compartments` lists only compartments.
+4. `WriteResult.rendered` goes. A write's own connection is rendered by rule 2 like any other;
+   nothing is rendered twice.
+5. Do the rename first, as its own commit, the full suite green and nothing else changed; then
+   rules 1 to 4 as a second commit, with chat and the wedding as the proof and the ticker's
+   measured numbers unchanged (a tick still renders nothing).
+
 ## Order
 
 5, 7, and 8 are done. 10 next, since it renames what 1 then builds on: a compartment that renders
