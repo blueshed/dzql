@@ -70,10 +70,10 @@ describe("room document", () => {
     expect(read(room).transcript).toEqual([]);
   });
 
-  test("removing /transcript/N deletes that message, with an inverse that re-adds it", () => {
+  test("removing /transcript/N deletes that message, with an inverse that re-adds the same message, not a new one", () => {
     const room = crypto.randomUUID();
     patch(room, [{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "first" } }], "session-1");
-    patch(room, [{ op: "add", path: "/transcript/-", value: { name: "Grace", text: "second" } }], "session-2");
+    const { added } = patch(room, [{ op: "add", path: "/transcript/-", value: { name: "Grace", text: "second" } }], "session-2");
 
     const result = patch(room, [{ op: "remove", path: "/transcript/1" }], "session-2");
 
@@ -81,8 +81,14 @@ describe("room document", () => {
     expect(read(room).transcript.map((m) => m.text)).toEqual(["first"]);
 
     const entries = history(`room:${room}`);
-    expect(entries[0]?.inverse).toEqual([
-      { op: "add", path: "/transcript/-", value: { name: "Grace", text: "second" } },
+    expect(entries[0]?.inverse).toEqual([{ op: "add", path: "/transcript/-", value: added }]);
+
+    // redo (this inverse's own inverse) brings back the same message -- same id, not a new row
+    const redone = patch(room, entries[0]!.inverse, "session-2");
+    expect(redone.added).toEqual(added);
+    expect(read(room).transcript.map((m) => [m.id, m.text])).toEqual([
+      [expect.any(Number), "first"],
+      [added!.id, "second"],
     ]);
   });
 

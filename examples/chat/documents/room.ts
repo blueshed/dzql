@@ -18,6 +18,13 @@ const transcriptStmt = db.query<{ doc: string }, [string, number]>(`
 const insertMessageStmt = db.query<unknown, [string, string, string, number]>(
   "INSERT INTO messages (room, name, text, sent_at) VALUES (?, ?, ?, ?)",
 );
+// A redo's value is a remove's own inverse, carrying the message's original id and sentAt back
+// (see below) -- inserted with that id rather than a fresh one, so it is the same message, not a
+// new one under the old text. Only a replay can send a value shaped this way: the room
+// compartment's write() maps every wire value to {name, text} (see compartments/room.ts).
+const insertMessageWithIdStmt = db.query<unknown, [number, string, string, string, number]>(
+  "INSERT INTO messages (id, room, name, text, sent_at) VALUES (?, ?, ?, ?, ?)",
+);
 const messageAtIndexStmt = db.query<{ id: number; name: string; text: string; sentAt: number }, [string, number]>(`
   SELECT id, name, text, sent_at AS sentAt FROM messages WHERE room = ? ORDER BY id ASC LIMIT 1 OFFSET ?
 `);
@@ -51,7 +58,7 @@ export const patch = db.transaction(function patch(name: string, ops: PatchOp[],
     if (segments[0] !== "transcript") continue;
 
     if (op.op === "add" && segments[1] === "-") {
-      const value = op.value as { name: string; text: string };
+      const value = op.value as { id?: number; name: string; text: string; sentAt?: number };
       const text = String(value.text ?? "").trim();
       if (!text) continue;
       // The index the new message lands at in the full (unpaginated) history,
@@ -59,9 +66,15 @@ export const patch = db.transaction(function patch(name: string, ops: PatchOp[],
       // This index is only stable as long as nothing before it has been removed
       // since — undo (walking a session's own writes newest-first) relies on that.
       const index = countStmt.get(name)?.count ?? 0;
-      const sentAt = Date.now();
-      const { lastInsertRowid } = insertMessageStmt.run(name, value.name, text, sentAt);
-      added = { id: Number(lastInsertRowid), name: value.name, text, sentAt };
+      const sentAt = value.sentAt ?? Date.now();
+      let id: number;
+      if (value.id !== undefined) {
+        insertMessageWithIdStmt.run(value.id, name, value.name, text, sentAt);
+        id = value.id;
+      } else {
+        id = Number(insertMessageStmt.run(name, value.name, text, sentAt).lastInsertRowid);
+      }
+      added = { id, name: value.name, text, sentAt };
 
       applied.push(op);
       inverse.unshift({ op: "remove", path: `/transcript/${index}` });
@@ -76,10 +89,10 @@ export const patch = db.transaction(function patch(name: string, ops: PatchOp[],
       removed = message;
 
       applied.push(op);
-      // Re-adding lands at the end of the transcript, not back at its
-      // original position -- fine for undo, which never needs to reapply
-      // this inverse's own inverse (that would be a redo, out of scope).
-      inverse.unshift({ op: "add", path: "/transcript/-", value: { name: message.name, text: message.text } });
+      // Re-adding lands at the end of the transcript, not back at its original position -- fine
+      // for undo. The value carries the message's own id and sentAt, not just name and text, so
+      // a redo of this (this inverse's own inverse) brings back the same message, not a new one.
+      inverse.unshift({ op: "add", path: "/transcript/-", value: { id: message.id, name: message.name, text: message.text, sentAt: message.sentAt } });
     }
   }
 
