@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createServer } from "../../../src/server";
 import * as market from "../documents/market";
-import { tick } from "../concepts/ticker";
+import { tick } from "../compartments/ticker";
 import { example } from "../index";
 
 let server: ReturnType<typeof createServer>;

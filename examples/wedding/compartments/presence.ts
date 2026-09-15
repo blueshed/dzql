@@ -2,9 +2,9 @@ import type { ServerWebSocket } from "bun";
 import type { ConnectionData } from "../../../src/connection";
 import * as sessionDoc from "../documents/session";
 
-// Which connections are live, for echo and re-render: not persisted data, and not a concept of
-// its own -- a registry the session concept keeps (onOpen/onClose) and the household and board
-// concepts read. Nearly every write on this site changes what everyone sees (a claim takes a gift
+// Which connections are live, for echo and re-render: not persisted data, and not a compartment of
+// its own -- a registry the session compartment keeps (onOpen/onClose) and the household and board
+// compartments read. Nearly every write on this site changes what everyone sees (a claim takes a gift
 // from every other household; an answer moves a figure into the photo everyone watches), so the
 // usual question is simply "everyone".
 

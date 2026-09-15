@@ -4,19 +4,20 @@ import * as weddingDoc from "../documents/wedding";
 import type { ConnectionData } from "../../../src/connection";
 import { patchMessage, type PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
-import type { Concept } from "../../../src/concepts/concept";
+import type { Compartment } from "../../../src/compartments/compartment";
 import { welcome } from "../views/welcome";
 import * as presence from "./presence";
 
-// A visit: who this session is (a code) and where it is on the site. Renders the welcome until
-// there is a code; after that the household or board concept renders the page, and this concept
-// only takes the writes that move around it -- a page, a drawer, a reading.
+// A visit: who this session is (a code) and where it is on the site. This is the tray
+// (change-request.md item 10) -- the ground the household and board compartments sit on, not a
+// place of its own on the page: it renders the welcome until there is a code, and otherwise only
+// takes the writes that move around the page it hands off to -- a page, a drawer, a reading.
 
 /** Where you are only means something once you are in: everything but the code and a resend needs one. */
 const BEFORE_CODE = new Set(["code", "resend"]);
 const WRITABLE = new Set(["code", "resend", "page", "focus", "gift", "keep", "answering", "reading"]);
 
-export const session: Concept = {
+export const session: Compartment = {
   docType: "session",
   render(sessionId) {
     const s = sessionDoc.read(sessionId);

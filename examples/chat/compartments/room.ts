@@ -5,14 +5,14 @@ import * as sessionDoc from "../documents/session";
 import type { ConnectionData } from "../../../src/connection";
 import { patchMessage } from "../../../src/json-patch";
 import type { PatchOp } from "../../../src/json-patch";
-import type { Concept } from "../../../src/concepts/concept";
-import { renderRequested, type HtmlOp } from "../../../src/concepts/render";
+import type { Compartment } from "../../../src/compartments/compartment";
+import { renderRequested, type HtmlOp } from "../../../src/compartments/render";
 import { history, prefixDoc } from "../../../src/ledger";
 import { sessionPatched } from "./session";
 
 // Which live connections are currently subscribed to which room, for
 // broadcast. Not persisted data (see documents/room.ts for that) and not
-// needed outside this concept, so it lives here rather than its own module.
+// needed outside this compartment, so it lives here rather than its own module.
 const roomSocketSets = new Map<string, Set<ServerWebSocket<ConnectionData>>>();
 
 function getSocketSet(roomId: string): Set<ServerWebSocket<ConnectionData>> {
@@ -86,6 +86,8 @@ function renderPeopleBar(people: string[], viewer: string): string {
 }
 
 function renderChat(name: string, room: string, people: string[], messages: ChatMessage[]): string {
+  // Undo, Redo, Room (leave), and Log out are tools (change-request.md item 10): verbs beside
+  // the room compartment's own content, not part of what the room document shows.
   return `
     <div class="user-bar">
       <span class="room-label">#${escapeHtml(room)}</span>
@@ -183,11 +185,11 @@ sessionPatched.on(({ ws, before, applied }) => {
   if (loggedOut && before.room && before.name) announceLeave(before.room, ws, before.name);
 });
 
-export const room: Concept = {
+export const room: Compartment = {
   docType: "room",
   render(sessionId) {
     const { name, room: current } = sessionDoc.read(sessionId);
-    if (!name) return undefined; // not reached in practice: the session concept always renders first
+    if (!name) return undefined; // not reached in practice: the session compartment always renders first
     if (!current) return renderRoomSelector(name, roomDoc.list());
 
     const { transcript } = roomDoc.read(current);

@@ -193,7 +193,7 @@ function applyOne(h: HouseholdRow, op: PatchOp): PatchOp[] | undefined {
     if (!guest) return;
 
     if (seg.length === 2) {
-      // Only reachable via undo (the concept's permit() never allows a remove here): walks back a plus-one.
+      // Only reachable via undo (the compartment's permit() never allows a remove here): walks back a plus-one.
       if (!removing) return;
       removeGuest(guest.id);
       return [{ op: "add", path: "/guests/-", value: guest }];

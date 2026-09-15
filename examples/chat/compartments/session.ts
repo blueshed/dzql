@@ -3,10 +3,14 @@ import * as sessionDoc from "../documents/session";
 import type { ConnectionData } from "../../../src/connection";
 import { patchMessage } from "../../../src/json-patch";
 import type { PatchOp } from "../../../src/json-patch";
-import { createEvent } from "../../../src/concepts/bus";
-import type { Concept } from "../../../src/concepts/concept";
+import { createEvent } from "../../../src/compartments/bus";
+import type { Compartment } from "../../../src/compartments/compartment";
 
-// Fires after any successful write to a session document, so other concepts
+// The session is the tray (change-request.md item 10): the ground the room compartment sits on,
+// not a place of its own on the page. It renders the name form until there is a name, and
+// otherwise only takes the writes that move around it -- a name, a room.
+
+// Fires after any successful write to a session document, so other compartments
 // can react to what changed (e.g. room membership) without session needing
 // to know they exist. `before` is the document's state prior to this write.
 export const sessionPatched = createEvent<{
@@ -31,8 +35,8 @@ function renderNameForm(): string {
 const WRITABLE_PATHS = new Set(["/name", "/room"]);
 
 // Echoes a session document's ops to its own connection (direct, unlike a
-// room's broadcast) and lets other concepts react, e.g. room membership.
-// Exported because undo (concepts/ledger.ts) can land back on this same
+// room's broadcast) and lets other compartments react, e.g. room membership.
+// Exported because undo (compartments/ledger.ts) can land back on this same
 // document and needs to echo it exactly the same way a direct write does.
 export function echoSessionPatch(
   ws: ServerWebSocket<ConnectionData>,
@@ -47,7 +51,7 @@ export function echoSessionPatch(
   return { version, applied };
 }
 
-export const session: Concept = {
+export const session: Compartment = {
   docType: "session",
   render(sessionId) {
     const { name } = sessionDoc.read(sessionId);
@@ -74,7 +78,7 @@ export const session: Concept = {
   // that was just removed): apply the ledger's inverse ops directly --
   // skipping permit(), since this isn't a fresh request against the normal
   // writable surface -- then echo exactly as a direct write would, so room
-  // membership still reacts (see concepts/room.ts's sessionPatched listener).
+  // membership still reacts (see compartments/room.ts's sessionPatched listener).
   replay(ws, id, ops, undoes) {
     const before = sessionDoc.read(id);
     const result = sessionDoc.patch(id, ops, undoes);

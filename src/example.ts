@@ -1,6 +1,6 @@
 import type { HTMLBundle } from "bun";
 import type { ConnectionData } from "./connection";
-import type { Concept } from "./concepts/concept";
+import type { Compartment } from "./compartments/compartment";
 
 /** A route handler in the same shape server.ts already hands Bun.serve's `routes` (e.g. the "/ws" upgrade handler). */
 type RouteHandler = (
@@ -10,7 +10,7 @@ type RouteHandler = (
 
 /**
  * Everything the kernel needs from one example to become a running app: its
- * concepts (in render order), the page to serve, and the one guard the
+ * compartments (in render order), the page to serve, and the one guard the
  * kernel can't derive generically -- whether a session may write at all
  * right now (a stale, logged-out tab shouldn't be able to undo a write made
  * before it went stale, but only the example knows what "logged out" means
@@ -19,8 +19,8 @@ type RouteHandler = (
 export type Example = {
   /** Identifies this example (namespaces its migrations, distinguishes it from another example object at runtime). */
   name: string;
-  /** This example's concepts, in render order (the first to return a view wins). The kernel appends its own ledger concept after these. */
-  concepts: Concept[];
+  /** This example's compartments, in render order (the first to return a view wins). The kernel appends its own ledger compartment after these. */
+  compartments: Compartment[];
   /** May this session write at all right now? */
   active(sessionId: string): boolean;
   /** The page served at "/", via Bun's HTML import. */

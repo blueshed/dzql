@@ -66,7 +66,7 @@ export function patch(name: string, ops: PatchOp[], sessionId: string, undoes?: 
       applied.push(op);
       inverse.unshift({ op: "remove", path: `/transcript/${index}` });
     } else if (op.op === "remove" && segments[1] !== undefined) {
-      // Only reachable via undo (the room concept's own permit() never allows
+      // Only reachable via undo (the room compartment's own permit() never allows
       // a "remove" write from the wire): walks back a specific add by index.
       const index = Number(segments[1]);
       if (!Number.isInteger(index) || index < 0) continue;

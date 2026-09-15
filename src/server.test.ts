@@ -1,16 +1,16 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import type { Concept, WriteResult } from "./concepts/concept";
+import type { Compartment, WriteResult } from "./compartments/compartment";
 import type { Example } from "./example";
 import index from "./server.test.fixture.html";
 import type { PatchOp } from "./json-patch";
 import { patchMessage } from "./json-patch";
 import { prefixDoc, record } from "./ledger";
-import { renderRequested } from "./concepts/render";
+import { renderRequested } from "./compartments/render";
 import { createServer } from "./server";
 
-// A tiny, self-contained concept + example -- not chat, not anything under
+// A tiny, self-contained compartment + example -- not chat, not anything under
 // the examples directory -- so this file can prove the kernel (assemble/createServer/the
-// ledger concept's undo-via-replay) works on its own, without needing
+// ledger compartment's undo-via-replay) works on its own, without needing
 // the chat example to exist at all. State lives in a plain Map, not SQL,
 // because only the ledger's record()/undo cursor need to be real for undo
 // to be worth testing here.
@@ -47,7 +47,7 @@ function noteWrite(ws: Bun.ServerWebSocket<{ sessionId: string }>, id: string, o
   return { ...result, rendered: applied.length > 0 };
 }
 
-const noteConcept: Concept = {
+const noteCompartment: Compartment = {
   docType: "note",
   render(sessionId) {
     return `<p class="note">${readNote(sessionId).text}</p>`;
@@ -77,7 +77,7 @@ const noteConcept: Concept = {
 function makeExample(name: string): Example {
   return {
     name,
-    concepts: [noteConcept],
+    compartments: [noteCompartment],
     active: () => true,
     index,
   };
@@ -189,7 +189,7 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
-  test("a concept's fragments are sent instead of the page; nothing is sent when it says nothing changed; the page when it declines", async () => {
+  test("a compartment's fragments are sent instead of the page; nothing is sent when it says nothing changed; the page when it declines", async () => {
     const ws = connect(server);
     await opened(ws);
     await expectMessage(ws, "render");

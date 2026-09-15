@@ -6,40 +6,41 @@ documents, a permit surface as a table of paths and ops, applets that take
 their data as props (`applets/photo.ts`, `dress.ts`, `menu.ts`,
 `picture-field.ts`), and an `Example.routes` entry for uploaded pictures.
 
-## Vocabulary: there is no "view" — a Concept is model, view, and controller for one idea
+## Vocabulary: there is no "view" — a Compartment is model, view, and controller for one idea
 
 eta used to have a `views.ts`: a module of pure rendering functions, fed
 data pulled from every document. It's gone (commit `46df7bd`, "Make
-server.ts and views.ts agnostic of session/room via Concept modules") —
+server.ts and views.ts agnostic of session/room via Concept modules" — the
+`Concept` name it used then, before item 10's rename to `Compartment`) —
 it had to import both documents and hardcode their cross-domain render
 order itself, which is exactly the kind of thing this codebase doesn't let
 one file know. **Don't recreate `views.ts` under a different name.** If a
 plan for a new example includes a `views/` directory, a `Renderer`, or
 anything whose only job is "take some data, return HTML" separately from
-the concept that owns that data, stop and fold it into the concept instead.
+the compartment that owns that data, stop and fold it into the compartment instead.
 
-A **Concept** (`src/concepts/concept.ts`) is deliberately *not* layered —
+A **Compartment** (`src/compartments/compartment.ts`) is deliberately *not* layered —
 one module is simultaneously the model, the view, and the controller for
 one domain idea: it owns a `docType`, decides what's on screen when it's
-this concept's turn to render, decides which writes are allowed, applies
+this compartment's turn to render, decides which writes are allowed, applies
 them, and handles this domain idea's own connection lifecycle. Nothing
-outside the concept touches its documents.
+outside the compartment touches its documents.
 
 **`render()` returns the whole page, not a fragment.** `assemble()`'s
-`renderFor` tries each concept's `render(sessionId)` in turn and uses the
+`renderFor` tries each compartment's `render(sessionId)` in turn and uses the
 *first* one that returns a string — this is chain-of-responsibility, not
-composition. `examples/chat/concepts/room.ts::render()` returns the room
+composition. `examples/chat/compartments/room.ts::render()` returns the room
 selector or the entire chat screen, not just "the room's bit of the page";
 `session.ts::render()` returns the whole name-entry form, or `undefined` to
-defer to the next concept (room) once a name exists. Only one concept
+defer to the next compartment (room) once a name exists. Only one compartment
 renders on any given turn. This is why render *order* is meaningful (set in
-`Example.concepts`) and why a concept's `render()` often reads *other*
+`Example.compartments`) and why a compartment's `render()` often reads *other*
 documents too (`room.ts::render()` reads `sessionDoc` to decide whether to
 show the room selector or the chat screen) — it has to produce the full
 picture for whatever screen it's in charge of, not just its own slice.
 
 **An applet is not a smaller view — it's an escape hatch for client-side
-state a re-render would destroy.** Every concept's `render()` output is
+state a re-render would destroy.** Every compartment's `render()` output is
 just an HTML string, morphed into `#app` fresh on every render; that's
 enough for the overwhelming majority of UI (forms, buttons, lists — see the
 wire protocol section below). Reach for an applet (`src/applets.ts`) only
@@ -48,16 +49,26 @@ render that would otherwise blow it away — `room-picker`'s typed filter is
 the one example in chat: without an applet, every render would reset the
 input the person is mid-typing into. If nothing in your new UI needs to
 survive a re-render like that, you don't need an applet — plain
-`data-write` HTML rendered by a concept's `render()` is the default, not
+`data-write` HTML rendered by a compartment's `render()` is the default, not
 the exception.
 
-**When do you need a new Concept vs. a new branch in an existing one's
-`render()`/writable paths?** A new `Concept` means a new `docType` — a new
+**When do you need a new Compartment vs. a new branch in an existing one's
+`render()`/writable paths?** A new `Compartment` means a new `docType` — a new
 kind of document with its own identity, its own row(s) in the ledger, its
 own undo history. A new *screen state* of something that's still the same
 document (e.g. an RSVP form vs. a thank-you message, both about the same
-guest) is just another branch inside that document's existing concept, not
+guest) is just another branch inside that document's existing compartment, not
 a reason to create a second one.
+
+**Vocabulary, informally: the tray and tools.** change-request.md item 10 names two things this
+reference has so far just called "the session compartment" and "the undo/redo/logout buttons".
+The session is **the tray**: the ground the other compartments sit on -- which page a tab is on,
+which drawer is open, how a collection is read -- not a place of its own on the page. Undo, redo,
+and leaving (logging out, leaving a room) are **tools**: verbs beside the compartments, on the
+box, not in one. As of this writing these are names, not yet a different contract -- the tray is
+still wired exactly like any other compartment (see item 10's own "How" for the structural split:
+`Example.compartments` will list only real compartments, and the tray and the ledger will keep
+the same contract minus `render`).
 
 ## The `Example` seam
 
@@ -66,7 +77,7 @@ a reason to create a second one.
 ```ts
 export type Example = {
   name: string;             // namespaces its migrations
-  concepts: Concept[];      // render order; kernel appends its own ledger concept after these
+  compartments: Compartment[];      // render order; kernel appends its own ledger compartment after these
   active(sessionId: string): boolean; // may this session write at all right now?
   index: HTMLBundle;        // served at "/"
   routes?: Record<string, Bun.Serve.BaseRouteValue | RouteHandler>; // merged in; a kernel route of the same path wins
@@ -78,7 +89,7 @@ export type Example = {
 ```ts
 export const example: Example = {
   name: "chat",
-  concepts: [session, room],
+  compartments: [session, room],
   active: (sessionId) => sessionDoc.read(sessionId).name !== null,
   index,
 };
@@ -86,9 +97,9 @@ export const example: Example = {
 
 `active()` exists because the kernel can't derive "is this session logged
 in" generically — only the example knows what that means for its own
-documents. The kernel uses it in the ledger concept to gate undo: a stale,
+documents. The kernel uses it in the ledger compartment to gate undo: a stale,
 logged-out tab shouldn't be able to undo a write made before it went stale.
-(Domain concepts should also consult their session document in `permit()`
+(Domain compartments should also consult their session document in `permit()`
 to guard their own regular writes).
 
 `src/start.ts` resolves `examples/${ETA_EXAMPLE}/index.ts` (env var,
@@ -97,16 +108,16 @@ process serves exactly one example — calling `createServer` with a
 *different* `Example` object while a server for the first is still running
 throws.
 
-## The `Concept` contract
+## The `Compartment` contract
 
-`src/concepts/concept.ts`:
+`src/compartments/compartment.ts`:
 
 ```ts
 export type WriteResult = { version: number; applied: PatchOp[]; rendered?: boolean };
 
-export type Concept = {
-  docType: string; // e.g. "session", "room" — what this concept owns on the wire
-  render?(sessionId: string): string | undefined; // this session's view, or undefined to defer to the next concept
+export type Compartment = {
+  docType: string; // e.g. "session", "room" — what this compartment owns on the wire
+  render?(sessionId: string): string | undefined; // this session's view, or undefined to defer to the next compartment
   resolveDoc(ws): string | undefined; // the doc id this connection currently sees for its docType
   permit(ws, op: PatchOp): boolean;   // may this connection apply op?
   write(ws, docId: string, ops: PatchOp[]): WriteResult; // apply + echo + side effects
@@ -126,7 +137,7 @@ like `session` (nothing else needs telling). It's wrong for a **broadcast**
 document like `room`: `write`/`replay` already pushes a render to every
 member (including the writer) via its own notify step, so the dispatcher's
 automatic render would be a second, redundant one for the writer.
-`examples/chat/concepts/room.ts` opts out accordingly:
+`examples/chat/compartments/room.ts` opts out accordingly:
 
 ```ts
 write(ws, roomName, ops) {
@@ -141,13 +152,13 @@ replay(ws, roomName, ops, undoes) {
 },
 ```
 
-If a new example's concept broadcasts to more than one connection, set
+If a new example's compartment broadcasts to more than one connection, set
 `rendered: true` on any write path that already pushed its own render —
 otherwise the writer gets rendered twice per write.
 
 ### `fragments` — the delta in HTML's terms
 
-A full page per write is the default and the fallback. A concept that can say which elements a
+A full page per write is the default and the fallback. A compartment that can say which elements a
 write touched answers `fragments(ws, docId, result)` with HTML ops instead:
 
 ```ts
@@ -156,22 +167,22 @@ type HtmlOp = { op: "replace" | "add"; target: string; html: string } | { op: "r
 
 `replace` morphs one element (give it an id); `add` appends inside one; `remove` takes one out.
 `[]` means nothing on this connection's page changed and nothing is sent; `undefined` declines
-and the page goes out. For the kernel to ask, the concept's `echoAndNotify` must name the write
+and the page goes out. For the kernel to ask, the compartment's `echoAndNotify` must name the write
 in its render request: `renderRequested.emit({ sockets, write: { docType, docId, result } })`.
-Chat answers every room write (`examples/chat/concepts/room.ts`); the wedding answers a look or
-a choice per viewer's page and declines the rest (`examples/wedding/concepts/household.ts`).
+Chat answers every room write (`examples/chat/compartments/room.ts`); the wedding answers a look or
+a choice per viewer's page and declines the rest (`examples/wedding/compartments/household.ts`).
 Anything the applet shows goes as its new `data-props`, whole.
 
-Concepts never import each other's internals — they talk only through
-`src/concepts/bus.ts` events (`createEvent()`/`.on()`/`.emit()`). Example:
+Compartments never import each other's internals — they talk only through
+`src/compartments/bus.ts` events (`createEvent()`/`.on()`/`.emit()`). Example:
 `sessionPatched` fires after any successful session write so `room.ts` can
 react to room-membership changes without importing `session.ts`.
 
-`src/concepts/index.ts`'s `assemble(example)` wires one example's concepts
-into a running set: it appends the kernel's own ledger concept (reached only
+`src/compartments/index.ts`'s `assemble(example)` wires one example's compartments
+into a running set: it appends the kernel's own ledger compartment (reached only
 by `docType`, never part of render/inspect order), builds the `docType ->
-Concept` map `server.ts`'s dispatcher uses, and returns `renderFor`/
-`inspectFor`. Render order matters — the first concept whose `render()`
+Compartment` map `server.ts`'s dispatcher uses, and returns `renderFor`/
+`inspectFor`. Render order matters — the first compartment whose `render()`
 returns non-`undefined` wins (chat decides "no name yet" before "no room
 yet" makes sense).
 
@@ -181,10 +192,10 @@ yet" makes sense).
 `permit()` has already said yes. `replay()` is the ledger walking back an
 earlier write: it applies already-shaped ops (a recorded inverse) and echoes
 exactly the way `write()` would, but skips `permit()` entirely, since it
-isn't a new request. Concepts reached only by `docType` (like ledger itself)
+isn't a new request. Compartments reached only by `docType` (like ledger itself)
 don't implement `replay` — nothing ever undoes onto them.
 
-`examples/chat/concepts/session.ts` shows the shared-echo pattern: both
+`examples/chat/compartments/session.ts` shows the shared-echo pattern: both
 `write` and `replay` call `sessionDoc.patch(...)` then a shared
 `echoSessionPatch()` (exported so the ledger's replay path can reuse the
 exact same echo a direct write produces):
@@ -238,11 +249,11 @@ A document is off the ledger by omission, not by a flag: if its `patch()` never 
 simply doesn't advance on the calls that skip it) and `nextUndo()` never finds anything to walk
 back for it. Two real examples: `examples/wedding/documents/session.ts`'s `patch()` never records
 at all (a visit's page/drawer state isn't the wedding's history -- undo there means "take back my
-last answer," never "go back a page"); `examples/chat/concepts/room.ts`'s presence ops
+last answer," never "go back a page"); `examples/chat/compartments/room.ts`'s presence ops
 (`add /people/-`, `remove /people/<index>`) are sent as plain room patches but built and echoed
-without ever touching `record()` (undoing an arrival is nonsense). There's no `Concept`-level
+without ever touching `record()` (undoing an arrival is nonsense). There's no `Compartment`-level
 flag for this today -- if the kernel ever needs to ask "is this document on the ledger" generically
-rather than each document answering by omission, `Concept.ledger?: false` is the shape.
+rather than each document answering by omission, `Compartment.ledger?: false` is the shape.
 
 ## The ledger and undo
 
@@ -260,12 +271,12 @@ rather than each document answering by omission, `Concept.ledger?: false` is the
   `id NOT IN (SELECT undoes FROM ledger WHERE undoes IS NOT NULL)`.
 - `history(doc, limit)`: most recent entries for a `doc`, for `inspect`.
 
-`src/concepts/ledger.ts`'s `createLedgerConcept(lookup, active)` is a
-factory (not a fixed concept) so it can find whichever concept owns the
+`src/compartments/ledger.ts`'s `createLedgerCompartment(lookup, active)` is a
+factory (not a fixed compartment) so it can find whichever compartment owns the
 document an undo lands on: it finds `nextUndo(sessionId)`, splits `.doc`
 into `{docType, docId}`, and calls
 `lookup(docType)!.replay(ws, docId, entry.inverse, entry.id)`. No
-example-specific dispatch, no cross-concept event needed for undo itself.
+example-specific dispatch, no cross-compartment event needed for undo itself.
 
 ## Migrations and namespacing
 
@@ -332,12 +343,12 @@ Three ways an applet's data reaches it, from cheapest to dearest on the wire:
 
 1. **Props once, then the document's own patches.** The element names the document
    (`<div data-applet="board" data-doc="ticker" data-props=...>`), the applet implements
-   `patch(el, ops)`, and the concept's `fragments` answers `[]` for that page: after the first
+   `patch(el, ops)`, and the compartment's `fragments` answers `[]` for that page: after the first
    render only the patch echo crosses the wire (`examples/ticker/applets/board.ts`). Use it when
    the applet's props are a subtree of one document and the document changes often.
-2. **New props on a fragment render.** The concept replaces the applet's element as a fragment
+2. **New props on a fragment render.** The compartment replaces the applet's element as a fragment
    with new `data-props`; the morph calls `update(el, props)` (`examples/wedding/applets/photo.ts`).
-3. **New props on a full render.** The default, when a concept has no `fragments`.
+3. **New props on a full render.** The default, when a compartment has no `fragments`.
 
 An applet with nothing of the app in it -- a clock -- takes its props once and never hears from
 the server again (`examples/ticker/applets/clock.ts`).
@@ -400,11 +411,11 @@ of a real seam addition (rare) vs. a workaround (avoid):
 - Needing a per-example "is this session allowed to write" rule → already
   solved by `Example.active`.
 - Needing undo to behave differently for one document → already solved by
-  `Concept.replay`.
+  `Compartment.replay`.
 - Needing an extra HTTP route (e.g. serving uploaded files) → already solved
   by `Example.routes`.
-- Wanting the kernel to know about a specific applet, document, or concept
+- Wanting the kernel to know about a specific applet, document, or compartment
   by name → don't; that coupling is exactly what `assemble(example)` and the
   applet registry exist to avoid. If something seems to require it, the fix
-  is almost always a new generic seam on `Example`/`Concept`, added once, in
+  is almost always a new generic seam on `Example`/`Compartment`, added once, in
   the kernel — not a special case for one example.

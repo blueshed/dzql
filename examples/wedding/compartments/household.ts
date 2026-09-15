@@ -2,8 +2,8 @@ import * as householdDoc from "../documents/household";
 import * as sessionDoc from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import { patchMessage, type PatchOp } from "../../../src/json-patch";
-import type { Concept, WriteResult } from "../../../src/concepts/concept";
-import { renderRequested, type HtmlOp } from "../../../src/concepts/render";
+import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
+import { renderRequested, type HtmlOp } from "../../../src/compartments/render";
 import * as boardDoc from "../documents/board";
 import { boardPhoto, familyGuestRow, familyPhoto, reading as boardReading } from "../views/board";
 import { dressMount, everyonePhoto, familyPhoto as ownPhoto, guestRow, householdPages, menuMount, reading, type HouseholdView } from "../views/household";
@@ -57,7 +57,7 @@ function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined
 
 const replace = (target: string, html: string): HtmlOp => ({ op: "replace", target, html });
 
-export const household: Concept = {
+export const household: Compartment = {
   docType: "household",
   render(sessionId) {
     const session = sessionDoc.read(sessionId);

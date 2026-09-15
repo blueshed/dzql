@@ -30,7 +30,7 @@ function parseWrite(rest: string[]): Command | undefined {
 }
 
 // The one write every example shares, since it's not a domain concern: undo
-// is a remove on the ledger's own cursor document (see concepts/ledger.ts),
+// is a remove on the ledger's own cursor document (see compartments/ledger.ts),
 // not a per-example verb.
 const undo = (): Command => ({ kind: "write", doc: "ledger", ops: [{ op: "remove", path: "/latest" }] });
 const redo = (): Command => ({ kind: "write", doc: "ledger", ops: [{ op: "add", path: "/latest" }] });
@@ -98,7 +98,7 @@ export type Inspection = {
   docs: { doc: string; version: number; entries?: { ops: PatchOp[] }[] }[];
 };
 
-/** Renders an inspect response as the CLI's plain-text output -- ops, not HTML, and generic over whatever docs this example's concepts report. Only the most recent entry shows on this line; `formatHistory` lists the rest. */
+/** Renders an inspect response as the CLI's plain-text output -- ops, not HTML, and generic over whatever docs this example's compartments report. Only the most recent entry shows on this line; `formatHistory` lists the rest. */
 export function formatInspection(inspection: Inspection): string {
   return inspection.docs
     .map((doc) => {

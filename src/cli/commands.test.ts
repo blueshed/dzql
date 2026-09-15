@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Concept } from "../concepts/concept";
+import type { Compartment } from "../compartments/compartment";
 import type { Example } from "../example";
 import index from "../server.test.fixture.html";
 import { patchMessage } from "../json-patch";
@@ -197,13 +197,13 @@ describe("loadOrCreateSessionCookie", () => {
   });
 });
 
-// A tiny, self-contained concept + example, the same kind server.test.ts
+// A tiny, self-contained compartment + example, the same kind server.test.ts
 // uses -- proving the CLI's generic commands (inspect/watch/undo/write) work
 // against any example, without needing the chat example to exist.
 type WidgetState = { color: string };
 const widgets = new Map<string, WidgetState>();
 
-const widgetConcept: Concept = {
+const widgetCompartment: Compartment = {
   docType: "widget",
   render(sessionId) {
     return `<p>${widgets.get(sessionId)?.color ?? ""}</p>`;
@@ -237,7 +237,7 @@ const widgetConcept: Concept = {
 
 const cliTestExample: Example = {
   name: "cli-test",
-  concepts: [widgetConcept],
+  compartments: [widgetCompartment],
   active: () => true,
   index,
 };

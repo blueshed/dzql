@@ -5,10 +5,10 @@ import type { HtmlOp } from "./render";
 
 export type WriteResult = { version: number; applied: PatchOp[]; rendered?: boolean };
 
-export type Concept = {
-  /** The document type name this concept owns on the wire (e.g. "session", "room"). */
+export type Compartment = {
+  /** The document type name this compartment owns on the wire (e.g. "session", "room"). */
   docType: string;
-  /** Returns this concept's view of the current session, or `undefined` to defer to the next concept. Omit if this concept has no view of its own (e.g. it's reached only by docType, like ledger). */
+  /** Returns this compartment's view of the current session, or `undefined` to defer to the next compartment. Omit if this compartment has no view of its own (e.g. it's reached only by docType, like ledger). */
   render?(sessionId: string): string | undefined;
   /** Resolves the concrete document id this connection currently sees for its own docType, or undefined if none. */
   resolveDoc(ws: ServerWebSocket<ConnectionData>): string | undefined;
@@ -20,8 +20,8 @@ export type Concept = {
    * document's own choice, not this method's: a document whose `patch()` never calls `record()`
    * (e.g. wedding's session document, or a room's presence ops) is off the ledger by design --
    * its version stays 0 (or, for presence, doesn't advance), and undo never lands on it. There's
-   * no flag for this on `Concept` itself; if the kernel ever needs to ask the question generically
-   * rather than each document answering it by omission, `Concept.ledger?: false` is the shape.
+   * no flag for this on `Compartment` itself; if the kernel ever needs to ask the question generically
+   * rather than each document answering it by omission, `Compartment.ledger?: false` is the shape.
    */
   write(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): WriteResult;
   /**
@@ -31,7 +31,7 @@ export type Concept = {
    * ledger replaying its own recorded inverse) but otherwise going through
    * the same apply-then-echo path `write` does. `undoes` is the id of the
    * ledger entry being walked back, so the replay's own ledger row records
-   * that link. Concepts reached only by docType (e.g. ledger itself) don't
+   * that link. Compartments reached only by docType (e.g. ledger itself) don't
    * implement this -- nothing ever undoes onto them.
    */
   replay?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[], undoes: number): WriteResult;
@@ -39,7 +39,7 @@ export type Concept = {
    * The HTML ops that bring this connection's page up to date after `result` was applied to
    * `docId` -- the delta in HTML's terms, in place of a full render. `[]` says the write changed
    * nothing on this connection's page (nothing is sent); `undefined` declines, and the kernel
-   * sends the whole page as before. A concept may answer for some writes and decline the rest.
+   * sends the whole page as before. A compartment may answer for some writes and decline the rest.
    */
   fragments?(ws: ServerWebSocket<ConnectionData>, docId: string, result: WriteResult): HtmlOp[] | undefined;
   onOpen?(ws: ServerWebSocket<ConnectionData>): void;

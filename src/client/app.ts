@@ -1,7 +1,7 @@
 import { applets } from "../applets";
 import type { PatchOp } from "../json-patch";
 import { formValue } from "./form-value";
-import type { HtmlOp } from "../concepts/render";
+import type { HtmlOp } from "../compartments/render";
 import { morph, morphElement, removeNode } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
@@ -82,7 +82,7 @@ function render(html: string) {
   settle(before);
 }
 
-// A fragment render: the delta in HTML's terms (see src/concepts/render.ts). Each op names an
+// A fragment render: the delta in HTML's terms (see src/compartments/render.ts). Each op names an
 // element by selector; a target the page no longer has is skipped -- the next full render puts
 // things right, as it would after a reconnect.
 function applyFragments(ops: HtmlOp[]) {

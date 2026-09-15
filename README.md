@@ -5,9 +5,11 @@ A kernel for live, multi-person apps, made of three things that compose:
 - **Documents.** The whole app is documents in SQLite, each with one `read()` and one `patch()`.
   A write is a patch: a document, a JSON Pointer path, a value. Because every write is a patch,
   every write has an inverse, and the ledger keeps both.
-- **Render.** A concept turns a document into HTML for one person. The server is the only
+- **Render.** A compartment turns a document into HTML for one person. The server is the only
   renderer; the browser keeps that HTML alive by morphing, so a re-render never disturbs what
-  someone is doing, and a render can be as small as the change.
+  someone is doing, and a render can be as small as the change. The session sits beside the
+  compartments as the tray -- which page, which drawer is open -- and undo/redo/leaving are
+  tools, not compartments of their own.
 - **Applets.** Where a page needs behaviour of its own -- a figure being dressed, a price board
   moving -- an applet takes its data as props, answers with writes, and can take a document's
   patches straight off the wire.
@@ -56,13 +58,13 @@ resolves `examples/<name>/index.ts`'s `example` export. The wedding's demo codes
 `DASH` (the couple), `OKAFOR` and `BEN` (two households); `REVEAL=1` shows the names in
 the photo before the day. The ticker's feed ticks every `TICK_MS` (500) while anyone is
 connected; `CLOCK_TZ` is the city a new visitor's clock shows. Each example lives entirely under its own directory --
-documents, concepts, applets, client, migrations; `src/` never imports from any of them.
+documents, compartments, applets, client, migrations; `src/` never imports from any of them.
 
 ## Cost
 
 A write reaches every connection that sees its document as a patch echo and then a render. From
-0.12.0 (morph, don't replace) to 0.23.0 the render was always the whole page; since 0.24.0 a concept
-may answer with the delta in HTML's terms instead -- `Concept.fragments` -- and the page is the
+0.12.0 (morph, don't replace) to 0.23.0 the render was always the whole page; since 0.24.0 a compartment
+may answer with the delta in HTML's terms instead -- `Compartment.fragments` -- and the page is the
 fallback. Measured with each example's own script (`DB_PATH=:memory: bun
 examples/<name>/scripts/measure-render-cost.ts`):
 

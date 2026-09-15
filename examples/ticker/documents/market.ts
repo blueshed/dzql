@@ -4,7 +4,7 @@ import { parsePointer } from "../../../src/json-pointer";
 import { prefixDoc, record } from "../../../src/ledger";
 
 // The market: one document, a quote per symbol. A tick is `replace /<SYMBOL>/price`, from the
-// feed or from anyone the concept permits. Every tick is on the ledger with its inverse, so the
+// feed or from anyone the compartment permits. Every tick is on the ledger with its inverse, so the
 // last minute can be read back -- but a tick is a fact, not the person's doing, and is recorded
 // as not undoable: nobody's Undo can move the market.
 

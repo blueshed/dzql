@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
-import type { HtmlOp } from "../../src/concepts/render";
+import type { HtmlOp } from "../../src/compartments/render";
 import { history } from "../../src/ledger";
 import { read as readRoom } from "./documents/room";
 import { createServer } from "../../src/server";

@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
 import { createServer } from "../../src/server";
-import { randomTick, startFeed, stopFeed } from "./concepts/ticker";
+import { randomTick, startFeed, stopFeed } from "./compartments/ticker";
 import * as market from "./documents/market";
 import { example } from "./index";
 
-// TICK_MS is read when concepts/ticker.ts loads; the test script sets it to 0 (see package.json)
+// TICK_MS is read when compartments/ticker.ts loads; the test script sets it to 0 (see package.json)
 // so the feed stays quiet and every tick here is the test's own.
 let server: ReturnType<typeof createServer>;
 

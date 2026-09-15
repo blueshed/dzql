@@ -4,8 +4,8 @@ import * as market from "../documents/market";
 import * as watchlistDoc from "../documents/watchlist";
 import type { ConnectionData } from "../../../src/connection";
 import { patchMessage, type PatchOp } from "../../../src/json-patch";
-import type { Concept, WriteResult } from "../../../src/concepts/concept";
-import { renderRequested } from "../../../src/concepts/render";
+import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
+import { renderRequested } from "../../../src/compartments/render";
 import { page } from "../views/page";
 
 // The market, and the page. A tick -- from the feed below, or typed by anyone through the wire
@@ -55,7 +55,7 @@ export function stopFeed(): void {
 
 const TICK_PATH = /^\/[A-Z0-9.]+\/price$/;
 
-export const ticker: Concept = {
+export const ticker: Compartment = {
   docType: "ticker",
   render(sessionId) {
     return page(watchlistDoc.read(sessionId), market.read(), clockDoc.read(sessionId));

@@ -1,8 +1,8 @@
 import * as boardDoc from "../documents/board";
 import * as sessionDoc from "../documents/session";
 import { patchMessage, type PatchOp } from "../../../src/json-patch";
-import type { Concept, WriteResult } from "../../../src/concepts/concept";
-import { renderRequested } from "../../../src/concepts/render";
+import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
+import { renderRequested } from "../../../src/compartments/render";
 import { boardPages } from "../views/board";
 import * as presence from "./presence";
 
@@ -41,7 +41,7 @@ function echoAndNotify(code: string, result: WriteResult): void {
   renderRequested.emit({ sockets: presence.everyone(), write: { docType: "board", docId: code, result } });
 }
 
-export const board: Concept = {
+export const board: Compartment = {
   docType: "board",
   render(sessionId) {
     const session = sessionDoc.read(sessionId);
