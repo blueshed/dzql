@@ -1,11 +1,11 @@
-// The dressing applet: a minifigure drawn for being changed, so it holds still, and every part a
-// finger can change carries a callout -- hair, face, top, arms, legs -- each a lead from the part
-// to a label beside it, the way an instruction sheet names the pieces. Touch a part or its label
-// and that part's choices appear beside it: heads for the hairs and the faces, dots for the
-// colours, small moving figures for the attitudes. Which part is open is this applet's own; a
-// choice is one write on one field, and the figure redraws from the render that follows.
+// The dressing applet's drawing: a minifigure drawn for being changed, so it holds still, and
+// every part a finger can change carries a callout -- hair, face, top, arms, legs -- each a lead
+// from the part to a label beside it, the way an instruction sheet names the pieces. Touch a part
+// or its label and that part's choices appear beside it: heads for the hairs and the faces, dots
+// for the colours, small moving figures for the attitudes. The drawing is a string, so it's
+// tested here without a browser; the mounting that touches a part and turns a tap into a write is
+// dress-applet.ts, imported only by client/main.ts (see change-request.md item 4).
 
-import { registerApplet } from "../../../src/applets";
 import { ATTITUDES, FACES, HAIRS, PALETTE, type Attitude, type LookField } from "../looks";
 import { esc } from "../views/html";
 import { figure, figureSvg, print, type Spec } from "./figure";
@@ -77,42 +77,3 @@ export function dressHtml(props: DressProps, open: Part | null): string {
   );
   return `<div class="dress">${svg}<div class="callouts">${callouts.join("")}</div><div class="options">${open ? partPop(open, spec, firstName) : ""}</div></div>`;
 }
-
-const state = new WeakMap<HTMLElement, { props: DressProps; open: Part | null }>();
-
-const draw = (el: HTMLElement) => {
-  const s = state.get(el)!;
-  el.innerHTML = dressHtml(s.props, s.open);
-};
-
-registerApplet("dress", {
-  mount(el, ctx) {
-    state.set(el, { props: ctx.props as DressProps, open: null });
-    draw(el);
-    const act = (target: Element | null) => {
-      const s = state.get(el)!;
-      const part = target?.closest<HTMLElement>("[data-part]")?.dataset.part as Part | undefined;
-      if (part) {
-        s.open = s.open === part ? null : part;
-        draw(el);
-        return;
-      }
-      const choice = target?.closest<HTMLElement>("[data-field]");
-      if (choice) ctx.send("household", [{ op: "replace", path: `/guests/${s.props.guestId}/minifigure/${choice.dataset.field}`, value: choice.dataset.value }]);
-    };
-    el.addEventListener("click", (e) => act(e.target as Element));
-    el.addEventListener("keydown", (e) => {
-      if ((e.key === "Enter" || e.key === " ") && (document.activeElement as Element | null)?.matches(".hit")) {
-        e.preventDefault();
-        act(document.activeElement);
-      }
-    });
-    return () => state.delete(el);
-  },
-  update(el, props) {
-    const s = state.get(el);
-    if (!s) return;
-    s.props = props as DressProps; // the open part stays open: the figure answers the touch, the sheet does not move
-    draw(el);
-  },
-});

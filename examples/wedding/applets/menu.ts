@@ -1,9 +1,9 @@
-// The menu applet: a guest's choices, a row per course with the chosen dish and drink on it; tap
-// a row and its dishes and drinks are pills -- tap one to choose it, tap it again to let it go.
-// Which course is open is this applet's own; a choice is one write, and the pills redraw from
-// the render that follows.
+// The menu applet's drawing: a guest's choices, a row per course with the chosen dish and drink
+// on it; tap a row and its dishes and drinks are pills -- tap one to choose it, tap it again to
+// let it go. The drawing is a string, tested here without a browser; the mounting that opens a
+// row and turns a tap into a write is menu-applet.ts, imported only by client/main.ts
+// (change-request.md item 4).
 
-import { registerApplet } from "../../../src/applets";
 import { esc } from "../views/html";
 
 export interface MenuCourse {
@@ -47,40 +47,3 @@ export function menuHtml(props: MenuProps, open: number | null): string {
   });
   return `<div class="menu">${cap}${rows.join("")}</div>`;
 }
-
-const state = new WeakMap<HTMLElement, { props: MenuProps; open: number | null }>();
-
-const draw = (el: HTMLElement) => {
-  const s = state.get(el)!;
-  el.innerHTML = menuHtml(s.props, s.open);
-};
-
-registerApplet("menu", {
-  mount(el, ctx) {
-    state.set(el, { props: ctx.props as MenuProps, open: null });
-    draw(el);
-    el.addEventListener("click", (e) => {
-      const s = state.get(el)!;
-      const target = e.target as Element;
-      const pill = target.closest<HTMLElement>(".choice");
-      if (pill) {
-        const path = `/guests/${s.props.guestId}/choices/${pill.dataset.course}/${pill.dataset.kind}`;
-        ctx.send("household", [pill.dataset.on === "true" ? { op: "remove", path } : { op: "replace", path, value: Number(pill.dataset.id) }]);
-        return;
-      }
-      const head = target.closest<HTMLElement>(".menu-head");
-      if (head) {
-        const id = Number(head.dataset.course);
-        s.open = s.open === id ? null : id;
-        draw(el);
-      }
-    });
-    return () => state.delete(el);
-  },
-  update(el, props) {
-    const s = state.get(el);
-    if (!s) return;
-    s.props = props as MenuProps;
-    draw(el);
-  },
-});

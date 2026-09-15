@@ -107,6 +107,21 @@ for here.
 
 ## 4. Coverage that counts applets
 
+*Done, 0.31.0.* Took option (a). Every wedding and ticker applet that mixed drawing with mounting
+is now two files: the original name keeps the drawing (and, for the board applet, the pure
+`applyOps` patch logic) and whatever a `*.test.ts` already imported directly; a new
+`<name>-applet.ts` holds the `registerApplet(...)` call and everything that touches the DOM
+(`mount`/`update`/`patch`, its own `WeakMap` of per-element state). `client/main.ts` in both
+examples imports the `-applet` files, exactly as chat's `main.ts` already imported
+`room-picker.ts` -- so the split ones now behave the same way that file always did: invisible to
+`bun test --coverage` (never imported in-process by a test), covered instead by the real-browser
+suites (`client/app.test.ts`, and the wedding's `client/applets.test.ts` for the two update()
+paths its flows don't reach). `figure.ts` (already pure) and `picture-field.ts` (already
+mounting-only, already invisible) needed no change. The 100% aim now means it: every drawing file
+reads 100/100, and the one pre-existing real gap the split surfaced (`photo.ts`'s untested "lunge
+from the left" branch, previously hidden inside the file's low blended average) got a test
+instead of staying hidden.
+
 **What.** The applets' mounting code shows in the coverage table as what it is.
 
 **Why.** `bun test --coverage` sees a file only when a test imports it in-process. Chat's
@@ -319,5 +334,5 @@ one line.
 
 ## Order
 
-1, 2, 5, 7, 8, 10, and 11 are done. 4 next: a morning's tidy. 3 is worth doing only if a third
-example wants links.
+1, 2, 4, 5, 7, 8, 10, and 11 are done. 3 is what's left, worth doing only if a third example
+wants links.

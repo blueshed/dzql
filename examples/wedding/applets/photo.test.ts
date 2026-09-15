@@ -28,11 +28,14 @@ describe("photoSvg", () => {
       { key: "a", spec: look, count: 1 },
       { key: "b", spec: look },
       { key: "c", spec: { ...look, attitude: "photo-bombing" } },
+      // a second bomber, so one lunges from the left and the other from the right (arrange.ts
+      // puts a lone bomber only ever at the right)
+      { key: "d", spec: { ...look, attitude: "photo-bombing" } },
     ];
     const svg = photoSvg(entries, "x", new Set(["b", "c"]));
     expect(svg).toContain('<g class="walk" style="--walk-from: ');
     expect(svg).toContain("walking");
-    expect(svg).toContain('style="--lunge-from: ');
+    expect(svg.match(/style="--lunge-from: /g)?.length).toBe(2);
     expect(svg).not.toContain('class="count"');
     // a marked photo leaves room at the feet for the marks
     const plain = photoSvg([{ key: "a", spec: look }], "x");

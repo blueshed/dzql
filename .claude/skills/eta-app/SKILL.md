@@ -62,7 +62,15 @@ that section first.
    on the page, so a write to one always asks for the whole page instead.
 5. **`applets/<name>.ts`** — only when a piece of UI needs live client-side
    state a plain form/button can't express (typing-to-filter, etc.). Call
-   `registerApplet(name, {mount, update?})` from `src/applets`.
+   `registerApplet(name, {mount, update?})` from `src/applets`. If the
+   applet's drawing is worth testing directly (a string-building function a
+   `*.test.ts` can call without a browser), split it: `<name>.ts` keeps the
+   drawing and any pure logic, `<name>-applet.ts` keeps `registerApplet` and
+   everything that touches the DOM. `client/main.ts` imports the `-applet`
+   file, not the drawing one — that keeps mounting code out of the coverage
+   table (it's covered by a real-browser test instead), the same way chat's
+   `room-picker.ts` always has been. Skip the split for an applet with no
+   drawing worth testing on its own (`picture-field.ts`).
 6. **`client/index.html` + `client/main.ts`** — `main.ts` imports this
    example's own applets first, then imports `src/client/app`. The kernel's
    client knows nothing about any specific applet. If any CSS relies on

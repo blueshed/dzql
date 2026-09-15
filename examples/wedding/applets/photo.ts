@@ -1,10 +1,9 @@
-// The photo applet: the crowd drawn from its props -- rows by proportion, bombers at the edges --
-// and redrawn on every render that changes them, a newcomer walking in from the nearest side, the
-// names coming down on the day. A tap on a figure sends the write its entry carries (open that
-// guest's drawer; go to that family). The drawing is a string, so the server's tests can check it
-// without a browser; only the mounting below touches the DOM.
+// The photo applet's drawing: the crowd drawn from its props -- rows by proportion, bombers at
+// the edges -- a newcomer walking in from the nearest side, the names coming down on the day. A
+// tap on a figure sends the write its entry carries (open that guest's drawer; go to that
+// family). The drawing is a string, so it's tested here without a browser; the mounting that
+// touches the DOM is photo-applet.ts, imported only by client/main.ts (change-request.md item 4).
 
-import { registerApplet } from "../../../src/applets";
 import type { PatchOp } from "../../../src/json-patch";
 import { esc } from "../views/html";
 import { arrange, figure, print, type Spec } from "./figure";
@@ -74,46 +73,3 @@ export function photoSvg(entries: PhotoEntry[], label: string, arriving: Set<str
   });
   return `<svg class="photo" viewBox="${viewBox}" aria-label="${esc(label)}">${figures.join("")}</svg>`;
 }
-
-const state = new WeakMap<HTMLElement, { props: PhotoProps; revealed: boolean }>();
-
-function draw(el: HTMLElement, props: PhotoProps, arriving: Set<string>, descend: boolean): void {
-  el.innerHTML = photoSvg(props.entries, props.label, arriving, descend);
-  // once the walk is over, the attitude takes over
-  for (const walk of el.querySelectorAll<SVGGElement>(".walk")) {
-    walk.addEventListener("animationend", (e) => {
-      if ((e as AnimationEvent).animationName === "walk-in") walk.querySelector(".fig")?.classList.remove("walking");
-    });
-  }
-}
-
-registerApplet("photo", {
-  mount(el, ctx) {
-    const props = ctx.props as PhotoProps;
-    state.set(el, { props, revealed: !!props.reveal });
-    draw(el, props, new Set(), !!props.reveal);
-    const tap = (target: Element | null) => {
-      const key = target?.closest<SVGGElement>("[data-key]")?.dataset.key;
-      const entry = key === undefined ? undefined : state.get(el)?.props.entries.find((e) => e.key === key);
-      if (entry?.tap) ctx.send(entry.tap.doc, [entry.tap.op]);
-    };
-    el.addEventListener("click", (e) => tap(e.target as Element));
-    el.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        tap(document.activeElement);
-      }
-    });
-    return () => state.delete(el);
-  },
-  update(el, next) {
-    const props = next as PhotoProps;
-    const prev = state.get(el);
-    if (!prev) return;
-    const before = new Set(prev.props.entries.map((e) => e.key));
-    const arriving = new Set(props.entries.filter((e) => !before.has(e.key)).map((e) => e.key));
-    const descend = !!props.reveal && !prev.revealed;
-    state.set(el, { props, revealed: !!props.reveal });
-    draw(el, props, arriving, descend);
-  },
-});

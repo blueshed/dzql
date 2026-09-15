@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2026-09-15
+
+### Changed
+
+- **Coverage that counts applets** (change-request.md item 4). Every wedding and ticker applet
+  that mixed drawing with DOM mounting is now two files: `<name>.ts` keeps the drawing (and, for
+  the board applet, the pure `applyOps` patch logic), `<name>-applet.ts` holds
+  `registerApplet(...)` and everything that touches the DOM. `client/main.ts` in both examples
+  imports the `-applet` files, so mounting code is invisible to `bun test --coverage` (never
+  imported in-process by a test) and covered instead by the real-browser suites, the same way
+  chat's `room-picker.ts` always was. Every applet's drawing file now reads 100%/100%; the one
+  real gap the split surfaced (`photo.ts`'s untested "lunge from the left" bomber branch,
+  previously hidden inside a low blended average) got a test.
+
 ## [0.30.0] - 2026-09-15
 
 ### Changed

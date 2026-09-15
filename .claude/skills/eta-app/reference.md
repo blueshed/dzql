@@ -442,14 +442,31 @@ Three ways an applet's data reaches it, from cheapest to dearest on the wire:
 1. **Props once, then the document's own patches.** The element names the document
    (`<div data-applet="board" data-doc="ticker" data-props=...>`), the applet implements
    `patch(el, ops)`, and the compartment's `fragments` answers `[]` for that page: after the first
-   render only the patch echo crosses the wire (`examples/ticker/applets/board.ts`). Use it when
-   the applet's props are a subtree of one document and the document changes often.
+   render only the patch echo crosses the wire (`examples/ticker/applets/board-applet.ts`). Use it
+   when the applet's props are a subtree of one document and the document changes often.
 2. **New props on a fragment render.** The compartment replaces the applet's element as a fragment
-   with new `data-props`; the morph calls `update(el, props)` (`examples/wedding/applets/photo.ts`).
+   with new `data-props`; the morph calls `update(el, props)` (`examples/wedding/applets/photo-applet.ts`).
 3. **New props on a full render.** The default, when a compartment has no `fragments`.
 
 An applet with nothing of the app in it -- a clock -- takes its props once and never hears from
-the server again (`examples/ticker/applets/clock.ts`).
+the server again (`examples/ticker/applets/clock-applet.ts`).
+
+### Drawing vs. mounting, for coverage that means what it says
+
+`bun test --coverage` only sees a file a test imports in-process. An applet whose drawing is a
+pure string-building function is worth testing that way directly -- but if `registerApplet`'s
+`mount`/`update` live in the same file, importing it for the drawing test pulls the DOM-touching
+half in too, and it shows up "uncovered" even though a real-browser test (`client/app.test.ts`)
+drives it on every run. Split it in two: `<name>.ts` keeps the drawing (`dressHtml`, `menuHtml`,
+`photoSvg`, `boardSvg`/`sparkline`/`applyOps`, `clockSvg`/`handsAt`/`partsIn`, `cityIn`/`matches`/
+`step`) and whatever a `*.test.ts` imports directly; `<name>-applet.ts` keeps
+`registerApplet(...)` and the `mount`/`update`/`patch` that touch the DOM, and is imported *only*
+by `client/main.ts` -- exactly how chat's `room-picker.ts` (all mounting, no separate drawing
+file) has always been imported. That's what keeps it out of the coverage table rather than
+dragging a drawing file's number down: `src/applets.ts`'s registry doesn't care which file called
+`registerApplet`, so nothing about the split is visible to the kernel or the wire
+(change-request.md item 4). Skip the split for an applet with no drawing worth testing on its own
+(`picture-field.ts`, which talks to `fetch` and a `<input type=file>` throughout).
 
 Most UI is plain HTML + `data-write`, morphed in on every render — no applet
 needed. Reach for an applet (`src/applets.ts`) only when something needs

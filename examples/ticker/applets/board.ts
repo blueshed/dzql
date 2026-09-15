@@ -1,11 +1,9 @@
-// The board applet: the watched symbols as an SVG table with a sparkline each, drawn in the
-// browser from the market it was handed as props, and kept current from the market's own
-// patches -- a tick is `replace /<SYMBOL>/price`, and the applet redraws that row. Nothing
-// about a price is rendered on the server twice: the page carries the board once, and after
-// that only the ops cross the wire. The history behind each sparkline is the applet's own,
-// derived from the ticks it has seen.
+// The board applet's drawing and patch logic: the watched symbols as an SVG table with a
+// sparkline each, and how a tick (`replace /<SYMBOL>/price`) moves a quote and extends its
+// history. Both are pure functions over a BoardState, tested here without a browser; the
+// mounting that owns that state per element is board-applet.ts, imported only by client/main.ts
+// (change-request.md item 4).
 
-import { registerApplet } from "../../../src/applets";
 import type { PatchOp } from "../../../src/json-patch";
 
 export type Quote = { name: string; price: number; prev: number };
@@ -60,8 +58,6 @@ export function boardSvg(state: BoardState): string {
   return `<svg class="board" viewBox="0 0 ${W} ${symbols.length * ROW}" width="100%" aria-label="the board">${rows}</svg>`;
 }
 
-const state = new WeakMap<HTMLElement, BoardState>();
-
 /** Applies a market patch to the state: a tick moves a quote and extends its history. Returns the symbols touched. */
 export function applyOps(s: BoardState, ops: PatchOp[]): string[] {
   const touched: string[] = [];
@@ -78,32 +74,3 @@ export function applyOps(s: BoardState, ops: PatchOp[]): string[] {
   }
   return touched;
 }
-
-const draw = (el: HTMLElement) => {
-  el.innerHTML = boardSvg(state.get(el)!);
-};
-
-registerApplet("board", {
-  mount(el, ctx) {
-    const props = ctx.props as BoardProps;
-    state.set(el, { props, history: Object.fromEntries(Object.entries(props.quotes).map(([s, q]) => [s, [q.prev, q.price]])) });
-    draw(el);
-    return () => state.delete(el);
-  },
-  // The watchlist changed: new symbols, the same market; the histories seen so far are kept.
-  update(el, props) {
-    const s = state.get(el);
-    if (!s) return;
-    const next = props as BoardProps;
-    for (const [symbol, quote] of Object.entries(next.quotes)) if (!s.history[symbol]) s.history[symbol] = [quote.prev, quote.price];
-    s.props = next;
-    draw(el);
-  },
-  // A tick: the market's own op, straight from the echo. The row it touches is redrawn, and its
-  // `up`/`down` class arriving fresh is what makes it flash.
-  patch(el, ops) {
-    const s = state.get(el);
-    if (!s) return;
-    if (applyOps(s, ops).length) draw(el);
-  },
-});

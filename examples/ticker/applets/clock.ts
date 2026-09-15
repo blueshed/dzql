@@ -1,11 +1,9 @@
-// A Swiss railway clock, as an applet: drawn and driven entirely in the browser, because the
-// time is here, not on the server. The server mounts it once with the session's zone, and the
-// only thing that ever crosses the wire for it afterwards is the clock document's own
-// `replace /tz` when a city is chosen, which the applet takes itself. The seconds hand sweeps
-// the minute in 58.5 seconds and waits at the top for the minute to catch up (the "stop to
-// go"); the minute hand steps.
+// A Swiss railway clock's drawing and time math: the seconds hand sweeps the minute in 58.5
+// seconds and waits at the top for the minute to catch up (the "stop to go"); the minute hand
+// steps. Pure functions, tested here without a browser; the mounting that drives the hands every
+// frame and takes the clock document's own patches is clock-applet.ts, imported only by
+// client/main.ts (change-request.md item 4).
 
-import { registerApplet } from "../../../src/applets";
 import type { PatchOp } from "../../../src/json-patch";
 
 export interface ClockProps {
@@ -58,48 +56,4 @@ export function partsIn(tz: string, now = new Date()): { hour: number; minute: n
   const parts = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "numeric", minute: "numeric", second: "numeric", hour12: false }).formatToParts(now);
   const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
   return { hour: get("hour") % 24, minute: get("minute"), second: get("second"), ms: now.getMilliseconds() };
-}
-
-const timers = new WeakMap<HTMLElement, number>();
-const zones = new WeakMap<HTMLElement, { tz: string }>();
-
-registerApplet("clock", {
-  mount(el, ctx) {
-    const zone = { tz: (ctx.props as ClockProps).tz };
-    zones.set(el, zone);
-    el.innerHTML = clockSvg(cityOf(zone.tz));
-    const hour = el.querySelector<SVGElement>(".hand.hour")!;
-    const minute = el.querySelector<SVGElement>(".hand.minute")!;
-    const second = el.querySelector<SVGElement>(".hand.second")!;
-    const tick = () => {
-      const t = partsIn(zone.tz);
-      const angles = handsAt(t.hour, t.minute, t.second + t.ms / 1000);
-      hour.setAttribute("transform", `rotate(${angles.hour.toFixed(2)})`);
-      minute.setAttribute("transform", `rotate(${angles.minute})`);
-      second.setAttribute("transform", `rotate(${angles.second.toFixed(2)})`);
-      timers.set(el, requestAnimationFrame(tick));
-    };
-    tick();
-    return () => {
-      cancelAnimationFrame(timers.get(el) ?? 0);
-      timers.delete(el);
-      zones.delete(el);
-    };
-  },
-  update(el, props) {
-    setZone(el, (props as ClockProps).tz);
-  },
-  // The city changed: the clock document's own op, off the echo. The name changes now, the hands on the next frame.
-  patch(el, ops) {
-    const zone = zones.get(el);
-    if (zone) setZone(el, tzAfter(zone.tz, ops));
-  },
-});
-
-function setZone(el: HTMLElement, tz: string): void {
-  const zone = zones.get(el);
-  if (!zone) return;
-  zone.tz = tz;
-  const label = el.querySelector(".label");
-  if (label) label.textContent = cityOf(tz);
 }
