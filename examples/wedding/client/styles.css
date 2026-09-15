@@ -60,6 +60,7 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .hero .amp { font-family: var(--script); font-size: clamp(56px, 12vw, 96px); line-height: 0.7; color: var(--gold); margin: -8px 0 -14px; display: block; }
 .hero .when { font-size: 22px; letter-spacing: 0.22em; color: var(--ink); margin: 34px 0 0; }
 .hero .where { font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); margin: 6px 0 0; }
+.hero .message { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--navy); margin: 18px 0 0; }
 .hero .small { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); margin: 10px 0 0; }
 .card { background: var(--card); border: 1px solid var(--gold-soft); border-radius: 14px; padding: 16px; margin: 0 0 12px; }
 .enter-card h2 { margin-top: 0; }

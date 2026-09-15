@@ -34,6 +34,8 @@ const CRUMBS = `document.querySelector('.crumbs')?.textContent ?? null`;
 async function enter(view: Bun.WebView, who: string) {
   await view.navigate(server.url.toString());
   await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
+  // the welcome's own message can push the code box below the default viewport's fold
+  await view.scrollTo("#code");
   await view.click("#code");
   await view.type(who);
   await view.click("button.gold");
@@ -125,6 +127,7 @@ describe("the wedding in a real browser", () => {
     // the couple's own code, not a household's: the keep drawers are theirs to edit
     await view.navigate(server.url.toString());
     await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
+    await view.scrollTo("#code");
     await view.click("#code");
     await view.type("DASH");
     await view.click("button.gold");
@@ -169,6 +172,7 @@ describe("the wedding in a real browser", () => {
     await using view = new Bun.WebView();
     await view.navigate(server.url.toString());
     await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
+    await view.scrollTo("#code");
     await view.click("#code");
     await view.type("DASH");
     await view.click("button.gold");
