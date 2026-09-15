@@ -5,13 +5,14 @@ import { patchMessage, type PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { renderRequested } from "../../../src/compartments/render";
-import * as presence from "./presence";
 
 // A visit: who this session is (a code) and where it is on the site. This is the tray
 // (change-request.md item 10) -- the ground the household and board compartments sit on, not a
 // place of its own on the page: it has no `render`, and `household.ts` is the one that shows the
 // welcome now, absorbing what used to be the tray's own page. This only takes the writes that
-// move around the page it hands off to -- a page, a drawer, a reading.
+// move around the page it hands off to -- a page, a drawer, a reading. No `onOpen`/`onClose`
+// either: which connections are open at all is the kernel's own registry now (change-request.md
+// item 1), not something this example tracks for itself (that was `concepts/presence.ts`, gone).
 
 /** Where you are only means something once you are in: everything but the code and a resend needs one. */
 const BEFORE_CODE = new Set(["code", "resend"]);
@@ -38,11 +39,5 @@ export const session: Compartment = {
       renderRequested.emit([ws]);
     }
     return result;
-  },
-  onOpen(ws) {
-    presence.join(ws);
-  },
-  onClose(ws) {
-    presence.leave(ws);
   },
 };

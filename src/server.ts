@@ -1,4 +1,5 @@
 import { assemble } from "./compartments";
+import { closeConnection, openConnection, setActiveCompartments } from "./compartments/audience";
 import { compartmentTarget, fragmentsMessage, renderMessage, renderRequested, wrapCompartment } from "./compartments/render";
 import type { ConnectionData } from "./connection";
 import type { Example } from "./example";
@@ -49,6 +50,7 @@ export function createServer(example: Example, port: number | string = process.e
   const assembled = assemble(example);
   active = { example, assembled };
   const { compartments, byDocType, inspectFor, renderFor } = assembled;
+  setActiveCompartments(byDocType);
 
   function pushRender(ws: Bun.ServerWebSocket<ConnectionData>) {
     ws.send(renderMessage(renderFor(ws.data.sessionId)));
@@ -82,6 +84,7 @@ export function createServer(example: Example, port: number | string = process.e
     },
     websocket: {
       open(ws) {
+        openConnection(ws);
         for (const compartment of compartments) compartment.onOpen?.(ws);
         pushRender(ws);
       },
@@ -116,6 +119,7 @@ export function createServer(example: Example, port: number | string = process.e
         if (!wrote) pushRender(ws);
       },
       close(ws) {
+        closeConnection(ws);
         for (const compartment of compartments) compartment.onClose?.(ws);
       },
     },
@@ -124,7 +128,10 @@ export function createServer(example: Example, port: number | string = process.e
 
   const stop = server.stop.bind(server);
   server.stop = ((...args: Parameters<typeof server.stop>) => {
-    if (active?.example === example) active = undefined;
+    if (active?.example === example) {
+      active = undefined;
+      setActiveCompartments(undefined);
+    }
     return stop(...args);
   }) as typeof server.stop;
 

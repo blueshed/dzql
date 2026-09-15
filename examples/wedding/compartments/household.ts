@@ -3,17 +3,21 @@ import * as sessionDoc from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import { patchMessage, type PatchOp } from "../../../src/json-patch";
 import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
+import { allOpenSockets, audienceFor } from "../../../src/compartments/audience";
 import { renderRequested, type HtmlOp } from "../../../src/compartments/render";
 import * as boardDoc from "../documents/board";
 import { boardPhoto, familyGuestRow, familyPhoto, reading as boardReading } from "../views/board";
 import { dressMount, everyonePhoto, familyPhoto as ownPhoto, guestRow, householdPages, menuMount, reading, type HouseholdView } from "../views/household";
 import { welcome } from "../views/welcome";
-import * as presence from "./presence";
 
 // A household's document, written by the household that arrived by its code. Nearly everything
 // it writes changes what everyone sees -- an answer puts figures in the photo every code watches,
 // a claim takes a gift from every other household, the couple's board counts it all -- so a write
-// here echoes to those who see the document and asks everyone to re-render.
+// here echoes to those who see the document (change-request.md item 1's `sees`, below) and asks
+// everyone to re-render (still everyone, on purpose: an aggregate view -- the couple's totals,
+// the "everyone" photo -- can change from any household's write, and there is no smaller
+// audience for that yet; item 1's kernel registry is what this now reaches through, not a
+// registry of the wedding's own).
 
 type Rule = { path: RegExp; ops: PatchOp["op"][]; /** Locked after the deadline. */ dated?: boolean };
 
@@ -30,12 +34,15 @@ const RULES: Rule[] = [
   { path: /^\/claims\/\d+$/, ops: ["remove"] },
 ];
 
-/** Echoes a household document's ops to everyone who sees it, then asks everyone to bring their page up to date -- naming the write, so `fragments` below can say what that means per page. Shared by a direct write and by undo landing on this doc. */
+/** Echoes a household document's ops to everyone who sees it (its own tabs, and the couple's --
+ * `sees` below), then asks everyone to bring their page up to date -- naming the write, so
+ * `fragments` below can say what that means per page. Shared by a direct write and by undo
+ * landing on this doc. */
 function echoAndNotify(code: string, result: WriteResult): void {
   if (result.applied.length === 0) return;
   const payload = patchMessage("household", result.version, result.applied);
-  for (const ws of presence.seeingHousehold(code)) ws.send(payload);
-  renderRequested.emit({ sockets: presence.everyone(), write: { docType: "household", docId: code, result } });
+  for (const ws of audienceFor("household", code)) ws.send(payload);
+  renderRequested.emit({ sockets: allOpenSockets(), write: { docType: "household", docId: code, result } });
 }
 
 /** Everything a household's pages read, for this session. */
@@ -73,6 +80,13 @@ export const household: Compartment = {
   resolveDoc(ws) {
     const session = sessionDoc.read(ws.data.sessionId);
     return session.kind === "household" ? session.code! : undefined;
+  },
+  // Beyond its own tabs (what `resolveDoc` alone would answer with), the couple sees every
+  // household through the board -- change-request.md item 1's reason a compartment needs its
+  // own `sees` at all, not just `resolveDoc`'s default.
+  sees(ws, docId) {
+    const session = sessionDoc.read(ws.data.sessionId);
+    return session.kind === "couple" || (session.kind === "household" && session.code === docId);
   },
   permit(ws, op) {
     const session = sessionDoc.read(ws.data.sessionId);

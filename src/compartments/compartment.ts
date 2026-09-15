@@ -19,13 +19,24 @@ export type Compartment = {
   render?(sessionId: string): string | undefined;
   /** Resolves the concrete document id this connection currently sees for its own docType, or undefined if none. */
   resolveDoc(ws: ServerWebSocket<ConnectionData>): string | undefined;
+  /**
+   * Does this connection see `docId` -- not necessarily its *own* `resolveDoc(ws)`, which only
+   * answers for the one document this connection writes to (change-request.md item 1). Omit for
+   * the common case: a document seen by nobody but whoever `resolveDoc` already names for it
+   * (`src/compartments/audience.ts`'s `audienceFor` falls back to exactly that check). Implement
+   * it when someone sees a document that isn't theirs to write -- the wedding's `household` is
+   * everyone's own household code, but also every couple's tab, which has no household code of
+   * its own to `resolveDoc` toward.
+   */
+  sees?(ws: ServerWebSocket<ConnectionData>, docId: string): boolean;
   /** May this connection apply `op` to the document it resolves? */
   permit(ws: ServerWebSocket<ConnectionData>, op: PatchOp): boolean;
   /**
    * Applies a permitted write: side effects and its own echo included, and -- per item 10's rule
-   * 2 -- responsible for asking (`renderRequested.emit`) every connection that sees the document,
-   * including this one, to be brought up to date; the kernel never renders a write's own
-   * connection separately, so a write that doesn't ask leaves its own connection stale. Whether
+   * 2 -- responsible for asking (`src/compartments/audience.ts`'s `notify`) every connection that
+   * sees the document, including this one, to be brought up to date; the kernel never renders a
+   * write's own connection separately, so a write that doesn't ask leaves its own connection
+   * stale. Whether
    * this write lands on the ledger at all is the document's own choice, not this method's: a
    * document whose `patch()` never calls `record()` (e.g. wedding's tray document, or a room's
    * presence ops) is off the ledger by design -- its version stays 0 (or, for presence, doesn't

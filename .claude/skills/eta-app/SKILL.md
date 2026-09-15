@@ -43,15 +43,20 @@ that section first.
    to that session. Validate values (blank, too long, etc.) inside `patch()`,
    not in the compartment's `permit()` — one home for "is this value valid."
 4. **`compartments/<thing>.ts`** — implement the `Compartment` contract: `docType`,
-   `resolveDoc`, `permit`, `write`, and optionally `render`/`replay`/
-   `fragments`/`onOpen`/`onClose`. `write()` echoes via `ws.send(patchMessage(...))`
-   and is responsible for asking every connection that sees the document
-   (`renderRequested.emit`), itself included — the kernel never renders a
-   write's own connection separately. Absent `fragments`, the kernel's
-   default is a single replace of this compartment's own `#c-<docType>`
-   element; implement `fragments` only for the writes where something
-   smaller is worth answering. `replay()` is `write`'s twin for undo — same
-   apply-then-echo path, but skips `permit()` since it's replaying an
+   `resolveDoc`, `permit`, `write`, and optionally `render`/`sees`/`replay`/
+   `fragments`/`onOpen`/`onClose`. `write()` calls `src/compartments/audience.ts`'s
+   `notify(docType, docId, result)` — it echoes the patch to, and asks for a
+   render from, every connection that *sees* the document, itself included; the
+   kernel never renders a write's own connection separately. "Sees" defaults to
+   `resolveDoc(ws) === docId` (right when the document has one writer who is
+   also its only reader); implement `sees` only when someone else sees it too
+   without writing it (the wedding's `household.sees` also says yes to the
+   couple). Don't keep a socket registry of your own — `audienceFor`/`notify`
+   already reach the kernel's one registry of open connections. Absent
+   `fragments`, the kernel's default is a single replace of this compartment's
+   own `#c-<docType>` element; implement `fragments` only for the writes where
+   something smaller is worth answering. `replay()` is `write`'s twin for undo
+   — same apply-then-echo path, but skips `permit()` since it's replaying an
    already-recorded inverse, not a fresh request. A tray (`Example.tray`) or
    the kernel's own ledger uses this same contract minus `render` — no place
    on the page, so a write to one always asks for the whole page instead.

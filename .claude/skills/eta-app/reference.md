@@ -141,8 +141,9 @@ export type Compartment = {
   docType: string; // e.g. "session", "room" — what this compartment owns on the wire
   render?(sessionId: string): string | undefined; // this compartment's own place on the page, or undefined to defer -- omit entirely for a tray or the ledger
   resolveDoc(ws): string | undefined; // the doc id this connection currently sees for its docType
+  sees?(ws, docId: string): boolean; // does this connection see docId -- not just its own resolveDoc; defaults to resolveDoc(ws) === docId
   permit(ws, op: PatchOp): boolean;   // may this connection apply op?
-  write(ws, docId: string, ops: PatchOp[]): WriteResult; // apply + echo + side effects; asks every connection that sees the doc to update, itself included
+  write(ws, docId: string, ops: PatchOp[]): WriteResult; // apply + notify(); asks every connection that sees the doc to update, itself included
   replay?(ws, docId: string, ops: PatchOp[], undoes: number): WriteResult; // undo's write, skipping permit()
   fragments?(ws, docId: string, result: WriteResult): HtmlOp[] | undefined; // the delta in HTML's terms, per connection; [] = nothing changed here; undefined = decline (the kernel's own default applies)
   onOpen?(ws): void;
@@ -150,31 +151,65 @@ export type Compartment = {
 };
 ```
 
+### Who sees a document: `sees`, `audienceFor`, `notify`
+
+Change-request.md item 1: a compartment answers "who sees this document", the kernel keeps the
+one registry of open connections that question needs, and neither has to be built twice per
+example. `src/compartments/audience.ts` exports three things:
+
+- `audienceFor(docType, docId, exclude?)`: every open connection whose owning compartment says it
+  sees `docId` -- `sees?(ws, docId)` if implemented, else `resolveDoc(ws) === docId` (right for a
+  document with one writer who is also its only reader -- most of them). `exclude` leaves one
+  socket out regardless (an announcement that doesn't need telling about itself).
+- `notify(docType, docId, result)`: echoes `result`'s applied ops to `audienceFor(docType, docId)`
+  and asks that same audience for a render (`renderRequested.emit`) -- the one thing besides
+  applying the patch that a `write()`/`replay()` needs to do. A no-op result (nothing applied)
+  tells nobody.
+- `allOpenSockets()`: every open connection, full stop -- for the rare write whose effect is
+  genuinely everyone's concern (an aggregate view fed by more than one document), not just this
+  document's own audience. Reach for `audienceFor` first; the wedding's board and household still
+  use this for the *render* half of their notify (an aggregate total or an "everyone" photo can
+  change from any household's write) while narrowing the *patch* echo to `audienceFor` -- the raw
+  ops of a document that isn't yours would be meaningless on your own page.
+
+Most compartments never implement `sees` at all: `resolveDoc`'s default is exactly right when a
+document's writer is also its only reader (chat's `room`, the wedding's `board`, the ticker's
+`clock`/`watchlist`, all unchanged by item 1). Implement it when someone else genuinely sees a
+document without writing it -- the wedding's `household`:
+
+```ts
+sees(ws, docId) {
+  const session = sessionDoc.read(ws.data.sessionId);
+  return session.kind === "couple" || (session.kind === "household" && session.code === docId);
+},
+```
+
 ### Rule 2: a write re-renders its own compartment's element, by default
 
 There's no `rendered` flag on `WriteResult` — a write's own connection is rendered exactly like
-every other connection that sees the document, and it's the compartment's job to ask
-(`renderRequested.emit`) for *all* of them, itself included; the kernel never renders the writer
-a second time on its own. What "ask" gets back, absent `fragments`, is no longer the whole page:
-`server.ts`'s `renderRequested` listener calls the *owning* compartment's own `render(sessionId)`
-and sends a single `replace` of `#c-<docType>` instead — the whole page is the fallback only when
-there's no owning compartment to re-render this way (a tray or ledger write) or that compartment's
-`render` itself declines for this session right now (e.g. the write's docType belongs to a
-compartment a couple viewer's session doesn't currently match — wedding's `board` vs. a household
-viewer). `examples/chat/compartments/room.ts` asks for everyone in the room, including the writer,
-on every write:
+every other connection that sees the document, and it's the compartment's job to ask (`notify`,
+above) for *all* of them, itself included; the kernel never renders the writer a second time on
+its own. What "ask" gets back, absent `fragments`, is no longer the whole page: `server.ts`'s
+`renderRequested` listener calls the *owning* compartment's own `render(sessionId)` and sends a
+single `replace` of `#c-<docType>` instead — the whole page is the fallback only when there's no
+owning compartment to re-render this way (a tray or ledger write) or that compartment's `render`
+itself declines for this session right now (e.g. the write's docType belongs to a compartment a
+couple viewer's session doesn't currently match — wedding's `board` vs. a household viewer).
+`examples/chat/compartments/room.ts` asks for everyone in the room, including the writer, on
+every write:
 
 ```ts
 write(ws, roomName, ops) {
   // ...
-  echoAndNotify(roomName, result); // renderRequested.emit({ sockets: roomSockets(room), write: {...} }) -- every member, including this one
+  echoAndNotify(roomName, result); // notify("room", roomName, result) -- every member, including this one
   return result;
 },
 ```
 
-A new example's compartment should do the same: compute its own audience (today; item 1 will make
-this generic) and include the writer in it. Forgetting to is a real bug -- the writer's own
-connection would never hear back.
+A new example's compartment should do the same: call `notify()` (or, if someone sees the document
+without writing it, implement `sees` first so `notify()`'s audience already includes them) and
+include the writer in it. Forgetting to is a real bug -- the writer's own connection would never
+hear back.
 
 ### `fragments` — smaller than the compartment's whole element
 
@@ -187,14 +222,14 @@ type HtmlOp = { op: "replace" | "add"; target: string; html: string } | { op: "r
 
 `replace` morphs one element (give it an id); `add` appends inside one; `remove` takes one out.
 `[]` means nothing on this connection's page changed and nothing is sent; `undefined` declines,
-falling back to rule 2's own-element default (not necessarily the whole page — see above). For
-the kernel to ask at all, the compartment's own notify step must name the write in its render
-request: `renderRequested.emit({ sockets, write: { docType, docId, result } })`. Chat answers
-every room write (`examples/chat/compartments/room.ts`); the wedding answers a look or a choice
-per viewer's page and declines the rest (`examples/wedding/compartments/household.ts`) -- its
-`board` compartment implements no `fragments` at all, so every board write falls through to rule
-2's default (a couple viewer's own `#c-board` replaced whole). Anything the applet shows goes as
-its new `data-props`, whole.
+falling back to rule 2's own-element default (not necessarily the whole page — see above).
+`notify()` is what makes the kernel ask at all -- it names the write in the render request it
+emits (`{ sockets, write: { docType, docId, result } }`) for `server.ts`'s listener to read.
+Chat answers every room write (`examples/chat/compartments/room.ts`); the wedding answers a look
+or a choice per viewer's page and declines the rest (`examples/wedding/compartments/household.ts`)
+-- its `board` compartment implements no `fragments` at all, so every board write falls through to
+rule 2's default (a couple viewer's own `#c-board` replaced whole). Anything the applet shows goes
+as its new `data-props`, whole.
 
 Compartments never import each other's internals — they talk only through
 `src/compartments/bus.ts` events (`createEvent()`/`.on()`/`.emit()`). Example:

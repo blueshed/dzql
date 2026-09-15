@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0] - 2026-09-15
+
+### Changed
+
+- **Who sees a document** (change-request.md item 1). `Compartment.sees?(ws, docId)` answers
+  which connections see a document -- defaulting to `resolveDoc(ws) === docId` (right when a
+  document's writer is also its only reader: chat's room, the wedding's board, the ticker's clock
+  and watchlist, all unchanged), overridden when someone else genuinely sees it without writing
+  it (the wedding's `household.sees` also says yes to the couple, who read every household
+  through the board). `src/compartments/audience.ts` is the kernel's one registry of open
+  connections (`audienceFor`/`notify`/`allOpenSockets`), so a compartment no longer keeps a
+  socket registry of its own: chat's `roomSocketSets` and the wedding's whole
+  `concepts/presence.ts` (`join`/`leave`/`everyone`/`seeingHousehold`/`seeingBoard`) are gone,
+  replaced by calls into the shared module. The wedding's household/board writes still ask
+  *everyone* for a render (an aggregate view -- the couple's totals, the "everyone" photo -- can
+  change from any household's write, and there's no smaller audience for that yet) while
+  narrowing the *patch* echo to `audienceFor` -- a genuine two-tier need `notify()` doesn't cover
+  on its own, so those two compartments call `audienceFor`/`allOpenSockets` directly. Chat's
+  presence announcements (item 8) move onto the same registry too, unchanged behavior confirmed
+  against every existing scenario (multi-tab dedup, a logout mid-room, a redundant tab closing).
+  The exclusion logic those announcements need (a joiner shouldn't count itself as "already
+  there") and the wedding's `sees` override were each confirmed load-bearing by breaking them and
+  watching the right existing tests fail, then restoring. Full suite green (`bun run test`, exit
+  0): 269 pass, 0 fail, 100% coverage throughout.
+
 ## [0.28.0] - 2026-09-15
 
 ### Changed

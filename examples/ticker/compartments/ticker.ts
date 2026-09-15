@@ -1,20 +1,20 @@
-import type { ServerWebSocket } from "bun";
 import * as clockDoc from "../documents/clock";
 import * as market from "../documents/market";
 import * as watchlistDoc from "../documents/watchlist";
-import type { ConnectionData } from "../../../src/connection";
-import { patchMessage, type PatchOp } from "../../../src/json-patch";
+import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
-import { renderRequested } from "../../../src/compartments/render";
+import { audienceFor, notify } from "../../../src/compartments/audience";
 import { page } from "../views/page";
 
 // The market, and the page. A tick -- from the feed below, or typed by anyone through the wire
 // or the CLI -- is a write to the market document, echoed to every connection; the board applet
 // on each page takes the ops itself (Applet.patch), so `fragments` answers that nothing on the
 // page needs rendering. The feed runs only while someone is connected: the market moves while
-// it is watched, and a test suite that never opens a socket never starts it.
+// it is watched, and a test suite that never opens a socket never starts it. "Everyone" is the
+// kernel's own open-connection registry (change-request.md item 1), not a set this module keeps
+// itself -- `resolveDoc` below already names the one market for any socket, which is `sees`'s
+// default, so audienceFor("ticker", MARKET) already answers "who's open" for free.
 
-const sockets = new Set<ServerWebSocket<ConnectionData>>();
 let feed: ReturnType<typeof setInterval> | undefined;
 
 /** How often the feed ticks, in milliseconds (TICK_MS), and how far a price may move each time. */
@@ -24,11 +24,7 @@ const MAX_MOVE = 0.006;
 /** One tick, from wherever it comes: applied, echoed to everyone, the pages told (and answered with nothing to render). */
 export function tick(ops: PatchOp[], sessionId: string): WriteResult {
   const result = market.patch(ops, sessionId);
-  if (result.applied.length > 0) {
-    const payload = patchMessage("ticker", result.version, result.applied);
-    for (const ws of sockets) ws.send(payload);
-    renderRequested.emit({ sockets, write: { docType: "ticker", docId: market.MARKET, result } });
-  }
+  notify("ticker", market.MARKET, result);
   return result;
 }
 
@@ -68,20 +64,19 @@ export const ticker: Compartment = {
     return op.op === "replace" && TICK_PATH.test(op.path);
   },
   write(ws, _docId, ops) {
-    const result = tick(ops, ws.data.sessionId);
-    return result;
+    return tick(ops, ws.data.sessionId);
   },
   // No replay(): a tick is recorded as not undoable, so the ledger's cursor never lands here.
   // The board took the ops; there is nothing on the page to render.
   fragments() {
     return [];
   },
-  onOpen(ws) {
-    sockets.add(ws);
+  onOpen() {
     startFeed();
   },
-  onClose(ws) {
-    sockets.delete(ws);
-    if (sockets.size === 0) stopFeed();
+  onClose() {
+    // The kernel deregisters a closing socket before calling onClose, so an empty audience here
+    // means this was the last one.
+    if (audienceFor("ticker", market.MARKET).length === 0) stopFeed();
   },
 };

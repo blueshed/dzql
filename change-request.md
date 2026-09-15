@@ -15,6 +15,19 @@ scale is what showed these.
 
 ## 1. Who sees a document
 
+*Done, 0.29.0.* Landed almost exactly as specified: `Compartment.sees?(ws, docId)`, defaulting to
+`resolveDoc(ws) === docId` (a compartment only needs to implement it when someone else sees the
+document without writing it -- only the wedding's `household` does, for the couple), and
+`src/compartments/audience.ts`'s kernel-kept open-socket registry (`audienceFor`/`notify`). Chat's
+`roomSocketSets` and the wedding's whole `concepts/presence.ts` are gone. One thing the "How"
+didn't anticipate: the wedding's *render* audience for a household/board write stayed "everyone"
+on purpose, not "everyone" as a workaround -- an aggregate view (the couple's totals, the
+"everyone" photo) can change from any household's write, and there's no smaller audience for that
+without item 1's own follow-on. `notify()` doesn't cover this two-tier (narrow patch, broad
+render) case, so household/board call `audienceFor` and `allOpenSockets()` directly rather than
+through the shared helper. `WriteResult.rendered` was already gone (item 10); this item didn't
+need to touch it again.
+
 **What.** A concept says which connections see a document, and the kernel does the echo and
 the re-render.
 
@@ -289,8 +302,5 @@ one line.
 
 ## Order
 
-5, 7, 8, 10, and 11 are done. 1 next: a document seen by more than its own tray -- with 10 done,
-a compartment that renders into a keyed element is the audience question answered for the common
-case, and with 7 in place it is what turns "nothing to send" into "nobody to ask". 2 after that:
-it is the thing a person editing the wedding's lists feels. 4 is a morning's tidy. 3 is worth
-doing only if a third example wants links.
+1, 5, 7, 8, 10, and 11 are done. 2 next: it is the thing a person editing the wedding's lists
+feels. 4 is a morning's tidy. 3 is worth doing only if a third example wants links.

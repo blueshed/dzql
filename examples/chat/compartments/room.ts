@@ -6,35 +6,14 @@ import type { ConnectionData } from "../../../src/connection";
 import { patchMessage } from "../../../src/json-patch";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
+import { audienceFor, notify } from "../../../src/compartments/audience";
 import { renderRequested, type HtmlOp } from "../../../src/compartments/render";
 import { history, prefixDoc } from "../../../src/ledger";
 import { renderNameForm, sessionPatched } from "./session";
 
-// Which live connections are currently subscribed to which room, for
-// broadcast. Not persisted data (see documents/room.ts for that) and not
-// needed outside this compartment, so it lives here rather than its own module.
-const roomSocketSets = new Map<string, Set<ServerWebSocket<ConnectionData>>>();
-
-function getSocketSet(roomId: string): Set<ServerWebSocket<ConnectionData>> {
-  let sockets = roomSocketSets.get(roomId);
-  if (!sockets) {
-    sockets = new Set();
-    roomSocketSets.set(roomId, sockets);
-  }
-  return sockets;
-}
-
-function joinRoom(roomId: string, ws: ServerWebSocket<ConnectionData>): void {
-  getSocketSet(roomId).add(ws);
-}
-
-function leaveRoom(roomId: string, ws: ServerWebSocket<ConnectionData>): void {
-  roomSocketSets.get(roomId)?.delete(ws);
-}
-
-function roomSockets(roomId: string): Set<ServerWebSocket<ConnectionData>> {
-  return getSocketSet(roomId);
-}
+// Which connections currently see a room is the kernel's own question now (change-request.md
+// item 1, `audienceFor("room", room)`): `resolveDoc` below already says which room a socket
+// sees, which is exactly `sees`'s default, so this compartment keeps no registry of its own.
 
 function escapeHtml(value: string): string {
   return value
@@ -106,18 +85,21 @@ function renderChat(name: string, room: string, people: string[], messages: Chat
 }
 
 // Presence is live connection state, not persisted data, so it's assembled
-// here (from the socket registry + a session lookup per socket) rather than
+// here (from the kernel's open-connection registry + a session lookup per socket) rather than
 // living in documents/room.ts, which only knows about the SQL-backed transcript.
 function peopleIn(room: string): string[] {
   return peopleWith(room);
 }
 
-// `peopleIn`, but treating `only`'s name as `as` instead of its live, current one -- for a
-// socket that just wrote its own session document (a logout revokes the row before this fires),
-// a fresh read of *that one socket* no longer reflects the name it had a moment ago, even though
-// every other socket's read is still accurate.
+// `peopleIn`, but treating `only`'s name as `as` instead of its live, current one, and counting
+// it even if the kernel has already deregistered it (a closing socket) -- for a socket that just
+// wrote its own session document (a logout revokes the row before this fires) or is on its way
+// out, a fresh read (or the audience itself) no longer reflects the name it had a moment ago,
+// even though every other socket's is still accurate.
 function peopleWith(room: string, only?: ServerWebSocket<ConnectionData>, as?: string): string[] {
-  const names = [...roomSockets(room)].map((ws) => (ws === only ? (as ?? null) : sessionDoc.read(ws.data.sessionId).name));
+  const sockets = audienceFor("room", room);
+  if (only && !sockets.includes(only)) sockets.push(only);
+  const names = sockets.map((ws) => (ws === only ? (as ?? null) : sessionDoc.read(ws.data.sessionId).name));
   // The same session can hold more than one socket (multiple tabs), which
   // must not show up as the same person listed twice.
   return [...new Set(names.filter((n): n is string => n !== null))];
@@ -130,7 +112,7 @@ function peopleWith(room: string, only?: ServerWebSocket<ConnectionData>, as?: s
 // join or leave this is: it doesn't need telling about its own presence, and (for a leave) may
 // already be closed.
 function notifyPresence(room: string, exclude: ServerWebSocket<ConnectionData>, op: PatchOp): void {
-  const others = [...roomSockets(room)].filter((ws) => ws !== exclude);
+  const others = audienceFor("room", room, exclude);
   if (others.length === 0) return;
   const version = history(prefixDoc("room", room), 1)[0]?.version ?? 0;
   const result = { version, applied: [op] };
@@ -139,34 +121,30 @@ function notifyPresence(room: string, exclude: ServerWebSocket<ConnectionData>, 
   renderRequested.emit({ sockets: others, write: { docType: "room", docId: room, result } });
 }
 
-// Adds `ws` to `room`'s live set and, only if `name` wasn't already there via another of this
-// session's sockets, announces the arrival to everyone else.
+// Announces `name`'s arrival in `room`, unless it was already there via another of this
+// session's sockets (the kernel has already registered `ws` as open by the time this runs, so
+// that other socket -- not `ws` itself -- is what "already" has to mean).
 function announceJoin(room: string, ws: ServerWebSocket<ConnectionData>, name: string): void {
-  const already = peopleIn(room).includes(name);
-  joinRoom(room, ws);
+  const already = audienceFor("room", room, ws).some((other) => sessionDoc.read(other.data.sessionId).name === name);
   if (!already) notifyPresence(room, ws, { op: "add", path: "/people/-", value: name });
 }
 
-// Removes `ws` from `room`'s live set and, only if that was `name`'s last socket there,
-// announces the departure -- at the index `name` held just before it left (using `peopleWith`,
-// not `peopleIn`: a logout's own session row is already revoked by the time this runs, so a
-// live read of `ws` itself would miss the name it had a moment ago).
+// Announces `name`'s departure from `room`, at the index it held just before leaving, unless
+// another of this session's sockets keeps it there. The kernel deregisters `ws` before calling
+// onClose, so by the time this runs it may already be gone from the audience -- `peopleWith`
+// counts it anyway, at its correct former name.
 function announceLeave(room: string, ws: ServerWebSocket<ConnectionData>, name: string): void {
   const index = peopleWith(room, ws, name).indexOf(name);
-  leaveRoom(room, ws);
-  if (index >= 0 && !peopleIn(room).includes(name)) {
-    notifyPresence(room, ws, { op: "remove", path: `/people/${index}` });
-  }
+  if (index < 0) return;
+  const stillThere = audienceFor("room", room, ws).some((other) => sessionDoc.read(other.data.sessionId).name === name);
+  if (!stillThere) notifyPresence(room, ws, { op: "remove", path: `/people/${index}` });
 }
 
 // Echoes a room document's ops to everyone who can see it, then asks them to bring their
 // page up to date -- naming the write, so `fragments` below can answer with the one <li>
 // that changed instead of the whole page. Shared by a direct write and by undo landing here.
 function echoAndNotify(room: string, result: RoomPatchResult): void {
-  if (result.applied.length === 0) return;
-  const payload = patchMessage("room", result.version, result.applied);
-  for (const ws of roomSockets(room)) ws.send(payload);
-  renderRequested.emit({ sockets: roomSockets(room), write: { docType: "room", docId: room, result } });
+  notify("room", room, result);
 }
 
 // "Joining"/"leaving" a room is now just a session document write (its

@@ -2,14 +2,15 @@ import * as boardDoc from "../documents/board";
 import * as sessionDoc from "../documents/session";
 import { patchMessage, type PatchOp } from "../../../src/json-patch";
 import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
+import { allOpenSockets, audienceFor } from "../../../src/compartments/audience";
 import { renderRequested } from "../../../src/compartments/render";
 import { boardPages } from "../views/board";
-import * as presence from "./presence";
 
 // The couple's document: the wedding and everything beneath it. Written by the couple, who
-// arrived by the wedding's own code; read by them alone, though what they keep (the courses, the
-// gifts, the events, where to stay) is on every household's pages, so a write here asks everyone
-// to re-render.
+// arrived by the wedding's own code; read by them alone (`resolveDoc` below is `sees`'s own
+// default here -- the couple's tabs, nobody else, change-request.md item 1), though what they
+// keep (the courses, the gifts, the events, where to stay) is on every household's pages, so a
+// write here asks everyone to re-render.
 
 type Rule = { path: RegExp; ops: PatchOp["op"][] };
 
@@ -37,8 +38,8 @@ const RULES: Rule[] = [
 function echoAndNotify(code: string, result: WriteResult): void {
   if (result.applied.length === 0) return;
   const payload = patchMessage("board", result.version, result.applied);
-  for (const ws of presence.seeingBoard()) ws.send(payload);
-  renderRequested.emit({ sockets: presence.everyone(), write: { docType: "board", docId: code, result } });
+  for (const ws of audienceFor("board", code)) ws.send(payload);
+  renderRequested.emit({ sockets: allOpenSockets(), write: { docType: "board", docId: code, result } });
 }
 
 export const board: Compartment = {
