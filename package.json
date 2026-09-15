@@ -10,7 +10,8 @@
     "start": "nohup bun src/start.ts > ${LOG_FILE:-server.log} 2>&1 & disown",
     "stop": "kill $(cat ${PID_FILE:-server.pid})",
     "cli": "bun src/cli.ts",
-    "test": "DB_PATH=:memory: TICK_MS=0 bun test --coverage"
+    "test": "DB_PATH=:memory: TICK_MS=0 bun test --coverage",
+    "stories": "DB_PATH=:memory: TICK_MS=0 bun src/stories-run.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
