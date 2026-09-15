@@ -170,6 +170,16 @@ applet -- each applet does its own, which is right while there are two of them.
 
 ## 10. The words: tray, compartment, tools
 
+*Done, 0.27.0, in the two commits rule 5 asked for.* Rule 3's "the tray renders the ground" turned
+out to mean something specific once built: the tray has no `render` at all (nothing for the
+kernel to wrap), so whatever it used to show before a code/name existed -- chat's name form, the
+wedding's welcome -- moved into whichever domain compartment is tried first (`room.ts`,
+`household.ts`); that compartment's own wrapper is the page in that state, exactly as rule 1
+allows. One thing the contract didn't say: a compartment's wrapper is a DOM/morph boundary, not a
+layout one, and chat's CSS relied on `.messages` being a direct flex child of `#app` -- fixed
+with `[id^="c-"] { display: contents; }`, now documented in the skill for the next example that
+hits it. `Example.tray` is optional; the ticker (no sign-in) has none.
+
 **What.** Bento is eta's page model, and the kernel says so in its names. The code unit now
 called a *concept* becomes a **compartment**: a document with a place on the page, where it shows
 its state. The session becomes the **tray**: the ground the compartments sit on, holding which
@@ -221,8 +231,9 @@ nothing; the box does the composing and the render does the filling.
 
 ## Order
 
-5, 7, and 8 are done. 10 next, since it renames what 1 then builds on: a compartment that renders
-into a keyed element is the audience question answered for the common case, and with 7 in place
-it is what turns "nothing to send" into "nobody to ask". 1 for what 10 leaves (a document seen by
-more than its own tray). 2 after that: it is the thing a person editing the wedding's lists feels.
-4 is a morning's tidy. 3 is worth doing only if a third example wants links.
+5, 7, 8, and 10 are done. 11 next, as the same sitting's third commit: it touches only the
+documents, which 10 did not move. 1 for what 10 leaves (a document seen by more than its own
+tray) -- with 10 done, a compartment that renders into a keyed element is the audience question
+answered for the common case, and with 7 in place it is what turns "nothing to send" into "nobody
+to ask". 2 after that: it is the thing a person editing the wedding's lists feels. 4 is a
+morning's tidy. 3 is worth doing only if a third example wants links.

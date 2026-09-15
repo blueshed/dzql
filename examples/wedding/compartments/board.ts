@@ -61,11 +61,11 @@ export const board: Compartment = {
   write(ws, code, ops): WriteResult {
     const result = boardDoc.patch(code, ops, ws.data.sessionId);
     echoAndNotify(code, result);
-    return { ...result, rendered: result.applied.length > 0 };
+    return result;
   },
   replay(ws, code, ops, undoes): WriteResult {
     const result = boardDoc.patch(code, ops, ws.data.sessionId, undoes);
     echoAndNotify(code, result);
-    return { ...result, rendered: result.applied.length > 0 };
+    return result;
   },
 };

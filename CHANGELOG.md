@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.27.0] - 2026-09-15
+
+### Changed
+
+- **The words: tray, compartment, tools** (change-request.md item 10), in the two commits it
+  asked for. First, a pure rename: `Concept` becomes `Compartment` (`src/concepts/` becomes
+  `src/compartments/`, `createLedgerConcept` becomes `createLedgerCompartment`), `Example.concepts`
+  becomes `compartments`, and the eta-app skill/CLAUDE.md/README follow, now also describing the
+  session as **the tray** and undo/redo/leaving as **tools** -- vocabulary only, nothing else
+  changed, full suite green. Second, the contract: a compartment's `render()` returns its own
+  place on the page, which the kernel wraps in `<div id="c-<docType>">`; after a write, the kernel
+  re-renders the *owning* compartment's element as a single `replace` for every connection that
+  sees the document, unless the compartment answers `fragments` itself (`[]` included) -- so
+  `fragments` is now the exception, not the rule, and `WriteResult` drops its `rendered` flag
+  entirely (a write's own connection is rendered the same way as any other that sees the
+  document, never twice). The tray and the kernel's own ledger compartment keep the same contract
+  minus `render` and aren't listed in `Example.compartments` (a new, optional field): whatever
+  they used to render (chat's name form, the wedding's welcome) moved into whichever domain
+  compartment is tried first. Chat and the wedding are the proof (both full suites green,
+  including real-browser tests); the ticker's measured numbers are unchanged (a tick still
+  renders nothing). One CSS fix fell out of it: a compartment's wrapper is a DOM/morph boundary,
+  not a layout one, and chat's `.messages` relied on being a direct flex child of `#app` --
+  `[id^="c-"] { display: contents; }` restores that, now documented in the skill.
+
 ## [0.26.0] - 2026-09-15
 
 ### Added

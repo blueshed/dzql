@@ -5,10 +5,14 @@ import { patchMessage } from "../../../src/json-patch";
 import type { PatchOp } from "../../../src/json-patch";
 import { createEvent } from "../../../src/compartments/bus";
 import type { Compartment } from "../../../src/compartments/compartment";
+import { renderRequested } from "../../../src/compartments/render";
 
 // The session is the tray (change-request.md item 10): the ground the room compartment sits on,
-// not a place of its own on the page. It renders the name form until there is a name, and
-// otherwise only takes the writes that move around it -- a name, a room.
+// not a place of its own on the page -- it has no `render` and isn't listed in the example's
+// `compartments`. `renderNameForm` is still exported from here (this document decides when to
+// show it), but `room.ts` is the one that renders it now, absorbing what used to be the tray's
+// own page. Otherwise this only takes the writes that move around the room compartment -- a
+// name, a room.
 
 // Fires after any successful write to a session document, so other compartments
 // can react to what changed (e.g. room membership) without session needing
@@ -19,7 +23,7 @@ export const sessionPatched = createEvent<{
   applied: PatchOp[];
 }>();
 
-function renderNameForm(): string {
+export function renderNameForm(): string {
   return `
     <form data-write='{"doc":"session","op":"replace","path":"/name"}'>
       <label for="name">Enter your name</label>
@@ -38,6 +42,8 @@ const WRITABLE_PATHS = new Set(["/name", "/room"]);
 // room's broadcast) and lets other compartments react, e.g. room membership.
 // Exported because undo (compartments/ledger.ts) can land back on this same
 // document and needs to echo it exactly the same way a direct write does.
+// Not a compartment, so there's no owning element for rule 2's default to re-render --
+// the tray always asks for its own full page instead.
 export function echoSessionPatch(
   ws: ServerWebSocket<ConnectionData>,
   before: sessionDoc.SessionDocument,
@@ -47,16 +53,13 @@ export function echoSessionPatch(
   if (applied.length > 0) {
     ws.send(patchMessage("session", version, applied));
     sessionPatched.emit({ ws, before, applied });
+    renderRequested.emit([ws]);
   }
   return { version, applied };
 }
 
 export const session: Compartment = {
   docType: "session",
-  render(sessionId) {
-    const { name } = sessionDoc.read(sessionId);
-    return name ? undefined : renderNameForm();
-  },
   resolveDoc(ws) {
     return ws.data.sessionId; // every connection always sees its own session
   },

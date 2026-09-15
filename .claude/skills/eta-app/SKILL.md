@@ -13,12 +13,19 @@ contracts and code excerpts — this file is the checklist.
 **Read `reference.md`'s "Vocabulary" section before designing anything.**
 There is no separate `views.ts`/view layer in eta — that architecture was
 tried and removed. A `Compartment` is model+view+controller for one domain idea
-(a new `docType`, its own document, its own undo history); `render()`
-returns the *whole* current screen, not a per-compartment fragment; an applet
-is only for a DOM element that needs client-side JS state to survive a
-re-render (a typed filter, not "the view for X"). If your plan for a new
-example has a `Renderer`, a `views/` directory, or one compartment per screen
-rather than per domain idea, stop and re-read that section first.
+(a new `docType`, its own document, its own undo history); `render()` returns
+that compartment's own place on the page (the kernel wraps it in
+`<div id="c-<docType>">`) or `undefined` to defer to the next one — the
+*whole* page only when, as with the sign-in screen, it's the only compartment
+that answers; an applet is only for a DOM element that needs client-side JS
+state to survive a re-render (a typed filter, not "the view for X"). Session-
+or visit-like state (which page a tab is on, which drawer is open) is the
+**tray** (`Example.tray`), not a compartment: it has no `render` and doesn't
+appear in `Example.compartments`, so absorb whatever it used to show (a
+sign-in form, a welcome screen) into whichever domain compartment is tried
+first. If your plan for a new example has a `Renderer`, a `views/` directory,
+or one compartment per screen rather than per domain idea, stop and re-read
+that section first.
 
 ## Adding or extending an example
 
@@ -37,19 +44,31 @@ rather than per domain idea, stop and re-read that section first.
    not in the compartment's `permit()` — one home for "is this value valid."
 4. **`compartments/<thing>.ts`** — implement the `Compartment` contract: `docType`,
    `resolveDoc`, `permit`, `write`, and optionally `render`/`replay`/
-   `onOpen`/`onClose`. `write()` echoes via `ws.send(patchMessage(...))`;
-   `replay()` is `write`'s twin for undo — same apply-then-echo path, but
-   skips `permit()` since it's replaying an already-recorded inverse, not a
-   fresh request.
+   `fragments`/`onOpen`/`onClose`. `write()` echoes via `ws.send(patchMessage(...))`
+   and is responsible for asking every connection that sees the document
+   (`renderRequested.emit`), itself included — the kernel never renders a
+   write's own connection separately. Absent `fragments`, the kernel's
+   default is a single replace of this compartment's own `#c-<docType>`
+   element; implement `fragments` only for the writes where something
+   smaller is worth answering. `replay()` is `write`'s twin for undo — same
+   apply-then-echo path, but skips `permit()` since it's replaying an
+   already-recorded inverse, not a fresh request. A tray (`Example.tray`) or
+   the kernel's own ledger uses this same contract minus `render` — no place
+   on the page, so a write to one always asks for the whole page instead.
 5. **`applets/<name>.ts`** — only when a piece of UI needs live client-side
    state a plain form/button can't express (typing-to-filter, etc.). Call
    `registerApplet(name, {mount, update?})` from `src/applets`.
 6. **`client/index.html` + `client/main.ts`** — `main.ts` imports this
    example's own applets first, then imports `src/client/app`. The kernel's
-   client knows nothing about any specific applet.
+   client knows nothing about any specific applet. If any CSS relies on
+   something being a direct child of `#app` (a flex/grid layout, most
+   likely), give the compartment wrapper `[id^="c-"] { display: contents; }`
+   -- it's a DOM/morph boundary, not meant to be a layout one.
 7. **`index.ts`** — export `example: Example` = `{ name, compartments: [...],
-   active(sessionId), index, routes? }`. This is the one thing the kernel
-   needs to run the example.
+   tray?, active(sessionId), index, routes? }`. This is the one thing the
+   kernel needs to run the example. `tray` is optional -- an example with
+   nothing session-like to gate (the ticker: no sign-in, anyone may write)
+   doesn't need one.
 8. **`cli.ts`** (optional) — export an `aliases` table of short verbs mapping
    to `{doc, ops}`. No database import here; it only builds wire ops.
 9. **Tests** — one test file per document (`documents/<thing>.test.ts`), plus

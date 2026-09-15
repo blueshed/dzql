@@ -8,7 +8,7 @@ import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { renderRequested, type HtmlOp } from "../../../src/compartments/render";
 import { history, prefixDoc } from "../../../src/ledger";
-import { sessionPatched } from "./session";
+import { renderNameForm, sessionPatched } from "./session";
 
 // Which live connections are currently subscribed to which room, for
 // broadcast. Not persisted data (see documents/room.ts for that) and not
@@ -188,8 +188,10 @@ sessionPatched.on(({ ws, before, applied }) => {
 export const room: Compartment = {
   docType: "room",
   render(sessionId) {
+    // Absorbs the tray's old page: with no name, room is the only compartment on the page, so
+    // it's the one that shows the name form (the tray itself has no `render` -- item 10's rule 3).
     const { name, room: current } = sessionDoc.read(sessionId);
-    if (!name) return undefined; // not reached in practice: the session compartment always renders first
+    if (!name) return renderNameForm();
     if (!current) return renderRoomSelector(name, roomDoc.list());
 
     const { transcript } = roomDoc.read(current);
@@ -210,21 +212,16 @@ export const room: Compartment = {
 
     const result = roomDoc.patch(roomName, prepared, ws.data.sessionId);
     echoAndNotify(roomName, result);
-    return { ...result, rendered: result.applied.length > 0 };
+    return result;
   },
-  // Undo landing back on the room document (e.g. a sent message walked
-  // back): apply the ledger's inverse ops directly -- skipping permit(),
-  // since this isn't a fresh request against the normal writable surface --
-  // then echo and notify exactly as a direct write would. `rendered: true`
-  // unconditionally, same as a direct write's broadcast: every connection in
-  // the room besides the one that pressed undo needs the fresh update this
-  // already triggered via echoAndNotify, and the one that did gets it from
-  // the dispatcher's own render fallback since this only skips *its*
-  // automatic render, not anyone else's.
+  // Undo landing back on the room document (e.g. a sent message walked back): apply the
+  // ledger's inverse ops directly -- skipping permit(), since this isn't a fresh request
+  // against the normal writable surface -- then echo and notify exactly as a direct write
+  // would, covering every connection in the room including the one that pressed undo (rule 2).
   replay(ws, roomName, ops, undoes) {
     const result = roomDoc.patch(roomName, ops, ws.data.sessionId, undoes);
     echoAndNotify(roomName, result);
-    return { ...result, rendered: true };
+    return result;
   },
   // The delta in HTML's terms: a sent message is one <li> appended; a message walked back by
   // undo is its <li> removed, and the message after it redrawn, since it may now start a run

@@ -26,6 +26,13 @@ body {
   color: var(--fg);
 }
 
+/* A compartment's wrapper (item 10's rule 1, `<div id="c-<docType>">`) is a DOM/morph boundary,
+   not a layout one -- it disappears from the box tree so #app's flex children (.messages
+   stretching to fill, in particular) are unaffected by which compartment is wrapping them. */
+[id^="c-"] {
+  display: contents;
+}
+
 #app {
   max-width: 32rem;
   margin: 0 auto;

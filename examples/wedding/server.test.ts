@@ -27,7 +27,7 @@ afterAll(() => {
 
 type WireMessage = {
   type: string;
-  html: string;
+  html?: string;
   doc?: string;
   version?: number;
   ops?: PatchOp[] | HtmlOp[];
@@ -73,6 +73,12 @@ async function expectMessage(ws: WebSocket, type: string): Promise<WireMessage> 
   expect(message.type).toBe(type);
   return message;
 }
+
+/** A render's HTML, whether it came as the whole page or as fragment ops -- item 10's rule 2
+ * default is a single replace of the owning compartment's own element, which for household and
+ * board carries their entire page just as a full render would, so a content check doesn't need
+ * to care which shape it arrived as. */
+const htmlOf = (m: WireMessage): string => m.html ?? ((m.ops ?? []) as { html?: string }[]).map((o) => o.html ?? "").join("");
 
 /** Nothing else arrives within a beat: a refused write renders once, a broadcast write renders the writer once. */
 async function expectQuiet(ws: WebSocket): Promise<void> {
@@ -133,7 +139,7 @@ describe("routes", () => {
     // and the key is a plain write on the document, undoable like any other
     write(ws, "board", [{ op: "replace", path: "/picture_key", value: key }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain(`/pictures/${key}`);
+    expect(htmlOf(await expectMessage(ws, "render"))).toContain(`/pictures/${key}`);
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     await expectMessage(ws, "patch");
     await expectMessage(ws, "render");
@@ -211,7 +217,7 @@ describe("a household", () => {
     write(mine, "household", [{ op: "replace", path: "/answer", value: "maybe" }]);
     const patch = await expectMessage(mine, "patch");
     expect(patch).toMatchObject({ doc: "household", ops: [{ op: "replace", path: "/answer", value: "maybe" }] });
-    expect((await expectMessage(mine, "render")).html).toContain("face-mark maybe");
+    expect(htmlOf(await expectMessage(mine, "render"))).toContain("face-mark maybe");
     await expectQuiet(mine); // rendered once, not twice
     await expectMessage(other, "patch");
     await expectMessage(other, "render");
@@ -240,7 +246,7 @@ describe("a household", () => {
     // one plus-one is owed: the first is taken, the second refused
     write(ws, "household", [{ op: "add", path: "/guests/-", value: "Plus One" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain("Plus");
+    expect(htmlOf(await expectMessage(ws, "render"))).toContain("Plus");
     await refused("household", [{ op: "add", path: "/guests/-", value: "Plus Two" }]);
 
     // after the deadline the answer, coming and the choices are locked; the look and the words are not
@@ -252,7 +258,7 @@ describe("a household", () => {
     expect((await expectMessage(ws, "render")).html).toContain("Answers closed on");
     write(ws, "household", [{ op: "replace", path: "/message", value: "Still allowed" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain("Still allowed");
+    expect(htmlOf(await expectMessage(ws, "render"))).toContain("Still allowed");
     boardDoc.patch("DASH", [{ op: "remove", path: "/deadline" }], "setup");
     ws.close();
   });
@@ -370,7 +376,9 @@ describe("a household", () => {
     expect(await targets(family)).toEqual(["#family-photo"]);
     await expectMessage(home, "patch");
     await expectQuiet(home);
-    expect((await expectMessage(welcome, "render")).html).toContain("at-welcome");
+    // welcome has no code, so household.render() is the one showing it (rule 1: it can still be
+    // the whole page) -- and since household is this write's owner, welcome is asked too.
+    expect(htmlOf(await expectMessage(welcome, "render"))).toContain("at-welcome");
 
     // a choice: the drawer's menu and the list's row for the household, the family's row for the couple, nothing for the photos
     await page(family, [{ op: "replace", path: `/reading/family-${hid}`, value: "list" }]);
@@ -385,11 +393,12 @@ describe("a household", () => {
     await expectMessage(family, "patch");
     expect(await targets(family)).toEqual([`#guest-${guest}`]);
 
-    // anything else still goes out whole
+    // anything else still goes out as this compartment's own element (its whole page, in
+    // substance -- household has no smaller answer for a plain message change)
     write(mine, "household", [{ op: "replace", path: "/message", value: "whole page" }]);
     await expectMessage(mine, "patch");
-    expect((await expectMessage(mine, "render")).html).toContain("whole page");
-    expect((await expectMessage(elsewhere, "render")).html).toBeDefined();
+    expect(htmlOf(await expectMessage(mine, "render"))).toContain("whole page");
+    expect(htmlOf(await expectMessage(elsewhere, "render"))).not.toBe("");
 
     householdDoc.patch(code, [{ op: "remove", path: `/guests/${guest}/choices/2/dish` }, { op: "replace", path: `/guests/${guest}/minifigure/hair`, value: "none" }], "setup");
     for (const ws of [mine, list, everyone, elsewhere, board, family, home, welcome]) ws.close();

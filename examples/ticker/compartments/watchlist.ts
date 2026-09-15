@@ -27,12 +27,12 @@ export const watchlist: Compartment = {
   write(ws, sessionId, ops) {
     const result = watchlistDoc.patch(sessionId, ops);
     echoAndNotify(ws, result);
-    return { ...result, rendered: result.applied.length > 0 };
+    return result;
   },
   replay(ws, sessionId, ops, undoes) {
     const result = watchlistDoc.patch(sessionId, ops, undoes);
     echoAndNotify(ws, result);
-    return { ...result, rendered: result.applied.length > 0 };
+    return result;
   },
   fragments(_ws, sessionId): HtmlOp[] {
     const list = watchlistDoc.read(sessionId);

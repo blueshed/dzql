@@ -1,5 +1,5 @@
 import { assemble } from "./compartments";
-import { fragmentsMessage, renderMessage, renderRequested } from "./compartments/render";
+import { compartmentTarget, fragmentsMessage, renderMessage, renderRequested, wrapCompartment } from "./compartments/render";
 import type { ConnectionData } from "./connection";
 import type { Example } from "./example";
 import type { PatchOp } from "./json-patch";
@@ -19,14 +19,23 @@ renderRequested.on((request) => {
   const { sockets, write } = "sockets" in request ? request : { sockets: request, write: undefined };
   const owner = write ? active.assembled.byDocType.get(write.docType) : undefined;
   for (const ws of sockets) {
-    // The owning compartment may say exactly what changed on this page (HTML ops), or that nothing
-    // did; only when it declines does the whole page go out.
+    // The owning compartment may say exactly what changed on this page (HTML ops), or that
+    // nothing did -- fragments is the exception, not the rule (item 10's rule 2), so it wins
+    // whenever it answers, `[]` included.
     const ops = write && owner?.fragments?.(ws, write.docId, write.result);
     if (ops) {
       if (ops.length > 0) ws.send(fragmentsMessage(ops));
-    } else {
-      ws.send(renderMessage(active.assembled.renderFor(ws.data.sessionId)));
+      continue;
     }
+    // The default: re-render just the owning compartment's own element, not the whole page --
+    // but only when there is one to re-render (a tray or ledger write has none, and a
+    // compartment's render can itself decline for this session right now).
+    const html = write && owner?.render?.(ws.data.sessionId);
+    if (html !== undefined) {
+      ws.send(fragmentsMessage([{ op: "replace", target: `#${compartmentTarget(write!.docType)}`, html: wrapCompartment(write!.docType, html) }]));
+      continue;
+    }
+    ws.send(renderMessage(active.assembled.renderFor(ws.data.sessionId)));
   }
 });
 
@@ -91,16 +100,20 @@ export function createServer(example: Example, port: number | string = process.e
 
         const compartment = message.doc ? byDocType.get(message.doc) : undefined;
         const ops = message.ops ?? [];
-        let rendered = false;
+        let wrote = false;
 
         if (compartment && ops.length > 0) {
           const docId = compartment.resolveDoc(ws);
           if (docId && ops.every((op) => compartment.permit(ws, op))) {
-            rendered = Boolean(compartment.write(ws, docId, ops).rendered);
+            wrote = compartment.write(ws, docId, ops).applied.length > 0;
           }
         }
 
-        if (!rendered) pushRender(ws);
+        // A write that actually applied something is responsible for asking its own connection
+        // to be brought up to date, same as any other connection that sees the document (rule
+        // 2's write() doc comment) -- rendering it again here would be the second time. Nothing
+        // applied (rejected, unknown doc, empty ops) means nothing asked, so this is the only render.
+        if (!wrote) pushRender(ws);
       },
       close(ws) {
         for (const compartment of compartments) compartment.onClose?.(ws);

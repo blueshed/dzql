@@ -7,6 +7,7 @@ import { renderRequested, type HtmlOp } from "../../../src/compartments/render";
 import * as boardDoc from "../documents/board";
 import { boardPhoto, familyGuestRow, familyPhoto, reading as boardReading } from "../views/board";
 import { dressMount, everyonePhoto, familyPhoto as ownPhoto, guestRow, householdPages, menuMount, reading, type HouseholdView } from "../views/household";
+import { welcome } from "../views/welcome";
 import * as presence from "./presence";
 
 // A household's document, written by the household that arrived by its code. Nearly everything
@@ -60,7 +61,11 @@ const replace = (target: string, html: string): HtmlOp => ({ op: "replace", targ
 export const household: Compartment = {
   docType: "household",
   render(sessionId) {
+    // Absorbs the tray's old page: household is tried first (examples/wedding/index.ts), so with
+    // no code yet it's the one that shows the welcome (the tray itself has no `render` -- item
+    // 10's rule 3).
     const session = sessionDoc.read(sessionId);
+    if (!session.code) return welcome(weddingDoc.wedding(), session.note);
     if (session.kind !== "household") return undefined;
     const v = viewFor(session);
     return v && householdPages(v); // v is always there in practice: read() only reports a kind for a code that exists
@@ -85,7 +90,7 @@ export const household: Compartment = {
   write(ws, code, ops): WriteResult {
     const result = householdDoc.patch(code, ops, ws.data.sessionId);
     echoAndNotify(code, result);
-    return { ...result, rendered: result.applied.length > 0 };
+    return result;
   },
   // Undo landing back on this household: apply the ledger's inverse ops directly -- skipping
   // permit(), since this isn't a fresh request against the writable surface -- then echo and
@@ -93,7 +98,7 @@ export const household: Compartment = {
   replay(ws, code, ops, undoes): WriteResult {
     const result = householdDoc.patch(code, ops, ws.data.sessionId, undoes);
     echoAndNotify(code, result);
-    return { ...result, rendered: result.applied.length > 0 };
+    return result;
   },
   // The delta in HTML's terms, for the two writes that happen most -- a look changing, a
   // choice made -- which touch only the applets and rows that show that guest. Per viewer:

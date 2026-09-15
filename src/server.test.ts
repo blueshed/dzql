@@ -41,10 +41,11 @@ function noteWrite(ws: Bun.ServerWebSocket<{ sessionId: string }>, id: string, o
   const result: WriteResult = { version, applied };
   if (applied.length > 0) {
     ws.send(patchMessage("note", version, applied));
-    // Ask for the render through the bus, naming the write, so `fragments` below gets its say.
+    // Ask for the render through the bus, naming the write, so `fragments` below gets its say
+    // and, absent that, rule 2's default (a single replace of this compartment's own element).
     renderRequested.emit({ sockets: [ws], write: { docType: "note", docId: id, result } });
   }
-  return { ...result, rendered: applied.length > 0 };
+  return result;
 }
 
 const noteCompartment: Compartment = {
@@ -84,6 +85,11 @@ function makeExample(name: string): Example {
 }
 
 type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[] };
+
+/** A render's HTML, whether it came as the whole page or as fragment ops (rule 2's default: a
+ * single replace of the owning compartment's own element, unless it answers `fragments` itself). */
+const htmlOf = (m: WireMessage): string =>
+  m.html ?? (m.ops as { html?: string }[] | undefined ?? []).map((o) => o.html ?? "").join("");
 
 const queues = new WeakMap<WebSocket, WireMessage[]>();
 const waiters = new WeakMap<WebSocket, ((message: WireMessage) => void)[]>();
@@ -167,21 +173,24 @@ describe("createServer, generically (no example from the examples directory invo
     const patch = await expectMessage(ws, "patch");
     expect(patch.doc).toBe("note");
     expect(patch.ops).toEqual([{ op: "replace", path: "/text", value: "hello kernel" }]);
+    // "hello kernel" doesn't start with "frag"/"quiet", so fragments() declines and rule 2's
+    // default applies: a single replace of this compartment's own element, not the whole page.
     const rendered = await expectMessage(ws, "render");
-    expect(rendered.html).toContain("hello kernel");
+    expect(rendered.html).toBeUndefined();
+    expect(rendered.ops).toEqual([{ op: "replace", target: "#c-note", html: '<div id="c-note"><p class="note">hello kernel</p></div>' }]);
 
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const undonePatch = await expectMessage(ws, "patch");
     expect(undonePatch.doc).toBe("note");
     expect(undonePatch.ops).toEqual([{ op: "replace", path: "/text", value: "" }]);
     const undoneRender = await expectMessage(ws, "render");
-    expect(undoneRender.html).not.toContain("hello kernel");
+    expect(htmlOf(undoneRender)).not.toContain("hello kernel");
 
     // redo: the undo walked forward again, through the same replay
     write(ws, "ledger", [{ op: "add", path: "/latest" }]);
     const redonePatch = await expectMessage(ws, "patch");
     expect(redonePatch.ops).toEqual([{ op: "replace", path: "/text", value: "hello kernel" }]);
-    expect((await expectMessage(ws, "render")).html).toContain("hello kernel");
+    expect(htmlOf(await expectMessage(ws, "render"))).toContain("hello kernel");
     // nothing left to redo: a render, no patch
     write(ws, "ledger", [{ op: "add", path: "/latest" }]);
     await expectMessage(ws, "render");
@@ -189,7 +198,7 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
-  test("a compartment's fragments are sent instead of the page; nothing is sent when it says nothing changed; the page when it declines", async () => {
+  test("a compartment's fragments are sent instead of the page; nothing is sent when it says nothing changed; its own element (not the page) when it declines", async () => {
     const ws = connect(server);
     await opened(ws);
     await expectMessage(ws, "render");
@@ -205,9 +214,11 @@ describe("createServer, generically (no example from the examples directory invo
     // no render follows: the next thing this connection hears is the next write's echo
     write(ws, "note", [{ op: "replace", path: "/text", value: "plain" }]);
     await expectMessage(ws, "patch");
-    const page = await expectMessage(ws, "render");
-    expect(page.ops).toBeUndefined();
-    expect(page.html).toContain("plain");
+    // "plain" declines fragments(), so rule 2's default applies: a replace of this compartment's
+    // own element, not the whole page -- there being only one compartment here doesn't change that.
+    const own = await expectMessage(ws, "render");
+    expect(own.html).toBeUndefined();
+    expect(own.ops).toEqual([{ op: "replace", target: "#c-note", html: '<div id="c-note"><p class="note">plain</p></div>' }]);
 
     ws.close();
   });

@@ -25,12 +25,12 @@ export const clock: Compartment = {
   write(ws, sessionId, ops) {
     const result = clockDoc.patch(sessionId, ops);
     echoAndNotify(ws, result);
-    return { ...result, rendered: result.applied.length > 0 };
+    return result;
   },
   replay(ws, sessionId, ops, undoes) {
     const result = clockDoc.patch(sessionId, ops, undoes);
     echoAndNotify(ws, result);
-    return { ...result, rendered: result.applied.length > 0 };
+    return result;
   },
   // The clock took the op; nothing on the page to render.
   fragments() {

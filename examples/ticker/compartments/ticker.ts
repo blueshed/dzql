@@ -69,7 +69,7 @@ export const ticker: Compartment = {
   },
   write(ws, _docId, ops) {
     const result = tick(ops, ws.data.sessionId);
-    return { ...result, rendered: result.applied.length > 0 };
+    return result;
   },
   // No replay(): a tick is recorded as not undoable, so the ledger's cursor never lands here.
   // The board took the ops; there is nothing on the page to render.

@@ -19,8 +19,15 @@ type RouteHandler = (
 export type Example = {
   /** Identifies this example (namespaces its migrations, distinguishes it from another example object at runtime). */
   name: string;
-  /** This example's compartments, in render order (the first to return a view wins). The kernel appends its own ledger compartment after these. */
+  /** This example's compartments, in render order (the first to return a view wins). The kernel appends its own ledger compartment after these -- neither the ledger nor `tray` below is a compartment (item 10's rule 3). */
   compartments: Compartment[];
+  /**
+   * The ground the compartments sit on: which page a tab is on, which drawer is open, how a
+   * collection is read -- a document with no place of its own on the page, so it has no `render`
+   * and isn't in `compartments` above. Optional: an example with no such state (the ticker, where
+   * anyone may write with no sign-in) doesn't need one.
+   */
+  tray?: Compartment;
   /** May this session write at all right now? */
   active(sessionId: string): boolean;
   /** The page served at "/", via Bun's HTML import. */
