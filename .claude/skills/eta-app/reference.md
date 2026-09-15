@@ -215,6 +215,10 @@ okay." `examples/chat/documents/session.ts::patch()`:
   not pushed to `applied`.
 - Builds the SQL-level effect and appends the applied op plus its inverse
   (`inverse.unshift(...)`, since inverses undo in reverse order).
+- Decides whether the write is the person's to undo. A fact from outside -- a price tick, a
+  reading -- is recorded with `undoable: false` (the sixth argument to `record()`): on the
+  ledger for history, never under Undo (`examples/ticker/documents/market.ts`). A document
+  that is pure UI state (the wedding's session) records nothing at all.
 - Calls `record(prefixDoc(docType, id), applied, inverse, sessionId, undoes)` once,
   after the loop, and returns `{version, applied}`. Note: pass the acting
   `sessionId` to `record()`, not the document `id` (for a session doc they are

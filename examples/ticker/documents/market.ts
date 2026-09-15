@@ -4,8 +4,9 @@ import { parsePointer } from "../../../src/json-pointer";
 import { prefixDoc, record } from "../../../src/ledger";
 
 // The market: one document, a quote per symbol. A tick is `replace /<SYMBOL>/price`, from the
-// feed or from anyone the concept permits, and every tick is on the ledger with its inverse --
-// so the last minute can be replayed, and a hand-typed tick can be undone.
+// feed or from anyone the concept permits. Every tick is on the ledger with its inverse, so the
+// last minute can be read back -- but a tick is a fact, not the person's doing, and is recorded
+// as not undoable: nobody's Undo can move the market.
 
 export type Quote = { name: string; price: number; prev: number };
 export type MarketDocument = Record<string, Quote>;
@@ -34,7 +35,7 @@ export function has(symbol: string): boolean {
 export type MarketPatchResult = { version: number; applied: PatchOp[] };
 
 /** Applies ticks: `replace /<SYMBOL>/price` with a positive number, to a symbol the market has. */
-export function patch(ops: PatchOp[], sessionId: string, undoes?: number): MarketPatchResult {
+export function patch(ops: PatchOp[], sessionId: string): MarketPatchResult {
   const applied: PatchOp[] = [];
   const inverse: PatchOp[] = [];
 
@@ -52,6 +53,6 @@ export function patch(ops: PatchOp[], sessionId: string, undoes?: number): Marke
     inverse.unshift({ op: "replace", path: op.path, value: before.price });
   }
 
-  const version = record(prefixDoc("ticker", MARKET), applied, inverse, sessionId, undoes);
+  const version = record(prefixDoc("ticker", MARKET), applied, inverse, sessionId, undefined, false);
   return { version, applied };
 }

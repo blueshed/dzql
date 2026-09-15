@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { history, prefixDoc } from "../../../src/ledger";
+import { history, nextUndo, prefixDoc } from "../../../src/ledger";
 import { MARKET, has, patch, read, symbols } from "./market";
 
 describe("market document", () => {
@@ -11,12 +11,14 @@ describe("market document", () => {
     expect(has("NOPE")).toBe(false);
   });
 
-  test("a tick replaces a price, keeps the previous one, rounds to a cent, and records its inverse", () => {
+  test("a tick replaces a price, keeps the previous one, rounds to a cent, and is on the ledger with its inverse -- but never under Undo", () => {
     const before = read().BRVO!.price;
-    const result = patch([{ op: "replace", path: "/BRVO/price", value: "65.123" }], "feed");
+    const session = crypto.randomUUID();
+    const result = patch([{ op: "replace", path: "/BRVO/price", value: "65.123" }], session);
     expect(result.applied).toEqual([{ op: "replace", path: "/BRVO/price", value: 65.12 }]);
     expect(read().BRVO).toMatchObject({ price: 65.12, prev: before });
     expect(history(prefixDoc("ticker", MARKET), 1)[0]!.inverse).toEqual([{ op: "replace", path: "/BRVO/price", value: before }]);
+    expect(nextUndo(session)).toBeUndefined(); // a fact, not the person's doing
     patch(history(prefixDoc("ticker", MARKET), 1)[0]!.inverse, "feed");
     expect(read().BRVO!.price).toBe(before);
   });

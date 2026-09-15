@@ -138,6 +138,21 @@ describe("ledger", () => {
     expect(nextRedo(session)).toBeUndefined();
   });
 
+  test("a write recorded as not undoable is history, not the cursor's: undo passes over it, and it does not end a redo", () => {
+    const session = crypto.randomUUID();
+    const doc = `test:${crypto.randomUUID()}`;
+    const fact = `fact:${crypto.randomUUID()}`;
+    record(doc, [{ op: "replace", path: "/x", value: 1 }], [{ op: "replace", path: "/x", value: 0 }], session);
+    record(fact, [{ op: "replace", path: "/price", value: 9 }], [{ op: "replace", path: "/price", value: 8 }], session, undefined, false);
+    expect(history(fact)).toHaveLength(1);
+    expect(nextUndo(session)?.doc).toBe(doc); // not the fact, though it is newer
+    const undone = nextUndo(session)!;
+    record(doc, undone.inverse, undone.ops, session, undone.id);
+    record(fact, [{ op: "replace", path: "/price", value: 10 }], [{ op: "replace", path: "/price", value: 9 }], session, undefined, false);
+    expect(nextRedo(session)?.doc).toBe(doc); // a fact arriving is not a fresh write of the person's
+    expect(nextUndo(session)).toBeUndefined();
+  });
+
   test("another session's undo is never this session's to redo", () => {
     const a = crypto.randomUUID();
     const doc = `test:${crypto.randomUUID()}`;

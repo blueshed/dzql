@@ -107,6 +107,10 @@ that is a `patch()` that simply never calls `record()`, and `inspect` reports it
 forever. Chat records its session writes, so undoing there can re-join a room. The two examples
 disagree and the kernel has no word for the choice.
 
+*Half done, 0.26.0:* the ledger gained the other word, `record(..., undoable: false)`, for a write
+that is a fact (a price tick): on the ledger, never under Undo. The unrecorded case below is still
+only a convention.
+
 **How.** Nothing to build; a sentence in `concepts/concept.ts` and the skill: a document whose
 `patch()` does not record is off the ledger by design, its version is always 0, and undo never
 lands on it. If the kernel ever grows a flag, `Concept.ledger?: false` is the shape.

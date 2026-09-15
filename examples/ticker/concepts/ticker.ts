@@ -21,8 +21,8 @@ const TICK_MS = Number(process.env.TICK_MS ?? 500);
 const MAX_MOVE = 0.006;
 
 /** One tick, from wherever it comes: applied, echoed to everyone, the pages told (and answered with nothing to render). */
-export function tick(ops: PatchOp[], sessionId: string, undoes?: number): WriteResult {
-  const result = market.patch(ops, sessionId, undoes);
+export function tick(ops: PatchOp[], sessionId: string): WriteResult {
+  const result = market.patch(ops, sessionId);
   if (result.applied.length > 0) {
     const payload = patchMessage("ticker", result.version, result.applied);
     for (const ws of sockets) ws.send(payload);
@@ -70,10 +70,7 @@ export const ticker: Concept = {
     const result = tick(ops, ws.data.sessionId);
     return { ...result, rendered: result.applied.length > 0 };
   },
-  replay(ws, _docId, ops, undoes) {
-    const result = tick(ops, ws.data.sessionId, undoes);
-    return { ...result, rendered: result.applied.length > 0 };
-  },
+  // No replay(): a tick is recorded as not undoable, so the ledger's cursor never lands here.
   // The board took the ops; there is nothing on the page to render.
   fragments() {
     return [];

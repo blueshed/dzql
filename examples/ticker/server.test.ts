@@ -94,11 +94,19 @@ describe("the ticker", () => {
     write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
     await expectMessage(a, "render");
     await expectQuiet(b);
-    // and undo walks the typed tick back, for everyone
-    write(a, "ledger", [{ op: "remove", path: "/latest" }]);
-    expect(await expectMessage(a, "patch")).toMatchObject({ ops: [{ op: "replace", path: "/DLTA/price", value: before }] });
+    // a tick is a fact: Undo passes over it to the person's own last write, and the market stands
+    write(a, "watchlist", [{ op: "add", path: "/symbols/-", value: "DLTA" }]);
+    await expectMessage(a, "patch");
+    await expectMessage(a, "render");
+    write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 2 }]);
+    await expectMessage(a, "patch");
     await expectMessage(b, "patch");
-    expect(market.read().DLTA!.price).toBe(before);
+    write(a, "ledger", [{ op: "remove", path: "/latest" }]);
+    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "remove", path: "/symbols/0" }] });
+    await expectMessage(a, "render");
+    expect(market.read().DLTA!.price).toBe(before + 2);
+    await expectQuiet(b);
+    market.patch([{ op: "replace", path: "/DLTA/price", value: before }], "test");
     a.close();
     b.close();
   });

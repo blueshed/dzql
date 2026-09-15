@@ -14,8 +14,8 @@ export type LedgerEntry = {
 const currentVersionStmt = db.query<{ version: number | null }, [string]>(
   "SELECT MAX(version) AS version FROM ledger WHERE doc = ?",
 );
-const insertStmt = db.query<unknown, [string, number, string, string, string, number, number | null]>(
-  "INSERT INTO ledger (doc, version, ops, inverse, session_id, at, undoes) VALUES (?, ?, ?, ?, ?, ?, ?)",
+const insertStmt = db.query<unknown, [string, number, string, string, string, number, number | null, number]>(
+  "INSERT INTO ledger (doc, version, ops, inverse, session_id, at, undoes, undoable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 );
 const historyStmt = db.query<
   { id: number; doc: string; version: number; ops: string; inverse: string; sessionId: string; at: number },
@@ -33,10 +33,11 @@ const historyStmt = db.query<
 // which way an entry went (even: forward, a write or a redo; odd: backward, an undo), and the
 // entry at the end of a chain -- the tip, nothing has undone it yet -- is the one that counts.
 // A fresh write ends what could be redone: a redo candidate must be newer than the session's
-// newest original write, as in any editor.
+// newest original write, as in any editor. A write recorded as not undoable (a fact: a price
+// tick) starts no chain and ends no redo: the cursor passes over it as if it were not there.
 const tipsCte = `
   WITH RECURSIVE chain(id, depth) AS (
-    SELECT id, 0 FROM ledger WHERE session_id = ?1 AND undoes IS NULL
+    SELECT id, 0 FROM ledger WHERE session_id = ?1 AND undoes IS NULL AND undoable = 1
     UNION ALL
     SELECT l.id, c.depth + 1 FROM ledger l JOIN chain c ON l.undoes = c.id
   ),
@@ -57,7 +58,7 @@ const nextUndoStmt = db.query<EntryRow, [string]>(`${tipsCte}
 const nextRedoStmt = db.query<EntryRow, [string]>(`${tipsCte}
   SELECT ${entryColumns} FROM ledger l JOIN tips t ON t.id = l.id
   WHERE t.depth % 2 = 1
-    AND l.id > COALESCE((SELECT MAX(id) FROM ledger WHERE session_id = ?1 AND undoes IS NULL), 0)
+    AND l.id > COALESCE((SELECT MAX(id) FROM ledger WHERE session_id = ?1 AND undoes IS NULL AND undoable = 1), 0)
   ORDER BY l.id DESC
   LIMIT 1
 `);
@@ -102,12 +103,14 @@ function toEntry(row: {
  * applied) doesn't create a new version. `undoes` marks this entry as the
  * inverse-application of an earlier entry, so it is never itself picked as
  * a future undo target (a cursor walks back through original writes, it
- * doesn't toggle the same one back and forth).
+ * doesn't toggle the same one back and forth). `undoable: false` records a
+ * fact -- a price tick, a reading -- for history, but keeps it off every
+ * session's Undo, which would otherwise falsify it.
  */
-export function record(doc: string, ops: PatchOp[], inverse: PatchOp[], sessionId: string, undoes?: number): number {
+export function record(doc: string, ops: PatchOp[], inverse: PatchOp[], sessionId: string, undoes?: number, undoable = true): number {
   if (ops.length === 0) return currentVersion(doc);
   const version = currentVersion(doc) + 1;
-  insertStmt.run(doc, version, JSON.stringify(ops), JSON.stringify(inverse), sessionId, Date.now(), undoes ?? null);
+  insertStmt.run(doc, version, JSON.stringify(ops), JSON.stringify(inverse), sessionId, Date.now(), undoes ?? null, undoable ? 1 : 0);
   return version;
 }
 
