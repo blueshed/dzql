@@ -403,6 +403,33 @@ itself a form (value = its `data-value`, or no value at all for a `remove`).
 A form resets only on the server's patch echo of its own write, so a write
 that is ignored or rejected leaves the person's typed input intact.
 
+### Forms that edit, not create
+
+That contract (one form, one path, reset on echo) fits a form that *creates* something —
+inviting a household, adding a course. It doesn't fit a form that *edits* a document already on
+the page, field by field, the way the wedding's keep drawers do: a gift's name, its words, its
+link, each its own path, none of it wanting a Save button of its own.
+
+For that, put `data-write` on the *fields*, not the form, and mark the form
+`data-write-on="blur"` (or `"change"`):
+
+```html
+<form data-write-on="blur">
+  <input name="name" value="Toaster" data-write='{"doc":"board","op":"replace","path":"/gifts/3/name"}'>
+  <input name="link" value="" data-write='{"doc":"board","op":"replace","path":"/gifts/3/link"}'>
+</form>
+```
+
+When a field inside such a form fires the named event, every `[data-write]` field in that form
+whose live value differs from what the last render put there becomes one op, and all of them go
+out together as a single `{doc, ops}` message — editing two fields and then clicking away sends
+one write, not two. The comparison is against an input's `value` *attribute* (a `<textarea>` has
+none, so its `defaultValue` — the DOM's mirror of its parsed content — stands in), not a
+client-side dirty flag; the morph keeps that attribute current, so this stays correct across
+renders without any bookkeeping. An editing form never sets the reset-on-echo state (it has no
+form-level `data-write` to key that off), so it never resets — a refused edit is handed back
+exactly as typed, the way a rejected create-form's input is.
+
 Elements with `data-autoscroll` (e.g. `<ul class="messages" data-autoscroll>`)
 are automatically pinned to the bottom on render if new child nodes were
 added, without disturbing scroll position during presence or other unrelated

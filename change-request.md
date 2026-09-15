@@ -51,6 +51,23 @@ the server knows from the session.
 
 ## 2. Forms that edit
 
+*Done, 0.30.0.* Landed as specified: `data-write-on="blur"|"change"` on a `<form>`, `data-write`
+on its fields. `src/client/app.ts` listens for `focusout` (which bubbles; `blur` doesn't) and
+`change` at the document level, walks every `[data-write]` field in the triggering form, and
+compares each one's live `.value` against what the last render put there -- an input's `value`
+attribute, or (since a `<textarea>` has no such attribute) its `defaultValue`, which mirrors the
+element's parsed content. Every field that differs becomes one op in a single `{doc, ops}`
+message. An editing form never sets `pendingReset`, since it never carries the form-level
+`data-write` that mechanism keys on -- so the reset-on-echo rule for creating forms simply
+doesn't apply here; nothing extra had to be added to turn it off. Applied throughout the
+wedding's keep drawers (`views/board.ts`): `fieldForm`'s one-form-one-Save-button per field
+became a bare `field()`/`fieldRow()` input inside one drawer-wide editing form, and the welcome's
+name/day/venue fields and message textarea the same way. The Save buttons and their CSS
+(`.save`, `.inline-form`) are gone. Verified in a real browser (`examples/wedding/client/app.test.ts`):
+blur commits, several fields dirtied together land as one write, an unrelated blur with nothing
+changed sends nothing, and a refused field (a blanked required name) is handed back as typed, not
+silently reverted to the server's old value by some accidental reset.
+
 **What.** A form can write on blur or on change, not only on submit; and a form with several
 fields can write several paths in one message.
 
@@ -302,5 +319,5 @@ one line.
 
 ## Order
 
-1, 5, 7, 8, 10, and 11 are done. 2 next: it is the thing a person editing the wedding's lists
-feels. 4 is a morning's tidy. 3 is worth doing only if a third example wants links.
+1, 2, 5, 7, 8, 10, and 11 are done. 4 next: a morning's tidy. 3 is worth doing only if a third
+example wants links.

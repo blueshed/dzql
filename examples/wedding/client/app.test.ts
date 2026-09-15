@@ -94,6 +94,80 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('.bubble.ours .face-mark')?.classList.contains('maybe')`, (v) => v === false);
   });
 
+  test("editing a gift's fields in its drawer writes on blur, batches fields changed together, and does not reset", async () => {
+    await using view = new Bun.WebView();
+    // the couple's own code, not a household's: the keep drawers are theirs to edit
+    await view.navigate(server.url.toString());
+    await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
+    await view.click("#code");
+    await view.type("DASH");
+    await view.click("button.gold");
+    await waitFor(view, `document.querySelector('[data-applet="picture-field"]') !== null`, (v) => v === true);
+
+    boardDoc.patch("DASH", [{ op: "add", path: "/gifts/-", value: { name: "Toaster", description: "starter" } }], "setup");
+    const giftId = boardDoc.read("DASH")!.gifts.at(-1)!.id;
+
+    await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/keep", value: "gifts/${giftId}" }] }))`);
+    await waitFor(view, `document.querySelector('.keep-sheet input[name=name]') !== null`, (v) => v === true);
+
+    // change two fields of the same editing form before either loses focus, then trigger just one:
+    // the write must carry both, not only the field whose event fired. Blanking the name is a
+    // required field's write the server refuses (see documents/values.ts's `text`); the
+    // description's is accepted, so exactly one of the two lands.
+    await view.evaluate(`(() => {
+      const form = document.querySelector('.keep-sheet form');
+      form.querySelector('input[name=name]').value = '';
+      form.querySelector('input[name=description]').value = 'a good one';
+      form.querySelector('input[name=description]').dispatchEvent(new Event('focusout', { bubbles: true }));
+    })()`);
+
+    await waitFor(
+      view,
+      `window.eta.docs()['board']?.ops.some((op) => op.path.endsWith('/description') && op.value === 'a good one') ?? false`,
+      (v) => v === true,
+    );
+    const g = boardDoc.read("DASH")!.gifts.find((x) => x.id === giftId)!;
+    expect(g.name).toBe("Toaster"); // the refused op never applied
+    expect(g.description).toBe("a good one");
+
+    // the drawer does not reset on the echo of an editing write, unlike a creating form: the
+    // render that follows the description's write must not also snap the *refused* name edit
+    // back to the server's old value -- it stays blank, the refusal handed back as is.
+    expect(await view.evaluate(`document.querySelector('.keep-sheet input[name=name]').value`)).toBe("");
+    expect(await view.evaluate(`document.querySelector('.keep-sheet input[name=description]').value`)).toBe("a good one");
+  });
+
+  test("the welcome's message textarea writes on blur too, comparing against its rendered content, not an input's value attribute", async () => {
+    boardDoc.patch("DASH", [{ op: "replace", path: "/message", value: "can't wait" }], "setup");
+
+    await using view = new Bun.WebView();
+    await view.navigate(server.url.toString());
+    await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
+    await view.click("#code");
+    await view.type("DASH");
+    await view.click("button.gold");
+    await waitFor(view, `document.querySelector('.message-box') !== null`, (v) => v === true);
+
+    // blurring without changing the textarea must send nothing at all: the comparison has to be
+    // against what was actually rendered (defaultValue), not an attribute a <textarea> doesn't
+    // even have -- checked on the client's own record of what it sent, since the server's
+    // no-op-if-unchanged guard would otherwise hide a spurious send from the document itself.
+    await view.evaluate(`document.querySelector('.message-box').dispatchEvent(new Event('focusout', { bubbles: true }))`);
+    await Bun.sleep(200);
+    // lastSent is still the code-entry's session write from login above -- nothing for "board" followed it
+    expect(await view.evaluate(`window.eta.inspect().lastSent?.doc`)).toBe("session");
+    expect(boardDoc.read("DASH")!.message).toBe("can't wait");
+
+    await view.evaluate(`(() => {
+      const box = document.querySelector('.message-box');
+      box.value = 'so happy for you both';
+      box.dispatchEvent(new Event('focusout', { bubbles: true }));
+    })()`);
+
+    await waitFor(view, `document.querySelector('.message-box').value`, (v) => v === "so happy for you both");
+    expect(boardDoc.read("DASH")!.message).toBe("so happy for you both");
+  });
+
   test("leaving returns to the welcome, and the session survives a reload", async () => {
     await using view = new Bun.WebView();
     await enter(view, code);

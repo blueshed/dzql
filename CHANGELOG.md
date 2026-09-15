@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-09-15
+
+### Changed
+
+- **Forms that edit** (change-request.md item 2). A `<form data-write-on="blur">` (or
+  `"change"`) commits when a field inside it fires that event, instead of on submit; `data-write`
+  moves from the form to its individual fields, each naming its own path, and every field whose
+  live value differs from what the last render put there (an `<input>`'s `value` attribute, or a
+  `<textarea>`'s `defaultValue`, since it has no such attribute) becomes one op in a single
+  `{doc, ops}` message. An editing form never carries the form-level `data-write` the
+  reset-on-echo mechanism keys on, so it never resets -- the morph keeps its fields' rendered
+  values current instead. The wedding's keep drawers (`views/board.ts`) now use it throughout:
+  `fieldForm`'s one-form-one-Save-button per field is a bare field inside one drawer-wide editing
+  form; the welcome's name/day/venue fields and message textarea the same way. The Save buttons
+  and their now-dead CSS are gone.
+
 ## [0.29.0] - 2026-09-15
 
 ### Changed

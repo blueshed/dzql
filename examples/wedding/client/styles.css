@@ -46,7 +46,6 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .message-box { width: 100%; resize: vertical; }
-.words-form .tools { margin-top: 8px; justify-content: flex-end; }
 /* a form that is a tool: one field (or a few) and its verb, on one line */
 .tool-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .tool-form .field { min-width: 8rem; }
@@ -130,15 +129,12 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .row-line.tools-row { grid-template-columns: 1fr; border-bottom: 0; padding-top: 10px; }
 .row-line.field-row { grid-template-columns: 72px minmax(0, 1fr); align-items: center; }
 .row-line.field-row .tools .note { margin: 0; }
-.field-form { display: flex; gap: 6px; align-items: center; min-width: 0; }
+.field-form { display: flex; gap: 6px; align-items: center; min-width: 0; flex-wrap: wrap; }
 .field-form .field { width: 100%; }
-.field-form .save { min-height: 36px; padding: 0 10px; font-size: 14px; }
 .row-line .field-form { grid-column: 1 / -1; }
 .row-line.dish-row, .row-line.drink-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
 .row-line.dish-row { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; }
-.inline-form { display: flex; gap: 4px; min-width: 0; }
-.inline-form .field { width: 100%; min-height: 36px; }
-.inline-form .save { min-height: 36px; padding: 0 8px; font-size: 13px; }
+.inline-field { width: 100%; min-height: 36px; }
 .name-link { display: inline-flex; align-items: center; gap: 6px; padding: 0; min-height: 0; border: 0; background: transparent; font-size: 16px; font-weight: 600; color: var(--text); text-decoration: none; cursor: pointer; }
 .name-link:hover { color: var(--navy); }
 .answer-cell { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }

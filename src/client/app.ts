@@ -152,6 +152,46 @@ app.addEventListener("click", (event) => {
   send(doc, value !== undefined ? [{ op, path, value }] : [{ op, path }]);
 });
 
+// A `data-write-on="blur"|"change"` form is an editing one, not a creating one: `data-write`
+// lives on its *fields*, each naming its own path, and the form commits on that trigger instead
+// of a submit -- one op per field whose live value has diverged from what the last render put in
+// its `value` attribute (not a dirty flag; the morph keeps that attribute current, so a field an
+// unrelated render touched doesn't look changed just because it exists). No reset follows: an
+// editing field's value is the document's own, not something to hand back or clear.
+// A <textarea>'s rendered content has no `value` attribute to compare against -- it's the
+// element's text at parse time, which the DOM keeps as `defaultValue` even after typing changes
+// `value`. Same comparison, different property.
+function rendered(field: HTMLInputElement | HTMLTextAreaElement): string {
+  return field instanceof HTMLTextAreaElement ? field.defaultValue : (field.getAttribute("value") ?? "");
+}
+
+function editingChange(form: HTMLFormElement): { doc: string; ops: PatchOp[] } | undefined {
+  const ops: PatchOp[] = [];
+  let doc: string | undefined;
+  for (const field of form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("[data-write]")) {
+    if (field.value === rendered(field)) continue;
+    const spec = JSON.parse(field.dataset.write!) as WriteSpec;
+    doc = spec.doc;
+    ops.push({ op: spec.op, path: spec.path, value: field.value });
+  }
+  return doc && ops.length > 0 ? { doc, ops } : undefined;
+}
+
+function onEditTrigger(event: Event, trigger: "blur" | "change") {
+  const field = event.target;
+  if (!(field instanceof HTMLElement) || !field.matches("[data-write]")) return;
+  const form = field.closest("form");
+  if (!form || form.dataset.writeOn !== trigger) return;
+  const change = editingChange(form);
+  if (change) send(change.doc, change.ops);
+}
+
+// `focusout` (bubbles), not `blur` (doesn't): the field-losing-focus trigger, for text-like
+// fields typed into. `change` fires on its own for a field that commits immediately (a checkbox,
+// a select) as well as a blurred text field, so a form only ever needs one or the other.
+app.addEventListener("focusout", (event) => onEditTrigger(event, "blur"));
+app.addEventListener("change", (event) => onEditTrigger(event, "change"));
+
 function connect() {
   const url = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`;
   socket = new WebSocket(url);

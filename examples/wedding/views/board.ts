@@ -67,10 +67,14 @@ export function boardPages(v: BoardView): string {
 
 // ───────────────────────────── the home ─────────────────────────────
 
-/** A field edited where it is: one form, one input, written on Enter or Save. */
-function fieldForm(path: string, name: string, value: string, label: string, placeholder = "", classes = "field-form"): string {
-  return `<form class="${classes}"${write("board", "replace", path)}><input class="field" name="${esc(name)}" value="${esc(value)}" placeholder="${esc(placeholder)}" aria-label="${esc(label)}" autocomplete="off"><button type="submit" class="ghost save" aria-label="${esc(`Save ${label.toLowerCase()}`)}">Save</button></form>`;
+/** A field edited where it is: its own path, written when it loses focus (see the enclosing `data-write-on="blur"` form). */
+function field(path: string, name: string, value: string, label: string, placeholder = "", classes = "field"): string {
+  return `<input class="${classes}"${write("board", "replace", path)} name="${esc(name)}" value="${esc(value)}" placeholder="${esc(placeholder)}" aria-label="${esc(label)}" autocomplete="off">`;
 }
+
+/** A field on its own row in a `.rows` stack -- wrapped so the row keeps its own height, not one flexed by the column. */
+const fieldRow = (path: string, name: string, value: string, label: string, placeholder = ""): string =>
+  `<div class="field-form">${field(path, name, value, label, placeholder)}</div>`;
 
 /** A picture for the welcome, a gift or a place: the one applet, since choosing a file and sending it is the browser's job. */
 export const pictureField = (path: string, current: string | null): string =>
@@ -83,13 +87,13 @@ function rootBox(v: BoardView, trail: Crumb[]): string {
   const t = b.totals;
   const welcome = join(
     `<div class="welcome-preview"><p class="kicker">The marriage of</p>`,
-    `<div class="names">${fieldForm("/name1", "name1", b.name1, "The first name", "one name", "name-form")}<span class="amp">&amp;</span>${fieldForm("/name2", "name2", b.name2, "The second name", "the other", "name-form")}</div>`,
-    `<div class="when-where">${fieldForm("/day", "day", b.day, "The day", "2027-04-02")}${fieldForm("/venue", "venue", b.venue ?? "", "The place", "where")}</div>`,
+    `<div class="names"><form class="field-form" data-write-on="blur">${field("/name1", "name1", b.name1, "The first name", "one name")}<span class="amp">&amp;</span>${field("/name2", "name2", b.name2, "The second name", "the other")}</form></div>`,
+    `<div class="when-where"><form class="field-form" data-write-on="blur">${field("/day", "day", b.day, "The day", "2027-04-02")}${field("/venue", "venue", b.venue ?? "", "The place", "where")}</form></div>`,
     `<p class="when">${esc(formatDay(b.day))}</p>`,
     b.picture_key ? picture(b.picture_key, "") : `<p class="note">No photograph yet.</p>`,
     `<div class="welcome-tools">${pictureField("/picture_key", b.picture_key)}</div>`,
     `</div>`,
-    `<div class="bubble couple"><form class="words-form"${write("board", "replace", "/message")}><textarea class="message-box" name="message" rows="2" placeholder="Your words on the welcome" aria-label="Your words on the welcome">${esc(b.message ?? "")}</textarea><div class="tools"><button type="submit" class="tool">Save</button></div></form></div>`,
+    `<div class="bubble couple"><form class="words-form" data-write-on="blur"><textarea class="message-box"${write("board", "replace", "/message")} name="message" rows="2" placeholder="Your words on the welcome" aria-label="Your words on the welcome">${esc(b.message ?? "")}</textarea></form></div>`,
   );
   return boxPage(
     trail,
@@ -198,7 +202,7 @@ function familyBox(v: BoardView, h: HouseholdDocument, trail: Crumb[]): string {
     reading(v, key) === "photo"
       ? h.guests.length ? `<div class="reading photo-reading">${familyPhoto(h)}</div>` : `<p class="note">Nobody named yet.</p>`
       : `<div class="rows">${h.guests.map((g) => familyGuestRow(v, g)).join("")}</div>`;
-  const plusOnes = `<form class="tool-form"${write("board", "replace", `/households/${h.id}/plus_ones`)}><label class="when" for="plus-ones">Plus-ones</label><input class="field short" id="plus-ones" name="plus_ones" type="number" min="0" value="${h.plus_ones}"><button type="submit" class="ghost save">Save</button></form>`;
+  const plusOnes = `<form class="tool-form" data-write-on="blur"><label class="when" for="plus-ones">Plus-ones</label><input class="field short" id="plus-ones" name="plus_ones" type="number" min="0" value="${h.plus_ones}"${write("board", "replace", `/households/${h.id}/plus_ones`)}></form>`;
   return boxPage(
     trail,
     [familyBubble(h)],
@@ -275,15 +279,15 @@ function keepSheet(v: BoardView): string {
     `<span class="note">${position} of ${rows.length}</span></div></div>`,
   );
   const remove = `<div class="sheet-foot">${tool(`Remove this ${noun}`, { icon: "trash", kind: "danger", write: write("board", "remove", at) })}</div>`;
-  const fields: string[] = [fieldForm(`${at}/name`, "name", row.name, "Name")];
+  const fields: string[] = [fieldRow(`${at}/name`, "name", row.name, "Name")];
   let extra = "";
   if (table === "courses") {
     const c = v.b.courses.find((x) => x.id === id)!;
     const dishRows = c.dishes.map((d) =>
       join(
         `<div class="row-line dish-row">`,
-        fieldForm(`${at}/dishes/${d.id}/name`, "name", d.name, "Dish", "dish", "inline-form"),
-        fieldForm(`${at}/dishes/${d.id}/dietary`, "dietary", d.dietary ?? "", "Dietary marks", "v, gf", "inline-form"),
+        field(`${at}/dishes/${d.id}/name`, "name", d.name, "Dish", "dish", "inline-field"),
+        field(`${at}/dishes/${d.id}/dietary`, "dietary", d.dietary ?? "", "Dietary marks", "v, gf", "inline-field"),
         `<button type="button" class="ghost danger small" aria-label="${esc(`remove ${d.name}`)}"${write("board", "remove", `${at}/dishes/${d.id}`)}>${icon("trash", 15)}</button>`,
         "</div>",
       ),
@@ -291,7 +295,7 @@ function keepSheet(v: BoardView): string {
     const drinkRows = c.drinks.map((d) =>
       join(
         `<div class="row-line drink-row">`,
-        fieldForm(`${at}/drinks/${d.id}/name`, "name", d.name, "Drink", "drink", "inline-form"),
+        field(`${at}/drinks/${d.id}/name`, "name", d.name, "Drink", "drink", "inline-field"),
         `<button type="button" class="ghost danger small" aria-label="${esc(`remove ${d.name}`)}"${write("board", "remove", `${at}/drinks/${d.id}`)}>${icon("trash", 15)}</button>`,
         "</div>",
       ),
@@ -299,32 +303,32 @@ function keepSheet(v: BoardView): string {
     const addForm = (kind: "dishes" | "drinks", word: string) =>
       `<div class="row-line tools-row"><form class="tool-form"${write("board", "add", `${at}/${kind}/-`)}><input class="field" name="name" placeholder="The ${word}" aria-label="${esc(`A new ${word}`)}" autocomplete="off" required><button type="submit" class="tool add">${icon("plus")}Add a ${word}</button></form></div>`;
     extra = join(
-      `<h3 class="cap">Dishes</h3><div class="rows">${dishRows.join("")}${addForm("dishes", "dish")}</div>`,
-      `<h3 class="cap">Drinks</h3><div class="rows">${drinkRows.join("")}${addForm("drinks", "drink")}</div>`,
+      `<h3 class="cap">Dishes</h3><form data-write-on="blur"><div class="rows">${dishRows.join("")}</div></form>${addForm("dishes", "dish")}`,
+      `<h3 class="cap">Drinks</h3><form data-write-on="blur"><div class="rows">${drinkRows.join("")}</div></form>${addForm("drinks", "drink")}`,
     );
   } else if (table === "gifts") {
     const g = v.b.gifts.find((x) => x.id === id)!;
     fields.push(
-      fieldForm(`${at}/description`, "description", g.description ?? "", "Words", "a line about it"),
-      fieldForm(`${at}/link`, "link", g.link ?? "", "Link", "https://"),
+      fieldRow(`${at}/description`, "description", g.description ?? "", "Words", "a line about it"),
+      fieldRow(`${at}/link`, "link", g.link ?? "", "Link", "https://"),
       `<div class="row-line field-row"><span class="when">Shared</span><div class="coming-pills" role="radiogroup" aria-label="Shared: any number may claim it"><button type="button" class="pill pill-sm yes${g.shared ? " on" : ""}" role="radio" aria-checked="${g.shared}"${write("board", "replace", `${at}/shared`, "1")}>Yes</button><button type="button" class="pill pill-sm no${g.shared ? "" : " on"}" role="radio" aria-checked="${!g.shared}"${write("board", "replace", `${at}/shared`, "0")}>No</button></div></div>`,
       `<div class="row-line field-row"><span class="when">Picture</span>${pictureField(`${at}/picture_key`, g.picture_key)}</div>`,
     );
   } else if (table === "events") {
     const e = v.b.events.find((x) => x.id === id)!;
     fields.push(
-      fieldForm(`${at}/when_at`, "when_at", e.when_at ?? "", "When", "2027-04-02T13:00"),
-      fieldForm(`${at}/where_at`, "where_at", e.where_at ?? "", "Where"),
-      fieldForm(`${at}/notes`, "notes", e.notes ?? "", "Notes"),
+      fieldRow(`${at}/when_at`, "when_at", e.when_at ?? "", "When", "2027-04-02T13:00"),
+      fieldRow(`${at}/where_at`, "where_at", e.where_at ?? "", "Where"),
+      fieldRow(`${at}/notes`, "notes", e.notes ?? "", "Notes"),
     );
   } else {
     const p = v.b.places.find((x) => x.id === id)!;
     fields.push(
-      fieldForm(`${at}/notes`, "notes", p.notes ?? "", "Notes", "how far, how to book"),
-      fieldForm(`${at}/link`, "link", p.link ?? "", "Link", "https://"),
+      fieldRow(`${at}/notes`, "notes", p.notes ?? "", "Notes", "how far, how to book"),
+      fieldRow(`${at}/link`, "link", p.link ?? "", "Link", "https://"),
       `<div class="row-line field-row"><span class="when">Picture</span>${pictureField(`${at}/picture_key`, p.picture_key)}</div>`,
     );
   }
-  const body = join(`<div class="rows">${fields.join("")}${order}</div>`, extra, remove);
+  const body = join(`<form data-write-on="blur"><div class="rows">${fields.join("")}${order}</div></form>`, extra, remove);
   return sheet("keep-sheet", row.name, body, write("session", "remove", "/keep"), "keep-sheet");
 }
