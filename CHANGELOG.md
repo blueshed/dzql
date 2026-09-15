@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.35.0] - 2026-09-15
+
+### Fixed
+
+- The four findings the first stories run left red, one commit each: chat's redo of an undone
+  message now brings back the same message (the inverse of a "remove" carries the message's own
+  id and sentAt, not just name and text); the ticker's undo of a dropped symbol restores it at
+  its own row, not the end of the list (an indexed `add`, replay-only, renumbering what follows);
+  the wedding's welcome shows the couple's own message; and a deadline is shown to those it
+  affects -- "Answers by \<date\>" on a household's home while still open, and on the couple's own
+  home too, not only "Answers closed on \<date\>" once it has passed. All 70 stories pass.
+
 ## [0.34.0] - 2026-09-15
 
 ### Changed

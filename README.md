@@ -155,3 +155,6 @@ FAIL  The couple invite the Londons
 A failing story is a finding: against the example, or against the story, or against the shape of
 stories itself. `STORY="invite"` runs the ones whose name contains that; `STORY_DIFF=1` shows
 where two renders part company.
+
+All three examples pass in full: chat 6 of 6, the ticker 13 of 13, the wedding 51 of 51 --
+the third measured number beside the cost tables above and `bun run test`'s 100%.
