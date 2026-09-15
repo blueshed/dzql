@@ -168,9 +168,40 @@ concept's `fragments` says nothing follows. A tick on the ticker is 104 bytes to
 fragment (item 7's caveat), and the client's kernel does not yet apply an op to props for the
 applet -- each applet does its own, which is right while there are two of them.
 
+## 10. The words: tray, compartment, tools
+
+**What.** Bento is eta's page model, and the kernel says so in its names. The code unit now
+called a *concept* becomes a **compartment**: a document with a place on the page, where it shows
+its state. The session becomes the **tray**: the ground the compartments sit on, holding which
+page a tab is on, which drawer is open, how a collection is read. Undo, redo and leave are
+**tools**: verbs beside the compartments, on the box, not in it. Applets keep their name: a piece
+of behaviour inside a compartment.
+
+**Why.** Three reasons, in order of weight. It says where a thing lives, where "concept" only says
+that something is owned; and every example is already a box of compartments -- the ticker's clock,
+watchlist and market; the wedding's guests, asks, gifts, the day, where to stay, everyone; chat's
+room, with the session's welcome filling the page before it. It names what the examples are. And
+it keeps a stranger from bringing React with them: "component" means a client-side thing owning
+its state, re-rendering itself, composed by a parent passing props down -- everything eta is not.
+"Compartment" refuses all of that in one word, and the thing in eta that does resemble a component,
+the applet, keeps its own name, so the line stays sharp: a compartment is where a document is
+shown; an applet is behaviour inside one.
+
+**How.** A rename, and two things that follow from taking the name seriously. `Concept` becomes
+`Compartment` (`src/concepts/` becomes `src/compartments/`, `concepts: [...]` on `Example`
+becomes `compartments`); the skill and CLAUDE.md follow. Then: a compartment renders into a keyed
+element, so a write to its document re-renders that element by default -- which is most of item 1
+falling out of a name, and the natural unit for item 7's fragments. And the odd ones out become
+honest: the ledger has no compartment (it is the tools' document, not a place), and the session is
+the tray, not a compartment, so neither is "a concept with no render" any more.
+
+**Not this.** Not a component model. A compartment holds nothing in the browser and composes
+nothing; the box does the composing and the render does the filling.
+
 ## Order
 
-5, 7, and 8 are done. 1 next: it removes code from both examples and settles a question every
-future example has, and with 7 in place it is what turns "nothing to send" into "nobody to ask".
-2 after that: it is the thing a person editing the wedding's lists feels. 4 is a morning's tidy.
-3 is worth doing only if a third example wants links.
+5, 7, and 8 are done. 10 next, since it renames what 1 then builds on: a compartment that renders
+into a keyed element is the audience question answered for the common case, and with 7 in place
+it is what turns "nothing to send" into "nobody to ask". 1 for what 10 leaves (a document seen by
+more than its own tray). 2 after that: it is the thing a person editing the wedding's lists feels.
+4 is a morning's tidy. 3 is worth doing only if a third example wants links.
