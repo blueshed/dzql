@@ -27,19 +27,38 @@ const historyStmt = db.query<
   ORDER BY version DESC
   LIMIT ?
 `);
-// The newest entry this session wrote that is itself an original write (not
-// an undo's own inverse-application) and has not already been undone --
-// i.e. a cursor into this session's writes, derived from the ledger alone.
-const nextUndoStmt = db.query<
-  { id: number; doc: string; version: number; ops: string; inverse: string; sessionId: string; at: number },
-  [string]
->(`
-  SELECT id, doc, version, ops, inverse, session_id AS sessionId, at
-  FROM ledger
-  WHERE session_id = ?
-    AND undoes IS NULL
-    AND id NOT IN (SELECT undoes FROM ledger WHERE undoes IS NOT NULL)
-  ORDER BY id DESC
+// Undo and redo are one cursor over this session's entries, read from the ledger alone. An
+// entry's `undoes` links it to the entry it walked back, so entries form chains: a write, the
+// undo of it, the redo of that (an undo of the undo), and so on. Depth along the chain says
+// which way an entry went (even: forward, a write or a redo; odd: backward, an undo), and the
+// entry at the end of a chain -- the tip, nothing has undone it yet -- is the one that counts.
+// A fresh write ends what could be redone: a redo candidate must be newer than the session's
+// newest original write, as in any editor.
+const tipsCte = `
+  WITH RECURSIVE chain(id, depth) AS (
+    SELECT id, 0 FROM ledger WHERE session_id = ?1 AND undoes IS NULL
+    UNION ALL
+    SELECT l.id, c.depth + 1 FROM ledger l JOIN chain c ON l.undoes = c.id
+  ),
+  tips AS (
+    SELECT c.id, c.depth FROM chain c WHERE c.id NOT IN (SELECT undoes FROM ledger WHERE undoes IS NOT NULL)
+  )
+`;
+const entryColumns = "l.id, l.doc, l.version, l.ops, l.inverse, l.session_id AS sessionId, l.at";
+type EntryRow = { id: number; doc: string; version: number; ops: string; inverse: string; sessionId: string; at: number };
+// The newest forward tip: the next write to walk back.
+const nextUndoStmt = db.query<EntryRow, [string]>(`${tipsCte}
+  SELECT ${entryColumns} FROM ledger l JOIN tips t ON t.id = l.id
+  WHERE t.depth % 2 = 0
+  ORDER BY l.id DESC
+  LIMIT 1
+`);
+// The newest backward tip, unless a fresh write has come since: the next undo to walk forward again.
+const nextRedoStmt = db.query<EntryRow, [string]>(`${tipsCte}
+  SELECT ${entryColumns} FROM ledger l JOIN tips t ON t.id = l.id
+  WHERE t.depth % 2 = 1
+    AND l.id > COALESCE((SELECT MAX(id) FROM ledger WHERE session_id = ?1 AND undoes IS NULL), 0)
+  ORDER BY l.id DESC
   LIMIT 1
 `);
 
@@ -98,5 +117,11 @@ export function history(doc: string, limit = 50): LedgerEntry[] {
 
 export function nextUndo(sessionId: string): LedgerEntry | undefined {
   const row = nextUndoStmt.get(sessionId);
+  return row ? toEntry(row) : undefined;
+}
+
+/** The undo this session would walk forward again: applying its `inverse` is the original write over, recorded with `undoes` set to it. */
+export function nextRedo(sessionId: string): LedgerEntry | undefined {
+  const row = nextRedoStmt.get(sessionId);
   return row ? toEntry(row) : undefined;
 }

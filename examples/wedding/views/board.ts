@@ -6,7 +6,7 @@
 import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
 import type { SessionDocument } from "../documents/session";
-import { boxPage, cell, collectionPage, leaveTool, readingSwitch, sheet, tool, undoTool, type Crumb } from "./bento";
+import { boxPage, cell, collectionPage, leaveTool, readingSwitch, redoTool, sheet, tool, undoTool, type Crumb } from "./bento";
 import { esc, join, nav, write } from "./html";
 import { icon } from "./icons";
 import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
@@ -101,7 +101,7 @@ function rootBox(v: BoardView, trail: Crumb[]): string {
       cell({ name: "events", mark: "calendar", count: b.events.length, summary: eventsSummary(b.events), page: "events" }),
       cell({ name: "where to stay", mark: "bed", count: b.places.length, summary: placesSummary(b.places), page: "places" }),
     ],
-    [undoTool(), leaveTool()],
+    [undoTool(), redoTool(), leaveTool()],
   );
 }
 
@@ -181,7 +181,7 @@ function householdsCollection(v: BoardView, trail: Crumb[]): string {
     tools: [readingSwitch("households", reading(v, "households"), ["photo", "list"]), invite],
     body,
     note: reading(v, "households") === "photo" ? "Tap a family to see them. At their feet, their answer." : null,
-    foot: [undoTool(), leaveTool()],
+    foot: [undoTool(), redoTool(), leaveTool()],
   });
 }
 
@@ -207,7 +207,7 @@ function familyBox(v: BoardView, h: HouseholdDocument, trail: Crumb[]): string {
       cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting for your answer` : h.asks.length ? "all answered" : "none", page: `households/${h.id}/asks` }),
       cell({ name: "the code", summary: `${h.code} · ${h.email}`, body: plusOnes }),
     ],
-    [chaseLink(h), undoTool(), leaveTool()],
+    [chaseLink(h), undoTool(), redoTool(), leaveTool()],
   );
 }
 
@@ -220,7 +220,7 @@ function familyAsks(h: HouseholdDocument, trail: Crumb[]): string {
         )
         .join("")}</div>`
     : `<p class="note">They have not asked for anyone.</p>`;
-  return collectionPage([...trail, { label: "Asks" }], { body, foot: [undoTool(), leaveTool()] });
+  return collectionPage([...trail, { label: "Asks" }], { body, foot: [undoTool(), redoTool(), leaveTool()] });
 }
 
 // ───────────────────────────── keeping ─────────────────────────────
@@ -254,7 +254,7 @@ function keepCollection(v: BoardView, table: KeepTable, trail: Crumb[]): string 
       : `<p class="note">No gifts yet.</p>`;
   }
   const add = `<form class="tool-form"${write("board", "add", `/${table}/-`)}><input class="field" name="name" placeholder="Its name" aria-label="${esc(`The ${noun}'s name`)}" autocomplete="off" required><button type="submit" class="tool add">${icon("plus")}Add a ${noun}</button></form>`;
-  return collectionPage([...trail, { label }], { tools: [add], body, foot: [undoTool(), leaveTool()] });
+  return collectionPage([...trail, { label }], { tools: [add], body, foot: [undoTool(), redoTool(), leaveTool()] });
 }
 
 /** The row's drawer: its fields, each a form; a course's dishes and drinks; its place in the order; Remove at the foot. */

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { history, nextUndo, record } from "./ledger";
+import { history, nextRedo, nextUndo, record } from "./ledger";
 
 describe("ledger", () => {
   test("history is empty for a doc with no recorded patches", () => {
@@ -93,5 +93,57 @@ describe("ledger", () => {
 
     const second = nextUndo(session)!;
     expect(second.inverse).toEqual([{ op: "replace", path: "/x", value: 0 }]); // now the first write, not first again
+  });
+
+  test("redo walks the cursor forward again: undo, undo, redo, redo; and undo after a redo walks the redo back", () => {
+    const session = crypto.randomUUID();
+    const doc = `test:${crypto.randomUUID()}`;
+    const set = (to: number, from: number, undoes?: number) =>
+      record(doc, [{ op: "replace", path: "/x", value: to }], [{ op: "replace", path: "/x", value: from }], session, undoes);
+
+    expect(nextRedo(session)).toBeUndefined(); // nothing undone yet
+    set(1, 0); // A
+    set(2, 1); // B
+    const undoB = nextUndo(session)!;
+    set(1, 2, undoB.id); // undo B
+    const undoA = nextUndo(session)!;
+    expect(undoA.ops).toEqual([{ op: "replace", path: "/x", value: 1 }]);
+    set(0, 1, undoA.id); // undo A
+    expect(nextUndo(session)).toBeUndefined();
+
+    // redo: the newest undo, walked forward -- A first, then B
+    let redo = nextRedo(session)!;
+    expect(redo.inverse).toEqual([{ op: "replace", path: "/x", value: 1 }]); // A's ops again
+    set(1, 0, redo.id);
+    redo = nextRedo(session)!;
+    expect(redo.inverse).toEqual([{ op: "replace", path: "/x", value: 2 }]); // B's ops again
+    set(2, 1, redo.id);
+    expect(nextRedo(session)).toBeUndefined();
+
+    // and undo now walks the redo of B back, not B itself a second time
+    const again = nextUndo(session)!;
+    expect(again.inverse).toEqual([{ op: "replace", path: "/x", value: 1 }]);
+    set(1, 2, again.id);
+    expect(nextRedo(session)!.id).toBe(history(doc, 1)[0]!.id);
+  });
+
+  test("a fresh write after an undo ends what could be redone", () => {
+    const session = crypto.randomUUID();
+    const doc = `test:${crypto.randomUUID()}`;
+    record(doc, [{ op: "replace", path: "/x", value: 1 }], [{ op: "replace", path: "/x", value: 0 }], session);
+    const undone = nextUndo(session)!;
+    record(doc, undone.inverse, undone.ops, session, undone.id);
+    expect(nextRedo(session)).toBeDefined();
+    record(doc, [{ op: "replace", path: "/y", value: 1 }], [{ op: "remove", path: "/y" }], session);
+    expect(nextRedo(session)).toBeUndefined();
+  });
+
+  test("another session's undo is never this session's to redo", () => {
+    const a = crypto.randomUUID();
+    const doc = `test:${crypto.randomUUID()}`;
+    record(doc, [{ op: "replace", path: "/x", value: 1 }], [{ op: "replace", path: "/x", value: 0 }], a);
+    const undone = nextUndo(a)!;
+    record(doc, undone.inverse, undone.ops, a, undone.id);
+    expect(nextRedo(crypto.randomUUID())).toBeUndefined();
   });
 });

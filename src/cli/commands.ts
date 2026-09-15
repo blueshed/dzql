@@ -33,6 +33,7 @@ function parseWrite(rest: string[]): Command | undefined {
 // is a remove on the ledger's own cursor document (see concepts/ledger.ts),
 // not a per-example verb.
 const undo = (): Command => ({ kind: "write", doc: "ledger", ops: [{ op: "remove", path: "/latest" }] });
+const redo = (): Command => ({ kind: "write", doc: "ledger", ops: [{ op: "add", path: "/latest" }] });
 
 /** Maps a CLI invocation's argv (after the script name) to a wire command. */
 export function parseCommand(argv: string[], aliases: Aliases = {}): Command | undefined {
@@ -40,6 +41,7 @@ export function parseCommand(argv: string[], aliases: Aliases = {}): Command | u
   if (name === "inspect") return { kind: "inspect" };
   if (name === "watch") return { kind: "watch" };
   if (name === "undo") return undo();
+  if (name === "redo") return redo();
   if (name === "write") return parseWrite(rest);
   if (name && name in aliases) {
     const { doc, ops } = aliases[name]!(rest);

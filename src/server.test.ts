@@ -177,6 +177,15 @@ describe("createServer, generically (no example from the examples directory invo
     const undoneRender = await expectMessage(ws, "render");
     expect(undoneRender.html).not.toContain("hello kernel");
 
+    // redo: the undo walked forward again, through the same replay
+    write(ws, "ledger", [{ op: "add", path: "/latest" }]);
+    const redonePatch = await expectMessage(ws, "patch");
+    expect(redonePatch.ops).toEqual([{ op: "replace", path: "/text", value: "hello kernel" }]);
+    expect((await expectMessage(ws, "render")).html).toContain("hello kernel");
+    // nothing left to redo: a render, no patch
+    write(ws, "ledger", [{ op: "add", path: "/latest" }]);
+    await expectMessage(ws, "render");
+
     ws.close();
   });
 

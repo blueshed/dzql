@@ -30,6 +30,11 @@ describe("parseCommand", () => {
       doc: "ledger",
       ops: [{ op: "remove", path: "/latest" }],
     });
+    expect(parseCommand(["redo"])).toEqual({
+      kind: "write",
+      doc: "ledger",
+      ops: [{ op: "add", path: "/latest" }],
+    });
   });
 
   test("write <doc> <op> <path> [value] maps to that exact wire write", () => {

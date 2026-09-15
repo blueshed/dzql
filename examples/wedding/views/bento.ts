@@ -124,6 +124,11 @@ export function undoTool(): string {
   return tool("Undo", { icon: "undo", kind: "quiet", write: write("ledger", "remove", "/latest") });
 }
 
+/** Redo: the undo walked forward again. */
+export function redoTool(): string {
+  return tool("Redo", { icon: "redo", kind: "quiet", write: write("ledger", "add", "/latest") });
+}
+
 /** Leave: quiet at the right of the foot; the session forgets its code. */
 export function leaveTool(): string {
   return tool("Leave", { icon: "log-out", kind: "quiet", write: write("session", "remove", "/code") });

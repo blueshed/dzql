@@ -1,4 +1,4 @@
-import { nextUndo, splitDoc } from "../ledger";
+import { nextRedo, nextUndo, splitDoc } from "../ledger";
 import type { Concept, WriteResult } from "./concept";
 
 // Not src/ledger.ts (the SQL-backed history) -- this is the wire-facing
@@ -32,18 +32,19 @@ export function createLedgerConcept(
     resolveDoc(ws) {
       return ws.data.sessionId; // undo is a cursor into this session's own ledger entries
     },
-    // "Remove the latest [undoable entry]" -- a real document (this
-    // session's ledger) and a real path, not a verb wearing one. Which
-    // entry "/latest" means is resolved server-side, in write() below, so
-    // the client never needs to know or track an id.
+    // "Remove the latest [undoable entry]" is undo; "add [back] the latest
+    // [undone one]" is redo -- a real document (this session's ledger) and
+    // a real path, not a verb wearing one. Which entry "/latest" means is
+    // resolved server-side, in write() below, so the client never needs to
+    // know or track an id.
     permit(ws, op) {
-      if (op.op !== "remove" || op.path !== "/latest") return false;
+      if ((op.op !== "remove" && op.op !== "add") || op.path !== "/latest") return false;
       // Same guard a stale, logged-out tab needs everywhere else: it
       // shouldn't be able to walk back a write made before it went stale.
       return active(ws.data.sessionId);
     },
-    write(ws, sessionId): WriteResult {
-      const entry = nextUndo(sessionId);
+    write(ws, sessionId, ops): WriteResult {
+      const entry = ops[0]?.op === "add" ? nextRedo(sessionId) : nextUndo(sessionId);
       if (!entry) return { version: 0, applied: [] };
 
       const { docType, docId } = splitDoc(entry.doc);

@@ -51,6 +51,7 @@ function renderRoomSelector(name: string, rooms: string[]): string {
     <div class="user-bar">
       <span class="user-label">${escapeHtml(name)}</span>
       <button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>Undo</button>
+      <button data-write='{"doc":"ledger","op":"add","path":"/latest"}'>Redo</button>
       <button data-write='{"doc":"session","op":"remove","path":"/name"}'>Log out</button>
     </div>
     <h2>Rooms</h2>
@@ -90,6 +91,7 @@ function renderChat(name: string, room: string, people: string[], messages: Chat
       <span class="room-label">#${escapeHtml(room)}</span>
       ${renderPeopleBar(people, name)}
       <button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>Undo</button>
+      <button data-write='{"doc":"ledger","op":"add","path":"/latest"}'>Redo</button>
       <button data-write='{"doc":"session","op":"remove","path":"/room"}'>Room</button>
       <button data-write='{"doc":"session","op":"remove","path":"/name"}'>Log out</button>
     </div>

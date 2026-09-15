@@ -24,7 +24,7 @@ const { sessionFile, rest: afterSession } = extractSessionFile(process.argv.slic
 const { limit, rest } = extractLimit(afterSession);
 const command = parseCommand(rest, aliases);
 if (!command) {
-  const commands = ["inspect", "watch", "undo", "write <doc> <op> <path> [value]", ...Object.keys(aliases)];
+  const commands = ["inspect", "watch", "undo", "redo", "write <doc> <op> <path> [value]", ...Object.keys(aliases)];
   console.error(`Usage: eta <${commands.join("|")}> [--session <file>] [--limit <n>]`);
   process.exit(1);
 }
