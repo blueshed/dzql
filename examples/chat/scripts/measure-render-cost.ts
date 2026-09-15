@@ -83,8 +83,7 @@ for (let i = 0; i < MEMBERS; i++) {
   await nextMessage(ws); // room selector
   send(ws, "session", [{ op: "replace", path: "/room", value: room }]);
   await nextMessage(ws); // patch echo of the /room write
-  await nextMessage(ws); // people broadcast
-  await nextMessage(ws); // full chat view
+  await nextMessage(ws); // full chat view (the joiner is not told of its own arrival: item 8)
   members.push(ws);
 }
 

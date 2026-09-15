@@ -51,6 +51,7 @@ bun run dev:ticker   # the board, on port 3002
 bun run start   # detached (server.pid, server.log)
 bun run stop
 bun run test    # bun test --coverage
+bun run stories # run an example's stories against it (stories.md)
 ```
 
 Which example runs is `ETA_EXAMPLE` (default `chat`): `ETA_EXAMPLE=wedding bun run dev`. It
@@ -138,3 +139,19 @@ bun run cli name Alice --session alice.session
 bun run cli name Bob --session bob.session
 bun run cli watch --session alice.session
 ```
+
+## Stories
+
+`stories.md` says what all of this is for. An example is a set of stories, each a sentence and
+the write behind it -- who does what, and who then sees it where -- and `bun run stories` runs
+them against the example over real sockets, undo and redo included, and reports by sentence:
+
+```
+ ok   Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not
+FAIL  The couple invite the Londons
+        couple did not see it
+```
+
+A failing story is a finding: against the example, or against the story, or against the shape of
+stories itself. `STORY="invite"` runs the ones whose name contains that; `STORY_DIFF=1` shows
+where two renders part company.

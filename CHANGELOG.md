@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.33.0] - 2026-09-15
+
+### Added
+
+- **Stories, and the harness that runs them.** `stories.md` says what eta is for: an app is a set
+  of stories -- who does what, and who then sees it where -- held to two canons (everything can be
+  seen by someone; every change is whole and true), with Claude as the compiler from stories to
+  compartments and a harness as the compiler's test. `src/stories.ts` is the shape: `as`, `does`,
+  `seen`, `unseen`, `cannot`, and a sentence as the name. Each example has a `stories.ts` (chat 6,
+  ticker 13, the wedding 51, every permit rule used by at least one). `src/harness.ts` runs them
+  over real sockets: each story connects the cast afresh inside one database transaction, compares
+  a fresh render from the tables for every member before and after (so a change that reaches a
+  page through an applet's patch counts), undoes and redoes the write as its author (a fact on the
+  ledger must survive its undo; an author who has logged out gets none), and rolls the
+  transaction back. `bun run stories` (`ETA_EXAMPLE` picks; `STORY=` runs one by substring,
+  `STORY_DIFF=1` shows where two pages part company, `STORY_TRACE=1` prints what the author
+  heard). First run: chat 5 of 6, ticker 12 of 13, the wedding 21 of 51 -- the failures are
+  findings, not the harness's: chat's redo re-adds a message under a new id, the ticker's undo of
+  a drop re-adds the symbol at the end, the wedding's households page hides a household with no
+  guests, its welcome does not show the couple's message, a future deadline is shown to nobody;
+  and most of the wedding's are one finding against the shape: a member sees only the page they
+  are on, so `seen` needs to name a page, not a compartment.
+
+### Fixed
+
+- Chat's cost script (`examples/chat/scripts/measure-render-cost.ts`) waited for a presence
+  message a joiner has not been sent since 0.25.0 and hung; the README's 427 B holds.
+
 ## [0.32.0] - 2026-09-15
 
 ### Changed
