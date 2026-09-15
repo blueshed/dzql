@@ -51,9 +51,24 @@ describe("the ticker in a real browser", () => {
     const b = await view.evaluate(`document.querySelector('svg.clock .hand.second').getAttribute('transform')`);
     expect(a).not.toBe(b);
 
-    // a city chosen: the clock document's write, taken by the applet -- the name on the face changes, no render
-    await view.evaluate(`(() => { const i = document.querySelector('input[name=tz]'); i.value = 'Asia/Tokyo'; i.form.requestSubmit(); })()`);
-    await waitFor(view, `document.querySelector('svg.clock .label').textContent`, (v) => v === "Tokyo");
+    // the city picker: "lon" puts London first, ahead of Blanc-Sablon; Enter takes the first; the
+    // clock document's write is taken by the applets -- the name on the face changes, no render
+    await view.click("#city input");
+    await view.type("lon");
+    const suggested = await waitFor(view, `[...document.querySelectorAll('#city .suggestions li')].map((li) => li.dataset.tz)`, (v) => Array.isArray(v) && v.length > 0);
+    expect((suggested as string[])[0]).toBe("Europe/London");
+    expect((suggested as string[])[1]).toBe("Arctic/Longyearbyen");
+    expect(suggested as string[]).toContain("America/Blanc-Sablon");
+    // the arrow keys move the highlight; Enter takes the highlighted one. (The WebView's press() does
+    // not deliver a keydown, so the keys are dispatched as the browser would.)
+    const arrow = (key: string) => view.evaluate(`document.querySelector('#city input').dispatchEvent(new KeyboardEvent('keydown', { key: '${key}', bubbles: true, cancelable: true }))`);
+    await arrow("ArrowDown");
+    expect(await view.evaluate(`document.querySelector('#city .suggestions li.active').dataset.tz`)).toBe("Arctic/Longyearbyen");
+    await arrow("ArrowUp");
+    expect(await view.evaluate(`document.querySelector('#city .suggestions li.active').dataset.tz`)).toBe("Europe/London");
+    await view.press("Enter");
+    await waitFor(view, `document.querySelector('svg.clock .label').textContent`, (v) => v === "London");
+    expect(await view.evaluate(`document.querySelector('#city input').placeholder`)).toBe("London");
     expect(await view.evaluate(`window.eta.docs().clock.ops.length`)).toBe(1);
   }, 15000);
 });

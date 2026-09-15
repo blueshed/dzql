@@ -174,6 +174,7 @@ describe("the ticker", () => {
     await opened(ws);
     const { html } = await expectMessage(ws, "render");
     expect(html).toContain('id="clock" data-applet="clock" data-doc="clock" data-props="{&quot;tz&quot;:&quot;Europe/Zurich&quot;}"');
+    expect(html).toContain('id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="{&quot;city&quot;:&quot;Zurich&quot;}"><datalist>');
     expect(html).toContain('<option value="Asia/Tokyo">Tokyo, Asia (UTC+09:00)</option>');
     write(ws, "clock", [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }]);
     expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }] });

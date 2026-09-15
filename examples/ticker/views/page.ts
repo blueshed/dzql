@@ -17,11 +17,11 @@ export function boardMount(list: WatchlistDocument, market: MarketDocument): str
   return `<div id="board" data-applet="board" data-doc="ticker" data-props="${esc(props)}"></div>`;
 }
 
-// Every zone as "City, Area (UTC+02:00)", for the datalist. Offsets move with the clocks twice a
-// year, so the list is rebuilt when a minute has passed, not on every render.
+// Every zone as "City, Area (UTC+02:00)", the options the city picker reads at mount. Offsets move
+// with the clocks twice a year, so the list is rebuilt when a minute has passed, not on every render.
 let zoneOptions = "";
 let zoneOptionsAt = 0;
-export function zoneDatalist(now = Date.now()): string {
+export function zoneOptionsHtml(now = Date.now()): string {
   if (now - zoneOptionsAt > 60_000) {
     zoneOptions = ZONES.map((tz) => {
       const area = tz.includes("/") ? tz.slice(0, tz.indexOf("/")).replaceAll("_", " ") : "";
@@ -29,17 +29,15 @@ export function zoneDatalist(now = Date.now()): string {
     }).join("");
     zoneOptionsAt = now;
   }
-  return `<datalist id="zones">${zoneOptions}</datalist>`;
+  return zoneOptions;
 }
 
 export function clockSection(c: ClockDocument): string {
   return (
     `<section class="clock-section">` +
     `<div id="clock" data-applet="clock" data-doc="clock" data-props="${esc(JSON.stringify({ tz: c.tz }))}"></div>` +
-    `<form class="city" data-write='{"doc":"clock","op":"replace","path":"/tz"}'>` +
-    `<input name="tz" list="zones" placeholder="${esc(c.city)}" aria-label="Show the time in" autocomplete="off" required>` +
-    `<button type="submit">Show</button></form>` +
-    zoneDatalist() +
+    // the picker's zones are its children, HTML the server wrote; the applet reads them once and draws its own field
+    `<div id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="${esc(JSON.stringify({ city: c.city }))}"><datalist>${zoneOptionsHtml()}</datalist></div>` +
     `</section>`
   );
 }

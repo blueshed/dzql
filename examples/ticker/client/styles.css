@@ -18,9 +18,14 @@ h2 { font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; colo
 header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .clock-section { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; }
 .clock-section .caption { margin: 0; font-size: 0.8rem; color: var(--muted); letter-spacing: 0.08em; }
-.clock-section form.city { display: flex; gap: 0.35rem; }
-.clock-section form.city input { width: 11rem; font-size: 0.85rem; padding: 0.3rem 0.5rem; }
-.clock-section form.city button { font-size: 0.85rem; padding: 0.3rem 0.6rem; }
+.city { position: relative; width: 13rem; }
+.city form { margin: 0; }
+.city input { width: 100%; font-size: 0.85rem; padding: 0.3rem 0.5rem; box-sizing: border-box; }
+/* the list opens leftwards from the field, which sits at the page's right edge, and is as wide as its longest line */
+.city .suggestions { position: absolute; right: 0; top: 100%; min-width: 100%; z-index: 10; list-style: none; margin: 2px 0 0; padding: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.city .suggestions:empty { display: none; }
+.city .suggestions li { padding: 0.35rem 0.5rem; font-size: 0.8rem; cursor: pointer; white-space: nowrap; }
+.city .suggestions li:hover, .city .suggestions li.active { background: var(--line); color: var(--amber); }
 input, button { font: inherit; background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 0.4rem 0.7rem; }
 button { cursor: pointer; }
 button:hover { border-color: var(--amber); }
