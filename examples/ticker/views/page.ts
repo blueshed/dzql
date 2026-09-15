@@ -17,16 +17,20 @@ export function boardMount(list: WatchlistDocument, market: MarketDocument): str
   return `<div id="board" data-applet="board" data-doc="ticker" data-props="${esc(props)}"></div>`;
 }
 
-// Every zone as "City, Area (UTC+02:00)", the options the city picker reads at mount. Offsets move
-// with the clocks twice a year, so the list is rebuilt when a minute has passed, not on every render.
+// Every zone as "City (UTC+02:00)" -- or "City, Region (UTC-03:00)" where the zone names one, as
+// "America/Argentina/Buenos_Aires" does -- the options the city picker reads at mount. The zone's
+// first segment is a continent, not a country, and is not shown: "Vancouver, America" is wrong.
+// Offsets move with the clocks twice a year, so the list is rebuilt when a minute has passed.
 let zoneOptions = "";
 let zoneOptionsAt = 0;
+export function zoneLabel(tz: string, now = new Date()): string {
+  const parts = tz.split("/");
+  const region = parts.length > 2 ? parts[1]!.replaceAll("_", " ") : "";
+  return `${cityOf(tz)}${region ? `, ${region}` : ""} (UTC${offsetOf(tz, now)})`;
+}
 export function zoneOptionsHtml(now = Date.now()): string {
   if (now - zoneOptionsAt > 60_000) {
-    zoneOptions = ZONES.map((tz) => {
-      const area = tz.includes("/") ? tz.slice(0, tz.indexOf("/")).replaceAll("_", " ") : "";
-      return `<option value="${esc(tz)}">${esc(cityOf(tz))}${area ? `, ${esc(area)}` : ""} (UTC${offsetOf(tz, new Date(now))})</option>`;
-    }).join("");
+    zoneOptions = ZONES.map((tz) => `<option value="${esc(tz)}">${esc(zoneLabel(tz, new Date(now)))}</option>`).join("");
     zoneOptionsAt = now;
   }
   return zoneOptions;

@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { SHOWN, matches, step, type Zone } from "./city-picker";
+import { SHOWN, cityIn, matches, step, type Zone } from "./city-picker";
 
 const zone = (tz: string, offset: string): Zone => {
-  const city = (tz.split("/").pop() ?? tz).replaceAll("_", " ");
-  const area = tz.includes("/") ? tz.slice(0, tz.indexOf("/")) : "";
-  return { tz, city, label: `${city}${area ? `, ${area}` : ""} (UTC${offset})` };
+  const parts = tz.split("/");
+  const city = (parts.pop() ?? tz).replaceAll("_", " ");
+  const region = parts.length > 1 ? parts[1]!.replaceAll("_", " ") : "";
+  const label = `${city}${region ? `, ${region}` : ""} (UTC${offset})`;
+  return { tz, city: cityIn(label), label };
 };
 const zones = [
   zone("America/Blanc-Sablon", "-04:00"),
@@ -13,15 +15,23 @@ const zones = [
   zone("Europe/London", "+01:00"),
   zone("Asia/Tokyo", "+09:00"),
   zone("America/New_York", "-04:00"),
+  zone("America/Argentina/Buenos_Aires", "-03:00"),
   zone("UTC", "+00:00"),
 ];
 
 describe("city picker", () => {
-  test("a city that starts with the query comes before one that merely contains it, whatever the list's order", () => {
+  test("the city in a label is what comes before the region or the offset", () => {
+    expect(cityIn("London (UTC+01:00)")).toBe("London");
+    expect(cityIn("Buenos Aires, Argentina (UTC-03:00)")).toBe("Buenos Aires");
+    expect(cityIn("UTC")).toBe("UTC");
+  });
+
+  test("a city that starts with the query comes before one that merely contains it, the shortest first, whatever the list's order", () => {
     expect(matches(zones, "lon").map((z) => z.tz)).toEqual(["Europe/London", "Arctic/Longyearbyen", "America/Blanc-Sablon", "America/Miquelon"]);
     expect(matches(zones, "New").map((z) => z.tz)).toEqual(["America/New_York"]);
-    expect(matches(zones, "asia").map((z) => z.tz)).toEqual(["Asia/Tokyo"]); // the area matches too, after cities
+    expect(matches(zones, "argent").map((z) => z.tz)).toEqual(["America/Argentina/Buenos_Aires"]); // the region matches too, after cities
     expect(matches(zones, "+09").map((z) => z.tz)).toEqual(["Asia/Tokyo"]); // and the offset
+    expect(matches(zones, "america")).toEqual([]); // a continent is not a place to show the time of
     expect(matches(zones, "  ")).toEqual([]);
     expect(matches(zones, "zzz")).toEqual([]);
   });

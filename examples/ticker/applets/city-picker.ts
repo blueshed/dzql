@@ -9,10 +9,13 @@ import type { PatchOp } from "../../../src/json-patch";
 
 export interface Zone {
   tz: string;
-  /** "London, Europe (UTC+01:00)" */
+  /** "London (UTC+01:00)", or "Buenos Aires, Argentina (UTC-03:00)" */
   label: string;
   city: string;
 }
+
+/** The city in a label: what comes before the region's comma or the offset's bracket. */
+export const cityIn = (label: string): string => /^[^,(]+/.exec(label)?.[0]?.trim() ?? label;
 
 export const SHOWN = 8;
 
@@ -28,9 +31,9 @@ export function matches(zones: Zone[], query: string): Zone[] {
   return [...starts, ...contains].slice(0, SHOWN);
 }
 
-/** The zones as the server rendered them: <option value="Asia/Tokyo">Tokyo, Asia (UTC+09:00)</option>. */
+/** The zones as the server rendered them: <option value="Asia/Tokyo">Tokyo (UTC+09:00)</option>. */
 export function zonesFrom(el: ParentNode): Zone[] {
-  return [...el.querySelectorAll("option")].map((o) => ({ tz: o.value, label: o.textContent ?? "", city: (o.textContent ?? "").split(",")[0]! }));
+  return [...el.querySelectorAll("option")].map((o) => ({ tz: o.value, label: o.textContent ?? "", city: cityIn(o.textContent ?? "") }));
 }
 
 const cityOf = (tz: string): string => (tz.split("/").pop() ?? tz).replaceAll("_", " ");
