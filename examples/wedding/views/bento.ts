@@ -117,8 +117,12 @@ export function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], o
   const cornersOf = (t: Tray, key: string): string => t.cells.find((c) => c.key === key)!.corners.join(" ");
   const placed = cells.map((c) => {
     if (open && c.key === open.key) {
+      // no `grid-area` here (unlike the closed cells below): open, this cell is `position:
+      // absolute; inset: 0` to `.cells` (W5.1), and a grid item's own named area still bounds an
+      // absolutely positioned box even with insets given, so naming one would shrink it back to
+      // its closed slot instead of the tray's own rectangle.
       return join(
-        `<div class="cell open" data-key="${c.key}" data-moving="${esc(open.key)}" style="grid-area: ${c.key}">`,
+        `<div class="cell open" data-key="${c.key}" data-moving="${esc(open.key)}">`,
         `<div class="cell-open-body">${open.body}</div>`,
         open.note && `<p class="note">${esc(open.note)}</p>`,
         open.tools && open.tools.length > 0 && `<div class="rail work">${open.tools.join("")}</div>`,
