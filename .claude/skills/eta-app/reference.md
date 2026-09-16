@@ -567,3 +567,16 @@ of a real seam addition (rare) vs. a workaround (avoid):
   applet registry exist to avoid. If something seems to require it, the fix
   is almost always a new generic seam on `Example`/`Compartment`, added once, in
   the kernel — not a special case for one example.
+
+## The tray: laying out a box
+
+A page that is a box shows one compartment per thing on its ground. Do not hand-write its grid.
+`src/tray.ts`'s `tray(compartments, columns)` takes the compartments in the box's own order, each
+with a `key` (`slug()` its label) and how much of the tray it deserves (`span` in columns, `rows`),
+and places them first-fit without reordering; a gap at the end of the last row goes to the
+compartment before it. It returns `areas` (for `grid-template-areas`) and, per compartment, its
+`corners`: which of the tray's corners it sits in, so a view can cut it into the tray -- square
+where its walls meet another compartment, the tray's curve (less the wall) only in its corners.
+It is viewport-free: compute one tray per column count you lay out for (the wedding does three and
+one) and let the stylesheet pick by width. See `examples/wedding/views/bento.ts`'s `boxPage` and
+`examples/bento/README.md` for the rules the tray serves.

@@ -3,6 +3,7 @@
 // right from 820px), and the tools. Every gesture here is a write to the session -- going to a
 // page, opening or closing a drawer, switching a reading -- so the kernel renders the result.
 
+import { slug, tray, type Compartment, type Tray } from "../../../src/tray";
 import { esc, join, nav, write } from "./html";
 import { icon, type IconName } from "./icons";
 
@@ -42,8 +43,16 @@ export interface CellOptions {
   tools?: string;
 }
 
-/** A compartment: one thing on the ground, showing the state it is in, › into its page. */
-export function cell(o: CellOptions): string {
+/** A compartment as the tray places it: its html, and how much of the tray it asked for. */
+export interface Placeable extends Compartment {
+  html: string;
+}
+
+/** The tray is three across from 820px and one on a phone (styles.css picks); a box computes both. */
+const COLUMNS = 3;
+
+/** A compartment: one thing on the ground, showing the state it is in, › into its page. A big one spans the tray. */
+export function cell(o: CellOptions): Placeable {
   const countInHead = o.big && o.count != null;
   const counted = (o.summary ?? "").startsWith(`${o.count}`); // a summary that already counts ("3 events") is not counted twice
   const summary = !o.big && o.count != null && !counted ? `${o.count}${o.summary ? ` · ${o.summary}` : ""}` : o.summary;
@@ -53,23 +62,40 @@ export function cell(o: CellOptions): string {
     o.page !== undefined
       ? `<a class="cell-head" href="#"${nav(o.page)}>${mark}${name}<span class="chev">${icon("chevron-right", 18)}</span></a>`
       : `<div class="cell-head">${mark}${name}</div>`;
-  return join(
-    `<div class="cell${o.big ? " big" : ""}${o.page === undefined ? " whole" : ""}"${o.page !== undefined ? nav(o.page) : ""}>`,
+  const key = slug(o.name);
+  const html = join(
+    `<div class="cell${o.big ? " big" : ""}${o.page === undefined ? " whole" : ""}" data-key="${key}"${o.page !== undefined ? nav(o.page) : ""}>`,
     head,
     o.tools && `<div class="cell-tools">${o.tools}</div>`,
     o.body && `<div class="cell-body">${o.body}</div>`,
     summary && `<p class="cell-summary">${esc(summary)}</p>`,
     "</div>",
   );
+  return { key, span: o.big ? COLUMNS : 1, rows: 1, html };
 }
 
-/** A page that is a box: the crumbs, the ground's own in place, the compartments, the tools at the foot. */
-export function boxPage(trail: Crumb[], inPlace: string[], cells: string[], tools: string[] = []): string {
+/**
+ * A page that is a box: the crumbs, the ground's own in place, the compartments in the tray, the
+ * tools at the foot. The tray is computed (src/tray.ts), not drawn: each compartment lands in its
+ * area, first-fit in the box's own order, and learns which of the tray's corners it sits in, once
+ * for three columns and once for one -- the stylesheet picks by width.
+ */
+export function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], tools: string[] = []): string {
+  const wide = tray(cells, COLUMNS);
+  const narrow = tray(cells, 1);
+  const cornersOf = (t: Tray, key: string): string => t.cells.find((c) => c.key === key)!.corners.join(" ");
+  const placed = cells.map((c) =>
+    c.html.replace(
+      `data-key="${c.key}"`,
+      `data-key="${c.key}" data-corners="${cornersOf(wide, c.key)}" data-corners-phone="${cornersOf(narrow, c.key)}" style="grid-area: ${c.key}"`,
+    ),
+  );
+  const areas = (t: Tray): string => t.areas.replace(/\n/g, " ");
   return join(
     crumbs(trail),
     `<section class="page box">`,
     ...inPlace,
-    `<div class="cells">${cells.join("")}</div>`,
+    `<div class="cells" style='--tray-areas: ${areas(wide)}; --tray-areas-phone: ${areas(narrow)}'>${placed.join("")}</div>`,
     tools.length > 0 && `<div class="foot-tools">${tools.join("")}</div>`,
     "</section>",
   );

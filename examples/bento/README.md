@@ -79,6 +79,13 @@ Each rule names where the mock-up honours it.
     read in the drawer, not on the compartment behind it. A window never changes size because
     its content changed.
 
+## What eta already does with this
+
+The tray is computed in eta by `src/tray.ts`: a box declares its compartments and their spans,
+and the grid's areas and each compartment's corner cuts come out, once for three columns and
+once for one. The wedding's boxes use it (`views/bento.ts`). The grid in this mock-up's
+stylesheet is the same result written by hand, so it can be looked at without a server.
+
 ## Where it shows the shape and not the function
 
 The drawer draws a figure's properties and, for the answer, its fields, but nothing is saved; the

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.37.0] - 2026-09-16
+
+### Added
+
+- **The tray is computed, not drawn.** `src/tray.ts`: a box says its compartments in its own order
+  and how much of the tray each deserves -- its span in columns and rows ("bigger for what matters
+  more") -- and `tray(compartments, columns)` places them first-fit, never above the row the last one
+  started on, so the box's order is kept; a gap at the end of the last row goes to the compartment
+  before it, so the tray's foot is whole. It answers with the grid's template areas and, for each
+  compartment, its area and which of the tray's corners it sits in -- because a compartment is cut
+  into the tray, square where its walls meet another, curved only in the tray's corners. Pure and
+  viewport-free; the wedding's `boxPage` computes one tray for three columns and one for a phone,
+  hands both over as custom properties, and the stylesheet picks by width. The wedding's boxes
+  (a household's home, the couple's, a family's) now look as the bento mock-up does, and their
+  hand-written `grid-column` spans are gone. `slug()` turns a compartment's label into its
+  grid-area name. 100% covered; the wedding's 51 stories and browser tests unchanged.
+
 ## [0.36.0] - 2026-09-16
 
 ### Changed

@@ -76,14 +76,23 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .crumbs a:hover, .crumbs a:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
 .crumbs b { font-weight: 600; color: var(--text); }
 
-/* ── a box and its compartments ── */
+/* ── a box and its compartments: the tray (examples/bento/README.md). The tray is computed by
+   src/tray.ts and handed over as custom properties -- the areas for three columns and for one --
+   and each compartment knows which of the tray's corners it sits in. Compartments are cut into
+   the tray: square where their walls meet, the tray's curve less the wall where they sit in its
+   corners. One column on a phone, three from 820px. ── */
 .page.box { display: flex; flex-direction: column; }
-.cells { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.cell { position: relative; border: 1.5px solid rgba(43,43,51,0.25); border-radius: 12px; background: var(--card); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-height: 76px; cursor: pointer; }
-.cell:hover { border-color: var(--navy); }
-.cell.big { grid-column: 1 / -1; padding: 10px 8px 6px; background: #EFE8D8; }
+.cells { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: var(--tray-areas-phone); gap: 10px; padding: 10px; background: var(--paper-deep); border-radius: 28px; box-shadow: 0 12px 30px rgba(43,43,51,0.12), inset 0 1px 0 rgba(255,255,255,0.4); }
+.cell { position: relative; border-radius: 0; background: var(--card); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-height: 76px; cursor: pointer; }
+.cell:hover { background: #FFFFFF; }
+.cell.big { padding: 10px 8px 6px; background: #EFE8D8; }
 .cell.whole { cursor: default; }
-.cell.whole:hover { border-color: rgba(43,43,51,0.25); }
+@media (max-width: 819px) {
+  .cell[data-corners-phone~="tl"] { border-top-left-radius: 18px; }
+  .cell[data-corners-phone~="tr"] { border-top-right-radius: 18px; }
+  .cell[data-corners-phone~="br"] { border-bottom-right-radius: 18px; }
+  .cell[data-corners-phone~="bl"] { border-bottom-left-radius: 18px; }
+}
 .cell-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; column-gap: 7px; text-decoration: none; color: var(--text); }
 .cell-name { font-size: 11.5px; line-height: 16px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; min-width: 0; }
 .cell-icon { display: inline-flex; align-items: center; height: 16px; color: var(--navy); }
@@ -96,7 +105,13 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .cell.big .cell-body .photo { width: 100%; height: 42vh; max-height: 360px; display: block; }
 .foot-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
 .foot-tools .tool.quiet:last-child { margin-left: auto; }
-@media (min-width: 820px) { .cells { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 820px) {
+  .cells { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: var(--tray-areas); }
+  .cell[data-corners~="tl"] { border-top-left-radius: 18px; }
+  .cell[data-corners~="tr"] { border-top-right-radius: 18px; }
+  .cell[data-corners~="br"] { border-bottom-right-radius: 18px; }
+  .cell[data-corners~="bl"] { border-bottom-left-radius: 18px; }
+}
 
 /* ── a collection ── */
 .page.collection { display: flex; flex-direction: column; gap: 12px; }
