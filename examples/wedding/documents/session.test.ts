@@ -62,6 +62,24 @@ describe("session document (a visit)", () => {
     expect(read(id).ui).toEqual({});
   });
 
+  test("find opens, closes and forgets its own word -- one key of several, then the last one, then a close with nothing open at all", () => {
+    const id = crypto.randomUUID();
+    patch(id, [{ op: "replace", path: "/code", value: "OKAFOR" }]);
+    // closing find before it was ever open does nothing
+    expect(patch(id, [{ op: "remove", path: "/filter/guests" }]).applied).toEqual([]);
+    patch(id, [
+      { op: "replace", path: "/filter/guests", value: "" },
+      { op: "replace", path: "/filter/gifts", value: "Ok" },
+    ]);
+    expect(read(id).ui.filter).toEqual({ guests: "", gifts: "Ok" });
+    // closing one leaves the other's word alone -- find is per collection, not one switch
+    patch(id, [{ op: "remove", path: "/filter/guests" }]);
+    expect(read(id).ui.filter).toEqual({ gifts: "Ok" });
+    // and closing the last one forgets find altogether, not an empty filter object
+    patch(id, [{ op: "remove", path: "/filter/gifts" }]);
+    expect(read(id).ui).toEqual({});
+  });
+
   test("an unknown path, or a reading without a key, is ignored", () => {
     const id = crypto.randomUUID();
     expect(patch(id, [{ op: "replace", path: "/nope", value: 1 }, { op: "remove", path: "/reading" }]).applied).toEqual([]);

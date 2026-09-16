@@ -6,7 +6,7 @@
 import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
 import type { SessionDocument } from "../documents/session";
-import { addModal, addTool, boxPage, cell, confirmModal, readingSwitch, sheet, tool, type Crumb, type OpenOptions } from "./bento";
+import { addModal, addTool, boxPage, cell, confirmModal, findControl, readingSwitch, sheet, tool, type Crumb, type OpenOptions } from "./bento";
 import { esc, join, nav, write } from "./html";
 import { icon } from "./icons";
 import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
@@ -22,14 +22,17 @@ import {
   firstNameOf,
   formatDay,
   frame,
+  hushed,
   inertWhile,
   isComing,
+  matches,
   pencil,
   picture,
   placeRows,
   placesSummary,
   plural,
   specOf,
+  tally,
   timetableRows,
 } from "./shared";
 import { inPhoto } from "../documents/wedding";
@@ -158,25 +161,27 @@ const chaseLink = (h: HouseholdDocument): string =>
 const replyPills = (h: HouseholdDocument, askId: number): string =>
   `<div class="coming-pills reply-pills" role="group" aria-label="yes or no"><button class="pill pill-sm yes" type="button"${write("board", "replace", `/households/${h.id}/asks/${askId}/reply`, "yes")}>Yes</button><button class="pill pill-sm no" type="button"${write("board", "replace", `/households/${h.id}/asks/${askId}/reply`, "no")}>No</button></div>`;
 
-/** Every household as a family: its guests as members, the code on the family figure's chest, the answer at its feet. */
-function boardFamilies(households: HouseholdDocument[]): Family[] {
+/** Every household as a family: its guests as members, the code on the family figure's chest, the
+ * answer at its feet. Find's word (rule 17) hushes a whole family at once, by its code and names. */
+function boardFamilies(households: HouseholdDocument[], filter?: string): Family[] {
   const families: Family[] = [];
   for (const h of [...households].sort((a, b) => a.code.localeCompare(b.code))) {
     const mark = answerOf(h);
     const tap: PhotoEntry["tap"] = { doc: "session", op: { op: "replace", path: "/page", value: `households/${h.id}` } };
+    const hush = filter !== undefined && !matches(`${h.code} ${h.guests.map((g) => g.name).join(" ")}`, filter);
     const members: PhotoEntry[] = h.guests.map((g) => {
       const state = inPhoto({ coming: g.coming, answer: h.answer });
-      return { key: String(g.id), spec: specOf(g.minifigure, g.name), ghost: state === "ghost", out: state === null, mark, tap };
+      return { key: String(g.id), spec: specOf(g.minifigure, g.name), ghost: state === "ghost", out: state === null, mark, tap, hushed: hush };
     });
     if (!members.length) continue;
-    families.push({ key: String(h.id), members, label: h.code, mark, ghost: mark === "maybe", out: mark === "no" || mark === "none", tap });
+    families.push({ key: String(h.id), members, label: h.code, mark, ghost: mark === "maybe", out: mark === "no" || mark === "none", tap, hushed: hush });
   }
   return families;
 }
 
 /** The board's photo of families: its mount, replaced alone when a look changes. */
 export function boardPhoto(v: BoardView): string {
-  const { entries, label } = familiesPhoto(boardFamilies(v.b.households), null);
+  const { entries, label } = familiesPhoto(boardFamilies(v.b.households, v.session.ui.filter?.households), null);
   return photoMount("board-photo", entries, label);
 }
 
@@ -189,6 +194,7 @@ export const familyGuestRow = (v: BoardView, g: HouseholdDocument["guests"][numb
 
 function householdsOpen(v: BoardView): OpenOptions {
   const { b } = v;
+  const filter = v.session.ui.filter?.households;
   let body: string;
   if (reading(v, "households") === "photo") {
     body = boardFamilies(b.households).length ? `<div class="reading photo-reading">${boardPhoto(v)}</div>` : `<p class="note">Nobody invited yet.</p>`;
@@ -198,9 +204,10 @@ function householdsOpen(v: BoardView): OpenOptions {
     body = `<div class="rows">${rows
       .flatMap((h) => {
         const names = h.guests.map((g) => firstNameOf(g.name) + (g.coming === null || isComing(g) ? "" : " (not coming)")).join(", ");
+        const hush = filter !== undefined ? hushed(matches(`${h.code} ${h.guests.map((g) => g.name).join(" ")}`, filter)) : "";
         return [
           join(
-            `<div class="row-line stay"><div>`,
+            `<div class="row-line stay${hush}"><div>`,
             `<a class="name-link" href="#"${nav(`households/${h.id}`)}>${esc(h.code)}${icon("chevron-right")}</a>`,
             `<p class="note">${esc(names || "nobody named yet")}</p>`,
             h.message && `<p class="note quote">“${esc(h.message)}”</p>`,
@@ -208,7 +215,7 @@ function householdsOpen(v: BoardView): OpenOptions {
           ),
           ...h.asks
             .filter((a) => a.reply === null)
-            .map((a) => `<div class="row-line ask"><div><span class="what">${esc(a.name)}</span><p class="note">asked by ${esc(h.code)}</p></div>${replyPills(h, a.id)}</div>`),
+            .map((a) => `<div class="row-line ask${hush}"><div><span class="what">${esc(a.name)}</span><p class="note">asked by ${esc(h.code)}</p></div>${replyPills(h, a.id)}</div>`),
         ];
       })
       .join("")}</div>`;
@@ -220,11 +227,13 @@ function householdsOpen(v: BoardView): OpenOptions {
     `<input class="field short" name="plus_ones" type="number" min="0" value="0" aria-label="Plus-ones they may name">`,
     `<button type="submit" class="tool add">${icon("plus")}Invite a household</button></form>`,
   );
+  const shown = filter !== undefined ? b.households.filter((h) => matches(`${h.code} ${h.guests.map((g) => g.name).join(" ")}`, filter)).length : b.households.length;
+  const note = filter === undefined && reading(v, "households") === "photo" ? "Tap a family to see them. At their feet, their answer." : null;
   return {
     key: "households",
-    tools: [readingSwitch("households", reading(v, "households"), ["photo", "list"]), invite],
-    body,
-    note: reading(v, "households") === "photo" ? "Tap a family to see them. At their feet, their answer." : null,
+    tools: [readingSwitch("households", reading(v, "households"), ["photo", "list"]), b.households.length ? findControl("households", filter) : "", invite],
+    body: join(body, filter !== undefined && tally(shown, b.households.length)),
+    note,
   };
 }
 
@@ -274,6 +283,9 @@ const openKeep = (table: KeepTable) => (id: number) => write("session", "replace
 function keepOpen(v: BoardView, table: KeepTable): OpenOptions {
   const { b } = v;
   const { noun } = KEEP[table];
+  // find (rule 17) is on the couple's gifts, alongside guests and households -- not courses or
+  // events or places, which the rule never names
+  const filter = table === "gifts" ? v.session.ui.filter?.gifts : undefined;
   let body: string;
   if (table === "events") body = timetableRows(b.events, openKeep(table));
   else if (table === "places") body = placeRows(b.places, openKeep(table));
@@ -286,7 +298,7 @@ function keepOpen(v: BoardView, table: KeepTable): OpenOptions {
       ? `<div class="rows">${b.gifts
           .map((g) =>
             join(
-              `<div class="row-line tap gift${g.picture_key ? " pic" : ""}" role="button" tabindex="0"${openKeep(table)(g.id)}>`,
+              `<div class="row-line tap gift${g.picture_key ? " pic" : ""}${filter !== undefined ? hushed(matches(g.name, filter)) : ""}" role="button" tabindex="0"${openKeep(table)(g.id)}>`,
               g.picture_key && picture(g.picture_key, g.name),
               `<div><span class="what">${esc(g.name)}</span><p class="note">${g.shared ? "shared · " : ""}${g.claimants.length ? `claimed by ${esc(g.claimants.join(", "))}` : "unclaimed"}</p></div>`,
               pencil(),
@@ -296,7 +308,10 @@ function keepOpen(v: BoardView, table: KeepTable): OpenOptions {
           .join("")}</div>`
       : `<p class="note">No gifts yet.</p>`;
   }
-  return { key: table, tools: [addTool(table, `Add a ${noun}`)], body };
+  const tools = [addTool(table, `Add a ${noun}`)];
+  if (table === "gifts" && b.gifts.length) tools.push(findControl("gifts", filter));
+  if (filter !== undefined) body = join(body, tally(b.gifts.filter((g) => matches(g.name, filter)).length, b.gifts.length));
+  return { key: table, tools, body };
 }
 
 /** The row's drawer: its fields, each a form; a course's dishes and drinks; its place in the order; Remove at the foot. */

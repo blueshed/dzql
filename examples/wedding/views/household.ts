@@ -7,7 +7,7 @@ import type { Guest, HouseholdDocument } from "../documents/household";
 import type { SessionDocument } from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { Course, Gift, Wedding } from "../documents/wedding";
-import { addModal, addTool, boxPage, cell, readingSwitch, sheet, tool, type Crumb, type OpenOptions } from "./bento";
+import { addModal, addTool, boxPage, cell, findControl, readingSwitch, sheet, tool, type Crumb, type OpenOptions } from "./bento";
 import type { DressProps } from "../applets/dress";
 import type { MenuProps } from "../applets/menu";
 import { esc, join, nav, write } from "./html";
@@ -24,15 +24,18 @@ import {
   firstNameOf,
   formatDay,
   frame,
+  hushed,
   inertWhile,
   isComing,
   isGuestOut,
+  matches,
   pencil,
   picture,
   placeRows,
   placesSummary,
   plural,
   specOf,
+  tally,
   timetableRows,
 } from "./shared";
 
@@ -110,8 +113,13 @@ function boxCells(v: HouseholdView) {
   const inPhoto = photo.filter((r) => weddingDoc.inPhoto(r) !== null).length;
   const openGifts = gifts.filter((g) => g.shared || g.taken === 0).length;
   const named = h.guests.filter((g) => g.named_by === "household").length;
-  // adding our plus-one is the plus on the guests cell's own tools, and a modal asking their name (rule 14)
-  const guestTools = join(h.guests.length ? readingSwitch("guests", reading(v, "guests"), ["photo", "list"]) : "", named < h.plus_ones ? addTool("guests", "Name our plus-one") : "");
+  // adding our plus-one is the plus on the guests cell's own tools, and a modal asking their name (rule 14);
+  // find (rule 17) is there too, once there is more than nobody to find among
+  const guestTools = join(
+    h.guests.length ? readingSwitch("guests", reading(v, "guests"), ["photo", "list"]) : "",
+    named < h.plus_ones ? addTool("guests", "Name our plus-one") : "",
+    h.guests.length ? findControl("guests", v.session.ui.filter?.guests) : "",
+  );
   return [
     // the guests, whole: read as the photo or the list, a row's coming on the row, ✎ the drawer; no page beneath
     cell({ name: "guests", mark: "users", count: h.guests.length, big: true, tools: guestTools || undefined, body: guestsBody(v) }),
@@ -125,19 +133,21 @@ function boxCells(v: HouseholdView) {
 
 export const reading = (v: HouseholdView, key: string, fallback = "photo"): string => v.session.ui.reading?.[key] ?? fallback;
 
-/** The family photo's mount: every guest, a waiting ask as a ghost; the chosen one rings while their drawer is open. Replaced alone when a look changes. */
-export const familyPhoto = (v: HouseholdView): string => photoMount("family-photo", familyEntries(v.h, true, v.session.ui.focus), "your household, as minifigures");
+/** The family photo's mount: every guest, a waiting ask as a ghost; the chosen one rings while
+ * their drawer is open, and find's word (rule 17) hushes whoever it misses. Replaced alone when a look changes. */
+export const familyPhoto = (v: HouseholdView): string => photoMount("family-photo", familyEntries(v.h, true, v.session.ui.focus, v.session.ui.filter?.guests), "your household, as minifigures");
 
 /**
  * One guest as a row of the list reading: the name (✎ the drawer), their choices on one line, whether
  * they are coming (read only -- rule 13 moved the yes/no into the drawer, off the line). The whole
- * row lights and rings pressed while the drawer is open, and scrolls into the clear beside it (K2).
+ * row lights and rings pressed while the drawer is open, and scrolls into the clear beside it (K2);
+ * find's word (rule 17) hushes it, never hides it.
  */
-export function guestRow(v: HouseholdView, g: Guest): string {
+export function guestRow(v: HouseholdView, g: Guest, filter?: string): string {
   const chosen = v.session.ui.focus === g.id;
   const said = g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming";
   return join(
-    `<div class="row-line guest tap" id="guest-${g.id}" aria-pressed="${chosen}"${chosen ? " data-reveal" : ""}><div>`,
+    `<div class="row-line guest tap${filter !== undefined ? hushed(matches(g.name, filter)) : ""}" id="guest-${g.id}" aria-pressed="${chosen}"${chosen ? " data-reveal" : ""}><div>`,
     `<button class="name-link" type="button"${write("session", "replace", "/focus", g.id)}>${esc(g.name)}${pencil()}</button>`,
     `<p class="note">${esc(choicesLine(g, v.courses))}</p></div>`,
     `<span class="said">${esc(said)}</span>`,
@@ -145,19 +155,30 @@ export function guestRow(v: HouseholdView, g: Guest): string {
   );
 }
 
-/** The household's guests in the current reading, the photo or the list, whole in the box's compartment. */
+/** The household's guests in the current reading, the photo or the list, whole in the box's
+ * compartment; find's tally (rule 17), once it is open. */
 function guestsBody(v: HouseholdView): string {
   const { h } = v;
-  if (reading(v, "guests") === "photo") {
-    return join(
-      h.guests.length ? `<div class="reading photo-reading">${familyPhoto(v)}</div>` : `<p class="note">Nobody is named on your invitation yet.</p>`,
-      h.guests.length > 0 && `<p class="note">Tap anyone to dress them and choose their meal.</p>`,
-    );
-  }
-  const ghosts = h.asks
-    .filter((a) => a.reply === null)
-    .map((a) => `<div class="row-line guest ghost-row"><div><span class="what">${esc(a.name)}</span><p class="note">a waiting ask — not a guest yet</p></div><span class="taken">waiting</span></div>`);
-  return `<div class="rows">${h.guests.map((g) => guestRow(v, g)).join("")}${ghosts.join("")}</div>`;
+  const filter = v.session.ui.filter?.guests;
+  const body =
+    reading(v, "guests") === "photo"
+      ? join(
+          h.guests.length ? `<div class="reading photo-reading">${familyPhoto(v)}</div>` : `<p class="note">Nobody is named on your invitation yet.</p>`,
+          h.guests.length > 0 && `<p class="note">Tap anyone to dress them and choose their meal.</p>`,
+        )
+      : (() => {
+          const ghosts = h.asks
+            .filter((a) => a.reply === null)
+            .map(
+              (a) =>
+                `<div class="row-line guest ghost-row${filter !== undefined ? hushed(matches(a.name, filter)) : ""}"><div><span class="what">${esc(a.name)}</span><p class="note">a waiting ask — not a guest yet</p></div><span class="taken">waiting</span></div>`,
+            );
+          return `<div class="rows">${h.guests.map((g) => guestRow(v, g, filter)).join("")}${ghosts.join("")}</div>`;
+        })();
+  if (filter === undefined) return body;
+  const total = h.guests.length + h.asks.filter((a) => a.reply === null).length;
+  const shown = h.guests.filter((g) => matches(g.name, filter)).length + h.asks.filter((a) => a.reply === null && matches(a.name, filter)).length;
+  return join(body, tally(shown, total));
 }
 
 // ───────────────────────────── the collections ─────────────────────────────
@@ -180,18 +201,26 @@ function giftState(g: Gift, mine: boolean): { word: string; cls: string } {
 }
 
 function giftsOpen(v: HouseholdView): OpenOptions {
+  const filter = v.session.ui.filter?.gifts;
   const rows = v.gifts.map((g) => {
     const st = giftState(g, v.h.claims.includes(g.id));
     const chosen = v.session.ui.gift === g.id;
+    const hush = filter !== undefined ? hushed(matches(g.name, filter)) : "";
     return join(
-      `<div class="row-line gift tap${g.picture_key ? " pic" : ""}" role="button" tabindex="0" aria-pressed="${chosen}"${chosen ? " data-reveal" : ""}${write("session", "replace", "/gift", g.id)}>`,
+      `<div class="row-line gift tap${g.picture_key ? " pic" : ""}${hush}" role="button" tabindex="0" aria-pressed="${chosen}"${chosen ? " data-reveal" : ""}${write("session", "replace", "/gift", g.id)}>`,
       g.picture_key && picture(g.picture_key, g.name),
       `<div><span class="what">${esc(g.name)}</span><p class="note state-${st.cls}">${esc(st.word)}</p></div>`,
       pencil(),
       "</div>",
     );
   });
-  return { key: "gifts", body: `<div class="rows">${rows.join("")}</div>`, note: v.gifts.length ? null : "No gifts on the list yet." };
+  const shown = filter !== undefined ? v.gifts.filter((g) => matches(g.name, filter)).length : v.gifts.length;
+  return {
+    key: "gifts",
+    tools: v.gifts.length ? [findControl("gifts", filter)] : [],
+    body: join(`<div class="rows">${rows.join("")}</div>`, filter !== undefined && tally(shown, v.gifts.length)),
+    note: v.gifts.length ? null : "No gifts on the list yet.",
+  };
 }
 
 /** Everyone in the photo, as families: the wedding's guests whose households said yes, a maybe as a ghost, grouped by household. */

@@ -322,6 +322,60 @@ describe("a household", () => {
     ws.close();
   });
 
+  test("find dims what the word misses, keeps lit what it hits, tallies, and forgets on close (rule 17)", async () => {
+    const ws = await enter(code);
+    const guests = householdDoc.read(code)!.guests;
+    let html: string | undefined;
+
+    // opening find: the field appears, empty, dimming nobody
+    write(ws, "session", [{ op: "replace", path: "/filter/guests", value: "" }]);
+    await expectMessage(ws, "patch");
+    html = (await expectMessage(ws, "render")).html;
+    expect(html).toContain('class="find-form"');
+    expect(html).not.toContain(" hushed");
+
+    // typing dims what the word misses, keeps the rest lit, and tallies -- in both readings
+    write(ws, "session", [{ op: "replace", path: "/filter/guests", value: guests[0]!.name }]);
+    await expectMessage(ws, "patch");
+    html = (await expectMessage(ws, "render")).html;
+    expect(html).toContain(`&quot;hushed&quot;:true`); // the photo applet's own props, one entry hushed
+    expect(html).toContain(`>1 of ${guests.length}</span>`);
+    write(ws, "session", [{ op: "replace", path: "/reading/guests", value: "list" }]);
+    await expectMessage(ws, "patch");
+    html = (await expectMessage(ws, "render")).html;
+    expect(html).toContain('class="row-line guest tap hushed"');
+    expect(html).toContain(`>1 of ${guests.length}</span>`);
+
+    // a waiting ask hushes too, by its own name, when the word misses it
+    householdDoc.patch(code, [{ op: "add", path: "/asks/-", value: "Nobody Matching" }], "setup");
+    const askId = householdDoc.read(code)!.asks.at(-1)!.id;
+    write(ws, "session", [{ op: "replace", path: "/page", value: "" }]);
+    await expectMessage(ws, "patch");
+    html = (await expectMessage(ws, "render")).html;
+    expect(html).toContain('class="row-line guest ghost-row hushed"');
+    householdDoc.patch(code, [{ op: "remove", path: `/asks/${askId}` }], "setup");
+
+    // closing find forgets the word: nothing dims, no field, no tally
+    write(ws, "session", [{ op: "remove", path: "/filter/guests" }]);
+    await expectMessage(ws, "patch");
+    html = (await expectMessage(ws, "render")).html;
+    expect(html).not.toContain('class="find-form"');
+    expect(html).not.toContain(" hushed");
+    expect(html).not.toContain('class="tally"');
+
+    // the gifts collection carries find too, once open, dimming its own rows
+    write(ws, "session", [{ op: "replace", path: "/page", value: "gifts" }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
+    const giftName = boardDoc.read("DASH")!.gifts[0]!.name;
+    write(ws, "session", [{ op: "replace", path: "/filter/gifts", value: giftName }]);
+    await expectMessage(ws, "patch");
+    html = (await expectMessage(ws, "render")).html;
+    expect(html).toContain('class="find-form"');
+    expect(html).toContain(" hushed\" role=\"button\"");
+    ws.close();
+  });
+
   test("undo walks back this session's own writes, newest first, through the household's replay", async () => {
     const ws = await enter(code);
     const guest = householdDoc.read(code)!.guests[0]!.id;
@@ -507,6 +561,54 @@ describe("the couple", () => {
     write(ws, "session", [{ op: "replace", path: "/confirm", value: "nope/1" }]);
     await expectMessage(ws, "patch");
     expect((await expectMessage(ws, "render")).html).not.toContain('class="modal"');
+    ws.close();
+  });
+
+  test("find dims households and the couple's own gifts, keeps lit what it hits, and tallies (rule 17)", async () => {
+    const ws = await enter("DASH");
+    const households = boardDoc.read("DASH")!.households;
+    // two households this test alone owns, so nothing it does here leaks into any other test's
+    // household (in particular not `code`'s, which many other tests share and mutate)
+    const matching = households.find((h) => h.code !== code)!;
+    const other = households.find((h) => h.code !== code && h.code !== matching.code)!;
+
+    // households, the photo reading: opening find dims the family the word misses
+    write(ws, "session", [{ op: "replace", path: "/page", value: "households" }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
+    write(ws, "session", [{ op: "replace", path: "/filter/households", value: matching.code }]);
+    await expectMessage(ws, "patch");
+    let html = (await expectMessage(ws, "render")).html;
+    expect(html).toContain('class="find-form"');
+    expect(html).toContain(`&quot;hushed&quot;:true`);
+    expect(html).toContain(`>1 of ${households.length}</span>`);
+
+    // the list reading: the same word hushes the row, and any of its own waiting asks
+    householdDoc.patch(matching.code, [{ op: "add", path: "/asks/-", value: "Someone Matching" }], "setup");
+    householdDoc.patch(other.code, [{ op: "add", path: "/asks/-", value: "Someone Else" }], "setup");
+    write(ws, "session", [{ op: "replace", path: "/reading/households", value: "list" }]);
+    await expectMessage(ws, "patch");
+    html = (await expectMessage(ws, "render")).html;
+    expect(html).toContain('class="row-line stay hushed"');
+    expect(html).toContain('class="row-line ask hushed"><div><span class="what">Someone Else');
+    expect(html).toContain('class="row-line ask"><div><span class="what">Someone Matching'); // the matching household's own ask, not hushed
+    householdDoc.patch(matching.code, [{ op: "remove", path: `/asks/${householdDoc.read(matching.code)!.asks.at(-1)!.id}` }], "setup");
+    householdDoc.patch(other.code, [{ op: "remove", path: `/asks/${householdDoc.read(other.code)!.asks.at(-1)!.id}` }], "setup");
+    write(ws, "session", [{ op: "remove", path: "/filter/households" }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
+
+    // the couple's own gifts, kept: find dims the same way
+    write(ws, "session", [{ op: "replace", path: "/page", value: "gifts" }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
+    const giftName = boardDoc.read("DASH")!.gifts[0]!.name;
+    write(ws, "session", [{ op: "replace", path: "/filter/gifts", value: giftName }]);
+    await expectMessage(ws, "patch");
+    html = (await expectMessage(ws, "render")).html;
+    expect(html).toContain('class="find-form"');
+    expect(html).toContain(" hushed\" role=\"button\"");
+    expect(html).toContain(`>1 of ${boardDoc.read("DASH")!.gifts.length}</span>`);
     ws.close();
   });
 

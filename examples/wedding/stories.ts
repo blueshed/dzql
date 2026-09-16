@@ -118,6 +118,11 @@ export const stories: Stories = {
     story("The couple add an event to the day", { as: "couple", does: board("add", "/events/-", { name: "Fireworks", when_at: "2027-04-02T22:00" }), seen: { couple: "events", okafors: "day" } }),
     story("The couple add somewhere to stay", { as: "couple", does: board("add", "/places/-", { name: "The Bristol Hotel", notes: "Ask for the wedding rate." }), seen: { couple: "places", okafors: "stay" } }),
 
+    // ── The filter (W4): dims what the word misses, never hides ──
+    story("Grace finds Ok among the guests; two stay lit, the rest dim, the tally says two of five", { as: "okafors", does: at("guests @ filter.guests=Ok"), seen: { okafors: "guests" } }),
+    story("The couple find kettle among the gifts, and only their page dims", { as: "couple", does: at("gifts @ filter.gifts=kettle"), seen: { couple: "gifts" } }),
+    story("Grace closes find, and every guest is lit again", { as: "okafors", does: { doc: "session", ops: [{ op: "remove", path: "/filter/guests" }] }, seen: { okafors: "guests @ filter.guests=Ok" } }),
+
     // ── Refusals ──
     story("A household cannot change the couple's welcome", { as: "ben", cannot: board("replace", "/message", "Hi") }),
     story("A household cannot invite anyone", { as: "ben", cannot: board("add", "/households/-", { email: "x@example.com" }) }),

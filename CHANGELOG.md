@@ -70,6 +70,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the render actually differs, since a still-closed sibling's markup renders byte-for-byte
   unchanged whether or not another compartment opened. `src/client/app.test.ts` gained a story for
   it: three siblings all carrying `data-moving`, only the one that changed gets named.
+- **W4: the filter, rule 17.** Find is a tool on the rail of guests, gifts and households
+  (`views/bento.ts`'s `findControl` -- closed, the plus on the rail; open, its own bordered field,
+  `data-write-on="input"`, K3, beside a close button that forgets the word rather than merely
+  clearing it). A new session key, `filter` (by the collection's own name, like `reading`),
+  neither on the ledger, persisted across a page change the same way `reading` is (both are the
+  collection's own state, not the page's). `views/shared.ts`'s `matches`/`hushed`/`tally` are
+  the shared pieces: a case-insensitive substring match, a `hushed` class that dims (never
+  `hidden`) a row (`.row-line[...]`) or a photo figure (`applets/photo.ts`'s `PhotoEntry.hushed`,
+  an SVG `.slot.hushed`), and "n of m" as its own `<p class="note">` (never inside
+  `OpenOptions.note`, which `esc()`s plain text and would double-escape the tally's own markup).
+  Wired into the household's own guests (inline, not open -- find sits on the cell's own tools)
+  and gifts, and the couple's households and kept gifts. `stories.ts` gains the three stories
+  `bento-request.md` sketches; the closing one's `seen` opens find first (`"guests @
+  filter.guests=Ok"`) since the actor's own `does` is only the `remove`, and removing a key that
+  was never set is rightly a no-op the harness would otherwise see no page change from.
 
 ## [0.38.0] - 2026-09-16
 

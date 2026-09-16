@@ -39,6 +39,16 @@ describe("photoSvg", () => {
     expect(svg).toContain('<g class="slot" transform');
   });
 
+  test("a figure the word misses hushes, never hides (rule 17)", () => {
+    const entries: PhotoEntry[] = [
+      { key: "1", spec: { ...look, name: "Ada" } },
+      { key: "2", spec: { ...look, name: "Femi" }, hushed: true },
+    ];
+    const svg = photoSvg(entries, "the family");
+    expect(svg).toContain('<g class="slot" transform');
+    expect(svg).toContain('<g class="slot hushed" transform');
+  });
+
   test("a newcomer walks in from the nearest side; a bomber lunges from beyond the frame; a count of one is no count", () => {
     const entries: PhotoEntry[] = [
       { key: "a", spec: look, count: 1 },

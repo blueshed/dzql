@@ -147,6 +147,22 @@ export function readingSwitch(key: string, current: string, options: string[]): 
     .join("")}</div>`;
 }
 
+/**
+ * Find, a tool on a collection's rail (rule 17): closed, the plus on the rail opens the field
+ * (a session write of `/filter/<key>` to `""`); open, the field itself (`data-write-on="input"`,
+ * K3) beside a close button that removes the key -- never a toggle button once it is open, since
+ * closing has to forget the word, not merely clear it.
+ */
+export function findControl(key: string, current: string | undefined): string {
+  if (current === undefined) return tool("Find", { icon: "search", kind: "quiet", write: write("session", "replace", `/filter/${key}`, ""), iconOnly: true, label: "Find" });
+  return join(
+    `<form class="find-form" data-write-on="input">`,
+    `<input class="field" name="q" value="${esc(current)}" placeholder="Find" aria-label="Find" autocomplete="off" autofocus${write("session", "replace", `/filter/${key}`)}>`,
+    `<button type="button" class="ghost small" aria-label="Close find"${write("session", "remove", `/filter/${key}`)}>${icon("x", 15)}</button>`,
+    "</form>",
+  );
+}
+
 export interface ToolOptions {
   icon?: IconName;
   /** `add` is burgundy; `quiet` sits at the right in plain ink (Leave); `danger` is a removal. */

@@ -25,6 +25,8 @@ export interface PhotoEntry {
   tap?: Tap;
   /** This figure's drawer is open: rings (rule 13), scrolls into the clear beside it (K2). */
   chosen?: boolean;
+  /** Find's word missed this one: dims, never hides (rule 17). */
+  hushed?: boolean;
 }
 
 export interface PhotoProps {
@@ -74,7 +76,8 @@ export function photoSvg(entries: PhotoEntry[], label: string, arriving: Set<str
     const count = entry.count && entry.count > 1 ? `<g class="count"><circle cx="82" cy="46" r="10"/><text x="82" y="49.5" text-anchor="middle">${entry.count}</text></g>` : "";
     // rule 13: a figure rings to show it is chosen -- an ellipse behind it, roughly its own bounds
     const ring = entry.chosen ? `<ellipse class="ring" cx="50" cy="72" rx="58" ry="80"/>` : "";
-    return `<g class="slot${entry.chosen ? " chosen" : ""}" transform="translate(${n(slot.x)} ${n(slot.y)}) scale(${slot.s.toFixed(3)})"${tap}${reveal}>${ring}${mark}${count}${inner}</g>`;
+    const hush = entry.hushed ? " hushed" : "";
+    return `<g class="slot${entry.chosen ? " chosen" : ""}${hush}" transform="translate(${n(slot.x)} ${n(slot.y)}) scale(${slot.s.toFixed(3)})"${tap}${reveal}>${ring}${mark}${count}${inner}</g>`;
   });
   return `<svg class="photo" viewBox="${viewBox}" aria-label="${esc(label)}">${figures.join("")}</svg>`;
 }

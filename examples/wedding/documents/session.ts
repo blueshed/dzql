@@ -27,6 +27,8 @@ export type Ui = {
   confirm?: string;
   /** How each collection is being read: "photo" or "list", by the collection's name. */
   reading?: Record<string, string>;
+  /** Find's own word, by the collection's name -- present (even "") once the tool is open, gone once closed. */
+  filter?: Record<string, string>;
 };
 
 export type SessionDocument = { code: string | null; kind: Kind | null; ui: Ui; note: string | null };
@@ -87,8 +89,9 @@ export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): 
       next.note = "Sent, if we know that address.";
     } else if (field === "page") {
       // A drawer or a modal belongs to the page it was opened on: leaving the page closes it.
-      // How each collection is read is kept.
-      next.ui = { page: String(op.value ?? ""), reading: before.ui.reading };
+      // How each collection is read, and what find says, are kept -- both are the collection's
+      // own state, not the page's.
+      next.ui = { page: String(op.value ?? ""), reading: before.ui.reading, filter: before.ui.filter };
     } else if (field === "focus" || field === "gift") {
       const n = integer(op.value);
       if (!removing && n === undefined) continue;
@@ -105,6 +108,18 @@ export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): 
       else next.ui[field] = String(op.value ?? "");
     } else if (field === "reading" && key && !removing) {
       next.ui.reading = { ...next.ui.reading, [key]: String(op.value ?? "") };
+    } else if (field === "filter" && key) {
+      // Closing find removes just its own key -- rule 17: everything is lit again, the way it
+      // was before find was ever pressed, not merely emptied.
+      if (removing) {
+        if (!before.ui.filter || !(key in before.ui.filter)) continue;
+        const rest = { ...before.ui.filter };
+        delete rest[key];
+        if (Object.keys(rest).length > 0) next.ui.filter = rest;
+        else delete next.ui.filter;
+      } else {
+        next.ui.filter = { ...before.ui.filter, [key]: String(op.value ?? "") };
+      }
     } else {
       continue;
     }

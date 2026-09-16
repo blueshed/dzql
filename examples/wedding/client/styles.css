@@ -185,6 +185,14 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 /* K2: the chosen figure scrolls into the clear beside the docked drawer, not under it */
 [data-reveal] { scroll-margin: 96px 16px 32px 16px; }
 @media (min-width: 820px) { [data-reveal] { scroll-margin-right: calc(var(--sheet-width) + 24px); scroll-margin-top: 24px; scroll-margin-bottom: 24px; } }
+/* rule 17: the filter dims what the word misses and never hides it */
+.row-line.hushed, svg .slot.hushed { opacity: 0.35; }
+.row-line.hushed:hover .what { text-decoration: none; }
+.tally { font-size: 13px; letter-spacing: 0.1em; color: var(--muted); }
+/* find: closed, a plain tool on the rail; open, its own small bordered field beside a close button */
+.find-form { display: flex; align-items: center; gap: 6px; background: var(--card); border: 1px solid var(--gold-soft); border-radius: var(--radius-control); box-shadow: 0 1px 4px rgba(var(--ink-rgb), 0.25), 0 6px 20px rgba(var(--ink-rgb), 0.16); padding: 6px; }
+.find-form .field { min-width: 8rem; min-height: 36px; }
+.find-form .ghost { flex: 0 0 auto; }
 .row-line img.pic { width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius-thumb); background: #EFE8D8; display: block; }
 .row-line .taken { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
 .row-line.ghost-row { opacity: 0.7; }

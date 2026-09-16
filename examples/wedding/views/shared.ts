@@ -20,6 +20,18 @@ export function formatWhen(when: string): string {
 
 export const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
 
+/** Rule 17: the filter dims what the word misses and keeps lit what it hits -- an empty word (find
+ * just opened) hits everything. Case-insensitive, a plain substring: no query language. */
+export const matches = (text: string, filter: string): boolean => !filter.trim() || text.toLowerCase().includes(filter.trim().toLowerCase());
+
+/** A figure or a row that missed the word hushes -- dims, never hides (rule 17). */
+export const hushed = (shown: boolean): string => (shown ? "" : " hushed");
+
+/** How many of all the word hit, once find is open -- a `<p class="note">` of its own, since
+ * `OpenOptions.note` escapes plain text and this carries its own markup (the tally's `<span>`,
+ * for its own style). Appended to a `body` string, never put in `note`. */
+export const tally = (shown: number, total: number): string => `<p class="note"><span class="tally">${shown} of ${total}</span></p>`;
+
 export const firstNameOf = (name: string): string => name.trim().split(/\s+/)[0]!;
 
 /** The couple's names, the root's name. */

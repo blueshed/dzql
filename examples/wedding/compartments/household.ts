@@ -143,7 +143,7 @@ export const household: Compartment = {
         if (reading(v, "guests") === "photo") {
           if (looks) ops.push(replace("#family-photo", ownPhoto(v)));
         } else if (choices) {
-          for (const g of v.h.guests) if (guests.has(g.id)) ops.push(replace(`#guest-${g.id}`, guestRow(v, g)));
+          for (const g of v.h.guests) if (guests.has(g.id)) ops.push(replace(`#guest-${g.id}`, guestRow(v, g, session.ui.filter?.guests)));
         }
         const focused = v.h.guests.find((g) => g.id === session.ui.focus);
         if (focused && guests.has(focused.id)) {
