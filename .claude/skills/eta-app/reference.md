@@ -479,9 +479,9 @@ not a scroll position on the wire: the kernel decides nothing about what "reveal
 the attribute moved. `"nearest"` is deliberate -- it does nothing when the element is already
 visible, so a docked panel or a drawer only scrolls the page when the chosen figure would
 otherwise be hidden behind it. Making a docked panel actually count as an edge is the example
-stylesheet's job: give the panel's own edge (or whatever sits between the reading and it) a
-`scroll-margin` matching the panel's width/height, the same way `scroll-margin-top` keeps a sticky
-header from covering an anchor-scrolled heading.
+stylesheet's job: give the revealed element itself (the row, the pin, the photo) a `scroll-margin`
+matching the panel's width or height, the same way `scroll-margin-top` on a heading keeps a sticky
+header from covering it when the page scrolls to its anchor.
 
 ### Where a tab is: `data-page` and `data-page-write`
 
