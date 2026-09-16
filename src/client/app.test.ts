@@ -11,7 +11,8 @@ beforeAll(() => {
     port: 0,
     routes: {
       "/": fixture,
-      "/ws": (req, server) => (server.upgrade(req) ? undefined : new Response("Upgrade failed", { status: 400 })),
+      "/ws": (req, server) =>
+        server.upgrade(req, { data: {} }) ? undefined : new Response("Upgrade failed", { status: 400 }),
     },
     websocket: { open() {}, message() {}, close() {} },
   });
