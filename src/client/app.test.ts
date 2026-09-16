@@ -97,4 +97,27 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     const keptIdentity = await view.evaluate(`document.querySelector('#c-box')._probe === true`);
     expect(keptIdentity).toBe(true);
   });
+
+  test("a full render that newly marks an element data-reveal scrolls it into view", async () => {
+    await using view = await open();
+    await stubSend(view);
+
+    const items = Array.from({ length: 20 }, (_, i) => `<div class="item" id="item-${i}">Item ${i}</div>`).join("");
+    await pushRender(view, `<div class="list" id="list">${items}</div>`);
+    await waitFor(view, `document.querySelectorAll('.item').length`, (v) => v === 20);
+
+    // the list has to actually overflow for scrolling to be a real, observable distinction
+    const overflows = await view.evaluate(
+      `document.getElementById('list').scrollHeight > document.getElementById('list').clientHeight`,
+    );
+    expect(overflows).toBe(true);
+    expect(await view.evaluate(`document.getElementById('list').scrollTop`)).toBe(0);
+
+    const revealed = items.replace('id="item-19"', 'id="item-19" data-reveal="item-19"');
+    await pushRender(view, `<div class="list" id="list">${revealed}</div>`);
+    await waitFor(view, `document.getElementById('item-19')?.hasAttribute('data-reveal')`, (v) => v === true);
+
+    const scrolled = await waitFor(view, `document.getElementById('list').scrollTop`, (v) => typeof v === "number" && v > 0);
+    expect(scrolled as number).toBeGreaterThan(0);
+  });
 });

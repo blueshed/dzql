@@ -128,14 +128,25 @@ function movingElement(html: string): HTMLElement | undefined {
   return stillThere ? current : undefined;
 }
 
+// Rule 18 of bento-request.md's K2: after a full render's morph, an element newly carrying
+// `data-reveal` (or carrying it for the first time on a different element than before) scrolls
+// into view -- the window itself never moves, only the reading beside it. `previous` is captured
+// before the morph runs, since the morph is what may add, move, or remove the attribute.
+function revealChanged(previous: Element | null): void {
+  const current = app.querySelector<HTMLElement>("[data-reveal]");
+  if (current && current !== previous) current.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
 function render(html: string) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
+  const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
   const moving = movingElement(html);
 
   const apply = () => {
     morph(app, html, hooks);
     settle(before);
     syncPage();
+    revealChanged(previousReveal);
   };
 
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
