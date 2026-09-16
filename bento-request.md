@@ -253,3 +253,21 @@ T3. The Londons stay a specification until the wedding has proved the rules on a
 ## Findings
 
 *Empty until something will not fit. Write the rule's number, the example, and what strained.*
+
+**Rule 18, the wedding, W2/W3.** "The rails step aside for the drawer, and the content moves; the
+window does not" -- the wedding's rails (`.rail.work`, `.page-tools`) stay fixed at the viewport's
+edge whatever opens; they do not slide clear when a drawer docks over them, and the reading beneath
+them does not reflow either. A drawer's own scrim and the reading's `scroll-margin` (K2) keep the
+chosen figure findable, but the rail itself can sit over the drawer's own top corner on a narrow
+desktop width. Fixing this needs the rail's own position to react to whether a drawer is open,
+which the box's render already knows (`session.ui.focus`/`gift`/`keep`/`answering`) but `boxPage`
+does not thread through to where the rail is built; doing it without plumbing that through felt
+like bending the rule quietly rather than honouring it, so it is written down instead.
+
+**Rule 7, the wedding, W3.** "Opening does not go anywhere; the same element grows into the
+window" describes a tray cell growing into its own compartment. It does not, and cannot, describe
+the couple's own hop from a row in the households list (or a figure in its photo) into that
+family's own box (`households/<id>`) -- a row is not a tray cell with a `data-moving` name to
+grow from, so that one hop is a plain navigation, unanimated, the way every page transition was
+before K1. The family's own box does honour rule 7 one level further in, growing its own "asks"
+compartment into its own window exactly as the root box grows any of its six.
