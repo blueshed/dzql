@@ -167,24 +167,29 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 /* ── the rails: every tool floats, and there is no toolbar (rule 9). A stack is a bordered box of
    controls, drawn like a Leaflet control -- the page's own tools (undo, redo, leave) at the
    bottom right, over the compartments; a collection's own tools (the reading switch, what adds)
-   on the rail at the right edge, in the same style. Fixed to the viewport, since neither the box
-   nor the collection page is yet the sized "window" of rule 8 -- W3's job. ── */
-.stack { display: flex; flex-direction: column; gap: 0; background: var(--card); border: 1px solid var(--gold-soft); border-radius: var(--radius-control); box-shadow: 0 1px 4px rgba(var(--ink-rgb), 0.25), 0 6px 20px rgba(var(--ink-rgb), 0.16); overflow: hidden; }
+   on the rail at the right edge, in the same style. Border, shadow and button size are the mock's
+   own (examples/bento/styles.css's `--edge`, `--shadow-control`, `--control`), not invented.
+   W5.3: from 820px both are rendered inside the element they float over (`.cells`/the open
+   `.cell`, views/bento.ts's `boxPage`) and `position: absolute` to it -- the window's own
+   furniture, not the screen's, at the mock's own offset from its edge; fixed to the screen's own
+   corner below 820px instead, since a phone's column is taller than the window and DOM nesting
+   makes no difference to `position: fixed`. ── */
+.stack { display: flex; flex-direction: column; gap: 0; background: var(--card); border: 1px solid rgba(var(--ink-rgb), 0.25); border-radius: var(--radius-control); box-shadow: 0 1px 4px rgba(var(--ink-rgb), 0.2); overflow: hidden; }
 .stack > * { border-bottom: 1px solid rgba(var(--ink-rgb), 0.14); }
 .stack > *:last-child { border-bottom: 0; }
-.page-tools { position: fixed; z-index: 45; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
-.page-tools .tool { width: 40px; height: 40px; min-height: 0; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; color: var(--navy); }
+.page-tools { position: absolute; z-index: 45; right: 14px; bottom: 14px; }
+.page-tools .tool { width: 32px; height: 32px; min-height: 0; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; color: var(--navy); }
 .page-tools .tool:hover { background: rgba(var(--ink-rgb), 0.08); }
 /* leave, set apart by a rule: a double line above the last of the three */
 .page-tools .tool:last-child { border-top: 3px double rgba(var(--ink-rgb), 0.22); }
-.rail { position: fixed; z-index: 44; right: 16px; display: flex; flex-direction: column; gap: 10px; max-width: min(15rem, calc(100vw - 32px)); }
-.rail.work { top: 76px; }
+.rail { position: absolute; z-index: 44; right: 14px; top: 14px; display: flex; flex-direction: column; gap: 10px; max-width: min(15rem, calc(100vw - 32px)); }
 .rail .stack { padding: 0; }
-.rail .seg { border: 0; border-radius: var(--radius-control); box-shadow: 0 1px 4px rgba(var(--ink-rgb), 0.25), 0 6px 20px rgba(var(--ink-rgb), 0.16); }
-.rail .tool-form, .rail form.invite { flex-direction: column; align-items: stretch; background: var(--card); border: 1px solid var(--gold-soft); border-radius: var(--radius-control); box-shadow: 0 1px 4px rgba(var(--ink-rgb), 0.25), 0 6px 20px rgba(var(--ink-rgb), 0.16); padding: 8px; }
+.rail .seg { border: 0; border-radius: var(--radius-control); box-shadow: 0 1px 4px rgba(var(--ink-rgb), 0.2); }
+.rail .tool-form, .rail form.invite { flex-direction: column; align-items: stretch; background: var(--card); border: 1px solid rgba(var(--ink-rgb), 0.25); border-radius: var(--radius-control); box-shadow: 0 1px 4px rgba(var(--ink-rgb), 0.2); padding: 8px; }
 @media (max-width: 819px) {
+  .page-tools { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
   /* above the page's own tools, so the two floating stacks never sit on top of one another on a narrow page */
-  .rail.work { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px) + 136px); }
+  .rail { position: fixed; right: 16px; top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px) + 136px); }
 }
 
 /* ── rows ── */

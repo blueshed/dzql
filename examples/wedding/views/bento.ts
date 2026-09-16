@@ -104,6 +104,12 @@ export interface OpenOptions {
  * computed (src/tray.ts), not drawn: each compartment lands in its area, first-fit in the box's
  * own order, and learns which of the tray's corners it sits in, once for three columns and once
  * for one -- the stylesheet picks by width.
+ *
+ * W5.3: the page's tools, and the open compartment's own rail, are the window's own furniture,
+ * not the screen's -- both are rendered *inside* the element they float over (`.cells` when
+ * nothing is open, the open `.cell` itself when one is), so `position: absolute` from 820px
+ * anchors them to that element's own box, not the viewport (the stylesheet still lets them stay
+ * `position: fixed` to the screen's corner on a phone, where the DOM nesting makes no difference).
  */
 export function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], open?: OpenOptions, extra: string[] = []): string {
   const wide = tray(cells, COLUMNS);
@@ -115,6 +121,8 @@ export function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], o
         `<div class="cell open" data-key="${c.key}" data-moving="${esc(open.key)}" style="grid-area: ${c.key}">`,
         `<div class="cell-open-body">${open.body}</div>`,
         open.note && `<p class="note">${esc(open.note)}</p>`,
+        open.tools && open.tools.length > 0 && `<div class="rail work">${open.tools.join("")}</div>`,
+        pageTools(),
         "</div>",
       );
     }
@@ -129,10 +137,8 @@ export function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], o
     crumbs(trail),
     `<section class="page box">`,
     ...(open ? [] : inPlace),
-    `<div class="cells${open ? " has-open" : ""}" style='--tray-areas: ${areas(wide)}; --tray-areas-phone: ${areas(narrow)}'>${placed.join("")}</div>`,
-    open?.tools && open.tools.length > 0 && `<div class="rail work">${open.tools.join("")}</div>`,
+    `<div class="cells${open ? " has-open" : ""}" style='--tray-areas: ${areas(wide)}; --tray-areas-phone: ${areas(narrow)}'>${placed.join("")}${open ? "" : pageTools()}</div>`,
     !open && shown.length > 0 && `<div class="foot-tools">${shown.join("")}</div>`,
-    pageTools(),
     "</section>",
   );
 }
