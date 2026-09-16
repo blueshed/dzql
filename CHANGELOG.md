@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.36.0] - 2026-09-16
+
+### Changed
+
+- **Lucide is the examples' icon set, as a package; the kernel draws.** `lucide` (ISC, no
+  dependencies of its own) is in `package.json`. `src/icons.ts` is new and knows only the shape of
+  an icon -- a list of nodes, each a tag and its attributes -- and renders one as SVG at a size
+  with a label (`svg(node, {size, name, label})`); it imports no icon set. The wedding's
+  `views/icons.ts` keeps its names and its `icon(name, size, label)`, now as a map from name to
+  lucide's outline plus a call to the kernel, so no view changed; its hand-copied `PATHS` table is
+  gone (two of its twenty outlines had been truncated in the copying). `chevron-left` and
+  `map-pin` join the names. Examples import from `lucide` and from `src/`, never from each other.
+- **`examples/bento/`**, a standalone design mock-up of the page (not an eta example: no documents,
+  no wire; `bun run dev:bento` on port 3003, in `.claude/launch.json` too), rewritten on purpose
+  and written up: its README is eighteen rules, from apples.md's "The page" and the atlas in
+  `Workshop/concept/location`, each pointing at where the mock-up honours it. Compartments are cut
+  into the tray; an opened compartment is a window whatever it holds, with every tool floating in it
+  as a Leaflet-style control and the reading scrolling underneath; a figure opens its drawer and
+  what it carries waits there; the plus is a modal; the filter dims and counts and never hides; the
+  rails step aside for the drawer and the reading scrolls the chosen figure into the clear. Its
+  marks are lucide's, drawn by `createIcons` from `<i data-lucide>`; `src/icons.ts` is the
+  server's way.
+
 ## [0.35.0] - 2026-09-15
 
 ### Fixed

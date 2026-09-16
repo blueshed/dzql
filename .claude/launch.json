@@ -18,6 +18,12 @@
       "runtimeExecutable": "bun",
       "runtimeArgs": ["run", "dev:ticker"],
       "port": 3002
+    },
+    {
+      "name": "bento",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "dev:bento"],
+      "port": 3003
     }
   ]
 }

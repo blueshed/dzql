@@ -8,3 +8,7 @@ server.log
 .eta-session*
 .DS_Store
 .claude/worktrees/
+
+# the bento canvas is generated (examples/bento/design/build.ts) and seeded; only the generator and the layout are source
+examples/bento/design/*.dc.html
+examples/bento/design/wedding-bento.html

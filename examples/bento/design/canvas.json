@@ -1,0 +1,18 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "The box", "x": 0, "y": 0, "w": 1000, "h": 720 },
+    { "file": "Map.dc.html", "title": "A window: the map, a pin chosen, its drawer", "x": 1100, "y": 0, "w": 1000, "h": 720 },
+    { "file": "Gifts.dc.html", "title": "A window: the list, filtered, a row chosen, its drawer", "x": 0, "y": 900, "w": 1000, "h": 720 },
+    { "file": "Modal.dc.html", "title": "A modal: one question", "x": 1100, "y": 900, "w": 1000, "h": 720 },
+    { "file": "Answer.dc.html", "title": "A compartment that is a thing: its drawer", "x": 0, "y": 1800, "w": 1000, "h": 720 },
+    { "file": "Phone.dc.html", "title": "On a phone: the column", "x": 1100, "y": 1800, "w": 390, "h": 1500 },
+    { "file": "PhoneMap.dc.html", "title": "On a phone: a window and the sheet", "x": 1600, "y": 1800, "w": 390, "h": 844 }
+  ],
+  "annotations": [
+    { "id": "box", "x": 0, "y": -200, "w": 460, "text": "The box. A page is a box or a collection; a box is one ground with one compartment per thing on it. The trail above says where you are. Compartments are cut into the tray: walls meet square, the tray's curve only at its corners, less the wall, and the reading inside is cut the same way. Bigger for what matters more. A compartment that is a thing carries a pencil, not a chevron." },
+    { "id": "window", "x": 1100, "y": -200, "w": 460, "text": "The window. Opening does not go anywhere: the same element grows. An opened compartment is a window whatever it holds, and every tool floats in it as a Leaflet-style control: the trail top-left, the camera under it, the compartment's tools on the right edge, the page's tools one stack bottom-right. The reading scrolls under the controls; a picture is bigger than its window. One family of corners, nothing a pill." },
+    { "id": "surfaces", "x": 0, "y": 1660, "w": 460, "text": "The three surfaces. Navigation is what is here: the trail and the chevron. A drawer is editing: a figure, a pin, a face, a row, a thing, opens its properties, shows it is chosen, and what it carries waits in the drawer as one control. A modal is new or delete: the plus asks one question. The filter dims and counts and never hides. The rails step aside for the drawer and the reading scrolls the figure into the clear; the window never changes size." },
+    { "id": "phone", "x": 1100, "y": 1660, "w": 460, "text": "On a phone the tray is a column, the tray's curve at the top of the first compartment and the foot of the last. The window is at the screen's edge, the drawer a sheet from the foot, and the page behind holds still while either is open. Generated from examples/bento by design/build.ts; the rules are its README." }
+  ],
+  "launch": { "view": "canvas" }
+}

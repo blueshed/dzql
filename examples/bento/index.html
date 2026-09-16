@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bento</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main id="app">
+      <!-- where am I: the trail to this box; the ground you stand on is last -->
+      <nav class="crumbs cap" aria-label="Where you are">
+        <span>Rowena &amp; Dashiell</span>
+        <span class="sep"><i data-lucide="chevron-right"></i></span>
+        <b aria-current="page">The Okafors</b>
+      </nav>
+
+      <div class="bento" id="bento">
+        <!-- Every compartment has the same parts. Closed: the head (mark, name, ›), a summary, and
+             a small reading. Opened: the head becomes the trail and floats; the rails and the
+             page's tools appear; the full reading fills the window. -->
+
+        <!-- where to stay: a map -->
+        <section class="cell" data-cell="stay">
+          <header class="cell-head">
+            <button type="button" class="cell-back cap">The Okafors</button>
+            <span class="cell-icon"><i data-lucide="bed"></i></span>
+            <h2 class="cap">Where to stay</h2>
+            <span class="chev"><i data-lucide="chevron-right"></i></span>
+          </header>
+          <p class="cell-summary">3 places, all a walk</p>
+          <div class="cell-body">
+            <div class="mini map">
+              <span class="pin" style="--x: 22%; --y: 35%"></span>
+              <span class="pin" style="--x: 58%; --y: 60%"></span>
+              <span class="pin" style="--x: 78%; --y: 28%"></span>
+            </div>
+            <div class="rail camera" aria-label="Camera">
+              <div class="stack">
+                <button type="button" aria-label="Zoom in"><i data-lucide="plus"></i></button>
+                <button type="button" aria-label="Zoom out"><i data-lucide="minus"></i></button>
+              </div>
+            </div>
+            <div class="rail work" aria-label="Map tools">
+              <div class="stack" role="radiogroup" aria-label="Read as">
+                <button type="button" role="radio" aria-checked="true" aria-pressed="true" aria-label="Map"><i data-lucide="map-pin"></i></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="List"><i data-lucide="list"></i></button>
+              </div>
+              <div class="stack">
+                <button type="button" class="find" aria-label="Find a place" aria-pressed="false"><i data-lucide="search"></i></button>
+                <button type="button" aria-label="Edit the places"><i data-lucide="pencil"></i></button>
+              </div>
+            </div>
+            <div class="filter" hidden><input type="search" placeholder="Filter by name" aria-label="Filter the places"><span class="tally"></span></div>
+            <div class="full map">
+              <div class="map-canvas">
+                <span class="street street-a"></span>
+                <span class="street street-b"></span>
+                <button type="button" class="pin" data-site="The Mount Without" style="--x: 22%; --y: 35%" aria-pressed="false"><span class="pin-dot"></span></button>
+                <button type="button" class="pin" data-site="The Old Rectory" style="--x: 58%; --y: 60%" aria-pressed="false"><span class="pin-dot"></span></button>
+                <button type="button" class="pin" data-site="Harbourside Rooms" style="--x: 78%; --y: 28%" aria-pressed="false"><span class="pin-dot"></span></button>
+              </div>
+            </div>
+          </div>
+          <div class="cell-foot stack" aria-label="Tools">
+            <button type="button" aria-label="Undo"><i data-lucide="undo-2"></i></button>
+            <button type="button" aria-label="Redo"><i data-lucide="redo-2"></i></button>
+            <button type="button" class="quiet" aria-label="Leave"><i data-lucide="log-out"></i></button>
+          </div>
+        </section>
+
+        <!-- households: a crowd, people not places, the same figure-in-a-picture language -->
+        <section class="cell" data-cell="households">
+          <header class="cell-head">
+            <button type="button" class="cell-back cap">The Okafors</button>
+            <span class="cell-icon"><i data-lucide="users"></i></span>
+            <h2 class="cap">Households</h2>
+            <span class="chev"><i data-lucide="chevron-right"></i></span>
+          </header>
+          <p class="cell-summary">4 households · 9 coming</p>
+          <div class="cell-body">
+            <div class="mini crowd">
+              <span class="face" style="--c: #c97d83; --x: 10%; --y: 20%"></span>
+              <span class="face" style="--c: #7fae4e; --x: 34%; --y: 55%"></span>
+              <span class="face" style="--c: #2f63bf; --x: 58%; --y: 15%"></span>
+              <span class="face" style="--c: #c9a227; --x: 78%; --y: 50%"></span>
+            </div>
+            <div class="rail camera" aria-label="Camera">
+              <div class="stack">
+                <button type="button" aria-label="Zoom in"><i data-lucide="plus"></i></button>
+                <button type="button" aria-label="Zoom out"><i data-lucide="minus"></i></button>
+              </div>
+            </div>
+            <div class="rail work" aria-label="Photo tools">
+              <div class="stack" role="radiogroup" aria-label="Read as">
+                <button type="button" role="radio" aria-checked="true" aria-pressed="true" aria-label="Photo"><i data-lucide="camera"></i></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="List"><i data-lucide="list"></i></button>
+              </div>
+              <div class="stack">
+                <button type="button" class="find" aria-label="Find a household" aria-pressed="false"><i data-lucide="search"></i></button>
+              </div>
+            </div>
+            <div class="filter" hidden><input type="search" placeholder="Filter by name" aria-label="Filter the households"><span class="tally"></span></div>
+            <div class="full crowd">
+              <div class="photo-canvas">
+                <button type="button" class="face" data-site="The Okafors" style="--c: #c97d83; --x: 18%; --y: 40%" aria-pressed="false"></button>
+                <button type="button" class="face" data-site="Ben Achterberg" style="--c: #7fae4e; --x: 40%; --y: 55%" aria-pressed="false"></button>
+                <button type="button" class="face" data-site="The Londons" style="--c: #2f63bf; --x: 62%; --y: 42%" aria-pressed="false"></button>
+                <button type="button" class="face" data-site="The Devis" style="--c: #c9a227; --x: 82%; --y: 58%" aria-pressed="false"></button>
+              </div>
+            </div>
+          </div>
+          <div class="cell-foot stack" aria-label="Tools">
+            <button type="button" aria-label="Undo"><i data-lucide="undo-2"></i></button>
+            <button type="button" aria-label="Redo"><i data-lucide="redo-2"></i></button>
+            <button type="button" class="quiet" aria-label="Leave"><i data-lucide="log-out"></i></button>
+          </div>
+        </section>
+
+        <!-- photos: a grid of pictures, no figures to pick -->
+        <section class="cell" data-cell="photos">
+          <header class="cell-head">
+            <button type="button" class="cell-back cap">The Okafors</button>
+            <span class="cell-icon"><i data-lucide="camera"></i></span>
+            <h2 class="cap">Photos</h2>
+            <span class="chev"><i data-lucide="chevron-right"></i></span>
+          </header>
+          <p class="cell-summary">8 so far</p>
+          <div class="cell-body">
+            <div class="mini thumbs">
+              <span class="thumb" style="--c: #e9aba9"></span>
+              <span class="thumb" style="--c: #b8a4cb"></span>
+              <span class="thumb" style="--c: #7b2f4b"></span>
+              <span class="thumb" style="--c: #1e3f8f"></span>
+              <span class="thumb" style="--c: #6b6b74"></span>
+            </div>
+            <div class="rail work" aria-label="Photo tools">
+              <div class="stack" role="radiogroup" aria-label="Read as">
+                <button type="button" role="radio" aria-checked="true" aria-pressed="true" aria-label="Grid"><i data-lucide="layout-grid"></i></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="List"><i data-lucide="list"></i></button>
+              </div>
+              <div class="stack">
+                <button type="button" class="add" data-new="photo" aria-label="Add a photo"><i data-lucide="plus"></i></button>
+              </div>
+            </div>
+            <div class="full thumbs-grid">
+              <span class="thumb" style="--c: #e9aba9"></span>
+              <span class="thumb" style="--c: #b8a4cb"></span>
+              <span class="thumb" style="--c: #7b2f4b"></span>
+              <span class="thumb" style="--c: #1e3f8f"></span>
+              <span class="thumb" style="--c: #6b6b74"></span>
+              <span class="thumb" style="--c: #c9a227"></span>
+              <span class="thumb" style="--c: #7fae4e"></span>
+              <span class="thumb" style="--c: #c97d83"></span>
+            </div>
+          </div>
+          <div class="cell-foot stack" aria-label="Tools">
+            <button type="button" aria-label="Undo"><i data-lucide="undo-2"></i></button>
+            <button type="button" aria-label="Redo"><i data-lucide="redo-2"></i></button>
+            <button type="button" class="quiet" aria-label="Leave"><i data-lucide="log-out"></i></button>
+          </div>
+        </section>
+
+        <!-- our answer: a thing, not a collection -- ✎, and a tap opens its drawer, not a window -->
+        <section class="cell thing" data-cell="answer" data-site="Our answer" aria-pressed="false">
+          <header class="cell-head">
+            <span class="cell-icon"><i data-lucide="smile"></i></span>
+            <h2 class="cap">Our answer</h2>
+            <span class="chev pencil"><i data-lucide="pencil"></i></span>
+          </header>
+          <p class="cell-summary">Yes · 2 coming</p>
+          <div class="cell-body">
+            <p class="mini words">“Cannot wait. Ada is vegetarian.”</p>
+          </div>
+        </section>
+
+        <!-- gifts: a list -->
+        <section class="cell" data-cell="gifts">
+          <header class="cell-head">
+            <button type="button" class="cell-back cap">The Okafors</button>
+            <span class="cell-icon"><i data-lucide="gift"></i></span>
+            <h2 class="cap">Gifts</h2>
+            <span class="chev"><i data-lucide="chevron-right"></i></span>
+          </header>
+          <p class="cell-summary">5 · 3 claimed · 2 open</p>
+          <div class="cell-body">
+            <ul class="mini list">
+              <li><span>Toaster</span><span class="note">the Okafors</span></li>
+              <li><span>Kettle</span><span class="note">open</span></li>
+              <li><span>Vase</span><span class="note">shared</span></li>
+            </ul>
+            <div class="rail work" aria-label="Gift tools">
+              <div class="stack" role="radiogroup" aria-label="Read as">
+                <button type="button" role="radio" aria-checked="true" aria-pressed="true" aria-label="List"><i data-lucide="list"></i></button>
+                <button type="button" role="radio" aria-checked="false" aria-label="Grid"><i data-lucide="layout-grid"></i></button>
+              </div>
+              <div class="stack">
+                <button type="button" class="find" aria-label="Find a gift" aria-pressed="false"><i data-lucide="search"></i></button>
+                <button type="button" class="add" data-new="gift" aria-label="Add a gift"><i data-lucide="plus"></i></button>
+              </div>
+            </div>
+            <div class="filter" hidden><input type="search" placeholder="Filter by name" aria-label="Filter the gifts"><span class="tally"></span></div>
+            <ul class="full list">
+              <li><button type="button" class="row" data-site="Toaster" data-carry="Unclaim" aria-pressed="false"><span>Toaster</span><span class="note">claimed by us</span></button></li>
+              <li><button type="button" class="row" data-site="Kettle" data-carry="Claim" aria-pressed="false"><span>Kettle</span><span class="note">open</span></button></li>
+              <li><button type="button" class="row" data-site="Vase" data-carry="Give" aria-pressed="false"><span>Vase</span><span class="note">shared · 2 have given</span></button></li>
+              <li><button type="button" class="row" data-site="Picnic set" data-carry="Claim" aria-pressed="false"><span>Picnic set</span><span class="note">open</span></button></li>
+              <li><button type="button" class="row" data-site="Cushions" aria-pressed="false"><span>Cushions</span><span class="note">claimed by Ben</span></button></li>
+            </ul>
+          </div>
+          <div class="cell-foot stack" aria-label="Tools">
+            <button type="button" aria-label="Undo"><i data-lucide="undo-2"></i></button>
+            <button type="button" aria-label="Redo"><i data-lucide="redo-2"></i></button>
+            <button type="button" class="quiet" aria-label="Leave"><i data-lucide="log-out"></i></button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- the panel: a figure's properties, beside the reading -->
+    <div class="scrim" id="scrim"></div>
+    <aside class="panel" id="panel" aria-hidden="true">
+      <header class="panel-head">
+        <h3 id="panel-title"></h3>
+        <button type="button" class="panel-close" id="panel-close" aria-label="Close"><i data-lucide="x"></i></button>
+      </header>
+      <div class="panel-body" id="panel-body"></div>
+      <div class="panel-foot" id="panel-foot"></div>
+    </aside>
+
+    <!-- the modal: a named thing made -- one question, one answer, gone -->
+    <dialog class="modal" id="modal">
+      <form method="dialog" id="modal-form">
+        <h3 id="modal-title">New gift</h3>
+        <label class="modal-field"><span class="note">Name</span><input type="text" name="name" id="modal-name" autocomplete="off" required></label>
+        <div class="modal-foot">
+          <button type="button" class="carry quiet" id="modal-cancel">Cancel</button>
+          <button type="submit" class="carry" id="modal-ok">Add</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="./app.ts"></script>
+  </body>
+</html>
