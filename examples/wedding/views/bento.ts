@@ -36,6 +36,10 @@ export interface CellOptions {
   summary?: string | null;
   /** The page below: › into it. A compartment that holds its collection whole has none. */
   page?: string;
+  /** The page value this compartment opens under, when it differs from `slug(name)` (rule 7's
+   * `data-moving`, and W3's open-in-place, key off this -- the page's own meaning never changed,
+   * so a compartment whose label reads differently from its page ("the day" is page "day") says so here). */
+  key?: string;
   big?: boolean;
   body?: string;
   mark?: IconName;
@@ -62,9 +66,16 @@ export function cell(o: CellOptions): Placeable {
     o.page !== undefined
       ? `<a class="cell-head" href="#"${nav(o.page)}>${mark}${name}<span class="chev">${icon("chevron-right", 18)}</span></a>`
       : `<div class="cell-head">${mark}${name}</div>`;
-  const key = slug(o.name);
+  // the tray's own grid-area identity, and the page value this compartment opens under (K1's
+  // `data-moving`, and W3's `boxPage` `open` param key) are the same thing -- `o.key` overrides
+  // `slug(name)` only when a compartment's label reads differently from its page ("the day" is
+  // page "day"), so the two never drift apart.
+  const key = o.key ?? slug(o.name);
+  // rule 7's K1: a navigable compartment names itself for the view transition, in both the box's
+  // own render and the open render (boxPage's `open` param) -- one attribute, one element.
+  const moving = o.page !== undefined ? ` data-moving="${esc(key)}"` : "";
   const html = join(
-    `<div class="cell${o.big ? " big" : ""}${o.page === undefined ? " whole" : ""}" data-key="${key}"${o.page !== undefined ? nav(o.page) : ""}>`,
+    `<div class="cell${o.big ? " big" : ""}${o.page === undefined ? " whole" : ""}" data-key="${key}"${moving}${o.page !== undefined ? nav(o.page) : ""}>`,
     head,
     o.tools && `<div class="cell-tools">${o.tools}</div>`,
     o.body && `<div class="cell-body">${o.body}</div>`,
@@ -74,50 +85,53 @@ export function cell(o: CellOptions): Placeable {
   return { key, span: o.big ? COLUMNS : 1, rows: 1, html };
 }
 
-/**
- * A page that is a box: the crumbs, the ground's own in place, the compartments in the tray, the
- * tools at the foot. The tray is computed (src/tray.ts), not drawn: each compartment lands in its
- * area, first-fit in the box's own order, and learns which of the tray's corners it sits in, once
- * for three columns and once for one -- the stylesheet picks by width.
- */
-export function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], extra: string[] = []): string {
-  const wide = tray(cells, COLUMNS);
-  const narrow = tray(cells, 1);
-  const cornersOf = (t: Tray, key: string): string => t.cells.find((c) => c.key === key)!.corners.join(" ");
-  const placed = cells.map((c) =>
-    c.html.replace(
-      `data-key="${c.key}"`,
-      `data-key="${c.key}" data-corners="${cornersOf(wide, c.key)}" data-corners-phone="${cornersOf(narrow, c.key)}" style="grid-area: ${c.key}"`,
-    ),
-  );
-  const areas = (t: Tray): string => t.areas.replace(/\n/g, " ");
-  const shown = extra.filter(Boolean);
-  return join(
-    crumbs(trail),
-    `<section class="page box">`,
-    ...inPlace,
-    `<div class="cells" style='--tray-areas: ${areas(wide)}; --tray-areas-phone: ${areas(narrow)}'>${placed.join("")}</div>`,
-    shown.length > 0 && `<div class="foot-tools">${shown.join("")}</div>`,
-    pageTools(),
-    "</section>",
-  );
-}
-
-export interface CollectionOptions {
-  /** The collection's own tools, on the rail at the right edge: the reading switch, what adds. */
+/** What grows into the window when a compartment opens (rules 7, 8): its own tools on the rail,
+ * the reading, a note. `key` is the page value it opens under -- the same key `cell()`'s own
+ * `data-moving` used before the write that opened it, so K1 finds the one element that grows. */
+export interface OpenOptions {
+  key: string;
   tools?: string[];
   body: string;
   note?: string | null;
 }
 
-/** A page that is a collection: the crumbs, its rail (the reading, what adds to it), the reading, a note, the page's tools. */
-export function collectionPage(trail: Crumb[], o: CollectionOptions): string {
+/**
+ * A page that is a box: the crumbs, the ground's own in place, the compartments in the tray, the
+ * tools at the foot -- or, when `open` names one, that compartment grown into the window in its
+ * own place in the tray (rule 7: the same element, `data-moving`, just bigger) with the others
+ * gone behind it (rule 8: whatever it holds, a map, a photo, a grid or a list, opens the same
+ * way), its own reading scrolling under its rail and the page's tools (rule 10). The tray is
+ * computed (src/tray.ts), not drawn: each compartment lands in its area, first-fit in the box's
+ * own order, and learns which of the tray's corners it sits in, once for three columns and once
+ * for one -- the stylesheet picks by width.
+ */
+export function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], open?: OpenOptions, extra: string[] = []): string {
+  const wide = tray(cells, COLUMNS);
+  const narrow = tray(cells, 1);
+  const cornersOf = (t: Tray, key: string): string => t.cells.find((c) => c.key === key)!.corners.join(" ");
+  const placed = cells.map((c) => {
+    if (open && c.key === open.key) {
+      return join(
+        `<div class="cell open" data-key="${c.key}" data-moving="${esc(open.key)}" style="grid-area: ${c.key}">`,
+        `<div class="cell-open-body">${open.body}</div>`,
+        open.note && `<p class="note">${esc(open.note)}</p>`,
+        "</div>",
+      );
+    }
+    return c.html.replace(
+      `data-key="${c.key}"`,
+      `data-key="${c.key}" data-corners="${cornersOf(wide, c.key)}" data-corners-phone="${cornersOf(narrow, c.key)}" style="grid-area: ${c.key}"`,
+    );
+  });
+  const areas = (t: Tray): string => t.areas.replace(/\n/g, " ");
+  const shown = extra.filter(Boolean);
   return join(
     crumbs(trail),
-    `<section class="page collection">`,
-    o.tools && o.tools.length > 0 && `<div class="rail work">${o.tools.join("")}</div>`,
-    o.body,
-    o.note && `<p class="note">${esc(o.note)}</p>`,
+    `<section class="page box">`,
+    ...(open ? [] : inPlace),
+    `<div class="cells${open ? " has-open" : ""}" style='--tray-areas: ${areas(wide)}; --tray-areas-phone: ${areas(narrow)}'>${placed.join("")}</div>`,
+    open?.tools && open.tools.length > 0 && `<div class="rail work">${open.tools.join("")}</div>`,
+    !open && shown.length > 0 && `<div class="foot-tools">${shown.join("")}</div>`,
     pageTools(),
     "</section>",
   );

@@ -6,7 +6,7 @@
 import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
 import type { SessionDocument } from "../documents/session";
-import { addModal, addTool, boxPage, cell, collectionPage, confirmModal, readingSwitch, sheet, tool, type Crumb } from "./bento";
+import { addModal, addTool, boxPage, cell, confirmModal, readingSwitch, sheet, tool, type Crumb, type OpenOptions } from "./bento";
 import { esc, join, nav, write } from "./html";
 import { icon } from "./icons";
 import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
@@ -45,23 +45,26 @@ const KEEP: Record<KeepTable, { label: string; noun: string }> = {
 };
 const isKeepTable = (s: string): s is KeepTable => s in KEEP;
 
+/** W3, rules 7 and 8: what grows into the window from the root box's own tray -- the same page
+ * value as ever, just no longer a trip to `collectionPage` (gone). */
+function openFor(v: BoardView, head: string): { open?: OpenOptions; crumbs: Crumb[] } {
+  if (head === "households") return { open: householdsOpen(v), crumbs: [{ label: "Households" }] };
+  if (isKeepTable(head)) return { open: keepOpen(v, head), crumbs: [{ label: KEEP[head].label }] };
+  return { crumbs: [] };
+}
+
 export function boardPages(v: BoardView): string {
   const { b } = v;
   const trail: Crumb[] = [{ label: coupleName(b), page: "" }];
   const [head, hid, third] = (v.session.ui.page ?? "").split("/");
+  const h = head === "households" && hid ? b.households.find((x) => String(x.id) === hid) : undefined;
   let page: string;
-  if (head === "households") {
-    const h = hid ? b.households.find((x) => String(x.id) === hid) : undefined;
-    if (!hid) page = householdsCollection(v, trail);
-    else if (!h) page = householdsCollection(v, trail);
-    else {
-      const familyTrail: Crumb[] = [...trail, { label: "Households", page: "households" }, { label: h.code, page: `households/${h.id}` }];
-      page = third === "asks" ? familyAsks(h, familyTrail) : familyBox(v, h, familyTrail);
-    }
-  } else if (head && isKeepTable(head)) {
-    page = keepCollection(v, head, trail);
+  if (h) {
+    const familyTrail: Crumb[] = [...trail, { label: "Households", page: "households" }, { label: h.code, page: `households/${h.id}` }];
+    page = familyBox(v, h, familyTrail, third === "asks");
   } else {
-    page = rootBox(v, trail);
+    const { open, crumbs } = openFor(v, head);
+    page = boxPage(open ? [...trail, ...crumbs] : trail, [welcomePreview(b, !!v.session.ui.answering)], boxCells(v), open);
   }
   const ui = v.session.ui;
   const newTable = isKeepTable(ui.new ?? "") ? (ui.new as KeepTable) : undefined;
@@ -129,22 +132,20 @@ function welcomeSheet(v: BoardView): string {
   return sheet("welcome-sheet", "Our welcome", body, write("session", "remove", "/answering"), "welcome-sheet");
 }
 
-function rootBox(v: BoardView, trail: Crumb[]): string {
+/** The root box's own compartments, computed whether shown whole or one of them is grown into
+ * the window (rule 7): the tray still needs all five to lay itself out. */
+function boxCells(v: BoardView) {
   const { b } = v;
   const claimed = b.gifts.filter((g) => g.taken > 0).length;
   const shared = b.gifts.filter((g) => g.shared).length;
   const t = b.totals;
-  return boxPage(
-    trail,
-    [welcomePreview(b, !!v.session.ui.answering)],
-    [
-      cell({ name: "households", mark: "home", count: t.households, summary: `${t.answered} answered · ${t.coming} coming${t.asksWaiting ? ` · ${plural(t.asksWaiting, "ask", "asks")} waiting` : ""}`, page: "households" }),
-      cell({ name: "courses", mark: "utensils", count: b.courses.length, summary: coursesSummary(b.courses), page: "courses" }),
-      cell({ name: "gifts", mark: "gift", count: b.gifts.length, summary: b.gifts.length ? `${claimed} claimed${shared ? ` · ${shared} shared` : ""}` : "none yet", page: "gifts" }),
-      cell({ name: "events", mark: "calendar", count: b.events.length, summary: eventsSummary(b.events), page: "events" }),
-      cell({ name: "where to stay", mark: "bed", count: b.places.length, summary: placesSummary(b.places), page: "places" }),
-    ],
-  );
+  return [
+    cell({ name: "households", mark: "home", count: t.households, summary: `${t.answered} answered · ${t.coming} coming${t.asksWaiting ? ` · ${plural(t.asksWaiting, "ask", "asks")} waiting` : ""}`, page: "households" }),
+    cell({ name: "courses", mark: "utensils", count: b.courses.length, summary: coursesSummary(b.courses), page: "courses" }),
+    cell({ name: "gifts", mark: "gift", count: b.gifts.length, summary: b.gifts.length ? `${claimed} claimed${shared ? ` · ${shared} shared` : ""}` : "none yet", page: "gifts" }),
+    cell({ name: "events", mark: "calendar", count: b.events.length, summary: eventsSummary(b.events), page: "events" }),
+    cell({ name: "where to stay", mark: "bed", count: b.places.length, summary: placesSummary(b.places), page: "places", key: "places" }),
+  ];
 }
 
 // ───────────────────────────── the households ─────────────────────────────
@@ -186,7 +187,7 @@ export const familyPhoto = (h: HouseholdDocument): string => photoMount("family-
 export const familyGuestRow = (v: BoardView, g: HouseholdDocument["guests"][number]): string =>
   `<div class="row-line stay" id="guest-${g.id}"><div><span class="what">${esc(g.name)}</span><p class="note">${esc(choicesLine(g, v.b.courses))}</p></div><span class="said">${g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming"}</span></div>`;
 
-function householdsCollection(v: BoardView, trail: Crumb[]): string {
+function householdsOpen(v: BoardView): OpenOptions {
   const { b } = v;
   let body: string;
   if (reading(v, "households") === "photo") {
@@ -219,11 +220,12 @@ function householdsCollection(v: BoardView, trail: Crumb[]): string {
     `<input class="field short" name="plus_ones" type="number" min="0" value="0" aria-label="Plus-ones they may name">`,
     `<button type="submit" class="tool add">${icon("plus")}Invite a household</button></form>`,
   );
-  return collectionPage([...trail, { label: "Households" }], {
+  return {
+    key: "households",
     tools: [readingSwitch("households", reading(v, "households"), ["photo", "list"]), invite],
     body,
     note: reading(v, "households") === "photo" ? "Tap a family to see them. At their feet, their answer." : null,
-  });
+  };
 }
 
 /** A family's bubble as the couple read it: the same display as the household's own, not theirs to touch. */
@@ -232,27 +234,8 @@ function familyBubble(h: HouseholdDocument): string {
   return `<div class="bubble theirs${h.answer ? " answered" : ""}">${faceMark(h.answer)}<div class="bubble-words${words ? "" : " empty"}">${esc(words || (h.answer ? `${answerSays(h.answer)}.` : "No answer yet."))}</div></div>`;
 }
 
-function familyBox(v: BoardView, h: HouseholdDocument, trail: Crumb[]): string {
-  const waiting = h.asks.filter((a) => a.reply === null).length;
-  const key = `family-${h.id}`;
-  const guests =
-    reading(v, key) === "photo"
-      ? h.guests.length ? `<div class="reading photo-reading">${familyPhoto(h)}</div>` : `<p class="note">Nobody named yet.</p>`
-      : `<div class="rows">${h.guests.map((g) => familyGuestRow(v, g)).join("")}</div>`;
-  const plusOnes = `<form class="tool-form" data-write-on="blur"><label class="when" for="plus-ones">Plus-ones</label><input class="field short" id="plus-ones" name="plus_ones" type="number" min="0" value="${h.plus_ones}"${write("board", "replace", `/households/${h.id}/plus_ones`)}></form>`;
-  return boxPage(
-    trail,
-    [familyBubble(h)],
-    [
-      cell({ name: "guests", mark: "users", count: h.guests.length, big: true, tools: h.guests.length ? readingSwitch(key, reading(v, key), ["photo", "list"]) : undefined, body: guests }),
-      cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting for your answer` : h.asks.length ? "all answered" : "none", page: `households/${h.id}/asks` }),
-      cell({ name: "the code", summary: `${h.code} · ${h.email}`, body: plusOnes }),
-    ],
-    [chaseLink(h)],
-  );
-}
-
-function familyAsks(h: HouseholdDocument, trail: Crumb[]): string {
+/** A family's own asks, grown into their own box's window (rule 7: the same "asks" cell, its own key). */
+function familyAsksOpen(h: HouseholdDocument): OpenOptions {
   const body = h.asks.length
     ? `<div class="rows">${h.asks
         .map(
@@ -261,7 +244,26 @@ function familyAsks(h: HouseholdDocument, trail: Crumb[]): string {
         )
         .join("")}</div>`
     : `<p class="note">They have not asked for anyone.</p>`;
-  return collectionPage([...trail, { label: "Asks" }], { body });
+  return { key: "asks", body };
+}
+
+/** A family's own box, as the couple read it -- their guests, their asks, their code. `askOpen`
+ * grows their own "asks" compartment into the window, the same way the root box's do. */
+function familyBox(v: BoardView, h: HouseholdDocument, trail: Crumb[], askOpen: boolean): string {
+  const waiting = h.asks.filter((a) => a.reply === null).length;
+  const key = `family-${h.id}`;
+  const guests =
+    reading(v, key) === "photo"
+      ? h.guests.length ? `<div class="reading photo-reading">${familyPhoto(h)}</div>` : `<p class="note">Nobody named yet.</p>`
+      : `<div class="rows">${h.guests.map((g) => familyGuestRow(v, g)).join("")}</div>`;
+  const plusOnes = `<form class="tool-form" data-write-on="blur"><label class="when" for="plus-ones">Plus-ones</label><input class="field short" id="plus-ones" name="plus_ones" type="number" min="0" value="${h.plus_ones}"${write("board", "replace", `/households/${h.id}/plus_ones`)}></form>`;
+  const cells = [
+    cell({ name: "guests", mark: "users", count: h.guests.length, big: true, tools: h.guests.length ? readingSwitch(key, reading(v, key), ["photo", "list"]) : undefined, body: guests }),
+    cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting for your answer` : h.asks.length ? "all answered" : "none", page: `households/${h.id}/asks`, key: "asks" }),
+    cell({ name: "the code", summary: `${h.code} · ${h.email}`, body: plusOnes }),
+  ];
+  const open = askOpen ? familyAsksOpen(h) : undefined;
+  return boxPage(askOpen ? [...trail, { label: "Asks" }] : trail, [familyBubble(h)], cells, open, [chaseLink(h)]);
 }
 
 // ───────────────────────────── keeping ─────────────────────────────
@@ -269,9 +271,9 @@ function familyAsks(h: HouseholdDocument, trail: Crumb[]): string {
 const openKeep = (table: KeepTable) => (id: number) => write("session", "replace", "/keep", `${table}/${id}`);
 
 /** The couple's collections -- courses, gifts, events, where to stay: a row each, ✎ its drawer, Add on the collection. */
-function keepCollection(v: BoardView, table: KeepTable, trail: Crumb[]): string {
+function keepOpen(v: BoardView, table: KeepTable): OpenOptions {
   const { b } = v;
-  const { label, noun } = KEEP[table];
+  const { noun } = KEEP[table];
   let body: string;
   if (table === "events") body = timetableRows(b.events, openKeep(table));
   else if (table === "places") body = placeRows(b.places, openKeep(table));
@@ -294,7 +296,7 @@ function keepCollection(v: BoardView, table: KeepTable, trail: Crumb[]): string 
           .join("")}</div>`
       : `<p class="note">No gifts yet.</p>`;
   }
-  return collectionPage([...trail, { label }], { tools: [addTool(table, `Add a ${noun}`)], body });
+  return { key: table, tools: [addTool(table, `Add a ${noun}`)], body };
 }
 
 /** The row's drawer: its fields, each a form; a course's dishes and drinks; its place in the order; Remove at the foot. */

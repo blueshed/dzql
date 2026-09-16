@@ -7,7 +7,7 @@ import type { Guest, HouseholdDocument } from "../documents/household";
 import type { SessionDocument } from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { Course, Gift, Wedding } from "../documents/wedding";
-import { addModal, addTool, boxPage, cell, collectionPage, readingSwitch, sheet, tool, type Crumb } from "./bento";
+import { addModal, addTool, boxPage, cell, readingSwitch, sheet, tool, type Crumb, type OpenOptions } from "./bento";
 import type { DressProps } from "../applets/dress";
 import type { MenuProps } from "../applets/menu";
 import { esc, join, nav, write } from "./html";
@@ -52,16 +52,28 @@ export type HouseholdView = {
   names: boolean;
 };
 
+/**
+ * W3, rules 7 and 8: opening a collection stays a write of `/page`, and the page value's meaning
+ * does not change, but the render no longer goes anywhere -- `boxPage`'s `open` grows the named
+ * compartment into the window in its own place in the tray (K1's `data-moving`), the others gone
+ * behind it, and the trail gains the crumb the window's own drill-down (a family within
+ * "everyone") needs.
+ */
+function openFor(v: HouseholdView, head: string, second: string | undefined): { open?: OpenOptions; crumbs: Crumb[] } {
+  if (head === "asks") return { open: asksOpen(v), crumbs: [{ label: "Asks" }] };
+  if (head === "gifts") return { open: giftsOpen(v), crumbs: [{ label: "Gifts" }] };
+  if (head === "day") return { open: { key: "day", body: timetableRows(v.events), note: `${formatDay(v.w.day)}${v.w.venue ? ` · ${v.w.venue}` : ""}` }, crumbs: [{ label: "The day" }] };
+  if (head === "stay") return { open: { key: "stay", body: placeRows(v.places) }, crumbs: [{ label: "Where to stay" }] };
+  if (head === "everyone") return everyoneOpen(v, second ?? null);
+  return { crumbs: [] };
+}
+
 export function householdPages(v: HouseholdView): string {
   const trail: Crumb[] = [{ label: coupleName(v.w) }, { label: v.h.code, page: "" }];
   const [head, second] = (v.session.ui.page ?? "").split("/");
-  const page =
-    head === "asks" ? asksCollection(v, trail)
-    : head === "gifts" ? giftsCollection(v, trail)
-    : head === "day" ? collectionPage([...trail, { label: "The day" }], { body: timetableRows(v.events), note: `${formatDay(v.w.day)}${v.w.venue ? ` · ${v.w.venue}` : ""}` })
-    : head === "stay" ? collectionPage([...trail, { label: "Where to stay" }], { body: placeRows(v.places) })
-    : head === "everyone" ? everyonePage(v, trail, second ?? null)
-    : householdBox(v, trail);
+  const { open, crumbs: openCrumbs } = openFor(v, head, second);
+  const deadline = v.open && v.w.deadline ? `<p class="note">Answers by ${esc(formatDay(v.w.deadline))}.</p>` : "";
+  const page = boxPage(open ? [...trail, ...openCrumbs] : trail, [speechBubble(v.h, !!v.session.ui.answering), deadline], boxCells(v), open);
   const ui = v.session.ui;
   const modalOpen = !!ui.new;
   const locked = modalOpen || ui.focus !== undefined || ui.gift !== undefined || !!ui.answering;
@@ -89,7 +101,10 @@ function speechBubble(h: HouseholdDocument, open: boolean): string {
   );
 }
 
-function householdBox(v: HouseholdView, trail: Crumb[]): string {
+/** The box's own compartments, in their place in the tray -- computed whether the box is shown
+ * whole or one of them is grown into the window (rule 7), since the tray still needs all six to
+ * lay itself out and to find the one `boxPage`'s `open` replaces. */
+function boxCells(v: HouseholdView) {
   const { h, gifts, photo } = v;
   const waiting = h.asks.filter((a) => a.reply === null).length;
   const inPhoto = photo.filter((r) => weddingDoc.inPhoto(r) !== null).length;
@@ -97,20 +112,15 @@ function householdBox(v: HouseholdView, trail: Crumb[]): string {
   const named = h.guests.filter((g) => g.named_by === "household").length;
   // adding our plus-one is the plus on the guests cell's own tools, and a modal asking their name (rule 14)
   const guestTools = join(h.guests.length ? readingSwitch("guests", reading(v, "guests"), ["photo", "list"]) : "", named < h.plus_ones ? addTool("guests", "Name our plus-one") : "");
-  const deadline = v.open && v.w.deadline ? `<p class="note">Answers by ${esc(formatDay(v.w.deadline))}.</p>` : "";
-  return boxPage(
-    trail,
-    [speechBubble(h, !!v.session.ui.answering), deadline],
-    [
-      // the guests, whole: read as the photo or the list, a row's coming on the row, ✎ the drawer; no page beneath
-      cell({ name: "guests", mark: "users", count: h.guests.length, big: true, tools: guestTools || undefined, body: guestsBody(v) }),
-      cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting` : h.asks.length ? "all answered" : "ask to bring someone", page: "asks" }),
-      cell({ name: "gifts", mark: "gift", count: gifts.length, summary: `${h.claims.length ? `${h.claims.length} claimed by us · ` : ""}${openGifts} open`, page: "gifts" }),
-      cell({ name: "the day", mark: "calendar", summary: eventsSummary(v.events), page: "day" }),
-      cell({ name: "where to stay", mark: "bed", summary: placesSummary(v.places), page: "stay" }),
-      cell({ name: "everyone", mark: "camera", summary: `${inPhoto} in the photo`, page: "everyone" }),
-    ],
-  );
+  return [
+    // the guests, whole: read as the photo or the list, a row's coming on the row, ✎ the drawer; no page beneath
+    cell({ name: "guests", mark: "users", count: h.guests.length, big: true, tools: guestTools || undefined, body: guestsBody(v) }),
+    cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting` : h.asks.length ? "all answered" : "ask to bring someone", page: "asks" }),
+    cell({ name: "gifts", mark: "gift", count: gifts.length, summary: `${h.claims.length ? `${h.claims.length} claimed by us · ` : ""}${openGifts} open`, page: "gifts" }),
+    cell({ name: "the day", mark: "calendar", summary: eventsSummary(v.events), page: "day", key: "day" }),
+    cell({ name: "where to stay", mark: "bed", summary: placesSummary(v.places), page: "stay", key: "stay" }),
+    cell({ name: "everyone", mark: "camera", summary: `${inPhoto} in the photo`, page: "everyone" }),
+  ];
 }
 
 export const reading = (v: HouseholdView, key: string, fallback = "photo"): string => v.session.ui.reading?.[key] ?? fallback;
@@ -152,16 +162,13 @@ function guestsBody(v: HouseholdView): string {
 
 // ───────────────────────────── the collections ─────────────────────────────
 
-function asksCollection(v: HouseholdView, trail: Crumb[]): string {
+function asksOpen(v: HouseholdView): OpenOptions {
   const word = (reply: "yes" | "no" | null) => (reply === "yes" ? "yes — a guest now" : reply === "no" ? "no" : "waiting");
   const mark = (reply: "yes" | "no" | null) => (reply === "yes" ? "yes" : reply === "no" ? "no" : "none");
   const body = v.h.asks.length
     ? `<div class="rows">${v.h.asks.map((a) => `<div class="row-line stay"><span class="what">${esc(a.name)}</span>${answerWord(mark(a.reply), word(a.reply))}</div>`).join("")}</div>`
     : `<p class="note">Nobody asked for yet. An ask is answered by the couple; a yes makes a guest.</p>`;
-  return collectionPage([...trail, { label: "Asks" }], {
-    tools: [addTool("asks", "Ask to bring someone")],
-    body,
-  });
+  return { key: "asks", tools: [addTool("asks", "Ask to bring someone")], body };
 }
 
 /** What a gift is to this household: claimed by us, taken by another, open, or shared and how many have. */
@@ -172,7 +179,7 @@ function giftState(g: Gift, mine: boolean): { word: string; cls: string } {
   return { word: "open", cls: "none" };
 }
 
-function giftsCollection(v: HouseholdView, trail: Crumb[]): string {
+function giftsOpen(v: HouseholdView): OpenOptions {
   const rows = v.gifts.map((g) => {
     const st = giftState(g, v.h.claims.includes(g.id));
     const chosen = v.session.ui.gift === g.id;
@@ -184,10 +191,7 @@ function giftsCollection(v: HouseholdView, trail: Crumb[]): string {
       "</div>",
     );
   });
-  return collectionPage([...trail, { label: "Gifts" }], {
-    body: `<div class="rows">${rows.join("")}</div>`,
-    note: v.gifts.length ? null : "No gifts on the list yet.",
-  });
+  return { key: "gifts", body: `<div class="rows">${rows.join("")}</div>`, note: v.gifts.length ? null : "No gifts on the list yet." };
 }
 
 /** Everyone in the photo, as families: the wedding's guests whose households said yes, a maybe as a ghost, grouped by household. */
@@ -213,22 +217,26 @@ export function everyonePhoto(v: HouseholdView, familyKey: string | null): strin
   return photoMount("everyone-photo", entries, label, v.names);
 }
 
-/** Everyone in the photo; beyond EVERYONE_UP_TO, one figure per family, › into a family. */
-function everyonePage(v: HouseholdView, trail: Crumb[], familyKey: string | null): string {
+/** Everyone in the photo; beyond EVERYONE_UP_TO, one figure per family, › into a family -- still
+ * the same "everyone" window (rule 7), the family it holds open is the window's own state. */
+function everyoneOpen(v: HouseholdView, familyKey: string | null): { open: OpenOptions; crumbs: Crumb[] } {
   const byFamily = everyoneFamilies(v);
   const families = [...byFamily.values()];
   const total = families.reduce((n, f) => n + f.members.length, 0);
   const open = familyKey && byFamily.has(familyKey) ? familyKey : null;
   const { level, shown } = familiesPhoto(families, open);
-  const here: Crumb[] = [...trail, open ? { label: "Everyone", page: "everyone" } : { label: "Everyone" }];
-  if (open) here.push({ label: "One family" });
-  return collectionPage(here, {
-    body: total ? `<div class="reading photo-reading framed">${everyonePhoto(v, familyKey)}</div>` : `<p class="note">Nobody yet.</p>`,
-    note:
-      level === "families" ? `${total} in the photo, in ${shown} families. Tap a family to see them. Nobody knows whose is whose until the day.`
-      : level === "family" ? `One family, ${shown} of them.`
-      : `${total} in the photo: everyone whose household has said yes; a maybe stands as a ghost. ${v.names ? "It is the day: the names have come down." : "Nobody knows whose is whose until the day."}`,
-  });
+  const crumbs: Crumb[] = open ? [{ label: "Everyone", page: "everyone" }, { label: "One family" }] : [{ label: "Everyone" }];
+  return {
+    open: {
+      key: "everyone",
+      body: total ? `<div class="reading photo-reading framed">${everyonePhoto(v, familyKey)}</div>` : `<p class="note">Nobody yet.</p>`,
+      note:
+        level === "families" ? `${total} in the photo, in ${shown} families. Tap a family to see them. Nobody knows whose is whose until the day.`
+        : level === "family" ? `One family, ${shown} of them.`
+        : `${total} in the photo: everyone whose household has said yes; a maybe stands as a ghost. ${v.names ? "It is the day: the names have come down." : "Nobody knows whose is whose until the day."}`,
+    },
+    crumbs,
+  };
 }
 
 // ───────────────────────────── the drawers ─────────────────────────────

@@ -120,6 +120,21 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
   .cell[data-corners~="bl"] { border-bottom-left-radius: var(--radius-corner); }
 }
 
+/* ── W3: opening does not go anywhere (rule 7) -- the same compartment (K1's `data-moving`)
+   grows into the window, whatever it holds (rule 8), and its siblings go behind it. The tray
+   itself steps back to let the window take the space; the reading scrolls under the rail and the
+   page's tools (rule 10) -- a list or a grid keeps clear of them, a picture may run under. ── */
+.cells.has-open { background: transparent; box-shadow: none; padding: 0; }
+.cells.has-open .cell:not(.open) { display: none; }
+.cell.open {
+  position: fixed; inset: 76px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px; z-index: 10;
+  background: var(--card); border-radius: var(--radius-tray); box-shadow: 0 12px 30px rgba(var(--ink-rgb), 0.14);
+  padding: 16px; cursor: default; display: flex; flex-direction: column; overflow: hidden;
+}
+.cell-open-body { flex: 1 1 auto; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-right: 15rem; }
+.cell-open-body:has(.photo-reading) { padding-right: 0; }
+.cell.open .note { flex: 0 0 auto; margin: 10px 0 0; }
+
 /* ── a collection ── */
 .page.collection { display: flex; flex-direction: column; gap: 12px; }
 .seg { display: inline-flex; border: 1px solid var(--navy); border-radius: var(--radius-control); overflow: hidden; }

@@ -119,13 +119,20 @@ window.addEventListener("popstate", () => {
 // element -- and only that one -- grows into the window instead of the page going anywhere.
 // `movingElement` parses the incoming HTML (a `<template>`, same technique `applyFragments` uses
 // below) to find out whether the render still has it, without touching the live DOM yet.
+//
+// A box with more than one openable compartment (W3) marks every one of them `data-moving` at
+// once -- each is a candidate for the next thing to grow, and the render can't know in advance
+// which -- so the page as it is may carry several. Only one of them is actually transitioning:
+// the one whose matching element in the render differs from what's on screen now (a still-closed
+// sibling's markup is byte-for-byte the same before and after, since nothing about it changed).
 function movingElement(html: string): HTMLElement | undefined {
-  const current = app.querySelector<HTMLElement>("[data-moving]");
-  if (!current) return undefined;
   const holder = document.createElement("template");
   holder.innerHTML = html;
-  const stillThere = holder.content.querySelector(`[data-moving="${CSS.escape(current.dataset.moving!)}"]`);
-  return stillThere ? current : undefined;
+  for (const current of app.querySelectorAll<HTMLElement>("[data-moving]")) {
+    const stillThere = holder.content.querySelector(`[data-moving="${CSS.escape(current.dataset.moving!)}"]`);
+    if (stillThere && stillThere.outerHTML !== current.outerHTML) return current;
+  }
+  return undefined;
 }
 
 // Rule 18 of bento-request.md's K2: after a full render's morph, an element newly carrying

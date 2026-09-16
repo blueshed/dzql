@@ -49,6 +49,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `photoApplet` (dead since nothing called it) is gone, closing that file's own pre-existing
   coverage gap; `household.ts`'s pre-existing gap closes too, mostly by giving the asks list (an
   untested "waiting"/"yes"/"no" row) real coverage in `server.test.ts`.
+- **W3: open in place, rules 7, 8, 10 and 12.** `views/bento.ts`'s `collectionPage` is gone;
+  `boxPage` takes an `open?: OpenOptions` instead, and for the compartment it names, substitutes
+  the tray cell's own element for one holding the reading, its rail and a note (`.cell.open`) --
+  the other cells go behind it (`.cells.has-open .cell:not(.open) { display: none }`). `cell()`
+  carries `data-moving` on every navigable compartment now (K1), keyed by the page value it opens
+  under, which a `CellOptions.key` override keeps equal to the tray's own grid-area identity when
+  a compartment's label reads differently from its page ("the day" is page `day`). The couple's
+  own household box (`familyBox`) grows its own "asks" compartment the same way, one level down.
+  The reading scrolls under the rail and the page's tools (`.cell-open-body`'s own scroll, 15rem
+  clear of the rail unless a photo reading runs under it). No page value's meaning changed and no
+  story's `does` did either.
+
+  Opening this up to more than one candidate compartment at once broke K1's own assumption that
+  at most one element on the page ever carries `data-moving` -- `src/client/app.ts`'s
+  `movingElement()` grabbed the *first* `[data-moving]` match unconditionally, which silently
+  named the wrong element (typically one about to go `display: none`) and threw
+  `InvalidStateError: Transition was aborted because of invalid state`. Fixed in the kernel:
+  `movingElement()` now checks every current candidate and picks the one whose matching element in
+  the render actually differs, since a still-closed sibling's markup renders byte-for-byte
+  unchanged whether or not another compartment opened. `src/client/app.test.ts` gained a story for
+  it: three siblings all carrying `data-moving`, only the one that changed gets named.
 
 ## [0.38.0] - 2026-09-16
 

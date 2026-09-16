@@ -99,6 +99,55 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(keptIdentity).toBe(true);
   });
 
+  test("with several data-moving candidates on screen at once, only the one that actually changed transitions (W3: a box with more than one openable compartment)", async () => {
+    await using view = await open();
+    await stubSend(view);
+
+    // three siblings each carry data-moving, the way every navigable cell in a box does before
+    // any one of them is known to be the next thing opened
+    await pushRender(
+      view,
+      `<div id="tray">
+        <div id="asks" data-moving="asks"><p>Asks</p></div>
+        <div id="gifts" data-moving="gifts"><p>Gifts</p></div>
+        <div id="day" data-moving="day"><p>The day</p></div>
+      </div>`,
+    );
+    await waitFor(view, `document.querySelector('#gifts')?.textContent`, (v) => v === "Gifts");
+
+    await view.evaluate(`(() => {
+      window.__seenNames = { asks: [], gifts: [], day: [] };
+      for (const id of ["asks", "gifts", "day"]) {
+        const el = document.getElementById(id);
+        el._probe = id;
+        new MutationObserver((muts) => {
+          for (const m of muts) window.__seenNames[id].push(el.style.viewTransitionName);
+        }).observe(el, { attributes: true, attributeFilter: ["style"] });
+      }
+    })()`);
+
+    // only "gifts" actually changes (it grows); "asks" and "day" render byte-for-byte the same,
+    // since nothing about them changed just because a sibling opened
+    await pushRender(
+      view,
+      `<div id="tray">
+        <div id="asks" data-moving="asks"><p>Asks</p></div>
+        <div id="gifts" data-moving="gifts" class="open"><p>Gifts, grown into the window</p></div>
+        <div id="day" data-moving="day"><p>The day</p></div>
+      </div>`,
+    );
+    await waitFor(view, `document.querySelector('#gifts')?.textContent`, (v) => v === "Gifts, grown into the window");
+
+    await waitFor(view, `window.__seenNames.gifts.includes("moving")`, (v) => v === true);
+    expect(await view.evaluate(`window.__seenNames.asks.includes("moving")`)).toBe(false);
+    expect(await view.evaluate(`window.__seenNames.day.includes("moving")`)).toBe(false);
+    expect(await view.evaluate(`document.getElementById('gifts').style.viewTransitionName`)).toBe("");
+    // the unrelated siblings' own identity survived the render too, untouched by the transition
+    expect(await view.evaluate(`document.getElementById('asks')._probe`)).toBe("asks");
+    expect(await view.evaluate(`document.getElementById('day')._probe`)).toBe("day");
+    expect(await view.evaluate(`document.getElementById('gifts')._probe`)).toBe("gifts"); // the same element grew, it wasn't replaced
+  });
+
   test("a full render that newly marks an element data-reveal scrolls it into view", async () => {
     await using view = await open();
     await stubSend(view);

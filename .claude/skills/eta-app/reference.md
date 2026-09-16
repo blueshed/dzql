@@ -470,6 +470,18 @@ neighbours instead of on top of them (the bento mock-up learned this the hard wa
 compartment, instead of just the one moving, was the original mistake). Nothing else needs naming;
 K1 is one attribute, one name, one element, not a general animation vocabulary.
 
+A box with more than one openable compartment (the wedding's W3) marks every navigable
+compartment `data-moving` on every render, box or open -- the render can't know in advance which
+one the person is about to click, so "the page as it is" may carry several at once. `render()`'s
+`movingElement()` accounts for this: it checks every current `[data-moving]` candidate, not just
+the first, and picks the one whose matching element in the incoming render actually differs (a
+still-closed sibling's markup renders byte-for-byte the same whether or not another compartment
+opened, so comparing `outerHTML` is enough to tell "genuinely transitioning" from "merely still
+here"). Grabbing only `document.querySelector`'s first match, as K1's first cut did, works for a
+single candidate but silently names the wrong element -- typically one that's about to become
+`display: none` -- once a second one appears on the page, which Chromium answers with
+`InvalidStateError: Transition was aborted because of invalid state`.
+
 ### `data-reveal`: bringing the chosen figure into the clear (bento-request.md K2)
 
 After a full render's morph, if the page now carries an element with `data-reveal` that it did not
