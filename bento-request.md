@@ -155,7 +155,12 @@ story("Grace closes find, and every guest is lit again", { as: "okafors", does: 
 
 ### W5. After the review
 
-What Fable saw in the preview at 0.39.0, and what to change.
+What Fable saw in the preview at 0.39.0, and what to change. The mock-up (`examples/bento`,
+`bun run dev:bento` on 3003) is the exact reference for every measurement below -- where the
+stacks sit in the window, the rail's width and offsets, the stack's own border, shadow and button
+size, the reading's clearance, the page stack at the window's own bottom right corner. Write the
+wedding's own CSS, never the mock's, but take the numbers from it rather than inventing one; where
+the wedding differs from the mock in any of these, the mock wins.
 
 1. **The window is the tray's rectangle.** Today `.cells.has-open .cell:not(.open) { display: none }`
    removes the other compartments and `.cell.open` is `position: fixed` to the viewport, so the
@@ -165,22 +170,43 @@ What Fable saw in the preview at 0.39.0, and what to change.
    drawn on top); the window is exactly the tray's rectangle, corners 28, and it transitions from
    the cell's rectangle to the tray's. Below 820px the window is the screen, as now, since the
    phone's column is taller than the screen. A reading taller than the window scrolls inside it.
-2. **The reading keeps clear of the rails by the rails' own width, not 15rem.**
-   `.cell-open-body { padding-right: 15rem }` leaves a phone's rows a third of the window and a
-   desktop's rows two thirds. The stacks are 40px wide plus a gutter: keep clear by that (about
-   4.5rem) from 820px, and by nothing below, where the rails sit at the foot; a find field that
-   pops open is wider, and may overlap the reading briefly rather than push it.
+2. **Every reading keeps clear of the rails, by the rails' own measure.** `.cell-open-body {
+   padding-right: 15rem }` leaves a phone's rows a third of the window and a desktop's rows two
+   thirds, and its `:has(.photo-reading) { padding-right: 0 }` exception is wrong: it is only a
+   reading that scrolls and is bigger than its window -- a picture too large for it -- that may run
+   under a control, and no reading in the wedding today is that; every photo (a household's,
+   a family's, everyone's) fits its window and cannot scroll. So the exception goes, and every
+   reading -- photo included -- keeps clear of the rail by the mock's own clearance from 820px, and
+   by nothing below, where the rails sit at the foot; a find field that pops open is wider, and may
+   overlap the reading briefly rather than push it.
 3. **The page's tools are in the window, not on the screen.** `.page-tools` is fixed to the
-   viewport, so on the box it floats outside the tray's right edge. Rule 9: undo, redo and leave
-   are a stack at the bottom right of the tray on the box and of the window when one is open;
-   position them within `.cells` (and within the open compartment), not the viewport, from 820px.
-   On a phone they may stay fixed to the screen's corner.
+   viewport, so on the box it floats outside the tray's right edge, and `.rail`'s own top offset is
+   a guess (76px) at clearing chrome that lives outside the window in the wedding, not inside it as
+   in the mock. Rule 9: undo, redo and leave are a stack at the bottom right of the tray on the box
+   and of the window when one is open, the compartment's own tools a stack at its top right;
+   position both within `.cells` (and within the open compartment), not the viewport, from 820px,
+   at the mock's own offset from the window's edge. On a phone they may stay fixed to the screen's
+   corner.
 4. **The rails step aside for the drawer** (the rule 18 finding). The render knows a drawer is
    open (it renders the sheet), so the stylesheet can too: `main#app:has(.sheet) .rail`, and the
    page tools, move left by the panel's width from 820px, and the reading's right clearance grows
    by the same, so the chosen figure's `data-reveal` scroll brings it into the clear beside the
    panel. Nothing else moves; the tray keeps its shape.
-5. **The eye.** The find form gets one more control beside the field: an eye (lucide `Eye` while
+5. **Inviting a household is adding, not a form on the rail.** `households`' own rail carries
+   `form.invite` whole -- three fields and a submit button stacked in the tools -- which is not a
+   tool, it is adding (rule 14), so it is the plus on the rail and a modal asking for the email and
+   the names on the invitation, the plus-ones count too, the page inert behind it while it asks,
+   the same as any other add. The rail then holds only tools: the reading switch, find, plus. Any
+   other form living in a rail (`.rail .tool-form`) is the same finding, fixed the same way; a
+   field that belongs to a row already in its own drawer (a course's plus-one count, a household's)
+   is not this -- only a rail form that *adds* moves. The existing invite stories keep their `does`;
+   one more for the modal opening:
+
+```ts
+story("The couple ask to invite a household, and the modal asks for the email", { as: "couple", does: at("households @ new=households"), seen: { couple: "households" } }),
+```
+
+6. **The eye.** The find form gets one more control beside the field: an eye (lucide `Eye` while
    dimming, `EyeOff` while hiding) that writes `/hide/<key>` `true` and, pressed again, removes it;
    while it is set, rows that miss are hidden (the `hidden` attribute) instead of `hushed`, and the
    tally still says n of m. Closing find removes both keys. Session key `hide.<key>` beside

@@ -142,7 +142,16 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 @media (min-width: 820px) {
   .cell.open { position: absolute; inset: 0; }
 }
+/* W5.2: every reading keeps clear of the rail by the rail's own measure -- the mock's own
+   clearance (examples/bento/styles.css's `.full.thumbs-grid, .full.list { padding-right: 80px }`),
+   not a guess, and no exception for a photo reading: only a reading that scrolls and is bigger
+   than its window may run under a control, and none in the wedding today is that -- every photo
+   (a household's, a family's, everyone's) fits its window and cannot scroll. Below 820px the
+   rails sit at the foot, not the side, so there is nothing to keep clear of. */
 .cell-open-body { flex: 1 1 auto; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-right: 0; }
+@media (min-width: 820px) {
+  .cell-open-body { padding-right: 80px; }
+}
 .cell.open .note { flex: 0 0 auto; margin: 10px 0 0; }
 
 /* ── a collection ── */
