@@ -13,7 +13,7 @@ describe("photoSvg", () => {
     const svg = photoSvg(entries, "the family");
     expect(svg).toStartWith('<svg class="photo" viewBox="');
     expect(svg).toContain('aria-label="the family"');
-    expect(svg).toContain('role="button" tabindex="0" data-key="1"');
+    expect(svg).toContain('role="button" tabindex="0" data-key="1" aria-pressed="false"');
     expect(svg).toContain('class="fig att-nodding ghost"');
     expect(svg).toContain('class="fig att-nodding out"');
     expect(svg).toContain('class="mark mark-yes"');
@@ -21,6 +21,22 @@ describe("photoSvg", () => {
     expect(svg).toContain('<g class="print">');
     expect(svg).not.toContain("walk");
     expect(svg).not.toContain("descend");
+    expect(svg).not.toContain("data-reveal");
+    expect(svg).not.toContain('class="ring"');
+  });
+
+  test("a chosen figure rings, is marked pressed, and scrolls into the clear (K2, rule 13)", () => {
+    const entries: PhotoEntry[] = [
+      { key: "1", spec: { ...look, name: "Ada" }, tap: { doc: "session", op: { op: "replace", path: "/focus", value: 1 } }, chosen: true },
+      { key: "2", spec: look },
+    ];
+    const svg = photoSvg(entries, "the family");
+    expect(svg).toContain('role="button" tabindex="0" data-key="1" aria-pressed="true"');
+    expect(svg).toContain(" data-reveal>");
+    expect(svg).toContain('<g class="slot chosen"');
+    expect(svg).toContain('<ellipse class="ring" cx="50" cy="72" rx="58" ry="80"/>');
+    // the unchosen figure carries neither
+    expect(svg).toContain('<g class="slot" transform');
   });
 
   test("a newcomer walks in from the nearest side; a bomber lunges from beyond the frame; a count of one is no count", () => {

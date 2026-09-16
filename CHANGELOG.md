@@ -25,6 +25,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and the corner family. `::view-transition-group(moving) { z-index: 1 }` is in the stylesheet
   now, ready for W3. Nothing on the wire changed; all 51 stories and the coverage table stay as
   they were.
+- **W2: the drawer and the modal, rules 13, 14 and 15.** A figure shows it is chosen while its
+  drawer is open: `aria-pressed` and a lit line across a guest's or a gift's row
+  (`.row-line[aria-pressed="true"]`), a ring around a chosen figure in the photo
+  (`applets/photo.ts`'s new `PhotoEntry.chosen`, an `<ellipse class="ring">`), and `data-reveal`
+  (K2) so the chosen one scrolls into the clear beside the docked drawer. What a guest carries --
+  coming -- moves into their drawer as one control, off the row; the couple's welcome becomes a
+  "thing" compartment of its own (`views/board.ts`'s `welcomePreview`/`welcomeSheet`), carrying ✎
+  and lighting while its drawer (the same `answering` key a household's own answer already used)
+  is open, its names, day, venue, picture and words all edited there instead of inline on the box.
+  Adding a guest, a gift, an ask, a course, an event or a place is now the plus on its collection's
+  rail (`views/bento.ts`'s `addTool`) and a modal asking one question, the name
+  (`addModal`/`modalShell`, a `<dialog open class="modal">` with its own scrim, since the kernel's
+  client learns no `showModal()` call); removing a kept row asks in a modal too
+  (`confirmModal`, `views/board.ts`'s `confirmRemove`). While a modal is open the page behind it is
+  `inert` (`views/shared.ts`'s `inertWhile`) and, on a phone, held still (`frame()`'s new `locked`
+  parameter sets `.site.locked`, read by `body:has(.site.locked) { overflow: hidden }`, since the
+  render owns no element of `body` itself). A new session key, `new` (which collection's add-modal
+  is open) and `confirm` (`"<table>/<id>"`, which removal is being confirmed), neither on the
+  ledger. `stories.ts`'s `at` now turns any `key.sub=value` into `/key/sub`, not only `reading.`.
+  Four new stories (`bento-request.md`'s own), and the existing claim, keep, answer and welcome
+  stories retold where a drawer is now the way. `examples/wedding/views/photo.ts`'s unused
+  `photoApplet` (dead since nothing called it) is gone, closing that file's own pre-existing
+  coverage gap; `household.ts`'s pre-existing gap closes too, mostly by giving the asks list (an
+  untested "waiting"/"yes"/"no" row) real coverage in `server.test.ts`.
+
+## [0.38.0] - 2026-09-16
 
 ### Added
 

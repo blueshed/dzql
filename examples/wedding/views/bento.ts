@@ -190,3 +190,48 @@ export function sheet(id: string, title: string, body: string, close: string, cl
     "</div>",
   );
 }
+
+/**
+ * A modal: new or delete, one question, nothing else (rule 14). Not `<dialog>.showModal()` --
+ * the kernel's client learns no such call, the shape is HTML -- so it carries its own scrim, the
+ * way a sheet does, and the page behind it is put `inert` by the caller, since dimming alone
+ * would still let a keyboard or a screen reader reach through it.
+ */
+function modalShell(title: string, close: string, body: string): string {
+  return join(
+    `<div class="scrim modal-scrim"${close}></div>`,
+    `<dialog open class="modal" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${body}</dialog>`,
+  );
+}
+
+/** The plus on a collection's rail: opens the add-modal for `collection` (session `/new`). */
+export function addTool(collection: string, label: string): string {
+  return tool(label, { icon: "plus", kind: "add", write: write("session", "replace", "/new", collection), iconOnly: true, label });
+}
+
+/**
+ * Adding a thing -- a guest, a gift, an ask, an event -- is the plus on a collection's rail and a
+ * modal asking one question, the name (rule 14). `add` is the write for the form's own field
+ * (its `path` ending `/-`); the field's name is always `name`. The caller only calls this when
+ * the session says the modal is open (the same shape as `sheet()` -- a `""` otherwise).
+ */
+export function addModal(title: string, noun: string, add: string): string {
+  const close = write("session", "remove", "/new");
+  const body = join(
+    `<form class="modal-field"${add}>`,
+    `<input class="field" name="name" placeholder="${esc(`The ${noun}'s name`)}" aria-label="${esc(`The ${noun}'s name`)}" autocomplete="off" required autofocus>`,
+    `<div class="modal-foot">${tool("Cancel", { kind: "quiet", write: close })}<button type="submit" class="tool add">${icon("plus")}Add</button></div>`,
+    "</form>",
+  );
+  return modalShell(title, close, body);
+}
+
+/** Removing a thing asks in a modal too -- a modal is new or delete and nothing else (rule 14). */
+export function confirmModal(title: string, question: string, destroy: string): string {
+  const close = write("session", "remove", "/confirm");
+  const body = join(
+    `<p class="note">${esc(question)}</p>`,
+    `<div class="modal-foot">${tool("Cancel", { kind: "quiet", write: close })}<button type="button" class="tool danger"${destroy}>${icon("trash")}Remove</button></div>`,
+  );
+  return modalShell(title, close, body);
+}

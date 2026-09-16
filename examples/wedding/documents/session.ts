@@ -19,8 +19,12 @@ export type Ui = {
   gift?: number;
   /** The row whose keep drawer is open, as "<table>/<id>". */
   keep?: string;
-  /** The answer drawer is open. */
+  /** The answer drawer is open (a household's own; the couple's welcome). */
   answering?: true;
+  /** The modal asking a new thing's name is open, named by its collection ("guests", "asks", "courses", ...). */
+  new?: string;
+  /** The modal confirming a removal is open, as "<table>/<id>". */
+  confirm?: string;
   /** How each collection is being read: "photo" or "list", by the collection's name. */
   reading?: Record<string, string>;
 };
@@ -82,8 +86,8 @@ export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): 
       console.log(`resend requested for ${email}`);
       next.note = "Sent, if we know that address.";
     } else if (field === "page") {
-      // A drawer belongs to the page it was opened on: leaving the page closes it. How each
-      // collection is read is kept.
+      // A drawer or a modal belongs to the page it was opened on: leaving the page closes it.
+      // How each collection is read is kept.
       next.ui = { page: String(op.value ?? ""), reading: before.ui.reading };
     } else if (field === "focus" || field === "gift") {
       const n = integer(op.value);
@@ -96,6 +100,9 @@ export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): 
     } else if (field === "answering") {
       if (removing) delete next.ui.answering;
       else next.ui.answering = true;
+    } else if (field === "new" || field === "confirm") {
+      if (removing) delete next.ui[field];
+      else next.ui[field] = String(op.value ?? "");
     } else if (field === "reading" && key && !removing) {
       next.ui.reading = { ...next.ui.reading, [key]: String(op.value ?? "") };
     } else {

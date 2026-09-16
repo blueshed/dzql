@@ -20,18 +20,15 @@ export function photoMount(id: string, entries: PhotoEntry[], label: string, rev
   return `<div id="${esc(id)}" data-applet="photo" data-props="${esc(JSON.stringify({ entries, label, reveal }))}"></div>`;
 }
 
-/** The photo applet's mount point, in its frame. */
-export function photoApplet(id: string, entries: PhotoEntry[], label: string, opts: { reveal?: boolean; framed?: boolean } = {}): string {
-  return `<div class="reading photo-reading${opts.framed ? " framed" : ""}">${photoMount(id, entries, label, !!opts.reveal)}</div>`;
-}
-
-/** The household's guests as photo entries -- a tap opens the guest's drawer -- with a waiting ask as a ghost that leads to the asks. */
-export function familyEntries(h: HouseholdDocument, live = true): PhotoEntry[] {
+/** The household's guests as photo entries -- a tap opens the guest's drawer, and rings while it
+ * is open (`focus`, rule 13) -- with a waiting ask as a ghost that leads to the asks. */
+export function familyEntries(h: HouseholdDocument, live = true, focus?: number): PhotoEntry[] {
   const entries: PhotoEntry[] = h.guests.map((g) => ({
     key: String(g.id),
     out: isGuestOut(g, h),
     spec: specOf(g.minifigure, g.name.split(/\s+/)[0]),
     tap: live ? { doc: "session", op: { op: "replace", path: "/focus", value: g.id } } : undefined,
+    chosen: live && g.id === focus,
   }));
   for (const a of h.asks) {
     if (a.reply !== null) continue;

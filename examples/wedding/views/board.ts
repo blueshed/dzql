@@ -6,7 +6,7 @@
 import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
 import type { SessionDocument } from "../documents/session";
-import { boxPage, cell, collectionPage, readingSwitch, sheet, tool, type Crumb } from "./bento";
+import { addModal, addTool, boxPage, cell, collectionPage, confirmModal, readingSwitch, sheet, tool, type Crumb } from "./bento";
 import { esc, join, nav, write } from "./html";
 import { icon } from "./icons";
 import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
@@ -22,6 +22,7 @@ import {
   firstNameOf,
   formatDay,
   frame,
+  inertWhile,
   isComing,
   pencil,
   picture,
@@ -62,7 +63,25 @@ export function boardPages(v: BoardView): string {
   } else {
     page = rootBox(v, trail);
   }
-  return frame(false, join(page, keepSheet(v)), v.session.ui.page ?? "");
+  const ui = v.session.ui;
+  const newTable = isKeepTable(ui.new ?? "") ? (ui.new as KeepTable) : undefined;
+  const modalOpen = !!newTable || !!ui.confirm;
+  const locked = modalOpen || !!ui.keep || !!ui.answering;
+  const modal = join(newTable ? addModal(`Add a ${KEEP[newTable].noun}`, KEEP[newTable].noun, write("board", "add", `/${newTable}/-`)) : "", confirmRemove(v));
+  const body = join(inertWhile(modalOpen, join(page, keepSheet(v), welcomeSheet(v))), modal);
+  return frame(false, body, v.session.ui.page ?? "", locked);
+}
+
+/** The modal asking to confirm a removal -- a modal is new or delete and nothing else (rule 14). */
+function confirmRemove(v: BoardView): string {
+  const [table, idText] = (v.session.ui.confirm ?? "").split("/");
+  if (!table || !isKeepTable(table)) return "";
+  const id = Number(idText);
+  const rows = v.b[table] as { id: number; name: string }[];
+  const row = rows.find((r) => r.id === id);
+  if (!row) return "";
+  const { noun } = KEEP[table];
+  return confirmModal(`Remove this ${noun}`, `Remove "${row.name}" from the list?`, write("board", "remove", `/${table}/${id}`));
 }
 
 // ───────────────────────────── the home ─────────────────────────────
@@ -80,25 +99,44 @@ const fieldRow = (path: string, name: string, value: string, label: string, plac
 export const pictureField = (path: string, current: string | null): string =>
   `<div data-applet="picture-field" data-props="${esc(JSON.stringify({ doc: "board", path, current }))}"></div>`;
 
+/** The welcome as the couple's own "thing" (rule 15): a compact preview -- the names, the day,
+ * the deadline -- carrying ✎, not ›; a tap opens the drawer where the whole of it (names, day,
+ * venue, the picture, the words) is edited, off the box, and it is lit while that drawer is open. */
+function welcomePreview(b: BoardDocument, open: boolean): string {
+  return join(
+    `<div class="bubble couple${open ? " open" : ""}" aria-pressed="${open}">`,
+    `<div class="bubble-words"><span class="welcome-names">${esc(coupleName(b))}</span>`,
+    `<p class="note">${esc(formatDay(b.day))}${b.venue ? ` · ${esc(b.venue)}` : ""}${b.deadline ? ` · answers by ${esc(formatDay(b.deadline))}` : ""}</p></div>`,
+    `<button class="pencil-btn" type="button" aria-label="Edit our welcome"${write("session", "replace", "/answering", "1")}>${icon("pencil", 18)}</button>`,
+    "</div>",
+  );
+}
+
+/** The welcome's drawer: every field it carries, each its own path, written on blur. */
+function welcomeSheet(v: BoardView): string {
+  if (!v.session.ui.answering) return "";
+  const { b } = v;
+  const body = join(
+    `<div class="welcome-preview">`,
+    `<div class="names"><form class="field-form" data-write-on="blur">${field("/name1", "name1", b.name1, "The first name", "one name")}<span class="amp">&amp;</span>${field("/name2", "name2", b.name2, "The second name", "the other")}</form></div>`,
+    `<div class="when-where"><form class="field-form" data-write-on="blur">${field("/day", "day", b.day, "The day", "2027-04-02")}${field("/venue", "venue", b.venue ?? "", "The place", "where")}</form></div>`,
+    b.picture_key ? picture(b.picture_key, "") : `<p class="note">No photograph yet.</p>`,
+    `<div class="welcome-tools">${pictureField("/picture_key", b.picture_key)}</div>`,
+    `</div>`,
+    `<h3 class="cap">Your words</h3>`,
+    `<form class="words-form" data-write-on="blur"><textarea class="message-box"${write("board", "replace", "/message")} name="message" rows="3" placeholder="Your words on the welcome" aria-label="Your words on the welcome">${esc(b.message ?? "")}</textarea></form>`,
+  );
+  return sheet("welcome-sheet", "Our welcome", body, write("session", "remove", "/answering"), "welcome-sheet");
+}
+
 function rootBox(v: BoardView, trail: Crumb[]): string {
   const { b } = v;
   const claimed = b.gifts.filter((g) => g.taken > 0).length;
   const shared = b.gifts.filter((g) => g.shared).length;
   const t = b.totals;
-  const welcome = join(
-    `<div class="welcome-preview"><p class="kicker">The marriage of</p>`,
-    `<div class="names"><form class="field-form" data-write-on="blur">${field("/name1", "name1", b.name1, "The first name", "one name")}<span class="amp">&amp;</span>${field("/name2", "name2", b.name2, "The second name", "the other")}</form></div>`,
-    `<div class="when-where"><form class="field-form" data-write-on="blur">${field("/day", "day", b.day, "The day", "2027-04-02")}${field("/venue", "venue", b.venue ?? "", "The place", "where")}</form></div>`,
-    `<p class="when">${esc(formatDay(b.day))}</p>`,
-    b.deadline && `<p class="note">Answers by ${esc(formatDay(b.deadline))}.</p>`,
-    b.picture_key ? picture(b.picture_key, "") : `<p class="note">No photograph yet.</p>`,
-    `<div class="welcome-tools">${pictureField("/picture_key", b.picture_key)}</div>`,
-    `</div>`,
-    `<div class="bubble couple"><form class="words-form" data-write-on="blur"><textarea class="message-box"${write("board", "replace", "/message")} name="message" rows="2" placeholder="Your words on the welcome" aria-label="Your words on the welcome">${esc(b.message ?? "")}</textarea></form></div>`,
-  );
   return boxPage(
     trail,
-    [welcome],
+    [welcomePreview(b, !!v.session.ui.answering)],
     [
       cell({ name: "households", mark: "home", count: t.households, summary: `${t.answered} answered · ${t.coming} coming${t.asksWaiting ? ` · ${plural(t.asksWaiting, "ask", "asks")} waiting` : ""}`, page: "households" }),
       cell({ name: "courses", mark: "utensils", count: b.courses.length, summary: coursesSummary(b.courses), page: "courses" }),
@@ -256,8 +294,7 @@ function keepCollection(v: BoardView, table: KeepTable, trail: Crumb[]): string 
           .join("")}</div>`
       : `<p class="note">No gifts yet.</p>`;
   }
-  const add = `<form class="tool-form"${write("board", "add", `/${table}/-`)}><input class="field" name="name" placeholder="Its name" aria-label="${esc(`The ${noun}'s name`)}" autocomplete="off" required><button type="submit" class="tool add">${icon("plus")}Add a ${noun}</button></form>`;
-  return collectionPage([...trail, { label }], { tools: [add], body });
+  return collectionPage([...trail, { label }], { tools: [addTool(table, `Add a ${noun}`)], body });
 }
 
 /** The row's drawer: its fields, each a form; a course's dishes and drinks; its place in the order; Remove at the foot. */
@@ -277,7 +314,8 @@ function keepSheet(v: BoardView): string {
     `<button type="button" class="ghost small" aria-label="Move down"${write("board", "replace", `${at}/seq`, position + 1)}${position === rows.length ? " disabled" : ""}>${icon("down")}</button>`,
     `<span class="note">${position} of ${rows.length}</span></div></div>`,
   );
-  const remove = `<div class="sheet-foot">${tool(`Remove this ${noun}`, { icon: "trash", kind: "danger", write: write("board", "remove", at) })}</div>`;
+  // removing asks in a modal too (rule 14) -- the sheet only opens it; `confirmRemove` above does the write
+  const remove = `<div class="sheet-foot">${tool(`Remove this ${noun}`, { icon: "trash", kind: "danger", write: write("session", "replace", "/confirm", at.slice(1)) })}</div>`;
   const fields: string[] = [fieldRow(`${at}/name`, "name", row.name, "Name")];
   let extra = "";
   if (table === "courses") {

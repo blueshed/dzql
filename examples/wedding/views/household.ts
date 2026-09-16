@@ -7,12 +7,12 @@ import type { Guest, HouseholdDocument } from "../documents/household";
 import type { SessionDocument } from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { Course, Gift, Wedding } from "../documents/wedding";
-import { boxPage, cell, collectionPage, readingSwitch, sheet, tool, type Crumb } from "./bento";
+import { addModal, addTool, boxPage, cell, collectionPage, readingSwitch, sheet, tool, type Crumb } from "./bento";
 import type { DressProps } from "../applets/dress";
 import type { MenuProps } from "../applets/menu";
 import { esc, join, nav, write } from "./html";
 import { icon } from "./icons";
-import { familiesPhoto, familyEntries, photoApplet, photoMount, type Family, type PhotoEntry } from "./photo";
+import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
 import {
   answerSays,
   answerWord,
@@ -24,6 +24,8 @@ import {
   firstNameOf,
   formatDay,
   frame,
+  inertWhile,
+  isComing,
   isGuestOut,
   pencil,
   picture,
@@ -60,16 +62,26 @@ export function householdPages(v: HouseholdView): string {
     : head === "stay" ? collectionPage([...trail, { label: "Where to stay" }], { body: placeRows(v.places) })
     : head === "everyone" ? everyonePage(v, trail, second ?? null)
     : householdBox(v, trail);
-  return frame(false, join(page, guestSheet(v), giftSheet(v), answerSheet(v)), v.session.ui.page ?? "");
+  const ui = v.session.ui;
+  const modalOpen = !!ui.new;
+  const locked = modalOpen || ui.focus !== undefined || ui.gift !== undefined || !!ui.answering;
+  const modal =
+    ui.new === "guests" ? addModal("Name our plus-one", "guest", write("household", "add", "/guests/-"))
+    : ui.new === "asks" ? addModal("Ask to bring someone", "person to ask for", write("household", "add", "/asks/-"))
+    : "";
+  const body = join(inertWhile(modalOpen, join(page, guestSheet(v), giftSheet(v), answerSheet(v))), modal);
+  return frame(false, body, v.session.ui.page ?? "", locked);
 }
 
 // ───────────────────────────── the box ─────────────────────────────
 
-/** What the household says, in the photo: the chosen face and the words, and a pencil that opens the answer's drawer, where all three are whole. */
-function speechBubble(h: HouseholdDocument): string {
+/** What the household says, in the photo: the chosen face and the words, and a pencil that opens
+ * the answer's drawer -- rule 15's "thing" compartment carries ✎, not ›, and is lit while its
+ * drawer is open. */
+function speechBubble(h: HouseholdDocument, open: boolean): string {
   const words = h.message ?? "";
   return join(
-    `<div class="bubble ours${h.answer ? " answered" : ""}">`,
+    `<div class="bubble ours${h.answer ? " answered" : ""}${open ? " open" : ""}" aria-pressed="${open}">`,
     faceMark(h.answer),
     `<div class="bubble-words${words ? "" : " empty"}">${esc(words || (h.answer ? `${answerSays(h.answer)}.` : "Are you coming?"))}</div>`,
     `<button class="pencil-btn" type="button" aria-label="Our answer"${write("session", "replace", "/answering", "1")}>${icon("pencil", 18)}</button>`,
@@ -83,38 +95,42 @@ function householdBox(v: HouseholdView, trail: Crumb[]): string {
   const inPhoto = photo.filter((r) => weddingDoc.inPhoto(r) !== null).length;
   const openGifts = gifts.filter((g) => g.shared || g.taken === 0).length;
   const named = h.guests.filter((g) => g.named_by === "household").length;
-  const plusOne =
-    named < h.plus_ones &&
-    `<form class="tool-form"${write("household", "add", "/guests/-")}><input class="field" name="name" placeholder="Their name" aria-label="Our plus-one's name" autocomplete="off" required><button type="submit" class="tool add">${icon("plus")}Name our plus-one</button></form>`;
+  // adding our plus-one is the plus on the guests cell's own tools, and a modal asking their name (rule 14)
+  const guestTools = join(h.guests.length ? readingSwitch("guests", reading(v, "guests"), ["photo", "list"]) : "", named < h.plus_ones ? addTool("guests", "Name our plus-one") : "");
   const deadline = v.open && v.w.deadline ? `<p class="note">Answers by ${esc(formatDay(v.w.deadline))}.</p>` : "";
   return boxPage(
     trail,
-    [speechBubble(h), deadline],
+    [speechBubble(h, !!v.session.ui.answering), deadline],
     [
       // the guests, whole: read as the photo or the list, a row's coming on the row, ✎ the drawer; no page beneath
-      cell({ name: "guests", mark: "users", count: h.guests.length, big: true, tools: h.guests.length ? readingSwitch("guests", reading(v, "guests"), ["photo", "list"]) : undefined, body: guestsBody(v) }),
+      cell({ name: "guests", mark: "users", count: h.guests.length, big: true, tools: guestTools || undefined, body: guestsBody(v) }),
       cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting` : h.asks.length ? "all answered" : "ask to bring someone", page: "asks" }),
       cell({ name: "gifts", mark: "gift", count: gifts.length, summary: `${h.claims.length ? `${h.claims.length} claimed by us · ` : ""}${openGifts} open`, page: "gifts" }),
       cell({ name: "the day", mark: "calendar", summary: eventsSummary(v.events), page: "day" }),
       cell({ name: "where to stay", mark: "bed", summary: placesSummary(v.places), page: "stay" }),
       cell({ name: "everyone", mark: "camera", summary: `${inPhoto} in the photo`, page: "everyone" }),
     ],
-    [plusOne || ""],
   );
 }
 
 export const reading = (v: HouseholdView, key: string, fallback = "photo"): string => v.session.ui.reading?.[key] ?? fallback;
 
-/** The family photo's mount: every guest, a waiting ask as a ghost. Replaced alone when a look changes. */
-export const familyPhoto = (v: HouseholdView): string => photoMount("family-photo", familyEntries(v.h), "your household, as minifigures");
+/** The family photo's mount: every guest, a waiting ask as a ghost; the chosen one rings while their drawer is open. Replaced alone when a look changes. */
+export const familyPhoto = (v: HouseholdView): string => photoMount("family-photo", familyEntries(v.h, true, v.session.ui.focus), "your household, as minifigures");
 
-/** One guest as a row of the list reading: the name (✎ the drawer), their choices on one line, coming on the row. Replaced alone when a choice changes. */
+/**
+ * One guest as a row of the list reading: the name (✎ the drawer), their choices on one line, whether
+ * they are coming (read only -- rule 13 moved the yes/no into the drawer, off the line). The whole
+ * row lights and rings pressed while the drawer is open, and scrolls into the clear beside it (K2).
+ */
 export function guestRow(v: HouseholdView, g: Guest): string {
+  const chosen = v.session.ui.focus === g.id;
+  const said = g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming";
   return join(
-    `<div class="row-line guest" id="guest-${g.id}"><div>`,
+    `<div class="row-line guest tap" id="guest-${g.id}" aria-pressed="${chosen}"${chosen ? " data-reveal" : ""}><div>`,
     `<button class="name-link" type="button"${write("session", "replace", "/focus", g.id)}>${esc(g.name)}${pencil()}</button>`,
     `<p class="note">${esc(choicesLine(g, v.courses))}</p></div>`,
-    comingPills((value) => write("household", "replace", `/guests/${g.id}/coming`, value), g.coming, !v.open),
+    `<span class="said">${esc(said)}</span>`,
     "</div>",
   );
 }
@@ -143,7 +159,7 @@ function asksCollection(v: HouseholdView, trail: Crumb[]): string {
     ? `<div class="rows">${v.h.asks.map((a) => `<div class="row-line stay"><span class="what">${esc(a.name)}</span>${answerWord(mark(a.reply), word(a.reply))}</div>`).join("")}</div>`
     : `<p class="note">Nobody asked for yet. An ask is answered by the couple; a yes makes a guest.</p>`;
   return collectionPage([...trail, { label: "Asks" }], {
-    tools: [`<form class="tool-form"${write("household", "add", "/asks/-")}><input class="field" name="name" placeholder="Their name" aria-label="Who to bring" autocomplete="off" required><button type="submit" class="tool add">${icon("plus")}Ask to bring someone</button></form>`],
+    tools: [addTool("asks", "Ask to bring someone")],
     body,
   });
 }
@@ -159,8 +175,9 @@ function giftState(g: Gift, mine: boolean): { word: string; cls: string } {
 function giftsCollection(v: HouseholdView, trail: Crumb[]): string {
   const rows = v.gifts.map((g) => {
     const st = giftState(g, v.h.claims.includes(g.id));
+    const chosen = v.session.ui.gift === g.id;
     return join(
-      `<div class="row-line gift tap${g.picture_key ? " pic" : ""}" role="button" tabindex="0"${write("session", "replace", "/gift", g.id)}>`,
+      `<div class="row-line gift tap${g.picture_key ? " pic" : ""}" role="button" tabindex="0" aria-pressed="${chosen}"${chosen ? " data-reveal" : ""}${write("session", "replace", "/gift", g.id)}>`,
       g.picture_key && picture(g.picture_key, g.name),
       `<div><span class="what">${esc(g.name)}</span><p class="note state-${st.cls}">${esc(st.word)}</p></div>`,
       pencil(),
@@ -235,16 +252,14 @@ export function menuMount(v: HouseholdView, g: Guest): string {
   return `<div id="menu-${g.id}" data-applet="menu" data-props="${esc(JSON.stringify(menu))}"></div>`;
 }
 
-/** The guest's drawer: the head with the name, the dressing sheet, the hint, and their choices beneath -- the two applets, given what they need. */
+/** The guest's drawer: the head with the name, the dressing sheet, what they carry -- coming, one
+ * control (rule 13, off the line) -- the hint, and their choices beneath. */
 function guestSheet(v: HouseholdView): string {
   const focus = v.session.ui.focus;
   const g = focus === undefined ? undefined : v.h.guests.find((x) => x.id === focus);
   if (!g) return "";
-  const body = join(
-    `<div class="figure-box">${dressMount(v, g)}</div>`,
-    `<p class="hint">Touch ${esc(firstNameOf(g.name))}’s hair, face, top, arms or legs to change them.</p>`,
-    menuMount(v, g),
-  );
+  const coming = `<div class="rows"><div class="row-line field-row"><span class="when">Coming</span>${comingPills((value) => write("household", "replace", `/guests/${g.id}/coming`, value), g.coming, !v.open)}</div></div>`;
+  const body = join(`<div class="figure-box">${dressMount(v, g)}</div>`, coming, `<p class="hint">Touch ${esc(firstNameOf(g.name))}’s hair, face, top, arms or legs to change them.</p>`, menuMount(v, g));
   return sheet("guest-sheet", g.name, body, write("session", "remove", "/focus"), "guest-sheet");
 }
 

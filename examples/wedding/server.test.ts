@@ -136,6 +136,10 @@ describe("routes", () => {
     const served = await fetch(new URL(`/pictures/${key}`, server.url));
     expect(served.headers.get("content-type")).toBe("image/svg+xml");
     expect(await served.text()).toBe("<svg/>");
+    // the picture shows in the welcome's own drawer (rule 15: the couple's welcome is a "thing", its picture with it)
+    write(ws, "session", [{ op: "replace", path: "/answering", value: "1" }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
     // and the key is a plain write on the document, undoable like any other
     write(ws, "board", [{ op: "replace", path: "/picture_key", value: key }]);
     await expectMessage(ws, "patch");
@@ -295,8 +299,19 @@ describe("a household", () => {
     };
     write(ws, "session", [{ op: "replace", path: "/reading/guests", value: "list" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain('class="row-line guest"');
+    expect((await expectMessage(ws, "render")).html).toContain('class="row-line guest tap"');
     expect(await page("asks")).toContain("Ask to bring someone");
+    // a waiting ask, then answered both ways -- the asks list's own row for each
+    householdDoc.patch(code, [{ op: "add", path: "/asks/-", value: "Robin Friend" }], "setup");
+    const askId = householdDoc.read(code)!.asks.at(-1)!.id;
+    // the box's own list reading carries a waiting ask as a ghost row, beneath the named guests
+    expect(await page("")).toContain("a waiting ask — not a guest yet");
+    expect(await page("asks")).toContain("waiting");
+    boardDoc.patch("DASH", [{ op: "replace", path: `/households/${hid}/asks/${askId}/reply`, value: "yes" }], "setup");
+    expect(await page("asks")).toContain("yes — a guest now");
+    boardDoc.patch("DASH", [{ op: "replace", path: `/households/${hid}/asks/${askId}/reply`, value: "no" }], "setup");
+    expect(await page("asks")).toContain("no");
+    householdDoc.patch(code, [{ op: "remove", path: `/asks/${askId}` }], "setup");
     expect(await page("day")).toContain("Ceremony");
     expect(await page("stay")).toContain("Brooks Guesthouse");
     const everyone = await page("everyone");
@@ -421,7 +436,14 @@ describe("the couple", () => {
       await expectMessage(ws, "patch");
       return (await expectMessage(ws, "render")).html;
     };
-    expect(await page("")).toContain('data-applet="picture-field"');
+    expect(await page("")).toContain('class="bubble couple"');
+    // the welcome is a "thing" (rule 15): ✎ opens its own drawer, where its picture lives
+    write(ws, "session", [{ op: "replace", path: "/answering", value: "1" }]);
+    await expectMessage(ws, "patch");
+    expect((await expectMessage(ws, "render")).html).toContain('data-applet="picture-field"');
+    write(ws, "session", [{ op: "remove", path: "/answering" }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
     const households = await page("households");
     expect(households).toContain("Invite a household");
     expect(households).toContain('data-applet="photo"');
@@ -449,6 +471,42 @@ describe("the couple", () => {
     write(ws, "session", [{ op: "replace", path: "/keep", value: "nope/1" }]);
     await expectMessage(ws, "patch");
     expect((await expectMessage(ws, "render")).html).not.toContain("keep-sheet");
+
+    // adding is a plus on the collection's rail and a modal asking one question, the name; the
+    // page behind it is inert while it asks (rule 14)
+    write(ws, "session", [{ op: "replace", path: "/new", value: "courses" }]);
+    await expectMessage(ws, "patch");
+    let html = (await expectMessage(ws, "render")).html;
+    expect(html).toContain('<dialog open class="modal" aria-label="Add a course">');
+    expect(html).toContain("The course&#39;s name");
+    expect(html).toContain("<div inert>");
+    write(ws, "board", [{ op: "add", path: "/courses/-", value: "Pudding" }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
+    const pudding = boardDoc.read("DASH")!.courses.find((c) => c.name === "Pudding")!;
+    expect(pudding).toBeTruthy();
+    write(ws, "session", [{ op: "remove", path: "/new" }]);
+    await expectMessage(ws, "patch");
+    html = (await expectMessage(ws, "render")).html;
+    expect(html).not.toContain('class="modal"');
+    expect(html).not.toContain("<div inert>");
+
+    // removing asks in a modal too -- a modal is new or delete and nothing else (rule 14)
+    write(ws, "session", [{ op: "replace", path: "/confirm", value: `courses/${pudding.id}` }]);
+    await expectMessage(ws, "patch");
+    html = (await expectMessage(ws, "render")).html;
+    expect(html).toContain(`Remove &quot;Pudding&quot; from the list?`);
+    write(ws, "board", [{ op: "remove", path: `/courses/${pudding.id}` }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
+    expect(boardDoc.read("DASH")!.courses.some((c) => c.id === pudding.id)).toBe(false);
+    // a stale or nonsense confirm target renders no modal at all
+    write(ws, "session", [{ op: "replace", path: "/confirm", value: "courses/999999" }]);
+    await expectMessage(ws, "patch");
+    expect((await expectMessage(ws, "render")).html).not.toContain('class="modal"');
+    write(ws, "session", [{ op: "replace", path: "/confirm", value: "nope/1" }]);
+    await expectMessage(ws, "patch");
+    expect((await expectMessage(ws, "render")).html).not.toContain('class="modal"');
     ws.close();
   });
 

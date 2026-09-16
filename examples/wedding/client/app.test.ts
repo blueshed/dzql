@@ -131,7 +131,7 @@ describe("the wedding in a real browser", () => {
     await view.click("#code");
     await view.type("DASH");
     await view.click("button.gold");
-    await waitFor(view, `document.querySelector('[data-applet="picture-field"]') !== null`, (v) => v === true);
+    await waitFor(view, `document.querySelector('.bubble.couple') !== null`, (v) => v === true);
 
     boardDoc.patch("DASH", [{ op: "add", path: "/gifts/-", value: { name: "Toaster", description: "starter" } }], "setup");
     const giftId = boardDoc.read("DASH")!.gifts.at(-1)!.id;
@@ -176,6 +176,9 @@ describe("the wedding in a real browser", () => {
     await view.click("#code");
     await view.type("DASH");
     await view.click("button.gold");
+    await waitFor(view, `document.querySelector('.bubble.couple') !== null`, (v) => v === true);
+    // the welcome is a "thing" (rule 15): its message lives in its own drawer now
+    await view.evaluate(`document.querySelector('.bubble.couple .pencil-btn').click()`);
     await waitFor(view, `document.querySelector('.message-box') !== null`, (v) => v === true);
 
     // blurring without changing the textarea must send nothing at all: the comparison has to be

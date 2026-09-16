@@ -129,10 +129,16 @@ export function placeRows(places: Place[], open?: (id: number) => string): strin
  * the kernel client mirrors it into the URL and sends this write back on the browser's own
  * back/forward (change-request.md item 3). Pre-login (the welcome), there is no page to follow.
  */
-export function frame(atWelcome: boolean, body: string, page?: string): string {
+export function frame(atWelcome: boolean, body: string, page?: string, locked = false): string {
   const pageAttrs = page === undefined ? "" : ` data-page="${esc(page)}" data-page-write='${JSON.stringify({ doc: "session", op: "replace", path: "/page" })}'`;
-  return `<div class="flowers" aria-hidden="true"></div><div class="site${atWelcome ? " at-welcome" : ""}"${pageAttrs}>${body}</div>`;
+  // `locked` (a drawer or a modal open) holds the page behind it still on a phone: `styles.css`
+  // reads the class off `.site` via `body:has(.site.locked)`, since the render owns no element
+  // of `body` itself to add the class to directly.
+  return `<div class="flowers" aria-hidden="true"></div><div class="site${atWelcome ? " at-welcome" : ""}${locked ? " locked" : ""}"${pageAttrs}>${body}</div>`;
 }
+
+/** The page behind a modal is `inert` while it asks -- nothing else may be touched (rule 14). */
+export const inertWhile = (modalOpen: boolean, html: string): string => (modalOpen ? `<div inert>${html}</div>` : html);
 
 /** A guest's coming, both states always shown, the current one filled. `locked` after the deadline. */
 export function comingPills(write: (value: "1" | "0") => string, coming: number | null, locked = false): string {
