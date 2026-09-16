@@ -209,6 +209,21 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 /* K2: the chosen figure scrolls into the clear beside the docked drawer, not under it */
 [data-reveal] { scroll-margin: 96px 16px 32px 16px; }
 @media (min-width: 820px) { [data-reveal] { scroll-margin-right: calc(var(--sheet-width) + 24px); scroll-margin-top: 24px; scroll-margin-bottom: 24px; } }
+/* W5.4 (the rule 18 finding): the render knows a drawer is open -- it renders the sheet -- so the
+   stylesheet can too. From 820px the rail and the page's tools move left by the panel's own width
+   plus its own two gaps (`--sheet-width` and its `0.65rem` offset, doubled so the stack keeps a
+   gap of its own beside it), and the reading's right clearance grows by the same, so K2's scroll
+   still brings the chosen figure into the clear beside the panel. Nothing else moves: `.cells`
+   keeps its size, so the tray keeps its shape. Below 820px the sheet is a full sheet over
+   everything (rule 6), so there is nothing to step aside for. */
+@media (min-width: 820px) {
+  main#app:has(.sheet) .rail,
+  main#app:has(.sheet) .page-tools { right: calc(14px + var(--sheet-width) + 1.3rem); }
+  main#app:has(.sheet) .cell-open-body { padding-right: calc(80px + var(--sheet-width) + 1.3rem); }
+  .rail, .page-tools { transition: right 200ms ease; }
+  .cell-open-body { transition: padding-right 200ms ease; }
+}
+@media (prefers-reduced-motion: reduce) { .rail, .page-tools, .cell-open-body { transition: none; } }
 /* rule 17: the filter dims what the word misses and never hides it */
 .row-line.hushed, svg .slot.hushed { opacity: 0.35; }
 .row-line.hushed:hover .what { text-decoration: none; }
