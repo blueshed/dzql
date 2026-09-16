@@ -145,12 +145,51 @@ its `does`; some `seen` places that named a page now name the compartment, which
 Rule 17. Find is a tool on the rail of guests, gifts and households. Pressing it opens a field
 beside it in a form with `data-write-on="input"` writing `/filter/<key>`; the render dims what the
 word misses, keeps lit what it hits, and the tally says how many of all. Closing the tool removes
-the key and everything is lit. Never hides.
+the key and everything is lit and shown again.
 
 ```ts
 story("Grace finds Ok among the guests; two stay lit, the rest dim, the tally says two of five", { as: "okafors", does: at("guests @ filter.guests=Ok"), seen: { okafors: "guests" } }),
 story("The couple find kettle among the gifts, and only their page dims", { as: "couple", does: at("gifts @ filter.gifts=kettle"), seen: { couple: "gifts" } }),
 story("Grace closes find, and every guest is lit again", { as: "okafors", does: { doc: "session", ops: [{ op: "remove", path: "/filter/guests" }] }, seen: { okafors: "guests" } }),
+```
+
+### W5. After the review
+
+What Fable saw in the preview at 0.39.0, and what to change.
+
+1. **The window is the tray's rectangle.** Today `.cells.has-open .cell:not(.open) { display: none }`
+   removes the other compartments and `.cell.open` is `position: fixed` to the viewport, so the
+   tray collapses and the window is as wide as the screen. Rule 7 and rule 18: the tray keeps its
+   shape whatever is open. From 820px the other compartments stay in flow and are covered (the
+   tray is `position: relative`, the open compartment `position: absolute; inset: 0` over them,
+   drawn on top); the window is exactly the tray's rectangle, corners 28, and it transitions from
+   the cell's rectangle to the tray's. Below 820px the window is the screen, as now, since the
+   phone's column is taller than the screen. A reading taller than the window scrolls inside it.
+2. **The reading keeps clear of the rails by the rails' own width, not 15rem.**
+   `.cell-open-body { padding-right: 15rem }` leaves a phone's rows a third of the window and a
+   desktop's rows two thirds. The stacks are 40px wide plus a gutter: keep clear by that (about
+   4.5rem) from 820px, and by nothing below, where the rails sit at the foot; a find field that
+   pops open is wider, and may overlap the reading briefly rather than push it.
+3. **The page's tools are in the window, not on the screen.** `.page-tools` is fixed to the
+   viewport, so on the box it floats outside the tray's right edge. Rule 9: undo, redo and leave
+   are a stack at the bottom right of the tray on the box and of the window when one is open;
+   position them within `.cells` (and within the open compartment), not the viewport, from 820px.
+   On a phone they may stay fixed to the screen's corner.
+4. **The rails step aside for the drawer** (the rule 18 finding). The render knows a drawer is
+   open (it renders the sheet), so the stylesheet can too: `main#app:has(.sheet) .rail`, and the
+   page tools, move left by the panel's width from 820px, and the reading's right clearance grows
+   by the same, so the chosen figure's `data-reveal` scroll brings it into the clear beside the
+   panel. Nothing else moves; the tray keeps its shape.
+5. **The eye.** The find form gets one more control beside the field: an eye (lucide `Eye` while
+   dimming, `EyeOff` while hiding) that writes `/hide/<key>` `true` and, pressed again, removes it;
+   while it is set, rows that miss are hidden (the `hidden` attribute) instead of `hushed`, and the
+   tally still says n of m. Closing find removes both keys. Session key `hide.<key>` beside
+   `filter.<key>`, never on the ledger. Stories:
+
+```ts
+story("Grace presses the eye; the gifts that miss are gone from the list, and the tally still says two of five", { as: "okafors", does: at("gifts @ filter.gifts=toast, hide.gifts=true"), seen: { okafors: "gifts" } }),
+story("Grace presses the eye again, and the gifts that miss are back, dimmed", { as: "okafors", does: { doc: "session", ops: [{ op: "remove", path: "/hide/gifts" }] }, seen: { okafors: "gifts" } }),
+story("Grace closes find, and every gift is lit and shown", { as: "okafors", does: { doc: "session", ops: [{ op: "remove", path: "/filter/gifts" }] }, seen: { okafors: "gifts" } }),
 ```
 
 ## Chat

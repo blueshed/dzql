@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.40.0] - 2026-09-16
+
+### Changed
+
+- **Rule 17 rewritten, after the filter: the eye.** `examples/bento/README.md`'s rule 17 and
+  `bento-request.md`'s W4 no longer say the filter "never hides" -- find still dims by default,
+  but an eye beside the field hides what misses instead, for a long list, and the tally still
+  counts all; closing find still forgets both. `bento-request.md` gains W5, the five findings
+  Fable's review of the 0.39.0 preview left: the window's shape (rules 7/18), the reading's
+  clearance, the page's tools floating outside the tray, the rails not stepping aside for the
+  drawer (the rule 18 finding this review answers), and the eye itself.
+
 ## [0.39.0] - 2026-09-16
 
 ### Changed

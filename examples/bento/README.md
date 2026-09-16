@@ -69,9 +69,10 @@ Each rule names where the mock-up honours it.
 
 16. **The reading is a tool on the collection.** Map or list, photo or list, grid or list, the
     current one pressed. The same figures drawn another way, never two compartments.
-17. **The filter dims and counts and never hides.** Find pops a field open beside its tool; what
-    it misses dims, what it hits stays lit, and the tally says how many of all. Close the tool and
-    everything is lit again.
+17. **The filter dims and counts.** Find pops a field open beside its tool; what it misses dims,
+    what it hits stays lit, and the tally says how many of all. An eye beside the field hides what
+    misses instead of dimming it, for a long list, and the tally still counts all. Close the tool
+    and everything is lit and shown again.
 18. **The rails step aside for the drawer, and the content moves; the window does not.** When the
     drawer opens over the right edge, the stacks slide left of it and the reading scrolls the
     chosen figure into the clear beside it, the browser's own scroll-into-view. The box does not
