@@ -155,6 +155,15 @@ story("Grace closes find, and every guest is lit again", { as: "okafors", does: 
 
 ### W5. After the review
 
+*Done, 0.41.0.* Items 1 to 4 landed as Sonnet's W5.1-W5.4 (0.40.0) and were then redrawn in one
+pass by Fable against the mock-up itself, every screen at both widths: item 1 as written was wrong
+-- the mock-up's window is the screen less a margin, not the tray's rectangle, and the mock-up won;
+the reading's clearance, the stacks and the rails' step-aside are the mock-up's own numbers; item 5,
+the eye, is built with its three stories. The same pass gave every list one row grammar and every
+drawer one property grammar, made the guests a compartment that opens, and moved the invite into
+a modal (see CHANGELOG 0.41.0).
+
+
 What Fable saw in the preview at 0.39.0, and what to change. The mock-up (`examples/bento`,
 `bun run dev:bento` on 3003) is the exact reference for every measurement below -- where the
 stacks sit in the window, the rail's width and offsets, the stack's own border, shadow and button
@@ -336,3 +345,13 @@ family's own box (`households/<id>`) -- a row is not a tray cell with a `data-mo
 grow from, so that one hop is a plain navigation, unanimated, the way every page transition was
 before K1. The family's own box does honour rule 7 one level further in, growing its own "asks"
 compartment into its own window exactly as the root box grows any of its six.
+
+**Rule 13, the wedding, W5.** "What the figure can carry waits in its drawer." An ask on the
+couple's side has no drawer -- it is a name and one decision -- so its yes or no sits on its own
+row in the family's asks window, the one place a row carries a control. Giving every ask a drawer
+to hold two buttons would honour the letter and not the point.
+
+**Rule 10, the wedding, W5.** "A picture is bigger than its window and scrolls under the
+controls." No picture in the wedding is: every photo fits its window, so every reading keeps
+clear of the rails, and when the drawer opens the photo reflows narrower beside it rather than
+scrolling. The mock-up's map is the only reading that scrolls, and the wedding has no map.

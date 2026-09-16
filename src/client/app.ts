@@ -159,9 +159,15 @@ function render(html: string) {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (moving && !reduced && "startViewTransition" in document) {
     moving.style.viewTransitionName = "moving";
-    document.startViewTransition(apply).finished.finally(() => {
-      moving.style.viewTransitionName = "";
-    });
+    // `finished` rejects when the transition is skipped -- another render arrived before it settled,
+    // or the page is hidden -- which is routine, not an error: the morph still ran, only the animation did not
+    const transition = document.startViewTransition(apply);
+    transition.ready.catch(() => {});
+    transition.finished
+      .catch(() => {})
+      .finally(() => {
+        moving.style.viewTransitionName = "";
+      });
   } else {
     apply();
   }

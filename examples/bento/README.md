@@ -82,10 +82,14 @@ Each rule names where the mock-up honours it.
 
 ## What eta already does with this
 
-The tray is computed in eta by `src/tray.ts`: a box declares its compartments and their spans,
-and the grid's areas and each compartment's corner cuts come out, once for three columns and
-once for one. The wedding's boxes use it (`views/bento.ts`). The grid in this mock-up's
-stylesheet is the same result written by hand, so it can be looked at without a server.
+The wedding (`examples/wedding`, from 0.41.0) is these rules built: its `views/bento.ts` draws the
+tray, the window, the stacks, the rows, the drawer and the modal the way this mock-up does, with
+the measurements taken from `styles.css` here, and its own paper and ink. The tray is computed in
+eta by `src/tray.ts`: a box declares its compartments and their spans, and the grid's areas and
+each compartment's corner cuts come out, once for three columns and once for one. The grid in this
+mock-up's stylesheet is the same result written by hand, so it can be looked at without a server.
+Where the wedding and this mock-up part company -- an ask's yes or no on its row, a photo that
+reflows rather than scrolls -- `bento-request.md`'s Findings say why.
 
 ## Where it shows the shape and not the function
 

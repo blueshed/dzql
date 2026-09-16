@@ -29,6 +29,8 @@ export type Ui = {
   reading?: Record<string, string>;
   /** Find's own word, by the collection's name -- present (even "") once the tool is open, gone once closed. */
   filter?: Record<string, string>;
+  /** The eye on find: hide what the word misses instead of dimming it, by the collection's name. */
+  hide?: Record<string, true>;
 };
 
 export type SessionDocument = { code: string | null; kind: Kind | null; ui: Ui; note: string | null };
@@ -91,7 +93,7 @@ export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): 
       // A drawer or a modal belongs to the page it was opened on: leaving the page closes it.
       // How each collection is read, and what find says, are kept -- both are the collection's
       // own state, not the page's.
-      next.ui = { page: String(op.value ?? ""), reading: before.ui.reading, filter: before.ui.filter };
+      next.ui = { page: String(op.value ?? ""), reading: before.ui.reading, filter: before.ui.filter, hide: before.ui.hide };
     } else if (field === "focus" || field === "gift") {
       const n = integer(op.value);
       if (!removing && n === undefined) continue;
@@ -108,6 +110,17 @@ export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): 
       else next.ui[field] = String(op.value ?? "");
     } else if (field === "reading" && key && !removing) {
       next.ui.reading = { ...next.ui.reading, [key]: String(op.value ?? "") };
+    } else if (field === "hide" && key) {
+      // The eye (rule 17): set, what find misses is hidden instead of dimmed; removed, dimmed again.
+      if (removing) {
+        if (!before.ui.hide || !(key in before.ui.hide)) continue;
+        const rest = { ...before.ui.hide };
+        delete rest[key];
+        if (Object.keys(rest).length > 0) next.ui.hide = rest;
+        else delete next.ui.hide;
+      } else {
+        next.ui.hide = { ...before.ui.hide, [key]: true };
+      }
     } else if (field === "filter" && key) {
       // Closing find removes just its own key -- rule 17: everything is lit again, the way it
       // was before find was ever pressed, not merely emptied.
@@ -117,6 +130,13 @@ export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): 
         delete rest[key];
         if (Object.keys(rest).length > 0) next.ui.filter = rest;
         else delete next.ui.filter;
+        // closing find forgets the eye too
+        if (before.ui.hide && key in before.ui.hide) {
+          const eyes = { ...before.ui.hide };
+          delete eyes[key];
+          if (Object.keys(eyes).length > 0) next.ui.hide = eyes;
+          else delete next.ui.hide;
+        }
       } else {
         next.ui.filter = { ...before.ui.filter, [key]: String(op.value ?? "") };
       }

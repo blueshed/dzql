@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.41.0] - 2026-09-16
+
+### Changed
+
+- **The wedding drawn as the mock-up draws it, every screen reviewed.** After Sonnet's W1-W5
+  the pages honoured the rules in prose and not in look, so this is one design pass by Fable over
+  `examples/wedding/views/*` and `client/styles.css`, with `examples/bento` open beside it as
+  the reference for every measurement. The window is the screen less a margin (24px, 8 on a
+  phone), as the mock-up's is -- W5.1's "the tray's rectangle" was a wrong reading of the mock-up
+  and is gone -- and its trail floats top-left as a control: the box it came from, ›, its name.
+  The rail at the right holds stacks of 32px square buttons: the reading switch, then find and
+  the plus; the page's tools are one stack at the bottom right of the window, and across beside
+  the trail on the box. Every reading keeps clear of them (72px 80px 96px 24px, the mock-up's
+  own), photos included. One row grammar for every list (`views/bento.ts`'s `row()`: a lead, the
+  words, the state in small caps, the mark), one property grammar for every drawer (`prop()`),
+  one choice control (`choice()`, `.pick`), one modal with as many fields as it needs
+  (`addModal()`): the eleven `.row-line` variants, `.pill`, `.coming-pills`, `.seg`, `.tool-form`,
+  `.foot-tools`, `.cell-tools`, `.field-row`, `.dish-row` and the rest are gone, and the
+  stylesheet is rewritten as tokens, base, controls, stack, trail, tray, window, rows, drawer,
+  modal, then the drawings untouched.
+- **The guests are a compartment that opens.** The family photo is the guests' small reading on
+  the box, still; the compartment grows into the window with the photo or the list, its plus and
+  find on the rail. The couple's home shows the families the same way, and a family's box its
+  own; the code on a family's box is a thing (rule 15) whose drawer holds the email, the
+  plus-ones and the way to chase them. Inviting is the plus and a modal of three fields, off the
+  rail. What a row carries -- claim, coming, shared -- is a choice in its drawer. The couple's
+  households list carries a household's waiting asks as a note on its row; the asks themselves
+  are answered in the family's own asks window.
+- **The eye (rule 17).** Find's field carries the tally and an eye: pressed, what the word misses
+  is hidden instead of dimmed (`/hide/<key>` on the session, never on the ledger; closing find
+  forgets it with the word). Three stories, and `documents/session.ts` tests it.
+- **Fragments follow the guests into the window.** `compartments/household.ts` replaces the
+  family photo or a guest's row in the guests window, the small reading on the box
+  (`#family-mini`, `#board-mini`), and the open drawer's dress and menu wherever the drawer is.
+
+### Fixed
+
+- **The kernel's View Transition no longer throws when interrupted.** `src/client/app.ts` marks
+  the transition's `ready` and `finished` promises handled: a second render arriving before the
+  first has settled skips the animation, which is routine, and was surfacing as an unhandled
+  `InvalidStateError` on every quick pair of renders.
+- Every square button on a rail says its word to a screen reader (`aria-label`).
+
 ## [0.40.0] - 2026-09-16
 
 ### Changed

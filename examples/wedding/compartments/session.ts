@@ -16,7 +16,7 @@ import { renderRequested } from "../../../src/compartments/render";
 
 /** Where you are only means something once you are in: everything but the code and a resend needs one. */
 const BEFORE_CODE = new Set(["code", "resend"]);
-const WRITABLE = new Set(["code", "resend", "page", "focus", "gift", "keep", "answering", "new", "confirm", "reading", "filter"]);
+const WRITABLE = new Set(["code", "resend", "page", "focus", "gift", "keep", "answering", "new", "confirm", "reading", "filter", "hide"]);
 
 export const session: Compartment = {
   docType: "session",

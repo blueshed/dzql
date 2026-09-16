@@ -75,15 +75,15 @@ export const stories: Stories = {
     story("The Okafors say maybe, and the couple's board and everyone's photo change", { as: "okafors", does: household("replace", "/answer", "maybe"), seen: { okafors: " @ answering=true", couple: "households", benToo: "everyone" } }),
     story("The Okafors take their answer back", { as: "okafors", does: household("remove", "/answer"), seen: { okafors: " @ answering=true", couple: "households", benToo: "everyone" } }),
     story("Femi is not coming after all, and the photo loses him", { as: "okafors", does: household("replace", "/guests/2/coming", "no"), seen: { okafors: "", couple: "households", benToo: "everyone" } }),
-    story("Femi's coming is left undecided, and the list shows it", { as: "okafors", does: household("remove", "/guests/2/coming"), seen: { okafors: " @ reading.guests=list", couple: "households/1 @ reading.family-1=list" } }),
+    story("Femi's coming is left undecided, and the list shows it", { as: "okafors", does: household("remove", "/guests/2/coming"), seen: { okafors: "guests @ reading.guests=list", couple: "households/1/guests @ reading.family-1=list" } }),
     story("The Okafors leave the caterer a note, and only the couple read it", { as: "okafors", does: household("replace", "/message", "Ada is vegetarian."), seen: { okafors: "", couple: "households/1" }, unseen: ["ben", "benToo"] }),
     story("The Okafors take the note back", { as: "okafors", does: household("remove", "/message"), seen: { okafors: "", couple: "households/1" } }),
 
     // ── Guests, figures, choices ──
     story("The Okafors bring a plus-one, and the couple see the name", { as: "okafors", does: household("add", "/guests/-", { name: "Tolu Adebayo" }), seen: { okafors: "", couple: "households/1", benToo: "everyone" } }),
     story("Femi's top turns green, and the photo everyone watches changes", { as: "okafors", does: household("replace", "/guests/2/minifigure/top", "#7FAE4E"), seen: { okafors: "", couple: "households", benToo: "everyone" } }),
-    story("Femi picks the sea bass, and the couple's list shows it", { as: "okafors", does: household("replace", "/guests/2/choices/2/dish", 5), seen: { okafors: " @ reading.guests=list", couple: "households/1 @ reading.family-1=list" } }),
-    story("Femi picks the Rioja", { as: "okafors", does: household("replace", "/guests/2/choices/2/drink", 3), seen: { okafors: " @ reading.guests=list", couple: "households/1 @ reading.family-1=list" } }),
+    story("Femi picks the sea bass, and the couple's list shows it", { as: "okafors", does: household("replace", "/guests/2/choices/2/dish", 5), seen: { okafors: "guests @ reading.guests=list", couple: "households/1/guests @ reading.family-1=list" } }),
+    story("Femi picks the Rioja", { as: "okafors", does: household("replace", "/guests/2/choices/2/drink", 3), seen: { okafors: "guests @ reading.guests=list", couple: "households/1/guests @ reading.family-1=list" } }),
     story("Femi cannot change his mind about a wine he has not chosen", { as: "okafors", cannot: household("remove", "/guests/2/choices/2/drink") }),
     story("A household cannot uninvite one of its own guests; only Undo can", { as: "okafors", cannot: household("remove", "/guests/1") }),
 
@@ -103,7 +103,7 @@ export const stories: Stories = {
     story("The couple set a deadline, and the households see it", { as: "couple", does: board("replace", "/deadline", "2027-03-01"), seen: { couple: "", okafors: "", ben: "" } }),
     story("The couple invite the Londons", { as: "couple", does: board("add", "/households/-", { email: "londons@example.com", plus_ones: 2 }), seen: { couple: "" } }),
     story("The couple correct Ben's email", { as: "couple", does: board("replace", "/households/2/email", "ben@achterberg.example"), seen: { couple: "households/2" } }),
-    story("The couple let Ben bring one more", { as: "couple", does: board("replace", "/households/2/plus_ones", 1), seen: { couple: "households/2", ben: "" } }),
+    story("The couple let Ben bring one more", { as: "couple", does: board("replace", "/households/2/plus_ones", 1), seen: { couple: "households/2 @ keep=households/2", ben: "guests" } }),
     story("The couple add a guest to Ben's invitation", { as: "couple", does: board("add", "/households/2/guests/-", "Mara Achterberg"), seen: { couple: "households/2", ben: "" } }),
     story("The couple take Ben off his own invitation", { as: "couple", does: board("remove", "/households/2/guests/3"), seen: { couple: "households/2", ben: "" } }),
 
@@ -122,6 +122,11 @@ export const stories: Stories = {
     story("Grace finds Ok among the guests; two stay lit, the rest dim, the tally says two of five", { as: "okafors", does: at("guests @ filter.guests=Ok"), seen: { okafors: "guests" } }),
     story("The couple find kettle among the gifts, and only their page dims", { as: "couple", does: at("gifts @ filter.gifts=kettle"), seen: { couple: "gifts" } }),
     story("Grace closes find, and every guest is lit again", { as: "okafors", does: { doc: "session", ops: [{ op: "remove", path: "/filter/guests" }] }, seen: { okafors: "guests @ filter.guests=Ok" } }),
+    story("Grace presses the eye; the guests that miss are gone from the list, and the tally still says two of five", { as: "okafors", does: at("guests @ reading.guests=list, filter.guests=Ok, hide.guests=true"), seen: { okafors: "guests" } }),
+    story("Grace presses the eye again, and the guests that miss are back, dimmed", { as: "okafors", does: { doc: "session", ops: [{ op: "remove", path: "/hide/guests" }] }, seen: { okafors: "guests @ reading.guests=list, filter.guests=Ok, hide.guests=true" } }),
+    story("Grace closes find with the eye pressed, and every guest is lit and shown", { as: "okafors", does: { doc: "session", ops: [{ op: "remove", path: "/filter/guests" }] }, seen: { okafors: "guests @ filter.guests=Ok, hide.guests=true" } }),
+    story("Grace opens the guests, and only her page shows the window", { as: "okafors", does: at("guests"), seen: { okafors: "" } }),
+    story("The couple ask to invite a household, and the modal asks for the email and the names", { as: "couple", does: at("households @ new=households"), seen: { couple: "households" } }),
 
     // ── Refusals ──
     story("A household cannot change the couple's welcome", { as: "ben", cannot: board("replace", "/message", "Hi") }),

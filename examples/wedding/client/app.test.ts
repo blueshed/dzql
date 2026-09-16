@@ -46,8 +46,12 @@ describe("the wedding in a real browser", () => {
   test("a code opens the household; the photo applet mounts with the family; a tap on a figure opens the guest's drawer with the dress and menu applets", async () => {
     await using view = new Bun.WebView();
     await enter(view, code.toLowerCase());
+    // the box shows the family still, in the guests compartment's small reading
     const names = await waitFor(view, `[...document.querySelectorAll('[data-applet="photo"] .print text')].map((t) => t.textContent)`, (v) => Array.isArray(v) && v.length === 2);
     expect(names).toEqual(["Ada", "Femi"]);
+    // opening the compartment grows it into the window (rule 7), where the figures can be tapped
+    await view.evaluate(`document.querySelector('.cell[data-key="guests"]').click()`);
+    await waitFor(view, `document.querySelector('.cell.open [data-applet="photo"] svg') !== null`, (v) => v === true);
 
     const guest = householdDoc.read(code)!.guests[1]!;
     await view.evaluate(`document.querySelector('[data-applet="photo"] .slot[data-key="${guest.id}"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
@@ -75,12 +79,14 @@ describe("the wedding in a real browser", () => {
   test("switching the guests from the photo to the list swaps the applet for rows, and back", async () => {
     await using view = new Bun.WebView();
     await enter(view, code);
-    await waitFor(view, `document.querySelector('[data-applet="photo"] svg') !== null`, (v) => v === true);
-    await view.evaluate(`document.querySelector('.cell-tools .seg-opt:not(.on)').click()`);
-    await waitFor(view, `document.querySelectorAll('.cell.big .row-line.guest').length`, (v) => v === 2);
-    expect(await view.evaluate(`document.querySelector('.cell.big svg.photo') === null`)).toBe(true);
-    await view.evaluate(`document.querySelector('.cell-tools .seg-opt:not(.on)').click()`);
-    await waitFor(view, `document.querySelector('.cell.big [data-applet="photo"] svg') !== null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('.cell[data-key="guests"]').click()`);
+    await waitFor(view, `document.querySelector('.cell.open [data-applet="photo"] svg') !== null`, (v) => v === true);
+    // the reading switch is a stack on the window's rail: the reading not pressed is the other one
+    await view.evaluate(`document.querySelector('.cell.open .rail [role="radio"]:not([aria-pressed="true"])').click()`);
+    await waitFor(view, `document.querySelectorAll('.cell.open .row').length`, (v) => v === 2);
+    expect(await view.evaluate(`document.querySelector('.cell.open svg.photo') === null`)).toBe(true);
+    await view.evaluate(`document.querySelector('.cell.open .rail [role="radio"]:not([aria-pressed="true"])').click()`);
+    await waitFor(view, `document.querySelector('.cell.open [data-applet="photo"] svg') !== null`, (v) => v === true);
   });
 
   test("the page follows into the URL; the browser's back button sends the session there; reopening a link catches the session up to it", async () => {
@@ -112,7 +118,7 @@ describe("the wedding in a real browser", () => {
   test("the answer: the pencil opens the drawer, an option writes it, the bubble shows it, Undo takes it back", async () => {
     await using view = new Bun.WebView();
     await enter(view, code);
-    await view.evaluate(`document.querySelector('.pencil-btn').click()`);
+    await view.evaluate(`document.querySelector('.bubble.ours').click()`);
     await waitFor(view, `document.querySelectorAll('.answer-option').length`, (v) => v === 3);
     await view.evaluate(`document.querySelector('.answer-option[data-value="maybe"]').click()`);
     await waitFor(view, `document.querySelector('.bubble.ours .face-mark')?.classList.contains('maybe')`, (v) => v === true);
@@ -178,26 +184,26 @@ describe("the wedding in a real browser", () => {
     await view.click("button.gold");
     await waitFor(view, `document.querySelector('.bubble.couple') !== null`, (v) => v === true);
     // the welcome is a "thing" (rule 15): its message lives in its own drawer now
-    await view.evaluate(`document.querySelector('.bubble.couple .pencil-btn').click()`);
-    await waitFor(view, `document.querySelector('.message-box') !== null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('.bubble.couple').click()`);
+    await waitFor(view, `document.querySelector('.welcome-sheet textarea') !== null`, (v) => v === true);
 
     // blurring without changing the textarea must send nothing at all: the comparison has to be
     // against what was actually rendered (defaultValue), not an attribute a <textarea> doesn't
     // even have -- checked on the client's own record of what it sent, since the server's
     // no-op-if-unchanged guard would otherwise hide a spurious send from the document itself.
-    await view.evaluate(`document.querySelector('.message-box').dispatchEvent(new Event('focusout', { bubbles: true }))`);
+    await view.evaluate(`document.querySelector('.welcome-sheet textarea').dispatchEvent(new Event('focusout', { bubbles: true }))`);
     await Bun.sleep(200);
     // lastSent is still the code-entry's session write from login above -- nothing for "board" followed it
     expect(await view.evaluate(`window.eta.inspect().lastSent?.doc`)).toBe("session");
     expect(boardDoc.read("DASH")!.message).toBe("can't wait");
 
     await view.evaluate(`(() => {
-      const box = document.querySelector('.message-box');
+      const box = document.querySelector('.welcome-sheet textarea');
       box.value = 'so happy for you both';
       box.dispatchEvent(new Event('focusout', { bubbles: true }));
     })()`);
 
-    await waitFor(view, `document.querySelector('.message-box').value`, (v) => v === "so happy for you both");
+    await waitFor(view, `document.querySelector('.welcome-sheet textarea').value`, (v) => v === "so happy for you both");
     expect(boardDoc.read("DASH")!.message).toBe("so happy for you both");
   });
 

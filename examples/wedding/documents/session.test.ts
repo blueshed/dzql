@@ -80,6 +80,33 @@ describe("session document (a visit)", () => {
     expect(read(id).ui).toEqual({});
   });
 
+  test("the eye hides what find misses, per collection, and closing find forgets it too", () => {
+    const id = crypto.randomUUID();
+    patch(id, [{ op: "replace", path: "/code", value: "OKAFOR" }]);
+    // an eye with nothing to lower does nothing
+    expect(patch(id, [{ op: "remove", path: "/hide/guests" }]).applied).toEqual([]);
+    patch(id, [
+      { op: "replace", path: "/filter/guests", value: "Ok" },
+      { op: "replace", path: "/filter/gifts", value: "toast" },
+      { op: "replace", path: "/hide/guests", value: true },
+      { op: "replace", path: "/hide/gifts", value: true },
+    ]);
+    expect(read(id).ui.hide).toEqual({ guests: true, gifts: true });
+    // pressed again, one eye lowers and the other stays
+    patch(id, [{ op: "remove", path: "/hide/gifts" }]);
+    expect(read(id).ui.hide).toEqual({ guests: true });
+    // going to a page keeps the eye, as it keeps find's word
+    patch(id, [{ op: "replace", path: "/page", value: "guests" }]);
+    expect(read(id).ui.hide).toEqual({ guests: true });
+    // closing find forgets the eye with the word; the last eye gone forgets the object
+    patch(id, [{ op: "replace", path: "/hide/gifts", value: true }]);
+    patch(id, [{ op: "remove", path: "/filter/guests" }]);
+    expect(read(id).ui.hide).toEqual({ gifts: true });
+    patch(id, [{ op: "remove", path: "/filter/gifts" }]);
+    expect(read(id).ui.hide).toBeUndefined();
+    expect(read(id).ui.filter).toBeUndefined();
+  });
+
   test("an unknown path, or a reading without a key, is ignored", () => {
     const id = crypto.randomUUID();
     expect(patch(id, [{ op: "replace", path: "/nope", value: 1 }, { op: "remove", path: "/reading" }]).applied).toEqual([]);

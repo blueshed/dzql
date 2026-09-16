@@ -6,8 +6,8 @@ import type { Compartment, WriteResult } from "../../../src/compartments/compart
 import { allOpenSockets, audienceFor } from "../../../src/compartments/audience";
 import { renderRequested, type HtmlOp } from "../../../src/compartments/render";
 import * as boardDoc from "../documents/board";
-import { boardPhoto, familyGuestRow, familyPhoto, reading as boardReading } from "../views/board";
-import { dressMount, everyonePhoto, familyPhoto as ownPhoto, guestRow, householdPages, menuMount, reading, type HouseholdView } from "../views/household";
+import { boardMini, boardPhoto, familyGuestRow, familyPhoto, reading as boardReading } from "../views/board";
+import { dressMount, everyonePhoto, familyMini, familyPhoto as ownPhoto, guestRow, householdPages, menuMount, reading, type HouseholdView } from "../views/household";
 import { welcome } from "../views/welcome";
 
 // A household's document, written by the household that arrived by its code. Nearly everything
@@ -139,12 +139,18 @@ export const household: Compartment = {
       const own = session.code === code;
       if (head === "everyone") {
         if (looks) ops.push(replace("#everyone-photo", everyonePhoto(v, second ?? null)));
-      } else if (own && !head) {
+      } else if (own && head === "guests") {
+        // the guests grown into the window: the photo, or the rows of the list
         if (reading(v, "guests") === "photo") {
           if (looks) ops.push(replace("#family-photo", ownPhoto(v)));
         } else if (choices) {
-          for (const g of v.h.guests) if (guests.has(g.id)) ops.push(replace(`#guest-${g.id}`, guestRow(v, g, session.ui.filter?.guests)));
+          for (const g of v.h.guests) if (guests.has(g.id)) ops.push(replace(`#guest-${g.id}`, guestRow(v, g, session.ui.filter?.guests, session.ui.hide?.guests)));
         }
+      } else if (own && !head) {
+        // the box: the guests' small reading, still
+        if (looks) ops.push(replace("#family-mini", familyMini(v)));
+      }
+      if (own) {
         const focused = v.h.guests.find((g) => g.id === session.ui.focus);
         if (focused && guests.has(focused.id)) {
           if (looks) ops.push(replace(`#dress-${focused.id}`, dressMount(v, focused)));
@@ -159,13 +165,19 @@ export const household: Compartment = {
       const h = b.households.find((x) => x.code === code);
       if (!h) return undefined;
       const v = { session, b };
-      if (head === "households" && second === undefined) {
+      if (!head) {
+        if (looks) ops.push(replace("#board-mini", boardMini(b)));
+      } else if (head === "households" && second === undefined) {
         if (looks && boardReading(v, "households") === "photo") ops.push(replace("#board-photo", boardPhoto(v)));
-      } else if (head === "households" && second === String(h.id) && third === undefined) {
-        if (boardReading(v, `family-${h.id}`) === "photo") {
-          if (looks) ops.push(replace("#family-photo", familyPhoto(h)));
-        } else if (choices) {
-          for (const g of h.guests) if (guests.has(g.id)) ops.push(replace(`#guest-${g.id}`, familyGuestRow(v, g)));
+      } else if (head === "households" && second === String(h.id)) {
+        if (third === "guests") {
+          if (boardReading(v, `family-${h.id}`) === "photo") {
+            if (looks) ops.push(replace("#family-photo", familyPhoto(h)));
+          } else if (choices) {
+            for (const g of h.guests) if (guests.has(g.id)) ops.push(replace(`#guest-${g.id}`, familyGuestRow(v, g)));
+          }
+        } else if (third === undefined) {
+          if (looks) ops.push(replace("#family-mini", familyPhoto(h, "family-mini")));
         }
       }
       return ops;

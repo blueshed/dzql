@@ -5,7 +5,8 @@ import type { Answer, Guest, HouseholdDocument } from "../documents/household";
 import type { Course, Event, Place, Wedding } from "../documents/wedding";
 import type { Look } from "../looks";
 import type { Spec } from "../applets/figure";
-import { esc, join } from "./html";
+import { row, rows } from "./bento";
+import { esc } from "./html";
 import { icon } from "./icons";
 
 export function formatDay(day: string): string {
@@ -23,14 +24,6 @@ export const plural = (n: number, one: string, many: string): string => `${n} ${
 /** Rule 17: the filter dims what the word misses and keeps lit what it hits -- an empty word (find
  * just opened) hits everything. Case-insensitive, a plain substring: no query language. */
 export const matches = (text: string, filter: string): boolean => !filter.trim() || text.toLowerCase().includes(filter.trim().toLowerCase());
-
-/** A figure or a row that missed the word hushes -- dims, never hides (rule 17). */
-export const hushed = (shown: boolean): string => (shown ? "" : " hushed");
-
-/** How many of all the word hit, once find is open -- a `<p class="note">` of its own, since
- * `OpenOptions.note` escapes plain text and this carries its own markup (the tally's `<span>`,
- * for its own style). Appended to a `body` string, never put in `note`. */
-export const tally = (shown: number, total: number): string => `<p class="note"><span class="tally">${shown} of ${total}</span></p>`;
 
 export const firstNameOf = (name: string): string => name.trim().split(/\s+/)[0]!;
 
@@ -51,8 +44,6 @@ export function isGuestOut(g: Pick<Guest, "coming">, h: Pick<HouseholdDocument, 
 export const isComing = (g: Pick<Guest, "coming">): boolean => g.coming === 1;
 
 export const picture = (key: string, alt: string): string => `<img class="pic" src="/pictures/${esc(key)}" alt="${esc(alt)}" loading="lazy">`;
-
-export const pencil = (): string => `<span class="pencil" aria-hidden="true">${icon("pencil", 15)}</span>`;
 
 const ANSWER_SAYS: Record<Answer, string> = { yes: "Yes, we'll be there", maybe: "Maybe", no: "Sorry, no" };
 
@@ -102,37 +93,48 @@ export function choicesLine(g: Guest, courses: Course[]): string {
   return parts.every((p) => p === "—") ? "nothing chosen" : parts.join(" · ");
 }
 
-/** The timetable: a row per event, when, what, where. With `open`, each row opens its keep drawer. */
-export function timetableRows(events: Event[], open?: (id: number) => string): string {
-  if (!events.length) return `<p class="note">No events yet.</p>`;
-  return `<div class="rows timetable">${events
-    .map((e) =>
-      join(
-        `<div class="row-line${open ? " tap" : ""}"${open ? open(e.id) : ""}>`,
-        `<span class="when">${esc(e.when_at ? formatWhen(e.when_at) : "—")}</span>`,
-        `<span class="what">${esc(e.name)}</span>`,
-        `<span class="where">${esc(e.where_at ?? "")}</span>`,
-        e.notes && `<p class="note" style="grid-column: 2 / -1">${esc(e.notes)}</p>`,
-        "</div>",
-      ),
-    )
-    .join("")}</div>`;
+export interface ListOptions {
+  /** With `open`, each row opens its keep drawer (✎); without, the rows are read only. */
+  open?: (id: number) => string;
+  /** The row whose drawer is open. */
+  chosen?: number;
 }
 
-/** Where to stay: a row per place, its picture, its name and notes; a link out, or with `open`, its keep drawer. */
-export function placeRows(places: Place[], open?: (id: number) => string): string {
-  if (!places.length) return `<p class="note">Nowhere yet.</p>`;
-  return `<div class="rows">${places
-    .map((p) =>
-      join(
-        `<div class="row-line stay${p.picture_key ? " pic" : ""}${open ? " tap" : ""}"${open ? open(p.id) : ""}>`,
-        p.picture_key && picture(p.picture_key, p.name),
-        `<div><span class="what">${esc(p.name)}</span>${p.notes ? `<p class="note">${esc(p.notes)}</p>` : ""}</div>`,
-        open ? pencil() : p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener noreferrer">More</a>` : "<span></span>",
-        "</div>",
-      ),
-    )
-    .join("")}</div>`;
+/** The timetable: a row per event -- when leads the line, then what and where. */
+export function timetableRows(events: Event[], o: ListOptions = {}): string {
+  return rows(
+    events.map((e) =>
+      row({
+        id: `event-${e.id}`,
+        tap: o.open?.(e.id),
+        chosen: o.open ? o.chosen === e.id : undefined,
+        lead: `<span class="when">${esc(e.when_at ? formatWhen(e.when_at) : "—")}</span>`,
+        what: e.name,
+        note: [e.where_at, e.notes].filter(Boolean).join(" · ") || null,
+        mark: o.open ? "pencil" : undefined,
+      }),
+    ),
+    "No events yet.",
+  );
+}
+
+/** Where to stay: a row per place -- its picture, its name and notes; a link out for a guest, ✎ its drawer for the couple. */
+export function placeRows(places: Place[], o: ListOptions = {}): string {
+  return rows(
+    places.map((p) =>
+      row({
+        id: `place-${p.id}`,
+        tap: o.open?.(p.id),
+        chosen: o.open ? o.chosen === p.id : undefined,
+        lead: p.picture_key ? picture(p.picture_key, p.name) : undefined,
+        what: p.name,
+        note: p.notes,
+        state: !o.open && p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener noreferrer">More</a>` : undefined,
+        mark: o.open ? "pencil" : undefined,
+      }),
+    ),
+    "Nowhere yet.",
+  );
 }
 
 /**
@@ -151,14 +153,3 @@ export function frame(atWelcome: boolean, body: string, page?: string, locked = 
 
 /** The page behind a modal is `inert` while it asks -- nothing else may be touched (rule 14). */
 export const inertWhile = (modalOpen: boolean, html: string): string => (modalOpen ? `<div inert>${html}</div>` : html);
-
-/** A guest's coming, both states always shown, the current one filled. `locked` after the deadline. */
-export function comingPills(write: (value: "1" | "0") => string, coming: number | null, locked = false): string {
-  const d = locked ? " disabled" : "";
-  return join(
-    `<div class="coming-pills" role="radiogroup" aria-label="Coming">`,
-    `<button type="button" class="pill pill-sm yes${coming === 1 ? " on" : ""}" role="radio" aria-checked="${coming === 1}"${write("1")}${d}>Yes</button>`,
-    `<button type="button" class="pill pill-sm no${coming === 0 ? " on" : ""}" role="radio" aria-checked="${coming === 0}"${write("0")}${d}>No</button>`,
-    "</div>",
-  );
-}

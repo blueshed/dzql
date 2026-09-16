@@ -7,12 +7,15 @@ import {
   Bed,
   Calendar,
   Camera,
+  Eye,
+  EyeOff,
   ChevronLeft,
   ChevronRight,
   Frown,
   Gift,
   House,
   ImagePlus,
+  LayoutGrid,
   List,
   LogOut,
   Mail,
@@ -60,6 +63,9 @@ const ICONS = {
   down: ArrowDown,
   x: X,
   "map-pin": MapPin,
+  eye: Eye,
+  "eye-off": EyeOff,
+  grid: LayoutGrid,
 } satisfies Record<string, IconNode>;
 
 export type IconName = keyof typeof ICONS;
