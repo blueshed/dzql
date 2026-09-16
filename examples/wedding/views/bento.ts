@@ -80,7 +80,7 @@ export function cell(o: CellOptions): Placeable {
  * area, first-fit in the box's own order, and learns which of the tray's corners it sits in, once
  * for three columns and once for one -- the stylesheet picks by width.
  */
-export function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], tools: string[] = []): string {
+export function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], extra: string[] = []): string {
   const wide = tray(cells, COLUMNS);
   const narrow = tray(cells, 1);
   const cornersOf = (t: Tray, key: string): string => t.cells.find((c) => c.key === key)!.corners.join(" ");
@@ -91,32 +91,34 @@ export function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], t
     ),
   );
   const areas = (t: Tray): string => t.areas.replace(/\n/g, " ");
+  const shown = extra.filter(Boolean);
   return join(
     crumbs(trail),
     `<section class="page box">`,
     ...inPlace,
     `<div class="cells" style='--tray-areas: ${areas(wide)}; --tray-areas-phone: ${areas(narrow)}'>${placed.join("")}</div>`,
-    tools.length > 0 && `<div class="foot-tools">${tools.join("")}</div>`,
+    shown.length > 0 && `<div class="foot-tools">${shown.join("")}</div>`,
+    pageTools(),
     "</section>",
   );
 }
 
 export interface CollectionOptions {
+  /** The collection's own tools, on the rail at the right edge: the reading switch, what adds. */
   tools?: string[];
   body: string;
   note?: string | null;
-  foot?: string[];
 }
 
-/** A page that is a collection: the crumbs, its tools (the reading, what adds to it), the reading, a note. */
+/** A page that is a collection: the crumbs, its rail (the reading, what adds to it), the reading, a note, the page's tools. */
 export function collectionPage(trail: Crumb[], o: CollectionOptions): string {
   return join(
     crumbs(trail),
     `<section class="page collection">`,
-    o.tools && o.tools.length > 0 && `<div class="collection-tools">${o.tools.join("")}</div>`,
+    o.tools && o.tools.length > 0 && `<div class="rail work">${o.tools.join("")}</div>`,
     o.body,
     o.note && `<p class="note">${esc(o.note)}</p>`,
-    o.foot && o.foot.length > 0 && `<div class="foot-tools">${o.foot.join("")}</div>`,
+    pageTools(),
     "</section>",
   );
 }
@@ -138,26 +140,39 @@ export interface ToolOptions {
   /** The write attributes (see html.ts's write()). */
   write: string;
   label?: string;
+  /** In a stack of square icon buttons (rule 9's Leaflet-style control), the word is for a screen reader only. */
+  iconOnly?: boolean;
 }
 
 /** A verb a page or a compartment offers. */
 export function tool(text: string, o: ToolOptions): string {
-  return `<button type="button" class="tool${o.kind ? ` ${o.kind}` : ""}"${o.label ? ` aria-label="${esc(o.label)}"` : ""}${o.write}>${o.icon ? icon(o.icon) : ""}${esc(text)}</button>`;
+  const word = o.iconOnly ? `<span class="sr-only">${esc(text)}</span>` : esc(text);
+  return `<button type="button" class="tool${o.kind ? ` ${o.kind}` : ""}"${o.label ? ` aria-label="${esc(o.label)}"` : ""}${o.write}>${o.icon ? icon(o.icon) : ""}${word}</button>`;
 }
 
 /** Undo: a write to the ledger, the kernel's own document, the same on every page. */
 export function undoTool(): string {
-  return tool("Undo", { icon: "undo", kind: "quiet", write: write("ledger", "remove", "/latest") });
+  return tool("Undo", { icon: "undo", kind: "quiet", write: write("ledger", "remove", "/latest"), iconOnly: true });
 }
 
 /** Redo: the undo walked forward again. */
 export function redoTool(): string {
-  return tool("Redo", { icon: "redo", kind: "quiet", write: write("ledger", "add", "/latest") });
+  return tool("Redo", { icon: "redo", kind: "quiet", write: write("ledger", "add", "/latest"), iconOnly: true });
 }
 
 /** Leave: quiet at the right of the foot; the session forgets its code. */
 export function leaveTool(): string {
-  return tool("Leave", { icon: "log-out", kind: "quiet", write: write("session", "remove", "/code") });
+  return tool("Leave", { icon: "log-out", kind: "quiet", write: write("session", "remove", "/code"), iconOnly: true });
+}
+
+/**
+ * The page's own tools -- undo, redo, leave -- rule 9: one more stack, floating at the bottom
+ * right of the tray or the window, over the compartments. Leave sits apart, behind a rule
+ * (drawn like the mock-up's `.stack`, a Leaflet-style control). Every box and collection page
+ * carries it; no call site builds this trio by hand any more.
+ */
+export function pageTools(): string {
+  return `<div class="stack page-tools">${undoTool()}${redoTool()}${leaveTool()}</div>`;
 }
 
 /**

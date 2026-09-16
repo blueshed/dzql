@@ -5,7 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.38.0] - 2026-09-16
+## [0.39.0] - 2026-09-16
+
+### Changed
+
+- **W1: the wedding's look, `bento-request.md` rules 9 and 11 and rule 18's second half.** One
+  family of corners across `examples/wedding/client/styles.css` -- a button inside a control 4px,
+  a control 6, a thumbnail 8, the drawer and the modal 20, the tray and the window 28 -- and every
+  `border-radius: 999px` is gone (the base `button`, `.seg`, `.tool`, `.pill`, `.choice`,
+  `.sheet-close`, `.chase-link`). Every shadow tints toward the ink (`--ink-rgb`, navy, not black).
+  `views/bento.ts`'s `pageTools()` is the one place undo, redo and leave are built now -- no call
+  site constructs the trio by hand any more -- and it floats as a `.stack` (a bordered box of
+  square icon buttons, Leaflet-control style) at the bottom right of the tray, over the
+  compartments, Leave set apart by a rule; `boxPage`'s and `collectionPage`'s own `tools`/`extra`
+  parameters carry only what is left (a plus-one to name, a household to chase). A collection's
+  own tools -- the reading switch, what adds -- move to `.rail.work`, a floating rail at the
+  page's right edge in the same style. The panel overlaps: the `main#app:has(.sheet)` padding rule
+  is gone, so the tray keeps its shape whatever is open; the sheet's desktop shape takes radius 20
+  and the corner family. `::view-transition-group(moving) { z-index: 1 }` is in the stylesheet
+  now, ready for W3. Nothing on the wire changed; all 51 stories and the coverage table stay as
+  they were.
 
 ### Added
 

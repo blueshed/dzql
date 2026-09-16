@@ -9,6 +9,12 @@
   --sans: "Josefin Sans", "Futura", "Avenir Next", "Helvetica Neue", sans-serif;
   --script: "Pinyon Script", "Snell Roundhand", "Brush Script MT", cursive;
   --sheet-width: 21.6rem;
+  /* the corner family (bento-request.md rule 11): a button inside a control, a control, a
+     thumbnail, the drawer and the modal, the tray and the window -- and nothing is a pill. */
+  --radius-inner: 4px; --radius-control: 6px; --radius-thumb: 8px; --radius-panel: 20px; --radius-tray: 28px;
+  --radius-corner: 18px; /* the tray's own curve, less its 10px wall, where a compartment sits in its corner */
+  /* every shadow tints toward the ink, so they read as one light */
+  --ink-rgb: 30, 63, 143;
 }
 * { box-sizing: border-box; }
 html { color-scheme: light; }
@@ -35,7 +41,7 @@ main#app:has(.site.at-welcome) .flowers { opacity: 1; height: min(46vh, 520px); 
 /* ── controls ── */
 input, select, textarea { font: inherit; font-size: 16px; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--gold-soft); background: var(--card); color: var(--text); }
 textarea { padding: 10px 12px; }
-button { font: inherit; font-size: 16px; min-height: 44px; border-radius: 999px; padding: 8px 16px; border: 1px solid var(--gold-soft); background: var(--paper); color: var(--text); cursor: pointer; }
+button { font: inherit; font-size: 16px; min-height: 44px; border-radius: var(--radius-control); padding: 8px 16px; border: 1px solid var(--gold-soft); background: var(--paper); color: var(--text); cursor: pointer; }
 button:disabled { opacity: 0.5; cursor: default; }
 button.gold { background: var(--gold); color: #fff; border-color: var(--gold); }
 button.ghost { background: transparent; color: var(--navy); border-color: var(--navy); }
@@ -82,16 +88,16 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
    the tray: square where their walls meet, the tray's curve less the wall where they sit in its
    corners. One column on a phone, three from 820px. ── */
 .page.box { display: flex; flex-direction: column; }
-.cells { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: var(--tray-areas-phone); gap: 10px; padding: 10px; background: var(--paper-deep); border-radius: 28px; box-shadow: 0 12px 30px rgba(43,43,51,0.12), inset 0 1px 0 rgba(255,255,255,0.4); }
+.cells { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: var(--tray-areas-phone); gap: 10px; padding: 10px; background: var(--paper-deep); border-radius: var(--radius-tray); box-shadow: 0 12px 30px rgba(var(--ink-rgb),0.14), inset 0 1px 0 rgba(255,255,255,0.4); }
 .cell { position: relative; border-radius: 0; background: var(--card); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-height: 76px; cursor: pointer; }
 .cell:hover { background: #FFFFFF; }
 .cell.big { padding: 10px 8px 6px; background: #EFE8D8; }
 .cell.whole { cursor: default; }
 @media (max-width: 819px) {
-  .cell[data-corners-phone~="tl"] { border-top-left-radius: 18px; }
-  .cell[data-corners-phone~="tr"] { border-top-right-radius: 18px; }
-  .cell[data-corners-phone~="br"] { border-bottom-right-radius: 18px; }
-  .cell[data-corners-phone~="bl"] { border-bottom-left-radius: 18px; }
+  .cell[data-corners-phone~="tl"] { border-top-left-radius: var(--radius-corner); }
+  .cell[data-corners-phone~="tr"] { border-top-right-radius: var(--radius-corner); }
+  .cell[data-corners-phone~="br"] { border-bottom-right-radius: var(--radius-corner); }
+  .cell[data-corners-phone~="bl"] { border-bottom-left-radius: var(--radius-corner); }
 }
 .cell-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; column-gap: 7px; text-decoration: none; color: var(--text); }
 .cell-name { font-size: 11.5px; line-height: 16px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; min-width: 0; }
@@ -103,26 +109,49 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .cell-tools .seg-opt { min-height: 32px; font-size: 14px; }
 .cell-body { margin: 2px 0 0; }
 .cell.big .cell-body .photo { width: 100%; height: 42vh; max-height: 360px; display: block; }
+/* what a box keeps in its own flow beside the tray -- a plus-one to name, a household to chase --
+   not the page's own tools (undoTool/redoTool/leaveTool), which float as `.page-tools` below. */
 .foot-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
-.foot-tools .tool.quiet:last-child { margin-left: auto; }
 @media (min-width: 820px) {
   .cells { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: var(--tray-areas); }
-  .cell[data-corners~="tl"] { border-top-left-radius: 18px; }
-  .cell[data-corners~="tr"] { border-top-right-radius: 18px; }
-  .cell[data-corners~="br"] { border-bottom-right-radius: 18px; }
-  .cell[data-corners~="bl"] { border-bottom-left-radius: 18px; }
+  .cell[data-corners~="tl"] { border-top-left-radius: var(--radius-corner); }
+  .cell[data-corners~="tr"] { border-top-right-radius: var(--radius-corner); }
+  .cell[data-corners~="br"] { border-bottom-right-radius: var(--radius-corner); }
+  .cell[data-corners~="bl"] { border-bottom-left-radius: var(--radius-corner); }
 }
 
 /* ── a collection ── */
 .page.collection { display: flex; flex-direction: column; gap: 12px; }
-.collection-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.seg { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; }
+.seg { display: inline-flex; border: 1px solid var(--navy); border-radius: var(--radius-control); overflow: hidden; }
 .seg-opt { min-height: 36px; padding: 0 14px; border: 0; border-radius: 0; background: transparent; color: var(--navy); font-size: 16px; display: inline-flex; align-items: center; gap: 6px; }
 .seg-opt.on { background: var(--navy); color: var(--paper); }
-.tool { min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--navy); background: var(--card); color: var(--navy); font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.tool { min-height: 40px; padding: 0 12px; border-radius: var(--radius-control); border: 1px solid var(--navy); background: var(--card); color: var(--navy); font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .tool.add { border-color: var(--burgundy); color: var(--burgundy); }
 .tool.quiet { border-color: rgba(43,43,51,0.35); color: var(--text); font-weight: 500; }
 .tool.danger { border-color: var(--burgundy); color: var(--burgundy); }
+
+/* ── the rails: every tool floats, and there is no toolbar (rule 9). A stack is a bordered box of
+   controls, drawn like a Leaflet control -- the page's own tools (undo, redo, leave) at the
+   bottom right, over the compartments; a collection's own tools (the reading switch, what adds)
+   on the rail at the right edge, in the same style. Fixed to the viewport, since neither the box
+   nor the collection page is yet the sized "window" of rule 8 -- W3's job. ── */
+.stack { display: flex; flex-direction: column; gap: 0; background: var(--card); border: 1px solid var(--gold-soft); border-radius: var(--radius-control); box-shadow: 0 1px 4px rgba(var(--ink-rgb), 0.25), 0 6px 20px rgba(var(--ink-rgb), 0.16); overflow: hidden; }
+.stack > * { border-bottom: 1px solid rgba(var(--ink-rgb), 0.14); }
+.stack > *:last-child { border-bottom: 0; }
+.page-tools { position: fixed; z-index: 45; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+.page-tools .tool { width: 40px; height: 40px; min-height: 0; padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; color: var(--navy); }
+.page-tools .tool:hover { background: rgba(var(--ink-rgb), 0.08); }
+/* leave, set apart by a rule: a double line above the last of the three */
+.page-tools .tool:last-child { border-top: 3px double rgba(var(--ink-rgb), 0.22); }
+.rail { position: fixed; z-index: 44; right: 16px; display: flex; flex-direction: column; gap: 10px; max-width: min(15rem, calc(100vw - 32px)); }
+.rail.work { top: 76px; }
+.rail .stack { padding: 0; }
+.rail .seg { border: 0; border-radius: var(--radius-control); box-shadow: 0 1px 4px rgba(var(--ink-rgb), 0.25), 0 6px 20px rgba(var(--ink-rgb), 0.16); }
+.rail .tool-form, .rail form.invite { flex-direction: column; align-items: stretch; background: var(--card); border: 1px solid var(--gold-soft); border-radius: var(--radius-control); box-shadow: 0 1px 4px rgba(var(--ink-rgb), 0.25), 0 6px 20px rgba(var(--ink-rgb), 0.16); padding: 8px; }
+@media (max-width: 819px) {
+  /* above the page's own tools, so the two floating stacks never sit on top of one another on a narrow page */
+  .rail.work { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px) + 136px); }
+}
 
 /* ── rows ── */
 .rows { display: flex; flex-direction: column; }
@@ -136,7 +165,7 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .row-line.tap { cursor: pointer; }
 .row-line.tap:hover .what { text-decoration: underline; }
 .row-line.tap:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
-.row-line img.pic { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; background: #EFE8D8; display: block; }
+.row-line img.pic { width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius-thumb); background: #EFE8D8; display: block; }
 .row-line .taken { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
 .row-line.ghost-row { opacity: 0.7; }
 .row-line .state-yes { color: #6E9A42; } .row-line .state-no { color: #953530; }
@@ -159,18 +188,18 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .answer-word .dot.yes { background: #7FAE4E; } .answer-word .dot.maybe { background: #D9A21B; } .answer-word .dot.no { background: #B5443B; }
 .answer-word .dot.none { border: 1.5px dashed #6B6B74; }
 .chase-link { font-size: 13px; color: var(--navy); display: inline-flex; align-items: center; gap: 6px; }
-.foot-tools .chase-link { min-height: 40px; padding: 0 14px; border: 1px solid var(--navy); border-radius: 999px; text-decoration: none; font-size: 14px; font-weight: 600; }
+.foot-tools .chase-link { min-height: 40px; padding: 0 14px; border: 1px solid var(--navy); border-radius: var(--radius-control); text-decoration: none; font-size: 14px; font-weight: 600; }
 
 /* a yes/no pair, equal pills; the small size for a row */
 .coming-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .row-line .coming-pills, .reply-pills { width: 132px; gap: 6px; }
-.pill { min-height: 44px; border-radius: 999px; }
+.pill { min-height: 44px; border-radius: var(--radius-inner); }
 .pill-sm { min-height: 36px; padding: 0 10px; font-size: 13px; }
 .pill.yes { border-color: var(--leaf); } .pill.yes.on { background: var(--leaf); color: #fff; }
 .pill.no { border-color: var(--burgundy); } .pill.no.on { background: var(--burgundy); color: #fff; }
 
 /* ── the speech bubble: what the household says, in the photo ── */
-.bubble { position: relative; max-width: min(88%, 420px); margin: 0 0 22px; background: var(--card); border-radius: 18px; padding: 10px 12px 12px; box-shadow: 0 6px 24px rgba(43,43,51,0.14); display: flex; flex-direction: column; gap: 8px; }
+.bubble { position: relative; max-width: min(88%, 420px); margin: 0 0 22px; background: var(--card); border-radius: 18px; padding: 10px 12px 12px; box-shadow: 0 6px 24px rgba(var(--ink-rgb),0.16); display: flex; flex-direction: column; gap: 8px; }
 .bubble::after { content: ""; position: absolute; left: 26px; bottom: -12px; border: 12px solid transparent; border-top-color: var(--card); border-bottom: 0; }
 .bubble.ours { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
 .bubble.theirs { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; }
@@ -201,20 +230,21 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .pic-field .note { margin: 0; }
 .invite .field { min-width: 10rem; }
 
-/* ── the sheet: a drawer from the foot on a phone, a panel at the right from 820px ── */
-.scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); z-index: 40; }
-.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; margin: 0 auto; max-width: 720px; height: 92dvh; background: var(--card); color: var(--text); display: flex; flex-direction: column; overflow: hidden; border-radius: 22px 22px 0 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2); animation: sheet-rise 180ms ease-out; }
+/* ── the sheet: a drawer from the foot on a phone, a panel at the right from 820px. The panel
+   overlaps (rule 18): the tray keeps its own shape whatever is open, so there is no rule here
+   that narrows `main#app` -- the drawer floats over the page, not beside it. ── */
+.scrim { position: fixed; inset: 0; background: rgba(var(--ink-rgb), 0.4); z-index: 40; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; margin: 0 auto; max-width: 720px; height: 92dvh; background: var(--card); color: var(--text); display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: 0 -8px 30px rgba(var(--ink-rgb), 0.28); animation: sheet-rise 180ms ease-out; }
 @keyframes sheet-rise { from { transform: translateY(24px); opacity: 0.5; } to { transform: none; opacity: 1; } }
 .sheet-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 18px 12px; border-bottom: 1px solid var(--gold-soft); }
 .sheet-head h2 { margin: 0; font-family: var(--serif); font-weight: 600; font-size: 20px; letter-spacing: 0.02em; text-transform: none; color: var(--navy); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sheet-close { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(43,43,51,0.25); background: transparent; }
+.sheet-close { min-height: 40px; padding: 0 14px; border-radius: var(--radius-inner); border: 1px solid rgba(43,43,51,0.25); background: transparent; }
 .sheet-body { flex: 1 1 auto; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 4px 18px calc(24px + env(safe-area-inset-bottom, 0px)); }
 .sheet-foot { flex: 0 0 auto; padding: 16px 0 8px; }
 .sheet .rows { margin-bottom: 4px; }
 @media (min-width: 820px) {
   .scrim { background: transparent; pointer-events: none; }
-  .sheet { top: 0.65rem; right: 0.65rem; bottom: 0.65rem; left: auto; width: var(--sheet-width); height: auto; border-radius: 10px; border: 1px solid var(--gold-soft); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12); }
-  main#app:has(.sheet) { padding-right: calc(var(--sheet-width) + 1.4rem); max-width: calc(720px + var(--sheet-width) + 1.4rem); }
+  .sheet { top: 0.65rem; right: 0.65rem; bottom: 0.65rem; left: auto; width: var(--sheet-width); height: auto; border-radius: var(--radius-panel); border: 1px solid var(--gold-soft); box-shadow: 0 8px 30px rgba(var(--ink-rgb), 0.2); }
 }
 @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
 
@@ -237,7 +267,7 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .dress .callout:hover { background: rgba(30,63,143,0.06); }
 .dress .callout.on { color: var(--navy); background: var(--card); box-shadow: 0 0 0 1.5px var(--navy); }
 .dress .options { min-width: 0; }
-.pop { position: relative; background: var(--card); border-radius: 14px; padding: 8px; box-shadow: 0 6px 24px rgba(43,43,51,0.16); display: flex; flex-direction: column; gap: 8px; animation: pop-in 140ms ease-out; }
+.pop { position: relative; background: var(--card); border-radius: 14px; padding: 8px; box-shadow: 0 6px 24px rgba(var(--ink-rgb),0.2); display: flex; flex-direction: column; gap: 8px; animation: pop-in 140ms ease-out; }
 @keyframes pop-in { from { transform: translateX(-4px); opacity: 0; } to { transform: none; opacity: 1; } }
 .pop .dots, .pop .icons { display: flex; flex-wrap: wrap; gap: 6px; }
 .pop .dot { width: 32px; height: 32px; min-height: 0; padding: 0; border-radius: 50%; border: 2px solid rgba(43,43,51,0.12); }
@@ -248,7 +278,7 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .pop .icon.tall svg { width: 32px; height: 45px; overflow: visible; }
 .pop .icons:not(.attitudes) .fig .body, .pop .icons:not(.attitudes) .fig .head, .pop .icons:not(.attitudes) .fig .swing, .pop .icons:not(.attitudes) .fig .glasses { animation: none !important; }
 .pop .icon-name { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
-.menu { background: var(--card); border-radius: 18px; padding: 12px 14px 4px; box-shadow: 0 6px 24px rgba(43,43,51,0.14); }
+.menu { background: var(--card); border-radius: 18px; padding: 12px 14px 4px; box-shadow: 0 6px 24px rgba(var(--ink-rgb),0.16); }
 .menu .cap { margin: 0 0 2px; }
 .menu .note { margin: 8px 0 12px; }
 .menu-row { border-bottom: 1px solid rgba(201,162,39,0.35); }
@@ -259,7 +289,7 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .menu-head .unchosen { color: var(--muted); }
 .menu-pills { display: flex; flex-direction: column; gap: 8px; padding: 0 0 12px; }
 .pills { display: flex; flex-wrap: wrap; gap: 8px; }
-.choice { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--gold-soft); background: var(--paper); }
+.choice { min-height: 40px; padding: 0 14px; border-radius: var(--radius-inner); border: 1px solid var(--gold-soft); background: var(--paper); }
 .choice.drink { border-style: dashed; }
 .choice.on { background: var(--navy); color: var(--paper); border-color: var(--navy); border-style: solid; }
 .gift-whole { display: flex; flex-direction: column; gap: 10px; padding: 8px 0 12px; }
@@ -341,3 +371,9 @@ svg .fig.ghost .torso, svg .fig.ghost .leg, svg .fig.ghost .head > rect, svg .fi
 @media (prefers-reduced-motion: reduce) {
   .fig .body, .fig .head, .fig .swing, .fig .glasses, .fig .leg, .slot .walk, .print, .pop, .flowers { animation: none !important; transition: none; }
 }
+
+/* ── the moving element (bento-request.md K1, W3): the kernel names one element `data-moving` in
+   both the page as it is and the page as rendered, and grows it into the window with a View
+   Transition; without this rule it would animate under its neighbours instead of on top. Added
+   now, ready for W3 to put `data-moving` on a compartment's own element. ── */
+::view-transition-group(moving) { z-index: 1; }

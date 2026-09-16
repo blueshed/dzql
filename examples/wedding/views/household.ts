@@ -7,7 +7,7 @@ import type { Guest, HouseholdDocument } from "../documents/household";
 import type { SessionDocument } from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { Course, Gift, Wedding } from "../documents/wedding";
-import { boxPage, cell, collectionPage, leaveTool, readingSwitch, redoTool, sheet, tool, undoTool, type Crumb } from "./bento";
+import { boxPage, cell, collectionPage, readingSwitch, sheet, tool, type Crumb } from "./bento";
 import type { DressProps } from "../applets/dress";
 import type { MenuProps } from "../applets/menu";
 import { esc, join, nav, write } from "./html";
@@ -56,8 +56,8 @@ export function householdPages(v: HouseholdView): string {
   const page =
     head === "asks" ? asksCollection(v, trail)
     : head === "gifts" ? giftsCollection(v, trail)
-    : head === "day" ? collectionPage([...trail, { label: "The day" }], { body: timetableRows(v.events), note: `${formatDay(v.w.day)}${v.w.venue ? ` · ${v.w.venue}` : ""}`, foot: [undoTool(), redoTool(), leaveTool()] })
-    : head === "stay" ? collectionPage([...trail, { label: "Where to stay" }], { body: placeRows(v.places), foot: [undoTool(), redoTool(), leaveTool()] })
+    : head === "day" ? collectionPage([...trail, { label: "The day" }], { body: timetableRows(v.events), note: `${formatDay(v.w.day)}${v.w.venue ? ` · ${v.w.venue}` : ""}` })
+    : head === "stay" ? collectionPage([...trail, { label: "Where to stay" }], { body: placeRows(v.places) })
     : head === "everyone" ? everyonePage(v, trail, second ?? null)
     : householdBox(v, trail);
   return frame(false, join(page, guestSheet(v), giftSheet(v), answerSheet(v)), v.session.ui.page ?? "");
@@ -99,7 +99,7 @@ function householdBox(v: HouseholdView, trail: Crumb[]): string {
       cell({ name: "where to stay", mark: "bed", summary: placesSummary(v.places), page: "stay" }),
       cell({ name: "everyone", mark: "camera", summary: `${inPhoto} in the photo`, page: "everyone" }),
     ],
-    [plusOne || "", undoTool(), redoTool(), leaveTool()],
+    [plusOne || ""],
   );
 }
 
@@ -145,7 +145,6 @@ function asksCollection(v: HouseholdView, trail: Crumb[]): string {
   return collectionPage([...trail, { label: "Asks" }], {
     tools: [`<form class="tool-form"${write("household", "add", "/asks/-")}><input class="field" name="name" placeholder="Their name" aria-label="Who to bring" autocomplete="off" required><button type="submit" class="tool add">${icon("plus")}Ask to bring someone</button></form>`],
     body,
-    foot: [undoTool(), redoTool(), leaveTool()],
   });
 }
 
@@ -171,7 +170,6 @@ function giftsCollection(v: HouseholdView, trail: Crumb[]): string {
   return collectionPage([...trail, { label: "Gifts" }], {
     body: `<div class="rows">${rows.join("")}</div>`,
     note: v.gifts.length ? null : "No gifts on the list yet.",
-    foot: [undoTool(), redoTool(), leaveTool()],
   });
 }
 
@@ -213,7 +211,6 @@ function everyonePage(v: HouseholdView, trail: Crumb[], familyKey: string | null
       level === "families" ? `${total} in the photo, in ${shown} families. Tap a family to see them. Nobody knows whose is whose until the day.`
       : level === "family" ? `One family, ${shown} of them.`
       : `${total} in the photo: everyone whose household has said yes; a maybe stands as a ghost. ${v.names ? "It is the day: the names have come down." : "Nobody knows whose is whose until the day."}`,
-    foot: [undoTool(), redoTool(), leaveTool()],
   });
 }
 
