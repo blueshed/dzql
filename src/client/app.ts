@@ -114,12 +114,39 @@ window.addEventListener("popstate", () => {
   if (pageWrite) send(pageWrite.doc, [{ op: pageWrite.op, path: pageWrite.path, value: page }]);
 });
 
+// Rule 7 of bento-request.md's K1: a render may mark one element `data-moving="<name>"`. When
+// the page as it is and the page as rendered both carry an element with the same value, that
+// element -- and only that one -- grows into the window instead of the page going anywhere.
+// `movingElement` parses the incoming HTML (a `<template>`, same technique `applyFragments` uses
+// below) to find out whether the render still has it, without touching the live DOM yet.
+function movingElement(html: string): HTMLElement | undefined {
+  const current = app.querySelector<HTMLElement>("[data-moving]");
+  if (!current) return undefined;
+  const holder = document.createElement("template");
+  holder.innerHTML = html;
+  const stillThere = holder.content.querySelector(`[data-moving="${CSS.escape(current.dataset.moving!)}"]`);
+  return stillThere ? current : undefined;
+}
+
 function render(html: string) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
+  const moving = movingElement(html);
 
-  morph(app, html, hooks);
-  settle(before);
-  syncPage();
+  const apply = () => {
+    morph(app, html, hooks);
+    settle(before);
+    syncPage();
+  };
+
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (moving && !reduced && "startViewTransition" in document) {
+    moving.style.viewTransitionName = "moving";
+    document.startViewTransition(apply).finished.finally(() => {
+      moving.style.viewTransitionName = "";
+    });
+  } else {
+    apply();
+  }
 }
 
 // A fragment render: the delta in HTML's terms (see src/compartments/render.ts). Each op names an

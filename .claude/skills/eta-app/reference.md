@@ -435,6 +435,37 @@ are automatically pinned to the bottom on render if new child nodes were
 added, without disturbing scroll position during presence or other unrelated
 updates.
 
+### `data-moving`: the same element grows into the window (bento-request.md K1)
+
+A render may mark one element `data-moving="<name>"`. When a full render arrives and both the
+page as it is and the page as rendered carry an element with the same `data-moving` value,
+`src/client/app.ts`'s `render()` gives that element -- and only that one -- `view-transition-name:
+moving`, runs the morph inside `document.startViewTransition` (feature-detected with
+`"startViewTransition" in document`, not a `declare global` -- lib.dom already has it), and clears
+the name afterward. `matchMedia("(prefers-reduced-motion: reduce)")` skips the transition
+entirely, same as a browser without support: a plain morph, as always. Fragment renders
+(`applyFragments`) never transition -- there's no "page as it was" to compare against a fragment.
+
+The kernel has no client stylesheet of its own, so this is the one thing an example's stylesheet
+has to add for `data-moving` to look right rather than merely work: without
+`::view-transition-group(moving) { z-index: 1 }`, the moving element animates *under* its
+neighbours instead of on top of them (the bento mock-up learned this the hard way -- naming every
+compartment, instead of just the one moving, was the original mistake). Nothing else needs naming;
+K1 is one attribute, one name, one element, not a general animation vocabulary.
+
+### `data-reveal`: bringing the chosen figure into the clear (bento-request.md K2)
+
+After a full render's morph, if the page now carries an element with `data-reveal` that it did not
+carry before -- or carries it on a different element than before -- `render()` calls
+`scrollIntoView({ block: "nearest", inline: "nearest" })` on it. This is a client act on a render,
+not a scroll position on the wire: the kernel decides nothing about what "reveal" means, only that
+the attribute moved. `"nearest"` is deliberate -- it does nothing when the element is already
+visible, so a docked panel or a drawer only scrolls the page when the chosen figure would
+otherwise be hidden behind it. Making a docked panel actually count as an edge is the example
+stylesheet's job: give the panel's own edge (or whatever sits between the reading and it) a
+`scroll-margin` matching the panel's width/height, the same way `scroll-margin-top` keeps a sticky
+header from covering an anchor-scrolled heading.
+
 ### Where a tab is: `data-page` and `data-page-write`
 
 An example that keeps "which page a tab is on" on the session (the wedding's
