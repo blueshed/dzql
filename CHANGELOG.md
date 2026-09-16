@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.38.0] - 2026-09-16
+
+### Added
+
+- **K1: the moving element.** `src/client/app.ts`'s `render()` finds an element with `data-moving`
+  in the page as it is and, by parsing the incoming HTML, one with the same value in the render;
+  when both exist it names only that element for a view transition (`view-transition-name:
+  moving`), runs the morph inside `document.startViewTransition` where the browser has it, and
+  clears the name once the transition settles -- `prefers-reduced-motion` and a browser without
+  support morph as before, and a fragment render never transitions. `reference.md` documents the
+  `::view-transition-group(moving) { z-index: 1 }` an example's stylesheet needs, since the kernel
+  has no client stylesheet of its own.
+- **K2: bring into the clear.** After a full render's morph, an element that now carries
+  `data-reveal` and didn't before -- or carries it on a different element than before -- scrolls
+  into view (`scrollIntoView({ block: "nearest", inline: "nearest" })`); the window itself never
+  moves. `reference.md` notes that an example's stylesheet owns `scroll-margin`, so a docked panel
+  counts as an edge.
+- **K3: forms that write as you type.** `data-write-on="input"` joins `"blur"`/`"change"`: every
+  `[data-write]` field whose live value differs from what the last render wrote becomes one op in
+  one message, debounced to ~150ms after the last keystroke anywhere in the form, flushed at once
+  by a `focusout` inside it, and never repeating a message identical to the last one that form
+  actually sent.
+
+`src/client/app.test.ts` (new, with its own `app.test.html`/`app.test.entry.ts`) drives all three
+in a real `Bun.WebView`, app.ts's own socket stubbed so no eta server is needed.
+
 ## [0.37.0] - 2026-09-16
 
 ### Added

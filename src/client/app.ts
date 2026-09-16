@@ -230,15 +230,20 @@ app.addEventListener("click", (event) => {
   send(doc, value !== undefined ? [{ op, path, value }] : [{ op, path }]);
 });
 
-// A `data-write-on="blur"|"change"` form is an editing one, not a creating one: `data-write`
-// lives on its *fields*, each naming its own path, and the form commits on that trigger instead
-// of a submit -- one op per field whose live value has diverged from what the last render put in
-// its `value` attribute (not a dirty flag; the morph keeps that attribute current, so a field an
-// unrelated render touched doesn't look changed just because it exists). No reset follows: an
-// editing field's value is the document's own, not something to hand back or clear.
-// A <textarea>'s rendered content has no `value` attribute to compare against -- it's the
+// A `data-write-on="blur"|"change"|"input"` form is an editing one, not a creating one:
+// `data-write` lives on its *fields*, each naming its own path, and the form commits on that
+// trigger instead of a submit -- one op per field whose live value has diverged from what the
+// last render put in its `value` attribute (not a dirty flag; the morph keeps that attribute
+// current, so a field an unrelated render touched doesn't look changed just because it exists).
+// No reset follows: an editing field's value is the document's own, not something to hand back or
+// clear. A <textarea>'s rendered content has no `value` attribute to compare against -- it's the
 // element's text at parse time, which the DOM keeps as `defaultValue` even after typing changes
 // `value`. Same comparison, different property.
+// "input" (bento-request.md K3) is the same commit, debounced to ~150ms after the last keystroke
+// anywhere in the form so a burst of typing becomes one message, not one per key; a `focusout`
+// inside such a form flushes any pending write at once, same as leaving the field would for
+// "blur". A commit identical to the last one *this form* actually sent is dropped rather than
+// resent -- typing back to an already-sent value shouldn't repeat it on the wire.
 function rendered(field: HTMLInputElement | HTMLTextAreaElement): string {
   return field instanceof HTMLTextAreaElement ? field.defaultValue : (field.getAttribute("value") ?? "");
 }
@@ -264,11 +269,59 @@ function onEditTrigger(event: Event, trigger: "blur" | "change") {
   if (change) send(change.doc, change.ops);
 }
 
+const INPUT_DEBOUNCE_MS = 150;
+const inputTimers = new WeakMap<HTMLFormElement, ReturnType<typeof setTimeout>>();
+// The ops of the last message *this form* actually sent, so retyping back to an
+// already-sent value doesn't repeat it -- keyed by form, not by field, since a commit is
+// every changed field in one message (bento-request.md K3).
+const lastEditSent = new WeakMap<HTMLFormElement, string>();
+
+function commitEdit(form: HTMLFormElement) {
+  const change = editingChange(form);
+  if (!change) return;
+  const key = JSON.stringify(change.ops);
+  if (lastEditSent.get(form) === key) return;
+  lastEditSent.set(form, key);
+  send(change.doc, change.ops);
+}
+
+function flushInputEdit(form: HTMLFormElement) {
+  const timer = inputTimers.get(form);
+  if (timer === undefined) return;
+  clearTimeout(timer);
+  inputTimers.delete(form);
+  commitEdit(form);
+}
+
+function onInput(event: Event) {
+  const field = event.target;
+  if (!(field instanceof HTMLElement) || !field.matches("[data-write]")) return;
+  const form = field.closest("form");
+  if (!form || form.dataset.writeOn !== "input") return;
+  const existing = inputTimers.get(form);
+  if (existing !== undefined) clearTimeout(existing);
+  inputTimers.set(
+    form,
+    setTimeout(() => {
+      inputTimers.delete(form);
+      commitEdit(form);
+    }, INPUT_DEBOUNCE_MS),
+  );
+}
+
 // `focusout` (bubbles), not `blur` (doesn't): the field-losing-focus trigger, for text-like
 // fields typed into. `change` fires on its own for a field that commits immediately (a checkbox,
-// a select) as well as a blurred text field, so a form only ever needs one or the other.
-app.addEventListener("focusout", (event) => onEditTrigger(event, "blur"));
+// a select) as well as a blurred text field, so a form only ever needs one or the other. An
+// "input" form also flushes any pending debounced write here, rather than waiting the debounce
+// out once the person has already moved on.
+app.addEventListener("focusout", (event) => {
+  onEditTrigger(event, "blur");
+  const field = event.target;
+  const form = field instanceof HTMLElement ? field.closest("form") : null;
+  if (form?.dataset.writeOn === "input") flushInputEdit(form);
+});
 app.addEventListener("change", (event) => onEditTrigger(event, "change"));
+app.addEventListener("input", onInput);
 
 function connect() {
   const url = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`;

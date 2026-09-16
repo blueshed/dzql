@@ -430,6 +430,23 @@ renders without any bookkeeping. An editing form never sets the reset-on-echo st
 form-level `data-write` to key that off), so it never resets — a refused edit is handed back
 exactly as typed, the way a rejected create-form's input is.
 
+`data-write-on="input"` (bento-request.md K3, the wedding's W4 filter) is the same shape, for a
+form that ought to write on every keystroke rather than waiting for the field to lose focus --
+find-as-you-type is the reference use:
+
+```html
+<form data-write-on="input">
+  <input name="q" value="" data-write='{"doc":"session","op":"replace","path":"/filter/guests"}'>
+</form>
+```
+
+The commit is debounced to ~150ms after the last `input` event *anywhere in the form*, so a burst
+of keystrokes becomes one message, not one per key; a `focusout` inside the form flushes any
+pending write immediately, the way tabbing away from a `blur` field would. `app.ts` also remembers
+the ops each `data-write-on="input"` form last actually sent and drops a commit that would repeat
+it exactly -- typing back to a value already on the wire doesn't send it again. Nothing new crosses
+the wire: still one `{doc, ops}` message, same shape as `blur`/`change`, just timed differently.
+
 Elements with `data-autoscroll` (e.g. `<ul class="messages" data-autoscroll>`)
 are automatically pinned to the bottom on render if new child nodes were
 added, without disturbing scroll position during presence or other unrelated
