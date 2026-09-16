@@ -52,9 +52,9 @@ just an HTML string, morphed into `#app` fresh on every render; that's
 enough for the overwhelming majority of UI (forms, buttons, lists — see the
 wire protocol section below). Reach for an applet (`src/applets.ts`) only
 when a piece of DOM needs to keep *live client-side JS state* across a
-render that would otherwise blow it away — `room-picker`'s typed filter is
-the one example in chat: without an applet, every render would reset the
-input the person is mid-typing into. If nothing in your new UI needs to
+render that would otherwise blow it away — the ticker's city picker keeps
+the suggestions under a field the person is mid-typing into, and its board
+keeps the sparkline histories no document holds. If nothing in your new UI needs to
 survive a re-render like that, you don't need an applet — plain
 `data-write` HTML rendered by a compartment's `render()` is the default, not
 the exception.
@@ -549,8 +549,7 @@ drives it on every run. Split it in two: `<name>.ts` keeps the drawing (`dressHt
 `photoSvg`, `boardSvg`/`sparkline`/`applyOps`, `clockSvg`/`handsAt`/`partsIn`, `cityIn`/`matches`/
 `step`) and whatever a `*.test.ts` imports directly; `<name>-applet.ts` keeps
 `registerApplet(...)` and the `mount`/`update`/`patch` that touch the DOM, and is imported *only*
-by `client/main.ts` -- exactly how chat's `room-picker.ts` (all mounting, no separate drawing
-file) has always been imported. That's what keeps it out of the coverage table rather than
+by `client/main.ts`. That's what keeps it out of the coverage table rather than
 dragging a drawing file's number down: `src/applets.ts`'s registry doesn't care which file called
 `registerApplet`, so nothing about the split is visible to the kernel or the wire
 (change-request.md item 4). Skip the split for an applet with no drawing worth testing on its own
@@ -558,8 +557,9 @@ dragging a drawing file's number down: `src/applets.ts`'s registry doesn't care 
 
 Most UI is plain HTML + `data-write`, morphed in on every render — no applet
 needed. Reach for an applet (`src/applets.ts`) only when something needs
-live state a re-render would otherwise blow away (e.g. `room-picker`'s
-typed filter surviving a props update).
+live state a re-render would otherwise blow away (e.g. the city picker's
+typed query surviving a props update). Chat has none: every reading it has is
+the server's HTML.
 
 ```ts
 export type Applet = {
@@ -569,14 +569,14 @@ export type Applet = {
 };
 ```
 
-Render an applet's mount point as `<div data-applet="room-picker"
-data-props='{"rooms":[...]}'></div>`. `morph.ts` treats `[data-applet]`
+Render an applet's mount point as `<div data-applet="board" data-doc="ticker"
+data-props='{"symbols":[...]}'></div>`. `morph.ts` treats `[data-applet]`
 elements as a boundary it never descends into — the applet owns everything
 inside by hand. An example registers its own applets in its own
 `client/main.ts`, *before* importing the kernel's client:
 
 ```ts
-import "../applets/room-picker";
+import "../applets/board-applet";
 import "../../../src/client/app";
 ```
 

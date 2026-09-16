@@ -29,7 +29,7 @@ async function waitFor(
 }
 
 const NAME_FORM_VISIBLE = `document.querySelector('#name') !== null`;
-const ROOM_FORM_VISIBLE = `document.querySelector('#room') !== null`;
+const ROOM_FORM_VISIBLE = `document.querySelector('.cell.open[data-key="rooms"]') !== null`;
 const USER_LABEL = `document.querySelector('.user-label')?.textContent ?? null`;
 const MESSAGES_TEXT = `document.querySelector('.messages')?.textContent ?? ""`;
 const LOGOUT_SELECTOR = `[data-write='{"doc":"session","op":"remove","path":"/name"}']`;
@@ -43,11 +43,21 @@ async function submitName(view: Bun.WebView, name: string) {
   await view.click("button[type=submit]");
 }
 
+// a room is made and entered through the plus on the rooms window's rail and its modal
 async function joinRoom(view: Bun.WebView, room: string) {
   await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
-  await view.click("#room");
+  await view.click('[aria-label="New room"]');
+  await waitFor(view, `document.querySelector('input[name=room]') !== null`, (v) => v === true);
+  await view.click("input[name=room]");
   await view.type(room);
   await view.press("Enter");
+}
+
+// the way out of a room is the "Chat" crumb on the box; from a window, the box is one step back
+async function leaveRoom(view: Bun.WebView) {
+  await view.evaluate(`document.querySelector('.cell.open .cell-back')?.click()`);
+  await waitFor(view, `document.querySelector('.cell.open') === null`, (v) => v === true);
+  await view.evaluate(`document.querySelector(\`${LEAVE_ROOM_SELECTOR}\`).click()`);
 }
 
 async function sendChatMessage(view: Bun.WebView, text: string) {
@@ -122,12 +132,12 @@ describe("app.ts in a real browser", () => {
 
     await waitFor(view, SEND_MESSAGE_FORM_VISIBLE, (v) => v === true);
 
-    await view.click(LEAVE_ROOM_SELECTOR);
+    await leaveRoom(view);
 
     await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
   });
 
-  test("the room picker filters suggestions as you type, without a round trip", async () => {
+  test("find on the rooms dims the rooms the word misses, and the eye hides them", async () => {
     await using view = new Bun.WebView();
     await view.navigate(server.url.toString());
     await submitName(view, `Filter-${crypto.randomUUID()}`);
@@ -135,49 +145,37 @@ describe("app.ts in a real browser", () => {
     const alpha = `alpha-${crypto.randomUUID()}`;
     const beta = `beta-${crypto.randomUUID()}`;
     await joinRoom(view, alpha);
-    await view.click(LEAVE_ROOM_SELECTOR);
+    await leaveRoom(view);
     await joinRoom(view, beta);
-    await view.click(LEAVE_ROOM_SELECTOR);
+    await leaveRoom(view);
 
     await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
-    await view.click("#room");
+    await view.click('[aria-label="Find"]');
+    await waitFor(view, `document.querySelector('.filter input') !== null`, (v) => v === true);
+    await view.click(".filter input");
     await view.type("alpha");
 
-    const suggestions = await waitFor(
-      view,
-      `[...document.querySelectorAll('.room-picker-suggestions li')].map(li => li.textContent)`,
-      (v) => Array.isArray(v) && v.includes(alpha),
-    );
-
-    expect(suggestions).toContain(alpha);
-    expect(suggestions).not.toContain(beta);
+    const rowOf = (room: string) => `document.getElementById('r-${room}')`;
+    await waitFor(view, `${rowOf(beta)}?.classList.contains('hushed')`, (v) => v === true);
+    expect(await view.evaluate(`${rowOf(alpha)}.classList.contains('hushed')`)).toBe(false);
+    await view.click('[aria-label="Hide what misses"]');
+    await waitFor(view, `${rowOf(beta)}?.hidden`, (v) => v === true);
+    expect(await view.evaluate(`${rowOf(alpha)}.hidden`)).toBe(false);
   });
 
-  test("clicking a suggested room joins it", async () => {
+  test("tapping a room's row enters it", async () => {
     await using view = new Bun.WebView();
     await view.navigate(server.url.toString());
     await submitName(view, `Clicker-${crypto.randomUUID()}`);
 
     const target = `click-target-${crypto.randomUUID()}`;
     await joinRoom(view, target); // creates it
-    await view.click(LEAVE_ROOM_SELECTOR);
+    await leaveRoom(view);
 
     await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
-    await view.click("#room");
-    await view.type(target);
-    await waitFor(
-      view,
-      `document.querySelector('.room-picker-suggestions li')?.textContent ?? null`,
-      (v) => v === target,
-    );
+    await view.evaluate(`document.getElementById("r-${target}").click()`); // the row may be far down a long list
 
-    await view.click(".room-picker-suggestions li");
-
-    await waitFor(
-      view,
-      `document.querySelector('.room-label')?.textContent ?? ""`,
-      (v) => typeof v === "string" && v.includes(target),
-    );
+    await waitFor(view, `document.querySelector('.crumbs b')?.textContent ?? ""`, (v) => typeof v === "string" && v.includes(target));
   });
 
   test("a sent chat message appears in the message list", async () => {
@@ -268,7 +266,7 @@ describe("app.ts in a real browser", () => {
     await joinRoom(viewB, room);
     await waitFor(
       viewA,
-      `document.querySelector('.people')?.textContent ?? ""`,
+      `document.querySelector('#people-mini')?.textContent ?? ""`,
       (v) => typeof v === "string" && v.includes("ScrollB"),
     );
 

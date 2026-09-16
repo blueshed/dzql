@@ -9,80 +9,12 @@ import type { Compartment } from "../../../src/compartments/compartment";
 import { audienceFor, notify } from "../../../src/compartments/audience";
 import { renderRequested, type HtmlOp } from "../../../src/compartments/render";
 import { history, prefixDoc } from "../../../src/ledger";
-import { renderNameForm, sessionPatched } from "./session";
+import { sessionPatched } from "./session";
+import { door, messageLi, page, peopleMini, peopleRows, talkMini } from "../views/page";
 
 // Which connections currently see a room is the kernel's own question now (change-request.md
 // item 1, `audienceFor("room", room)`): `resolveDoc` below already says which room a socket
 // sees, which is exactly `sees`'s default, so this compartment keeps no registry of its own.
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function renderRoomSelector(name: string, rooms: string[]): string {
-  const props = escapeHtml(JSON.stringify({ rooms }));
-  return `
-    <div class="user-bar">
-      <span class="user-label">${escapeHtml(name)}</span>
-      <button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>Undo</button>
-      <button data-write='{"doc":"ledger","op":"add","path":"/latest"}'>Redo</button>
-      <button data-write='{"doc":"session","op":"remove","path":"/name"}'>Log out</button>
-    </div>
-    <h2>Rooms</h2>
-    <div data-applet="room-picker" data-props="${props}"></div>
-  `;
-}
-
-// A message is a bubble: yours on the right in the button tint, everyone
-// else's on the left with a monogram, the name shown only on the first of a
-// run so a back-and-forth doesn't repeat it on every line.
-function renderMessage(message: ChatMessage, index: number, messages: ChatMessage[], viewer: string): string {
-  const mine = message.name === viewer;
-  const firstOfRun = index === 0 || messages[index - 1]!.name !== message.name;
-  const name = escapeHtml(message.name);
-  const nameLine = !mine && firstOfRun ? `<span class="name">${name}</span>` : "";
-  return (
-    `<li id="m${message.id}"${mine ? ' class="mine"' : ""}>` +
-    `<span class="avatar" aria-hidden="true">${escapeHtml(message.name.charAt(0).toUpperCase())}</span>` +
-    `<div class="body">${nameLine}<span class="bubble">${escapeHtml(message.text)}</span></div>` +
-    `</li>`
-  );
-}
-
-function renderPeople(people: string[], viewer: string): string {
-  return people
-    .map((person) => `<span${person === viewer ? ' class="me"' : ""}>${escapeHtml(person)}</span>`)
-    .join("");
-}
-
-function renderPeopleBar(people: string[], viewer: string): string {
-  return `<p class="people" id="people">${renderPeople(people, viewer)}</p>`;
-}
-
-function renderChat(name: string, room: string, people: string[], messages: ChatMessage[]): string {
-  // Undo, Redo, Room (leave), and Log out are tools (change-request.md item 10): verbs beside
-  // the room compartment's own content, not part of what the room document shows.
-  return `
-    <div class="user-bar">
-      <span class="room-label">#${escapeHtml(room)}</span>
-      ${renderPeopleBar(people, name)}
-      <button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>Undo</button>
-      <button data-write='{"doc":"ledger","op":"add","path":"/latest"}'>Redo</button>
-      <button data-write='{"doc":"session","op":"remove","path":"/room"}'>Room</button>
-      <button data-write='{"doc":"session","op":"remove","path":"/name"}'>Log out</button>
-    </div>
-    <ul class="messages" id="messages" data-autoscroll>${messages.map((m, i) => renderMessage(m, i, messages, name)).join("")}</ul>
-    <form data-write='{"doc":"room","op":"add","path":"/transcript/-"}'>
-      <input name="text" autocomplete="off" required autofocus placeholder="Message #${escapeHtml(room)}" />
-      <button type="submit">Send</button>
-    </form>
-  `;
-}
 
 // Presence is live connection state, not persisted data, so it's assembled
 // here (from the kernel's open-connection registry + a session lookup per socket) rather than
@@ -156,7 +88,7 @@ sessionPatched.on(({ ws, before, applied }) => {
     const newRoom = op.op === "remove" ? undefined : String(op.value ?? "").trim() || undefined;
 
     if (before.room && before.room !== newRoom && before.name) announceLeave(before.room, ws, before.name);
-    if (newRoom && before.name) announceJoin(newRoom, ws, before.name);
+    if (newRoom && newRoom !== before.room && before.name) announceJoin(newRoom, ws, before.name);
   }
 
   const loggedOut = applied.some((op) => op.path === "/name" && op.op === "remove");
@@ -167,13 +99,17 @@ export const room: Compartment = {
   docType: "room",
   render(sessionId) {
     // Absorbs the tray's old page: with no name, room is the only compartment on the page, so
-    // it's the one that shows the name form (the tray itself has no `render` -- item 10's rule 3).
-    const { name, room: current } = sessionDoc.read(sessionId);
-    if (!name) return renderNameForm();
-    if (!current) return renderRoomSelector(name, roomDoc.list());
-
-    const { transcript } = roomDoc.read(current);
-    return renderChat(name, current, peopleIn(current), transcript);
+    // it's the one that shows the door (the tray itself has no `render` -- item 10's rule 3).
+    const { name, room: current, ui } = sessionDoc.read(sessionId);
+    if (!name) return door();
+    return page({
+      name,
+      room: current,
+      ui,
+      rooms: roomDoc.list(),
+      people: current ? peopleIn(current) : [],
+      transcript: current ? roomDoc.read(current).transcript : [],
+    });
   },
   resolveDoc(ws) {
     return sessionDoc.read(ws.data.sessionId).room ?? undefined;
@@ -201,28 +137,36 @@ export const room: Compartment = {
     echoAndNotify(roomName, result);
     return result;
   },
-  // The delta in HTML's terms: a sent message is one <li> appended; a message walked back by
-  // undo is its <li> removed, and the message after it redrawn, since it may now start a run
-  // (and so show its name). Anything else -- a write with nothing applied never gets here --
-  // is left to the full render.
+  // The delta in HTML's terms: a sent message is one <li> appended to the open conversation, or
+  // the conversation's small reading redrawn on the box; a message walked back by undo is its
+  // <li> removed and the message after it redrawn, since it may now start a run (and so show
+  // its name); an arrival or a departure redraws the people, as rows when they are open and as
+  // faces on the box. Anything else is left to the full render.
   fragments(ws, roomName, result): HtmlOp[] | undefined {
-    const { name, room: current } = sessionDoc.read(ws.data.sessionId);
+    const { name, room: current, ui } = sessionDoc.read(ws.data.sessionId);
     if (!name || current !== roomName) return undefined;
     const ops: HtmlOp[] = [];
     const isPresence = (op: PatchOp) => op.path === "/people/-" || /^\/people\/\d+$/.test(op.path);
     if (result.applied.some(isPresence)) {
-      ops.push({ op: "replace", target: "#people", html: renderPeopleBar(peopleIn(roomName), name) });
+      const people = peopleIn(roomName);
+      ops.push(ui.open === "people" ? { op: "replace", target: "#people-rows", html: peopleRows(people, name, ui) } : { op: "replace", target: "#people-mini", html: peopleMini(people, name) });
     }
     const { added, removed } = result as RoomPatchResult;
     const { transcript } = roomDoc.read(roomName);
+    if (ui.open !== "conversation") {
+      if (added || removed) ops.push({ op: "replace", target: "#talk-mini", html: talkMini(transcript) });
+      return ops;
+    }
+    const word = ui.filter?.conversation;
+    const hide = ui.hide?.conversation;
     if (added) {
       const at = transcript.length - 1;
-      ops.push({ op: "add", target: "#messages", html: renderMessage(transcript[at]!, at, transcript, name) });
+      ops.push({ op: "add", target: "#messages", html: messageLi(transcript[at]!, at, transcript, name, word, hide) });
     }
     if (removed) {
       ops.push({ op: "remove", target: `#m${removed.id}` });
       const next = transcript.findIndex((m) => m.id > removed.id);
-      if (next >= 0) ops.push({ op: "replace", target: `#m${transcript[next]!.id}`, html: renderMessage(transcript[next]!, next, transcript, name) });
+      if (next >= 0) ops.push({ op: "replace", target: `#m${transcript[next]!.id}`, html: messageLi(transcript[next]!, next, transcript, name, word, hide) });
     }
     return ops;
   },

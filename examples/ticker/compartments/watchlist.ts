@@ -3,13 +3,30 @@ import * as watchlistDoc from "../documents/watchlist";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { notify } from "../../../src/compartments/audience";
 import { type HtmlOp } from "../../../src/compartments/render";
-import { boardMount, watchlistSection } from "../views/page";
+import * as clockDoc from "../documents/clock";
+import * as deskDoc from "../documents/desk";
+import { boardCount, boardList, boardMount, reading } from "../views/page";
 
 // A session's watchlist: its own to write, seen by nobody else (any other open tab of the same
 // session included -- `sees`'s default already answers that from `resolveDoc` alone, change-
-// request.md item 1). A change re-renders the two pieces of the page that show it -- the list,
-// and the board's mount with its new props (the applet keeps the histories it has) -- as
-// fragments, never the page.
+// request.md item 1). A change re-renders the pieces of the page that show it -- the count on
+// the board's head, the board's mount with its new props (the applet keeps the histories it has),
+// and the board as a list when that is the open reading -- as fragments, never the page.
+
+/** Sessions whose modal a write has just answered: their next render is the page, not fragments, so the modal goes. */
+const answered = new Set<string>();
+
+/** A modal asks one question; the write that answers it closes it (rule 14): watching closes the ask, dropping closes the confirm and the row's drawer. */
+function closeAsked(sessionId: string, applied: { op: string; path: string }[]): void {
+  const ui = deskDoc.read(sessionId);
+  const ops: { op: "remove"; path: string }[] = [];
+  if (ui.new && applied.some((op) => op.op === "add")) ops.push({ op: "remove", path: "/new" });
+  if (ui.confirm && applied.some((op) => op.op === "remove")) ops.push({ op: "remove", path: "/confirm" }, { op: "remove", path: "/focus" });
+  if (ops.length) {
+    deskDoc.patch(sessionId, ops);
+    answered.add(sessionId);
+  }
+}
 
 export const watchlist: Compartment = {
   docType: "watchlist",
@@ -22,6 +39,7 @@ export const watchlist: Compartment = {
   },
   write(_ws, sessionId, ops) {
     const result = watchlistDoc.patch(sessionId, ops);
+    closeAsked(sessionId, result.applied);
     notify("watchlist", sessionId, result);
     return result;
   },
@@ -30,11 +48,15 @@ export const watchlist: Compartment = {
     notify("watchlist", sessionId, result);
     return result;
   },
-  fragments(_ws, sessionId): HtmlOp[] {
+  fragments(_ws, sessionId): HtmlOp[] | undefined {
+    if (answered.delete(sessionId)) return undefined; // a modal just closed: the page, whole
     const list = watchlistDoc.read(sessionId);
-    return [
-      { op: "replace", target: "#watchlist", html: watchlistSection(list) },
+    const ui = deskDoc.read(sessionId);
+    const ops: HtmlOp[] = [
+      { op: "replace", target: "#board-count", html: boardCount(list) },
       { op: "replace", target: "#board", html: boardMount(list, market.read()) },
     ];
+    if (ui.open === "board" && reading(ui) === "list") ops.push({ op: "replace", target: "#board-list", html: boardList({ list, market: market.read(), clock: clockDoc.read(sessionId), ui }) });
+    return ops;
   },
 };

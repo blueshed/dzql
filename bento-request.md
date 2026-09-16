@@ -236,6 +236,9 @@ room the member stands in.
 
 ### C1. The room as a box
 
+*Done, 0.42.0.* Entering a room opens the conversation, since that is what you came for; the way out of a room is the trail's root crumb on the box.
+
+
 Rules 1 to 6, 9, 11, 12. Three compartments: the people (faces with names; the summary counts who
 is here), the conversation (the transcript, a list; the summary is the last line), and the rooms
 (the room picker applet becomes this compartment's reading: a list of rooms with a › into each,
@@ -246,6 +249,9 @@ reading, as it is. The corner family as in W1. The six stories stay green; their
 compartment where it named the page.
 
 ### C2. People are things
+
+*Done, 0.42.0.*
+
 
 Rules 13, 15. A face opens that person's drawer: the name, and whether they are here; your own
 face's drawer lets you change your name, which is the write to `/name` that already exists. The
@@ -261,6 +267,9 @@ story("Ada asks for a new room, and the modal asks its name", { as: "ada", does:
 ```
 
 ### C3. Find in the conversation
+
+*Done, 0.42.0.* And on the rooms.
+
 
 Rule 17. A word dims the messages that miss it and the tally says how many of all.
 
@@ -279,12 +288,18 @@ say the drawer and the filter are the session's, whoever the session is.
 
 ### T1. The desk as a box
 
+*Done, 0.42.0.* The tray is `documents/desk.ts`, a session's own.
+
+
 Rules 1 to 6, 9, 11. Three compartments: the board (the watched symbols; its summary counts them),
 the market (every quote; the summary is how many symbols move), and the clock (a thing: the city
 and the time). The trail is `eta ticker › The desk`. Undo and redo are the stack at the bottom
 right; there is no leave. The thirteen stories stay green.
 
 ### T2. The board's readings and the market's filter
+
+*Done, 0.42.0.*
+
 
 Rules 16, 17. The board applet's drawing -- the table with a sparkline each -- is one reading and a
 plain list is the other, the current one pressed; the applet is the reading, not the compartment.
@@ -296,6 +311,9 @@ story("Ann finds CH in the market; Charlie Metals stays lit, the rest dim, the t
 ```
 
 ### T3. Watch, drop, and the clock's drawer
+
+*Done, 0.42.0.* Dropping asks in a modal; it did not feel wrong on the desk, so there is no finding.
+
 
 Rules 13, 14, 15. Watching a symbol is the plus on the board's rail and a modal asking one question,
 the symbol; the write to `/symbols/-` is unchanged, and the refusals ("cannot watch a symbol the

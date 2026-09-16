@@ -7,9 +7,10 @@ import { createServer } from "../../src/server";
 import { example } from "./index";
 
 /** The names in a render's people chips, whichever one is marked as the viewer's own. */
+/** The names in the people compartment's small reading (`#people-mini`: a face and a name each). */
 function peopleIn(html: string): string[] {
-  const chips = html.match(/<p class="people"[^>]*>(.*?)<\/p>/)?.[1] ?? "";
-  return [...chips.matchAll(/<span[^>]*>([^<]*)<\/span>/g)].map((m) => m[1]!);
+  const faces = html.match(/<div id="people-mini">(.*?)<\/div><\/div>/)?.[1] ?? "";
+  return [...faces.matchAll(/<span class="note">([^<]*)<\/span>/g)].map((m) => m[1]!);
 }
 
 
@@ -238,7 +239,7 @@ describe("websocket write protocol", () => {
 
     expect(htmlOf(message)).toContain("&lt;b&gt;Ada&lt;/b&gt;");
     expect(htmlOf(message)).toContain('data-write=\'{"doc":"session","op":"remove","path":"/name"}\'');
-    expect(htmlOf(message)).toContain('data-applet="room-picker"');
+    expect(htmlOf(message)).toContain('class="cell open" data-key="rooms"');
     ws.close();
   });
 
@@ -306,7 +307,7 @@ describe("websocket write protocol", () => {
     write(second, "session", [{ op: "replace", path: "/name", value: "Ada again" }]);
     await expectMessage(second, "patch");
     const reactivated = await expectMessage(second, "render");
-    expect(htmlOf(reactivated)).toContain('data-applet="room-picker"'); // room selector, not a chat view
+    expect(htmlOf(reactivated)).toContain('class="cell open" data-key="rooms"'); // room selector, not a chat view
 
     first.close();
     second.close();
@@ -327,7 +328,7 @@ describe("websocket write protocol", () => {
     await expectMessage(ws, "patch"); // echo of the session's /room removal
     const message = await expectMessage(ws, "render");
 
-    expect(htmlOf(message)).toContain('data-applet="room-picker"');
+    expect(htmlOf(message)).toContain('class="cell open" data-key="rooms"');
     ws.close();
   });
 
@@ -494,7 +495,7 @@ describe("chat", () => {
     await login(b, "Bob", room);
 
     const joinedUpdate = await joined;
-    expect(joinedUpdate.ops).toMatchObject([{ op: "replace", target: "#people" }]);
+    expect(joinedUpdate.ops).toMatchObject([{ op: "replace", target: "#people-mini" }]);
     expect(peopleIn(htmlOf(joinedUpdate))).toEqual(["Alice", "Bob"]);
 
     const left = presenceUpdate(a);
@@ -694,7 +695,7 @@ describe("chat", () => {
     write(ws, "room", [{ op: "add", path: "/transcript/-", value: "hello?" }]);
     // rejected: resolveDoc finds no current room, so permit/write are never reached
     const message = await expectMessage(ws, "render");
-    expect(htmlOf(message)).toContain('data-applet="room-picker"');
+    expect(htmlOf(message)).toContain('class="cell open" data-key="rooms"');
     ws.close();
   });
 

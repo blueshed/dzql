@@ -32,7 +32,7 @@ and a Swiss railway clock, both drawn in the browser.
 - **Zero infrastructure.** Bun and SQLite, one process, one file. A multi-person live app deploys
   without a queue, a cache or a build step.
 - **Measured, not claimed.** What a write costs on the wire is a number in this README, from a
-  script you can run: a chat message is 427 bytes to each other member, a price tick 104, a
+  script you can run: a chat message is 436 bytes to each other member, a price tick 104, a
   guest's changed top on the wedding nothing at all to the households it does not concern.
 
 It is for small teams and solo builders making live apps where reversibility and legibility
@@ -76,6 +76,7 @@ Chat, a room at 100 messages and 5 members, bytes sent to each *other* member pe
 | 0.4.0 (append) | 159 B | 120 B | 279 B |
 | 0.12.0 to 0.23.0 (full page) | 159 B | 7373 B | 7532 B |
 | 0.24.0 (fragment: one `<li>`) | 159 B | 268 B | 427 B |
+| 0.42.0 (the same, in the conversation's window) | 159 B | 277 B | 436 B |
 
 The wedding, one guest's top changed to green, bytes sent to each viewer:
 

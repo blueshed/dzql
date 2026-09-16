@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.42.0] - 2026-09-16
+
+### Changed
+
+- **Chat is a box (bento-request.md C1-C3).** The room is the ground: a tray of three
+  compartments -- the conversation, big, with its last lines as the small reading; the people,
+  as faces; the rooms, with the one you are in -- each growing into the window, its tools on the
+  rail, undo, redo and log out one stack at the bottom right (across beside the trail on the box).
+  Entering a room opens the conversation, since that is what you came for. A person is a thing:
+  a row opens their drawer, and your own drawer is where you change your name. A new room is the
+  plus and a modal asking its name; the room picker applet, and the morph test that used it as
+  its specimen, are gone, since the rooms are rows now and chat has no applets. Find on the
+  conversation and on the rooms, with the tally and the eye. The session keeps the tray's state
+  in a `ui` column (`examples/chat/migrations/0003_ui.sql`), never on the ledger; re-entering the
+  room you are in is a no-op rather than a recorded write. Seven new stories, thirteen in all.
+- **The ticker is a box (T1-T3), and gets a tray.** The desk: the board, big, with two readings,
+  the applet's sparklines and a list of rows; the market, every quote a row, with find and the
+  eye; the clock, a thing whose drawer holds the city picker. A row's drawer holds what a symbol
+  is and what it carries -- watch, or stop watching -- and both ask in a modal, the plus on the
+  board's rail and a confirm. `documents/desk.ts` is the tray, a session's own with no sign-in
+  behind it (`migrations/0003_desks.sql`); `inspect` now lists it first. A tick still costs 104
+  bytes on the box; a session reading the market's rows or the board as a list has those rows
+  redrawn. Ten new stories, twenty-three in all.
+- **A modal closes on the write that answers it (rule 14)**, in all three examples: watching
+  closes the ask, dropping closes the confirm and the row's drawer, adding a guest or a course
+  closes the add. The wedding's modals stayed open until now.
+- Each example's stylesheet is the same design in its own palette and type: chat's green ink on
+  paper, light and dark; the ticker's dark screen with amber for the one accent.
+
 ## [0.41.0] - 2026-09-16
 
 ### Changed

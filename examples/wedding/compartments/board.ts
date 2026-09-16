@@ -42,6 +42,16 @@ function echoAndNotify(code: string, result: WriteResult): void {
   renderRequested.emit({ sockets: allOpenSockets(), write: { docType: "board", docId: code, result } });
 }
 
+
+/** A modal asks one question; the write that answers it closes it (rule 14): an add closes the ask, a removal closes the confirm and the row's drawer. */
+function closeAsked(sessionId: string, applied: { op: string; path: string }[]): void {
+  const { ui } = sessionDoc.read(sessionId);
+  const ops: PatchOp[] = [];
+  if (ui.new && applied.some((op) => op.op === "add" && op.path.endsWith("/-"))) ops.push({ op: "remove", path: "/new" });
+  if (ui.confirm && applied.some((op) => op.op === "remove")) ops.push({ op: "remove", path: "/confirm" }, { op: "remove", path: "/keep" });
+  if (ops.length) sessionDoc.patch(sessionId, ops);
+}
+
 export const board: Compartment = {
   docType: "board",
   render(sessionId) {
@@ -61,6 +71,7 @@ export const board: Compartment = {
   },
   write(ws, code, ops): WriteResult {
     const result = boardDoc.patch(code, ops, ws.data.sessionId);
+    closeAsked(ws.data.sessionId, result.applied);
     echoAndNotify(code, result);
     return result;
   },

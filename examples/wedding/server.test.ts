@@ -302,6 +302,14 @@ describe("a household", () => {
     await expectMessage(ws, "patch");
     expect((await expectMessage(ws, "render")).html).toContain('class="row tap"');
     expect(await page("asks")).toContain("Ask to bring someone");
+    // the plus asks in a modal; the add that answers it closes it (rule 14)
+    write(ws, "session", [{ op: "replace", path: "/new", value: "asks" }]);
+    await expectMessage(ws, "patch");
+    expect((await expectMessage(ws, "render")).html).toContain('<dialog open class="modal" aria-label="Ask to bring someone">');
+    write(ws, "household", [{ op: "add", path: "/asks/-", value: "Modal Friend" }]);
+    await expectMessage(ws, "patch");
+    expect(((await expectMessage(ws, "render")).ops as { html: string }[]).map((o) => o.html).join("")).not.toContain('class="modal"');
+    householdDoc.patch(code, [{ op: "remove", path: `/asks/${householdDoc.read(code)!.asks.at(-1)!.id}` }], "setup");
     // a waiting ask, then answered both ways -- the asks list's own row for each
     householdDoc.patch(code, [{ op: "add", path: "/asks/-", value: "Robin Friend" }], "setup");
     const askId = householdDoc.read(code)!.asks.at(-1)!.id;
@@ -554,12 +562,11 @@ describe("the couple", () => {
     expect(html).toContain("<div inert>");
     write(ws, "board", [{ op: "add", path: "/courses/-", value: "Pudding" }]);
     await expectMessage(ws, "patch");
-    await expectMessage(ws, "render");
+    // the board has no fragments: the render is the kernel's default, its own element replaced (rule 2)
+    html = ((await expectMessage(ws, "render")).ops as { html: string }[]).map((o) => o.html).join("");
     const pudding = boardDoc.read("DASH")!.courses.find((c) => c.name === "Pudding")!;
     expect(pudding).toBeTruthy();
-    write(ws, "session", [{ op: "remove", path: "/new" }]);
-    await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    // the write that answers the question closes the modal
     expect(html).not.toContain('class="modal"');
     expect(html).not.toContain("<div inert>");
 

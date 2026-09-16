@@ -4,19 +4,19 @@ import { patch, read } from "./session";
 
 describe("session document", () => {
   test("a fresh session id reads as an empty document", () => {
-    expect(read(crypto.randomUUID())).toEqual({ name: null, room: null });
+    expect(read(crypto.randomUUID())).toEqual({ name: null, room: null, ui: {} });
   });
 
   test("patching /name sets the session's name", () => {
     const id = crypto.randomUUID();
     patch(id, [{ op: "replace", path: "/name", value: "Ada" }]);
-    expect(read(id)).toEqual({ name: "Ada", room: null });
+    expect(read(id)).toEqual({ name: "Ada", room: null, ui: {} });
   });
 
   test("a blank name is ignored", () => {
     const id = crypto.randomUUID();
     patch(id, [{ op: "replace", path: "/name", value: "   " }]);
-    expect(read(id)).toEqual({ name: null, room: null });
+    expect(read(id)).toEqual({ name: null, room: null, ui: {} });
   });
 
   test("patching /room sets the room, upserting the row if it didn't exist", () => {
@@ -25,7 +25,7 @@ describe("session document", () => {
 
     patch(id, [{ op: "replace", path: "/room", value: room }]);
 
-    expect(read(id)).toEqual({ name: null, room });
+    expect(read(id)).toEqual({ name: null, room, ui: { open: "conversation" } }); // entering a room opens the conversation
   });
 
   test("a blank room is ignored", () => {
@@ -63,7 +63,7 @@ describe("session document", () => {
     patch(id, [{ op: "replace", path: "/room", value: room }]);
     patch(id, [{ op: "remove", path: "/name" }]);
 
-    expect(read(id)).toEqual({ name: null, room: null });
+    expect(read(id)).toEqual({ name: null, room: null, ui: {} });
   });
 
   test("a session can set a name again after logging out (reactivation, not gone forever)", () => {
@@ -79,7 +79,7 @@ describe("session document", () => {
   test("an unrecognized path is ignored without throwing", () => {
     const id = crypto.randomUUID();
     expect(() => patch(id, [{ op: "replace", path: "/nope", value: "x" }])).not.toThrow();
-    expect(read(id)).toEqual({ name: null, room: null });
+    expect(read(id)).toEqual({ name: null, room: null, ui: {} });
   });
 
   test("patch returns the new version and applied ops, recorded in the same ledger table as room patches", () => {
@@ -130,5 +130,50 @@ describe("session document", () => {
 
     const entries = history(`session:${id}`);
     expect(entries[0]?.inverse).toEqual([{ op: "replace", path: "/name", value: "Ada" }]);
+  });
+
+  test("the tray's own state -- what is open, whose drawer, what find says -- is the visit's, kept off the ledger", () => {
+    const id = crypto.randomUUID();
+    patch(id, [{ op: "replace", path: "/name", value: "Ada" }]);
+    const rows = history(`session/${id}`).length;
+    patch(id, [
+      { op: "replace", path: "/open", value: "people" },
+      { op: "replace", path: "/focus", value: "Bob" },
+      { op: "replace", path: "/filter/rooms", value: "ge" },
+      { op: "replace", path: "/hide/rooms", value: true },
+    ]);
+    expect(read(id).ui).toEqual({ open: "people", focus: "Bob", filter: { rooms: "ge" }, hide: { rooms: true } });
+    expect(history(`session/${id}`).length).toBe(rows); // nothing recorded
+    // opening another compartment closes the drawer; an unknown compartment does not open
+    patch(id, [{ op: "replace", path: "/open", value: "rooms" }]);
+    expect(read(id).ui).toEqual({ open: "rooms", filter: { rooms: "ge" }, hide: { rooms: true } });
+    expect(patch(id, [{ op: "replace", path: "/open", value: "attic" }]).applied).toEqual([]);
+    // the modal opens and closes; only the room's is one
+    patch(id, [{ op: "replace", path: "/new", value: "rooms" }]);
+    expect(read(id).ui.new).toBe("rooms");
+    expect(patch(id, [{ op: "replace", path: "/new", value: "people" }]).applied).toEqual([]);
+    patch(id, [{ op: "remove", path: "/new" }]);
+    expect(read(id).ui.new).toBeUndefined();
+    // closing find forgets the eye with the word; a blank focus is ignored; a stray key too
+    patch(id, [{ op: "remove", path: "/filter/rooms" }]);
+    expect(read(id).ui).toEqual({ open: "rooms" });
+    expect(patch(id, [{ op: "replace", path: "/focus", value: "  " }]).applied).toEqual([]);
+    expect(patch(id, [{ op: "remove", path: "/hide/rooms" }]).applied).toEqual([]);
+    expect(patch(id, [{ op: "replace", path: "/attic", value: 1 }]).applied).toEqual([]);
+  });
+
+  test("entering a room opens the conversation and closes the rest; leaving and logging out clear the tray", () => {
+    const id = crypto.randomUUID();
+    const room = crypto.randomUUID();
+    patch(id, [{ op: "replace", path: "/name", value: "Ada" }, { op: "replace", path: "/open", value: "rooms" }, { op: "replace", path: "/filter/rooms", value: "x" }]);
+    patch(id, [{ op: "replace", path: "/room", value: room }]);
+    expect(read(id).ui).toEqual({ open: "conversation", filter: { rooms: "x" } });
+    patch(id, [{ op: "replace", path: "/open", value: "people" }, { op: "replace", path: "/focus", value: "Ada" }]);
+    patch(id, [{ op: "replace", path: "/room", value: room }]); // the same room again: nothing changes
+    expect(read(id).ui).toEqual({ open: "people", focus: "Ada", filter: { rooms: "x" } });
+    patch(id, [{ op: "remove", path: "/room" }]);
+    expect(read(id).ui).toEqual({ filter: { rooms: "x" } });
+    patch(id, [{ op: "remove", path: "/name" }]);
+    expect(read(id)).toEqual({ name: null, room: null, ui: {} });
   });
 });

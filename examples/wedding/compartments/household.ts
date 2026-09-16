@@ -65,6 +65,12 @@ function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined
 
 const replace = (target: string, html: string): HtmlOp => ({ op: "replace", target, html });
 
+
+/** A modal asks one question; the write that answers it closes it (rule 14): a household's adds (a guest, an ask) close the ask. */
+function closeAsked(sessionId: string, applied: { op: string; path: string }[]): void {
+  if (sessionDoc.read(sessionId).ui.new && applied.some((op) => op.op === "add" && op.path.endsWith("/-"))) sessionDoc.patch(sessionId, [{ op: "remove", path: "/new" }]);
+}
+
 export const household: Compartment = {
   docType: "household",
   render(sessionId) {
@@ -103,6 +109,7 @@ export const household: Compartment = {
   },
   write(ws, code, ops): WriteResult {
     const result = householdDoc.patch(code, ops, ws.data.sessionId);
+    closeAsked(ws.data.sessionId, result.applied);
     echoAndNotify(code, result);
     return result;
   },

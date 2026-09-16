@@ -29,6 +29,11 @@ describe("the ticker in a real browser", () => {
   test("the board applet takes a tick from the patch itself -- no render -- and the clock runs on its own", async () => {
     await using view = new Bun.WebView();
     await view.navigate(server.url.toString());
+    // the board grows into the window; the plus on its rail asks which symbol in a modal
+    await waitFor(view, `document.querySelector('.cell[data-key="board"]') !== null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('.cell[data-key="board"]').click()`);
+    await waitFor(view, `document.querySelector('.cell.open [aria-label="Watch a symbol"]') !== null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('.cell.open [aria-label="Watch a symbol"]').click()`);
     await waitFor(view, `document.querySelector('input[name=symbol]') !== null`, (v) => v === true);
     await view.click("input[name=symbol]");
     await view.type("fxtr");
@@ -51,8 +56,13 @@ describe("the ticker in a real browser", () => {
     const b = await view.evaluate(`document.querySelector('svg.clock .hand.second').getAttribute('transform')`);
     expect(a).not.toBe(b);
 
-    // the city picker: "lon" puts London first, ahead of Blanc-Sablon; Enter takes the first; the
-    // clock document's write is taken by the applets -- the name on the face changes, no render
+    // the clock is a thing: its drawer holds the city picker. "lon" puts London first, ahead of
+    // Blanc-Sablon; Enter takes the first; the clock document's write is taken by the applets --
+    // the name on the face changes, no render
+    await view.evaluate(`document.querySelector('.cell.open .cell-back').click()`);
+    await waitFor(view, `document.querySelector('.cell.thing') !== null && document.querySelector('.cell.open') === null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('.cell.thing').click()`);
+    await waitFor(view, `document.querySelector('#city input') !== null`, (v) => v === true);
     await view.click("#city input");
     await view.type("lon");
     const suggested = await waitFor(view, `[...document.querySelectorAll('#city .suggestions li')].map((li) => li.dataset.tz)`, (v) => Array.isArray(v) && v.length > 0);

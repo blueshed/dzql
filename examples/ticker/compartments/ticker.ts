@@ -4,7 +4,9 @@ import * as watchlistDoc from "../documents/watchlist";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
 import { audienceFor, notify } from "../../../src/compartments/audience";
-import { page } from "../views/page";
+import * as deskDoc from "../documents/desk";
+import { boardList, marketRows, page, reading } from "../views/page";
+import type { HtmlOp } from "../../../src/compartments/render";
 
 // The market, and the page. A tick -- from the feed below, or typed by anyone through the wire
 // or the CLI -- is a write to the market document, echoed to every connection; the board applet
@@ -54,7 +56,7 @@ const TICK_PATH = /^\/[A-Z0-9.]+\/price$/;
 export const ticker: Compartment = {
   docType: "ticker",
   render(sessionId) {
-    return page(watchlistDoc.read(sessionId), market.read(), clockDoc.read(sessionId));
+    return page({ list: watchlistDoc.read(sessionId), market: market.read(), clock: clockDoc.read(sessionId), ui: deskDoc.read(sessionId) });
   },
   resolveDoc() {
     return market.MARKET; // everyone sees the one market
@@ -67,9 +69,15 @@ export const ticker: Compartment = {
     return tick(ops, ws.data.sessionId);
   },
   // No replay(): a tick is recorded as not undoable, so the ledger's cursor never lands here.
-  // The board took the ops; there is nothing on the page to render.
-  fragments() {
-    return [];
+  // The board applet took the ops, so on the box there is nothing to render; a session reading
+  // the market's rows, or the board as a list, has those rows redrawn and nothing else.
+  fragments(ws): HtmlOp[] {
+    const ui = deskDoc.read(ws.data.sessionId);
+    const v = { list: watchlistDoc.read(ws.data.sessionId), market: market.read(), clock: clockDoc.read(ws.data.sessionId), ui };
+    const ops: HtmlOp[] = [];
+    if (ui.open === "market") ops.push({ op: "replace", target: "#market-rows", html: marketRows(v) });
+    if (ui.open === "board" && reading(ui) === "list") ops.push({ op: "replace", target: "#board-list", html: boardList(v) });
+    return ops;
   },
   onOpen() {
     startFeed();
