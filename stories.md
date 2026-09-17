@@ -130,14 +130,12 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
 *What it does not do yet (17 September).* Said plainly, because a builder will otherwise trust it
 for more than it checks:
 
-- **It checks the tables, not what anyone was sent.** Every comparison is between fresh renders. A
-  passing `seen` says the change shows on that person's next render; it does not say their open
-  page was told. Who is in the audience, the patch echo, a compartment's `fragments` and the morph
-  are covered by each example's server and browser tests, and by no story.
-- **Canon 2 is not run.** The intent stands: for every member with a page open, the page the morph
-  holds must equal a fresh render after the story's echo, each applet compared by its props; then
-  undo and compare, redo and compare. Rebuilding each member's page from the messages they
-  actually received would check most of it without a browser.
+- **The morph is not under test.** Canon 2 is run without a browser: every member's open page is
+  kept as the client would keep it -- a full render replaces it, a fragment render is applied
+  target by target -- and after the story, its undo and its redo it must equal a fresh render. So
+  a write that reaches the tables and not someone's open page fails, by name. An applet that takes
+  its document's patches itself is compared without its props. What the morph then does with the
+  HTML, and what an applet draws, are the browser tests' to check.
 - **No permit table is checked against the stories.** The intent was that a permitted write no
   story tells is a story nobody wrote. While permit tables are written by hand that check would
   run backwards -- it would push a builder to write a story after a feature, to justify it -- so it

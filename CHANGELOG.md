@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.44.0] - 2026-09-17
+
+### Changed
+
+- **The stories check what each person was sent, not only the tables.** The harness keeps every
+  member's open page as the client would -- a full render replaces it, a fragment is applied to
+  its target (`HTMLRewriter`) -- and after a story, its undo and its redo that page must equal a
+  fresh render. Canon 2, without a browser. The wedding passed as it stood, 63 of 63.
+
+### Fixed
+
+- **The ticker's page went stale in three more places**, all hand-kept lists of fragment targets:
+  watching a symbol left "nothing watched yet" on the board; choosing a city left the old one on
+  the clock's compartment and in its drawer. A watchlist or clock write is answered with the page
+  now; the applets, being a morph boundary, keep what they hold.
+- **Someone choosing a room was never told the list had changed** when a coming or a going made a
+  room or took the last person out of one.
+- **A view transition ran whenever anything inside an open window changed**, and swallowed the
+  keys of whoever was typing in it. A move is the element itself changing -- its own tag -- not
+  what is in it.
+
 ## [0.43.1] - 2026-09-17
 
 ### Changed

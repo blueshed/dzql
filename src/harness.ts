@@ -14,11 +14,19 @@ import type { Stories, Story, Write } from "./stories";
 // undo instead, and an author the example no longer counts as active (logged out) gets no undo.
 // A `cannot` must change no page and add nothing to the ledger. Each story runs inside one
 // database transaction that is rolled back afterwards, so every story starts from the cast alone.
+//
+// Canon 2 is checked here too, without a browser: every member's open page is kept as the client
+// would keep it -- a full render replaces it, a fragment render is applied target by target -- and
+// after the story, its undo and its redo, that page must equal a fresh render. So a write that
+// reaches the tables but not someone's open page fails, by name. An applet that takes its
+// document's patches itself (`data-doc`) is compared without its props: they follow the patches,
+// not the renders. What the morph does with the HTML is the browser tests' to check.
 
 export type Outcome = { name: string; failures: string[] };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number };
 
-type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; last: number };
+type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; last: number; page: string };
+type HtmlOp = { op: "replace" | "add" | "remove"; target: string; html?: string };
 type Snapshot = Map<string, string>;
 
 const SETTLE_MS = Number(process.env.STORY_SETTLE_MS ?? 40);
@@ -29,6 +37,33 @@ const ledgerSinceStmt = db.query<{ id: number; doc: string; undoable: number }, 
 
 const UNDO: Write = { doc: "ledger", ops: [{ op: "remove", path: "/latest" }] };
 const REDO: Write = { doc: "ledger", ops: [{ op: "add", path: "/latest" }] };
+
+/** One fragment op applied to a page as the client applies it: the first element the selector names is replaced, appended to, or removed. */
+function applyOp(page: string, op: HtmlOp): string {
+  let done = false;
+  return new HTMLRewriter()
+    .on(op.target, {
+      element(el) {
+        if (done) return;
+        done = true;
+        if (op.op === "replace") el.replace(op.html!, { html: true });
+        else if (op.op === "add") el.append(op.html!, { html: true });
+        else el.remove();
+      },
+    })
+    .transform(page);
+}
+
+/** A member's open page after one more message: only renders change it. */
+function hear(page: string, raw: string): string {
+  const message = JSON.parse(raw) as { type: string; html?: string; ops?: HtmlOp[] };
+  if (message.type !== "render") return page;
+  if (message.html !== undefined) return message.html;
+  return (message.ops ?? []).reduce(applyOp, page);
+}
+
+/** A page as it is compared: an applet that follows its document's patches is left out by its props. */
+export const comparable = (page: string): string => page.replace(/<[^>]*\sdata-doc="[^"]*"[^>]*>/g, (tag) => tag.replace(/\sdata-props="[^"]*"/, ""));
 
 function ledgerMax(): number {
   return ledgerMaxStmt.get()?.id ?? 0;
@@ -49,9 +84,10 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     const sessionId = crypto.randomUUID();
     // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
     const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } });
-    const member: Member = { name, sessionId, ws, inbox: [], last: Date.now() };
+    const member: Member = { name, sessionId, ws, inbox: [], last: Date.now(), page: "" };
     ws.addEventListener("message", (event) => {
       member.inbox.push(String(event.data));
+      member.page = hear(member.page, String(event.data));
       member.last = Date.now();
     });
     await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
@@ -82,6 +118,15 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     for (const m of cast) if (differs(a, b, m.name)) failures.push(`${what}: ${m.name}'s page differs${excerpt(a.get(m.name)!, b.get(m.name)!)}`);
   }
 
+  /** Canon 2: what each member's open page holds must be what a fresh render shows. */
+  function stale(cast: Member[], when: string, failures: string[]): void {
+    for (const m of cast) {
+      const fresh = comparable(renderFor(m.sessionId));
+      const held = comparable(m.page);
+      if (held !== fresh) failures.push(`${when}, ${m.name}'s open page is not what a fresh render shows${excerpt(fresh, held)}`);
+    }
+  }
+
   async function tell(story: Story): Promise<Outcome> {
     const failures: string[] = [];
     db.exec("BEGIN");
@@ -99,6 +144,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
         const ledgerBefore = ledgerMax();
         await send(cast, who, story.cannot);
         compare(before, snapshot(cast), cast, "refused, but", failures);
+        stale(cast, "after the refusal", failures);
         if (ledgerMax() !== ledgerBefore) failures.push("refused, but the ledger moved");
         return { name: story.name, failures };
       }
@@ -119,6 +165,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       if (process.env.STORY_TRACE) for (const raw of who.inbox) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
       const after = snapshot(cast);
       const entries = ledgerSinceStmt.all(ledgerBefore);
+      stale(cast, "after the story", failures);
 
       // Only what the story says is asked: `seen` must notice, `unseen` must not; anyone in
       // neither is left alone (a home page with counts on it changes for many reasons).
@@ -134,12 +181,14 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       const facts = entries.every((e) => e.undoable === 0);
       await send(cast, who, UNDO);
       const afterUndo = snapshot(cast);
+      stale(cast, "after undo", failures);
       if (facts) compare(after, afterUndo, cast, "a fact, yet undo changed it", failures);
       else {
         compare(before, afterUndo, cast, "undo did not restore", failures);
         if (!example.active(who.sessionId)) return { name: story.name, failures }; // the undo was their going (a name taken back): no redo is theirs to press
         await send(cast, who, REDO);
         compare(after, snapshot(cast), cast, "redo did not restore", failures);
+        stale(cast, "after redo", failures);
       }
       return { name: story.name, failures };
     } finally {

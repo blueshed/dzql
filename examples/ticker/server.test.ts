@@ -126,14 +126,15 @@ describe("the ticker", () => {
     ws.close();
   });
 
-  test("a watchlist write is this session's alone: echoed to it, and the list and the board replaced as fragments; undo and redo walk it", async () => {
+  test("a watchlist write is this session's alone: echoed to it, and answered with the page, so everything that shows it is true; undo and redo walk it", async () => {
     const a = await open();
     const b = await open();
     write(a, "watchlist", [{ op: "add", path: "/symbols/-", value: "echo" }]);
     expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "add", path: "/symbols/-", value: "ECHO" }] });
-    const render = await expectMessage(a, "render");
-    expect(render.ops).toMatchObject([{ op: "replace", target: "#board-count" }, { op: "replace", target: "#board" }]);
-    expect((render.ops as { html: string }[])[1]!.html).toContain("&quot;symbols&quot;:[&quot;ECHO&quot;]");
+    const page = (await expectMessage(a, "render")).html as string;
+    expect(page).toContain("&quot;symbols&quot;:[&quot;ECHO&quot;]"); // the board's mount, with its new props
+    expect(page).toContain('<span id="board-count">1</span>'); // the count on its head
+    expect(page).toContain('<p class="cell-summary">watched, live</p>'); // and the line that said "nothing watched yet"
     await expectQuiet(b);
 
     write(a, "ledger", [{ op: "remove", path: "/latest" }]);
@@ -184,11 +185,14 @@ describe("the ticker", () => {
     expect(html).toContain('<option value="America/Argentina/Salta">Salta, Argentina (UTC-03:00)</option>');
     write(ws, "clock", [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }]);
     expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }] });
-    await expectQuiet(ws); // the applet took it: no render
+    // the applet takes the op for the face; the page says the city too, so the page follows
+    expect((await expectMessage(ws, "render")).html).toContain("Tokyo (UTC+09:00)</span>");
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Europe/Zurich" }] });
+    expect((await expectMessage(ws, "render")).html).toContain("Zurich (UTC+0");
     write(ws, "ledger", [{ op: "add", path: "/latest" }]);
     expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }] });
+    await expectMessage(ws, "render");
     await expectQuiet(ws);
     write(ws, "clock", [{ op: "replace", path: "/tz", value: "Mars/Base" }]);
     await expectMessage(ws, "render"); // permitted, not applied: the page, no patch

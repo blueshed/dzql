@@ -6,7 +6,7 @@ import type { ConnectionData } from "../../../src/connection";
 import { patchMessage } from "../../../src/json-patch";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
-import { audienceFor, notify } from "../../../src/compartments/audience";
+import { allOpenSockets, audienceFor, notify } from "../../../src/compartments/audience";
 import { renderRequested, type HtmlOp } from "../../../src/compartments/render";
 import { history, prefixDoc } from "../../../src/ledger";
 import { bento, rows } from "../../../src/bento";
@@ -134,6 +134,16 @@ sessionPatched.on(({ ws, before, applied }) => {
 
   const loggedOut = applied.some((op) => op.path === "/name" && op.op === "remove");
   if (loggedOut && before.room && before.name) announceLeave(before.room, ws, before.name);
+
+  // A room is there while someone is in it, so a coming or a going can add one to the list or take
+  // one off it: whoever is choosing a room is looking at that list, and is shown it again.
+  if (loggedOut || applied.some((op) => op.path === "/room")) {
+    const choosing = allOpenSockets().filter((other) => {
+      const session = sessionDoc.read(other.data.sessionId);
+      return other !== ws && session.name !== null && session.room === null;
+    });
+    if (choosing.length > 0) renderRequested.emit(choosing);
+  }
 });
 
 export const room: Compartment = {

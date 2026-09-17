@@ -84,7 +84,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
       }).observe(el, { attributes: true, attributeFilter: ["style"] });
     })()`);
 
-    await pushRender(view, `<div id="c-box" data-moving="box"><p>big</p></div>`);
+    await pushRender(view, `<div id="c-box" data-moving="box" class="open"><p>big</p></div>`);
     await waitFor(view, `document.querySelector('#c-box')?.textContent`, (v) => v === "big");
 
     await waitFor(view, `window.__seenNames.includes("moving")`, (v) => v === true);
@@ -97,6 +97,27 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
     const keptIdentity = await view.evaluate(`document.querySelector('#c-box')._probe === true`);
     expect(keptIdentity).toBe(true);
+  });
+
+  test("what changes inside a data-moving element is not a move: no transition, so nobody's typing is swallowed by one", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, `<div id="win" data-moving="rooms" class="open"><p>one room</p><input id="new"></div>`);
+    await waitFor(view, `document.getElementById('new') !== null`, (v) => v === true);
+    await view.evaluate(`(() => {
+      window.__named = [];
+      const el = document.querySelector('#win');
+      new MutationObserver(() => window.__named.push(el.style.viewTransitionName)).observe(el, { attributes: true, attributeFilter: ["style"] });
+    })()`);
+
+    // someone else's write redraws the page while this person is in the field
+    await view.click("#new");
+    await pushRender(view, `<div id="win" data-moving="rooms" class="open"><p>two rooms</p><input id="new"></div>`);
+    await view.type("attic");
+    await waitFor(view, `document.querySelector('#win p')?.textContent`, (v) => v === "two rooms");
+
+    expect(await view.evaluate(`document.getElementById('new').value`)).toBe("attic");
+    expect(await view.evaluate(`window.__named`)).toEqual([]); // the window itself did not change, only what is in it
   });
 
   test("with several data-moving candidates on screen at once, only the one that actually changed transitions (W3: a box with more than one openable compartment)", async () => {

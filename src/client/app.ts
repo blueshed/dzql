@@ -130,7 +130,10 @@ function movingElement(html: string): HTMLElement | undefined {
   holder.innerHTML = html;
   for (const current of app.querySelectorAll<HTMLElement>("[data-moving]")) {
     const stillThere = holder.content.querySelector(`[data-moving="${CSS.escape(current.dataset.moving!)}"]`);
-    if (stillThere && stillThere.outerHTML !== current.outerHTML) return current;
+    // A move is the element itself changing -- a compartment opening into the window, or closing --
+    // which shows in its own tag. What is inside it changing (a row more, a message) is not one,
+    // and a transition then would swallow the keys of someone typing in it.
+    if (stillThere && (stillThere.cloneNode(false) as Element).outerHTML !== (current.cloneNode(false) as Element).outerHTML) return current;
   }
   return undefined;
 }

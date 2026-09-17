@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { example } from "../examples/chat";
 import { stories } from "../examples/chat/stories";
-import { print, run } from "./harness";
+import { comparable, print, run } from "./harness";
 
 // The harness against chat's own stories: one outcome per story, named as the story is, and the
 // cast's setup shared by all. What each story finds is the example's business (a failing story is
@@ -35,4 +35,10 @@ describe("stories harness", () => {
     expect(report.outcomes[0]!.failures[0]).toContain("ghost");
     expect(report.outcomes[1]!.failures).toContain('eve did not see it on ""');
   }, 30000);
+
+  test("an applet that follows its document's patches is compared without its props; any other element keeps them", () => {
+    const board = `<div id="board" data-applet="board" data-doc="ticker" data-props="{&quot;price&quot;:1}"></div>`;
+    const photo = `<div id="photo" data-applet="photo" data-props="{&quot;n&quot;:2}"></div>`;
+    expect(comparable(board + photo)).toBe(`<div id="board" data-applet="board" data-doc="ticker"></div>` + photo);
+  });
 });
