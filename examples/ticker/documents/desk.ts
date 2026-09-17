@@ -1,20 +1,16 @@
 import { db } from "../db";
-import { patchCollections, type Collections } from "../../../src/bento";
+import { address, parseAddress, patchCollections, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 
-// The desk: what the tray holds for this session -- the compartment grown into the window, the
-// row or the clock whose drawer is open, the modal that asks, how the board is read, what find
-// says. Nothing here is a fact: it is never on the ledger, and Undo passes over it.
+// The desk: where this session is on the page -- one address (src/bento.ts): the compartment grown
+// into the window, and the one thing open over it, a symbol's drawer or the clock's, or the modal
+// that asks -- and how the board is read and what find says. Nothing here is a fact: it is never
+// on the ledger, and Undo passes over it.
 
 export type Ui = {
-  open?: "board" | "market";
-  /** A symbol's drawer, or the clock's. */
-  focus?: string;
-  /** The modal that asks which symbol to watch. */
-  new?: "board";
-  /** The modal that asks before a symbol is dropped. */
-  confirm?: string;
+  /** "" the desk, "board" or "market" a window; then "?symbol=ALPH", "?clock", "?new", "?confirm=ALPH". */
+  page?: string;
 } & Collections; // how the board is read, what find says
 
 const readStmt = db.query<{ ui: string }, [string]>("SELECT ui FROM desks WHERE session_id = ?");
@@ -27,8 +23,18 @@ export function read(sessionId: string): Ui {
 
 export type DeskPatchResult = { version: number; applied: PatchOp[] };
 
-const OPENABLE = new Set(["board", "market"]);
 const SYMBOL = /^[A-Z0-9.]{1,6}$/;
+
+/** The address as the desk keeps it, or undefined when it names nowhere: a window the desk has, and over it a symbol the market could quote, the clock, the ask, or the asking-first. */
+function placed(value: unknown): string | undefined {
+  const { path, what, which = "" } = parseAddress(String(value ?? ""));
+  if (path !== "" && path !== "board" && path !== "market") return undefined;
+  if (what === undefined) return path;
+  const symbol = which.trim().toUpperCase();
+  if (what === "symbol" || what === "confirm") return SYMBOL.test(symbol) ? address(path, what, symbol) : undefined;
+  if (what === "clock" || (what === "new" && path === "board")) return address(path, what);
+  return undefined;
+}
 
 /** Applies what it can; the version is always 0, since nothing here is recorded. */
 export function patch(sessionId: string, ops: PatchOp[]): DeskPatchResult {
@@ -36,24 +42,10 @@ export function patch(sessionId: string, ops: PatchOp[]): DeskPatchResult {
   const ui: Ui = { ...read(sessionId) };
   for (const op of ops) {
     const [field] = parsePointer(op.path);
-    const removing = op.op === "remove";
-    if (field === "open") {
-      if (removing) delete ui.open;
-      else if (OPENABLE.has(String(op.value))) ui.open = op.value as Ui["open"];
-      else continue;
-      delete ui.focus;
-      delete ui.new;
-      delete ui.confirm;
-    } else if (field === "focus" || field === "confirm") {
-      const value = String(op.value ?? "").trim().toUpperCase();
-      if (removing) delete ui[field];
-      else if (field === "focus" && value === "CLOCK") ui.focus = "clock";
-      else if (SYMBOL.test(value)) ui[field] = value;
-      else continue;
-    } else if (field === "new") {
-      if (removing) delete ui.new;
-      else if (op.value === "board") ui.new = "board";
-      else continue;
+    if (field === "page") {
+      const page = op.op === "remove" ? "" : placed(op.value);
+      if (page === undefined) continue;
+      ui.page = page;
     } else if (!patchCollections(ui, op)) {
       continue; // not a reading, find's word or the eye either (src/bento.ts)
     }

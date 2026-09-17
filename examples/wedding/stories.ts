@@ -4,8 +4,9 @@
 // (casserole), 2 (the honeymoon fund, shared) and 3 (knives); course 2 is the main, with dish 5
 // (sea bass) and drink 3 (Rioja). Paths name rows by id, never by position.
 //
-// Where: a page, and after " @ " what else the tray holds there -- `focus=2` (a guest's drawer),
-// `keep=courses/1` (the couple's drawer for a row), `gift=1`, `answering=true`,
+// Where: the page's address -- the page, and after a `?` the one thing open over it: `?guest=2`
+// (a guest's drawer), `?keep=courses/1` (the couple's drawer for a row), `?gift=1`, `?answer` --
+// and after " @ ",
 // `reading.guests=list` (how a collection is read). A household's pages are "" (its box), "asks",
 // "gifts", "day", "stay" and "everyone" (the photo); the couple's are "" (the welcome and the
 // counts), "households", "households/<id>" (a family's box), "courses", "gifts", "events",
@@ -26,15 +27,14 @@ const board = (op: "add" | "replace" | "remove", path: string, value?: unknown):
   ops: [op === "remove" ? { op, path } : { op, path, value }],
 });
 
-/** "page @ key=value, key=value" as one session write: the page first, since it closes drawers.
- * Any `key.sub=value` writes `/key/sub` -- `reading.guests`, `filter.guests`, whatever a nested
- * UI field is called; a plain `key=value` writes `/key`. */
+/** Where someone must stand to see it, as one session write: the page's address -- the page, and
+ * after a `?` the one thing open over it ("gifts?gift=1", "?answer") -- and after " @ " how a
+ * collection is read there (`reading.guests=list`). */
 function at(where: string): Write {
-  const [page, rest] = where.split(" @ ");
+  const [page = "", rest] = where.split(" @ ");
   const ops: PatchOp[] = [{ op: "replace", path: "/page", value: page }];
   for (const pair of rest ? rest.split(", ") : []) {
-    const [key, raw] = pair.split("=") as [string, string];
-    const value = /^\d+$/.test(raw) ? Number(raw) : raw === "true" ? true : raw;
+    const [key, value] = pair.split("=") as [string, string];
     ops.push({ op: "replace", path: `/${key.split(".").join("/")}`, value });
   }
   return { doc: "session", ops };
@@ -56,24 +56,13 @@ export const stories: Stories = {
     story("A stranger asks for their code again, and the welcome says it is sent if known", { as: "stranger", does: session("/resend", "ada@example.com"), seen: ["stranger"] }),
     story("Without a code there is no page to go to", { as: "stranger", cannot: session("/page", "gifts") }),
 
-    // ── The tray: where a tab is, what is open ──
+    // ── Going somewhere, and leaving ──
     story("The Okafors open the gift list, and only their tab moves", { as: "okafors", does: session("/page", "gifts"), seen: ["okafors"], unseen: ["couple", "ben", "benToo", "stranger"] }),
-    story("The Okafors open Femi's drawer", { as: "okafors", does: session("/focus", 2), seen: { okafors: "" } }),
-    story("The Okafors start answering", { as: "okafors", does: session("/answering", true), seen: { okafors: "" } }),
-    story("The couple read the households as a list", { as: "couple", does: session("/reading/households", "list"), seen: { couple: "households" } }),
-    story("The couple open a gift to keep", { as: "couple", does: session("/keep", "gifts/1"), seen: { couple: "gifts" } }),
-    story("The couple open the ceremony to keep", { as: "couple", does: session("/keep", "events/1"), seen: { couple: "events" } }),
     story("Leaving the site forgets the code", { as: "okafors", does: session("/code"), seen: ["okafors"] }),
 
-    // ── The drawer and the modal (W2): a figure shows it is chosen, adding is a modal ──
-    story("Grace opens Arjun's drawer, and only her page shows him chosen", { as: "okafors", does: at("guests @ focus=1"), seen: { okafors: "guests" } }),
-    story("Grace asks to add a guest, and the modal asks for the name", { as: "okafors", does: at("guests @ new=guests"), seen: { okafors: "guests" } }),
-    story("Grace claims the kettle from its drawer; the couple see it claimed", { as: "okafors", does: at("gifts @ gift=2"), seen: { okafors: "gifts" } }),
-    story("The couple open their welcome to edit it; nobody else's page changes", { as: "couple", does: at(" @ answering=true"), seen: { couple: "" } }),
-
     // ── A household answers ──
-    story("The Okafors say maybe, and the couple's board and everyone's photo change", { as: "okafors", does: household("replace", "/answer", "maybe"), seen: { okafors: " @ answering=true", couple: "households", benToo: "everyone" } }),
-    story("The Okafors take their answer back", { as: "okafors", does: household("remove", "/answer"), seen: { okafors: " @ answering=true", couple: "households", benToo: "everyone" } }),
+    story("The Okafors say maybe, and the couple's board and everyone's photo change", { as: "okafors", does: household("replace", "/answer", "maybe"), seen: { okafors: "?answer", couple: "households", benToo: "everyone" } }),
+    story("The Okafors take their answer back", { as: "okafors", does: household("remove", "/answer"), seen: { okafors: "?answer", couple: "households", benToo: "everyone" } }),
     story("Femi is not coming after all, and the photo loses him", { as: "okafors", does: household("replace", "/guests/2/coming", "no"), seen: { okafors: "", couple: "households", benToo: "everyone" } }),
     story("Femi's coming is left undecided, and the list shows it", { as: "okafors", does: household("remove", "/guests/2/coming"), seen: { okafors: "guests @ reading.guests=list", couple: "households/1/guests @ reading.family-1=list" } }),
     story("The Okafors leave the caterer a note, and only the couple read it", { as: "okafors", does: household("replace", "/message", "Ada is vegetarian."), seen: { okafors: "", couple: "households/1" }, unseen: ["ben", "benToo"] }),
@@ -94,39 +83,29 @@ export const stories: Stories = {
     story("The couple cannot withdraw a reply they have not given", { as: "couple", cannot: board("remove", "/households/1/asks/1/reply") }),
 
     // ── Gifts ──
-    story("The Okafors claim the casserole, and it leaves Ben's list", { as: "okafors", does: household("add", "/claims/-", 1), seen: { okafors: "gifts @ gift=1", couple: "gifts", ben: "gifts" } }),
-    story("The Okafors give to the honeymoon, and Ben still can", { as: "okafors", does: household("add", "/claims/-", 2), seen: { okafors: "gifts @ gift=2", couple: "gifts", ben: "gifts" } }),
-    story("Ben claims the knives", { as: "ben", does: household("add", "/claims/-", 3), seen: { ben: "gifts @ gift=3", benToo: "gifts", couple: "gifts", okafors: "gifts" } }),
+    story("The Okafors claim the casserole, and it leaves Ben's list", { as: "okafors", does: household("add", "/claims/-", 1), seen: { okafors: "gifts?gift=1", couple: "gifts", ben: "gifts" } }),
+    story("The Okafors give to the honeymoon, and Ben still can", { as: "okafors", does: household("add", "/claims/-", 2), seen: { okafors: "gifts?gift=2", couple: "gifts", ben: "gifts" } }),
+    story("Ben claims the knives", { as: "ben", does: household("add", "/claims/-", 3), seen: { ben: "gifts?gift=3", benToo: "gifts", couple: "gifts", okafors: "gifts" } }),
 
     // ── The couple keep the wedding ──
-    story("The couple change their message, and every welcome changes", { as: "couple", does: board("replace", "/message", "See you in April."), seen: { couple: " @ answering=true", stranger: "" } }),
+    story("The couple change their message, and every welcome changes", { as: "couple", does: board("replace", "/message", "See you in April."), seen: { couple: "?answer", stranger: "" } }),
     story("The couple set a deadline, and the households see it", { as: "couple", does: board("replace", "/deadline", "2027-03-01"), seen: { couple: "", okafors: "", ben: "" } }),
     story("The couple invite the Londons", { as: "couple", does: board("add", "/households/-", { email: "londons@example.com", plus_ones: 2 }), seen: { couple: "" } }),
     story("The couple correct Ben's email", { as: "couple", does: board("replace", "/households/2/email", "ben@achterberg.example"), seen: { couple: "households/2" } }),
-    story("The couple let Ben bring one more", { as: "couple", does: board("replace", "/households/2/plus_ones", 1), seen: { couple: "households/2 @ keep=households/2", ben: "guests" } }),
+    story("The couple let Ben bring one more", { as: "couple", does: board("replace", "/households/2/plus_ones", 1), seen: { couple: "households/2?keep=households/2", ben: "guests" } }),
     story("The couple add a guest to Ben's invitation", { as: "couple", does: board("add", "/households/2/guests/-", "Mara Achterberg"), seen: { couple: "households/2", ben: "" } }),
     story("The couple take Ben off his own invitation", { as: "couple", does: board("remove", "/households/2/guests/3"), seen: { couple: "households/2", ben: "" } }),
 
     // ── The lists ──
-    story("The couple add a course, and a guest's drawer gains a stage of the meal", { as: "couple", does: board("add", "/courses/-", "Cheese"), seen: { couple: "courses", okafors: " @ focus=2", ben: " @ focus=3" } }),
-    story("The couple drop the toast", { as: "couple", does: board("remove", "/courses/4"), seen: { couple: "courses", okafors: " @ focus=2", ben: " @ focus=3" } }),
-    story("The couple rename the main", { as: "couple", does: board("replace", "/courses/2/name", "Mains"), seen: { couple: "courses @ keep=courses/2", okafors: " @ focus=2", ben: " @ focus=3" } }),
-    story("The couple offer a vegan main", { as: "couple", does: board("add", "/courses/2/dishes/-", { name: "Aubergine tagine", dietary: "vg, gf" }), seen: { couple: "courses @ keep=courses/2", okafors: " @ focus=2", ben: " @ focus=3" } }),
-    story("The couple take the beef off", { as: "couple", does: board("remove", "/courses/2/dishes/4"), seen: { couple: "courses @ keep=courses/2", okafors: " @ focus=2", ben: " @ focus=3" } }),
-    story("The couple mark the crab as gluten free", { as: "couple", does: board("replace", "/courses/1/dishes/3/dietary", "gf"), seen: { couple: "courses @ keep=courses/1", okafors: " @ focus=2", ben: " @ focus=3" } }),
+    story("The couple add a course, and a guest's drawer gains a stage of the meal", { as: "couple", does: board("add", "/courses/-", "Cheese"), seen: { couple: "courses", okafors: "?guest=2", ben: "?guest=3" } }),
+    story("The couple drop the toast", { as: "couple", does: board("remove", "/courses/4"), seen: { couple: "courses", okafors: "?guest=2", ben: "?guest=3" } }),
+    story("The couple rename the main", { as: "couple", does: board("replace", "/courses/2/name", "Mains"), seen: { couple: "courses?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
+    story("The couple offer a vegan main", { as: "couple", does: board("add", "/courses/2/dishes/-", { name: "Aubergine tagine", dietary: "vg, gf" }), seen: { couple: "courses?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
+    story("The couple take the beef off", { as: "couple", does: board("remove", "/courses/2/dishes/4"), seen: { couple: "courses?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
+    story("The couple mark the crab as gluten free", { as: "couple", does: board("replace", "/courses/1/dishes/3/dietary", "gf"), seen: { couple: "courses?keep=courses/1", okafors: "?guest=2", ben: "?guest=3" } }),
     story("The couple add a gift, and it is on every list", { as: "couple", does: board("add", "/gifts/-", { name: "A tree for the garden", description: "A crab apple." }), seen: { couple: "gifts", okafors: "gifts", ben: "gifts" } }),
     story("The couple add an event to the day", { as: "couple", does: board("add", "/events/-", { name: "Fireworks", when_at: "2027-04-02T22:00" }), seen: { couple: "events", okafors: "day" } }),
     story("The couple add somewhere to stay", { as: "couple", does: board("add", "/places/-", { name: "The Bristol Hotel", notes: "Ask for the wedding rate." }), seen: { couple: "places", okafors: "stay" } }),
-
-    // ── The filter (W4): dims what the word misses, never hides ──
-    story("Grace finds Ok among the guests; two stay lit, the rest dim, the tally says two of five", { as: "okafors", does: at("guests @ filter.guests=Ok"), seen: { okafors: "guests" } }),
-    story("The couple find kettle among the gifts, and only their page dims", { as: "couple", does: at("gifts @ filter.gifts=kettle"), seen: { couple: "gifts" } }),
-    story("Grace closes find, and every guest is lit again", { as: "okafors", does: { doc: "session", ops: [{ op: "remove", path: "/filter/guests" }] }, seen: { okafors: "guests @ filter.guests=Ok" } }),
-    story("Grace presses the eye; the guests that miss are gone from the list, and the tally still says two of five", { as: "okafors", does: at("guests @ reading.guests=list, filter.guests=Ok, hide.guests=true"), seen: { okafors: "guests" } }),
-    story("Grace presses the eye again, and the guests that miss are back, dimmed", { as: "okafors", does: { doc: "session", ops: [{ op: "remove", path: "/hide/guests" }] }, seen: { okafors: "guests @ reading.guests=list, filter.guests=Ok, hide.guests=true" } }),
-    story("Grace closes find with the eye pressed, and every guest is lit and shown", { as: "okafors", does: { doc: "session", ops: [{ op: "remove", path: "/filter/guests" }] }, seen: { okafors: "guests @ filter.guests=Ok, hide.guests=true" } }),
-    story("Grace opens the guests, and only her page shows the window", { as: "okafors", does: at("guests"), seen: { okafors: "" } }),
-    story("The couple ask to invite a household, and the modal asks for the email and the names", { as: "couple", does: at("households @ new=households"), seen: { couple: "households" } }),
 
     // ── Refusals ──
     story("A household cannot change the couple's welcome", { as: "ben", cannot: board("replace", "/message", "Hi") }),

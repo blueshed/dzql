@@ -99,6 +99,16 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `location.pathname`, (v) => v === "/gifts");
     await waitFor(view, CRUMBS, (v) => typeof v === "string" && v.includes("Gifts"));
 
+    // a drawer is part of the address: opening a gift's puts it in the URL, the back button puts
+    // the drawer away and leaves the page, and a link with it in opens it
+    await view.evaluate(`document.querySelector('.cell.open .row.tap').click()`);
+    await waitFor(view, `location.search`, (v) => typeof v === "string" && v.startsWith("?gift="));
+    await waitFor(view, `document.querySelector('#gift-sheet') !== null`, (v) => v === true);
+    const gift = await view.evaluate(`location.search`);
+    await view.evaluate(`history.back()`);
+    await waitFor(view, `document.querySelector('#gift-sheet') === null`, (v) => v === true);
+    expect(await view.evaluate(`location.pathname + location.search`)).toBe("/gifts");
+
     // the browser's own back button: a popstate, not a click in the page -- the session follows
     // the URL back, rather than the URL being the only thing that moved (every household page's
     // crumbs include the household's own code, so the absence of "Gifts" is what distinguishes
@@ -113,7 +123,11 @@ describe("the wedding in a real browser", () => {
     await view.navigate(`${server.url}stay`);
     await waitFor(view, `location.pathname`, (v) => v === "/stay");
     await waitFor(view, CRUMBS, (v) => typeof v === "string" && v.includes("Where to stay"));
-  });
+
+    // and a link with a drawer in it opens the drawer
+    await view.navigate(`${server.url}gifts${gift}`);
+    await waitFor(view, `document.querySelector('#gift-sheet') !== null`, (v) => v === true);
+  }, 20000);
 
   test("the answer: the pencil opens the drawer, an option writes it, the bubble shows it, Undo takes it back", async () => {
     await using view = new Bun.WebView();
@@ -142,7 +156,7 @@ describe("the wedding in a real browser", () => {
     boardDoc.patch("DASH", [{ op: "add", path: "/gifts/-", value: { name: "Toaster", description: "starter" } }], "setup");
     const giftId = boardDoc.read("DASH")!.gifts.at(-1)!.id;
 
-    await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/keep", value: "gifts/${giftId}" }] }))`);
+    await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/page", value: "gifts?keep=gifts/${giftId}" }] }))`);
     await waitFor(view, `document.querySelector('.keep-sheet input[name=name]') !== null`, (v) => v === true);
 
     // change two fields of the same editing form before either loses focus, then trigger just one:

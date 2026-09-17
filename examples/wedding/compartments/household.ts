@@ -60,11 +60,6 @@ function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined
 const replace = (target: string, html: string): HtmlOp => ({ op: "replace", target, html });
 
 
-/** A modal asks one question; the write that answers it closes it (rule 14): a household's adds (a guest, an ask) close the ask. */
-function closeAsked(sessionId: string, applied: { op: string; path: string }[]): void {
-  if (sessionDoc.read(sessionId).ui.new && applied.some((op) => op.op === "add" && op.path.endsWith("/-"))) sessionDoc.patch(sessionId, [{ op: "remove", path: "/new" }]);
-}
-
 /** A household's pages. `viewFor` is always there in practice: read() only reports a kind for a code that exists. */
 export function renderHousehold(session: sessionDoc.SessionDocument): string | undefined {
   const v = viewFor(session);
@@ -113,7 +108,7 @@ export const household: Compartment = {
       return [{ ...op, value: { name } }];
     });
     const result = householdDoc.patch(code, named, ws.data.sessionId, undoes);
-    if (fresh) closeAsked(ws.data.sessionId, result.applied);
+    if (fresh) sessionDoc.closeAnswered(ws.data.sessionId, result.applied);
     notify("household", code, result, { renderTo: allOpenSockets() });
     return result;
   },
@@ -134,7 +129,8 @@ export const household: Compartment = {
       else choices = true;
     }
     const session = sessionDoc.read(ws.data.sessionId);
-    const [head, second, third] = (session.ui.page ?? "").split("/");
+    const at = sessionDoc.over(session.ui);
+    const [head, second, third] = at.path.split("/");
     const ops: HtmlOp[] = [];
 
     if (session.kind === "household") {
@@ -154,7 +150,7 @@ export const household: Compartment = {
         if (looks) ops.push(replace("#family-mini", familyMini(v)));
       }
       if (own) {
-        const focused = v.h.guests.find((g) => g.id === session.ui.focus);
+        const focused = v.h.guests.find((g) => g.id === at.focus);
         if (focused && guests.has(focused.id)) {
           if (looks) ops.push(replace(`#dress-${focused.id}`, dressMount(v, focused)));
           if (choices) ops.push(replace(`#menu-${focused.id}`, menuMount(v, focused)));

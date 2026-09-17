@@ -3,18 +3,23 @@ import { history } from "../../../src/ledger";
 import { patch, read } from "./desk";
 
 describe("the desk (the ticker's tray)", () => {
-  test("a fresh session has nothing open; what opens closes the drawer and the modals; unknown compartments do not open", () => {
+  test("the desk keeps one address: a window it has, and over it a symbol, the clock, the ask or the asking-first; anywhere else is nowhere", () => {
     const id = crypto.randomUUID();
     expect(read(id)).toEqual({});
-    patch(id, [{ op: "replace", path: "/open", value: "board" }, { op: "replace", path: "/focus", value: "brvo" }, { op: "replace", path: "/new", value: "board" }, { op: "replace", path: "/confirm", value: "BRVO" }]);
-    expect(read(id)).toEqual({ open: "board", focus: "BRVO", new: "board", confirm: "BRVO" });
-    patch(id, [{ op: "replace", path: "/open", value: "market" }]);
-    expect(read(id)).toEqual({ open: "market" });
-    expect(patch(id, [{ op: "replace", path: "/open", value: "attic" }, { op: "replace", path: "/new", value: "market" }, { op: "replace", path: "/focus", value: "not a symbol" }, { op: "replace", path: "/attic", value: 1 }]).applied).toEqual([]);
-    patch(id, [{ op: "remove", path: "/open" }, { op: "replace", path: "/focus", value: "clock" }]);
-    expect(read(id)).toEqual({ focus: "clock" });
-    patch(id, [{ op: "remove", path: "/focus" }, { op: "remove", path: "/new" }, { op: "remove", path: "/confirm" }]);
-    expect(read(id)).toEqual({});
+    const go = (value: unknown) => patch(id, [{ op: "replace", path: "/page", value }]).applied.length;
+    expect(go("board")).toBe(1);
+    expect(go("board?symbol= brvo ")).toBe(1); // a symbol is kept as the market writes it
+    expect(read(id)).toEqual({ page: "board?symbol=BRVO" });
+    expect(go("board?confirm=BRVO")).toBe(1);
+    expect(go("board?new")).toBe(1);
+    expect(go("?clock")).toBe(1);
+    expect(read(id)).toEqual({ page: "?clock" });
+    // nowhere: a window the desk lacks, a thing that is not a symbol, the ask anywhere but the board, a stray key
+    for (const nowhere of ["attic", "market?symbol=not a symbol", "market?new", "board?attic=1", undefined]) expect(go(nowhere === undefined ? "attic" : nowhere)).toBe(0);
+    expect(patch(id, [{ op: "replace", path: "/attic", value: 1 }]).applied).toEqual([]);
+    expect(read(id)).toEqual({ page: "?clock" });
+    patch(id, [{ op: "remove", path: "/page" }]);
+    expect(read(id)).toEqual({ page: "" });
   });
 
   test("a reading, find's word and the eye are kept by the collection's name; closing find forgets the eye; nothing is on the ledger", () => {

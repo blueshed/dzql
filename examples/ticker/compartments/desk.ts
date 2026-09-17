@@ -9,7 +9,7 @@ import { notify } from "../../../src/compartments/audience";
 // find says, echoes them to their own connection, and asks for the page: a visit is nobody
 // else's to see, and nothing here is on the ledger, so there is no replay.
 
-const WRITABLE = new Set(["open", "focus", "new", "confirm", "reading", "filter", "hide"]);
+const WRITABLE = new Set(["page", "reading", "filter", "hide"]);
 
 export const desk: Compartment = {
   docType: "desk",

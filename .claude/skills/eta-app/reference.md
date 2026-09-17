@@ -1,531 +1,194 @@
 # eta reference
 
-Detail behind the checklist in `SKILL.md`, with excerpts from `examples/chat`
-and the kernel it runs on. `examples/wedding` is the second example: three
-documents, a permit surface as a table of paths and ops, applets that take
-their data as props (`applets/photo.ts`, `dress.ts`, `menu.ts`,
-`picture-field.ts`), and an `Example.routes` entry for uploaded pictures.
+How each piece works, one section a piece. `SKILL.md` is the order to work in; the types in `src/`
+are the contract itself, and where this file and the code disagree, the code is right.
 
-## How a page is rendered
+## The page
 
-`Example.render(sessionId)` returns the whole page for a session, as HTML, and it is the only
-renderer. It decides which screen (chat: the name form, the rooms, or the room; the wedding: the
-welcome, a household's pages, or the couple's) and reads whichever documents it must. A
-compartment has no place on the page of its own: it owns a document, not an element. A write is
-answered with what its compartment's `fragments` says changed, or with the page.
+`Example.render(sessionId)` returns the whole page for a session, as HTML. It is the only renderer:
+it decides which screen (chat: the name form, the rooms, or the room) and reads whichever documents
+it must. A compartment owns a document, not a place on the page. A write is answered with what its
+compartment's `fragments` says changed, or with the page.
 
-## The `Example` seam
-
-`src/example.ts`:
+## `Example` (`src/example.ts`)
 
 ```ts
 export type Example = {
-  name: string;             // namespaces its migrations
-  compartments: Compartment[];      // one per document type, the session's own first; the kernel appends its ledger
-  render(sessionId: string): string; // the whole page, as HTML
+  name: string;                       // namespaces its migrations
+  compartments: Compartment[];        // one per document type, the session's own first; the kernel appends its ledger
+  render(sessionId: string): string;  // the whole page
   active(sessionId: string): boolean; // may this session write at all right now?
-  index: HTMLBundle;        // served at "/"
-  routes?: Record<string, Bun.Serve.BaseRouteValue | RouteHandler>; // merged in; a kernel route of the same path wins
+  index: HTMLBundle;                  // served at "/" and at any path the kernel does not own
+  routes?: Record<string, ...>;       // extra HTTP routes; a kernel route of the same path wins
 };
 ```
 
-`examples/chat/index.ts` is the whole thing an example needs:
+`active` exists because only the example knows what "signed in" means. The kernel uses it to gate
+undo: a stale, logged-out tab must not walk back a write made before it went stale. `src/start.ts`
+runs `examples/${ETA_EXAMPLE}/index.ts` (default `chat`); one process serves one example.
+
+## `Compartment` (`src/compartments/compartment.ts`)
 
 ```ts
-export const example: Example = {
-  name: "chat",
-  compartments: [session, room],
-  render,
-  active: (sessionId) => sessionDoc.read(sessionId).name !== null,
-  index,
-};
-```
-
-`active()` exists because the kernel can't derive "is this session logged
-in" generically — only the example knows what that means for its own
-documents. The kernel uses it in the ledger compartment to gate undo: a stale,
-logged-out tab shouldn't be able to undo a write made before it went stale.
-(Domain compartments should also consult their session document in `permit()`
-to guard their own regular writes).
-
-The session's own document (chat's and the wedding's `session`, the ticker's `desk`) is a
-compartment like any other; CLAUDE.md and the bento call it the tray. The kernel appends its own
-ledger compartment when it calls `assemble(example)`.
-
-`src/start.ts` resolves `examples/${ETA_EXAMPLE}/index.ts` (env var,
-default `chat`) and passes its `example` export to `createServer`. One
-process serves exactly one example — calling `createServer` with a
-*different* `Example` object while a server for the first is still running
-throws.
-
-## The `Compartment` contract
-
-`src/compartments/compartment.ts`:
-
-```ts
-export type WriteResult = { version: number; applied: PatchOp[] };
-
 export type Compartment = {
-  docType: string; // e.g. "session", "room" — what this compartment owns on the wire
-  resolveDoc(ws): string | undefined; // the doc id this connection currently sees for its docType
-  sees?(ws, docId: string): boolean; // does this connection see docId -- not just its own resolveDoc; defaults to resolveDoc(ws) === docId
-  permit(ws, op: PatchOp): boolean;   // may this connection apply op?
-  write(ws, docId: string, ops: PatchOp[], undoes?: number): WriteResult; // apply + notify(); asks every connection that sees the doc to update, itself included. `undoes` set = undo or redo: a recorded inverse, permit() not asked
-  fragments?(ws, docId: string, result: WriteResult): HtmlOp[] | undefined; // the delta in HTML's terms, per connection; [] = nothing changed here; undefined = decline (the kernel's own default applies)
+  docType: string;                         // what it owns on the wire: "session", "room"
+  resolveDoc(ws): string | undefined;      // the document id this connection sees for this docType
+  sees?(ws, docId): boolean;               // who else sees it; default: resolveDoc(ws) === docId
+  permit(ws, op): boolean;                 // may this connection write this path?
+  write(ws, docId, ops, undoes?): WriteResult; // apply, then notify()
+  fragments?(ws, docId, result): HtmlOp[] | undefined;
   onOpen?(ws): void;
   onClose?(ws): void;
 };
 ```
 
-### Who sees a document: `sees`, `audienceFor`, `notify`
+- **`permit` and `patch()` split the question.** May this connection write this path is
+  `permit`'s; is this value valid is the document's `patch()`'s.
+- **One `write`, fresh or walked.** Fresh from the wire, `permit` said yes and `undoes` is
+  undefined. When the ledger walks an entry back or forward it calls the same `write` with the
+  recorded inverse and the entry's id as `undoes`; `permit` is not asked. What a compartment does
+  to a fresh value (chat shapes text into a message; the wedding keeps only a plus-one's name) it
+  does only when `undoes` is undefined.
+- **React to another compartment through an event** (`src/compartments/bus.ts`), exported by the
+  compartment that emits it: chat's `sessionPatched` lets the room announce who came and went. Do
+  not patch another compartment's document from your own `write()`.
 
-A compartment answers "who sees this document", the kernel keeps the
-one registry of open connections that question needs, and neither has to be built twice per
-example. `src/compartments/audience.ts` exports three things:
+## Telling a write (`src/compartments/audience.ts`)
 
-- `audienceFor(docType, docId, exclude?)`: every open connection whose owning compartment says it
-  sees `docId` -- `sees?(ws, docId)` if implemented, else `resolveDoc(ws) === docId` (right for a
-  document with one writer who is also its only reader -- most of them). `exclude` leaves one
-  socket out regardless (an announcement that doesn't need telling about itself).
-- `notify(docType, docId, result, {echoTo?, renderTo?})`: the one way a write is told. It echoes
-  `result`'s applied ops and asks for pages to be brought up to date; by default both go to
-  `audienceFor(docType, docId)`, the writer included. `echoTo` replaces who hears the ops (chat's
-  presence leaves out the socket that came or went); `renderTo` widens who is redrawn without
-  widening who gets the ops (the wedding passes `allOpenSockets()`: a total or the "everyone"
-  photo can change from any household's write, but the raw ops of a document that isn't yours
-  mean nothing on your page). A tray calls it too: its audience is the session's own tabs, and
-  having no element of its own, each is shown the page. Nothing applied tells nobody. Don't send
-  a patch message or ask for a render by hand.
-- `allOpenSockets()`: every open connection, for `renderTo`. Reach for the default first.
+- `notify(docType, docId, result, {echoTo?, renderTo?})` is the one way. It echoes the applied ops
+  and asks for pages to be brought up to date; by default both go to everyone who sees the
+  document, the writer included. `echoTo` replaces who hears the ops (chat's presence leaves out
+  the socket that came or went); `renderTo` widens who is redrawn (the wedding passes
+  `allOpenSockets()`, since totals and the photo draw on every household). Nothing applied tells
+  nobody. Never send a patch or ask for a render by hand.
+- `audienceFor(docType, docId, exclude?)`: every open connection that sees the document.
+- The kernel never brings a write's own connection up to date separately. A `write()` that forgets
+  to `notify` leaves its writer stale, and the stories catch it.
 
-Most compartments never implement `sees` at all: `resolveDoc`'s default is exactly right when a
-document's writer is also its only reader (chat's `room`, the wedding's `board`, the ticker's
-`clock`/`watchlist`). Implement it when someone else genuinely sees a
-document without writing it -- the wedding's `household`:
-
-```ts
-sees(ws, docId) {
-  const session = sessionDoc.read(ws.data.sessionId);
-  return session.kind === "couple" || (session.kind === "household" && session.code === docId);
-},
-```
-
-### What a write is answered with
-
-There's no `rendered` flag on `WriteResult`: a write's own connection is brought up to date
-exactly like every other that sees the document, and it's the compartment's job to ask (`notify`,
-above) for all of them, itself included; the kernel never renders the writer a second time. What
-each gets is what the compartment's `fragments` says changed on their page, or the page whole.
-The morph finds what changed in a whole page, so the page is always right; `fragments` is for
-where smaller is worth the care. Forgetting to `notify` is a real bug -- the writer's own
-connection would never hear back -- and the stories catch it: a member's open page is compared
-with a fresh render.
-
-### `fragments` — smaller than the page
-
-A compartment that can say which elements a write touched can answer smaller than the page --
-`fragments(ws, docId, result)` with HTML ops instead:
+## `fragments`: smaller than the page
 
 ```ts
 type HtmlOp = { op: "replace" | "add"; target: string; html: string } | { op: "remove"; target: string };
 ```
 
-`replace` morphs one element (give it an id); `add` appends inside one; `remove` takes one out.
-`[]` means nothing on this connection's page changed and nothing is sent; `undefined` declines,
-and the page goes.
-`notify()` is what makes the kernel ask at all -- it names the write in the render request it
-emits (`{ sockets, write: { docType, docId, result } }`) for `server.ts`'s listener to read.
-Chat answers every room write (`examples/chat/compartments/room.ts`); the wedding answers a look
-or a choice per viewer's page and declines the rest (`examples/wedding/compartments/household.ts`)
--- its `board` compartment implements no `fragments` at all, so every board write is answered
-with the page. Every target a `fragments` names has to be right for every state the page can be
-in: the ticker's hand-kept lists went stale four times before its watchlist and clock stopped
-answering. Anything the applet shows goes as its new `data-props`, whole.
+`replace` morphs one element (give it an id), `add` appends inside one, `remove` takes one out.
+`[]` says nothing on this connection's page changed; `undefined` declines and the page goes. The
+morph finds what changed in a page, so the page is always right. Answer smaller only where it is
+worth the care: every target has to be right for every state the page can be in, and the ticker's
+hand-kept lists went stale four times. Chat answers a message with one `<li>`; the ticker answers
+a tick with `[]`, because its board applet took the patch.
 
-A compartment that must react to another's writes listens for an event
-(`src/compartments/bus.ts`: `createEvent()`/`.on()`/`.emit()`): chat's `sessionPatched` fires after
-a session write so `room.ts` can announce who arrived and who left. The event is exported by the
-compartment that emits it; importing that one name is not reaching into its document. Do not patch another
-compartment's document from your own `write()` -- the wedding and the ticker do, to close a modal,
-and the ops they apply that way are echoed to nobody.
+## Documents
 
-`src/compartments/index.ts`'s `assemble(example)` wires one example's compartments into a
-running set: it appends the kernel's own ledger compartment, builds the `docType -> Compartment`
-map `server.ts`'s dispatcher uses, and returns `renderFor`/`inspectFor`.
+A document module owns its SQL (prepared statements at module load) and exports `read(id)` and
+`patch(id, ops, sessionId, undoes?)`. `patch`:
 
-### One `write`, fresh or walked
+- parses each op's JSON Pointer path, validates and trims the value, and skips what is invalid
+  (not pushed to `applied`);
+- applies the change and builds the inverse (`inverse.unshift(...)`: inverses undo in reverse). A
+  `replace` whose old value was unset inverts to a `remove`, or undoing a first write does nothing;
+- calls `record(prefixDoc(docType, id), applied, inverse, sessionId, undoes)` once and returns
+  `{version, applied}`. Pass the acting `sessionId`, not the document id: undo is per session;
+- is one transaction: `export const patch = db.transaction(function patch(...) {...})`. Its
+  statements and the ledger row commit together or not at all; a transaction inside another is a
+  savepoint.
 
-`write(ws, docId, ops, undoes?)` is the one path to a document. Fresh from the wire, `permit()` has
-already said yes and `undoes` is undefined. When the ledger walks an entry back or forward (undo,
-redo) it calls the same `write` with the recorded inverse and that entry's id as `undoes`: `permit`
-is not asked, and `record()` links the new row to the one it walks. Apply, then `notify` -- the
-same either way. What a compartment does to a fresh value it does only when `undoes` is undefined:
-chat's room shapes the text into a message by its author; the wedding's household keeps only the
-name of a plus-one. An inverse arrives whole and is applied as it is.
+Address a row in a shared list by its id, never its position: other people write between a write
+and its undo. A document is off the ledger by never calling `record()` (the wedding's session,
+chat's presence); a fact from outside is recorded with `undoable: false` (the ticker's ticks).
 
-## Documents: `read`/`patch`
+**The ledger** (`src/ledger.ts`) is the only undo state. `nextUndo(sessionId)` is the newest row
+the session wrote that is neither an undo nor undone; `nextRedo` the reverse. The kernel's ledger
+compartment takes `remove /latest` (undo) and `add /latest` (redo) and calls the owning
+compartment's `write` with the inverse.
 
-A document module owns its own SQL (prepared statements at module load) and
-is the *only* place that decides what value is valid — `permit()` only
-answers "may this connection write this path at all," never "is this value
-okay." `examples/chat/documents/session.ts::patch()`:
+**Migrations.** `migrate(db, dir, namespace)` records each file as `${namespace}/${file}`, so the
+kernel's and an example's cannot collide. An example's `db.ts` runs its own and re-exports `db`;
+its documents import `db` from there, so migrations run before any prepared statement.
 
-- Parses the JSON Pointer path (`parsePointer`) to find which field is being
-  written.
-- Validates and trims the value; an invalid one is silently skipped (`continue`),
-  not pushed to `applied`.
-- Builds the SQL-level effect and appends the applied op plus its inverse
-  (`inverse.unshift(...)`, since inverses undo in reverse order).
-- Decides whether the write is the person's to undo. A fact from outside -- a price tick, a
-  reading -- is recorded with `undoable: false` (the sixth argument to `record()`): on the
-  ledger for history, never under Undo (`examples/ticker/documents/market.ts`). A document
-  that is pure UI state (the wedding's session) records nothing at all.
-- Calls `record(prefixDoc(docType, id), applied, inverse, sessionId, undoes)` once,
-  after the loop, and returns `{version, applied}`. Note: pass the acting
-  `sessionId` to `record()`, not the document `id` (for a session doc they are
-  the same, but for shared documents like `room` they differ; `nextUndo(sessionId)`
-  derives undo candidates by session, so attributing writes to `sessionId` is
-  essential).
+## The wire
 
-A `replace` op's inverse can't always be another `replace` — restoring "no
-value" (a field that was previously unset) must be a `remove`, or undoing a
-first-ever write would silently do nothing. See `restoreOp()` in
-`documents/session.ts` for the pattern.
+HTML is the only vocabulary. No JSON tree of app state.
 
-`patch()` is one transaction: wrap the exported function itself in
-`db.transaction(...)`, keeping its own name for stack traces and every call site unchanged --
-`export const patch = db.transaction(function patch(id, ops, ...) { ... });`. Every statement the
-function runs (including, through a helper like `householdDoc.addGuest`, a different document's)
-and the `record()` call at the end commit together or roll back together; `bun:sqlite` turns a
-transaction called from inside another into a savepoint, so this composes for free. `src/db.ts`
-also sets `PRAGMA journal_mode = WAL` once, right after the database opens -- one sync per commit
-instead of one per statement, and readers stop waiting on a writer; an in-memory database (the
-test suite's) answers it with `"memory"` and is otherwise unchanged.
+- Client to server: `{doc, ops: [{op, path, value?}]}`. `path` is a JSON Pointer, never a verb.
+- Server to client: `{type: "patch", doc, version, ops}` (what was applied; kept in
+  `window.eta.docs()`), then `{type: "render", html}` (the page) or `{type: "render", ops}`
+  (fragments).
+- `{type: "inspect", limit?}` answers with the documents this connection sees and their latest
+  ledger entries. An entry says `mine: true|false`, never who.
+- **A session id never goes on the wire.** It is the `session_id` cookie and a person's only
+  credential. No echo, render, op value or inspect reply may carry one.
 
-## Opting a write out of the ledger
+An element writes through `data-write='{"doc","op","path"}'`:
 
-A document is off the ledger by omission, not by a flag: if its `patch()` never calls
-`record()`, its version stays 0 (or, for a write that calls `record()` sometimes and not others,
-simply doesn't advance on the calls that skip it) and `nextUndo()` never finds anything to walk
-back for it. Two real examples: `examples/wedding/documents/session.ts`'s `patch()` never records
-at all (a visit's page/drawer state isn't the wedding's history -- undo there means "take back my
-last answer," never "go back a page"); `examples/chat/compartments/room.ts`'s presence ops
-(`add /people/-`, `remove /people/<index>`) are sent as plain room patches but built and echoed
-without ever touching `record()` (undoing an arrival is nonsense).
+- a **form** writes on submit: its one field's value, or a record of several. It resets only when
+  its own write is echoed, so a refused write keeps what was typed;
+- a **button or row** writes on click, with `data-value` if it has one. A click in a field never
+  writes;
+- a form with **`data-write-on="blur"`, `"change"` or `"input"`** edits in place: `data-write` goes
+  on each field, and every field whose value differs from what was rendered becomes one op in one
+  message. `"input"` is debounced ~150ms, flushed when focus leaves, and never repeats itself.
 
-## The ledger and undo
+`autofocus` means "this field is waiting for the caret": after a render the client focuses it, but
+only when nothing has the caret. `data-autoscroll` pins a list to its foot when it grows.
 
-`src/ledger.ts` is the single source of truth for undo — there's no separate
-"undo stack" state.
+## Where you are: the address (`src/bento.ts`)
 
-- `prefixDoc(docType, docId)` / `splitDoc(doc)`: the ledger's `doc` column is
-  always `"<docType>:<docId>"`.
-- `record(doc, ops, inverse, sessionId, undoes?)`: inserts one row per
-  successful patch (a no-op patch with empty `ops` doesn't create a version).
-  `undoes` marks a row as *itself* the replay of an earlier row, so it's
-  never picked as a future undo target.
-- `nextUndo(sessionId)`: the newest row this session wrote that is (a) not
-  itself an undo and (b) not yet undone — derived entirely from the table via
-  `id NOT IN (SELECT undoes FROM ledger WHERE undoes IS NOT NULL)`.
-- `history(doc, limit)`: most recent entries for a `doc`, for `inspect`.
+Keep where a session is as one string on its own document: `path?what=which` -- the page, and the
+one thing open over it (`guests?guest=2`, `gifts?new`, `?answer`). `address(path, what?, which?)`
+builds one and `parseAddress(page)` reads one. Opening a drawer or a modal is going to the same
+page with it named; closing it is going to the page alone; going anywhere puts away what was open.
 
-`src/compartments/ledger.ts`'s `createLedgerCompartment(lookup, active)` is a
-factory (not a fixed compartment) so it can find whichever compartment owns the
-document an undo lands on: it finds `nextUndo(sessionId)`, splits `.doc`
-into `{docType, docId}`, and calls
-`lookup(docType)!.write(ws, docId, entry.inverse, entry.id)`. No
-example-specific dispatch, no cross-compartment event needed for undo itself.
+Put the address in `data-page`, with the write that sets it in `data-page-write`, on any element
+of the page. The client mirrors it into the URL and sends the write on back and forward, so the
+back button closes a drawer and a link opens one. On first load the session catches up to the URL.
 
-## Migrations and namespacing
+## Pages: the bento (`src/bento.ts`, `src/bento.css`)
 
-`migrate(db, dir, namespace, legacy?)` (`src/migrate.ts`) records each
-applied file as `${namespace}/${file}` in the shared `_migrations` table, so
-the kernel (namespace `"eta"`) and any example (its own `name`) can't
-collide on a filename like `0001_*.sql`. `legacy` maps an old recorded name
-to its current file, for a dev database that ran migrations before a rename
-or before namespacing existed — safe to leave in place, idempotent.
+The rules are `examples/bento/README.md`. Bind the surfaces once per example:
+`bento({icon, tray, leave?})`, where `icon` is the example's own icon function, `tray` the docType
+find and the reading switch write to, and `leave` the last of the page's tools. It returns
+`boxPage`, `collectionPage`, `cell`, `row`, `tool`, `addTool`, `findControl`, `readingSwitch`,
+`sheet`, `addModal`, `confirmModal`. A page is a **box** (`boxPage(trail, inPlace, cells, open?)`:
+compartments in a tray, one grown into the window) or a **collection** (`collectionPage(trail,
+open)`: the window alone). Every gesture is a `data-write` string the caller hands in.
+`patchCollections(ui, op)` applies what find and the reading switch write (`/filter/<key>`,
+`/hide/<key>`, `/reading/<key>`). The stylesheet imports `src/bento.css` first, then says its
+tokens. `data-moving` names the element that grows (a view transition runs only when its own tag
+changes); `data-reveal` scrolls the chosen row into the clear.
 
-`examples/chat/db.ts` is the pattern every example's `db.ts` follows:
+Escalate only as the data forces: in place, then the compartment, then a drawer, then a window,
+then a modal. A list of five needs no find.
 
-```ts
-import { migrate } from "../../src/migrate";
-import { db } from "../../src/db";
+## Applets (`src/applets.ts`)
 
-migrate(db, `${import.meta.dir}/migrations`, "chat");
-export { db };
-```
-
-Every document module imports `db` from *this* file, never `../../src/db`
-directly — otherwise a document's module-load-time prepared statements
-could run before this example's migrations have.
-
-## The wire protocol
-
-HTML is the only vocabulary on the wire — no JSON tree of app state, ever.
-
-A session id never goes on the wire. It is the `session_id` cookie and a person's only credential:
-whoever holds it is them. `inspect` says `mine: true|false` on a ledger entry instead of who wrote
-it; a patch echo, a render and an op's value must not carry one either (chat's messages carry the
-author's name, never their session).
-
-- **Client -> server**: `{"doc": "<docType>", "ops": [PatchOp, ...]}` over
-  the one websocket (`/ws`). A `PatchOp` is `{op, path, value?}` (JSON Patch
-  shaped) where `path` is a JSON Pointer — never a function/verb name.
-- **Server -> client**: `{"type": "render", "html": "..."}` (a full page,
-  morphed in) or `{"type": "render", "ops": [HtmlOp, ...]}` (a compartment's
-  `fragments` answer), morphed one target at a time; or `{"type": "patch", "doc", "version", "ops"}` (an echo
-  of what was just applied, recorded into the client's `window.eta.docs()`
-  op-log — the *only* client-side domain state allowed).
-- `{"type": "inspect", "limit"?: n}` -> `{"type": "inspect", "docs": [{doc, version, entries}, ...]}`:
-  legibility without a log line, built by `assemble()`'s `inspectFor`. `entries` is that many of
-  the document's most recent ledger rows (default 1, i.e. just the latest); the CLI's `watch`
-  asks for more to catch up on history before following live patches.
-
-An element declares what it writes via `data-write='{"doc":...,"op":...,"path":...}'`:
-
-```html
-<form data-write='{"doc":"session","op":"replace","path":"/name"}'>
-  <input name="name" required />
-</form>
-```
-
-`src/client/app.ts` reads `data-write` on submit (value = the form's single
-named field, or a record of all fields if there's more than one — see
-`src/client/form-value.ts`) or on click of a `[data-write]` element that isn't
-itself a form (value = its `data-value`, or no value at all for a `remove`).
-A form resets only on the server's patch echo of its own write, so a write
-that is ignored or rejected leaves the person's typed input intact.
-
-`autofocus` means "this field is waiting for the caret". A browser honours it once per document,
-so after every render the client focuses the page's `[autofocus]` field itself -- but only when
-nothing has the caret (the row that was tapped is gone, the form that was submitted is gone),
-never from a field someone is in.
-
-### Forms that edit, not create
-
-That contract (one form, one path, reset on echo) fits a form that *creates* something —
-inviting a household, adding a course. It doesn't fit a form that *edits* a document already on
-the page, field by field, the way the wedding's keep drawers do: a gift's name, its words, its
-link, each its own path, none of it wanting a Save button of its own.
-
-For that, put `data-write` on the *fields*, not the form, and mark the form
-`data-write-on="blur"` (or `"change"`):
-
-```html
-<form data-write-on="blur">
-  <input name="name" value="Toaster" data-write='{"doc":"board","op":"replace","path":"/gifts/3/name"}'>
-  <input name="link" value="" data-write='{"doc":"board","op":"replace","path":"/gifts/3/link"}'>
-</form>
-```
-
-When a field inside such a form fires the named event, every `[data-write]` field in that form
-whose live value differs from what the last render put there becomes one op, and all of them go
-out together as a single `{doc, ops}` message — editing two fields and then clicking away sends
-one write, not two. The comparison is against an input's `value` *attribute* (a `<textarea>` has
-none, so its `defaultValue` — the DOM's mirror of its parsed content — stands in), not a
-client-side dirty flag; the morph keeps that attribute current, so this stays correct across
-renders without any bookkeeping. An editing form never sets the reset-on-echo state (it has no
-form-level `data-write` to key that off), so it never resets — a refused edit is handed back
-exactly as typed, the way a rejected create-form's input is.
-
-`data-write-on="input"` is the same shape, for a
-form that ought to write on every keystroke rather than waiting for the field to lose focus --
-find-as-you-type is the reference use:
-
-```html
-<form data-write-on="input">
-  <input name="q" value="" data-write='{"doc":"session","op":"replace","path":"/filter/guests"}'>
-</form>
-```
-
-The commit is debounced to ~150ms after the last `input` event *anywhere in the form*, so a burst
-of keystrokes becomes one message, not one per key; a `focusout` inside the form flushes any
-pending write immediately, the way tabbing away from a `blur` field would. `app.ts` also remembers
-the ops each `data-write-on="input"` form last actually sent and drops a commit that would repeat
-it exactly -- typing back to a value already on the wire doesn't send it again. Nothing new crosses
-the wire: still one `{doc, ops}` message, same shape as `blur`/`change`, just timed differently.
-
-Elements with `data-autoscroll` (e.g. `<ul class="messages" data-autoscroll>`)
-are automatically pinned to the bottom on render if new child nodes were
-added, without disturbing scroll position during presence or other unrelated
-updates.
-
-### `data-moving`: the same element grows into the window
-
-A render may mark one element `data-moving="<name>"`. When a full render arrives and both the
-page as it is and the page as rendered carry an element with the same `data-moving` value,
-`src/client/app.ts`'s `render()` gives that element -- and only that one -- `view-transition-name:
-moving`, runs the morph inside `document.startViewTransition` (feature-detected with
-`"startViewTransition" in document`, not a `declare global` -- lib.dom already has it), and clears
-the name afterward. `matchMedia("(prefers-reduced-motion: reduce)")` skips the transition
-entirely, same as a browser without support: a plain morph, as always. Fragment renders
-(`applyFragments`) never transition -- there's no "page as it was" to compare against a fragment.
-
-The kernel has no client stylesheet of its own, so this is the one thing an example's stylesheet
-has to add for `data-moving` to look right rather than merely work: without
-`::view-transition-group(moving) { z-index: 1 }`, the moving element animates *under* its
-neighbours instead of on top of them. Nothing else needs naming: one attribute, one name, one
-element, not a general animation vocabulary.
-
-A box with more than one openable compartment marks every navigable
-compartment `data-moving` on every render, box or open -- the render can't know in advance which
-one the person is about to click, so "the page as it is" may carry several at once. `render()`'s
-`movingElement()` accounts for this: it checks every current `[data-moving]` candidate, not just
-the first, and picks the one whose matching element in the incoming render actually differs (a
-still-closed sibling's markup renders byte-for-byte the same whether or not another compartment
-opened, so comparing `outerHTML` is enough to tell "genuinely transitioning" from "merely still
-here").
-
-### `data-reveal`: bringing the chosen figure into the clear
-
-After a full render's morph, if the page now carries an element with `data-reveal` that it did not
-carry before -- or carries it on a different element than before -- `render()` calls
-`scrollIntoView({ block: "nearest", inline: "nearest" })` on it. This is a client act on a render,
-not a scroll position on the wire: the kernel decides nothing about what "reveal" means, only that
-the attribute moved. `"nearest"` is deliberate -- it does nothing when the element is already
-visible, so a docked panel or a drawer only scrolls the page when the chosen figure would
-otherwise be hidden behind it. Making a docked panel actually count as an edge is the example
-stylesheet's job: give the revealed element itself (the row, the pin, the photo) a `scroll-margin`
-matching the panel's width or height, the same way `scroll-margin-top` on a heading keeps a sticky
-header from covering it when the page scrolls to its anchor.
-
-### Where a tab is: `data-page` and `data-page-write`
-
-An example that keeps "which page a tab is on" on the session (the wedding's
-`household/asks`, `households/3`) can put that page in the URL too, so the browser's back button
-and a shared link work. Mark any element within `#app` with both:
-
-```html
-<div data-page="households/3" data-page-write='{"doc":"session","op":"replace","path":"/page"}'>
-```
-
-The kernel reads this after every full render and mirrors `data-page` into `history.pushState`;
-on `popstate` (the back/forward buttons) it reads the URL's own page back out and sends
-`data-page-write`'s write with that value. The session document stays the one place the page
-actually lives — a reload lands where the tab was even with cookies alone — the URL just follows
-it, and follows it back. On the very first render after a fresh connect, if the URL already names
-a page the session doesn't have (someone opened a link while already signed in), the *session* is
-caught up to the URL, not the other way round — otherwise the render that follows connecting would
-snap the address bar back to the session's default and the link would have done nothing.
-
-For a reopened or shared link to reach the client to read at all, the server has to answer *some*
-page to any path — see `src/server.ts`'s `"/*": example.index` fallback, which is generic and
-already there; nothing about it is per-example. The wedding wires the mechanism itself into
-`views/shared.ts`'s `frame()` (an optional `page` parameter, passed by `views/household.ts` and
-`views/board.ts`; the pre-login welcome has no page yet). It is opt-in: skip it unless the back
-button or a shareable link is something the example's stories want.
-
-## Applets — the escape hatch for client-side state
-
-Three ways an applet's data reaches it, from cheapest to dearest on the wire:
-
-1. **Props once, then the document's own patches.** The element names the document
-   (`<div data-applet="board" data-doc="ticker" data-props=...>`), the applet implements
-   `patch(el, ops)`, and the compartment's `fragments` answers `[]` for that page: after the first
-   render only the patch echo crosses the wire (`examples/ticker/applets/board-applet.ts`). Use it
-   when the applet's props are a subtree of one document and the document changes often.
-2. **New props on a fragment render.** The compartment replaces the applet's element as a fragment
-   with new `data-props`; the morph calls `update(el, props)` (`examples/wedding/applets/photo-applet.ts`).
-3. **New props on a full render.** The default, when a compartment has no `fragments`.
-
-An applet with nothing of the app in it -- a clock -- takes its props once and never hears from
-the server again (`examples/ticker/applets/clock-applet.ts`).
-
-### Drawing vs. mounting, for coverage that means what it says
-
-`bun test --coverage` only sees a file a test imports in-process. An applet whose drawing is a
-pure string-building function is worth testing that way directly -- but if `registerApplet`'s
-`mount`/`update` live in the same file, importing it for the drawing test pulls the DOM-touching
-half in too, and it shows up "uncovered" even though a real-browser test (`client/app.test.ts`)
-drives it on every run. Split it in two: `<name>.ts` keeps the drawing (`dressHtml`, `menuHtml`,
-`photoSvg`, `boardSvg`/`sparkline`/`applyOps`, `clockSvg`/`handsAt`/`partsIn`, `cityIn`/`matches`/
-`step`) and whatever a `*.test.ts` imports directly; `<name>-applet.ts` keeps
-`registerApplet(...)` and the `mount`/`update`/`patch` that touch the DOM, and is imported *only*
-by `client/main.ts`. That's what keeps it out of the coverage table rather than
-dragging a drawing file's number down: `src/applets.ts`'s registry doesn't care which file called
-`registerApplet`, so nothing about the split is visible to the kernel or the wire. Skip the split for an applet with no drawing worth testing on its own
-(`picture-field.ts`, which talks to `fetch` and a `<input type=file>` throughout).
-
-Most UI is plain HTML + `data-write`, morphed in on every render — no applet
-needed. Reach for an applet (`src/applets.ts`) only when something needs
-live state a re-render would otherwise blow away (e.g. the city picker's
-typed query surviving a props update). Chat has none: every reading it has is
-the server's HTML.
+Only for a piece of the page whose client-side state a re-render would destroy. The morph never
+descends into `[data-applet]`.
 
 ```ts
 export type Applet = {
-  mount(el: HTMLElement, ctx: AppletContext): void | (() => void); // returns optional cleanup
-  update?(el: HTMLElement, props: unknown): void; // called instead of remount if the element survives with new data-props
-  patch?(el: HTMLElement, ops: PatchOp[]): void; // the ops of the document named in data-doc, as they are echoed
+  mount(el, { props, send }): void | (() => void); // cleanup optional
+  update?(el, props): void;   // the element survived a render with new data-props
+  patch?(el, ops): void;      // the ops of the document named in data-doc, as they are echoed
 };
 ```
 
-Render an applet's mount point as `<div data-applet="board" data-doc="ticker"
-data-props='{"symbols":[...]}'></div>`. `morph.ts` treats `[data-applet]`
-elements as a boundary it never descends into — the applet owns everything
-inside by hand. An example registers its own applets in its own
-`client/main.ts`, *before* importing the kernel's client:
+Mount point: `<div data-applet="board" data-doc="ticker" data-props='{...}'>`. Data reaches an
+applet as new props on a render (`update`), or, for a document that changes often, as the patch
+itself (`patch`, with `fragments` answering `[]`). Register in `client/main.ts` before importing
+`src/client/app`. Split drawing (`<name>.ts`, pure, tested directly) from mounting
+(`<name>-applet.ts`, the DOM, imported only by `client/main.ts`) when there is drawing worth
+testing. `client/index.html` must have an element with `id="app"`.
 
-```ts
-import "../applets/board-applet";
-import "../../../src/client/app";
-```
+## CLI
 
-The kernel's `app.ts` only knows the generic `[data-applet]`/`data-write`
-contract; it has no idea any specific applet exists.
-
-`src/client/app.ts` looks up its mount point with a non-null assertion --
-`document.querySelector<HTMLElement>("#app")!` -- so `client/index.html`
-must contain an element with `id="app"` (chat's is `<main id="app">`), or
-the client throws immediately on load.
-
-## CLI verbs
-
-`src/cli.ts` handles the kernel's own doc-agnostic commands
-(`inspect`/`watch`/`undo`/`write <doc> <op> <path> [value]`) and, if
-`examples/${ETA_EXAMPLE}/cli.ts` exists, loads its `aliases` table of short
-verbs afterward:
-
-```ts
-export const aliases: Record<string, (args: string[]) => { doc: string; ops: PatchOp[] }> = {
-  name: (args) => ({ doc: "session", ops: [{ op: "replace", path: "/name", value: args.join(" ") }] }),
-  send: (args) => ({ doc: "room", ops: [{ op: "add", path: "/transcript/-", value: args.join(" ") }] }),
-};
-```
-
-No database import in an example's `cli.ts` — it only builds wire ops; the
-CLI process talks to a running server over the same websocket protocol a
-browser client would.
+`src/cli.ts` knows `inspect`, `watch`, `undo`, `redo` and `write <doc> <op> <path> [value]`. An
+example's `cli.ts` may export `aliases`, short verbs that build `{doc, ops}`. No database import:
+the CLI talks to a running server over the same socket a browser does.
 
 ## When it looks like you need to touch `src/`
 
-It usually means a seam is missing, not that the example is special. Signs
-of a real seam addition (rare) vs. a workaround (avoid):
-
-- Needing a per-example "is this session allowed to write" rule → already
-  solved by `Example.active`.
-- Needing undo to behave differently for one document → already solved by
-  `write`'s `undoes`.
-- Needing an extra HTTP route (e.g. serving uploaded files) → already solved
-  by `Example.routes`.
-- Wanting the kernel to know about a specific applet, document, or compartment
-  by name → don't; that coupling is exactly what `assemble(example)` and the
-  applet registry exist to avoid. If something seems to require it, the fix
-  is almost always a new generic seam on `Example`/`Compartment`, added once, in
-  the kernel — not a special case for one example.
-
-## The tray: laying out a box
-
-A page that is a box shows one compartment per thing on its ground. Do not hand-write its grid.
-`src/tray.ts`'s `tray(compartments, columns)` takes the compartments in the box's own order, each
-with a `key` (`slug()` its label) and how much of the tray it deserves (`span` in columns, `rows`),
-and places them first-fit without reordering; a gap at the end of the last row goes to the
-compartment before it. It returns `areas` (for `grid-template-areas`) and, per compartment, its
-`corners`: which of the tray's corners it sits in, so a view can cut it into the tray -- square
-where its walls meet another compartment, the tray's curve (less the wall) only in its corners.
-It is viewport-free: compute one tray per column count you lay out for (the wedding does three and
-one) and let the stylesheet pick by width. `src/bento.ts`'s `boxPage` does this for you, along with
-the rest of the bento's surfaces (the trail, the window, the tools, find, rows, the drawer, the
-modal; `src/bento.css` is their look): bind them once with `bento({icon, tray, leave?})`. A page
-that is a collection rather than a box is `collectionPage` (chat's rooms and its conversation).
-See `examples/bento/README.md` for the rules they serve.
+It usually means a seam is missing, not that the example is special. A per-example "may this
+session write" is `Example.active`; an extra HTTP route is `Example.routes`; undo behaving
+differently is `write`'s `undoes`. Never teach the kernel the name of a specific document, applet
+or compartment.

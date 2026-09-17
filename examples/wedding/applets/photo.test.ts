@@ -6,7 +6,7 @@ const look = { skin: "#F2C86A", hair: "bob", hair_color: "#2B2B33", top: "#1E3F8
 describe("photoSvg", () => {
   test("draws each entry in its slot, keyed for a tap when it carries one, the frame around them all", () => {
     const entries: PhotoEntry[] = [
-      { key: "1", spec: { ...look, name: "Ada" }, tap: { doc: "session", op: { op: "replace", path: "/focus", value: 1 } } },
+      { key: "1", spec: { ...look, name: "Ada" }, tap: { doc: "session", op: { op: "replace", path: "/page", value: "guests?guest=1" } } },
       { key: "2", spec: look, ghost: true },
       { key: "3", spec: look, out: true, mark: "yes", count: 3 },
     ];
@@ -27,7 +27,7 @@ describe("photoSvg", () => {
 
   test("a chosen figure rings, is marked pressed, and scrolls into the clear (K2, rule 13)", () => {
     const entries: PhotoEntry[] = [
-      { key: "1", spec: { ...look, name: "Ada" }, tap: { doc: "session", op: { op: "replace", path: "/focus", value: 1 } }, chosen: true },
+      { key: "1", spec: { ...look, name: "Ada" }, tap: { doc: "session", op: { op: "replace", path: "/page", value: "guests?guest=1" } }, chosen: true },
       { key: "2", spec: look },
     ];
     const svg = photoSvg(entries, "the family");

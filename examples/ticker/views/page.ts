@@ -4,7 +4,7 @@
 // at the bottom right. A row is a symbol: its drawer holds what it is and what it can carry, watch
 // or drop. Watching is the plus and a modal; dropping asks in one too.
 
-import { bento, inertWhile, matches, prop, rows, type Crumb, type OpenOptions } from "../../../src/bento";
+import { address, bento, inertWhile, matches, parseAddress, prop, rows, type Crumb, type OpenOptions } from "../../../src/bento";
 import { esc, write } from "../../../src/html";
 import type { ClockDocument } from "../documents/clock";
 import { ZONES, cityOf, offsetOf } from "../documents/clock";
@@ -14,6 +14,11 @@ import type { WatchlistDocument } from "../documents/watchlist";
 import { icon } from "./icons";
 
 const { tool, readingSwitch, addTool, findControl, cell, boxPage, row, sheet, addModal, confirmModal } = bento({ icon, tray: "desk" });
+
+/** Going somewhere on the desk -- a window, a drawer over it, a modal -- is one write: the address. */
+const go = (page: string): string => write("desk", "replace", "/page", page);
+/** Where this session is: the window, and the one thing open over it. */
+export const where = (ui: Ui) => parseAddress(ui.page);
 
 export type View = { list: WatchlistDocument; market: MarketDocument; clock: ClockDocument; ui: Ui };
 
@@ -62,7 +67,7 @@ function priceState(q: Quote): string {
 
 /** A row of a list: the symbol leads, the name is the words, the price is the state, ✎ its drawer. */
 const symbolRow = (id: string, symbol: string, quote: Quote, ui: Ui, o: { hushed?: boolean; hidden?: boolean; note?: string } = {}): string =>
-  row({ id, tap: write("desk", "replace", "/focus", symbol), chosen: ui.focus === symbol, lead: `<span class="symbol">${esc(symbol)}</span>`, what: quote.name, state: priceState(quote), mark: "pencil", ...o });
+  row({ id, tap: go(address(where(ui).path, "symbol", symbol)), chosen: where(ui).what === "symbol" && where(ui).which === symbol, lead: `<span class="symbol">${esc(symbol)}</span>`, what: quote.name, state: priceState(quote), mark: "pencil", ...o });
 
 /** The board as a list: a row per watched symbol. Replaced alone on a tick, when it is open. */
 export function boardList(v: View): string {
@@ -88,7 +93,7 @@ function boardOpen(v: View): OpenOptions {
   return {
     key: "board",
     reading: readingSwitch("board", reading(v.ui), [["sparkline", "board"], ["list", "list"]]),
-    tools: [addTool("board", "Watch a symbol")],
+    tools: [addTool(go(address("board", "new")), "Watch a symbol")],
     body: reading(v.ui) === "list" ? boardList(v) : `<div class="reading sparkline">${boardMount(v.list, v.market)}</div>`,
   };
 }
@@ -102,41 +107,43 @@ function marketOpen(v: View): OpenOptions {
 
 /** The drawer: a symbol's properties and what it carries -- watch, or drop -- or the clock's city. */
 function drawer(v: View): string {
-  const who = v.ui.focus;
-  if (!who) return "";
-  const close = write("desk", "remove", "/focus");
-  if (who === "clock") return sheet("drawer", "The clock", `<div class="props">${prop("City", cityMount(v.clock))}${prop("Now", `<span>${esc(v.clock.city)} (UTC${esc(v.clock.offset)})</span>`)}</div>`, close);
-  const q = v.market[who];
+  const { path, what, which = "" } = where(v.ui);
+  const close = go(path);
+  if (what === "clock") return sheet("drawer", "The clock", `<div class="props">${prop("City", cityMount(v.clock))}${prop("Now", `<span>${esc(v.clock.city)} (UTC${esc(v.clock.offset)})</span>`)}</div>`, close);
+  const q = what === "symbol" ? v.market[which] : undefined;
   if (!q) return "";
-  const watched = v.list.symbols.includes(who);
+  const watched = v.list.symbols.includes(which);
   const carry = watched
-    ? tool("Stop watching", { icon: "trash", kind: "danger", write: write("desk", "replace", "/confirm", who) })
-    : tool("Watch", { icon: "plus", kind: "add", write: write("watchlist", "add", "/symbols/-", who) });
+    ? tool("Stop watching", { icon: "trash", kind: "danger", write: go(address(path, "confirm", which)) })
+    : tool("Watch", { icon: "plus", kind: "add", write: write("watchlist", "add", "/symbols/-", which) });
   const props = prop("Name", `<span>${esc(q.name)}</span>`) + prop("Price", priceState(q)) + prop("Watched", `<span>${watched ? "yes" : "no"}</span>`);
-  return sheet("drawer", who, `<div class="props">${props}</div><div class="sheet-foot">${carry}</div>`, close);
+  return sheet("drawer", which, `<div class="props">${props}</div><div class="sheet-foot">${carry}</div>`, close);
 }
 
-/** The modals: which symbol to watch; whether to stop watching one. One question each. */
+/** The modals: which symbol to watch; whether to stop watching one. One question each; cancelling goes back to where it was asked from. */
 function modals(v: View): string {
-  if (v.ui.new === "board") return addModal("Watch a symbol", [{ name: "symbol", label: "Which symbol", placeholder: "e.g. ALPH" }], write("watchlist", "add", "/symbols/-"), "Watch");
-  const at = v.ui.confirm ? v.list.symbols.indexOf(v.ui.confirm) : -1;
+  const { path, what, which = "" } = where(v.ui);
+  if (what === "new") return addModal("Watch a symbol", [{ name: "symbol", label: "Which symbol", placeholder: "e.g. ALPH" }], write("watchlist", "add", "/symbols/-"), go(path), "Watch");
+  const at = what === "confirm" ? v.list.symbols.indexOf(which) : -1;
   if (at < 0) return "";
-  return confirmModal(`Stop watching ${v.ui.confirm}`, "Its row leaves the board. Undo brings it back.", write("watchlist", "remove", `/symbols/${at}`), "Stop watching");
+  return confirmModal(`Stop watching ${which}`, "Its row leaves the board. Undo brings it back.", write("watchlist", "remove", `/symbols/${at}`), go(address(path, "symbol", which)), "Stop watching");
 }
 
 /** The desk: the box, or one compartment grown into the window; the drawer and the modal over it. */
 export function page(v: View): string {
+  const at = where(v.ui);
   const symbols = Object.keys(v.market);
-  const opens = (key: string) => write("desk", "replace", "/open", key);
   const cells = [
-    cell({ key: "board", name: "the board", mark: "board", count: boardCount(v.list), big: true, opens: opens("board"), summary: v.list.symbols.length ? "watched, live" : "nothing watched yet", body: `<div class="mini sparkline">${boardMount(v.list, v.market)}</div>` }),
-    cell({ key: "market", name: "the market", mark: "market", count: symbols.length, span: 2, opens: opens("market"), summary: `${symbols.length} symbols, every quote` }),
-    cell({ key: "clock", name: "the clock", mark: "clock", summary: v.clock.city, body: `<div class="mini face">${clockMount(v.clock)}</div>`, thing: { open: write("desk", "replace", "/focus", "clock"), chosen: v.ui.focus === "clock" } }),
+    cell({ key: "board", name: "the board", mark: "board", count: boardCount(v.list), big: true, opens: go("board"), summary: v.list.symbols.length ? "watched, live" : "nothing watched yet", body: `<div class="mini sparkline">${boardMount(v.list, v.market)}</div>` }),
+    cell({ key: "market", name: "the market", mark: "market", count: symbols.length, span: 2, opens: go("market"), summary: `${symbols.length} symbols, every quote` }),
+    cell({ key: "clock", name: "the clock", mark: "clock", summary: v.clock.city, body: `<div class="mini face">${clockMount(v.clock)}</div>`, thing: { open: go(address("", "clock")), chosen: at.what === "clock" } }),
   ];
-  const opened = v.ui.open === "board" ? boardOpen(v) : v.ui.open === "market" ? marketOpen(v) : undefined;
-  const desk: Crumb = { label: "The desk", back: write("desk", "remove", "/open") };
+  const opened = at.path === "board" ? boardOpen(v) : at.path === "market" ? marketOpen(v) : undefined;
+  const desk: Crumb = { label: "The desk", back: go("") };
   const trail = opened ? [desk, { label: `the ${opened.key}` }] : [desk];
   const modal = modals(v);
   const body = boxPage(trail, [], cells, opened) + drawer(v);
-  return `<div class="site${modal || v.ui.focus ? " locked" : ""}">${inertWhile(!!modal, body)}${modal}</div>`;
+  const over = drawer(v);
+  // the page's address goes in the URL (the kernel client mirrors data-page), so the back button closes a drawer and a link opens one
+  return `<div class="site${modal || over ? " locked" : ""}" data-page="${esc(v.ui.page ?? "")}" data-page-write='${JSON.stringify({ doc: "desk", op: "replace", path: "/page" })}'>${inertWhile(!!modal, body)}${modal}</div>`;
 }

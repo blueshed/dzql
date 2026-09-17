@@ -5,9 +5,9 @@
 
 import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
-import type { SessionDocument } from "../documents/session";
+import { over, type SessionDocument } from "../documents/session";
 import { addModal, addTool, boxPage, cell, choice, confirmModal, findControl, prop, readingSwitch, row, rows, sheet, tool, type Crumb, type OpenOptions } from "./bento";
-import { esc, join, nav, write } from "./html";
+import { esc, join, nav, open as openAt, write } from "./html";
 import { icon } from "./icons";
 import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
 import {
@@ -34,6 +34,10 @@ import {
 } from "./shared";
 import { inPhoto } from "../documents/wedding";
 
+/** Opening something over the page the couple are on -- a drawer, a modal -- and putting it away: both are going somewhere (views/html.ts). */
+const open_ = (v: BoardView, what: string, which: string | number = ""): string => openAt(over(v.session.ui).path, what, which);
+const close = (v: BoardView): string => nav(over(v.session.ui).path);
+
 export type BoardView = { session: SessionDocument; b: BoardDocument };
 
 type KeepTable = "courses" | "gifts" | "events" | "places";
@@ -56,7 +60,8 @@ export function boardPages(v: BoardView): string {
   const { b } = v;
   const ui = v.session.ui;
   const trail: Crumb[] = [{ label: coupleName(b), back: nav("") }];
-  const [head, hid, third] = (ui.page ?? "").split("/");
+  const at = over(ui);
+  const [head, hid, third] = at.path.split("/");
   const h = head === "households" && hid ? b.households.find((x) => String(x.id) === hid) : undefined;
   let page: string;
   if (h) {
@@ -64,14 +69,14 @@ export function boardPages(v: BoardView): string {
     page = familyBox(v, h, familyTrail, third);
   } else {
     const { open, crumbs } = openFor(v, head);
-    page = boxPage(open ? [...trail, ...crumbs] : trail, [welcomePreview(b, !!ui.answering)], boxCells(v), open);
+    page = boxPage(open ? [...trail, ...crumbs] : trail, [welcomePreview(b, !!at.answering, open_(v, "answer"))], boxCells(v), open);
   }
-  const newTable = isKeepTable(ui.new ?? "") ? (ui.new as KeepTable) : undefined;
-  const modalOpen = !!ui.new || !!ui.confirm;
-  const locked = modalOpen || !!ui.keep || !!ui.answering;
+  const newTable = isKeepTable(at.new ?? "") ? (at.new as KeepTable) : undefined;
+  const modalOpen = !!at.new || !!at.confirm;
+  const locked = modalOpen || !!at.keep || !!at.answering;
   const modal = join(
-    newTable && addModal(`Add a ${KEEP[newTable].noun}`, [{ name: "name", label: `The ${KEEP[newTable].noun}'s name` }], write("board", "add", `/${newTable}/-`)),
-    ui.new === "households" &&
+    newTable && addModal(`Add a ${KEEP[newTable].noun}`, [{ name: "name", label: `The ${KEEP[newTable].noun}'s name` }], write("board", "add", `/${newTable}/-`), close(v)),
+    at.new === "households" &&
       addModal(
         "Invite a household",
         [
@@ -80,6 +85,7 @@ export function boardPages(v: BoardView): string {
           { name: "plus_ones", label: "Plus-ones they may name", type: "number", value: "0", required: false },
         ],
         write("board", "add", "/households/-"),
+        close(v),
         "Invite",
       ),
     confirmRemove(v),
@@ -90,14 +96,15 @@ export function boardPages(v: BoardView): string {
 
 /** The modal asking to confirm a removal -- a modal is new or delete and nothing else (rule 14). */
 function confirmRemove(v: BoardView): string {
-  const [table, idText] = (v.session.ui.confirm ?? "").split("/");
+  const confirm = over(v.session.ui).confirm ?? "";
+  const [table, idText] = confirm.split("/");
   if (!table || !isKeepTable(table)) return "";
   const id = Number(idText);
   const list = v.b[table] as { id: number; name: string }[];
   const found = list.find((r) => r.id === id);
   if (!found) return "";
   const { noun } = KEEP[table];
-  return confirmModal(`Remove this ${noun}`, `Remove "${found.name}" from the list?`, write("board", "remove", `/${table}/${id}`));
+  return confirmModal(`Remove this ${noun}`, `Remove "${found.name}" from the list?`, write("board", "remove", `/${table}/${id}`), open_(v, "keep", confirm)); // cancelling goes back to the drawer it was asked from
 }
 
 // ───────────────────────────── the home ─────────────────────────────
@@ -113,9 +120,9 @@ export const pictureField = (path: string, current: string | null): string =>
 
 /** The welcome as the couple's own thing (rule 15): the names, the day, the deadline, carrying ✎;
  * a tap opens the drawer where the whole of it is edited, and it is lit while that drawer is open. */
-function welcomePreview(b: BoardDocument, open: boolean): string {
+function welcomePreview(b: BoardDocument, open: boolean, edit: string): string {
   return join(
-    `<div class="bubble couple thing" role="button" tabindex="0" aria-pressed="${open}"${write("session", "replace", "/answering", "1")}>`,
+    `<div class="bubble couple thing" role="button" tabindex="0" aria-pressed="${open}"${edit}>`,
     `<div class="bubble-words"><span class="welcome-names">${esc(coupleName(b))}</span>`,
     `<span class="note">${esc(formatDay(b.day))}${b.venue ? ` · ${esc(b.venue)}` : ""}${b.deadline ? ` · answers by ${esc(formatDay(b.deadline))}` : ""}</span></div>`,
     `<span class="pencil" aria-hidden="true">${icon("pencil", 16)}</span>`,
@@ -125,7 +132,7 @@ function welcomePreview(b: BoardDocument, open: boolean): string {
 
 /** The welcome's drawer: every property it carries, each its own path, written on blur. */
 function welcomeSheet(v: BoardView): string {
-  if (!v.session.ui.answering) return "";
+  if (!over(v.session.ui).answering) return "";
   const { b } = v;
   const body = join(
     `<form data-write-on="blur"><div class="props">`,
@@ -137,7 +144,7 @@ function welcomeSheet(v: BoardView): string {
     `</div></form>`,
     `<div class="props">${prop("Picture", join(b.picture_key && `<div class="sheet-pic">${picture(b.picture_key, "")}</div>`, pictureField("/picture_key", b.picture_key)))}</div>`,
   );
-  return sheet("welcome-sheet", "Our welcome", body, write("session", "remove", "/answering"), "welcome-sheet");
+  return sheet("welcome-sheet", "Our welcome", body, close(v), "welcome-sheet");
 }
 
 /** The home's compartments, all five, whether shown whole or one of them is grown into the window. */
@@ -191,7 +198,7 @@ export function boardPhoto(v: BoardView): string {
 }
 
 /** A family's photo as the couple read it, no taps. Replaced alone when a look changes. */
-export const familyPhoto = (h: HouseholdDocument, id = "family-photo"): string => photoMount(id, familyEntries(h, false), `${h.code}, as minifigures`);
+export const familyPhoto = (h: HouseholdDocument, id = "family-photo"): string => photoMount(id, familyEntries(h), `${h.code}, as minifigures`);
 
 /** A family's guest as a row: name, choices, whether coming. Replaced alone when a choice changes. */
 export const familyGuestRow = (v: BoardView, g: HouseholdDocument["guests"][number]): string =>
@@ -237,7 +244,7 @@ function householdsOpen(v: BoardView): OpenOptions {
   return {
     key: "households",
     reading: readingSwitch("households", reading(v, "households"), [["photo", "camera"], ["list", "list"]]),
-    tools: [b.households.length ? find.tool : "", addTool("households", "Invite a household")].filter(Boolean),
+    tools: [b.households.length ? find.tool : "", addTool(open_(v, "new", "households"), "Invite a household")].filter(Boolean),
     filter: find.filter,
     body,
     note: photo && word === undefined ? "Tap a family to see them. At their feet, their answer." : null,
@@ -293,7 +300,7 @@ function familyBox(v: BoardView, h: HouseholdDocument, trail: Crumb[], third: st
   const cells = [
     cell({ name: "guests", mark: "users", count: h.guests.length, big: true, opens: nav(`households/${h.id}/guests`), key: "guests", summary: `${h.guests.filter(isComing).length} coming`, body: h.guests.length ? `<div class="mini photo">${familyPhoto(h, "family-mini")}</div>` : undefined }),
     cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting for your answer` : h.asks.length ? "all answered" : "none", opens: nav(`households/${h.id}/asks`), key: "asks" }),
-    cell({ name: "the code", mark: "mail", summary: `${h.code} · ${h.email}`, thing: { open: write("session", "replace", "/keep", `households/${h.id}`), chosen: v.session.ui.keep === `households/${h.id}` } }),
+    cell({ name: "the code", mark: "mail", summary: `${h.code} · ${h.email}`, thing: { open: open_(v, "keep", `households/${h.id}`), chosen: over(v.session.ui).keep === `households/${h.id}` } }),
   ];
   const open = third === "asks" ? familyAsksOpen(h) : third === "guests" ? familyGuestsOpen(v, h) : undefined;
   const crumbs: Crumb[] = third === "asks" ? [{ label: "Asks" }] : third === "guests" ? [{ label: "Guests" }] : [];
@@ -302,7 +309,7 @@ function familyBox(v: BoardView, h: HouseholdDocument, trail: Crumb[], third: st
 
 /** The code's drawer: the family's email, how many plus-ones they may name, and the way to chase them. */
 function codeSheet(v: BoardView, h: HouseholdDocument | undefined): string {
-  if (!h || v.session.ui.keep !== `households/${h.id}`) return "";
+  if (!h || over(v.session.ui).keep !== `households/${h.id}`) return "";
   const body = join(
     `<form data-write-on="blur"><div class="props">`,
     prop("Code", `<span class="code">${esc(h.code)}</span>`),
@@ -311,16 +318,16 @@ function codeSheet(v: BoardView, h: HouseholdDocument | undefined): string {
     `</div></form>`,
     `<div class="sheet-foot">${chaseLink(h)}</div>`,
   );
-  return sheet("code-sheet", "The code", body, write("session", "remove", "/keep"), "code-sheet");
+  return sheet("code-sheet", "The code", body, close(v), "code-sheet");
 }
 
 // ───────────────────────────── keeping ─────────────────────────────
 
-const openKeep = (table: KeepTable) => (id: number) => write("session", "replace", "/keep", `${table}/${id}`);
+const openKeep = (v: BoardView, table: KeepTable) => (id: number) => open_(v, "keep", `${table}/${id}`);
 
 /** The row the couple have open in a keep table, if it is this one's. */
 function keptIn(v: BoardView, table: KeepTable): number | undefined {
-  const [t, id] = (v.session.ui.keep ?? "").split("/");
+  const [t, id] = (over(v.session.ui).keep ?? "").split("/");
   return t === table ? Number(id) : undefined;
 }
 
@@ -329,7 +336,7 @@ function keepOpen(v: BoardView, table: KeepTable): OpenOptions {
   const { b } = v;
   const { noun } = KEEP[table];
   const chosen = keptIn(v, table);
-  const open = openKeep(table);
+  const open = openKeep(v, table);
   const tools: string[] = [];
   let body: string;
   let filter: string | undefined;
@@ -366,13 +373,13 @@ function keepOpen(v: BoardView, table: KeepTable): OpenOptions {
       "No gifts yet.",
     );
   }
-  tools.push(addTool(table, `Add a ${noun}`));
+  tools.push(addTool(open_(v, "new", table), `Add a ${noun}`));
   return { key: table, tools, filter, body };
 }
 
 /** The row's drawer: its properties, each a field; a course's dishes and drinks; its place in the order; Remove at the foot. */
 function keepSheet(v: BoardView): string {
-  const [table, idText] = (v.session.ui.keep ?? "").split("/");
+  const [table, idText] = (over(v.session.ui).keep ?? "").split("/");
   if (!table || !isKeepTable(table)) return "";
   const id = Number(idText);
   const list = v.b[table] as { id: number; name: string; seq: number }[];
@@ -442,7 +449,7 @@ function keepSheet(v: BoardView): string {
     );
   }
   // removing asks in a modal (rule 14) -- the drawer only opens it; `confirmRemove` does the write
-  const remove = `<div class="sheet-foot">${tool(`Remove this ${noun}`, { icon: "trash", kind: "danger", write: write("session", "replace", "/confirm", at.slice(1)) })}</div>`;
+  const remove = `<div class="sheet-foot">${tool(`Remove this ${noun}`, { icon: "trash", kind: "danger", write: open_(v, "confirm", at.slice(1)) })}</div>`;
   const body = join(`<form data-write-on="blur"><div class="props">${props.join("")}${order}</div></form>`, extra, remove);
-  return sheet("keep-sheet", found.name, body, write("session", "remove", "/keep"), "keep-sheet");
+  return sheet("keep-sheet", found.name, body, close(v), "keep-sheet");
 }

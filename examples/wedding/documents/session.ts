@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { patchCollections, type Collections } from "../../../src/bento";
+import { parseAddress, patchCollections, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { integer } from "./values";
@@ -12,21 +12,27 @@ import { kindOf, type Kind } from "./wedding";
 // ledger records.
 
 export type Ui = {
-  /** The trail below the root: "" is the household's box or the couple's home; "asks", "households/3/asks", ... */
+  /**
+   * Where the visit is: one address (src/bento.ts). The trail below the root -- "" is the
+   * household's box or the couple's home; "asks", "households/3/asks" -- and after a `?` the one
+   * thing open over it: a guest's drawer (`?guest=2`), a gift's (`?gift=1`), a row's keep drawer
+   * (`?keep=courses/2`), the answer (`?answer`), the modal asking a new thing's name
+   * (`?new=guests`), the modal confirming a removal (`?confirm=courses/2`).
+   */
   page?: string;
-  /** The guest whose drawer is open. */
-  focus?: number;
-  /** The gift whose drawer is open. */
-  gift?: number;
-  /** The row whose keep drawer is open, as "<table>/<id>". */
-  keep?: string;
-  /** The answer drawer is open (a household's own; the couple's welcome). */
-  answering?: true;
-  /** The modal asking a new thing's name is open, named by its collection ("guests", "asks", "courses", ...). */
-  new?: string;
-  /** The modal confirming a removal is open, as "<table>/<id>". */
-  confirm?: string;
 } & Collections; // how each collection is read, find's word, the eye: by the collection's name
+
+/** What is open over the page, read out of the address: the path, and at most one of the rest. */
+export type Over = { path: string; focus?: number; gift?: number; keep?: string; answering?: true; new?: string; confirm?: string };
+
+export function over(ui: Ui): Over {
+  const { path, what, which = "" } = parseAddress(ui.page);
+  if (what === "guest") return { path, focus: integer(which) };
+  if (what === "gift") return { path, gift: integer(which) };
+  if (what === "answer") return { path, answering: true };
+  if (what === "keep" || what === "new" || what === "confirm") return { path, [what]: which };
+  return { path };
+}
 
 export type SessionDocument = { code: string | null; kind: Kind | null; ui: Ui; note: string | null };
 
@@ -48,6 +54,13 @@ export function read(id: string): SessionDocument {
 
 function save(id: string, doc: SessionDocument): void {
   upsertStmt.run(id, doc.code, JSON.stringify(doc.ui), doc.note, Date.now());
+}
+
+/** A modal asks one question; the write that answers it puts it away (rule 14): an add answers the ask, a removal answers the asking-first. The visit is back on the page it was asked from. */
+export function closeAnswered(id: string, applied: { op: string; path: string }[]): void {
+  const at = over(read(id).ui);
+  const answered = (at.new !== undefined && applied.some((op) => op.op === "add" && op.path.endsWith("/-"))) || (at.confirm !== undefined && applied.some((op) => op.op === "remove"));
+  if (answered) patch(id, [{ op: "replace", path: "/page", value: at.path }]);
 }
 
 export type SessionPatchResult = { version: number; applied: PatchOp[] };
@@ -85,24 +98,10 @@ export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): 
       console.log(`resend requested for ${email}`);
       next.note = "Sent, if we know that address.";
     } else if (field === "page") {
-      // A drawer or a modal belongs to the page it was opened on: leaving the page closes it.
-      // How each collection is read, and what find says, are kept -- both are the collection's
-      // own state, not the page's.
-      next.ui = { page: String(op.value ?? ""), reading: before.ui.reading, filter: before.ui.filter, hide: before.ui.hide };
-    } else if (field === "focus" || field === "gift") {
-      const n = integer(op.value);
-      if (!removing && n === undefined) continue;
-      if (removing) delete next.ui[field];
-      else next.ui[field] = n;
-    } else if (field === "keep") {
-      if (removing) delete next.ui.keep;
-      else next.ui.keep = String(op.value ?? "");
-    } else if (field === "answering") {
-      if (removing) delete next.ui.answering;
-      else next.ui.answering = true;
-    } else if (field === "new" || field === "confirm") {
-      if (removing) delete next.ui[field];
-      else next.ui[field] = String(op.value ?? "");
+      // The address is the page and whatever is open over it, so going anywhere puts away the
+      // drawer or the modal that was open. How each collection is read, and what find says, are
+      // the collection's own and stay.
+      next.ui.page = removing ? "" : String(op.value ?? "");
     } else if (patchCollections(next.ui, op)) {
       // how a collection is read, find's word, the eye: the bento's own (src/bento.ts)
     } else {

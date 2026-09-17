@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { bento, choice, inertWhile, matches, patchCollections, prop, rows, type Collections } from "./bento";
+import { address, bento, choice, inertWhile, matches, parseAddress, patchCollections, prop, rows, type Collections } from "./bento";
 import { esc, join, write } from "./html";
 
 // an example's icons, as the bento sees them: a name and a size in, markup out
@@ -55,7 +55,7 @@ describe("the surfaces", () => {
     const out = b.readingSwitch("board", "list", [["spark", "chart"], ["list", "list"]]);
     expect(out).toContain(`aria-checked="false" aria-pressed="false" aria-label="spark" data-write='{"doc":"desk","op":"replace","path":"/reading/board"}' data-value="spark"><i data-icon="chart"`);
     expect(out).toContain('aria-checked="true" aria-pressed="true" aria-label="list"');
-    expect(b.addTool("board", "Watch")).toContain(`aria-label="Watch" data-write='{"doc":"desk","op":"replace","path":"/new"}' data-value="board"`);
+    expect(b.addTool(open, "Watch")).toContain(`aria-label="Watch"${open}>`);
   });
 
   test("find: closed, a tool that opens it; open, the field, the tally and the eye, each a write to the tray", () => {
@@ -152,19 +152,33 @@ describe("the surfaces", () => {
   });
 
   test("the modals: adding asks for the fields it needs, removing asks one question; cancelling writes the tray", () => {
-    const add = b.addModal("A new room", [{ name: "room", label: "Its name" }, { name: "seats", label: "Seats", type: "number", required: false, value: "4", placeholder: "how many" }], open);
-    expect(add).toContain(`<div class="scrim modal-scrim" data-write='{"doc":"desk","op":"remove","path":"/new"}'></div><dialog open class="modal" aria-label="A new room"><h3>A new room</h3><form${open}>`);
+    const close = write("desk", "replace", "/page", "rooms");
+    const add = b.addModal("A new room", [{ name: "room", label: "Its name" }, { name: "seats", label: "Seats", type: "number", required: false, value: "4", placeholder: "how many" }], open, close);
+    expect(add).toContain(`<div class="scrim modal-scrim"${close}></div><dialog open class="modal" aria-label="A new room"><h3>A new room</h3><form${open}>`);
     expect(add).toContain('<input name="room" type="text" value="" placeholder="" autocomplete="off" required autofocus>');
     expect(add).toContain('<input name="seats" type="number" min="0" value="4" placeholder="how many" autocomplete="off">');
     expect(add).toContain('type="submit" class="tool add"><i data-icon="plus" data-size="16"></i>Add</button>');
-    expect(b.addModal("t", [], open, "Make it")).toContain("Make it</button>");
-    const drop = b.confirmModal("Stop watching ALPH", "Its row leaves.", open, "Stop watching");
-    expect(drop).toContain(`data-write='{"doc":"desk","op":"remove","path":"/confirm"}'`);
+    expect(b.addModal("t", [], open, close, "Make it")).toContain("Make it</button>");
+    const drop = b.confirmModal("Stop watching ALPH", "Its row leaves.", open, close, "Stop watching");
+    expect(drop).toContain(`<div class="scrim modal-scrim"${close}></div>`);
     expect(drop).toContain(`<p class="note">Its row leaves.</p>`);
     expect(drop).toContain(`class="tool danger"${open}><i data-icon="trash" data-size="16"></i>Stop watching</button>`);
-    expect(b.confirmModal("t", "q", open)).toContain("Remove</button>");
+    expect(b.confirmModal("t", "q", open, close)).toContain("Remove</button>");
     expect(inertWhile(true, "<p/>")).toBe("<div inert><p/></div>");
     expect(inertWhile(false, "<p/>")).toBe("<p/>");
+  });
+});
+
+describe("a page's address", () => {
+  test("where you are, and the one thing open over it, as one string and back", () => {
+    expect(address("guests")).toBe("guests");
+    expect(address("guests", "guest", 2)).toBe("guests?guest=2");
+    expect(address("", "answer")).toBe("?answer");
+    expect(address("courses", "keep", "courses/2")).toBe("courses?keep=courses/2");
+    expect(parseAddress("guests?guest=2")).toEqual({ path: "guests", what: "guest", which: "2" });
+    expect(parseAddress("?answer")).toEqual({ path: "", what: "answer", which: "" });
+    expect(parseAddress("households/3/asks")).toEqual({ path: "households/3/asks" });
+    expect(parseAddress()).toEqual({ path: "" });
   });
 });
 

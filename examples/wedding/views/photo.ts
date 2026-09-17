@@ -6,6 +6,7 @@ import type { PhotoEntry } from "../applets/photo";
 import type { HouseholdDocument } from "../documents/household";
 import type { Spec } from "../applets/figure";
 import { esc } from "./html";
+import { address } from "../../../src/bento";
 import { isGuestOut, matches, specOf } from "./shared";
 
 export type { PhotoEntry };
@@ -23,13 +24,13 @@ export function photoMount(id: string, entries: PhotoEntry[], label: string, rev
 /** The household's guests as photo entries -- a tap opens the guest's drawer, and rings while it
  * is open (`focus`, rule 13) -- with a waiting ask as a ghost that leads to the asks. `filter`
  * (rule 17) hushes whoever the word misses, by name; undefined (find not open) hushes nobody. */
-export function familyEntries(h: HouseholdDocument, live = true, focus?: number, filter?: string): PhotoEntry[] {
+export function familyEntries(h: HouseholdDocument, live?: { path: string; focus?: number }, filter?: string): PhotoEntry[] {
   const entries: PhotoEntry[] = h.guests.map((g) => ({
     key: String(g.id),
     out: isGuestOut(g, h),
     spec: specOf(g.minifigure, g.name.split(/\s+/)[0]),
-    tap: live ? { doc: "session", op: { op: "replace", path: "/focus", value: g.id } } : undefined,
-    chosen: live && g.id === focus,
+    tap: live ? { doc: "session", op: { op: "replace", path: "/page", value: address(live.path, "guest", g.id) } } : undefined,
+    chosen: !!live && g.id === live.focus,
     hushed: filter !== undefined && !matches(g.name, filter),
   }));
   for (const a of h.asks) {

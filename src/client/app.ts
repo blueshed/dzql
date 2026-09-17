@@ -85,6 +85,9 @@ const hooks = { onAppletRemoved, onAppletPropsChanged };
 let knownPage: string | undefined;
 let pageWrite: WriteSpec | undefined;
 
+/** The page the URL names: its path and, after a `?`, the one thing open over it (src/bento.ts's address). */
+const pageInUrl = (): string => decodeURI(location.pathname.slice(1) + location.search);
+
 function syncPage() {
   const el = app.querySelector<HTMLElement>("[data-page]");
   if (!el) return;
@@ -92,7 +95,7 @@ function syncPage() {
   if (el.dataset.pageWrite) pageWrite = JSON.parse(el.dataset.pageWrite) as WriteSpec;
 
   if (knownPage === undefined) {
-    const urlPage = decodeURI(location.pathname.slice(1));
+    const urlPage = pageInUrl();
     if (urlPage !== page && pageWrite) {
       knownPage = urlPage; // the URL already says this; nothing to push once the session catches up
       send(pageWrite.doc, [{ op: pageWrite.op, path: pageWrite.path, value: urlPage }]);
@@ -109,7 +112,7 @@ function syncPage() {
 }
 
 window.addEventListener("popstate", () => {
-  const page = decodeURI(location.pathname.slice(1));
+  const page = pageInUrl();
   knownPage = page;
   if (pageWrite) send(pageWrite.doc, [{ op: pageWrite.op, path: pageWrite.path, value: page }]);
 });

@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.46.0] - 2026-09-17
+
+### Changed
+
+- **Where you are is one address.** `path?what=which`: the page, and the one thing open over it
+  (`guests?guest=2`, `gifts?new`, `?answer`). The wedding's session kept a page and six fields for
+  drawers and modals (`focus`, `gift`, `keep`, `answering`, `new`, `confirm`), four of which could
+  never be open together; the ticker's desk kept four. Each keeps one string now, plus find.
+  Opening a drawer is going to the same page with it named; closing it is going to the page
+  alone. The address is what goes in the URL, so the back button closes a drawer and a link opens
+  one -- the ticker has that now too. `address()` and `parseAddress()` are the kernel's
+  (`src/bento.ts`); the bento's `addTool`, `addModal` and `confirmModal` are handed their open and
+  close writes instead of assuming `/new` and `/confirm` on the tray. Cancelling a removal goes
+  back to the drawer it was asked from.
+- **The stories that only moved the tray are gone**: 17 of the wedding's (63 to 46) and 8 of the
+  ticker's (23 to 16). They opened a window, a drawer, find or a modal, nobody else saw it, and
+  they could not fail -- one, "Grace claims the kettle from its drawer; the couple see it
+  claimed", was false and passed. What they drew is still covered by each example's server test.
+  The ticker gains the story its stale drawer never had: a tick while a symbol's drawer is open
+  moves the drawer's price.
+- **The reference is a third of its length** (4,700 words to 1,700): one short section a piece,
+  the contracts as they are now, no history.
+
 ## [0.45.0] - 2026-09-17
 
 ### Changed

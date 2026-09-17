@@ -196,8 +196,8 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
       .join("")}</div>`;
   }
 
-  /** The plus on a collection's rail: opens the modal that adds to `collection` (the tray's `/new`). */
-  const addTool = (collection: string, label: string): string => tool(label, { icon: "plus", write: write(trayDoc, "replace", "/new", collection), iconOnly: true, label });
+  /** The plus on a collection's rail: `open` is the write that opens the modal that adds to it. */
+  const addTool = (open: string, label: string): string => tool(label, { icon: "plus", write: open, iconOnly: true, label });
 
   /**
    * Find (rule 17): on the rail, a tool pressed while it is open; open, a field beside the rail
@@ -348,9 +348,8 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
     return join(`<div class="scrim modal-scrim"${close}></div>`, `<dialog open class="modal" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${body}</dialog>`);
   }
 
-  /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs. `add` is the form's write. */
-  function addModal(title: string, fields: Field[], add: string, verb = "Add"): string {
-    const close = write(trayDoc, "remove", "/new");
+  /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs. `add` is the form's write, `close` the one that puts the modal away. */
+  function addModal(title: string, fields: Field[], add: string, close: string, verb = "Add"): string {
     const inputs = fields
       .map(
         (f, i) =>
@@ -362,14 +361,33 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
   }
 
   /** Removing a thing asks in a modal too -- a modal is new or delete and nothing else (rule 14). */
-  function confirmModal(title: string, question: string, destroy: string, verb = "Remove"): string {
-    const close = write(trayDoc, "remove", "/confirm");
+  function confirmModal(title: string, question: string, destroy: string, close: string, verb = "Remove"): string {
     const foot = `<div class="modal-foot">${tool("Cancel", { kind: "quiet", write: close })}${tool(verb, { icon: "trash", kind: "danger", write: destroy })}</div>`;
     return modal(title, close, `<p class="note">${esc(question)}</p>${foot}`);
   }
 
   return { crumbs, tool, pageTools, readingSwitch, addTool, findControl, cell, boxPage, collectionPage, row, sheet, addModal, confirmModal };
 }
+
+// ───────────────────────────── where you are ─────────────────────────────
+
+/**
+ * A page's address: where you are, and the one thing open over it -- a drawer or a modal. One
+ * string, `path?what=which` ("guests?guest=2", "gifts?new", "board?confirm=ALPH"), so it is one
+ * field on the session, one write to open or close, and it can go in the URL: the back button
+ * closes a drawer, and a link opens one.
+ */
+export type Address = { path: string; what?: string; which?: string };
+
+export function parseAddress(page = ""): Address {
+  const [path = "", query] = page.split("?", 2);
+  if (!query) return { path };
+  const [what, which = ""] = query.split("=", 2);
+  return { path, what, which };
+}
+
+/** The address of `path`, with `what` (and which one) open over it; with no `what`, the page alone. */
+export const address = (path: string, what?: string, which: string | number = ""): string => (what ? `${path}?${what}${which === "" ? "" : `=${which}`}` : path);
 
 // ───────────────────────────── the tray's own state ─────────────────────────────
 

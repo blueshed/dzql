@@ -61,7 +61,7 @@ householdDoc.patch(mine!.code, [{ op: "replace", path: "/answer", value: "yes" }
 const guest = householdDoc.read(mine!.code)!.guests[1]!.id;
 
 const sender = await enter(mine!.code);
-send(sender, "session", [{ op: "replace", path: "/focus", value: guest }]); // the drawer open, as it would be
+send(sender, "session", [{ op: "replace", path: "/page", value: `?guest=${guest}` }]); // the drawer open, as it would be
 await nextMessage(sender);
 await nextMessage(sender);
 const audience: [string, WebSocket][] = [

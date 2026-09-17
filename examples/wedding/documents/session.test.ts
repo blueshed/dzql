@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { history, prefixDoc } from "../../../src/ledger";
-import { patch, read } from "./session";
+import { closeAnswered, over, patch, read } from "./session";
 
 describe("session document (a visit)", () => {
   test("a fresh visit has no code, no kind, no ui", () => {
@@ -37,29 +37,40 @@ describe("session document (a visit)", () => {
     expect(read(id).note).toBe("Sent, if we know that address.");
   });
 
-  test("going to a page closes every drawer but keeps how collections are read", () => {
+  test("where a visit is, is one address: going anywhere puts away what was open, and keeps how collections are read", () => {
     const id = crypto.randomUUID();
-    patch(id, [
-      { op: "replace", path: "/code", value: "OKAFOR" },
-      { op: "replace", path: "/reading/guests", value: "list" },
-      { op: "replace", path: "/focus", value: "2" },
-      { op: "replace", path: "/gift", value: 1 },
-      { op: "replace", path: "/keep", value: "gifts/1" },
-      { op: "replace", path: "/answering", value: "1" },
-    ]);
-    expect(read(id).ui).toEqual({ reading: { guests: "list" }, focus: 2, gift: 1, keep: "gifts/1", answering: true });
+    patch(id, [{ op: "replace", path: "/code", value: "OKAFOR" }, { op: "replace", path: "/reading/guests", value: "list" }, { op: "replace", path: "/page", value: "guests?guest=2" }]);
+    expect(read(id).ui).toEqual({ page: "guests?guest=2", reading: { guests: "list" } });
     patch(id, [{ op: "replace", path: "/page", value: "asks" }]);
     expect(read(id).ui).toEqual({ page: "asks", reading: { guests: "list" } });
+    patch(id, [{ op: "remove", path: "/page" }]);
+    expect(read(id).ui).toEqual({ page: "", reading: { guests: "list" } });
   });
 
-  test("a drawer closes by a remove; a focus or gift that is not a number is ignored", () => {
+  test("what is open over the page is read out of the address: at most one of a guest, a gift, a row to keep, the answer, a new thing, a removal", () => {
+    const at = (page?: string) => over({ page });
+    expect(at()).toEqual({ path: "" });
+    expect(at("households/3/asks")).toEqual({ path: "households/3/asks" });
+    expect(at("guests?guest=2")).toEqual({ path: "guests", focus: 2 });
+    expect(at("guests?guest=two")).toEqual({ path: "guests", focus: undefined }); // not a guest: no drawer
+    expect(at("gifts?gift=3")).toEqual({ path: "gifts", gift: 3 });
+    expect(at("courses?keep=courses/1")).toEqual({ path: "courses", keep: "courses/1" });
+    expect(at("?answer")).toEqual({ path: "", answering: true });
+    expect(at("asks?new=asks")).toEqual({ path: "asks", new: "asks" });
+    expect(at("courses?confirm=courses/4")).toEqual({ path: "courses", confirm: "courses/4" });
+    expect(at("gifts?attic=1")).toEqual({ path: "gifts" });
+  });
+
+  test("a modal is put away by the write that answers it: an add answers the ask, a removal the asking-first; anything else leaves it", () => {
     const id = crypto.randomUUID();
-    patch(id, [{ op: "replace", path: "/code", value: "OKAFOR" }]);
-    expect(patch(id, [{ op: "replace", path: "/focus", value: "two" }]).applied).toEqual([]);
-    expect(patch(id, [{ op: "replace", path: "/gift", value: true }]).applied).toEqual([]);
-    patch(id, [{ op: "replace", path: "/focus", value: 2 }, { op: "replace", path: "/gift", value: "3" }, { op: "replace", path: "/keep", value: "courses/1" }, { op: "replace", path: "/answering", value: "1" }]);
-    patch(id, [{ op: "remove", path: "/focus" }, { op: "remove", path: "/gift" }, { op: "remove", path: "/keep" }, { op: "remove", path: "/answering" }]);
-    expect(read(id).ui).toEqual({});
+    patch(id, [{ op: "replace", path: "/code", value: "DASH" }, { op: "replace", path: "/page", value: "courses?new=courses" }]);
+    closeAnswered(id, [{ op: "replace", path: "/courses/1/name" }]);
+    expect(read(id).ui.page).toBe("courses?new=courses");
+    closeAnswered(id, [{ op: "add", path: "/courses/-" }]);
+    expect(read(id).ui.page).toBe("courses");
+    patch(id, [{ op: "replace", path: "/page", value: "courses?confirm=courses/4" }]);
+    closeAnswered(id, [{ op: "remove", path: "/courses/4" }]);
+    expect(read(id).ui.page).toBe("courses");
   });
 
   test("find opens, closes and forgets its own word -- one key of several, then the last one, then a close with nothing open at all", () => {

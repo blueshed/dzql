@@ -176,7 +176,7 @@ describe("the ticker", () => {
     const { html: box } = await expectMessage(ws, "render");
     expect(box).toContain('id="clock" data-applet="clock" data-doc="clock" data-props="{&quot;tz&quot;:&quot;Europe/Zurich&quot;}"');
     // the clock is a thing (rule 15): its drawer holds the city, and every zone to choose from
-    write(ws, "desk", [{ op: "replace", path: "/focus", value: "clock" }]);
+    write(ws, "desk", [{ op: "replace", path: "/page", value: "?clock" }]);
     await expectMessage(ws, "patch");
     const { html } = await expectMessage(ws, "render");
     expect(html).toContain('id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="{&quot;city&quot;:&quot;Zurich&quot;}"><datalist>');
@@ -205,7 +205,7 @@ describe("the ticker", () => {
     const ws = await open();
     const shown = (m: { html?: string; ops?: unknown[] }) => m.html ?? ((m.ops ?? []) as { html?: string }[]).map((o) => o.html ?? "").join("");
     const drawerOf = (html: string) => html.slice(html.indexOf('id="drawer"'));
-    write(ws, "desk", [{ op: "replace", path: "/open", value: "market" }, { op: "replace", path: "/focus", value: "DLTA" }]);
+    write(ws, "desk", [{ op: "replace", path: "/page", value: "market?symbol=DLTA" }]);
     await expectMessage(ws, "patch");
     expect(drawerOf(shown(await expectMessage(ws, "render")))).toContain("Watched");
 
@@ -229,7 +229,7 @@ describe("the ticker", () => {
       return (await expectMessage(ws, "render")).html;
     };
     // the market grown into the window: every quote a row; find dims what the word misses, the eye hides it, closing find lights all
-    let html = await page([{ op: "replace", path: "/open", value: "market" }, { op: "replace", path: "/filter/market", value: "charlie" }]);
+    let html = await page([{ op: "replace", path: "/page", value: "market" }, { op: "replace", path: "/filter/market", value: "charlie" }]);
     expect(html).toContain('class="cell open" data-key="market"');
     expect(html).toContain('class="row tap" id="m-CHRL"');
     expect(html).toContain('class="row tap hushed" id="m-ALPH"');
@@ -243,13 +243,13 @@ describe("the ticker", () => {
     await expectMessage(ws, "patch");
     expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: "#market-rows" }]);
     // a symbol's drawer offers to watch it; watching it closes nothing but marks it, and the drawer then offers to drop it
-    html = await page([{ op: "replace", path: "/focus", value: "CHRL" }]);
+    html = await page([{ op: "replace", path: "/page", value: "market?symbol=CHRL" }]);
     expect(html).toContain('aria-label="CHRL"');
     expect(html).toContain('data-write=\'{"doc":"watchlist","op":"add","path":"/symbols/-"}\' data-value="CHRL"');
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "CHRL" }]);
     await expectMessage(ws, "patch");
     await expectMessage(ws, "render");
-    html = await page([{ op: "replace", path: "/open", value: "board" }, { op: "replace", path: "/reading/board", value: "list" }, { op: "replace", path: "/focus", value: "CHRL" }]);
+    html = await page([{ op: "replace", path: "/page", value: "board?symbol=CHRL" }, { op: "replace", path: "/reading/board", value: "list" }]);
     expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-pressed="true" data-reveal>/);
     expect(html).toContain("Stop watching");
     // with the drawer open a tick redraws the compartment whole, since the drawer says the price too;
@@ -257,13 +257,14 @@ describe("the ticker", () => {
     write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.05 }]);
     await expectMessage(ws, "patch");
     expect((await expectMessage(ws, "render")).html).toContain("13.05"); // the page, whole: the drawer's price with it
-    await page([{ op: "remove", path: "/focus" }]);
+    await page([{ op: "replace", path: "/page", value: "board" }]);
     write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.07 }]);
     await expectMessage(ws, "patch");
     expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: "#board-list" }]);
-    await page([{ op: "replace", path: "/focus", value: "CHRL" }]);
-    // dropping asks first; the write that answers closes the modal and the drawer, and the page comes whole
-    html = await page([{ op: "replace", path: "/confirm", value: "CHRL" }]);
+    // dropping asks first, from the drawer; the write that answers puts the modal away, and the page comes whole
+    html = await page([{ op: "replace", path: "/page", value: "board?symbol=CHRL" }]);
+    expect(html).toContain(`data-value="board?confirm=CHRL"`);
+    html = await page([{ op: "replace", path: "/page", value: "board?confirm=CHRL" }]);
     expect(html).toContain('<dialog open class="modal" aria-label="Stop watching CHRL">');
     expect(html).toContain("<div inert>");
     write(ws, "watchlist", [{ op: "remove", path: "/symbols/0" }]);
@@ -272,7 +273,7 @@ describe("the ticker", () => {
     expect(html).not.toContain('class="modal"');
     expect(html).not.toContain("Stop watching");
     // watching asks which symbol; the add that answers closes the ask
-    html = await page([{ op: "replace", path: "/new", value: "board" }]);
+    html = await page([{ op: "replace", path: "/page", value: "board?new" }]);
     expect(html).toContain('<dialog open class="modal" aria-label="Watch a symbol">');
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "GOLF" }]);
     await expectMessage(ws, "patch");
@@ -280,9 +281,9 @@ describe("the ticker", () => {
     expect(html).not.toContain('class="modal"');
     expect(html).toContain('id="b-GOLF"');
     // a stale confirm renders no modal; a drawer for a symbol the market lacks renders none
-    html = await page([{ op: "replace", path: "/confirm", value: "ZZZZ" }]);
+    html = await page([{ op: "replace", path: "/page", value: "board?confirm=ZZZZ" }]);
     expect(html).not.toContain('class="modal"');
-    html = await page([{ op: "replace", path: "/focus", value: "ZZZZ" }]);
+    html = await page([{ op: "replace", path: "/page", value: "board?symbol=ZZZZ" }]);
     expect(html).not.toContain('class="sheet"');
     ws.close();
   });

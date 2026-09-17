@@ -36,15 +36,6 @@ const RULES: Rule[] = [
 // changes counts and lists on many pages, so every page goes out whole.
 
 
-/** A modal asks one question; the write that answers it closes it (rule 14): an add closes the ask, a removal closes the confirm and the row's drawer. */
-function closeAsked(sessionId: string, applied: { op: string; path: string }[]): void {
-  const { ui } = sessionDoc.read(sessionId);
-  const ops: PatchOp[] = [];
-  if (ui.new && applied.some((op) => op.op === "add" && op.path.endsWith("/-"))) ops.push({ op: "remove", path: "/new" });
-  if (ui.confirm && applied.some((op) => op.op === "remove")) ops.push({ op: "remove", path: "/confirm" }, { op: "remove", path: "/keep" });
-  if (ops.length) sessionDoc.patch(sessionId, ops);
-}
-
 /** The couple's pages. The board is always there in practice: read() only reports a kind for a code that exists. */
 export function renderBoard(session: sessionDoc.SessionDocument): string | undefined {
   const b = boardDoc.read(session.code!);
@@ -63,7 +54,7 @@ export const board: Compartment = {
   },
   write(ws, code, ops, undoes): WriteResult {
     const result = boardDoc.patch(code, ops, ws.data.sessionId, undoes);
-    if (undoes === undefined) closeAsked(ws.data.sessionId, result.applied);
+    if (undoes === undefined) sessionDoc.closeAnswered(ws.data.sessionId, result.applied);
     notify("board", code, result, { renderTo: allOpenSockets() });
     return result;
   },

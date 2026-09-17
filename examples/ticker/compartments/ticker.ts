@@ -5,7 +5,7 @@ import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
 import { audienceFor, notify } from "../../../src/compartments/audience";
 import * as deskDoc from "../documents/desk";
-import { boardList, marketRows, page, reading } from "../views/page";
+import { boardList, marketRows, page, reading, where } from "../views/page";
 import type { HtmlOp } from "../../../src/compartments/render";
 
 // The market, and the page. A tick -- from the feed below, or typed by anyone through the wire
@@ -76,11 +76,12 @@ export const ticker: Compartment = {
     const ui = deskDoc.read(ws.data.sessionId);
     // a symbol's drawer says its price too: rather than list one more target that has to be right
     // for every state the desk can be in, decline, and the kernel redraws this compartment whole
-    if (ui.focus && ui.focus !== "clock") return undefined;
+    const at = where(ui);
+    if (at.what === "symbol" || at.what === "confirm") return undefined;
     const v = { list: watchlistDoc.read(ws.data.sessionId), market: market.read(), clock: clockDoc.read(ws.data.sessionId), ui };
     const ops: HtmlOp[] = [];
-    if (ui.open === "market") ops.push({ op: "replace", target: "#market-rows", html: marketRows(v) });
-    if (ui.open === "board" && reading(ui) === "list") ops.push({ op: "replace", target: "#board-list", html: boardList(v) });
+    if (at.path === "market") ops.push({ op: "replace", target: "#market-rows", html: marketRows(v) });
+    if (at.path === "board" && reading(ui) === "list") ops.push({ op: "replace", target: "#board-list", html: boardList(v) });
     return ops;
   },
   onOpen() {
