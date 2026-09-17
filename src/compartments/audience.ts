@@ -52,7 +52,7 @@ export function audienceFor(docType: string, docId: string, exclude?: ServerWebS
 /**
  * Echoes a write's applied ops to everyone who sees the document, then asks them to be brought
  * up to date (`Concept.fragments`, or item 10's own-element default, or the page) -- the one
- * thing besides applying the patch that every compartment's `write()`/`replay()` needs to do.
+ * thing besides applying the patch that every compartment's `write()` needs to do.
  * A no-op patch (nothing applied) tells nobody, same as a document that finds no audience at all.
  */
 export function notify(docType: string, docId: string, result: WriteResult): void {

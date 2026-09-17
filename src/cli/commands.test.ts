@@ -214,21 +214,12 @@ const widgetCompartment: Compartment = {
   permit(ws, op) {
     return op.path === "/color" && op.op === "replace";
   },
-  write(ws, id, ops) {
+  write(ws, id, ops, undoes) {
     const before = widgets.get(id) ?? { color: "" };
     const applied = ops.filter((op) => op.path === "/color" && op.op === "replace");
     const inverse = applied.map(() => ({ op: "replace" as const, path: "/color", value: before.color }));
-    if (applied[0]) widgets.set(id, { color: String(applied[0].value ?? "") });
-    const version = record(prefixDoc("widget", id), applied, inverse, ws.data.sessionId);
-    if (applied.length > 0) ws.send(patchMessage("widget", version, applied));
-    return { version, applied };
-  },
-  replay(ws, id, ops, undoes) {
-    const before = widgets.get(id) ?? { color: "" };
-    const applied = ops;
-    const inverse = applied.map(() => ({ op: "replace" as const, path: "/color", value: before.color }));
     const value = applied[applied.length - 1]?.value;
-    widgets.set(id, { color: value !== undefined ? String(value) : "" });
+    if (applied.length > 0) widgets.set(id, { color: value !== undefined ? String(value) : "" });
     const version = record(prefixDoc("widget", id), applied, inverse, ws.data.sessionId, undoes);
     if (applied.length > 0) ws.send(patchMessage("widget", version, applied));
     return { version, applied };

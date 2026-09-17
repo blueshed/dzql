@@ -68,7 +68,7 @@ export const ticker: Compartment = {
   write(ws, _docId, ops) {
     return tick(ops, ws.data.sessionId);
   },
-  // No replay(): a tick is recorded as not undoable, so the ledger's cursor never lands here.
+  // A tick is recorded as not undoable, so the ledger's cursor never lands here.
   // The board applet took the ops, so on the box there is nothing to render; a session reading
   // the market's rows, or the board as a list, has those rows redrawn and nothing else.
   fragments(ws): HtmlOp[] | undefined {

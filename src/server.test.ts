@@ -59,10 +59,7 @@ const noteCompartment: Compartment = {
   permit(ws, op) {
     return op.path === "/text" && op.op === "replace";
   },
-  write(ws, id, ops) {
-    return noteWrite(ws, id, ops);
-  },
-  replay(ws, id, ops, undoes) {
+  write(ws, id, ops, undoes) {
     return noteWrite(ws, id, ops, undoes);
   },
   // Text beginning "frag" is answered as one HTML op; "quiet" as nothing at all; anything

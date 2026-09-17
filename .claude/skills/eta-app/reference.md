@@ -74,8 +74,7 @@ export type Compartment = {
   resolveDoc(ws): string | undefined; // the doc id this connection currently sees for its docType
   sees?(ws, docId: string): boolean; // does this connection see docId -- not just its own resolveDoc; defaults to resolveDoc(ws) === docId
   permit(ws, op: PatchOp): boolean;   // may this connection apply op?
-  write(ws, docId: string, ops: PatchOp[]): WriteResult; // apply + notify(); asks every connection that sees the doc to update, itself included
-  replay?(ws, docId: string, ops: PatchOp[], undoes: number): WriteResult; // undo's write, skipping permit()
+  write(ws, docId: string, ops: PatchOp[], undoes?: number): WriteResult; // apply + notify(); asks every connection that sees the doc to update, itself included. `undoes` set = undo or redo: a recorded inverse, permit() not asked
   fragments?(ws, docId: string, result: WriteResult): HtmlOp[] | undefined; // the delta in HTML's terms, per connection; [] = nothing changed here; undefined = decline (the kernel's own default applies)
   onOpen?(ws): void;
   onClose?(ws): void;
@@ -94,7 +93,7 @@ example. `src/compartments/audience.ts` exports three things:
   socket out regardless (an announcement that doesn't need telling about itself).
 - `notify(docType, docId, result)`: echoes `result`'s applied ops to `audienceFor(docType, docId)`
   and asks that same audience for a render (`renderRequested.emit`) -- the one thing besides
-  applying the patch that a `write()`/`replay()` needs to do. A no-op result (nothing applied)
+  applying the patch that a `write()` needs to do. A no-op result (nothing applied)
   tells nobody.
 - `allOpenSockets()`: every open connection, full stop -- for the rare write whose effect is
   genuinely everyone's concern (an aggregate view fed by more than one document), not just this
@@ -169,31 +168,15 @@ only by `docType`, never part of render order, though the tray's own document is
 order matters — the first compartment whose `render()` returns non-`undefined` wins (the
 wedding's `household` decides "not this code" before `board` gets a turn).
 
-### `write` vs `replay`
+### One `write`, fresh or walked
 
-`write()` is a fresh request against a document's normal writable surface —
-`permit()` has already said yes. `replay()` is the ledger walking back an
-earlier write: it applies already-shaped ops (a recorded inverse) and echoes
-exactly the way `write()` would, but skips `permit()` entirely, since it
-isn't a new request. Compartments reached only by `docType` (like ledger itself)
-don't implement `replay` — nothing ever undoes onto them.
-
-`examples/chat/compartments/session.ts` (the tray -- see above) shows the shared-echo pattern:
-both `write` and `replay` call `sessionDoc.patch(...)` then the same `echoSessionPatch()`, which
-is also where the tray's bare `renderRequested.emit([ws])` lives:
-
-```ts
-write(ws, id, ops) {
-  const before = sessionDoc.read(id);
-  const result = sessionDoc.patch(id, ops);
-  return echoSessionPatch(ws, before, result.version, result.applied);
-},
-replay(ws, id, ops, undoes) {
-  const before = sessionDoc.read(id);
-  const result = sessionDoc.patch(id, ops, undoes);
-  return echoSessionPatch(ws, before, result.version, result.applied);
-},
-```
+`write(ws, docId, ops, undoes?)` is the one path to a document. Fresh from the wire, `permit()` has
+already said yes and `undoes` is undefined. When the ledger walks an entry back or forward (undo,
+redo) it calls the same `write` with the recorded inverse and that entry's id as `undoes`: `permit`
+is not asked, and `record()` links the new row to the one it walks. Apply, then `notify` -- the
+same either way. What a compartment does to a fresh value it does only when `undoes` is undefined:
+chat's room shapes the text into a message by its author; the wedding's household keeps only the
+name of a plus-one. An inverse arrives whole and is applied as it is.
 
 ## Documents: `read`/`patch`
 
@@ -265,7 +248,7 @@ without ever touching `record()` (undoing an arrival is nonsense).
 factory (not a fixed compartment) so it can find whichever compartment owns the
 document an undo lands on: it finds `nextUndo(sessionId)`, splits `.doc`
 into `{docType, docId}`, and calls
-`lookup(docType)!.replay(ws, docId, entry.inverse, entry.id)`. No
+`lookup(docType)!.write(ws, docId, entry.inverse, entry.id)`. No
 example-specific dispatch, no cross-compartment event needed for undo itself.
 
 ## Migrations and namespacing
@@ -543,7 +526,7 @@ of a real seam addition (rare) vs. a workaround (avoid):
 - Needing a per-example "is this session allowed to write" rule → already
   solved by `Example.active`.
 - Needing undo to behave differently for one document → already solved by
-  `Compartment.replay`.
+  `write`'s `undoes`.
 - Needing an extra HTTP route (e.g. serving uploaded files) → already solved
   by `Example.routes`.
 - Wanting the kernel to know about a specific applet, document, or compartment

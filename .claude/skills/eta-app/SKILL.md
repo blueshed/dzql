@@ -55,7 +55,7 @@ Everything below is the least that makes it pass.
    path, one transaction, each op's inverse computed, one `record(...)` at the end. Is this value
    valid is `patch()`'s question; may this connection write this path is `permit()`'s.
 5. **`compartments/<thing>.ts`** -- `docType`, `resolveDoc`, `permit`, `write`, and what it needs of
-   `render`, `sees`, `replay`, `fragments`, `onOpen`, `onClose`. `write()` ends by calling
+   `render`, `sees`, `fragments`, `onOpen`, `onClose`. `write()` ends by calling
    `notify(docType, docId, result)`, which echoes the ops to everyone who sees the document and
    asks for their render, the writer included. Implement `fragments` only where answering smaller
    than the compartment's own element is worth the care: every target it names has to be right for

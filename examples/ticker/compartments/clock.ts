@@ -17,12 +17,7 @@ export const clock: Compartment = {
   permit(_ws, op) {
     return op.op === "replace" && op.path === "/tz";
   },
-  write(_ws, sessionId, ops) {
-    const result = clockDoc.patch(sessionId, ops);
-    notify("clock", sessionId, result);
-    return result;
-  },
-  replay(_ws, sessionId, ops, undoes) {
+  write(_ws, sessionId, ops, undoes) {
     const result = clockDoc.patch(sessionId, ops, undoes);
     notify("clock", sessionId, result);
     return result;

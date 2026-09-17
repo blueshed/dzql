@@ -75,17 +75,9 @@ export const session: Compartment = {
     if (op.path === "/room") return sessionDoc.read(ws.data.sessionId).name !== null;
     return true;
   },
-  write(ws, id, ops) {
-    const before = sessionDoc.read(id);
-    const result = sessionDoc.patch(id, ops);
-    return echoSessionPatch(ws, before, result.version, result.applied);
-  },
-  // Undo landing back on the session document (e.g. re-logging-in a name
-  // that was just removed): apply the ledger's inverse ops directly --
-  // skipping permit(), since this isn't a fresh request against the normal
-  // writable surface -- then echo exactly as a direct write would, so room
+  // Undo lands here too (re-giving a name that was just removed): the same path, so room
   // membership still reacts (see compartments/room.ts's sessionPatched listener).
-  replay(ws, id, ops, undoes) {
+  write(ws, id, ops, undoes) {
     const before = sessionDoc.read(id);
     const result = sessionDoc.patch(id, ops, undoes);
     return echoSessionPatch(ws, before, result.version, result.applied);

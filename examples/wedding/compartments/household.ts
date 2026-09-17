@@ -107,30 +107,23 @@ export const household: Compartment = {
     }
     return true;
   },
-  write(ws, code, ops): WriteResult {
+  write(ws, code, ops, undoes): WriteResult {
     // The wire may name a plus-one or an ask and nothing more. The whole-row shape the document
     // also accepts -- an id, who named them, coming, a look; a reply -- is what an inverse carries,
-    // and only replay() below may bring it: a household that sent `named_by: "couple"` would
+    // and only an undo or a redo may bring it: a household that sent `named_by: "couple"` would
     // otherwise never be counted against its invitation. permit() saw each op on its own, before
     // any was applied, so the plus-ones still owed are counted down here across the message.
+    const fresh = undoes === undefined;
     const h = householdDoc.read(code)!;
     let owed = h.plus_ones - h.guests.filter((g) => g.named_by === "household").length;
-    const named = ops.flatMap((op) => {
+    const named = !fresh ? ops : ops.flatMap((op) => {
       if (op.op !== "add" || (op.path !== "/guests/-" && op.path !== "/asks/-")) return [op];
       if (op.path === "/guests/-" && owed-- <= 0) return [];
       const name = typeof op.value === "string" ? op.value : (op.value as { name?: unknown } | null)?.name;
       return [{ ...op, value: { name } }];
     });
-    const result = householdDoc.patch(code, named, ws.data.sessionId);
-    closeAsked(ws.data.sessionId, result.applied);
-    echoAndNotify(code, result);
-    return result;
-  },
-  // Undo landing back on this household: apply the ledger's inverse ops directly -- skipping
-  // permit(), since this isn't a fresh request against the writable surface -- then echo and
-  // notify exactly as a direct write would.
-  replay(ws, code, ops, undoes): WriteResult {
-    const result = householdDoc.patch(code, ops, ws.data.sessionId, undoes);
+    const result = householdDoc.patch(code, named, ws.data.sessionId, undoes);
+    if (fresh) closeAsked(ws.data.sessionId, result.applied);
     echoAndNotify(code, result);
     return result;
   },

@@ -44,18 +44,14 @@ export type Compartment = {
    * the kernel ever needs to ask the question generically rather than each document answering it
    * by omission, `Compartment.ledger?: false` is the shape.
    */
-  write(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): WriteResult;
   /**
-   * Applies already-shaped ops (a ledger inverse, during undo) to `docId` and
-   * echoes exactly as a direct write would -- skipping `permit` (undo isn't a
-   * fresh request against the document's normal writable surface, it's the
-   * ledger replaying its own recorded inverse) but otherwise going through
-   * the same apply-then-echo path `write` does. `undoes` is the id of the
-   * ledger entry being walked back, so the replay's own ledger row records
-   * that link. Compartments reached only by docType (e.g. ledger itself) don't
-   * implement this -- nothing ever undoes onto them.
+   * `undoes` is set when this is not a fresh request but the ledger walking one back or forward
+   * (undo, redo): `ops` are then a recorded inverse, `permit` was not asked, and `undoes` is the
+   * id of the entry being walked, for `record()`. Same path either way -- apply, then tell whoever
+   * sees the document -- so what a fresh write does to the wire's value (chat shapes a message,
+   * the wedding keeps only a name) it does only when `undoes` is undefined.
    */
-  replay?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[], undoes: number): WriteResult;
+  write(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[], undoes?: number): WriteResult;
   /**
    * The HTML ops that bring this connection's page up to date after `result` was applied to
    * `docId` -- the delta in HTML's terms. `[]` says the write changed nothing on this

@@ -27,14 +27,9 @@ export const watchlist: Compartment = {
   permit(_ws, op) {
     return (op.op === "add" && op.path === "/symbols/-") || (op.op === "remove" && /^\/symbols\/\d+$/.test(op.path));
   },
-  write(_ws, sessionId, ops) {
-    const result = watchlistDoc.patch(sessionId, ops);
-    closeAsked(sessionId, result.applied);
-    notify("watchlist", sessionId, result);
-    return result;
-  },
-  replay(_ws, sessionId, ops, undoes) {
+  write(_ws, sessionId, ops, undoes) {
     const result = watchlistDoc.patch(sessionId, ops, undoes);
+    if (undoes === undefined) closeAsked(sessionId, result.applied);
     notify("watchlist", sessionId, result);
     return result;
   },

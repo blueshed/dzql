@@ -25,12 +25,12 @@ import type { Stories, Story, Write } from "./stories";
 export type Outcome = { name: string; failures: string[] };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number };
 
-type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; last: number; page: string };
+type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; answered: (() => void)[] };
 type HtmlOp = { op: "replace" | "add" | "remove"; target: string; html?: string };
 type Snapshot = Map<string, string>;
 
-const SETTLE_MS = Number(process.env.STORY_SETTLE_MS ?? 40);
-const SETTLE_CAP_MS = 2000;
+/** How long the server is given to finish with the sockets a story closed, before its transaction is rolled back. */
+const CLOSE_MS = 40;
 
 const ledgerMaxStmt = db.query<{ id: number | null }, []>("SELECT MAX(id) AS id FROM ledger");
 const ledgerSinceStmt = db.query<{ id: number; doc: string; undoable: number }, [number]>("SELECT id, doc, undoable FROM ledger WHERE id > ? ORDER BY id");
@@ -54,9 +54,10 @@ function applyOp(page: string, op: HtmlOp): string {
     .transform(page);
 }
 
+type Heard = { type: string; html?: string; ops?: HtmlOp[] };
+
 /** A member's open page after one more message: only renders change it. */
-function hear(page: string, raw: string): string {
-  const message = JSON.parse(raw) as { type: string; html?: string; ops?: HtmlOp[] };
+function hear(page: string, message: Heard): string {
   if (message.type !== "render") return page;
   if (message.html !== undefined) return message.html;
   return (message.ops ?? []).reduce(applyOp, page);
@@ -84,28 +85,33 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     const sessionId = crypto.randomUUID();
     // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
     const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } });
-    const member: Member = { name, sessionId, ws, inbox: [], last: Date.now(), page: "" };
+    const member: Member = { name, sessionId, ws, inbox: [], page: "", answered: [] };
     ws.addEventListener("message", (event) => {
+      const message = JSON.parse(String(event.data)) as Heard;
+      if (message.type === "inspect") return member.answered.shift()?.();
       member.inbox.push(String(event.data));
-      member.page = hear(member.page, String(event.data));
-      member.last = Date.now();
+      member.page = hear(member.page, message);
     });
     await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
     return member;
   }
 
-  /** Waits until no member has heard anything for SETTLE_MS: everything a write causes is synchronous on the server, so this is the wire going quiet. */
+  /**
+   * Waits until every member has heard everything sent so far. Everything a write causes is
+   * synchronous on the server, and a socket delivers in order: so each member is asked a question
+   * (`inspect`) after the write, and once each has its answer, each has had all that came before
+   * it. No clock: a render that is slow to make is still waited for.
+   */
   async function settle(cast: Member[]): Promise<void> {
-    const start = Date.now();
-    for (;;) {
-      const quietFor = Date.now() - Math.max(...cast.map((m) => m.last));
-      if (quietFor >= SETTLE_MS || Date.now() - start > SETTLE_CAP_MS) return;
-      await Bun.sleep(SETTLE_MS - quietFor);
-    }
+    await Promise.all(
+      cast.map((m) => new Promise<void>((resolve) => {
+        m.answered.push(resolve);
+        m.ws.send(JSON.stringify({ type: "inspect" }));
+      })),
+    );
   }
 
   async function send(cast: Member[], who: Member, write: Write): Promise<void> {
-    who.last = Date.now();
     who.ws.send(JSON.stringify(write));
     await settle(cast);
   }
@@ -194,7 +200,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     } finally {
       for (const m of cast) m.ws.close();
       await Promise.all(cast.map((m) => new Promise((resolve) => (m.ws.readyState === WebSocket.CLOSED ? resolve(undefined) : m.ws.addEventListener("close", resolve, { once: true })))));
-      await Bun.sleep(SETTLE_MS);
+      await Bun.sleep(CLOSE_MS);
       db.exec("ROLLBACK");
     }
   }

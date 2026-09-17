@@ -69,14 +69,9 @@ export const board: Compartment = {
     if (sessionDoc.read(ws.data.sessionId).kind !== "couple") return false;
     return RULES.some((r) => r.path.test(op.path) && r.ops.includes(op.op));
   },
-  write(ws, code, ops): WriteResult {
-    const result = boardDoc.patch(code, ops, ws.data.sessionId);
-    closeAsked(ws.data.sessionId, result.applied);
-    echoAndNotify(code, result);
-    return result;
-  },
-  replay(ws, code, ops, undoes): WriteResult {
+  write(ws, code, ops, undoes): WriteResult {
     const result = boardDoc.patch(code, ops, ws.data.sessionId, undoes);
+    if (undoes === undefined) closeAsked(ws.data.sessionId, result.applied);
     echoAndNotify(code, result);
     return result;
   },

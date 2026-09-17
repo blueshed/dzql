@@ -165,21 +165,13 @@ export const room: Compartment = {
     if (op.path !== "/transcript/-" || op.op !== "add") return false;
     return sessionDoc.read(ws.data.sessionId).name !== null;
   },
-  write(ws, roomName, ops) {
+  // A fresh write's value is the text alone, and is shaped into a message by its author here; an
+  // undo or a redo brings ops that are already whole (a remove; a message with its own id).
+  write(ws, roomName, ops, undoes) {
     const { name } = sessionDoc.read(ws.data.sessionId);
-    const prepared = ops.map((op) => ({ ...op, value: { name, text: op.value } }));
-
-    const result = roomDoc.patch(roomName, prepared, ws.data.sessionId);
-    notify("room", roomName, result); // echoed to everyone in the room, naming the write, so `fragments` can answer with the one <li>
-    return result;
-  },
-  // Undo landing back on the room document (e.g. a sent message walked back): apply the
-  // ledger's inverse ops directly -- skipping permit(), since this isn't a fresh request
-  // against the normal writable surface -- then echo and notify exactly as a direct write
-  // would, covering every connection in the room including the one that pressed undo (rule 2).
-  replay(ws, roomName, ops, undoes) {
-    const result = roomDoc.patch(roomName, ops, ws.data.sessionId, undoes);
-    notify("room", roomName, result);
+    const shaped = undoes === undefined ? ops.map((op) => ({ ...op, value: { name, text: op.value } })) : ops;
+    const result = roomDoc.patch(roomName, shaped, ws.data.sessionId, undoes);
+    notify("room", roomName, result); // everyone in the room, the writer too, naming the write so `fragments` can answer with the one <li>
     return result;
   },
   // The delta in HTML's terms: a sent message is one <li> appended; a message walked back by

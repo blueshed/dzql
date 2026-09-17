@@ -51,12 +51,11 @@ export function createLedgerCompartment(
 
       const { docType, docId } = splitDoc(entry.doc);
       const owner = lookup(docType);
-      // An entry for a doc type nothing in this example owns (or that
-      // declines to support replay) simply isn't undoable -- it doesn't
+      // An entry for a doc type nothing in this example owns simply isn't undoable -- it doesn't
       // get skipped in favor of an older entry; undo just does nothing.
-      if (!owner?.replay) return { version: 0, applied: [] };
+      if (!owner) return { version: 0, applied: [] };
 
-      return owner.replay(ws, docId, entry.inverse, entry.id);
+      return owner.write(ws, docId, entry.inverse, entry.id);
     },
   };
 }
