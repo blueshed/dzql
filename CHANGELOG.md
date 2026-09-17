@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.43.0] - 2026-09-17
+
+### Changed
+
+- **The bento's surfaces are the kernel's.** The trail, the tray and its compartments, the
+  window, the stacks of tools, find, the rows, the drawer and the modal were written three times,
+  with their CSS and the reading/find/eye tray state beside them. They are `src/bento.ts` (bound
+  once per example: `bento({icon, tray, leave?})`), `src/bento.css` (imported first, then the
+  example's own tokens), `src/html.ts` (`esc`, `write`, `join`) and `patchCollections`. A page is
+  a box (`boxPage`) or a collection (`collectionPage`). The wedding and the ticker are rebound to
+  them; the wedding's tests pass unchanged.
+- **Chat is three steps again: your name, a room, say something.** 0.42.0's box of three
+  compartments, with its drawers, modal, find and eye, had stories written after it to cover it.
+  The stories are the source again -- the six real ones in the order of the intent, the two steps
+  that had none (giving your name; naming a room nobody has made) and the refusal of a blank room
+  name, ten in all -- and chat is what they need: two pages, each a collection, the HTML in the
+  compartment, a session that is a name and a room. `migrations/0003_ui.sql` is gone.
+- **A room is where someone is or something was said.** Entering a room nobody had made was two
+  changes and undo took back one, which the reclaimed stories found on their first run; nothing
+  makes a room now, and the `rooms` table is dropped (`0003_rooms_are_where_people_are.sql`).
+- **Bento rule 2: inside a window the trail is whole**, one crumb longer, every earlier crumb a
+  way back, so opening something never loses the root. The kernel and the mock-up draw it.
+- **Docs: one home per fact.** `CLAUDE.md` is the rules a builder must not break, stories first;
+  the eta-app skill makes the story step 0; the reference loses its duplicated vocabulary, its
+  citations of finished request items and the statements the code contradicted; `stories.md` says
+  what the harness checks and the four things it does not yet. `change-request.md` and
+  `bento-request.md`, both done, are in `history/` beside a first-principles review
+  (`history/review-2026-09-17.md`) whose proposals are open.
+
+### Fixed
+
+- **The harness and an author who goes by undoing.** Undoing the write that gave you your name
+  logs you out; redo is then not yours to press, and the harness no longer asks for it.
+- **A click in a field that carries `data-write` sent a blank write**, emptying find's word on the
+  server while the box still showed it. A field's `data-write` names its path; it is not a gesture.
+- **A household could give itself unlimited plus-ones** by sending the whole-row shape an inverse
+  carries (`named_by: "couple"`), or two adds in one message. The wire may name a plus-one or an
+  ask and nothing more; the rest reaches the document through `replay()` alone.
+- **The ticker's open drawer went stale** on a tick, and on watching from it: with a drawer open
+  the compartment is redrawn whole rather than by a hand-kept list of targets.
+
 ## [0.42.0] - 2026-09-16
 
 ### Changed
