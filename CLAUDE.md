@@ -56,6 +56,11 @@ Two words have two meanings each, so say which:
 
 A page follows the bento's rules, stated once in `examples/bento/README.md` and built in
 `src/bento.ts` and `src/bento.css`. A page is a box (`boxPage`) or a collection (`collectionPage`).
-Read the rules for what they intend, not as a checklist to satisfy. Where a bento rule and the
+Read the rules for what they intend, not as a checklist to satisfy.
+
+Say a thing once. Nothing is shown twice on a page. In a list, what an item shares with the one
+before it (its author, its day, its group) is said at the start of the run, not on every item;
+what is true of the person looking (their own name on their own things) is not said to them at
+all -- show it by place or colour instead. Repeating a label because it was easy is lazy. Where a bento rule and the
 stories disagree, the stories win: rule 14 makes a new thing with a plus and a modal, but a modal
 needs tray state, and chat's stories need none, so chat names a room in a form in place.

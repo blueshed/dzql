@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
 import type { HtmlOp } from "../../src/compartments/render";
 import { history } from "../../src/ledger";
-import { read as readRoom } from "./documents/room";
+import { patch as patchRoom, read as readRoom } from "./documents/room";
+import { patch as patchSession } from "./documents/session";
 import { createServer } from "../../src/server";
 import { example } from "./index";
 
@@ -664,6 +665,20 @@ describe("chat", () => {
 
     a.close();
     b.close();
+  });
+
+  test("a thing is said once: a run of messages names its author once, and your own name nobody", () => {
+    const room = crypto.randomUUID();
+    const ada = crypto.randomUUID();
+    patchSession(ada, [{ op: "replace", path: "/name", value: "Ada" }, { op: "replace", path: "/room", value: room }]);
+    for (const [name, text] of [["Bob", "one"], ["Bob", "two"], ["Bob", "three"], ["Ada", "mine"], ["Ada", "mine too"]]) {
+      patchRoom(room, [{ op: "add", path: "/transcript/-", value: { name, text } }], "setup");
+    }
+    const page = example.compartments[0]!.render!(ada)!;
+    const messages = page.slice(page.indexOf('id="messages"'));
+    expect(messages.match(/<span class="name">Bob<\/span>/g)).toHaveLength(1); // three in a row, named once
+    expect(messages).not.toContain('<span class="name">Ada</span>'); // she knows who she is
+    expect(messages.match(/class="mine"/g)).toHaveLength(2); // hers are told apart by where they sit, not by her name again
   });
 
   test("send-message with blank text does not crash and does not stop further messages", async () => {
