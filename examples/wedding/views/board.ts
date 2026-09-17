@@ -55,12 +55,12 @@ function openFor(v: BoardView, head: string): { open?: OpenOptions; crumbs: Crum
 export function boardPages(v: BoardView): string {
   const { b } = v;
   const ui = v.session.ui;
-  const trail: Crumb[] = [{ label: coupleName(b), page: "" }];
+  const trail: Crumb[] = [{ label: coupleName(b), back: nav("") }];
   const [head, hid, third] = (ui.page ?? "").split("/");
   const h = head === "households" && hid ? b.households.find((x) => String(x.id) === hid) : undefined;
   let page: string;
   if (h) {
-    const familyTrail: Crumb[] = [...trail, { label: "Households", page: "households" }, { label: h.code, page: `households/${h.id}` }];
+    const familyTrail: Crumb[] = [...trail, { label: "Households", back: nav("households") }, { label: h.code, back: nav(`households/${h.id}`) }];
     page = familyBox(v, h, familyTrail, third);
   } else {
     const { open, crumbs } = openFor(v, head);
@@ -147,11 +147,11 @@ function boxCells(v: BoardView) {
   const shared = b.gifts.filter((g) => g.shared).length;
   const t = b.totals;
   return [
-    cell({ name: "households", mark: "home", count: t.households, big: true, summary: `${t.answered} answered · ${t.coming} coming${t.asksWaiting ? ` · ${plural(t.asksWaiting, "ask", "asks")} waiting` : ""}`, page: "households", body: boardFamilies(b.households).length ? `<div class="mini photo">${boardMini(b)}</div>` : undefined }),
-    cell({ name: "courses", mark: "utensils", count: b.courses.length, summary: coursesSummary(b.courses), page: "courses" }),
-    cell({ name: "gifts", mark: "gift", count: b.gifts.length, summary: b.gifts.length ? `${claimed} claimed${shared ? ` · ${shared} shared` : ""}` : "none yet", page: "gifts" }),
-    cell({ name: "events", mark: "calendar", count: b.events.length, summary: eventsSummary(b.events), page: "events" }),
-    cell({ name: "where to stay", mark: "bed", count: b.places.length, summary: placesSummary(b.places), page: "places", key: "places" }),
+    cell({ name: "households", mark: "home", count: t.households, big: true, summary: `${t.answered} answered · ${t.coming} coming${t.asksWaiting ? ` · ${plural(t.asksWaiting, "ask", "asks")} waiting` : ""}`, opens: nav("households"), body: boardFamilies(b.households).length ? `<div class="mini photo">${boardMini(b)}</div>` : undefined }),
+    cell({ name: "courses", mark: "utensils", count: b.courses.length, summary: coursesSummary(b.courses), opens: nav("courses") }),
+    cell({ name: "gifts", mark: "gift", count: b.gifts.length, summary: b.gifts.length ? `${claimed} claimed${shared ? ` · ${shared} shared` : ""}` : "none yet", opens: nav("gifts") }),
+    cell({ name: "events", mark: "calendar", count: b.events.length, summary: eventsSummary(b.events), opens: nav("events") }),
+    cell({ name: "where to stay", mark: "bed", count: b.places.length, summary: placesSummary(b.places), opens: nav("places"), key: "places" }),
   ];
 }
 
@@ -236,7 +236,7 @@ function householdsOpen(v: BoardView): OpenOptions {
   }
   return {
     key: "households",
-    reading: readingSwitch("households", reading(v, "households"), ["photo", "list"]),
+    reading: readingSwitch("households", reading(v, "households"), [["photo", "camera"], ["list", "list"]]),
     tools: [b.households.length ? find.tool : "", addTool("households", "Invite a household")].filter(Boolean),
     filter: find.filter,
     body,
@@ -279,7 +279,7 @@ function familyGuestsOpen(v: BoardView, h: HouseholdDocument): OpenOptions {
   const photo = reading(v, key) === "photo";
   return {
     key: "guests",
-    reading: h.guests.length ? readingSwitch(key, reading(v, key), ["photo", "list"]) : undefined,
+    reading: h.guests.length ? readingSwitch(key, reading(v, key), [["photo", "camera"], ["list", "list"]]) : undefined,
     body: photo
       ? h.guests.length ? `<div class="reading photo">${familyPhoto(h)}</div>` : `<p class="note">Nobody named yet.</p>`
       : rows(h.guests.map((g) => familyGuestRow(v, g)), "Nobody named yet."),
@@ -291,8 +291,8 @@ function familyGuestsOpen(v: BoardView, h: HouseholdDocument): OpenOptions {
 function familyBox(v: BoardView, h: HouseholdDocument, trail: Crumb[], third: string | undefined): string {
   const waiting = h.asks.filter((a) => a.reply === null).length;
   const cells = [
-    cell({ name: "guests", mark: "users", count: h.guests.length, big: true, page: `households/${h.id}/guests`, key: "guests", summary: `${h.guests.filter(isComing).length} coming`, body: h.guests.length ? `<div class="mini photo">${familyPhoto(h, "family-mini")}</div>` : undefined }),
-    cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting for your answer` : h.asks.length ? "all answered" : "none", page: `households/${h.id}/asks`, key: "asks" }),
+    cell({ name: "guests", mark: "users", count: h.guests.length, big: true, opens: nav(`households/${h.id}/guests`), key: "guests", summary: `${h.guests.filter(isComing).length} coming`, body: h.guests.length ? `<div class="mini photo">${familyPhoto(h, "family-mini")}</div>` : undefined }),
+    cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting for your answer` : h.asks.length ? "all answered" : "none", opens: nav(`households/${h.id}/asks`), key: "asks" }),
     cell({ name: "the code", mark: "mail", summary: `${h.code} · ${h.email}`, thing: { open: write("session", "replace", "/keep", `households/${h.id}`), chosen: v.session.ui.keep === `households/${h.id}` } }),
   ];
   const open = third === "asks" ? familyAsksOpen(h) : third === "guests" ? familyGuestsOpen(v, h) : undefined;

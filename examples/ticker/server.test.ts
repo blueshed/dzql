@@ -211,7 +211,7 @@ describe("the ticker", () => {
     expect(html).toContain('class="row tap hushed" id="m-ALPH"');
     expect(html).toContain(">1 of 16</span>");
     html = await page([{ op: "replace", path: "/hide/market", value: true }]);
-    expect(html).toContain('id="m-ALPH" role="button" tabindex="0" aria-pressed="false" hidden');
+    expect(html).toMatch(/id="m-ALPH"[^>]* aria-pressed="false" hidden>/);
     html = await page([{ op: "remove", path: "/filter/market" }]);
     expect(html).not.toContain("hushed");
     // a tick redraws the market's rows for a session reading them, and nothing for one on the box
@@ -226,7 +226,7 @@ describe("the ticker", () => {
     await expectMessage(ws, "patch");
     await expectMessage(ws, "render");
     html = await page([{ op: "replace", path: "/open", value: "board" }, { op: "replace", path: "/reading/board", value: "list" }, { op: "replace", path: "/focus", value: "CHRL" }]);
-    expect(html).toContain('class="row tap" id="b-CHRL" role="button" tabindex="0" aria-pressed="true" data-reveal');
+    expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-pressed="true" data-reveal>/);
     expect(html).toContain("Stop watching");
     // a tick redraws the board's list too
     write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.05 }]);
@@ -234,7 +234,7 @@ describe("the ticker", () => {
     expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: "#board-list" }]);
     // dropping asks first; the write that answers closes the modal and the drawer, and the page comes whole
     html = await page([{ op: "replace", path: "/confirm", value: "CHRL" }]);
-    expect(html).toContain('<dialog open class="modal" aria-label="Stop watching">');
+    expect(html).toContain('<dialog open class="modal" aria-label="Stop watching CHRL">');
     expect(html).toContain("<div inert>");
     write(ws, "watchlist", [{ op: "remove", path: "/symbols/0" }]);
     await expectMessage(ws, "patch");

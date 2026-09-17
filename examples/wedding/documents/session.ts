@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { patchCollections, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { integer } from "./values";
@@ -25,13 +26,7 @@ export type Ui = {
   new?: string;
   /** The modal confirming a removal is open, as "<table>/<id>". */
   confirm?: string;
-  /** How each collection is being read: "photo" or "list", by the collection's name. */
-  reading?: Record<string, string>;
-  /** Find's own word, by the collection's name -- present (even "") once the tool is open, gone once closed. */
-  filter?: Record<string, string>;
-  /** The eye on find: hide what the word misses instead of dimming it, by the collection's name. */
-  hide?: Record<string, true>;
-};
+} & Collections; // how each collection is read, find's word, the eye: by the collection's name
 
 export type SessionDocument = { code: string | null; kind: Kind | null; ui: Ui; note: string | null };
 
@@ -63,7 +58,7 @@ export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): 
   const applied: PatchOp[] = [];
 
   for (const op of ops) {
-    const [field, key] = parsePointer(op.path);
+    const [field] = parsePointer(op.path);
     const before = read(id);
     const next: SessionDocument = { ...before, ui: { ...before.ui } };
     const removing = op.op === "remove";
@@ -108,38 +103,8 @@ export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): 
     } else if (field === "new" || field === "confirm") {
       if (removing) delete next.ui[field];
       else next.ui[field] = String(op.value ?? "");
-    } else if (field === "reading" && key && !removing) {
-      next.ui.reading = { ...next.ui.reading, [key]: String(op.value ?? "") };
-    } else if (field === "hide" && key) {
-      // The eye (rule 17): set, what find misses is hidden instead of dimmed; removed, dimmed again.
-      if (removing) {
-        if (!before.ui.hide || !(key in before.ui.hide)) continue;
-        const rest = { ...before.ui.hide };
-        delete rest[key];
-        if (Object.keys(rest).length > 0) next.ui.hide = rest;
-        else delete next.ui.hide;
-      } else {
-        next.ui.hide = { ...before.ui.hide, [key]: true };
-      }
-    } else if (field === "filter" && key) {
-      // Closing find removes just its own key -- rule 17: everything is lit again, the way it
-      // was before find was ever pressed, not merely emptied.
-      if (removing) {
-        if (!before.ui.filter || !(key in before.ui.filter)) continue;
-        const rest = { ...before.ui.filter };
-        delete rest[key];
-        if (Object.keys(rest).length > 0) next.ui.filter = rest;
-        else delete next.ui.filter;
-        // closing find forgets the eye too
-        if (before.ui.hide && key in before.ui.hide) {
-          const eyes = { ...before.ui.hide };
-          delete eyes[key];
-          if (Object.keys(eyes).length > 0) next.ui.hide = eyes;
-          else delete next.ui.hide;
-        }
-      } else {
-        next.ui.filter = { ...before.ui.filter, [key]: String(op.value ?? "") };
-      }
+    } else if (patchCollections(next.ui, op)) {
+      // how a collection is read, find's word, the eye: the bento's own (src/bento.ts)
     } else {
       continue;
     }

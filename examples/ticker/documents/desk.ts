@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { patchCollections, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 
@@ -14,10 +15,7 @@ export type Ui = {
   new?: "board";
   /** The modal that asks before a symbol is dropped. */
   confirm?: string;
-  reading?: Record<string, string>;
-  filter?: Record<string, string>;
-  hide?: Record<string, true>;
-};
+} & Collections; // how the board is read, what find says
 
 const readStmt = db.query<{ ui: string }, [string]>("SELECT ui FROM desks WHERE session_id = ?");
 const upsertStmt = db.query<unknown, [string, string]>("INSERT INTO desks (session_id, ui) VALUES (?1, ?2) ON CONFLICT(session_id) DO UPDATE SET ui = ?2");
@@ -37,7 +35,7 @@ export function patch(sessionId: string, ops: PatchOp[]): DeskPatchResult {
   const applied: PatchOp[] = [];
   const ui: Ui = { ...read(sessionId) };
   for (const op of ops) {
-    const [field, key] = parsePointer(op.path);
+    const [field] = parsePointer(op.path);
     const removing = op.op === "remove";
     if (field === "open") {
       if (removing) delete ui.open;
@@ -56,22 +54,8 @@ export function patch(sessionId: string, ops: PatchOp[]): DeskPatchResult {
       if (removing) delete ui.new;
       else if (op.value === "board") ui.new = "board";
       else continue;
-    } else if ((field === "reading" || field === "filter" || field === "hide") && key) {
-      const map = { ...(ui[field] ?? {}) } as Record<string, string | true>;
-      if (removing) {
-        if (!(key in map)) continue;
-        delete map[key];
-        if (field === "filter" && ui.hide && key in ui.hide) {
-          const eyes = { ...ui.hide };
-          delete eyes[key];
-          if (Object.keys(eyes).length) ui.hide = eyes;
-          else delete ui.hide;
-        }
-      } else map[key] = field === "hide" ? true : String(op.value ?? "");
-      if (Object.keys(map).length) (ui as Record<string, unknown>)[field] = map;
-      else delete ui[field];
-    } else {
-      continue;
+    } else if (!patchCollections(ui, op)) {
+      continue; // not a reading, find's word or the eye either (src/bento.ts)
     }
     applied.push(op);
   }

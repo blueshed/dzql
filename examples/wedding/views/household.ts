@@ -10,7 +10,7 @@ import type { Course, Gift, Wedding } from "../documents/wedding";
 import { addModal, addTool, boxPage, cell, choice, findControl, prop, readingSwitch, row, rows, sheet, tool, type Crumb, type OpenOptions } from "./bento";
 import type { DressProps } from "../applets/dress";
 import type { MenuProps } from "../applets/menu";
-import { esc, join, write } from "./html";
+import { esc, join, nav, write } from "./html";
 import { icon } from "./icons";
 import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
 import {
@@ -64,7 +64,7 @@ function openFor(v: HouseholdView, head: string, second: string | undefined): { 
 
 export function householdPages(v: HouseholdView): string {
   const ui = v.session.ui;
-  const trail: Crumb[] = [{ label: coupleName(v.w) }, { label: v.h.code, page: "" }];
+  const trail: Crumb[] = [{ label: coupleName(v.w) }, { label: v.h.code, back: nav("") }];
   const [head, second] = (ui.page ?? "").split("/");
   const { open, crumbs: openCrumbs } = openFor(v, head, second);
   const deadline = v.open && v.w.deadline ? `<p class="note">Answers by ${esc(formatDay(v.w.deadline))}.</p>` : "";
@@ -104,12 +104,12 @@ function boxCells(v: HouseholdView) {
   const coming = h.guests.filter(isComing).length;
   return [
     // the family photo is the small reading of the guests, still (no taps) until the compartment opens
-    cell({ name: "guests", mark: "users", count: h.guests.length, big: true, page: "guests", summary: h.guests.length ? `${coming} coming` : "nobody named yet", body: h.guests.length ? `<div class="mini photo">${familyMini(v)}</div>` : undefined }),
-    cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting` : h.asks.length ? "all answered" : "ask to bring someone", page: "asks" }),
-    cell({ name: "gifts", mark: "gift", count: gifts.length, summary: `${h.claims.length ? `${h.claims.length} claimed by us · ` : ""}${openGifts} open`, page: "gifts" }),
-    cell({ name: "the day", mark: "calendar", summary: eventsSummary(v.events), page: "day", key: "day" }),
-    cell({ name: "where to stay", mark: "bed", summary: placesSummary(v.places), page: "stay", key: "stay" }),
-    cell({ name: "everyone", mark: "camera", summary: `${inPhoto} in the photo`, page: "everyone" }),
+    cell({ name: "guests", mark: "users", count: h.guests.length, big: true, opens: nav("guests"), summary: h.guests.length ? `${coming} coming` : "nobody named yet", body: h.guests.length ? `<div class="mini photo">${familyMini(v)}</div>` : undefined }),
+    cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting` : h.asks.length ? "all answered" : "ask to bring someone", opens: nav("asks") }),
+    cell({ name: "gifts", mark: "gift", count: gifts.length, summary: `${h.claims.length ? `${h.claims.length} claimed by us · ` : ""}${openGifts} open`, opens: nav("gifts") }),
+    cell({ name: "the day", mark: "calendar", summary: eventsSummary(v.events), opens: nav("day"), key: "day" }),
+    cell({ name: "where to stay", mark: "bed", summary: placesSummary(v.places), opens: nav("stay"), key: "stay" }),
+    cell({ name: "everyone", mark: "camera", summary: `${inPhoto} in the photo`, opens: nav("everyone") }),
   ];
 }
 
@@ -161,7 +161,7 @@ function guestsOpen(v: HouseholdView): OpenOptions {
       );
   return {
     key: "guests",
-    reading: h.guests.length ? readingSwitch("guests", reading(v, "guests"), ["photo", "list"]) : undefined,
+    reading: h.guests.length ? readingSwitch("guests", reading(v, "guests"), [["photo", "camera"], ["list", "list"]]) : undefined,
     tools: [named < h.plus_ones ? addTool("guests", "Name our plus-one") : "", h.guests.length ? find.tool : ""].filter(Boolean),
     filter: find.filter,
     body,
@@ -246,7 +246,7 @@ function everyoneOpen(v: HouseholdView, familyKey: string | null): { open: OpenO
   const total = families.reduce((n, f) => n + f.members.length, 0);
   const open = familyKey && byFamily.has(familyKey) ? familyKey : null;
   const { level, shown } = familiesPhoto(families, open);
-  const crumbs: Crumb[] = open ? [{ label: "Everyone", page: "everyone" }, { label: "One family" }] : [{ label: "Everyone" }];
+  const crumbs: Crumb[] = open ? [{ label: "Everyone", back: nav("everyone") }, { label: "One family" }] : [{ label: "Everyone" }];
   return {
     open: {
       key: "everyone",

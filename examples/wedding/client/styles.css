@@ -7,6 +7,8 @@
    820px, a sheet from the foot below. One family of corners, one control height, three sizes of
    type, every shadow toward the ink. */
 
+@import "../../../src/bento.css";
+
 /* ── tokens ── */
 :root {
   --paper: #F3EDE0; --tray: #E4DCC7; --card: #FBF9F4; --card-hover: #FFFFFF; --well: #EFE8D8;
@@ -17,26 +19,14 @@
   --serif: "Cinzel", "Trajan Pro", "Times New Roman", serif;
   --sans: "Josefin Sans", "Futura", "Avenir Next", "Helvetica Neue", sans-serif;
   --script: "Pinyon Script", "Snell Roundhand", "Brush Script MT", cursive;
-  /* the corner family: a button inside a control, a control, a thumbnail, the drawer and the modal, the tray and the window */
-  --radius-inner: 4px; --radius-control: 6px; --radius-thumb: 8px; --radius-panel: 20px; --radius-tray: 28px;
-  --radius-corner: calc(var(--radius-tray) - var(--space-md));
-  --space-xs: 6px; --space-sm: 8px; --space-md: 10px; --space-lg: 14px; --space-xl: 20px; --space-2xl: 24px;
-  --control: 32px; /* a rail button; the trail card is this tall */
-  --touch: 40px; /* a button with a word, a field */
-  --panel: 320px; /* the drawer at the right, from 820px */
-  --clear: 80px; /* what a reading keeps clear of the rail */
-  --shadow-control: 0 1px 4px rgba(var(--ink-rgb), 0.2);
-  --shadow-tray: 0 12px 30px rgba(var(--ink-rgb), 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  --shadow-window: 0 20px 50px rgba(var(--ink-rgb), 0.25);
+  /* what src/bento.css reads: the accent is the navy, the pencil is gold, making and removing are burgundy */
+  --accent: var(--navy); --mark: var(--gold); --add: var(--burgundy); --danger: var(--burgundy);
 }
 
 /* ── base ── */
-* { box-sizing: border-box; }
 html { color-scheme: light; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.45; }
 main#app { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg) 96px; }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
-.icon { flex: 0 0 auto; }
 a { color: var(--navy); }
 h2, h3 { margin: 0; font-size: 15px; font-weight: 600; }
 /* three sizes of type: the cap, the word, the note */
@@ -45,7 +35,7 @@ h3.cap { margin: var(--space-xl) 0 var(--space-sm); }
 .note { color: var(--muted); font-size: 13px; }
 p.note { margin: 0 0 var(--space-md); font-size: 14px; }
 .site { position: relative; z-index: 1; }
-.site > * { margin: 0 0 var(--space-xl); }
+:where(.site > *) { margin: 0 0 var(--space-xl); } /* :where, so a bento surface's own margin still wins */
 
 /* the flowers: the announcement's own, along the foot of every page behind everything, full on the welcome */
 .flowers {
@@ -56,20 +46,17 @@ p.note { margin: 0 0 var(--space-md); font-size: 14px; }
 .site.at-welcome ~ .flowers, .site.at-welcome + .flowers { opacity: 1; }
 main#app:has(.site.at-welcome) .flowers { opacity: 1; height: min(46vh, 520px); }
 .site { position: relative; z-index: 1; }
-.site > * { margin: 0 0 24px; }
+:where(.site > *) { margin: 0 0 24px; }
 
-/* ── controls ── */
-input, select, textarea { font: inherit; font-size: 16px; min-height: 44px; padding: 0 12px; border-radius: var(--radius-control); border: 1px solid var(--gold-soft); background: var(--card); color: var(--text); }
-textarea { padding: 10px 12px; }
-button { font: inherit; font-size: 16px; min-height: 44px; border-radius: var(--radius-control); padding: 8px 16px; border: 1px solid var(--gold-soft); background: var(--paper); color: var(--text); cursor: pointer; }
-button:disabled { opacity: 0.5; cursor: default; }
+/* ── controls: the welcome's own, over the bento's ── */
+input, select, textarea { min-height: 44px; }
+button { min-height: 44px; border-radius: var(--radius-control); }
 button.gold { background: var(--gold); color: #fff; border-color: var(--gold); }
 button.ghost { background: transparent; color: var(--navy); border-color: var(--navy); }
 button.ghost.small { min-height: 36px; padding: 0 10px; }
 button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); }
-.field { flex: 1; min-width: 0; }
 .field.short { flex: 0 0 5.5rem; }
-.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+.row { flex-wrap: wrap; }
 .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .message-box { width: 100%; resize: vertical; }
 /* a form that is a tool: one field (or a few) and its verb, on one line */
@@ -94,150 +81,31 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .resend summary { cursor: pointer; color: var(--ink); }
 .photo-card .welcome-pic { display: block; width: 100%; height: auto; border-radius: var(--radius-panel); border: 2px solid var(--gold); background: #EFE8D8; }
 
-
-/* ── controls: a button with a word, a field, a choice ── */
-button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
-button:disabled { opacity: 0.45; cursor: default; }
-input, select, textarea { font: inherit; font-size: 16px; color: var(--ink); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); }
-input, select { height: var(--touch); padding: 0 var(--space-md); }
-textarea { width: 100%; padding: var(--space-sm) var(--space-md); resize: vertical; }
-input:focus-visible, textarea:focus-visible { outline: 2px solid var(--navy); outline-offset: -1px; }
-.field { flex: 1; min-width: 0; }
-.tool { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-xs); height: var(--touch); padding: 0 var(--space-lg); border: 1px solid var(--navy); border-radius: var(--radius-control); background: var(--card); color: var(--navy); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
-.tool:hover { background: var(--card-hover); }
-.tool.quiet { border-color: var(--edge); color: var(--ink); font-weight: 500; }
-.tool.add { border-color: var(--burgundy); color: var(--burgundy); }
-.tool.danger { border-color: var(--burgundy); color: var(--burgundy); }
-.tool[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: var(--card); }
+/* ── the bento's surfaces (src/bento.css), where the wedding's differ: serif heads, the photo, the answer ── */
+.sheet-head h2 { font-family: var(--serif); font-size: 19px; color: var(--navy); }
+dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy); }
 .tool.yes[aria-pressed="true"] { background: var(--leaf); border-color: var(--leaf); }
 .tool.no[aria-pressed="true"] { background: var(--burgundy); border-color: var(--burgundy); }
-.pick { display: inline-flex; gap: var(--space-xs); }
 .pair { display: flex; align-items: center; gap: var(--space-sm); min-width: 0; }
 .pair .amp { font-family: var(--script); font-size: 28px; color: var(--gold); line-height: 1; }
 .form-foot { display: flex; justify-content: flex-end; margin-top: var(--space-sm); }
-
-/* ── a stack: square buttons with a hairline between, drawn like a Leaflet control ── */
-.stack { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); overflow: hidden; }
-.stack > .tool { width: var(--control); height: var(--control); padding: 0; border: 0; border-radius: 0; border-bottom: 1px solid rgba(43, 43, 51, 0.15); background: transparent; color: var(--ink); }
-.stack > .tool:last-child { border-bottom: 0; }
-.stack > .tool:hover { background: rgba(var(--ink-rgb), 0.06); }
-.stack > .tool[aria-pressed="true"] { background: var(--navy); color: var(--card); }
-.stack.across { flex-direction: row; }
-.stack.across > .tool { border-bottom: 0; border-right: 1px solid rgba(43, 43, 51, 0.15); }
-.stack.across > .tool:last-child { border-right: 0; }
-/* the page's tools: leave set apart by a rule */
-.page-tools > .quiet { border-top: 3px double rgba(43, 43, 51, 0.15); }
-.page-tools.across > .quiet { border-top: 0; border-left: 3px double rgba(43, 43, 51, 0.15); }
-
-/* ── where am I: the trail, and the page's tools beside it on the box ── */
-.page-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); margin: 0 var(--space-lg) var(--space-lg); min-height: var(--control); }
-.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
-.crumbs .crumb { display: inline-flex; align-items: center; }
-.crumbs .sep { display: inline-flex; align-items: center; justify-content: center; width: 22px; color: var(--muted); }
-.crumbs a { color: var(--navy); text-decoration: none; }
-.crumbs a:hover, .crumbs a:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
-.crumbs b { font-weight: 600; }
-
-/* ── the tray: compartments cut into it, walled by its padding. Computed by src/tray.ts, which
-   hands over the areas for three columns and for one, and each compartment's tray corners. ── */
-.page.box { margin: 0; }
-.cells { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: var(--tray-areas-phone); gap: var(--space-md); padding: var(--space-md); background: var(--tray); border-radius: var(--radius-tray); box-shadow: var(--shadow-tray); }
-.cell { position: relative; display: flex; flex-direction: column; gap: var(--space-sm); min-height: 96px; min-width: 0; padding: var(--space-lg); background: var(--card); border-radius: 0; overflow: hidden; cursor: pointer; }
-.cell:hover { background: var(--card-hover); }
-.cell:focus-visible { outline: 2px solid var(--navy); outline-offset: -2px; z-index: 1; }
-.cell-head { display: flex; align-items: center; gap: 7px; }
-.cell-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cell-icon, .chev { display: inline-flex; align-items: center; color: var(--navy); }
-.chev.pencil, .thing .pencil { color: var(--gold); }
-.cell-summary { margin: -4px 0 0; font-size: 14px; color: var(--muted); }
-.cell-body { position: relative; flex: 1; min-height: 0; }
 /* the small reading: the photo, still, cut as its compartment is */
 .mini.photo { height: 100%; min-height: 200px; max-height: 320px; background: var(--well); border-radius: var(--radius-thumb); overflow: hidden; }
 .mini.photo .photo { display: block; width: 100%; height: 100%; }
 .cell.big .mini.photo { height: 36vh; }
-/* a compartment that is a thing: ✎, a tap opens its drawer, lit while it is open (rule 15) */
-.thing[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--navy); }
-@media (max-width: 819px) {
-  .cell[data-corners-phone~="tl"] { border-top-left-radius: var(--radius-corner); }
-  .cell[data-corners-phone~="tr"] { border-top-right-radius: var(--radius-corner); }
-  .cell[data-corners-phone~="br"] { border-bottom-right-radius: var(--radius-corner); }
-  .cell[data-corners-phone~="bl"] { border-bottom-left-radius: var(--radius-corner); }
-}
-@media (min-width: 820px) {
-  .cells { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: var(--tray-areas); }
-  .cell[data-corners~="tl"] { border-top-left-radius: var(--radius-corner); }
-  .cell[data-corners~="tr"] { border-top-right-radius: var(--radius-corner); }
-  .cell[data-corners~="br"] { border-bottom-right-radius: var(--radius-corner); }
-  .cell[data-corners~="bl"] { border-bottom-left-radius: var(--radius-corner); }
-}
-
-/* ── the window: the compartment open. Opening goes nowhere (rule 7): the same element, named for
-   the view transition, grows to the screen less a margin; the page behind holds still. ── */
-.cell.open { position: fixed; inset: var(--space-sm); z-index: 40; padding: 0; gap: 0; border-radius: var(--radius-tray); box-shadow: var(--shadow-window); cursor: default; background: var(--card); }
-@media (min-width: 820px) { .cell.open { inset: var(--space-2xl); } }
-.cell.open:hover { background: var(--card); }
-body:has(.page.windowed) { overflow: hidden; }
-/* the trail floats top-left, a control: the box it came from is the way back */
-.cell.open .cell-head { position: absolute; top: var(--space-lg); left: var(--space-lg); z-index: 3; gap: 2px; height: var(--control); max-width: calc(100% - 2 * var(--space-lg) - var(--control) - var(--space-md)); padding: 0 var(--space-md) 0 2px; background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
-.cell.open .cell-back { display: inline-flex; align-items: center; height: 26px; padding: 0 var(--space-sm); border-radius: var(--radius-inner); color: var(--navy); text-decoration: none; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cell.open .cell-back:hover { background: rgba(var(--ink-rgb), 0.06); }
-.cell.open .cell-head .chev { color: var(--muted); }
-/* the reading fills the window and scrolls within it, clear of the trail, the rail and the tools */
-.full { position: absolute; inset: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 60px 60px 72px var(--space-lg); border-radius: inherit; }
-@media (min-width: 820px) { .full { padding: 72px var(--clear) 96px var(--space-2xl); } }
-.full > .note { margin: var(--space-md) 0 0; }
 .reading.photo { height: 100%; min-height: 320px; background: var(--well); border-radius: var(--radius-thumb); overflow: hidden; }
 .reading.photo.framed { border: 2px solid var(--gold); }
 .reading.photo .photo { display: block; width: 100%; height: 100%; }
 .reading.photo + .note { margin-top: var(--space-md); }
-/* the rails: the compartment's own tools at the right edge, the page's at the bottom right (rule 9) */
-.rail { position: absolute; z-index: 3; right: var(--space-lg); top: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-md); }
-.cell.open .page-tools { position: absolute; z-index: 3; right: var(--space-lg); bottom: var(--space-lg); }
-/* find: its field beside the rail, the tally, the eye (rule 17) */
-.filter { position: absolute; z-index: 3; top: var(--space-lg); right: calc(var(--space-lg) + var(--control) + var(--space-md)); display: flex; align-items: center; gap: var(--space-sm); height: var(--control); padding: 0 2px 0 var(--space-md); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
-.filter input { width: 140px; height: 24px; padding: 0; border: 0; background: transparent; font-size: 14px; }
-.filter input:focus-visible { outline: none; }
-.filter .tally { font-size: 12px; color: var(--muted); white-space: nowrap; }
-.filter .tool { width: 26px; height: 26px; padding: 0; border: 0; border-radius: var(--radius-inner); background: transparent; color: var(--ink); }
-.filter .tool[aria-pressed="true"] { background: var(--navy); color: var(--card); }
-.hushed { opacity: 0.3; }
-[hidden] { display: none !important; }
-/* the rails step aside for the drawer, and the reading reflows to the clear beside it (rule 18) */
-@media (min-width: 820px) {
-  .rail, .cell.open .page-tools, .filter, .full { transition: right 200ms ease, padding-right 200ms ease; }
-  main#app:has(.sheet) .rail, main#app:has(.sheet) .cell.open .page-tools { right: calc(var(--panel) + var(--space-2xl) + var(--space-lg)); }
-  main#app:has(.sheet) .filter { right: calc(var(--panel) + var(--space-2xl) + var(--space-lg) + var(--control) + var(--space-md)); }
-  main#app:has(.sheet) .full { padding-right: calc(var(--panel) + var(--space-2xl) + var(--clear)); }
-  [data-reveal] { scroll-margin: var(--space-2xl) calc(var(--panel) + var(--space-2xl) + var(--clear)) var(--space-2xl) var(--space-2xl); }
-}
-@media (max-width: 819px) { [data-reveal] { scroll-margin: 64px 16px 80px 16px; } }
-
-/* ── the rows: a list is a table, one line per thing, the same columns on every list -- a lead,
-   the words, the state, the mark. A row is a figure: tap it and its drawer opens and the whole
-   line shows it is chosen; what it can carry waits in its drawer, not on the line (rule 13). ── */
-.rows { display: flex; flex-direction: column; }
-.row { display: flex; align-items: center; gap: var(--space-md); min-height: 56px; padding: var(--space-md) var(--space-md); margin: 0 calc(-1 * var(--space-md)); border-bottom: 1px solid var(--line); border-radius: var(--radius-inner); }
-.row:last-child { border-bottom: 0; }
-.row .lead { flex: 0 0 auto; display: inline-flex; }
 .row .lead img.pic { width: 56px; height: 56px; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); display: block; }
 .row .lead .when { display: inline-block; min-width: 4rem; color: var(--navy); font-weight: 600; font-size: 14px; }
-.row .words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.row .what { font-weight: 600; }
-.row .state { flex: 0 0 auto; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; text-align: right; }
 .row .state a { color: var(--navy); }
-.row .mark { flex: 0 0 auto; display: inline-flex; color: var(--gold); }
-.row .mark .icon-chevron-right { color: var(--navy); }
-.row.tap { cursor: pointer; }
-.row.tap:hover { background: rgba(var(--ink-rgb), 0.04); }
-.row.tap:focus-visible { outline: 2px solid var(--navy); outline-offset: -2px; }
-.row[aria-pressed="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--navy); }
 /* the answer as a word with its colour: yes green, maybe amber, no red, none a dashed ring */
 .answer-word { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .answer-word .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .answer-word .dot.yes { background: var(--leaf); } .answer-word .dot.maybe { background: var(--amber); } .answer-word .dot.no { background: #B5443B; }
 .answer-word .dot.none { border: 1.5px dashed var(--muted); }
 .state-yes { color: var(--leaf); } .state-no { color: #953530; }
-
 /* ── the speech bubble: a thing in place above the tray -- what the household says, the couple's welcome ── */
 .bubble { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-md); max-width: min(88%, 440px); margin: 0 0 var(--space-xl); padding: var(--space-md) var(--space-lg); background: var(--card); border-radius: var(--radius-panel); box-shadow: 0 6px 24px rgba(var(--ink-rgb), 0.16); }
 .bubble::after { content: ""; position: absolute; left: 26px; bottom: -12px; border: 12px solid transparent; border-top-color: var(--card); border-bottom: 0; }
@@ -250,47 +118,12 @@ body:has(.page.windowed) { overflow: hidden; }
 .face-mark { border-radius: 50%; display: grid; place-items: center; color: #fff; flex: 0 0 auto; }
 .face-mark.yes { background: var(--leaf); } .face-mark.maybe { background: var(--amber); } .face-mark.no { background: #B5443B; }
 .face-mark.none { border: 2px dashed var(--muted); color: var(--muted); font-size: 20px; }
-
-/* ── the drawer: a figure's properties -- a panel at the right from 820px, a sheet from the foot below ── */
-.scrim { position: fixed; inset: 0; z-index: 50; background: rgba(var(--ink-rgb), 0.35); }
-.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; margin: 0 auto; max-width: 560px; max-height: 88dvh; display: flex; flex-direction: column; background: var(--card); color: var(--ink); border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: 0 -8px 30px rgba(var(--ink-rgb), 0.2); animation: sheet-rise 200ms ease-out; }
-@keyframes sheet-rise { from { transform: translateY(24px); opacity: 0.5; } to { transform: none; opacity: 1; } }
-.sheet-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); padding: var(--space-lg) var(--space-lg) var(--space-sm); }
-.sheet-head h2 { font-family: var(--serif); font-size: 19px; color: var(--navy); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sheet-close { width: var(--control); height: var(--control); padding: 0; border: 0; border-radius: var(--radius-inner); }
-.sheet-body { flex: 1 1 auto; overflow: auto; overscroll-behavior: contain; padding: 0 var(--space-lg) calc(var(--space-2xl) + env(safe-area-inset-bottom, 0px)); }
-.sheet-foot { display: flex; gap: var(--space-sm); padding: var(--space-lg) 0 0; }
 .sheet-pic img.pic { display: block; width: 100%; max-height: 40vh; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); }
 .sheet .words { margin: var(--space-md) 0 0; line-height: 1.4; }
-/* a thing's properties, each by its kind: its name in small caps, its value or the control that sets it */
-.props { display: flex; flex-direction: column; }
-.prop { display: grid; grid-template-columns: 6rem minmax(0, 1fr); align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: 1px solid var(--line); }
-.prop:last-child { border-bottom: 0; }
-.prop-name { color: var(--muted); }
-.prop-value { min-width: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
-.prop-value .field { width: 100%; }
 .prop .code { font-family: var(--serif); font-weight: 600; letter-spacing: 0.08em; }
 .props .pair { padding: var(--space-xs) 0; }
 .hint { margin: var(--space-sm) 0 var(--space-md); font-size: 13px; color: var(--muted); }
 .figure-box { position: sticky; top: 0; z-index: 2; background: var(--card); padding: var(--space-md) 0 4px; }
-@media (min-width: 820px) {
-  .sheet { left: auto; right: var(--space-2xl); top: var(--space-2xl); bottom: var(--space-2xl); width: var(--panel); max-width: none; max-height: none; border-radius: var(--radius-panel); border: 1px solid var(--edge); box-shadow: 0 8px 30px rgba(var(--ink-rgb), 0.2); z-index: 60; }
-  .scrim:not(.modal-scrim) { background: transparent; } /* beside the reading, not over it */
-}
-@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
-/* while a drawer or a modal is open, the page behind holds still on a phone (rules 6, 14) */
-body:has(.site.locked) { overflow: hidden; }
-
-/* ── the modal: new or delete, one question, nothing else may be touched while it asks (rule 14).
-   Rendered `open`, not shown by script, so it carries its own scrim and is centred by hand. ── */
-.modal-scrim { z-index: 70; }
-dialog.modal { position: fixed; inset: 0; margin: auto; z-index: 71; width: min(420px, calc(100vw - 2 * var(--space-2xl))); height: fit-content; max-height: calc(100dvh - 48px); overflow: auto; border: 0; padding: var(--space-xl) var(--space-xl) var(--space-2xl); background: var(--card); color: var(--ink); border-radius: var(--radius-panel); box-shadow: 0 20px 50px rgba(var(--ink-rgb), 0.3); animation: sheet-rise 160ms ease-out; }
-dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy); margin: 0 0 var(--space-lg); }
-.modal-field { display: flex; flex-direction: column; gap: var(--space-xs); margin-bottom: var(--space-md); }
-.modal-field input { width: 100%; }
-.modal-foot { display: flex; justify-content: flex-end; gap: var(--space-sm); margin-top: var(--space-lg); }
-@media (prefers-reduced-motion: reduce) { dialog.modal { animation: none; } }
-
 /* ── the answer's drawer: every option whole, a face, its colour, its sentence ── */
 .answer-options { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-sm) 0 var(--space-md); }
 .answer-option { display: flex; align-items: center; gap: var(--space-md); min-height: 56px; padding: var(--space-xs) var(--space-md); border: 1px solid var(--edge); border-radius: var(--radius-thumb); background: var(--card); text-align: left; font-size: 16px; width: 100%; }
@@ -299,10 +132,6 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 .pic-field img.pic { width: 44px; height: 44px; object-fit: cover; border-radius: var(--radius-thumb); }
 .pic-field .note { margin: 0; }
 
-/* the same element, two sizes: only the compartment that moves is named (src/client/app.ts), and
-   its group is drawn over everything else while it moves */
-::view-transition-group(*) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.2, 0, 0, 1); }
-::view-transition-group(moving) { z-index: 1; }
 
 /* ── the drawings: the dressing sheet, the menu, the figures and their attitudes ── */
 /* ── the guest's drawer: the sheet of parts, then the menu ── */

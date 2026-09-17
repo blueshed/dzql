@@ -5,7 +5,10 @@ import type { Answer, Guest, HouseholdDocument } from "../documents/household";
 import type { Course, Event, Place, Wedding } from "../documents/wedding";
 import type { Look } from "../looks";
 import type { Spec } from "../applets/figure";
-import { row, rows } from "./bento";
+import { row } from "./bento";
+import { rows } from "../../../src/bento";
+
+export { inertWhile, matches } from "../../../src/bento";
 import { esc } from "./html";
 import { icon } from "./icons";
 
@@ -21,9 +24,6 @@ export function formatWhen(when: string): string {
 
 export const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
 
-/** Rule 17: the filter dims what the word misses and keeps lit what it hits -- an empty word (find
- * just opened) hits everything. Case-insensitive, a plain substring: no query language. */
-export const matches = (text: string, filter: string): boolean => !filter.trim() || text.toLowerCase().includes(filter.trim().toLowerCase());
 
 export const firstNameOf = (name: string): string => name.trim().split(/\s+/)[0]!;
 
@@ -150,6 +150,3 @@ export function frame(atWelcome: boolean, body: string, page?: string, locked = 
   // of `body` itself to add the class to directly.
   return `<div class="flowers" aria-hidden="true"></div><div class="site${atWelcome ? " at-welcome" : ""}${locked ? " locked" : ""}"${pageAttrs}>${body}</div>`;
 }
-
-/** The page behind a modal is `inert` while it asks -- nothing else may be touched (rule 14). */
-export const inertWhile = (modalOpen: boolean, html: string): string => (modalOpen ? `<div inert>${html}</div>` : html);
