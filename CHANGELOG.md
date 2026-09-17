@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   makes a room now, and the `rooms` table is dropped (`0003_rooms_are_where_people_are.sql`).
 - **Bento rule 2: inside a window the trail is whole**, one crumb longer, every earlier crumb a
   way back, so opening something never loses the root. The kernel and the mock-up draw it.
+- **Say a thing once.** `CLAUDE.md` states it for any list: what an item shares with the one
+  before it is said at the start of the run, and what is true of the person looking is not said
+  to them. Found by giving clean agents only the docs and chat's stories, three times over: they
+  built the three steps every time, and repeated a name on every bubble until the rule was written.
 - **Docs: one home per fact.** `CLAUDE.md` is the rules a builder must not break, stories first;
   the eta-app skill makes the story step 0; the reference loses its duplicated vocabulary, its
   citations of finished request items and the statements the code contradicted; `stories.md` says
@@ -43,6 +47,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A household could give itself unlimited plus-ones** by sending the whole-row shape an inverse
   carries (`named_by: "couple"`), or two adds in one message. The wire may name a plus-one or an
   ask and nothing more; the rest reaches the document through `replay()` alone.
+- **`inspect` told everyone in a room each other's session id**, which is the cookie and a
+  person's only credential: anyone could become anyone who had spoken. A session id never goes on
+  the wire now; an entry says `mine: true|false`, and names its document by docType alone.
+- **A field waiting with `autofocus` never got the caret after the first page**, since a browser
+  honours it once per document. After a render the client focuses it, when nothing has the caret.
+- **The root's name sat against the trail card's edge** and jumped 8px when the trail grew.
 - **The ticker's open drawer went stale** on a tick, and on watching from it: with a drawer open
   the compartment is redrawn whole rather than by a hand-kept list of targets.
 

@@ -667,6 +667,30 @@ describe("chat", () => {
     b.close();
   });
 
+  test("inspect never tells one person another's session id: it is their only credential", async () => {
+    const room = crypto.randomUUID();
+    const a = connect();
+    await login(a, "Alice", room);
+    const bJoined = presenceUpdate(a);
+    const b = connect();
+    await login(b, "Bob", room);
+    await bJoined;
+    write(a, "room", [{ op: "add", path: "/transcript/-", value: "from alice" }]);
+    await expectMessage(a, "patch");
+    const alice = history(`room:${room}`)[0]!.sessionId; // what Bob must never be sent
+
+    b.send(JSON.stringify({ type: "inspect", limit: 10 }));
+    let reply = await nextMessage(b);
+    while (reply.type !== "inspect") reply = await nextMessage(b);
+    const text = JSON.stringify(reply);
+    expect(text).toContain("from alice"); // he may read what was said
+    expect(text).not.toContain(alice); // never who, by the id that would let him be her
+    const entries = (reply as unknown as { docs: { doc: string; entries: { mine: boolean }[] }[] }).docs.find((d) => d.doc === "room")!.entries;
+    expect(entries[0]!.mine).toBe(false);
+    a.close();
+    b.close();
+  });
+
   test("a thing is said once: a run of messages names its author once, and your own name nobody", () => {
     const room = crypto.randomUUID();
     const ada = crypto.randomUUID();

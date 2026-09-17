@@ -295,6 +295,11 @@ could run before this example's migrations have.
 
 HTML is the only vocabulary on the wire — no JSON tree of app state, ever.
 
+A session id never goes on the wire. It is the `session_id` cookie and a person's only credential:
+whoever holds it is them. `inspect` says `mine: true|false` on a ledger entry instead of who wrote
+it; a patch echo, a render and an op's value must not carry one either (chat's messages carry the
+author's name, never their session).
+
 - **Client -> server**: `{"doc": "<docType>", "ops": [PatchOp, ...]}` over
   the one websocket (`/ws`). A `PatchOp` is `{op, path, value?}` (JSON Patch
   shaped) where `path` is a JSON Pointer — never a function/verb name.

@@ -240,6 +240,10 @@ describe("createServer, generically (no example from the examples directory invo
     const note = docs.find((d) => d.doc === "note");
     expect(note?.version).toBeGreaterThan(0);
     expect(note?.entries?.[0]).toMatchObject({ ops: [{ op: "replace", path: "/text", value: "inspect me" }] });
+    // a session id is the only credential: it never goes on the wire, not even your own. "Was this
+    // write mine" is all a reader may ask.
+    expect(note?.entries?.[0]).toMatchObject({ mine: true });
+    expect(JSON.stringify(inspection)).not.toContain("sessionId");
 
     ws.close();
   });

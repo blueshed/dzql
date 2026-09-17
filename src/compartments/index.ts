@@ -7,7 +7,10 @@ import type { Compartment } from "./compartment";
 import { createLedgerCompartment } from "./ledger";
 import { wrapCompartment } from "./render";
 
-export type InspectDoc = { doc: string; version: number; entries: LedgerEntry[] };
+/** A ledger entry as `inspect` tells it. A session id is a person's only credential, so it never
+ * goes on the wire: `mine` says whether the asker wrote the entry, which is all a reader may ask. */
+export type InspectEntry = Omit<LedgerEntry, "sessionId"> & { mine: boolean };
+export type InspectDoc = { doc: string; version: number; entries: InspectEntry[] };
 export type Inspection = { docs: InspectDoc[] };
 
 export type Assembled = {
@@ -67,7 +70,7 @@ export function assemble(example: Example): Assembled {
     for (const compartment of inspectable) {
       const docId = compartment.resolveDoc(ws);
       if (docId === undefined) continue;
-      const entries = history(prefixDoc(compartment.docType, docId), limit);
+      const entries = history(prefixDoc(compartment.docType, docId), limit).map(({ sessionId, ...entry }) => ({ ...entry, doc: compartment.docType, mine: sessionId === ws.data.sessionId })); // the bare docType: a session's own documents are keyed by its id
       docs.push({ doc: compartment.docType, version: entries[0]?.version ?? 0, entries });
     }
     return { docs };
