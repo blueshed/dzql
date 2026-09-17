@@ -24,12 +24,12 @@ describe("stories harness", () => {
       cast: stories.cast,
       stories: [
         { name: "a ghost speaks", as: "ghost", does: { doc: "room", ops: [] }, seen: {} },
-        { name: "Ada says hello and nobody, who is nowhere, sees it", as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/transcript/-", value: "hi" }] }, seen: { nobody: "" }, unseen: ["cy"] },
+        { name: "Ada says hello and Eve, who is nowhere, sees it", as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/transcript/-", value: "hi" }] }, seen: { eve: "" }, unseen: ["cy"] },
       ],
     });
     delete process.env.STORY_DIFF;
     expect(report.failed).toBe(2);
     expect(report.outcomes[0]!.failures[0]).toContain("ghost");
-    expect(report.outcomes[1]!.failures).toContain('nobody did not see it on ""');
+    expect(report.outcomes[1]!.failures).toContain('eve did not see it on ""');
   }, 30000);
 });

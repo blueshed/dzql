@@ -137,6 +137,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       if (facts) compare(after, afterUndo, cast, "a fact, yet undo changed it", failures);
       else {
         compare(before, afterUndo, cast, "undo did not restore", failures);
+        if (!example.active(who.sessionId)) return { name: story.name, failures }; // the undo was their going (a name taken back): no redo is theirs to press
         await send(cast, who, REDO);
         compare(after, snapshot(cast), cast, "redo did not restore", failures);
       }

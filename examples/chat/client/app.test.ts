@@ -43,20 +43,17 @@ async function submitName(view: Bun.WebView, name: string) {
   await view.click("button[type=submit]");
 }
 
-// a room is made and entered through the plus on the rooms window's rail and its modal
+// a room is made, and entered, by naming it in the form at the foot of the rooms
 async function joinRoom(view: Bun.WebView, room: string) {
   await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
-  await view.click('[aria-label="New room"]');
-  await waitFor(view, `document.querySelector('input[name=room]') !== null`, (v) => v === true);
   await view.click("input[name=room]");
   await view.type(room);
   await view.press("Enter");
 }
 
-// the way out of a room is the "Chat" crumb on the box; from a window, the box is one step back
+// the way out of a room is the "Chat" crumb, the root of the trail
 async function leaveRoom(view: Bun.WebView) {
-  await view.evaluate(`document.querySelector('.cell.open .cell-back')?.click()`);
-  await waitFor(view, `document.querySelector('.cell.open') === null`, (v) => v === true);
+  await waitFor(view, `document.querySelector(\`${LEAVE_ROOM_SELECTOR}\`) !== null`, (v) => v === true);
   await view.evaluate(`document.querySelector(\`${LEAVE_ROOM_SELECTOR}\`).click()`);
 }
 
@@ -137,45 +134,22 @@ describe("app.ts in a real browser", () => {
     await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
   });
 
-  test("find on the rooms dims the rooms the word misses, and the eye hides them", async () => {
-    await using view = new Bun.WebView();
-    await view.navigate(server.url.toString());
-    await submitName(view, `Filter-${crypto.randomUUID()}`);
-
-    const alpha = `alpha-${crypto.randomUUID()}`;
-    const beta = `beta-${crypto.randomUUID()}`;
-    await joinRoom(view, alpha);
-    await leaveRoom(view);
-    await joinRoom(view, beta);
-    await leaveRoom(view);
-
-    await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
-    await view.click('[aria-label="Find"]');
-    await waitFor(view, `document.querySelector('.filter input') !== null`, (v) => v === true);
-    await view.click(".filter input");
-    await view.type("alpha");
-
-    const rowOf = (room: string) => `document.getElementById('r-${room}')`;
-    await waitFor(view, `${rowOf(beta)}?.classList.contains('hushed')`, (v) => v === true);
-    expect(await view.evaluate(`${rowOf(alpha)}.classList.contains('hushed')`)).toBe(false);
-    await view.click('[aria-label="Hide what misses"]');
-    await waitFor(view, `${rowOf(beta)}?.hidden`, (v) => v === true);
-    expect(await view.evaluate(`${rowOf(alpha)}.hidden`)).toBe(false);
-  });
-
   test("tapping a room's row enters it", async () => {
     await using view = new Bun.WebView();
     await view.navigate(server.url.toString());
     await submitName(view, `Clicker-${crypto.randomUUID()}`);
 
     const target = `click-target-${crypto.randomUUID()}`;
-    await joinRoom(view, target); // creates it
+    await joinRoom(view, target);
+    await waitFor(view, SEND_MESSAGE_FORM_VISIBLE, (v) => v === true);
+    await sendChatMessage(view, "so the room is still there when nobody is in it"); // a room stays while something has been said in it
+    await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("still there"));
     await leaveRoom(view);
 
     await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
     await view.evaluate(`document.getElementById("r-${target}").click()`); // the row may be far down a long list
 
-    await waitFor(view, `document.querySelector('.crumbs b')?.textContent ?? ""`, (v) => typeof v === "string" && v.includes(target));
+    await waitFor(view, `document.querySelector('.cell-name')?.textContent ?? ""`, (v) => typeof v === "string" && v.includes(target));
   });
 
   test("a sent chat message appears in the message list", async () => {
@@ -266,7 +240,7 @@ describe("app.ts in a real browser", () => {
     await joinRoom(viewB, room);
     await waitFor(
       viewA,
-      `document.querySelector('#people-mini')?.textContent ?? ""`,
+      `document.querySelector('#people')?.textContent ?? ""`,
       (v) => typeof v === "string" && v.includes("ScrollB"),
     );
 

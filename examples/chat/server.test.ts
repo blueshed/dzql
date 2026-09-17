@@ -6,10 +6,9 @@ import { read as readRoom } from "./documents/room";
 import { createServer } from "../../src/server";
 import { example } from "./index";
 
-/** The names in a render's people chips, whichever one is marked as the viewer's own. */
-/** The names in the people compartment's small reading (`#people-mini`: a face and a name each). */
+/** The names of who is here, across the head of the conversation (`#people`: a face and a name each). */
 function peopleIn(html: string): string[] {
-  const faces = html.match(/<div id="people-mini">(.*?)<\/div><\/div>/)?.[1] ?? "";
+  const faces = html.match(/<div id="people"[^>]*>(.*?)<\/div>/)?.[1] ?? "";
   return [...faces.matchAll(/<span class="note">([^<]*)<\/span>/g)].map((m) => m[1]!);
 }
 
@@ -495,7 +494,7 @@ describe("chat", () => {
     await login(b, "Bob", room);
 
     const joinedUpdate = await joined;
-    expect(joinedUpdate.ops).toMatchObject([{ op: "replace", target: "#people-mini" }]);
+    expect(joinedUpdate.ops).toMatchObject([{ op: "replace", target: "#people" }]);
     expect(peopleIn(htmlOf(joinedUpdate))).toEqual(["Alice", "Bob"]);
 
     const left = presenceUpdate(a);

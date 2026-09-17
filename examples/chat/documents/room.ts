@@ -6,10 +6,11 @@ import { prefixDoc, record } from "../../../src/ledger";
 export type ChatMessage = { id: number; name: string; text: string; sentAt: number };
 export type RoomDocument = { transcript: ChatMessage[] };
 
-const ensureStmt = db.query<unknown, [string, number]>(
-  "INSERT INTO rooms (name, created_at) VALUES (?, ?) ON CONFLICT(name) DO NOTHING",
+// A room is not made and kept: it is there while someone is in it or something has been said in
+// it. So entering a room nobody has made is one change, not two, and undo takes all of it back.
+const listStmt = db.query<{ name: string }, []>(
+  "SELECT room AS name FROM messages UNION SELECT room FROM sessions WHERE room IS NOT NULL AND revoked_at IS NULL ORDER BY 1",
 );
-const listStmt = db.query<{ name: string }, []>("SELECT name FROM rooms ORDER BY created_at ASC");
 const countStmt = db.query<{ count: number }, [string]>("SELECT COUNT(*) AS count FROM messages WHERE room = ?");
 const transcriptStmt = db.query<{ doc: string }, [string, number]>(`
   SELECT json_group_array(json_object('id', id, 'name', name, 'text', text, 'sentAt', sent_at)) AS doc
@@ -29,10 +30,6 @@ const messageAtIndexStmt = db.query<{ id: number; name: string; text: string; se
   SELECT id, name, text, sent_at AS sentAt FROM messages WHERE room = ? ORDER BY id ASC LIMIT 1 OFFSET ?
 `);
 const deleteMessageStmt = db.query<unknown, [number]>("DELETE FROM messages WHERE id = ?");
-
-export function ensureExists(name: string): void {
-  ensureStmt.run(name, Date.now());
-}
 
 export function list(): string[] {
   return listStmt.all().map((row) => row.name);

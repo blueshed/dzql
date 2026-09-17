@@ -1,7 +1,8 @@
 import { describe, expect, mock, test } from "bun:test";
 import * as ledger from "../../../src/ledger";
 import { history } from "../../../src/ledger";
-import { ensureExists, list, patch, read } from "./room";
+import { list, patch, read } from "./room";
+import { patch as sessionPatch } from "./session";
 
 describe("room document", () => {
   test("a fresh room reads as empty", () => {
@@ -102,13 +103,18 @@ describe("room document", () => {
     expect(read(room).transcript).toEqual([]);
   });
 
-  test("ensureExists then list includes the room", () => {
+  test("a room is on the list while someone is in it or something has been said in it, and not otherwise", () => {
     const room = crypto.randomUUID();
+    const id = crypto.randomUUID();
     expect(list()).not.toContain(room);
 
-    ensureExists(room);
-
+    sessionPatch(id, [{ op: "replace", path: "/name", value: "Ada" }, { op: "replace", path: "/room", value: room }]);
     expect(list()).toContain(room);
+    sessionPatch(id, [{ op: "remove", path: "/room" }]);
+    expect(list()).not.toContain(room); // nobody in it, nothing said: gone
+
+    patch(room, [{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "hello" } }], id);
+    expect(list()).toContain(room); // something said: it stays
   });
 
   test("patching records two versions in the ledger with correct inverses", () => {

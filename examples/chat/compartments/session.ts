@@ -3,16 +3,17 @@ import * as sessionDoc from "../documents/session";
 import type { ConnectionData } from "../../../src/connection";
 import { patchMessage } from "../../../src/json-patch";
 import type { PatchOp } from "../../../src/json-patch";
-import { parsePointer } from "../../../src/json-pointer";
 import { createEvent } from "../../../src/compartments/bus";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { renderRequested } from "../../../src/compartments/render";
+import { join, write } from "../../../src/html";
 
 // The session is the tray (change-request.md item 10): the ground the room compartment sits on,
 // not a place of its own on the page -- it has no `render` and isn't listed in the example's
-// `compartments`. `room.ts` renders the door and the page. This takes the writes that move
-// around the box -- a name, a room -- and the tray's own state: what is open, whose drawer, what
-// find says.
+// `compartments`. `renderNameForm` is still exported from here (this document decides when to
+// show it), but `room.ts` is the one that renders it now, absorbing what used to be the tray's
+// own page. Otherwise this only takes the writes that move around the room compartment -- a
+// name, a room.
 
 // Fires after any successful write to a session document, so other compartments
 // can react to what changed (e.g. room membership) without session needing
@@ -23,10 +24,22 @@ export const sessionPatched = createEvent<{
   applied: PatchOp[];
 }>();
 
-// A session doc's writable surface: which fields a connection may write on its own session --
-// the name and the room, and the tray's own state (what is open, whose drawer, what find says).
-// Blank/invalid values are rejected further down, inside documents/session.ts::patch() itself.
-const WRITABLE = new Set(["name", "room", "open", "focus", "new", "filter", "hide"]);
+/** Without a name you cannot enter: the one form before anything else. */
+export function renderNameForm(): string {
+  return join(
+    `<section class="door"><h1 class="cap">Chat</h1>`,
+    `<form${write("session", "replace", "/name")}>`,
+    `<label for="name" class="note">Your name</label>`,
+    `<input id="name" name="name" autocomplete="off" autofocus required>`,
+    `<button type="submit" class="tool">Continue</button>`,
+    `</form></section>`,
+  );
+}
+
+// A session doc's writable surface: which JSON Pointer paths a connection
+// may write on its own session. Blank/invalid values are rejected further
+// down, inside documents/session.ts::patch() itself.
+const WRITABLE_PATHS = new Set(["/name", "/room"]);
 
 // Echoes a session document's ops to its own connection (direct, unlike a
 // room's broadcast) and lets other compartments react, e.g. room membership.
@@ -54,13 +67,12 @@ export const session: Compartment = {
     return ws.data.sessionId; // every connection always sees its own session
   },
   permit(ws, op) {
-    const [field] = parsePointer(op.path);
-    if (!field || !WRITABLE.has(field)) return false;
-    // Anything but the name requires an active (named) session -- otherwise a stale second tab
-    // could silently join a room after logging out elsewhere: the write would be invisible
-    // through read() (filtered by revoked_at) but the socket would still join the room's live
-    // broadcast set.
-    if (field !== "name") return sessionDoc.read(ws.data.sessionId).name !== null;
+    if (!WRITABLE_PATHS.has(op.path)) return false;
+    // Writing /room requires an active (named) session -- otherwise a stale
+    // second tab could silently join a room after logging out elsewhere:
+    // the write would be invisible through read() (filtered by revoked_at)
+    // but the socket would still join the room's live broadcast set.
+    if (op.path === "/room") return sessionDoc.read(ws.data.sessionId).name !== null;
     return true;
   },
   write(ws, id, ops) {
