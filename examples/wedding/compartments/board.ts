@@ -45,15 +45,14 @@ function closeAsked(sessionId: string, applied: { op: string; path: string }[]):
   if (ops.length) sessionDoc.patch(sessionId, ops);
 }
 
+/** The couple's pages. The board is always there in practice: read() only reports a kind for a code that exists. */
+export function renderBoard(session: sessionDoc.SessionDocument): string | undefined {
+  const b = boardDoc.read(session.code!);
+  return b && boardPages({ session, b });
+}
+
 export const board: Compartment = {
   docType: "board",
-  render(sessionId) {
-    const session = sessionDoc.read(sessionId);
-    if (session.kind !== "couple") return undefined;
-    const b = boardDoc.read(session.code!);
-    if (!b) return undefined; // unreachable in practice: read() only reports a kind for a code that exists
-    return boardPages({ session, b });
-  },
   resolveDoc(ws) {
     const session = sessionDoc.read(ws.data.sessionId);
     return session.kind === "couple" ? session.code! : undefined;

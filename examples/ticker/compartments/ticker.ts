@@ -53,11 +53,12 @@ export function stopFeed(): void {
 
 const TICK_PATH = /^\/[A-Z0-9.]+\/price$/;
 
+/** The desk: the whole page, from every document a session has. */
+export const render = (sessionId: string): string =>
+  page({ list: watchlistDoc.read(sessionId), market: market.read(), clock: clockDoc.read(sessionId), ui: deskDoc.read(sessionId) });
+
 export const ticker: Compartment = {
   docType: "ticker",
-  render(sessionId) {
-    return page({ list: watchlistDoc.read(sessionId), market: market.read(), clock: clockDoc.read(sessionId), ui: deskDoc.read(sessionId) });
-  },
   resolveDoc() {
     return market.MARKET; // everyone sees the one market
   },

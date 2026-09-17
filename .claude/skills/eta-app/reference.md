@@ -8,13 +8,11 @@ their data as props (`applets/photo.ts`, `dress.ts`, `menu.ts`,
 
 ## How a page is rendered
 
-`assemble()`'s `renderFor` tries each of `Example.compartments`' `render(sessionId)` in order and
-uses the first that returns a string, wrapped by the kernel in `<div id="c-<docType>">`. It is a
-chain, not a composition: one compartment renders on a given turn, and it produces the whole
-picture for the screen it is in charge of, reading other documents if it must (chat's `room.ts`
-reads the session to choose between the name form, the rooms and the room). Order is meaningful:
-the wedding's `household` declines a couple's code before `board` gets a turn. The tray has no
-`render`, so whatever it would show (a sign-in form, a welcome) is drawn by the first compartment.
+`Example.render(sessionId)` returns the whole page for a session, as HTML, and it is the only
+renderer. It decides which screen (chat: the name form, the rooms, or the room; the wedding: the
+welcome, a household's pages, or the couple's) and reads whichever documents it must. A
+compartment has no place on the page of its own: it owns a document, not an element. A write is
+answered with what its compartment's `fragments` says changed, or with the page.
 
 ## The `Example` seam
 
@@ -23,8 +21,8 @@ the wedding's `household` declines a couple's code before `board` gets a turn. T
 ```ts
 export type Example = {
   name: string;             // namespaces its migrations
-  compartments: Compartment[];      // render order; kernel appends the tray (if any) and its own ledger compartment
-  tray?: Compartment;        // the ground the compartments sit on; no render, not in `compartments`
+  compartments: Compartment[];      // one per document type, the session's own first; the kernel appends its ledger
+  render(sessionId: string): string; // the whole page, as HTML
   active(sessionId: string): boolean; // may this session write at all right now?
   index: HTMLBundle;        // served at "/"
   routes?: Record<string, Bun.Serve.BaseRouteValue | RouteHandler>; // merged in; a kernel route of the same path wins
@@ -36,8 +34,8 @@ export type Example = {
 ```ts
 export const example: Example = {
   name: "chat",
-  compartments: [room],
-  tray: session,
+  compartments: [session, room],
+  render,
   active: (sessionId) => sessionDoc.read(sessionId).name !== null,
   index,
 };
@@ -50,10 +48,9 @@ logged-out tab shouldn't be able to undo a write made before it went stale.
 (Domain compartments should also consult their session document in `permit()`
 to guard their own regular writes).
 
-Every example's actual list of documents is bigger than `compartments` alone: the kernel adds
-`tray` (if the example has one) and its own ledger compartment when it calls `assemble(example)`
--- both are reached only by docType, for write dispatch and lifecycle (`onOpen`/`onClose`), never
-part of the page's render order.
+The session's own document (chat's and the wedding's `session`, the ticker's `desk`) is a
+compartment like any other; CLAUDE.md and the bento call it the tray. The kernel appends its own
+ledger compartment when it calls `assemble(example)`.
 
 `src/start.ts` resolves `examples/${ETA_EXAMPLE}/index.ts` (env var,
 default `chat`) and passes its `example` export to `createServer`. One
@@ -70,7 +67,6 @@ export type WriteResult = { version: number; applied: PatchOp[] };
 
 export type Compartment = {
   docType: string; // e.g. "session", "room" — what this compartment owns on the wire
-  render?(sessionId: string): string | undefined; // this compartment's own place on the page, or undefined to defer -- omit entirely for a tray or the ledger
   resolveDoc(ws): string | undefined; // the doc id this connection currently sees for its docType
   sees?(ws, docId: string): boolean; // does this connection see docId -- not just its own resolveDoc; defaults to resolveDoc(ws) === docId
   permit(ws, op: PatchOp): boolean;   // may this connection apply op?
@@ -114,29 +110,21 @@ sees(ws, docId) {
 },
 ```
 
-### Rule 2: a write re-renders its own compartment's element, by default
+### What a write is answered with
 
-There's no `rendered` flag on `WriteResult` — a write's own connection is rendered exactly like
-every other connection that sees the document, and it's the compartment's job to ask (`notify`,
-above) for *all* of them, itself included; the kernel never renders the writer a second time on
-its own. What "ask" gets back, absent `fragments`, is no longer the whole page: `server.ts`'s
-`renderRequested` listener calls the *owning* compartment's own `render(sessionId)` and sends a
-single `replace` of `#c-<docType>` instead — the whole page is the fallback only when there's no
-owning compartment to re-render this way (a tray or ledger write) or that compartment's `render`
-itself declines for this session right now (e.g. the write's docType belongs to a compartment a
-couple viewer's session doesn't currently match — wedding's `board` vs. a household viewer).
-`examples/chat/compartments/room.ts` asks for everyone in the room, including the writer, on
-every write: its `write()` ends `notify("room", roomName, result)`.
+There's no `rendered` flag on `WriteResult`: a write's own connection is brought up to date
+exactly like every other that sees the document, and it's the compartment's job to ask (`notify`,
+above) for all of them, itself included; the kernel never renders the writer a second time. What
+each gets is what the compartment's `fragments` says changed on their page, or the page whole.
+The morph finds what changed in a whole page, so the page is always right; `fragments` is for
+where smaller is worth the care. Forgetting to `notify` is a real bug -- the writer's own
+connection would never hear back -- and the stories catch it: a member's open page is compared
+with a fresh render.
 
-A new example's compartment should do the same: call `notify()` (or, if someone sees the document
-without writing it, implement `sees` first so `notify()`'s audience already includes them) and
-include the writer in it. Forgetting to is a real bug -- the writer's own connection would never
-hear back.
+### `fragments` — smaller than the page
 
-### `fragments` — smaller than the compartment's whole element
-
-A compartment that can say which elements a write touched can answer smaller than its own whole
-element -- `fragments(ws, docId, result)` with HTML ops instead:
+A compartment that can say which elements a write touched can answer smaller than the page --
+`fragments(ws, docId, result)` with HTML ops instead:
 
 ```ts
 type HtmlOp = { op: "replace" | "add"; target: string; html: string } | { op: "remove"; target: string };
@@ -144,14 +132,15 @@ type HtmlOp = { op: "replace" | "add"; target: string; html: string } | { op: "r
 
 `replace` morphs one element (give it an id); `add` appends inside one; `remove` takes one out.
 `[]` means nothing on this connection's page changed and nothing is sent; `undefined` declines,
-falling back to rule 2's own-element default (not necessarily the whole page — see above).
+and the page goes.
 `notify()` is what makes the kernel ask at all -- it names the write in the render request it
 emits (`{ sockets, write: { docType, docId, result } }`) for `server.ts`'s listener to read.
 Chat answers every room write (`examples/chat/compartments/room.ts`); the wedding answers a look
 or a choice per viewer's page and declines the rest (`examples/wedding/compartments/household.ts`)
--- its `board` compartment implements no `fragments` at all, so every board write falls through to
-rule 2's default (a couple viewer's own `#c-board` replaced whole). Anything the applet shows goes
-as its new `data-props`, whole.
+-- its `board` compartment implements no `fragments` at all, so every board write is answered
+with the page. Every target a `fragments` names has to be right for every state the page can be
+in: the ticker's hand-kept lists went stale four times before its watchlist and clock stopped
+answering. Anything the applet shows goes as its new `data-props`, whole.
 
 A compartment that must react to another's writes listens for an event
 (`src/compartments/bus.ts`: `createEvent()`/`.on()`/`.emit()`): chat's `sessionPatched` fires after
@@ -161,12 +150,8 @@ compartment's document from your own `write()` -- the wedding and the ticker do,
 and the ops they apply that way are echoed to nobody.
 
 `src/compartments/index.ts`'s `assemble(example)` wires one example's compartments into a
-running set: it appends the tray (if any) and the kernel's own ledger compartment -- both reached
-only by `docType`, never part of render order, though the tray's own document is still worth
-`inspect`ing (chat's records to the ledger) while the ledger itself isn't -- builds the `docType
--> Compartment` map `server.ts`'s dispatcher uses, and returns `renderFor`/`inspectFor`. Render
-order matters — the first compartment whose `render()` returns non-`undefined` wins (the
-wedding's `household` decides "not this code" before `board` gets a turn).
+running set: it appends the kernel's own ledger compartment, builds the `docType -> Compartment`
+map `server.ts`'s dispatcher uses, and returns `renderFor`/`inspectFor`.
 
 ### One `write`, fresh or walked
 
@@ -287,10 +272,8 @@ author's name, never their session).
   the one websocket (`/ws`). A `PatchOp` is `{op, path, value?}` (JSON Patch
   shaped) where `path` is a JSON Pointer — never a function/verb name.
 - **Server -> client**: `{"type": "render", "html": "..."}` (a full page,
-  morphed in) or `{"type": "render", "ops": [HtmlOp, ...]}` (rule 2's default
-  -- typically one `replace` of the owning compartment's `#c-<docType>`
-  element, or a compartment's own smaller `fragments` answer), morphed one
-  target at a time; or `{"type": "patch", "doc", "version", "ops"}` (an echo
+  morphed in) or `{"type": "render", "ops": [HtmlOp, ...]}` (a compartment's
+  `fragments` answer), morphed one target at a time; or `{"type": "patch", "doc", "version", "ops"}` (an echo
   of what was just applied, recorded into the client's `window.eta.docs()`
   op-log — the *only* client-side domain state allowed).
 - `{"type": "inspect", "limit"?: n}` -> `{"type": "inspect", "docs": [{doc, version, entries}, ...]}`:
@@ -494,11 +477,7 @@ contract; it has no idea any specific applet exists.
 `src/client/app.ts` looks up its mount point with a non-null assertion --
 `document.querySelector<HTMLElement>("#app")!` -- so `client/index.html`
 must contain an element with `id="app"` (chat's is `<main id="app">`), or
-the client throws immediately on load. A compartment's own wrapper
-(`<div id="c-<docType>">`) is a DOM/morph boundary, not a layout one -- if
-`#app`'s CSS depends on something being its direct child (a flex or grid
-layout), give the wrapper `[id^="c-"] { display: contents; }` (chat's
-`styles.css` has the pattern).
+the client throws immediately on load.
 
 ## CLI verbs
 

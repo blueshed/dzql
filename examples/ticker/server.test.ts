@@ -203,7 +203,7 @@ describe("the ticker", () => {
 
   test("while a symbol's drawer is open, what it says stays true: a tick moves its price, and watching from it turns the offer round", async () => {
     const ws = await open();
-    const shown = (m: { html?: string; ops?: { html?: string }[] }) => m.html ?? (m.ops ?? []).map((o) => o.html ?? "").join("");
+    const shown = (m: { html?: string; ops?: unknown[] }) => m.html ?? ((m.ops ?? []) as { html?: string }[]).map((o) => o.html ?? "").join("");
     const drawerOf = (html: string) => html.slice(html.indexOf('id="drawer"'));
     write(ws, "desk", [{ op: "replace", path: "/open", value: "market" }, { op: "replace", path: "/focus", value: "DLTA" }]);
     await expectMessage(ws, "patch");
@@ -256,7 +256,7 @@ describe("the ticker", () => {
     // with it closed, the board's list alone
     write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.05 }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: "#c-ticker" }]);
+    expect((await expectMessage(ws, "render")).html).toContain("13.05"); // the page, whole: the drawer's price with it
     await page([{ op: "remove", path: "/focus" }]);
     write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.07 }]);
     await expectMessage(ws, "patch");

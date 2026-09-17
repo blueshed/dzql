@@ -65,18 +65,14 @@ function closeAsked(sessionId: string, applied: { op: string; path: string }[]):
   if (sessionDoc.read(sessionId).ui.new && applied.some((op) => op.op === "add" && op.path.endsWith("/-"))) sessionDoc.patch(sessionId, [{ op: "remove", path: "/new" }]);
 }
 
+/** A household's pages. `viewFor` is always there in practice: read() only reports a kind for a code that exists. */
+export function renderHousehold(session: sessionDoc.SessionDocument): string | undefined {
+  const v = viewFor(session);
+  return v && householdPages(v);
+}
+
 export const household: Compartment = {
   docType: "household",
-  render(sessionId) {
-    // Absorbs the tray's old page: household is tried first (examples/wedding/index.ts), so with
-    // no code yet it's the one that shows the welcome (the tray itself has no `render` -- item
-    // 10's rule 3).
-    const session = sessionDoc.read(sessionId);
-    if (!session.code) return welcome(weddingDoc.wedding(), session.note);
-    if (session.kind !== "household") return undefined;
-    const v = viewFor(session);
-    return v && householdPages(v); // v is always there in practice: read() only reports a kind for a code that exists
-  },
   resolveDoc(ws) {
     const session = sessionDoc.read(ws.data.sessionId);
     return session.kind === "household" ? session.code! : undefined;

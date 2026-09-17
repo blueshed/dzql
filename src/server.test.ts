@@ -50,9 +50,6 @@ function noteWrite(ws: Bun.ServerWebSocket<{ sessionId: string }>, id: string, o
 
 const noteCompartment: Compartment = {
   docType: "note",
-  render(sessionId) {
-    return `<p class="note">${readNote(sessionId).text}</p>`;
-  },
   resolveDoc(ws) {
     return ws.data.sessionId;
   },
@@ -76,6 +73,7 @@ function makeExample(name: string): Example {
   return {
     name,
     compartments: [noteCompartment],
+    render: (sessionId) => `<p class="note">${readNote(sessionId).text}</p>`,
     active: () => true,
     index,
   };
@@ -171,11 +169,10 @@ describe("createServer, generically (no example from the examples directory invo
     const patch = await expectMessage(ws, "patch");
     expect(patch.doc).toBe("note");
     expect(patch.ops).toEqual([{ op: "replace", path: "/text", value: "hello kernel" }]);
-    // "hello kernel" doesn't start with "frag"/"quiet", so fragments() declines and rule 2's
-    // default applies: a single replace of this compartment's own element, not the whole page.
+    // "hello kernel" doesn't start with "frag"/"quiet", so fragments() declines and the page goes whole
     const rendered = await expectMessage(ws, "render");
-    expect(rendered.html).toBeUndefined();
-    expect(rendered.ops).toEqual([{ op: "replace", target: "#c-note", html: '<div id="c-note"><p class="note">hello kernel</p></div>' }]);
+    expect(rendered.ops).toBeUndefined();
+    expect(rendered.html).toBe('<p class="note">hello kernel</p>');
 
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const undonePatch = await expectMessage(ws, "patch");
@@ -212,11 +209,10 @@ describe("createServer, generically (no example from the examples directory invo
     // no render follows: the next thing this connection hears is the next write's echo
     write(ws, "note", [{ op: "replace", path: "/text", value: "plain" }]);
     await expectMessage(ws, "patch");
-    // "plain" declines fragments(), so rule 2's default applies: a replace of this compartment's
-    // own element, not the whole page -- there being only one compartment here doesn't change that.
+    // "plain" declines fragments(), so the page goes whole
     const own = await expectMessage(ws, "render");
-    expect(own.html).toBeUndefined();
-    expect(own.ops).toEqual([{ op: "replace", target: "#c-note", html: '<div id="c-note"><p class="note">plain</p></div>' }]);
+    expect(own.ops).toBeUndefined();
+    expect(own.html).toBe('<p class="note">plain</p>');
 
     ws.close();
   });

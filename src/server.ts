@@ -1,6 +1,6 @@
 import { assemble } from "./compartments";
 import { closeConnection, openConnection, setActiveCompartments } from "./compartments/audience";
-import { compartmentTarget, fragmentsMessage, renderMessage, renderRequested, wrapCompartment } from "./compartments/render";
+import { fragmentsMessage, renderMessage, renderRequested } from "./compartments/render";
 import type { ConnectionData } from "./connection";
 import type { Example } from "./example";
 import type { PatchOp } from "./json-patch";
@@ -21,19 +21,11 @@ renderRequested.on((request) => {
   const owner = write ? active.assembled.byDocType.get(write.docType) : undefined;
   for (const ws of sockets) {
     // The owning compartment may say exactly what changed on this page (HTML ops), or that
-    // nothing did -- fragments is the exception, not the rule (item 10's rule 2), so it wins
-    // whenever it answers, `[]` included.
+    // nothing did (`[]`); when it does not answer, the page goes whole, and the morph finds what
+    // changed.
     const ops = write && owner?.fragments?.(ws, write.docId, write.result);
     if (ops) {
       if (ops.length > 0) ws.send(fragmentsMessage(ops));
-      continue;
-    }
-    // The default: re-render just the owning compartment's own element, not the whole page --
-    // but only when there is one to re-render (a tray or ledger write has none, and a
-    // compartment's render can itself decline for this session right now).
-    const html = write && owner?.render?.(ws.data.sessionId);
-    if (html !== undefined) {
-      ws.send(fragmentsMessage([{ op: "replace", target: `#${compartmentTarget(write!.docType)}`, html: wrapCompartment(write!.docType, html) }]));
       continue;
     }
     ws.send(renderMessage(active.assembled.renderFor(ws.data.sessionId)));

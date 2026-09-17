@@ -67,8 +67,8 @@ documents, compartments, applets, client, migrations; `src/` never imports from 
 
 A write reaches every connection that sees its document as a patch echo and then a render. From
 0.12.0 (morph, don't replace) to 0.23.0 the render was always the whole page; since 0.24.0 a compartment
-may answer with the delta in HTML's terms instead -- `Compartment.fragments` -- and the page is the
-fallback. Measured with each example's own script (`DB_PATH=:memory: bun
+may answer with the delta in HTML's terms instead -- `Compartment.fragments` -- and the page, whole,
+is what goes when it does not: the morph finds what changed, so the page is always right. Measured with each example's own script (`DB_PATH=:memory: bun
 examples/<name>/scripts/measure-render-cost.ts`):
 
 Chat, a room at 100 messages and 5 members, bytes sent to each *other* member per message:
@@ -82,11 +82,11 @@ Chat, a room at 100 messages and 5 members, bytes sent to each *other* member pe
 
 The wedding, one guest's top changed to green, bytes sent to each viewer:
 
-| viewer | 0.23.0 (full page) | 0.24.0 (fragments) |
+| viewer | 0.23.0 (full page) | now (fragments) |
 |---|---|---|
-| the sender, drawer open | 14146 B | 1918 B |
-| the same household, a second tab on its box | 11387 B | 1441 B |
-| the couple, on their home | 8912 B | 123 B (the patch alone) |
+| the sender, drawer open | 14146 B | 1692 B |
+| the same household, a second tab on its box | 11387 B | 1215 B |
+| the couple, on their home | 8912 B | 3570 B (the photo of everyone, redrawn) |
 | another household, on its box | 10879 B | 0 B |
 | another household, on the everyone page | 3781 B | 1612 B |
 

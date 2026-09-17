@@ -698,7 +698,7 @@ describe("chat", () => {
     for (const [name, text] of [["Bob", "one"], ["Bob", "two"], ["Bob", "three"], ["Ada", "mine"], ["Ada", "mine too"]]) {
       patchRoom(room, [{ op: "add", path: "/transcript/-", value: { name, text } }], "setup");
     }
-    const page = example.compartments[0]!.render!(ada)!;
+    const page = example.render(ada);
     const messages = page.slice(page.indexOf('id="messages"'));
     expect(messages.match(/<span class="name">Bob<\/span>/g)).toHaveLength(1); // three in a row, named once
     expect(messages).not.toContain('<span class="name">Ada</span>'); // she knows who she is

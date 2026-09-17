@@ -339,7 +339,7 @@ describe("a household", () => {
     expect((await expectMessage(ws, "render")).html).toContain('<dialog open class="modal" aria-label="Ask to bring someone">');
     write(ws, "household", [{ op: "add", path: "/asks/-", value: "Modal Friend" }]);
     await expectMessage(ws, "patch");
-    expect(((await expectMessage(ws, "render")).ops as { html: string }[]).map((o) => o.html).join("")).not.toContain('class="modal"');
+    expect(htmlOf(await expectMessage(ws, "render"))).not.toContain('class="modal"');
     householdDoc.patch(code, [{ op: "remove", path: `/asks/${householdDoc.read(code)!.asks.at(-1)!.id}` }], "setup");
     // a waiting ask, then answered both ways -- the asks list's own row for each
     householdDoc.patch(code, [{ op: "add", path: "/asks/-", value: "Robin Friend" }], "setup");
@@ -594,7 +594,7 @@ describe("the couple", () => {
     write(ws, "board", [{ op: "add", path: "/courses/-", value: "Pudding" }]);
     await expectMessage(ws, "patch");
     // the board has no fragments: the render is the kernel's default, its own element replaced (rule 2)
-    html = ((await expectMessage(ws, "render")).ops as { html: string }[]).map((o) => o.html).join("");
+    html = htmlOf(await expectMessage(ws, "render"));
     const pudding = boardDoc.read("DASH")!.courses.find((c) => c.name === "Pudding")!;
     expect(pudding).toBeTruthy();
     // the write that answers the question closes the modal

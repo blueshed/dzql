@@ -37,10 +37,11 @@ it, and everything else is derived from it.
 Two words have two meanings each, so say which:
 
 - **Compartment.** The kernel's `Compartment` (`src/compartments/compartment.ts`) owns one
-  `docType`: what is on screen for it, which writes are allowed, how they apply. `src/tray.ts`
-  also exports a `Compartment`: a cell in a box's grid, the bento's word for a place on a page.
-- **Tray.** `Example.tray` is the session's own document (who you are, where you are); it has no
-  `render`. `tray()` in `src/tray.ts` lays out a box's grid.
+  `docType`: who sees its document, which writes are allowed, how they apply. It has no place on
+  the page; the page is the example's one `render(sessionId)`. `src/tray.ts` also exports a
+  `Compartment`: a cell in a box's grid, the bento's word for a place on a page.
+- **Tray.** The session's own document (who you are, where you are) is what the docs call the
+  tray; it is a compartment like any other. `tray()` in `src/tray.ts` lays out a box's grid.
 
 ## The wire
 

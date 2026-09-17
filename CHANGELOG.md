@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.45.0] - 2026-09-17
+
+### Changed
+
+- **One `write`.** `Compartment.replay` was `write`'s near-copy in all six implementations.
+  `write(ws, docId, ops, undoes?)` is the one path: fresh from the wire, or the ledger walking an
+  entry back or forward. What a compartment does to a fresh value it does only when `undoes` is
+  undefined.
+- **One `notify`.** `notify(docType, docId, result, {echoTo?, renderTo?})` replaces the four
+  hand-written ways a write was told: each tray's own patch-and-render, the wedding's two copies
+  of `echoAndNotify`, chat's presence. A tray's audience is its session's own tabs, so a second
+  tab is no longer left stale by a tray write.
+- **One `render`.** `Example.render(sessionId)` is the whole page. A compartment owns a document,
+  not an element: `Compartment.render`, the first-one-wins chain, the `<div id="c-<docType>">`
+  wrapper with its `display: contents` rule, and the middle tier that re-rendered "the owning
+  compartment's element" (which, with one rendering compartment per page, was the page) are gone.
+  A write is answered with what `fragments` says changed, or with the page. `Example.tray` is gone
+  too: the session's own document is a compartment like any other, listed first.
+- **The harness waits without a clock.** It waited for 40ms of quiet after a write, and a render
+  that was slow to make arrived after it (the ticker's stories failed two runs in three). Each
+  member is asked a question on their own socket instead; their answer comes after all that was
+  sent before it. The wedding's 63 stories run in about three seconds.
+
 ## [0.44.0] - 2026-09-17
 
 ### Changed

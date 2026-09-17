@@ -22,7 +22,6 @@
 /* ── base ── */
 body { margin: 0; background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.45; }
 main#app { position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg) 96px; }
-[id^="c-"] { display: contents; } /* a compartment's wrapper is a morph boundary, not a layout one */
 a { color: var(--accent); }
 h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
 .cap { font-size: 11.5px; line-height: 16px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: var(--ink); }

@@ -205,9 +205,6 @@ const widgets = new Map<string, WidgetState>();
 
 const widgetCompartment: Compartment = {
   docType: "widget",
-  render(sessionId) {
-    return `<p>${widgets.get(sessionId)?.color ?? ""}</p>`;
-  },
   resolveDoc(ws) {
     return ws.data.sessionId;
   },
@@ -229,6 +226,7 @@ const widgetCompartment: Compartment = {
 const cliTestExample: Example = {
   name: "cli-test",
   compartments: [widgetCompartment],
+  render: (sessionId) => `<p>${widgets.get(sessionId)?.color ?? ""}</p>`,
   active: () => true,
   index,
 };

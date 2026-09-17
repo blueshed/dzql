@@ -25,17 +25,15 @@ Everything below is the least that makes it pass.
 
 ## Vocabulary, once
 
-- A **Compartment** (`src/compartments/compartment.ts`) is model, view and controller for one
-  `docType`: what is on screen for it, which writes are allowed, how they apply. There is no
-  central view layer: what is on a page, and in what order, is a compartment's `render()`'s
-  decision. An example with a lot of HTML may keep the functions that build it in files of their
-  own (the wedding's and the ticker's `views/`), but they are the compartment's helpers -- they take
-  data the compartment read and return a string, and they never decide what renders. Chat keeps
-  its HTML in the compartment.
-- **`Example.tray`** is the session's own document -- who you are, which page you are on. It keeps
-  the `Compartment` contract without `render`. All three examples have one (chat's and the
-  wedding's `session`, the ticker's `desk`). Keep as little in it as the stories need: a page and
-  its open drawer are one address, not six fields.
+- A **Compartment** (`src/compartments/compartment.ts`) owns one `docType`: who sees its
+  document, which writes are allowed, how they apply, who is told. It has no place on the page.
+  The page is the example's one `render(sessionId)`: which screen, in what order, reading
+  whichever documents it must. An example with a lot of HTML keeps the functions that build it in
+  files of their own (the wedding's and the ticker's `views/`); chat's are beside its room.
+- The **tray** is the session's own document -- who you are, which page you are on -- and a
+  compartment like any other (chat's and the wedding's `session`, the ticker's `desk`); list it
+  first. Keep as little in it as the stories need: a page and its open drawer are one address, not
+  six fields.
 - An **applet** is only for a piece of the page whose client-side state a re-render would destroy
   (the ticker's board keeps sparkline histories no document holds). It is not "the view for X";
   plain `data-write` HTML is the default.
@@ -55,17 +53,17 @@ Everything below is the least that makes it pass.
    path, one transaction, each op's inverse computed, one `record(...)` at the end. Is this value
    valid is `patch()`'s question; may this connection write this path is `permit()`'s.
 5. **`compartments/<thing>.ts`** -- `docType`, `resolveDoc`, `permit`, `write`, and what it needs of
-   `render`, `sees`, `fragments`, `onOpen`, `onClose`. `write()` ends by calling
+   `sees`, `fragments`, `onOpen`, `onClose`. `write()` ends by calling
    `notify(docType, docId, result)`, which echoes the ops to everyone who sees the document and
-   asks for their render, the writer included. Implement `fragments` only where answering smaller
-   than the compartment's own element is worth the care: every target it names has to be right for
+   asks for their pages to be brought up to date, the writer included. Implement `fragments` only
+   where answering smaller than the page is worth the care: every target it names has to be right for
    every state the page can be in, and no story checks it.
 6. **`applets/<name>.ts`** -- only if the vocabulary above says so. Split drawing (`<name>.ts`, pure,
    tested directly) from mounting (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`)
    when there is drawing worth testing.
 7. **`client/index.html` + `client/main.ts`** -- `main.ts` imports the example's applets, then
    `src/client/app`. The stylesheet imports `src/bento.css` first, then says its own tokens.
-8. **`index.ts`** -- `export const example: Example = { name, compartments, tray?, active, index, routes? }`.
+8. **`index.ts`** -- `export const example: Example = { name, compartments, render, active, index, routes? }`. `render(sessionId)` is the whole page.
 9. **`cli.ts`** (optional) -- an `aliases` table of short verbs that build `{doc, ops}`; no database.
 10. **Tests** -- a test per document, a `server.test.ts` that drives writes and undo over a real
     websocket (this is where delivery is checked: who is told, and with what), a

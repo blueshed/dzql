@@ -140,16 +140,16 @@ sessionPatched.on(({ ws, before, applied }) => {
   }
 });
 
+/** Chat's page: the three steps. No name, the name form; no room, the rooms; else the room. */
+export function render(sessionId: string): string {
+  const { name, room: current } = sessionDoc.read(sessionId);
+  if (!name) return renderNameForm();
+  if (!current) return renderRooms(name, roomDoc.list());
+  return renderRoom(name, current, peopleIn(current), roomDoc.read(current).transcript);
+}
+
 export const room: Compartment = {
   docType: "room",
-  render(sessionId) {
-    // Absorbs the tray's old page: with no name, room is the only compartment on the page, so
-    // it's the one that shows the name form (the tray itself has no `render` -- item 10's rule 3).
-    const { name, room: current } = sessionDoc.read(sessionId);
-    if (!name) return renderNameForm();
-    if (!current) return renderRooms(name, roomDoc.list());
-    return renderRoom(name, current, peopleIn(current), roomDoc.read(current).transcript);
-  },
   resolveDoc(ws) {
     return sessionDoc.read(ws.data.sessionId).room ?? undefined;
   },
