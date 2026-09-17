@@ -1,28 +1,58 @@
 # CLAUDE.md
 
-Bun only — never `node`, `npm`, or `yarn`. Run tests with `bun run test` (or `DB_PATH=:memory: bun test --coverage`), aiming for 100%. Verify every bug fix by reverting it, confirming the new test fails, then restoring it.
+What a builder must not break. How the pieces work is in the eta-app skill
+(`.claude/skills/eta-app/`), not here; the types in `src/` are the contract.
 
-## Architecture
+## Working here
 
-eta is a kernel plus examples. `src/` is the generic kernel: it has no idea "chat" exists, and never imports anything under `examples/`. Each `examples/<name>/` is a complete, self-contained app built on the kernel; adding a new one (e.g. `examples/wedding/`) never requires editing anything in `src/`.
+- Bun only: never `node`, `npm` or `yarn`.
+- Tests: `bun run test` (it sets `DB_PATH=:memory:`; a bare `bun test` would write to the dev
+  database). Aim for 100% coverage.
+- Verify every bug fix by reverting it, watching the new test fail, then restoring it.
+- No new dependencies without asking. The one the examples have is `lucide`, the icon set; the
+  kernel imports no icon set.
 
-Before adding or extending an example, use the `eta-app` skill (`.claude/skills/eta-app/`) — it has the step-by-step checklist and a full reference (`Compartment`/`Example` contracts, document `patch()`/inverse pattern, ledger/undo mechanics, wire protocol, applet lifecycle).
+## Stories first
 
-- Kernel: `migrations/0001_ledger.sql` → `src/ledger.ts` (records every patch + inverse; `nextUndo`/`nextRedo` derive undo/redo's cursor from it, no separate state) → `src/compartments/compartment.ts` (the `Compartment` contract: `render?`/`resolveDoc`/`permit`/`write`/`replay?`/`fragments?`/`onOpen?`/`onClose?`; compartments talk to each other only through `src/compartments/bus.ts` events, never by importing each other's internals) → `src/compartments/index.ts`'s `assemble(example)` (wires one example's compartments, its tray if it has one, and the kernel's own ledger compartment together) → `src/server.ts`'s `createServer(example, port?)` (generic `{doc, ops}` dispatcher; no per-feature branches) → `src/client/` (browser: `app.ts` forwards `data-write` gestures and morphs renders via `morph.ts`; it knows nothing about any specific applet -- an example registers its own).
-- An example (`examples/<name>/`): its own `migrations/*.sql` (applied under its own namespace, see below) → its own `documents/*.ts` (SQL read/write against its own `db.ts`; `patch()` is the only write path, computing each op's inverse, and one transaction -- `db.transaction(function patch(...) {...})` -- so its statements, the ledger row, and the version it returns commit together or not at all) → its own `compartments/*.ts` (the same `Compartment` contract as the kernel's) → its own `applets/*.ts` (client-side components, registered into the kernel's `src/applets.ts` registry; one may name a document in `data-doc` and take its patches itself) → its own `client/` (an `index.html` that loads a `main.ts` which registers the example's applets, then imports the kernel's `src/client/app`) → `index.ts`, which exports `example: Example` -- the one thing the kernel needs to run it. An applet with drawing worth testing directly splits in two: `<name>.ts` (the drawing, and any pure logic — imported by its own `*.test.ts`, so it counts in the coverage table) and `<name>-applet.ts` (`registerApplet(...)`, `mount`/`update`/`patch`, the DOM -- imported only by `client/main.ts`, like the ticker's `board-applet.ts`, so it doesn't; a real browser test drives it instead). Don't let a drawing file's coverage number include untested mounting code, and don't let an untested mounting file hide inside a drawing file's average (item 4).
-- `src/example.ts`'s `Example` type is the seam: `{ name, compartments, tray?, active(sessionId), index, routes? }`. `compartments` is the example's own render order (a compartment's `render()` returns its own place on the page; the kernel wraps it in `<div id="c-<docType>">` -- change-request.md item 10's rule 1); `tray` is the ground the compartments sit on (which page a tab is on, which drawer is open) -- a document with no place of its own, so it has no `render` and isn't in `compartments` (item 10's rule 3), optional (the ticker has none: no sign-in, nothing to gate); `active(sessionId)` is the "may this session write at all right now" guard every write path needs (a stale, logged-out tab shouldn't be able to undo a write made before it went stale) -- the kernel can't derive this generically, so it asks the example; `index` is the page (a Bun `HTMLBundle`); `routes` are optional extra HTTP routes (a kernel route of the same path always wins).
-- Who sees a document is the compartment's own question (`sees?(ws, docId)`, item 1) -- `resolveDoc` alone is the default (right for a document with one writer who is also its only reader), overridden when someone else sees it too without writing it (the wedding's `household.sees` also says yes to the couple, who read every household through the board). The kernel keeps the one registry of open sockets this needs (`src/compartments/audience.ts`), so no compartment keeps a registry of its own; `audienceFor(docType, docId)` answers "who", and `notify(docType, docId, result)` echoes a write's applied ops to that audience and asks it to be brought up to date, in one call. A write's own connection is rendered the same way (item 10's rule 2, `WriteResult` has no `rendered` flag): the kernel's default, absent a `fragments` answer, is a single `replace` of the owning compartment's own `#c-<docType>` element -- not the whole page -- so `fragments` is the exception, not the rule. A tray write has no owning element, so it always asks for its own full page.
-- Undo is a `Compartment.replay?(ws, docId, ops, undoes)` method: applies already-shaped ops (a ledger inverse) to a document and echoes exactly as a direct write would, skipping `permit` (this isn't a fresh request against the normal writable surface). The kernel's ledger compartment (`src/compartments/ledger.ts`, a factory: `createLedgerCompartment(lookup, active)`) finds `nextUndo(sessionId)`/`nextRedo(sessionId)`, splits its `doc` into `{docType, docId}`, and calls `lookup(docType)!.replay(ws, docId, entry.inverse, entry.id)` -- no example-specific dispatch, no cross-compartment event needed for it. The ledger itself has no `render` and isn't a compartment either. Undo, redo, and leaving (logging out, leaving a room) are informally **tools**: verbs beside the compartments, on the box, not in one.
-- Migrations are namespaced: `migrate(db, dir, namespace)` records each applied file as `${namespace}/${file}` in `_migrations`, so the kernel's own migrations (namespace `"eta"`) and an example's (its own `name`) can't collide on filename. An example's `db.ts` imports the kernel's `db` from `../../src/db`, runs its own migrations under its own namespace, and re-exports it -- every document module in that example imports `db` from its own `./db`, never from `src/db` directly, so its migrations are guaranteed to have run before its prepared statements (created at module load) touch the database.
-- Two kernel helpers the examples' views share, with no example knowledge in them: `src/icons.ts` renders an icon node list as SVG (`svg(node, {size, name, label})`), and `src/tray.ts` lays out a box's compartments (`tray(compartments, columns)`: template areas, each compartment's area, and which of the tray's corners it sits in -- a compartment is cut into the tray, square where its walls meet another). The wedding's `views/bento.ts` is the reference use of both.
-- `src/start.ts` resolves which example to run from `ETA_EXAMPLE` (default `chat`); `src/cli.ts` loads that example's own `cli.ts` (an alias table of short verbs, e.g. chat's `name`/`room`/`send`) if it exists, alongside the kernel's own generic `inspect`/`watch`/`undo`/`write <doc> <op> <path> [value]` commands.
+`stories.md` is what eta is for. An example's `stories.ts` says who does what and who then sees
+it, and everything else is derived from it.
 
-## Rules from the change request that shaped this
+- Start a feature by writing the story: a person's intent, in a sentence a customer could call
+  true or false. Run `bun run stories`. Then build the least that makes it pass.
+- Build nothing no story needs. A story that describes tray state ("Ada opens the people, and only
+  her page shows the window") instead of what a person wants is the sign a feature was invented
+  first.
+- Chat is the ten-line proof and stays that small: your name, a room, say something.
 
-- HTML is the only vocabulary. No node/JSON tree on the wire or in the client.
-- A write names a document and a JSON Pointer path — never a function name.
+## The shape
+
+- `src/` is the kernel. It does not know any example exists and never imports from `examples/`.
+- `examples/<name>/` is a whole app: its own migrations, documents, compartments, applets, client,
+  and an `index.ts` exporting `example: Example`. Examples never import from each other; shared
+  code is the kernel's or it is not shared.
+- Before adding or extending an example, or touching the `Compartment` contract, `migrate()`, the
+  applet registry or the wire, load the eta-app skill.
+
+Two words have two meanings each, so say which:
+
+- **Compartment.** The kernel's `Compartment` (`src/compartments/compartment.ts`) owns one
+  `docType`: what is on screen for it, which writes are allowed, how they apply. `src/tray.ts`
+  also exports a `Compartment`: a cell in a box's grid, the bento's word for a place on a page.
+- **Tray.** `Example.tray` is the session's own document (who you are, where you are); it has no
+  `render`. `tray()` in `src/tray.ts` lays out a box's grid.
+
+## The wire
+
+- HTML is the only vocabulary. No node or JSON tree on the wire or in the client.
+- A write names a document and a JSON Pointer path, never a function name.
+- The server is the only renderer. The client morphs; it never replaces `innerHTML`, and it never
+  descends into a `[data-applet]` element.
 - No client-side domain state beyond the small op-log in `window.eta.docs()`.
-- A form writes on submit by default, one op (a field's value, or a record of several); a form with `data-write-on="blur"` (or `"change"`) writes instead when a field inside it fires that event -- `data-write` then names each *field*'s own path, not the form's, and every field whose live value differs from what the last render wrote (an input's `value` attribute, a textarea's `defaultValue`) becomes one op in a single message (item 2). A form with `data-write-on="input"` (bento-request.md K3) commits the same way but debounced to ~150ms after the last keystroke anywhere in the form, flushed at once by a `focusout` inside it, and never repeats a message identical to the last one that form actually sent. Such a form never resets on echo: it never carries the form-level `data-write` the reset mechanism keys on, and the morph keeps its fields' rendered values current instead.
-- An example may put the session's page in the URL: `data-page`/`data-page-write` anywhere in `#app` (item 3). The kernel mirrors `data-page` into `history.pushState` on every full render, and on `popstate` sends `data-page-write`'s declared write with the URL's own page -- it never interprets what a page means, only moves the address bar to match one and asks for the write back. `src/server.ts`'s `"/*": example.index` fallback is what lets a reopened or shared link reach the client to read in the first place; the server still resolves nothing about the path itself.
-- The client morphs (`morph.ts`) instead of replacing `innerHTML`; `[data-applet]` elements are a boundary the morph never descends into. A render is a single compartment's own element by default, the whole page when there's no owning element to replace (a tray write) or a compartment answers `fragments` with its own HTML ops instead (`src/compartments/render.ts`), which the client morphs one target at a time. A compartment's wrapper (`<div id="c-<docType>">`) is a DOM/morph boundary, not a layout one -- an example's CSS needs `display: contents` on it (chat's `styles.css` has the pattern) if anything relies on what's inside being a direct child of `#app`.
-- No new dependencies without asking first. The one the examples have is `lucide`, the icon set. The kernel's `src/icons.ts` renders any icon node list as SVG (`svg(node, {size, name, label})`) and imports no icon set; each example imports the outlines it uses from `lucide` and names them itself (the wedding's `views/icons.ts`). Examples never import from each other -- shared code is the kernel's or it is not shared.
+- `patch()` is a document's only write path and one transaction: its statements, the ledger row
+  and the version it returns commit together or not at all.
+
+## Pages
+
+A page follows the bento's rules, stated once in `examples/bento/README.md` and built in
+`src/bento.ts` and `src/bento.css`. A page is a box (`boxPage`) or a collection (`collectionPage`).
+Read the rules for what they intend, not as a checklist to satisfy.

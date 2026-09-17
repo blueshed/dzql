@@ -6,84 +6,15 @@ documents, a permit surface as a table of paths and ops, applets that take
 their data as props (`applets/photo.ts`, `dress.ts`, `menu.ts`,
 `picture-field.ts`), and an `Example.routes` entry for uploaded pictures.
 
-## Vocabulary: there is no "view" — a Compartment is model, view, and controller for one idea
+## How a page is rendered
 
-eta used to have a `views.ts`: a module of pure rendering functions, fed
-data pulled from every document. It's gone (commit `46df7bd`, "Make
-server.ts and views.ts agnostic of session/room via Concept modules" — the
-`Concept` name it used then, before item 10's rename to `Compartment`) —
-it had to import both documents and hardcode their cross-domain render
-order itself, which is exactly the kind of thing this codebase doesn't let
-one file know. **Don't recreate `views.ts` under a different name.** If a
-plan for a new example includes a `views/` directory, a `Renderer`, or
-anything whose only job is "take some data, return HTML" separately from
-the compartment that owns that data, stop and fold it into the compartment instead.
-
-A **Compartment** (`src/compartments/compartment.ts`) is deliberately *not* layered —
-one module is simultaneously the model, the view, and the controller for
-one domain idea: it owns a `docType`, decides what's on screen when it's
-this compartment's turn to render, decides which writes are allowed, applies
-them, and handles this domain idea's own connection lifecycle. Nothing
-outside the compartment touches its documents.
-
-**`render()` returns this compartment's own place on the page, wrapped by the
-kernel in `<div id="c-<docType>">`.** `assemble()`'s `renderFor` tries each
-compartment's `render(sessionId)` in turn and uses the *first* one that
-returns a string, wrapped — this is chain-of-responsibility, not
-composition, and only one compartment ever renders on a given turn.
-`examples/chat/compartments/room.ts::render()` returns the name form, the
-room selector, or the chat screen: chat has no tray-absorbing compartment of
-its own besides room (its tray, the session document, has no `render` at
-all — see "The tray and tools" below), so room's `render()` is *also* where
-the tray's old "no name yet" screen lives now, and it's the only compartment
-in `Example.compartments`. When one compartment's answer is the only thing
-on the page (chat's name form; the wedding's welcome, in
-`household.ts::render()`), its wrapper *is* the page — there's nothing else
-to compose it with. This is why render *order* is meaningful (set in
-`Example.compartments`) and why a compartment's `render()` often reads
-*other* documents too (`room.ts::render()` reads `sessionDoc` to decide
-whether to show the name form, the room selector, or the chat screen) — it
-has to produce the full picture for whatever screen it's in charge of, not
-just its own slice.
-
-**An applet is not a smaller view — it's an escape hatch for client-side
-state a re-render would destroy.** Every compartment's `render()` output is
-just an HTML string, morphed into `#app` fresh on every render; that's
-enough for the overwhelming majority of UI (forms, buttons, lists — see the
-wire protocol section below). Reach for an applet (`src/applets.ts`) only
-when a piece of DOM needs to keep *live client-side JS state* across a
-render that would otherwise blow it away — the ticker's city picker keeps
-the suggestions under a field the person is mid-typing into, and its board
-keeps the sparkline histories no document holds. If nothing in your new UI needs to
-survive a re-render like that, you don't need an applet — plain
-`data-write` HTML rendered by a compartment's `render()` is the default, not
-the exception.
-
-**When do you need a new Compartment vs. a new branch in an existing one's
-`render()`/writable paths?** A new `Compartment` means a new `docType` — a new
-kind of document with its own identity, its own row(s) in the ledger, its
-own undo history. A new *screen state* of something that's still the same
-document (e.g. an RSVP form vs. a thank-you message, both about the same
-guest) is just another branch inside that document's existing compartment, not
-a reason to create a second one.
-
-**The tray and tools.** A session or visit document (which page a tab is on, which drawer is
-open, how a collection is read) is **the tray** (`Example.tray`): the ground the other
-compartments sit on, not a place of its own on the page. It keeps every part of the `Compartment`
-contract except `render` -- there's nothing for the kernel to wrap in a `<div id="c-<docType>">`,
-so it isn't listed in `Example.compartments` and never competes for the page. Whatever it used to
-show before item 10 (chat's name form, the wedding's welcome) moved into whichever domain
-compartment is tried first (`room.ts`, `household.ts`) -- see the previous section. The kernel's
-own ledger compartment keeps the same shape minus `render` too, for the same reason: it's the
-tools' document (undo, redo), not a place. Undo, redo, and leaving (logging out, leaving a room)
-are **tools**: verbs beside the compartments, on the box, not in one -- rendered by whichever
-compartment or the tray currently owns the button, not by a compartment of their own.
-
-A tray write has no owning element to fall back to, so it always asks (`renderRequested.emit`)
-for the whole page -- see `examples/chat/compartments/session.ts::echoSessionPatch()` and
-`examples/wedding/compartments/session.ts::write()`, both a bare `renderRequested.emit([ws])`
-(no `write: {docType, docId, result}` -- there's no compartment for the kernel to ask `fragments`
-of). `Example.tray` is optional: the ticker has none (no sign-in, anyone may write a tick).
+`assemble()`'s `renderFor` tries each of `Example.compartments`' `render(sessionId)` in order and
+uses the first that returns a string, wrapped by the kernel in `<div id="c-<docType>">`. It is a
+chain, not a composition: one compartment renders on a given turn, and it produces the whole
+picture for the screen it is in charge of, reading other documents if it must (chat's `room.ts`
+reads the session to choose between the name form, the rooms and the room). Order is meaningful:
+the wedding's `household` declines a couple's code before `board` gets a turn. The tray has no
+`render`, so whatever it would show (a sign-in form, a welcome) is drawn by the first compartment.
 
 ## The `Example` seam
 
@@ -153,7 +84,7 @@ export type Compartment = {
 
 ### Who sees a document: `sees`, `audienceFor`, `notify`
 
-Change-request.md item 1: a compartment answers "who sees this document", the kernel keeps the
+A compartment answers "who sees this document", the kernel keeps the
 one registry of open connections that question needs, and neither has to be built twice per
 example. `src/compartments/audience.ts` exports three things:
 
@@ -174,7 +105,7 @@ example. `src/compartments/audience.ts` exports three things:
 
 Most compartments never implement `sees` at all: `resolveDoc`'s default is exactly right when a
 document's writer is also its only reader (chat's `room`, the wedding's `board`, the ticker's
-`clock`/`watchlist`, all unchanged by item 1). Implement it when someone else genuinely sees a
+`clock`/`watchlist`). Implement it when someone else genuinely sees a
 document without writing it -- the wedding's `household`:
 
 ```ts
@@ -196,15 +127,7 @@ owning compartment to re-render this way (a tray or ledger write) or that compar
 itself declines for this session right now (e.g. the write's docType belongs to a compartment a
 couple viewer's session doesn't currently match — wedding's `board` vs. a household viewer).
 `examples/chat/compartments/room.ts` asks for everyone in the room, including the writer, on
-every write:
-
-```ts
-write(ws, roomName, ops) {
-  // ...
-  echoAndNotify(roomName, result); // notify("room", roomName, result) -- every member, including this one
-  return result;
-},
-```
+every write: its `write()` ends `notify("room", roomName, result)`.
 
 A new example's compartment should do the same: call `notify()` (or, if someone sees the document
 without writing it, implement `sees` first so `notify()`'s audience already includes them) and
@@ -231,10 +154,11 @@ or a choice per viewer's page and declines the rest (`examples/wedding/compartme
 rule 2's default (a couple viewer's own `#c-board` replaced whole). Anything the applet shows goes
 as its new `data-props`, whole.
 
-Compartments never import each other's internals — they talk only through
-`src/compartments/bus.ts` events (`createEvent()`/`.on()`/`.emit()`). Example:
-`sessionPatched` fires after any successful session write so `room.ts` can
-react to room-membership changes without importing `session.ts`.
+A compartment that must react to another's writes listens for an event
+(`src/compartments/bus.ts`: `createEvent()`/`.on()`/`.emit()`): chat's `sessionPatched` fires after
+a session write so `room.ts` can announce who arrived and who left. Do not patch another
+compartment's document from your own `write()` -- the wedding and the ticker do, to close a modal,
+and the ops they apply that way are echoed to nobody.
 
 `src/compartments/index.ts`'s `assemble(example)` wires one example's compartments into a
 running set: it appends the tray (if any) and the kernel's own ledger compartment -- both reached
@@ -254,9 +178,8 @@ isn't a new request. Compartments reached only by `docType` (like ledger itself)
 don't implement `replay` — nothing ever undoes onto them.
 
 `examples/chat/compartments/session.ts` (the tray -- see above) shows the shared-echo pattern:
-both `write` and `replay` call `sessionDoc.patch(...)` then a shared `echoSessionPatch()`
-(exported so the ledger's replay path can reuse the exact same echo a direct write produces;
-it's also where the tray's bare `renderRequested.emit([ws])` lives):
+both `write` and `replay` call `sessionDoc.patch(...)` then the same `echoSessionPatch()`, which
+is also where the tray's bare `renderRequested.emit([ws])` lives:
 
 ```ts
 write(ws, id, ops) {
@@ -300,7 +223,7 @@ value" (a field that was previously unset) must be a `remove`, or undoing a
 first-ever write would silently do nothing. See `restoreOp()` in
 `documents/session.ts` for the pattern.
 
-`patch()` is one transaction (change-request.md item 11): wrap the exported function itself in
+`patch()` is one transaction: wrap the exported function itself in
 `db.transaction(...)`, keeping its own name for stack traces and every call site unchanged --
 `export const patch = db.transaction(function patch(id, ops, ...) { ... });`. Every statement the
 function runs (including, through a helper like `householdDoc.addGuest`, a different document's)
@@ -319,9 +242,7 @@ back for it. Two real examples: `examples/wedding/documents/session.ts`'s `patch
 at all (a visit's page/drawer state isn't the wedding's history -- undo there means "take back my
 last answer," never "go back a page"); `examples/chat/compartments/room.ts`'s presence ops
 (`add /people/-`, `remove /people/<index>`) are sent as plain room patches but built and echoed
-without ever touching `record()` (undoing an arrival is nonsense). There's no `Compartment`-level
-flag for this today -- if the kernel ever needs to ask "is this document on the ledger" generically
-rather than each document answering by omission, `Compartment.ledger?: false` is the shape.
+without ever touching `record()` (undoing an arrival is nonsense).
 
 ## The ledger and undo
 
@@ -430,7 +351,7 @@ renders without any bookkeeping. An editing form never sets the reset-on-echo st
 form-level `data-write` to key that off), so it never resets — a refused edit is handed back
 exactly as typed, the way a rejected create-form's input is.
 
-`data-write-on="input"` (bento-request.md K3, the wedding's W4 filter) is the same shape, for a
+`data-write-on="input"` is the same shape, for a
 form that ought to write on every keystroke rather than waiting for the field to lose focus --
 find-as-you-type is the reference use:
 
@@ -452,7 +373,7 @@ are automatically pinned to the bottom on render if new child nodes were
 added, without disturbing scroll position during presence or other unrelated
 updates.
 
-### `data-moving`: the same element grows into the window (bento-request.md K1)
+### `data-moving`: the same element grows into the window
 
 A render may mark one element `data-moving="<name>"`. When a full render arrives and both the
 page as it is and the page as rendered carry an element with the same `data-moving` value,
@@ -466,23 +387,19 @@ entirely, same as a browser without support: a plain morph, as always. Fragment 
 The kernel has no client stylesheet of its own, so this is the one thing an example's stylesheet
 has to add for `data-moving` to look right rather than merely work: without
 `::view-transition-group(moving) { z-index: 1 }`, the moving element animates *under* its
-neighbours instead of on top of them (the bento mock-up learned this the hard way -- naming every
-compartment, instead of just the one moving, was the original mistake). Nothing else needs naming;
-K1 is one attribute, one name, one element, not a general animation vocabulary.
+neighbours instead of on top of them. Nothing else needs naming: one attribute, one name, one
+element, not a general animation vocabulary.
 
-A box with more than one openable compartment (the wedding's W3) marks every navigable
+A box with more than one openable compartment marks every navigable
 compartment `data-moving` on every render, box or open -- the render can't know in advance which
 one the person is about to click, so "the page as it is" may carry several at once. `render()`'s
 `movingElement()` accounts for this: it checks every current `[data-moving]` candidate, not just
 the first, and picks the one whose matching element in the incoming render actually differs (a
 still-closed sibling's markup renders byte-for-byte the same whether or not another compartment
 opened, so comparing `outerHTML` is enough to tell "genuinely transitioning" from "merely still
-here"). Grabbing only `document.querySelector`'s first match, as K1's first cut did, works for a
-single candidate but silently names the wrong element -- typically one that's about to become
-`display: none` -- once a second one appears on the page, which Chromium answers with
-`InvalidStateError: Transition was aborted because of invalid state`.
+here").
 
-### `data-reveal`: bringing the chosen figure into the clear (bento-request.md K2)
+### `data-reveal`: bringing the chosen figure into the clear
 
 After a full render's morph, if the page now carries an element with `data-reveal` that it did not
 carry before -- or carries it on a different element than before -- `render()` calls
@@ -518,10 +435,8 @@ For a reopened or shared link to reach the client to read at all, the server has
 page to any path — see `src/server.ts`'s `"/*": example.index` fallback, which is generic and
 already there; nothing about it is per-example. The wedding wires the mechanism itself into
 `views/shared.ts`'s `frame()` (an optional `page` parameter, passed by `views/household.ts` and
-`views/board.ts`; the pre-login welcome has no page yet). This is opt-in per example — chat's
-`room` on the session was left alone (change-request.md item 3's Why explains why it grates less
-there); skip it entirely unless the back button or a shareable link is something the example
-actually wants.
+`views/board.ts`; the pre-login welcome has no page yet). It is opt-in: skip it unless the back
+button or a shareable link is something the example's stories want.
 
 ## Applets — the escape hatch for client-side state
 
@@ -551,8 +466,7 @@ drives it on every run. Split it in two: `<name>.ts` keeps the drawing (`dressHt
 `registerApplet(...)` and the `mount`/`update`/`patch` that touch the DOM, and is imported *only*
 by `client/main.ts`. That's what keeps it out of the coverage table rather than
 dragging a drawing file's number down: `src/applets.ts`'s registry doesn't care which file called
-`registerApplet`, so nothing about the split is visible to the kernel or the wire
-(change-request.md item 4). Skip the split for an applet with no drawing worth testing on its own
+`registerApplet`, so nothing about the split is visible to the kernel or the wire. Skip the split for an applet with no drawing worth testing on its own
 (`picture-field.ts`, which talks to `fetch` and a `<input type=file>` throughout).
 
 Most UI is plain HTML + `data-write`, morphed in on every render — no applet
@@ -590,8 +504,7 @@ the client throws immediately on load. A compartment's own wrapper
 (`<div id="c-<docType>">`) is a DOM/morph boundary, not a layout one -- if
 `#app`'s CSS depends on something being its direct child (a flex or grid
 layout), give the wrapper `[id^="c-"] { display: contents; }` (chat's
-`styles.css` has the pattern; it's what made `.messages` stretch to fill
-`#app` again after item 10 added the wrapper).
+`styles.css` has the pattern).
 
 ## CLI verbs
 
@@ -638,5 +551,8 @@ compartment before it. It returns `areas` (for `grid-template-areas`) and, per c
 `corners`: which of the tray's corners it sits in, so a view can cut it into the tray -- square
 where its walls meet another compartment, the tray's curve (less the wall) only in its corners.
 It is viewport-free: compute one tray per column count you lay out for (the wedding does three and
-one) and let the stylesheet pick by width. See `examples/wedding/views/bento.ts`'s `boxPage` and
-`examples/bento/README.md` for the rules the tray serves.
+one) and let the stylesheet pick by width. `src/bento.ts`'s `boxPage` does this for you, along with
+the rest of the bento's surfaces (the trail, the window, the tools, find, rows, the drawer, the
+modal; `src/bento.css` is their look): bind them once with `bento({icon, tray, leave?})`. A page
+that is a collection rather than a box is `collectionPage` (chat's rooms and its conversation).
+See `examples/bento/README.md` for the rules they serve.

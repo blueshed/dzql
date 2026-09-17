@@ -1,6 +1,6 @@
 # Stories: what eta is for
 
-*15 September 2026. Written after change-request.md, which is done as a list: what the wedding
+*15 September 2026. Written after `history/change-request.md`, which is done as a list: what the wedding
 asked of the kernel, item by item. This is not a list. It says what the three examples, the
 kernel and the change request were reaching for, so that the next thing built is built towards
 it. It comes out of a longer history, `Workshop/documents-history.md`: seven projects that each
@@ -113,27 +113,39 @@ legible enough to read aloud. Neither the code nor a model is the product. The s
 
 ## The harness
 
-One kernel function, `run(example, stories)`, and one script per example beside its cost
-measure. For each story:
+One kernel function, `run(example, stories)` in `src/harness.ts`, and one script, `bun run stories`
+(`src/stories-run.ts`; `ETA_EXAMPLE` picks the example). For each story:
 
 1. Connect the cast over real sockets to a real server, apply each member's setup writes, and
    render every member fresh from the tables.
-2. Send the story's `does` as its session. Let every echo and render land.
-3. Canon 1. Render every member fresh again. For each name in `seen`, that member's named
-   compartment must differ from before; for each name in `unseen`, nothing of theirs may differ.
-   For a `cannot`, nothing anywhere may differ, and the ledger must not have moved.
-4. Canon 2. For every member with a page open in a real browser, the page the morph holds must
-   equal a fresh `render(sessionId)` after the story's echo, with each applet compared by its
-   props and not its drawn insides. Then undo, compare again; redo, compare again.
+2. Send the story's `does` as its session, and wait for the wire to go quiet.
+3. Canon 1. Render every member fresh again. For each name in `seen`, that member's page must
+   differ from before; for each name in `unseen`, nothing of theirs may differ. For a `cannot`,
+   nothing anywhere may differ, and the ledger must not have moved.
+4. Undo, and every page must be as it was before; redo, and every page must be as it was after.
+   Skipped when the write is off the ledger, when the ledger says it is a fact, or when its author
+   has gone -- before the undo, or because of it (undoing the write that gave you your name).
 5. Report by story name. A failing story is a sentence, not a stack trace.
 
-Before any story runs, the harness checks that every rule in every permit table is used by at
-least one story. A permitted write no story tells is a story nobody wrote, and the harness says
-so by the rule.
+*What it does not do yet (17 September).* Said plainly, because a builder will otherwise trust it
+for more than it checks:
 
-Item 10 makes step 3 cheap: a compartment renders into `#c-<docType>`, so "did the couple's board
-change" is a comparison of one element, not a diff of a page. Item 11 makes step 4 honest: a
-story that throws halfway leaves nothing behind to compare.
+- **It checks the tables, not what anyone was sent.** Every comparison is between fresh renders. A
+  passing `seen` says the change shows on that person's next render; it does not say their open
+  page was told. Who is in the audience, the patch echo, a compartment's `fragments` and the morph
+  are covered by each example's server and browser tests, and by no story.
+- **Canon 2 is not run.** The intent stands: for every member with a page open, the page the morph
+  holds must equal a fresh render after the story's echo, each applet compared by its props; then
+  undo and compare, redo and compare. Rebuilding each member's page from the messages they
+  actually received would check most of it without a browser.
+- **No permit table is checked against the stories.** The intent was that a permitted write no
+  story tells is a story nobody wrote. While permit tables are written by hand that check would
+  run backwards -- it would push a builder to write a story after a feature, to justify it -- so it
+  waits until the table is derived from the stories.
+- **A story about the tray cannot fail.** Any write to a session's own state changes its author's
+  page, so "Ada opens the people, and only her page shows the window" passes whatever the code
+  does. Such a story proves nothing. Tell what a person wants; where they must stand to see it is
+  what `seen`'s place is for.
 
 ## What we do not build
 

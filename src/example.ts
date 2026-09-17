@@ -24,8 +24,8 @@ export type Example = {
   /**
    * The ground the compartments sit on: which page a tab is on, which drawer is open, how a
    * collection is read -- a document with no place of its own on the page, so it has no `render`
-   * and isn't in `compartments` above. Optional: an example with no such state (the ticker, where
-   * anyone may write with no sign-in) doesn't need one.
+   * and isn't in `compartments` above. Optional, though all three examples have one (chat's and
+   * the wedding's `session`, the ticker's `desk`).
    */
   tray?: Compartment;
   /** May this session write at all right now? */

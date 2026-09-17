@@ -5,97 +5,72 @@ description: Use this skill before writing any code under examples/<name>/ — a
 
 # Building an example on eta
 
-eta is a kernel (`src/`) plus examples (`examples/<name>/`). The kernel never
-imports anything under `examples/`; an example is everything needed to turn
-the kernel into a running app. Read `reference.md` in this skill for full
-contracts and code excerpts — this file is the checklist.
+eta is a kernel (`src/`) plus examples (`examples/<name>/`). The kernel never imports anything
+under `examples/`; an example is everything needed to turn the kernel into a running app. This file
+is the order to work in. `reference.md` beside it is how each piece works, one section per piece;
+the types in `src/` are the contract itself.
 
-**Read `reference.md`'s "Vocabulary" section before designing anything.**
-There is no separate `views.ts`/view layer in eta — that architecture was
-tried and removed. A `Compartment` is model+view+controller for one domain idea
-(a new `docType`, its own document, its own undo history); `render()` returns
-that compartment's own place on the page (the kernel wraps it in
-`<div id="c-<docType>">`) or `undefined` to defer to the next one — the
-*whole* page only when, as with the sign-in screen, it's the only compartment
-that answers; an applet is only for a DOM element that needs client-side JS
-state to survive a re-render (a typed filter, not "the view for X"). Session-
-or visit-like state (which page a tab is on, which drawer is open) is the
-**tray** (`Example.tray`), not a compartment: it has no `render` and doesn't
-appear in `Example.compartments`, so absorb whatever it used to show (a
-sign-in form, a welcome screen) into whichever domain compartment is tried
-first. If your plan for a new example has a `Renderer`, a `views/` directory,
-or one compartment per screen rather than per domain idea, stop and re-read
-that section first.
+## 0. The story, first
+
+Before a table, a document or a line of HTML: open the example's `stories.ts` (and `stories.md` at
+the root, once) and write the story -- who does what, and who then sees it, as a sentence a
+customer could call true or false. Run `bun run stories` (`ETA_EXAMPLE=<name>`) and watch it fail.
+Everything below is the least that makes it pass.
+
+- Build nothing no story needs. If the thing you are about to add has no story, it has no reason.
+- Do not write a story to justify something already built. A story that describes the tray's
+  state ("opens the drawer", "the modal asks") cannot fail and proves nothing; tell what the
+  person wants, and use `seen`'s place for where they must stand to see it.
+- A refusal is a story too (`cannot`): the other half of what a person may do.
+
+## Vocabulary, once
+
+- A **Compartment** (`src/compartments/compartment.ts`) is model, view and controller for one
+  `docType`: what is on screen for it, which writes are allowed, how they apply. There is no
+  central view layer: what is on a page, and in what order, is a compartment's `render()`'s
+  decision. An example with a lot of HTML may keep the functions that build it in files of their
+  own (the wedding's and the ticker's `views/`), but they are the compartment's helpers -- they take
+  data the compartment read and return a string, and they never decide what renders. Chat keeps
+  its HTML in the compartment.
+- **`Example.tray`** is the session's own document -- who you are, which page you are on. It keeps
+  the `Compartment` contract without `render`. All three examples have one (chat's and the
+  wedding's `session`, the ticker's `desk`). Keep as little in it as the stories need: a page and
+  its open drawer are one address, not six fields.
+- An **applet** is only for a piece of the page whose client-side state a re-render would destroy
+  (the ticker's board keeps sparkline histories no document holds). It is not "the view for X";
+  plain `data-write` HTML is the default.
+- The **bento** is how a page looks and moves (`examples/bento/README.md`, built in `src/bento.ts`
+  and `src/bento.css`): a page is a box or a collection. It is a way of seeing, not a list of
+  features to have.
 
 ## Adding or extending an example
 
-1. **`db.ts`** — import `db` from `../../src/db`, call
-   `migrate(db, `${import.meta.dir}/migrations`, "<name>")`, re-export `db`.
-   Every document module in this example imports `db` from here, never from
-   `src/db` directly, so migrations are guaranteed to have run first.
-2. **`migrations/*.sql`** — numbered `0001_`, `0002_`, ... applied in filename
-   order, recorded under this example's own namespace (its `name`).
-3. **`documents/<thing>.ts`** — `read(id)` returns the current shape;
-   `patch(id, ops, sessionId, undoes?)` applies ops, builds their inverse, calls
-   `record(prefixDoc(docType, id), applied, inverse, sessionId, undoes)`, returns
-   `{version, applied}`. Pass the acting `sessionId` to `record()` (not the
-   document `id` when writing shared documents like rooms) so undo attributes
-   to that session. Validate values (blank, too long, etc.) inside `patch()`,
-   not in the compartment's `permit()` — one home for "is this value valid."
-4. **`compartments/<thing>.ts`** — implement the `Compartment` contract: `docType`,
-   `resolveDoc`, `permit`, `write`, and optionally `render`/`sees`/`replay`/
-   `fragments`/`onOpen`/`onClose`. `write()` calls `src/compartments/audience.ts`'s
-   `notify(docType, docId, result)` — it echoes the patch to, and asks for a
-   render from, every connection that *sees* the document, itself included; the
-   kernel never renders a write's own connection separately. "Sees" defaults to
-   `resolveDoc(ws) === docId` (right when the document has one writer who is
-   also its only reader); implement `sees` only when someone else sees it too
-   without writing it (the wedding's `household.sees` also says yes to the
-   couple). Don't keep a socket registry of your own — `audienceFor`/`notify`
-   already reach the kernel's one registry of open connections. Absent
-   `fragments`, the kernel's default is a single replace of this compartment's
-   own `#c-<docType>` element; implement `fragments` only for the writes where
-   something smaller is worth answering. `replay()` is `write`'s twin for undo
-   — same apply-then-echo path, but skips `permit()` since it's replaying an
-   already-recorded inverse, not a fresh request. A tray (`Example.tray`) or
-   the kernel's own ledger uses this same contract minus `render` — no place
-   on the page, so a write to one always asks for the whole page instead.
-5. **`applets/<name>.ts`** — only when a piece of UI needs live client-side
-   state a plain form/button can't express (typing-to-filter, etc.). Call
-   `registerApplet(name, {mount, update?})` from `src/applets`. If the
-   applet's drawing is worth testing directly (a string-building function a
-   `*.test.ts` can call without a browser), split it: `<name>.ts` keeps the
-   drawing and any pure logic, `<name>-applet.ts` keeps `registerApplet` and
-   everything that touches the DOM. `client/main.ts` imports the `-applet`
-   file, not the drawing one — that keeps mounting code out of the coverage
-   table (it's covered by a real-browser test instead), the same way chat's
-   `room-picker.ts` always has been. Skip the split for an applet with no
-   drawing worth testing on its own (`picture-field.ts`).
-6. **`client/index.html` + `client/main.ts`** — `main.ts` imports this
-   example's own applets first, then imports `src/client/app`. The kernel's
-   client knows nothing about any specific applet. If any CSS relies on
-   something being a direct child of `#app` (a flex/grid layout, most
-   likely), give the compartment wrapper `[id^="c-"] { display: contents; }`
-   -- it's a DOM/morph boundary, not meant to be a layout one.
-7. **`index.ts`** — export `example: Example` = `{ name, compartments: [...],
-   tray?, active(sessionId), index, routes? }`. This is the one thing the
-   kernel needs to run the example. `tray` is optional -- an example with
-   nothing session-like to gate (the ticker: no sign-in, anyone may write)
-   doesn't need one.
-8. **`cli.ts`** (optional) — export an `aliases` table of short verbs mapping
-   to `{doc, ops}`. No database import here; it only builds wire ops.
-9. **Tests** — one test file per document (`documents/<thing>.test.ts`), plus
-   a `server.test.ts` that drives real writes and undo end-to-end over a
-   websocket (this is also where chat covers its *compartments'* behavior --
-   there's no separate `compartments/<thing>.test.ts` per compartment). Add
-   `client/app.test.ts` if the client has custom rendering/scroll behavior
-   to verify, and `cli.test.ts` if `cli.ts` exists. Run `bun run test` (not
-   bare `bun test --coverage` -- the `test` script sets `DB_PATH=:memory:`,
-   which a bare invocation won't), aiming for 100% coverage. Verify every
-   bug fix by reverting it, confirming the new test fails, then restoring it
-   (see the project's `CLAUDE.md`).
+1. **`stories.ts`** -- step 0, above.
+2. **`db.ts`** -- import `db` from `../../src/db`, call
+   `migrate(db, `${import.meta.dir}/migrations`, "<name>")`, re-export `db`. Every document module
+   imports `db` from here, never from `src/db`, so the migrations have run before its prepared
+   statements touch the database.
+3. **`migrations/*.sql`** -- numbered, applied in filename order under the example's own namespace.
+4. **`documents/<thing>.ts`** -- `read(id)`, and `patch(id, ops, sessionId, undoes?)`: the only write
+   path, one transaction, each op's inverse computed, one `record(...)` at the end. Is this value
+   valid is `patch()`'s question; may this connection write this path is `permit()`'s.
+5. **`compartments/<thing>.ts`** -- `docType`, `resolveDoc`, `permit`, `write`, and what it needs of
+   `render`, `sees`, `replay`, `fragments`, `onOpen`, `onClose`. `write()` ends by calling
+   `notify(docType, docId, result)`, which echoes the ops to everyone who sees the document and
+   asks for their render, the writer included. Implement `fragments` only where answering smaller
+   than the compartment's own element is worth the care: every target it names has to be right for
+   every state the page can be in, and no story checks it.
+6. **`applets/<name>.ts`** -- only if the vocabulary above says so. Split drawing (`<name>.ts`, pure,
+   tested directly) from mounting (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`)
+   when there is drawing worth testing.
+7. **`client/index.html` + `client/main.ts`** -- `main.ts` imports the example's applets, then
+   `src/client/app`. The stylesheet imports `src/bento.css` first, then says its own tokens.
+8. **`index.ts`** -- `export const example: Example = { name, compartments, tray?, active, index, routes? }`.
+9. **`cli.ts`** (optional) -- an `aliases` table of short verbs that build `{doc, ops}`; no database.
+10. **Tests** -- a test per document, a `server.test.ts` that drives writes and undo over a real
+    websocket (this is where delivery is checked: who is told, and with what), a
+    `client/app.test.ts` for what only a browser can show. `bun run test`; aim for 100%; verify a
+    bug fix by reverting it and watching the test fail.
 
-Nothing above ever requires editing a file under `src/`. If a change seems to
-need that, it's usually a sign the kernel is missing a seam (like `Example`
-or `Compartment.replay`) rather than that this example is special — check
-`reference.md`'s "when it looks like you need to touch src/" section first.
+None of this needs a file under `src/` edited. When it seems to, read `reference.md`'s "When it
+looks like you need to touch `src/`" first: a missing seam is rare, and a workaround is never it.

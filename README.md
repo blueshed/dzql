@@ -14,8 +14,9 @@ A kernel for live, multi-person apps, made of three things that compose:
   moving -- an applet takes its data as props, answers with writes, and can take a document's
   patches straight off the wire.
 
-Three examples prove the three are enough, and each needed nothing in `src/` it did not already
-have: `examples/chat/`, a room with people in it; `examples/wedding/`, a site for one wedding with
+Three examples show the three at work. What they asked of the kernel as they grew is recorded in
+`history/`; none of it is knowledge of an example, and `src/` never imports one:
+`examples/chat/`, a room with people in it; `examples/wedding/`, a site for one wedding with
 a Lego minifigure builder and a live photo of everyone coming; `examples/ticker/`, a price board
 and a Swiss railway clock, both drawn in the browser.
 
@@ -27,12 +28,13 @@ and a Swiss railway clock, both drawn in the browser.
 - **A legible wire.** Only documents, patches and HTML cross it. A person with a terminal can
   `watch` an app and read what happened, `inspect` any document's history, or `undo` from the
   CLI, with no browser open.
-- **Almost no client.** The kernel's client is 2.3 KB gzipped: a morph and an applet registry.
-  The wedding's, with four applets and the figure, is 8 KB. There is no framework to learn.
+- **Almost no client.** The kernel's client is 2.6 KB minified and gzipped: a morph, the write
+  gestures and an applet registry. The wedding's, with its applets and the figure, is 9.1 KB.
+  There is no framework to learn.
 - **Zero infrastructure.** Bun and SQLite, one process, one file. A multi-person live app deploys
   without a queue, a cache or a build step.
 - **Measured, not claimed.** What a write costs on the wire is a number in this README, from a
-  script you can run: a chat message is 436 bytes to each other member, a price tick 104, a
+  script you can run: a chat message is 425 bytes to each other member, a price tick 104, a
   guest's changed top on the wedding nothing at all to the households it does not concern.
 
 It is for small teams and solo builders making live apps where reversibility and legibility
@@ -76,7 +78,7 @@ Chat, a room at 100 messages and 5 members, bytes sent to each *other* member pe
 | 0.4.0 (append) | 159 B | 120 B | 279 B |
 | 0.12.0 to 0.23.0 (full page) | 159 B | 7373 B | 7532 B |
 | 0.24.0 (fragment: one `<li>`) | 159 B | 268 B | 427 B |
-| 0.42.0 (the same, in the conversation's window) | 159 B | 277 B | 436 B |
+| now (the same `<li>`, as a bubble) | 159 B | 266 B | 425 B |
 
 The wedding, one guest's top changed to green, bytes sent to each viewer:
 
@@ -102,7 +104,7 @@ only thing that crosses the wire is the clock document's `replace /tz`, which th
 
 An applet's props still go whole when they change (the wedding's photo re-sends every figure for
 one changed top), and every connection is still asked -- the answer is now often nothing, but the
-fan-out is the same. Those are the change request's items 7 and 1.
+fan-out is the same.
 
 ## Poking at it
 
@@ -157,5 +159,6 @@ A failing story is a finding: against the example, or against the story, or agai
 stories itself. `STORY="invite"` runs the ones whose name contains that; `STORY_DIFF=1` shows
 where two renders part company.
 
-All three examples pass in full: chat 6 of 6, the ticker 13 of 13, the wedding 51 of 51 --
-the third measured number beside the cost tables above and `bun run test`'s 100%.
+Run it to see the counts; they are not repeated here, because a number in a README goes stale and
+a run does not. What the harness checks today, and what `stories.md` still only intends, is said
+in `stories.md` under "The harness".
