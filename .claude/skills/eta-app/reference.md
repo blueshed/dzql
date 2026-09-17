@@ -156,7 +156,8 @@ as its new `data-props`, whole.
 
 A compartment that must react to another's writes listens for an event
 (`src/compartments/bus.ts`: `createEvent()`/`.on()`/`.emit()`): chat's `sessionPatched` fires after
-a session write so `room.ts` can announce who arrived and who left. Do not patch another
+a session write so `room.ts` can announce who arrived and who left. The event is exported by the
+compartment that emits it; importing that one name is not reaching into its document. Do not patch another
 compartment's document from your own `write()` -- the wedding and the ticker do, to close a modal,
 and the ops they apply that way are echoed to nobody.
 
@@ -323,6 +324,11 @@ named field, or a record of all fields if there's more than one — see
 itself a form (value = its `data-value`, or no value at all for a `remove`).
 A form resets only on the server's patch echo of its own write, so a write
 that is ignored or rejected leaves the person's typed input intact.
+
+`autofocus` works on the first page load and not after: a browser honours it once per document,
+and a field the morph brings in later is not focused. What keeps the caret is the morph reusing
+the element -- give the form and its field the same ids from one page to the next and focus
+survives the render. A tap elsewhere (a row) still takes the caret with it.
 
 ### Forms that edit, not create
 

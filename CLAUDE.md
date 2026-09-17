@@ -27,6 +27,7 @@ it, and everything else is derived from it.
 ## The shape
 
 - `src/` is the kernel. It does not know any example exists and never imports from `examples/`.
+  Its tests may: `src/harness.test.ts` runs the harness against chat's stories.
 - `examples/<name>/` is a whole app: its own migrations, documents, compartments, applets, client,
   and an `index.ts` exporting `example: Example`. Examples never import from each other; shared
   code is the kernel's or it is not shared.
@@ -55,4 +56,6 @@ Two words have two meanings each, so say which:
 
 A page follows the bento's rules, stated once in `examples/bento/README.md` and built in
 `src/bento.ts` and `src/bento.css`. A page is a box (`boxPage`) or a collection (`collectionPage`).
-Read the rules for what they intend, not as a checklist to satisfy.
+Read the rules for what they intend, not as a checklist to satisfy. Where a bento rule and the
+stories disagree, the stories win: rule 14 makes a new thing with a plus and a modal, but a modal
+needs tray state, and chat's stories need none, so chat names a room in a form in place.
