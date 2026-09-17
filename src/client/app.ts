@@ -195,9 +195,14 @@ function applyFragments(ops: HtmlOp[]) {
   settle(before);
 }
 
-// After any render, full or fragment: mount what appeared, and pin what grew.
+// After any render, full or fragment: mount what appeared, give the caret to a field that is
+// waiting for it, and pin what grew. A browser honours `autofocus` once per document, so a field
+// a later render brings in would otherwise wait for a click. Only when nothing has the caret --
+// the row that was tapped is gone, the form that was submitted is gone -- never from a field
+// someone is in.
 function settle(before: Map<HTMLElement, number>) {
   mountApplets();
+  if (document.activeElement === document.body) app.querySelector<HTMLElement>("[autofocus]")?.focus();
 
   // Pin to the bottom only when this render actually added content here, or
   // the element itself just appeared (a fresh load, entering a room) -- an

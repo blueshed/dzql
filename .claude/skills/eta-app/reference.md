@@ -325,10 +325,10 @@ itself a form (value = its `data-value`, or no value at all for a `remove`).
 A form resets only on the server's patch echo of its own write, so a write
 that is ignored or rejected leaves the person's typed input intact.
 
-`autofocus` works on the first page load and not after: a browser honours it once per document,
-and a field the morph brings in later is not focused. What keeps the caret is the morph reusing
-the element -- give the form and its field the same ids from one page to the next and focus
-survives the render. A tap elsewhere (a row) still takes the caret with it.
+`autofocus` means "this field is waiting for the caret". A browser honours it once per document,
+so after every render the client focuses the page's `[autofocus]` field itself -- but only when
+nothing has the caret (the row that was tapped is gone, the form that was submitted is gone),
+never from a field someone is in.
 
 ### Forms that edit, not create
 

@@ -171,6 +171,27 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(scrolled as number).toBeGreaterThan(0);
   });
 
+  test("a field waiting with autofocus gets the caret when a render brings it in, and never takes it from a field someone is in", async () => {
+    await using view = await open();
+    // the first page's field takes the one autofocus the browser gives a document
+    await pushRender(view, `<form><input id="name" name="name" autofocus></form>`);
+    await waitFor(view, `document.activeElement?.id`, (v) => v === "name", 1000);
+    await pushRender(view, `<div class="row" id="r" tabindex="0">general</div>`);
+    await waitFor(view, `document.getElementById('r') !== null`, (v) => v === true);
+    await view.click("#r"); // a row was tapped: the caret is on it, and the render that answers takes it away
+
+    await pushRender(view, `<form><input id="say" name="text" autofocus></form>`);
+    await waitFor(view, `document.activeElement?.id`, (v) => v === "say", 1000); // the browser honours autofocus once per document; the client must do it after
+
+    // someone typing in find is left alone when a render arrives with another field waiting
+    await pushRender(view, `<form><input id="q" name="q"></form><form><input id="say" name="text" autofocus></form>`);
+    await waitFor(view, `document.getElementById('q') !== null`, (v) => v === true);
+    await view.click("#q");
+    await pushRender(view, `<form><input id="q" name="q"></form><form><input id="say" name="text" autofocus></form><p id="more">more</p>`);
+    await waitFor(view, `document.getElementById('more') !== null`, (v) => v === true);
+    expect(await view.evaluate(`document.activeElement?.id`)).toBe("q");
+  });
+
   test("a click in a field that carries data-write writes nothing: the attribute names the field's path, it is not a gesture", async () => {
     await using view = await open();
     await stubSend(view);
