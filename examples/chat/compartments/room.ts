@@ -3,7 +3,6 @@ import * as roomDoc from "../documents/room";
 import type { ChatMessage, RoomPatchResult } from "../documents/room";
 import * as sessionDoc from "../documents/session";
 import type { ConnectionData } from "../../../src/connection";
-import { patchMessage } from "../../../src/json-patch";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { allOpenSockets, audienceFor, notify } from "../../../src/compartments/audience";
@@ -92,13 +91,8 @@ function peopleIn(room: string, only?: ServerWebSocket<ConnectionData>, as?: str
 // join or leave this is: it doesn't need telling about its own presence, and (for a leave) may
 // already be closed.
 function notifyPresence(room: string, exclude: ServerWebSocket<ConnectionData>, op: PatchOp): void {
-  const others = audienceFor("room", room, exclude);
-  if (others.length === 0) return;
   const version = history(prefixDoc("room", room), 1)[0]?.version ?? 0;
-  const result = { version, applied: [op] };
-  const payload = patchMessage("room", version, [op]);
-  for (const ws of others) ws.send(payload);
-  renderRequested.emit({ sockets: others, write: { docType: "room", docId: room, result } });
+  notify("room", room, { version, applied: [op] }, { echoTo: audienceFor("room", room, exclude) });
 }
 
 // Announces `name`'s arrival in `room`, unless it was already there via another of this

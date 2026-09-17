@@ -91,16 +91,16 @@ example. `src/compartments/audience.ts` exports three things:
   sees `docId` -- `sees?(ws, docId)` if implemented, else `resolveDoc(ws) === docId` (right for a
   document with one writer who is also its only reader -- most of them). `exclude` leaves one
   socket out regardless (an announcement that doesn't need telling about itself).
-- `notify(docType, docId, result)`: echoes `result`'s applied ops to `audienceFor(docType, docId)`
-  and asks that same audience for a render (`renderRequested.emit`) -- the one thing besides
-  applying the patch that a `write()` needs to do. A no-op result (nothing applied)
-  tells nobody.
-- `allOpenSockets()`: every open connection, full stop -- for the rare write whose effect is
-  genuinely everyone's concern (an aggregate view fed by more than one document), not just this
-  document's own audience. Reach for `audienceFor` first; the wedding's board and household still
-  use this for the *render* half of their notify (an aggregate total or an "everyone" photo can
-  change from any household's write) while narrowing the *patch* echo to `audienceFor` -- the raw
-  ops of a document that isn't yours would be meaningless on your own page.
+- `notify(docType, docId, result, {echoTo?, renderTo?})`: the one way a write is told. It echoes
+  `result`'s applied ops and asks for pages to be brought up to date; by default both go to
+  `audienceFor(docType, docId)`, the writer included. `echoTo` replaces who hears the ops (chat's
+  presence leaves out the socket that came or went); `renderTo` widens who is redrawn without
+  widening who gets the ops (the wedding passes `allOpenSockets()`: a total or the "everyone"
+  photo can change from any household's write, but the raw ops of a document that isn't yours
+  mean nothing on your page). A tray calls it too: its audience is the session's own tabs, and
+  having no element of its own, each is shown the page. Nothing applied tells nobody. Don't send
+  a patch message or ask for a render by hand.
+- `allOpenSockets()`: every open connection, for `renderTo`. Reach for the default first.
 
 Most compartments never implement `sees` at all: `resolveDoc`'s default is exactly right when a
 document's writer is also its only reader (chat's `room`, the wedding's `board`, the ticker's

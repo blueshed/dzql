@@ -1,9 +1,8 @@
 import * as boardDoc from "../documents/board";
 import * as sessionDoc from "../documents/session";
-import { patchMessage, type PatchOp } from "../../../src/json-patch";
+import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
-import { allOpenSockets, audienceFor } from "../../../src/compartments/audience";
-import { renderRequested } from "../../../src/compartments/render";
+import { allOpenSockets, notify } from "../../../src/compartments/audience";
 import { boardPages } from "../views/board";
 
 // The couple's document: the wedding and everything beneath it. Written by the couple, who
@@ -35,12 +34,6 @@ const RULES: Rule[] = [
 
 // No `fragments` here yet: the couple's writes are rare beside a household's, and each one
 // changes counts and lists on many pages, so every page goes out whole.
-function echoAndNotify(code: string, result: WriteResult): void {
-  if (result.applied.length === 0) return;
-  const payload = patchMessage("board", result.version, result.applied);
-  for (const ws of audienceFor("board", code)) ws.send(payload);
-  renderRequested.emit({ sockets: allOpenSockets(), write: { docType: "board", docId: code, result } });
-}
 
 
 /** A modal asks one question; the write that answers it closes it (rule 14): an add closes the ask, a removal closes the confirm and the row's drawer. */
@@ -72,7 +65,7 @@ export const board: Compartment = {
   write(ws, code, ops, undoes): WriteResult {
     const result = boardDoc.patch(code, ops, ws.data.sessionId, undoes);
     if (undoes === undefined) closeAsked(ws.data.sessionId, result.applied);
-    echoAndNotify(code, result);
+    notify("board", code, result, { renderTo: allOpenSockets() });
     return result;
   },
 };

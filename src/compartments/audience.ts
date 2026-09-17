@@ -50,16 +50,22 @@ export function audienceFor(docType: string, docId: string, exclude?: ServerWebS
 }
 
 /**
- * Echoes a write's applied ops to everyone who sees the document, then asks them to be brought
- * up to date (`Concept.fragments`, or item 10's own-element default, or the page) -- the one
- * thing besides applying the patch that every compartment's `write()` needs to do.
- * A no-op patch (nothing applied) tells nobody, same as a document that finds no audience at all.
+ * Tells people about a write: echoes its applied ops, then asks for their pages to be brought up
+ * to date (a compartment's `fragments`, or its own element, or the page). The one thing besides
+ * applying the patch that every `write()` needs to do. By default both go to everyone who sees
+ * the document, the writer included. `echoTo` narrows or replaces that audience (chat's presence
+ * leaves out the socket that came or went); `renderTo` widens who is redrawn without widening
+ * who gets the ops (the wedding redraws every open page, since totals and the photo draw on every
+ * household). A no-op patch tells nobody.
  */
-export function notify(docType: string, docId: string, result: WriteResult): void {
+export function notify(
+  docType: string,
+  docId: string,
+  result: WriteResult,
+  { echoTo = audienceFor(docType, docId), renderTo = echoTo }: { echoTo?: ServerWebSocket<ConnectionData>[]; renderTo?: ServerWebSocket<ConnectionData>[] } = {},
+): void {
   if (result.applied.length === 0) return;
-  const audience = audienceFor(docType, docId);
-  if (audience.length === 0) return;
   const payload = patchMessage(docType, result.version, result.applied);
-  for (const ws of audience) ws.send(payload);
-  renderRequested.emit({ sockets: audience, write: { docType, docId, result } });
+  for (const ws of echoTo) ws.send(payload);
+  if (renderTo.length > 0) renderRequested.emit({ sockets: renderTo, write: { docType, docId, result } });
 }

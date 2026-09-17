@@ -1,10 +1,10 @@
 import type { ServerWebSocket } from "bun";
 import * as sessionDoc from "../documents/session";
 import type { ConnectionData } from "../../../src/connection";
-import { patchMessage, type PatchOp } from "../../../src/json-patch";
+import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import type { Compartment } from "../../../src/compartments/compartment";
-import { renderRequested } from "../../../src/compartments/render";
+import { notify } from "../../../src/compartments/audience";
 
 // A visit: who this session is (a code) and where it is on the site. This is the tray
 // (change-request.md item 10) -- the ground the household and board compartments sit on, not a
@@ -28,16 +28,12 @@ export const session: Compartment = {
     if (!field || !WRITABLE.has(field)) return false;
     return BEFORE_CODE.has(field) || sessionDoc.read(ws.data.sessionId).code !== null;
   },
-  // Not a compartment, so there's no owning element for rule 2's default to re-render -- the
-  // tray always asks for its own full page instead.
-  write(ws: ServerWebSocket<ConnectionData>, id, ops) {
+  // A visit is nobody else's to see: its audience is this session's own tabs, and having no
+  // element of its own on the page, each is shown the page. Not on the ledger (see
+  // documents/session.ts), so the version is always 0.
+  write(_ws, id, ops) {
     const result = sessionDoc.patch(id, ops);
-    // Echoed to this connection only: a visit is nobody else's to see. Not on the ledger (see
-    // documents/session.ts), so the version is always 0 and there is no replay.
-    if (result.applied.length > 0) {
-      ws.send(patchMessage("session", result.version, result.applied));
-      renderRequested.emit([ws]);
-    }
+    notify("session", id, result);
     return result;
   },
 };

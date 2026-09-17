@@ -1,11 +1,10 @@
 import type { ServerWebSocket } from "bun";
 import * as sessionDoc from "../documents/session";
 import type { ConnectionData } from "../../../src/connection";
-import { patchMessage } from "../../../src/json-patch";
 import type { PatchOp } from "../../../src/json-patch";
 import { createEvent } from "../../../src/compartments/bus";
 import type { Compartment } from "../../../src/compartments/compartment";
-import { renderRequested } from "../../../src/compartments/render";
+import { notify } from "../../../src/compartments/audience";
 import { join, write } from "../../../src/html";
 
 // The session is the tray (change-request.md item 10): the ground the room compartment sits on,
@@ -41,26 +40,6 @@ export function renderNameForm(): string {
 // down, inside documents/session.ts::patch() itself.
 const WRITABLE_PATHS = new Set(["/name", "/room"]);
 
-// Echoes a session document's ops to its own connection (direct, unlike a
-// room's broadcast) and lets other compartments react, e.g. room membership.
-// Exported because undo (compartments/ledger.ts) can land back on this same
-// document and needs to echo it exactly the same way a direct write does.
-// Not a compartment, so there's no owning element for rule 2's default to re-render --
-// the tray always asks for its own full page instead.
-export function echoSessionPatch(
-  ws: ServerWebSocket<ConnectionData>,
-  before: sessionDoc.SessionDocument,
-  version: number,
-  applied: PatchOp[],
-) {
-  if (applied.length > 0) {
-    ws.send(patchMessage("session", version, applied));
-    sessionPatched.emit({ ws, before, applied });
-    renderRequested.emit([ws]);
-  }
-  return { version, applied };
-}
-
 export const session: Compartment = {
   docType: "session",
   resolveDoc(ws) {
@@ -76,10 +55,13 @@ export const session: Compartment = {
     return true;
   },
   // Undo lands here too (re-giving a name that was just removed): the same path, so room
-  // membership still reacts (see compartments/room.ts's sessionPatched listener).
+  // membership still reacts (see compartments/room.ts's sessionPatched listener). The session's
+  // own tabs are its audience; having no element of its own on the page, each is shown the page.
   write(ws, id, ops, undoes) {
     const before = sessionDoc.read(id);
     const result = sessionDoc.patch(id, ops, undoes);
-    return echoSessionPatch(ws, before, result.version, result.applied);
+    notify("session", id, result);
+    if (result.applied.length > 0) sessionPatched.emit({ ws, before, applied: result.applied });
+    return result;
   },
 };

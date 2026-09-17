@@ -1,10 +1,10 @@
 import * as householdDoc from "../documents/household";
 import * as sessionDoc from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
-import { patchMessage, type PatchOp } from "../../../src/json-patch";
+import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
-import { allOpenSockets, audienceFor } from "../../../src/compartments/audience";
-import { renderRequested, type HtmlOp } from "../../../src/compartments/render";
+import { allOpenSockets, notify } from "../../../src/compartments/audience";
+import type { HtmlOp } from "../../../src/compartments/render";
 import * as boardDoc from "../documents/board";
 import { boardMini, boardPhoto, familyGuestRow, familyPhoto, reading as boardReading } from "../views/board";
 import { dressMount, everyonePhoto, familyMini, familyPhoto as ownPhoto, guestRow, householdPages, menuMount, reading, type HouseholdView } from "../views/household";
@@ -38,12 +38,6 @@ const RULES: Rule[] = [
  * `sees` below), then asks everyone to bring their page up to date -- naming the write, so
  * `fragments` below can say what that means per page. Shared by a direct write and by undo
  * landing on this doc. */
-function echoAndNotify(code: string, result: WriteResult): void {
-  if (result.applied.length === 0) return;
-  const payload = patchMessage("household", result.version, result.applied);
-  for (const ws of audienceFor("household", code)) ws.send(payload);
-  renderRequested.emit({ sockets: allOpenSockets(), write: { docType: "household", docId: code, result } });
-}
 
 /** Everything a household's pages read, for this session. */
 function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined {
@@ -124,7 +118,7 @@ export const household: Compartment = {
     });
     const result = householdDoc.patch(code, named, ws.data.sessionId, undoes);
     if (fresh) closeAsked(ws.data.sessionId, result.applied);
-    echoAndNotify(code, result);
+    notify("household", code, result, { renderTo: allOpenSockets() });
     return result;
   },
   // The delta in HTML's terms, for the two writes that happen most -- a look changing, a

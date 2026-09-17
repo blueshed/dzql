@@ -1,8 +1,7 @@
 import * as deskDoc from "../documents/desk";
 import { parsePointer } from "../../../src/json-pointer";
-import { patchMessage } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
-import { renderRequested } from "../../../src/compartments/render";
+import { notify } from "../../../src/compartments/audience";
 
 // The desk is the tray (change-request.md item 10): the ground the ticker's compartments sit on,
 // not a place of its own on the page -- no `render`, not in the example's `compartments`. It
@@ -21,12 +20,9 @@ export const desk: Compartment = {
     const [field] = parsePointer(op.path);
     return !!field && WRITABLE.has(field);
   },
-  write(ws, sessionId, ops) {
+  write(_ws, sessionId, ops) {
     const result = deskDoc.patch(sessionId, ops);
-    if (result.applied.length > 0) {
-      ws.send(patchMessage("desk", result.version, result.applied));
-      renderRequested.emit([ws]);
-    }
+    notify("desk", sessionId, result);
     return result;
   },
 };
