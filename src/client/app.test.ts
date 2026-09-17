@@ -171,6 +171,28 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(scrolled as number).toBeGreaterThan(0);
   });
 
+  test("a click in a field that carries data-write writes nothing: the attribute names the field's path, it is not a gesture", async () => {
+    await using view = await open();
+    await stubSend(view);
+
+    await pushRender(
+      view,
+      `<form data-write-on="input" id="f">
+        <input name="q" id="q" value="ge" data-write='{"doc":"session","op":"replace","path":"/filter/rooms"}'>
+      </form>
+      <button id="b" data-write='{"doc":"session","op":"remove","path":"/filter/rooms"}'>Close</button>`,
+    );
+    await waitFor(view, `document.getElementById('q') !== null`, (v) => v === true);
+
+    await view.click("#q"); // a real click, as a person putting the caret back in find's field
+    await Bun.sleep(300); // well past the input debounce: nothing was typed, so nothing is owed
+    expect(await view.evaluate(`window.__sent`)).toEqual([]); // not a blank replace that would empty the word on the server
+
+    await view.click("#b"); // a button's data-write is still a gesture
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate(`window.__sent[0]`)).toEqual({ doc: "session", ops: [{ op: "remove", path: "/filter/rooms" }] });
+  });
+
   test("a data-write-on=\"input\" form sends once after several keystrokes, debounced, and never repeats an unchanged value", async () => {
     await using view = await open();
     await stubSend(view);
@@ -183,10 +205,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     );
     await waitFor(view, `document.getElementById('q') !== null`, (v) => v === true);
 
-    // Focused programmatically, not via view.click(): a real click on a `[data-write]` field is
-    // also a `[data-write]` *click*, which app.ts's generic click handler (meant for buttons and
-    // list items) would fire in its own right -- unrelated to K3, and not what this test is about.
-    await view.evaluate(`document.getElementById('q').focus()`);
+    await view.click("#q"); // as a person would: a click in the field writes nothing of its own
     await view.type("abc");
 
     // one message for the whole burst of keystrokes, not one per key -- debounced, so it may not

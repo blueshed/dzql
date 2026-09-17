@@ -236,7 +236,9 @@ app.addEventListener("submit", (event) => {
 
 app.addEventListener("click", (event) => {
   const target = (event.target as Element).closest<HTMLElement>("[data-write]");
-  if (!target || target.tagName === "FORM") return;
+  // A form writes on submit, and a field's data-write names its path for an editing form (below):
+  // neither is a gesture. Putting the caret in find's field must not send a blank replace.
+  if (!target || target.matches("form, input, textarea, select")) return;
   event.preventDefault();
   const { doc, op, path } = JSON.parse(target.dataset.write!) as WriteSpec;
   const value = target.dataset.value;
