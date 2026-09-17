@@ -71,8 +71,11 @@ export const ticker: Compartment = {
   // No replay(): a tick is recorded as not undoable, so the ledger's cursor never lands here.
   // The board applet took the ops, so on the box there is nothing to render; a session reading
   // the market's rows, or the board as a list, has those rows redrawn and nothing else.
-  fragments(ws): HtmlOp[] {
+  fragments(ws): HtmlOp[] | undefined {
     const ui = deskDoc.read(ws.data.sessionId);
+    // a symbol's drawer says its price too: rather than list one more target that has to be right
+    // for every state the desk can be in, decline, and the kernel redraws this compartment whole
+    if (ui.focus && ui.focus !== "clock") return undefined;
     const v = { list: watchlistDoc.read(ws.data.sessionId), market: market.read(), clock: clockDoc.read(ws.data.sessionId), ui };
     const ops: HtmlOp[] = [];
     if (ui.open === "market") ops.push({ op: "replace", target: "#market-rows", html: marketRows(v) });

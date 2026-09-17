@@ -197,6 +197,26 @@ describe("the ticker", () => {
     ws.close();
   });
 
+  test("while a symbol's drawer is open, what it says stays true: a tick moves its price, and watching from it turns the offer round", async () => {
+    const ws = await open();
+    const shown = (m: { html?: string; ops?: { html?: string }[] }) => m.html ?? (m.ops ?? []).map((o) => o.html ?? "").join("");
+    const drawerOf = (html: string) => html.slice(html.indexOf('id="drawer"'));
+    write(ws, "desk", [{ op: "replace", path: "/open", value: "market" }, { op: "replace", path: "/focus", value: "DLTA" }]);
+    await expectMessage(ws, "patch");
+    expect(drawerOf(shown(await expectMessage(ws, "render")))).toContain("Watched");
+
+    write(ws, "ticker", [{ op: "replace", path: "/DLTA/price", value: 240.5 }]);
+    await expectMessage(ws, "patch");
+    expect(drawerOf(shown(await expectMessage(ws, "render")))).toContain("240.50"); // the drawer's own price, not only the row's
+
+    write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "DLTA" }]);
+    await expectMessage(ws, "patch");
+    const after = shown(await expectMessage(ws, "render"));
+    expect(drawerOf(after)).toContain("Stop watching"); // no longer offering to watch what is watched
+    expect(after).toMatch(/id="m-DLTA".*?<span class="note">watching<\/span>/); // and its row in the market says so
+    ws.close();
+  });
+
   test("the desk: the market window with find and the eye, the board as a list, a symbol's drawer, the modals that watch and drop", async () => {
     const ws = await open();
     const page = async (ops: PatchOp[]) => {
@@ -228,10 +248,16 @@ describe("the ticker", () => {
     html = await page([{ op: "replace", path: "/open", value: "board" }, { op: "replace", path: "/reading/board", value: "list" }, { op: "replace", path: "/focus", value: "CHRL" }]);
     expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-pressed="true" data-reveal>/);
     expect(html).toContain("Stop watching");
-    // a tick redraws the board's list too
+    // with the drawer open a tick redraws the compartment whole, since the drawer says the price too;
+    // with it closed, the board's list alone
     write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.05 }]);
     await expectMessage(ws, "patch");
+    expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: "#c-ticker" }]);
+    await page([{ op: "remove", path: "/focus" }]);
+    write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.07 }]);
+    await expectMessage(ws, "patch");
     expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: "#board-list" }]);
+    await page([{ op: "replace", path: "/focus", value: "CHRL" }]);
     // dropping asks first; the write that answers closes the modal and the drawer, and the page comes whole
     html = await page([{ op: "replace", path: "/confirm", value: "CHRL" }]);
     expect(html).toContain('<dialog open class="modal" aria-label="Stop watching CHRL">');

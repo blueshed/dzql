@@ -52,6 +52,9 @@ export const watchlist: Compartment = {
     if (answered.delete(sessionId)) return undefined; // a modal just closed: the page, whole
     const list = watchlistDoc.read(sessionId);
     const ui = deskDoc.read(sessionId);
+    // an open drawer says whether its symbol is watched, and offers the other thing; the market's
+    // rows say "watching": the page, whole, rather than a list of targets that has to keep up
+    if (ui.focus || ui.open === "market") return undefined;
     const ops: HtmlOp[] = [
       { op: "replace", target: "#board-count", html: boardCount(list) },
       { op: "replace", target: "#board", html: boardMount(list, market.read()) },
