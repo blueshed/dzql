@@ -1,4 +1,3 @@
-| `design/` | The canvas: `build.ts` generates one artboard per state from `index.html` and `styles.css` (icons through the kernel's `svg`), `canvas.json` lays them out with the rules as notes, and the design skill's helper seeds `wedding-bento.html`, which is saved at claude.ai/artifact/7zUmiK3Qt5HLpDsSf3kN9P. Regenerate, never hand-edit the artboards. |
 # Bento
 
 A design mock-up of the page, not an eta example: no documents, no compartments in the kernel's
@@ -15,8 +14,11 @@ Each rule names where the mock-up honours it.
 1. **A page is a box or a collection.** A box is one ground with one compartment per thing on
    it, and only one. The tray holds five: where to stay, households, photos, gifts, and the household's own answer.
 2. **The trail is where am I.** Root first, the ground you stand on last and bold: *Rowena &
-   Dashiell › The Okafors* above the tray. Inside a window it is one crumb longer, and the crumb
-   before the last is the way back.
+   Dashiell › The Okafors* above the tray. Inside a window it is the same trail, whole, one crumb
+   longer: *Rowena & Dashiell › The Okafors › Where to stay*. The crumb before the last closes
+   the window, and every crumb before that is still a way back, the root included, so opening
+   something never loses the way out. A crumb that is named but not a place (the couple, to a
+   household) is drawn plain in both.
 3. **Compartments are cut into the tray.** Their walls meet square; only where a compartment
    sits in a corner of the tray does it take the tray's curve, less the wall. A reading inside a
    compartment is cut the same way: the map's well curves on its left with the compartment, the
@@ -82,14 +84,16 @@ Each rule names where the mock-up honours it.
 
 ## What eta already does with this
 
-The wedding (`examples/wedding`, from 0.41.0) is these rules built: its `views/bento.ts` draws the
-tray, the window, the stacks, the rows, the drawer and the modal the way this mock-up does, with
-the measurements taken from `styles.css` here, and its own paper and ink. The tray is computed in
+The rules are built in the kernel: `src/bento.ts` draws the trail, the tray, the window, the
+stacks, the rows, the drawer and the modal the way this mock-up does, and `src/bento.css` is their
+look, the measurements taken from `styles.css` here. The wedding (`examples/wedding`, from 0.41.0)
+was the first built on them; chat and the ticker are the others, each binding the surfaces to its
+own icons (`bento({icon, tray})`) and bringing its own paper and ink as tokens. The tray is computed in
 eta by `src/tray.ts`: a box declares its compartments and their spans, and the grid's areas and
 each compartment's corner cuts come out, once for three columns and once for one. The grid in this
 mock-up's stylesheet is the same result written by hand, so it can be looked at without a server.
 Where the wedding and this mock-up part company -- an ask's yes or no on its row, a photo that
-reflows rather than scrolls -- `bento-request.md`'s Findings say why.
+reflows rather than scrolls -- `history/bento-request.md`'s Findings say why.
 
 ## Where it shows the shape and not the function
 
@@ -107,3 +111,4 @@ finish what the mock-up only draws.
 | `styles.css` | The rules as CSS, in the order above, with one paragraph at the top saying the whole. |
 | `app.ts` | Open and close (the morph), the drawer, the filter, the modal, Escape. Icons are lucide's, drawn by `createIcons` from `<i data-lucide>` marks. |
 | `server.ts` | Serves `index.html`, nothing else. |
+| `design/` | The canvas: `build.ts` generates one artboard per state from `index.html` and `styles.css` (icons through the kernel's `svg`), `canvas.json` lays them out with the rules as notes, and the design skill's helper seeds `wedding-bento.html`, which is saved at claude.ai/artifact/7zUmiK3Qt5HLpDsSf3kN9P. Regenerate, never hand-edit the artboards. |

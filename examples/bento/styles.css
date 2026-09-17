@@ -120,6 +120,8 @@ svg { flex: 0 0 auto; }
 .cell-body { position: relative; flex: 1; min-height: 0; }
 
 /* closed, the window's parts are not there */
+.cell:not(.open) .cell-root,
+.cell:not(.open) .root-chev,
 .cell:not(.open) .cell-back,
 .cell:not(.open) .full,
 .cell:not(.open) .rail,
@@ -196,6 +198,9 @@ body.windowed { overflow: hidden; }
   height: var(--control); padding: 0 var(--space-md) 0 2px;
   background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control);
 }
+/* the whole trail (rule 2): the root first, named but not a place, then the way back, then where you are */
+.cell.open .cell-root { order: -2; display: inline-flex; align-items: center; height: 26px; padding: 0 var(--space-sm); color: var(--muted); white-space: nowrap; }
+.cell.open .chev.root-chev { order: -1; }
 .cell.open .cell-back { order: 0; display: inline-flex; align-items: center; height: 26px; padding: 0 var(--space-sm); border-radius: var(--radius-inner); color: var(--accent); }
 .cell.open .cell-back:hover { background: rgba(var(--ink-rgb), 0.06); }
 .cell.open .chev { order: 1; color: var(--muted); }
