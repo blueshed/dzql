@@ -6,8 +6,8 @@ What a builder must not break. How the pieces work is in the eta-app skill
 ## Working here
 
 - Bun only: never `node`, `npm` or `yarn`.
-- Tests: `bun run test` (it sets `DB_PATH=:memory:`; a bare `bun test` would write to the dev
-  database). Aim for 100% coverage.
+- Tests: `bun test`. `.env.test` keeps it off the dev database and `bunfig.toml` fails the run
+  below 100% coverage.
 - Verify every bug fix by reverting it, watching the new test fail, then restoring it.
 - No new dependencies without asking. The one the examples have is `lucide`, the icon set; the
   kernel imports no icon set.

@@ -69,7 +69,7 @@ Everything below is the least that makes it pass.
 9. **`cli.ts`** (optional) -- an `aliases` table of short verbs that build `{doc, ops}`; no database.
 10. **Tests** -- a test per document, a `server.test.ts` that drives writes and undo over a real
     websocket (this is where delivery is checked: who is told, and with what), a
-    `client/app.test.ts` for what only a browser can show. `bun run test`; aim for 100%; verify a
+    `client/app.test.ts` for what only a browser can show. `bun test`; 100% is a gate; verify a
     bug fix by reverting it and watching the test fail.
 
 None of this needs a file under `src/` edited. When it seems to, read `reference.md`'s "When it

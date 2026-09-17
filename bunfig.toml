@@ -1,0 +1,4 @@
+[test]
+# coverage is always on, and 100% is a gate, not an aim: the run fails below it
+coverage = true
+coverageThreshold = 1.0

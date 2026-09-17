@@ -25,10 +25,13 @@ describe("stories harness", () => {
       stories: [
         { name: "a ghost speaks", as: "ghost", does: { doc: "room", ops: [] }, seen: {} },
         { name: "Ada says hello and Eve, who is nowhere, sees it", as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/transcript/-", value: "hi" }] }, seen: { eve: "" }, unseen: ["cy"] },
+        // a refusal that is false: Ada may speak, so her page changes, and the excerpt says where
+        { name: "Ada cannot say hello", as: "ada", cannot: { doc: "room", ops: [{ op: "add", path: "/transcript/-", value: "hi" }] } },
       ],
     });
     delete process.env.STORY_DIFF;
-    expect(report.failed).toBe(2);
+    expect(report.failed).toBe(3);
+    expect(report.outcomes[2]!.failures.join("\n")).toMatch(/refused, but: ada's page differs\n\s+expected …/);
     expect(report.outcomes[0]!.failures[0]).toContain("ghost");
     expect(report.outcomes[1]!.failures).toContain('eve did not see it on ""');
   }, 30000);

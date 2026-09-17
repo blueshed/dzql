@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.43.1] - 2026-09-17
+
+### Changed
+
+- **A bare `bun test` is the right command.** `.env.test` keeps the tests off the dev database and
+  stills the ticker's feed; `bunfig.toml` turns coverage on and fails the run below 100%, so the
+  aim is a gate. `bun run stories` reads the same `.env.test`.
+- **The kernel's coverage no longer leans on an example being wrong.** The harness's excerpt was
+  only reached when chat failed an undo comparison; a deliberately false refusal in the harness's
+  own test reaches it now.
+- **`bun run start` runs in production mode** (it ran with HMR and stack traces before), and
+  **`bun run stop` stops whatever is listening on `PORT`**. `src/pid.ts` is gone: every dev script
+  shared one pid file, and its test deleted the real one.
+
 ## [0.43.0] - 2026-09-17
 
 ### Changed

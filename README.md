@@ -50,9 +50,9 @@ bun install
 bun run dev     # foreground, --watch (chat, by default)
 bun run dev:wedding  # the wedding, on port 3001
 bun run dev:ticker   # the board, on port 3002
-bun run start   # detached (server.pid, server.log)
-bun run stop
-bun run test    # bun test --coverage
+bun run start   # detached, in production mode (server.log)
+bun run stop    # whatever is listening on PORT (3000)
+bun run test    # or a bare `bun test`: .env.test and bunfig.toml make them the same, and 100% coverage is a gate
 bun run stories # run an example's stories against it (stories.md)
 ```
 

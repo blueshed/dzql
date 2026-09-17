@@ -1,6 +1,6 @@
 {
   "name": "eta",
-  "version": "0.43.0",
+  "version": "0.43.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,11 +8,11 @@
     "dev:wedding": "ETA_EXAMPLE=wedding PORT=3001 bun --watch src/start.ts",
     "dev:ticker": "ETA_EXAMPLE=ticker PORT=3002 bun --watch src/start.ts",
     "dev:bento": "PORT=3003 bun --watch examples/bento/server.ts",
-    "start": "nohup bun src/start.ts > ${LOG_FILE:-server.log} 2>&1 & disown",
-    "stop": "kill $(cat ${PID_FILE:-server.pid})",
+    "start": "NODE_ENV=production nohup bun src/start.ts > ${LOG_FILE:-server.log} 2>&1 & disown",
+    "stop": "kill $(lsof -ti tcp:${PORT:-3000} -sTCP:LISTEN)",
     "cli": "bun src/cli.ts",
-    "test": "DB_PATH=:memory: TICK_MS=0 bun test --coverage",
-    "stories": "DB_PATH=:memory: TICK_MS=0 bun src/stories-run.ts"
+    "test": "bun test",
+    "stories": "bun --env-file=.env.test src/stories-run.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
