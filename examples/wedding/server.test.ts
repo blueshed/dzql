@@ -234,6 +234,37 @@ describe("a household", () => {
     for (const ws of [mine, other, couple, stranger]) ws.close();
   });
 
+  test("the wire may name a plus-one or an ask and nothing more: the whole-row shape is undo's, not a household's", async () => {
+    const email = `shape-${Date.now()}@example.com`;
+    boardDoc.patch("DASH", [{ op: "add", path: "/households/-", value: { email, names: "Sly Test", plus_ones: 1 } }], "setup");
+    const own = boardDoc.read("DASH")!.households.find((x) => x.email === email)!.code;
+    const ws = await enter(own);
+
+    // a guest dressed up as the couple's own, already coming, with an id of its choosing -- and a second in the same message
+    write(ws, "household", [
+      { op: "add", path: "/guests/-", value: { name: "Uninvited One", named_by: "couple", coming: 1, id: 987654 } },
+      { op: "add", path: "/guests/-", value: { name: "Uninvited Two", named_by: "couple" } },
+    ]);
+    expect((await expectMessage(ws, "patch")).ops).toHaveLength(1); // one plus-one was owed, so one is taken
+    await expectMessage(ws, "render");
+    const guests = householdDoc.read(own)!.guests;
+    expect(guests.map((g) => g.name)).toEqual(["Sly Test", "Uninvited One"]);
+    expect(guests[1]).toMatchObject({ named_by: "household", coming: null }); // counted against the invitation, not yet answered for
+    expect(guests[1]!.id).not.toBe(987654);
+
+    // and it was counted: nothing more is owed
+    write(ws, "household", [{ op: "add", path: "/guests/-", value: { name: "Uninvited Three", named_by: "couple" } }]);
+    expect((await nextMessage(ws)).type).toBe("render"); // no patch: nothing applied
+    expect(householdDoc.read(own)!.guests).toHaveLength(2);
+
+    // an ask cannot arrive already answered
+    write(ws, "household", [{ op: "add", path: "/asks/-", value: { name: "Cousin Vim", reply: "yes", guest_id: guests[0]!.id } }]);
+    await expectMessage(ws, "patch");
+    await expectMessage(ws, "render");
+    expect(householdDoc.read(own)!.asks.at(-1)).toMatchObject({ name: "Cousin Vim", reply: null, guest_id: null });
+    ws.close();
+  });
+
   test("permit: only the household's own surface, only while answers are open, a plus-one only while one is owed", async () => {
     const ws = await enter(code);
     const refused = async (doc: string, ops: PatchOp[]) => {
