@@ -16,10 +16,24 @@ const deltaSrc = await Bun.file(`${dir}/delta.ts`).text();
 
 // ── tables: delta.ts's schema ──
 type Column = { type: string; nullable?: boolean };
-const tables = Object.entries(deltaMod.schema.tables as Record<string, { parent?: { collection: string }; columns: Record<string, Column> }>).map(([key, t]) => ({
+// Where each table is touched outside delta.ts and the documents delta composes: the seed that
+// makes its rows, and any code that reads or writes it with its own SQL. A table the stories never
+// reach but code does is how a concept arrives without a story.
+const glob = new Bun.Glob("**/*.{ts,sql}");
+const files: { path: string; lines: string[] }[] = [];
+for await (const f of glob.scan(dir)) {
+  if (f.includes(".test.") || f === "delta.ts") continue;
+  files.push({ path: f, lines: (await Bun.file(`${dir}/${f}`).text()).split("\n") });
+}
+const touches = (sqlName: string) =>
+  files.flatMap(({ path, lines }) =>
+    lines.flatMap((line, i) => (new RegExp(`\\b${sqlName}\\b`).test(line) ? [{ at: `${path}:${i + 1}`, seed: path.endsWith(".sql"), line: line.trim().slice(0, 140) }] : [])),
+  );
+const tables = Object.entries(deltaMod.schema.tables as Record<string, { name: string; parent?: { collection: string }; columns: Record<string, Column> }>).map(([key, t]) => ({
   name: key,
   parent: t.parent?.collection ?? null,
   columns: Object.entries(t.columns).map(([c, def]) => ({ name: c, type: def.type + (def.nullable ? "?" : "") })),
+  code: touches(t.name),
 }));
 
 // ── documents: the defineDoc / registerMemory calls in delta.ts ──
@@ -91,6 +105,7 @@ const storyRows = stories.stories.map((s: Story, i) => {
 });
 
 const cast = Object.keys(stories.cast);
+const castSetup = Object.fromEntries(cast.map((m) => [m, stories.cast[m]!.flatMap((w) => w.ops.map((o) => `${w.doc} ${o.path} = ${"value" in o ? JSON.stringify(o.value) : ""}`))]));
 for (const s of storyRows) if (!cast.includes(s.as)) cast.push(s.as);
 
 let tasks: { n: number; status: string; summary: string; area: string }[] = [];
@@ -98,5 +113,5 @@ const todo = Bun.file(`${import.meta.dir}/../todo.jsonl`);
 if (await todo.exists()) tasks = (await todo.text()).split("\n").filter(Boolean).map((l) => JSON.parse(l)).map((t) => ({ n: t.n, status: t.status, summary: t.summary, area: t.area }));
 
 // Written to a file, not stdout: an example may log while its stories run.
-await Bun.write(process.argv[3] ?? `${name}.json`, JSON.stringify({ example: name, tray, cast, tables, documents, permits, stories: storyRows, harness: { passed: report.passed, failed: report.failed }, tasks }));
+await Bun.write(process.argv[3] ?? `${name}.json`, JSON.stringify({ example: name, tray, cast, castSetup, tables, documents, permits, stories: storyRows, harness: { passed: report.passed, failed: report.failed }, tasks }));
 process.exit(0);
