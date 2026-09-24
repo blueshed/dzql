@@ -259,6 +259,28 @@ export function check(name: string, puml: string, t: Types): Checked {
   return { name, kind, drift, uses };
 }
 
+/** The write a label names, by its words ("Enter another room's name" names session /room). */
+export function writeNamed(label: string, t: Types): WriteDef | undefined {
+  const hit = named(label, t.writes.map((w) => w.does).filter(Boolean));
+  return t.writes.find((w) => w.does === hit);
+}
+
+/** Each write, and the first sequence that draws it: where a use case links to. */
+export function sequenceOf(all: Checked[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const c of [...all].sort((a, b) => a.name.localeCompare(b.name))) if (c.kind === "sequence") for (const u of c.uses) if (u.startsWith("write:") && !out.has(u.slice(6))) out.set(u.slice(6), c.name);
+  return out;
+}
+
+/** A use case diagram with each use case linked to the sequence of its write -- added as it is drawn, so the source stays as written and a link cannot point anywhere stale. */
+export function linkUseCases(puml: string, t: Types, sequences: Map<string, string>): string {
+  return puml.replace(/^(\s*usecase\s+"([^"]+)"(?:\s+as\s+\w+)?)[ \t]*$/gm, (line, head: string, label: string) => {
+    const w = writeNamed(label.split("\\n")[0]!, t);
+    const seq = w && sequences.get(w.key);
+    return seq ? `${head} [[#${seq}{open its sequence}]]` : line;
+  });
+}
+
 /** What types.ts has that no diagram draws yet. */
 export function undrawn(t: Types, all: Checked[]): string[] {
   const used = new Set(all.flatMap((c) => [...c.uses]));

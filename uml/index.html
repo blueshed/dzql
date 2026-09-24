@@ -80,6 +80,17 @@ pre { margin: 0; padding: 16px; overflow: auto; border-left: 1px solid var(--lin
 const $ = (s) => document.querySelector(s);
 let list = [], current = null;
 try { current = localStorage.getItem("uml:current"); } catch {}
+if (location.hash.length > 1) current = decodeURIComponent(location.hash.slice(1));
+function go(name) { if (name && name !== current) location.hash = encodeURIComponent(name); }
+addEventListener("hashchange", () => { current = decodeURIComponent(location.hash.slice(1)) || current; renderList(); show(); });
+// a link inside a diagram ([[#name]] in its source) opens that diagram here
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("#diagram a");
+  const href = a?.getAttribute("href") ?? a?.getAttribute("xlink:href");
+  if (!href?.startsWith("#")) return;
+  e.preventDefault();
+  go(decodeURIComponent(href.slice(1)));
+});
 
 async function load() {
   list = await (await fetch("/list")).json();
@@ -119,7 +130,7 @@ async function show() {
   $("#diagram").innerHTML = svg || `<p class="empty">No SVG yet.</p>`;
   $("#source").textContent = src;
 }
-document.querySelector("nav").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; current = b.dataset.name; renderList(); show(); });
+document.querySelector("nav").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) go(b.dataset.name); });
 $("#showsrc").addEventListener("change", (e) => { $("#source").hidden = !e.target.checked; $("#view").classList.toggle("nosource", !e.target.checked); });
 
 function connect() {

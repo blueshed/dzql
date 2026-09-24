@@ -10,7 +10,7 @@
 import { watch } from "node:fs";
 import { readdir, rm } from "node:fs/promises";
 import index from "./index.html";
-import { check, readTypes, undrawn, type Kind, type Types } from "./check";
+import { check, kindOf, linkUseCases, readTypes, sequenceOf, undrawn, type Kind, type Types } from "./check";
 
 const dir = import.meta.dir;
 const SRC = `${dir}/src`, DIST = `${dir}/dist`;
@@ -35,6 +35,11 @@ async function checkOne(name: string, file: string) {
   const d = diagrams.get(name);
   if (d) Object.assign(d, { kind: c.kind, drift: c.drift });
 }
+async function sequences() {
+  const all = [];
+  for (const f of await readdir(SRC)) if (isSource(f)) all.push(check(nameOf(f), await Bun.file(`${SRC}/${f}`).text(), types));
+  return sequenceOf(all);
+}
 async function checkAll() {
   for (const f of await readdir(SRC)) if (isSource(f)) await checkOne(nameOf(f), f);
   const drifting = [...checked.values()].filter((c) => c.drift.length);
@@ -55,8 +60,11 @@ async function render(file: string): Promise<void> {
     return tell({ type: "removed", name });
   }
   const text = await source.text();
+  const kind = kindOf(text);
+  // A use case links to the sequence of its write: worked out from every sequence as it stands.
+  const drawn = kind === "use cases" ? linkUseCases(text, types, await sequences()) : text;
   try {
-    const res = await fetch(`${PLANTUML}/svg`, { method: "POST", headers: { "Content-Type": "text/plain; charset=utf-8" }, body: text });
+    const res = await fetch(`${PLANTUML}/svg`, { method: "POST", headers: { "Content-Type": "text/plain; charset=utf-8" }, body: drawn });
     const svg = await res.text();
     if (!svg.includes("<svg")) throw new Error(`PlantUML answered ${res.status} without an SVG`);
     await Bun.write(`${DIST}/${name}.svg`, svg);
@@ -66,6 +74,7 @@ async function render(file: string): Promise<void> {
     await checkOne(name, file);
     console.log(`${res.ok ? "✓" : "✗"} ${name}.svg${d.error ? ` — ${d.error}` : ""}${d.drift?.length ? ` — drifts from types.ts: ${d.drift.join("; ")}` : ""}`);
     tell({ type: "changed", diagram: d });
+    if (kind === "sequence") for (const f of await readdir(SRC)) if (isSource(f) && kindOf(await Bun.file(`${SRC}/${f}`).text()) === "use cases") soon(f);
   } catch (e) {
     const d: Diagram = { name, ok: false, at: Date.now(), error: `PlantUML is not answering at ${PLANTUML} (${(e as Error).message}). Is it up? docker compose up -d --wait` };
     diagrams.set(name, d);
@@ -115,7 +124,11 @@ let typesTimer: Timer | undefined;
 watch(dir, (_event, file) => {
   if (file !== "types.ts") return;
   clearTimeout(typesTimer);
-  typesTimer = setTimeout(async () => { await loadTypes(); await checkAll(); }, 120);
+  typesTimer = setTimeout(async () => {
+    await loadTypes();
+    await checkAll();
+    for (const f of await readdir(SRC)) if (isSource(f) && kindOf(await Bun.file(`${SRC}/${f}`).text()) === "use cases") soon(f);
+  }, 120);
 });
 
 console.log(`UML session on ${server.url} — watching ${SRC}, PlantUML at ${PLANTUML}`);
