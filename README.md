@@ -44,9 +44,11 @@ wedding).
 - **[@blueshed/delta](https://www.npmjs.com/package/@blueshed/delta)** keeps the documents, their ledger and their one stream
   of changes. eta owns people and pages; delta owns the data. An example's `delta.ts` says which
   tables it has and which documents are cut from them.
-- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** can draw an applet, the part of a page that keeps
-  state of its own in the browser. No example uses it today; an example may, and eta does not
-  depend on it.
+- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** draws an island: an
+  applet, the part of a page that keeps state of its own in the browser, written as a railroad
+  component (`island()`, `src/island.ts`). The ticker's city picker is one. The kernel's client
+  does not import it; a page with an island carries railroad too (about 2 KB gzipped for
+  `signal` and `mount`, 4 KB with `list`).
 
 ## Why eta
 
@@ -56,7 +58,7 @@ wedding).
   0.6.0 applies the inverse unguarded), and it does not ask the permit again.
 - **Stories are the tests.** An example is a list of sentences -- who does what, and who then
   sees it -- and `bun run stories` checks each one over real sockets, with its undo and redo.
-- **A small client.** The kernel's client is about 2.7 KB minified and gzipped: a morph, the write
+- **A small client.** The kernel's client is about 2.9 KB minified and gzipped: a morph, the write
   gestures and an applet registry. There is no framework to learn.
 - **Nothing else to run.** Bun and SQLite, one process, one file.
 - **A readable wire.** `bun run cli watch` prints every patch as it happens; `bun run cli undo`

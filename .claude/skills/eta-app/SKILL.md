@@ -68,7 +68,9 @@ Everything below is the least that makes it pass.
    computed whole from the tables in `changed`, written as the difference with `serverWrite`.
 6. **`applets/<name>.ts`** -- only if the vocabulary above says so. Split drawing (`<name>.ts`, pure,
    tested directly) from mounting (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`)
-   when there is drawing worth testing.
+   when there is drawing worth testing. An applet that builds and updates its DOM by hand is
+   better an island: a railroad component made an applet by `island()` (`<name>-applet.tsx`,
+   reference.md "Applets").
 7. **`client/index.html` + `client/main.ts`** -- `main.ts` imports the example's applets, then
    `src/client/app`. The stylesheet imports `src/bento.css` first, then says its own tokens.
 8. **`index.ts`** -- `export const example: Example = { name, compartments, render, active, index, delta, who?, routes? }`. `render(sessionId)` is the whole page.

@@ -81,6 +81,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The ticker's city picker is an island** (`examples/ticker/applets/city-picker-applet.tsx`):
+  93 lines of hand-built DOM, listeners and highlight bookkeeping became 61 (49 of code, from 79),
+  its suggestions a keyed `list()` over a computed. It still reads the zones from the server's
+  `<option>`s. The ticker's page grows from 5.3 KB to 9.2 KB gzipped, railroad's `list` most of
+  it. The board (whose flash needs each row drawn afresh), the clock (a frame loop) and the
+  wedding's applets (drawn by pure, tested functions) stay as they are.
 - **The README and the eta-app reference say what undo does on delta 0.6.0**: it puts a row back
   as the write found it, over what anyone wrote to it since; no compartment is asked again, so a
   deadline does not hold against it; and an undo whose inverse no longer applies sticks. The

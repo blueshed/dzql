@@ -244,6 +244,17 @@ export type Applet = {
 };
 ```
 
+**An island** is an applet written as a railroad component (`@blueshed/railroad`): `island(render,
+reduce?)` (`src/island.ts`) returns the `Applet`. `render(props, ctx, el)` gets its props as a
+signal, reads what the server drew inside `el` (the ticker's zones, as `<option>`s) and returns
+what replaces it; `update` sets the props, and `reduce(props, ops)`, when given, is `patch`. It
+draws only inside `el` and never binds `el`'s own attributes -- they are the page's, the morph's to
+keep. Write one where the applet builds and updates DOM by hand (the ticker's city picker); where
+it draws HTML from a pure function that is tested on its own (the wedding's menu and dress), keep
+that. A page with an island carries railroad (about 2 KB gzipped for `signal` and `mount`, 4 KB
+with `list`); the kernel's client does not. Its file is `<name>-applet.tsx` (the tsconfig says
+`jsxImportSource: "@blueshed/railroad"`).
+
 Mount point: `<div data-applet="board" data-doc="ticker:market" data-at="/quotes" data-props='{...}'>`,
 the document named as the wire names it. Data reaches an applet as new props on a render
 (`update`), or, for a document that changes often, as the patch itself (`patch`; after a write
