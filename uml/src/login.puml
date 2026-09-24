@@ -1,0 +1,16 @@
+@startuml
+title Login
+actor User
+participant "The app" as app
+database "Users" as users
+database "Sessions" as sessions
+
+User -> app : email, password
+app -> users : find by email
+alt the password matches
+  app -> sessions : start a session for the user
+  app --> User : signed in, the session's cookie
+else no such user, or the wrong password
+  app --> User : not recognised
+end
+@enduml

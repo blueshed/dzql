@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UML Session</title>
+<style>
+:root {
+  --paper: #f6f3ec; --card: #ffffff; --ink: #1e2430; --muted: #6b6b74; --line: rgba(30,36,48,.14);
+  --accent: #2f63bf; --accent-soft: rgba(47,99,191,.12); --ok: #2e7d5b; --bad: #b3372b; --bad-soft: rgba(179,55,43,.1);
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --paper: #16181d; --card: #1f2229; --ink: #e9e6de; --muted: #9b9aa3; --line: rgba(233,230,222,.12);
+    --accent: #7ea6ec; --accent-soft: rgba(126,166,236,.16); --ok: #6cc39c; --bad: #ec8479; --bad-soft: rgba(236,132,121,.14); color-scheme: dark; }
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.45 "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.app { height: 100%; display: grid; grid-template-columns: 220px 1fr; }
+nav { border-right: 1px solid var(--line); padding: 14px 10px; overflow: auto; }
+nav h1 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 6px 10px; display: flex; align-items: center; gap: 8px; }
+.live { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
+.live.on { background: var(--ok); }
+nav button { display: flex; width: 100%; align-items: center; gap: 8px; text-align: left; padding: 7px 8px; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; cursor: pointer; }
+nav button:hover { background: var(--card); }
+nav button[aria-current="true"] { background: var(--accent-soft); font-weight: 600; }
+nav button .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+nav button .dot.bad { background: var(--bad); }
+nav button.flash { animation: flash 1.2s ease-out; }
+@keyframes flash { from { background: var(--accent-soft); } to { background: none; } }
+@media (prefers-reduced-motion: reduce) { nav button.flash { animation: none; } }
+.empty { color: var(--muted); padding: 8px; font-size: 13px; }
+main { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+header { display: flex; align-items: baseline; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+header h2 { margin: 0; font-size: 17px; }
+header .at { color: var(--muted); font-size: 12px; }
+header .toggle { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.view { display: grid; grid-template-columns: 1fr 360px; min-height: 0; }
+.view.nosource { grid-template-columns: 1fr; }
+.diagram { overflow: auto; padding: 20px; display: grid; place-items: start center; background: #fff; }
+.diagram svg { max-width: 100%; height: auto; }
+.error { margin: 12px 18px 0; padding: 8px 12px; border: 1.5px solid var(--bad); background: var(--bad-soft); color: var(--bad); border-radius: 6px; font-size: 13px; }
+pre { margin: 0; padding: 16px; overflow: auto; border-left: 1px solid var(--line); background: var(--card); font: 12.5px/1.5 var(--mono); white-space: pre; }
+@media (max-width: 760px) { .app { grid-template-columns: 1fr; } nav { border-right: 0; border-bottom: 1px solid var(--line); } .view { grid-template-columns: 1fr; } pre { border-left: 0; border-top: 1px solid var(--line); } }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav>
+    <h1><span class="live" id="live" title="live"></span>Diagrams</h1>
+    <div id="list"></div>
+  </nav>
+  <main>
+    <header>
+      <h2 id="title">—</h2><span class="at" id="at"></span>
+      <label class="toggle"><input type="checkbox" id="showsrc" checked> ASCII source</label>
+    </header>
+    <div>
+      <div class="error" id="error" hidden></div>
+      <div class="view" id="view">
+        <div class="diagram" id="diagram"><p class="empty">Nothing in src/ yet.</p></div>
+        <pre id="source"></pre>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+const $ = (s) => document.querySelector(s);
+let list = [], current = null;
+try { current = localStorage.getItem("uml:current"); } catch {}
+
+async function load() {
+  list = await (await fetch("/list")).json();
+  if (!list.some((d) => d.name === current)) current = list[0]?.name ?? null;
+  renderList();
+  await show();
+}
+function renderList() {
+  $("#list").innerHTML = list.length
+    ? list.map((d) => `<button data-name="${d.name}" aria-current="${d.name === current}"><span class="dot ${d.ok ? "" : "bad"}"></span>${d.name}</button>`).join("")
+    : `<p class="empty">Nothing in src/ yet.</p>`;
+}
+async function show() {
+  const d = list.find((x) => x.name === current);
+  if (!d) { $("#title").textContent = "—"; $("#diagram").innerHTML = `<p class="empty">Nothing in src/ yet.</p>`; $("#source").textContent = ""; return; }
+  try { localStorage.setItem("uml:current", d.name); } catch {}
+  $("#title").textContent = d.name;
+  $("#at").textContent = `updated ${new Date(d.at).toLocaleTimeString()}`;
+  $("#error").hidden = d.ok; $("#error").textContent = d.error ?? "";
+  const [svg, src] = await Promise.all([fetch(`/svg/${d.name}`).then((r) => (r.ok ? r.text() : "")), fetch(`/src/${d.name}`).then((r) => (r.ok ? r.text() : ""))]);
+  $("#diagram").innerHTML = svg || `<p class="empty">No SVG yet.</p>`;
+  $("#source").textContent = src;
+}
+$("#list").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; current = b.dataset.name; renderList(); show(); });
+$("#showsrc").addEventListener("change", (e) => { $("#source").hidden = !e.target.checked; $("#view").classList.toggle("nosource", !e.target.checked); });
+
+function connect() {
+  const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/live`);
+  ws.onopen = () => $("#live").classList.add("on");
+  ws.onclose = () => { $("#live").classList.remove("on"); setTimeout(connect, 1000); };
+  ws.onmessage = async (e) => {
+    const m = JSON.parse(e.data);
+    const name = m.diagram?.name ?? m.name;
+    if (m.type === "changed" && !list.some((d) => d.name === name)) current = name; // a new diagram: show it
+    await load();
+    document.querySelector(`nav button[data-name="${CSS.escape(name)}"]`)?.classList.add("flash");
+  };
+}
+load().then(connect);
+</script>
+</body>
+</html>

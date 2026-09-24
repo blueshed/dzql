@@ -1,0 +1,9 @@
+@startuml
+title Session
+[*] --> SignedOut
+SignedOut --> SignedIn : log in [password matches]
+SignedOut --> SignedOut : log in [not recognised]
+SignedIn --> SignedOut : log out
+SignedIn --> Expired : time passes
+Expired --> SignedOut : next request
+@enduml

@@ -1,0 +1,19 @@
+@startuml
+title Classes
+hide empty methods
+
+class User {
+  id
+  email
+  password : hashed
+}
+
+class Session {
+  id
+  user
+  started at
+  expires at
+}
+
+User "1" -- "0..*" Session : logs in as >
+@enduml

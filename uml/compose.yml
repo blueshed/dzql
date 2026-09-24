@@ -1,0 +1,12 @@
+# PlantUML, for the live UML session: `docker compose up -d --wait`, then `bun watch.ts`.
+# ASCII UML in src/ is posted here and comes back as SVG in dist/.
+services:
+  plantuml:
+    image: plantuml/plantuml-server:jetty
+    ports:
+      - "${PLANTUML_PORT:-8089}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ >/dev/null || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
