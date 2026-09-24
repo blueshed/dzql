@@ -13,6 +13,10 @@ class "session" as SessionDoc <<document>> {
   room
 }
 
+class "lobby" as LobbyDoc <<document>> {
+  rooms
+}
+
 class Message {
   author
   text
@@ -21,4 +25,5 @@ class Message {
 
 RoomDoc *-- "0..*" Message : messages
 SessionDoc ..> RoomDoc : room names one >
+LobbyDoc ..> RoomDoc : lists the ones with people in >
 @enduml

@@ -1,0 +1,5 @@
+@startjson
+{
+  "rooms": ["general", "kitchen"]
+}
+@endjson

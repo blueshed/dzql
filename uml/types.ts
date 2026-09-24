@@ -35,10 +35,16 @@ export interface SessionDoc {
   room: Persistent<string | null>;
 }
 
+/** The lobby: the rooms that have people in them now. Nobody writes it; it changes as people enter rooms' names and log out. It informs: a room's name is still typed. */
+export interface LobbyDoc {
+  rooms: Transient<string[]>;
+}
+
 /** The documents, by the name they are opened by, and who has each open. */
 export interface Documents {
   "room:<name>": { shape: RoomDoc; openedBy: "everyone in the room" };
   "session": { shape: SessionDoc; openedBy: "the person alone" };
+  "lobby": { shape: LobbyDoc; openedBy: "everyone with a name" };
 }
 
 /** The writes a person makes: a document and a path, the op, what it is called, and why it is refused. */

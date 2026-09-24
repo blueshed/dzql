@@ -3,10 +3,14 @@ title Log out
 actor "Dee" as dee
 participant "Chat" as app
 actor "Ada, Bob (have room:general open)" as room
+actor "everyone with a name (has lobby open)" as lobby
 
 dee -> app : remove session
 app --> dee : the session is gone
 opt in a room
   app -> room : patch room:general remove /members/2
+  opt Dee was the last one in it
+    app -> lobby : patch lobby remove /rooms/0
+  end
 end
 @enduml

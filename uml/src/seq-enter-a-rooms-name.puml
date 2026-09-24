@@ -4,6 +4,7 @@ actor "Dee" as dee
 participant "Chat" as app
 actor "Ada, Bob (have room:general open)" as room
 actor "Eve (has room:kitchen open)" as old
+actor "everyone with a name (has lobby open)" as lobby
 
 dee -> app : replace session /room <room>
 alt no name yet
@@ -15,8 +16,14 @@ else
   app --> dee : open room:general
   note right of app : the room is made if nobody has entered it yet
   app -> room : patch room:general add /members/- "Dee"
+  opt nobody was in it
+    app -> lobby : patch lobby add /rooms/- "general"
+  end
   opt already in a room: entering another room's name
     app -> old : patch room:kitchen remove /members/1
+    opt Dee was the last one in it
+      app -> lobby : patch lobby remove /rooms/1
+    end
   end
 end
 @enduml
