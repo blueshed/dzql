@@ -1,5 +1,6 @@
 ---
 name: eta-app
+version: 0.46.0
 description: Use this skill before writing any code under examples/<name>/ — adding a new eta example app, or adding a document/compartment/applet/CLI verb to an existing one. Also use it before touching the Compartment contract, an example's delta.ts, the applet registry, or the {doc,ops} wire protocol, since those are the seam a new example has to fit through. Reference.md has the full contracts and code excerpts.
 ---
 
@@ -71,8 +72,9 @@ Everything below is the least that makes it pass.
 9. **`cli.ts`** (optional) -- an `aliases` table of short verbs that build `{doc, ops}`; no database.
 10. **Tests** -- a test for each document's rules and shapes, a `server.test.ts` that drives writes and undo over a real
     websocket (this is where delivery is checked: who is told, and with what), a
-    `client/app.test.ts` for what only a browser can show. `bun test`; 100% is a gate; verify a
-    bug fix by reverting it and watching the test fail.
+    `client/app.test.ts` for what only a browser can show. The gate is `bun run check`,
+    `bun test` (100% coverage) and `bun run stories:all`; verify a bug fix by reverting it and
+    watching the test fail.
 
 None of this needs a file under `src/` edited. When it seems to, read `reference.md`'s "When it
 looks like you need to touch `src/`" first: a missing seam is rare, and a workaround is never it.

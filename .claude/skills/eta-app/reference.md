@@ -193,8 +193,8 @@ back button closes a drawer and a link opens one. On first load the session catc
 The rules are `examples/bento/README.md`. Bind the surfaces once per example:
 `bento({icon, tray, leave?})`, where `icon` is the example's own icon function, `tray` the docType
 find and the reading switch write to, and `leave` the last of the page's tools. It returns
-`boxPage`, `collectionPage`, `cell`, `row`, `tool`, `addTool`, `findControl`, `readingSwitch`,
-`sheet`, `addModal`, `confirmModal`. A page is a **box** (`boxPage(trail, inPlace, cells, open?)`:
+`boxPage`, `collectionPage`, `crumbs`, `cell`, `row`, `tool`, `pageTools`, `addTool`,
+`findControl`, `readingSwitch`, `sheet`, `addModal`, `confirmModal`. A page is a **box** (`boxPage(trail, inPlace, cells, open?)`:
 compartments in a tray, one grown into the window) or a **collection** (`collectionPage(trail,
 open)`: the window alone). Every gesture is a `data-write` string the caller hands in.
 `patchCollections(ui, op)` applies what find and the reading switch write (`/filter/<key>`,
