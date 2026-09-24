@@ -11,9 +11,9 @@ const hosts = new WeakMap<Bun.WebView, string>();
  * its own instead -- Chrome takes every `*.localhost` to this machine -- and keeps it, so a
  * reload or a link is the same person. WebKit's views (macOS) are apart already.
  */
-export function at(view: Bun.WebView, url: URL | string, path = ""): string {
+export function at(view: Bun.WebView, url: URL | string, path = "", platform: string = process.platform): string {
   const address = new URL(path, url);
-  if (process.platform === "darwin") return address.toString();
+  if (platform === "darwin") return address.toString();
   if (!hosts.has(view)) hosts.set(view, `view${++views}.localhost`);
   address.hostname = hosts.get(view)!;
   return address.toString();
