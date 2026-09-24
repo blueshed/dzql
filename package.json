@@ -12,7 +12,9 @@
     "stop": "kill $(lsof -ti tcp:${PORT:-3000} -sTCP:LISTEN)",
     "cli": "bun src/cli.ts",
     "test": "bun test",
-    "stories": "bun --env-file=.env.test src/stories-run.ts"
+    "stories": "bun --env-file=.env.test src/stories-run.ts",
+    "stories:all": "ETA_EXAMPLE=chat bun run stories && ETA_EXAMPLE=ticker bun run stories && ETA_EXAMPLE=wedding bun run stories",
+    "check": "bunx tsc --noEmit"
   },
   "devDependencies": {
     "@types/bun": "latest"
