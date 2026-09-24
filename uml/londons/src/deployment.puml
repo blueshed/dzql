@@ -1,0 +1,18 @@
+@startuml
+title Deployment: the contractor, the venue owner, and the worker who builds it
+[*] --> proposed : contractor drops it on the map (111)
+proposed --> accepted : venueOwner accepts (112)
+proposed --> rejected : venueOwner rejects (113)
+rejected --> proposed : contractor re-proposes (114)
+rejected --> cancelled : contractor cancels (115)
+accepted --> cancelled : contractor withdraws (116)
+accepted --> built : worker presses built (133)
+accepted --> blocked : worker presses blocked (137)
+blocked --> accepted : contractor resolves (117)
+blocked --> cancelled : contractor cancels (118)
+built --> accepted : worker takes back built (134)
+built --> struck : worker presses struck (136)
+proposed -[dotted]-> accepted : contractor cannot accept its own proposal (119)
+proposed -[dotted]-> accepted : worker cannot accept (139)
+accepted -[dotted]-> built : venueOwner cannot mark built (120)
+@enduml

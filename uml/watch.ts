@@ -2,20 +2,29 @@
 //
 //   docker compose up -d --wait   # PlantUML, on PLANTUML_PORT (8089)
 //   bun watch.ts                  # renders src/ at start, watches it, serves the page on PORT (3700)
+//   bun watch.ts londons        # the same for a model in its own folder: londons/src, londons/dist
 //
 // A change to src/<name>.puml is posted to PlantUML and written to dist/<name>.svg; a deleted source
 // takes its SVG with it. Every open page is told over a WebSocket and redraws. A diagram PlantUML
 // cannot read comes back as an SVG that says why, and is shown like any other.
+//
+// A model is checked against its vocabulary: types.ts, or, where the folder has a stories.ts, the
+// stories themselves -- each agreement's arrows cite the stories that move it (agreements.ts).
 
 import { watch } from "node:fs";
 import { readdir, rm } from "node:fs/promises";
 import index from "./index.html";
+import { checkAgreement, markAgreement, uncited, type Story } from "./agreements";
 import { asDrawn, check, kindOf, links, linkedTo, readTypes, typesFindings, undrawn, type Kind, type Types } from "./check";
 
-const dir = import.meta.dir;
+const dir = import.meta.dir + (process.argv[2] ? `/${process.argv[2]}` : "");
 const SRC = `${dir}/src`, DIST = `${dir}/dist`;
+const storiesFile = Bun.file(`${dir}/stories.ts`);
+const stories: Story[] | null = (await storiesFile.exists()) ? (await import(`${dir}/stories.ts`)).stories.stories : null;
+const cited = new Map<string, Set<number>>();
 const PLANTUML = process.env.PLANTUML_URL ?? `http://localhost:${process.env.PLANTUML_PORT ?? 8089}`;
 const PORT = Number(process.env.PORT ?? 3700);
+const against = stories ? "the stories" : "types.ts";
 
 type Diagram = { name: string; ok: boolean; at: number; error?: string; kind?: Kind; drift?: string[] };
 const diagrams = new Map<string, Diagram>();
@@ -30,7 +39,15 @@ async function loadTypes() {
   types = readTypes((await f.exists()) ? await f.text() : "");
 }
 async function checkOne(name: string, file: string) {
-  const c = check(name, await Bun.file(`${SRC}/${file}`).text(), types);
+  const text = await Bun.file(`${SRC}/${file}`).text();
+  if (stories) {
+    const a = checkAgreement(text, stories);
+    cited.set(name, a.cited);
+    const d = diagrams.get(name);
+    if (d) Object.assign(d, { kind: kindOf(text), drift: a.drift });
+    return;
+  }
+  const c = check(name, text, types);
   checked.set(name, c);
   const d = diagrams.get(name);
   if (d) Object.assign(d, { kind: c.kind, drift: c.drift });
@@ -46,8 +63,8 @@ async function redrawLinking() {
 }
 async function checkAll() {
   for (const f of await readdir(SRC)) if (isSource(f)) await checkOne(nameOf(f), f);
-  const drifting = [...checked.values()].filter((c) => c.drift.length);
-  console.log(drifting.length ? `≠ types.ts: ${drifting.map((c) => `${c.name} (${c.drift.length})`).join(", ")}` : "= types.ts: every diagram agrees");
+  const drifting = [...diagrams.values()].filter((c) => c.drift?.length);
+  console.log(drifting.length ? `≠ ${against}: ${drifting.map((c) => `${c.name} (${c.drift!.length})`).join(", ")}` : `= ${against}: every diagram agrees`);
   tell({ type: "checked" });
 }
 
@@ -60,13 +77,14 @@ async function render(file: string): Promise<void> {
   if (!(await source.exists())) {
     diagrams.delete(name);
     checked.delete(name);
+    cited.delete(name);
     await rm(`${DIST}/${name}.svg`, { force: true });
     return tell({ type: "removed", name });
   }
   const text = await source.text();
   const kind = kindOf(text);
   // A use case links to its write's sequence, a document class to its example: worked out as drawn.
-  const drawn = asDrawn(text, name, types, links(kind) ? await everyChecked() : []);
+  const drawn = stories ? markAgreement(text, name, stories) : asDrawn(text, name, types, links(kind) ? await everyChecked() : []);
   try {
     const res = await fetch(`${PLANTUML}/svg`, { method: "POST", headers: { "Content-Type": "text/plain; charset=utf-8" }, body: drawn });
     const svg = await res.text();
@@ -76,9 +94,9 @@ async function render(file: string): Promise<void> {
     const d: Diagram = { name, ok: res.ok, at: Date.now(), ...(res.ok ? {} : { error: res.headers.get("x-plantuml-diagram-error") ?? "PlantUML could not read it" }) };
     diagrams.set(name, d);
     await checkOne(name, file);
-    console.log(`${res.ok ? "✓" : "✗"} ${name}.svg${d.error ? ` — ${d.error}` : ""}${d.drift?.length ? ` — drifts from types.ts: ${d.drift.join("; ")}` : ""}`);
+    console.log(`${res.ok ? "✓" : "✗"} ${name}.svg${d.error ? ` — ${d.error}` : ""}${d.drift?.length ? ` — drifts from ${against}: ${d.drift.join("; ")}` : ""}`);
     tell({ type: "changed", diagram: d });
-    if (linkedTo(kind)) await redrawLinking();
+    if (!stories && linkedTo(kind)) await redrawLinking();
   } catch (e) {
     const d: Diagram = { name, ok: false, at: Date.now(), error: `PlantUML is not answering at ${PLANTUML} (${(e as Error).message}). Is it up? docker compose up -d --wait` };
     diagrams.set(name, d);
@@ -108,8 +126,12 @@ const server = Bun.serve({
       return files[0] ? new Response(Bun.file(`${SRC}/${files[0]}`), { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } }) : new Response("no such source", { status: 404 });
     },
     "/types": async () => {
+      if (stories) {
+        const all = new Set([...cited.values()].flatMap((s) => [...s]));
+        return Response.json({ label: "stories.ts", about: "every arrow cites the stories that move it", against: "the stories", source: await storiesFile.text(), undrawn: uncited(stories, all), findings: [] });
+      }
       const f = Bun.file(TYPES);
-      return Response.json({ source: (await f.exists()) ? await f.text() : "", undrawn: undrawn(types, [...checked.values()]), findings: typesFindings(types) });
+      return Response.json({ label: "types.ts", about: "every name the diagrams use", against: "types.ts", source: (await f.exists()) ? await f.text() : "", undrawn: undrawn(types, [...checked.values()]), findings: typesFindings(types) });
     },
     "/live": (req, srv) => (srv.upgrade(req) ? undefined : new Response("expected a WebSocket", { status: 400 })),
   },

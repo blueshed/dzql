@@ -92,7 +92,10 @@ document.addEventListener("click", (e) => {
   go(decodeURIComponent(href.slice(1)));
 });
 
+let vocab = { label: "types.ts", against: "types.ts" };
 async function load() {
+  vocab = await (await fetch("/types")).json();
+  $("#types-btn").textContent = vocab.label;
   list = await (await fetch("/list")).json();
   if (current !== "types.ts" && !list.some((d) => d.name === current)) current = list[0]?.name ?? null;
   renderList();
@@ -100,19 +103,19 @@ async function load() {
 }
 function renderList() {
   $("#list").innerHTML = list.length
-    ? list.map((d) => `<button data-name="${d.name}" aria-current="${d.name === current}"><span class="dot ${d.ok ? "" : "bad"}"></span>${d.name}${d.drift?.length ? `<span class="n" title="drifts from types.ts">≠ ${d.drift.length}</span>` : ""}</button>`).join("")
+    ? list.map((d) => `<button data-name="${d.name}" aria-current="${d.name === current}"><span class="dot ${d.ok ? "" : "bad"}"></span>${d.name}${d.drift?.length ? `<span class="n" title="drifts from ${vocab.against}">≠ ${d.drift.length}</span>` : ""}</button>`).join("")
     : `<p class="empty">Nothing in src/ yet.</p>`;
   $("#types-btn").setAttribute("aria-current", current === "types.ts");
 }
 async function show() {
   if (current === "types.ts") {
     const t = await (await fetch("/types")).json();
-    $("#title").textContent = "types.ts"; $("#at").textContent = "every name the diagrams use";
+    $("#title").textContent = t.label; $("#at").textContent = t.about;
     $("#error").hidden = !t.findings.length; $("#agrees").hidden = true;
-    $("#error").innerHTML = `<b>types.ts contradicts itself</b><ul>${t.findings.map((u) => `<li>${u}</li>`).join("")}</ul>`;
+    $("#error").innerHTML = `<b>${t.label} contradicts itself</b><ul>${t.findings.map((u) => `<li>${u}</li>`).join("")}</ul>`;
     $("#drift").hidden = !t.undrawn.length;
     $("#drift").innerHTML = `<b>Not drawn in any diagram yet</b><ul>${t.undrawn.map((u) => `<li>${u}</li>`).join("")}</ul>`;
-    $("#diagram").innerHTML = `<p class="empty">types.ts is the vocabulary: each diagram is checked against it.</p>`;
+    $("#diagram").innerHTML = `<p class="empty">${t.label} is the vocabulary: each diagram is checked against it.</p>`;
     $("#source").textContent = t.source;
     return;
   }
@@ -124,9 +127,9 @@ async function show() {
   $("#error").hidden = d.ok; $("#error").textContent = d.error ?? "";
   const drift = d.drift ?? [];
   $("#drift").hidden = !drift.length;
-  $("#drift").innerHTML = `<b>Drifts from types.ts</b><ul>${drift.map((x) => `<li>${x.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</li>`).join("")}</ul>`;
+  $("#drift").innerHTML = `<b>Drifts from ${vocab.against}</b><ul>${drift.map((x) => `<li>${x.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</li>`).join("")}</ul>`;
   $("#agrees").hidden = !!drift.length || !d.kind || d.kind === "other";
-  $("#agrees").textContent = `✓ agrees with types.ts (${d.kind})${d.kind === "document" ? " · highlighted: the transient parts; the rest is persistent" : ""}`;
+  $("#agrees").textContent = `✓ agrees with ${vocab.against} (${d.kind})${d.kind === "document" ? " · highlighted: the transient parts; the rest is persistent" : ""}`;
   const [svg, src] = await Promise.all([fetch(`/svg/${d.name}`).then((r) => (r.ok ? r.text() : "")), fetch(`/src/${d.name}`).then((r) => (r.ok ? r.text() : ""))]);
   $("#diagram").innerHTML = svg || `<p class="empty">No SVG yet.</p>`;
   $("#source").textContent = src;
