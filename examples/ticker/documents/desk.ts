@@ -1,29 +1,24 @@
-import { db } from "../db";
-import { reading } from "../../../src/reading";
+import { read as readDoc } from "../../../src/documents";
 import { address, parseAddress, patchCollections, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 
-// The desk: where this session is on the page -- one address (src/bento.ts): the compartment grown
-// into the window, and the one thing open over it, a symbol's drawer or the clock's, or the modal
-// that asks -- and how the board is read and what find says. Nothing here is a fact: it is never
-// on the ledger, and Undo passes over it.
+// The desk, kept in delta (`desk:<id>`, ../delta.ts): where this session is on the page -- one
+// address (src/bento.ts): the compartment grown into the window, and the one thing open over it,
+// a symbol's drawer or the clock's, or the modal that asks -- and how the board is read and what
+// find says. Nothing here is a fact: it is never on the ledger, and Undo passes over it.
 
 export type Ui = {
   /** "" the desk, "board" or "market" a window; then "?symbol=ALPH", "?clock", "?new", "?confirm=ALPH". */
   page?: string;
 } & Collections; // how the board is read, what find says
 
-const readStmt = db.query<{ ui: string }, [string]>("SELECT ui FROM desks WHERE session_id = ?");
-const upsertStmt = db.query<unknown, [string, string]>("INSERT INTO desks (session_id, ui) VALUES (?1, ?2) ON CONFLICT(session_id) DO UPDATE SET ui = ?2");
+const FIELDS = ["page", "reading", "filter", "hide"] as const;
 
 export function read(sessionId: string): Ui {
-  reading("desk", sessionId);
-  const row = readStmt.get(sessionId);
-  return row ? (JSON.parse(row.ui) as Ui) : {};
+  const row = readDoc<{ desks?: Record<string, unknown> }>(`desk:${sessionId}`)?.desks ?? {};
+  return Object.fromEntries(FIELDS.filter((f) => row[f] != null).map((f) => [f, row[f]])) as Ui;
 }
-
-export type DeskPatchResult = { version: number; applied: PatchOp[] };
 
 const SYMBOL = /^[A-Z0-9.]{1,6}$/;
 
@@ -38,21 +33,22 @@ function placed(value: unknown): string | undefined {
   return undefined;
 }
 
-/** Applies what it can; the version is always 0, since nothing here is recorded. */
-export function patch(sessionId: string, ops: PatchOp[]): DeskPatchResult {
-  const applied: PatchOp[] = [];
-  const ui: Ui = { ...read(sessionId) };
+/** The desk after `ops`: what applies of them -- an address, a reading, find's word, the eye. */
+export function after(ui: Ui, ops: PatchOp[]): Ui {
+  const next: Ui = structuredClone(ui);
   for (const op of ops) {
     const [field] = parsePointer(op.path);
     if (field === "page") {
       const page = op.op === "remove" ? "" : placed(op.value);
-      if (page === undefined) continue;
-      ui.page = page;
-    } else if (!patchCollections(ui, op)) {
-      continue; // not a reading, find's word or the eye either (src/bento.ts)
+      if (page !== undefined) next.page = page;
+    } else {
+      patchCollections(next, op); // a reading, find's word or the eye (src/bento.ts), or nothing
     }
-    applied.push(op);
   }
-  if (applied.length) upsertStmt.run(sessionId, JSON.stringify(ui));
-  return { version: 0, applied };
+  return next;
+}
+
+/** The ops that make desk `from` into `to`: each field that differs, replaced whole. */
+export function between(from: Ui, to: Ui): PatchOp[] {
+  return FIELDS.filter((f) => JSON.stringify(from[f]) !== JSON.stringify(to[f])).map((f) => ({ op: "replace", path: `/${f}`, value: to[f] ?? null }));
 }

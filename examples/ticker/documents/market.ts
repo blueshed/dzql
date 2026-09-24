@@ -1,62 +1,46 @@
-import { db } from "../db";
-import { reading } from "../../../src/reading";
+import { read as readDoc } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
-import { prefixDoc, record } from "../../../src/ledger";
 
-// The market: one document, a quote per symbol. A tick is `replace /<SYMBOL>/price`, from the
-// feed or from anyone the compartment permits. Every tick is on the ledger with its inverse, so the
-// last minute can be read back -- but a tick is a fact, not the person's doing, and is recorded
-// as not undoable: nobody's Undo can move the market.
+// The market: one document, a quote per symbol, kept in delta (`ticker:market`, ../delta.ts). A
+// tick is `replace /<SYMBOL>/price`, from the feed or from anyone the compartment permits. It is a
+// fact, not the person's doing: on the ledger with its inverse, so the last minute can be read
+// back, and never undone -- nobody's Undo can move the market.
 
-export type Quote = { name: string; price: number; prev: number };
+export type Quote = { name: string; price: number; prev: number; id?: string; markets_id?: string };
 export type MarketDocument = Record<string, Quote>;
 
 /** The market's one document id. */
 export const MARKET = "market";
 
-const quotesStmt = db.query<{ symbol: string; name: string; price: number; prev: number }, []>(
-  "SELECT symbol, name, price, prev FROM quotes ORDER BY symbol",
-);
-const quoteStmt = db.query<{ price: number; prev: number }, [string]>("SELECT price, prev FROM quotes WHERE symbol = ?");
-const tickStmt = db.query<unknown, [number, number, string]>("UPDATE quotes SET prev = price, price = ?, updated_at = ? WHERE symbol = ?");
-
+/** The quotes as delta holds them -- each a row, its id and the market's with it -- so the market's ops land on them as they are. */
 export function read(): MarketDocument {
-  reading("ticker", MARKET);
-  return Object.fromEntries(quotesStmt.all().map(({ symbol, ...quote }) => [symbol, quote]));
-}
-
-export function symbols(): string[] {
-  return quotesStmt.all().map((q) => q.symbol);
+  return readDoc<{ quotes?: MarketDocument }>(`ticker:${MARKET}`)?.quotes ?? {};
 }
 
 export function has(symbol: string): boolean {
-  return quoteStmt.get(symbol) !== null;
+  return symbol in read();
 }
 
-export type MarketPatchResult = { version: number; applied: PatchOp[] };
-
-/** Applies ticks: `replace /<SYMBOL>/price` with a positive number, to a symbol the market has. One transaction: every statement here, the ledger row, and the version it returns commit together or not at all. */
-export const patch = db.transaction(function patch(ops: PatchOp[], sessionId: string): MarketPatchResult {
-  const applied: PatchOp[] = [];
-  const inverse: PatchOp[] = [];
-
+/**
+ * Ticks as the market takes them: `replace /<SYMBOL>/price` with a positive number, to a symbol
+ * the market has, rounded to the cent, and only if it moves. A tick moves two fields -- the last
+ * price becomes `prev` -- and the ops say both, so what follows the stream (the board) holds what
+ * the market does without knowing how it ticks.
+ */
+export function ticks(ops: PatchOp[]): PatchOp[] {
+  const quotes = read();
+  const shaped: PatchOp[] = [];
   for (const op of ops) {
     const [symbol, field] = parsePointer(op.path);
     if (op.op !== "replace" || !symbol || field !== "price") continue;
     const price = Number(op.value);
-    if (!Number.isFinite(price) || price <= 0) continue;
-    const before = quoteStmt.get(symbol);
-    if (!before) continue;
+    const before = quotes[symbol];
+    if (!Number.isFinite(price) || price <= 0 || !before) continue;
     const rounded = Math.round(price * 100) / 100;
     if (rounded === before.price) continue;
-    tickStmt.run(rounded, Date.now(), symbol);
-    // a tick moves two fields -- the last price becomes `prev` -- and the ops say both, so what
-    // follows the stream (the board) holds what the market does without knowing how it ticks
-    applied.push({ op: "replace", path: `/${symbol}/prev`, value: before.price }, { ...op, value: rounded });
-    inverse.unshift({ op: "replace", path: `/${symbol}/prev`, value: before.prev }, { op: "replace", path: op.path, value: before.price });
+    shaped.push({ op: "replace", path: `/${symbol}/prev`, value: before.price }, { op: "replace", path: `/${symbol}/price`, value: rounded });
+    quotes[symbol] = { ...before, prev: before.price, price: rounded };
   }
-
-  const version = record(prefixDoc("ticker", MARKET), applied, inverse, sessionId, undefined, false);
-  return { version, applied };
-});
+  return shaped;
+}

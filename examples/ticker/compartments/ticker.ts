@@ -2,8 +2,9 @@ import * as clockDoc from "../documents/clock";
 import * as market from "../documents/market";
 import * as watchlistDoc from "../documents/watchlist";
 import type { PatchOp } from "../../../src/json-patch";
-import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
-import { audienceFor, notify } from "../../../src/compartments/audience";
+import type { Compartment } from "../../../src/compartments/compartment";
+import { audienceFor } from "../../../src/compartments/audience";
+import { activeDocuments, serverWrite, settled } from "../../../src/documents";
 import * as deskDoc from "../documents/desk";
 import { page } from "../views/page";
 
@@ -22,16 +23,14 @@ let feed: ReturnType<typeof setInterval> | undefined;
 const TICK_MS = Number(process.env.TICK_MS ?? 500);
 const MAX_MOVE = 0.006;
 
-/** One tick, from wherever it comes: applied, echoed to everyone, each page sent what changed on it. */
-export function tick(ops: PatchOp[], sessionId: string): WriteResult {
-  const result = market.patch(ops, sessionId);
-  notify("ticker", market.MARKET, result);
-  return result;
+/** A tick from the feed -- the market's own, nobody's: applied, echoed to everyone, each page sent what changed on it. */
+export async function tick(ops: PatchOp[]): Promise<void> {
+  const shaped = await settled(activeDocuments(), () => market.ticks(ops));
+  if (shaped.length > 0) await serverWrite(`ticker:${market.MARKET}`, shaped.map((op) => ({ ...op, path: `/quotes${op.path}` })));
 }
 
 /** A random walk: one symbol, a move within MAX_MOVE either way. */
-export function randomTick(): PatchOp[] {
-  const quotes = market.read();
+export function randomTick(quotes = market.read()): PatchOp[] {
   const symbols = Object.keys(quotes);
   const symbol = symbols[Math.floor(Math.random() * symbols.length)]!;
   const price = quotes[symbol]!.price * (1 + (Math.random() * 2 - 1) * MAX_MOVE);
@@ -41,7 +40,9 @@ export function randomTick(): PatchOp[] {
 /** Starts the feed at `ms` between ticks (TICK_MS by default; 0 means no feed at all), if it is not already running. */
 export function startFeed(ms = TICK_MS): void {
   if (feed || ms <= 0) return;
-  feed = setInterval(() => tick(randomTick(), "feed"), ms);
+  feed = setInterval(() => {
+    if (activeDocuments()) void settled(activeDocuments(), () => randomTick()).then(tick);
+  }, ms);
 }
 
 export function stopFeed(): void {
@@ -58,6 +59,8 @@ export const render = (sessionId: string): string =>
 
 export const ticker: Compartment = {
   docType: "ticker",
+  kind: "fact", // on the ledger, never undone
+  at: "/quotes", // eta's `/ALPH/price` is the document's `/quotes/ALPH/price`
   resolveDoc() {
     return market.MARKET; // everyone sees the one market
   },
@@ -65,10 +68,8 @@ export const ticker: Compartment = {
   permit(_ws, op) {
     return op.op === "replace" && TICK_PATH.test(op.path);
   },
-  write(ws, _docId, ops) {
-    return tick(ops, ws.data.sessionId);
-  },
-  // A tick is recorded as not undoable, so the ledger's cursor never lands here. What each page
+  shape: (_ws, _docId, ops) => market.ticks(ops),
+  // A tick is a fact, so the ledger's cursor never lands here. What each page
   // is sent after one is worked out from its parts: the board applet takes the ops, so on the box
   // nothing; the market's rows, the board as a list, a symbol's drawer -- whatever shows a price.
   onOpen() {

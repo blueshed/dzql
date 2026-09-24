@@ -1,8 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createServer } from "../../../src/server";
-import * as market from "../documents/market";
 import { tick } from "../compartments/ticker";
+import type { MarketDocument } from "../documents/market";
 import { example } from "../index";
+
+/** The market as delta has it now. */
+async function quotes(): Promise<MarketDocument> {
+  return (await example.delta!.as("test").call("open", { doc: "ticker:market" })).result.quotes;
+}
 
 let server: ReturnType<typeof createServer>;
 
@@ -38,18 +43,19 @@ describe("the ticker in a real browser", () => {
     await view.click("input[name=symbol]");
     await view.type("fxtr");
     await view.press("Enter");
-    await waitFor(view, `document.querySelector('svg.board .row[data-row="FXTR"] .price')?.textContent ?? null`, (v) => v === market.read().FXTR!.price.toFixed(2));
+    const fxtr = (await quotes()).FXTR!.price;
+    await waitFor(view, `document.querySelector('svg.board .row[data-row="FXTR"] .price')?.textContent ?? null`, (v) => v === fxtr.toFixed(2));
 
     // a tick from the server side (as the feed makes them): the board's row moves, and the only
     // message the client saw was the patch
     await view.evaluate(`(() => { window.__renders = 0; window.eta.socket().addEventListener('message', (e) => { if (JSON.parse(e.data).type === 'render') window.__renders++; }); return 1; })()`);
-    const price = Math.round((market.read().FXTR!.price + 2.5) * 100) / 100;
-    tick([{ op: "replace", path: "/FXTR/price", value: price }], "feed");
+    const price = Math.round(((await quotes()).FXTR!.price + 2.5) * 100) / 100;
+    await tick([{ op: "replace", path: "/FXTR/price", value: price }]);
     await waitFor(view, `document.querySelector('svg.board .row[data-row="FXTR"] .price')?.textContent`, (v) => v === price.toFixed(2));
     expect(await view.evaluate(`document.querySelector('svg.board .row[data-row="FXTR"]').classList.contains('up')`)).toBe(true);
-    // the tick reached the page as its patch (prev, then price), and no render came with it -- other
+    // the tick reached the page as its patch (the quote it leaves), and no render came with it -- other
     // ticks may land meanwhile (a feed another test started), so this tick is looked for by its value
-    expect(await view.evaluate(`window.eta.docs()['ticker:market'].ops.some((op) => op.path === '/FXTR/price' && op.value === ${price})`)).toBe(true);
+    expect(await view.evaluate(`window.eta.docs()['ticker:market'].ops.some((op) => op.path === '/FXTR' && op.value.price === ${price})`)).toBe(true);
     expect(await view.evaluate(`window.__renders`)).toBe(0);
     expect(await view.evaluate(`document.querySelectorAll('svg.board .row[data-row="FXTR"] polyline').length`)).toBe(1);
 
