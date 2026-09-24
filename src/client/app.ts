@@ -373,7 +373,12 @@ function connect() {
     const message = JSON.parse(event.data);
     if (message.type === "render") {
       if (message.ops) applyFragments(message.ops);
-      else render(message.html);
+      else {
+        // The page whole before any echo: the write that set a form waiting was refused, and
+        // handed back. The form keeps what was typed, and no later echo -- anyone's -- clears it.
+        pendingReset = undefined;
+        render(message.html);
+      }
     } else if (message.type === "patch") {
       recordPatch(message.doc, message.version, message.ops);
       // An applet watching this document takes the ops itself (see Applet.patch): the delta is

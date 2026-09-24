@@ -47,6 +47,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unmounted every applet (the ticker's sparkline histories, a half-dressed figure). Now `#app` is
   made `inert` and marked `data-offline` -- the bento dims it and says "Reconnecting…" -- until
   the socket is open again and the server draws the page.
+- **A refused write keeps what is typed after it** (`src/client/app.ts`). A form waits for the
+  echo of a write to its document to reset; a refused one never had an echo, so the form went on
+  waiting, and the next echo of anyone's write to that document cleared what had been typed since.
+  The page handed back whole -- a refusal's answer -- ends the wait now. An echo still names a
+  document, not a write, so another person's echo that arrives before yours is answered resets
+  the form; telling "yours" needs a write id on the wire (not done).
 - **`inspect` gives at most 100 entries a document**, however many it asks for: `limit: 1e9` asked
   delta for a document's whole history, and every event waited on the answer. A limit that is not
   a whole number is the default (the latest).

@@ -183,8 +183,10 @@ HTML is the only vocabulary. No JSON tree of app state.
 
 An element writes through `data-write='{"doc","op","path"}'`:
 
-- a **form** writes on submit: its one field's value, or a record of several. It resets only when
-  its own write is echoed, so a refused write keeps what was typed;
+- a **form** writes on submit: its one field's value, or a record of several. It resets when a
+  write to its document is echoed; a refused write is answered with the page whole, which ends
+  the wait, so it keeps what was typed. An echo names a document, not a write: another person's
+  write to the same document, echoed before yours is answered, resets it too;
 - a **button or row** writes on click, with `data-value` if it has one. A click in a field never
   writes;
 - a form with **`data-write-on="blur"`, `"change"` or `"input"`** edits in place: `data-write` goes
