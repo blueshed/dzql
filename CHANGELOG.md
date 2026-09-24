@@ -5,6 +5,101 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Breaking (for example authors)
+
+- **eta keeps every document in delta.** `@blueshed/delta` is a dependency, and `Example.delta`
+  (the example's backends registered on a `createLocal()`) is required. The kernel keeps a copy of
+  each document a page reads, kept current from delta's one stream of changes, and draws
+  synchronously from it: `read("<docType>:<id>")` (`src/documents.ts`) gives a document as held,
+  and a read of one not held yet throws `Pending` -- the kernel loads it and draws again
+  (`settled()`). A write goes to delta as the person (`Example.who`, optional, default the
+  session), with the session as the cursor undo walks; the ledger is delta's.
+- **Gone from the kernel:** `migrate()` and the kernel's migrations, `src/ledger.ts` (its naming
+  helpers `prefixDoc` and `splitDoc` are in `src/names.ts`), `Compartment.write`, `notify`,
+  `renderRequested` and the event bus (`src/compartments/bus.ts`), `.env.example` and
+  `MIGRATIONS_DIR`. Every change is told from delta's stream, never by hand.
+- **The `Compartment` contract.** `write` is gone; a compartment permits and shapes, and delta
+  writes. New: `kind` (`written`, the default; `fact`, `live`, `sourced`, `static`), `at` (where
+  eta's paths sit in the document, `/sessions`), `shape(ws, docId, ops)` (the wire's ops as the
+  document takes them, for a fresh write only; shaping to nothing refuses the write), `changed(docId,
+  ops)` (after any change is told: keep a live document true) and `wrote(ws, docId, ops)` (after a
+  fresh write from this connection: what follows for the writer, such as putting a modal away).
+  `permit` is optional (omitted, nobody may write) and is given the document's id.
+- **A document is named whole on the wire**, `<docType>:<docId>` (`room:general`), in every echo, in
+  `inspect` and in `window.eta.docs()`, so one socket holds any documents. A bare type still means
+  the one this connection is on (`resolveDoc`). A session's own documents are marked `own` and go
+  by their type alone, since the id is a credential; a document keyed by a live session's id that
+  is not `own` is refused by name.
+- **A connection sees what its page read.** `Compartment.sees` is gone: while the kernel draws a
+  page it keeps every document the drawing read, and those, with the one of each type it is on,
+  are what the connection is told about and may write. Cut documents by who reads them.
+- **A page is sent in parts.** `Compartment.fragments` is gone. A render names its regions with
+  `part(key, html)` (`src/parts.ts`); the bento's cells, rows, keyed lists and drawers are parts
+  already. After a change the kernel draws each page that read the document again and sends what
+  differs: a part replaced, its tag alone (`tag`), a row put in (`after`, `before`) or taken out,
+  nothing when nothing changed, the page whole only when it is a different page. The render ops'
+  `add` is gone. The bento's `inertWhile` is replaced by `layers(page, drawer, modal)`: opening a
+  drawer or a modal sends its layer, not the page.
+- **Echoes are delta's.** delta tells a change as the rows it leaves: a field replaced goes out as
+  its row, whole. An applet that takes a document's patches (`data-doc`) holds the document whole
+  in its props, at `data-at`.
+
+#### Moving an example across
+
+1. Replace `migrations/` and `db.ts` with a `delta.ts`: the schema (`defineSchema`, tables named
+   `<example>_...`), `createTables` against `src/db`'s `db`, a seed run into empty tables, and the
+   documents on a `createLocal()` -- `registerDocs(..., { ledger: true })` for what is written and
+   undone, a registry of its own with no ledger for the tray, `registerMemory` for what is live.
+   Export it and set `delta` on the example. Chat's, the ticker's and the wedding's are the
+   pattern.
+2. A document module reads through `read("<docType>:<id>")` and adapts delta's rows into what the
+   views want; it keeps its pure rules (`after(state, ops)`) beside it. Nothing reads the database
+   directly.
+3. A compartment's `write` becomes `shape`: validate, trim, mint an id (`Bun.randomUUIDv7()`),
+   turn a nested wire path into the rows it moves, and return the ops; return nothing to refuse.
+   Undo and redo are delta's inverse, never shaped, so any replay-only branch goes.
+4. What followed a write by hand (`notify`, a render request, a presence broadcast) becomes
+   `changed` (keep a live document true: compute it whole, write the difference with
+   `serverWrite`) or `wrote` (what follows for the writer alone).
+5. Drop `sees` and `fragments`. Name the page's regions with `part()` where a change should travel
+   alone, and name documents whole wherever the page or an applet names one.
+
+### Changed
+
+- **Events are handled one at a time, in order**, each done when what it set going is; **changes
+  are told one at a time, in order**. A failing event, drawing or change listener is logged and
+  the next goes ahead.
+- **Chat, the ticker and the wedding keep their documents in delta**, each with a `delta.ts`
+  (schema, seed, documents) in place of its migrations. Chat's sessions and rooms are written, who
+  is here and the list of rooms are live. The ticker's market is a fact, never undone; a watchlist
+  and a clock are written; the desk is kept with no ledger. The wedding's documents are cut by who
+  reads them -- the couple's `board`, a `household`, the `wedding`'s lists, the `welcome`, and a
+  live `everyone` (who stands in the photo, and how many have claimed each gift) -- so a household
+  is never told another's email or code. The wire and every story sentence are unchanged.
+- **`inspect` lists every document a connection sees**, with delta's history for each.
+- **The stories check the patch stream**: each member's applet props, as last sent with every
+  patch since laid on, must equal what a fresh render gives. It found three faults in the ticker's
+  board and city picker, now fixed.
+- **Costs are measured again** (README): a chat message is 1,111 B to each other member, a tick
+  186 B, and another household hears only the photo's changed figure.
+- **The release gate is named**: `bun run check` (`tsc --noEmit`, now clean), `bun test` and
+  `bun run stories:all`, run by the shared `/publish` (`.claude/commands/publish.md`). The eta-app
+  skill carries a `version:` line for it to stamp.
+- **Docs**: the README is for someone deciding whether to use eta; the eta-app skill, its
+  reference and `CLAUDE.md` describe the kernel on delta. Nothing points at the owner's working
+  notes outside the repository.
+
+### Fixed
+
+- **An earlier example's copy of the documents still told changes**, so a later server over the
+  same delta echoed each twice. Only the active example's copy tells now.
+- **Stopping one server of an example cleared it for the servers still running.** It is cleared
+  when its last server stops.
+- **Chat's room grew past its 50 messages** on an open page, since the hand-written fragment only
+  appended; parts take the oldest out.
+
 ## [0.46.0] - 2026-09-17
 
 ### Changed
