@@ -88,7 +88,7 @@ to the couple for the wedding's green top. `CHANGELOG.md` has the steps between.
 ```
 bun run dev          # chat, watching for changes (dev:wedding, dev:ticker too)
 bun run start        # detached, in production mode; bun run stop stops it
-bun test             # the tests; below 100% coverage the run fails
+bun test             # the tests; below 100% coverage the run fails (on Linux, BUN_CHROME_PATH names a Chrome for the browser tests)
 bun run check        # the type check
 bun run stories      # one example's stories; stories:all runs every example's
 bun run cli <verb>   # a terminal client: inspect, watch, undo, redo, write, and the example's own

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { waitFor } from "../webview";
 import fixture from "./app.test.html";
 
 let server: ReturnType<typeof Bun.serve>;
@@ -25,21 +26,6 @@ afterAll(() => {
   server.stop(true);
 });
 
-async function waitFor(
-  view: Bun.WebView,
-  script: string,
-  predicate: (value: unknown) => boolean,
-  timeout = 5000,
-): Promise<unknown> {
-  const start = Date.now();
-  let last: unknown;
-  while (Date.now() - start < timeout) {
-    last = await view.evaluate(script);
-    if (predicate(last)) return last;
-    await Bun.sleep(20);
-  }
-  throw new Error(`Timed out waiting for \`${script}\`; last value: ${JSON.stringify(last)}`);
-}
 
 /** Opens a fresh view on the fixture and waits for app.ts's socket to be open. */
 async function open(): Promise<Bun.WebView> {
@@ -288,6 +274,11 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
       ops: [{ op: "replace", path: "/filter/guests", value: "xyz" }],
     });
   });
+  test("waitFor says what it waited for, and the last value it saw, when the wait runs out", async () => {
+    await using view = await open();
+    expect(waitFor(view, `1 + 1`, (v) => v === 3, 60)).rejects.toThrow("Timed out waiting for `1 + 1`; last value: 2");
+  });
+
   test("after an undo, a field nobody is in shows the value undone to, and leaving another field sends nothing again", async () => {
     await using view = await open();
     await stubSend(view);

@@ -75,9 +75,12 @@ Everything below is the least that makes it pass.
 9. **`cli.ts`** (optional) -- an `aliases` table of short verbs that build `{doc, ops}`; no database.
 10. **Tests** -- a test for each document's rules and shapes, a `server.test.ts` that drives writes
     and undo over a real websocket (for what a story cannot say: a tab closing, two writes racing), a
-    `client/app.test.ts` for what only a browser can show. The gate is `bun run check`,
-    `bun test` (100% coverage) and `bun run stories:all`; verify a bug fix by reverting it and
-    watching the test fail.
+    `client/app.test.ts` for what only a browser can show (`Bun.WebView`: open each view at
+    `at(view, server.url)` and wait with `waitFor`, both `src/webview.ts`, so each is a browser of
+    its own on Chrome too). The gate is `bun run check`, `bun test` (100% coverage) and
+    `bun run stories:all`; verify a bug fix by reverting it and watching the test fail. On Linux
+    the browser tests need Chrome or Chromium: `BUN_CHROME_PATH` names it
+    (`/opt/chromium/chrome-shim.sh` where a sandbox has staged one).
 
 None of this needs a file under `src/` edited. When it seems to, read `reference.md`'s "When it
 looks like you need to touch `src/`" first: a missing seam is rare, and a workaround is never it.

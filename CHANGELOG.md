@@ -62,6 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Two compartments owning one document type throw** when the example is assembled, naming the
   type (the kernel's own `ledger` among them). Before, the last silently won.
 
+- **The browser tests pass on Chrome** (Linux, the Claude Code sandbox). Every `Bun.WebView` of
+  a process shares one Chrome profile there, and a cookie ignores the port, so each view after a
+  test's first opened already signed in, and waited for ever for the name form: 19 failed. Each
+  view now goes to a host of its own (`view3.localhost`: Chrome takes every `*.localhost` to this
+  machine) through `at(view, server.url, path?)` in `src/webview.ts`; WebKit's views are apart
+  already. The four copies of `waitFor` are that file's one.
+
 ### Added
 
 - **`failed(what, err)` and `onFailure(fn)`** (`src/failed.ts`): every failure the kernel catches

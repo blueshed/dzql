@@ -122,8 +122,9 @@ describe("what a couple's write becomes", () => {
     expect(course!.value).toEqual({ name: "Cheese", seq: 5 });
     const [dish] = shaped({ op: "add", path: "/courses/2/dishes/-", value: { name: "Tagine", dietary: "vg", seq: 1, nope: 1 } });
     expect(dish!.value).toEqual({ name: "Tagine", dietary: "vg", seq: 4, courses_id: "2" });
-    expect(shaped({ op: "add", path: "/gifts/-", value: { name: "A tree", shared: "yes" } })[0]!.value).toEqual({ name: "A tree", shared: 1, seq: 4 });
-    expect(shaped({ op: "add", path: "/gifts/-", value: { name: "A kettle" } })[0]!.value).toEqual({ name: "A kettle", shared: 0, seq: 4 });
+    const next = read()!.gifts.length + 1; // the seed's three, and any another test file has added
+    expect(shaped({ op: "add", path: "/gifts/-", value: { name: "A tree", shared: "yes" } })[0]!.value).toEqual({ name: "A tree", shared: 1, seq: next });
+    expect(shaped({ op: "add", path: "/gifts/-", value: { name: "A kettle" } })[0]!.value).toEqual({ name: "A kettle", shared: 0, seq: next });
     expect(shaped({ op: "add", path: "/courses/-", value: { dietary: "no name" } }, { op: "replace", path: "/courses/-", value: "x" }, { op: "add", path: "/courses/-/name", value: "x" })).toEqual([]);
 
     expect(shaped({ op: "replace", path: "/courses/4/seq", value: "2" })).toEqual([
