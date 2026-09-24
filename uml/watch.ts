@@ -29,6 +29,26 @@ function loadStories() {
   else console.error(`✗ stories.ts: ${read.stderr.toString().trim()}`);
 }
 if (await Bun.file(STORIES).exists()) loadStories();
+
+// A model with a canvas.ts draws itself end to end on one canvas (dist/stories.svg), again whenever a
+// diagram, the stories or the canvas's layout changes; the canvas also gives the diagrams their order.
+const CANVAS = `${dir}/canvas.ts`;
+let order: string[] = [];
+const rank = (name: string) => (order.includes(name) ? order.indexOf(name) : order.length);
+let canvasTimer: Timer | undefined;
+function canvasSoon() {
+  clearTimeout(canvasTimer);
+  canvasTimer = setTimeout(async () => {
+    if (!(await Bun.file(CANVAS).exists())) return;
+    const drew = Bun.spawnSync(["bun", CANVAS]);
+    const out = drew.exitCode === 0 ? JSON.parse(drew.stdout.toString()) : { ok: false, warnings: [], error: drew.stderr.toString().trim() };
+    order = out.order ?? order;
+    const d: Diagram = { name: "stories", ok: out.ok, at: Date.now(), kind: "canvas" as Kind, drift: out.warnings, ...(out.error ? { error: out.error } : {}) };
+    diagrams.set("stories", d);
+    console.log(`${d.ok ? "✓" : "✗"} stories.svg (the canvas)${d.error ? ` — ${d.error}` : ""}${d.drift?.length ? ` — ${d.drift.join("; ")}` : ""}`);
+    tell({ type: "changed", diagram: d });
+  }, 250);
+}
 const cited = new Map<string, Set<number>>();
 const PLANTUML = process.env.PLANTUML_URL ?? `http://localhost:${process.env.PLANTUML_PORT ?? 8089}`;
 const PORT = Number(process.env.PORT ?? 3700);
@@ -105,6 +125,7 @@ async function render(file: string): Promise<void> {
     console.log(`${res.ok ? "✓" : "✗"} ${name}.svg${d.error ? ` — ${d.error}` : ""}${d.drift?.length ? ` — drifts from ${against}: ${d.drift.join("; ")}` : ""}`);
     tell({ type: "changed", diagram: d });
     if (!stories && linkedTo(kind)) await redrawLinking();
+    if (stories) canvasSoon();
   } catch (e) {
     const d: Diagram = { name, ok: false, at: Date.now(), error: `PlantUML is not answering at ${PLANTUML} (${(e as Error).message}). Is it up? docker compose up -d --wait` };
     diagrams.set(name, d);
@@ -124,12 +145,13 @@ const server = Bun.serve({
   port: PORT,
   routes: {
     "/": index,
-    "/list": () => Response.json([...diagrams.values()].sort((a, b) => a.name.localeCompare(b.name))),
+    "/list": () => Response.json([...diagrams.values()].sort((a, b) => rank(a.name) - rank(b.name) || a.name.localeCompare(b.name))),
     "/svg/:name": async (req) => {
       const f = Bun.file(`${DIST}/${req.params.name}.svg`);
       return (await f.exists()) ? new Response(f, { headers: { "Content-Type": "image/svg+xml", "Cache-Control": "no-store" } }) : new Response("no such diagram", { status: 404 });
     },
     "/src/:name": async (req) => {
+      if (req.params.name === "stories" && (await Bun.file(CANVAS).exists())) return new Response(Bun.file(CANVAS), { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
       const files = (await readdir(SRC)).filter((f) => isSource(f) && nameOf(f) === req.params.name);
       return files[0] ? new Response(Bun.file(`${SRC}/${files[0]}`), { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } }) : new Response("no such source", { status: 404 });
     },
@@ -165,6 +187,11 @@ watch(dir, (_event, file) => {
   }, 120);
 });
 
+if (stories) {
+  canvasSoon();
+  watch(dir, (_event, file) => { if (file === "canvas.ts") canvasSoon(); });
+}
+
 // stories.ts re-exports the example's stories: watch the file they are told in.
 if (stories) {
   const told = (await Bun.file(STORIES).text()).match(/from\s+"([^"]+)"/)?.[1];
@@ -175,6 +202,7 @@ if (stories) {
     storiesTimer = setTimeout(async () => {
       loadStories();
       await checkAll();
+      canvasSoon();
       for (const f of await readdir(SRC)) if (isSource(f)) soon(f);
     }, 120);
   });

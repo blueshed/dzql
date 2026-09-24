@@ -48,7 +48,7 @@ export function ends(puml: string): Set<string> {
 }
 
 /** Each state's value: its name, or what its alias stands for (`state "granted" as own`). */
-function values(puml: string): (state: string) => string {
+export function values(puml: string): (state: string) => string {
   const alias = new Map([...puml.matchAll(/^\s*state\s+"([^"]+)"\s+as\s+(\w+)/gm)].map((m) => [m[2]!, m[1]!]));
   return (state) => alias.get(state) ?? state;
 }
