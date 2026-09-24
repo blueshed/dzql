@@ -48,6 +48,4 @@ RoomDoc *-- messages : includes
 SessionDoc *-- sessions : root
 rooms "1" -- "0..*" messages : holds >
 
-note right of RoomDoc : members: transient,\nno table, kept in memory
-note right of LobbyDoc : transient: no table,\nkept in memory
 @enduml
