@@ -212,6 +212,27 @@ svg.edges path.hot.refused { stroke: var(--refuse); }
 .classes .docs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .classes .docs .lab { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
 .classes .docs .chip[aria-pressed="true"] { outline: 1.5px solid currentColor; }
+.usecases { padding: 14px 18px 20px; overflow: auto; display: grid; gap: 10px; align-content: start; }
+.usecases .sub { color: var(--muted); font-size: 12px; }
+.usecases svg text { fill: var(--ink); font: 12px "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.usecases svg .boundary rect { fill: none; stroke: var(--doc); stroke-width: 1.4; }
+.usecases svg .boundary text { fill: var(--doc); font-weight: 700; font-size: 12px; }
+.usecases svg .boundary.tray rect { stroke: var(--muted); stroke-dasharray: 4 4; }
+.usecases svg .boundary.tray text { fill: var(--muted); }
+.usecases svg .uc rect { fill: var(--card); stroke: var(--edge); }
+.usecases svg .uc.cannot rect { stroke: var(--refuse); fill: var(--refuse-soft); }
+.usecases svg .uc.cannot text { fill: var(--refuse); }
+.usecases svg .uc.hot rect { stroke: var(--accent); stroke-width: 2.6; fill: var(--accent-soft); }
+.usecases svg .uc .badge { font: 600 10px var(--mono); fill: var(--pass); }
+.usecases svg .uc .badge.fail { fill: var(--refuse); }
+.usecases svg .figure line, .usecases svg .figure circle { stroke: var(--actor); stroke-width: 1.6; fill: none; }
+.usecases svg .figure text { fill: var(--actor); font-weight: 700; font-size: 11.5px; }
+.usecases svg .figure.hot line, .usecases svg .figure.hot circle { stroke: var(--accent); stroke-width: 2.4; }
+.usecases svg .tells { stroke: var(--actor); stroke-width: 1.1; opacity: .7; }
+.usecases svg .sees { stroke: var(--pass); stroke-width: 1.1; stroke-dasharray: 4 4; opacity: .7; }
+.usecases svg .tells.hot, .usecases svg .sees.hot { stroke: var(--accent); stroke-width: 2.2; opacity: 1; }
+.usecases svg.dim .uc:not(.hot), .usecases svg.dim .tells:not(.hot), .usecases svg.dim .sees:not(.hot) { opacity: .35; }
+.usecases svg a { cursor: pointer; }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; padding: 8px 18px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
 .legend i { display: inline-block; width: 22px; height: 0; border-top: 1.5px solid var(--edge); vertical-align: middle; margin-right: 5px; }
 .legend i.r { border-top: 1.5px dashed var(--refuse); } .legend i.k { border-top-width: 2.5px; }
@@ -276,10 +297,11 @@ table.grid { width: 100%; border-collapse: collapse; background: var(--card); bo
         <div class="scroll" id="stories"></div>
       </section>
       <section class="panel canvas-panel">
-        <h2><span class="switch"><button data-center="model" aria-pressed="true">Model</button><button data-center="sequence" aria-pressed="false">Sequence</button><button data-center="states" aria-pressed="false">States</button><button data-center="classes" aria-pressed="false">Classes</button></span><span id="center-sub">actors → documents → tables</span></h2>
+        <h2><span class="switch"><button data-center="model" aria-pressed="true">Model</button><button data-center="usecases" aria-pressed="false">Use cases</button><button data-center="sequence" aria-pressed="false">Sequence</button><button data-center="states" aria-pressed="false">States</button><button data-center="classes" aria-pressed="false">Classes</button></span><span id="center-sub">actors → documents → tables</span></h2>
         <div class="scroll seq" id="sequence" hidden></div>
         <div class="scroll states" id="states" hidden></div>
         <div class="scroll classes" id="classes" hidden></div>
+        <div class="scroll usecases" id="usecases" hidden></div>
         <div class="scroll canvas" id="canvas">
           <svg class="edges" id="edges"></svg>
           <div class="cols">
@@ -838,6 +860,70 @@ function renderClasses() {
     ${classSVG()}`;
 }
 
+// ── use cases: the stories, one boundary per document; who tells on the left, who notices on the right ──
+function wrapText(text, max) {
+  const lines = [];
+  let line = "";
+  for (const w of text.split(" ")) {
+    if ((line + " " + w).trim().length > max) { lines.push(line.trim()); line = w; } else line += " " + w;
+  }
+  if (line.trim()) lines.push(line.trim());
+  return lines;
+}
+function figure(x, y, name, hot) {
+  return `<a data-actor="${esc(name)}"><g class="figure ${hot ? "hot" : ""}"><circle cx="${x}" cy="${y - 16}" r="6"/><line x1="${x}" y1="${y - 10}" x2="${x}" y2="${y + 6}"/><line x1="${x - 9}" y1="${y - 4}" x2="${x + 9}" y2="${y - 4}"/><line x1="${x}" y1="${y + 6}" x2="${x - 7}" y2="${y + 17}"/><line x1="${x}" y1="${y + 6}" x2="${x + 7}" y2="${y + 17}"/><text x="${x}" y="${y + 31}" text-anchor="middle">${esc(name)}</text></g></a>`;
+}
+function spread(items, gap) { // actors at the mean height of their lines, pushed apart so none overlap
+  items.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < items.length; i++) if (items[i].y - items[i - 1].y < gap) items[i].y = items[i - 1].y + gap;
+  return items;
+}
+function useCaseSVG() {
+  const n = storyN();
+  const LX = 50, BX = 110, EX = 130, EW = 360, RX = EX + EW + 110, W = RX + 60;
+  const groups = Object.entries(Object.groupBy(S, (s) => (s.tray ? DATA.tray : s.doc)));
+  groups.sort(([a], [b]) => (a === DATA.tray) - (b === DATA.tray) || a.localeCompare(b));
+  const out = [];
+  let y = 10;
+  for (const [doc, stories] of groups) {
+    const top = y;
+    y += 34;
+    const ys = new Map();
+    const ucs = [];
+    for (const s of [...stories].sort((a, b) => a.as.localeCompare(b.as) || a.n - b.n)) {
+      const lines = wrapText(s.name, 58);
+      const h = 14 + lines.length * 15;
+      ys.set(s.n, y + h / 2);
+      const hot = s.n === n;
+      const badge = s.failures.length ? `<text class="badge fail" x="${EX + EW - 10}" y="${y + 14}" text-anchor="end">✗</text>` : `<text class="badge" x="${EX + EW - 10}" y="${y + 14}" text-anchor="end">A</text>`;
+      ucs.push(`<a data-story="${s.n}"><g class="uc ${s.kind} ${hot ? "hot" : ""}" data-uc="${s.n}"><rect x="${EX}" y="${y}" width="${EW}" height="${h}" rx="${h / 2}"/>${lines.map((l, i) => `<text x="${EX + 22}" y="${y + 18 + i * 15}">${i === 0 && s.kind === "cannot" ? "cannot · " : ""}${esc(l)}</text>`).join("")}${badge}</g></a>`);
+      y += h + 8;
+    }
+    const bottom = y + 6;
+    out.push(`<g class="boundary ${doc === DATA.tray ? "tray" : ""}"><rect x="${BX}" y="${top}" width="${EW + 40}" height="${bottom - top}" rx="10"/><text x="${BX + 12}" y="${top + 20}">${doc === DATA.tray ? `${esc(doc)}: the visit (the page's own state)` : `${esc(doc)}:`}</text></g>`, ...ucs);
+    // who tells, on the left; who notices, on the right
+    const tellers = spread(Object.entries(Object.groupBy(stories, (s) => s.as)).map(([a, ss]) => ({ a, ss, y: ss.reduce((t, s) => t + ys.get(s.n), 0) / ss.length })), 64);
+    for (const { a, ss, y: ay } of tellers) {
+      for (const s of ss) out.push(`<line class="tells ${s.n === n ? "hot" : ""}" x1="${LX + 12}" y1="${ay - 4}" x2="${EX}" y2="${ys.get(s.n)}"/>`);
+      out.push(figure(LX, ay, a, ss.some((s) => s.n === n)));
+    }
+    const noticed = new Map();
+    for (const s of stories) for (const m of Object.keys(s.seen)) if (m !== s.as) noticed.set(m, [...(noticed.get(m) ?? []), s]);
+    const seers = spread([...noticed].map(([a, ss]) => ({ a, ss, y: ss.reduce((t, s) => t + ys.get(s.n), 0) / ss.length })), 64);
+    for (const { a, ss, y: ay } of seers) {
+      for (const s of ss) out.push(`<line class="sees ${s.n === n ? "hot" : ""}" x1="${EX + EW}" y1="${ys.get(s.n)}" x2="${RX - 12}" y2="${ay - 4}"/>`);
+      out.push(figure(RX, ay, a, ss.some((s) => s.n === n)));
+    }
+    y = Math.max(bottom, ...tellers.map((t) => t.y + 40), ...seers.map((t) => t.y + 40)) + 18;
+  }
+  return `<svg class="${n !== null ? "dim" : ""}" width="${W}" height="${y}" viewBox="0 0 ${W} ${y}" role="img" aria-label="Use cases">${out.join("")}</svg>`;
+}
+function renderUseCases() {
+  $("#usecases").innerHTML = `<div class="sub">Every story as a use case, inside the document it writes. On the left, who tells it; on the right, dashed, who the story says notices it. <b>A</b> means the harness passes it; <span style="color:var(--refuse)">cannot</span> is a refusal.</div>${useCaseSVG()}`;
+  const hot = $("#usecases [data-uc].hot");
+  if (hot) hot.scrollIntoView({ block: "nearest" });
+}
+
 function renderChecklist() {
   const rows = DATA.cast.map((a) => {
     const mine = S.filter((s) => s.as === a);
@@ -863,10 +949,10 @@ document.addEventListener("click", (e) => {
   if (d.center) {
     for (const t of document.querySelectorAll("[data-center]")) t.setAttribute("aria-pressed", t === b);
     const view = d.center;
-    $("#sequence").hidden = view !== "sequence"; $("#states").hidden = view !== "states"; $("#classes").hidden = view !== "classes"; $("#canvas").hidden = view !== "model";
+    $("#sequence").hidden = view !== "sequence"; $("#states").hidden = view !== "states"; $("#classes").hidden = view !== "classes"; $("#usecases").hidden = view !== "usecases"; $("#canvas").hidden = view !== "model";
     for (const l of document.querySelectorAll(".legend")) l.hidden = view !== "model";
-    $("#center-sub").textContent = { model: "actors → documents → tables", sequence: "one story, from its run", states: "what moves, from the ledger", classes: "the tables, and what stories do to them" }[view];
-    if (view === "sequence") renderSequence(); else if (view === "states") { followStory(); renderStates(); } else if (view === "classes") renderClasses(); else drawEdges();
+    $("#center-sub").textContent = { model: "actors → documents → tables", sequence: "one story, from its run", states: "what moves, from the ledger", classes: "the tables, and what stories do to them", usecases: "who does what, in which document" }[view];
+    if (view === "sequence") renderSequence(); else if (view === "states") { followStory(); renderStates(); } else if (view === "classes") renderClasses(); else if (view === "usecases") renderUseCases(); else drawEdges();
     return;
   }
   if (d.machine) { machineSel = d.machine; renderStates(); return; }
@@ -896,6 +982,7 @@ document.addEventListener("click", (e) => {
   if (!$("#sequence").hidden) renderSequence();
   if (!$("#states").hidden) { followStory(); renderStates(); }
   if (!$("#classes").hidden) renderClasses();
+  if (!$("#usecases").hidden) renderUseCases();
 });
 
 CHECKS = checksNow();
