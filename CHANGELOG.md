@@ -91,6 +91,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Islands: an applet written as a railroad component** (`island(render, reduce?)`,
+  `src/island.ts`). eta depends on `@blueshed/railroad` `^0.12.0`, and the tsconfig says
+  `jsx: "react-jsx"`, `jsxImportSource: "@blueshed/railroad"`. `render(props, ctx, el)` gets its
+  props as a signal and reads what the server drew inside `el` before it is replaced; `update` sets
+  the props, and `reduce(props, ops)`, when given, is the applet's `patch`. Built on railroad's
+  `signal` and `mount` alone; it draws only inside its element and never binds that element's
+  attributes, which stay the morph's. The kernel's client does not import it: a page with an
+  island carries railroad (about 2 KB gzipped for `signal` and `mount`, 4 KB with `list`).
 - **`failed(what, err)` and `onFailure(fn)`** (`src/failed.ts`): every failure the kernel catches
   -- a message, a drawing, a change being told -- is logged in one place and heard by whoever
   listens. The stories harness listens.
