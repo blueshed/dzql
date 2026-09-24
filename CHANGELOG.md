@@ -15,13 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   synchronously from it: `read("<docType>:<id>")` (`src/documents.ts`) gives a document as held,
   and a read of one not held yet throws `Pending` -- the kernel loads it and draws again
   (`settled()`). A write goes to delta as the person (`Example.who`, optional, default the
-  session), with the session as the cursor undo walks; the ledger is delta's.
+  session), with the session as the cursor undo walks; the ledger is delta's. Until delta's
+  0.6.0 is on npm, eta needs it from a checkout at `../blueshed/delta`: `createLocal`, documents
+  that are `implied`, and the ledger's undo, redo and history are all new there.
 - **Gone from the kernel:** `migrate()` and the kernel's migrations, `src/ledger.ts` (its naming
   helpers `prefixDoc` and `splitDoc` are in `src/names.ts`), `Compartment.write`, `notify`,
-  `renderRequested` and the event bus (`src/compartments/bus.ts`), `.env.example` and
-  `MIGRATIONS_DIR`. Every change is told from delta's stream, never by hand.
+  `renderRequested` and the event bus (`src/compartments/bus.ts`), and `MIGRATIONS_DIR` (from
+  `.env.example` too). Every change is told from delta's stream, never by hand.
 - **The `Compartment` contract.** `write` is gone; a compartment permits and shapes, and delta
-  writes. New: `kind` (`written`, the default; `fact`, `live`, `sourced`, `static`), `at` (where
+  writes. New: `own` (its documents are keyed by the session id: seen by that session alone and
+  named by type), `kind` (`written`, the default; `fact`, `live`, `sourced`, `static`), `at` (where
   eta's paths sit in the document, `/sessions`), `shape(ws, docId, ops)` (the wire's ops as the
   document takes them, for a fresh write only; shaping to nothing refuses the write), `changed(docId,
   ops)` (after any change is told: keep a live document true) and `wrote(ws, docId, ops)` (after a
@@ -43,28 +46,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `add` is gone. The bento's `inertWhile` is replaced by `layers(page, drawer, modal)`: opening a
   drawer or a modal sends its layer, not the page.
 - **Echoes are delta's.** delta tells a change as the rows it leaves: a field replaced goes out as
-  its row, whole. An applet that takes a document's patches (`data-doc`) holds the document whole
-  in its props, at `data-at`.
+  its row, whole (`replace /ALPH {...}`), and a field of a document whose root is one row as the
+  root (`replace "" {tz}`). An applet that takes a document's patches (`data-doc`, named whole)
+  holds the document in its props as delta holds it, rows and all, at `data-at`.
 
 #### Moving an example across
+
+The examples are demos, and their data is not carried over: each example's tables are now named
+`<example>_...` (`chat_messages`, `wedding_guests`), made fresh and seeded. The old tables are
+left in the database as they were, and nothing migrates them. Compare the ticker's port
+(`git diff 63cad94 HEAD -- examples/ticker`) with these steps.
 
 1. Replace `migrations/` and `db.ts` with a `delta.ts`: the schema (`defineSchema`, tables named
    `<example>_...`), `createTables` against `src/db`'s `db`, a seed run into empty tables, and the
    documents on a `createLocal()` -- `registerDocs(..., { ledger: true })` for what is written and
-   undone, a registry of its own with no ledger for the tray, `registerMemory` for what is live.
-   Export it and set `delta` on the example. Chat's, the ticker's and the wedding's are the
-   pattern.
+   undone, `registerMemory` for what is live, and a registry with no ledger for a tray whose visits
+   are not history. Export it and set `delta` on the example. Chat's, the ticker's and the
+   wedding's are the pattern; delta's `delta-doc` skill says how to write the schema and documents.
 2. A document module reads through `read("<docType>:<id>")` and adapts delta's rows into what the
-   views want; it keeps its pure rules (`after(state, ops)`) beside it. Nothing reads the database
-   directly.
-3. A compartment's `write` becomes `shape`: validate, trim, mint an id (`Bun.randomUUIDv7()`),
+   views want; it keeps its pure rules (`after(state, ops)`) beside it. A page's reads all go this
+   way. Reads that go to the tables directly are the ones no page reads as a document: what a live
+   document is computed from, a credential looked up (a code), a blob (a picture), a rule checked
+   across rows.
+3. Mark every compartment whose documents are keyed by the session id `own: true` (a session, a
+   desk, a watchlist, a clock). Give a compartment `at` where its fields sit under the document's
+   root (`/quotes`, `/watchlists`, `/clocks`), so the wire keeps its short paths. A write that was
+   recorded as not undoable is `kind: "fact"`; a document the server keeps is `kind: "live"`.
+4. A compartment's `write` becomes `shape`: validate, trim, mint an id (`Bun.randomUUIDv7()`),
    turn a nested wire path into the rows it moves, and return the ops; return nothing to refuse.
    Undo and redo are delta's inverse, never shaped, so any replay-only branch goes.
-4. What followed a write by hand (`notify`, a render request, a presence broadcast) becomes
+5. What followed a write by hand (`notify`, a render request, a presence broadcast) becomes
    `changed` (keep a live document true: compute it whole, write the difference with
-   `serverWrite`) or `wrote` (what follows for the writer alone).
-5. Drop `sees` and `fragments`. Name the page's regions with `part()` where a change should travel
+   `serverWrite`) or `wrote` (what follows for the writer alone, such as closing the modal that
+   asked). `serverWrite` goes straight to delta, so it takes the document's own paths, not eta's:
+   `/desks/page`, `/quotes${path}`.
+6. Drop `sees` and `fragments`. Name the page's regions with `part()` where a change should travel
    alone, and name documents whole wherever the page or an applet names one.
+7. Replace `inertWhile(open, page)` with `layers(page, drawer, modal)`, so a drawer or a modal
+   travels as its own layer.
+8. An applet that takes its document's patches: name the document whole in `data-doc`
+   (`ticker:market`), say where its props sit in it with `data-at` (`/quotes`), give it the rows
+   as delta holds them, and have `patch` take delta's row-shaped ops -- a quote replaced whole
+   (`replace /ALPH {price, prev, ...}`), a one-row document replaced at its root
+   (`replace "" {tz}`) -- not a single field. The stories check that the ops land.
 
 ### Changed
 
@@ -82,14 +106,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The stories check the patch stream**: each member's applet props, as last sent with every
   patch since laid on, must equal what a fresh render gives. It found three faults in the ticker's
   board and city picker, now fixed.
-- **Costs are measured again** (README): a chat message is 1,111 B to each other member, a tick
-  186 B, and another household hears only the photo's changed figure.
+- **Every measured cost went up** since 0.46.0 (README, "What a write costs"): a chat message is
+  1,111 B to each other member (was 425 B), a tick 186 B (was 104 B), and a household a change does
+  not concern is sent 302 B (was nothing). Why: delta tells a change as the whole row it leaves,
+  not the field; a row's time-ordered id, 36 characters, is written three times in each list row
+  sent; chat's window of 50 messages slides on every message (the oldest taken out, the
+  new first one redrawn, the new one put in -- nothing is sent twice, and 0.46.0's append-only
+  fragment was wrong); and the wedding's other households now read the public `everyone` document,
+  so they are told its changes (the photo's one changed figure, with no HTML).
 - **The release gate is named**: `bun run check` (`tsc --noEmit`, now clean), `bun test` and
   `bun run stories:all`, run by the shared `/publish` (`.claude/commands/publish.md`). The eta-app
   skill carries a `version:` line for it to stamp.
 - **Docs**: the README is for someone deciding whether to use eta; the eta-app skill, its
-  reference and `CLAUDE.md` describe the kernel on delta. Nothing points at the owner's working
-  notes outside the repository.
+  reference and `CLAUDE.md` describe the kernel on delta. The kernel, `CLAUDE.md`, the README and
+  the skill no longer point at notes outside the repository.
 
 ### Fixed
 
@@ -97,6 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same delta echoed each twice. Only the active example's copy tells now.
 - **Stopping one server of an example cleared it for the servers still running.** It is cleared
   when its last server stops.
+- **`inspect` gave every entry the id 0.** It gives the ledger entry's own.
 - **Chat's room grew past its 50 messages** on an open page, since the hand-written fragment only
   appended; parts take the oldest out.
 
