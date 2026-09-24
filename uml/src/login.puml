@@ -5,7 +5,7 @@ participant "The app" as app
 database "Users" as users
 database "Sessions" as sessions
 
-User -> app : email, password
+User -> app : login(email, password)
 app -> users : find by email
 alt the password matches
   app -> sessions : start a session for the user

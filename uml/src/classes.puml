@@ -5,7 +5,7 @@ hide empty methods
 class User {
   id
   email
-  password : hashed
+  passwordHash
 }
 
 class Session {
@@ -13,6 +13,7 @@ class Session {
   user
   started at
   expires at
+  state : SessionState
 }
 
 User "1" -- "0..*" Session : logs in as >

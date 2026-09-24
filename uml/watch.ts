@@ -10,14 +10,37 @@
 import { watch } from "node:fs";
 import { readdir, rm } from "node:fs/promises";
 import index from "./index.html";
+import { check, readTypes, undrawn, type Kind, type Types } from "./check";
 
 const dir = import.meta.dir;
 const SRC = `${dir}/src`, DIST = `${dir}/dist`;
 const PLANTUML = process.env.PLANTUML_URL ?? `http://localhost:${process.env.PLANTUML_PORT ?? 8089}`;
 const PORT = Number(process.env.PORT ?? 3700);
 
-type Diagram = { name: string; ok: boolean; at: number; error?: string };
+type Diagram = { name: string; ok: boolean; at: number; error?: string; kind?: Kind; drift?: string[] };
 const diagrams = new Map<string, Diagram>();
+
+// types.ts: every name the diagrams use. Each diagram is checked against it; a change to it
+// re-checks them all.
+const TYPES = `${dir}/types.ts`;
+let types: Types = { interfaces: new Map(), unions: new Map() };
+const checked = new Map<string, ReturnType<typeof check>>();
+async function loadTypes() {
+  const f = Bun.file(TYPES);
+  types = readTypes((await f.exists()) ? await f.text() : "");
+}
+async function checkOne(name: string, file: string) {
+  const c = check(name, await Bun.file(`${SRC}/${file}`).text(), types);
+  checked.set(name, c);
+  const d = diagrams.get(name);
+  if (d) Object.assign(d, { kind: c.kind, drift: c.drift });
+}
+async function checkAll() {
+  for (const f of await readdir(SRC)) if (isSource(f)) await checkOne(nameOf(f), f);
+  const drifting = [...checked.values()].filter((c) => c.drift.length);
+  console.log(drifting.length ? `≠ types.ts: ${drifting.map((c) => `${c.name} (${c.drift.length})`).join(", ")}` : "= types.ts: every diagram agrees");
+  tell({ type: "checked" });
+}
 
 const isSource = (f: string) => /\.(puml|plantuml|pu|uml)$/.test(f);
 const nameOf = (f: string) => f.replace(/\.[^.]+$/, "");
@@ -27,6 +50,7 @@ async function render(file: string): Promise<void> {
   const source = Bun.file(`${SRC}/${file}`);
   if (!(await source.exists())) {
     diagrams.delete(name);
+    checked.delete(name);
     await rm(`${DIST}/${name}.svg`, { force: true });
     return tell({ type: "removed", name });
   }
@@ -39,7 +63,8 @@ async function render(file: string): Promise<void> {
     // PlantUML answers a diagram it cannot read with 400 and an SVG that says why.
     const d: Diagram = { name, ok: res.ok, at: Date.now(), ...(res.ok ? {} : { error: res.headers.get("x-plantuml-diagram-error") ?? "PlantUML could not read it" }) };
     diagrams.set(name, d);
-    console.log(`${res.ok ? "✓" : "✗"} ${name}.svg${d.error ? ` — ${d.error}` : ""}`);
+    await checkOne(name, file);
+    console.log(`${res.ok ? "✓" : "✗"} ${name}.svg${d.error ? ` — ${d.error}` : ""}${d.drift?.length ? ` — drifts from types.ts: ${d.drift.join("; ")}` : ""}`);
     tell({ type: "changed", diagram: d });
   } catch (e) {
     const d: Diagram = { name, ok: false, at: Date.now(), error: `PlantUML is not answering at ${PLANTUML} (${(e as Error).message}). Is it up? docker compose up -d --wait` };
@@ -69,6 +94,10 @@ const server = Bun.serve({
       const files = (await readdir(SRC)).filter((f) => isSource(f) && nameOf(f) === req.params.name);
       return files[0] ? new Response(Bun.file(`${SRC}/${files[0]}`), { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } }) : new Response("no such source", { status: 404 });
     },
+    "/types": async () => {
+      const f = Bun.file(TYPES);
+      return Response.json({ source: (await f.exists()) ? await f.text() : "", undrawn: undrawn(types, [...checked.values()]) });
+    },
     "/live": (req, srv) => (srv.upgrade(req) ? undefined : new Response("expected a WebSocket", { status: 400 })),
   },
   websocket: {
@@ -78,7 +107,15 @@ const server = Bun.serve({
 });
 function tell(message: object) { server.publish("uml", JSON.stringify(message)); }
 
+await loadTypes();
 for (const f of await readdir(SRC)) if (isSource(f)) await render(f);
+await checkAll();
 watch(SRC, (_event, file) => { if (file && isSource(file)) soon(file); });
+let typesTimer: Timer | undefined;
+watch(dir, (_event, file) => {
+  if (file !== "types.ts") return;
+  clearTimeout(typesTimer);
+  typesTimer = setTimeout(async () => { await loadTypes(); await checkAll(); }, 120);
+});
 
 console.log(`UML session on ${server.url} — watching ${SRC}, PlantUML at ${PLANTUML}`);

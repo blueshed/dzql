@@ -42,6 +42,12 @@ header .toggle { margin-left: auto; font-size: 12px; color: var(--muted); displa
 .view.nosource { grid-template-columns: 1fr; }
 .diagram { overflow: auto; padding: 20px; display: grid; place-items: start center; background: #fff; }
 .diagram svg { max-width: 100%; height: auto; }
+.drift { margin: 12px 18px 0; padding: 8px 12px; border: 1.5px solid #a86b00; background: rgba(168,107,0,.1); border-radius: 6px; font-size: 13px; }
+.drift b { color: #a86b00; } .drift ul { margin: 4px 0 0; padding-left: 18px; }
+.agrees { margin: 12px 18px 0; font-size: 12.5px; color: var(--ok); }
+nav button .n { margin-left: auto; font-size: 11px; color: #a86b00; font-weight: 700; }
+nav .types { border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 8px; }
+nav .types button { font-family: var(--mono); font-size: 12.5px; }
 .error { margin: 12px 18px 0; padding: 8px 12px; border: 1.5px solid var(--bad); background: var(--bad-soft); color: var(--bad); border-radius: 6px; font-size: 13px; }
 pre { margin: 0; padding: 16px; overflow: auto; border-left: 1px solid var(--line); background: var(--card); font: 12.5px/1.5 var(--mono); white-space: pre; }
 @media (max-width: 760px) { .app { grid-template-columns: 1fr; } nav { border-right: 0; border-bottom: 1px solid var(--line); } .view { grid-template-columns: 1fr; } pre { border-left: 0; border-top: 1px solid var(--line); } }
@@ -51,6 +57,7 @@ pre { margin: 0; padding: 16px; overflow: auto; border-left: 1px solid var(--lin
 <div class="app">
   <nav>
     <h1><span class="live" id="live" title="live"></span>Diagrams</h1>
+    <div class="types"><button data-name="types.ts" id="types-btn">types.ts</button></div>
     <div id="list"></div>
   </nav>
   <main>
@@ -60,6 +67,8 @@ pre { margin: 0; padding: 16px; overflow: auto; border-left: 1px solid var(--lin
     </header>
     <div>
       <div class="error" id="error" hidden></div>
+      <div class="drift" id="drift" hidden></div>
+      <div class="agrees" id="agrees" hidden></div>
       <div class="view" id="view">
         <div class="diagram" id="diagram"><p class="empty">Nothing in src/ yet.</p></div>
         <pre id="source"></pre>
@@ -74,27 +83,43 @@ try { current = localStorage.getItem("uml:current"); } catch {}
 
 async function load() {
   list = await (await fetch("/list")).json();
-  if (!list.some((d) => d.name === current)) current = list[0]?.name ?? null;
+  if (current !== "types.ts" && !list.some((d) => d.name === current)) current = list[0]?.name ?? null;
   renderList();
   await show();
 }
 function renderList() {
   $("#list").innerHTML = list.length
-    ? list.map((d) => `<button data-name="${d.name}" aria-current="${d.name === current}"><span class="dot ${d.ok ? "" : "bad"}"></span>${d.name}</button>`).join("")
+    ? list.map((d) => `<button data-name="${d.name}" aria-current="${d.name === current}"><span class="dot ${d.ok ? "" : "bad"}"></span>${d.name}${d.drift?.length ? `<span class="n" title="drifts from types.ts">≠ ${d.drift.length}</span>` : ""}</button>`).join("")
     : `<p class="empty">Nothing in src/ yet.</p>`;
+  $("#types-btn").setAttribute("aria-current", current === "types.ts");
 }
 async function show() {
+  if (current === "types.ts") {
+    const t = await (await fetch("/types")).json();
+    $("#title").textContent = "types.ts"; $("#at").textContent = "every name the diagrams use";
+    $("#error").hidden = true; $("#agrees").hidden = true;
+    $("#drift").hidden = !t.undrawn.length;
+    $("#drift").innerHTML = `<b>Not drawn in any diagram yet</b><ul>${t.undrawn.map((u) => `<li>${u}</li>`).join("")}</ul>`;
+    $("#diagram").innerHTML = `<p class="empty">types.ts is the vocabulary: each diagram is checked against it.</p>`;
+    $("#source").textContent = t.source;
+    return;
+  }
   const d = list.find((x) => x.name === current);
   if (!d) { $("#title").textContent = "—"; $("#diagram").innerHTML = `<p class="empty">Nothing in src/ yet.</p>`; $("#source").textContent = ""; return; }
   try { localStorage.setItem("uml:current", d.name); } catch {}
   $("#title").textContent = d.name;
   $("#at").textContent = `updated ${new Date(d.at).toLocaleTimeString()}`;
   $("#error").hidden = d.ok; $("#error").textContent = d.error ?? "";
+  const drift = d.drift ?? [];
+  $("#drift").hidden = !drift.length;
+  $("#drift").innerHTML = `<b>Drifts from types.ts</b><ul>${drift.map((x) => `<li>${x.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</li>`).join("")}</ul>`;
+  $("#agrees").hidden = !!drift.length || !d.kind || d.kind === "other";
+  $("#agrees").textContent = `✓ agrees with types.ts (${d.kind})`;
   const [svg, src] = await Promise.all([fetch(`/svg/${d.name}`).then((r) => (r.ok ? r.text() : "")), fetch(`/src/${d.name}`).then((r) => (r.ok ? r.text() : ""))]);
   $("#diagram").innerHTML = svg || `<p class="empty">No SVG yet.</p>`;
   $("#source").textContent = src;
 }
-$("#list").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; current = b.dataset.name; renderList(); show(); });
+document.querySelector("nav").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; current = b.dataset.name; renderList(); show(); });
 $("#showsrc").addEventListener("change", (e) => { $("#source").hidden = !e.target.checked; $("#view").classList.toggle("nosource", !e.target.checked); });
 
 function connect() {
@@ -103,7 +128,7 @@ function connect() {
   ws.onclose = () => { $("#live").classList.remove("on"); setTimeout(connect, 1000); };
   ws.onmessage = async (e) => {
     const m = JSON.parse(e.data);
-    const name = m.diagram?.name ?? m.name;
+    const name = m.diagram?.name ?? m.name ?? "";
     if (m.type === "changed" && !list.some((d) => d.name === name)) current = name; // a new diagram: show it
     await load();
     document.querySelector(`nav button[data-name="${CSS.escape(name)}"]`)?.classList.add("flash");
