@@ -1,0 +1,17 @@
+@startuml
+title Dee joins general and says hello
+actor "Dee" as dee
+participant "Chat" as app
+actor "Ada, Bob (in general)" as general
+actor "Cy (in the kitchen)" as kitchen
+
+dee -> app : chooseName("Dee")
+app --> dee : ok, which room?
+dee -> app : chooseRoom("general")
+app --> dee : the room, its members, its messages
+app -> general : Dee arrives
+dee -> app : say("hello")
+app --> dee : the message
+app -> general : Dee: hello
+note over kitchen : nothing: not in general
+@enduml

@@ -1,9 +1,12 @@
 @startuml
-title Session
-[*] --> SignedOut
-SignedOut --> SignedIn : log in [password matches]
-SignedOut --> SignedOut : log in [not recognised]
-SignedIn --> SignedOut : log out
-SignedIn --> Expired : time passes
-Expired --> SignedOut : next request
+title States: a session
+[*] --> Nameless
+Nameless --> Named : choose a name
+Nameless --> Nameless : choose a room [no name yet]
+Named --> InRoom : choose a room
+InRoom --> InRoom : choose another room
+InRoom --> InRoom : say something
+InRoom --> Named : leave
+Named --> [*] : log out
+InRoom --> [*] : log out
 @enduml

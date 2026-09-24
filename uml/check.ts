@@ -14,6 +14,19 @@ export type Kind = "classes" | "sequence" | "states" | "use cases" | "other";
 export type Checked = { name: string; kind: Kind; drift: string[]; uses: Set<string> };
 
 export const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+/** A name's words: `chooseName` -> choose, name; "Choose a name" -> choose, a, name. */
+const words = (s: string) => s.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+/** Does a label name `name`? Its words appear in the label, in order ("Choose a name" names chooseName). */
+export function names(label: string, name: string): boolean {
+  const want = words(name), have = words(label);
+  // "log out" names logout: adjacent words, joined, may be one word of the name
+  for (let i = 0; i < have.length; i++) for (let j = i + 2; j <= have.length; j++) if (have.slice(i, j).join("") === norm(name)) return true;
+  let i = 0;
+  for (const w of have) if (w === want[i] || w === `${want[i]}s`) i++;
+  return i === want.length;
+}
+/** The first of `candidates` a label names, the longest first so `chooseRoom` beats `choose`. */
+const named = (label: string, candidates: Iterable<string>) => [...candidates].sort((a, b) => words(b).length - words(a).length).find((c) => names(label, c));
 
 /** Split a body into its top-level members, on `;` or a line break outside any bracket. */
 function members(body: string): string[] {
@@ -85,7 +98,6 @@ export function check(name: string, puml: string, t: Types): Checked {
   const drift: string[] = [];
   const uses = new Set<string>(); // what in types.ts this diagram draws, for "not drawn yet"
   const api = t.interfaces.get("Api")?.methods ?? new Map<string, string[]>();
-  const apiByNorm = new Map([...api.keys()].map((k) => [norm(k), k]));
   const classes = new Map([...t.interfaces].filter(([k]) => k !== "Api").map(([k, v]) => [norm(k), [k, v] as const]));
 
   if (kind === "classes") {
@@ -105,16 +117,15 @@ export function check(name: string, puml: string, t: Types): Checked {
   if (kind === "sequence") {
     const actors = new Set<string>();
     for (const m of puml.matchAll(/^\s*actor\s+(?:"([^"]+)"|(\w+))(?:\s+as\s+(\w+))?/gm)) actors.add(m[3] ?? m[2] ?? m[1]!);
-    let call: string | null = null;
+    let call: string | null = null, caller: string | null = null;
     for (const m of puml.matchAll(/^\s*("[^"]+"|\w+)\s*(-+>+)\s*("[^"]+"|\w+)\s*:\s*(.+)$/gm)) {
       const from = unquote(m[1]!), to = unquote(m[3]!), label = m[4]!.trim();
       const reply = m[2]!.startsWith("--");
       if (actors.has(from) && !reply) {
-        const word = label.match(/^[A-Za-z][\w ]*?(?=\(|$|:|,)/)?.[0] ?? label;
-        const method = apiByNorm.get(norm(word)) ?? apiByNorm.get(norm(label.split(/[(\s,]/)[0]!));
+        const method = named(label.split("(")[0]!, api.keys());
         if (!method) { drift.push(`${from} sends "${label}", which names no method of Api`); call = null; }
-        else { call = method; uses.add(`Api.${method}`); }
-      } else if (actors.has(to) && reply && call) {
+        else { call = method; caller = from; uses.add(`Api.${method}`); }
+      } else if (reply && call && to === caller) {
         const words = new Set((api.get(call) ?? []).map(norm));
         const said = label.split(/[^A-Za-z0-9']+/).map(norm).filter(Boolean);
         if (!said.some((w) => words.has(w) || words.has(w.replace(/s$/, ""))) && !words.has(norm(label))) drift.push(`the reply "${label}" names nothing ${call} returns`);
@@ -138,12 +149,11 @@ export function check(name: string, puml: string, t: Types): Checked {
       for (const s of union[1]) if (!drawn.has(norm(s))) drift.push(`${union[0]} has "${s}", not drawn`);
     }
     const eventUnions = [...t.unions].filter(([k]) => k.endsWith("Event"));
-    const known = new Map<string, string>([...apiByNorm.entries()].map(([k, v]) => [k, `Api.${v}`]));
-    for (const [k, v] of eventUnions) for (const e of v) known.set(norm(e), k);
+    const eventNames = [...api.keys(), ...eventUnions.flatMap(([, v]) => v)];
     for (const e of events) {
-      const where = known.get(norm(e));
-      if (!where) drift.push(`event "${e}" is not an Api method or in a union ending in "Event"`);
-      else uses.add(where.startsWith("Api.") ? `Api.${apiByNorm.get(norm(e))}` : where);
+      const hit = named(e, eventNames);
+      if (!hit) drift.push(`event "${e}" is not an Api method or in a union ending in "Event"`);
+      else uses.add(api.has(hit) ? `Api.${hit}` : eventUnions.find(([, v]) => v.includes(hit))![0]);
     }
   }
 
@@ -155,7 +165,7 @@ export function check(name: string, puml: string, t: Types): Checked {
       else uses.add("Actor");
     }
     for (const m of puml.matchAll(/usecase\s+"([^"]+)"/g)) {
-      const method = apiByNorm.get(norm(m[1]!));
+      const method = named(m[1]!, api.keys());
       if (!method) drift.push(`use case "${m[1]}" is not a method of Api`);
       else uses.add(`Api.${method}`);
     }

@@ -1,20 +1,27 @@
 @startuml
-title Classes
+title Classes: chat
 hide empty methods
-
-class User {
-  id
-  email
-  passwordHash
-}
 
 class Session {
   id
-  user
-  started at
-  expires at
+  name
+  room
   state : SessionState
 }
 
-User "1" -- "0..*" Session : logs in as >
+class Room {
+  name
+}
+
+class Message {
+  id
+  room
+  author
+  text
+  at
+}
+
+Session "0..*" -- "0..1" Room : is in >
+Room "1" -- "0..*" Message : holds >
+Session "1" -- "0..*" Message : wrote >
 @enduml

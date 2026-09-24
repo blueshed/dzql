@@ -1,9 +1,19 @@
 @startuml
-title Use cases
+title Use cases: chat
 left to right direction
-actor User
-rectangle "The app" {
-  usecase "Log in" as login
+actor Person
+rectangle "Chat" {
+  usecase "Choose a name" as name
+  usecase "Choose a room" as room
+  usecase "Choose another room" as move
+  usecase "Say something" as say
+  usecase "Leave the room" as leave
+  usecase "Log out" as logout
 }
-User --> login
+Person --> name
+Person --> room
+Person --> say
+Person --> leave
+Person --> logout
+move .> room : <<extend>>
 @enduml
