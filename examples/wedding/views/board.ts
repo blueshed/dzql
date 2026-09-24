@@ -22,7 +22,7 @@ import {
   firstNameOf,
   formatDay,
   frame,
-  inertWhile,
+  layers,
   isComing,
   matches,
   picture,
@@ -90,7 +90,7 @@ export function boardPages(v: BoardView): string {
       ),
     confirmRemove(v),
   );
-  const body = join(inertWhile(modalOpen, join(page, keepSheet(v), codeSheet(v, h), welcomeSheet(v))), modal);
+  const body = layers(page, join(keepSheet(v), codeSheet(v, h), welcomeSheet(v)), modal);
   return frame(false, body, ui.page ?? "", locked);
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { address, bento, choice, inertWhile, matches, parseAddress, patchCollections, prop, rows, type Collections } from "./bento";
+import { address, bento, choice, layers, matches, parseAddress, patchCollections, prop, rows, type Collections } from "./bento";
 import { esc, join, write } from "./html";
 
 // an example's icons, as the bento sees them: a name and a size in, markup out
@@ -102,7 +102,7 @@ describe("the surfaces", () => {
     const out = b.boxPage([{ label: "The desk", back }, { label: "the market" }], [], cells, { key: "market", reading: "<i>reading</i>", tools: ["<i>find</i>"], filter: "<i>filter</i>", body: "<i>rows</i>", note: "a note" });
     expect(out).toContain('<section class="page box windowed">');
     expect(out).not.toContain("page-tools across"); // the page's tools are in the window instead
-    expect(out).toContain(`<div class="cell open" data-key="market" data-moving="market"><div class="cell-head cap"><a class="cell-back" href="#"${back}>The desk</a>`);
+    expect(out).toContain(`<div data-eta-part="market" class="cell open" data-key="market" data-moving="market"><div class="cell-head cap"><a class="cell-back" href="#"${back}>The desk</a>`);
     expect(out).toContain('<span class="cell-name">the market</span></div><div class="rail work"><i>reading</i><div class="stack"><i>find</i></div></div><i>filter</i><div class="full"><i>rows</i><p class="note">a note</p></div><div class="stack page-tools"');
     expect(out).toContain('data-key="board" data-corners='); // the rest of the box holds still behind it
     // a window on the root has no way back, and may have no tools at all
@@ -125,14 +125,14 @@ describe("the surfaces", () => {
 
   test("a page that is a collection is the window alone: the trail, the rail, the reading, the page's tools, and no tray behind it", () => {
     const out = b.collectionPage([{ label: "Chat" }], { key: "rooms", tools: ["<i>plus</i>"], body: "<i>rows</i>" });
-    expect(out).toStartWith('<section class="page windowed"><div class="cell open" data-key="rooms" data-moving="rooms"><div class="cell-head cap"><span class="cell-name">Chat</span></div>');
+    expect(out).toStartWith('<section class="page windowed"><div data-eta-part="rooms" class="cell open" data-key="rooms" data-moving="rooms"><div class="cell-head cap"><span class="cell-name">Chat</span></div>');
     expect(out).toContain('<div class="stack"><i>plus</i></div></div><div class="full"><i>rows</i></div><div class="stack page-tools"');
     expect(out).not.toContain('class="cells"');
   });
 
   test("a row: a lead, the words, the state, the mark; tapped, chosen, hushed or hidden as it is told", () => {
     const out = b.row({ id: "r-1", tap: open, chosen: true, hushed: true, hidden: true, lead: "<img>", what: "Ada & co", note: "two", state: "<b>here</b>", mark: "pencil" });
-    expect(out).toContain(`<div class="row tap hushed" id="r-1" role="button" tabindex="0"${open} aria-pressed="true" data-reveal hidden>`);
+    expect(out).toContain(`<div data-eta-part="r-1" class="row tap hushed" id="r-1" role="button" tabindex="0"${open} aria-pressed="true" data-reveal hidden>`);
     expect(out).toContain('<span class="lead"><img></span><span class="words"><span class="what">Ada &amp; co</span><span class="note">two</span></span><span class="state"><b>here</b></span><span class="mark"><i data-icon="pencil"');
     expect(b.row({ what: "plain", mark: "chevron" })).toBe('<div class="row"><span class="words"><span class="what">plain</span></span><span class="mark"><i data-icon="chevron-right" data-size="18"></i></span></div>');
     expect(b.row({ what: "read only" })).not.toContain("mark");
@@ -143,7 +143,7 @@ describe("the surfaces", () => {
   test("the drawer and its properties; a choice among a few", () => {
     const close = write("desk", "remove", "/focus");
     const out = b.sheet("drawer", "ALPH", prop("Name", "<span>Alpha</span>"), close, "wide");
-    expect(out).toContain(`<div class="scrim"${close}></div><div id="drawer" class="sheet wide" role="dialog" aria-label="ALPH">`);
+    expect(out).toContain(`<div class="scrim"${close}></div><div data-eta-part="drawer" id="drawer" class="sheet wide" role="dialog" aria-label="ALPH">`);
     expect(out).toContain('<div class="prop"><span class="prop-name cap">Name</span><div class="prop-value"><span>Alpha</span></div></div>');
     expect(b.sheet("d", "t", "", close)).toContain('class="sheet" role');
     const pick = choice("Coming?", [{ text: "Yes", on: true, write: open, kind: "yes" }, { text: "No", on: false, write: open }], true);
@@ -164,8 +164,9 @@ describe("the surfaces", () => {
     expect(drop).toContain(`<p class="note">Its row leaves.</p>`);
     expect(drop).toContain(`class="tool danger"${open}><i data-icon="trash" data-size="16"></i>Stop watching</button>`);
     expect(b.confirmModal("t", "q", open, close)).toContain("Remove</button>");
-    expect(inertWhile(true, "<p/>")).toBe("<div inert><p/></div>");
-    expect(inertWhile(false, "<p/>")).toBe("<p/>");
+    // the layers are always there, empty when nothing is open; a modal puts the ground inert
+    expect(layers("<p/>", "", "")).toBe(`<div data-eta-part="ground" class="ground"><p/><div data-eta-part="drawers" class="layer"></div></div><div data-eta-part="modals" class="layer"></div>`);
+    expect(layers("<p/>", "<aside/>", "<dialog/>")).toBe(`<div data-eta-part="ground" class="ground" inert><p/><div data-eta-part="drawers" class="layer"><aside/></div></div><div data-eta-part="modals" class="layer"><dialog/></div>`);
   });
 });
 

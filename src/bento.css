@@ -156,6 +156,8 @@ body:has(.page.windowed) { overflow: hidden; }
 
 
 /* ── the drawer: a figure's properties -- a panel at the right from 820px, a sheet from the foot below ── */
+/* the page's layers (layers() in bento.ts): wrappers that are always there, and lay out nothing */
+.ground, .layer { display: contents; }
 .scrim { position: fixed; inset: 0; z-index: 50; background: rgba(var(--ink-rgb), 0.35); }
 .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; margin: 0 auto; max-width: 560px; max-height: 88dvh; display: flex; flex-direction: column; background: var(--card); color: var(--ink); border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: 0 -8px 30px rgba(var(--ink-rgb), 0.2); animation: sheet-rise 200ms ease-out; }
 @keyframes sheet-rise { from { transform: translateY(24px); opacity: 0.5; } to { transform: none; opacity: 1; } }

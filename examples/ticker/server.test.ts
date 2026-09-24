@@ -1,9 +1,17 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
 import { createServer } from "../../src/server";
+import { hear, type Heard } from "../../src/harness";
 import { randomTick, startFeed, stopFeed } from "./compartments/ticker";
-import * as market from "./documents/market";
+import type { MarketDocument } from "./documents/market";
 import { example } from "./index";
+
+const inDelta = example.delta!.as("test");
+
+/** The market as delta has it now. */
+async function quotes(): Promise<MarketDocument> {
+  return (await inDelta.call("open", { doc: "ticker:market" })).result.quotes;
+}
 
 // TICK_MS is read when compartments/ticker.ts loads; the test script sets it to 0 (see package.json)
 // so the feed stays quiet and every tick here is the test's own.
@@ -17,7 +25,8 @@ afterAll(() => {
   server.stop(true);
 });
 
-type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[] };
+/** `page`, on a render: the page this connection holds once it is applied, kept as the client keeps it. */
+type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[]; page?: string };
 
 const queues = new WeakMap<WebSocket, WireMessage[]>();
 const waiters = new WeakMap<WebSocket, ((message: WireMessage) => void)[]>();
@@ -31,8 +40,10 @@ function connect(): WebSocket {
   const pending: ((message: WireMessage) => void)[] = [];
   queues.set(ws, queue);
   waiters.set(ws, pending);
+  let page = "";
   ws.addEventListener("message", (event) => {
     const message = JSON.parse(event.data as string) as WireMessage;
+    if (message.type === "render") message.page = page = hear(page, message as Heard);
     const waiter = pending.shift();
     if (waiter) waiter(message);
     else queue.push(message);
@@ -61,6 +72,17 @@ async function expectQuiet(ws: WebSocket): Promise<void> {
 
 const write = (ws: WebSocket, doc: string, ops: PatchOp[]) => ws.send(JSON.stringify({ doc, ops }));
 
+/** Everything a connection was sent until what it asked before is done: an `inspect` is answered after all of it. */
+async function heard(ws: WebSocket): Promise<WireMessage[]> {
+  ws.send(JSON.stringify({ type: "inspect" }));
+  const messages: WireMessage[] = [];
+  for (let m = await nextMessage(ws); m.type !== "inspect"; m = await nextMessage(ws)) messages.push(m);
+  return messages;
+}
+
+/** The page as the connection holds it, once what it asked is done. */
+const pageNow = async (ws: WebSocket): Promise<string> => (await heard(ws)).filter((m) => m.type === "render").pop()!.page!;
+
 async function open(): Promise<WebSocket> {
   const ws = connect();
   await opened(ws);
@@ -75,7 +97,7 @@ describe("the ticker", () => {
     const { html } = await expectMessage(ws, "render");
     expect(html).toContain('data-applet="clock"');
     expect(html).toContain('id="board-count"');
-    expect(html).toContain('data-applet="board" data-doc="ticker"');
+    expect(html).toContain('data-applet="board" data-doc="ticker:market"');
     expect(html).toContain("16 symbols, every quote");
     ws.close();
   });
@@ -83,12 +105,13 @@ describe("the ticker", () => {
   test("a tick echoes to every connection and renders nothing: the board takes the ops itself", async () => {
     const a = await open();
     const b = await open();
-    const before = market.read().DLTA!.price;
+    const before = (await quotes()).DLTA!.price;
     write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
     const patch = await expectMessage(a, "patch");
-    expect(patch).toMatchObject({ doc: "ticker", ops: [{ op: "replace", path: "/DLTA/price", value: before + 1 }] });
+    // a tick is said as the quote it leaves: the last price become prev, and the new price
+    expect(patch).toMatchObject({ doc: "ticker:market", ops: [{ op: "replace", path: "/DLTA", value: { prev: before, price: before + 1 } }] });
     await expectQuiet(a);
-    expect(await expectMessage(b, "patch")).toMatchObject({ doc: "ticker" });
+    expect(await expectMessage(b, "patch")).toMatchObject({ doc: "ticker:market" });
     await expectQuiet(b);
     // a tick that changes nothing (the same price) is a render, no patch: the dispatcher's own fallback
     write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
@@ -102,11 +125,10 @@ describe("the ticker", () => {
     await expectMessage(a, "patch");
     await expectMessage(b, "patch");
     write(a, "ledger", [{ op: "remove", path: "/latest" }]);
-    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "remove", path: "/symbols/0" }] });
+    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: [] } }] });
     await expectMessage(a, "render");
-    expect(market.read().DLTA!.price).toBe(before + 2);
+    expect((await quotes()).DLTA!.price).toBe(before + 2);
     await expectQuiet(b);
-    market.patch([{ op: "replace", path: "/DLTA/price", value: before }], "test");
     a.close();
     b.close();
   });
@@ -130,18 +152,18 @@ describe("the ticker", () => {
     const a = await open();
     const b = await open();
     write(a, "watchlist", [{ op: "add", path: "/symbols/-", value: "echo" }]);
-    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "add", path: "/symbols/-", value: "ECHO" }] });
-    const page = (await expectMessage(a, "render")).html as string;
+    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: ["ECHO"] } }] });
+    const page = (await expectMessage(a, "render")).page as string;
     expect(page).toContain("&quot;symbols&quot;:[&quot;ECHO&quot;]"); // the board's mount, with its new props
     expect(page).toContain('<span id="board-count">1</span>'); // the count on its head
     expect(page).toContain('<p class="cell-summary">watched, live</p>'); // and the line that said "nothing watched yet"
     await expectQuiet(b);
 
     write(a, "ledger", [{ op: "remove", path: "/latest" }]);
-    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "remove", path: "/symbols/0" }] });
+    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: [] } }] });
     await expectMessage(a, "render");
     write(a, "ledger", [{ op: "add", path: "/latest" }]);
-    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "add", path: "/symbols/0", value: "ECHO" }] });
+    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: ["ECHO"] } }] });
     await expectMessage(a, "render");
     a.close();
     b.close();
@@ -149,16 +171,17 @@ describe("the ticker", () => {
 
   test("the feed: a random walk of one symbol at a time, ticking while it runs, every tick a patch to every connection", async () => {
     const ws = await open();
+    const market = await quotes();
     for (let i = 0; i < 20; i++) {
-      const [op] = randomTick();
+      const [op] = randomTick(market);
       expect(op!.path).toMatch(/^\/[A-Z]{4}\/price$/);
       const symbol = op!.path.split("/")[1]!;
-      expect(Math.abs((op!.value as number) / market.read()[symbol]!.price - 1)).toBeLessThan(0.007);
+      expect(Math.abs((op!.value as number) / market[symbol]!.price - 1)).toBeLessThan(0.007);
     }
     startFeed(5);
     startFeed(5); // already running: no second interval
     const first = await expectMessage(ws, "patch");
-    expect(first).toMatchObject({ doc: "ticker", ops: [{ op: "replace" }] });
+    expect(first).toMatchObject({ doc: "ticker:market", ops: [{ op: "replace", value: { price: expect.any(Number), prev: expect.any(Number) } }] });
     await expectMessage(ws, "patch");
     stopFeed();
     stopFeed(); // already stopped
@@ -178,20 +201,20 @@ describe("the ticker", () => {
     // the clock is a thing (rule 15): its drawer holds the city, and every zone to choose from
     write(ws, "desk", [{ op: "replace", path: "/page", value: "?clock" }]);
     await expectMessage(ws, "patch");
-    const { html } = await expectMessage(ws, "render");
-    expect(html).toContain('id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="{&quot;city&quot;:&quot;Zurich&quot;}"><datalist>');
+    const { page: html } = await expectMessage(ws, "render");
+    expect(html).toContain('id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="{&quot;tz&quot;:&quot;Europe/Zurich&quot;}"><datalist>');
     expect(html).toContain('<option value="Asia/Tokyo">Tokyo (UTC+09:00)</option>');
     expect(html).toContain('<option value="America/Vancouver">Vancouver (UTC-0');
     expect(html).toContain('<option value="America/Argentina/Salta">Salta, Argentina (UTC-03:00)</option>');
     write(ws, "clock", [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }]);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }] });
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "", value: { tz: "Asia/Tokyo" } }] });
     // the applet takes the op for the face; the page says the city too, so the page follows
-    expect((await expectMessage(ws, "render")).html).toContain("Tokyo (UTC+09:00)</span>");
+    expect((await expectMessage(ws, "render")).page).toContain("Tokyo (UTC+09:00)</span>");
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Europe/Zurich" }] });
-    expect((await expectMessage(ws, "render")).html).toContain("Zurich (UTC+0");
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "", value: { tz: "Europe/Zurich" } }] });
+    expect((await expectMessage(ws, "render")).page).toContain("Zurich (UTC+0");
     write(ws, "ledger", [{ op: "add", path: "/latest" }]);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }] });
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "", value: { tz: "Asia/Tokyo" } }] });
     await expectMessage(ws, "render");
     await expectQuiet(ws);
     write(ws, "clock", [{ op: "replace", path: "/tz", value: "Mars/Base" }]);
@@ -226,7 +249,7 @@ describe("the ticker", () => {
     const page = async (ops: PatchOp[]) => {
       write(ws, "desk", ops);
       await expectMessage(ws, "patch");
-      return (await expectMessage(ws, "render")).html;
+      return (await expectMessage(ws, "render")).page;
     };
     // the market grown into the window: every quote a row; find dims what the word misses, the eye hides it, closing find lights all
     let html = await page([{ op: "replace", path: "/page", value: "market" }, { op: "replace", path: "/filter/market", value: "charlie" }]);
@@ -238,10 +261,10 @@ describe("the ticker", () => {
     expect(html).toMatch(/id="m-ALPH"[^>]* aria-pressed="false" hidden>/);
     html = await page([{ op: "remove", path: "/filter/market" }]);
     expect(html).not.toContain("hushed");
-    // a tick redraws the market's rows for a session reading them, and nothing for one on the box
+    // a tick sends a session reading the market the one row it moved, and nothing to one on the box
     write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.01 }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: "#market-rows" }]);
+    expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: '[data-eta-part="m-CHRL"]' }]);
     // a symbol's drawer offers to watch it; watching it closes nothing but marks it, and the drawer then offers to drop it
     html = await page([{ op: "replace", path: "/page", value: "market?symbol=CHRL" }]);
     expect(html).toContain('aria-label="CHRL"');
@@ -252,32 +275,39 @@ describe("the ticker", () => {
     html = await page([{ op: "replace", path: "/page", value: "board?symbol=CHRL" }, { op: "replace", path: "/reading/board", value: "list" }]);
     expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-pressed="true" data-reveal>/);
     expect(html).toContain("Stop watching");
-    // with the drawer open a tick redraws the compartment whole, since the drawer says the price too;
-    // with it closed, the board's list alone
+    // with the drawer open a tick sends the row and the drawer, since the drawer says the price too;
+    // with it closed, the row alone
     write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.05 }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain("13.05"); // the page, whole: the drawer's price with it
+    const tick = await expectMessage(ws, "render");
+    expect(tick.html).toBeUndefined();
+    expect(tick.page).toContain("13.05");
     await page([{ op: "replace", path: "/page", value: "board" }]);
     write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.07 }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: "#board-list" }]);
-    // dropping asks first, from the drawer; the write that answers puts the modal away, and the page comes whole
+    expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: '[data-eta-part="b-CHRL"]' }]);
+    // dropping asks first, from the drawer: the drawer's layer closes, the modal's opens, the ground
+    // goes inert and the site's tag says where -- and none of it is the page
     html = await page([{ op: "replace", path: "/page", value: "board?symbol=CHRL" }]);
     expect(html).toContain(`data-value="board?confirm=CHRL"`);
-    html = await page([{ op: "replace", path: "/page", value: "board?confirm=CHRL" }]);
-    expect(html).toContain('<dialog open class="modal" aria-label="Stop watching CHRL">');
-    expect(html).toContain("<div inert>");
-    write(ws, "watchlist", [{ op: "remove", path: "/symbols/0" }]);
+    write(ws, "desk", [{ op: "replace", path: "/page", value: "board?confirm=CHRL" }]);
     await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    const asked = await expectMessage(ws, "render");
+    expect(asked.html).toBeUndefined();
+    const sent = (asked.ops as { op: string; target: string }[]).map((o) => `${o.op} ${/data-eta-part="(.*)"/.exec(o.target)![1]}`);
+    expect(sent).toEqual(["tag site", "tag ground", "tag b-CHRL", "replace drawers", "replace modals"]);
+    html = asked.page!;
+    expect(html).toContain('<dialog open class="modal" aria-label="Stop watching CHRL">');
+    expect(html).toContain('class="ground" inert>');
+    write(ws, "watchlist", [{ op: "remove", path: "/symbols/0" }]);
+    html = await pageNow(ws); // the list and the desk, which the answer put back on the board
     expect(html).not.toContain('class="modal"');
     expect(html).not.toContain("Stop watching");
     // watching asks which symbol; the add that answers closes the ask
     html = await page([{ op: "replace", path: "/page", value: "board?new" }]);
     expect(html).toContain('<dialog open class="modal" aria-label="Watch a symbol">');
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "GOLF" }]);
-    await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    html = await pageNow(ws);
     expect(html).not.toContain('class="modal"');
     expect(html).toContain('id="b-GOLF"');
     // a stale confirm renders no modal; a drawer for a symbol the market lacks renders none
@@ -292,7 +322,7 @@ describe("the ticker", () => {
     const ws = await open();
     ws.send(JSON.stringify({ type: "inspect" }));
     const inspection = (await expectMessage(ws, "inspect")) as unknown as { docs: { doc: string }[] };
-    expect(inspection.docs.map((d) => d.doc)).toEqual(["desk", "ticker", "watchlist", "clock"]);
+    expect(inspection.docs.map((d) => d.doc)).toEqual(["desk", "ticker:market", "watchlist", "clock"]);
     ws.close();
   });
 });

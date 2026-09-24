@@ -58,17 +58,22 @@ export function boardSvg(state: BoardState): string {
   return `<svg class="board" viewBox="0 0 ${W} ${symbols.length * ROW}" width="100%" aria-label="the board">${rows}</svg>`;
 }
 
-/** Applies a market patch to the state: a tick moves a quote and extends its history. Returns the symbols touched. */
+/**
+ * Applies a market patch to the state: a tick moves a quote and extends its history. The market's
+ * stream says a tick as the quote it leaves, whole (`replace /ALPH {price, prev, ...}`). Returns
+ * the symbols touched.
+ */
 export function applyOps(s: BoardState, ops: PatchOp[]): string[] {
   const touched: string[] = [];
   for (const op of ops) {
-    const m = /^\/([A-Z0-9.]+)\/price$/.exec(op.path);
-    if (!m || op.op !== "replace") continue;
+    const m = /^\/([A-Z0-9.]+)$/.exec(op.path);
+    const value = op.value as { price?: unknown; prev?: unknown } | undefined;
+    if (!m || op.op !== "replace" || typeof value?.price !== "number") continue;
     const symbol = m[1]!;
     const quote = s.props.quotes[symbol];
     if (!quote) continue;
-    quote.prev = quote.price;
-    quote.price = Number(op.value);
+    quote.prev = Number(value.prev ?? quote.price);
+    quote.price = value.price;
     s.history[symbol] = [...(s.history[symbol] ?? [quote.prev]), quote.price].slice(-HISTORY);
     touched.push(symbol);
   }

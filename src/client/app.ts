@@ -2,7 +2,7 @@ import { applets } from "../applets";
 import type { PatchOp } from "../json-patch";
 import { formValue } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
-import { morph, morphElement, removeNode } from "./morph";
+import { morph, morphElement, morphTag, removeNode } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -179,26 +179,29 @@ function render(html: string) {
   }
 }
 
-// A fragment render: the delta in HTML's terms (see src/compartments/render.ts). Each op names an
-// element by selector; a target the page no longer has is skipped -- the next full render puts
-// things right, as it would after a reconnect.
+// The page in parts: what changed since the last drawing, in HTML's terms (src/parts.ts). Each op
+// names a part; a target the page no longer has is skipped -- the next full render puts things
+// right, as it would after a reconnect. Afterwards, the same care as a whole render.
 function applyFragments(ops: HtmlOp[]) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
+  const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
 
   for (const op of ops) {
     const target = app.querySelector(op.target);
     if (!target) continue;
     if (op.op === "replace") {
       morphElement(target, op.html, hooks);
-    } else if (op.op === "add") {
-      const holder = document.createElement("template");
-      holder.innerHTML = op.html;
-      target.append(holder.content);
-    } else {
+    } else if (op.op === "tag") {
+      morphTag(target, op.html, hooks);
+    } else if (op.op === "remove") {
       removeNode(target, hooks);
+    } else {
+      target.insertAdjacentHTML(op.op === "after" ? "afterend" : "beforebegin", op.html);
     }
   }
   settle(before);
+  syncPage();
+  revealChanged(previousReveal);
 }
 
 // After any render, full or fragment: mount what appeared, give the caret to a field that is
@@ -221,6 +224,10 @@ function settle(before: Map<HTMLElement, number>) {
 }
 
 type WriteSpec = { doc: string; op: PatchOp["op"]; path: string };
+
+/** Is `echoed` the document a write named? The echo names it whole (`room:general`); a write may
+ * name it so, or by its type alone (`room`), meaning the one of that type this page is on. */
+const isNamed = (named: string, echoed: string): boolean => echoed === named || echoed.startsWith(`${named}:`);
 
 function send(doc: string, ops: PatchOp[]) {
   lastSent = { doc, ops, echoed: false };
@@ -371,8 +378,8 @@ function connect() {
       for (const el of mounted.keys()) {
         if (el.dataset.doc === message.doc) applets[el.dataset.applet!]?.patch?.(el, message.ops);
       }
-      if (lastSent && lastSent.doc === message.doc && message.ops.length > 0) lastSent.echoed = true;
-      if (pendingReset && pendingReset.doc === message.doc && message.ops.length > 0) {
+      if (lastSent && isNamed(lastSent.doc, message.doc) && message.ops.length > 0) lastSent.echoed = true;
+      if (pendingReset && isNamed(pendingReset.doc, message.doc) && message.ops.length > 0) {
         pendingReset.form.reset();
         pendingReset = undefined;
       }

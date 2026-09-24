@@ -34,7 +34,7 @@ const USER_LABEL = `document.querySelector('.user-label')?.textContent ?? null`;
 const MESSAGES_TEXT = `document.querySelector('.messages')?.textContent ?? ""`;
 const LOGOUT_SELECTOR = `[data-write='{"doc":"session","op":"remove","path":"/name"}']`;
 const LEAVE_ROOM_SELECTOR = `[data-write='{"doc":"session","op":"remove","path":"/room"}']`;
-const SEND_MESSAGE_FORM_VISIBLE = `document.querySelector('[data-write=\\'{"doc":"room","op":"add","path":"/transcript/-"}\\']') !== null`;
+const SEND_MESSAGE_FORM_VISIBLE = `document.querySelector('[data-write=\\'{"doc":"room","op":"add","path":"/messages/-"}\\']') !== null`;
 
 async function submitName(view: Bun.WebView, name: string) {
   await waitFor(view, NAME_FORM_VISIBLE, (v) => v === true);
@@ -321,7 +321,7 @@ describe("app.ts in a real browser", () => {
     expect((await viewA.evaluate(`document.querySelector('input[name=text]').selectionStart`)) as number).toBe(3);
   });
 
-  test("eta.docs() gains an add /transcript/- op when another browser sends a message", async () => {
+  test("eta.docs() gains the message delta made when another browser sends one", async () => {
     await using viewA = new Bun.WebView();
     await using viewB = new Bun.WebView();
 
@@ -338,15 +338,15 @@ describe("app.ts in a real browser", () => {
     const text = `echo test ${crypto.randomUUID()}`;
     await sendChatMessage(viewA, text);
 
-    // request 3 onward: doc is the bare type ("room"), not a concrete id -- a
-    // connection only ever sees one room doc at a time, so no id is needed.
-    const gainedOp = `window.eta.docs()['room']?.ops.some(
-      (op) => op.op === "add" && op.path === "/transcript/-" && op.value.text === ${JSON.stringify(text)}
+    // the echo names the whole document, room:<name>: a connection may see any number of rooms.
+    const doc = JSON.stringify(`room:${room}`);
+    const gainedOp = `window.eta.docs()[${doc}]?.ops.some(
+      (op) => op.op === "add" && op.path.startsWith("/messages/") && op.value.text === ${JSON.stringify(text)}
     ) ?? false`;
     await waitFor(viewB, gainedOp, (v) => v === true);
 
     // the version tracked alongside it is a real, positive document version, not just a message counter
-    const version = await viewB.evaluate(`window.eta.docs()['room']?.version`);
+    const version = await viewB.evaluate(`window.eta.docs()[${doc}]?.version`);
     expect(typeof version).toBe("number");
     expect(version as number).toBeGreaterThan(0);
   });
@@ -355,18 +355,21 @@ describe("app.ts in a real browser", () => {
     await using view = new Bun.WebView();
     await view.navigate(server.url.toString());
     await submitName(view, `Inspector-${crypto.randomUUID()}`);
-    await joinRoom(view, crypto.randomUUID());
+    const room = crypto.randomUUID();
+    await joinRoom(view, room);
 
     const text = `inspect this ${crypto.randomUUID()}`;
     await sendChatMessage(view, text);
     await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes(text));
 
+    // the form names the room by its type alone (the one this page is on); the echo names it whole,
+    // and is still known as this write's
     const lastSentDoc = await waitFor(view, `window.eta.inspect().lastSent?.doc ?? null`, (v) => v === "room");
     expect(lastSentDoc).toBe("room");
 
     const echoed = await waitFor(view, `window.eta.inspect().lastSent?.echoed ?? false`, (v) => v === true);
     expect(echoed).toBe(true);
 
-    expect((await view.evaluate(`"room" in window.eta.inspect().docs`)) as boolean).toBe(true);
+    expect((await view.evaluate(`${JSON.stringify(`room:${room}`)} in window.eta.inspect().docs`)) as boolean).toBe(true);
   });
 });

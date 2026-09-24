@@ -3,6 +3,11 @@ import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
 import type { Stories, Story, Write } from "./stories";
+import { applyPatch, type PatchOp } from "./json-patch";
+import { settled } from "./documents";
+import { comparable, splitTag } from "./parts";
+
+export { comparable };
 
 // Runs an example's stories against it, over real sockets, and reports by story name. See
 // stories.md ("The harness"). Canon 1 is checked here: for every member of the cast, a fresh
@@ -25,21 +30,37 @@ import type { Stories, Story, Write } from "./stories";
 export type Outcome = { name: string; failures: string[] };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number };
 
-type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; answered: (() => void)[] };
-type HtmlOp = { op: "replace" | "add" | "remove"; target: string; html?: string };
+type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; taken: Map<string, Taken>; answered: (() => void)[] };
+type HtmlOp = { op: "replace" | "tag" | "after" | "before" | "remove"; target: string; html?: string };
 type Snapshot = Map<string, string>;
 
-/** How long the server is given to finish with the sockets a story closed, before its transaction is rolled back. */
-const CLOSE_MS = 40;
 
-const ledgerMaxStmt = db.query<{ id: number | null }, []>("SELECT MAX(id) AS id FROM ledger");
-const ledgerSinceStmt = db.query<{ id: number; doc: string; undoable: number }, [number]>("SELECT id, doc, undoable FROM ledger WHERE id > ? ORDER BY id");
+type LedgerRow = { id: number; doc: string; undoable: number };
+
+/**
+ * The ledger the stories read, to know whether a story has an undo to check and whether a refusal
+ * moved nothing: delta's (`delta_ledger`, in the same database), whose fresh entries -- not an
+ * undo's or a redo's -- a story's write starts.
+ */
+function ledgerOf(): { max(): number; since(id: number): LedgerRow[] } {
+  const max = db.query<{ id: number | null }, []>("SELECT MAX(id) AS id FROM delta_ledger");
+  const since = db.query<LedgerRow, [number]>("SELECT id, doc, undoable FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id");
+  return { max: () => max.get()?.id ?? 0, since: (id) => since.all(id) };
+}
 
 const UNDO: Write = { doc: "ledger", ops: [{ op: "remove", path: "/latest" }] };
 const REDO: Write = { doc: "ledger", ops: [{ op: "add", path: "/latest" }] };
 
-/** One fragment op applied to a page as the client applies it: the first element the selector names is replaced, appended to, or removed. */
+/** One fragment op applied to a page as the client applies it: the first element the selector names is replaced, put beside, or removed, or given a new opening tag. */
 function applyOp(page: string, op: HtmlOp): string {
+  if (op.op === "tag") {
+    // the part's opening tag, swapped as text, so the page reads exactly as a fresh render would
+    const at = page.indexOf(op.target.slice(1, -1)); // `data-eta-part="<key>"`, as the tag carries it
+    if (at < 0) return page;
+    const start = page.lastIndexOf("<", at);
+    const [old] = splitTag(page.slice(start));
+    return page.slice(0, start) + op.html! + page.slice(start + old.length);
+  }
   let done = false;
   return new HTMLRewriter()
     .on(op.target, {
@@ -47,36 +68,98 @@ function applyOp(page: string, op: HtmlOp): string {
         if (done) return;
         done = true;
         if (op.op === "replace") el.replace(op.html!, { html: true });
-        else if (op.op === "add") el.append(op.html!, { html: true });
+        else if (op.op === "after") el.after(op.html!, { html: true });
+        else if (op.op === "before") el.before(op.html!, { html: true });
         else el.remove();
       },
     })
     .transform(page);
 }
 
-type Heard = { type: string; html?: string; ops?: HtmlOp[] };
+export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string };
+
+// The patch stream, checked. An applet that takes a document's patches (`data-doc`) holds props: the
+// ones the last render gave it, with every patch for that document laid on since, at the place in
+// its props the document sits (`data-at`, the root by default). That is what the client's applet
+// holds, and it must be what a fresh render would give it -- or the ops did not say everything the
+// document did, or props that changed for another reason were never sent.
+
+/** An applet that takes a document's patches, as a member's page holds it. */
+type Taken = { applet: string; doc: string; at: string; props: string; ops: PatchOp[] };
+
+const unescape = (value: string): string => value.replaceAll("&quot;", '"').replaceAll("&#39;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
+
+/** The applets on a page that take a document's patches, by their id (or part, or place). */
+export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
+  const found = new Map<string, Omit<Taken, "ops">>();
+  new HTMLRewriter()
+    .on("[data-doc]", {
+      element(el) {
+        const applet = el.getAttribute("data-applet") ?? "";
+        const key = el.getAttribute("id") ?? el.getAttribute("data-eta-part") ?? `${applet}#${found.size}`;
+        found.set(key, { applet, doc: el.getAttribute("data-doc")!, at: el.getAttribute("data-at") ?? "", props: unescape(el.getAttribute("data-props") ?? "null") });
+      },
+    })
+    .transform(page);
+  return found;
+}
+
+/** A member's applets after a render: one whose props the render changed starts again from them; one it left alone keeps the ops it has taken. */
+export function retake(taken: Map<string, Taken>, page: string): void {
+  const now = takersOn(page);
+  for (const key of taken.keys()) if (!now.has(key)) taken.delete(key);
+  for (const [key, a] of now) {
+    const held = taken.get(key);
+    if (!held || held.props !== a.props || held.doc !== a.doc || held.at !== a.at) taken.set(key, { ...a, ops: [] });
+  }
+}
+
+/** JSON with its keys in order, so two values compare by what they hold. */
+const stable = (value: unknown): string =>
+  JSON.stringify(value, (_key, v) => (v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v));
+
+/** Where what a member's applets hold is not what a fresh page gives them: a failure each, begun with `whose`. */
+export function unheld(whose: string, taken: Map<string, Taken>, freshPage: string): string[] {
+  const failures: string[] = [];
+  const fresh = takersOn(freshPage);
+  for (const [key, t] of taken) {
+    const f = fresh.get(key);
+    if (!f || f.doc !== t.doc) continue; // not on the fresh page: the page's own comparison says so
+    const now = holding(t);
+    if ("error" in now) failures.push(`${whose} ${t.applet} was sent ${t.doc} ops that do not land on its props: ${now.error}`);
+    else if (stable(now.value) !== stable(JSON.parse(f.props))) failures.push(`${whose} ${t.applet} holds what a fresh render does not${excerpt(stable(JSON.parse(f.props)), stable(now.value))}`);
+  }
+  return failures;
+}
+
+/** What an applet holds now: its props with the ops it has taken laid on; or why the ops do not land. */
+export function holding(t: Taken): { value: unknown } | { error: string } {
+  try {
+    return { value: applyPatch(JSON.parse(t.props), t.ops.map((op) => ({ ...op, path: t.at + op.path }))) };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+}
 
 /** A member's open page after one more message: only renders change it. */
-function hear(page: string, message: Heard): string {
+export function hear(page: string, message: Heard): string {
   if (message.type !== "render") return page;
   if (message.html !== undefined) return message.html;
   return (message.ops ?? []).reduce(applyOp, page);
 }
 
-/** A page as it is compared: an applet that follows its document's patches is left out by its props. */
-export const comparable = (page: string): string => page.replace(/<[^>]*\sdata-doc="[^"]*"[^>]*>/g, (tag) => tag.replace(/\sdata-props="[^"]*"/, ""));
 
-function ledgerMax(): number {
-  return ledgerMaxStmt.get()?.id ?? 0;
-}
 
 export async function run(example: Example, stories: Stories): Promise<Report> {
   const server = createServer(example, 0);
-  const { renderFor } = assemble(example);
+  const { draw, documents } = assemble(example);
+  const active = (sessionId: string): Promise<boolean> => settled(documents, () => example.active(sessionId));
+  const ledger = ledgerOf();
+  const ledgerMax = ledger.max;
   const outcomes: Outcome[] = [];
 
-  function snapshot(cast: Member[]): Snapshot {
-    return new Map(cast.map((m) => [m.name, renderFor(m.sessionId)]));
+  async function snapshot(cast: Member[]): Promise<Snapshot> {
+    return new Map(await Promise.all(cast.map(async (m) => [m.name, await draw(m.sessionId)] as const)));
   }
 
   async function connect(name: string): Promise<Member> {
@@ -85,12 +168,14 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     const sessionId = crypto.randomUUID();
     // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
     const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } });
-    const member: Member = { name, sessionId, ws, inbox: [], page: "", answered: [] };
+    const member: Member = { name, sessionId, ws, inbox: [], page: "", taken: new Map(), answered: [] };
     ws.addEventListener("message", (event) => {
       const message = JSON.parse(String(event.data)) as Heard;
       if (message.type === "inspect") return member.answered.shift()?.();
       member.inbox.push(String(event.data));
       member.page = hear(member.page, message);
+      if (message.type === "render") retake(member.taken, member.page);
+      if (message.type === "patch") for (const t of member.taken.values()) if (t.doc === message.doc) t.ops.push(...(message.ops as unknown as PatchOp[]));
     });
     await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
     return member;
@@ -125,9 +210,15 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   }
 
   /** Canon 2: what each member's open page holds must be what a fresh render shows. */
-  function stale(cast: Member[], when: string, failures: string[]): void {
+  /** The patch stream: what each member's applets hold must be what a fresh render gives them. */
+  async function held(cast: Member[], when: string, failures: string[]): Promise<void> {
+    for (const m of cast) failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, await draw(m.sessionId)));
+  }
+
+  async function stale(cast: Member[], when: string, failures: string[]): Promise<void> {
+    await held(cast, when, failures);
     for (const m of cast) {
-      const fresh = comparable(renderFor(m.sessionId));
+      const fresh = comparable(await draw(m.sessionId));
       const held = comparable(m.page);
       if (held !== fresh) failures.push(`${when}, ${m.name}'s open page is not what a fresh render shows${excerpt(fresh, held)}`);
     }
@@ -146,11 +237,11 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       if (!who) return { name: story.name, failures: [`no one in the cast is called ${story.as}`] };
 
       if ("cannot" in story) {
-        const before = snapshot(cast);
+        const before = await snapshot(cast);
         const ledgerBefore = ledgerMax();
         await send(cast, who, story.cannot);
-        compare(before, snapshot(cast), cast, "refused, but", failures);
-        stale(cast, "after the refusal", failures);
+        compare(before, await snapshot(cast), cast, "refused, but", failures);
+        await stale(cast, "after the refusal", failures);
         if (ledgerMax() !== ledgerBefore) failures.push("refused, but the ledger moved");
         return { name: story.name, failures };
       }
@@ -164,14 +255,14 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
         else if (where !== undefined && stories.at) await send(cast, m, stories.at(where));
       }
 
-      const before = snapshot(cast);
+      const before = await snapshot(cast);
       const ledgerBefore = ledgerMax();
       who.inbox.length = 0;
       await send(cast, who, story.does);
       if (process.env.STORY_TRACE) for (const raw of who.inbox) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
-      const after = snapshot(cast);
-      const entries = ledgerSinceStmt.all(ledgerBefore);
-      stale(cast, "after the story", failures);
+      const after = await snapshot(cast);
+      const entries = ledger.since(ledgerBefore);
+      await stale(cast, "after the story", failures);
 
       // Only what the story says is asked: `seen` must notice, `unseen` must not; anyone in
       // neither is left alone (a home page with counts on it changes for many reasons).
@@ -182,26 +273,27 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       }
 
       if (entries.length === 0) return { name: story.name, failures }; // off the ledger: nothing to undo
-      if (!example.active(who.sessionId)) return { name: story.name, failures }; // the author has gone (logged out): no undo is theirs to press
+      if (!(await active(who.sessionId))) return { name: story.name, failures }; // the author has gone (logged out): no undo is theirs to press
 
       const facts = entries.every((e) => e.undoable === 0);
       await send(cast, who, UNDO);
-      const afterUndo = snapshot(cast);
-      stale(cast, "after undo", failures);
+      const afterUndo = await snapshot(cast);
+      await stale(cast, "after undo", failures);
       if (facts) compare(after, afterUndo, cast, "a fact, yet undo changed it", failures);
       else {
         compare(before, afterUndo, cast, "undo did not restore", failures);
-        if (!example.active(who.sessionId)) return { name: story.name, failures }; // the undo was their going (a name taken back): no redo is theirs to press
+        if (!(await active(who.sessionId))) return { name: story.name, failures }; // the undo was their going (a name taken back): no redo is theirs to press
         await send(cast, who, REDO);
-        compare(after, snapshot(cast), cast, "redo did not restore", failures);
-        stale(cast, "after redo", failures);
+        compare(after, await snapshot(cast), cast, "redo did not restore", failures);
+        await stale(cast, "after redo", failures);
       }
       return { name: story.name, failures };
     } finally {
       for (const m of cast) m.ws.close();
       await Promise.all(cast.map((m) => new Promise((resolve) => (m.ws.readyState === WebSocket.CLOSED ? resolve(undefined) : m.ws.addEventListener("close", resolve, { once: true })))));
-      await Bun.sleep(CLOSE_MS);
+      await server.idle(); // every close handled, and what it set going
       db.exec("ROLLBACK");
+      await documents.release(new Set()); // the next story reads from the rolled-back database
     }
   }
 

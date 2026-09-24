@@ -9,5 +9,5 @@ export const aliases: Record<string, (args: string[]) => { doc: string; ops: Pat
   room: (args) => ({ doc: "session", ops: [{ op: "replace", path: "/room", value: args.join(" ") }] }),
   leave: () => ({ doc: "session", ops: [{ op: "remove", path: "/room" }] }),
   logout: () => ({ doc: "session", ops: [{ op: "remove", path: "/name" }] }),
-  send: (args) => ({ doc: "room", ops: [{ op: "add", path: "/transcript/-", value: args.join(" ") }] }),
+  send: (args) => ({ doc: "room", ops: [{ op: "add", path: "/messages/-", value: args.join(" ") }] }),
 };

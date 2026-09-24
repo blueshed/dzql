@@ -13,8 +13,8 @@ export type Applet = {
    * Called with a document's applied ops as they are echoed, for an applet whose element names
    * that document in `data-doc`. The applet's props are a subtree of the document; this keeps
    * them current from the same ops the ledger recorded, with no HTML sent -- the delta itself is
-   * the update (a price tick, a cursor moving). The server's compartment answers `fragments` with `[]`
-   * for such a page, so nothing follows the patch.
+   * the update (a price tick, a cursor moving). Its props are left out when the page is compared
+   * (src/parts.ts), so no HTML follows the patch for them.
    */
   patch?(el: HTMLElement, ops: PatchOp[]): void;
 };

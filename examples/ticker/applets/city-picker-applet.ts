@@ -8,13 +8,12 @@
 import { registerApplet } from "../../../src/applets";
 import type { PatchOp } from "../../../src/json-patch";
 import { cityIn, matches, step, type Zone } from "./city-picker";
+import { cityOf, tzAfter } from "./clock";
 
 /** The zones as the server rendered them: <option value="Asia/Tokyo">Tokyo (UTC+09:00)</option>. */
 function zonesFrom(el: ParentNode): Zone[] {
   return [...el.querySelectorAll("option")].map((o) => ({ tz: o.value, label: o.textContent ?? "", city: cityIn(o.textContent ?? "") }));
 }
-
-const cityOf = (tz: string): string => (tz.split("/").pop() ?? tz).replaceAll("_", " ");
 
 type State = { zones: Zone[]; input: HTMLInputElement; list: HTMLUListElement; /** which suggestion the arrow keys have reached */ active: number };
 const states = new WeakMap<HTMLElement, State>();
@@ -22,7 +21,8 @@ const states = new WeakMap<HTMLElement, State>();
 registerApplet("city-picker", {
   mount(el, ctx) {
     const zones = zonesFrom(el);
-    const city = (ctx.props as { city: string }).city;
+    // its props are the clock document's own field, so the clock's ops land on them; the city is read off the zone
+    const city = cityOf((ctx.props as { tz: string }).tz);
     // A form, so Enter is the browser's own submit: it takes the first match.
     el.innerHTML = `<form><input type="text" placeholder="${city.replaceAll('"', "&quot;")}" aria-label="Show the time in" autocomplete="off"></form><ul class="suggestions" role="listbox"></ul>`;
     const form = el.querySelector("form")!;
@@ -81,12 +81,13 @@ registerApplet("city-picker", {
   },
   update(el, props) {
     const s = states.get(el);
-    if (s) s.input.placeholder = (props as { city: string }).city;
+    if (s) s.input.placeholder = cityOf((props as { tz: string }).tz);
   },
   // The clock document's own op, off the echo: the placeholder says which city the clock now shows.
   patch(el, ops: PatchOp[]) {
     const s = states.get(el);
     if (!s) return;
-    for (const op of ops) if (op.op === "replace" && op.path === "/tz" && typeof op.value === "string") s.input.placeholder = cityOf(op.value);
+    const tz = tzAfter("", ops);
+    if (tz) s.input.placeholder = cityOf(tz);
   },
 });

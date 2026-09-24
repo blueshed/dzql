@@ -1,36 +1,92 @@
 import { assemble } from "./compartments";
-import { closeConnection, openConnection, setActiveCompartments } from "./compartments/audience";
-import { fragmentsMessage, renderMessage, renderRequested } from "./compartments/render";
+import { audienceFor, closeConnection, openConnection, readersOf, resolveName, sees, setActiveCompartments, wireName, wireOps } from "./compartments/audience";
+import { fragmentsMessage, renderMessage } from "./compartments/render";
 import type { ConnectionData } from "./connection";
+import { setActiveDocuments, settled, type Documents } from "./documents";
 import type { Example } from "./example";
-import type { PatchOp } from "./json-patch";
+import { patchMessage, type PatchOp } from "./json-patch";
+import { splitDoc } from "./names";
+import { drawing, shownTo } from "./reading";
+import { diff, type Drawn } from "./parts";
 
-// One example per process is an invariant: a running eta process serves
-// exactly one example, and this tracks which (so the renderRequested
-// listener below -- registered once, not once per createServer call -- knows
-// what to render through no matter which compartment's code fired it). It's
-// cleared when that example's server(s) are all stopped, so a test suite
-// that creates one example's server, stops it, then creates a *different*
-// example's server (as the kernel's own generic tests and an example's own
-// tests do, in the same process) doesn't trip the guard below.
-let active: { example: Example; assembled: ReturnType<typeof assemble> } | undefined;
+type Socket = Bun.ServerWebSocket<ConnectionData>;
 
-renderRequested.on((request) => {
-  if (!active) return; // unreachable in practice: nothing can fire this before a server exists
-  const { sockets, write } = "sockets" in request ? request : { sockets: request, write: undefined };
-  const owner = write ? active.assembled.byDocType.get(write.docType) : undefined;
-  for (const ws of sockets) {
-    // The owning compartment may say exactly what changed on this page (HTML ops), or that
-    // nothing did (`[]`); when it does not answer, the page goes whole, and the morph finds what
-    // changed.
-    const ops = write && owner?.fragments?.(ws, write.docId, write.result);
-    if (ops) {
-      if (ops.length > 0) ws.send(fragmentsMessage(ops));
-      continue;
-    }
-    ws.send(renderMessage(active.assembled.renderFor(ws.data.sessionId)));
+// One example per process is an invariant: a running eta process serves exactly one example, and
+// this tracks which, so the one place changes are told from (below) draws through it. It's cleared
+// when that example's server(s) are all stopped, so a test suite that creates one example's server,
+// stops it, then creates a *different* example's server (as the kernel's own generic tests and an
+// example's own tests do, in the same process) doesn't trip the guard below.
+let active: { example: Example; assembled: ReturnType<typeof assemble>; servers: number } | undefined;
+
+// What each connection was last sent, so the next drawing sends only what differs (src/parts.ts).
+const sent = new WeakMap<Socket, Drawn>();
+
+// A connection's redraws happen one after another, so a drawing that waited for a document can
+// never land after, and undo, a later one.
+const drawingFor = new WeakMap<Socket, Promise<void>>();
+
+// Everything an event set going -- redraws, and the changes behind them -- so the event is done
+// only when all of it is.
+const pending = new Set<Promise<unknown>>();
+const track = (p: Promise<unknown>): void => {
+  pending.add(p);
+  void p.finally(() => pending.delete(p));
+};
+
+/**
+ * Draws a connection's page -- until every document it reads is held -- and sends what changed:
+ * the parts that differ, nothing if none do, or the page whole when its outline changed (a
+ * different page) or `whole` says so (a first drawing, a refused write handing the page back).
+ * A drawing that fails is logged, and the connection's next drawing goes ahead.
+ */
+function redraw(ws: Socket, whole = false, written?: { docType: string; docId: string }): Promise<void> {
+  const next = (drawingFor.get(ws) ?? Promise.resolve()).then(async () => {
+    if (!active) return;
+    const { assembled } = active;
+    const drawn = await settled(assembled.documents, () => drawing(ws, () => assembled.renderFor(ws.data.sessionId)));
+    const prev = sent.get(ws);
+    sent.set(ws, drawn);
+    const ops = prev && !whole ? diff(prev, drawn, written && wireName(written.docType, written.docId, ws)) : undefined;
+    if (ops === undefined) ws.send(renderMessage(drawn.html));
+    else if (ops.length > 0) ws.send(fragmentsMessage(ops));
+  });
+  const done = next.catch((err) => console.error("eta: drawing failed:", err));
+  drawingFor.set(ws, done);
+  track(done);
+  return done;
+}
+
+/** Resolves when everything set going so far -- redraws, and the documents' changes -- is done. */
+async function quiet(documents: Documents): Promise<void> {
+  while (pending.size > 0) {
+    await Promise.allSettled([...pending]);
+    await documents.quiet();
   }
-});
+}
+
+// Every document copy is told its changes once, whichever server is serving it.
+const heard = new WeakSet<Documents>();
+
+/**
+ * A change to a document -- a write here, an undo, or another process's over Postgres -- is told
+ * from here, and only here: its ops echoed to everyone who sees the document, in eta's paths (a
+ * compartment's `at` taken off), and every page that read it drawn again.
+ */
+function tellChanges(documents: Documents): void {
+  if (heard.has(documents)) return;
+  heard.add(documents);
+  documents.onChange(async ({ doc, ops, v }) => {
+    if (active?.assembled.documents !== documents) return; // a copy of an example no longer served
+    const { docType, docId } = splitDoc(doc);
+    const owner = active.assembled.byDocType.get(docType);
+    if (!owner) return;
+    const wire = wireOps(owner, docId, ops as PatchOp[]);
+    const echoTo = await settled(documents, () => audienceFor(docType, docId));
+    for (const ws of echoTo) ws.send(patchMessage(wireName(docType, docId, ws), v ?? 0, wire));
+    for (const ws of new Set([...echoTo, ...readersOf(docType, docId)])) void redraw(ws, false, { docType, docId });
+    await owner.changed?.(docId, wire);
+  });
+}
 
 export function createServer(example: Example, port: number | string = process.env.PORT ?? 3000) {
   if (active && active.example !== example) {
@@ -40,13 +96,77 @@ export function createServer(example: Example, port: number | string = process.e
     );
   }
   const assembled = assemble(example);
-  active = { example, assembled };
-  const { compartments, byDocType, inspectFor, renderFor } = assembled;
+  active = { example, assembled, servers: (active?.servers ?? 0) + 1 };
+  const { compartments, byDocType, inspectFor, documents } = assembled;
   setActiveCompartments(byDocType);
+  setActiveDocuments(documents);
+  tellChanges(documents);
 
-  function pushRender(ws: Bun.ServerWebSocket<ConnectionData>) {
-    ws.send(renderMessage(renderFor(ws.data.sessionId)));
+  const who = (ws: Socket): unknown => (example.who ? example.who(ws.data.sessionId) : ws.data.sessionId);
+
+  // Events are handled one at a time, in the order they came: each is done when what it set going
+  // is done, so an `inspect` after a write is answered after everything the write caused.
+  let queue: Promise<void> = Promise.resolve();
+  const enqueue = (fn: () => Promise<void>): void => {
+    queue = queue
+      .then(fn)
+      .then(() => quiet(documents))
+      .catch((err) => console.error("eta:", err));
+  };
+
+  /** A write from the wire: permitted, shaped, written through delta as the person. */
+  async function writeDelta(ws: Socket, owner: (typeof compartments)[number], docId: string, ops: PatchOp[]): Promise<boolean> {
+    const kind = owner.kind ?? "written";
+    if (kind !== "written" && kind !== "fact") return false; // live, sourced, static: nobody writes them from the wire
+    if (!(await settled(documents, () => ops.every((op) => owner.permit?.(ws, op, docId) ?? false)))) return false;
+    const shaped = owner.shape ? await settled(documents, () => owner.shape!(ws, docId, ops)) : ops;
+    if (shaped.length === 0) return false;
+    const at = owner.at ?? "";
+    const written = await documents.write(
+      `${owner.docType}:${docId}`,
+      shaped.map((op) => ({ ...op, path: at + op.path })) as never,
+      { identity: who(ws), cursor: ws.data.sessionId, undoable: kind !== "fact" },
+    );
+    if ("error" in written || written.ops.length === 0) return false;
+    await owner.wrote?.(ws, docId, ops);
+    return true;
   }
+
+  /** Undo or redo: delta walks the session's cursor; the change is told like any other. */
+  async function walk(ws: Socket, ops: PatchOp[]): Promise<boolean> {
+    const ledger = byDocType.get("ledger")!;
+    if (!(await settled(documents, () => ops.every((op) => ledger.permit!(ws, op, ws.data.sessionId))))) return false;
+    return (await documents.walk(ops[0]!.op === "add" ? "redo" : "undo", { identity: who(ws), cursor: ws.data.sessionId })) !== null;
+  }
+
+  async function handle(ws: Socket, message: { type?: string; doc?: string; ops?: PatchOp[]; limit?: number }): Promise<void> {
+    if (message.type === "inspect") {
+      ws.send(JSON.stringify({ type: "inspect", ...(await inspectFor(ws, message.limit)) }));
+      return;
+    }
+
+    // A write names its document: whole (`room:general`), or by type alone for the one of that
+    // type this connection is on. Whichever, a connection writes only what it sees, and then only
+    // what the owner permits.
+    const ops = message.ops ?? [];
+    const target = message.doc ? await settled(documents, () => resolveName(byDocType, message.doc!, ws)) : undefined;
+    let wrote = false;
+    if (target && ops.length > 0 && (await settled(documents, () => sees(target.owner, ws, target.docId)))) {
+      const { owner, docId } = target;
+      wrote = owner.docType === "ledger" ? await walk(ws, ops) : await writeDelta(ws, owner, docId, ops);
+    }
+    // A write that applied something is told from its change, the writer's page with the rest.
+    // Nothing applied (refused, unknown document, nothing to walk) hands the page back.
+    if (!wrote) void redraw(ws, true);
+  }
+
+  /** Lets go of the documents no open page reads any more. */
+  async function release(): Promise<void> {
+    const keep = new Set<string>();
+    for (const ws of openSockets) for (const doc of shownTo(ws)) keep.add(doc);
+    await documents.release(keep);
+  }
+  const openSockets = new Set<Socket>();
 
   const server = Bun.serve<ConnectionData>({
     port,
@@ -81,8 +201,11 @@ export function createServer(example: Example, port: number | string = process.e
     websocket: {
       open(ws) {
         openConnection(ws);
-        for (const compartment of compartments) compartment.onOpen?.(ws);
-        pushRender(ws);
+        openSockets.add(ws);
+        enqueue(async () => {
+          for (const compartment of compartments) await compartment.onOpen?.(ws);
+          await redraw(ws, true);
+        });
       },
       message(ws, raw) {
         let message: { type?: string; doc?: string; ops?: PatchOp[]; limit?: number };
@@ -91,45 +214,34 @@ export function createServer(example: Example, port: number | string = process.e
         } catch {
           return;
         }
-
-        if (message.type === "inspect") {
-          ws.send(JSON.stringify({ type: "inspect", ...inspectFor(ws, message.limit) }));
-          return;
-        }
-
-        const compartment = message.doc ? byDocType.get(message.doc) : undefined;
-        const ops = message.ops ?? [];
-        let wrote = false;
-
-        if (compartment && ops.length > 0) {
-          const docId = compartment.resolveDoc(ws);
-          if (docId && ops.every((op) => compartment.permit(ws, op))) {
-            wrote = compartment.write(ws, docId, ops).applied.length > 0;
-          }
-        }
-
-        // A write that actually applied something is responsible for asking its own connection
-        // to be brought up to date, same as any other connection that sees the document (rule
-        // 2's write() doc comment) -- rendering it again here would be the second time. Nothing
-        // applied (rejected, unknown doc, empty ops) means nothing asked, so this is the only render.
-        if (!wrote) pushRender(ws);
+        enqueue(() => handle(ws, message));
       },
       close(ws) {
         closeConnection(ws);
-        for (const compartment of compartments) compartment.onClose?.(ws);
+        openSockets.delete(ws);
+        enqueue(async () => {
+          for (const compartment of compartments) await compartment.onClose?.(ws);
+          await quiet(documents);
+          await release();
+        });
       },
     },
     development: process.env.NODE_ENV !== "production",
   });
 
   const stop = server.stop.bind(server);
+  let stopped = false;
   server.stop = ((...args: Parameters<typeof server.stop>) => {
-    if (active?.example === example) {
+    if (!stopped && active?.example === example && --active.servers === 0) {
       active = undefined;
       setActiveCompartments(undefined);
+      setActiveDocuments(undefined);
     }
+    stopped = true;
     return stop(...args);
   }) as typeof server.stop;
 
-  return server;
+  /** Resolves when every event so far has been handled and everything it set going is done. */
+  const settledServer = Object.assign(server, { idle: () => queue.then(() => quiet(documents)) });
+  return settledServer;
 }

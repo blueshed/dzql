@@ -35,7 +35,7 @@ h3.cap { margin: var(--space-xl) 0 var(--space-sm); }
 .note { color: var(--muted); font-size: 13px; }
 p.note { margin: 0 0 var(--space-md); font-size: 14px; }
 .site { position: relative; z-index: 1; }
-:where(.site > *) { margin: 0 0 var(--space-xl); } /* :where, so a bento surface's own margin still wins */
+:where(.site > *, .site > .ground > *) { margin: 0 0 var(--space-xl); } /* :where, so a bento surface's own margin still wins */
 
 /* the flowers: the announcement's own, along the foot of every page behind everything, full on the welcome */
 .flowers {
@@ -46,7 +46,7 @@ p.note { margin: 0 0 var(--space-md); font-size: 14px; }
 .site.at-welcome ~ .flowers, .site.at-welcome + .flowers { opacity: 1; }
 main#app:has(.site.at-welcome) .flowers { opacity: 1; height: min(46vh, 520px); }
 .site { position: relative; z-index: 1; }
-:where(.site > *) { margin: 0 0 24px; }
+:where(.site > *, .site > .ground > *) { margin: 0 0 24px; }
 
 /* ── controls: the welcome's own, over the bento's ── */
 input, select, textarea { min-height: 44px; }

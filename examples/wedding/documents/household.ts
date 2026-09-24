@@ -1,14 +1,15 @@
-import { db } from "../db";
+import { db } from "../delta";
+import { read as readDoc } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
-import { prefixDoc, record } from "../../../src/ledger";
-import { allowsLook, isLookField, LOOK_FIELDS, type Look, type LookField } from "../looks";
-import { integer, restore, text, yesNo } from "./values";
+import { allowsLook, isLookField, LOOK_FIELDS, type Look } from "../looks";
+import type { Course, Rows } from "./wedding";
+import { integer, text, yesNo } from "./values";
 
-// A household's document: the answer, the message, the guests (each with its minifigure and its
-// choices), the asks, and the gifts it has claimed. The household writes it by its code; the
-// couple read every household's through the board (documents/board.ts), which also reuses the
-// guest and ask helpers here so a household removed and restored by undo comes back whole.
+// A household's document, kept in delta (`household:<id>`, ../delta.ts): the answer, the message,
+// the guests (each wearing a minifigure, with their choices), the asks, and the gifts it has
+// claimed. The household writes it; the couple read every household through the board
+// (documents/board.ts), which builds each one with `householdFrom` here.
 
 export type Answer = "yes" | "maybe" | "no";
 export type NamedBy = "couple" | "household" | "ask";
@@ -36,259 +37,145 @@ export type HouseholdDocument = {
   claims: number[];
 };
 
-type HouseholdRow = Omit<HouseholdDocument, "guests" | "asks" | "claims">;
-type GuestRow = Omit<Guest, "minifigure" | "choices"> & Look;
+type Row = Record<string, unknown> & { id: string };
+const byId = (a: Row, b: Row) => Number(a.id) - Number(b.id);
 
-const householdStmt = db.query<HouseholdRow, [string]>(
-  "SELECT id, code, email, plus_ones, answer, message FROM households WHERE code = ?",
-);
-const guestsStmt = db.query<GuestRow, [number]>(`
-  SELECT g.id, g.name, g.named_by, g.coming, m.skin, m.hair, m.hair_color, m.top, m.legs, m.face, m.attitude, m.built_at
-  FROM guests g JOIN minifigures m ON m.guest_id = g.id
-  WHERE g.household_id = ? ORDER BY g.id
-`);
-const choicesStmt = db.query<{ guest_id: number; course_id: number; dish_id: number | null; drink_id: number | null }, [number]>(
-  "SELECT guest_id, course_id, dish_id, drink_id FROM choices WHERE guest_id IN (SELECT id FROM guests WHERE household_id = ?)",
-);
-const asksStmt = db.query<Ask, [number]>("SELECT id, name, asked_at, reply, guest_id FROM asks WHERE household_id = ? ORDER BY id");
-const claimsStmt = db.query<{ gift_id: number }, [number]>("SELECT gift_id FROM gift_claims WHERE household_id = ? ORDER BY id");
+export const guestOf = (g: Row): Guest => ({
+  id: Number(g.id),
+  name: g.name as string,
+  named_by: g.named_by as NamedBy,
+  coming: (g.coming as number | null) ?? null,
+  minifigure: Object.fromEntries([...LOOK_FIELDS, "built_at"].map((f) => [f, g[f] ?? null])) as Look,
+  choices: (g.choices as Record<string, Choice> | null) ?? {},
+});
 
-const setAnswerStmt = db.query<unknown, [string | null, number]>("UPDATE households SET answer = ? WHERE id = ?");
-const setMessageStmt = db.query<unknown, [string | null, number]>("UPDATE households SET message = ? WHERE id = ?");
-const insertGuestStmt = db.query<unknown, [number | null, number, string, string, number | null]>(
-  "INSERT INTO guests (id, household_id, name, named_by, coming) VALUES (?, ?, ?, ?, ?)",
-);
-const deleteGuestStmt = db.query<unknown, [number]>("DELETE FROM guests WHERE id = ?");
-const setComingStmt = db.query<unknown, [number | null, number]>("UPDATE guests SET coming = ? WHERE id = ?");
-// One statement per column: the column name comes from the model's own list, never the wire.
-const setLookStmts = Object.fromEntries(
-  [...LOOK_FIELDS, "built_at"].map((field) => [field, db.query<unknown, [string | null, number]>(`UPDATE minifigures SET ${field} = ? WHERE guest_id = ?`)]),
-) as Record<LookField | "built_at", ReturnType<typeof db.query<unknown, [string | null, number]>>>;
-const courseExistsStmt = db.query<{ id: number }, [number]>("SELECT id FROM courses WHERE id = ?");
-const dishInCourseStmt = db.query<{ id: number }, [number, number]>("SELECT id FROM dishes WHERE id = ? AND course_id = ?");
-const drinkInCourseStmt = db.query<{ id: number }, [number, number]>("SELECT id FROM drinks WHERE id = ? AND course_id = ?");
-const upsertChoiceStmt = db.query<unknown, [number, number, number | null, number | null]>(`
-  INSERT INTO choices (guest_id, course_id, dish_id, drink_id) VALUES (?1, ?2, ?3, ?4)
-  ON CONFLICT(guest_id, course_id) DO UPDATE SET dish_id = ?3, drink_id = ?4
-`);
-const insertAskStmt = db.query<unknown, [number | null, number, string, string, string | null, number | null]>(
-  "INSERT INTO asks (id, household_id, name, asked_at, reply, guest_id) VALUES (?, ?, ?, ?, ?, ?)",
-);
-const deleteAskStmt = db.query<unknown, [number]>("DELETE FROM asks WHERE id = ?");
-const giftExistsStmt = db.query<{ id: number }, [number]>("SELECT id FROM gifts WHERE id = ?");
-const insertClaimStmt = db.query<unknown, [number, number]>("INSERT INTO gift_claims (gift_id, household_id) VALUES (?, ?)");
-const deleteClaimStmt = db.query<unknown, [number, number]>("DELETE FROM gift_claims WHERE gift_id = ? AND household_id = ?");
-
-function guestsOf(householdId: number): Guest[] {
-  const choices = choicesStmt.all(householdId);
-  return guestsStmt.all(householdId).map(({ skin, hair, hair_color, top, legs, face, attitude, built_at, ...guest }) => ({
-    ...guest,
-    minifigure: { skin, hair, hair_color, top, legs, face, attitude, built_at },
-    choices: Object.fromEntries(
-      choices.filter((c) => c.guest_id === guest.id).map((c) => [String(c.course_id), { dish: c.dish_id, drink: c.drink_id }]),
-    ),
-  }));
+/** A household whole, from its row and the guests, asks and claims that stand on it (in whichever document holds them). */
+export function householdFrom(h: Row, rows: { guests?: Rows; asks?: Rows; claims?: Rows }): HouseholdDocument {
+  const mine = (r: Row) => r.households_id === h.id;
+  return {
+    id: Number(h.id),
+    code: h.code as string,
+    email: h.email as string,
+    plus_ones: Number(h.plus_ones),
+    answer: (h.answer as Answer | null) ?? null,
+    message: (h.message as string | null) ?? null,
+    guests: Object.values(rows.guests ?? {}).filter(mine).sort(byId).map(guestOf),
+    asks: Object.values(rows.asks ?? {})
+      .filter(mine)
+      .sort(byId)
+      .map((a) => ({ id: Number(a.id), name: a.name as string, asked_at: a.asked_at as string, reply: (a.reply as Ask["reply"]) ?? null, guest_id: a.guest_id == null ? null : Number(a.guest_id) })),
+    claims: Object.values(rows.claims ?? {})
+      .filter(mine)
+      .sort((a, b) => String(a.claimed_at).localeCompare(String(b.claimed_at)))
+      .map((c) => Number(c.gift_id)),
+  };
 }
 
-export function read(code: string): HouseholdDocument | undefined {
-  const row = householdStmt.get(code);
-  if (!row) return undefined;
-  return { ...row, guests: guestsOf(row.id), asks: asksStmt.all(row.id), claims: claimsStmt.all(row.id).map((c) => c.gift_id) };
+export function read(id: string): HouseholdDocument | undefined {
+  const doc = readDoc<{ households: Row | null; guests?: Rows; asks?: Rows; claims?: Rows } | undefined>(`household:${id}`);
+  return doc?.households ? householdFrom(doc.households, doc) : undefined;
 }
 
-/** One guest of a household, whole (the shape an undo puts back), or undefined if no such guest is theirs. */
-export function guestOf(householdId: number, guestId: number): Guest | undefined {
-  return guestsOf(householdId).find((g) => g.id === guestId);
+/** The next id for a table: rows are numbered, as they were, so a path names one by a number. */
+export function minter(table: string): () => string {
+  let next = (db.query<{ n: number | null }, []>(`SELECT MAX(CAST(id AS INTEGER)) AS n FROM ${table}`).get()?.n ?? 0) + 1;
+  return () => String(next++);
 }
 
-/** What an add on /guests/- carries: a bare name, or a whole guest coming back through undo. */
-export type GuestValue = Partial<Omit<Guest, "name" | "minifigure">> & { name: string; minifigure?: Partial<Look> };
+/** A claim's own key: the gift and the household, so the one gift may be claimed by many (when shared). */
+export const claimKey = (giftId: number, householdId: number): string => `${giftId}-${householdId}`;
 
-function guestValue(value: unknown): GuestValue | undefined {
-  const v = (typeof value === "string" ? { name: value } : value) as Partial<GuestValue> | null;
-  const name = text(v?.name);
-  return name ? { ...v, name } : undefined;
-}
+const claimedStmt = db.query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM wedding_claims WHERE gift_id = ?");
 
-/** Inserts a guest (with a blank minifigure, by trigger), then restores whatever look and choices the value carries. Returns the guest's id. */
-export function addGuest(householdId: number, value: GuestValue, namedBy: NamedBy): number {
-  const result = insertGuestStmt.run(value.id ?? null, householdId, value.name, value.named_by ?? namedBy, value.coming ?? null);
-  const id = value.id ?? Number(result.lastInsertRowid);
-  for (const field of [...LOOK_FIELDS, "built_at"] as const) {
-    const v = value.minifigure?.[field];
-    if (v !== undefined) setLookStmts[field].run(v, id);
-  }
-  for (const [courseId, choice] of Object.entries(value.choices ?? {})) {
-    upsertChoiceStmt.run(id, Number(courseId), choice.dish, choice.drink);
-  }
-  return id;
-}
-
-export function removeGuest(guestId: number): void {
-  deleteGuestStmt.run(guestId);
-}
-
-export type AskValue = Partial<Ask> & { name: string };
-
-function askValue(value: unknown): AskValue | undefined {
-  const v = (typeof value === "string" ? { name: value } : value) as Partial<AskValue> | null;
-  const name = text(v?.name);
-  return name ? { ...v, name } : undefined;
-}
-
-export function addAsk(householdId: number, value: AskValue): number {
-  const result = insertAskStmt.run(
-    value.id ?? null,
-    householdId,
-    value.name,
-    value.asked_at ?? new Date().toISOString(),
-    value.reply ?? null,
-    value.guest_id ?? null,
-  );
-  return value.id ?? Number(result.lastInsertRowid);
-}
-
-/** A claim on a gift by a household. False when the store refuses it: the gift is taken, or already theirs. */
-export function claim(giftId: number, householdId: number): boolean {
-  try {
-    insertClaimStmt.run(giftId, householdId);
-    return true;
-  } catch {
-    return false;
-  }
-}
+/** What a household may choose from and claim: the courses, and the gifts that are there and shared or not yet taken. */
+export type Offer = { courses: Course[]; gifts: { id: number; shared: boolean }[] };
 
 const isAnswer = (value: unknown): value is Answer => value === "yes" || value === "maybe" || value === "no";
 
-/** Applies one op to a household, returning the ops that undo it -- or undefined if it did not apply. */
-function applyOne(h: HouseholdRow, op: PatchOp): PatchOp[] | undefined {
-  const seg = parsePointer(op.path);
-  const [head, second, third, fourth, fifth] = seg;
-  const removing = op.op === "remove";
-
-  if (head === "answer" && seg.length === 1) {
-    const value = removing ? null : op.value;
-    if (value !== null && !isAnswer(value)) return;
-    if (h.answer === value) return;
-    setAnswerStmt.run(value, h.id);
-    return [restore("/answer", h.answer)];
-  }
-
-  if (head === "message" && seg.length === 1) {
-    const value = removing ? null : text(op.value);
-    if (h.message === value) return;
-    setMessageStmt.run(value, h.id);
-    return [restore("/message", h.message)];
-  }
-
-  if (head === "guests") {
-    if (second === "-") {
-      const value = op.op === "add" ? guestValue(op.value) : undefined;
-      if (!value) return;
-      const id = addGuest(h.id, value, "household");
-      return [{ op: "remove", path: `/guests/${id}` }];
-    }
-    const gid = integer(second);
-    const guest = gid === undefined ? undefined : guestOf(h.id, gid);
-    if (!guest) return;
-
-    if (seg.length === 2) {
-      // Only reachable via undo (the compartment's permit() never allows a remove here): walks back a plus-one.
-      if (!removing) return;
-      removeGuest(guest.id);
-      return [{ op: "add", path: "/guests/-", value: guest }];
-    }
-
-    if (third === "coming" && seg.length === 3) {
-      const value = removing ? null : yesNo(op.value);
-      if (value === undefined || guest.coming === value) return;
-      setComingStmt.run(value, guest.id);
-      return [restore(op.path, guest.coming)];
-    }
-
-    if (third === "minifigure" && seg.length === 4 && fourth) {
-      if (fourth === "built_at") {
-        // Only reachable via undo: the first touch on a blank minifigure stamps built_at, and its inverse unstamps it.
-        const value = removing ? null : text(op.value);
-        setLookStmts.built_at.run(value, guest.id);
-        return [restore(op.path, guest.minifigure.built_at)];
-      }
-      if (!isLookField(fourth) || removing || !allowsLook(fourth, op.value)) return;
-      if (guest.minifigure[fourth] === op.value) return;
-      setLookStmts[fourth].run(op.value, guest.id);
-      const inverse: PatchOp[] = [{ op: "replace", path: op.path, value: guest.minifigure[fourth] }];
-      if (guest.minifigure.built_at === null) {
-        setLookStmts.built_at.run(new Date().toISOString(), guest.id);
-        inverse.push({ op: "remove", path: `/guests/${guest.id}/minifigure/built_at` });
-      }
-      return inverse;
-    }
-
-    if (third === "choices" && seg.length === 5 && (fifth === "dish" || fifth === "drink")) {
-      const courseId = integer(fourth);
-      if (courseId === undefined || !courseExistsStmt.get(courseId)) return;
-      const current = guest.choices[String(courseId)] ?? { dish: null, drink: null };
-      let value: number | null = null;
-      if (!removing) {
-        const id = integer(op.value);
-        const offered = id === undefined ? undefined : fifth === "dish" ? dishInCourseStmt.get(id, courseId) : drinkInCourseStmt.get(id, courseId);
-        if (!offered) return;
-        value = id!;
-      }
-      if (current[fifth] === value) return;
-      const next = { ...current, [fifth]: value };
-      upsertChoiceStmt.run(guest.id, courseId, next.dish, next.drink);
-      return [restore(op.path, current[fifth])];
-    }
-    return;
-  }
-
-  if (head === "asks") {
-    if (second === "-") {
-      const value = op.op === "add" ? askValue(op.value) : undefined;
-      if (!value) return;
-      const id = addAsk(h.id, value);
-      return [{ op: "remove", path: `/asks/${id}` }];
-    }
-    const aid = integer(second);
-    const ask = aid === undefined ? undefined : asksStmt.all(h.id).find((a) => a.id === aid);
-    if (!ask || seg.length !== 2 || !removing) return;
-    // Only reachable via undo: walks back an ask.
-    deleteAskStmt.run(ask.id);
-    return [{ op: "add", path: "/asks/-", value: ask }];
-  }
-
-  if (head === "claims") {
-    if (second === "-") {
-      const giftId = op.op === "add" ? integer(op.value) : undefined;
-      if (giftId === undefined || !giftExistsStmt.get(giftId) || !claim(giftId, h.id)) return;
-      return [{ op: "remove", path: `/claims/${giftId}` }];
-    }
-    const giftId = integer(second);
-    if (giftId === undefined || !removing || seg.length !== 2) return;
-    if (deleteClaimStmt.run(giftId, h.id).changes === 0) return;
-    return [{ op: "add", path: "/claims/-", value: giftId }];
-  }
-
-  return;
-}
-
-export type HouseholdPatchResult = { version: number; applied: PatchOp[] };
-
-/** Applies a patch to the household with this code, recording it (and its inverse) on the ledger. One transaction: every statement here, the ledger row, and the version it returns commit together or not at all. */
-export const patch = db.transaction(function patch(code: string, ops: PatchOp[], sessionId: string, undoes?: number): HouseholdPatchResult {
-  const applied: PatchOp[] = [];
-  const inverse: PatchOp[] = [];
+/**
+ * A household's write, as the document takes it. The wire says it the household's way -- `/answer`,
+ * `/guests/2/minifigure/top`, `/guests/2/choices/2/dish`, `/claims/-` with a gift's id -- and each
+ * is checked (a valid value, a change, a dish the course offers, a gift not taken) and becomes the
+ * rows it moves. The wire may name a plus-one or an ask and nothing more, and a plus-one only
+ * while one is owed, counted down across the message. Delta's inverse is what undo walks.
+ */
+export function shape(h: HouseholdDocument, offer: Offer, ops: PatchOp[], now = new Date().toISOString()): PatchOp[] {
+  const out: PatchOp[] = [];
+  const guests = new Map(h.guests.map((g) => [g.id, structuredClone(g)]));
+  let answer = h.answer;
+  let message = h.message;
+  let owed = h.plus_ones - h.guests.filter((g) => g.named_by === "household").length;
+  const claims = new Set(h.claims);
+  const guestId = minter("wedding_guests");
+  const askId = minter("wedding_asks");
+  const nameOf = (value: unknown) => text(typeof value === "string" ? value : (value as { name?: unknown } | null)?.name);
 
   for (const op of ops) {
-    const h = householdStmt.get(code);
-    if (!h) break;
-    const undo = applyOne(h, op);
-    if (!undo) continue;
-    applied.push(op);
-    inverse.unshift(...undo);
+    const [head, second, third, fourth, fifth] = parsePointer(op.path);
+    const removing = op.op === "remove";
+
+    if (head === "answer") {
+      const value = removing ? null : op.value;
+      if ((value !== null && !isAnswer(value)) || value === answer) continue;
+      answer = value;
+      out.push({ op: "replace", path: "/households/answer", value });
+    } else if (head === "message") {
+      const value = removing ? null : text(op.value);
+      if (value === message) continue;
+      message = value;
+      out.push({ op: "replace", path: "/households/message", value });
+    } else if (head === "guests" && second === "-") {
+      const name = op.op === "add" ? nameOf(op.value) : null;
+      if (!name || owed-- <= 0) continue;
+      out.push({ op: "add", path: `/guests/${guestId()}`, value: { name, named_by: "household" } });
+    } else if (head === "guests") {
+      const guest = guests.get(integer(second) ?? -1);
+      if (!guest) continue;
+      if (third === "coming" && fourth === undefined) {
+        const value = removing ? null : yesNo(op.value);
+        if (value === undefined || value === guest.coming) continue;
+        guest.coming = value;
+        out.push({ op: "replace", path: `/guests/${guest.id}/coming`, value });
+      } else if (third === "minifigure" && fourth && isLookField(fourth) && fifth === undefined) {
+        if (removing || !allowsLook(fourth, op.value) || guest.minifigure[fourth] === op.value) continue;
+        (guest.minifigure as Record<string, unknown>)[fourth] = op.value;
+        out.push({ op: "replace", path: `/guests/${guest.id}/${fourth}`, value: op.value });
+        // the first touch on a blank minifigure builds it
+        if (guest.minifigure.built_at === null) {
+          guest.minifigure.built_at = now;
+          out.push({ op: "replace", path: `/guests/${guest.id}/built_at`, value: now });
+        }
+      } else if (third === "choices" && (fifth === "dish" || fifth === "drink")) {
+        const course = offer.courses.find((c) => c.id === integer(fourth));
+        if (!course) continue;
+        const current = guest.choices[String(course.id)] ?? { dish: null, drink: null };
+        let value: number | null = null;
+        if (!removing) {
+          const id = integer(op.value);
+          const offered = fifth === "dish" ? course.dishes.some((d) => d.id === id) : course.drinks.some((d) => d.id === id);
+          if (!offered) continue;
+          value = id!;
+        }
+        if (current[fifth] === value) continue;
+        guest.choices = { ...guest.choices, [String(course.id)]: { ...current, [fifth]: value } };
+        out.push({ op: "replace", path: `/guests/${guest.id}/choices`, value: guest.choices });
+      }
+    } else if (head === "asks" && second === "-") {
+      const name = op.op === "add" ? nameOf(op.value) : null;
+      if (!name) continue;
+      out.push({ op: "add", path: `/asks/${askId()}`, value: { name, asked_at: now, reply: null, guest_id: null } });
+    } else if (head === "claims" && second === "-") {
+      const gift = offer.gifts.find((g) => g.id === (op.op === "add" ? integer(op.value) : undefined));
+      if (!gift || claims.has(gift.id) || (!gift.shared && claimedStmt.get(String(gift.id))!.n > 0)) continue;
+      claims.add(gift.id);
+      out.push({ op: "add", path: `/claims/${claimKey(gift.id, h.id)}`, value: { gift_id: String(gift.id), claimed_at: now } });
+    } else if (head === "claims" && removing && third === undefined) {
+      const giftId = integer(second);
+      if (giftId === undefined || !claims.delete(giftId)) continue;
+      out.push({ op: "remove", path: `/claims/${claimKey(giftId, h.id)}` });
+    }
   }
 
-  const version = record(prefixDoc("household", code), applied, inverse, sessionId, undoes);
-  return { version, applied };
-});
+  // Two writes to one guest's choices in a message are one write of where they end.
+  return out.filter((op, i) => !(op.path.endsWith("/choices") && out.slice(i + 1).some((later) => later.path === op.path)));
+}

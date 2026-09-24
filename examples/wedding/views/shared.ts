@@ -8,8 +8,9 @@ import type { Spec } from "../applets/figure";
 import { row } from "./bento";
 import { rows } from "../../../src/bento";
 
-export { inertWhile, matches } from "../../../src/bento";
+export { layers, matches } from "../../../src/bento";
 import { esc } from "./html";
+import { part } from "../../../src/parts";
 import { icon } from "./icons";
 
 export function formatDay(day: string): string {
@@ -148,5 +149,6 @@ export function frame(atWelcome: boolean, body: string, page?: string, locked = 
   // `locked` (a drawer or a modal open) holds the page behind it still on a phone: `styles.css`
   // reads the class off `.site` via `body:has(.site.locked)`, since the render owns no element
   // of `body` itself to add the class to directly.
-  return `<div class="flowers" aria-hidden="true"></div><div class="site${atWelcome ? " at-welcome" : ""}${locked ? " locked" : ""}"${pageAttrs}>${body}</div>`;
+  // the site is a part: a drawer or a modal opening changes its tag (locked, the address) and a layer inside it, and nothing else is sent
+  return `<div class="flowers" aria-hidden="true"></div>` + part("site", `<div class="site${atWelcome ? " at-welcome" : ""}${locked ? " locked" : ""}"${pageAttrs}>${body}</div>`);
 }

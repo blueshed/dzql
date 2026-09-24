@@ -1,26 +1,11 @@
-import type { ServerWebSocket } from "bun";
-import type { ConnectionData } from "../connection";
-import { createEvent } from "./bus";
-import type { WriteResult } from "./compartment";
-
 /**
- * A delta in HTML's own terms: what a render sends instead of the whole page when a compartment
- * can say which elements a write touched. `replace` morphs the target element with `html`
- * (one element); `add` appends `html` inside the target; `remove` takes the target out. The
- * target is a selector, in practice an id.
+ * A page brought up to date in HTML's own terms (src/parts.ts works them out). `replace` morphs the
+ * target element with `html` (one element); `tag` gives the target the attributes of `html`, an
+ * opening tag, and leaves what is inside it alone; `after` and `before` put `html` beside the
+ * target (a row into a list); `remove` takes the target out. The target is a part's selector,
+ * `[data-eta-part="<key>"]`.
  */
-export type HtmlOp = { op: "replace" | "add"; target: string; html: string } | { op: "remove"; target: string };
-
-/** A write, as a render request carries it: the compartment that owns the document decides, per connection, what the write means for its page. */
-export type RenderWrite = { docType: string; docId: string; result: WriteResult };
-
-export type RenderRequest = { sockets: Iterable<ServerWebSocket<ConnectionData>>; write?: RenderWrite };
-
-// Fires whenever a set of connections needs bringing up to date -- after a write to a document
-// they see, an undo, a presence change. A bare iterable of sockets asks for the page for each; a
-// request that names the write lets the owning compartment answer with HTML ops instead
-// (Compartment.fragments), and the page is what goes when it does not.
-export const renderRequested = createEvent<Iterable<ServerWebSocket<ConnectionData>> | RenderRequest>();
+export type HtmlOp = { op: "replace" | "tag" | "after" | "before"; target: string; html: string } | { op: "remove"; target: string };
 
 export const renderMessage = (html: string): string => JSON.stringify({ type: "render", html });
 export const fragmentsMessage = (ops: HtmlOp[]): string => JSON.stringify({ type: "render", ops });

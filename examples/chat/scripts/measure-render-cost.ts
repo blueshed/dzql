@@ -1,8 +1,7 @@
 // Measures what a room write costs on the wire for every other member: a patch echo and
-// then whatever the render is -- a full page (0.12.0 to 0.23.0) or, since fragment renders,
+// then whatever the render is -- a full page (0.12.0 to 0.23.0) or, since renders in parts,
 // the one appended <li>. Not a test -- a report. Run with
 // `DB_PATH=:memory: bun examples/chat/scripts/measure-render-cost.ts`.
-import { patch as patchRoom } from "../documents/room";
 import { patchMessage } from "../../../src/json-patch";
 import { createServer } from "../../../src/server";
 import { example } from "../index";
@@ -20,11 +19,15 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-// Seed history directly (bypassing the wire) so only the final message's
-// cost is measured, not 100 round trips.
-for (let i = 0; i < HISTORY - 1; i++) {
-  patchRoom(room, [{ op: "add", path: "/transcript/-", value: { name: "Seed", text: `message ${i}` } }], "seed");
-}
+// Seed history straight into delta (bypassing the wire) so only the final message's cost is
+// measured, not 100 round trips.
+await example.delta!.call("open", { doc: `room:${room}` });
+await example.delta!.call("delta", {
+  doc: `room:${room}`,
+  ops: Array.from({ length: HISTORY - 1 }, (_, i) => ({ op: "add", path: `/messages/${Bun.randomUUIDv7()}`, value: { name: "Seed", text: `message ${i}`, sent_at: Date.now() } })),
+  cursor: "seed",
+});
+await example.delta!.call("close", { doc: `room:${room}` });
 
 const server = createServer(example, 0);
 
@@ -94,7 +97,7 @@ const text = "the message actually being measured";
 // Subscribe before triggering, per each member's own queue -- order per
 // socket is preserved by the FIFO queue regardless of when we ask.
 const incoming = others.map((ws) => [nextMessage(ws), nextMessage(ws)] as const);
-send(sender!, "room", [{ op: "add", path: "/transcript/-", value: text }]);
+send(sender!, "room", [{ op: "add", path: "/messages/-", value: text }]);
 await nextMessage(sender!); // sender's own patch echo
 await nextMessage(sender!); // sender's own render
 
@@ -105,7 +108,7 @@ for (const [patchP, renderP] of incoming) {
   const [patchRaw, renderRaw] = await Promise.all([patchP, renderP]);
   afterPatchBytes += Buffer.byteLength(patchRaw, "utf8");
   afterRenderBytes += Buffer.byteLength(renderRaw, "utf8");
-  renderKind = JSON.parse(renderRaw).ops ? "fragment render (one <li>)" : "full render";
+  renderKind = JSON.parse(renderRaw).ops ? "render in parts" : "full render";
 }
 
 const afterPatchAvg = afterPatchBytes / others.length;
@@ -115,7 +118,7 @@ const afterRenderAvg = afterRenderBytes / others.length;
 // echo, plus a single appended <li> instead of a full render.
 const appendHtml = `<li><strong>${escapeHtml("Member0")}:</strong> ${escapeHtml(text)}</li>`;
 const appendPayload = JSON.stringify({ type: "append", selector: ".messages", html: appendHtml });
-const patchPayload = patchMessage("room", 999, [{ op: "add", path: "/transcript/-", value: { name: "Member0", text } }]);
+const patchPayload = patchMessage("room", 999, [{ op: "add", path: "/messages/-", value: { name: "Member0", text } }]);
 const beforeBytes = Buffer.byteLength(patchPayload, "utf8") + Buffer.byteLength(appendPayload, "utf8");
 
 console.log(`Room: ${HISTORY} messages, ${MEMBERS} members. Bytes sent to each *other* member per message:`);

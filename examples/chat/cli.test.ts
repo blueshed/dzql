@@ -29,7 +29,7 @@ describe("chat's cli aliases", () => {
     expect(parseCommand(["send", "hello", "world"], aliases)).toEqual({
       kind: "write",
       doc: "room",
-      ops: [{ op: "add", path: "/transcript/-", value: "hello world" }],
+      ops: [{ op: "add", path: "/messages/-", value: "hello world" }],
     });
   });
 
@@ -59,8 +59,9 @@ describe("chat's cli against a real server", () => {
     return new URL("/ws", server.url).toString().replace("http", "ws");
   }
 
-  test("name, room, and send round-trip through inspect", async () => {
-    const cookie = `session_id=${crypto.randomUUID()}`;
+  test("name, room, and send round-trip through inspect -- and the session id is never in it", async () => {
+    const sessionId = crypto.randomUUID();
+    const cookie = `session_id=${sessionId}`;
     const ws = await connectCli(url(), cookie);
 
     await runCommand(ws, parseCommand(["name", "Ada"], aliases)!);
@@ -68,10 +69,12 @@ describe("chat's cli against a real server", () => {
     const afterSend = await runCommand(ws, parseCommand(["send", "hello"], aliases)!);
 
     const session = afterSend.docs.find((d) => d.doc === "session");
-    const room = afterSend.docs.find((d) => d.doc === "room");
-    expect(session?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "/room", value: "lobby" }]);
+    const room = afterSend.docs.find((d) => d.doc === "room:lobby");
+    // a session's change is its whole row, at eta's paths, its id -- the session id -- taken out
+    expect(session?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "", value: { name: "Ada", room: "lobby" } }]);
     expect(room?.version).toBeGreaterThan(0);
-    expect(room?.entries?.[0]?.ops).toEqual([{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "hello" } }]);
+    expect(room?.entries?.[0]?.ops).toMatchObject([{ op: "add", value: { name: "Ada", text: "hello" } }]);
+    expect(JSON.stringify(afterSend)).not.toContain(sessionId);
 
     ws.close();
   });
@@ -84,7 +87,7 @@ describe("chat's cli against a real server", () => {
     const afterUndo = await runCommand(ws, parseCommand(["undo"], aliases)!);
 
     const session = afterUndo.docs.find((d) => d.doc === "session");
-    expect(session?.entries?.[0]?.ops).toEqual([{ op: "remove", path: "/name" }]);
+    expect(session?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "", value: { name: null, room: null } }]);
 
     ws.close();
   });
@@ -108,7 +111,7 @@ describe("chat's cli against a real server", () => {
 
     await runCommand(ws, parseCommand(["name", "Watcher"], aliases)!);
 
-    expect(lines).toEqual(['session v1  replace /name "Watcher"']);
+    expect(lines).toEqual(['session v1  replace  {"name":"Watcher","room":null}']);
 
     ws.close();
   });

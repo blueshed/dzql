@@ -1,15 +1,14 @@
 import type { ServerWebSocket } from "bun";
 import type { ConnectionData } from "../connection";
-import { patchMessage } from "../json-patch";
-import type { Compartment, WriteResult } from "./compartment";
-import { renderRequested } from "./render";
+import type { PatchOp } from "../json-patch";
+import { prefixDoc, splitDoc } from "../names";
+import { shows } from "../reading";
+import type { Compartment } from "./compartment";
 
-// Change-request.md item 1: who sees a document is the owning compartment's own question
-// (`sees?`, or its default -- does `resolveDoc` currently point at it); which sockets are open
-// at all is the kernel's, generic and answered once here, so a compartment doesn't keep a
-// registry of its own to answer it (chat's room used to keep a room->sockets map; the wedding
-// kept one set of everyone, filtered per document type). `server.ts` maintains both; every
-// compartment reaches them through `audienceFor`/`notify` instead.
+// Who sees a document is derived, not declared: a connection sees what its page read
+// (`src/reading.ts`), and the one of each type it is on (`resolveDoc`). A session's own documents
+// (`own`) are seen by that session alone. Which sockets are open at all is the kernel's, kept
+// here; the kernel tells a change to its `audienceFor` and redraws its `readersOf` (src/server.ts).
 
 const openSockets = new Set<ServerWebSocket<ConnectionData>>();
 let byDocType: Map<string, Compartment> | undefined;
@@ -37,35 +36,70 @@ export function allOpenSockets(): ServerWebSocket<ConnectionData>[] {
 }
 
 /**
- * Every open connection whose compartment says it sees `docId` -- `sees?(ws, docId)` if the
- * compartment implements it, or (its default, right for most documents: one writer, the same
- * one who reads it) whether `resolveDoc(ws)` currently resolves to it. `exclude`, if given, is
- * left out regardless -- for an announcement that doesn't need telling about itself (a room's
- * own presence op), the same way a direct write's own connection doesn't need a second echo.
+ * A document's name on the wire, as `ws` is told it: the whole name, `<docType>:<docId>`, so one
+ * socket can hold any number of documents of one type (this month's appointments and last
+ * month's). A session's own document (its session, its ledger, its desk: `own`) is named by its
+ * type alone: its id is a session id, a person's only credential, which never goes on the wire.
+ * A document keyed by a live session's id that does not say it is `own` is refused by name, loudly:
+ * naming it would hand that session's credential to whoever reads the wire.
+ */
+export function wireName(docType: string, docId: string, ws: ServerWebSocket<ConnectionData>): string {
+  if (byDocType?.get(docType)?.own || docId === ws.data.sessionId) return docType;
+  if ([...openSockets].some((other) => other.data.sessionId === docId)) {
+    throw new Error(`${docType} is keyed by a session id: declare its compartment \`own\`, so the id never goes on the wire`);
+  }
+  return prefixDoc(docType, docId);
+}
+
+/**
+ * The document a write names, for the compartment that owns it: a whole name (`room:general`) is
+ * that document; a bare type (`room`, `session`) is the one of that type this connection is on --
+ * its `resolveDoc`. Undefined when nothing owns the type or the connection is on none of it.
+ */
+export function resolveName(
+  owners: Map<string, Compartment>,
+  name: string,
+  ws: ServerWebSocket<ConnectionData>,
+): { owner: Compartment; docId: string } | undefined {
+  const { docType, docId } = name.includes(":") ? splitDoc(name) : { docType: name, docId: undefined };
+  const owner = owners.get(docType);
+  if (!owner) return undefined;
+  const id = docId ?? owner.resolveDoc(ws);
+  return id === undefined ? undefined : { owner, docId: id };
+}
+
+/**
+ * Does `ws` see `docId`: a session's own document only its session; any other, when it is the one
+ * of its type the connection is on (`resolveDoc`), or when the page last drawn for it read it.
+ */
+export function sees(owner: Compartment, ws: ServerWebSocket<ConnectionData>, docId: string): boolean {
+  if (owner.own) return docId === ws.data.sessionId;
+  return owner.resolveDoc(ws) === docId || shows(ws, owner.docType, docId);
+}
+
+/**
+ * Every open connection that sees `docId` (`sees`, above). `exclude`, if given, is left out
+ * regardless -- for an announcement that doesn't need telling about itself (a room's own presence
+ * op), the same way a direct write's own connection doesn't need a second echo.
  */
 export function audienceFor(docType: string, docId: string, exclude?: ServerWebSocket<ConnectionData>): ServerWebSocket<ConnectionData>[] {
   const owner = byDocType?.get(docType);
   if (!owner) return [];
-  return [...openSockets].filter((ws) => ws !== exclude && (owner.sees ? owner.sees(ws, docId) : owner.resolveDoc(ws) === docId));
+  return [...openSockets].filter((ws) => ws !== exclude && sees(owner, ws, docId));
+}
+
+/** Every open connection whose page, as last drawn, read the document -- a session's own included: chat's presence reads everyone's name from their sessions. */
+export function readersOf(docType: string, docId: string): ServerWebSocket<ConnectionData>[] {
+  return [...openSockets].filter((ws) => shows(ws, docType, docId));
 }
 
 /**
- * Tells people about a write: echoes its applied ops, then asks for their pages to be brought up
- * to date (a compartment's `fragments`, or its own element, or the page). The one thing besides
- * applying the patch that every `write()` needs to do. By default both go to everyone who sees
- * the document, the writer included. `echoTo` narrows or replaces that audience (chat's presence
- * leaves out the socket that came or went); `renderTo` widens who is redrawn without widening
- * who gets the ops (the wedding redraws every open page, since totals and the photo draw on every
- * household). A no-op patch tells nobody.
+ * A document's ops as the wire says them, for an echo and for `inspect` alike: at eta's paths (the
+ * compartment's `at` taken off), and -- for a session's own document, keyed by the session id -- with
+ * that id taken out of whatever they carry: a credential, never on the wire, not even to its own tabs.
  */
-export function notify(
-  docType: string,
-  docId: string,
-  result: WriteResult,
-  { echoTo = audienceFor(docType, docId), renderTo = echoTo }: { echoTo?: ServerWebSocket<ConnectionData>[]; renderTo?: ServerWebSocket<ConnectionData>[] } = {},
-): void {
-  if (result.applied.length === 0) return;
-  const payload = patchMessage(docType, result.version, result.applied);
-  for (const ws of echoTo) ws.send(payload);
-  if (renderTo.length > 0) renderRequested.emit({ sockets: renderTo, write: { docType, docId, result } });
+export function wireOps(owner: Compartment, docId: string, ops: PatchOp[]): PatchOp[] {
+  const at = owner.at ?? "";
+  const moved = ops.map((op) => (at && (op.path === at || op.path.startsWith(`${at}/`)) ? { ...op, path: op.path.slice(at.length) } : op));
+  return owner.own ? (JSON.parse(JSON.stringify(moved, (_k, v) => (v === docId ? undefined : v))) as PatchOp[]) : moved;
 }

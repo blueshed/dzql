@@ -28,16 +28,20 @@ it, and everything else is derived from it.
 
 - `src/` is the kernel. It does not know any example exists and never imports from `examples/`.
   Its tests may: `src/harness.test.ts` runs the harness against chat's stories.
-- `examples/<name>/` is a whole app: its own migrations, documents, compartments, applets, client,
-  and an `index.ts` exporting `example: Example`. Examples never import from each other; shared
+- `examples/<name>/` is a whole app: its own documents (a `delta.ts`: its schema, seed and
+  documents in delta), compartments, applets, client, and an `index.ts` exporting
+  `example: Example`. Examples never import from each other; shared
   code is the kernel's or it is not shared.
-- Before adding or extending an example, or touching the `Compartment` contract, `migrate()`, the
-  applet registry or the wire, load the eta-app skill.
+- Before adding or extending an example, or touching the `Compartment` contract, an example's
+  `delta.ts`, the applet registry or the wire, load the eta-app skill.
+- Documents are delta's (`@blueshed/delta`, Workshop/docs/eta-on-delta.md): eta owns people and
+  pages, delta owns documents, their ledger and their one stream of changes. `package.json` takes
+  it from `../blueshed/delta`, a copy: after changing delta, `bun install --force`.
 
 Two words have two meanings each, so say which:
 
 - **Compartment.** The kernel's `Compartment` (`src/compartments/compartment.ts`) owns one
-  `docType`: who sees its document, which writes are allowed, how they apply. It has no place on
+  `docType`: who sees its document, which writes are allowed, what a write becomes. It has no place on
   the page; the page is the example's one `render(sessionId)`. `src/tray.ts` also exports a
   `Compartment`: a cell in a box's grid, the bento's word for a place on a page.
 - **Tray.** The session's own document (who you are, where you are) is what the docs call the
@@ -47,11 +51,21 @@ Two words have two meanings each, so say which:
 
 - HTML is the only vocabulary. No node or JSON tree on the wire or in the client.
 - A write names a document and a JSON Pointer path, never a function name.
+- A document is named whole on the wire, `<docType>:<docId>`, so one socket holds any documents;
+  only a session's `own` documents go by their type alone, since the id is a credential.
+- A connection sees what its page read: a page reads a document through `read("<docType>:<id>")`
+  (src/documents.ts), and the kernel keeps what each drawing read. It is told about, and may write,
+  only what it sees. So cut documents by who reads them: a page is told every change to one.
 - The server is the only renderer. The client morphs; it never replaces `innerHTML`, and it never
   descends into a `[data-applet]` element.
+- A page is sent in parts: after a write, each page that read the document gets only the parts of
+  it that changed (`part(key, html)`, src/parts.ts), worked out by comparing, never hand-written; the
+  whole page goes only when it is a different page.
 - No client-side domain state beyond the small op-log in `window.eta.docs()`.
-- `patch()` is a document's only write path and one transaction: its statements, the ledger row
-  and the version it returns commit together or not at all.
+- A write from the wire is permitted, then shaped (the compartment's `shape`: the wire's ops as
+  the document takes them), then written through delta as the person, with the session as the
+  cursor undo walks. Delta applies it and its ledger entry in one transaction; every change is
+  told from delta's one stream, in order, never by hand.
 
 ## Pages
 

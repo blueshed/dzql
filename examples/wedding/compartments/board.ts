@@ -1,15 +1,16 @@
 import * as boardDoc from "../documents/board";
 import * as sessionDoc from "../documents/session";
 import type { PatchOp } from "../../../src/json-patch";
-import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
-import { allOpenSockets, notify } from "../../../src/compartments/audience";
+import type { Compartment } from "../../../src/compartments/compartment";
+import { serverWrite } from "../../../src/documents";
 import { boardPages } from "../views/board";
+import { keepEveryone } from "../everyone";
 
-// The couple's document: the wedding and everything beneath it. Written by the couple, who
-// arrived by the wedding's own code; read by them alone (`resolveDoc` below is `sees`'s own
-// default here -- the couple's tabs, nobody else, change-request.md item 1), though what they
-// keep (the courses, the gifts, the events, where to stay) is on every household's pages, so a
-// write here asks everyone to re-render.
+// The couple's document (`board:<wedding>`): the wedding and everything beneath it. Written by the
+// couple, who arrived by the wedding's own code; read by them alone. What they keep reaches the
+// households by the rows they share -- a household's own document holds its rows (a reply, a
+// guest added), and every household reads the lists (`wedding:`) -- so each page that read a row
+// that moved is drawn again, and sent only the parts of it that changed.
 
 type Rule = { path: RegExp; ops: PatchOp["op"][] };
 
@@ -32,13 +33,9 @@ const RULES: Rule[] = [
   { path: new RegExp(`^/courses/\\d+/${CHILD}/\\d+/\\w+$`), ops: ["replace", "remove"] },
 ];
 
-// No `fragments` here yet: the couple's writes are rare beside a household's, and each one
-// changes counts and lists on many pages, so every page goes out whole.
-
-
 /** The couple's pages. The board is always there in practice: read() only reports a kind for a code that exists. */
 export function renderBoard(session: sessionDoc.SessionDocument): string | undefined {
-  const b = boardDoc.read(session.code!);
+  const b = boardDoc.read(session.id!);
   return b && boardPages({ session, b });
 }
 
@@ -46,16 +43,27 @@ export const board: Compartment = {
   docType: "board",
   resolveDoc(ws) {
     const session = sessionDoc.read(ws.data.sessionId);
-    return session.kind === "couple" ? session.code! : undefined;
+    return session.kind === "couple" ? session.id! : undefined;
   },
   permit(ws, op) {
     if (sessionDoc.read(ws.data.sessionId).kind !== "couple") return false;
     return RULES.some((r) => r.path.test(op.path) && r.ops.includes(op.op));
   },
-  write(ws, code, ops, undoes): WriteResult {
-    const result = boardDoc.patch(code, ops, ws.data.sessionId, undoes);
-    if (undoes === undefined) sessionDoc.closeAnswered(ws.data.sessionId, result.applied);
-    notify("board", code, result, { renderTo: allOpenSockets() });
-    return result;
+  shape: (_ws, id, ops) => boardDoc.shape(boardDoc.held(id), ops),
+  // the modal that asked is put away by the write that answers it
+  async wrote(ws, _id, ops: PatchOp[]) {
+    const put = sessionDoc.answered(sessionDoc.read(ws.data.sessionId), ops);
+    if (put.length > 0) await serverWrite(`session:${ws.data.sessionId}`, put);
   },
+  // a reply, a guest, a gift taken off: what everyone sees follows
+  changed: () => keepEveryone(),
 };
+
+/** What a household reads of the wedding (`wedding:<id>`): written by the couple, through the board, and by nobody from the wire. */
+export const wedding: Compartment = { docType: "wedding", resolveDoc: () => undefined };
+
+/** What a visitor without a code reads (`welcome:<id>`): the wedding's own row. */
+export const welcome: Compartment = { docType: "welcome", resolveDoc: () => undefined };
+
+/** Who stands in the photo and how many have claimed each gift (`everyone:<id>`): live, kept by the server. */
+export const everyone: Compartment = { docType: "everyone", kind: "live", resolveDoc: () => undefined };

@@ -1,11 +1,10 @@
-import { db } from "../db";
+import { read as readDoc } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
-import { parsePointer } from "../../../src/json-pointer";
-import { prefixDoc, record } from "../../../src/ledger";
 
-// A session's clock: the city whose time it shows, as an IANA zone ("Europe/Zurich"). The
-// zones are the runtime's own list; a write names one of them or does not apply. Choosing a
-// city is the person's doing, so it is on the ledger and Undo takes them back.
+// A session's clock, kept in delta (`clock:<id>`, ../delta.ts): the city whose time it shows, as
+// an IANA zone ("Europe/Zurich"). The zones are the runtime's own list; a write names one of them
+// or does not apply. Choosing a city is the person's doing, so it is on the ledger and Undo takes
+// them back.
 
 export const DEFAULT_TZ = process.env.CLOCK_TZ ?? "Europe/Zurich";
 
@@ -30,32 +29,17 @@ export function offsetOf(tz: string, now = new Date()): string {
   return m ? `${m[1]}${m[2]}:${m[3] ?? "00"}` : "+00:00";
 }
 
-const readStmt = db.query<{ tz: string }, [string]>("SELECT tz FROM clocks WHERE session_id = ?");
-const upsertStmt = db.query<unknown, [string, string]>("INSERT INTO clocks (session_id, tz) VALUES (?1, ?2) ON CONFLICT(session_id) DO UPDATE SET tz = ?2");
-
 export function read(sessionId: string): ClockDocument {
-  const tz = readStmt.get(sessionId)?.tz ?? DEFAULT_TZ;
+  const tz = readDoc<{ clocks?: { tz: string | null } }>(`clock:${sessionId}`)?.clocks?.tz ?? DEFAULT_TZ;
   return { tz, city: cityOf(tz), offset: offsetOf(tz) };
 }
 
-export type ClockPatchResult = { version: number; applied: PatchOp[] };
-
-/** `replace /tz` with a zone the runtime knows; anything else does not apply. One transaction: every statement here, the ledger row, and the version it returns commit together or not at all. */
-export const patch = db.transaction(function patch(sessionId: string, ops: PatchOp[], undoes?: number): ClockPatchResult {
-  const applied: PatchOp[] = [];
-  const inverse: PatchOp[] = [];
-
+/** The zone after `ops`: `replace /tz` with a zone the runtime knows; anything else does not apply. */
+export function after(tz: string, ops: PatchOp[]): string {
+  let next = tz;
   for (const op of ops) {
-    const [field] = parsePointer(op.path);
-    if (field !== "tz" || op.op !== "replace") continue;
-    const tz = String(op.value ?? "").trim();
-    const before = read(sessionId).tz;
-    if (!ZONE_SET.has(tz) || tz === before) continue;
-    upsertStmt.run(sessionId, tz);
-    applied.push({ ...op, value: tz });
-    inverse.unshift({ op: "replace", path: "/tz", value: before });
+    const zone = String(op.value ?? "").trim();
+    if (op.path === "/tz" && op.op === "replace" && ZONE_SET.has(zone)) next = zone;
   }
-
-  const version = record(prefixDoc("clock", sessionId), applied, inverse, sessionId, undoes);
-  return { version, applied };
-});
+  return next;
+}

@@ -5,8 +5,10 @@ import { join } from "node:path";
 import type { Compartment } from "../compartments/compartment";
 import type { Example } from "../example";
 import index from "../server.test.fixture.html";
-import { patchMessage } from "../json-patch";
-import { prefixDoc, record } from "../ledger";
+import { Database } from "bun:sqlite";
+import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
+import { createLocal } from "@blueshed/delta/local";
+import { read } from "../documents";
 import { createServer } from "../server";
 import {
   connectCli,
@@ -197,38 +199,34 @@ describe("loadOrCreateSessionCookie", () => {
   });
 });
 
-// A tiny, self-contained compartment + example, the same kind server.test.ts
-// uses -- proving the CLI's generic commands (inspect/watch/undo/write) work
-// against any example, without needing the chat example to exist.
-type WidgetState = { color: string };
-const widgets = new Map<string, WidgetState>();
+// A tiny, self-contained compartment + example, the same kind server.test.ts uses -- proving the
+// CLI's generic commands (inspect/watch/undo/write) work against any example, without needing the
+// chat example to exist. A widget per session, its colour, kept in a delta of this file's own.
+const db = new Database(":memory:");
+const schema = defineSchema({ widgets: { columns: { color: { type: "text", nullable: false, default: "" } as never }, temporal: false } });
+createTables(db, schema);
+const delta = createLocal();
+registerDocs(delta.server, db, schema, [defineDoc("widget:", { root: "widgets", include: [], implied: true })], [], { ledger: true });
 
 const widgetCompartment: Compartment = {
   docType: "widget",
+  own: true,
+  at: "/widgets",
   resolveDoc(ws) {
     return ws.data.sessionId;
   },
-  permit(ws, op) {
+  permit(_ws, op) {
     return op.path === "/color" && op.op === "replace";
-  },
-  write(ws, id, ops, undoes) {
-    const before = widgets.get(id) ?? { color: "" };
-    const applied = ops.filter((op) => op.path === "/color" && op.op === "replace");
-    const inverse = applied.map(() => ({ op: "replace" as const, path: "/color", value: before.color }));
-    const value = applied[applied.length - 1]?.value;
-    if (applied.length > 0) widgets.set(id, { color: value !== undefined ? String(value) : "" });
-    const version = record(prefixDoc("widget", id), applied, inverse, ws.data.sessionId, undoes);
-    if (applied.length > 0) ws.send(patchMessage("widget", version, applied));
-    return { version, applied };
   },
 };
 
 const cliTestExample: Example = {
   name: "cli-test",
   compartments: [widgetCompartment],
-  render: (sessionId) => `<p>${widgets.get(sessionId)?.color ?? ""}</p>`,
+  render: (sessionId) => `<p>${read<{ widgets: { color: string } }>(`widget:${sessionId}`).widgets.color}</p>`,
   active: () => true,
   index,
+  delta,
 };
 
 describe("cli against a real server", () => {
@@ -262,7 +260,7 @@ describe("cli against a real server", () => {
 
     const widget = inspection.docs.find((d) => d.doc === "widget");
     expect(widget?.version).toBeGreaterThan(0);
-    expect(widget?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "/color", value: "blue" }]);
+    expect(widget?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "", value: { color: "blue" } }]); // the widget as it is now, its id (the session) left out
 
     ws.close();
   });
@@ -275,7 +273,7 @@ describe("cli against a real server", () => {
     const afterUndo = await runCommand(ws, parseCommand(["undo"])!);
 
     const widget = afterUndo.docs.find((d) => d.doc === "widget");
-    expect(widget?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "/color", value: "" }]);
+    expect(widget?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "", value: { color: "" } }]);
 
     ws.close();
   });
@@ -301,9 +299,9 @@ describe("cli against a real server", () => {
 
     const widget = inspection.docs.find((d) => d.doc === "widget");
     expect(widget?.entries?.map((e) => e.ops)).toEqual([
-      [{ op: "replace", path: "/color", value: "blue" }],
-      [{ op: "replace", path: "/color", value: "green" }],
-      [{ op: "replace", path: "/color", value: "red" }],
+      [{ op: "replace", path: "", value: { color: "blue" } }],
+      [{ op: "replace", path: "", value: { color: "green" } }],
+      [{ op: "replace", path: "", value: { color: "red" } }],
     ]);
 
     ws.close();
@@ -317,7 +315,7 @@ describe("cli against a real server", () => {
 
     await runCommand(ws, parseCommand(["write", "widget", "replace", "/color", "red"])!);
 
-    expect(lines).toEqual(['widget v1  replace /color "red"']);
+    expect(lines).toEqual(['widget v1  replace  {"color":"red"}']); // the widget whole, at the root: an empty path
 
     ws.close();
   });

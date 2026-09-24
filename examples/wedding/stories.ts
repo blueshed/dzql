@@ -1,5 +1,5 @@
 // The wedding, told as stories: who does what, and who then sees it, where. See stories.md at the
-// root. Ids are the seed's (migrations/0002_seed.sql): the Okafors are household 1 with guests 1
+// root. Ids are the seed's (seed.sql): the Okafors are household 1 with guests 1
 // (Ada) and 2 (Femi) and one open ask (1, Kemi); Ben is household 2 with guest 3; gifts are 1
 // (casserole), 2 (the honeymoon fund, shared) and 3 (knives); course 2 is the main, with dish 5
 // (sea bass) and drink 3 (Rioja). Paths name rows by id, never by position.

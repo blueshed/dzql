@@ -1,6 +1,6 @@
 ---
 name: eta-app
-description: Use this skill before writing any code under examples/<name>/ — adding a new eta example app, or adding a document/compartment/applet/migration/CLI verb to an existing one. Also use it before touching the Compartment contract, migrate(), the applet registry, or the {doc,ops} wire protocol, since those are the seam a new example has to fit through. Reference.md has the full contracts and code excerpts.
+description: Use this skill before writing any code under examples/<name>/ — adding a new eta example app, or adding a document/compartment/applet/CLI verb to an existing one. Also use it before touching the Compartment contract, an example's delta.ts, the applet registry, or the {doc,ops} wire protocol, since those are the seam a new example has to fit through. Reference.md has the full contracts and code excerpts.
 ---
 
 # Building an example on eta
@@ -26,7 +26,7 @@ Everything below is the least that makes it pass.
 ## Vocabulary, once
 
 - A **Compartment** (`src/compartments/compartment.ts`) owns one `docType`: who sees its
-  document, which writes are allowed, how they apply, who is told. It has no place on the page.
+  document, which writes are allowed, and what the wire's write becomes. Its documents are delta's. It has no place on the page.
   The page is the example's one `render(sessionId)`: which screen, in what order, reading
   whichever documents it must. An example with a lot of HTML keeps the functions that build it in
   files of their own (the wedding's and the ticker's `views/`); chat's are beside its room.
@@ -44,28 +44,32 @@ Everything below is the least that makes it pass.
 ## Adding or extending an example
 
 1. **`stories.ts`** -- step 0, above.
-2. **`db.ts`** -- import `db` from `../../src/db`, call
-   `migrate(db, `${import.meta.dir}/migrations`, "<name>")`, re-export `db`. Every document module
-   imports `db` from here, never from `src/db`, so the migrations have run before its prepared
-   statements touch the database.
-3. **`migrations/*.sql`** -- numbered, applied in filename order under the example's own namespace.
-4. **`documents/<thing>.ts`** -- `read(id)`, and `patch(id, ops, sessionId, undoes?)`: the only write
-   path, one transaction, each op's inverse computed, one `record(...)` at the end. Is this value
-   valid is `patch()`'s question; may this connection write this path is `permit()`'s.
-5. **`compartments/<thing>.ts`** -- `docType`, `resolveDoc`, `permit`, `write`, and what it needs of
-   `sees`, `fragments`, `onOpen`, `onClose`. `write()` ends by calling
-   `notify(docType, docId, result)`, which echoes the ops to everyone who sees the document and
-   asks for their pages to be brought up to date, the writer included. Implement `fragments` only
-   where answering smaller than the page is worth the care: every target it names has to be right for
-   every state the page can be in, and no story checks it.
+2. **`delta.ts`** -- the schema (`defineSchema`, tables named `<name>_...`), `createTables` against
+   `src/db`'s `db`, a seed run into empty tables, and the documents registered on a
+   `createLocal()`: `registerDocs(..., { ledger: true })` for what is written and undone, a registry
+   of its own with no ledger for the tray, `registerMemory` for what is live. Cut documents by
+   who reads them: a page is told every change to what it read.
+3. **`documents/<thing>.ts`** -- `read(id)`, from `read("<docType>:<id>")` in `src/documents.ts`,
+   adapting delta's rows into what the views want; and the pure rules a write follows
+   (`after(state, ops)`), tested directly.
+4. **`compartments/<thing>.ts`** -- `docType`, `resolveDoc`, `permit`, `own` if its documents are
+   keyed by the session id, `kind` if not `written`, `at` if its fields sit under the root
+   (`/sessions`), and `shape`: the wire's ops as the document takes them (validated, an id minted,
+   a nested path turned into rows), nothing when nothing applies. `changed` keeps a live document
+   true after any change; `wrote` does what follows for the writer alone. The kernel tells every
+   change itself: echoed to who sees it, every page that read it drawn again, each sent only the
+   parts that changed. Name the page's regions with `part(key, html)` where a change should travel
+   alone; nothing else says what goes.
+5. **What is live** -- a document the server keeps (who is here, who stands in the photo):
+   computed whole from the tables in `changed`, written as the difference with `serverWrite`.
 6. **`applets/<name>.ts`** -- only if the vocabulary above says so. Split drawing (`<name>.ts`, pure,
    tested directly) from mounting (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`)
    when there is drawing worth testing.
 7. **`client/index.html` + `client/main.ts`** -- `main.ts` imports the example's applets, then
    `src/client/app`. The stylesheet imports `src/bento.css` first, then says its own tokens.
-8. **`index.ts`** -- `export const example: Example = { name, compartments, render, active, index, routes? }`. `render(sessionId)` is the whole page.
+8. **`index.ts`** -- `export const example: Example = { name, compartments, render, active, index, delta, who?, routes? }`. `render(sessionId)` is the whole page.
 9. **`cli.ts`** (optional) -- an `aliases` table of short verbs that build `{doc, ops}`; no database.
-10. **Tests** -- a test per document, a `server.test.ts` that drives writes and undo over a real
+10. **Tests** -- a test for each document's rules and shapes, a `server.test.ts` that drives writes and undo over a real
     websocket (this is where delivery is checked: who is told, and with what), a
     `client/app.test.ts` for what only a browser can show. `bun test`; 100% is a gate; verify a
     bug fix by reverting it and watching the test fail.
