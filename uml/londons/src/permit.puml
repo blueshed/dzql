@@ -4,4 +4,5 @@ title Permit: the authority, or the venue owner for its own sites
 [*] --> granted : venueOwner grants for its own site (44)
 granted --> revoked : authority revokes (43)
 [*] -[dotted]-> granted : promoter cannot grant (45)
+revoked --> [*]
 @enduml

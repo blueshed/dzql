@@ -10,4 +10,5 @@ rejected --> withdrawn : contractor withdraws (87)
 approved --> withdrawn : contractor withdraws (88)
 proposed -[dotted]-> approved : contractor cannot approve (89)
 draft -[dotted]-> approved : sponsor cannot approve a draft (91)
+withdrawn --> [*]
 @enduml

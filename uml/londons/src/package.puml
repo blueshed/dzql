@@ -4,4 +4,7 @@ title Package: the promoter's rights at an occasion
 draft --> offered : promoter offers (55)
 offered -[dotted]-> offered : promoter cannot offer it again (56)
 [*] -[dotted]-> draft : sponsor cannot make a package (57)
+offered --> agreed : sponsor buys it, alone or in a campaign (92, 93)
+agreed -[dotted]-> agreed : sponsor cannot buy a sold package (95)
+agreed --> [*]
 @enduml

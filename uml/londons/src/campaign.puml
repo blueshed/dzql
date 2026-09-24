@@ -5,5 +5,8 @@ draft --> offered : promoter offers (60)
 offered --> withdrawn : promoter withdraws (61)
 offered --> agreed : sponsor buys on the market (92)
 draft -[dotted]-> offered : sponsor cannot offer (62)
-draft -[dotted]-> agreed : sponsor cannot buy what is not on offer (93)
+draft -[dotted]-> agreed : sponsor cannot buy what is not on offer (94)
+offered -[dotted]-> agreed : sponsor cannot buy a campaign holding a sold package (96)
+withdrawn --> [*]
+agreed --> [*]
 @enduml

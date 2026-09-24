@@ -1,8 +1,9 @@
 @startuml
 title Supply line: the contractor and the suppliers
-[*] --> open : contractor lists a line (141)
-open --> open : supplier offers (142)
-open --> accepted : contractor accepts an offer (145)
-accepted -[dotted]-> accepted : supplier cannot offer on a filled line (148)
-open -[dotted]-> open : stranger cannot offer (149)
+[*] --> open : contractor lists a line (144)
+open --> open : supplier offers (145)
+open --> accepted : contractor accepts an offer (148)
+accepted -[dotted]-> accepted : supplier cannot offer on a filled line (151)
+open -[dotted]-> open : stranger cannot offer (152)
+accepted --> [*]
 @enduml

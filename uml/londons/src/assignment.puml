@@ -1,7 +1,8 @@
 @startuml
 title Assignment: the contractor puts the worker in a window
-[*] --> assigned : contractor assigns (126)
-assigned --> done : worker presses built or struck (133, 136)
-done --> assigned : worker reopens (135)
-assigned --> declined : worker declines (138)
+[*] --> assigned : contractor assigns (129)
+assigned --> done : worker presses built or struck (136, 139)
+done --> assigned : worker reopens (138)
+assigned --> declined : worker declines (141)
+declined --> [*]
 @enduml

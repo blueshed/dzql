@@ -12,8 +12,10 @@
 //   can I see the consequences?   -- everyone whose move put the thing in the state it leaves is
 //                                    told, so nobody waits on an answer that came.
 //
-// A story that sets a status must set this arrow's target; a creation ([*] -->) adds. The marks
-// are drawn at render time; the diagram's source stays as written.
+// A story that sets a status must set this arrow's target; a creation ([*] -->) adds. An arrow to
+// [*] with no label says the thing ends there: to go again, a new one is made. A state with no move
+// out that is not drawn as an end is undecided, and says so. The marks are drawn at render time;
+// the diagram's source stays as written.
 
 type Seen = Record<string, string> | string[];
 export type Story = { name: string; as: string; does?: { doc: string; ops: { op: string; path: string; value?: unknown }[] }; cannot?: { doc: string; ops: { op: string; path: string; value?: unknown }[] }; seen?: Seen };
@@ -22,6 +24,11 @@ export type Arrow = { line: number; from: string; to: string; style: string; rol
 export type Mark = { arrow: Arrow; problems: string[] };
 
 const ARROW = /^\s*(\[\*\]|\w+)\s*(-[^>\s]*>)\s*(\[\*\]|\w+)\s*:\s*(\w+)\s+(.*?)\s*\(([\d,\s]+)\)\s*$/;
+
+/** The states drawn as ends: `declined --> [*]`. */
+export function ends(puml: string): Set<string> {
+  return new Set([...puml.matchAll(/^\s*(\w+)\s*-[^>\s]*>\s*\[\*\]\s*$/gm)].map((m) => m[1]!));
+}
 
 export function arrows(puml: string): Arrow[] {
   const out: Arrow[] = [];
@@ -71,6 +78,8 @@ export function checkAgreement(puml: string, stories: Story[]): { marks: Mark[];
     return { arrow: a, problems };
   });
   for (const m of marks) for (const p of m.problems) drift.push(`${m.arrow.from} → ${m.arrow.to}: ${p}`);
+  const ended = ends(puml);
+  for (const st of new Set(all.filter((a) => !a.refusal).map((a) => a.to))) if (st !== "[*]" && !movers.has(st) && !ended.has(st)) drift.push(`${st}: no move out of it, and it is not drawn as an end`);
   return { marks, drift, cited };
 }
 
@@ -89,6 +98,7 @@ export function markAgreement(puml: string, name: string, stories: Story[]): str
   const { marks } = checkAgreement(puml, stories);
   const all = marks.map((m) => m.arrow);
   const { movers } = turns(all);
+  const ended = ends(puml);
   const lines = puml.split("\n");
   for (const { arrow: a, problems } of marks) {
     const s = a.cites.map((n) => stories[n - 1]).filter(Boolean) as Story[];
@@ -104,7 +114,8 @@ export function markAgreement(puml: string, name: string, stories: Story[]): str
   const states = new Set(all.flatMap((a) => [a.from, a.to]).filter((x) => x !== "[*]"));
   const turnLines = [...states].map((st) => {
     const who = [...(movers.get(st) ?? [])];
-    return who.length ? `${st} : <size:11>move: ${who.join(", ")}</size>` : `${st} : <size:11><color:#888888>no move: it ends here</color></size>`;
+    if (who.length) return `${st} : <size:11>move: ${who.join(", ")}</size>`;
+    return ended.has(st) ? `${st} : <size:11><color:#888888>ends: to go again, make a new one</color></size>` : `${st} : <size:11><color:#c0392b>⚠ no move, and not an end</color></size>`;
   });
   const end = lines.findLastIndex((l) => /@enduml/.test(l));
   lines.splice(end, 0, ...turnLines);

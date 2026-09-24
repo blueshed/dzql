@@ -6,14 +6,19 @@
 //
 // THE MARKETPLACE. An authority plans a series of occasions and invites venues, or venues propose
 // themselves; a venue owner has areas and sites with a performance baseline; a promoter packages
-// rights at an occasion and assembles campaigns; a sponsor has brands and artwork, opens an
-// engagement with a brief, commissions a scenario from a contractor, approves it, and buys the
-// campaign; the contractor keeps a catalogue of modules, places them against the rights, dresses
+// rights at an occasion and may gather packages into campaigns; a sponsor has brands and artwork,
+// opens an engagement with a brief, commissions a scenario from a contractor, approves it, and buys
+// a package or a campaign; the contractor keeps a catalogue of modules, places them against the rights, dresses
 // their faces, prices the placement, and runs the project -- deployments the venue owner accepts,
 // work windows, trips, workers, supply lines that suppliers bid on; a worker builds and strikes.
 // Four agreements are two-sided and every field has one writer: hosting (authority and venue),
 // scenario (sponsor and contractor), deployment (contractor and venue), supply (supplier and
 // contractor). Whose move it is stays visible on the thing itself.
+//
+// A package is sold alone or in a campaign, and either way it is agreed: from then on no other
+// sponsor can have it, and every campaign holding it leaves the market, on offer or not. Nothing
+// ended is made to go again: a declined invitation, a withdrawn scenario or a revoked permit stays
+// as it is, and to try again (invite the venue that said no) a new one is made.
 //
 // THE PICTURE. Apples says it: a racecourse is its sites at scale with time as a tool. So the
 // venue is drawn as its map -- Ashcombe with its areas and their sites in place -- and every
@@ -44,8 +49,9 @@
 //   promoter:    "" (box: occasions delegated to it, campaigns, profile) · "occasion/1" (the map,
 //                rights coloured by package; compartments: packages, the events and moments on
 //                the time tool) · "campaigns" (a collection; a campaign's drawer)
-//   sponsor:     "" (the queue: scenarios awaiting approval, campaigns on the market, brands,
-//                engagements, stock, profile) · "market" (a collection of campaigns on offer,
+//   sponsor:     "" (the queue: scenarios awaiting approval, the market, brands,
+//                engagements, stock, profile) · "market" (a collection of the packages and
+//                campaigns on offer, packages with no sold package among them,
 //                each row's rights on the map beneath; buy on the row) · "engagements/1" (a box:
 //                the brief in place, scenarios as a compartment with approve/reject on the row) ·
 //                "brands" · "stock"
@@ -71,8 +77,9 @@
 // 1 the Jump season 2027 (Board) with hosting agreements 1 (venue 1, invited) and 2 (venue 1,
 // proposed); occasion 1 The Festival 2027 (16-19 March) at venue 1 in series 1, delegated to
 // promoter 3, with event 1 Silver Bowl day, moment 1 the Ashcombe Roar, permit 1 (area 1, granted)
-// and permit 2 (revoked); packages 1 (draft, right 1 on site 1) and 2 (offered, right 2 on site
-// 2); campaigns 1 (draft, promoter 3) and 2 (offered, with package 2). Brand 1 Harrow with
+// and permit 2 (revoked); packages 1 (draft, right 1 on site 1), 2 (offered, right 2 on site
+// 2) and 3 (agreed: sold); campaigns 1 (draft, promoter 3), 2 (offered, with package 2) and 3
+// (offered, with package 3). Brand 1 Harrow with
 // artwork 1; engagement 1 (sponsor 4) with scenarios 1 (draft), 2 (proposed), 3 (approved) and 4
 // (rejected), all by contractor 5; placement 1 (scenario 3, right 2, product 1) with face 1 and
 // requirement 1 (buy). Products 1 the 6m banner frame (part 1, face 1, taskdef 1 rig and taskdef
@@ -178,7 +185,7 @@ export const stories: Stories = {
     story("Festival Promotions paints the parade ring screen with the draft package's colour, for four days", { as: "promoter", does: w("occasion", "add", "/packages/1/rights/-", { site_id: 1, from_at: "2027-03-16T09:00", to_at: "2027-03-19T19:00" }), seen: { promoter: "occasion/1", venueOwner: "venue/1 @ time=2027-03-16" } }),
     story("Festival Promotions widens a right's window in its drawer on an offered package, and the market's row shows the new hours", { as: "promoter", does: many("occasion", [["/packages/2/rights/2/from_at", "2027-03-16T08:00"], ["/packages/2/rights/2/to_at", "2027-03-19T20:00"]]), seen: { promoter: "occasion/1 @ drawer=right/2", venueOwner: "venue/1 @ time=2027-03-16", sponsor: "market" } }),
     story("Festival Promotions renames a package in its drawer", { as: "promoter", does: w("occasion", "replace", "/packages/1/name", "Parade ring, all four days"), seen: { promoter: "occasion/1 @ drawer=package/1", venueOwner: "venue/1 @ drawer=occasion/1" } }),
-    story("Festival Promotions offers the package with the tool on its row", { as: "promoter", does: w("occasion", "replace", "/packages/1/status", "offered"), seen: { promoter: "occasion/1", venueOwner: "venue/1 @ drawer=occasion/1" } }),
+    story("Festival Promotions offers the package with the tool on its row, and it is a row on the market", { as: "promoter", does: w("occasion", "replace", "/packages/1/status", "offered"), seen: { promoter: "occasion/1", venueOwner: "venue/1 @ drawer=occasion/1", sponsor: "market" } }),
     story("An offered package's row has no offer tool left on it", { as: "promoter", cannot: w("occasion", "replace", "/packages/2/status", "offered") }),
     story("Harrow sees the rights but can paint none", { as: "sponsor", cannot: w("occasion", "add", "/packages/-", { name: "Ours" }) }),
 
@@ -223,8 +230,11 @@ export const stories: Stories = {
     story("A draft nobody has proposed carries no approve", { as: "sponsor", cannot: w("engagements", "replace", "/1/scenarios/1/status", "approved") }),
 
     // ── The purchase, on the market's row ──
-    story("Harrow buys the offered campaign on its market row, with its approved scenario; the engagement's box says agreed, the promoter's row says sold, and the rights on the venue's map say sold", { as: "sponsor", does: w("market", "replace", "/2/status", "agreed"), seen: { sponsor: "engagements/1", promoter: "campaigns", venueOwner: "venue/1 @ time=2027-03-16" } }),
-    story("A campaign not on offer has no row on the market to buy from", { as: "sponsor", cannot: w("market", "replace", "/1/status", "agreed") }),
+    story("Harrow buys the offered campaign on its market row, with its approved scenario; the engagement's box says agreed, the promoter's row says sold, its package is agreed too, and the rights on the venue's map say sold", { as: "sponsor", does: w("market", "replace", "/campaigns/2/status", "agreed"), seen: { sponsor: "engagements/1", promoter: "campaigns", venueOwner: "venue/1 @ time=2027-03-16" } }),
+    story("Harrow buys an offered package on its own market row, with its approved scenario; the engagement's box says agreed, the promoter's package row says sold, and the campaign holding it leaves the market", { as: "sponsor", does: w("market", "replace", "/packages/2/status", "agreed"), seen: { sponsor: "engagements/1", promoter: "occasion/1", venueOwner: "venue/1 @ time=2027-03-16" } }),
+    story("A campaign not on offer has no row on the market to buy from", { as: "sponsor", cannot: w("market", "replace", "/campaigns/1/status", "agreed") }),
+    story("A sold package has no row on any sponsor's market", { as: "sponsor", cannot: w("market", "replace", "/packages/3/status", "agreed") }),
+    story("A campaign holding a sold package has left the market, though the promoter still has it on offer", { as: "sponsor", cannot: w("market", "replace", "/campaigns/3/status", "agreed") }),
 
     // ── The catalogue: a collection, and a product's box ──
     story("Londons creates a product, and it is a row in the catalogue; no one else's page moves", { as: "contractor", does: w("catalogue", "add", "/-", { name: "3m A-frame", kind: "module", cost: 800, markup_percent: 30, rentable_days: 5 }), seen: { contractor: "catalogue" }, unseen: ["sponsor", "worker"] }),
@@ -252,8 +262,8 @@ export const stories: Stories = {
     story("Londons re-proposes an adjusted deployment from its drawer", { as: "contractor", does: w("projects", "replace", "/1/deployments/5/status", "proposed"), seen: { contractor: "projects/1 @ drawer=deployment/5", venueOwner: "venue/1/deployments" } }),
     story("Londons cancels a rejected deployment, and it leaves both maps", { as: "contractor", does: w("projects", "replace", "/1/deployments/5/status", "cancelled"), seen: { contractor: "projects/1", venueOwner: "venue/1/deployments" } }),
     story("Londons withdraws an accepted deployment; the venue's map, Sam's wall and Harrow's box all lose it", { as: "contractor", does: w("projects", "replace", "/1/deployments/2/status", "cancelled"), seen: { contractor: "projects/1", venueOwner: "venue/1/deployments", worker: "", sponsor: "engagements/1" } }),
-    story("Londons resolves a blocked deployment back to accepted with the tool in its drawer", { as: "contractor", does: w("projects", "replace", "/1/deployments/4/status", "accepted"), seen: { contractor: "projects/1 @ drawer=deployment/4", venueOwner: "venue/1/deployments" } }),
-    story("Londons cancels a deployment that cannot proceed", { as: "contractor", does: w("projects", "replace", "/1/deployments/4/status", "cancelled"), seen: { contractor: "projects/1", venueOwner: "venue/1/deployments" } }),
+    story("Londons resolves a blocked deployment back to accepted with the tool in its drawer, and the build is back on Sam's wall to do", { as: "contractor", does: w("projects", "replace", "/1/deployments/4/status", "accepted"), seen: { contractor: "projects/1 @ drawer=deployment/4", venueOwner: "venue/1/deployments", worker: "" } }),
+    story("Londons cancels a deployment that cannot proceed, and Sam's blocked build comes off the wall", { as: "contractor", does: w("projects", "replace", "/1/deployments/4/status", "cancelled"), seen: { contractor: "projects/1", venueOwner: "venue/1/deployments", worker: "" } }),
     story("Londons's own proposal carries no accept; that control is on the venue's map", { as: "contractor", cannot: w("projects", "replace", "/1/deployments/1/status", "accepted") }),
     story("The venue's map has no built tool; that is on Sam's build", { as: "venueOwner", cannot: w("venue-deployments", "replace", "/2/status", "built") }),
     story("Londons closes the project with the tool at the foot of its page, and the venue's map shows the project closed", { as: "contractor", does: w("projects", "replace", "/1/status", "closed"), seen: { contractor: "projects/1", venueOwner: "venue/1/deployments" } }),

@@ -8,4 +8,6 @@ proposed --> accepted : authority accepts (33)
 proposed --> declined : authority declines (34)
 invited -[dotted]-> accepted : authority cannot accept its own invitation (35)
 proposed -[dotted]-> accepted : venueOwner cannot accept its own proposal (36)
+accepted --> [*]
+declined --> [*]
 @enduml
