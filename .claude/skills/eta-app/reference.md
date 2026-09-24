@@ -121,10 +121,14 @@ member's page, rebuilt from exactly what they were sent, must equal a fresh rend
 An example's documents are delta's. `delta.ts` defines the schema (`defineSchema`; the tables
 prefixed with the example's name, `chat_`), creates the tables, seeds them when empty, and
 registers the documents on a `createLocal()`: `registerDocs(..., { ledger: true })` for what is
-written and undone, a registry of its own with no ledger for the tray (a visit is not history),
-`registerMemory` for what is live. A document is a root row and the collections it includes,
-each a map of rows by id; two documents may include the same rows, and delta's fan-out carries a
-write to every one that holds them.
+written and undone, `registerMemory` for what is live. A tray may go in a registry of its own with
+no ledger where a visit is not history (the ticker's desk, the wedding's session); chat's session
+is on the ledger, so undo right after entering a room takes you out of it. A document is a root
+row and the collections it includes, each a map of rows by id; two documents may include the same
+rows, and delta's fan-out carries a write to every one that holds them. `defineSchema`,
+`defineDoc` and their options (`include`, `implied` for a document that opens empty until its
+first write, `temporal`) are delta's: its `delta-doc` skill
+(`node_modules/@blueshed/delta/.claude/skills/delta-doc/`) is the reference.
 
 A document module reads: `read<T>("<docType>:<id>")` from `src/documents.ts` gives the document
 as held -- synchronously, from the copy kept current from delta's stream -- and throws `Pending`
@@ -138,8 +142,13 @@ want there (numbers for ids, a guest's look as one object), and put the pure rul
   fills it in; the reader treats null as empty all the same.
 - No migrations: `createTables` makes what is missing, and the seed runs into empty tables.
 - `serverWrite(doc, ops)` is the server's own write -- no person, no cursor, never undone -- for
-  what `changed` keeps. Tests and scripts write as a person would through the same `shape`
-  (the wedding's `setup.ts`).
+  what `changed` keeps. It goes straight to delta, so its paths are the document's own, not eta's:
+  `at` is not added (`/desks/page`, `/quotes${path}`, not `/page`). Tests and scripts write as a
+  person would through the same `shape` (the wedding's `setup.ts`).
+- A page's reads go through `read()`. What goes to the tables directly is what no page reads as a
+  document: what a live document is computed from (chat's rooms spoken in, the wedding's
+  `everyone`), a credential looked up (a household's code), a blob (the wedding's pictures), and a
+  rule `shape` checks across rows (how many have claimed a gift).
 
 **The ledger** is delta's (`delta_ledger`): every write with its inverse, its version, who made it,
 and the cursor undo walks -- the session. The kernel's ledger compartment takes `remove /latest`

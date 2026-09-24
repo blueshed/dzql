@@ -47,9 +47,12 @@ Everything below is the least that makes it pass.
 1. **`stories.ts`** -- step 0, above.
 2. **`delta.ts`** -- the schema (`defineSchema`, tables named `<name>_...`), `createTables` against
    `src/db`'s `db`, a seed run into empty tables, and the documents registered on a
-   `createLocal()`: `registerDocs(..., { ledger: true })` for what is written and undone, a registry
-   of its own with no ledger for the tray, `registerMemory` for what is live. Cut documents by
-   who reads them: a page is told every change to what it read.
+   `createLocal()`: `registerDocs(..., { ledger: true })` for what is written and undone,
+   `registerMemory` for what is live. A tray may be kept off the ledger, in a registry of its own,
+   where a visit is not history (the ticker's desk, the wedding's session); chat's session is on
+   it. Cut documents by who reads them: a page is told every change to what it read. How to write
+   `defineSchema` and `defineDoc` (`root`, `include`, `implied`, `temporal`) is delta's own
+   `delta-doc` skill (`node_modules/@blueshed/delta/.claude/skills/delta-doc/`).
 3. **`documents/<thing>.ts`** -- `read(id)`, from `read("<docType>:<id>")` in `src/documents.ts`,
    adapting delta's rows into what the views want; and the pure rules a write follows
    (`after(state, ops)`), tested directly.
