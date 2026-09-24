@@ -281,6 +281,34 @@ export function linkUseCases(puml: string, t: Types, sequences: Map<string, stri
   });
 }
 
+/** Each document, and the first diagram drawn as an example of it: where its class links to. */
+export function exampleOf(all: Checked[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const c of [...all].sort((a, b) => a.name.localeCompare(b.name))) if (c.kind === "document") for (const u of c.uses) if (u.startsWith("document:") && !out.has(u.slice(9))) out.set(u.slice(9), c.name);
+  return out;
+}
+
+/** A class diagram with each «document» class linked to its example, added as it is drawn. */
+export function linkClasses(puml: string, t: Types, examples: Map<string, string>): string {
+  return puml.replace(/^(\s*class\s+(?:"[^"]+"\s+as\s+)?(\w+)(?:\s*<<[^>]*>>)?)(\s*\{?)[ \t]*$/gm, (line, head: string, cls: string, brace: string) => {
+    const doc = t.documents.find((d) => norm(d.shape) === norm(cls));
+    const example = doc && examples.get(doc.key);
+    return example ? `${head} [[#${example}{open its example}]]${brace}` : line;
+  });
+}
+
+/** A diagram as it is drawn: with links to the diagrams it names, worked out from all of them as they stand. */
+export function withLinks(puml: string, t: Types, all: Checked[]): string {
+  const kind = kindOf(puml);
+  if (kind === "use cases") return linkUseCases(puml, t, sequenceOf(all));
+  if (kind === "classes") return linkClasses(puml, t, exampleOf(all));
+  return puml;
+}
+/** Diagrams that link to others, and so are drawn again when those change. */
+export const links = (kind: Kind) => kind === "use cases" || kind === "classes";
+/** Diagrams others link to. */
+export const linkedTo = (kind: Kind) => kind === "sequence" || kind === "document";
+
 /** What types.ts has that no diagram draws yet. */
 export function undrawn(t: Types, all: Checked[]): string[] {
   const used = new Set(all.flatMap((c) => [...c.uses]));
