@@ -173,6 +173,9 @@ HTML is the only vocabulary. No JSON tree of app state.
 - Client to server: `{doc, ops: [{op, path, value?}]}`. `doc` is a whole name, or a bare type
   meaning the one of that type this connection is on (`resolveDoc`). `path` is a JSON Pointer,
   never a verb.
+  Anything that is not such a write, and a write whose handling throws, is answered as a refusal
+  is: the page whole. A throw is reported through `failed()` (`src/failed.ts`), which fails the
+  story it happened in.
 - Server to client: `{type: "patch", doc, version, ops}`, `doc` named whole (what was applied;
   kept in `window.eta.docs()` under that name), then `{type: "render", html}` (the page) or `{type: "render", ops}`
   (the parts that changed).
@@ -251,8 +254,8 @@ what replaces it; `update` sets the props, and `reduce(props, ops)`, when given,
 draws only inside `el` and never binds `el`'s own attributes -- they are the page's, the morph's to
 keep. Write one where the applet builds and updates DOM by hand (the ticker's city picker); where
 it draws HTML from a pure function that is tested on its own (the wedding's menu and dress), keep
-that. A page with an island carries railroad (about 2 KB gzipped for `signal` and `mount`, 4 KB
-with `list`); the kernel's client does not. Its file is `<name>-applet.tsx` (the tsconfig says
+that. A page with an island carries railroad, and the kernel's client does not (the README says
+what each costs). Its file is `<name>-applet.tsx` (the tsconfig says
 `jsxImportSource: "@blueshed/railroad"`).
 
 Mount point: `<div data-applet="board" data-doc="ticker:market" data-at="/quotes" data-props='{...}'>`,
