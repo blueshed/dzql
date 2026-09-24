@@ -131,8 +131,8 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
 for more than it checks:
 
 - **The morph is not under test.** Canon 2 is run without a browser: every member's open page is
-  kept as the client would keep it -- a full render replaces it, a fragment render is applied
-  target by target -- and after the story, its undo and its redo it must equal a fresh render. So
+  kept as the client would keep it -- a full render replaces it, a render in parts is applied
+  part by part -- and after the story, its undo and its redo it must equal a fresh render. So
   a write that reaches the tables and not someone's open page fails, by name. An applet that takes
   its document's patches itself is compared without its props. What the morph then does with the
   HTML, and what an applet draws, are the browser tests' to check.
