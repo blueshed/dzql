@@ -3,7 +3,6 @@ title States: a session
 [*] --> Nameless
 Nameless --> Named : enter a name
 Nameless --> Nameless : enter a name [blank] / a name is needed
-Nameless --> Nameless : enter a name [another session has it] / that name is in use
 Nameless --> Nameless : enter a room's name / enter a name first
 Named --> Named : enter a name
 Named --> InRoom : enter a room's name

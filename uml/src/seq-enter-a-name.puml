@@ -8,9 +8,8 @@ app --> dee : open session
 dee -> app : replace session /name <name>
 alt the name is blank
   app --> dee : a name is needed
-else another session has that name (stored, connected or not)
-  app --> dee : that name is in use
 else
+  note right of app : a demo: whoever enters "Dee" is Dee;\nthe person is made if nobody has entered the name yet
   app --> dee : patch session replace /name "Dee"
   app --> dee : open lobby
   note right of dee : the lobby shows which rooms have people in them;\na room's name is still typed

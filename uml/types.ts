@@ -1,9 +1,13 @@
 // Every name the diagrams use. The app: chat. A person enters a name, then enters a room's name,
 // which takes them into that room (and makes it, if nobody has); says things that everyone in the
 // room sees; enters another room's name to move; and logs out. There is no leaving a room but by
-// entering another, or logging out. Logging out removes the session (freeing its name) and a fresh,
-// nameless one opens: you start again. Names are unique among stored sessions, connected or not.
-// Nothing is chosen from a list: every name is typed, and a blank one is refused with a reason.
+// entering another, or logging out. Nothing is chosen from a list: every name is typed, and a blank
+// one is refused with a reason.
+//
+// It is a demo, so a person is self-authenticating: a person is their name, and whoever enters a name
+// is that person (made, if nobody has entered it yet). Each device has its own session, with its own
+// room: Dee can be in general on her laptop and in the kitchen on her phone. Logging out ends this
+// device's session, and a fresh nameless one opens on it: you start again; other devices are untouched.
 //
 // The documents are what a person has open. The app opens and closes them for the person (Reads). A
 // write names a document and a path in it, never a function (Writes); everyone who has the document
@@ -35,7 +39,7 @@ export interface RoomDoc {
   messages: Persistent<Message[]>;
 }
 
-/** A person's own session: who they are, and where. `room` is null until `name` is set (SessionState). */
+/** One device's session: which person it is, and where. `room` is null until `name` is set (SessionState). */
 export interface SessionDoc {
   name: Persistent<string | null>;
   room: Persistent<string | null>;
@@ -50,13 +54,14 @@ export interface LobbyDoc {
 export interface Tables {
   rooms: { name: string };
   messages: { room: string; author: string; text: string; at: string };
-  sessions: { id: string; name: string | null; room: string | null };
+  people: { name: string };
+  sessions: { id: string; person: string | null; room: string | null };
 }
 
 /** The documents, by the name they are opened by, and who has each open. */
 export interface Documents {
   "room:<name>": { shape: RoomDoc; openedBy: "everyone in the room" };
-  "session": { shape: SessionDoc; openedBy: "the person alone" };
+  "session": { shape: SessionDoc; openedBy: "the one device" };
   "lobby": { shape: LobbyDoc; openedBy: "everyone with a name" };
 }
 
@@ -69,13 +74,13 @@ export interface Reads {
 
 /** Each transient part, and what it is derived from. It is derived again whenever a session connects, disconnects or moves, and a patch goes only where its value changed. */
 export interface Derivations {
-  "room:<name> /members": "the names of the connected sessions whose room is <name>";
+  "room:<name> /members": "the people with a connected session whose room is <name>";
   "lobby /rooms": "the rooms of the connected sessions";
 }
 
 /** The writes a person makes: a document and a path, the op, what it is called, why it is refused, and whether Undo can take it back. */
 export interface Writes {
-  "session /name": { replace: string; does: "enter a name"; refused: "a name is needed" | "that name is in use"; undoable: false };
+  "session /name": { replace: string; does: "enter a name"; refused: "a name is needed"; undoable: false };
   "session /room": { replace: string; does: "enter a room's name"; refused: "enter a name first" | "a room's name is needed"; undoable: false };
   "room:<name> /messages/-": { add: { text: string }; does: "say something"; refused: "you are not in this room"; stamps: "author and at"; undoable: true };
   "session": { remove: true; does: "log out"; undoable: false };

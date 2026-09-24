@@ -10,7 +10,7 @@ group derived again: a patch goes only where a value changed
   app -> room : patch room:general remove /members/Dee
   note over room : the lobby does not change: Ada and Bob are still in general
 end
-note right of app : "Dee" stays taken while she is away: her session is stored
+note right of app : her session is stored: when she connects again on this device, she is back in general
 == later ==
 dee -> app : connect
 app --> dee : open session

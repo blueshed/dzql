@@ -33,9 +33,12 @@ package "What is stored" {
     text
     at
   }
+  class people <<table>> {
+    name
+  }
   class sessions <<table>> {
     id
-    name
+    person
     room
   }
 }
@@ -48,5 +51,6 @@ RoomDoc *-- rooms : root
 RoomDoc *-- messages : includes
 SessionDoc *-- sessions : root
 rooms "1" -- "0..*" messages : holds >
+people "1" -- "0..*" sessions : on each device >
 
 @enduml
