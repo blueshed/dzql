@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { example } from "../examples/chat";
 import { stories } from "../examples/chat/stories";
-import { comparable, hear, holding, print, retake, run, takersOn, unheld } from "./harness";
+import { comparable, hear, holding, print, retake, run, takersOn, unheld, type Trace } from "./harness";
 
 // The harness against chat's own stories: one outcome per story, named as the story is, and the
 // cast's setup shared by all. What each story finds is the example's business (a failing story is
@@ -16,6 +16,26 @@ describe("stories harness", () => {
     const refused = report.outcomes.find((o) => o.name.startsWith("Nobody can take"))!;
     expect(refused.failures).toEqual([]);
     print(report);
+  }, 30000);
+
+  test("an observer is told each write as the wire carried it: who heard what, and what the ledger took", async () => {
+    const traces: Trace[] = [];
+    const pick = (start: string) => stories.stories.find((s) => s.name.startsWith(start))!;
+    const report = await run(example, { cast: stories.cast, stories: [pick("Ada says hello"), pick("Nobody can take")] }, (t) => traces.push(t));
+    expect(report.failed).toBe(0);
+    expect(traces.map((t) => `${t.story.slice(0, 14)}|${t.phase}|${t.as}`)).toEqual([
+      "Ada says hello|does|ada",
+      "Ada says hello|undo|ada",
+      "Ada says hello|redo|ada",
+      "Nobody can tak|cannot|ada",
+    ]);
+    const heard = (t: Trace, who: string) => t.heard.find((h) => h.member === who)!.messages;
+    const [does, , , refused] = traces as [Trace, Trace, Trace, Trace];
+    expect(does.ledger.length).toBeGreaterThan(0);
+    expect(heard(does, "bob").length).toBeGreaterThan(0); // in the room: told
+    expect(heard(does, "cy")).toEqual([]); // in the kitchen: nothing
+    expect(refused.ledger).toEqual([]);
+    expect(heard(refused, "bob")).toEqual([]);
   }, 30000);
 
   test("a story by nobody in the cast, or seen by nobody who could, is a failure, not a crash", async () => {

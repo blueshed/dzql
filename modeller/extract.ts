@@ -6,7 +6,7 @@
 
 import type { Stories, Story } from "../src/stories";
 import { parsePointer } from "../src/json-pointer";
-import { run } from "../src/harness";
+import { run, type Heard, type Trace } from "../src/harness";
 
 const name = process.argv[2] ?? "wedding";
 const dir = `${import.meta.dir}/../examples/${name}`;
@@ -84,7 +84,18 @@ function place(doc: string, path: string): { table: string | null; field: string
 const tray = stories.at?.("").doc ?? null;
 const permitted = (doc: string, op: string, path: string) => permits.some((p) => p.doc === doc && p.ops.includes(op) && new RegExp(p.path).test(path));
 
-const report = await run((await import(`${dir}/index.ts`)).example, stories);
+// Every write the run makes, as the wire carried it: for a sequence drawn from a real run.
+const traces = new Map<string, Trace[]>();
+const report = await run((await import(`${dir}/index.ts`)).example, stories, (t) => traces.set(t.story, [...(traces.get(t.story) ?? []), t]));
+const partKey = (target: string) => target.match(/data-eta-part="([^"]+)"/)?.[1] ?? target;
+const heardAs = (m: Heard) =>
+  m.type === "render"
+    ? m.html !== undefined
+      ? { kind: "page", bytes: JSON.stringify(m).length }
+      : { kind: "parts", parts: (m.ops ?? []).map((o) => `${o.op} ${partKey(o.target)}`), bytes: JSON.stringify(m).length }
+    : m.type === "patch"
+      ? { kind: "patch", doc: m.doc, ops: (m.ops ?? []).length, bytes: JSON.stringify(m).length }
+      : { kind: m.type, bytes: JSON.stringify(m).length };
 const outcome = new Map(report.outcomes.map((o) => [o.name, o.failures]));
 
 const storyRows = stories.stories.map((s: Story, i) => {
@@ -101,6 +112,13 @@ const storyRows = stories.stories.map((s: Story, i) => {
     seen,
     unseen: "does" in s ? s.unseen ?? [] : [],
     failures: outcome.get(s.name) ?? ["not run"],
+    sequence: (traces.get(s.name) ?? []).map((t) => ({
+      phase: t.phase,
+      as: t.as,
+      write: t.write,
+      ledger: t.ledger,
+      heard: t.heard.map((h) => ({ member: h.member, messages: h.messages.map(heardAs) })),
+    })),
   };
 });
 

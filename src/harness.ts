@@ -28,6 +28,16 @@ export { comparable };
 // not the renders. What the morph does with the HTML is the browser tests' to check.
 
 export type Outcome = { name: string; failures: string[] };
+
+/** One write in a story's run, as the wire carried it: who sent what, what every member heard, and what the ledger took. For a sequence drawn from a real run. */
+export type Trace = {
+  story: string;
+  phase: "does" | "cannot" | "undo" | "redo";
+  as: string;
+  write: Write;
+  heard: { member: string; messages: Heard[] }[];
+  ledger: { doc: string; undoable: number }[];
+};
 export type Report = { outcomes: Outcome[]; passed: number; failed: number };
 
 type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; taken: Map<string, Taken>; answered: (() => void)[] };
@@ -150,7 +160,7 @@ export function hear(page: string, message: Heard): string {
 
 
 
-export async function run(example: Example, stories: Stories): Promise<Report> {
+export async function run(example: Example, stories: Stories, observe?: (trace: Trace) => void): Promise<Report> {
   const server = createServer(example, 0);
   const { draw, documents } = assemble(example);
   const active = (sessionId: string): Promise<boolean> => settled(documents, () => example.active(sessionId));
@@ -226,6 +236,20 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
 
   async function tell(story: Story): Promise<Outcome> {
     const failures: string[] = [];
+    /** A send, witnessed for `observe`: what each member heard from it, and the ledger's new entries. */
+    async function told(cast: Member[], who: Member, write: Write, phase: Trace["phase"]): Promise<void> {
+      const marks = cast.map((m) => m.inbox.length);
+      const ledgerBefore = ledgerMax();
+      await send(cast, who, write);
+      observe?.({
+        story: story.name,
+        phase,
+        as: who.name,
+        write,
+        heard: cast.map((m, i) => ({ member: m.name, messages: m.inbox.slice(marks[i]).map((raw) => JSON.parse(raw) as Heard) })),
+        ledger: ledger.since(ledgerBefore).map(({ doc, undoable }) => ({ doc, undoable })),
+      });
+    }
     db.exec("BEGIN");
     const cast: Member[] = [];
     try {
@@ -239,7 +263,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       if ("cannot" in story) {
         const before = await snapshot(cast);
         const ledgerBefore = ledgerMax();
-        await send(cast, who, story.cannot);
+        await told(cast, who, story.cannot, "cannot");
         compare(before, await snapshot(cast), cast, "refused, but", failures);
         await stale(cast, "after the refusal", failures);
         if (ledgerMax() !== ledgerBefore) failures.push("refused, but the ledger moved");
@@ -258,7 +282,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       const before = await snapshot(cast);
       const ledgerBefore = ledgerMax();
       who.inbox.length = 0;
-      await send(cast, who, story.does);
+      await told(cast, who, story.does, "does");
       if (process.env.STORY_TRACE) for (const raw of who.inbox) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
       const after = await snapshot(cast);
       const entries = ledger.since(ledgerBefore);
@@ -276,14 +300,14 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       if (!(await active(who.sessionId))) return { name: story.name, failures }; // the author has gone (logged out): no undo is theirs to press
 
       const facts = entries.every((e) => e.undoable === 0);
-      await send(cast, who, UNDO);
+      await told(cast, who, UNDO, "undo");
       const afterUndo = await snapshot(cast);
       await stale(cast, "after undo", failures);
       if (facts) compare(after, afterUndo, cast, "a fact, yet undo changed it", failures);
       else {
         compare(before, afterUndo, cast, "undo did not restore", failures);
         if (!(await active(who.sessionId))) return { name: story.name, failures }; // the undo was their going (a name taken back): no redo is theirs to press
-        await send(cast, who, REDO);
+        await told(cast, who, REDO, "redo");
         compare(after, await snapshot(cast), cast, "redo did not restore", failures);
         await stale(cast, "after redo", failures);
       }
