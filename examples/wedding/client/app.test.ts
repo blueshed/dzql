@@ -55,8 +55,8 @@ describe("the wedding in a real browser", () => {
     const guest = (await household(code)).guests[1]!;
     await view.evaluate(`document.querySelector('[data-applet="photo"] .slot[data-key="${guest.id}"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
     await waitFor(view, `document.querySelector('.guest-sheet .dress') !== null`, (v) => v === true);
-    expect(await view.evaluate(`document.querySelector('.guest-sheet h2').textContent`)).toBe(guest.name);
-    expect(await view.evaluate(`document.querySelector('.guest-sheet .menu') !== null`)).toBe(true);
+    expect(await view.evaluate<string>(`document.querySelector('.guest-sheet h2').textContent`)).toBe(guest.name);
+    expect(await view.evaluate<boolean>(`document.querySelector('.guest-sheet .menu') !== null`)).toBe(true);
 
     // touch the top: the dots appear (the applet's own state); a dot is a write, and the figure redraws from the render
     await view.evaluate(`document.querySelector('.callout-top').click()`);
@@ -65,7 +65,7 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('.dress .torso')?.getAttribute('fill')`, (v) => v === "#7FAE4E");
     expect((await household(code)).guests[1]!.minifigure.top).toBe("#7FAE4E");
     // the open part survived the redraw
-    expect(await view.evaluate(`document.querySelector('.pop-top') !== null`)).toBe(true);
+    expect(await view.evaluate<boolean>(`document.querySelector('.pop-top') !== null`)).toBe(true);
 
     // a course opens (the menu's own state); a pill is a write; the head says what was chosen
     await view.evaluate(`document.querySelector('.menu-head[data-course="2"]').click()`);
@@ -83,7 +83,7 @@ describe("the wedding in a real browser", () => {
     // the reading switch is a stack on the window's rail: the reading not pressed is the other one
     await view.evaluate(`document.querySelector('.cell.open .rail [role="radio"]:not([aria-pressed="true"])').click()`);
     await waitFor(view, `document.querySelectorAll('.cell.open .row').length`, (v) => v === 2);
-    expect(await view.evaluate(`document.querySelector('.cell.open svg.photo') === null`)).toBe(true);
+    expect(await view.evaluate<boolean>(`document.querySelector('.cell.open svg.photo') === null`)).toBe(true);
     await view.evaluate(`document.querySelector('.cell.open .rail [role="radio"]:not([aria-pressed="true"])').click()`);
     await waitFor(view, `document.querySelector('.cell.open [data-applet="photo"] svg') !== null`, (v) => v === true);
   });
@@ -91,7 +91,7 @@ describe("the wedding in a real browser", () => {
   test("the page follows into the URL; the browser's back button sends the session there; reopening a link catches the session up to it", async () => {
     await using view = new Bun.WebView();
     await enter(view, code);
-    expect(await view.evaluate(`location.pathname`)).toBe("/");
+    expect(await view.evaluate<string>(`location.pathname`)).toBe("/");
 
     // navigating via the UI is a session write, as always -- the URL follows it
     await view.evaluate(`document.querySelector('[data-value="gifts"]').click()`);
@@ -106,7 +106,7 @@ describe("the wedding in a real browser", () => {
     const gift = await view.evaluate(`location.search`);
     await view.evaluate(`history.back()`);
     await waitFor(view, `document.querySelector('#gift-sheet') === null`, (v) => v === true);
-    expect(await view.evaluate(`location.pathname + location.search`)).toBe("/gifts");
+    expect(await view.evaluate<string>(`location.pathname + location.search`)).toBe("/gifts");
 
     // the browser's own back button: a popstate, not a click in the page -- the session follows
     // the URL back, rather than the URL being the only thing that moved (every household page's
@@ -181,8 +181,8 @@ describe("the wedding in a real browser", () => {
     // the drawer does not reset on the echo of an editing write, unlike a creating form: the
     // render that follows the description's write must not also snap the *refused* name edit
     // back to the server's old value -- it stays blank, the refusal handed back as is.
-    expect(await view.evaluate(`document.querySelector('.keep-sheet input[name=name]').value`)).toBe("");
-    expect(await view.evaluate(`document.querySelector('.keep-sheet input[name=description]').value`)).toBe("a good one");
+    expect(await view.evaluate<string>(`document.querySelector('.keep-sheet input[name=name]').value`)).toBe("");
+    expect(await view.evaluate<string>(`document.querySelector('.keep-sheet input[name=description]').value`)).toBe("a good one");
   });
 
   test("the welcome's message textarea writes on blur too, comparing against its rendered content, not an input's value attribute", async () => {
@@ -207,7 +207,7 @@ describe("the wedding in a real browser", () => {
     await view.evaluate(`document.querySelector('.welcome-sheet textarea').dispatchEvent(new Event('focusout', { bubbles: true }))`);
     await Bun.sleep(200);
     // lastSent is still the code-entry's session write from login above -- nothing for "board" followed it
-    expect(await view.evaluate(`window.eta.inspect().lastSent?.doc`)).toBe("session");
+    expect(await view.evaluate<string>(`window.eta.inspect().lastSent?.doc`)).toBe("session");
     expect((await board()).message).toBe("can't wait");
 
     await view.evaluate(`(() => {

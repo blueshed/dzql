@@ -4,7 +4,7 @@ import { applyPatch } from "./json-patch";
 describe("applyPatch", () => {
   test("adds, replaces and removes members and array items, on a copy", () => {
     const value = { a: 1, list: ["x", "z"], nested: { b: 2 } };
-    const out = applyPatch(value, [
+    const out = applyPatch<object>(value, [
       { op: "replace", path: "/a", value: 9 },
       { op: "add", path: "/c", value: 3 },
       { op: "add", path: "/list/1", value: "y" },

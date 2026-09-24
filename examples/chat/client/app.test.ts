@@ -264,8 +264,8 @@ describe("app.ts in a real browser", () => {
     await viewA.navigate(server.url.toString());
     await waitFor(viewA, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("history 14"));
     const m = `document.querySelector('.messages')`;
-    expect(await viewA.evaluate(`${m}.scrollHeight > ${m}.clientHeight`)).toBe(true);
-    expect(await viewA.evaluate(`${m}.scrollTop + ${m}.clientHeight >= ${m}.scrollHeight - 1`)).toBe(true);
+    expect(await viewA.evaluate<boolean>(`${m}.scrollHeight > ${m}.clientHeight`)).toBe(true);
+    expect(await viewA.evaluate<boolean>(`${m}.scrollTop + ${m}.clientHeight >= ${m}.scrollHeight - 1`)).toBe(true);
   });
 
   test("a message sent from one browser appears live in another browser in the same room", async () => {

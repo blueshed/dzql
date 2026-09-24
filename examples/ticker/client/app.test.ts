@@ -52,12 +52,12 @@ describe("the ticker in a real browser", () => {
     const price = Math.round(((await quotes()).FXTR!.price + 2.5) * 100) / 100;
     await tick([{ op: "replace", path: "/FXTR/price", value: price }]);
     await waitFor(view, `document.querySelector('svg.board .row[data-row="FXTR"] .price')?.textContent`, (v) => v === price.toFixed(2));
-    expect(await view.evaluate(`document.querySelector('svg.board .row[data-row="FXTR"]').classList.contains('up')`)).toBe(true);
+    expect(await view.evaluate<boolean>(`document.querySelector('svg.board .row[data-row="FXTR"]').classList.contains('up')`)).toBe(true);
     // the tick reached the page as its patch (the quote it leaves), and no render came with it -- other
     // ticks may land meanwhile (a feed another test started), so this tick is looked for by its value
-    expect(await view.evaluate(`window.eta.docs()['ticker:market'].ops.some((op) => op.path === '/FXTR' && op.value.price === ${price})`)).toBe(true);
-    expect(await view.evaluate(`window.__renders`)).toBe(0);
-    expect(await view.evaluate(`document.querySelectorAll('svg.board .row[data-row="FXTR"] polyline').length`)).toBe(1);
+    expect(await view.evaluate<boolean>(`window.eta.docs()['ticker:market'].ops.some((op) => op.path === '/FXTR' && op.value.price === ${price})`)).toBe(true);
+    expect(await view.evaluate<number>(`window.__renders`)).toBe(0);
+    expect(await view.evaluate<number>(`document.querySelectorAll('svg.board .row[data-row="FXTR"] polyline').length`)).toBe(1);
 
     // the clock's seconds hand is turning, with nothing from the server
     const a = await view.evaluate(`document.querySelector('svg.clock .hand.second').getAttribute('transform')`);
@@ -82,12 +82,12 @@ describe("the ticker in a real browser", () => {
     // not deliver a keydown, so the keys are dispatched as the browser would.)
     const arrow = (key: string) => view.evaluate(`document.querySelector('#city input').dispatchEvent(new KeyboardEvent('keydown', { key: '${key}', bubbles: true, cancelable: true }))`);
     await arrow("ArrowDown");
-    expect(await view.evaluate(`document.querySelector('#city .suggestions li.active').dataset.tz`)).toBe("Arctic/Longyearbyen");
+    expect(await view.evaluate<string>(`document.querySelector('#city .suggestions li.active').dataset.tz`)).toBe("Arctic/Longyearbyen");
     await arrow("ArrowUp");
-    expect(await view.evaluate(`document.querySelector('#city .suggestions li.active').dataset.tz`)).toBe("Europe/London");
+    expect(await view.evaluate<string>(`document.querySelector('#city .suggestions li.active').dataset.tz`)).toBe("Europe/London");
     await view.press("Enter");
     await waitFor(view, `document.querySelector('svg.clock .label').textContent`, (v) => v === "London");
-    expect(await view.evaluate(`document.querySelector('#city input').placeholder`)).toBe("London");
-    expect(await view.evaluate(`window.eta.docs().clock.ops.length`)).toBe(1);
+    expect(await view.evaluate<string>(`document.querySelector('#city input').placeholder`)).toBe("London");
+    expect(await view.evaluate<number>(`window.eta.docs().clock.ops.length`)).toBe(1);
   }, 15000);
 });

@@ -3,6 +3,9 @@ import fixture from "./app.test.html";
 
 let server: ReturnType<typeof Bun.serve>;
 
+/** A write the client sent, as `stubSend` keeps it in `window.__sent`. */
+type Sent = { doc: string; ops: { op: string; path: string; value?: unknown }[] };
+
 beforeAll(() => {
   // No eta server: app.ts connects a real WebSocket on load, so `/ws` just has to accept the
   // upgrade and go quiet -- every test drives the client itself by overriding that socket's
@@ -116,8 +119,8 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.type("attic");
     await waitFor(view, `document.querySelector('#win p')?.textContent`, (v) => v === "two rooms");
 
-    expect(await view.evaluate(`document.getElementById('new').value`)).toBe("attic");
-    expect(await view.evaluate(`window.__named`)).toEqual([]); // the window itself did not change, only what is in it
+    expect(await view.evaluate<string>(`document.getElementById('new').value`)).toBe("attic");
+    expect(await view.evaluate<string[]>(`window.__named`)).toEqual([]); // the window itself did not change, only what is in it
   });
 
   test("with several data-moving candidates on screen at once, only the one that actually changed transitions (W3: a box with more than one openable compartment)", async () => {
@@ -160,13 +163,13 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await waitFor(view, `document.querySelector('#gifts')?.textContent`, (v) => v === "Gifts, grown into the window");
 
     await waitFor(view, `window.__seenNames.gifts.includes("moving")`, (v) => v === true);
-    expect(await view.evaluate(`window.__seenNames.asks.includes("moving")`)).toBe(false);
-    expect(await view.evaluate(`window.__seenNames.day.includes("moving")`)).toBe(false);
-    expect(await view.evaluate(`document.getElementById('gifts').style.viewTransitionName`)).toBe("");
+    expect(await view.evaluate<boolean>(`window.__seenNames.asks.includes("moving")`)).toBe(false);
+    expect(await view.evaluate<boolean>(`window.__seenNames.day.includes("moving")`)).toBe(false);
+    expect(await view.evaluate<string>(`document.getElementById('gifts').style.viewTransitionName`)).toBe("");
     // the unrelated siblings' own identity survived the render too, untouched by the transition
-    expect(await view.evaluate(`document.getElementById('asks')._probe`)).toBe("asks");
-    expect(await view.evaluate(`document.getElementById('day')._probe`)).toBe("day");
-    expect(await view.evaluate(`document.getElementById('gifts')._probe`)).toBe("gifts"); // the same element grew, it wasn't replaced
+    expect(await view.evaluate<string>(`document.getElementById('asks')._probe`)).toBe("asks");
+    expect(await view.evaluate<string>(`document.getElementById('day')._probe`)).toBe("day");
+    expect(await view.evaluate<string>(`document.getElementById('gifts')._probe`)).toBe("gifts"); // the same element grew, it wasn't replaced
   });
 
   test("a full render that newly marks an element data-reveal scrolls it into view", async () => {
@@ -182,7 +185,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
       `document.getElementById('list').scrollHeight > document.getElementById('list').clientHeight`,
     );
     expect(overflows).toBe(true);
-    expect(await view.evaluate(`document.getElementById('list').scrollTop`)).toBe(0);
+    expect(await view.evaluate<number>(`document.getElementById('list').scrollTop`)).toBe(0);
 
     const revealed = items.replace('id="item-19"', 'id="item-19" data-reveal="item-19"');
     await pushRender(view, `<div class="list" id="list">${revealed}</div>`);
@@ -210,7 +213,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.click("#q");
     await pushRender(view, `<form><input id="q" name="q"></form><form><input id="say" name="text" autofocus></form><p id="more">more</p>`);
     await waitFor(view, `document.getElementById('more') !== null`, (v) => v === true);
-    expect(await view.evaluate(`document.activeElement?.id`)).toBe("q");
+    expect(await view.evaluate<string>(`document.activeElement?.id`)).toBe("q");
   });
 
   test("a click in a field that carries data-write writes nothing: the attribute names the field's path, it is not a gesture", async () => {
@@ -228,11 +231,11 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
     await view.click("#q"); // a real click, as a person putting the caret back in find's field
     await Bun.sleep(300); // well past the input debounce: nothing was typed, so nothing is owed
-    expect(await view.evaluate(`window.__sent`)).toEqual([]); // not a blank replace that would empty the word on the server
+    expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([]); // not a blank replace that would empty the word on the server
 
     await view.click("#b"); // a button's data-write is still a gesture
     await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate(`window.__sent[0]`)).toEqual({ doc: "session", ops: [{ op: "remove", path: "/filter/rooms" }] });
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "session", ops: [{ op: "remove", path: "/filter/rooms" }] });
   });
 
   test("a data-write-on=\"input\" form sends once after several keystrokes, debounced, and never repeats an unchanged value", async () => {
@@ -254,8 +257,8 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     // have landed the instant typing stops, but it never grows past the one commit
     await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
     await Bun.sleep(300); // settle well past the debounce window; still just the one message
-    expect(await view.evaluate(`window.__sent.length`)).toBe(1);
-    expect(await view.evaluate(`window.__sent[0]`)).toEqual({
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(1);
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({
       doc: "session",
       ops: [{ op: "replace", path: "/filter/guests", value: "abc" }],
     });
@@ -266,7 +269,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.evaluate(`document.getElementById('q').focus()`);
     await view.type("abc");
     await Bun.sleep(400);
-    expect(await view.evaluate(`window.__sent.length`)).toBe(1);
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(1);
 
     // a genuinely new value, then losing focus before the debounce would fire, flushes it at once
     await view.evaluate(`document.getElementById('q').value = ""`);
@@ -274,7 +277,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.type("xyz");
     await view.evaluate(`document.getElementById('q').blur()`);
     await waitFor(view, `window.__sent.length`, (v) => v === 2, 300);
-    expect(await view.evaluate(`window.__sent[1]`)).toEqual({
+    expect(await view.evaluate<Sent>(`window.__sent[1]`)).toEqual({
       doc: "session",
       ops: [{ op: "replace", path: "/filter/guests", value: "xyz" }],
     });

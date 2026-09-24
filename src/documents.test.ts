@@ -31,7 +31,7 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     const documents = createDocuments(local);
     expect(() => documents.read("slow:1")).toThrow(Pending);
     let runs = 0;
-    expect(await settled(documents, () => (runs++, documents.read("slow:1")))).toEqual({ n: 0 });
+    expect(await settled(documents, () => (runs++, documents.read<{ n: number }>("slow:1")))).toEqual({ n: 0 });
     expect(runs).toBe(2);
     expect(documents.held("slow:1")).toBe(true);
   });
@@ -50,7 +50,7 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     expect(done).toBe(false); // answered, and not yet heard
     flush();
     await writing;
-    expect(documents.read("slow:1")).toEqual({ n: 5 });
+    expect(documents.read<{ n: number }>("slow:1")).toEqual({ n: 5 });
     expect(told).toEqual([{ doc: "slow:1", ops: [{ op: "replace", path: "/n", value: 5 }], v: 1 }]);
     expect(unheard).toEqual([]);
     await documents.quiet();
@@ -64,7 +64,7 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     await documents.load("slow:1");
     await Promise.all([documents.write("slow:1", [{ op: "replace", path: "/n", value: 1 }], { identity: "a", cursor: "s" }), Promise.resolve().then(flush)]);
     local.server.publish("slow:1", { doc: "slow:1", ops: [{ op: "replace", path: "/n", value: 99 }], v: 1 }); // heard already
-    expect(documents.read("slow:1")).toEqual({ n: 1 });
+    expect(documents.read<{ n: number }>("slow:1")).toEqual({ n: 1 });
     skip(); // version 2 happens somewhere we never hear
     local.server.publish("slow:1", { doc: "slow:1", ops: [{ op: "replace", path: "/n", value: 3 }], v: 3 });
     await documents.quiet();
@@ -141,7 +141,7 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     const documents = createDocuments(local);
     setActiveDocuments(documents);
     await serverWrite("here:x", [{ op: "add", path: "/people/ada", value: true }]);
-    expect(await settled(documents, () => read("here:x"))).toEqual({ people: { ada: true } });
+    expect(await settled(documents, () => read<{ people: Record<string, true> }>("here:x"))).toEqual({ people: { ada: true } });
     await expect(serverWrite("here:x", [{ op: "replace", path: "/nobody/x", value: 1 }])).rejects.toThrow("here:x");
     setActiveDocuments(undefined);
   });
