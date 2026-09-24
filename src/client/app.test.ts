@@ -346,6 +346,24 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string>(`document.getElementById('say').value`)).toBe("half typ");
   });
 
+  test("a form clears as it sends: what is typed while the write is on its way is kept, whoever's echo comes", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const room = `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>`;
+    await pushRender(view, room);
+    await waitFor(view, `document.getElementById('text') !== null`, (v) => v === true);
+    await view.click("#text");
+    await view.type("first");
+    await view.press("Enter");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<string>(`document.getElementById('text').value`)).toBe("");
+
+    await view.type("second"); // before the first is echoed
+    await push(view, { type: "patch", doc: "room:general", version: 3, ops: [{ op: "add", path: "/messages/a1", value: { name: "Ada", text: "first" } }] });
+    await push(view, { type: "render", ops: [{ op: "replace", target: "#say", html: room }] });
+    expect(await view.evaluate<string>(`document.getElementById('text').value`)).toBe("second");
+  });
+
   test("a refused write keeps what is typed after it: the page handed back ends the wait, so nobody's echo clears the field", async () => {
     await using view = await open();
     await stubSend(view);

@@ -49,12 +49,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unmounted every applet (the ticker's sparkline histories, a half-dressed figure). Now `#app` is
   made `inert` and marked `data-offline` -- the bento dims it and says "Reconnecting…" -- until
   the socket is open again and the server draws the page.
-- **A refused write keeps what is typed after it** (`src/client/app.ts`). A form waits for the
-  echo of a write to its document to reset; a refused one never had an echo, so the form went on
-  waiting, and the next echo of anyone's write to that document cleared what had been typed since.
-  The page handed back whole -- a refusal's answer -- ends the wait now. An echo still names a
-  document, not a write, so another person's echo that arrives before yours is answered resets
-  the form; telling "yours" needs a write id on the wire (not done).
+- **A form clears as it sends, and a refused write hands back what was sent** (`src/client/app.ts`).
+  A form waited for the echo of a write to its document to reset. So a refused write left it
+  waiting, and the next echo of anyone's write there cleared what had been typed since; and what
+  a quick typist typed before their own echo came was appended to the sent text, then wiped by
+  the echo (chat's browser test, fifteen messages in a row, lost and merged several). Now the form
+  is cleared on submit; the page whole before the echo -- a refusal's answer -- puts the sent
+  values back into each field not typed in since. No echo, anyone's, clears a field.
 - **A page is drawn even when a compartment's `onOpen` fails.** The failure stopped the event
   before the first drawing, so the tab sat on "Connecting…"; it is reported, and the page drawn.
 - **`inspect` gives at most 100 entries a document**, however many it asks for: `limit: 1e9` asked
