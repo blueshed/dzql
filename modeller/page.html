@@ -1,0 +1,905 @@
+<title>Wedding Modeller</title>
+<style>
+:root {
+  --paper: #f6f3ec; --card: #ffffff; --card-hover: #fbfaf7; --tray: #e4dfd2; --well: #eef1e8;
+  --ink: #1e2430; --muted: #6b6b74; --line: rgba(30,36,48,.14); --edge: rgba(30,36,48,.25);
+  --accent: #2f63bf; --accent-soft: rgba(47,99,191,.12);
+  --actor: #b25b18; --actor-soft: rgba(178,91,24,.12);
+  --doc: #6a4fb3; --doc-soft: rgba(106,79,179,.12);
+  --table: #2e7d5b; --table-soft: rgba(46,125,91,.12);
+  --pass: #2e7d5b; --warn: #a86b00; --warn-soft: rgba(168,107,0,.12); --refuse: #b3372b; --refuse-soft: rgba(179,55,43,.10);
+  --radius: 6px; --radius-panel: 14px;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #16181d; --card: #1f2229; --card-hover: #252932; --tray: #2a2e37; --well: #1b1e24;
+    --ink: #e9e6de; --muted: #9b9aa3; --line: rgba(233,230,222,.12); --edge: rgba(233,230,222,.24);
+    --accent: #7ea6ec; --accent-soft: rgba(126,166,236,.16);
+    --actor: #e39456; --actor-soft: rgba(227,148,86,.16);
+    --doc: #a996ea; --doc-soft: rgba(169,150,234,.16);
+    --table: #6cc39c; --table-soft: rgba(108,195,156,.16);
+    --pass: #6cc39c; --warn: #e0b04d; --warn-soft: rgba(224,176,77,.14); --refuse: #ec8479; --refuse-soft: rgba(236,132,121,.14);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #16181d; --card: #1f2229; --card-hover: #252932; --tray: #2a2e37; --well: #1b1e24;
+  --ink: #e9e6de; --muted: #9b9aa3; --line: rgba(233,230,222,.12); --edge: rgba(233,230,222,.24);
+  --accent: #7ea6ec; --accent-soft: rgba(126,166,236,.16);
+  --actor: #e39456; --actor-soft: rgba(227,148,86,.16);
+  --doc: #a996ea; --doc-soft: rgba(169,150,234,.16);
+  --table: #6cc39c; --table-soft: rgba(108,195,156,.16);
+  --pass: #6cc39c; --warn: #e0b04d; --warn-soft: rgba(224,176,77,.14); --refuse: #ec8479; --refuse-soft: rgba(236,132,121,.14);
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.45 "Helvetica Neue", Helvetica, Arial, sans-serif; }
+* { box-sizing: border-box; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:focus-visible, .node:focus-visible, .story:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.mono { font-family: var(--mono); font-size: 12px; }
+.muted { color: var(--muted); }
+
+.app { height: 100%; display: grid; grid-template-rows: auto auto 1fr; padding-inline: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-block: 14px 10px; }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { margin: 0; font-size: 18px; letter-spacing: .01em; }
+.brand .from { color: var(--muted); font-size: 12px; }
+.tabs { display: flex; gap: 2px; background: var(--tray); padding: 3px; border-radius: 8px; }
+.tabs button { padding: 5px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.move { margin-left: auto; display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.move b { font-variant-numeric: tabular-nums; }
+.demo { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--warn); border: 1px solid var(--warn); border-radius: 4px; padding: 1px 6px; }
+
+.checks { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 12px; }
+.check { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); font-size: 12.5px; }
+.check .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.check.ok .dot { background: var(--pass); }
+.check.note .dot { background: var(--warn); }
+.check.info .dot { background: var(--muted); }
+.check.flag { border-color: var(--refuse); color: var(--refuse); background: var(--refuse-soft); font-weight: 600; }
+.check.flag .dot { background: var(--refuse); }
+.check.amber { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); font-weight: 600; }
+.check.amber .dot { background: var(--warn); }
+.node.flagged { border-color: var(--refuse); background: var(--refuse-soft); }
+.node.amber { border-color: var(--warn); background: var(--warn-soft); }
+.node .bang { float: right; font: 700 11px/1 var(--mono); color: var(--refuse); border: 1.5px solid currentColor; border-radius: 50%; width: 16px; height: 16px; display: inline-grid; place-items: center; }
+.node.amber .bang { color: var(--warn); }
+.flagbox { border: 1.5px solid var(--refuse); background: var(--refuse-soft); border-radius: var(--radius); padding: 8px 10px; display: grid; gap: 6px; }
+.flagbox.amber { border-color: var(--warn); background: var(--warn-soft); }
+.flagbox b { color: var(--refuse); } .flagbox.amber b { color: var(--warn); }
+.code { font: 11.5px/1.4 var(--mono); }
+.code div { display: grid; grid-template-columns: max-content 1fr; gap: 8px; }
+.code .at { color: var(--accent); }
+.tree { display: grid; gap: 0; font-size: 13px; }
+.tree .row { display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 6px 0; border-top: 1px dashed var(--line); }
+.tree .row:first-child { border-top: 0; }
+.tree .name { white-space: pre; font-family: var(--mono); font-size: 12.5px; color: var(--table); font-weight: 600; }
+.tree .who { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; font-size: 11.5px; }
+.tree .who .lab { color: var(--muted); margin-right: 2px; }
+.check[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+
+.view { min-height: 0; }
+.model { height: 100%; display: grid; grid-template-columns: 300px 1fr 330px; gap: 12px; padding-bottom: 16px; min-height: 0; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-panel); min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.panel > h2 { margin: 0; padding: 10px 14px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; }
+.scroll { overflow: auto; min-height: 0; flex: 1; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.chip { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); }
+.chip.actor { color: var(--actor); background: var(--actor-soft); border-color: transparent; }
+.chip.doc { color: var(--doc); background: var(--doc-soft); border-color: transparent; }
+.chip.table { color: var(--table); background: var(--table-soft); border-color: transparent; }
+.filters .chip[aria-pressed="true"] { outline: 1.5px solid currentColor; }
+.story { display: block; width: 100%; text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.story:hover { background: var(--card-hover); }
+.story[aria-current="true"] { background: var(--accent-soft); }
+.story .head { display: flex; gap: 6px; align-items: center; margin-bottom: 3px; }
+.story .n { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; margin-left: auto; }
+.story .name { font-size: 13px; }
+.story.cannot .name::before { content: "cannot · "; color: var(--refuse); font-weight: 600; }
+.story.tray .name { color: var(--muted); }
+.ticks { display: inline-flex; gap: 3px; }
+.tick { font: 600 10px/1 var(--mono); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); }
+.tick.on { color: var(--pass); border-color: var(--pass); }
+.tick.agreed.on { color: var(--accent); border-color: var(--accent); }
+
+.canvas { position: relative; }
+.canvas .cols { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 56px; padding: 14px 18px 24px; z-index: 1; }
+.col h3 { margin: 0 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.col.actors h3 { color: var(--actor); } .col.docs h3 { color: var(--doc); } .col.tables h3 { color: var(--table); }
+.node { display: block; width: 100%; text-align: left; margin-bottom: 8px; padding: 7px 10px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--card); transition: opacity .15s; }
+.node .t { font-weight: 600; font-size: 13px; }
+.node .s { font-size: 11.5px; color: var(--muted); }
+.actors .node { border-left: 3px solid var(--actor); }
+.docs .node { border-left: 3px solid var(--doc); }
+.tables .node { border-left: 3px solid var(--table); }
+.node[data-state="on"] { background: var(--card-hover); box-shadow: 0 0 0 2px var(--accent); }
+.node[data-state="sees"] { box-shadow: 0 0 0 2px var(--pass); }
+.node[data-state="refused"] { box-shadow: 0 0 0 2px var(--refuse); }
+.dim .node:not([data-state]) { opacity: .32; }
+svg.edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: visible; }
+svg.edges path { fill: none; stroke: var(--edge); stroke-width: 1.2; }
+svg.edges path.refused { stroke: var(--refuse); stroke-dasharray: 4 4; opacity: .55; }
+svg.edges path.root { stroke-width: 2; }
+svg.edges.dim path:not(.hot) { opacity: .12; }
+svg.edges path.hot { stroke: var(--accent); stroke-width: 2.2; opacity: 1; }
+svg.edges path.hot.refused { stroke: var(--refuse); }
+.switch { display: flex; gap: 2px; background: var(--tray); padding: 2px; border-radius: 7px; text-transform: none; letter-spacing: 0; }
+.switch button { padding: 3px 10px; border-radius: 5px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.switch button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.seq { padding: 14px 18px 20px; overflow: auto; }
+.seq h4 { margin: 0 0 2px; font-size: 15px; text-wrap: balance; }
+.seq .sub { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+.seq svg { display: block; }
+.seq svg text { fill: var(--ink); font: 12px "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.seq svg text.small { font-size: 11px; fill: var(--muted); }
+.seq svg text.mono { font: 11px var(--mono); fill: var(--ink); }
+.seq svg .life { stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 3 4; }
+.seq svg .head rect { fill: var(--card); stroke: var(--edge); }
+.seq svg .head.actor rect { stroke: var(--actor); fill: var(--actor-soft); }
+.seq svg .head.doc rect { stroke: var(--doc); fill: var(--doc-soft); }
+.seq svg .head.delta rect { stroke: var(--table); fill: var(--table-soft); }
+.seq svg .head.quiet { opacity: .45; }
+.seq svg .band rect { fill: var(--well); }
+.seq svg .band text { font-weight: 700; font-size: 11px; letter-spacing: .08em; }
+.seq svg .msg line { stroke: var(--ink); stroke-width: 1.4; }
+.seq svg .msg.back line { stroke-dasharray: 5 4; }
+.seq svg .msg.seen line { stroke: var(--pass); }
+.seq svg .msg.extra line { stroke: var(--muted); }
+.seq svg .msg.refuse line { stroke: var(--refuse); }
+.seq svg .note rect { fill: var(--card); stroke: var(--line); }
+.seq svg .note.refuse rect { stroke: var(--refuse); fill: var(--refuse-soft); }
+.seq svg .note.ok rect { stroke: var(--pass); }
+.seq svg marker path { fill: var(--muted); }
+.seq .key { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+.seq .key i { display: inline-block; width: 22px; border-top: 1.5px dashed var(--pass); vertical-align: middle; margin-right: 5px; }
+.seq .key i.x { border-top-color: var(--muted); } .seq .key i.w { border-top-style: solid; border-top-color: var(--ink); }
+.states { padding: 14px 18px 20px; overflow: auto; display: grid; gap: 12px; align-content: start; }
+.machines { display: flex; flex-wrap: wrap; gap: 4px; }
+.machines .chip { cursor: pointer; }
+.machines .chip[aria-pressed="true"] { outline: 1.5px solid currentColor; }
+.machines .lab { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 4px 0 8px; align-self: center; }
+.machines .lab:first-child { margin-left: 0; }
+.states h4 { margin: 0; font-size: 15px; }
+.states .sub { color: var(--muted); font-size: 12px; }
+.states svg text { fill: var(--ink); font: 12px "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.states svg .state rect { fill: var(--card); stroke: var(--table); stroke-width: 1.5; }
+.states svg .state.empty rect { stroke-dasharray: 4 3; fill: var(--well); }
+.states svg .state text { font-weight: 600; }
+.states svg .state.seed rect { stroke: var(--warn); fill: var(--warn-soft); stroke-dasharray: 2 3; }
+.states svg .init { fill: var(--ink); }
+.states svg .edge path { fill: none; stroke: var(--ink); stroke-width: 1.4; }
+.states svg .edge text { font-size: 11px; }
+.states svg .edge text.who { fill: var(--actor); font-weight: 600; }
+.states svg .edge text.guard { fill: var(--warn); font-style: italic; }
+.states svg .edge text.effect { fill: var(--doc); }
+.states svg .edge.cascade path { stroke: var(--doc); stroke-dasharray: 5 4; }
+.states svg marker path { fill: var(--ink); }
+.states svg a { cursor: pointer; } .states svg a:hover text { text-decoration: underline; }
+.states ul { margin: 0; padding-left: 18px; font-size: 13px; display: grid; gap: 4px; }
+.states ul button { text-align: left; } .states ul button:hover { text-decoration: underline; }
+.states svg .edge.hot path { stroke: var(--accent); stroke-width: 2.6; }
+.states svg .edge.hot text { font-weight: 700; }
+.machines .chip.touched::after { content: " ●"; color: var(--accent); }
+.classes { padding: 14px 18px 20px; overflow: auto; display: grid; gap: 10px; align-content: start; }
+.classes .sub { color: var(--muted); font-size: 12px; }
+.classes svg text { fill: var(--ink); font: 11.5px "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.classes svg .cls rect.box { fill: var(--card); stroke: var(--table); stroke-width: 1.4; }
+.classes svg .cls rect.headbg { fill: var(--table-soft); }
+.classes svg .cls text.name { font-weight: 700; font-size: 13px; }
+.classes svg .cls text.attr { font: 11px var(--mono); }
+.classes svg .cls text.attr.written { fill: var(--actor); }
+.classes svg .cls text.attr.hot { fill: var(--accent); font-weight: 700; }
+.classes svg .cls text.op { font-size: 11px; fill: var(--muted); }
+.classes svg .cls text.op.refused { fill: var(--refuse); }
+.classes svg .cls line.div { stroke: var(--line); }
+.classes svg .cls.flag rect.box { stroke: var(--refuse); stroke-width: 2; }
+.classes svg .cls.flag rect.headbg { fill: var(--refuse-soft); }
+.classes svg .cls.amber rect.box { stroke: var(--warn); stroke-width: 2; }
+.classes svg .cls.amber rect.headbg { fill: var(--warn-soft); }
+.classes svg .cls.hot rect.box { stroke: var(--accent); stroke-width: 2.8; }
+.classes svg .cls.indoc rect.box { stroke: var(--doc); stroke-width: 2.4; }
+.classes svg .cls.dim { opacity: .3; }
+.classes svg .comp path { fill: none; stroke: var(--ink); stroke-width: 1.3; }
+.classes svg .ref path { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.classes svg .mult { font-size: 10.5px; fill: var(--muted); }
+.classes svg a { cursor: pointer; }
+.classes .docs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.classes .docs .lab { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+.classes .docs .chip[aria-pressed="true"] { outline: 1.5px solid currentColor; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; padding: 8px 18px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 22px; height: 0; border-top: 1.5px solid var(--edge); vertical-align: middle; margin-right: 5px; }
+.legend i.r { border-top: 1.5px dashed var(--refuse); } .legend i.k { border-top-width: 2.5px; }
+
+.inspector { padding: 14px; display: grid; gap: 14px; align-content: start; }
+.inspector .kicker { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.inspector h3 { margin: 2px 0 0; font-size: 16px; line-height: 1.3; text-wrap: balance; }
+.inspector section h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 10px; font-size: 13px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; }
+.ops { display: grid; gap: 6px; }
+.op { border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; font-size: 12.5px; }
+.op .why { font-size: 11.5px; margin-top: 3px; }
+.why.ok { color: var(--pass); } .why.note { color: var(--warn); } .why.refuse { color: var(--refuse); }
+.list { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 13px; }
+.list li button { text-align: left; }
+.list li button:hover { text-decoration: underline; }
+.agree { display: flex; gap: 8px; flex-wrap: wrap; }
+.agree button { border: 1px solid var(--accent); color: var(--accent); border-radius: var(--radius); padding: 6px 12px; font-size: 13px; font-weight: 600; }
+.agree button[aria-pressed="true"] { background: var(--accent); color: var(--card); }
+.empty { color: var(--muted); font-size: 13px; }
+.facts { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+
+.sheet { height: 100%; overflow: auto; padding-bottom: 16px; }
+table.grid { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-panel); overflow: hidden; font-size: 13px; }
+.grid th, .grid td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.grid th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--well); position: sticky; top: 0; }
+.grid td.c { text-align: center; }
+.grid tr.group td { background: var(--tray); font-weight: 600; font-size: 12px; }
+.task { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-panel); padding: 12px 14px; margin-bottom: 8px; }
+.task h4 { margin: 0 0 4px; font-size: 14px; }
+
+@media (max-width: 1100px) {
+  .model { grid-template-columns: 1fr; height: auto; }
+  .app { height: auto; }
+  .panel.stories .scroll { max-height: 320px; }
+}
+@media (max-width: 640px) {
+  .canvas .cols { grid-template-columns: 1fr; gap: 12px; }
+  svg.edges { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .node { transition: none; } }
+</style>
+
+<div class="app">
+  <header>
+    <div class="brand"><h1>Wedding</h1><span class="from">modeller · read from <span class="mono">examples/wedding</span></span></div>
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="model">Model</button>
+      <button role="tab" aria-selected="false" data-tab="checklist">Checklist</button>
+      <button role="tab" aria-selected="false" data-tab="tasks">Tasks</button>
+    </div>
+    <div class="move"><span class="demo">demo</span><span>Peter's move: <b id="move-count">0</b> stories to agree</span></div>
+  </header>
+  <div class="checks" id="checks"></div>
+
+  <main class="view" id="view-model">
+    <div class="model">
+      <section class="panel stories">
+        <h2><span>Stories</span><span id="story-count"></span></h2>
+        <div class="filters" id="filters"></div>
+        <div class="scroll" id="stories"></div>
+      </section>
+      <section class="panel canvas-panel">
+        <h2><span class="switch"><button data-center="model" aria-pressed="true">Model</button><button data-center="sequence" aria-pressed="false">Sequence</button><button data-center="states" aria-pressed="false">States</button><button data-center="classes" aria-pressed="false">Classes</button></span><span id="center-sub">actors → documents → tables</span></h2>
+        <div class="scroll seq" id="sequence" hidden></div>
+        <div class="scroll states" id="states" hidden></div>
+        <div class="scroll classes" id="classes" hidden></div>
+        <div class="scroll canvas" id="canvas">
+          <svg class="edges" id="edges"></svg>
+          <div class="cols">
+            <div class="col actors"><h3>Actors</h3><div id="col-actors"></div></div>
+            <div class="col docs"><h3>Documents</h3><div id="col-docs"></div></div>
+            <div class="col tables"><h3>Tables</h3><div id="col-tables"></div></div>
+          </div>
+        </div>
+        <div class="legend"><span><i></i>writes (a story's does)</span><span><i class="r"></i>refused (a story's cannot)</span><span><i class="k"></i>a document's root</span><span><i></i>what it includes</span></div>
+      </section>
+      <section class="panel">
+        <h2><span>Properties</span></h2>
+        <div class="scroll"><div class="inspector" id="inspector"></div></div>
+      </section>
+    </div>
+  </main>
+  <main class="view sheet" id="view-checklist" hidden></main>
+  <main class="view sheet" id="view-tasks" hidden></main>
+</div>
+
+<script>
+const DATA = __DATA__;
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const S = DATA.stories;
+
+// ── facts derived from the files, nothing proposed ──
+const docOf = new Map(DATA.documents.map((d) => [d.name, d]));
+const tablesIn = (d) => (d.root ? [d.root, ...d.include] : []);
+const inAnyDoc = new Set(DATA.documents.flatMap(tablesIn));
+const modelWrites = S.filter((s) => s.kind === "does" && !s.tray);
+const writtenTables = new Map();
+for (const s of modelWrites) for (const o of s.ops) if (o.table) {
+  if (!writtenTables.has(o.table)) writtenTables.set(o.table, new Set());
+  writtenTables.get(o.table).add(s.n);
+}
+const ruleUsed = DATA.permits.map((p) => modelWrites.some((s) => s.doc === p.doc && s.ops.some((o) => p.ops.includes(o.op) && new RegExp(p.path).test(o.path))));
+const refusedElsewhere = S.filter((s) => s.kind === "cannot" && !s.tray && s.ops.some((o) => o.permitted));
+const notPermitted = modelWrites.filter((s) => s.ops.some((o) => !o.permitted));
+const noticers = new Set(S.flatMap((s) => Object.keys(s.seen)));
+const codeReads = (t) => t.code.filter((c) => !c.seed);
+const seedMakes = (t) => t.code.filter((c) => c.seed);
+// A flag is something the stories never explain: it points at where it came from instead.
+const FLAGS = [];
+for (const t of DATA.tables) {
+  if (t.name === (docOf.get(DATA.tray)?.root)) continue;
+  const written = writtenTables.has(t.name), inDoc = inAnyDoc.has(t.name);
+  if (!written && !inDoc) {
+    // A table no story reaches that is named for an actor is what makes someone that actor.
+    const actor = DATA.cast.find((a) => a === t.name.replace(/s$/, ""));
+    if (actor) {
+      const told = S.filter((s) => s.as === actor).length;
+      FLAGS.push({ level: "flag", on: `actor:${actor}`, title: `${actor}: acts in ${told} stories, but no story makes someone the ${actor}`,
+        why: `The cast starts them signed in (${(DATA.castSetup?.[actor] ?? []).join(", ") || "with a code"}). Who is the ${actor} is decided by the table ${t.name}: made only by the seed, and read by code, not by a document. hjeli calls this an unestablished actor.`, code: t.code });
+    }
+    FLAGS.push({ level: "flag", on: `table:${t.name}`, title: `${t.name}: no story reaches it`,
+      why: `No story writes it and no document holds it.${actor ? ` It is what makes someone the ${actor}.` : ""}${codeReads(t).length ? " Code reads it directly, so the concept arrives there, not from a story:" : ""}`, code: t.code });
+  }
+  else if (!written) FLAGS.push({ level: "amber", on: `table:${t.name}`, title: `${t.name}: no story writes it`,
+    why: `It is in ${DATA.documents.filter((d) => tablesIn(d).includes(t.name)).map((d) => d.name + ":").join(", ")}, but its rows come only from the seed. No story says how one is made.`, code: t.code });
+}
+DATA.permits.forEach((p, i) => { if (!ruleUsed[i]) FLAGS.push({ level: "flag", on: `doc:${p.doc}`, title: `${p.doc}: a permitted write no story tells`,
+  why: `The rule allows ${p.ops.join("/")} ${p.path}, and no story does it.`, code: [{ at: `compartments/${p.doc}.ts`, line: `{ path: /${p.path}/, ops: [${p.ops.map((o) => `"${o}"`).join(", ")}] }` }] }); });
+const flagsOn = (key) => FLAGS.filter((f) => f.on === key);
+
+// ── demo state: agreements and U ticks, in this page only ──
+const agreed = new Set(), tried = new Set();
+let sel = { kind: "story", id: S.find((s) => !s.tray && s.kind === "does").n };
+let actorFilter = null, checkFilter = null;
+
+let CHECKS = [];
+const checksNow = () => [
+  ...FLAGS.map((f, i) => ({ id: `f${i}`, cls: f.level === "flag" ? "flag" : "amber", text: f.title, match: () => false, flag: f })),
+  { id: "a", cls: "ok", text: `Harness: ${DATA.harness.passed} of ${S.length} stories pass (A)`, match: () => true },
+  { id: "permit", cls: notPermitted.length ? "note" : "ok", text: notPermitted.length ? `${notPermitted.length} writes no permit rule allows` : "Every write a story makes is allowed by a permit rule", match: (s) => notPermitted.includes(s) },
+  { id: "elsewhere", cls: "note", text: `${refusedElsewhere.length} refusals the path rules would allow — refused by who, or by the value`, match: (s) => refusedElsewhere.includes(s) },
+];
+
+function renderChecks() {
+  $("#checks").innerHTML = CHECKS.map((c) => `<button class="check ${c.cls}" data-check="${c.id}" aria-pressed="${checkFilter === c.id}"><span class="dot"></span>${esc(c.text)}</button>`).join("");
+}
+
+function renderFilters() {
+  $("#filters").innerHTML = `<button class="chip" data-actor="" aria-pressed="${!actorFilter}">all</button>` +
+    DATA.cast.map((a) => `<button class="chip actor" data-actor="${a}" aria-pressed="${actorFilter === a}">${esc(a)}</button>`).join("");
+}
+
+function visibleStories() {
+  const c = CHECKS.find((x) => x.id === checkFilter);
+  return S.filter((s) => (!actorFilter || s.as === actorFilter) && (!c || c.match(s)));
+}
+
+function renderStories() {
+  const list = visibleStories();
+  $("#story-count").textContent = `${list.length} of ${S.length}`;
+  $("#stories").innerHTML = list.map((s) => `
+    <button class="story ${s.kind} ${s.tray ? "tray" : ""}" data-story="${s.n}" aria-current="${sel.kind === "story" && sel.id === s.n}">
+      <div class="head"><span class="chip actor">${esc(s.as)}</span><span class="chip doc">${esc(s.doc)}</span>
+        <span class="ticks"><span class="tick agreed ${agreed.has(s.n) ? "on" : ""}" title="agreed (demo)">✓</span><span class="tick ${s.failures.length ? "" : "on"}" title="A: the harness passes it">A</span><span class="tick ${tried.has(s.n) ? "on" : ""}" title="U: tried by a person (demo)">U</span></span>
+        <span class="n">${s.n}</span></div>
+      <div class="name">${esc(s.name)}</div>
+    </button>`).join("");
+  $("#move-count").textContent = S.filter((s) => !agreed.has(s.n)).length;
+}
+
+function node(kind, id, title, sub) {
+  const fs = flagsOn(`${kind}:${id}`);
+  const cls = fs.some((f) => f.level === "flag") ? "flagged" : fs.length ? "amber" : "";
+  return `<button class="node ${cls}" data-${kind}="${esc(id)}"><div class="t">${esc(title)}${fs.length ? `<span class="bang" title="${esc(fs.map((f) => f.title).join("; "))}">!</span>` : ""}</div><div class="s">${sub}</div></button>`;
+}
+function flagBoxes(key) {
+  return flagsOn(key).map((f) => `<div class="flagbox ${f.level === "amber" ? "amber" : ""}"><b>${esc(f.title)}</b><div>${esc(f.why)}</div>
+    ${f.code?.length ? `<div class="code">${f.code.map((c) => `<div><span class="at">${esc(c.at)}</span><span>${esc(c.line)}</span></div>`).join("")}</div>` : ""}</div>`).join("");
+}
+function renderCanvas() {
+  $("#col-actors").innerHTML = DATA.cast.map((a) => {
+    const told = S.filter((s) => s.as === a).length;
+    return node("actor", a, a, `${told} stories told · ${S.filter((s) => a in s.seen).length} noticed`);
+  }).join("");
+  $("#col-docs").innerHTML = DATA.documents.map((d) =>
+    node("doc", d.name, `${d.name}:`, `${esc(d.kind)}${d.root ? ` · root ${esc(d.root)}` : ""}${d.include.length ? ` + ${d.include.length}` : ""}${d.note ? ` · ${esc(d.note)}` : ""}`)).join("");
+  $("#col-tables").innerHTML = DATA.tables.map((t) =>
+    node("table", t.name, t.name, `${t.columns.length} columns${t.parent ? ` · under ${esc(t.parent)}` : ""}${writtenTables.has(t.name) ? ` · ${writtenTables.get(t.name).size} stories write` : " · no story writes"}`)).join("");
+}
+
+// edges: actor → document (does / cannot), document → table (root / include)
+function edgeList() {
+  const e = [];
+  const seenPair = new Set();
+  for (const s of S) {
+    if (s.tray) continue;
+    const key = `${s.as}|${s.doc}|${s.kind}`;
+    if (seenPair.has(key)) continue;
+    seenPair.add(key);
+    e.push({ from: ["actor", s.as], to: ["doc", s.doc], cls: s.kind === "cannot" ? "refused" : "", tag: key });
+  }
+  for (const d of DATA.documents) {
+    if (d.root) e.push({ from: ["doc", d.name], to: ["table", d.root], cls: "root", tag: `${d.name}>${d.root}` });
+    for (const t of d.include) e.push({ from: ["doc", d.name], to: ["table", t], cls: "", tag: `${d.name}>${t}` });
+  }
+  return e;
+}
+const EDGES = edgeList();
+let hot = new Set();
+function drawEdges() {
+  const svg = $("#edges"), box = $("#canvas");
+  const origin = box.getBoundingClientRect();
+  const at = ([k, id], side) => {
+    const el = box.querySelector(`[data-${k}="${CSS.escape(id)}"]`);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: (side === "out" ? r.right : r.left) - origin.left + box.scrollLeft, y: r.top + r.height / 2 - origin.top + box.scrollTop };
+  };
+  svg.setAttribute("height", box.scrollHeight);
+  svg.classList.toggle("dim", hot.size > 0);
+  svg.innerHTML = EDGES.map((e) => {
+    const a = at(e.from, "out"), b = at(e.to, "in");
+    if (!a || !b) return "";
+    const dx = (b.x - a.x) / 2;
+    return `<path class="${e.cls} ${hot.has(e.tag) ? "hot" : ""}" d="M${a.x},${a.y} C${a.x + dx},${a.y} ${b.x - dx},${b.y} ${b.x},${b.y}"/>`;
+  }).join("");
+}
+
+// selection → which nodes light, which edges are hot, what the inspector says
+function mark(states) {
+  const cols = $(".cols");
+  cols.classList.toggle("dim", states.size > 0);
+  for (const el of cols.querySelectorAll(".node")) {
+    const k = el.dataset.actor !== undefined ? `actor:${el.dataset.actor}` : el.dataset.doc !== undefined ? `doc:${el.dataset.doc}` : `table:${el.dataset.table}`;
+    if (states.has(k)) el.dataset.state = states.get(k); else delete el.dataset.state;
+  }
+}
+
+function ruleFor(doc, o) {
+  const i = DATA.permits.findIndex((p) => p.doc === doc && p.ops.includes(o.op) && new RegExp(p.path).test(o.path));
+  return i < 0 ? null : DATA.permits[i];
+}
+function whyOp(s, o) {
+  if (s.tray) return `<div class="why note">the tray (${esc(DATA.tray)}): where a visit is; its permit is a set of fields, not read here</div>`;
+  const r = ruleFor(s.doc, o);
+  if (s.kind === "does") return r ? `<div class="why ok">allowed by <span class="mono">${esc(r.path)}</span> ${esc(r.ops.join("/"))}${r.dated ? " · locked after the deadline" : ""}</div>` : `<div class="why refuse">no permit rule allows it</div>`;
+  return r ? `<div class="why note">the path rule would allow it (<span class="mono">${esc(r.path)}</span>): refused by who writes, or by the value</div>` : `<div class="why ok">no permit rule allows it: refused by the path</div>`;
+}
+const place = (p) => p === null ? `<span class="muted">where the cast left them</span>` : p === "" ? "home" : `<span class="mono">${esc(p)}</span>`;
+
+function inspectStory(s) {
+  const states = new Map([[`actor:${s.as}`, "on"]]);
+  if (!s.tray) states.set(`doc:${s.doc}`, s.kind === "cannot" ? "refused" : "on");
+  for (const o of s.ops) if (o.table && !s.tray) states.set(`table:${o.table}`, s.kind === "cannot" ? "refused" : "on");
+  for (const m of Object.keys(s.seen)) if (m !== s.as) states.set(`actor:${m}`, "sees");
+  hot = new Set(s.tray ? [] : [`${s.as}|${s.doc}|${s.kind}`, ...s.ops.filter((o) => o.table).map((o) => `${s.doc}>${o.table}`)]);
+  mark(states);
+  $("#inspector").innerHTML = `
+    <div><div class="kicker" style="color:var(--${s.kind === "cannot" ? "refuse" : "accent"})">story ${s.n} · ${s.kind}</div><h3>${esc(s.name)}</h3></div>
+    <section><h4>In the wire's words</h4><dl class="kv">
+      <dt>as</dt><dd><span class="chip actor">${esc(s.as)}</span></dd>
+      <dt>${s.kind}</dt><dd><span class="chip doc">${esc(s.doc)}</span></dd>
+      ${s.kind === "does" ? `<dt>seen</dt><dd>${Object.entries(s.seen).map(([m, p]) => `<div><span class="chip actor">${esc(m)}</span> ${place(p)}</div>`).join("") || "—"}</dd>
+      <dt>unseen</dt><dd>${s.unseen.map((m) => `<span class="chip actor">${esc(m)}</span>`).join(" ") || "—"}</dd>` : ""}
+    </dl></section>
+    <section><h4>Writes, and the permit rule that answers</h4><div class="ops">${s.ops.map((o) => `
+      <div class="op"><span class="mono">${esc(o.op)} ${esc(o.path)}</span>${o.table ? ` <span class="chip table">${esc(o.table)}${o.field ? "." + esc(o.field) : ""}</span>` : ""}${whyOp(s, o)}</div>`).join("")}</div></section>
+    <section><button class="chip doc" data-center="sequence">See its sequence, from the run →</button></section>
+    <section><h4>Checklist</h4><dl class="kv">
+      <dt>A</dt><dd>${s.failures.length ? `<span class="why refuse">fails: ${esc(s.failures.join("; "))}</span>` : `<span class="why ok">the harness passes it, with its undo and redo</span>`}</dd>
+      <dt>U</dt><dd>${tried.has(s.n) ? "tried by Peter" : "not yet tried by a person"}</dd>
+    </dl></section>
+    <section><h4>Agreement <span class="demo">demo</span></h4>
+      <div class="agree">
+        <button data-agree="${s.n}" aria-pressed="${agreed.has(s.n)}">${agreed.has(s.n) ? "Agreed" : "Agree the story"}</button>
+        <button data-tried="${s.n}" aria-pressed="${tried.has(s.n)}">${tried.has(s.n) ? "U: tried" : "Mark tried (U)"}</button>
+      </div></section>
+    <div class="facts">Read from <span class="mono">stories.ts</span> (the story), <span class="mono">delta.ts</span> (the tables), <span class="mono">compartments/${esc(s.doc)}.ts</span> (the rule) and a harness run.</div>`;
+}
+
+function inspectActor(a) {
+  const told = S.filter((s) => s.as === a), noticed = S.filter((s) => a in s.seen && s.as !== a);
+  const states = new Map([[`actor:${a}`, "on"]]);
+  for (const s of told) if (!s.tray) states.set(`doc:${s.doc}`, s.kind === "cannot" && !told.some((x) => x.doc === s.doc && x.kind === "does") ? "refused" : "on");
+  hot = new Set(told.filter((s) => !s.tray).map((s) => `${s.as}|${s.doc}|${s.kind}`));
+  mark(states);
+  const li = (s) => `<li><button data-story="${s.n}">${s.kind === "cannot" ? "<span class='why refuse'>cannot</span> " : ""}${esc(s.name)}</button></li>`;
+  $("#inspector").innerHTML = `
+    <div><div class="kicker" style="color:var(--actor)">actor</div><h3>${esc(a)}</h3></div>
+    ${flagBoxes(`actor:${a}`)}
+    <section><h4>Tells (${told.length})</h4><ul class="list">${told.map(li).join("")}</ul></section>
+    <section><h4>Notices others' stories (${noticed.length})</h4><ul class="list">${noticed.map(li).join("") || "<li class='empty'>none</li>"}</ul></section>`;
+}
+
+function docTree(d) {
+  if (!d.root) return `<div class="empty">no tables: ${esc(d.note)}</div>`;
+  const inDoc = new Set(tablesIn(d));
+  const kids = (p) => DATA.tables.filter((t) => t.parent === p && inDoc.has(t.name)).map((t) => t.name);
+  const rows = [];
+  const walk = (t, depth) => {
+    const ws = S.filter((s) => !s.tray && s.ops.some((o) => o.table === t));
+    const changers = [...new Set(ws.filter((s) => s.kind === "does").map((s) => s.as))];
+    const refused = [...new Set(ws.filter((s) => s.kind === "cannot").map((s) => s.as))];
+    const noticers = [...new Set(ws.filter((s) => s.kind === "does").flatMap((s) => Object.keys(s.seen)))];
+    const fl = flagsOn(`table:${t}`);
+    rows.push(`<div class="row"><button class="name" data-table="${esc(t)}">${"  ".repeat(depth)}${depth ? "└ " : ""}${esc(t)}${fl.length ? " !" : ""}</button><div class="who">
+      ${changers.length ? `<span class="lab">changed by</span>${changers.map((a) => `<span class="chip actor">${esc(a)}</span>`).join("")}` : `<span class="lab">changed by no story</span>`}
+      ${refused.length ? `<span class="lab">· refused</span>${refused.map((a) => `<span class="chip" style="color:var(--refuse)">${esc(a)}</span>`).join("")}` : ""}
+      ${noticers.length ? `<span class="lab">· noticed by</span>${noticers.map((a) => `<span class="chip">${esc(a)}</span>`).join("")}` : ""}</div></div>`);
+    for (const k of kids(t)) walk(k, depth + 1);
+  };
+  walk(d.root, 0);
+  return `<div class="tree">${rows.join("")}</div>`;
+}
+function inspectDoc(name) {
+  const d = docOf.get(name);
+  const writes = S.filter((s) => s.doc === name && s.kind === "does"), refused = S.filter((s) => s.doc === name && s.kind === "cannot");
+  const states = new Map([[`doc:${name}`, "on"], ...tablesIn(d).map((t) => [`table:${t}`, "on"])]);
+  for (const s of writes) states.set(`actor:${s.as}`, "on");
+  for (const s of refused) if (!writes.some((w) => w.as === s.as)) states.set(`actor:${s.as}`, "refused");
+  hot = new Set([...tablesIn(d).map((t) => `${name}>${t}`), ...[...writes, ...refused].map((s) => `${s.as}|${s.doc}|${s.kind}`)]);
+  mark(states);
+  const rules = DATA.permits.map((p, i) => ({ p, used: ruleUsed[i] })).filter((x) => x.p.doc === name);
+  $("#inspector").innerHTML = `
+    <div><div class="kicker" style="color:var(--doc)">document · ${esc(d.kind)}</div><h3>${esc(name)}:</h3>${d.note ? `<div class="muted">${esc(d.note)}</div>` : ""}</div>
+    ${flagBoxes(`doc:${name}`)}
+    <section><h4>The document, as delta.ts composes it</h4>${docTree(d)}</section>
+    <section><h4>Permit rules (${rules.length})</h4><div class="ops">${rules.map(({ p, used }) => `<div class="op"><span class="mono">${esc(p.path)}</span> <span class="muted">${esc(p.ops.join("/"))}</span>${p.dated ? ` <span class="muted">· dated</span>` : ""}<div class="why ${used ? "ok" : "note"}">${used ? "a story uses it" : "no story uses it"}</div></div>`).join("") || "<div class='empty'>none read (its permit is not a rule list)</div>"}</div></section>
+    <section><h4>Written by (${writes.length})</h4><ul class="list">${writes.map((s) => `<li><button data-story="${s.n}"><span class="chip actor">${esc(s.as)}</span> ${esc(s.name)}</button></li>`).join("") || "<li class='empty'>no story</li>"}</ul></section>
+    <section><h4>Refused (${refused.length})</h4><ul class="list">${refused.map((s) => `<li><button data-story="${s.n}"><span class="chip actor">${esc(s.as)}</span> ${esc(s.name)}</button></li>`).join("") || "<li class='empty'>none</li>"}</ul></section>`;
+}
+
+function inspectTable(name) {
+  const t = DATA.tables.find((x) => x.name === name);
+  const docs = DATA.documents.filter((d) => tablesIn(d).includes(name));
+  const writers = S.filter((s) => !s.tray && s.ops.some((o) => o.table === name));
+  const states = new Map([[`table:${name}`, "on"], ...docs.map((d) => [`doc:${d.name}`, "on"])]);
+  for (const s of writers) states.set(`actor:${s.as}`, s.kind === "cannot" ? (states.get(`actor:${s.as}`) ?? "refused") : "on");
+  hot = new Set([...docs.map((d) => `${d.name}>${name}`), ...writers.map((s) => `${s.as}|${s.doc}|${s.kind}`)]);
+  mark(states);
+  const fields = new Map();
+  for (const s of writers) for (const o of s.ops) if (o.table === name && o.field) fields.set(o.field, (fields.get(o.field) ?? 0) + 1);
+  $("#inspector").innerHTML = `
+    <div><div class="kicker" style="color:var(--table)">table${t.parent ? ` · under ${esc(t.parent)}` : ""}</div><h3>${esc(name)}</h3></div>
+    ${flagBoxes(`table:${name}`)}
+    <section><h4>Columns, from delta.ts</h4><dl class="kv">${t.columns.map((c) => `<dt class="mono">${esc(c.name)}</dt><dd class="mono muted">${esc(c.type)}${fields.has(c.name) ? ` · <span class="why ok">${fields.get(c.name)} writes</span>` : ""}</dd>`).join("")}</dl></section>
+    <section><h4>In documents</h4><div>${docs.map((d) => `<button class="chip doc" data-doc="${esc(d.name)}">${esc(d.name)}:</button>`).join(" ") || `<span class="why note">in no document</span>`}</div></section>
+    <section><h4>Where code touches it</h4><div class="code">${t.code.map((c) => `<div><span class="at">${esc(c.at)}</span><span>${esc(c.line)}</span></div>`).join("") || "<span class='empty'>only through documents</span>"}</div></section>
+    <section><h4>Stories that touch it (${writers.length})</h4><ul class="list">${writers.map((s) => `<li><button data-story="${s.n}">${s.kind === "cannot" ? "<span class='why refuse'>cannot</span> " : ""}${esc(s.name)}</button></li>`).join("") || "<li class='empty'>no story writes it; the seed does</li>"}</ul></section>`;
+}
+
+function inspect() {
+  if (sel.kind === "story") inspectStory(S.find((s) => s.n === sel.id));
+  else if (sel.kind === "actor") inspectActor(sel.id);
+  else if (sel.kind === "doc") inspectDoc(sel.id);
+  else inspectTable(sel.id);
+  drawEdges();
+}
+
+// ── the sequence of one story, from its run: what was sent, what the ledger took, what each member heard ──
+const fmtBytes = (n) => (n < 1000 ? `${n} B` : `${(n / 1000).toFixed(1)} KB`);
+function heardLabel(msgs) {
+  const bits = [];
+  for (const m of msgs) {
+    if (m.kind === "patch") bits.push(`patch ${m.doc?.split(":")[0] ?? ""} (${m.ops} op${m.ops === 1 ? "" : "s"})`);
+    else if (m.kind === "parts") bits.push(`parts: ${m.parts.join(", ")}`);
+    else if (m.kind === "page") bits.push("the whole page");
+    else bits.push(m.kind);
+  }
+  return `${bits.join(" · ")} — ${fmtBytes(msgs.reduce((n, m) => n + m.bytes, 0))}`;
+}
+function writeLabel(w) {
+  return w.ops.map((o) => `${o.op} ${o.path}${"value" in o ? " = " + JSON.stringify(o.value).slice(0, 40) : ""}`).join("; ");
+}
+function sequenceSVG(s) {
+  const members = [s.as, ...DATA.cast.filter((m) => m !== s.as)];
+  const cols = [{ id: s.as, label: s.as, cls: "actor" }, { id: "doc", label: `${s.doc}:`, cls: "doc" }, { id: "delta", label: "delta · ledger", cls: "delta" },
+    ...members.slice(1).map((m) => ({ id: m, label: m, cls: "actor" }))];
+  const heardAny = new Set(s.sequence.flatMap((t) => t.heard.filter((h) => h.messages.length).map((h) => h.member)));
+  const W = 150, X0 = 90, x = (id) => X0 + cols.findIndex((c) => c.id === id) * W;
+  const seen = new Set(Object.keys(s.seen)), unseen = new Set(s.unseen);
+  const rows = [];
+  let y = 64;
+  const line = (from, to, label, cls, back) => {
+    const x1 = x(from), x2 = x(to), dir = x2 >= x1 ? 1 : -1;
+    const self = x1 === x2;
+    if (self) {
+      rows.push(`<g class="msg ${cls} ${back ? "back" : ""}"><path d="M${x1},${y} h36 v16 h-34" fill="none" stroke="currentColor" style="stroke:var(--${cls === "seen" ? "pass" : "muted"})" stroke-width="1.4" ${back ? 'stroke-dasharray="5 4"' : ""} marker-end="url(#arrow)"/><text x="${x1 + 42}" y="${y + 12}" class="small">${esc(label)}</text></g>`);
+      y += 34;
+      return;
+    }
+    rows.push(`<g class="msg ${cls} ${back ? "back" : ""}"><line x1="${x1}" y1="${y}" x2="${x2 - dir * 6}" y2="${y}" marker-end="url(#arrow)"/><text x="${Math.min(x1, x2) + 8}" y="${y - 6}" class="${cls === "write" ? "mono" : "small"}">${esc(label)}</text></g>`);
+    y += 30;
+  };
+  const note = (at, text, cls = "") => {
+    const cx = x(at);
+    const w = Math.max(120, text.length * 6.2 + 16);
+    rows.push(`<g class="note ${cls}"><rect x="${cx - w / 2}" y="${y - 14}" width="${w}" height="22" rx="4"/><text x="${cx}" y="${y + 1}" text-anchor="middle" class="small">${esc(text)}</text></g>`);
+    y += 30;
+  };
+  const band = (text) => {
+    rows.push(`<g class="band"><rect x="10" y="${y - 12}" width="${X0 + (cols.length - 1) * W + 70}" height="20" rx="3"/><text x="18" y="${y + 2}">${esc(text)}</text></g>`);
+    y += 26;
+  };
+  for (const t of s.sequence) {
+    band(t.phase === "does" ? "THE STORY" : t.phase === "cannot" ? "THE STORY · A REFUSAL" : t.phase.toUpperCase());
+    if (t.phase === "undo" || t.phase === "redo") line(t.as, "delta", `${t.phase}, as ${t.as}`, "write");
+    else line(t.as, "doc", writeLabel(t.write), t.phase === "cannot" ? "refuse" : "write");
+    if (t.phase === "cannot") note("doc", "refused: nothing written, the ledger does not move", "refuse");
+    else if (t.ledger.length) line("doc", "delta", t.ledger.map((l) => `${l.doc}${l.undoable ? "" : " (a fact)"}`).join(", "), "write");
+    for (const h of t.heard) {
+      if (!h.messages.length) continue;
+      const cls = t.phase === "cannot" ? "extra" : seen.has(h.member) ? "seen" : "extra";
+      line(t.phase === "cannot" ? "doc" : "delta", h.member, heardLabel(h.messages), cls, true);
+    }
+    const quiet = t.heard.filter((h) => !h.messages.length).map((h) => h.member);
+    const checked = quiet.filter((m) => unseen.has(m));
+    if (checked.length) note("delta", `told nothing: ${checked.join(", ")} (the story says so)`, "ok");
+    y += 6;
+  }
+  const H = y + 10, Wd = X0 + (cols.length - 1) * W + 90;
+  const heads = cols.map((c) => {
+    const q = c.cls === "actor" && !heardAny.has(c.id) && c.id !== s.as ? "quiet" : "";
+    return `<g class="head ${c.cls} ${q}"><rect x="${x(c.id) - 62}" y="10" width="124" height="28" rx="6"/><text x="${x(c.id)}" y="29" text-anchor="middle">${esc(c.label)}</text></g><line class="life" x1="${x(c.id)}" y1="38" x2="${x(c.id)}" y2="${H}"/>`;
+  }).join("");
+  return `<svg width="${Wd}" height="${H}" viewBox="0 0 ${Wd} ${H}" role="img" aria-label="Sequence of story ${s.n}"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>${heads}${rows.join("")}</svg>`;
+}
+function renderSequence() {
+  const s = sel.kind === "story" ? S.find((x) => x.n === sel.id) : null;
+  if (!s) { $("#sequence").innerHTML = `<p class="empty">Choose a story to see its sequence.</p>`; return; }
+  $("#sequence").innerHTML = `<h4>${esc(s.name)}</h4><div class="sub">Story ${s.n}, as the harness ran it over real sockets: the write, what the ledger took, and what each member was sent${s.sequence.some((t) => t.phase === "undo") ? ", then its undo and redo" : ""}.</div>${s.sequence.length ? sequenceSVG(s) : "<p class='empty'>not run</p>"}
+    <div class="key"><span><i class="w" style="border-top-style:solid"></i>a write</span><span><i></i>sent to someone the story says sees it</span><span><i class="x"></i>sent to someone the story does not mention</span></div>`;
+}
+
+// ── states: every move the run made, from the ledger's before and after ──
+const colType = (table, col) => DATA.tables.find((t) => t.name === table)?.columns.find((c) => c.name === col)?.type ?? "";
+const MOVES = [];
+for (const s of S) for (const t of s.sequence) if (t.phase === "does") for (const L of t.ledger) {
+  const inv = new Map(L.inverse.map((o) => [o.path, o]));
+  const own = new Set(s.ops.map((o) => o.table));
+  for (const o of L.ops) {
+    const table = o.path.split("/")[1];
+    const effect = !own.has(table);
+    if (o.op === "add") MOVES.push({ table, col: null, from: "none", to: "exists", s, effect });
+    else if (o.op === "remove") MOVES.push({ table, col: null, from: "exists", to: "none", s, effect });
+    else {
+      const before = inv.get(o.path)?.value ?? {}, after = o.value;
+      if (!after || typeof after !== "object") continue;
+      for (const k of Object.keys(after)) if (JSON.stringify(before[k] ?? null) !== JSON.stringify(after[k] ?? null)) MOVES.push({ table, col: k, from: before[k] ?? null, to: after[k] ?? null, s, effect });
+    }
+  }
+}
+const isToken = (v) => v === null || typeof v === "number" || typeof v === "boolean" || (typeof v === "string" && v.length <= 16 && !/\s/.test(v));
+const MACHINES = [];
+for (const [key, ms] of Object.entries(Object.groupBy(MOVES.filter((m) => m.col), (m) => `${m.table}.${m.col}`))) {
+  const [table, col] = key.split(".");
+  if (!colType(table, col).endsWith("?") || /_(id|at)$/.test(col) || !ms.every((m) => isToken(m.from) && isToken(m.to))) continue;
+  MACHINES.push({ key, table, col, kind: "state", moves: ms });
+}
+for (const [table, ms] of Object.entries(Object.groupBy(MOVES.filter((m) => !m.col), (m) => m.table))) MACHINES.push({ key: `${table} rows`, table, col: null, kind: "rows", moves: ms });
+const datedRules = DATA.permits.filter((p) => p.dated);
+for (const [doc, rs] of Object.entries(Object.groupBy(datedRules, (p) => p.doc))) FLAGS.push({ level: "amber", on: `doc:${doc}`, title: `${doc}: ${rs.length} moves locked after the deadline, and no story is told after it`,
+  why: "The permit rules mark these as dated, so they stop at the deadline. Every story runs before any deadline, so the lock is in the code and in no story.",
+  code: rs.map((p) => ({ at: `compartments/${p.doc}.ts`, line: `{ path: /${p.path}/, ops: [${p.ops.map((o) => `"${o}"`).join(", ")}], dated: true }` })) });
+let machineSel = MACHINES[0]?.key;
+
+const storyN = () => (sel.kind === "story" ? sel.id : null);
+const machinesOf = (n) => MACHINES.filter((m) => m.moves.some((mv) => mv.s.n === n) || S.find((s) => s.n === n && s.kind === "cannot" && s.ops.some((o) => o.table === m.table && (m.col ? o.field === m.col : !o.field))));
+function followStory() {
+  const n = storyN();
+  if (n === null) return;
+  const ms = machinesOf(n);
+  if (ms.length && !ms.some((m) => m.key === machineSel)) machineSel = (ms.find((m) => m.kind === "state") ?? ms[0]).key;
+}
+const stateName = (v, rows) => rows ? (v === "none" ? "no row" : "a row") : v === null ? "(empty)" : String(v);
+function machineSVG(m) {
+  const rows = m.kind === "rows";
+  const order = [];
+  const push = (v) => { const k = JSON.stringify(v); if (!order.some((o) => JSON.stringify(o) === k)) order.push(v); };
+  push(rows ? "none" : null);
+  for (const mv of m.moves) { push(mv.from); push(mv.to); }
+  const SX = 190, X0 = 90, Y = 150, x = (v) => X0 + order.findIndex((o) => JSON.stringify(o) === JSON.stringify(v)) * SX;
+  const pairs = Object.values(Object.groupBy(m.moves, (mv) => JSON.stringify([mv.from, mv.to])));
+  const guarded = (mv) => !!ruleFor(mv.s.doc, mv.s.ops.find((o) => o.table === m.table) ?? mv.s.ops[0] ?? { op: "", path: "" })?.dated;
+  let above = 0, below = 0;
+  const edges = pairs.map((ms) => {
+    const { from, to } = ms[0];
+    const x1 = x(from), x2 = x(to), fwd = x2 > x1;
+    const lift = fwd ? 46 + 26 * above++ : 46 + 26 * below++;
+    const y0 = fwd ? Y - 20 : Y + 20, yc = fwd ? y0 - lift * 1.4 : y0 + lift * 1.4;
+    const d = `M${x1},${y0} C${x1},${yc} ${x2},${yc} ${x2},${y0}`;
+    const apex = y0 + 0.75 * (yc - y0), lx = (x1 + x2) / 2, ly = fwd ? apex - 8 : apex + 16;
+    const labels = ms.map((mv, i) => {
+      const effectOn = mv.effect ? ` (with ${mv.s.ops[0]?.table ?? mv.s.doc})` : "";
+      const others = rows ? [] : MOVES.filter((o) => o.s === mv.s && o.effect && !o.col);
+      const eff = others.length ? ` → ${others.map((o) => `${o.to === "exists" ? "adds" : "removes"} a ${o.table} row`).join(", ")}` : "";
+      const g = guarded(mv) ? " [before the deadline]" : "";
+      return `<a data-story="${mv.s.n}"><text x="${lx}" y="${ly + (fwd ? -1 : 1) * i * 14 - (fwd ? (ms.length - 1) * 14 : 0)}" text-anchor="middle"><tspan class="who">${esc(mv.s.as)}</tspan><tspan> · #${mv.s.n}${esc(effectOn)}</tspan><tspan class="effect">${esc(eff)}</tspan><tspan class="guard">${esc(g)}</tspan></text></a>`;
+    }).join("");
+    return `<g class="edge ${ms.every((mv) => mv.effect) ? "cascade" : ""} ${ms.some((mv) => mv.s.n === storyN()) ? "hot" : ""}"><path d="${d}" marker-end="url(#sarrow)"/>${labels}</g>`;
+  }).join("");
+  const W = X0 + (order.length - 1) * SX + 110, H = Y + 60 + 26 * below + 70;
+  const start = rows ? "none" : null;
+  const reached = new Set(m.moves.map((mv) => JSON.stringify(mv.to)));
+  const seedOnly = (v) => JSON.stringify(v) !== JSON.stringify(start) && !reached.has(JSON.stringify(v));
+  const states = order.map((v) => `<g class="state ${v === null || v === "none" ? "empty" : ""} ${seedOnly(v) ? "seed" : ""}"><rect x="${x(v) - 58}" y="${Y - 20}" width="116" height="40" rx="18"/><text x="${x(v)}" y="${Y + 5}" text-anchor="middle">${esc(stateName(v, rows))}</text></g>`).join("");
+  const top = Y - 20 - 46 - 26 * Math.max(0, above - 1) - 70;
+  return `<svg width="${W}" height="${H - top}" viewBox="0 ${top} ${W} ${H - top}" role="img" aria-label="States of ${esc(m.key)}"><defs><marker id="sarrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <circle class="init" cx="${X0 - 70}" cy="${Y}" r="6"/><path d="M${X0 - 64},${Y} L${X0 - 60},${Y}" /><line x1="${X0 - 64}" y1="${Y}" x2="${X0 - 60}" y2="${Y}"/>
+    <g class="edge"><path d="M${X0 - 64},${Y} L${X0 - 60},${Y}" marker-end="url(#sarrow)"/></g>${edges}${states}</svg>`;
+}
+function renderStates() {
+  const m = MACHINES.find((x) => x.key === machineSel);
+  const touched = new Set(machinesOf(storyN()).map((x) => x.key));
+  const chips = (kind) => MACHINES.filter((x) => x.kind === kind).map((x) => `<button class="chip table ${touched.has(x.key) ? "touched" : ""}" data-machine="${esc(x.key)}" aria-pressed="${x.key === machineSel}">${esc(x.key)}</button>`).join("");
+  const cur = S.find((x) => x.n === storyN());
+  const story = cur ? (touched.size ? `<div class="sub">Story ${cur.n} moves ${[...touched].map(esc).join(", ")} <span style="color:var(--accent)">●</span></div>` : `<div class="sub">Story ${cur.n} moves no state${cur.tray ? ": it writes only the tray" : ""}.</div>`) : "";
+  if (!m) { $("#states").innerHTML = `<p class="empty">No story moves a state.</p>`; return; }
+  const refusals = S.filter((s) => s.kind === "cannot" && s.ops.some((o) => o.table === m.table && (m.col ? o.field === m.col : !o.field || o.path.endsWith("-") || /\/\d+$/.test(o.path))));
+  const dated = m.moves.some((mv) => !!ruleFor(mv.s.doc, mv.s.ops.find((o) => o.table === m.table) ?? { op: "", path: "" })?.dated);
+  $("#states").innerHTML = `
+    <div class="machines"><span class="lab">states</span>${chips("state")}<span class="lab">rows</span>${chips("rows")}</div>${story}
+    <div><h4>${esc(m.key)}</h4><div class="sub">${m.kind === "rows" ? "How a row of this table comes and goes" : `Column <span class="mono">${esc(m.col)}</span> (${esc(colType(m.table, m.col))}) of <span class="mono">${esc(m.table)}</span>: a new row starts empty`}. Every move below is from the ledger's before and after, in the harness's run; each was undone and redone by its author.</div></div>
+    ${machineSVG(m)}
+    ${(() => {
+      const start = m.kind === "rows" ? "none" : null, reached = new Set(m.moves.map((mv) => JSON.stringify(mv.to)));
+      const only = [...new Set(m.moves.map((mv) => JSON.stringify(mv.from)))].filter((k) => k !== JSON.stringify(start) && !reached.has(k)).map((k) => stateName(JSON.parse(k), m.kind === "rows"));
+      return only.length ? `<div class="flagbox amber"><b>Reached only by the seed: ${esc(only.join(", "))}</b><div>Stories move out of ${only.length === 1 ? "this state" : "these states"}, but no story moves into ${only.length === 1 ? "it" : "them"}. The rows start there because <span class="mono">seed.sql</span> puts them there.</div></div>` : "";
+    })()}
+    ${dated ? `<div class="flagbox amber"><b>Locked after the deadline, and no story says so</b><div>These moves are allowed by a dated permit rule, so they stop at the deadline. No story is told after a deadline.</div></div>` : ""}
+    <section><h4 style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px">Refused here (${refusals.length})</h4>
+      <ul>${refusals.map((r) => `<li><button data-story="${r.n}"><span class="chip actor">${esc(r.as)}</span> cannot ${esc(r.ops.map((o) => o.op).join(", "))} — ${esc(r.name)}</button></li>`).join("") || "<li class='empty'>no story refuses a move here</li>"}</ul></section>`;
+}
+
+// ── classes: delta.ts's tables, what the stories do to each, and how they hang together ──
+let classDoc = null;
+function classOps(t) {
+  const ops = new Map(); // "replace answer" -> Set(actor)
+  const add = (k, a) => ops.set(k, (ops.get(k) ?? new Set()).add(a));
+  for (const s of S) if (s.kind === "does" && !s.tray) for (const o of s.ops) if (o.table === t) add(o.field ? `${o.op} ${o.field}` : o.op, s.as);
+  for (const m of MOVES) if (m.table === t && m.effect && !m.col) add(`${m.to === "exists" ? "add" : "remove"} (with ${m.s.ops[0]?.table ?? m.s.doc})`, m.s.as);
+  const refused = new Map();
+  for (const s of S) if (s.kind === "cannot" && !s.tray) for (const o of s.ops) if (o.table === t) refused.set(o.field ? `${o.op} ${o.field}` : o.op, (refused.get(o.field ? `${o.op} ${o.field}` : o.op) ?? new Set()).add(s.as));
+  return [
+    ...[...ops].map(([k, a]) => ({ text: `${k} · ${[...a].join(", ")}`, refused: false })),
+    ...[...refused].map(([k, a]) => ({ text: `✕ ${k} · ${[...a].join(", ")}`, refused: true })),
+  ];
+}
+function classSVG() {
+  const n = storyN(), cur = S.find((x) => x.n === n);
+  const hotTables = new Set(cur && !cur.tray ? [...cur.ops.map((o) => o.table), ...MOVES.filter((m) => m.s.n === n).map((m) => m.table)] : []);
+  const hotCols = new Set(cur && !cur.tray ? [...cur.ops.filter((o) => o.field).map((o) => `${o.table}.${o.field}`), ...MOVES.filter((m) => m.s.n === n && m.col).map((m) => `${m.table}.${m.col}`)] : []);
+  const written = new Set(S.filter((s) => s.kind === "does" && !s.tray).flatMap((s) => s.ops.filter((o) => o.field).map((o) => `${o.table}.${o.field}`)));
+  const stateCols = new Set(MACHINES.filter((m) => m.kind === "state").map((m) => m.key));
+  const doc = classDoc ? docOf.get(classDoc) : null;
+  const inDoc = new Set(doc ? tablesIn(doc) : []);
+  // a tree by parent, laid out left to right
+  const kids = (p) => DATA.tables.filter((t) => t.parent === p).map((t) => t.name);
+  const roots = DATA.tables.filter((t) => !t.parent).map((t) => t.name);
+  const BW = 210, GX = 70, LH = 15, PAD = 8, GY = 22;
+  const boxes = new Map();
+  const heightOf = (t) => {
+    const cols = DATA.tables.find((x) => x.name === t).columns.length;
+    return 26 + (rootOf(t) ? LH : 0) + PAD + cols * LH + PAD + Math.max(1, classOps(t).length) * LH + PAD;
+  };
+  let y = 10;
+  function rootOf(t) { const ds = DATA.documents.filter((d) => d.root === t).map((d) => d.name + ":"); return ds.length ? "root of " + ds.join(" ") : ""; }
+  const place = (t, depth) => {
+    const ks = kids(t);
+    const h = heightOf(t);
+    const top = y;
+    for (const k of ks) place(k, depth + 1);
+    const span = ks.length ? y - top - GY : h;
+    const by = ks.length ? top + Math.max(0, (span - h) / 2) : top;
+    boxes.set(t, { x: 10 + depth * (BW + GX), y: by, h });
+    if (!ks.length) y = top + h + GY;
+    else y = Math.max(y, by + h + GY);
+  };
+  for (const r of roots) place(r, 0);
+  const W = 10 + 3 * (BW + GX) + 20, H = y + 10;
+  const flagClass = (t) => { const f = flagsOn(`table:${t}`); return f.some((x) => x.level === "flag") ? "flag" : f.length ? "amber" : ""; };
+  const links = [];
+  for (const t of DATA.tables) if (t.parent && boxes.has(t.parent)) {
+    const a = boxes.get(t.parent), b = boxes.get(t.name);
+    const x1 = a.x + BW, y1 = a.y + 13, x2 = b.x, y2 = b.y + 13, mx = (x1 + x2) / 2;
+    links.push(`<g class="comp"><path d="M${x1 + 12},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"/><path d="M${x1},${y1} l6,-4 l6,4 l-6,4 z" style="fill:var(--ink)"/><text class="mult" x="${x2 - 14}" y="${y2 - 4}">*</text><text class="mult" x="${x1 + 16}" y="${y1 - 4}">1</text></g>`);
+  }
+  for (const t of DATA.tables) for (const c of t.columns) {
+    const target = c.name.match(/^(\w+)_id$/)?.[1];
+    const to = target && DATA.tables.find((x) => x.name === `${target}s` || x.name === target);
+    if (!to || !boxes.has(to.name)) continue;
+    const a = boxes.get(t.name), b = boxes.get(to.name);
+    const ci = t.columns.indexOf(c);
+    const x1 = a.x + BW, y1 = a.y + 26 + PAD + ci * LH + 10, x2 = b.x + BW, y2 = b.y + 13;
+    links.push(`<g class="ref"><path d="M${x1},${y1} C${x1 + 50},${y1} ${x2 + 50},${y2} ${x2},${y2}" marker-end="url(#carrow)"/><text class="mult" x="${x1 + 4}" y="${y1 - 3}">${esc(c.name)}</text></g>`);
+  }
+  const classes = DATA.tables.map((t) => {
+    const b = boxes.get(t.name); if (!b) return "";
+    const ops = classOps(t.name);
+    const rootLine = rootOf(t.name);
+    const colsY = b.y + 26 + (rootLine ? LH : 0) + PAD;
+    const opsY = colsY + t.columns.length * LH + PAD;
+    const cls = [flagClass(t.name), hotTables.has(t.name) ? "hot" : "", inDoc.has(t.name) ? "indoc" : "", (hotTables.size && !hotTables.has(t.name)) || (inDoc.size && !inDoc.has(t.name)) ? "dim" : ""].join(" ");
+    const attrs = t.columns.map((c, i) => {
+      const k = `${t.name}.${c.name}`;
+      const kcls = hotCols.has(k) ? "hot" : written.has(k) ? "written" : "";
+      return `<text class="attr ${kcls}" x="${b.x + 10}" y="${colsY + i * LH + 11}">${esc(c.name)}: ${esc(c.type)}${stateCols.has(k) ? "  «state»" : ""}${written.has(k) ? " ✎" : ""}</text>`;
+    }).join("");
+    const opLines = (ops.length ? ops : [{ text: "no story changes it", refused: false }]).map((o, i) => `<text class="op ${o.refused ? "refused" : ""}" x="${b.x + 10}" y="${opsY + i * LH + 11}">${esc(o.text.length > 34 ? o.text.slice(0, 33) + "…" : o.text)}</text>`).join("");
+    return `<a data-table="${esc(t.name)}"><g class="cls ${cls}"><rect class="box" x="${b.x}" y="${b.y}" width="${BW}" height="${b.h}" rx="6"/><rect class="headbg" x="${b.x + 1}" y="${b.y + 1}" width="${BW - 2}" height="25" rx="5"/>
+      <text class="name" x="${b.x + 10}" y="${b.y + 18}">${esc(t.name)}</text><line class="div" x1="${b.x}" x2="${b.x + BW}" y1="${b.y + 26}" y2="${b.y + 26}"/>${rootLine ? `<text class="op" style="fill:var(--doc)" x="${b.x + 10}" y="${b.y + 26 + 12}">${esc(rootLine)}</text>` : ""}${attrs}
+      <line class="div" x1="${b.x}" x2="${b.x + BW}" y1="${opsY - PAD / 2}" y2="${opsY - PAD / 2}"/>${opLines}</g></a>`;
+  }).join("");
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Class diagram"><defs><marker id="carrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"/></marker></defs>${links.join("")}${classes}</svg>`;
+}
+function renderClasses() {
+  const cur = S.find((x) => x.n === storyN());
+  $("#classes").innerHTML = `
+    <div class="docs"><span class="lab">documents</span><button class="chip" data-classdoc="" aria-pressed="${!classDoc}">none</button>${DATA.documents.filter((d) => d.root).map((d) => `<button class="chip doc" data-classdoc="${esc(d.name)}" aria-pressed="${classDoc === d.name}">${esc(d.name)}:</button>`).join("")}</div>
+    <div class="sub">The tables of <span class="mono">delta.ts</span> as classes: columns (✎ a story writes it, «state» it moves between states), and below them what the stories do to it and who is refused. ◆ is a table's parent; a dashed arrow is a column that names another table.${cur ? ` Story ${cur.n} is highlighted${cur.tray ? ", but it writes only the tray" : ""}.` : ""}${classDoc ? ` The tables <span class="mono">${esc(classDoc)}:</span> composes are outlined.` : ""}</div>
+    ${classSVG()}`;
+}
+
+function renderChecklist() {
+  const rows = DATA.cast.map((a) => {
+    const mine = S.filter((s) => s.as === a);
+    if (!mine.length) return "";
+    return `<tr class="group"><td colspan="5">${esc(a)} · ${mine.filter((s) => s.kind === "does").length} can · ${mine.filter((s) => s.kind === "cannot").length} cannot</td></tr>` +
+      mine.map((s) => `<tr><td>${s.kind === "does" ? "can" : "<span class='why refuse'>cannot</span>"}</td><td>${esc(s.name)}</td>
+        <td class="c">${s.failures.length ? "<span class='why refuse'>✗</span>" : "<span class='why ok'>A</span>"}</td>
+        <td class="c"><button class="tick ${tried.has(s.n) ? "on" : ""}" data-tried="${s.n}">U</button></td>
+        <td class="c"><button class="tick agreed ${agreed.has(s.n) ? "on" : ""}" data-agree="${s.n}">✓</button></td></tr>`).join("");
+  }).join("");
+  $("#view-checklist").innerHTML = `<table class="grid"><thead><tr><th>check</th><th>story</th><th>A · harness</th><th>U · a person <span class="demo">demo</span></th><th>agreed <span class="demo">demo</span></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function renderTasks() {
+  $("#view-tasks").innerHTML = `<p class="muted">From eta's <span class="mono">todo.jsonl</span>, as it stands.</p>` +
+    DATA.tasks.map((t) => `<div class="task"><h4>${t.n}. ${esc(t.summary)}</h4><span class="chip">${esc(t.status)}</span> <span class="chip">${esc(t.area)}</span></div>`).join("");
+}
+
+function refresh() { renderStories(); inspect(); if (!$("#view-checklist").hidden) renderChecklist(); }
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button, a[data-story], a[data-table]"); if (!b) return;
+  const d = b.dataset;
+  if (d.center) {
+    for (const t of document.querySelectorAll("[data-center]")) t.setAttribute("aria-pressed", t === b);
+    const view = d.center;
+    $("#sequence").hidden = view !== "sequence"; $("#states").hidden = view !== "states"; $("#classes").hidden = view !== "classes"; $("#canvas").hidden = view !== "model";
+    for (const l of document.querySelectorAll(".legend")) l.hidden = view !== "model";
+    $("#center-sub").textContent = { model: "actors → documents → tables", sequence: "one story, from its run", states: "what moves, from the ledger", classes: "the tables, and what stories do to them" }[view];
+    if (view === "sequence") renderSequence(); else if (view === "states") { followStory(); renderStates(); } else if (view === "classes") renderClasses(); else drawEdges();
+    return;
+  }
+  if (d.machine) { machineSel = d.machine; renderStates(); return; }
+  if (d.classdoc !== undefined) { classDoc = d.classdoc || null; renderClasses(); return; }
+  if (d.tab) {
+    for (const t of document.querySelectorAll("[data-tab]")) t.setAttribute("aria-selected", t === b);
+    for (const v of ["model", "checklist", "tasks"]) $(`#view-${v}`).hidden = v !== d.tab;
+    if (d.tab === "checklist") renderChecklist();
+    if (d.tab === "tasks") renderTasks();
+    if (d.tab === "model") drawEdges();
+    return;
+  }
+  if (d.check !== undefined) {
+    const c = CHECKS.find((x) => x.id === d.check);
+    if (c.flag) { const [k, id] = c.flag.on.split(":"); sel = { kind: k, id }; checkFilter = null; renderChecks(); renderStories(); inspect(); return; }
+    checkFilter = checkFilter === d.check ? null : d.check; renderChecks(); renderStories(); return;
+  }
+  if (d.actor !== undefined && b.closest("#filters")) { actorFilter = d.actor || null; renderFilters(); renderStories(); return; }
+  if (d.agree) { const n = +d.agree; agreed.has(n) ? agreed.delete(n) : agreed.add(n); refresh(); return; }
+  if (d.tried) { const n = +d.tried; tried.has(n) ? tried.delete(n) : tried.add(n); refresh(); return; }
+  if (d.story) sel = { kind: "story", id: +d.story };
+  else if (d.actor !== undefined) sel = { kind: "actor", id: d.actor };
+  else if (d.doc !== undefined) sel = { kind: "doc", id: d.doc };
+  else if (d.table !== undefined) sel = { kind: "table", id: d.table };
+  else return;
+  renderStories(); inspect();
+  if (!$("#sequence").hidden) renderSequence();
+  if (!$("#states").hidden) { followStory(); renderStates(); }
+  if (!$("#classes").hidden) renderClasses();
+});
+
+CHECKS = checksNow();
+renderChecks(); renderFilters(); renderCanvas(); renderStories(); inspect();
+addEventListener("resize", drawEdges);
+new ResizeObserver(drawEdges).observe($("#canvas"));
+</script>
