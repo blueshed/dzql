@@ -39,11 +39,15 @@ export type Assembled = {
  * server.ts ever importing a specific example's compartments itself.
  */
 export function assemble(example: Example): Assembled {
-  let byDocType: Map<string, Compartment>;
   const ledger = createLedgerCompartment(example.active);
 
   const compartments = [...example.compartments, ledger];
-  byDocType = new Map(compartments.map((compartment) => [compartment.docType, compartment]));
+  const byDocType = new Map<string, Compartment>();
+  for (const compartment of compartments) {
+    // two owners of one type would leave the first silently unreachable
+    if (byDocType.has(compartment.docType)) throw new Error(`${example.name}: two compartments own "${compartment.docType}"${compartment === ledger ? " (the kernel's own ledger)" : ""}`);
+    byDocType.set(compartment.docType, compartment);
+  }
 
   const documents = copies.get(example) ?? createDocuments(example.delta);
   copies.set(example, documents);

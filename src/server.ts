@@ -89,6 +89,29 @@ function tellChanges(documents: Documents): void {
   });
 }
 
+type Write = { doc: string; ops: PatchOp[] };
+
+/** The most ledger entries `inspect` gives a document: it asks delta's history, and every event waits on it. */
+const MOST_INSPECTED = 100;
+
+const isInspect = (message: unknown): message is { type: "inspect"; limit?: unknown } => (message as { type?: unknown } | null)?.type === "inspect";
+
+/** How many entries an inspect asked for, as a count from 1 to MOST_INSPECTED; undefined, the default. */
+const inspected = (limit: unknown): number | undefined => (Number.isInteger(limit) ? Math.min(Math.max(limit as number, 1), MOST_INSPECTED) : undefined);
+
+const VERBS = new Set(["add", "replace", "remove"]);
+
+/** A write as the wire says it: a document's name, and one op or more, each a verb and a JSON Pointer. */
+function isWrite(message: unknown): message is Write {
+  const m = message as { doc?: unknown; ops?: unknown } | null;
+  return (
+    typeof m?.doc === "string" &&
+    Array.isArray(m.ops) &&
+    m.ops.length > 0 &&
+    m.ops.every((op: { op?: unknown; path?: unknown } | null) => VERBS.has(op?.op as string) && typeof op!.path === "string" && (op!.path === "" || op!.path.startsWith("/")))
+  );
+}
+
 export function createServer(example: Example, port: number | string = process.env.PORT ?? 3000) {
   if (active && active.example !== example) {
     throw new Error(
@@ -144,24 +167,31 @@ export function createServer(example: Example, port: number | string = process.e
     return (await documents.walk(ops[0]!.op === "add" ? "redo" : "undo", { identity: who(ws), cursor: ws.data.sessionId })) !== null;
   }
 
-  async function handle(ws: Socket, message: { type?: string; doc?: string; ops?: PatchOp[]; limit?: number }): Promise<void> {
-    if (message.type === "inspect") {
-      ws.send(JSON.stringify({ type: "inspect", ...(await inspectFor(ws, message.limit)) }));
+  /**
+   * A write names its document: whole (`room:general`), or by type alone for the one of that type
+   * this connection is on. Whichever, a connection writes only what it sees, and then only what the
+   * owner permits. True when something was applied.
+   */
+  async function write(ws: Socket, { doc, ops }: Write): Promise<boolean> {
+    const target = await settled(documents, () => resolveName(byDocType, doc, ws));
+    if (!target || !(await settled(documents, () => sees(target.owner, ws, target.docId)))) return false;
+    return target.owner.docType === "ledger" ? walk(ws, ops) : writeDelta(ws, target.owner, target.docId, ops);
+  }
+
+  async function handle(ws: Socket, message: unknown): Promise<void> {
+    if (isInspect(message)) {
+      ws.send(JSON.stringify({ type: "inspect", ...(await inspectFor(ws, inspected(message.limit))) }));
       return;
     }
-
-    // A write names its document: whole (`room:general`), or by type alone for the one of that
-    // type this connection is on. Whichever, a connection writes only what it sees, and then only
-    // what the owner permits.
-    const ops = message.ops ?? [];
-    const target = message.doc ? await settled(documents, () => resolveName(byDocType, message.doc!, ws)) : undefined;
-    let wrote = false;
-    if (target && ops.length > 0 && (await settled(documents, () => sees(target.owner, ws, target.docId)))) {
-      const { owner, docId } = target;
-      wrote = owner.docType === "ledger" ? await walk(ws, ops) : await writeDelta(ws, owner, docId, ops);
-    }
     // A write that applied something is told from its change, the writer's page with the rest.
-    // Nothing applied (refused, unknown document, nothing to walk) hands the page back.
+    // Nothing applied -- refused, not a write at all, an unknown document, nothing to walk, or a
+    // failure on the way -- hands the page back.
+    let wrote = false;
+    try {
+      wrote = isWrite(message) && (await write(ws, message));
+    } catch (err) {
+      failed("handling a write", err);
+    }
     if (!wrote) void redraw(ws, true);
   }
 
@@ -213,11 +243,11 @@ export function createServer(example: Example, port: number | string = process.e
         });
       },
       message(ws, raw) {
-        let message: { type?: string; doc?: string; ops?: PatchOp[]; limit?: number };
+        let message: unknown;
         try {
           message = JSON.parse(String(raw));
         } catch {
-          return;
+          message = undefined; // not JSON: no write, so the page is handed back
         }
         enqueue(() => handle(ws, message));
       },

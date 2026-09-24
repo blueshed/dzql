@@ -26,6 +26,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compartment of each document you register without a ledger, as the ticker's desk and the
   wedding's session now do.
 
+### Fixed
+
+- **A message that is not a write, or a write whose handling throws, is answered.** A write must
+  name its document (a string) and carry one op or more, each `add`, `replace` or `remove` with a
+  JSON Pointer path (`""` or starting `/`); anything else -- not JSON, `ops` not a list, a `null`
+  op, a path without its slash -- is refused like any refusal: the writer's page handed back.
+  Before, each of those threw inside the server, was logged, and the writer heard nothing. A write
+  whose `permit`, `shape` or `wrote` throws is reported (`failed`) and handed back too.
+- **`inspect` gives at most 100 entries a document**, however many it asks for: `limit: 1e9` asked
+  delta for a document's whole history, and every event waited on the answer. A limit that is not
+  a whole number is the default (the latest).
+- **Two compartments owning one document type throw** when the example is assembled, naming the
+  type (the kernel's own `ledger` among them). Before, the last silently won.
+
 ### Added
 
 - **`failed(what, err)` and `onFailure(fn)`** (`src/failed.ts`): every failure the kernel catches
