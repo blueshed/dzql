@@ -205,10 +205,16 @@ export type Applet = {
 };
 ```
 
-Mount point: `<div data-applet="board" data-doc="ticker:market" data-props='{...}'>`, the
-document named as the wire names it. Data reaches an
-applet as new props on a render (`update`), or, for a document that changes often, as the patch
-itself (`patch`; its props are left out when the page is compared, so no HTML follows). Register in `client/main.ts` before importing
+Mount point: `<div data-applet="board" data-doc="ticker:market" data-at="/quotes" data-props='{...}'>`,
+the document named as the wire names it. Data reaches an applet as new props on a render
+(`update`), or, for a document that changes often, as the patch itself (`patch`; after a write
+to that document its props are not compared, so no HTML follows).
+
+An applet that takes a document's patches holds that document in its props, whole, at `data-at`
+(the root when not given): the ops must land on it, and say everything the document did. The
+stories check it -- each member's applet props, as last sent with every patch since laid on,
+must be what a fresh render gives it. So a board holds the whole market and draws the watched
+rows, and a tick says `prev` as well as `price`. Register in `client/main.ts` before importing
 `src/client/app`. Split drawing (`<name>.ts`, pure, tested directly) from mounting
 (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`) when there is drawing worth
 testing. `client/index.html` must have an element with `id="app"`.

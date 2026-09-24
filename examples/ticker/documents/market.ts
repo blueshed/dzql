@@ -18,7 +18,7 @@ export const MARKET = "market";
 const quotesStmt = db.query<{ symbol: string; name: string; price: number; prev: number }, []>(
   "SELECT symbol, name, price, prev FROM quotes ORDER BY symbol",
 );
-const quoteStmt = db.query<{ price: number }, [string]>("SELECT price FROM quotes WHERE symbol = ?");
+const quoteStmt = db.query<{ price: number; prev: number }, [string]>("SELECT price, prev FROM quotes WHERE symbol = ?");
 const tickStmt = db.query<unknown, [number, number, string]>("UPDATE quotes SET prev = price, price = ?, updated_at = ? WHERE symbol = ?");
 
 export function read(): MarketDocument {
@@ -51,8 +51,10 @@ export const patch = db.transaction(function patch(ops: PatchOp[], sessionId: st
     const rounded = Math.round(price * 100) / 100;
     if (rounded === before.price) continue;
     tickStmt.run(rounded, Date.now(), symbol);
-    applied.push({ ...op, value: rounded });
-    inverse.unshift({ op: "replace", path: op.path, value: before.price });
+    // a tick moves two fields -- the last price becomes `prev` -- and the ops say both, so what
+    // follows the stream (the board) holds what the market does without knowing how it ticks
+    applied.push({ op: "replace", path: `/${symbol}/prev`, value: before.price }, { ...op, value: rounded });
+    inverse.unshift({ op: "replace", path: `/${symbol}/prev`, value: before.prev }, { op: "replace", path: op.path, value: before.price });
   }
 
   const version = record(prefixDoc("ticker", MARKET), applied, inverse, sessionId, undefined, false);

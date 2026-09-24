@@ -27,9 +27,10 @@ export type View = { list: WatchlistDocument; market: MarketDocument; clock: Clo
 
 /** The board applet's mount: the watched symbols and every quote they need, keyed so a watchlist change replaces just this. */
 export function boardMount(list: WatchlistDocument, market: MarketDocument): string {
+  // the board takes the market's ticks, so it holds the market -- every quote, at /quotes -- and
+  // draws the watched ones: a tick for any symbol lands on what it holds
   const symbols = list.symbols.filter((s) => market[s]);
-  const quotes = Object.fromEntries(symbols.map((s) => [s, market[s]!]));
-  return `<div id="board" data-applet="board" data-doc="ticker:${MARKET}" data-props="${esc(JSON.stringify({ symbols, quotes }))}"></div>`;
+  return `<div id="board" data-applet="board" data-doc="ticker:${MARKET}" data-at="/quotes" data-props="${esc(JSON.stringify({ symbols, quotes: market }))}"></div>`;
 }
 
 /** How many are watched, on the board's head; replaced with the board when the list changes. */
@@ -55,7 +56,7 @@ export function zoneOptionsHtml(now = Date.now()): string {
 
 const clockMount = (c: ClockDocument): string => `<div id="clock" data-applet="clock" data-doc="clock" data-props="${esc(JSON.stringify({ tz: c.tz }))}"></div>`;
 // the picker's zones are its children, HTML the server wrote; the applet reads them once and draws its own field
-const cityMount = (c: ClockDocument): string => `<div id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="${esc(JSON.stringify({ city: c.city }))}"><datalist>${zoneOptionsHtml()}</datalist></div>`;
+const cityMount = (c: ClockDocument): string => `<div id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="${esc(JSON.stringify({ tz: c.tz }))}"><datalist>${zoneOptionsHtml()}</datalist></div>`;
 
 // ───────────────────────────── the rows ─────────────────────────────
 

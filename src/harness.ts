@@ -3,6 +3,7 @@ import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
 import type { Stories, Story, Write } from "./stories";
+import { applyPatch, type PatchOp } from "./json-patch";
 import { comparable, splitTag } from "./parts";
 
 export { comparable };
@@ -28,7 +29,7 @@ export { comparable };
 export type Outcome = { name: string; failures: string[] };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number };
 
-type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; answered: (() => void)[] };
+type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; taken: Map<string, Taken>; answered: (() => void)[] };
 type HtmlOp = { op: "replace" | "tag" | "after" | "before" | "remove"; target: string; html?: string };
 type Snapshot = Map<string, string>;
 
@@ -66,7 +67,70 @@ function applyOp(page: string, op: HtmlOp): string {
     .transform(page);
 }
 
-export type Heard = { type: string; html?: string; ops?: HtmlOp[] };
+export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string };
+
+// The patch stream, checked. An applet that takes a document's patches (`data-doc`) holds props: the
+// ones the last render gave it, with every patch for that document laid on since, at the place in
+// its props the document sits (`data-at`, the root by default). That is what the client's applet
+// holds, and it must be what a fresh render would give it -- or the ops did not say everything the
+// document did, or props that changed for another reason were never sent.
+
+/** An applet that takes a document's patches, as a member's page holds it. */
+type Taken = { applet: string; doc: string; at: string; props: string; ops: PatchOp[] };
+
+const unescape = (value: string): string => value.replaceAll("&quot;", '"').replaceAll("&#39;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
+
+/** The applets on a page that take a document's patches, by their id (or part, or place). */
+export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
+  const found = new Map<string, Omit<Taken, "ops">>();
+  new HTMLRewriter()
+    .on("[data-doc]", {
+      element(el) {
+        const applet = el.getAttribute("data-applet") ?? "";
+        const key = el.getAttribute("id") ?? el.getAttribute("data-eta-part") ?? `${applet}#${found.size}`;
+        found.set(key, { applet, doc: el.getAttribute("data-doc")!, at: el.getAttribute("data-at") ?? "", props: unescape(el.getAttribute("data-props") ?? "null") });
+      },
+    })
+    .transform(page);
+  return found;
+}
+
+/** A member's applets after a render: one whose props the render changed starts again from them; one it left alone keeps the ops it has taken. */
+export function retake(taken: Map<string, Taken>, page: string): void {
+  const now = takersOn(page);
+  for (const key of taken.keys()) if (!now.has(key)) taken.delete(key);
+  for (const [key, a] of now) {
+    const held = taken.get(key);
+    if (!held || held.props !== a.props || held.doc !== a.doc || held.at !== a.at) taken.set(key, { ...a, ops: [] });
+  }
+}
+
+/** JSON with its keys in order, so two values compare by what they hold. */
+const stable = (value: unknown): string =>
+  JSON.stringify(value, (_key, v) => (v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v));
+
+/** Where what a member's applets hold is not what a fresh page gives them: a failure each, begun with `whose`. */
+export function unheld(whose: string, taken: Map<string, Taken>, freshPage: string): string[] {
+  const failures: string[] = [];
+  const fresh = takersOn(freshPage);
+  for (const [key, t] of taken) {
+    const f = fresh.get(key);
+    if (!f || f.doc !== t.doc) continue; // not on the fresh page: the page's own comparison says so
+    const now = holding(t);
+    if ("error" in now) failures.push(`${whose} ${t.applet} was sent ${t.doc} ops that do not land on its props: ${now.error}`);
+    else if (stable(now.value) !== stable(JSON.parse(f.props))) failures.push(`${whose} ${t.applet} holds what a fresh render does not${excerpt(stable(JSON.parse(f.props)), stable(now.value))}`);
+  }
+  return failures;
+}
+
+/** What an applet holds now: its props with the ops it has taken laid on; or why the ops do not land. */
+export function holding(t: Taken): { value: unknown } | { error: string } {
+  try {
+    return { value: applyPatch(JSON.parse(t.props), t.ops.map((op) => ({ ...op, path: t.at + op.path }))) };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+}
 
 /** A member's open page after one more message: only renders change it. */
 export function hear(page: string, message: Heard): string {
@@ -95,12 +159,14 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     const sessionId = crypto.randomUUID();
     // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
     const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } });
-    const member: Member = { name, sessionId, ws, inbox: [], page: "", answered: [] };
+    const member: Member = { name, sessionId, ws, inbox: [], page: "", taken: new Map(), answered: [] };
     ws.addEventListener("message", (event) => {
       const message = JSON.parse(String(event.data)) as Heard;
       if (message.type === "inspect") return member.answered.shift()?.();
       member.inbox.push(String(event.data));
       member.page = hear(member.page, message);
+      if (message.type === "render") retake(member.taken, member.page);
+      if (message.type === "patch") for (const t of member.taken.values()) if (t.doc === message.doc) t.ops.push(...(message.ops as unknown as PatchOp[]));
     });
     await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
     return member;
@@ -135,7 +201,13 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   }
 
   /** Canon 2: what each member's open page holds must be what a fresh render shows. */
+  /** The patch stream: what each member's applets hold must be what a fresh render gives them. */
+  function held(cast: Member[], when: string, failures: string[]): void {
+    for (const m of cast) failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, renderFor(m.sessionId)));
+  }
+
   function stale(cast: Member[], when: string, failures: string[]): void {
+    held(cast, when, failures);
     for (const m of cast) {
       const fresh = comparable(renderFor(m.sessionId));
       const held = comparable(m.page);

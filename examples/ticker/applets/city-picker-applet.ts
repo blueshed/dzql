@@ -8,6 +8,7 @@
 import { registerApplet } from "../../../src/applets";
 import type { PatchOp } from "../../../src/json-patch";
 import { cityIn, matches, step, type Zone } from "./city-picker";
+import { cityOf } from "./clock";
 
 /** The zones as the server rendered them: <option value="Asia/Tokyo">Tokyo (UTC+09:00)</option>. */
 function zonesFrom(el: ParentNode): Zone[] {
@@ -22,7 +23,8 @@ const states = new WeakMap<HTMLElement, State>();
 registerApplet("city-picker", {
   mount(el, ctx) {
     const zones = zonesFrom(el);
-    const city = (ctx.props as { city: string }).city;
+    // its props are the clock document's own field, so the clock's ops land on them; the city is read off the zone
+    const city = cityOf((ctx.props as { tz: string }).tz);
     // A form, so Enter is the browser's own submit: it takes the first match.
     el.innerHTML = `<form><input type="text" placeholder="${city.replaceAll('"', "&quot;")}" aria-label="Show the time in" autocomplete="off"></form><ul class="suggestions" role="listbox"></ul>`;
     const form = el.querySelector("form")!;
@@ -81,7 +83,7 @@ registerApplet("city-picker", {
   },
   update(el, props) {
     const s = states.get(el);
-    if (s) s.input.placeholder = (props as { city: string }).city;
+    if (s) s.input.placeholder = cityOf((props as { tz: string }).tz);
   },
   // The clock document's own op, off the echo: the placeholder says which city the clock now shows.
   patch(el, ops: PatchOp[]) {

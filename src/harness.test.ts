@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { example } from "../examples/chat";
 import { stories } from "../examples/chat/stories";
-import { comparable, hear, print, run } from "./harness";
+import { comparable, hear, holding, print, retake, run, takersOn, unheld } from "./harness";
 
 // The harness against chat's own stories: one outcome per story, named as the story is, and the
 // cast's setup shared by all. What each story finds is the example's business (a failing story is
@@ -59,5 +59,43 @@ describe("hear: a member's page, kept as the client keeps it", () => {
     expect(hear(two, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r1"]' }] })).not.toContain("one");
     expect(hear(page, { type: "render", ops: [{ op: "tag", target: '[data-eta-part="gone"]', html: "<div>" }] })).toBe(page);
     expect(hear(page, { type: "patch" })).toBe(page);
+  });
+});
+
+describe("the patch stream: what an applet that takes a document's patches holds", () => {
+  const mount = (props: string, at = "") => `<main><div id="board" data-applet="board" data-doc="ticker:market"${at ? ` data-at="${at}"` : ""} data-props="${props}"></div><div data-applet="plain" data-props="{}"></div></main>`;
+
+  test("a page's applets that take patches, by id, with their props unescaped and where the document sits", () => {
+    const found = takersOn(mount("{&quot;quotes&quot;:{&quot;A&quot;:1}}", "/quotes"));
+    expect([...found]).toEqual([["board", { applet: "board", doc: "ticker:market", at: "/quotes", props: '{"quotes":{"A":1}}' }]]);
+    expect([...takersOn(`<i data-doc="x"></i><b data-doc="y" data-eta-part="p"></b>`).keys()]).toEqual(["#0", "p"]);
+  });
+
+  test("a render that changes an applet's props starts it again from them; one that does not keeps what it took; one gone is let go", () => {
+    const taken = new Map();
+    retake(taken, mount("{&quot;A&quot;:1}"));
+    taken.get("board").ops.push({ op: "replace", path: "/A", value: 2 });
+    retake(taken, mount("{&quot;A&quot;:1}"));
+    expect(holding(taken.get("board"))).toEqual({ value: { A: 2 } });
+    retake(taken, mount("{&quot;A&quot;:5}"));
+    expect(holding(taken.get("board"))).toEqual({ value: { A: 5 } });
+    retake(taken, "<main></main>");
+    expect(taken.size).toBe(0);
+  });
+
+  test("a member's applets against a fresh page: held as it has them, missed props, ops that do not land; one not on the fresh page is the page's to say", () => {
+    const taken = new Map();
+    retake(taken, mount("{&quot;A&quot;:1,&quot;B&quot;:{&quot;b&quot;:1}}"));
+    taken.get("board").ops.push({ op: "replace", path: "/A", value: 2 });
+    expect(unheld("ann's", taken, mount("{&quot;B&quot;:{&quot;b&quot;:1},&quot;A&quot;:2}"))).toEqual([]); // keys in any order
+    expect(unheld("ann's", taken, mount("{&quot;A&quot;:3,&quot;B&quot;:{&quot;b&quot;:1}}"))[0]).toStartWith("ann's board holds what a fresh render does not");
+    taken.get("board").ops.push({ op: "remove", path: "/C" });
+    expect(unheld("ann's", taken, mount("{}"))).toEqual(["ann's board was sent ticker:market ops that do not land on its props: remove /C: no such member"]);
+    expect(unheld("ann's", taken, "<main></main>")).toEqual([]);
+  });
+
+  test("ops land where the document sits in the props, or say why they do not", () => {
+    expect(holding({ applet: "board", doc: "d", at: "/quotes", props: '{"quotes":{"A":1}}', ops: [{ op: "replace", path: "/A", value: 3 }] })).toEqual({ value: { quotes: { A: 3 } } });
+    expect(holding({ applet: "board", doc: "d", at: "", props: '{"quotes":{}}', ops: [{ op: "replace", path: "/A", value: 3 }] })).toEqual({ error: "replace /A: no such member" });
   });
 });

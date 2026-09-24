@@ -90,7 +90,8 @@ describe("the ticker", () => {
     const before = market.read().DLTA!.price;
     write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
     const patch = await expectMessage(a, "patch");
-    expect(patch).toMatchObject({ doc: "ticker:market", ops: [{ op: "replace", path: "/DLTA/price", value: before + 1 }] });
+    // a tick says both fields it moves: the last price becomes prev, then the new price
+    expect(patch).toMatchObject({ doc: "ticker:market", ops: [{ op: "replace", path: "/DLTA/prev", value: before }, { op: "replace", path: "/DLTA/price", value: before + 1 }] });
     await expectQuiet(a);
     expect(await expectMessage(b, "patch")).toMatchObject({ doc: "ticker:market" });
     await expectQuiet(b);
@@ -162,7 +163,7 @@ describe("the ticker", () => {
     startFeed(5);
     startFeed(5); // already running: no second interval
     const first = await expectMessage(ws, "patch");
-    expect(first).toMatchObject({ doc: "ticker:market", ops: [{ op: "replace" }] });
+    expect(first).toMatchObject({ doc: "ticker:market", ops: [{ op: "replace" }, { op: "replace" }] });
     await expectMessage(ws, "patch");
     stopFeed();
     stopFeed(); // already stopped
@@ -183,7 +184,7 @@ describe("the ticker", () => {
     write(ws, "desk", [{ op: "replace", path: "/page", value: "?clock" }]);
     await expectMessage(ws, "patch");
     const { page: html } = await expectMessage(ws, "render");
-    expect(html).toContain('id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="{&quot;city&quot;:&quot;Zurich&quot;}"><datalist>');
+    expect(html).toContain('id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="{&quot;tz&quot;:&quot;Europe/Zurich&quot;}"><datalist>');
     expect(html).toContain('<option value="Asia/Tokyo">Tokyo (UTC+09:00)</option>');
     expect(html).toContain('<option value="America/Vancouver">Vancouver (UTC-0');
     expect(html).toContain('<option value="America/Argentina/Salta">Salta, Argentina (UTC-03:00)</option>');

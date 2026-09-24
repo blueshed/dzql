@@ -35,6 +35,7 @@ export const stories: Stories = {
   stories: [
     // ── A watchlist is one person's ──
     story("Ann watches Charlie Metals, and only her board grows", { as: "ann", does: watch("CHRL"), seen: ["ann"] }),
+    story("Ann, on her board, watches Charlie Metals, and it joins the board in front of her", { as: "ann", does: watch("CHRL"), seen: { ann: "board" } }),
     story("Ann drops Alpha, and her board loses a row", { as: "ann", does: drop(0), seen: ["ann"] }),
     story("Ann cannot watch a symbol the market does not quote", { as: "ann", cannot: watch("ZZZZ") }),
     story("Ann cannot watch Alpha twice", { as: "ann", cannot: watch("ALPH") }),

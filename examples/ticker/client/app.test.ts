@@ -47,7 +47,7 @@ describe("the ticker in a real browser", () => {
     tick([{ op: "replace", path: "/FXTR/price", value: price }], "feed");
     await waitFor(view, `document.querySelector('svg.board .row[data-row="FXTR"] .price')?.textContent`, (v) => v === price.toFixed(2));
     expect(await view.evaluate(`document.querySelector('svg.board .row[data-row="FXTR"]').classList.contains('up')`)).toBe(true);
-    expect(await view.evaluate(`window.eta.docs()['ticker:market'].ops.length`)).toBe((renders as number) + 1);
+    expect(await view.evaluate(`window.eta.docs()['ticker:market'].ops.length`)).toBe((renders as number) + 2); // the tick's two ops: prev, then price
     expect(await view.evaluate(`document.querySelectorAll('svg.board .row[data-row="FXTR"] polyline').length`)).toBe(1);
 
     // the clock's seconds hand is turning, with nothing from the server
