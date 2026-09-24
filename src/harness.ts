@@ -36,7 +36,8 @@ export type Trace = {
   as: string;
   write: Write;
   heard: { member: string; messages: Heard[] }[];
-  ledger: { doc: string; undoable: number }[];
+  /** What the ledger took: the ops as written, and their inverse -- which holds what was there before. */
+  ledger: { doc: string; undoable: number; ops: PatchOp[]; inverse: PatchOp[] }[];
 };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number };
 
@@ -45,7 +46,7 @@ type HtmlOp = { op: "replace" | "tag" | "after" | "before" | "remove"; target: s
 type Snapshot = Map<string, string>;
 
 
-type LedgerRow = { id: number; doc: string; undoable: number };
+type LedgerRow = { id: number; doc: string; undoable: number; ops: string; inverse: string };
 
 /**
  * The ledger the stories read, to know whether a story has an undo to check and whether a refusal
@@ -54,7 +55,7 @@ type LedgerRow = { id: number; doc: string; undoable: number };
  */
 function ledgerOf(): { max(): number; since(id: number): LedgerRow[] } {
   const max = db.query<{ id: number | null }, []>("SELECT MAX(id) AS id FROM delta_ledger");
-  const since = db.query<LedgerRow, [number]>("SELECT id, doc, undoable FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id");
+  const since = db.query<LedgerRow, [number]>("SELECT id, doc, undoable, ops, inverse FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id");
   return { max: () => max.get()?.id ?? 0, since: (id) => since.all(id) };
 }
 
@@ -247,7 +248,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         as: who.name,
         write,
         heard: cast.map((m, i) => ({ member: m.name, messages: m.inbox.slice(marks[i]).map((raw) => JSON.parse(raw) as Heard) })),
-        ledger: ledger.since(ledgerBefore).map(({ doc, undoable }) => ({ doc, undoable })),
+        ledger: ledger.since(ledgerBefore).map(({ doc, undoable, ops, inverse }) => ({ doc, undoable, ops: JSON.parse(ops) as PatchOp[], inverse: JSON.parse(inverse) as PatchOp[] })),
       });
     }
     db.exec("BEGIN");
