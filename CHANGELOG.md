@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   op, a path without its slash -- is refused like any refusal: the writer's page handed back.
   Before, each of those threw inside the server, was logged, and the writer heard nothing. A write
   whose `permit`, `shape` or `wrote` throws is reported (`failed`) and handed back too.
+- **After an undo, a field shows the value undone to** (`src/client/morph.ts`). Once typed in, a
+  field's value no longer follows its `value` attribute (nor a textarea's its text), so it went on
+  showing the undone value, and an editing form (`data-write-on`), comparing it with what was
+  rendered, sent it again on the next blur -- reverting the undo. A render that changes a field
+  nobody is in now sets what it shows; a field someone is in keeps what they type.
 - **`inspect` gives at most 100 entries a document**, however many it asks for: `limit: 1e9` asked
   delta for a document's whole history, and every event waited on the answer. A limit that is not
   a whole number is the default (the latest).

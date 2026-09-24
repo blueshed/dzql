@@ -67,6 +67,12 @@ async function pushRender(view: Bun.WebView, html: string): Promise<void> {
   );
 }
 
+/** Simulates the server sending any message -- a patch, a render in parts -- on app.ts's own socket. */
+async function push(view: Bun.WebView, message: unknown): Promise<void> {
+  const payload = JSON.stringify(message);
+  await view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(payload)} }))`);
+}
+
 describe("app.ts in a real browser, with a stubbed socket", () => {
   test("a full render with a matching data-moving element transitions in place and clears its name after", async () => {
     await using view = await open();
@@ -282,4 +288,38 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
       ops: [{ op: "replace", path: "/filter/guests", value: "xyz" }],
     });
   });
+  test("after an undo, a field nobody is in shows the value undone to, and leaving another field sends nothing again", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const form = (message: string, note: string) =>
+      `<form data-write-on="blur" id="f">
+        <input id="msg" value="${message}" data-write='{"doc":"household","op":"replace","path":"/message"}'>
+        <textarea id="note" data-write='{"doc":"household","op":"replace","path":"/note"}'>${note}</textarea>
+        <input id="other" value="x" data-write='{"doc":"household","op":"replace","path":"/other"}'>
+      </form><button id="elsewhere">elsewhere</button>`;
+    await pushRender(view, form("Hello", "Soon"));
+    await waitFor(view, `document.getElementById('msg') !== null`, (v) => v === true);
+
+    await view.click("#msg");
+    await view.type("Hi");
+    await view.click("#note");
+    await view.type("er");
+    await view.click("#other"); // leaving each field sends it
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await pushRender(view, form("HelloHi", "Sooner")); // the writes, echoed and drawn
+    await pushRender(view, form("Hello", "Soon")); // then undone, and drawn again
+
+    expect(await view.evaluate<string>(`document.getElementById('msg').value`)).toBe("Hello");
+    expect(await view.evaluate<string>(`document.getElementById('note').value`)).toBe("Soon");
+    await view.click("#elsewhere"); // leaving the untouched field
+    await Bun.sleep(50);
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(2); // the undone values are not sent again
+
+    // a field someone is in keeps what they are typing, whatever the render says
+    await view.click("#msg");
+    await view.type("!");
+    await pushRender(view, form("Hola", "Soon"));
+    expect(await view.evaluate<string>(`document.getElementById('msg').value`)).toBe("Hello!");
+  });
+
 });

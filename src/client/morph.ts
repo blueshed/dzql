@@ -40,11 +40,29 @@ function key(node: ChildNode): string | undefined {
 
 function morphAttributes(old: Element, next: Element): void {
   for (const { name } of [...old.attributes]) {
-    if (!next.hasAttribute(name)) old.removeAttribute(name);
+    if (!next.hasAttribute(name)) {
+      old.removeAttribute(name);
+      showRendered(old, name);
+    }
   }
   for (const { name, value } of [...next.attributes]) {
-    if (old.getAttribute(name) !== value) old.setAttribute(name, value);
+    if (old.getAttribute(name) !== value) {
+      old.setAttribute(name, value);
+      showRendered(old, name);
+    }
   }
+}
+
+/**
+ * A field nobody is in shows what was just rendered into it. Once typed in, a field's value no
+ * longer follows its `value` attribute (nor a textarea's its text), so after an undo it would go
+ * on showing the value undone -- and an editing form, comparing it with what was rendered, would
+ * send it again. Only when the render changed it, so an unrelated render keeps what is typed.
+ */
+function showRendered(el: Element, name: string): void {
+  if (el === document.activeElement) return;
+  if (el instanceof HTMLInputElement && name === "value") el.value = el.defaultValue;
+  else if (el instanceof HTMLInputElement && name === "checked") el.checked = el.defaultChecked;
 }
 
 // An applet's subtree is the applet's: reconcile the element itself, but
@@ -61,12 +79,15 @@ function morphApplet(old: Element, next: Element, hooks: MorphHooks): void {
 
 function morphNode(old: ChildNode, next: ChildNode, hooks: MorphHooks): void {
   if (isElement(old) && isElement(next)) {
-    if (isApplet(old)) {
+    if (old.hasAttribute("data-applet")) {
       morphApplet(old, next, hooks);
       return;
     }
     morphAttributes(old, next);
+    const area = old instanceof HTMLTextAreaElement ? old : undefined;
+    const text = area?.defaultValue;
     morphChildren(old, next, hooks);
+    if (area && area.defaultValue !== text && area !== document.activeElement) area.value = area.defaultValue; // as showRendered, for a textarea's text
   } else if (old.textContent !== next.textContent) {
     old.textContent = next.textContent;
   }

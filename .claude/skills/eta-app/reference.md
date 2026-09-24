@@ -189,7 +189,9 @@ An element writes through `data-write='{"doc","op","path"}'`:
   writes;
 - a form with **`data-write-on="blur"`, `"change"` or `"input"`** edits in place: `data-write` goes
   on each field, and every field whose value differs from what was rendered becomes one op in one
-  message. `"input"` is debounced ~150ms, flushed when focus leaves, and never repeats itself.
+  message. `"input"` is debounced ~150ms, flushed when focus leaves, and never repeats itself. A
+  render that changes a field nobody is in shows the new value (an undo's), so it is not sent
+  again; a field someone is in keeps what they type.
 
 `autofocus` means "this field is waiting for the caret": after a render the client focuses it, but
 only when nothing has the caret. `data-autoscroll` pins a list to its foot when it grows.
