@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - an `unseen` member told of any document -- sent a patch -- by the write, its undo or its redo
     (`cy was told of room:general, and should not have been`);
   - a `cannot` whose writer is not answered with the page (`refused, but ada was not answered`);
-  - anything the kernel reports failing while the story runs (`the server failed handling an
-    event: …`), so a refusal that is really a throw is no longer a refusal.
+  - anything the kernel reports failing while the story runs (`the server failed handling a
+    write: …`), so a refusal that is really a throw is no longer a refusal.
 
   To move across: a page is told every change to each document it reads, shown or not, so a page
   that reads a document it does not show leaks it by patch. Read only what the page shows, or cut
@@ -27,6 +27,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one that says it and is recorded all the same. To move across: add `ledger: false` to the
   compartment of each document you register without a ledger, as the ticker's desk and the
   wedding's session now do.
+
+### Added
+
+- **Islands: an applet written as a railroad component** (`island(render, reduce?)`,
+  `src/island.ts`). eta depends on `@blueshed/railroad` `^0.12.0`, and the tsconfig says
+  `jsx: "react-jsx"`, `jsxImportSource: "@blueshed/railroad"`. `render(props, ctx, el)` gets its
+  props as a signal and reads what the server drew inside `el` before it is replaced; `update` sets
+  the props, and `reduce(props, ops)`, when given, is the applet's `patch`. Built on railroad's
+  `signal` and `mount` alone; it draws only inside its element and never binds that element's
+  attributes, which stay the morph's. The kernel's client does not import it: a page with an
+  island carries railroad (about 2 KB gzipped for `signal` and `mount`, 4 KB with `list`).
+- **`failed(what, err)` and `onFailure(fn)`** (`src/failed.ts`): every failure the kernel catches
+  -- a message, a drawing, a change being told -- is logged in one place and heard by whoever
+  listens. The stories harness listens.
+
+### Changed
+
+- **The ticker's city picker is an island** (`examples/ticker/applets/city-picker-applet.tsx`):
+  93 lines of hand-built DOM, listeners and highlight bookkeeping became 61 (49 of code, from 79),
+  its suggestions a keyed `list()` over a computed. It still reads the zones from the server's
+  `<option>`s. The ticker's page grows from 5.3 KB to 9.2 KB gzipped, railroad's `list` most of
+  it. The board (whose flash needs each row drawn afresh), the clock (a frame loop) and the
+  wedding's applets (drawn by pure, tested functions) stay as they are.
+- **The README and the eta-app reference say what undo does on delta 0.6.0**: it puts a row back
+  as the write found it, over what anyone wrote to it since; no compartment is asked again, so a
+  deadline does not hold against it; and an undo whose inverse no longer applies sticks. The
+  wedding's server tests pin all three as `test.failing`, so bun says when delta fixes one.
+- **One set of open sockets.** The server kept its own beside `src/compartments/audience.ts`'s;
+  it reads that one (`allOpenSockets()`). `Assembled.renderFor` and `Documents.held`, which only a
+  test read, are gone.
 
 ### Fixed
 
@@ -66,49 +96,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   attribute and began another. Both are escaped now; nothing else in the output changes.
 - **Two compartments owning one document type throw** when the example is assembled, naming the
   type (the kernel's own `ledger` among them). Before, the last silently won.
-
 - **The browser tests pass on Chrome** (Linux, the Claude Code sandbox). Every `Bun.WebView` of
   a process shares one Chrome profile there, and a cookie ignores the port, so each view after a
   test's first opened already signed in, and waited for ever for the name form: 19 failed. Each
   view now goes to a host of its own (`view3.localhost`: Chrome takes every `*.localhost` to this
   machine) through `at(view, server.url, path?)` in `src/webview.ts`; WebKit's views are apart
   already. The four copies of `waitFor` are that file's one.
-
 - **`bun run stories` says what to do next for an example with stories and no app.**
   `ETA_EXAMPLE=londons` failed with `Cannot find module examples/londons/index.ts`; it now
   says "examples/londons has 149 stories and no app yet (no index.ts): build the least that
   makes the first one pass", and an example with no `stories.ts` is told it starts there. Both
   exit 1.
-
-### Changed
-
-- **The ticker's city picker is an island** (`examples/ticker/applets/city-picker-applet.tsx`):
-  93 lines of hand-built DOM, listeners and highlight bookkeeping became 61 (49 of code, from 79),
-  its suggestions a keyed `list()` over a computed. It still reads the zones from the server's
-  `<option>`s. The ticker's page grows from 5.3 KB to 9.2 KB gzipped, railroad's `list` most of
-  it. The board (whose flash needs each row drawn afresh), the clock (a frame loop) and the
-  wedding's applets (drawn by pure, tested functions) stay as they are.
-- **The README and the eta-app reference say what undo does on delta 0.6.0**: it puts a row back
-  as the write found it, over what anyone wrote to it since; no compartment is asked again, so a
-  deadline does not hold against it; and an undo whose inverse no longer applies sticks. The
-  wedding's server tests pin all three as `test.failing`, so bun says when delta fixes one.
-- **One set of open sockets.** The server kept its own beside `src/compartments/audience.ts`'s;
-  it reads that one (`allOpenSockets()`). `Assembled.renderFor` and `Documents.held`, which only a
-  test read, are gone.
-
-### Added
-
-- **Islands: an applet written as a railroad component** (`island(render, reduce?)`,
-  `src/island.ts`). eta depends on `@blueshed/railroad` `^0.12.0`, and the tsconfig says
-  `jsx: "react-jsx"`, `jsxImportSource: "@blueshed/railroad"`. `render(props, ctx, el)` gets its
-  props as a signal and reads what the server drew inside `el` before it is replaced; `update` sets
-  the props, and `reduce(props, ops)`, when given, is the applet's `patch`. Built on railroad's
-  `signal` and `mount` alone; it draws only inside its element and never binds that element's
-  attributes, which stay the morph's. The kernel's client does not import it: a page with an
-  island carries railroad (about 2 KB gzipped for `signal` and `mount`, 4 KB with `list`).
-- **`failed(what, err)` and `onFailure(fn)`** (`src/failed.ts`): every failure the kernel catches
-  -- a message, a drawing, a change being told -- is logged in one place and heard by whoever
-  listens. The stories harness listens.
 
 ## [0.47.0] - 2026-09-24
 
