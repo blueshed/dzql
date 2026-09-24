@@ -1,66 +1,53 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import type { Compartment, WriteResult } from "./compartments/compartment";
+import { Database } from "bun:sqlite";
+import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
+import { createLocal } from "@blueshed/delta/local";
+import type { Compartment } from "./compartments/compartment";
 import type { Example } from "./example";
 import index from "./server.test.fixture.html";
 import type { PatchOp } from "./json-patch";
-import { patchMessage } from "./json-patch";
-import { prefixDoc, record } from "./ledger";
-import { renderRequested } from "./compartments/render";
-import { closeConnection, notify, openConnection, wireName } from "./compartments/audience";
-import { reading } from "./reading";
+import { closeConnection, openConnection, wireName } from "./compartments/audience";
+import { read } from "./documents";
 import { part } from "./parts";
 import { createServer } from "./server";
 
-// A tiny, self-contained compartment + example -- not chat, not anything under
-// the examples directory -- so this file can prove the kernel (assemble/createServer/the
-// ledger compartment's undo-via-replay) works on its own, without needing
-// the chat example to exist at all. State lives in a plain Map, not SQL,
-// because only the ledger's record()/undo cursor need to be real for undo
-// to be worth testing here.
-type NoteState = { text: string };
-const notes = new Map<string, NoteState>();
+// A tiny, self-contained example -- not chat, not anything under the examples directory -- so
+// this file proves the kernel on its own: a note per session (its own document), and months of
+// appointments (documents named by criteria), kept in a delta of this file's own.
+const db = new Database(":memory:");
+const schema = defineSchema({
+  notes: { columns: { text: { type: "text", nullable: false, default: "" } as never }, temporal: false },
+  months: { columns: {}, temporal: false },
+  appointments: { parent: "months", columns: { what: "text" }, temporal: false },
+});
+createTables(db, schema);
+const delta = createLocal();
+registerDocs(
+  delta.server,
+  db,
+  schema,
+  [defineDoc("note:", { root: "notes", include: [], implied: true }), defineDoc("month:", { root: "months", include: ["appointments"], implied: true })],
+  [],
+  { ledger: true },
+);
 
-function readNote(id: string): NoteState {
-  return notes.get(id) ?? { text: "" };
-}
-
-function applyOps(id: string, ops: PatchOp[]): { applied: PatchOp[]; inverse: PatchOp[] } {
-  const state = readNote(id);
-  const applied: PatchOp[] = [];
-  const inverse: PatchOp[] = [];
-  for (const op of ops) {
-    if (op.path === "/text" && op.value === "boom") throw new Error("boom"); // a write whose handling fails
-    if (op.path !== "/text" || op.op !== "replace") continue;
-    inverse.unshift({ op: "replace", path: "/text", value: state.text });
-    state.text = String(op.value ?? "");
-    applied.push(op);
-  }
-  notes.set(id, state);
-  return { applied, inverse };
-}
-
-function noteWrite(ws: Bun.ServerWebSocket<{ sessionId: string }>, id: string, ops: PatchOp[], undoes?: number): WriteResult {
-  const { applied, inverse } = applyOps(id, ops);
-  const version = record(prefixDoc("note", id), applied, inverse, ws.data.sessionId, undoes);
-  const result: WriteResult = { version, applied };
-  if (applied.length > 0) {
-    ws.send(patchMessage("note", version, applied));
-    renderRequested.emit([ws]);
-  }
-  return result;
+function readNote(id: string): string {
+  return read<{ notes: { text: string } }>(`note:${id}`).notes.text;
 }
 
 const noteCompartment: Compartment = {
   docType: "note",
   own: true,
+  at: "/notes",
   resolveDoc(ws) {
     return ws.data.sessionId;
   },
-  permit(ws, op) {
+  permit(_ws, op) {
     return op.path === "/text" && op.op === "replace";
   },
-  write(ws, id, ops, undoes) {
-    return noteWrite(ws, id, ops, undoes);
+  shape(_ws, _id, ops) {
+    if (ops.some((op) => op.value === "boom")) throw new Error("boom"); // a write whose handling fails
+    return ops;
   },
 };
 
@@ -68,13 +55,20 @@ const noteCompartment: Compartment = {
 // who sees one: a session's page shows the months `showing` gives it, and reading them is what
 // makes them seen. July is closed, so it can be seen and not written. The month a connection is on
 // (a bare `month`) is September.
-const months = new Map<string, string[]>();
 const monthPermits: string[] = [];
 const showing = new Map<string, string[]>();
 
-function readMonth(id: string): string[] {
-  reading("month", id);
-  return months.get(id) ?? [];
+type Appointment = { id: string; what: string };
+
+/** A month's appointments, in the order made (their ids are time-ordered). */
+function readMonth(id: string): Appointment[] {
+  return Object.values(read<{ appointments: Record<string, Appointment> }>(`month:${id}`).appointments).sort((a, b) => (a.id < b.id ? -1 : 1));
+}
+
+/** The same, from delta directly: for the tests' own questions. */
+async function appointments(month: string): Promise<Appointment[]> {
+  const doc = (await delta.call("open", { doc: `month:${month}` })).result as { appointments: Record<string, Appointment> };
+  return Object.values(doc.appointments).sort((a, b) => (a.id < b.id ? -1 : 1));
 }
 
 const monthCompartment: Compartment = {
@@ -84,16 +78,7 @@ const monthCompartment: Compartment = {
     monthPermits.push(docId);
     return op.op === "add" && op.path === "/appointments/-" && docId !== "2026-07";
   },
-  write(ws, id, ops, undoes) {
-    const list = months.get(id) ?? [];
-    const applied = ops.filter((op) => op.op === "add");
-    for (const op of applied) list.push(String(op.value));
-    months.set(id, list);
-    const inverse = applied.map(() => ({ op: "remove" as const, path: `/appointments/${list.length - 1}` }));
-    const result: WriteResult = { version: record(prefixDoc("month", id), applied, inverse, ws.data.sessionId, undoes), applied };
-    notify("month", id, result);
-    return result;
-  },
+  shape: (_ws, _id, ops) => ops.map((op) => ({ op: "add", path: `/appointments/${Bun.randomUUIDv7()}`, value: { what: String(op.value) } })),
 };
 
 function makeExample(name: string): Example {
@@ -101,12 +86,13 @@ function makeExample(name: string): Example {
     name,
     compartments: [noteCompartment, monthCompartment],
     render: (sessionId) => {
-      if (readNote(sessionId).text === "undrawable") throw new Error("undrawable"); // a page whose drawing fails
-      return `<p class="note">${readNote(sessionId).text}</p>` +
-      (showing.get(sessionId) ?? []).map((m) => part(`month-${m}`, `<ul data-month="${m}">${readMonth(m).map((a, i) => part(`${m}-${i}`, `<li>${a}</li>`)).join("")}</ul>`)).join("");
+      if (readNote(sessionId) === "undrawable") throw new Error("undrawable"); // a page whose drawing fails
+      return `<p class="note">${readNote(sessionId)}</p>` +
+        (showing.get(sessionId) ?? []).map((m) => part(`month-${m}`, `<ul data-month="${m}">${readMonth(m).map((a) => part(`a-${a.id}`, `<li>${a.what}</li>`)).join("")}</ul>`)).join("");
     },
     active: () => true,
     index,
+    delta,
   };
 }
 
@@ -200,7 +186,7 @@ describe("createServer, generically (no example from the examples directory invo
     write(ws, "note", [{ op: "replace", path: "/text", value: "hello kernel" }]);
     const patch = await expectMessage(ws, "patch");
     expect(patch.doc).toBe("note");
-    expect(patch.ops).toEqual([{ op: "replace", path: "/text", value: "hello kernel" }]);
+    expect(patch.ops).toEqual([{ op: "replace", path: "", value: { text: "hello kernel" } }]); // the note as it is now, told whole, its id (the session) left out
     // the note's page has no parts: a change to it sends it whole
     const rendered = await expectMessage(ws, "render");
     expect(rendered.ops).toBeUndefined();
@@ -209,14 +195,14 @@ describe("createServer, generically (no example from the examples directory invo
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const undonePatch = await expectMessage(ws, "patch");
     expect(undonePatch.doc).toBe("note");
-    expect(undonePatch.ops).toEqual([{ op: "replace", path: "/text", value: "" }]);
+    expect(undonePatch.ops).toEqual([{ op: "replace", path: "", value: { text: "" } }]);
     const undoneRender = await expectMessage(ws, "render");
     expect(htmlOf(undoneRender)).not.toContain("hello kernel");
 
-    // redo: the undo walked forward again, through the same replay
+    // redo: the undo walked forward again
     write(ws, "ledger", [{ op: "add", path: "/latest" }]);
     const redonePatch = await expectMessage(ws, "patch");
-    expect(redonePatch.ops).toEqual([{ op: "replace", path: "/text", value: "hello kernel" }]);
+    expect(redonePatch.ops).toEqual([{ op: "replace", path: "", value: { text: "hello kernel" } }]);
     expect(htmlOf(await expectMessage(ws, "render"))).toContain("hello kernel");
     // nothing left to redo: a render, no patch
     write(ws, "ledger", [{ op: "add", path: "/latest" }]);
@@ -235,7 +221,7 @@ describe("createServer, generically (no example from the examples directory invo
     try {
       write(ws, "note", [{ op: "replace", path: "/text", value: "boom" }]);
       write(ws, "note", [{ op: "replace", path: "/text", value: "after the boom" }]);
-      expect((await expectMessage(ws, "patch")).ops).toEqual([{ op: "replace", path: "/text", value: "after the boom" }]);
+      expect((await expectMessage(ws, "patch")).ops).toEqual([{ op: "replace", path: "", value: { text: "after the boom" } }]);
       expect(logged).toHaveLength(1);
       expect(String((logged[0] as unknown[])[1])).toContain("boom");
     } finally {
@@ -280,7 +266,7 @@ describe("createServer, generically (no example from the examples directory invo
     const docs = (inspection as unknown as { docs: { doc: string; version: number; entries?: unknown[] }[] }).docs;
     const note = docs.find((d) => d.doc === "note");
     expect(note?.version).toBeGreaterThan(0);
-    expect(note?.entries?.[0]).toMatchObject({ ops: [{ op: "replace", path: "/text", value: "inspect me" }] });
+    expect(note?.entries?.[0]).toMatchObject({ ops: [{ op: "replace", path: "", value: { text: "inspect me" } }] });
     // a session id is the only credential: it never goes on the wire, not even your own. "Was this
     // write mine" is all a reader may ask.
     expect(note?.entries?.[0]).toMatchObject({ mine: true });
@@ -353,12 +339,12 @@ describe("one socket, any documents: a document is named whole, and seen because
     const { ws: b } = await showingMonths("2026-08", "2026-09");
 
     write(a, "month:2026-09", [{ op: "add", path: "/appointments/-", value: "dentist" }]);
-    expect(await nextPatch(a)).toMatchObject({ doc: "month:2026-09", ops: [{ value: "dentist" }] });
-    expect(await nextPatch(b)).toMatchObject({ doc: "month:2026-09", ops: [{ value: "dentist" }] });
+    expect(await nextPatch(a)).toMatchObject({ doc: "month:2026-09", ops: [{ value: { what: "dentist" } }] });
+    expect(await nextPatch(b)).toMatchObject({ doc: "month:2026-09", ops: [{ value: { what: "dentist" } }] });
 
     write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "optician" }]);
-    expect(await nextPatch(a)).toMatchObject({ doc: "month:2026-08", ops: [{ value: "optician" }] });
-    expect(await nextPatch(b)).toMatchObject({ doc: "month:2026-08", ops: [{ value: "optician" }] });
+    expect(await nextPatch(a)).toMatchObject({ doc: "month:2026-08", ops: [{ value: { what: "optician" } }] });
+    expect(await nextPatch(b)).toMatchObject({ doc: "month:2026-08", ops: [{ value: { what: "optician" } }] });
 
     a.close();
     b.close();
@@ -367,21 +353,21 @@ describe("one socket, any documents: a document is named whole, and seen because
   test("a new appointment goes out as the one row, beside the row before it, to every page showing the month", async () => {
     const { ws: a } = await showingMonths("2026-08");
     const { ws: b } = await showingMonths("2026-08", "2026-09");
-    const rows = (months.get("2026-08") ?? []).length;
-    if (rows === 0) {
+    if ((await appointments("2026-08")).length === 0) {
       write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "first" }]); // a list that was empty is replaced whole
       await nextPatch(a);
       await expectMessage(a, "render");
       await nextPatch(b);
       await expectMessage(b, "render");
     }
-    const at = (months.get("2026-08") ?? []).length;
+    const before = (await appointments("2026-08")).at(-1)!;
 
     write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "physio" }]);
     await nextPatch(a);
     const sentToA = await expectMessage(a, "render");
     expect(sentToA.html).toBeUndefined();
-    expect(sentToA.ops).toEqual([{ op: "after", target: `[data-eta-part="2026-08-${at - 1}"]`, html: `<li data-eta-part="2026-08-${at}">physio</li>` }]);
+    const physio = (await appointments("2026-08")).at(-1)!;
+    expect(sentToA.ops).toEqual([{ op: "after", target: `[data-eta-part="a-${before.id}"]`, html: `<li data-eta-part="a-${physio.id}">physio</li>` }]);
     await nextPatch(b);
     expect((await expectMessage(b, "render")).ops).toEqual(sentToA.ops);
 
@@ -401,7 +387,7 @@ describe("one socket, any documents: a document is named whole, and seen because
     await nextPatch(b);
     write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "not mine now" }]);
     expect((await nextMessage(a)).type).toBe("render"); // no patch about August came first, and the write was refused
-    expect(months.get("2026-08")).not.toContain("not mine now");
+    expect((await appointments("2026-08")).map((a) => a.what)).not.toContain("not mine now");
 
     a.close();
     b.close();
@@ -410,16 +396,16 @@ describe("one socket, any documents: a document is named whole, and seen because
   test("a bare type is the document of that type the connection is on, seen without being shown", async () => {
     const { ws } = await showingMonths();
     write(ws, "month", [{ op: "add", path: "/appointments/-", value: "haircut" }]);
-    expect(await nextPatch(ws)).toMatchObject({ doc: "month:2026-09", ops: [{ value: "haircut" }] });
+    expect(await nextPatch(ws)).toMatchObject({ doc: "month:2026-09", ops: [{ value: { what: "haircut" } }] });
     ws.close();
   });
 
   test("permit judges by the name: last month's closed one is seen and not written", async () => {
     const { ws } = await showingMonths("2026-07");
-    const before = months.get("2026-07")?.length ?? 0;
+    const before = (await appointments("2026-07")).length;
     write(ws, "month:2026-07", [{ op: "add", path: "/appointments/-", value: "too late" }]);
     await expectMessage(ws, "render"); // refused: the page again, and nothing else
-    expect(months.get("2026-07")?.length ?? 0).toBe(before);
+    expect((await appointments("2026-07")).length).toBe(before);
     expect(monthPermits.at(-1)).toBe("2026-07");
     ws.close();
   });
@@ -429,7 +415,7 @@ describe("one socket, any documents: a document is named whole, and seen because
     const asked = monthPermits.length;
     write(ws, "month:1999-01", [{ op: "add", path: "/appointments/-", value: "sneaky" }]);
     await expectMessage(ws, "render");
-    expect(months.has("1999-01")).toBe(false);
+    expect(await appointments("1999-01")).toEqual([]);
     expect(monthPermits.length).toBe(asked);
     ws.close();
   });

@@ -39,14 +39,12 @@ type LedgerRow = { id: number; doc: string; undoable: number };
 
 /**
  * The ledger the stories read, to know whether a story has an undo to check and whether a refusal
- * moved nothing: the kernel's own, or -- for an example that keeps its documents in delta --
- * delta's (`delta_ledger`, in the same database), whose entries a story's write starts.
+ * moved nothing: delta's (`delta_ledger`, in the same database), whose fresh entries -- not an
+ * undo's or a redo's -- a story's write starts.
  */
-function ledgerOf(inDelta: boolean): { max(): number; since(id: number): LedgerRow[] } {
-  const max = db.query<{ id: number | null }, []>(inDelta ? "SELECT MAX(id) AS id FROM delta_ledger" : "SELECT MAX(id) AS id FROM ledger");
-  const since = db.query<LedgerRow, [number]>(
-    inDelta ? "SELECT id, doc, undoable FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id" : "SELECT id, doc, undoable FROM ledger WHERE id > ? ORDER BY id",
-  );
+function ledgerOf(): { max(): number; since(id: number): LedgerRow[] } {
+  const max = db.query<{ id: number | null }, []>("SELECT MAX(id) AS id FROM delta_ledger");
+  const since = db.query<LedgerRow, [number]>("SELECT id, doc, undoable FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id");
   return { max: () => max.get()?.id ?? 0, since: (id) => since.all(id) };
 }
 
@@ -156,7 +154,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   const server = createServer(example, 0);
   const { draw, documents } = assemble(example);
   const active = (sessionId: string): Promise<boolean> => settled(documents, () => example.active(sessionId));
-  const ledger = ledgerOf(documents !== undefined);
+  const ledger = ledgerOf();
   const ledgerMax = ledger.max;
   const outcomes: Outcome[] = [];
 
@@ -295,7 +293,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       await Promise.all(cast.map((m) => new Promise((resolve) => (m.ws.readyState === WebSocket.CLOSED ? resolve(undefined) : m.ws.addEventListener("close", resolve, { once: true })))));
       await server.idle(); // every close handled, and what it set going
       db.exec("ROLLBACK");
-      await documents?.release(new Set()); // the next story reads from the rolled-back database
+      await documents.release(new Set()); // the next story reads from the rolled-back database
     }
   }
 

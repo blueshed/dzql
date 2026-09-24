@@ -1,8 +1,8 @@
 import type { ServerWebSocket } from "bun";
 import type { ConnectionData } from "../connection";
 import type { Example } from "../example";
-import type { LedgerEntry } from "../ledger";
-import { history, prefixDoc, splitDoc } from "../ledger";
+import type { PatchOp } from "../json-patch";
+import { prefixDoc, splitDoc } from "../names";
 import { shownTo } from "../reading";
 import type { Compartment } from "./compartment";
 import { createLedgerCompartment } from "./ledger";
@@ -15,7 +15,7 @@ const copies = new WeakMap<Example, Documents>();
 
 /** A ledger entry as `inspect` tells it. A session id is a person's only credential, so it never
  * goes on the wire: `mine` says whether the asker wrote the entry, which is all a reader may ask. */
-export type InspectEntry = Omit<LedgerEntry, "sessionId"> & { mine: boolean };
+export type InspectEntry = { id: number; doc: string; version: number; ops: PatchOp[]; inverse: PatchOp[]; at: number; mine: boolean };
 export type InspectDoc = { doc: string; version: number; entries: InspectEntry[] };
 export type Inspection = { docs: InspectDoc[] };
 
@@ -29,8 +29,8 @@ export type Assembled = {
   /** The page, drawn until every document it reads is held. */
   draw(sessionId: string): Promise<string>;
   inspectFor(ws: ServerWebSocket<ConnectionData>, limit?: number): Promise<Inspection>;
-  /** The example's documents, when it keeps them in delta. */
-  documents?: Documents;
+  /** The example's documents: delta's, as the pages read them. */
+  documents: Documents;
 };
 
 /**
@@ -40,14 +40,13 @@ export type Assembled = {
  */
 export function assemble(example: Example): Assembled {
   let byDocType: Map<string, Compartment>;
-  const lookup = (docType: string) => byDocType.get(docType);
-  const ledger = createLedgerCompartment(lookup, example.active);
+  const ledger = createLedgerCompartment(example.active);
 
   const compartments = [...example.compartments, ledger];
   byDocType = new Map(compartments.map((compartment) => [compartment.docType, compartment]));
 
-  let documents = copies.get(example);
-  if (!documents && example.delta) copies.set(example, (documents = createDocuments(example.delta)));
+  const documents = copies.get(example) ?? createDocuments(example.delta);
+  copies.set(example, documents);
 
   const renderFor = (sessionId: string): string => example.render(sessionId);
   const draw = (sessionId: string): Promise<string> => settled(documents, () => example.render(sessionId));
@@ -78,12 +77,16 @@ export function assemble(example: Example): Assembled {
     for (const name of new Set(seen)) {
       const { docType, docId } = splitDoc(name);
       const doc = wireName(docType, docId, ws); // as the wire names it: whole, or the bare type for a session's own
-      const entries = documents
-        ? (await documents.history(name, ws.data.sessionId, limit)).map((e) => {
-            const owner = byDocType.get(docType)!;
-            return { id: 0, doc, version: e.version, ops: wireOps(owner, docId, e.ops as never), inverse: wireOps(owner, docId, e.inverse as never), at: e.at, mine: e.mine };
-          })
-        : history(name, limit).map(({ sessionId, ...entry }) => ({ ...entry, doc, mine: sessionId === ws.data.sessionId }));
+      const owner = byDocType.get(docType)!;
+      const entries = (await documents.history(name, ws.data.sessionId, limit)).map((e) => ({
+        id: 0,
+        doc,
+        version: e.version,
+        ops: wireOps(owner, docId, e.ops as never),
+        inverse: wireOps(owner, docId, e.inverse as never),
+        at: e.at,
+        mine: e.mine,
+      }));
       docs.push({ doc, version: entries[0]?.version ?? 0, entries });
     }
     return { docs };

@@ -1,6 +1,6 @@
 import type { ServerWebSocket } from "bun";
 import type { ConnectionData } from "./connection";
-import { prefixDoc } from "./ledger";
+import { prefixDoc } from "./names";
 import { drawParts, type Drawn } from "./parts";
 
 // What a connection sees is what its page read. While the kernel draws a page for a connection,

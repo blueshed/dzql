@@ -18,7 +18,7 @@ type RouteHandler = (
  * for its own documents).
  */
 export type Example = {
-  /** Identifies this example (namespaces its migrations, distinguishes it from another example object at runtime). */
+  /** Identifies this example (distinguishes it from another example object at runtime). */
   name: string;
   /**
    * This example's compartments: one per document type, for write dispatch, who sees what, and
@@ -35,10 +35,10 @@ export type Example = {
   index: HTMLBundle;
   /**
    * The example's documents, in delta, in this process (Workshop/docs/eta-on-delta.md): its backends
-   * registered on a `createLocal()`. When given, the kernel keeps each page's documents from delta's
-   * stream of changes, writes through delta, and the ledger is delta's.
+   * registered on a `createLocal()`. The kernel keeps each page's documents from delta's stream of
+   * changes, writes through delta, and the ledger is delta's.
    */
-  delta?: Local;
+  delta: Local;
   /** Who a session is, as delta sees them -- for the ledger's `who` and for row-level security. Default: the session. */
   who?(sessionId: string): unknown;
   /** Extra HTTP routes this example needs (e.g. serving uploaded pictures). Merged into the kernel's routes; a kernel route of the same path wins. */

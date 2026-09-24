@@ -2,9 +2,9 @@
 
 A kernel for live, multi-person apps, made of three things that compose:
 
-- **Documents.** The whole app is documents in SQLite, each with one `read()` and one `patch()`.
-  A write is a patch: a document, a JSON Pointer path, a value. Because every write is a patch,
-  every write has an inverse, and the ledger keeps both.
+- **Documents.** The whole app is documents, kept by [delta](../blueshed/delta) -- in SQLite here,
+  Postgres or memory as the document needs. A write is a patch: a document, a JSON Pointer path,
+  a value. Because every write is a patch, every write has an inverse, and the ledger keeps both.
 - **Render.** A compartment turns a document into HTML for one person. The server is the only
   renderer; the browser keeps that HTML alive by morphing, so a re-render never disturbs what
   someone is doing, and a render can be as small as the change. The session sits beside the
@@ -61,7 +61,7 @@ resolves `examples/<name>/index.ts`'s `example` export. The wedding's demo codes
 `DASH` (the couple), `OKAFOR` and `BEN` (two households); `REVEAL=1` shows the names in
 the photo before the day. The ticker's feed ticks every `TICK_MS` (500) while anyone is
 connected; `CLOCK_TZ` is the city a new visitor's clock shows. Each example lives entirely under its own directory --
-documents, compartments, applets, client, migrations; `src/` never imports from any of them.
+documents, compartments, applets, client, its `delta.ts`; `src/` never imports from any of them.
 
 ## Cost
 

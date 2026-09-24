@@ -1,7 +1,7 @@
 import type { Local } from "@blueshed/delta/local";
 import { applyOps, type DeltaOp } from "@blueshed/delta/core";
 import { reading } from "./reading";
-import { splitDoc } from "./ledger";
+import { splitDoc } from "./names";
 import type { PatchOp } from "./json-patch";
 
 // eta's documents are delta's (Workshop/docs/eta-on-delta.md). eta keeps a copy of every document

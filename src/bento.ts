@@ -424,7 +424,7 @@ export type Collections = {
  * Applies one op at `/reading/<key>`, `/filter/<key>` or `/hide/<key>` to `ui`, in place. False
  * when the path is not one of those, or a remove finds nothing there. Closing find removes just
  * its own key (rule 17: everything is lit again, not merely emptied) and forgets the eye with it.
- * A tray document's `patch()` tries this after its own fields.
+ * A tray document's shape tries this after its own fields.
  */
 export function patchCollections(ui: Collections, op: PatchOp): boolean {
   const [field, key] = parsePointer(op.path);

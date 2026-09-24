@@ -1,15 +1,14 @@
 import type { ServerWebSocket } from "bun";
 import type { ConnectionData } from "../connection";
-import { patchMessage, type PatchOp } from "../json-patch";
-import { prefixDoc, splitDoc } from "../ledger";
+import type { PatchOp } from "../json-patch";
+import { prefixDoc, splitDoc } from "../names";
 import { shows } from "../reading";
-import type { Compartment, WriteResult } from "./compartment";
-import { renderRequested } from "./render";
+import type { Compartment } from "./compartment";
 
 // Who sees a document is derived, not declared: a connection sees what its page read
 // (`src/reading.ts`), and the one of each type it is on (`resolveDoc`). A session's own documents
 // (`own`) are seen by that session alone. Which sockets are open at all is the kernel's, kept
-// here; every compartment reaches both through `audienceFor`/`notify`.
+// here; the kernel tells a change to its `audienceFor` and redraws its `readersOf` (src/server.ts).
 
 const openSockets = new Set<ServerWebSocket<ConnectionData>>();
 let byDocType: Map<string, Compartment> | undefined;
@@ -92,27 +91,6 @@ export function audienceFor(docType: string, docId: string, exclude?: ServerWebS
 /** Every open connection whose page, as last drawn, read the document -- a session's own included: chat's presence reads everyone's name from their sessions. */
 export function readersOf(docType: string, docId: string): ServerWebSocket<ConnectionData>[] {
   return [...openSockets].filter((ws) => shows(ws, docType, docId));
-}
-
-/**
- * Tells people about a write: echoes its applied ops to everyone who sees the document, the writer
- * included, and redraws those and everyone else whose page read it -- each is sent only the parts
- * of their page that changed (src/parts.ts). A page that read another session's own document is
- * redrawn and never sent its ops. `echoTo` narrows or replaces who hears the ops (chat's presence
- * leaves out the socket that came or went); `renderTo` replaces who is redrawn (the wedding
- * redraws every open page, since totals and the photo draw on every household). A no-op patch
- * tells nobody.
- */
-export function notify(
-  docType: string,
-  docId: string,
-  result: WriteResult,
-  { echoTo = audienceFor(docType, docId), renderTo }: { echoTo?: ServerWebSocket<ConnectionData>[]; renderTo?: ServerWebSocket<ConnectionData>[] } = {},
-): void {
-  if (result.applied.length === 0) return;
-  for (const ws of echoTo) ws.send(patchMessage(wireName(docType, docId, ws), result.version, result.applied));
-  const redraw = renderTo ?? [...new Set([...echoTo, ...readersOf(docType, docId)])];
-  if (redraw.length > 0) renderRequested.emit({ sockets: redraw, written: { docType, docId } });
 }
 
 /**

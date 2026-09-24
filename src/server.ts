@@ -1,25 +1,22 @@
 import { assemble } from "./compartments";
 import { audienceFor, closeConnection, openConnection, readersOf, resolveName, sees, setActiveCompartments, wireName, wireOps } from "./compartments/audience";
-import { fragmentsMessage, renderMessage, renderRequested, type RenderRequest } from "./compartments/render";
+import { fragmentsMessage, renderMessage } from "./compartments/render";
 import type { ConnectionData } from "./connection";
 import { setActiveDocuments, settled, type Documents } from "./documents";
 import type { Example } from "./example";
 import { patchMessage, type PatchOp } from "./json-patch";
-import { splitDoc } from "./ledger";
+import { splitDoc } from "./names";
 import { drawing, shownTo } from "./reading";
 import { diff, type Drawn } from "./parts";
 
 type Socket = Bun.ServerWebSocket<ConnectionData>;
 
-// One example per process is an invariant: a running eta process serves
-// exactly one example, and this tracks which (so the renderRequested
-// listener below -- registered once, not once per createServer call -- knows
-// what to render through no matter which compartment's code fired it). It's
-// cleared when that example's server(s) are all stopped, so a test suite
-// that creates one example's server, stops it, then creates a *different*
-// example's server (as the kernel's own generic tests and an example's own
-// tests do, in the same process) doesn't trip the guard below.
-let active: { example: Example; assembled: ReturnType<typeof assemble> } | undefined;
+// One example per process is an invariant: a running eta process serves exactly one example, and
+// this tracks which, so the one place changes are told from (below) draws through it. It's cleared
+// when that example's server(s) are all stopped, so a test suite that creates one example's server,
+// stops it, then creates a *different* example's server (as the kernel's own generic tests and an
+// example's own tests do, in the same process) doesn't trip the guard below.
+let active: { example: Example; assembled: ReturnType<typeof assemble>; servers: number } | undefined;
 
 // What each connection was last sent, so the next drawing sends only what differs (src/parts.ts).
 const sent = new WeakMap<Socket, Drawn>();
@@ -42,7 +39,7 @@ const track = (p: Promise<unknown>): void => {
  * different page) or `whole` says so (a first drawing, a refused write handing the page back).
  * A drawing that fails is logged, and the connection's next drawing goes ahead.
  */
-function redraw(ws: Socket, whole = false, written?: RenderRequest["written"]): Promise<void> {
+function redraw(ws: Socket, whole = false, written?: { docType: string; docId: string }): Promise<void> {
   const next = (drawingFor.get(ws) ?? Promise.resolve()).then(async () => {
     if (!active) return;
     const { assembled } = active;
@@ -59,17 +56,11 @@ function redraw(ws: Socket, whole = false, written?: RenderRequest["written"]): 
   return done;
 }
 
-renderRequested.on((request) => {
-  if (!active) return; // unreachable in practice: nothing can fire this before a server exists
-  const { sockets, written }: RenderRequest = Symbol.iterator in request ? { sockets: request } : request;
-  for (const ws of sockets) void redraw(ws, false, written);
-});
-
 /** Resolves when everything set going so far -- redraws, and the documents' changes -- is done. */
-async function quiet(documents?: Documents): Promise<void> {
+async function quiet(documents: Documents): Promise<void> {
   while (pending.size > 0) {
     await Promise.allSettled([...pending]);
-    await documents?.quiet();
+    await documents.quiet();
   }
 }
 
@@ -85,7 +76,7 @@ function tellChanges(documents: Documents): void {
   if (heard.has(documents)) return;
   heard.add(documents);
   documents.onChange(async ({ doc, ops, v }) => {
-    if (!active) return;
+    if (active?.assembled.documents !== documents) return; // a copy of an example no longer served
     const { docType, docId } = splitDoc(doc);
     const owner = active.assembled.byDocType.get(docType);
     if (!owner) return;
@@ -105,11 +96,11 @@ export function createServer(example: Example, port: number | string = process.e
     );
   }
   const assembled = assemble(example);
-  active = { example, assembled };
+  active = { example, assembled, servers: (active?.servers ?? 0) + 1 };
   const { compartments, byDocType, inspectFor, documents } = assembled;
   setActiveCompartments(byDocType);
   setActiveDocuments(documents);
-  if (documents) tellChanges(documents);
+  tellChanges(documents);
 
   const who = (ws: Socket): unknown => (example.who ? example.who(ws.data.sessionId) : ws.data.sessionId);
 
@@ -123,7 +114,7 @@ export function createServer(example: Example, port: number | string = process.e
       .catch((err) => console.error("eta:", err));
   };
 
-  /** A write from the wire, to a document kept in delta: permitted, shaped, written as the person. */
+  /** A write from the wire: permitted, shaped, written through delta as the person. */
   async function writeDelta(ws: Socket, owner: (typeof compartments)[number], docId: string, ops: PatchOp[]): Promise<boolean> {
     const kind = owner.kind ?? "written";
     if (kind !== "written" && kind !== "fact") return false; // live, sourced, static: nobody writes them from the wire
@@ -131,7 +122,7 @@ export function createServer(example: Example, port: number | string = process.e
     const shaped = owner.shape ? await settled(documents, () => owner.shape!(ws, docId, ops)) : ops;
     if (shaped.length === 0) return false;
     const at = owner.at ?? "";
-    const written = await documents!.write(
+    const written = await documents.write(
       `${owner.docType}:${docId}`,
       shaped.map((op) => ({ ...op, path: at + op.path })) as never,
       { identity: who(ws), cursor: ws.data.sessionId, undoable: kind !== "fact" },
@@ -141,11 +132,11 @@ export function createServer(example: Example, port: number | string = process.e
     return true;
   }
 
-  /** Undo or redo, in delta mode: delta walks the session's cursor; the change is told like any other. */
+  /** Undo or redo: delta walks the session's cursor; the change is told like any other. */
   async function walk(ws: Socket, ops: PatchOp[]): Promise<boolean> {
     const ledger = byDocType.get("ledger")!;
     if (!(await settled(documents, () => ops.every((op) => ledger.permit!(ws, op, ws.data.sessionId))))) return false;
-    return (await documents!.walk(ops[0]!.op === "add" ? "redo" : "undo", { identity: who(ws), cursor: ws.data.sessionId })) !== null;
+    return (await documents.walk(ops[0]!.op === "add" ? "redo" : "undo", { identity: who(ws), cursor: ws.data.sessionId })) !== null;
   }
 
   async function handle(ws: Socket, message: { type?: string; doc?: string; ops?: PatchOp[]; limit?: number }): Promise<void> {
@@ -162,9 +153,7 @@ export function createServer(example: Example, port: number | string = process.e
     let wrote = false;
     if (target && ops.length > 0 && (await settled(documents, () => sees(target.owner, ws, target.docId)))) {
       const { owner, docId } = target;
-      if (documents && owner.docType === "ledger") wrote = await walk(ws, ops);
-      else if (documents && !owner.write) wrote = await writeDelta(ws, owner, docId, ops);
-      else if (owner.write && ops.every((op) => owner.permit?.(ws, op, docId) ?? false)) wrote = owner.write(ws, docId, ops).applied.length > 0;
+      wrote = owner.docType === "ledger" ? await walk(ws, ops) : await writeDelta(ws, owner, docId, ops);
     }
     // A write that applied something is told from its change, the writer's page with the rest.
     // Nothing applied (refused, unknown document, nothing to walk) hands the page back.
@@ -173,7 +162,6 @@ export function createServer(example: Example, port: number | string = process.e
 
   /** Lets go of the documents no open page reads any more. */
   async function release(): Promise<void> {
-    if (!documents) return;
     const keep = new Set<string>();
     for (const ws of openSockets) for (const doc of shownTo(ws)) keep.add(doc);
     await documents.release(keep);
@@ -242,12 +230,14 @@ export function createServer(example: Example, port: number | string = process.e
   });
 
   const stop = server.stop.bind(server);
+  let stopped = false;
   server.stop = ((...args: Parameters<typeof server.stop>) => {
-    if (active?.example === example) {
+    if (!stopped && active?.example === example && --active.servers === 0) {
       active = undefined;
       setActiveCompartments(undefined);
       setActiveDocuments(undefined);
     }
+    stopped = true;
     return stop(...args);
   }) as typeof server.stop;
 
