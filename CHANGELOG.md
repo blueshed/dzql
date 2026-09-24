@@ -55,6 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The page handed back whole -- a refusal's answer -- ends the wait now. An echo still names a
   document, not a write, so another person's echo that arrives before yours is answered resets
   the form; telling "yours" needs a write id on the wire (not done).
+- **A page is drawn even when a compartment's `onOpen` fails.** The failure stopped the event
+  before the first drawing, so the tab sat on "Connecting…"; it is reported, and the page drawn.
 - **`inspect` gives at most 100 entries a document**, however many it asks for: `limit: 1e9` asked
   delta for a document's whole history, and every event waited on the answer. A limit that is not
   a whole number is the default (the latest).

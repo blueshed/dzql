@@ -236,8 +236,11 @@ export function createServer(example: Example, port: number | string = process.e
       open(ws) {
         openConnection(ws);
         enqueue(async () => {
-          for (const compartment of compartments) await compartment.onOpen?.(ws);
-          await redraw(ws, true);
+          try {
+            for (const compartment of compartments) await compartment.onOpen?.(ws);
+          } finally {
+            await redraw(ws, true); // the page is drawn, whatever failed opening it
+          }
         });
       },
       message(ws, raw) {

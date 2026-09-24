@@ -44,6 +44,9 @@ const noteCompartment: Compartment = {
   resolveDoc(ws) {
     return ws.data.sessionId;
   },
+  onOpen(ws) {
+    if (ws.data.sessionId === "opens-badly") throw new Error("an open that fails");
+  },
   permit(_ws, op) {
     return op.path === "/text" && op.op === "replace";
   },
@@ -276,6 +279,20 @@ describe("createServer, generically (no example from the examples directory invo
     expect(JSON.stringify(inspection)).not.toContain("sessionId");
 
     ws.close();
+  });
+
+  test("an open that fails is reported, and the page is drawn all the same", async () => {
+    const failures: string[] = [];
+    const stop = onFailure((what, err) => void failures.push(`${what}: ${(err as Error).message}`));
+    try {
+      const ws = connect(server, "opens-badly");
+      await opened(ws);
+      expect(htmlOf(await expectMessage(ws, "render"))).toContain('<p class="note">');
+      expect(failures).toEqual(["handling an event: an open that fails"]);
+      ws.close();
+    } finally {
+      stop();
+    }
   });
 
   test("a message that is not a write is refused as one: the page handed back, nothing failing, nothing written", async () => {
