@@ -6,6 +6,13 @@
 //
 // The documents are what a person has open. A write names a document and a path in it, never a
 // function; everyone who has the document open is sent the patch. States are a document's values.
+//
+// A document is composed for the person reading it; each part has a flavour, by where its truth
+// lives. Persistent: survives a restart, on the ledger, undoable. Transient: true while people are
+// connected, written by the system as an effect, never undone, gone on restart.
+
+export type Persistent<T> = T;
+export type Transient<T> = T;
 
 export type Actor = "person";
 
@@ -17,15 +24,15 @@ export interface Message {
 
 /** A room, as the people in it see it. */
 export interface RoomDoc {
-  name: string;
-  members: string[];
-  messages: Message[];
+  name: Persistent<string>;
+  members: Transient<string[]>;
+  messages: Persistent<Message[]>;
 }
 
 /** A person's own session: who they are, and where. */
 export interface SessionDoc {
-  name: string | null;
-  room: string | null;
+  name: Persistent<string | null>;
+  room: Persistent<string | null>;
 }
 
 /** The documents, by the name they are opened by, and who has each open. */

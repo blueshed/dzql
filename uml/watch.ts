@@ -10,7 +10,7 @@
 import { watch } from "node:fs";
 import { readdir, rm } from "node:fs/promises";
 import index from "./index.html";
-import { check, kindOf, links, linkedTo, readTypes, undrawn, withLinks, type Kind, type Types } from "./check";
+import { asDrawn, check, kindOf, links, linkedTo, readTypes, typesFindings, undrawn, type Kind, type Types } from "./check";
 
 const dir = import.meta.dir;
 const SRC = `${dir}/src`, DIST = `${dir}/dist`;
@@ -66,7 +66,7 @@ async function render(file: string): Promise<void> {
   const text = await source.text();
   const kind = kindOf(text);
   // A use case links to its write's sequence, a document class to its example: worked out as drawn.
-  const drawn = links(kind) ? withLinks(text, types, await everyChecked()) : text;
+  const drawn = asDrawn(text, name, types, links(kind) ? await everyChecked() : []);
   try {
     const res = await fetch(`${PLANTUML}/svg`, { method: "POST", headers: { "Content-Type": "text/plain; charset=utf-8" }, body: drawn });
     const svg = await res.text();
@@ -109,7 +109,7 @@ const server = Bun.serve({
     },
     "/types": async () => {
       const f = Bun.file(TYPES);
-      return Response.json({ source: (await f.exists()) ? await f.text() : "", undrawn: undrawn(types, [...checked.values()]) });
+      return Response.json({ source: (await f.exists()) ? await f.text() : "", undrawn: undrawn(types, [...checked.values()]), findings: typesFindings(types) });
     },
     "/live": (req, srv) => (srv.upgrade(req) ? undefined : new Response("expected a WebSocket", { status: 400 })),
   },
@@ -131,7 +131,7 @@ watch(dir, (_event, file) => {
   typesTimer = setTimeout(async () => {
     await loadTypes();
     await checkAll();
-    await redrawLinking();
+    for (const f of await readdir(SRC)) if (isSource(f)) soon(f); // flavours and links follow types.ts
   }, 120);
 });
 

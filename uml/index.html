@@ -108,7 +108,8 @@ async function show() {
   if (current === "types.ts") {
     const t = await (await fetch("/types")).json();
     $("#title").textContent = "types.ts"; $("#at").textContent = "every name the diagrams use";
-    $("#error").hidden = true; $("#agrees").hidden = true;
+    $("#error").hidden = !t.findings.length; $("#agrees").hidden = true;
+    $("#error").innerHTML = `<b>types.ts contradicts itself</b><ul>${t.findings.map((u) => `<li>${u}</li>`).join("")}</ul>`;
     $("#drift").hidden = !t.undrawn.length;
     $("#drift").innerHTML = `<b>Not drawn in any diagram yet</b><ul>${t.undrawn.map((u) => `<li>${u}</li>`).join("")}</ul>`;
     $("#diagram").innerHTML = `<p class="empty">types.ts is the vocabulary: each diagram is checked against it.</p>`;
@@ -125,7 +126,7 @@ async function show() {
   $("#drift").hidden = !drift.length;
   $("#drift").innerHTML = `<b>Drifts from types.ts</b><ul>${drift.map((x) => `<li>${x.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</li>`).join("")}</ul>`;
   $("#agrees").hidden = !!drift.length || !d.kind || d.kind === "other";
-  $("#agrees").textContent = `✓ agrees with types.ts (${d.kind})`;
+  $("#agrees").textContent = `✓ agrees with types.ts (${d.kind})${d.kind === "document" ? " · highlighted: the transient parts; the rest is persistent" : ""}`;
   const [svg, src] = await Promise.all([fetch(`/svg/${d.name}`).then((r) => (r.ok ? r.text() : "")), fetch(`/src/${d.name}`).then((r) => (r.ok ? r.text() : ""))]);
   $("#diagram").innerHTML = svg || `<p class="empty">No SVG yet.</p>`;
   $("#source").textContent = src;

@@ -106,8 +106,19 @@ export function kindOf(puml: string): Kind {
 const unquote = (s: string) => s.trim().replace(/^"|"$/g, "");
 /** "/messages/2/text" -> ["messages", "*", "text"]; "-" and ids are "*". */
 const segs = (p: string) => p.split("/").filter(Boolean).map((s) => (s === "-" || /^\d+$/.test(s) ? "*" : s));
-/** The interface an array or plain type names: "Message[]" -> Message. */
-const elementOf = (type = "") => type.match(/^(\w+)(\[\])?$/)?.[1];
+export type Flavour = "persistent" | "transient";
+/** "Transient<string[]>" -> transient, string[]; a type with no flavour -> just its type. */
+export function unwrap(type = ""): { flavour?: Flavour; inner: string } {
+  const m = type.match(/^(Persistent|Transient)<([\s\S]+)>$/);
+  return m ? { flavour: m[1]!.toLowerCase() as Flavour, inner: m[2]!.trim() } : { inner: type };
+}
+/** The interface an array or plain type names: "Message[]" -> Message, through any flavour. */
+const elementOf = (type = "") => unwrap(type).inner.match(/^(\w+)(\[\])?$/)?.[1];
+/** The flavour of the part of `doc` a path lands in: its first field's. */
+export function flavourOf(t: Types, doc: Doc, path: string): Flavour | undefined {
+  const [field] = segs(path);
+  return field ? unwrap(t.interfaces.get(doc.shape)?.types.get(field)).flavour : undefined;
+}
 
 export function check(name: string, puml: string, t: Types): Checked {
   const kind = kindOf(puml);
@@ -123,7 +134,7 @@ export function check(name: string, puml: string, t: Types): Checked {
     const [field, idx, sub] = segs(path);
     if (!field) return null;
     if (!shape.fields.includes(field)) return `${field} is not in ${doc.shape}`;
-    const type = shape.types.get(field) ?? "";
+    const type = unwrap(shape.types.get(field)).inner;
     if (idx !== undefined && !type.endsWith("[]")) return `${field} is not a list`;
     if (sub) {
       const el = t.interfaces.get(elementOf(type) ?? "");
@@ -207,6 +218,7 @@ export function check(name: string, puml: string, t: Types): Checked {
         if (!write) drift.push(`${from} writes "${label}", which is not in Writes`);
         else if (!write.ops.includes(wrote[1]!)) drift.push(`"${label}": ${write.key} allows ${write.ops.join(", ")}, not ${wrote[1]}`);
         else uses.add(`write:${write.key}`);
+        if (flavourOf(t, doc, path) === "transient") drift.push(`"${label}": ${segs(path)[0]} is transient -- it changes as an effect, a person does not write it`);
       } else if (reply && to === caller && write) {
         const allRefusals = t.writes.flatMap((w) => w.refused);
         if (allRefusals.some((r) => norm(r) === norm(label)) && !write.refused.some((r) => norm(r) === norm(label))) drift.push(`"${label}" is not how ${write.key} is refused`);
@@ -297,17 +309,60 @@ export function linkClasses(puml: string, t: Types, examples: Map<string, string
   });
 }
 
-/** A diagram as it is drawn: with links to the diagrams it names, worked out from all of them as they stand. */
-export function withLinks(puml: string, t: Types, all: Checked[]): string {
+/** A diagram as it is drawn: with links to the diagrams it names, and each document part's flavour, worked out from types.ts and all the diagrams as they stand. The source is left as written. */
+export function asDrawn(puml: string, name: string, t: Types, all: Checked[]): string {
   const kind = kindOf(puml);
   if (kind === "use cases") return linkUseCases(puml, t, sequenceOf(all));
-  if (kind === "classes") return linkClasses(puml, t, exampleOf(all));
+  if (kind === "classes") return flavourClasses(linkClasses(puml, t, exampleOf(all)), t);
+  if (kind === "sequence") return flavourPatches(puml, t);
+  if (kind === "document") return flavourExample(puml, name, t);
   return puml;
+}
+
+/** A «document» class's attributes, each with its flavour in UML's property braces: `members {transient}`. */
+function flavourClasses(puml: string, t: Types): string {
+  let shape: Iface | undefined;
+  return puml.split("\n").map((line) => {
+    const head = line.match(/^\s*class\s+(?:"[^"]+"\s+as\s+)?(\w+)/);
+    if (head) { shape = t.interfaces.get(t.documents.find((d) => norm(d.shape) === norm(head[1]!))?.shape ?? ""); return line; }
+    if (/^\s*\}/.test(line)) { shape = undefined; return line; }
+    const field = line.trim().split(":")[0]!.trim();
+    const flavour = shape && field && unwrap(shape.types.get(field)).flavour;
+    return flavour ? `${line} {${flavour}}` : line;
+  }).join("\n");
+}
+
+/** A patch to a transient part says so: it is not on the ledger. */
+function flavourPatches(puml: string, t: Types): string {
+  return puml.replace(/^(\s*\S+\s*-+>+\s*\S+\s*:\s*patch\s+(\S+)\s+(?:add|replace|remove)\s+(\/\S*).*)$/gm, (line, _all: string, docName: string, path: string) => {
+    const doc = t.documents.find((d) => d.match.test(docName));
+    return doc && flavourOf(t, doc, path) === "transient" ? `${line} //(transient: not on the ledger)//` : line;
+  });
+}
+
+/** A document's example with its transient parts highlighted. */
+function flavourExample(puml: string, name: string, t: Types): string {
+  const doc = t.documents.find((d) => d.key.split(":")[0] === name.replace(/^document-/, ""));
+  const shape = doc && t.interfaces.get(doc.shape);
+  if (!shape) return puml;
+  const transient = [...shape.types].filter(([, type]) => unwrap(type).flavour === "transient").map(([f]) => `#highlight "${f}"`);
+  return transient.length ? puml.replace(/@startjson[^\n]*\n/, (m) => `${m}${transient.join("\n")}\n`) : puml;
 }
 /** Diagrams that link to others, and so are drawn again when those change. */
 export const links = (kind: Kind) => kind === "use cases" || kind === "classes";
 /** Diagrams others link to. */
 export const linkedTo = (kind: Kind) => kind === "sequence" || kind === "document";
+
+/** What types.ts says that contradicts itself: a write on a transient part, a part with no flavour. */
+export function typesFindings(t: Types): string[] {
+  const out: string[] = [];
+  for (const w of t.writes) {
+    const doc = t.documents.find((d) => d.key === w.doc);
+    if (doc && flavourOf(t, doc, w.path) === "transient") out.push(`the write ${w.key} lands on a transient part: a person does not write it`);
+  }
+  for (const d of t.documents) for (const [f, type] of t.interfaces.get(d.shape)?.types ?? []) if (!unwrap(type).flavour) out.push(`${d.shape}.${f} has no flavour: Persistent or Transient`);
+  return out;
+}
 
 /** What types.ts has that no diagram draws yet. */
 export function undrawn(t: Types, all: Checked[]): string[] {
