@@ -24,8 +24,6 @@ export type Assembled = {
   compartments: Compartment[];
   /** Every entry above, indexed by the docType it owns -- what server.ts's dispatcher resolves a `{doc, ops}` write against. */
   byDocType: Map<string, Compartment>;
-  /** The page, drawn once: in delta mode it may throw `Pending` for a document not held yet. */
-  renderFor(sessionId: string): string;
   /** The page, drawn until every document it reads is held. */
   draw(sessionId: string): Promise<string>;
   inspectFor(ws: ServerWebSocket<ConnectionData>, limit?: number): Promise<Inspection>;
@@ -52,7 +50,6 @@ export function assemble(example: Example): Assembled {
   const documents = copies.get(example) ?? createDocuments(example.delta);
   copies.set(example, documents);
 
-  const renderFor = (sessionId: string): string => example.render(sessionId);
   const draw = (sessionId: string): Promise<string> => settled(documents, () => example.render(sessionId));
 
   // Legibility: every document this connection sees -- the one of each type it is on, then
@@ -96,5 +93,5 @@ export function assemble(example: Example): Assembled {
     return { docs };
   }
 
-  return { compartments, byDocType, renderFor, draw, inspectFor, documents };
+  return { compartments, byDocType, draw, inspectFor, documents };
 }

@@ -112,7 +112,6 @@ export function createDocuments(local: Local) {
       if (!h) throw new Pending(doc);
       return h.value as T;
     },
-    held: (doc: string): boolean => held.has(doc),
     load,
 
     /** Writes through delta as `by.identity`, and resolves once the change is back and held. */

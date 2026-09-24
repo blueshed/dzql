@@ -232,12 +232,12 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     for (const m of cast) if (differs(a, b, m.name)) failures.push(`${what}: ${m.name}'s page differs${excerpt(a.get(m.name)!, b.get(m.name)!)}`);
   }
 
-  /** Canon 2: what each member's open page holds must be what a fresh render shows. */
   /** The patch stream: what each member's applets hold must be what a fresh render gives them. */
   async function held(cast: Member[], when: string, failures: string[]): Promise<void> {
     for (const m of cast) failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, await draw(m.sessionId)));
   }
 
+  /** Canon 2: what each member's open page holds must be what a fresh render shows. */
   async function stale(cast: Member[], when: string, failures: string[]): Promise<void> {
     await held(cast, when, failures);
     for (const m of cast) {

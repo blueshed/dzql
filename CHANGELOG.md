@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   To move across: a page is told every change to each document it reads, shown or not, so a page
   that reads a document it does not show leaks it by patch. Read only what the page shows, or cut
   the document by who reads it.
+- **`audienceFor(docType, docId)` takes no third argument.** Its `exclude` was passed by nobody.
+  To move across: filter the socket out of what it returns.
 - **A document kept off the ledger says so: `Compartment.ledger: false`.** A write whose ledger
   entry disagrees with its compartment is reported as a failure: one registered in delta without
   `{ ledger: true }` whose compartment does not say `ledger: false` (no undo could ever work), and
@@ -74,6 +76,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   says "examples/londons has 149 stories and no app yet (no index.ts): build the least that
   makes the first one pass", and an example with no `stories.ts` is told it starts there. Both
   exit 1.
+
+### Changed
+
+- **The README and the eta-app reference say what undo does on delta 0.6.0**: it puts a row back
+  as the write found it, over what anyone wrote to it since; no compartment is asked again, so a
+  deadline does not hold against it; and an undo whose inverse no longer applies sticks. The
+  wedding's server tests pin all three as `test.failing`, so bun says when delta fixes one.
+- **One set of open sockets.** The server kept its own beside `src/compartments/audience.ts`'s;
+  it reads that one (`allOpenSockets()`). `Assembled.renderFor` and `Documents.held`, which only a
+  test read, are gone.
 
 ### Added
 

@@ -1,5 +1,5 @@
 import { assemble } from "./compartments";
-import { audienceFor, closeConnection, openConnection, readersOf, resolveName, sees, setActiveCompartments, wireName, wireOps } from "./compartments/audience";
+import { allOpenSockets, audienceFor, closeConnection, openConnection, readersOf, resolveName, sees, setActiveCompartments, wireName, wireOps } from "./compartments/audience";
 import { fragmentsMessage, renderMessage } from "./compartments/render";
 import type { ConnectionData } from "./connection";
 import { setActiveDocuments, settled, type Documents } from "./documents";
@@ -43,8 +43,8 @@ const track = (p: Promise<unknown>): void => {
 function redraw(ws: Socket, whole = false, written?: { docType: string; docId: string }): Promise<void> {
   const next = (drawingFor.get(ws) ?? Promise.resolve()).then(async () => {
     if (!active) return;
-    const { assembled } = active;
-    const drawn = await settled(assembled.documents, () => drawing(ws, () => assembled.renderFor(ws.data.sessionId)));
+    const { example, assembled } = active;
+    const drawn = await settled(assembled.documents, () => drawing(ws, () => example.render(ws.data.sessionId)));
     const prev = sent.get(ws);
     sent.set(ws, drawn);
     const ops = prev && !whole ? diff(prev, drawn, written && wireName(written.docType, written.docId, ws)) : undefined;
@@ -198,10 +198,9 @@ export function createServer(example: Example, port: number | string = process.e
   /** Lets go of the documents no open page reads any more. */
   async function release(): Promise<void> {
     const keep = new Set<string>();
-    for (const ws of openSockets) for (const doc of shownTo(ws)) keep.add(doc);
+    for (const ws of allOpenSockets()) for (const doc of shownTo(ws)) keep.add(doc);
     await documents.release(keep);
   }
-  const openSockets = new Set<Socket>();
 
   const server = Bun.serve<ConnectionData>({
     port,
@@ -236,7 +235,6 @@ export function createServer(example: Example, port: number | string = process.e
     websocket: {
       open(ws) {
         openConnection(ws);
-        openSockets.add(ws);
         enqueue(async () => {
           for (const compartment of compartments) await compartment.onOpen?.(ws);
           await redraw(ws, true);
@@ -253,7 +251,6 @@ export function createServer(example: Example, port: number | string = process.e
       },
       close(ws) {
         closeConnection(ws);
-        openSockets.delete(ws);
         enqueue(async () => {
           for (const compartment of compartments) await compartment.onClose?.(ws);
           await quiet(documents);

@@ -77,15 +77,11 @@ export function sees(owner: Compartment, ws: ServerWebSocket<ConnectionData>, do
   return owner.resolveDoc(ws) === docId || shows(ws, owner.docType, docId);
 }
 
-/**
- * Every open connection that sees `docId` (`sees`, above). `exclude`, if given, is left out
- * regardless -- for an announcement that doesn't need telling about itself (a room's own presence
- * op), the same way a direct write's own connection doesn't need a second echo.
- */
-export function audienceFor(docType: string, docId: string, exclude?: ServerWebSocket<ConnectionData>): ServerWebSocket<ConnectionData>[] {
+/** Every open connection that sees `docId` (`sees`, above). */
+export function audienceFor(docType: string, docId: string): ServerWebSocket<ConnectionData>[] {
   const owner = byDocType?.get(docType);
   if (!owner) return [];
-  return [...openSockets].filter((ws) => ws !== exclude && sees(owner, ws, docId));
+  return [...openSockets].filter((ws) => sees(owner, ws, docId));
 }
 
 /** Every open connection whose page, as last drawn, read the document -- a session's own included: chat's presence reads everyone's name from their sessions. */
