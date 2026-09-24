@@ -1,5 +1,6 @@
 import type { Local } from "@blueshed/delta/local";
 import { applyOps, type DeltaOp } from "@blueshed/delta/core";
+import { failed } from "./failed";
 import { reading } from "./reading";
 import { splitDoc } from "./names";
 import type { PatchOp } from "./json-patch";
@@ -73,7 +74,7 @@ export function createDocuments(local: Local) {
       try {
         await fn(change);
       } catch (err) {
-        console.error(`eta: telling a change to ${change.doc} failed:`, err);
+        failed(`telling a change to ${change.doc}`, err);
       }
     }
   }

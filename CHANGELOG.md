@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking (for example authors)
+
+- **The stories check delivery, not only pages.** A story that passed may now fail, by name:
+  - an `unseen` member told of any document -- sent a patch -- by the write, its undo or its redo
+    (`cy was told of room:general, and should not have been`);
+  - a `cannot` whose writer is not answered with the page (`refused, but ada was not answered`);
+  - anything the kernel reports failing while the story runs (`the server failed handling an
+    event: …`), so a refusal that is really a throw is no longer a refusal.
+
+  To move across: a page is told every change to each document it reads, shown or not, so a page
+  that reads a document it does not show leaks it by patch. Read only what the page shows, or cut
+  the document by who reads it.
+
+### Added
+
+- **`failed(what, err)` and `onFailure(fn)`** (`src/failed.ts`): every failure the kernel catches
+  -- a message, a drawing, a change being told -- is logged in one place and heard by whoever
+  listens. The stories harness listens.
+
 ## [0.47.0] - 2026-09-24
 
 ### Breaking (for example authors)

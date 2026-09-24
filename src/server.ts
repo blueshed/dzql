@@ -5,6 +5,7 @@ import type { ConnectionData } from "./connection";
 import { setActiveDocuments, settled, type Documents } from "./documents";
 import type { Example } from "./example";
 import { patchMessage, type PatchOp } from "./json-patch";
+import { failed } from "./failed";
 import { splitDoc } from "./names";
 import { drawing, shownTo } from "./reading";
 import { diff, type Drawn } from "./parts";
@@ -50,7 +51,7 @@ function redraw(ws: Socket, whole = false, written?: { docType: string; docId: s
     if (ops === undefined) ws.send(renderMessage(drawn.html));
     else if (ops.length > 0) ws.send(fragmentsMessage(ops));
   });
-  const done = next.catch((err) => console.error("eta: drawing failed:", err));
+  const done = next.catch((err) => failed("drawing a page", err));
   drawingFor.set(ws, done);
   track(done);
   return done;
@@ -111,7 +112,7 @@ export function createServer(example: Example, port: number | string = process.e
     queue = queue
       .then(fn)
       .then(() => quiet(documents))
-      .catch((err) => console.error("eta:", err));
+      .catch((err) => failed("handling an event", err));
   };
 
   /** A write from the wire: permitted, shaped, written through delta as the person. */

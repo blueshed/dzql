@@ -73,8 +73,8 @@ Everything below is the least that makes it pass.
    `src/client/app`. The stylesheet imports `src/bento.css` first, then says its own tokens.
 8. **`index.ts`** -- `export const example: Example = { name, compartments, render, active, index, delta, who?, routes? }`. `render(sessionId)` is the whole page.
 9. **`cli.ts`** (optional) -- an `aliases` table of short verbs that build `{doc, ops}`; no database.
-10. **Tests** -- a test for each document's rules and shapes, a `server.test.ts` that drives writes and undo over a real
-    websocket (this is where delivery is checked: who is told, and with what), a
+10. **Tests** -- a test for each document's rules and shapes, a `server.test.ts` that drives writes
+    and undo over a real websocket (for what a story cannot say: a tab closing, two writes racing), a
     `client/app.test.ts` for what only a browser can show. The gate is `bun run check`,
     `bun test` (100% coverage) and `bun run stories:all`; verify a bug fix by reverting it and
     watching the test fail.

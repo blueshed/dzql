@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { example } from "../examples/chat";
 import { stories } from "../examples/chat/stories";
+import type { Compartment } from "./compartments/compartment";
+import { read } from "./documents";
+import type { Example } from "./example";
 import { comparable, hear, holding, print, retake, run, takersOn, unheld } from "./harness";
+import type { Story } from "./stories";
 
 // The harness against chat's own stories: one outcome per story, named as the story is, and the
 // cast's setup shared by all. What each story finds is the example's business (a failing story is
@@ -34,6 +38,37 @@ describe("stories harness", () => {
     expect(report.outcomes[2]!.failures.join("\n")).toMatch(/refused, but: ada's page differs\n\s+expected …/);
     expect(report.outcomes[0]!.failures[0]).toContain("ghost");
     expect(report.outcomes[1]!.failures).toContain('eve did not see it on ""');
+  }, 30000);
+
+  // Delivery, not only pages: chat broken on purpose, three ways its own stories could not see.
+  const only = (prefix: string): Story[] => stories.stories.filter((s) => s.name.startsWith(prefix));
+  const withRoom = (f: (room: Compartment) => Compartment): Example => ({ ...example, compartments: example.compartments.map((c) => (c.docType === "room" ? f(c) : c)) });
+  const failuresOf = async (broken: Example, told: Story[]): Promise<string[]> => (await run(broken, { ...stories, stories: told })).outcomes.flatMap((o) => o.failures);
+
+  test("someone the story says is unseen, told of the document all the same, fails it: a page that reads what it does not show", async () => {
+    const leaky: Example = { ...example, render: (sessionId) => (read("room:general"), example.render(sessionId)) };
+    const failures = await failuresOf(leaky, only("Ada says hello"));
+    expect(failures).toContain("after the story, cy was told of room:general, and should not have been");
+    expect(failures).toContain("after undo, eve was told of room:general, and should not have been");
+    expect(failures).toContain("after redo, dee was told of room:general, and should not have been");
+  }, 30000);
+
+  test("a refusal that is really the server failing fails the story, and so does one nobody answers", async () => {
+    const throwing = withRoom((room) => ({ ...room, permit: () => { throw new Error("a permit that throws"); } }));
+    expect((await failuresOf(throwing, only("Nobody can take"))).some((f) => f.startsWith("the server failed") && f.endsWith("a permit that throws"))).toBe(true);
+
+    // the page handed back cannot be drawn: the refusal goes unanswered
+    let refusing = false;
+    const unanswered: Example = {
+      ...withRoom((room) => ({ ...room, permit: (ws, op, id) => ((refusing = true), room.permit!(ws, op, id)) })),
+      render: (sessionId) => {
+        if (refusing) throw new Error(`the page cannot be drawn${(refusing = false) || ""}`);
+        return example.render(sessionId);
+      },
+    };
+    const failures = await failuresOf(unanswered, only("Nobody can take"));
+    expect(failures).toContain("refused, but ada was not answered: a refusal hands the page back");
+    expect(failures).toContain("the server failed drawing a page: the page cannot be drawn");
   }, 30000);
 
   test("an applet that follows its document's patches is compared without its props; any other element keeps them", () => {
