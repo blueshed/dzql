@@ -2,20 +2,22 @@
 title Dee enters a name, then general, and says hello
 actor "Dee" as dee
 participant "Chat" as app
-actor "Ada, Bob (in general)" as general
-actor "Cy (in the kitchen)" as kitchen
+actor "Ada, Bob (have room:general open)" as general
+actor "Cy (has room:kitchen open)" as kitchen
 
-dee -> app : enterName("")
+dee -> app : open session
+dee -> app : replace session /name ""
 app --> dee : a name is needed
-dee -> app : enterName("Dee")
-app --> dee : ok
-dee -> app : enterRoomName("")
+dee -> app : replace session /name "Dee"
+app --> dee : patch session replace /name "Dee"
+dee -> app : replace session /room ""
 app --> dee : a room's name is needed
-dee -> app : enterRoomName("general")
-app --> dee : the room, its members, its messages
-app -> general : Dee arrives
-dee -> app : say("hello")
-app --> dee : the message
-app -> general : Dee: hello
-note over kitchen : nothing: not in general
+dee -> app : replace session /room "general"
+app --> dee : patch session replace /room "general"
+app --> dee : open room:general
+app -> general : patch room:general add /members/- "Dee"
+dee -> app : add room:general /messages/- "hello"
+app --> dee : patch room:general add /messages/- (Dee, hello)
+app -> general : patch room:general add /messages/- (Dee, hello)
+note over kitchen : nothing: room:kitchen did not change
 @enduml

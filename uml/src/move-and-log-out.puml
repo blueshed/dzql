@@ -2,14 +2,14 @@
 title Cy enters general's name from the kitchen, then logs out
 actor "Cy" as cy
 participant "Chat" as app
-actor "the kitchen" as kitchen
-actor "general" as general
+actor "Eve (has room:kitchen open)" as kitchen
+actor "Ada, Bob (have room:general open)" as general
 
-cy -> app : enterRoomName("general")
-app --> cy : the room, its members, its messages
-app -> kitchen : Cy has gone
-app -> general : Cy arrives
-cy -> app : logout()
-app --> cy : ok
-app -> general : Cy has gone
+cy -> app : replace session /room "general"
+app --> cy : patch session replace /room "general"
+app --> cy : open room:general
+app -> kitchen : patch room:kitchen remove /members/1
+app -> general : patch room:general add /members/- "Cy"
+cy -> app : remove session
+app -> general : patch room:general remove /members/2
 @enduml

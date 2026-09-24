@@ -1,41 +1,44 @@
-// Does a diagram drift from types.ts? Names only: every class, field, message, state, event, actor
-// and use case a diagram draws must be a name types.ts has, and what types.ts has should be drawn
-// somewhere. Behaviour -- the order of a sequence, a guard -- lives in the diagrams alone.
+// Does a diagram drift from types.ts? Names only: every class, field, document, write, patch path,
+// state, event, actor and use case a diagram draws must be something types.ts has, and what
+// types.ts has should be drawn somewhere. Behaviour -- the order of a sequence, a guard -- lives in
+// the diagrams alone.
 //
-// types.ts is read in the plain style it is written in (interfaces, unions of string literals, an
-// `Api` interface of methods), so Bun is all it needs. Names are compared forgivingly -- case,
-// spaces and punctuation aside -- so a diagram can say "log in" where types.ts says `login`.
+// types.ts is read in the plain style it is written in (interfaces, unions of string literals, a
+// `Documents` and a `Writes` interface keyed by name), so Bun is all it needs. Names are compared
+// by their words, so a diagram can say "Log out" where types.ts says "log out".
 
-export type Types = {
-  interfaces: Map<string, { fields: string[]; methods: Map<string, string[]> }>;
-  unions: Map<string, string[]>;
-};
-export type Kind = "classes" | "sequence" | "states" | "use cases" | "other";
+export type Iface = { fields: string[]; types: Map<string, string> };
+export type Doc = { key: string; shape: string; openedBy: string; match: RegExp };
+export type WriteDef = { key: string; doc: string; path: string; ops: string[]; does: string; refused: string[] };
+export type Types = { interfaces: Map<string, Iface>; unions: Map<string, string[]>; documents: Doc[]; writes: WriteDef[] };
+export type Kind = "classes" | "sequence" | "states" | "use cases" | "document" | "other";
 export type Checked = { name: string; kind: Kind; drift: string[]; uses: Set<string> };
 
 export const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-/** A name's words: `chooseName` -> choose, name; "Choose a name" -> choose, a, name. */
-const words = (s: string) => s.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-/** Does a label name `name`? Its words appear in the label, in order ("Choose a name" names chooseName). */
+const ARTICLES = new Set(["a", "an", "the", "another"]);
+/** A name's words: `enterName` -> enter, name; "Enter a room's name" -> enter, room, s, name. */
+const words = (s: string) => s.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w && !ARTICLES.has(w));
+/** Does a label name `name`? Its words appear in the label, in order ("Enter another room's name" names "enter a room's name"). */
 export function names(label: string, name: string): boolean {
   const want = words(name), have = words(label);
-  // "log out" names logout: adjacent words, joined, may be one word of the name
   for (let i = 0; i < have.length; i++) for (let j = i + 2; j <= have.length; j++) if (have.slice(i, j).join("") === norm(name)) return true;
   let i = 0;
   for (const w of have) if (w === want[i] || w === `${want[i]}s`) i++;
-  return i === want.length;
+  return want.length > 0 && i === want.length;
 }
-/** The first of `candidates` a label names, the longest first so `chooseRoom` beats `choose`. */
-const named = (label: string, candidates: Iterable<string>) => [...candidates].sort((a, b) => words(b).length - words(a).length).find((c) => names(label, c));
+/** The first of `candidates` a label names, the longest first. */
+const named = (label: string, candidates: string[]) => [...candidates].sort((a, b) => words(b).length - words(a).length).find((c) => names(label, c));
+const literals = (s: string) => [...s.matchAll(/"([^"]*)"/g)].map((m) => m[1]!);
 
-/** Split a body into its top-level members, on `;` or a line break outside any bracket. */
+/** Split a body into its top-level members, on `;` or a line break outside any bracket or quote. */
 function members(body: string): string[] {
   const out: string[] = [];
-  let depth = 0, cur = "";
+  let depth = 0, cur = "", quoted = false;
   for (const ch of body) {
-    if ("{([<".includes(ch)) depth++;
-    if ("})]>".includes(ch)) depth--;
-    if ((ch === ";" || ch === "\n") && depth === 0) {
+    if (ch === '"') quoted = !quoted;
+    if (!quoted && "{([".includes(ch)) depth++;
+    if (!quoted && "})]".includes(ch)) depth--;
+    if (!quoted && (ch === ";" || ch === "\n") && depth === 0) {
       if (cur.trim()) out.push(cur.trim());
       cur = "";
     } else cur += ch;
@@ -45,12 +48,12 @@ function members(body: string): string[] {
 }
 
 export function readTypes(src: string): Types {
-  const text = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const text = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   const unions = new Map<string, string[]>();
   for (const m of text.matchAll(/export\s+type\s+(\w+)\s*=\s*([^;]+);/g)) {
-    if (/^\s*"[^"]*"(\s*\|\s*"[^"]*")*\s*$/.test(m[2]!)) unions.set(m[1]!, [...m[2]!.matchAll(/"([^"]*)"/g)].map((x) => x[1]!));
+    if (/^\s*"[^"]*"(\s*\|\s*"[^"]*")*\s*$/.test(m[2]!)) unions.set(m[1]!, literals(m[2]!));
   }
-  const interfaces: Types["interfaces"] = new Map();
+  const interfaces = new Map<string, Iface>();
   const head = /export\s+interface\s+(\w+)\s*\{/g;
   for (let m; (m = head.exec(text)); ) {
     let i = head.lastIndex, depth = 1;
@@ -60,76 +63,154 @@ export function readTypes(src: string): Types {
       else if (text[i] === "}") depth--;
       i++;
     }
-    const fields: string[] = [];
-    const methods = new Map<string, string[]>();
+    const iface: Iface = { fields: [], types: new Map() };
     for (const mem of members(text.slice(start, i - 1))) {
-      const method = mem.match(/^(\w+)\??\s*\(/);
-      if (method) {
-        // what it returns: every word and string literal after its parameters close
-        let d = 0, at = mem.indexOf("(");
-        for (; at < mem.length; at++) {
-          if (mem[at] === "(") d++;
-          if (mem[at] === ")" && --d === 0) break;
-        }
-        const ret = mem.slice(at + 1);
-        methods.set(method[1]!, [...[...ret.matchAll(/"([^"]*)"/g)].map((x) => x[1]!), ...(ret.match(/[A-Za-z]\w*/g) ?? [])]);
-        continue;
-      }
-      const field = mem.match(/^(\w+)\??\s*:/);
-      if (field) fields.push(field[1]!);
+      const f = mem.match(/^(?:"([^"]+)"|(\w+))\??\s*:\s*([\s\S]*)$/);
+      if (!f) continue;
+      const key = f[1] ?? f[2]!;
+      iface.fields.push(key);
+      iface.types.set(key, f[3]!.trim());
     }
-    interfaces.set(m[1]!, { fields, methods });
+    interfaces.set(m[1]!, iface);
   }
-  return { interfaces, unions };
+  const documents: Doc[] = [...(interfaces.get("Documents")?.types ?? [])].map(([key, type]) => ({
+    key,
+    shape: type.match(/shape:\s*(\w+)/)?.[1] ?? "",
+    openedBy: type.match(/openedBy:\s*"([^"]+)"/)?.[1] ?? "",
+    match: new RegExp(`^${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/<\w+>/g, "[^\\s/]+")}$`),
+  }));
+  const writes: WriteDef[] = [...(interfaces.get("Writes")?.types ?? [])].map(([key, type]) => {
+    const [doc, path = ""] = key.split(" ");
+    return {
+      key,
+      doc: doc!,
+      path,
+      ops: [...type.matchAll(/\b(add|replace|remove):/g)].map((m) => m[1]!),
+      does: type.match(/does:\s*"([^"]+)"/)?.[1] ?? "",
+      refused: literals(type.match(/refused:\s*((?:"[^"]*"\s*\|?\s*)+)/)?.[1] ?? ""),
+    };
+  });
+  for (const k of ["Documents", "Writes"]) interfaces.delete(k);
+  return { interfaces, unions, documents, writes };
 }
 
 export function kindOf(puml: string): Kind {
+  if (/@startjson/.test(puml)) return "document";
   if (/\[\*\]/.test(puml)) return "states";
   if (/\busecase\b/.test(puml)) return "use cases";
-  if (/^\s*class\s+\w+/m.test(puml)) return "classes";
+  if (/^\s*class\s+/m.test(puml)) return "classes";
   if (/-+>/.test(puml)) return "sequence";
   return "other";
 }
 
 const unquote = (s: string) => s.trim().replace(/^"|"$/g, "");
+/** "/messages/2/text" -> ["messages", "*", "text"]; "-" and ids are "*". */
+const segs = (p: string) => p.split("/").filter(Boolean).map((s) => (s === "-" || /^\d+$/.test(s) ? "*" : s));
+/** The interface an array or plain type names: "Message[]" -> Message. */
+const elementOf = (type = "") => type.match(/^(\w+)(\[\])?$/)?.[1];
 
 export function check(name: string, puml: string, t: Types): Checked {
   const kind = kindOf(puml);
   const drift: string[] = [];
   const uses = new Set<string>(); // what in types.ts this diagram draws, for "not drawn yet"
-  const api = t.interfaces.get("Api")?.methods ?? new Map<string, string[]>();
-  const classes = new Map([...t.interfaces].filter(([k]) => k !== "Api").map(([k, v]) => [norm(k), [k, v] as const]));
+  const docFor = (docName: string) => t.documents.find((d) => d.match.test(docName));
+  const doesList = t.writes.map((w) => w.does).filter(Boolean);
+
+  /** Is `path` a path in `doc`'s shape? A field, then (through a list of an interface) its element's field. */
+  const inShape = (doc: Doc, path: string): string | null => {
+    const shape = t.interfaces.get(doc.shape);
+    if (!shape) return `${doc.key}'s shape ${doc.shape} is not an interface`;
+    const [field, idx, sub] = segs(path);
+    if (!field) return null;
+    if (!shape.fields.includes(field)) return `${field} is not in ${doc.shape}`;
+    const type = shape.types.get(field) ?? "";
+    if (idx !== undefined && !type.endsWith("[]")) return `${field} is not a list`;
+    if (sub) {
+      const el = t.interfaces.get(elementOf(type) ?? "");
+      if (el && !el.fields.includes(sub)) return `${sub} is not in ${elementOf(type)}`;
+    }
+    return null;
+  };
+
+  if (kind === "document") {
+    // document-<name>.puml draws that document, as an example of it
+    const docName = name.replace(/^document-/, "");
+    const doc = t.documents.find((d) => d.key.split(":")[0] === docName);
+    if (!doc) drift.push(`no document in types.ts is called ${docName}`);
+    else {
+      uses.add(`document:${doc.key}`);
+      const shape = t.interfaces.get(doc.shape);
+      let example: Record<string, unknown> = {};
+      try {
+        example = JSON.parse(puml.replace(/@startjson|@endjson/g, "").replace(/^\s*#.*$/gm, ""));
+      } catch {
+        drift.push("the example is not JSON");
+      }
+      if (shape) {
+        for (const k of Object.keys(example)) if (!shape.fields.includes(k)) drift.push(`${k} is not in ${doc.shape}`);
+        for (const f of shape.fields) if (!(f in example)) drift.push(`${doc.shape}.${f} is not in the example`);
+        for (const [f, v] of Object.entries(example)) {
+          const elName = elementOf(shape.types.get(f));
+          const el = t.interfaces.get(elName ?? "");
+          if (el && Array.isArray(v)) for (const item of v) if (item && typeof item === "object") {
+            for (const k of Object.keys(item)) if (!el.fields.includes(k)) drift.push(`${f}: ${k} is not in ${elName}`);
+            for (const k of el.fields) if (!(k in item)) drift.push(`${f}: ${elName}.${k} is missing`);
+          }
+        }
+      }
+    }
+  }
 
   if (kind === "classes") {
-    for (const m of puml.matchAll(/^\s*class\s+(\w+)\s*\{([^}]*)\}/gm)) {
-      const found = classes.get(norm(m[1]!));
-      if (!found) { drift.push(`class ${m[1]} is not an interface in types.ts`); continue; }
-      const [iname, iface] = found;
+    for (const m of puml.matchAll(/^\s*class\s+(?:"[^"]+"\s+as\s+)?(\w+)(?:\s*<<[^>]*>>)?\s*\{([^}]*)\}/gm)) {
+      const iname = [...t.interfaces.keys()].find((k) => norm(k) === norm(m[1]!));
+      if (!iname) { drift.push(`class ${m[1]} is not an interface in types.ts`); continue; }
       uses.add(iname);
+      const iface = t.interfaces.get(iname)!;
       const drawn = m[2]!.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => l.split(":")[0]!.trim());
-      const fields = new Map(iface.fields.map((f) => [norm(f), f]));
-      for (const f of drawn) if (!fields.has(norm(f))) drift.push(`${m[1]}.${f} is not a field of ${iname}`);
-      const drawnN = new Set(drawn.map(norm));
-      for (const f of iface.fields) if (!drawnN.has(norm(f))) drift.push(`${iname}.${f} is in types.ts but not drawn`);
+      for (const f of drawn) if (!iface.fields.some((x) => norm(x) === norm(f))) drift.push(`${m[1]}.${f} is not a field of ${iname}`);
+      for (const f of iface.fields) if (!drawn.some((x) => norm(x) === norm(f))) drift.push(`${iname}.${f} is in types.ts but not drawn`);
     }
   }
 
   if (kind === "sequence") {
     const actors = new Set<string>();
     for (const m of puml.matchAll(/^\s*actor\s+(?:"([^"]+)"|(\w+))(?:\s+as\s+(\w+))?/gm)) actors.add(m[3] ?? m[2] ?? m[1]!);
-    let call: string | null = null, caller: string | null = null;
+    let write: WriteDef | null = null, caller: string | null = null;
     for (const m of puml.matchAll(/^\s*("[^"]+"|\w+)\s*(-+>+)\s*("[^"]+"|\w+)\s*:\s*(.+)$/gm)) {
       const from = unquote(m[1]!), to = unquote(m[3]!), label = m[4]!.trim();
       const reply = m[2]!.startsWith("--");
-      if (actors.has(from) && !reply) {
-        const method = named(label.split("(")[0]!, api.keys());
-        if (!method) { drift.push(`${from} sends "${label}", which names no method of Api`); call = null; }
-        else { call = method; caller = from; uses.add(`Api.${method}`); }
-      } else if (reply && call && to === caller) {
-        const words = new Set((api.get(call) ?? []).map(norm));
-        const said = label.split(/[^A-Za-z0-9']+/).map(norm).filter(Boolean);
-        if (!said.some((w) => words.has(w) || words.has(w.replace(/s$/, ""))) && !words.has(norm(label))) drift.push(`the reply "${label}" names nothing ${call} returns`);
-      }
+      const open = label.match(/^open\s+(\S+)/);
+      const patch = label.match(/^patch\s+(\S+)\s+(add|replace|remove)\s+(\/\S*)/);
+      const wrote = label.match(/^(add|replace|remove)\s+(\S+)(?:\s+(\/\S*))?/);
+      if (open) {
+        const doc = docFor(open[1]!);
+        if (!doc) drift.push(`"${label}": ${open[1]} is not a document in types.ts`);
+        else uses.add(`document:${doc.key}`);
+      } else if (patch) {
+        // a document changing, sent to whoever has it open
+        const doc = docFor(patch[1]!);
+        if (!doc) { drift.push(`"${label}": ${patch[1]} is not a document in types.ts`); continue; }
+        uses.add(`document:${doc.key}`);
+        const bad = inShape(doc, patch[3]!);
+        if (bad) drift.push(`"${label}": ${bad}`);
+      } else if (wrote && actors.has(from) && !reply) {
+        // a person's write: a document and a path in it
+        const doc = docFor(wrote[2]!);
+        if (!doc) { drift.push(`"${label}": ${wrote[2]} is not a document in types.ts`); continue; }
+        uses.add(`document:${doc.key}`);
+        const path = wrote[3] ?? "";
+        const bad = inShape(doc, path);
+        if (bad) drift.push(`"${label}": ${bad}`);
+        write = t.writes.find((w) => w.doc === doc.key && segs(w.path).join("/") === segs(path).join("/")) ?? null;
+        caller = from;
+        if (!write) drift.push(`${from} writes "${label}", which is not in Writes`);
+        else if (!write.ops.includes(wrote[1]!)) drift.push(`"${label}": ${write.key} allows ${write.ops.join(", ")}, not ${wrote[1]}`);
+        else uses.add(`write:${write.key}`);
+      } else if (reply && to === caller && write) {
+        const allRefusals = t.writes.flatMap((w) => w.refused);
+        if (allRefusals.some((r) => norm(r) === norm(label)) && !write.refused.some((r) => norm(r) === norm(label))) drift.push(`"${label}" is not how ${write.key} is refused`);
+      } else if (actors.has(from) && !reply) drift.push(`${from} sends "${label}", which is neither a write nor an open`);
     }
   }
 
@@ -137,23 +218,25 @@ export function check(name: string, puml: string, t: Types): Checked {
     const states = new Set<string>(), events = new Set<string>();
     for (const m of puml.matchAll(/^\s*(\[\*\]|\w+)\s*-+>\s*(\[\*\]|\w+)\s*(?::\s*(.+))?$/gm)) {
       for (const s of [m[1]!, m[2]!]) if (s !== "[*]") states.add(s);
-      if (m[3]) events.add(m[3].split(/[\[\/]/)[0]!.trim());
+      if (m[3]) events.add(m[3].split(/[[/]/)[0]!.trim());
     }
     const union = [...t.unions].find(([k, v]) => k.endsWith("State") && v.some((x) => [...states].some((s) => norm(s) === norm(x))));
     if (!union) drift.push(`no union ending in "State" in types.ts has these states`);
     else {
       uses.add(union[0]);
-      const members = new Set(union[1].map(norm));
-      for (const s of states) if (!members.has(norm(s))) drift.push(`state ${s} is not in ${union[0]}`);
+      const set = new Set(union[1].map(norm));
+      for (const s of states) if (!set.has(norm(s))) drift.push(`state ${s} is not in ${union[0]}`);
       const drawn = new Set([...states].map(norm));
       for (const s of union[1]) if (!drawn.has(norm(s))) drift.push(`${union[0]} has "${s}", not drawn`);
     }
-    const eventUnions = [...t.unions].filter(([k]) => k.endsWith("Event"));
-    const eventNames = [...api.keys(), ...eventUnions.flatMap(([, v]) => v)];
+    const eventNames = [...doesList, ...[...t.unions].filter(([k]) => k.endsWith("Event")).flatMap(([, v]) => v)];
     for (const e of events) {
       const hit = named(e, eventNames);
-      if (!hit) drift.push(`event "${e}" is not an Api method or in a union ending in "Event"`);
-      else uses.add(api.has(hit) ? `Api.${hit}` : eventUnions.find(([, v]) => v.includes(hit))![0]);
+      if (!hit) drift.push(`event "${e}" is not a write in Writes or in a union ending in "Event"`);
+      else {
+        const w = t.writes.find((x) => x.does === hit);
+        if (w) uses.add(`does:${w.key}`);
+      }
     }
   }
 
@@ -162,34 +245,31 @@ export function check(name: string, puml: string, t: Types): Checked {
     for (const m of puml.matchAll(/^\s*actor\s+(?:"([^"]+)"|(\w+))/gm)) {
       const a = m[1] ?? m[2]!;
       if (!actorUnion.some((x) => norm(x) === norm(a))) drift.push(`actor ${a} is not in Actor`);
-      else uses.add("Actor");
     }
     for (const m of puml.matchAll(/usecase\s+"([^"]+)"/g)) {
-      const method = named(m[1]!, api.keys());
-      if (!method) drift.push(`use case "${m[1]}" is not a method of Api`);
-      else uses.add(`Api.${method}`);
+      const label = m[1]!.split("\\n")[0]!;
+      const hit = named(label, doesList);
+      if (!hit) drift.push(`use case "${label}" is not what any write in Writes does`);
+      else uses.add(`does:${t.writes.find((w) => w.does === hit)!.key}`);
     }
   }
 
-  // A refusal Api gives is drawn when a diagram says its reason, anywhere: a reply, or a
-  // transition's action (`enter a name [blank] / a name is needed`).
-  for (const r of reasons(t)) if (norm(puml).includes(norm(r))) uses.add(`reason:${r}`);
-
+  // A refusal is drawn when a diagram says its reason, anywhere: a reply, or a transition's action.
+  for (const r of t.writes.flatMap((w) => w.refused)) if (norm(puml).includes(norm(r))) uses.add(`reason:${r}`);
   return { name, kind, drift, uses };
-}
-
-/** Every reason an Api method can refuse with: the string literals given to `reason`. */
-export function reasons(t: Types): string[] {
-  return [...new Set([...(t.interfaces.get("Api")?.methods.values() ?? [])].flatMap((r) => r))].filter((w) => /\s/.test(w));
 }
 
 /** What types.ts has that no diagram draws yet. */
 export function undrawn(t: Types, all: Checked[]): string[] {
   const used = new Set(all.flatMap((c) => [...c.uses]));
   const out: string[] = [];
-  for (const k of t.interfaces.keys()) if (k !== "Api" && !used.has(k)) out.push(`${k} (a class)`);
-  for (const m of t.interfaces.get("Api")?.methods.keys() ?? []) if (!used.has(`Api.${m}`)) out.push(`Api.${m}`);
+  for (const k of t.interfaces.keys()) if (!used.has(k)) out.push(`${k} (a class)`);
+  for (const d of t.documents) if (!all.some((c) => c.kind === "document" && c.uses.has(`document:${d.key}`))) out.push(`the document ${d.key}, drawn as an example`);
+  for (const w of t.writes) {
+    if (!used.has(`write:${w.key}`)) out.push(`the write ${w.key}, in a sequence`);
+    if (!used.has(`does:${w.key}`)) out.push(`"${w.does}", as a use case or a state's event`);
+  }
   for (const k of t.unions.keys()) if (k.endsWith("State") && !used.has(k)) out.push(`${k} (states)`);
-  for (const r of reasons(t)) if (!used.has(`reason:${r}`)) out.push(`the refusal "${r}"`);
+  for (const r of t.writes.flatMap((w) => w.refused)) if (!used.has(`reason:${r}`)) out.push(`the refusal "${r}"`);
   return out;
 }

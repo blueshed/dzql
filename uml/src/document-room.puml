@@ -1,0 +1,10 @@
+@startjson
+{
+  "name": "general",
+  "members": ["Ada", "Bob", "Dee"],
+  "messages": [
+    { "author": "Ada", "text": "morning", "at": "09:02" },
+    { "author": "Dee", "text": "hello", "at": "09:05" }
+  ]
+}
+@endjson

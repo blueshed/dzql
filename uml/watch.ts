@@ -23,7 +23,7 @@ const diagrams = new Map<string, Diagram>();
 // types.ts: every name the diagrams use. Each diagram is checked against it; a change to it
 // re-checks them all.
 const TYPES = `${dir}/types.ts`;
-let types: Types = { interfaces: new Map(), unions: new Map() };
+let types: Types = { interfaces: new Map(), unions: new Map(), documents: [], writes: [] };
 const checked = new Map<string, ReturnType<typeof check>>();
 async function loadTypes() {
   const f = Bun.file(TYPES);

@@ -1,27 +1,24 @@
 @startuml
-title Classes: chat
+title Classes: the documents' shapes
 hide empty methods
 
-class Session {
-  id
+class "room:<name>" as RoomDoc <<document>> {
   name
-  room
-  state : SessionState
+  members
+  messages
 }
 
-class Room {
+class "session" as SessionDoc <<document>> {
   name
+  room
 }
 
 class Message {
-  id
-  room
   author
   text
   at
 }
 
-Session "0..*" -- "0..1" Room : is in >
-Room "1" -- "0..*" Message : holds >
-Session "1" -- "0..*" Message : wrote >
+RoomDoc *-- "0..*" Message : messages
+SessionDoc ..> RoomDoc : room names one >
 @enduml
