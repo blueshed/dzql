@@ -3,14 +3,14 @@ title Disconnect, and come back
 actor "Dee" as dee
 participant "Chat" as app
 actor "Ada, Bob (have room:general open)" as room
-actor "everyone with a name (has lobby open)" as lobby
 
 dee -> app : disconnect
 note right of app : Dee's session is kept (stored): her name and room.\nOnly what is derived from who is connected changes.
 group derived again: a patch goes only where a value changed
   app -> room : patch room:general remove /members/Dee
-  app -> lobby : patch lobby remove /rooms/general
+  note over room : the lobby does not change: Ada and Bob are still in general
 end
+note right of app : "Dee" stays taken while she is away: her session is stored
 == later ==
 dee -> app : connect
 app --> dee : open session
@@ -18,7 +18,6 @@ app --> dee : open lobby
 app --> dee : open room:general
 group derived again: a patch goes only where a value changed
   app -> room : patch room:general add /members/Dee
-  app -> lobby : patch lobby add /rooms/general
 end
 note over app : a restart is everyone disconnecting at once: members and the lobby are empty\nuntil people connect again; sessions, rooms and messages are as they were
 @enduml

@@ -8,7 +8,7 @@ app --> dee : open session
 dee -> app : replace session /name <name>
 alt the name is blank
   app --> dee : a name is needed
-else another connected person has that name
+else another session has that name (stored, connected or not)
   app --> dee : that name is in use
 else
   app --> dee : patch session replace /name "Dee"

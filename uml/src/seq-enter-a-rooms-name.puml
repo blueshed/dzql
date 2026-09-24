@@ -1,9 +1,8 @@
 @startuml
-title Enter a room's name (and another room's name)
+title Enter a room's name: Dee moves from the kitchen to the attic, which nobody has entered
 actor "Dee" as dee
 participant "Chat" as app
 actor "Eve (has room:kitchen open)" as old
-actor "Ada, Bob (have room:general open)" as room
 actor "everyone with a name (has lobby open)" as lobby
 
 dee -> app : replace session /room <room>
@@ -14,17 +13,16 @@ else the room's name is blank
 else the same room she is in
   note right of app : nothing changes
 else
-  app --> dee : patch session replace /room "general"
+  app --> dee : patch session replace /room "attic"
   opt already in a room: entering another room's name
     app --> dee : close room:kitchen
   end
   group derived again: a patch goes only where a value changed
     app -> old : patch room:kitchen remove /members/Dee
-    app -> room : patch room:general add /members/Dee
-    app -> lobby : patch lobby add /rooms/general
-    app -> lobby : patch lobby remove /rooms/kitchen
+    app -> lobby : patch lobby add /rooms/attic
+    note over lobby : the kitchen stays in the lobby: Eve is still in it
   end
-  app --> dee : open room:general
-  note right of app : the room is made if nobody has entered it yet;\nDee's copy has Dee in it, and its latest messages
+  app --> dee : open room:attic
+  note right of app : the attic is made, since nobody had entered it;\nDee's copy has Dee in it, and no messages yet
 end
 @enduml

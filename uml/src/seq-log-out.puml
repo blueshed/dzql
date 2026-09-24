@@ -1,9 +1,8 @@
 @startuml
-title Log out
+title Log out: you start again, nameless
 actor "Dee" as dee
 participant "Chat" as app
 actor "Ada, Bob (have room:general open)" as room
-actor "everyone with a name (has lobby open)" as lobby
 
 dee -> app : remove session
 app --> dee : close room:general
@@ -11,7 +10,9 @@ app --> dee : close lobby
 app --> dee : close session
 group derived again: a patch goes only where a value changed
   app -> room : patch room:general remove /members/Dee
-  app -> lobby : patch lobby remove /rooms/general
+  note over room : the lobby does not change: Ada and Bob are still in general
 end
+app --> dee : open session
+note right of dee : a fresh session, nameless: "Dee" is free again
 note over dee : not on the ledger: logging out is not undone
 @enduml

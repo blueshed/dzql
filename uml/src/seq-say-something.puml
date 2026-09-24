@@ -3,7 +3,7 @@ title Say something
 actor "Dee" as dee
 participant "Chat" as app
 actor "Ada, Bob (have room:general open)" as room
-actor "Cy (has room:kitchen open)" as other
+actor "Eve (has room:kitchen open)" as other
 
 dee -> app : add room:general /messages/- <text>
 alt Dee is not in general

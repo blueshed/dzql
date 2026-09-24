@@ -1,8 +1,9 @@
 // Every name the diagrams use. The app: chat. A person enters a name, then enters a room's name,
 // which takes them into that room (and makes it, if nobody has); says things that everyone in the
 // room sees; enters another room's name to move; and logs out. There is no leaving a room but by
-// entering another, or logging out. Nothing is chosen from a list: every name is typed, and a blank
-// one is refused with a reason.
+// entering another, or logging out. Logging out removes the session (freeing its name) and a fresh,
+// nameless one opens: you start again. Names are unique among stored sessions, connected or not.
+// Nothing is chosen from a list: every name is typed, and a blank one is refused with a reason.
 //
 // The documents are what a person has open. The app opens and closes them for the person (Reads). A
 // write names a document and a path in it, never a function (Writes); everyone who has the document
@@ -61,7 +62,7 @@ export interface Documents {
 
 /** When the app opens and closes each document for a person. Opening sends the document whole; a room sends its latest messages. */
 export interface Reads {
-  "session": { opens: "on connect"; closes: "on disconnect, or logging out" };
+  "session": { opens: "on connect, and afresh after logging out"; closes: "on disconnect, or logging out" };
   "lobby": { opens: "once the person has a name"; closes: "on disconnect, or logging out" };
   "room:<name>": { opens: "on entering its name"; closes: "on entering another room's name, disconnecting, or logging out" };
 }
