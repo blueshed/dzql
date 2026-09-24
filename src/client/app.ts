@@ -188,7 +188,8 @@ function applyFragments(ops: HtmlOp[]) {
 
   for (const op of ops) {
     const target = app.querySelector(op.target);
-    if (!target) continue;
+    // what is inside an applet is the applet's, as it is to the morph: its own element may be a part, nothing in it
+    if (!target || target.parentElement?.closest("[data-applet]")) continue;
     if (op.op === "replace") {
       morphElement(target, op.html, hooks);
     } else if (op.op === "tag") {

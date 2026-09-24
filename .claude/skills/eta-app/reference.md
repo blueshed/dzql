@@ -227,7 +227,8 @@ then a modal. A list of five needs no find.
 ## Applets (`src/applets.ts`)
 
 Only for a piece of the page whose client-side state a re-render would destroy. The morph never
-descends into `[data-applet]`.
+descends into `[data-applet]`, and nor does a render in parts: the applet's own element may be a
+part (its tag, its props), nothing inside it.
 
 ```ts
 export type Applet = {

@@ -39,6 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   showing the undone value, and an editing form (`data-write-on`), comparing it with what was
   rendered, sent it again on the next blur -- reverting the undo. A render that changes a field
   nobody is in now sets what it shows; a field someone is in keeps what they type.
+- **A render in parts never reaches inside an applet** (`src/client/app.ts`). Its targets were
+  found anywhere in the page, so a part inside an applet's element was replaced, or had rows put
+  beside it, over what the applet drew. The applet's own element may still be a part.
 - **`inspect` gives at most 100 entries a document**, however many it asks for: `limit: 1e9` asked
   delta for a document's whole history, and every event waited on the answer. A limit that is not
   a whole number is the default (the latest).

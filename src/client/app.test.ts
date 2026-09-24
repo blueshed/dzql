@@ -322,4 +322,20 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string>(`document.getElementById('msg').value`)).toBe("Hello!");
   });
 
+  test("a render in parts never reaches inside an applet; the applet's own element may still be a part", async () => {
+    await using view = await open();
+    await pushRender(view, `<div data-applet="unregistered" data-eta-part="a" class="one"><ul data-eta-part="inside"><li>drawn by the applet</li></ul></div>`);
+    await waitFor(view, `document.querySelector('[data-eta-part="a"]') !== null`, (v) => v === true);
+    await push(view, {
+      type: "render",
+      ops: [
+        { op: "replace", target: '[data-eta-part="inside"]', html: `<ul data-eta-part="inside"><li>the server's</li></ul>` },
+        { op: "after", target: '[data-eta-part="inside"]', html: `<p>more</p>` },
+        { op: "tag", target: '[data-eta-part="a"]', html: `<div data-applet="unregistered" data-eta-part="a" class="two">` },
+      ],
+    });
+    await waitFor(view, `document.querySelector('[data-eta-part="a"]').className`, (v) => v === "two");
+    expect(await view.evaluate<string>(`document.querySelector('[data-eta-part="a"]').textContent`)).toBe("drawn by the applet");
+  });
+
 });
