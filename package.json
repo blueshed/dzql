@@ -18,6 +18,8 @@
     "@types/bun": "latest"
   },
   "dependencies": {
+    "@blueshed/delta": "file:../blueshed/delta",
+    "@blueshed/railroad": "0.11.0",
     "lucide": "^1.46.0"
   }
 }
