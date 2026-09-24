@@ -11,8 +11,10 @@ documents, patches and HTML that a person can read.
 
 ## Try it
 
-You need Bun, and delta checked out beside this repository at `../blueshed/delta`
-(`package.json` takes `@blueshed/delta` from there for now).
+You need Bun, and delta checked out beside this repository at `../blueshed/delta`. eta needs
+delta 0.6.0, which is not on npm yet: `createLocal`, documents that are `implied`, and the
+ledger's undo, redo and history are new there. Until it is, `package.json` takes
+`@blueshed/delta` from that checkout.
 
 ```
 bun install
@@ -21,17 +23,24 @@ bun run dev
 
 Open http://localhost:3000. Give a name, name a room, say something. Open a private window, give
 another name and go into the same room: each of you sees the other arrive and speak. Undo, at the
-bottom right, takes back your last message, for both of you.
+bottom right, takes back your own last write, and the other sees it go: your last message, or, if
+you have only just come in, your coming into the room.
 
-That is chat, the smallest example. Two more:
+That is chat, the smallest example. Two more, and a mock-up:
 
 - `bun run dev:wedding` (port 3001): a site for one wedding. The codes are `DASH` (the couple),
   `OKAFOR` and `BEN` (two households). There is a Lego minifigure builder, and a photo of
   everyone coming that fills in live.
 - `bun run dev:ticker` (port 3002): a price board and a Swiss railway clock, both drawn in the
   browser.
+- `bun run dev:bento` (port 3003): the bento mock-up, a page to look at and click, with no eta
+  behind it.
 
-`ETA_EXAMPLE=<name>` picks the example for any command; the default is `chat`.
+`ETA_EXAMPLE=<name>` picks the example for `bun run dev`, `start`, `stories` and `cli` (default
+`chat`); `dev:wedding`, `dev:ticker` and `stories:all` set it themselves. The CLI also needs
+`ETA_URL` for the server it talks to (default `ws://localhost:3000`). `.env.example` explains every
+setting, among them `ETA_URL`, `TICK_MS` and `CLOCK_TZ` (the ticker) and `REVEAL` (the
+wedding).
 
 ## What it pairs with
 
@@ -39,19 +48,20 @@ That is chat, the smallest example. Two more:
   of changes. eta owns people and pages; delta owns the data. An example's `delta.ts` says which
   tables it has and which documents are cut from them.
 - **[@blueshed/railroad](../blueshed/railroad)** can draw an applet, the part of a page that keeps
-  state of its own in the browser. It is an example's choice; eta does not depend on it.
+  state of its own in the browser. No example uses it today; an example may, and eta does not
+  depend on it.
 
 ## Why eta
 
-- **Undo and redo for everything.** Every write is a patch with an inverse, recorded on delta's
-  ledger. Undo walks your own writes back, even while others keep writing.
+- **Undo and redo.** A write to a document on delta's ledger is a patch recorded with its
+  inverse. Undo walks your own writes back, even while others keep writing.
 - **Stories are the tests.** An example is a list of sentences -- who does what, and who then
   sees it -- and `bun run stories` checks each one over real sockets, with its undo and redo.
 - **A small client.** The kernel's client is about 2.7 KB minified and gzipped: a morph, the write
   gestures and an applet registry. There is no framework to learn.
 - **Nothing else to run.** Bun and SQLite, one process, one file.
 - **A readable wire.** `bun run cli watch` prints every patch as it happens; `bun run cli undo`
-  undoes from a terminal.
+  undoes the CLI session's own last write, from a terminal.
 
 It suits small teams making live apps where being able to undo and to see what happened matter
 more than scale: a wedding, a booking board, a classroom, an ops console. It is not built for a
