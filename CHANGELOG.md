@@ -63,6 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The 100% gate holds on macOS too.** `src/webview.ts` took its Chrome path only on Linux, so on
+  a Mac two lines were never run and `bun test` failed; the platform is now a parameter and a
+  unit test takes both paths.
+
 - **Undo no longer puts a row back over what someone wrote since**, and **an undo that no longer
   applies no longer sticks** the session's Undo on it: both delta's, taken with 0.7.0. The two
   wedding tests that pinned them as known failures now pass.
