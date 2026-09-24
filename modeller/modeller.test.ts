@@ -181,13 +181,13 @@ describe("the examples", () => {
   // through another document -- the stories do not say which table a document's path lands in.
   test("londons: every row gap is a twin added through another document", () => {
     const { reading, report } = judge(londons);
-    expect(report.counts).toMatchObject({ stories: 149, does: 129, cannot: 20 });
+    expect(report.counts).toMatchObject({ stories: 157, does: 133, cannot: 24 });
     const rowGaps = report.gaps.filter((g) => g.kind === "unestablished-row");
-    expect(rowGaps.length).toBe(24);
-    expect([...new Set(rowGaps.map((g) => g.refs!.entity))].sort()).toEqual(["Custody", "Market", "ProjectSupplyOffer", "Scenario", "VenueDeployment", "WorkerAssignment"]);
+    expect(rowGaps.length).toBe(26);
+    expect([...new Set(rowGaps.map((g) => g.refs!.entity))].sort()).toEqual(["Custody", "MarketCampaign", "MarketPackage", "ProjectSupplyOffer", "Scenario", "VenueDeployment", "WorkerAssignment"]);
     expect(report.gaps.filter((g) => g.kind !== "unestablished-row")).toEqual([]);
     const added = new Set(reading.model.stories.flatMap((s) => s.writes.filter((w) => w.op === "add" && !w.path).map((w) => w.entity)));
-    for (const twin of ["Stock", "Campaign", "ProjectSupplyOffer", "EngagementScenario", "ProjectDeployment", "ProjectWindowAssignment"])
+    for (const twin of ["Stock", "Campaign", "OccasionPackage", "ProjectSupplyOffer", "EngagementScenario", "ProjectDeployment", "ProjectWindowAssignment"])
       expect(added.has(twin) || twin === "ProjectSupplyOffer").toBe(true);
     expect(added.has("Opportunity")).toBe(true);
     // The tray is what `at` writes, and it is left out: the page's state, not the model's.

@@ -1,12 +1,12 @@
 @startuml
 title Campaign: the promoter, and the sponsor who buys it on the market
-[*] --> draft : promoter assembles (58)
-draft --> offered : promoter offers (60)
-offered --> withdrawn : promoter withdraws (61)
-offered --> agreed : sponsor buys on the market (92)
-draft -[dotted]-> offered : sponsor cannot offer (62)
-draft -[dotted]-> agreed : sponsor cannot buy what is not on offer (94)
-offered -[dotted]-> agreed : sponsor cannot buy a campaign holding a sold package (96)
+[*] --> draft : promoter assembles (60)
+draft --> offered : promoter offers (62)
+offered --> withdrawn : promoter withdraws (63)
+offered --> agreed : sponsor buys on the market (94)
+draft -[dotted]-> offered : sponsor cannot offer (64)
+draft -[dotted]-> agreed : sponsor cannot buy what is not on offer (96)
+offered -[dotted]-> agreed : sponsor cannot buy a campaign holding a sold package (98)
 withdrawn --> [*]
 agreed --> [*]
 @enduml

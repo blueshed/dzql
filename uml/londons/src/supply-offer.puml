@@ -1,11 +1,11 @@
 @startuml
 title Supply offer: the supplier and the contractor
-[*] --> offered : supplier offers (145)
-offered --> offered : supplier revises its price (146)
-offered --> withdrawn : supplier withdraws (147)
-offered --> accepted : contractor accepts (148)
-offered --> declined : contractor declines (149)
-offered -[dotted]-> accepted : supplier cannot accept its own offer (150)
+[*] --> offered : supplier offers (150)
+offered --> offered : supplier revises its price (151)
+offered --> withdrawn : supplier withdraws (152)
+offered --> accepted : contractor accepts (153)
+offered --> declined : contractor declines (154)
+offered -[dotted]-> accepted : supplier cannot accept its own offer (155)
 withdrawn --> [*]
 accepted --> [*]
 declined --> [*]

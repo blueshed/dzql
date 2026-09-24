@@ -8,12 +8,12 @@
 // themselves; a venue owner has areas and sites with a performance baseline; a promoter packages
 // rights at an occasion and may gather packages into campaigns; a sponsor has brands and artwork,
 // opens an engagement with a brief, commissions a scenario from a contractor, approves it, and buys
-// a package or a campaign; the contractor keeps a catalogue of modules, places them against the rights, dresses
-// their faces, prices the placement, and runs the project -- deployments the venue owner accepts,
-// work windows, trips, workers, supply lines that suppliers bid on; a worker builds and strikes.
-// Four agreements are two-sided and every field has one writer: hosting (authority and venue),
-// scenario (sponsor and contractor), deployment (contractor and venue), supply (supplier and
-// contractor). Whose move it is stays visible on the thing itself.
+// a package or a campaign; the contractor keeps a catalogue of modules, places them against the
+// rights, dresses their faces, prices the placement, and runs the project -- deployments the venue
+// owner accepts, work windows, trips, workers, supply lines that suppliers bid on; a worker builds
+// and strikes. Four agreements are two-sided and every field has one writer: hosting (authority and
+// venue), scenario (sponsor and contractor), deployment (contractor and venue), supply (supplier
+// and contractor). Whose move it is stays visible on the thing itself.
 //
 // A package is sold alone or in a campaign, and either way it is agreed: from then on no other
 // sponsor can have it, and every campaign holding it leaves the market, on offer or not. Nothing
@@ -73,23 +73,22 @@
 // organisations 1 Board (authority), 2 The Downs Company (venue owner), 3 Festival Promotions
 // (promoter), 4 Harrow (sponsor), 5 Londons (contractor), 6 Northgate Signs (supplier); person 1
 // Sam (worker, of Londons). Venue 1 Ashcombe Racecourse with area 1 Paddock (site 1 the
-// parade ring screen, site 2 the winning-post boards) and area 2 the Old Hollow enclosure. Series
-// 1 the Jump season 2027 (Board) with hosting agreements 1 (venue 1, invited) and 2 (venue 1,
+// parade ring screen, site 2 the winning-post boards) and area 2 the Old Hollow enclosure. Series 1
+// the Jump season 2027 (Board) with hosting agreements 1 (venue 1, invited) and 2 (venue 1,
 // proposed); occasion 1 The Festival 2027 (16-19 March) at venue 1 in series 1, delegated to
 // promoter 3, with event 1 Silver Bowl day, moment 1 the Ashcombe Roar, permit 1 (area 1, granted)
-// and permit 2 (revoked); packages 1 (draft, right 1 on site 1), 2 (offered, right 2 on site
-// 2) and 3 (agreed: sold); campaigns 1 (draft, promoter 3), 2 (offered, with package 2) and 3
-// (offered, with package 3). Brand 1 Harrow with
-// artwork 1; engagement 1 (sponsor 4) with scenarios 1 (draft), 2 (proposed), 3 (approved) and 4
-// (rejected), all by contractor 5; placement 1 (scenario 3, right 2, product 1) with face 1 and
-// requirement 1 (buy). Products 1 the 6m banner frame (part 1, face 1, taskdef 1 rig and taskdef
-// 2 strike depending on 1, resource 1) and 2 the LED tower; rate card 1 (rigger). Stock 1
-// (sponsor 4, held by contractor 5, 12 banners, good). Project 1 (contractor 5, occasion 1, open)
-// with deployments 1 (proposed, site 1), 2 (accepted, site 2, permit 1), 3 (built), 4 (blocked), 5
-// (rejected); work window 1 (14 March, area 1) with assignment 1 (Sam, assigned, deployment 2)
-// and assignment 2 (done, deployment 3); trip 1; tasks 1 (todo) and 2 (done) on deployment 2;
-// supply line 1 (open, requirement 1) with offer 1 (Northgate Signs, offered) and supply line 2
-// (accepted).
+// and permit 2 (revoked), and the venue's own permit 3 (site 1, granted); packages 1 (draft, right
+// 1 on site 1), 2 (offered, right 2 on site 2) and 3 (agreed: sold); campaigns 1 (draft, promoter
+// 3), 2 (offered, with package 2) and 3 (offered, with package 3). Brand 1 Harrow with artwork 1;
+// engagement 1 (sponsor 4) with scenarios 1 (draft), 2 (proposed), 3 (approved) and 4 (rejected),
+// all by contractor 5; placement 1 (scenario 3, right 2, product 1) with face 1 and requirement 1
+// (buy). Products 1 the 6m banner frame (part 1, face 1, taskdef 1 rig and taskdef 2 strike
+// depending on 1, resource 1) and 2 the LED tower; rate card 1 (rigger). Stock 1 (sponsor 4, held
+// by contractor 5, 12 banners, good). Project 1 (contractor 5, occasion 1, open) with deployments 1
+// (proposed, site 1), 2 (accepted, site 2, permit 1), 3 (built), 4 (blocked), 5 (rejected); work
+// window 1 (14 March, area 1) with assignment 1 (Sam, assigned, deployment 2) and assignment 2
+// (done, deployment 3); trip 1; tasks 1 (todo), 2 (done) and 3 (skipped) on deployment 2; supply
+// line 1 (open, requirement 1) with offer 1 (Northgate Signs, offered) and supply line 2 (accepted).
 import type { PatchOp } from "../../src/json-patch";
 import { story, type Stories, type Write } from "../../src/stories";
 
@@ -170,9 +169,11 @@ export const stories: Stories = {
     story("The Downs Company slides the Festival a day earlier in its drawer; the Board's wall, the promoter's time tool and the market's rights all move with it", { as: "venueOwner", does: many("venue", [["/1/occasions/1/from_date", "2027-03-15"], ["/1/occasions/1/to_date", "2027-03-18"]]), seen: { venueOwner: "venue/1 @ drawer=occasion/1", authority: "series/1", promoter: "occasion/1", sponsor: "market" } }),
     story("The Downs Company renames the Festival in its drawer", { as: "venueOwner", does: w("venue", "replace", "/1/occasions/1/name", "The Ashcombe Festival 2027"), seen: { venueOwner: "venue/1 @ drawer=occasion/1", authority: "series/1", promoter: "occasion/1" } }),
     story("The Downs Company hands the Festival's packaging to Festival Promotions in the occasion's drawer, and the occasion appears on the promoter's box", { as: "venueOwner", does: w("venue", "add", "/1/occasions/1/delegations/-", { promoter_org_id: 3 }), seen: { venueOwner: "venue/1 @ drawer=occasion/1", promoter: "" } }),
-    story("The Board grants a permit for the Old Hollow enclosure in the occasion's drawer on its wall", { as: "authority", does: w("series", "add", "/1/occasions/1/permits/-", { area_id: 2 }), seen: { authority: "series/1 @ drawer=occasion/1" } }),
+    story("The Board grants a permit for the Old Hollow enclosure in the occasion's drawer on its wall", { as: "authority", does: w("series", "add", "/1/occasions/1/permits/-", { area_id: 2 }), seen: { authority: "series/1 @ drawer=occasion/1", venueOwner: "venue/1" } }),
     story("The Board revokes the Paddock permit, and the accepted deployment standing on it shows a revoked permit on the project's map, on the venue's map and on Sam's build", { as: "authority", does: w("series", "replace", "/1/occasions/1/permits/1/status", "revoked"), seen: { authority: "series/1 @ drawer=occasion/1", contractor: "projects/1", venueOwner: "venue/1/deployments", worker: "assignments/1" } }),
     story("The Downs Company grants a permit for its own winning-post boards, and the site on its map shows it", { as: "venueOwner", does: w("venue", "add", "/1/occasions/1/permits/-", { site_id: 2 }), seen: { venueOwner: "venue/1" } }),
+    story("The Downs Company revokes its own permit on the parade ring screen, and the deployment proposed there shows it on the project's map", { as: "venueOwner", does: w("venue", "replace", "/1/occasions/1/permits/3/status", "revoked"), seen: { venueOwner: "venue/1", contractor: "projects/1" } }),
+    story("A permit is revoked by whoever granted it: the Board's drawer has no revoke on the venue's own permit", { as: "authority", cannot: w("series", "replace", "/1/occasions/1/permits/3/status", "revoked") }),
     story("Festival Promotions has no permit to grant on anyone's map", { as: "promoter", cannot: w("series", "add", "/1/occasions/1/permits/-", { area_id: 1 }) }),
 
     // ── The promoter: the map with the rights coloured by package ──
@@ -274,11 +275,14 @@ export const stories: Stories = {
     story("Londons plans a trip on the wall", { as: "contractor", does: w("projects", "add", "/1/trips/-", { departs_at: "2027-03-13T14:00", returns_at: "2027-03-20T12:00", fuel_cost: 180, tolls_cost: 0, accommodation_cost: 1400 }), seen: { contractor: "projects/1" } }),
     story("Londons brings the trip's departure forward in its drawer, and Sam's wall says so", { as: "contractor", does: many("projects", [["/1/trips/1/departs_at", "2027-03-13T12:00"], ["/1/trips/1/accommodation_cost", 1600]]), seen: { contractor: "projects/1 @ drawer=trip/1", worker: "" } }),
     story("Londons puts Sam in the window from its drawer, and the day appears on Sam's wall", { as: "contractor", does: w("projects", "add", "/1/windows/1/assignments/-", { person_id: 1, trip_id: 1, deployment_id: 2 }), seen: { contractor: "projects/1 @ drawer=window/1", worker: "" } }),
+    story("A deployment the venue has not accepted takes no worker", { as: "contractor", cannot: w("projects", "add", "/1/windows/1/assignments/-", { person_id: 1, trip_id: 1, deployment_id: 1 }) }),
     story("Londons opens a task on an accepted deployment in its drawer, and Sam's build has a step to tick", { as: "contractor", does: w("projects", "add", "/1/deployments/2/tasks/-", { taskdef_id: 2 }), seen: { contractor: "projects/1 @ drawer=deployment/2", worker: "assignments/1" } }),
-    story("Sam marks the week unavailable in place at the top of the wall", { as: "worker", does: w("worker", "replace", "/available", false), seen: { worker: "" } }),
+    story("Sam marks the week unavailable in place at the top of the wall, and Londons's wall shows Sam away", { as: "worker", does: w("worker", "replace", "/available", false), seen: { worker: "", contractor: "projects/1" } }),
+    story("Sam marks the week available again, and Londons's wall shows Sam free", { as: "worker", does: w("worker", "replace", "/available", true), seen: { worker: "", contractor: "projects/1" } }),
     story("Sam changes name, skills and rate in place", { as: "worker", does: many("worker", [["/name", "Sam Reilly"], ["/skills", "rigger, electrician"], ["/day_rate", 260]]), seen: { worker: "" } }),
     story("Sam ticks a task on the row, and the project's map shows the build a step further", { as: "worker", does: w("worker", "replace", "/assignments/1/deployment/tasks/1/status", "done"), seen: { worker: "assignments/1", contractor: "projects/1 @ drawer=deployment/2" } }),
     story("Sam unticks a task ticked by mistake", { as: "worker", does: w("worker", "replace", "/assignments/1/deployment/tasks/2/status", "todo"), seen: { worker: "assignments/1", contractor: "projects/1 @ drawer=deployment/2" } }),
+    story("Sam unskips a task skipped by mistake", { as: "worker", does: w("worker", "replace", "/assignments/1/deployment/tasks/3/status", "todo"), seen: { worker: "assignments/1", contractor: "projects/1 @ drawer=deployment/2" } }),
     story("Sam skips a task on the row; not needed for this build", { as: "worker", does: w("worker", "replace", "/assignments/1/deployment/tasks/1/status", "skipped"), seen: { worker: "assignments/1", contractor: "projects/1 @ drawer=deployment/2" } }),
     story("Sam presses built on the build's box; the project's map, the venue's map and Harrow's box all show the module up", { as: "worker", does: many("worker", [["/assignments/1/status", "done"], ["/assignments/1/deployment/status", "built"]]), seen: { worker: "assignments/1", contractor: "projects/1", venueOwner: "venue/1/deployments", sponsor: "engagements/1" } }),
     story("Sam takes back a built pressed by mistake", { as: "worker", does: w("worker", "replace", "/assignments/2/deployment/status", "accepted"), seen: { worker: "assignments/2", contractor: "projects/1", venueOwner: "venue/1/deployments" } }),

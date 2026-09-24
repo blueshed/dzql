@@ -1,14 +1,14 @@
 @startuml
 title Scenario: the sponsor and the contractor
-[*] --> draft : sponsor commissions (72)
-draft --> proposed : contractor proposes (82)
-proposed --> approved : sponsor approves (83)
-proposed --> rejected : sponsor rejects (84)
-approved --> proposed : sponsor takes back its approval (85)
-rejected --> proposed : contractor re-proposes (86)
-rejected --> withdrawn : contractor withdraws (87)
-approved --> withdrawn : contractor withdraws (88)
-proposed -[dotted]-> approved : contractor cannot approve (89)
-draft -[dotted]-> approved : sponsor cannot approve a draft (91)
+[*] --> draft : sponsor commissions (74)
+draft --> proposed : contractor proposes (84)
+proposed --> approved : sponsor approves (85)
+proposed --> rejected : sponsor rejects (86)
+approved --> proposed : sponsor takes back its approval (87)
+rejected --> proposed : contractor re-proposes (88)
+rejected --> withdrawn : contractor withdraws (89)
+approved --> withdrawn : contractor withdraws (90)
+proposed -[dotted]-> approved : contractor cannot approve (91)
+draft -[dotted]-> approved : sponsor cannot approve a draft (93)
 withdrawn --> [*]
 @enduml

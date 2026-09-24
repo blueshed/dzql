@@ -14,13 +14,21 @@
 import { watch } from "node:fs";
 import { readdir, rm } from "node:fs/promises";
 import index from "./index.html";
-import { checkAgreement, markAgreement, uncited, type Story } from "./agreements";
+import { resolve } from "node:path";
+import { checkAgreement, markAgreement, numbered, uncited, type Story } from "./agreements";
 import { asDrawn, check, kindOf, links, linkedTo, readTypes, typesFindings, undrawn, type Kind, type Types } from "./check";
 
 const dir = import.meta.dir + (process.argv[2] ? `/${process.argv[2]}` : "");
 const SRC = `${dir}/src`, DIST = `${dir}/dist`;
-const storiesFile = Bun.file(`${dir}/stories.ts`);
-const stories: Story[] | null = (await storiesFile.exists()) ? (await import(`${dir}/stories.ts`)).stories.stories : null;
+// A model's stories are read afresh in a child bun whenever their file changes: an import is cached.
+const STORIES = `${dir}/stories.ts`;
+let stories: Story[] | null = null;
+function loadStories() {
+  const read = Bun.spawnSync(["bun", "-e", `const { stories } = await import(${JSON.stringify(STORIES)}); console.log(JSON.stringify(stories.stories))`]);
+  if (read.exitCode === 0) stories = JSON.parse(read.stdout.toString());
+  else console.error(`✗ stories.ts: ${read.stderr.toString().trim()}`);
+}
+if (await Bun.file(STORIES).exists()) loadStories();
 const cited = new Map<string, Set<number>>();
 const PLANTUML = process.env.PLANTUML_URL ?? `http://localhost:${process.env.PLANTUML_PORT ?? 8089}`;
 const PORT = Number(process.env.PORT ?? 3700);
@@ -128,7 +136,7 @@ const server = Bun.serve({
     "/types": async () => {
       if (stories) {
         const all = new Set([...cited.values()].flatMap((s) => [...s]));
-        return Response.json({ label: "stories.ts", about: "every arrow cites the stories that move it", against: "the stories", source: await storiesFile.text(), undrawn: uncited(stories, all), findings: [] });
+        return Response.json({ label: "stories.ts", about: "every arrow cites the stories that move it", against: "the stories", source: numbered(stories), undrawn: uncited(stories, all), findings: [] });
       }
       const f = Bun.file(TYPES);
       return Response.json({ label: "types.ts", about: "every name the diagrams use", against: "types.ts", source: (await f.exists()) ? await f.text() : "", undrawn: undrawn(types, [...checked.values()]), findings: typesFindings(types) });
@@ -156,5 +164,20 @@ watch(dir, (_event, file) => {
     for (const f of await readdir(SRC)) if (isSource(f)) soon(f); // flavours and links follow types.ts
   }, 120);
 });
+
+// stories.ts re-exports the example's stories: watch the file they are told in.
+if (stories) {
+  const told = (await Bun.file(STORIES).text()).match(/from\s+"([^"]+)"/)?.[1];
+  const file = told ? resolve(dir, told.endsWith(".ts") ? told : `${told}.ts`) : STORIES;
+  let storiesTimer: Timer | undefined;
+  watch(file, () => {
+    clearTimeout(storiesTimer);
+    storiesTimer = setTimeout(async () => {
+      loadStories();
+      await checkAll();
+      for (const f of await readdir(SRC)) if (isSource(f)) soon(f);
+    }, 120);
+  });
+}
 
 console.log(`UML session on ${server.url} — watching ${SRC}, PlantUML at ${PLANTUML}`);

@@ -1,10 +1,10 @@
 @startuml
 title Package: the promoter's rights at an occasion
-[*] --> draft : promoter makes a package (51)
-draft --> offered : promoter offers (55)
-offered -[dotted]-> offered : promoter cannot offer it again (56)
-[*] -[dotted]-> draft : sponsor cannot make a package (57)
-offered --> agreed : sponsor buys it, alone or in a campaign (92, 93)
-agreed -[dotted]-> agreed : sponsor cannot buy a sold package (95)
+[*] --> draft : promoter makes a package (53)
+draft --> offered : promoter offers (57)
+offered -[dotted]-> offered : promoter cannot offer it again (58)
+[*] -[dotted]-> draft : sponsor cannot make a package (59)
+offered --> agreed : sponsor buys it, alone or in a campaign (94, 95)
+agreed -[dotted]-> agreed : sponsor cannot buy a sold package (97)
 agreed --> [*]
 @enduml

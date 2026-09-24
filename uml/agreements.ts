@@ -12,23 +12,25 @@
 //   can I see the consequences?   -- everyone whose move put the thing in the state it leaves is
 //                                    told, so nobody waits on an answer that came.
 //
-// A story that sets a status must set this arrow's target; a creation ([*] -->) adds. An arrow to
-// [*] with no label says the thing ends there: to go again, a new one is made. A state with no move
-// out that is not drawn as an end is undecided, and says so. The marks are drawn at render time;
-// the diagram's source stays as written.
+// The parties are those told when the thing is made; anyone else joins it when first told of it by
+// someone else's move (Sam joins a deployment when he is put on it), and is asked after only from
+// the states that follow.
+//
+// A story that sets a status must set this arrow's target, a creation ([*] -->) adds. Two states
+// with one value are drawn with an alias: `state "granted" as own`. An arrow to [*] with no label
+// says the thing ends there: to go again, a new one is made. A state with no move out that is not
+// drawn as an end is undecided, and says so. The marks are drawn at render time; the diagram's
+// source stays as written.
 
 type Seen = Record<string, string> | string[];
-export type Story = { name: string; as: string; does?: { doc: string; ops: { op: string; path: string; value?: unknown }[] }; cannot?: { doc: string; ops: { op: string; path: string; value?: unknown }[] }; seen?: Seen };
+type Write = { doc: string; ops: { op: string; path: string; value?: unknown }[] };
+export type Story = { name: string; as: string; does?: Write; cannot?: Write; seen?: Seen };
 
 export type Arrow = { line: number; from: string; to: string; style: string; role: string; words: string; cites: number[]; refusal: boolean };
 export type Mark = { arrow: Arrow; problems: string[] };
 
 const ARROW = /^\s*(\[\*\]|\w+)\s*(-[^>\s]*>)\s*(\[\*\]|\w+)\s*:\s*(\w+)\s+(.*?)\s*\(([\d,\s]+)\)\s*$/;
-
-/** The states drawn as ends: `declined --> [*]`. */
-export function ends(puml: string): Set<string> {
-  return new Set([...puml.matchAll(/^\s*(\w+)\s*-[^>\s]*>\s*\[\*\]\s*$/gm)].map((m) => m[1]!));
-}
+const MOVES = /\/(status|available)$/;
 
 export function arrows(puml: string): Arrow[] {
   const out: Arrow[] = [];
@@ -40,6 +42,17 @@ export function arrows(puml: string): Arrow[] {
   return out;
 }
 
+/** The states drawn as ends: `declined --> [*]`. */
+export function ends(puml: string): Set<string> {
+  return new Set([...puml.matchAll(/^\s*(\w+)\s*-[^>\s]*>\s*\[\*\]\s*$/gm)].map((m) => m[1]!));
+}
+
+/** Each state's value: its name, or what its alias stands for (`state "granted" as own`). */
+function values(puml: string): (state: string) => string {
+  const alias = new Map([...puml.matchAll(/^\s*state\s+"([^"]+)"\s+as\s+(\w+)/gm)].map((m) => [m[2]!, m[1]!]));
+  return (state) => alias.get(state) ?? state;
+}
+
 /** The roles a story tells, with the page each has open: "" is home. */
 export function told(s: Story): Map<string, string> {
   const seen = s.seen ?? {};
@@ -47,17 +60,32 @@ export function told(s: Story): Map<string, string> {
   return new Map(entries.map(([r, page]) => [r, page.split(" @ ")[0] || "home"]));
 }
 
-/** Who has a move out of each state, and whose moves put the thing in it. */
-function turns(all: Arrow[]) {
+type Turns = { movers: Map<string, Set<string>>; arrivers: Map<string, Set<string>>; present: (role: string, state: string) => boolean };
+
+/** Who has a move out of each state, whose moves put the thing in it, and where each party is on it. */
+function turns(all: Arrow[], stories: Story[]): Turns {
+  const moves = all.filter((a) => !a.refusal);
   const movers = new Map<string, Set<string>>(), arrivers = new Map<string, Set<string>>();
   const add = (m: Map<string, Set<string>>, k: string, r: string) => (m.get(k) ?? m.set(k, new Set()).get(k)!).add(r);
-  for (const a of all) if (!a.refusal) { add(movers, a.from, a.role); add(arrivers, a.to, a.role); }
-  return { movers, arrivers };
+  for (const a of moves) { add(movers, a.from, a.role); add(arrivers, a.to, a.role); }
+  const heard = (a: Arrow) => a.cites.flatMap((n) => [...told(stories[n - 1] ?? { name: "", as: "" }).keys()]);
+  const founders = new Set(moves.filter((a) => a.from === "[*]").flatMap((a) => [a.role, ...heard(a)]));
+  const joined = new Map<string, Set<string>>();
+  for (const a of moves) if (a.from !== "[*]") for (const r of heard(a)) if (r !== a.role && !founders.has(r)) add(joined, r, a.from);
+  for (const states of joined.values()) {
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const a of moves) if (states.has(a.from) && a.to !== "[*]" && !states.has(a.to)) { states.add(a.to); grew = true; }
+    }
+  }
+  const present = (role: string, state: string) => founders.has(role) || !!joined.get(role)?.has(state);
+  return { movers, arrivers, present };
 }
 
 export function checkAgreement(puml: string, stories: Story[]): { marks: Mark[]; drift: string[]; cited: Set<number> } {
   const all = arrows(puml);
-  const { movers, arrivers } = turns(all);
+  const { movers, arrivers, present } = turns(all, stories);
+  const value = values(puml);
   const cited = new Set<number>(), drift: string[] = [];
   const marks = all.map((a) => {
     const problems: string[] = [];
@@ -68,12 +96,13 @@ export function checkAgreement(puml: string, stories: Story[]): { marks: Mark[];
       if (s.as !== a.role) problems.push(`(${n}) is told as ${s.as}, not ${a.role}`);
       if (a.refusal) { if (!s.cannot) problems.push(`(${n}) is a move, not a refusal`); continue; }
       if (!s.does) { problems.push(`(${n}) is a refusal, drawn as a move`); continue; }
-      const statuses = s.does.ops.filter((o) => /\/(status|available)$/.test(o.path)).map((o) => String(o.value));
-      if (a.from === "[*]" ? !s.does.ops.some((o) => o.op === "add") : statuses.length && !statuses.includes(a.to) && a.from !== a.to)
-        problems.push(`(${n}) sets ${statuses.join(", ") || "no status"}, not ${a.to}`);
+      const statuses = s.does.ops.filter((o) => /\/status$/.test(o.path)).map((o) => String(o.value));
+      if (a.from === "[*]") { if (!s.does.ops.some((o) => o.op === "add")) problems.push(`(${n}) does not make one`); }
+      else if (statuses.length && !statuses.includes(value(a.to)) && a.from !== a.to) problems.push(`(${n}) sets ${statuses.join(", ")}, not ${value(a.to)}`);
       const heard = told(s);
-      for (const r of movers.get(a.to) ?? []) if (!heard.has(r)) problems.push(`${r} is not told, and it is their move (${n})`);
-      if (a.from !== a.to) for (const r of arrivers.get(a.from) ?? []) if (!heard.has(r)) problems.push(`${r} is not told, and they were waiting on it (${n})`);
+      const on = (r: string) => a.from === "[*]" || present(r, a.from);
+      for (const r of movers.get(a.to) ?? []) if (!heard.has(r) && on(r)) problems.push(`${r} is not told, and it is their move (${n})`);
+      if (a.from !== a.to) for (const r of arrivers.get(a.from) ?? []) if (!heard.has(r) && on(r)) problems.push(`${r} is not told, and they were waiting on it (${n})`);
     }
     return { arrow: a, problems };
   });
@@ -83,12 +112,14 @@ export function checkAgreement(puml: string, stories: Story[]): { marks: Mark[];
   return { marks, drift, cited };
 }
 
-/** The stories that set a status and are on no diagram yet. */
+/** The stories that move a status and are on no diagram yet. */
 export function uncited(stories: Story[], cited: Set<number>): string[] {
-  return stories.flatMap((s, i) => {
-    const w = s.does ?? s.cannot!;
-    return w.ops.some((o) => /\/(status|available)$/.test(o.path)) && !cited.has(i + 1) ? [`(${i + 1}) ${s.as}: ${s.name}`] : [];
-  });
+  return stories.flatMap((s, i) => ((s.does ?? s.cannot)!.ops.some((o) => MOVES.test(o.path)) && !cited.has(i + 1) ? [`(${i + 1}) ${s.as}: ${s.name}`] : []));
+}
+
+/** Every story, by the number the diagrams cite it by. */
+export function numbered(stories: Story[]): string {
+  return stories.map((s, i) => `(${i + 1}) ${s.as}${s.cannot ? " cannot" : ""}: ${s.name}`).join("\n");
 }
 
 const esc = (s: string) => s.replace(/[{}\]\[]/g, " ");
@@ -97,13 +128,15 @@ const esc = (s: string) => s.replace(/[{}\]\[]/g, " ");
 export function markAgreement(puml: string, name: string, stories: Story[]): string {
   const { marks } = checkAgreement(puml, stories);
   const all = marks.map((m) => m.arrow);
-  const { movers } = turns(all);
+  const { movers } = turns(all, stories);
   const ended = ends(puml);
   const lines = puml.split("\n");
   for (const { arrow: a, problems } of marks) {
     const s = a.cites.map((n) => stories[n - 1]).filter(Boolean) as Story[];
     const style = problems.length ? "-[#c0392b,bold]->" : a.refusal ? "-[#999999,dotted]->" : a.style;
-    const heard = a.refusal ? "" : [...new Map(s.flatMap((x) => [...told(x)])).entries()].filter(([r]) => r !== a.role).map(([r, p]) => `${r} @ ${p}`).join(", ");
+    const pages = new Map<string, Set<string>>();
+    if (!a.refusal) for (const x of s) for (const [r, p] of told(x)) if (r !== a.role) (pages.get(r) ?? pages.set(r, new Set()).get(r)!).add(p);
+    const heard = [...pages].map(([r, p]) => `${r} @ ${[...p].join(" / ")}`).join(", ");
     const tip = esc(s.map((x) => x.name).join(" / "));
     let label = `[[#${name}{${tip}} ${a.role} ${a.words} (${a.cites.join(", ")})]]`;
     if (a.refusal) label = `<color:#888888>${label} ✗</color>`;
