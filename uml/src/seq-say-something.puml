@@ -6,7 +6,13 @@ actor "Ada, Bob (have room:general open)" as room
 actor "Cy (has room:kitchen open)" as other
 
 dee -> app : add room:general /messages/- <text>
-app --> dee : patch room:general add /messages/- (Dee, text, at)
-app -> room : patch room:general add /messages/- (Dee, text, at)
+alt Dee is not in general
+  app --> dee : you are not in this room
+else
+  note right of app : the app stamps author and at
+  app --> dee : patch room:general add /messages/- (Dee, text, at)
+  app -> room : patch room:general add /messages/- (Dee, text, at)
+  note over dee : on the ledger: Undo takes it back, for everyone
+end
 note over other : nothing: room:kitchen did not change
 @enduml

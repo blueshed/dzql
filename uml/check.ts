@@ -10,7 +10,9 @@
 export type Iface = { fields: string[]; types: Map<string, string> };
 export type Doc = { key: string; shape: string; openedBy: string; match: RegExp };
 export type WriteDef = { key: string; doc: string; path: string; ops: string[]; does: string; refused: string[] };
-export type Types = { interfaces: Map<string, Iface>; unions: Map<string, string[]>; documents: Doc[]; writes: WriteDef[] };
+export type ReadDef = { doc: string; opens: string; closes: string };
+export type Derivation = { key: string; doc: string; path: string; rule: string };
+export type Types = { interfaces: Map<string, Iface>; unions: Map<string, string[]>; documents: Doc[]; writes: WriteDef[]; reads: ReadDef[]; derivations: Derivation[] };
 export type Kind = "classes" | "sequence" | "states" | "use cases" | "document" | "other";
 export type Checked = { name: string; kind: Kind; drift: string[]; uses: Set<string> };
 
@@ -99,8 +101,17 @@ export function readTypes(src: string): Types {
     }
     interfaces.set(table, cols);
   }
-  for (const k of ["Documents", "Writes", "Tables"]) interfaces.delete(k);
-  return { interfaces, unions, documents, writes };
+  const reads: ReadDef[] = [...(interfaces.get("Reads")?.types ?? [])].map(([doc, type]) => ({
+    doc,
+    opens: type.match(/opens:\s*"([^"]+)"/)?.[1] ?? "",
+    closes: type.match(/closes:\s*"([^"]+)"/)?.[1] ?? "",
+  }));
+  const derivations: Derivation[] = [...(interfaces.get("Derivations")?.types ?? [])].map(([key, type]) => {
+    const [doc, path = ""] = key.split(" ");
+    return { key, doc: doc!, path, rule: literals(type)[0] ?? type };
+  });
+  for (const k of ["Documents", "Writes", "Tables", "Reads", "Derivations"]) interfaces.delete(k);
+  return { interfaces, unions, documents, writes, reads, derivations };
 }
 
 export function kindOf(puml: string): Kind {
@@ -144,7 +155,8 @@ export function check(name: string, puml: string, t: Types): Checked {
     if (!field) return null;
     if (!shape.fields.includes(field)) return `${field} is not in ${doc.shape}`;
     const type = unwrap(shape.types.get(field)).inner;
-    if (idx !== undefined && !type.endsWith("[]")) return `${field} is not a list`;
+    const keyed = type.startsWith("Record<");
+    if (idx !== undefined && !type.endsWith("[]") && !keyed) return `${field} is not a list or keyed by name`;
     if (sub) {
       const el = t.interfaces.get(elementOf(type) ?? "");
       if (el && !el.fields.includes(sub)) return `${sub} is not in ${elementOf(type)}`;
@@ -200,13 +212,16 @@ export function check(name: string, puml: string, t: Types): Checked {
     for (const m of puml.matchAll(/^\s*("[^"]+"|\w+)\s*(-+>+)\s*("[^"]+"|\w+)\s*:\s*(.+)$/gm)) {
       const from = unquote(m[1]!), to = unquote(m[3]!), label = m[4]!.trim();
       const reply = m[2]!.startsWith("--");
-      const open = label.match(/^open\s+(\S+)/);
+      const open = label.match(/^(?:open|close)\s+(\S+)/);
+      const event = actors.has(from) && !reply ? named(label, [...t.unions].filter(([k]) => k.endsWith("Event")).flatMap(([, v]) => v)) : undefined;
       const patch = label.match(/^patch\s+(\S+)\s+(add|replace|remove)\s+(\/\S*)/);
       const wrote = label.match(/^(add|replace|remove)\s+(\S+)(?:\s+(\/\S*))?/);
       if (open) {
         const doc = docFor(open[1]!);
         if (!doc) drift.push(`"${label}": ${open[1]} is not a document in types.ts`);
-        else uses.add(`document:${doc.key}`);
+        else uses.add(`${label.startsWith("open") ? "open" : "close"}:${doc.key}`);
+      } else if (event) {
+        uses.add(`event:${event}`);
       } else if (patch) {
         // a document changing, sent to whoever has it open
         const doc = docFor(patch[1]!);
@@ -214,6 +229,8 @@ export function check(name: string, puml: string, t: Types): Checked {
         uses.add(`document:${doc.key}`);
         const bad = inShape(doc, patch[3]!);
         if (bad) drift.push(`"${label}": ${bad}`);
+        const d = t.derivations.find((x) => x.doc === doc.key && segs(patch[3]!)[0] === segs(x.path)[0]);
+        if (d) uses.add(`derived:${d.key}`);
       } else if (wrote && actors.has(from) && !reply) {
         // a person's write: a document and a path in it
         const doc = docFor(wrote[2]!);
@@ -231,7 +248,7 @@ export function check(name: string, puml: string, t: Types): Checked {
       } else if (reply && to === caller && write) {
         const allRefusals = t.writes.flatMap((w) => w.refused);
         if (allRefusals.some((r) => norm(r) === norm(label)) && !write.refused.some((r) => norm(r) === norm(label))) drift.push(`"${label}" is not how ${write.key} is refused`);
-      } else if (actors.has(from) && !reply) drift.push(`${from} sends "${label}", which is neither a write nor an open`);
+      } else if (actors.has(from) && !reply) drift.push(`${from} sends "${label}", which is neither a write nor a connection event`);
     }
   }
 
@@ -345,7 +362,7 @@ function flavourClasses(puml: string, t: Types): string {
 function flavourPatches(puml: string, t: Types): string {
   return puml.replace(/^(\s*\S+\s*-+>+\s*\S+\s*:\s*patch\s+(\S+)\s+(?:add|replace|remove)\s+(\/\S*).*)$/gm, (line, _all: string, docName: string, path: string) => {
     const doc = t.documents.find((d) => d.match.test(docName));
-    return doc && flavourOf(t, doc, path) === "transient" ? `${line} //(transient: not on the ledger)//` : line;
+    return doc && flavourOf(t, doc, path) === "transient" ? `${line} //(derived: not on the ledger)//` : line;
   });
 }
 
@@ -369,7 +386,15 @@ export function typesFindings(t: Types): string[] {
     const doc = t.documents.find((d) => d.key === w.doc);
     if (doc && flavourOf(t, doc, w.path) === "transient") out.push(`the write ${w.key} lands on a transient part: a person does not write it`);
   }
-  for (const d of t.documents) for (const [f, type] of t.interfaces.get(d.shape)?.types ?? []) if (!unwrap(type).flavour) out.push(`${d.shape}.${f} has no flavour: Persistent or Transient`);
+  for (const d of t.documents) for (const [f, type] of t.interfaces.get(d.shape)?.types ?? []) {
+    const flavour = unwrap(type).flavour;
+    if (!flavour) out.push(`${d.shape}.${f} has no flavour: Persistent or Transient`);
+    const derived = t.derivations.some((x) => x.doc === d.key && segs(x.path)[0] === f);
+    if (flavour === "transient" && !derived) out.push(`${d.key} /${f} is transient but Derivations does not say what it is derived from`);
+    if (flavour === "persistent" && derived) out.push(`${d.key} /${f} is derived but marked Persistent`);
+  }
+  for (const x of t.derivations) if (!t.documents.some((d) => d.key === x.doc)) out.push(`the derivation ${x.key} names no document`);
+  for (const d of t.documents) if (!t.reads.some((r) => r.doc === d.key)) out.push(`Reads does not say when ${d.key} is opened and closed`);
   return out;
 }
 
@@ -385,5 +410,11 @@ export function undrawn(t: Types, all: Checked[]): string[] {
   }
   for (const k of t.unions.keys()) if (k.endsWith("State") && !used.has(k)) out.push(`${k} (states)`);
   for (const r of t.writes.flatMap((w) => w.refused)) if (!used.has(`reason:${r}`)) out.push(`the refusal "${r}"`);
+  for (const r of t.reads) {
+    if (!used.has(`open:${r.doc}`)) out.push(`opening ${r.doc}, in a sequence`);
+    if (!used.has(`close:${r.doc}`)) out.push(`closing ${r.doc}, in a sequence`);
+  }
+  for (const x of t.derivations) if (!used.has(`derived:${x.key}`)) out.push(`a patch derived for ${x.key}, in a sequence`);
+  for (const [k, v] of t.unions) if (k.endsWith("Event")) for (const e of v) if (!used.has(`event:${e}`)) out.push(`the event "${e}", in a sequence`);
   return out;
 }

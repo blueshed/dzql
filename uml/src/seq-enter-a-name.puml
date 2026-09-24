@@ -3,10 +3,13 @@ title Enter a name
 actor "Dee" as dee
 participant "Chat" as app
 
-dee -> app : open session
+dee -> app : connect
+app --> dee : open session
 dee -> app : replace session /name <name>
 alt the name is blank
   app --> dee : a name is needed
+else another connected person has that name
+  app --> dee : that name is in use
 else
   app --> dee : patch session replace /name "Dee"
   app --> dee : open lobby

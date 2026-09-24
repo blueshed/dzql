@@ -1,7 +1,7 @@
 @startjson
 {
   "name": "general",
-  "members": ["Ada", "Bob", "Dee"],
+  "members": { "Ada": true, "Bob": true, "Dee": true },
   "messages": [
     { "author": "Ada", "text": "morning", "at": "09:02" },
     { "author": "Dee", "text": "hello", "at": "09:05" }

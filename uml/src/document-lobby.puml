@@ -1,5 +1,5 @@
 @startjson
 {
-  "rooms": ["general", "kitchen"]
+  "rooms": { "general": true, "kitchen": true }
 }
 @endjson

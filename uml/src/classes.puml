@@ -34,6 +34,7 @@ package "What is stored" {
     at
   }
   class sessions <<table>> {
+    id
     name
     room
   }
