@@ -79,10 +79,7 @@ Everything below is the least that makes it pass.
     and undo over a real websocket (for what a story cannot say: a tab closing, two writes racing), a
     `client/app.test.ts` for what only a browser can show (`Bun.WebView`: open each view at
     `at(view, server.url)` and wait with `waitFor`, both `src/webview.ts`, so each is a browser of
-    its own on Chrome too). The gate is `bun run check`, `bun test` (100% coverage) and
-    `bun run stories:all`; verify a bug fix by reverting it and watching the test fail. On Linux
-    the browser tests need Chrome or Chromium: `BUN_CHROME_PATH` names it
-    (`/opt/chromium/chrome-shim.sh` where a sandbox has staged one).
+    its own on Chrome too). The gate, and what the browser tests need, are CLAUDE.md's.
 
 None of this needs a file under `src/` edited. When it seems to, read `reference.md`'s "When it
 looks like you need to touch `src/`" first: a missing seam is rare, and a workaround is never it.
