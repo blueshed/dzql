@@ -1,0 +1,12 @@
+@startuml
+title Say something
+actor "Dee" as dee
+participant "Chat" as app
+actor "Ada, Bob (have room:general open)" as room
+actor "Cy (has room:kitchen open)" as other
+
+dee -> app : add room:general /messages/- <text>
+app --> dee : patch room:general add /messages/- (Dee, text, at)
+app -> room : patch room:general add /messages/- (Dee, text, at)
+note over other : nothing: room:kitchen did not change
+@enduml

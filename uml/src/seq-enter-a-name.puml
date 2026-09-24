@@ -1,0 +1,14 @@
+@startuml
+title Enter a name
+actor "Dee" as dee
+participant "Chat" as app
+
+dee -> app : open session
+dee -> app : replace session /name <name>
+alt the name is blank
+  app --> dee : a name is needed
+else
+  app --> dee : patch session replace /name "Dee"
+end
+note over dee : only Dee has session open: nobody else is told
+@enduml

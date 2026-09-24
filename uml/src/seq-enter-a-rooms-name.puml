@@ -1,0 +1,22 @@
+@startuml
+title Enter a room's name (and another room's name)
+actor "Dee" as dee
+participant "Chat" as app
+actor "Ada, Bob (have room:general open)" as room
+actor "Eve (has room:kitchen open)" as old
+
+dee -> app : replace session /room <room>
+alt no name yet
+  app --> dee : enter a name first
+else the room's name is blank
+  app --> dee : a room's name is needed
+else
+  app --> dee : patch session replace /room "general"
+  app --> dee : open room:general
+  note right of app : the room is made if nobody has entered it yet
+  app -> room : patch room:general add /members/- "Dee"
+  opt already in a room: entering another room's name
+    app -> old : patch room:kitchen remove /members/1
+  end
+end
+@enduml
