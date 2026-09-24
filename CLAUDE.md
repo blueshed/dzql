@@ -41,8 +41,9 @@ it, and everything else is derived from it.
 - Documents are delta's: `@blueshed/delta` is a dependency, and its own README and skill
   (`delta-doc`, in `node_modules/@blueshed/delta/.claude/skills/`) say how it works. eta owns
   people and pages; delta owns documents, their ledger and their one stream of changes.
-  `package.json` takes it from `../blueshed/delta`, a copy: after changing delta,
-  `bun install --force`.
+  It comes from npm (`^0.6.0`). To try a change to delta before it is released, point
+  `package.json` at a checkout (`file:../blueshed/delta`, a copy: `bun install --force` after
+  each change) and put it back before committing.
 
 Two words have two meanings each, so say which:
 

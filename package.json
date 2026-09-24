@@ -20,7 +20,7 @@
     "@types/bun": "latest"
   },
   "dependencies": {
-    "@blueshed/delta": "file:../blueshed/delta",
+    "@blueshed/delta": "^0.6.0",
     "lucide": "^1.46.0"
   }
 }

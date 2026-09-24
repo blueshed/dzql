@@ -15,9 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   synchronously from it: `read("<docType>:<id>")` (`src/documents.ts`) gives a document as held,
   and a read of one not held yet throws `Pending` -- the kernel loads it and draws again
   (`settled()`). A write goes to delta as the person (`Example.who`, optional, default the
-  session), with the session as the cursor undo walks; the ledger is delta's. Until delta's
-  0.6.0 is on npm, eta needs it from a checkout at `../blueshed/delta`: `createLocal`, documents
-  that are `implied`, and the ledger's undo, redo and history are all new there.
+  session), with the session as the cursor undo walks; the ledger is delta's. eta needs
+  `@blueshed/delta` 0.6.0 (from npm): `createLocal`, documents that are `implied`, and the
+  ledger's undo, redo and history are all new there.
 - **Gone from the kernel:** `migrate()` and the kernel's migrations, `src/ledger.ts` (its naming
   helpers `prefixDoc` and `splitDoc` are in `src/names.ts`), `Compartment.write`, `notify`,
   `renderRequested` and the event bus (`src/compartments/bus.ts`), and `MIGRATIONS_DIR` (from

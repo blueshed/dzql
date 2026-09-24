@@ -11,10 +11,7 @@ documents, patches and HTML that a person can read.
 
 ## Try it
 
-You need Bun, and delta checked out beside this repository at `../blueshed/delta`. eta needs
-delta 0.6.0, which is not on npm yet: `createLocal`, documents that are `implied`, and the
-ledger's undo, redo and history are new there. Until it is, `package.json` takes
-`@blueshed/delta` from that checkout.
+You need Bun. `bun install` brings `@blueshed/delta` 0.6.0 from npm.
 
 ```
 bun install
@@ -44,10 +41,10 @@ wedding).
 
 ## What it pairs with
 
-- **[@blueshed/delta](../blueshed/delta)** keeps the documents, their ledger and their one stream
+- **[@blueshed/delta](https://www.npmjs.com/package/@blueshed/delta)** keeps the documents, their ledger and their one stream
   of changes. eta owns people and pages; delta owns the data. An example's `delta.ts` says which
   tables it has and which documents are cut from them.
-- **[@blueshed/railroad](../blueshed/railroad)** can draw an applet, the part of a page that keeps
+- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** can draw an applet, the part of a page that keeps
   state of its own in the browser. No example uses it today; an example may, and eta does not
   depend on it.
 
