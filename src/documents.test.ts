@@ -1,0 +1,118 @@
+import { describe, expect, test } from "bun:test";
+import { createLocal } from "@blueshed/delta/local";
+import { registerMemory } from "@blueshed/delta/kinds";
+import { createDocuments, Pending, read, serverWrite, settled, setActiveDocuments } from "./documents";
+
+/** delta as the Postgres backend behaves: a write is answered first, and its change published later (over NOTIFY). */
+function laggingDelta() {
+  const local = createLocal();
+  let value = { n: 0 };
+  let v = 0;
+  const later: (() => void)[] = [];
+  local.server.on("open", (msg, _c, respond) => {
+    if (msg.doc === "gone:1") return respond({ error: { code: 404, message: "Not found" } });
+    if (typeof msg.doc === "string" && msg.doc.startsWith("slow:")) respond({ result: { ...value, _v: v } });
+  });
+  local.server.on("delta", (msg, _c, respond) => {
+    if (msg.doc !== "slow:1") return;
+    v += 1;
+    const version = v;
+    value = { n: msg.ops[0].value };
+    respond({ result: { ack: true, ops: msg.ops, inverse: [], version } });
+    later.push(() => local.server.publish("slow:1", { doc: "slow:1", ops: msg.ops, v: version }));
+  });
+  local.server.on("close", (_m, _c, respond) => respond({ result: { ack: true } }));
+  return { local, flush: () => later.splice(0).forEach((f) => f()), skip: () => (v += 1) };
+}
+
+describe("the documents a page reads, kept from delta's stream of changes", () => {
+  test("a read of a document not held yet is Pending; settled loads it and runs again", async () => {
+    const { local } = laggingDelta();
+    const documents = createDocuments(local);
+    expect(() => documents.read("slow:1")).toThrow(Pending);
+    let runs = 0;
+    expect(await settled(documents, () => (runs++, documents.read("slow:1")))).toEqual({ n: 0 });
+    expect(runs).toBe(2);
+    expect(documents.held("slow:1")).toBe(true);
+  });
+
+  test("a write resolves once its change is back and held -- after the answer, as over Postgres", async () => {
+    const { local, flush } = laggingDelta();
+    const documents = createDocuments(local);
+    const told: unknown[] = [];
+    documents.onChange((c) => void told.push(c));
+    const unheard: unknown[] = [];
+    documents.onChange((c) => void unheard.push(c))(); // stopped listening at once: hears nothing
+    await documents.load("slow:1");
+    let done = false;
+    const writing = documents.write("slow:1", [{ op: "replace", path: "/n", value: 5 }], { identity: "ada", cursor: "s1" }).then(() => (done = true));
+    await Bun.sleep(5);
+    expect(done).toBe(false); // answered, and not yet heard
+    flush();
+    await writing;
+    expect(documents.read("slow:1")).toEqual({ n: 5 });
+    expect(told).toEqual([{ doc: "slow:1", ops: [{ op: "replace", path: "/n", value: 5 }], v: 1 }]);
+    expect(unheard).toEqual([]);
+    await documents.quiet();
+  });
+
+  test("a change heard twice is held once; a change missed loads the document again and tells it whole", async () => {
+    const { local, flush, skip } = laggingDelta();
+    const documents = createDocuments(local);
+    const told: { ops: unknown[] }[] = [];
+    documents.onChange((c) => void told.push(c));
+    await documents.load("slow:1");
+    await Promise.all([documents.write("slow:1", [{ op: "replace", path: "/n", value: 1 }], { identity: "a", cursor: "s" }), Promise.resolve().then(flush)]);
+    local.server.publish("slow:1", { doc: "slow:1", ops: [{ op: "replace", path: "/n", value: 99 }], v: 1 }); // heard already
+    expect(documents.read("slow:1")).toEqual({ n: 1 });
+    skip(); // version 2 happens somewhere we never hear
+    local.server.publish("slow:1", { doc: "slow:1", ops: [{ op: "replace", path: "/n", value: 3 }], v: 3 });
+    await documents.quiet();
+    expect(told.at(-1)!.ops).toEqual([{ op: "replace", path: "", value: { n: 1 } }]); // loaded again: what delta has
+    local.server.publish("other:1", { doc: "else", ops: [] }); // not a change to its own channel: ignored
+  });
+
+  test("a document delta does not have is held as nothing; release closes and drops what no page reads", async () => {
+    const { local } = laggingDelta();
+    const documents = createDocuments(local);
+    await documents.load("gone:1");
+    expect(documents.read("gone:1")).toBeUndefined();
+    await documents.load("slow:1");
+    await documents.release(new Set(["slow:1"]));
+    expect(documents.names()).toEqual(["slow:1"]);
+    await documents.release(new Set());
+    expect(documents.names()).toEqual([]);
+  });
+
+  test("a refused write says why; undo with nothing to walk is nothing; history without a ledger is empty", async () => {
+    const local = createLocal();
+    registerMemory(local.server, { prefix: "here:", empty: () => ({ people: {} }) });
+    const documents = createDocuments(local);
+    const refused = await documents.write("here:x", [{ op: "replace", path: "/nobody/x", value: 1 }], { identity: undefined, cursor: "" });
+    expect("error" in refused && refused.error.code).toBe(400);
+    expect(await documents.walk("undo", { identity: "a", cursor: "s1" })).toBeNull();
+    expect(await documents.history("here:x", "s1")).toEqual([]);
+  });
+
+  test("settled gives up: a Pending with nothing to load it from, or one that never comes", async () => {
+    await expect(settled(undefined, () => { throw new Pending("a:1"); })).rejects.toBeInstanceOf(Pending);
+    const { local } = laggingDelta();
+    const documents = createDocuments(local);
+    await expect(settled(documents, () => { throw new Pending("slow:1"); }, 2)).rejects.toBeInstanceOf(Pending);
+    await expect(settled(documents, () => { throw new Error("not a read"); })).rejects.toThrow("not a read");
+  });
+
+  test("read and serverWrite speak to the active example's documents, and say so when there are none", async () => {
+    setActiveDocuments(undefined);
+    expect(() => read("here:x")).toThrow("no documents");
+    await expect(serverWrite("here:x", [])).rejects.toThrow("no documents");
+    const local = createLocal();
+    registerMemory(local.server, { prefix: "here:", empty: () => ({ people: {} as Record<string, true> }) });
+    const documents = createDocuments(local);
+    setActiveDocuments(documents);
+    await serverWrite("here:x", [{ op: "add", path: "/people/ada", value: true }]);
+    expect(await settled(documents, () => read("here:x"))).toEqual({ people: { ada: true } });
+    await expect(serverWrite("here:x", [{ op: "replace", path: "/nobody/x", value: 1 }])).rejects.toThrow("here:x");
+    setActiveDocuments(undefined);
+  });
+});

@@ -1,26 +1,22 @@
-import type { ServerWebSocket } from "bun";
 import * as roomDoc from "../documents/room";
 import type { ChatMessage } from "../documents/room";
 import * as sessionDoc from "../documents/session";
-import type { ConnectionData } from "../../../src/connection";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
-import { allOpenSockets, audienceFor, notify } from "../../../src/compartments/audience";
-import { renderRequested } from "../../../src/compartments/render";
 import { part } from "../../../src/parts";
-import { history, prefixDoc } from "../../../src/ledger";
 import { bento, rows } from "../../../src/bento";
 import { esc, join, write } from "../../../src/html";
 import { slug } from "../../../src/tray";
 import { icon } from "../icons";
-import { renderNameForm, sessionPatched } from "./session";
+import { renderNameForm } from "./session";
+import { keepLobby } from "../presence";
 
 // Chat is three steps -- your name, a room, say something -- and each page is a collection (the
 // bento's rule 1), drawn with the kernel's surfaces (src/bento.ts): the rooms, a row each and the
 // one form that names a new one; a room, its conversation and the one form that says something,
 // with who is here across its head. The trail is the way back, and the page's tools are undo,
 // redo and logging out. Nothing here is kept between taps: what the page shows is the session's
-// name and room, and the room's transcript and people.
+// name and room, and the room's messages and people.
 const { collectionPage, row } = bento({ icon, tray: "session", leave: { text: "Log out", icon: "log-out", path: "/name" } });
 
 /** The first letter of a name, as the face it wears. */
@@ -59,122 +55,54 @@ function renderRoom(name: string, room: string, people: string[], transcript: Ch
     body: join(
       renderPeople(people, name),
       part("messages", `<ul class="messages" id="messages" data-autoscroll>${transcript.map((m, i) => renderMessage(m, i, transcript, name)).join("")}</ul>`),
-      `<form class="say"${write("room", "add", "/transcript/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message #${esc(room)}" aria-label="Say"><button type="submit" class="tool">Send</button></form>`,
+      `<form class="say"${write("room", "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message #${esc(room)}" aria-label="Say"><button type="submit" class="tool">Send</button></form>`,
     ),
   });
 }
-
-// Which connections currently see a room is the kernel's own question now (change-request.md
-// item 1, `audienceFor("room", room)`): `resolveDoc` below says which room a socket is in,
-// and a connection sees the one it is in, so this compartment keeps no registry of its own.
-
-// Presence is live connection state, not persisted data, so it's assembled here (from the
-// kernel's open-connection registry + a session lookup per socket) rather than living in
-// documents/room.ts, which only knows about the SQL-backed transcript. `only` and `as` treat one
-// socket's name as `as` instead of its live, current one, and count it even if the kernel has
-// already deregistered it (a closing socket) -- for a socket that just wrote its own session
-// document (a logout revokes the row before this fires) or is on its way out, a fresh read (or
-// the audience itself) no longer reflects the name it had a moment ago, even though every other
-// socket's is still accurate.
-function peopleIn(room: string, only?: ServerWebSocket<ConnectionData>, as?: string): string[] {
-  const sockets = audienceFor("room", room);
-  if (only && !sockets.includes(only)) sockets.push(only);
-  const names = sockets.map((ws) => (ws === only ? (as ?? null) : sessionDoc.read(ws.data.sessionId).name));
-  // The same session can hold more than one socket (multiple tabs), which
-  // must not show up as the same person listed twice.
-  return [...new Set(names.filter((n): n is string => n !== null))];
-}
-
-// A presence change (someone's name appearing in or disappearing from the room's live set) is
-// echoed to everyone else in the room as a plain room op -- add /people/- or remove
-// /people/<index> -- the same way a transcript write is, but never recorded to the ledger
-// (undoing an arrival is nonsense: change-request.md item 5). `exclude` is the socket whose own
-// join or leave this is: it doesn't need telling about its own presence, and (for a leave) may
-// already be closed.
-function notifyPresence(room: string, exclude: ServerWebSocket<ConnectionData>, op: PatchOp): void {
-  const version = history(prefixDoc("room", room), 1)[0]?.version ?? 0;
-  notify("room", room, { version, applied: [op] }, { echoTo: audienceFor("room", room, exclude) });
-}
-
-// Announces `name`'s arrival in `room`, unless it was already there via another of this
-// session's sockets (the kernel has already registered `ws` as open by the time this runs, so
-// that other socket -- not `ws` itself -- is what "already" has to mean).
-function announceJoin(room: string, ws: ServerWebSocket<ConnectionData>, name: string): void {
-  const already = audienceFor("room", room, ws).some((other) => sessionDoc.read(other.data.sessionId).name === name);
-  if (!already) notifyPresence(room, ws, { op: "add", path: "/people/-", value: name });
-}
-
-// Announces `name`'s departure from `room`, at the index it held just before leaving, unless
-// another of this session's sockets keeps it there. The kernel deregisters `ws` before calling
-// onClose, so by the time this runs it may already be gone from the audience -- `peopleIn`
-// counts it anyway, at its correct former name.
-function announceLeave(room: string, ws: ServerWebSocket<ConnectionData>, name: string): void {
-  const index = peopleIn(room, ws, name).indexOf(name);
-  if (index < 0) return;
-  const stillThere = audienceFor("room", room, ws).some((other) => sessionDoc.read(other.data.sessionId).name === name);
-  if (!stillThere) notifyPresence(room, ws, { op: "remove", path: `/people/${index}` });
-}
-
-// "Joining"/"leaving" a room is now just a session document write (its
-// /room field changing) -- room reacts to that fact instead of owning a
-// join-room/leave-room event of its own.
-sessionPatched.on(({ ws, before, applied }) => {
-  for (const op of applied) {
-    if (op.path !== "/room") continue;
-    const newRoom = op.op === "remove" ? undefined : String(op.value ?? "").trim() || undefined;
-
-    if (before.room && before.room !== newRoom && before.name) announceLeave(before.room, ws, before.name);
-    if (newRoom && newRoom !== before.room && before.name) announceJoin(newRoom, ws, before.name);
-  }
-
-  const loggedOut = applied.some((op) => op.path === "/name" && op.op === "remove");
-  if (loggedOut && before.room && before.name) announceLeave(before.room, ws, before.name);
-
-  // A room is there while someone is in it, so a coming or a going can add one to the list or take
-  // one off it: whoever is choosing a room is looking at that list, and is shown it again.
-  if (loggedOut || applied.some((op) => op.path === "/room")) {
-    const choosing = allOpenSockets().filter((other) => {
-      const session = sessionDoc.read(other.data.sessionId);
-      return other !== ws && session.name !== null && session.room === null;
-    });
-    if (choosing.length > 0) renderRequested.emit(choosing);
-  }
-});
 
 /** Chat's page: the three steps. No name, the name form; no room, the rooms; else the room. */
 export function render(sessionId: string): string {
   const { name, room: current } = sessionDoc.read(sessionId);
   if (!name) return renderNameForm();
   if (!current) return renderRooms(name, roomDoc.list());
-  return renderRoom(name, current, peopleIn(current), roomDoc.read(current).transcript);
+  return renderRoom(name, current, roomDoc.people(current), roomDoc.read(current));
 }
 
+/** A room's conversation, kept in delta (`room:<name>`): a message is written by someone with a name. */
 export const room: Compartment = {
   docType: "room",
   resolveDoc(ws) {
     return sessionDoc.read(ws.data.sessionId).room ?? undefined;
   },
-  // May this connection write this path? Whether the value itself is valid
-  // (e.g. non-blank text) is documents/room.ts::patch()'s call, not this one's.
   permit(ws, op) {
-    if (op.path !== "/transcript/-" || op.op !== "add") return false;
+    if (op.path !== "/messages/-" || op.op !== "add") return false;
     return sessionDoc.read(ws.data.sessionId).name !== null;
   },
-  // A fresh write's value is the text alone, and is shaped into a message by its author here; an
-  // undo or a redo brings ops that are already whole (a remove; a message with its own id).
-  write(ws, roomName, ops, undoes) {
+  // The wire says the text; the document takes a message: a new row under a time-ordered id, with
+  // its author and the time. Blank text is no message.
+  shape(ws, _room, ops) {
     const { name } = sessionDoc.read(ws.data.sessionId);
-    const shaped = undoes === undefined ? ops.map((op) => ({ ...op, value: { name, text: op.value } })) : ops;
-    const result = roomDoc.patch(roomName, shaped, ws.data.sessionId, undoes);
-    notify("room", roomName, result); // everyone in the room, the writer too; each is sent the parts of their page that changed
-    return result;
+    return ops
+      .map((op) => String(op.value ?? "").trim())
+      .filter((text) => text !== "")
+      .map((text): PatchOp => ({ op: "add", path: `/messages/${Bun.randomUUIDv7()}`, value: { name, text, sent_at: Date.now() } }));
   },
-  onOpen(ws) {
-    const { name, room: current } = sessionDoc.read(ws.data.sessionId);
-    if (current && name) announceJoin(current, ws, name);
+  // the first message in a room puts it on the list, and undoing the last takes it off
+  changed: () => keepLobby(),
+};
+
+/** Who is in a room: live, kept by the server (../presence.ts), written by nobody on the wire. */
+export const here: Compartment = {
+  docType: "here",
+  kind: "live",
+  resolveDoc(ws) {
+    return sessionDoc.read(ws.data.sessionId).room ?? undefined;
   },
-  onClose(ws) {
-    const { name, room: current } = sessionDoc.read(ws.data.sessionId);
-    if (current && name) announceLeave(current, ws, name);
-  },
+};
+
+/** Which rooms there are: live, kept by the server, seen by the pages that show it (the rooms). */
+export const lobby: Compartment = {
+  docType: "lobby",
+  kind: "live",
+  resolveDoc: () => undefined,
 };

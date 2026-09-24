@@ -4,6 +4,7 @@ import { assemble } from "./compartments";
 import { createServer } from "./server";
 import type { Stories, Story, Write } from "./stories";
 import { applyPatch, type PatchOp } from "./json-patch";
+import { settled } from "./documents";
 import { comparable, splitTag } from "./parts";
 
 export { comparable };
@@ -33,11 +34,21 @@ type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[];
 type HtmlOp = { op: "replace" | "tag" | "after" | "before" | "remove"; target: string; html?: string };
 type Snapshot = Map<string, string>;
 
-/** How long the server is given to finish with the sockets a story closed, before its transaction is rolled back. */
-const CLOSE_MS = 40;
 
-const ledgerMaxStmt = db.query<{ id: number | null }, []>("SELECT MAX(id) AS id FROM ledger");
-const ledgerSinceStmt = db.query<{ id: number; doc: string; undoable: number }, [number]>("SELECT id, doc, undoable FROM ledger WHERE id > ? ORDER BY id");
+type LedgerRow = { id: number; doc: string; undoable: number };
+
+/**
+ * The ledger the stories read, to know whether a story has an undo to check and whether a refusal
+ * moved nothing: the kernel's own, or -- for an example that keeps its documents in delta --
+ * delta's (`delta_ledger`, in the same database), whose entries a story's write starts.
+ */
+function ledgerOf(inDelta: boolean): { max(): number; since(id: number): LedgerRow[] } {
+  const max = db.query<{ id: number | null }, []>(inDelta ? "SELECT MAX(id) AS id FROM delta_ledger" : "SELECT MAX(id) AS id FROM ledger");
+  const since = db.query<LedgerRow, [number]>(
+    inDelta ? "SELECT id, doc, undoable FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id" : "SELECT id, doc, undoable FROM ledger WHERE id > ? ORDER BY id",
+  );
+  return { max: () => max.get()?.id ?? 0, since: (id) => since.all(id) };
+}
 
 const UNDO: Write = { doc: "ledger", ops: [{ op: "remove", path: "/latest" }] };
 const REDO: Write = { doc: "ledger", ops: [{ op: "add", path: "/latest" }] };
@@ -140,17 +151,17 @@ export function hear(page: string, message: Heard): string {
 }
 
 
-function ledgerMax(): number {
-  return ledgerMaxStmt.get()?.id ?? 0;
-}
 
 export async function run(example: Example, stories: Stories): Promise<Report> {
   const server = createServer(example, 0);
-  const { renderFor } = assemble(example);
+  const { draw, documents } = assemble(example);
+  const active = (sessionId: string): Promise<boolean> => settled(documents, () => example.active(sessionId));
+  const ledger = ledgerOf(documents !== undefined);
+  const ledgerMax = ledger.max;
   const outcomes: Outcome[] = [];
 
-  function snapshot(cast: Member[]): Snapshot {
-    return new Map(cast.map((m) => [m.name, renderFor(m.sessionId)]));
+  async function snapshot(cast: Member[]): Promise<Snapshot> {
+    return new Map(await Promise.all(cast.map(async (m) => [m.name, await draw(m.sessionId)] as const)));
   }
 
   async function connect(name: string): Promise<Member> {
@@ -202,14 +213,14 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
 
   /** Canon 2: what each member's open page holds must be what a fresh render shows. */
   /** The patch stream: what each member's applets hold must be what a fresh render gives them. */
-  function held(cast: Member[], when: string, failures: string[]): void {
-    for (const m of cast) failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, renderFor(m.sessionId)));
+  async function held(cast: Member[], when: string, failures: string[]): Promise<void> {
+    for (const m of cast) failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, await draw(m.sessionId)));
   }
 
-  function stale(cast: Member[], when: string, failures: string[]): void {
-    held(cast, when, failures);
+  async function stale(cast: Member[], when: string, failures: string[]): Promise<void> {
+    await held(cast, when, failures);
     for (const m of cast) {
-      const fresh = comparable(renderFor(m.sessionId));
+      const fresh = comparable(await draw(m.sessionId));
       const held = comparable(m.page);
       if (held !== fresh) failures.push(`${when}, ${m.name}'s open page is not what a fresh render shows${excerpt(fresh, held)}`);
     }
@@ -228,11 +239,11 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       if (!who) return { name: story.name, failures: [`no one in the cast is called ${story.as}`] };
 
       if ("cannot" in story) {
-        const before = snapshot(cast);
+        const before = await snapshot(cast);
         const ledgerBefore = ledgerMax();
         await send(cast, who, story.cannot);
-        compare(before, snapshot(cast), cast, "refused, but", failures);
-        stale(cast, "after the refusal", failures);
+        compare(before, await snapshot(cast), cast, "refused, but", failures);
+        await stale(cast, "after the refusal", failures);
         if (ledgerMax() !== ledgerBefore) failures.push("refused, but the ledger moved");
         return { name: story.name, failures };
       }
@@ -246,14 +257,14 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
         else if (where !== undefined && stories.at) await send(cast, m, stories.at(where));
       }
 
-      const before = snapshot(cast);
+      const before = await snapshot(cast);
       const ledgerBefore = ledgerMax();
       who.inbox.length = 0;
       await send(cast, who, story.does);
       if (process.env.STORY_TRACE) for (const raw of who.inbox) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
-      const after = snapshot(cast);
-      const entries = ledgerSinceStmt.all(ledgerBefore);
-      stale(cast, "after the story", failures);
+      const after = await snapshot(cast);
+      const entries = ledger.since(ledgerBefore);
+      await stale(cast, "after the story", failures);
 
       // Only what the story says is asked: `seen` must notice, `unseen` must not; anyone in
       // neither is left alone (a home page with counts on it changes for many reasons).
@@ -264,26 +275,27 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       }
 
       if (entries.length === 0) return { name: story.name, failures }; // off the ledger: nothing to undo
-      if (!example.active(who.sessionId)) return { name: story.name, failures }; // the author has gone (logged out): no undo is theirs to press
+      if (!(await active(who.sessionId))) return { name: story.name, failures }; // the author has gone (logged out): no undo is theirs to press
 
       const facts = entries.every((e) => e.undoable === 0);
       await send(cast, who, UNDO);
-      const afterUndo = snapshot(cast);
-      stale(cast, "after undo", failures);
+      const afterUndo = await snapshot(cast);
+      await stale(cast, "after undo", failures);
       if (facts) compare(after, afterUndo, cast, "a fact, yet undo changed it", failures);
       else {
         compare(before, afterUndo, cast, "undo did not restore", failures);
-        if (!example.active(who.sessionId)) return { name: story.name, failures }; // the undo was their going (a name taken back): no redo is theirs to press
+        if (!(await active(who.sessionId))) return { name: story.name, failures }; // the undo was their going (a name taken back): no redo is theirs to press
         await send(cast, who, REDO);
-        compare(after, snapshot(cast), cast, "redo did not restore", failures);
-        stale(cast, "after redo", failures);
+        compare(after, await snapshot(cast), cast, "redo did not restore", failures);
+        await stale(cast, "after redo", failures);
       }
       return { name: story.name, failures };
     } finally {
       for (const m of cast) m.ws.close();
       await Promise.all(cast.map((m) => new Promise((resolve) => (m.ws.readyState === WebSocket.CLOSED ? resolve(undefined) : m.ws.addEventListener("close", resolve, { once: true })))));
-      await Bun.sleep(CLOSE_MS);
+      await server.idle(); // every close handled, and what it set going
       db.exec("ROLLBACK");
+      await documents?.release(new Set()); // the next story reads from the rolled-back database
     }
   }
 

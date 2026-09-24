@@ -1,0 +1,204 @@
+import type { Local } from "@blueshed/delta/local";
+import { applyOps, type DeltaOp } from "@blueshed/delta/core";
+import { reading } from "./reading";
+import { splitDoc } from "./ledger";
+import type { PatchOp } from "./json-patch";
+
+// eta's documents are delta's (Workshop/docs/eta-on-delta.md). eta keeps a copy of every document
+// an open page reads, kept current from delta's one stream of changes -- this process's writes and,
+// over Postgres, other processes' alike -- so a page is drawn from memory, synchronously, and never
+// reads the database per viewer, per redraw. A read of a document not held yet throws `Pending`:
+// `settled` loads it and runs the drawing again. A write goes to delta as the person, with the
+// session as the cursor undo walks, and resolves once its change is back and held. Every change
+// reaches the kernel through `onChange`: the one place eta echoes and redraws.
+
+/** Thrown by `read` for a document not held yet; `settled` loads it and tries again. */
+export class Pending extends Error {
+  constructor(readonly doc: string) {
+    super(`not held yet: ${doc}`);
+  }
+}
+
+export type Change = { doc: string; ops: DeltaOp[]; v?: number };
+export type Written = { ops: DeltaOp[]; inverse: DeltaOp[]; version?: number; entry?: number };
+export type Writer = { identity: unknown; cursor: string; undoable?: boolean };
+
+type Held = { value: any; v?: number };
+
+export type Documents = ReturnType<typeof createDocuments>;
+
+export function createDocuments(local: Local) {
+  const held = new Map<string, Held>();
+  const loading = new Map<string, Promise<void>>();
+  const listeners = new Set<(change: Change) => void | Promise<void>>();
+  const inflight = new Set<Promise<unknown>>();
+  const waiting = new Map<string, { v: number; resolve: () => void }[]>();
+
+  // the one stream of changes: every publish on a document's channel
+  local.onPublish((doc, data) => {
+    if (!data || data.doc !== doc || !Array.isArray(data.ops)) return;
+    const h = held.get(doc);
+    if (h) {
+      if (data.v !== undefined && h.v !== undefined && data.v <= h.v) return; // held already
+      if (data.v !== undefined && h.v !== undefined && data.v > h.v + 1) {
+        // a change missed: the copy is not to be trusted -- load it again, and tell as a whole-document change
+        held.delete(doc);
+        track(load(doc).then(() => tell({ doc, ops: [{ op: "replace", path: "", value: held.get(doc)?.value }], v: held.get(doc)?.v })));
+        return;
+      }
+      h.value = h.value === undefined ? h.value : applied(h.value, data.ops);
+      if (data.v !== undefined) h.v = data.v;
+    }
+    track(tell({ doc, ops: data.ops, v: data.v }));
+    if (data.v !== undefined) for (const w of waiting.get(doc)?.filter((w) => w.v <= data.v) ?? []) w.resolve();
+  });
+
+  const applied = (value: any, ops: DeltaOp[]): any => {
+    const next = structuredClone(value);
+    applyOps(next, ops);
+    return next;
+  };
+
+  function track<T>(p: Promise<T>): Promise<T> {
+    inflight.add(p);
+    return p.finally(() => inflight.delete(p));
+  }
+
+  async function tell(change: Change): Promise<void> {
+    for (const fn of listeners) await fn(change);
+  }
+
+  /** Opens `doc` in delta and holds it. Loading twice at once loads once. */
+  function load(doc: string): Promise<void> {
+    if (held.has(doc)) return Promise.resolve();
+    if (!loading.has(doc)) {
+      loading.set(
+        doc,
+        local
+          .call("open", { doc })
+          .then((answer) => {
+            if (answer.error || !answer.result) return void held.set(doc, { value: undefined });
+            const { _v, ...value } = answer.result;
+            held.set(doc, { value, v: _v === undefined ? undefined : Number(_v) });
+          })
+          .finally(() => loading.delete(doc)),
+      );
+    }
+    return loading.get(doc)!;
+  }
+
+  return {
+    /** The document as held, noting that the page being drawn read it; throws `Pending` when not held yet. */
+    read<T = any>(doc: string): T {
+      const { docType, docId } = splitDoc(doc);
+      reading(docType, docId);
+      const h = held.get(doc);
+      if (!h) throw new Pending(doc);
+      return h.value as T;
+    },
+    held: (doc: string): boolean => held.has(doc),
+    load,
+
+    /** Writes through delta as `by.identity`, and resolves once the change is back and held. */
+    async write(doc: string, ops: DeltaOp[], by: Writer): Promise<Written | { error: { code: number; message: string } }> {
+      await load(doc);
+      const answer = await local.as(by.identity).call("delta", { doc, ops, cursor: by.cursor, undoable: by.undoable !== false, inverse: true });
+      if (answer.error) return { error: answer.error };
+      const written = answer.result as Written;
+      await caughtUp(doc, written.version);
+      return written;
+    },
+
+    /** Undo or redo along a session's cursor: delta walks it; the change comes back like any other. */
+    async walk(way: "undo" | "redo", by: Writer): Promise<{ doc: string } | null> {
+      const answer = await local.as(by.identity).call(way, { cursor: by.cursor });
+      const result = answer.result as ({ doc: string } & Written) | null | undefined;
+      if (!result) return null;
+      await caughtUp(result.doc, result.version);
+      return result;
+    },
+
+    /** A document's recent history, each entry saying whether this cursor wrote it. */
+    async history(doc: string, cursor: string, limit?: number): Promise<{ version: number; ops: DeltaOp[]; inverse: DeltaOp[]; at: number; mine: boolean }[]> {
+      const answer = await local.call("history", { doc, cursor, limit });
+      return (answer.result as never) ?? [];
+    },
+
+    /** Hears every change to a document -- this process's and others' -- after it is held. */
+    onChange(fn: (change: Change) => void | Promise<void>): () => void {
+      listeners.add(fn);
+      return () => void listeners.delete(fn);
+    },
+
+    /** Resolves when every change heard so far has been told. */
+    async quiet(): Promise<void> {
+      while (inflight.size > 0) await Promise.all([...inflight]);
+    },
+
+    /** Lets go of every held document but `keep`: closed in delta, dropped here. */
+    async release(keep: Set<string>): Promise<void> {
+      for (const doc of [...held.keys()]) {
+        if (keep.has(doc)) continue;
+        held.delete(doc);
+        await local.call("close", { doc });
+      }
+    },
+
+    /** Everything held, by name (for inspect and tests). */
+    names: (): string[] => [...held.keys()],
+  };
+
+  /** Waits until the held copy of `doc` has reached `version` -- at once in this process, after NOTIFY over Postgres. */
+  function caughtUp(doc: string, version: number | undefined): Promise<void> {
+    const h = held.get(doc);
+    if (version === undefined || !h || h.v === undefined || h.v >= version) return Promise.resolve();
+    return new Promise((resolve) => {
+      const list = waiting.get(doc) ?? [];
+      const w = { v: version, resolve: () => {
+        waiting.set(doc, (waiting.get(doc) ?? []).filter((x) => x !== w));
+        resolve();
+      } };
+      list.push(w);
+      waiting.set(doc, list);
+    });
+  }
+}
+
+/** Runs `fn`; a read of a document not held yet loads it, and `fn` runs again. */
+export async function settled<T>(documents: Documents | undefined, fn: () => T, tries = 20): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return fn();
+    } catch (e) {
+      if (!(e instanceof Pending) || !documents || i >= tries) throw e;
+      await documents.load(e.doc);
+    }
+  }
+}
+
+// The active example's documents, when it keeps them in delta: set by createServer, read by an
+// example's views through `read`, one example per process as everywhere else in the kernel.
+let active: Documents | undefined;
+
+export function setActiveDocuments(documents: Documents | undefined): void {
+  active = documents;
+}
+
+/** Reads a document from the active example's copy: `room:general`, `session:<id>`. */
+export function read<T = any>(doc: string): T {
+  if (!active) throw new Error("no documents: this example does not keep them in delta");
+  return active.read<T>(doc);
+}
+
+/** The active example's documents, when it keeps them in delta. */
+export const activeDocuments = (): Documents | undefined => active;
+
+/**
+ * The server's own write -- to a live document it keeps true (who is here): no person, no cursor,
+ * never on the ledger.
+ */
+export async function serverWrite(doc: string, ops: PatchOp[]): Promise<void> {
+  if (!active) throw new Error("no documents: this example does not keep them in delta");
+  const written = await active.write(doc, ops as DeltaOp[], { identity: undefined, cursor: "", undoable: false });
+  if ("error" in written) throw new Error(`${doc}: ${written.error.message}`);
+}

@@ -29,6 +29,7 @@ function applyOps(id: string, ops: PatchOp[]): { applied: PatchOp[]; inverse: Pa
   const applied: PatchOp[] = [];
   const inverse: PatchOp[] = [];
   for (const op of ops) {
+    if (op.path === "/text" && op.value === "boom") throw new Error("boom"); // a write whose handling fails
     if (op.path !== "/text" || op.op !== "replace") continue;
     inverse.unshift({ op: "replace", path: "/text", value: state.text });
     state.text = String(op.value ?? "");
@@ -99,9 +100,11 @@ function makeExample(name: string): Example {
   return {
     name,
     compartments: [noteCompartment, monthCompartment],
-    render: (sessionId) =>
-      `<p class="note">${readNote(sessionId).text}</p>` +
-      (showing.get(sessionId) ?? []).map((m) => part(`month-${m}`, `<ul data-month="${m}">${readMonth(m).map((a, i) => part(`${m}-${i}`, `<li>${a}</li>`)).join("")}</ul>`)).join(""),
+    render: (sessionId) => {
+      if (readNote(sessionId).text === "undrawable") throw new Error("undrawable"); // a page whose drawing fails
+      return `<p class="note">${readNote(sessionId).text}</p>` +
+      (showing.get(sessionId) ?? []).map((m) => part(`month-${m}`, `<ul data-month="${m}">${readMonth(m).map((a, i) => part(`${m}-${i}`, `<li>${a}</li>`)).join("")}</ul>`)).join("");
+    },
     active: () => true,
     index,
   };
@@ -219,6 +222,46 @@ describe("createServer, generically (no example from the examples directory invo
     write(ws, "ledger", [{ op: "add", path: "/latest" }]);
     await expectMessage(ws, "render");
 
+    ws.close();
+  });
+
+  test("an event whose handling fails is logged, and the events after it are still handled", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const logged: unknown[] = [];
+    const error = console.error;
+    console.error = (...args: unknown[]) => void logged.push(args);
+    try {
+      write(ws, "note", [{ op: "replace", path: "/text", value: "boom" }]);
+      write(ws, "note", [{ op: "replace", path: "/text", value: "after the boom" }]);
+      expect((await expectMessage(ws, "patch")).ops).toEqual([{ op: "replace", path: "/text", value: "after the boom" }]);
+      expect(logged).toHaveLength(1);
+      expect(String((logged[0] as unknown[])[1])).toContain("boom");
+    } finally {
+      console.error = error;
+    }
+    ws.close();
+  });
+
+  test("a drawing that fails is logged, and the connection's next drawing goes ahead", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const logged: unknown[] = [];
+    const error = console.error;
+    console.error = (...args: unknown[]) => void logged.push(args);
+    try {
+      write(ws, "note", [{ op: "replace", path: "/text", value: "undrawable" }]);
+      await expectMessage(ws, "patch"); // the write is told; its drawing fails
+      write(ws, "note", [{ op: "replace", path: "/text", value: "drawn again" }]);
+      await expectMessage(ws, "patch");
+      expect(htmlOf(await nextMessage(ws))).toContain("drawn again");
+      expect(logged).toHaveLength(1);
+      expect(String((logged[0] as unknown[])[1])).toContain("undrawable");
+    } finally {
+      console.error = error;
+    }
     ws.close();
   });
 

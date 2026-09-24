@@ -1,4 +1,5 @@
 import type { HTMLBundle } from "bun";
+import type { Local } from "@blueshed/delta/local";
 import type { ConnectionData } from "./connection";
 import type { Compartment } from "./compartments/compartment";
 
@@ -32,6 +33,14 @@ export type Example = {
   active(sessionId: string): boolean;
   /** The page served at "/", via Bun's HTML import. */
   index: HTMLBundle;
+  /**
+   * The example's documents, in delta, in this process (Workshop/docs/eta-on-delta.md): its backends
+   * registered on a `createLocal()`. When given, the kernel keeps each page's documents from delta's
+   * stream of changes, writes through delta, and the ledger is delta's.
+   */
+  delta?: Local;
+  /** Who a session is, as delta sees them -- for the ledger's `who` and for row-level security. Default: the session. */
+  who?(sessionId: string): unknown;
   /** Extra HTTP routes this example needs (e.g. serving uploaded pictures). Merged into the kernel's routes; a kernel route of the same path wins. */
   routes?: Record<string, Bun.Serve.BaseRouteValue | RouteHandler>;
 };

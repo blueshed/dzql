@@ -4,7 +4,7 @@ const name = (value: string): Write => ({ doc: "session", ops: [{ op: "replace",
 const room = (value: string): Write => ({ doc: "session", ops: [{ op: "replace", path: "/room", value }] });
 const leave: Write = { doc: "session", ops: [{ op: "remove", path: "/room" }] };
 const logout: Write = { doc: "session", ops: [{ op: "remove", path: "/name" }] };
-const say = (text: string): Write => ({ doc: "room", ops: [{ op: "add", path: "/transcript/-", value: text }] });
+const say = (text: string): Write => ({ doc: "room", ops: [{ op: "add", path: "/messages/-", value: text }] });
 
 // Chat is three steps: what's your name, what room, say something. The stories are those steps in
 // order, each with who then sees it, and the refusals that keep the steps in order. Nothing in
@@ -26,7 +26,7 @@ export const stories: Stories = {
 
     // ── say something ──
     story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", { as: "ada", does: say("hello"), seen: ["ada", "bob"], unseen: ["cy", "dee", "eve"] }),
-    story("Nobody can take a message back over the wire; only Undo can", { as: "ada", cannot: { doc: "room", ops: [{ op: "remove", path: "/transcript/0" }] } }),
+    story("Nobody can take a message back over the wire; only Undo can", { as: "ada", cannot: { doc: "room", ops: [{ op: "remove", path: "/messages/any" }] } }),
 
     // ── and going ──
     story("Ada logs out, and the room shows her gone", { as: "ada", does: logout, seen: ["ada", "bob"] }),

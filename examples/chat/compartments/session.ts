@@ -1,27 +1,13 @@
-import type { ServerWebSocket } from "bun";
 import * as sessionDoc from "../documents/session";
-import type { ConnectionData } from "../../../src/connection";
 import type { PatchOp } from "../../../src/json-patch";
-import { createEvent } from "../../../src/compartments/bus";
 import type { Compartment } from "../../../src/compartments/compartment";
-import { notify } from "../../../src/compartments/audience";
 import { join, write } from "../../../src/html";
+import { keepPresence } from "../presence";
 
-// The session is the tray (change-request.md item 10): the ground the room compartment sits on,
-// not a place of its own on the page -- it has no `render` and isn't listed in the example's
-// `compartments`. `renderNameForm` is still exported from here (this document decides when to
-// show it), but `room.ts` is the one that renders it now, absorbing what used to be the tray's
-// own page. Otherwise this only takes the writes that move around the room compartment -- a
-// name, a room.
-
-// Fires after any successful write to a session document, so other compartments
-// can react to what changed (e.g. room membership) without session needing
-// to know they exist. `before` is the document's state prior to this write.
-export const sessionPatched = createEvent<{
-  ws: ServerWebSocket<ConnectionData>;
-  before: sessionDoc.SessionDocument;
-  applied: PatchOp[];
-}>();
+// The session is the tray: the ground the room sits on -- your name and your room, kept in delta
+// (`session:<id>`, ../delta.ts), your own and nobody else's. What a write to it may be is here:
+// a name or a room, trimmed, a blank ignored; logging out is the name taken back, and the room
+// with it. Who is in a room follows from the sessions (../presence.ts).
 
 /** Without a name you cannot enter: the one form before anything else. */
 export function renderNameForm(): string {
@@ -35,34 +21,38 @@ export function renderNameForm(): string {
   );
 }
 
-// A session doc's writable surface: which JSON Pointer paths a connection
-// may write on its own session. Blank/invalid values are rejected further
-// down, inside documents/session.ts::patch() itself.
+// A session's writable surface: the paths a connection may write on its own session.
 const WRITABLE_PATHS = new Set(["/name", "/room"]);
 
 export const session: Compartment = {
   docType: "session",
   own: true, // keyed by the session id: this session's alone
+  at: "/sessions", // eta's `/name` is the document's `/sessions/name`
   resolveDoc(ws) {
     return ws.data.sessionId; // every connection always sees its own session
   },
   permit(ws, op) {
     if (!WRITABLE_PATHS.has(op.path)) return false;
-    // Writing /room requires an active (named) session -- otherwise a stale
-    // second tab could silently join a room after logging out elsewhere:
-    // the write would be invisible through read() (filtered by revoked_at)
-    // but the socket would still join the room's live broadcast set.
+    // A room only with a name: a stale tab, logged out elsewhere, does not wander into one.
     if (op.path === "/room") return sessionDoc.read(ws.data.sessionId).name !== null;
     return true;
   },
-  // Undo lands here too (re-giving a name that was just removed): the same path, so room
-  // membership still reacts (see compartments/room.ts's sessionPatched listener). The session's
-  // own tabs are its audience; having no element of its own on the page, each is shown the page.
-  write(ws, id, ops, undoes) {
+  // What the wire said, as the document takes it: a blank is nothing; the room you are in already
+  // is nothing; logging out takes the name back, and the room with it.
+  shape(_ws, id, ops) {
     const before = sessionDoc.read(id);
-    const result = sessionDoc.patch(id, ops, undoes);
-    notify("session", id, result);
-    if (result.applied.length > 0) sessionPatched.emit({ ws, before, applied: result.applied });
-    return result;
+    const shaped: PatchOp[] = [];
+    for (const op of ops) {
+      const value = String(op.value ?? "").trim();
+      if (op.path === "/name" && op.op === "remove") shaped.push({ op: "replace", path: "/name", value: null }, { op: "replace", path: "/room", value: null });
+      else if (op.path === "/name" && value) shaped.push({ op: "replace", path: "/name", value });
+      else if (op.path === "/room" && op.op === "remove" && before.room !== null) shaped.push({ op: "replace", path: "/room", value: null });
+      else if (op.path === "/room" && op.op !== "remove" && value && value !== before.room) shaped.push({ op: "replace", path: "/room", value });
+    }
+    return shaped;
   },
+  // a name or a room moved -- by a write, an undo, a redo: who is where follows
+  changed: () => keepPresence(),
+  onOpen: () => keepPresence(),
+  onClose: () => keepPresence(),
 };

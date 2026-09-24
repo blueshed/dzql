@@ -34,7 +34,7 @@ const USER_LABEL = `document.querySelector('.user-label')?.textContent ?? null`;
 const MESSAGES_TEXT = `document.querySelector('.messages')?.textContent ?? ""`;
 const LOGOUT_SELECTOR = `[data-write='{"doc":"session","op":"remove","path":"/name"}']`;
 const LEAVE_ROOM_SELECTOR = `[data-write='{"doc":"session","op":"remove","path":"/room"}']`;
-const SEND_MESSAGE_FORM_VISIBLE = `document.querySelector('[data-write=\\'{"doc":"room","op":"add","path":"/transcript/-"}\\']') !== null`;
+const SEND_MESSAGE_FORM_VISIBLE = `document.querySelector('[data-write=\\'{"doc":"room","op":"add","path":"/messages/-"}\\']') !== null`;
 
 async function submitName(view: Bun.WebView, name: string) {
   await waitFor(view, NAME_FORM_VISIBLE, (v) => v === true);
@@ -321,7 +321,7 @@ describe("app.ts in a real browser", () => {
     expect((await viewA.evaluate(`document.querySelector('input[name=text]').selectionStart`)) as number).toBe(3);
   });
 
-  test("eta.docs() gains an add /transcript/- op when another browser sends a message", async () => {
+  test("eta.docs() gains the message delta made when another browser sends one", async () => {
     await using viewA = new Bun.WebView();
     await using viewB = new Bun.WebView();
 
@@ -341,7 +341,7 @@ describe("app.ts in a real browser", () => {
     // the echo names the whole document, room:<name>: a connection may see any number of rooms.
     const doc = JSON.stringify(`room:${room}`);
     const gainedOp = `window.eta.docs()[${doc}]?.ops.some(
-      (op) => op.op === "add" && op.path === "/transcript/-" && op.value.text === ${JSON.stringify(text)}
+      (op) => op.op === "add" && op.path.startsWith("/messages/") && op.value.text === ${JSON.stringify(text)}
     ) ?? false`;
     await waitFor(viewB, gainedOp, (v) => v === true);
 

@@ -56,7 +56,7 @@ export function createLedgerCompartment(
       // get skipped in favor of an older entry; undo just does nothing.
       if (!owner) return { version: 0, applied: [] };
 
-      return owner.write(ws, docId, entry.inverse, entry.id);
+      return owner.write?.(ws, docId, entry.inverse, entry.id) ?? { version: 0, applied: [] };
     },
   };
 }

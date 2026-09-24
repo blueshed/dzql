@@ -24,9 +24,9 @@ describe("stories harness", () => {
       cast: stories.cast,
       stories: [
         { name: "a ghost speaks", as: "ghost", does: { doc: "room", ops: [] }, seen: {} },
-        { name: "Ada says hello and Eve, who is nowhere, sees it", as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/transcript/-", value: "hi" }] }, seen: { eve: "" }, unseen: ["cy"] },
+        { name: "Ada says hello and Eve, who is nowhere, sees it", as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "hi" }] }, seen: { eve: "" }, unseen: ["cy"] },
         // a refusal that is false: Ada may speak, so her page changes, and the excerpt says where
-        { name: "Ada cannot say hello", as: "ada", cannot: { doc: "room", ops: [{ op: "add", path: "/transcript/-", value: "hi" }] } },
+        { name: "Ada cannot say hello", as: "ada", cannot: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "hi" }] } },
       ],
     });
     delete process.env.STORY_DIFF;

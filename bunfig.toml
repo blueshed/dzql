@@ -2,3 +2,5 @@
 # coverage is always on, and 100% is a gate, not an aim: the run fails below it
 coverage = true
 coverageThreshold = 1.0
+# delta is linked from its checkout: its source is delta's to cover, not eta's
+coveragePathIgnorePatterns = ["../blueshed/**", "**/node_modules/**"]

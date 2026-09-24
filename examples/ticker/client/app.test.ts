@@ -42,12 +42,15 @@ describe("the ticker in a real browser", () => {
 
     // a tick from the server side (as the feed makes them): the board's row moves, and the only
     // message the client saw was the patch
-    const renders = await view.evaluate(`window.eta.docs()['ticker:market']?.ops.length ?? 0`);
+    await view.evaluate(`(() => { window.__renders = 0; window.eta.socket().addEventListener('message', (e) => { if (JSON.parse(e.data).type === 'render') window.__renders++; }); return 1; })()`);
     const price = Math.round((market.read().FXTR!.price + 2.5) * 100) / 100;
     tick([{ op: "replace", path: "/FXTR/price", value: price }], "feed");
     await waitFor(view, `document.querySelector('svg.board .row[data-row="FXTR"] .price')?.textContent`, (v) => v === price.toFixed(2));
     expect(await view.evaluate(`document.querySelector('svg.board .row[data-row="FXTR"]').classList.contains('up')`)).toBe(true);
-    expect(await view.evaluate(`window.eta.docs()['ticker:market'].ops.length`)).toBe((renders as number) + 2); // the tick's two ops: prev, then price
+    // the tick reached the page as its patch (prev, then price), and no render came with it -- other
+    // ticks may land meanwhile (a feed another test started), so this tick is looked for by its value
+    expect(await view.evaluate(`window.eta.docs()['ticker:market'].ops.some((op) => op.path === '/FXTR/price' && op.value === ${price})`)).toBe(true);
+    expect(await view.evaluate(`window.__renders`)).toBe(0);
     expect(await view.evaluate(`document.querySelectorAll('svg.board .row[data-row="FXTR"] polyline').length`)).toBe(1);
 
     // the clock's seconds hand is turning, with nothing from the server

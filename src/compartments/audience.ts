@@ -1,6 +1,6 @@
 import type { ServerWebSocket } from "bun";
 import type { ConnectionData } from "../connection";
-import { patchMessage } from "../json-patch";
+import { patchMessage, type PatchOp } from "../json-patch";
 import { prefixDoc, splitDoc } from "../ledger";
 import { shows } from "../reading";
 import type { Compartment, WriteResult } from "./compartment";
@@ -113,4 +113,15 @@ export function notify(
   for (const ws of echoTo) ws.send(patchMessage(wireName(docType, docId, ws), result.version, result.applied));
   const redraw = renderTo ?? [...new Set([...echoTo, ...readersOf(docType, docId)])];
   if (redraw.length > 0) renderRequested.emit({ sockets: redraw, written: { docType, docId } });
+}
+
+/**
+ * A document's ops as the wire says them, for an echo and for `inspect` alike: at eta's paths (the
+ * compartment's `at` taken off), and -- for a session's own document, keyed by the session id -- with
+ * that id taken out of whatever they carry: a credential, never on the wire, not even to its own tabs.
+ */
+export function wireOps(owner: Compartment, docId: string, ops: PatchOp[]): PatchOp[] {
+  const at = owner.at ?? "";
+  const moved = ops.map((op) => (at && (op.path === at || op.path.startsWith(`${at}/`)) ? { ...op, path: op.path.slice(at.length) } : op));
+  return owner.own ? (JSON.parse(JSON.stringify(moved, (_k, v) => (v === docId ? undefined : v))) as PatchOp[]) : moved;
 }
