@@ -98,8 +98,7 @@ function makeExample(name: string): Example {
 
 type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[] };
 
-/** A render's HTML, whether it came as the whole page or as fragment ops (rule 2's default: a
- * single replace of the owning compartment's own element, unless it answers `fragments` itself). */
+/** A render's HTML, whether it came as the whole page or as the parts that changed (src/parts.ts). */
 const htmlOf = (m: WireMessage): string =>
   m.html ?? (m.ops as { html?: string }[] | undefined ?? []).map((o) => o.html ?? "").join("");
 
@@ -267,6 +266,7 @@ describe("createServer, generically (no example from the examples directory invo
     const note = docs.find((d) => d.doc === "note");
     expect(note?.version).toBeGreaterThan(0);
     expect(note?.entries?.[0]).toMatchObject({ ops: [{ op: "replace", path: "", value: { text: "inspect me" } }] });
+    expect((note?.entries?.[0] as { id: number }).id).toBeGreaterThan(0); // the ledger entry's own id
     // a session id is the only credential: it never goes on the wire, not even your own. "Was this
     // write mine" is all a reader may ask.
     expect(note?.entries?.[0]).toMatchObject({ mine: true });

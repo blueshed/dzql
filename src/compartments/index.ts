@@ -79,7 +79,7 @@ export function assemble(example: Example): Assembled {
       const doc = wireName(docType, docId, ws); // as the wire names it: whole, or the bare type for a session's own
       const owner = byDocType.get(docType)!;
       const entries = (await documents.history(name, ws.data.sessionId, limit)).map((e) => ({
-        id: 0,
+        id: e.id, // the ledger entry's own
         doc,
         version: e.version,
         ops: wireOps(owner, docId, e.ops as never),

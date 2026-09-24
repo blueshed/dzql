@@ -134,7 +134,7 @@ export function createDocuments(local: Local) {
     },
 
     /** A document's recent history, each entry saying whether this cursor wrote it. */
-    async history(doc: string, cursor: string, limit?: number): Promise<{ version: number; ops: DeltaOp[]; inverse: DeltaOp[]; at: number; mine: boolean }[]> {
+    async history(doc: string, cursor: string, limit?: number): Promise<{ id: number; version: number; ops: DeltaOp[]; inverse: DeltaOp[]; at: number; mine: boolean }[]> {
       const answer = await local.call("history", { doc, cursor, limit });
       return (answer.result as never) ?? [];
     },
