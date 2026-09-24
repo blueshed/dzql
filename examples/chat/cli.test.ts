@@ -68,7 +68,7 @@ describe("chat's cli against a real server", () => {
     const afterSend = await runCommand(ws, parseCommand(["send", "hello"], aliases)!);
 
     const session = afterSend.docs.find((d) => d.doc === "session");
-    const room = afterSend.docs.find((d) => d.doc === "room");
+    const room = afterSend.docs.find((d) => d.doc === "room:lobby");
     expect(session?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "/room", value: "lobby" }]);
     expect(room?.version).toBeGreaterThan(0);
     expect(room?.entries?.[0]?.ops).toEqual([{ op: "add", path: "/transcript/-", value: { name: "Ada", text: "hello" } }]);

@@ -75,7 +75,7 @@ describe("the ticker", () => {
     const { html } = await expectMessage(ws, "render");
     expect(html).toContain('data-applet="clock"');
     expect(html).toContain('id="board-count"');
-    expect(html).toContain('data-applet="board" data-doc="ticker"');
+    expect(html).toContain('data-applet="board" data-doc="ticker:market"');
     expect(html).toContain("16 symbols, every quote");
     ws.close();
   });
@@ -86,9 +86,9 @@ describe("the ticker", () => {
     const before = market.read().DLTA!.price;
     write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
     const patch = await expectMessage(a, "patch");
-    expect(patch).toMatchObject({ doc: "ticker", ops: [{ op: "replace", path: "/DLTA/price", value: before + 1 }] });
+    expect(patch).toMatchObject({ doc: "ticker:market", ops: [{ op: "replace", path: "/DLTA/price", value: before + 1 }] });
     await expectQuiet(a);
-    expect(await expectMessage(b, "patch")).toMatchObject({ doc: "ticker" });
+    expect(await expectMessage(b, "patch")).toMatchObject({ doc: "ticker:market" });
     await expectQuiet(b);
     // a tick that changes nothing (the same price) is a render, no patch: the dispatcher's own fallback
     write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
@@ -158,7 +158,7 @@ describe("the ticker", () => {
     startFeed(5);
     startFeed(5); // already running: no second interval
     const first = await expectMessage(ws, "patch");
-    expect(first).toMatchObject({ doc: "ticker", ops: [{ op: "replace" }] });
+    expect(first).toMatchObject({ doc: "ticker:market", ops: [{ op: "replace" }] });
     await expectMessage(ws, "patch");
     stopFeed();
     stopFeed(); // already stopped
@@ -292,7 +292,7 @@ describe("the ticker", () => {
     const ws = await open();
     ws.send(JSON.stringify({ type: "inspect" }));
     const inspection = (await expectMessage(ws, "inspect")) as unknown as { docs: { doc: string }[] };
-    expect(inspection.docs.map((d) => d.doc)).toEqual(["desk", "ticker", "watchlist", "clock"]);
+    expect(inspection.docs.map((d) => d.doc)).toEqual(["desk", "ticker:market", "watchlist", "clock"]);
     ws.close();
   });
 });

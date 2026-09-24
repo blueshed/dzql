@@ -1,5 +1,5 @@
 import { assemble } from "./compartments";
-import { closeConnection, openConnection, setActiveCompartments } from "./compartments/audience";
+import { closeConnection, openConnection, resolveName, sees, setActiveCompartments } from "./compartments/audience";
 import { fragmentsMessage, renderMessage, renderRequested } from "./compartments/render";
 import type { ConnectionData } from "./connection";
 import type { Example } from "./example";
@@ -97,14 +97,17 @@ export function createServer(example: Example, port: number | string = process.e
           return;
         }
 
-        const compartment = message.doc ? byDocType.get(message.doc) : undefined;
+        // A write names its document: whole (`room:general`), or by type alone for the one of that
+        // type this connection is on. Whichever, a connection writes only what it sees, and then only
+        // what the owner permits.
+        const target = message.doc ? resolveName(byDocType, message.doc, ws) : undefined;
         const ops = message.ops ?? [];
         let wrote = false;
 
-        if (compartment && ops.length > 0) {
-          const docId = compartment.resolveDoc(ws);
-          if (docId && ops.every((op) => compartment.permit(ws, op))) {
-            wrote = compartment.write(ws, docId, ops).applied.length > 0;
+        if (target && ops.length > 0 && sees(target.owner, ws, target.docId)) {
+          const { owner, docId } = target;
+          if (ops.every((op) => owner.permit(ws, op, docId))) {
+            wrote = owner.write(ws, docId, ops).applied.length > 0;
           }
         }
 

@@ -6,6 +6,7 @@ import type { PatchOp } from "./json-patch";
 import { patchMessage } from "./json-patch";
 import { prefixDoc, record } from "./ledger";
 import { renderRequested } from "./compartments/render";
+import { notify } from "./compartments/audience";
 import { createServer } from "./server";
 
 // A tiny, self-contained compartment + example -- not chat, not anything under
@@ -69,10 +70,38 @@ const noteCompartment: Compartment = {
   },
 };
 
+// Documents whose name is criteria: a month of appointments, `month:2026-09`. Every connection
+// sees July, August and September at once; July is closed, so it is seen and not written; any
+// other month is seen by nobody. The month a connection is on (a bare `month`) is September.
+const SEEN_MONTHS = ["2026-07", "2026-08", "2026-09"];
+const months = new Map<string, string[]>();
+const monthPermits: string[] = [];
+
+const monthCompartment: Compartment = {
+  docType: "month",
+  resolveDoc: () => "2026-09",
+  sees: (_ws, docId) => SEEN_MONTHS.includes(docId),
+  permit(_ws, op, docId) {
+    monthPermits.push(docId);
+    return op.op === "add" && op.path === "/appointments/-" && docId !== "2026-07";
+  },
+  write(ws, id, ops, undoes) {
+    const list = months.get(id) ?? [];
+    const applied = ops.filter((op) => op.op === "add");
+    for (const op of applied) list.push(String(op.value));
+    months.set(id, list);
+    const inverse = applied.map(() => ({ op: "remove" as const, path: `/appointments/${list.length - 1}` }));
+    const result: WriteResult = { version: record(prefixDoc("month", id), applied, inverse, ws.data.sessionId, undoes), applied };
+    notify("month", id, result);
+    return result;
+  },
+  fragments: () => [],
+};
+
 function makeExample(name: string): Example {
   return {
     name,
-    compartments: [noteCompartment],
+    compartments: [noteCompartment, monthCompartment],
     render: (sessionId) => `<p class="note">${readNote(sessionId).text}</p>`,
     active: () => true,
     index,
@@ -269,5 +298,82 @@ describe("createServer's one-example-per-process invariant", () => {
     const b = createServer(example, 0);
     a.stop(true);
     b.stop(true);
+  });
+});
+
+describe("one socket, any documents: a document is named whole on the wire", () => {
+  let server: ReturnType<typeof createServer>;
+
+  beforeAll(() => {
+    server = createServer(makeExample("kernel-month-test"), 0);
+  });
+
+  afterAll(() => {
+    server.stop(true);
+  });
+
+  /** The next patch this socket is sent, passing over renders. */
+  async function nextPatch(ws: WebSocket): Promise<WireMessage> {
+    let message = await nextMessage(ws);
+    while (message.type !== "patch") message = await nextMessage(ws);
+    return message;
+  }
+
+  test("this month and last month, side by side on one socket, each echoed by its whole name", async () => {
+    const a = connect(server);
+    const b = connect(server);
+    await Promise.all([opened(a), opened(b)]);
+
+    write(a, "month:2026-09", [{ op: "add", path: "/appointments/-", value: "dentist" }]);
+    expect(await nextPatch(a)).toMatchObject({ doc: "month:2026-09", ops: [{ value: "dentist" }] });
+    expect(await nextPatch(b)).toMatchObject({ doc: "month:2026-09", ops: [{ value: "dentist" }] });
+
+    write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "optician" }]);
+    expect(await nextPatch(a)).toMatchObject({ doc: "month:2026-08", ops: [{ value: "optician" }] });
+    expect(await nextPatch(b)).toMatchObject({ doc: "month:2026-08", ops: [{ value: "optician" }] });
+
+    a.close();
+    b.close();
+  });
+
+  test("a bare type is the document of that type the connection is on", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    write(ws, "month", [{ op: "add", path: "/appointments/-", value: "haircut" }]);
+    expect(await nextPatch(ws)).toMatchObject({ doc: "month:2026-09", ops: [{ value: "haircut" }] });
+    ws.close();
+  });
+
+  test("permit judges by the name: last month's closed one is seen and not written", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const before = months.get("2026-07")?.length ?? 0;
+    write(ws, "month:2026-07", [{ op: "add", path: "/appointments/-", value: "too late" }]);
+    await expectMessage(ws, "render"); // refused: the page again, and nothing else
+    expect(months.get("2026-07")?.length ?? 0).toBe(before);
+    expect(monthPermits.at(-1)).toBe("2026-07");
+    ws.close();
+  });
+
+  test("a document the connection does not see is refused before its owner is asked", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const asked = monthPermits.length;
+    write(ws, "month:1999-01", [{ op: "add", path: "/appointments/-", value: "sneaky" }]);
+    await expectMessage(ws, "render");
+    expect(months.has("1999-01")).toBe(false);
+    expect(monthPermits.length).toBe(asked);
+    ws.close();
+  });
+
+  test("a name nothing owns is refused", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    write(ws, "nothing:here", [{ op: "add", path: "/x", value: 1 }]);
+    expect((await nextMessage(ws)).type).toBe("render");
+    ws.close();
   });
 });

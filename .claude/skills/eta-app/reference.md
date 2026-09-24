@@ -31,10 +31,10 @@ runs `examples/${ETA_EXAMPLE}/index.ts` (default `chat`); one process serves one
 
 ```ts
 export type Compartment = {
-  docType: string;                         // what it owns on the wire: "session", "room"
-  resolveDoc(ws): string | undefined;      // the document id this connection sees for this docType
-  sees?(ws, docId): boolean;               // who else sees it; default: resolveDoc(ws) === docId
-  permit(ws, op): boolean;                 // may this connection write this path?
+  docType: string;                         // the type of document it owns: "session", "room"
+  resolveDoc(ws): string | undefined;      // the one of this type the connection is on (a bare name)
+  sees?(ws, docId): boolean;               // does it see this one; default: resolveDoc(ws) === docId
+  permit(ws, op, docId): boolean;          // may it write this path of this document?
   write(ws, docId, ops, undoes?): WriteResult; // apply, then notify()
   fragments?(ws, docId, result): HtmlOp[] | undefined;
   onOpen?(ws): void;
@@ -42,8 +42,12 @@ export type Compartment = {
 };
 ```
 
-- **`permit` and `patch()` split the question.** May this connection write this path is
-  `permit`'s; is this value valid is the document's `patch()`'s.
+- **Any number of documents of one type.** A connection sees whichever documents `sees` says:
+  this month's appointments and last month's, two rooms side by side. `resolveDoc` is only the
+  one it is on. A document's id may be criteria (`month:2026-09`); `permit` is given it.
+- **`sees`, then `permit`, then `patch()`.** A connection writes only what it sees (the kernel
+  checks, before `permit` is asked); may it write this path of this document is `permit`'s; is
+  this value valid is the document's `patch()`'s.
 - **One `write`, fresh or walked.** Fresh from the wire, `permit` said yes and `undoes` is
   undefined. When the ledger walks an entry back or forward it calls the same `write` with the
   recorded inverse and the entry's id as `undoes`; `permit` is not asked. What a compartment does
@@ -110,9 +114,15 @@ its documents import `db` from there, so migrations run before any prepared stat
 
 HTML is the only vocabulary. No JSON tree of app state.
 
-- Client to server: `{doc, ops: [{op, path, value?}]}`. `path` is a JSON Pointer, never a verb.
-- Server to client: `{type: "patch", doc, version, ops}` (what was applied; kept in
-  `window.eta.docs()`), then `{type: "render", html}` (the page) or `{type: "render", ops}`
+- **A document is named whole: `<docType>:<docId>`** (`room:general`, `month:2026-09`), so one
+  socket holds any number of documents, of any types. The exception is a document keyed by the
+  connection's own session id (its session, its ledger, its desk): it is named by its type alone,
+  since the id is a credential.
+- Client to server: `{doc, ops: [{op, path, value?}]}`. `doc` is a whole name, or a bare type
+  meaning the one of that type this connection is on (`resolveDoc`). `path` is a JSON Pointer,
+  never a verb.
+- Server to client: `{type: "patch", doc, version, ops}`, `doc` named whole (what was applied;
+  kept in `window.eta.docs()` under that name), then `{type: "render", html}` (the page) or `{type: "render", ops}`
   (fragments).
 - `{type: "inspect", limit?}` answers with the documents this connection sees and their latest
   ledger entries. An entry says `mine: true|false`, never who.
@@ -173,7 +183,8 @@ export type Applet = {
 };
 ```
 
-Mount point: `<div data-applet="board" data-doc="ticker" data-props='{...}'>`. Data reaches an
+Mount point: `<div data-applet="board" data-doc="ticker:market" data-props='{...}'>`, the
+document named as the wire names it. Data reaches an
 applet as new props on a render (`update`), or, for a document that changes often, as the patch
 itself (`patch`, with `fragments` answering `[]`). Register in `client/main.ts` before importing
 `src/client/app`. Split drawing (`<name>.ts`, pure, tested directly) from mounting

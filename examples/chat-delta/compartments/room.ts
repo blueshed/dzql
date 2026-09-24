@@ -37,9 +37,9 @@ function renderRooms(name: string, rooms: string[]): string {
  * messages go once, as props in delta's own shape, and after that as the room's echo. The bubbles
  * are the applet's to draw; the server draws none.
  */
-function transcriptApplet(me: string, transcript: Message[]): string {
+function transcriptApplet(me: string, room: string, transcript: Message[]): string {
   const messages = Object.fromEntries(transcript.map((m) => [m.id, m]));
-  return `<div id="transcript" data-applet="transcript" data-doc="room" data-props="${esc(JSON.stringify({ me, messages }))}"></div>`;
+  return `<div id="transcript" data-applet="transcript" data-doc="${esc(`room:${room}`)}" data-props="${esc(JSON.stringify({ me, messages }))}"></div>`;
 }
 
 /** Say something: the room's conversation, and the form at its foot. "Chat" in the trail is the way back to the rooms. */
@@ -48,8 +48,8 @@ function renderRoom(name: string, room: string, people: string[], transcript: Me
     key: "conversation",
     body: join(
       renderPeople(people, name),
-      transcriptApplet(name, transcript),
-      `<form class="say"${write("room", "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message #${esc(room)}" aria-label="Say"><button type="submit" class="tool">Send</button></form>`,
+      transcriptApplet(name, room, transcript),
+      `<form class="say"${write(`room:${room}`, "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message #${esc(room)}" aria-label="Say"><button type="submit" class="tool">Send</button></form>`,
     ),
   });
 }

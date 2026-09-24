@@ -1,6 +1,7 @@
 import type { ServerWebSocket } from "bun";
 import type { ConnectionData } from "../connection";
 import { patchMessage } from "../json-patch";
+import { prefixDoc, splitDoc } from "../ledger";
 import type { Compartment, WriteResult } from "./compartment";
 import { renderRequested } from "./render";
 
@@ -37,6 +38,39 @@ export function allOpenSockets(): ServerWebSocket<ConnectionData>[] {
 }
 
 /**
+ * A document's name on the wire, as `ws` is told it: the whole name, `<docType>:<docId>`, so one
+ * socket can hold any number of documents of one type (this month's appointments and last
+ * month's). A document keyed by the connection's own session id (its session, its ledger, its
+ * desk) is named by its type alone: a session id is a person's only credential and never goes on
+ * the wire, and to its one reader the type already says which.
+ */
+export function wireName(docType: string, docId: string, ws: ServerWebSocket<ConnectionData>): string {
+  return docId === ws.data.sessionId ? docType : prefixDoc(docType, docId);
+}
+
+/**
+ * The document a write names, for the compartment that owns it: a whole name (`room:general`) is
+ * that document; a bare type (`room`, `session`) is the one of that type this connection is on --
+ * its `resolveDoc`. Undefined when nothing owns the type or the connection is on none of it.
+ */
+export function resolveName(
+  owners: Map<string, Compartment>,
+  name: string,
+  ws: ServerWebSocket<ConnectionData>,
+): { owner: Compartment; docId: string } | undefined {
+  const { docType, docId } = name.includes(":") ? splitDoc(name) : { docType: name, docId: undefined };
+  const owner = owners.get(docType);
+  if (!owner) return undefined;
+  const id = docId ?? owner.resolveDoc(ws);
+  return id === undefined ? undefined : { owner, docId: id };
+}
+
+/** Does `ws` see `docId` -- the owning compartment's `sees`, or its default: is it the one `resolveDoc` names. */
+export function sees(owner: Compartment, ws: ServerWebSocket<ConnectionData>, docId: string): boolean {
+  return owner.sees ? owner.sees(ws, docId) : owner.resolveDoc(ws) === docId;
+}
+
+/**
  * Every open connection whose compartment says it sees `docId` -- `sees?(ws, docId)` if the
  * compartment implements it, or (its default, right for most documents: one writer, the same
  * one who reads it) whether `resolveDoc(ws)` currently resolves to it. `exclude`, if given, is
@@ -46,7 +80,7 @@ export function allOpenSockets(): ServerWebSocket<ConnectionData>[] {
 export function audienceFor(docType: string, docId: string, exclude?: ServerWebSocket<ConnectionData>): ServerWebSocket<ConnectionData>[] {
   const owner = byDocType?.get(docType);
   if (!owner) return [];
-  return [...openSockets].filter((ws) => ws !== exclude && (owner.sees ? owner.sees(ws, docId) : owner.resolveDoc(ws) === docId));
+  return [...openSockets].filter((ws) => ws !== exclude && sees(owner, ws, docId));
 }
 
 /**
@@ -65,7 +99,6 @@ export function notify(
   { echoTo = audienceFor(docType, docId), renderTo = echoTo }: { echoTo?: ServerWebSocket<ConnectionData>[]; renderTo?: ServerWebSocket<ConnectionData>[] } = {},
 ): void {
   if (result.applied.length === 0) return;
-  const payload = patchMessage(docType, result.version, result.applied);
-  for (const ws of echoTo) ws.send(payload);
+  for (const ws of echoTo) ws.send(patchMessage(wireName(docType, docId, ws), result.version, result.applied));
   if (renderTo.length > 0) renderRequested.emit({ sockets: renderTo, write: { docType, docId, result } });
 }

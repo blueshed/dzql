@@ -222,6 +222,10 @@ function settle(before: Map<HTMLElement, number>) {
 
 type WriteSpec = { doc: string; op: PatchOp["op"]; path: string };
 
+/** Is `echoed` the document a write named? The echo names it whole (`room:general`); a write may
+ * name it so, or by its type alone (`room`), meaning the one of that type this page is on. */
+const isNamed = (named: string, echoed: string): boolean => echoed === named || echoed.startsWith(`${named}:`);
+
 function send(doc: string, ops: PatchOp[]) {
   lastSent = { doc, ops, echoed: false };
   socket?.send(JSON.stringify({ doc, ops }));
@@ -371,8 +375,8 @@ function connect() {
       for (const el of mounted.keys()) {
         if (el.dataset.doc === message.doc) applets[el.dataset.applet!]?.patch?.(el, message.ops);
       }
-      if (lastSent && lastSent.doc === message.doc && message.ops.length > 0) lastSent.echoed = true;
-      if (pendingReset && pendingReset.doc === message.doc && message.ops.length > 0) {
+      if (lastSent && isNamed(lastSent.doc, message.doc) && message.ops.length > 0) lastSent.echoed = true;
+      if (pendingReset && isNamed(pendingReset.doc, message.doc) && message.ops.length > 0) {
         pendingReset.form.reset();
         pendingReset = undefined;
       }

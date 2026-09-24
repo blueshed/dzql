@@ -8,7 +8,11 @@ export type WriteResult = { version: number; applied: PatchOp[] };
 export type Compartment = {
   /** The document type name this compartment owns on the wire (e.g. "session", "room"). */
   docType: string;
-  /** Resolves the concrete document id this connection currently sees for its own docType, or undefined if none. */
+  /**
+   * The document of this type this connection is on, or undefined if none: what a write naming the
+   * type alone (`{doc: "room"}`) means, and who sees a document when `sees` is not given. A
+   * connection may see and write any number of others, named whole (`room:kitchen`), as `sees` says.
+   */
   resolveDoc(ws: ServerWebSocket<ConnectionData>): string | undefined;
   /**
    * Does this connection see `docId` -- not necessarily its *own* `resolveDoc(ws)`, which only
@@ -20,8 +24,12 @@ export type Compartment = {
    * its own to `resolveDoc` toward.
    */
   sees?(ws: ServerWebSocket<ConnectionData>, docId: string): boolean;
-  /** May this connection apply `op` to the document it resolves? */
-  permit(ws: ServerWebSocket<ConnectionData>, op: PatchOp): boolean;
+  /**
+   * May this connection apply `op` to `docId`? Asked only once the connection sees `docId`, so a
+   * compartment whose documents are all alike to the writer (the room you are in) can ignore it; one
+   * whose name is criteria (this month's appointments, last month's) judges by it.
+   */
+  permit(ws: ServerWebSocket<ConnectionData>, op: PatchOp, docId: string): boolean;
   /**
    * Applies a permitted write and tells everyone who sees the document, this connection included
    * (`notify` in `src/compartments/audience.ts`): the kernel never brings a write's own connection

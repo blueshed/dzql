@@ -220,7 +220,7 @@ describe("a household", () => {
 
     write(mine, "household", [{ op: "replace", path: "/answer", value: "maybe" }]);
     const patch = await expectMessage(mine, "patch");
-    expect(patch).toMatchObject({ doc: "household", ops: [{ op: "replace", path: "/answer", value: "maybe" }] });
+    expect(patch).toMatchObject({ doc: `household:${code}`, ops: [{ op: "replace", path: "/answer", value: "maybe" }] });
     expect(htmlOf(await expectMessage(mine, "render"))).toContain("face-mark maybe");
     await expectQuiet(mine); // rendered once, not twice
     await expectMessage(other, "patch");
@@ -432,7 +432,7 @@ describe("a household", () => {
 
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     let patch = await expectMessage(ws, "patch");
-    expect(patch).toMatchObject({ doc: "household", ops: [{ op: "remove", path: "/claims/3" }] });
+    expect(patch).toMatchObject({ doc: `household:${code}`, ops: [{ op: "remove", path: "/claims/3" }] });
     await expectMessage(ws, "render");
     expect(householdDoc.read(code)!.claims).not.toContain(3);
 
@@ -526,7 +526,7 @@ describe("a household", () => {
     const ws = await enter(code);
     ws.send(JSON.stringify({ type: "inspect" }));
     const inspection = await expectMessage(ws, "inspect");
-    expect(inspection.docs!.map((d) => d.doc)).toEqual(["session", "household"]);
+    expect(inspection.docs!.map((d) => d.doc)).toEqual(["session", `household:${code}`]);
     ws.close();
   });
 });
@@ -734,13 +734,13 @@ describe("the couple", () => {
     await expectQuiet(household);
 
     write(couple, "board", [{ op: "replace", path: `/households/${hid}/asks/${ask.id}/reply`, value: "yes" }]);
-    expect(await expectMessage(couple, "patch")).toMatchObject({ doc: "board" });
+    expect(await expectMessage(couple, "patch")).toMatchObject({ doc: "board:DASH" });
     await expectMessage(couple, "render");
     expect((await expectMessage(household, "render")).html).toContain("Friend");
     expect(householdDoc.read(code)!.guests.map((g) => g.name)).toContain("Friend");
 
     write(couple, "ledger", [{ op: "remove", path: "/latest" }]);
-    expect(await expectMessage(couple, "patch")).toMatchObject({ doc: "board", ops: [{ op: "remove", path: `/households/${hid}/asks/${ask.id}/reply` }] });
+    expect(await expectMessage(couple, "patch")).toMatchObject({ doc: "board:DASH", ops: [{ op: "remove", path: `/households/${hid}/asks/${ask.id}/reply` }] });
     await expectMessage(couple, "render");
     await expectMessage(household, "render");
     expect(householdDoc.read(code)!.guests.map((g) => g.name)).not.toContain("Friend");

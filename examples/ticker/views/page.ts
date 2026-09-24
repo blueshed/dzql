@@ -9,7 +9,7 @@ import { esc, write } from "../../../src/html";
 import type { ClockDocument } from "../documents/clock";
 import { ZONES, cityOf, offsetOf } from "../documents/clock";
 import type { Ui } from "../documents/desk";
-import type { MarketDocument, Quote } from "../documents/market";
+import { MARKET, type MarketDocument, type Quote } from "../documents/market";
 import type { WatchlistDocument } from "../documents/watchlist";
 import { icon } from "./icons";
 
@@ -28,7 +28,7 @@ export type View = { list: WatchlistDocument; market: MarketDocument; clock: Clo
 export function boardMount(list: WatchlistDocument, market: MarketDocument): string {
   const symbols = list.symbols.filter((s) => market[s]);
   const quotes = Object.fromEntries(symbols.map((s) => [s, market[s]!]));
-  return `<div id="board" data-applet="board" data-doc="ticker" data-props="${esc(JSON.stringify({ symbols, quotes }))}"></div>`;
+  return `<div id="board" data-applet="board" data-doc="ticker:${MARKET}" data-props="${esc(JSON.stringify({ symbols, quotes }))}"></div>`;
 }
 
 /** How many are watched, on the board's head; replaced with the board when the list changes. */

@@ -5,6 +5,7 @@ import type { LedgerEntry } from "../ledger";
 import { history, prefixDoc } from "../ledger";
 import type { Compartment } from "./compartment";
 import { createLedgerCompartment } from "./ledger";
+import { wireName } from "./audience";
 
 /** A ledger entry as `inspect` tells it. A session id is a person's only credential, so it never
  * goes on the wire: `mine` says whether the asker wrote the entry, which is all a reader may ask. */
@@ -48,8 +49,9 @@ export function assemble(example: Example): Assembled {
     for (const compartment of example.compartments) {
       const docId = compartment.resolveDoc(ws);
       if (docId === undefined) continue;
-      const entries = history(prefixDoc(compartment.docType, docId), limit).map(({ sessionId, ...entry }) => ({ ...entry, doc: compartment.docType, mine: sessionId === ws.data.sessionId })); // the bare docType: a session's own documents are keyed by its id
-      docs.push({ doc: compartment.docType, version: entries[0]?.version ?? 0, entries });
+      const doc = wireName(compartment.docType, docId, ws); // as the wire names it: whole, or the bare type for a session's own
+      const entries = history(prefixDoc(compartment.docType, docId), limit).map(({ sessionId, ...entry }) => ({ ...entry, doc, mine: sessionId === ws.data.sessionId }));
+      docs.push({ doc, version: entries[0]?.version ?? 0, entries });
     }
     return { docs };
   }

@@ -194,7 +194,7 @@ describe("websocket write protocol", () => {
 
     const docsSeen = (inspection as unknown as { docs: { doc: string; version: number; entries?: unknown[] }[] }).docs;
     const sessionDoc = docsSeen.find((d) => d.doc === "session");
-    const roomDoc = docsSeen.find((d) => d.doc === "room");
+    const roomDoc = docsSeen.find((d) => d.doc === `room:${room}`);
     expect(sessionDoc?.version).toBeGreaterThan(0);
     expect(roomDoc?.version).toBeGreaterThan(0);
     expect(roomDoc?.entries?.[0]).toMatchObject({
@@ -581,7 +581,7 @@ describe("chat", () => {
     write(a, "room", [{ op: "add", path: "/transcript/-", value: uniqueText }]);
 
     const aPatch = await expectMessage(a, "patch");
-    expect(aPatch.doc).toBe("room");
+    expect(aPatch.doc).toBe(`room:${room}`);
     expect(aPatch.ops).toEqual([{ op: "add", path: "/transcript/-", value: { name: "Alice", text: uniqueText } }]);
     // the render is a fragment: the one <li>, appended to the transcript
     const aRender = await expectMessage(a, "render");
@@ -589,7 +589,7 @@ describe("chat", () => {
     expect(htmlOf(aRender)).toContain(uniqueText);
     expect(htmlOf(aRender)).not.toContain("<form"); // not the page
 
-    expect(await bPatch).toMatchObject({ type: "patch", doc: "room" });
+    expect(await bPatch).toMatchObject({ type: "patch", doc: `room:${room}` });
     expect(htmlOf(await bRender)).toContain(uniqueText);
     a.close();
     b.close();
@@ -632,12 +632,12 @@ describe("chat", () => {
     write(a, "ledger", [{ op: "remove", path: "/latest" }]);
 
     const aPatch = await expectMessage(a, "patch");
-    expect(aPatch.doc).toBe("room");
+    expect(aPatch.doc).toBe(`room:${room}`);
     expect(aPatch.ops).toEqual([{ op: "remove", path: "/transcript/1" }]);
     const aRender = await expectMessage(a, "render");
     expect(aRender.ops).toEqual([{ op: "remove", target: `#m${secondId}` }]);
 
-    expect(await bPatch).toMatchObject({ type: "patch", doc: "room" });
+    expect(await bPatch).toMatchObject({ type: "patch", doc: `room:${room}` });
     expect((await bRender).ops).toEqual([{ op: "remove", target: `#m${secondId}` }]);
 
     const entries = history(`room:${room}`);
@@ -685,7 +685,7 @@ describe("chat", () => {
     const text = JSON.stringify(reply);
     expect(text).toContain("from alice"); // he may read what was said
     expect(text).not.toContain(alice); // never who, by the id that would let him be her
-    const entries = (reply as unknown as { docs: { doc: string; entries: { mine: boolean }[] }[] }).docs.find((d) => d.doc === "room")!.entries;
+    const entries = (reply as unknown as { docs: { doc: string; entries: { mine: boolean }[] }[] }).docs.find((d) => d.doc === `room:${room}`)!.entries;
     expect(entries[0]!.mine).toBe(false);
     a.close();
     b.close();
