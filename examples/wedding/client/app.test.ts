@@ -1,17 +1,16 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createServer } from "../../../src/server";
-import * as boardDoc from "../documents/board";
-import * as householdDoc from "../documents/household";
+import { asCouple, board, household } from "../setup";
 import { example } from "../index";
 
 let server: ReturnType<typeof createServer>;
 let code: string;
 
-beforeAll(() => {
+beforeAll(async () => {
   server = createServer(example, 0);
   const email = `browser-${Date.now()}@example.com`;
-  boardDoc.patch("DASH", [{ op: "add", path: "/households/-", value: { email, names: "Ada Test, Femi Test" } }], "setup");
-  code = boardDoc.read("DASH")!.households.find((x) => x.email === email)!.code;
+  await asCouple([{ op: "add", path: "/households/-", value: { email, names: "Ada Test, Femi Test" } }]);
+  code = (await board()).households.find((x) => x.email === email)!.code;
 });
 
 afterAll(() => {
@@ -53,7 +52,7 @@ describe("the wedding in a real browser", () => {
     await view.evaluate(`document.querySelector('.cell[data-key="guests"]').click()`);
     await waitFor(view, `document.querySelector('.cell.open [data-applet="photo"] svg') !== null`, (v) => v === true);
 
-    const guest = householdDoc.read(code)!.guests[1]!;
+    const guest = (await household(code)).guests[1]!;
     await view.evaluate(`document.querySelector('[data-applet="photo"] .slot[data-key="${guest.id}"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
     await waitFor(view, `document.querySelector('.guest-sheet .dress') !== null`, (v) => v === true);
     expect(await view.evaluate(`document.querySelector('.guest-sheet h2').textContent`)).toBe(guest.name);
@@ -64,7 +63,7 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelectorAll('.pop-top .dot').length`, (v) => v === 8);
     await view.evaluate(`document.querySelector('.pop-top .dot[data-value="#7FAE4E"]').click()`);
     await waitFor(view, `document.querySelector('.dress .torso')?.getAttribute('fill')`, (v) => v === "#7FAE4E");
-    expect(householdDoc.read(code)!.guests[1]!.minifigure.top).toBe("#7FAE4E");
+    expect((await household(code)).guests[1]!.minifigure.top).toBe("#7FAE4E");
     // the open part survived the redraw
     expect(await view.evaluate(`document.querySelector('.pop-top') !== null`)).toBe(true);
 
@@ -73,7 +72,7 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelectorAll('.menu-row.open .choice').length`, (v) => v === 6);
     await view.evaluate(`document.querySelector('.choice[data-kind="dish"][data-id="5"]').click()`);
     await waitFor(view, `document.querySelector('.menu-row.open .chosen')?.textContent`, (v) => v === "Sea bass");
-    expect(householdDoc.read(code)!.guests[1]!.choices["2"]).toEqual({ dish: 5, drink: null });
+    expect((await household(code)).guests[1]!.choices["2"]).toEqual({ dish: 5, drink: null });
   });
 
   test("switching the guests from the photo to the list swaps the applet for rows, and back", async () => {
@@ -153,8 +152,8 @@ describe("the wedding in a real browser", () => {
     await view.click("button.gold");
     await waitFor(view, `document.querySelector('.bubble.couple') !== null`, (v) => v === true);
 
-    boardDoc.patch("DASH", [{ op: "add", path: "/gifts/-", value: { name: "Toaster", description: "starter" } }], "setup");
-    const giftId = boardDoc.read("DASH")!.gifts.at(-1)!.id;
+    await asCouple([{ op: "add", path: "/gifts/-", value: { name: "Toaster", description: "starter" } }]);
+    const giftId = (await board()).gifts.at(-1)!.id;
 
     await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/page", value: "gifts?keep=gifts/${giftId}" }] }))`);
     await waitFor(view, `document.querySelector('.keep-sheet input[name=name]') !== null`, (v) => v === true);
@@ -172,10 +171,10 @@ describe("the wedding in a real browser", () => {
 
     await waitFor(
       view,
-      `window.eta.docs()['board:DASH']?.ops.some((op) => op.path.endsWith('/description') && op.value === 'a good one') ?? false`,
+      `window.eta.docs()['board:1']?.ops.some((op) => op.path === '/gifts/${giftId}' && op.value?.description === 'a good one') ?? false`,
       (v) => v === true,
     );
-    const g = boardDoc.read("DASH")!.gifts.find((x) => x.id === giftId)!;
+    const g = (await board()).gifts.find((x) => x.id === giftId)!;
     expect(g.name).toBe("Toaster"); // the refused op never applied
     expect(g.description).toBe("a good one");
 
@@ -187,7 +186,7 @@ describe("the wedding in a real browser", () => {
   });
 
   test("the welcome's message textarea writes on blur too, comparing against its rendered content, not an input's value attribute", async () => {
-    boardDoc.patch("DASH", [{ op: "replace", path: "/message", value: "can't wait" }], "setup");
+    await asCouple([{ op: "replace", path: "/message", value: "can't wait" }]);
 
     await using view = new Bun.WebView();
     await view.navigate(server.url.toString());
@@ -209,7 +208,7 @@ describe("the wedding in a real browser", () => {
     await Bun.sleep(200);
     // lastSent is still the code-entry's session write from login above -- nothing for "board" followed it
     expect(await view.evaluate(`window.eta.inspect().lastSent?.doc`)).toBe("session");
-    expect(boardDoc.read("DASH")!.message).toBe("can't wait");
+    expect((await board()).message).toBe("can't wait");
 
     await view.evaluate(`(() => {
       const box = document.querySelector('.welcome-sheet textarea');
@@ -218,7 +217,7 @@ describe("the wedding in a real browser", () => {
     })()`);
 
     await waitFor(view, `document.querySelector('.welcome-sheet textarea').value`, (v) => v === "so happy for you both");
-    expect(boardDoc.read("DASH")!.message).toBe("so happy for you both");
+    expect((await board()).message).toBe("so happy for you both");
   });
 
   test("leaving returns to the welcome, and the session survives a reload", async () => {

@@ -1,16 +1,17 @@
-import { db } from "../db";
-import { reading } from "../../../src/reading";
+import { db } from "../delta";
+import { read as readDoc } from "../../../src/documents";
 import { parseAddress, patchCollections, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { integer } from "./values";
-import { kindOf, type Kind } from "./wedding";
 
-// A visit: what one session is doing on the site. `code` is who they are; `ui` is where they are.
-// Nothing here goes on the ledger: which page a tab is on, or which drawer it has open, is not the
-// wedding's history, and a household pressing Undo means "take back my last answer", never "go
-// back a page". The domain writes (documents/household.ts, documents/board.ts) are what the
-// ledger records.
+// A visit, kept in delta (`session:<id>`, ../delta.ts): what one session is doing on the site.
+// `code` is who they are; the page and how its collections are read is where they are; `note` is
+// the one line the welcome says back. Nothing here goes on the ledger: which page a tab is on, or
+// which drawer it has open, is not the wedding's history, and a household pressing Undo means
+// "take back my last answer", never "go back a page".
+
+export type Kind = "household" | "couple";
 
 export type Ui = {
   /**
@@ -35,63 +36,56 @@ export function over(ui: Ui): Over {
   return { path };
 }
 
-export type SessionDocument = { code: string | null; kind: Kind | null; ui: Ui; note: string | null };
+/** A visit: who (a code, whose it is, and the id of their document -- the household's, or the wedding's for the couple), where, and the welcome's note. */
+export type SessionDocument = { code: string | null; kind: Kind | null; id: string | null; ui: Ui; note: string | null };
 
-const readStmt = db.query<{ code: string | null; ui: string; note: string | null }, [string]>(
-  "SELECT code, ui, note FROM visits WHERE id = ?",
-);
-const upsertStmt = db.query<unknown, [string, string | null, string, string | null, number]>(`
-  INSERT INTO visits (id, code, ui, note, created_at) VALUES (?1, ?2, ?3, ?4, ?5)
-  ON CONFLICT(id) DO UPDATE SET code = ?2, ui = ?3, note = ?4
-`);
+type Visit = { code: string | null; page: string | null; reading: Ui["reading"] | null; filter: Ui["filter"] | null; hide: Ui["hide"] | null; note: string | null };
+
+const householdOf = db.query<{ id: string }, [string]>("SELECT id FROM wedding_households WHERE code = ?");
+const coupleOf = db.query<{ id: string }, [string]>("SELECT weddings_id AS id FROM wedding_couples WHERE code = ?");
+
+/**
+ * Whose code this is, and the id of the document it opens: a household's own, or the couple's
+ * wedding. A code is a credential, looked up, never a document anyone reads. Codes are stored
+ * upper-case; compare the same way.
+ */
+export function whose(code: string): { kind: Kind; id: string } | null {
+  const upper = code.toUpperCase();
+  const household = householdOf.get(upper);
+  if (household) return { kind: "household", id: household.id };
+  const couple = coupleOf.get(upper);
+  return couple ? { kind: "couple", id: couple.id } : null;
+}
+
+function visitOf(id: string): Visit {
+  const row = readDoc<{ visits?: Partial<Visit> }>(`session:${id}`)?.visits ?? {};
+  return { code: row.code ?? null, page: row.page ?? null, reading: row.reading ?? null, filter: row.filter ?? null, hide: row.hide ?? null, note: row.note ?? null };
+}
 
 export function read(id: string): SessionDocument {
-  reading("session", id);
-  const row = readStmt.get(id);
-  if (!row) return { code: null, kind: null, ui: {}, note: null };
+  const v = visitOf(id);
+  const ui: Ui = {};
+  if (v.page !== null) ui.page = v.page;
+  if (v.reading) ui.reading = v.reading;
+  if (v.filter) ui.filter = v.filter;
+  if (v.hide) ui.hide = v.hide;
   // A code that has since stopped existing reads as no code at all: the tab is back at the welcome.
-  const kind = row.code ? kindOf(row.code) : null;
-  return { code: kind ? row.code : null, kind, ui: JSON.parse(row.ui), note: row.note };
+  const who = v.code ? whose(v.code) : null;
+  return { code: who ? v.code : null, kind: who?.kind ?? null, id: who?.id ?? null, ui, note: v.note };
 }
 
-function save(id: string, doc: SessionDocument): void {
-  upsertStmt.run(id, doc.code, JSON.stringify(doc.ui), doc.note, Date.now());
-}
-
-/** A modal asks one question; the write that answers it puts it away (rule 14): an add answers the ask, a removal answers the asking-first. The visit is back on the page it was asked from. */
-export function closeAnswered(id: string, applied: { op: string; path: string }[]): void {
-  const at = over(read(id).ui);
-  const answered = (at.new !== undefined && applied.some((op) => op.op === "add" && op.path.endsWith("/-"))) || (at.confirm !== undefined && applied.some((op) => op.op === "remove"));
-  if (answered) patch(id, [{ op: "replace", path: "/page", value: at.path }]);
-}
-
-export type SessionPatchResult = { version: number; applied: PatchOp[] };
-
-/** Applies a patch. No ledger entry (see the header), so the version is always 0. One
- * transaction all the same: this loop's several statements commit together or not at all. */
-export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): SessionPatchResult {
-  const applied: PatchOp[] = [];
-
+/** The visit after `ops`, as the wire said them: a code entered (or not recognised), a resend, a page, a reading. */
+function after(before: Visit, ops: PatchOp[]): Visit {
+  const next: Visit = { ...before };
   for (const op of ops) {
     const [field] = parsePointer(op.path);
-    const before = read(id);
-    const next: SessionDocument = { ...before, ui: { ...before.ui } };
     const removing = op.op === "remove";
-
     if (field === "code") {
-      if (removing) {
-        Object.assign(next, { code: null, kind: null, ui: {}, note: null });
-      } else {
-        const code = String(op.value ?? "").trim().toUpperCase();
-        const kind = code ? kindOf(code) : null;
-        if (!kind) {
-          // The one refusal the welcome has to say out loud: the write did not apply, and the
-          // page would otherwise look exactly as it did before the code was typed.
-          save(id, { ...next, note: "That code was not recognised." });
-          continue;
-        }
-        Object.assign(next, { code, kind, ui: {}, note: null });
-      }
+      const code = removing ? "" : String(op.value ?? "").trim().toUpperCase();
+      if (removing) Object.assign(next, { code: null, page: null, reading: null, filter: null, hide: null, note: null });
+      // The one refusal the welcome says out loud: the page would otherwise look exactly as before.
+      else if (!code || !whose(code)) next.note = "That code was not recognised.";
+      else Object.assign(next, { code, page: null, reading: null, filter: null, hide: null, note: null });
     } else if (field === "resend") {
       const email = String(op.value ?? "").trim();
       if (!email) continue;
@@ -103,16 +97,28 @@ export const patch = db.transaction(function patch(id: string, ops: PatchOp[]): 
       // The address is the page and whatever is open over it, so going anywhere puts away the
       // drawer or the modal that was open. How each collection is read, and what find says, are
       // the collection's own and stay.
-      next.ui.page = removing ? "" : String(op.value ?? "");
-    } else if (patchCollections(next.ui, op)) {
-      // how a collection is read, find's word, the eye: the bento's own (src/bento.ts)
+      next.page = removing ? "" : String(op.value ?? "");
     } else {
-      continue;
+      const ui: Collections = { reading: next.reading ?? undefined, filter: next.filter ?? undefined, hide: next.hide ?? undefined };
+      if (!patchCollections(ui, op)) continue; // how a collection is read, find's word, the eye: the bento's own
+      Object.assign(next, { reading: ui.reading ?? null, filter: ui.filter ?? null, hide: ui.hide ?? null });
     }
-
-    save(id, next);
-    applied.push(op);
   }
+  return next;
+}
 
-  return { version: 0, applied };
-});
+/** What a write to a visit becomes: each field it moves, replaced whole (at `/visits`). */
+export function shape(id: string, ops: PatchOp[]): PatchOp[] {
+  const before = visitOf(id);
+  const next = after(before, ops);
+  return (Object.keys(next) as (keyof Visit)[])
+    .filter((field) => JSON.stringify(next[field]) !== JSON.stringify(before[field]))
+    .map((field) => ({ op: "replace", path: `/${field}`, value: next[field] }));
+}
+
+/** A modal asks one question; the write that answers it puts it away (rule 14): an add answers the ask, a removal answers the asking-first. The ops that do it, for the visit, or none. */
+export function answered(session: SessionDocument, ops: { op: string; path: string }[]): PatchOp[] {
+  const at = over(session.ui);
+  const yes = (at.new !== undefined && ops.some((op) => op.op === "add" && op.path.endsWith("/-"))) || (at.confirm !== undefined && ops.some((op) => op.op === "remove"));
+  return yes ? [{ op: "replace", path: "/visits/page", value: at.path }] : [];
+}

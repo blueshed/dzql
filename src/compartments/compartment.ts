@@ -60,6 +60,12 @@ export type Compartment = {
   shape?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): PatchOp[];
   /** For a document kept in delta: after a change to it has been told -- to keep what follows from it true (who is here, a list of rooms). */
   changed?(docId: string, ops: PatchOp[]): void | Promise<void>;
+  /**
+   * For a document kept in delta: after a fresh write from this connection has landed (never an
+   * undo or a redo), with the ops as the wire said them -- what follows for the writer alone: the
+   * modal that asked is put away once the write answers it.
+   */
+  wrote?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): void | Promise<void>;
   onOpen?(ws: ServerWebSocket<ConnectionData>): void | Promise<void>;
   onClose?(ws: ServerWebSocket<ConnectionData>): void | Promise<void>;
 };

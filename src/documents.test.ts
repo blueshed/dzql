@@ -72,6 +72,36 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     local.server.publish("other:1", { doc: "else", ops: [] }); // not a change to its own channel: ignored
   });
 
+  test("changes are told one at a time, in order; a listener that fails is logged, and the rest are told all the same", async () => {
+    const { local, flush } = laggingDelta();
+    const documents = createDocuments(local);
+    await documents.load("slow:1");
+    const told: string[] = [];
+    documents.onChange(async (c) => {
+      told.push(`start ${c.v}`);
+      await Bun.sleep(5);
+      told.push(`end ${c.v}`);
+    });
+    documents.onChange((c) => {
+      if (c.v === 1) throw new Error("boom");
+    });
+    documents.onChange((c) => void told.push(`after ${c.v}`));
+    const logged: unknown[] = [];
+    const error = console.error;
+    console.error = (...args: unknown[]) => void logged.push(args);
+    try {
+      local.server.publish("slow:1", { doc: "slow:1", ops: [{ op: "replace", path: "/n", value: 1 }], v: 1 });
+      local.server.publish("slow:1", { doc: "slow:1", ops: [{ op: "replace", path: "/n", value: 2 }], v: 2 });
+      await documents.quiet();
+    } finally {
+      console.error = error;
+    }
+    expect(told).toEqual(["start 1", "end 1", "after 1", "start 2", "end 2", "after 2"]);
+    expect(logged).toHaveLength(1);
+    expect(String((logged[0] as unknown[])[0])).toContain("slow:1");
+    flush();
+  });
+
   test("a document delta does not have is held as nothing; release closes and drops what no page reads", async () => {
     const { local } = laggingDelta();
     const documents = createDocuments(local);

@@ -1,18 +1,14 @@
-import type { ServerWebSocket } from "bun";
 import * as sessionDoc from "../documents/session";
-import type { ConnectionData } from "../../../src/connection";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import type { Compartment } from "../../../src/compartments/compartment";
-import { notify } from "../../../src/compartments/audience";
+import { keepEveryone } from "../everyone";
 
-// A visit: who this session is (a code) and where it is on the site. This is the tray
-// (change-request.md item 10) -- the ground the household and board compartments sit on, not a
-// place of its own on the page: it has no `render`, and `household.ts` is the one that shows the
-// welcome now, absorbing what used to be the tray's own page. This only takes the writes that
-// move around the page it hands off to -- a page, a drawer, a reading. No `onOpen`/`onClose`
-// either: which connections are open at all is the kernel's own registry now (change-request.md
-// item 1), not something this example tracks for itself (that was `concepts/presence.ts`, gone).
+// A visit (`session:<id>`): who this session is (a code) and where it is on the site. This is the
+// tray (change-request.md item 10) -- the ground the household and board compartments sit on, not
+// a place of its own on the page: it has no `render`. It takes the writes that move around the
+// page -- a code, a page, a drawer, a reading -- and, as a first page opens, makes sure `everyone`
+// (../everyone.ts) says who stands in the photo.
 
 /** Where you are only means something once you are in: everything but the code and a resend needs one. */
 const BEFORE_CODE = new Set(["code", "resend"]);
@@ -21,6 +17,7 @@ const WRITABLE = new Set(["code", "resend", "page", "reading", "filter", "hide"]
 export const session: Compartment = {
   docType: "session",
   own: true, // keyed by the session id: this session's alone
+  at: "/visits", // eta's `/page` is the document's `/visits/page`
   resolveDoc(ws) {
     return ws.data.sessionId; // every connection always sees its own visit
   },
@@ -29,12 +26,9 @@ export const session: Compartment = {
     if (!field || !WRITABLE.has(field)) return false;
     return BEFORE_CODE.has(field) || sessionDoc.read(ws.data.sessionId).code !== null;
   },
-  // A visit is nobody else's to see: its audience is this session's own tabs, and having no
-  // element of its own on the page, each is shown the page. Not on the ledger (see
-  // documents/session.ts), so the version is always 0.
-  write(_ws, id, ops) {
-    const result = sessionDoc.patch(id, ops);
-    notify("session", id, result);
-    return result;
-  },
+  // A visit is nobody else's to see, and never on the ledger (../delta.ts): a code entered, a page
+  // gone to, a reading switched, each field it moves replaced whole.
+  shape: (_ws, id, ops) => sessionDoc.shape(id, ops),
+  // who stands in the photo is kept from the tables; a first page makes sure it is
+  onOpen: () => keepEveryone(),
 };

@@ -4,6 +4,7 @@ import * as deskDoc from "../documents/desk";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { parseAddress } from "../../../src/bento";
 import { activeDocuments, serverWrite, settled } from "../../../src/documents";
+import type { PatchOp } from "../../../src/json-patch";
 
 // A session's watchlist: its own to write, seen by nobody else. A change is answered with what
 // changed on the page: the count, the summary, the board's mount with its new props (the applet keeps
@@ -11,15 +12,11 @@ import { activeDocuments, serverWrite, settled } from "../../../src/documents";
 // comparing the page, not listed by hand. A person watches and drops at a person's pace; the
 // ticks, which are not, never come through here.
 
-/**
- * A modal asks one question, and the list changing answers it (rule 14): the ask is put away once
- * the list has moved, the asking-first once the symbol it asked about is gone. Either way the desk
- * is back on the window it was asked from.
- */
-async function closeAsked(sessionId: string): Promise<void> {
-  const { page, symbols } = await settled(activeDocuments(), () => ({ page: deskDoc.read(sessionId).page, symbols: watchlistDoc.read(sessionId).symbols }));
-  const { path, what, which } = parseAddress(page);
-  if (what === "new" || (what === "confirm" && !symbols.includes(which ?? ""))) await serverWrite(`desk:${sessionId}`, [{ op: "replace", path: "/desks/page", value: path }]);
+/** A modal asks one question; the write that answers it puts it away (rule 14): watching closes the ask, dropping closes the asking-first. Either way the desk is back on the window it was asked from. */
+async function closeAsked(sessionId: string, ops: PatchOp[]): Promise<void> {
+  const { path, what } = parseAddress(await settled(activeDocuments(), () => deskDoc.read(sessionId).page));
+  const answered = (what === "new" && ops.some((op) => op.op === "add")) || (what === "confirm" && ops.some((op) => op.op === "remove"));
+  if (answered) await serverWrite(`desk:${sessionId}`, [{ op: "replace", path: "/desks/page", value: path }]);
 }
 
 export const watchlist: Compartment = {
@@ -38,5 +35,5 @@ export const watchlist: Compartment = {
     const next = watchlistDoc.after(symbols, ops, market.has);
     return next.join() === symbols.join() ? [] : [{ op: "replace", path: "/symbols", value: next }];
   },
-  changed: (sessionId) => closeAsked(sessionId),
+  wrote: (_ws, sessionId, ops) => closeAsked(sessionId, ops),
 };

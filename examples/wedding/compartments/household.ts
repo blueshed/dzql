@@ -2,18 +2,17 @@ import * as householdDoc from "../documents/household";
 import * as sessionDoc from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { PatchOp } from "../../../src/json-patch";
-import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
-import { allOpenSockets, notify } from "../../../src/compartments/audience";
-import * as boardDoc from "../documents/board";
+import type { Compartment } from "../../../src/compartments/compartment";
+import { serverWrite } from "../../../src/documents";
 import { householdPages, type HouseholdView } from "../views/household";
-import { welcome } from "../views/welcome";
+import { keepEveryone } from "../everyone";
 
-// A household's document, written by the household that arrived by its code. Nearly everything
-// it writes changes what everyone sees -- an answer puts figures in the photo every code watches,
-// a claim takes a gift from every other household, the couple's board counts it all -- so a write
-// here echoes to those who see the document (its own tabs, and the couple's, whose board reads it) and
-// redraws every open page (on purpose: an aggregate -- the couple's totals, the "everyone" photo --
-// can change from any household's write). Each page is sent only the parts of it that changed.
+// A household's document (`household:<id>`), written by the household that arrived by its code.
+// Nearly everything it writes changes what others see -- an answer puts figures in the photo every
+// household watches, a claim takes a gift from every other household, the couple's board counts
+// it all -- and each follows from what their pages read: the board holds this household's rows
+// (delta's fan-out), and the photo and the gifts' counts are kept in `everyone` (../everyone.ts).
+// Each page is sent only the parts of it that changed.
 
 type Rule = { path: RegExp; ops: PatchOp["op"][]; /** Locked after the deadline. */ dated?: boolean };
 
@@ -32,19 +31,20 @@ const RULES: Rule[] = [
 
 /** Everything a household's pages read, for this session. */
 function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined {
-  const h = householdDoc.read(session.code!);
+  const h = householdDoc.read(session.id!);
   if (!h) return undefined;
+  const w = weddingDoc.wedding();
   return {
     session,
     h,
-    w: weddingDoc.wedding(),
+    w,
     courses: weddingDoc.courses(),
     gifts: weddingDoc.gifts(),
     events: weddingDoc.events(),
     places: weddingDoc.places(),
     photo: weddingDoc.photo(),
     open: weddingDoc.answersOpen(),
-    names: weddingDoc.namesRevealed(),
+    names: weddingDoc.namesRevealed(w.day),
   };
 }
 
@@ -58,10 +58,10 @@ export const household: Compartment = {
   docType: "household",
   resolveDoc(ws) {
     const session = sessionDoc.read(ws.data.sessionId);
-    return session.kind === "household" ? session.code! : undefined;
+    return session.kind === "household" ? session.id! : undefined;
   },
-  // Beyond its own tabs (`resolveDoc`), the couple see every household: the board reads each one
-  // it draws, so their page's reads say so (src/reading.ts).
+  // Beyond its own tabs (`resolveDoc`), nobody reads a household's document: the couple read
+  // every household in the board, and other households only what `everyone` says.
   permit(ws, op) {
     const session = sessionDoc.read(ws.data.sessionId);
     if (session.kind !== "household") return false;
@@ -70,29 +70,20 @@ export const household: Compartment = {
     if (rule.dated && !weddingDoc.answersOpen()) return false;
     if (op.path === "/guests/-") {
       // A plus-one only while the invitation gave them one they have not yet named.
-      const h = householdDoc.read(session.code!)!;
+      const h = householdDoc.read(session.id!)!;
       return h.guests.filter((g) => g.named_by === "household").length < h.plus_ones;
     }
     return true;
   },
-  write(ws, code, ops, undoes): WriteResult {
-    // The wire may name a plus-one or an ask and nothing more. The whole-row shape the document
-    // also accepts -- an id, who named them, coming, a look; a reply -- is what an inverse carries,
-    // and only an undo or a redo may bring it: a household that sent `named_by: "couple"` would
-    // otherwise never be counted against its invitation. permit() saw each op on its own, before
-    // any was applied, so the plus-ones still owed are counted down here across the message.
-    const fresh = undoes === undefined;
-    const h = householdDoc.read(code)!;
-    let owed = h.plus_ones - h.guests.filter((g) => g.named_by === "household").length;
-    const named = !fresh ? ops : ops.flatMap((op) => {
-      if (op.op !== "add" || (op.path !== "/guests/-" && op.path !== "/asks/-")) return [op];
-      if (op.path === "/guests/-" && owed-- <= 0) return [];
-      const name = typeof op.value === "string" ? op.value : (op.value as { name?: unknown } | null)?.name;
-      return [{ ...op, value: { name } }];
-    });
-    const result = householdDoc.patch(code, named, ws.data.sessionId, undoes);
-    if (fresh) sessionDoc.closeAnswered(ws.data.sessionId, result.applied);
-    notify("household", code, result, { renderTo: allOpenSockets() });
-    return result;
+  shape(_ws, id, ops) {
+    const offer = { courses: weddingDoc.courses(), gifts: weddingDoc.gifts().map(({ id, shared }) => ({ id, shared })) };
+    return householdDoc.shape(householdDoc.read(id)!, offer, ops);
   },
+  // the modal that asked is put away by the write that answers it
+  async wrote(ws, _id, ops: PatchOp[]) {
+    const put = sessionDoc.answered(sessionDoc.read(ws.data.sessionId), ops);
+    if (put.length > 0) await serverWrite(`session:${ws.data.sessionId}`, put);
+  },
+  // an answer, a look, a coming, a claim: what everyone sees of this household follows
+  changed: () => keepEveryone(),
 };

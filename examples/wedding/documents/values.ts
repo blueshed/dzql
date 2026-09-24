@@ -1,7 +1,4 @@
-import type { PatchOp } from "../../../src/json-patch";
-
-// The little that every document's patch() shares: reading a wire value as what the column
-// wants, and the inverse that puts a scalar back.
+// The little that every document's shape() shares: reading a wire value as what the column wants.
 
 /** An integer, from a number or a string of digits (a button's data-value is always a string); undefined otherwise. */
 export function integer(value: unknown): number | undefined {
@@ -23,11 +20,3 @@ export function yesNo(value: unknown): 0 | 1 | undefined {
   return undefined;
 }
 
-/**
- * The op that restores a scalar to `value`. A `replace` can't put back "no value" (a blank is
- * refused as invalid), so restoring null is a `remove` -- or undo of a field's very first
- * setting would silently do nothing.
- */
-export function restore(path: string, value: unknown): PatchOp {
-  return value === null || value === undefined ? { op: "remove", path } : { op: "replace", path, value };
-}

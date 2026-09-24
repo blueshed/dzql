@@ -3,8 +3,7 @@
 // their home, another household on its box, and a third on the everyone page. Not a test -- a
 // report. Run with `DB_PATH=:memory: bun examples/wedding/scripts/measure-render-cost.ts`.
 import { createServer } from "../../../src/server";
-import * as boardDoc from "../documents/board";
-import * as householdDoc from "../documents/household";
+import { asCouple, asHousehold, board, household } from "../setup";
 import { example } from "../index";
 
 const server = createServer(example, 0);
@@ -55,10 +54,11 @@ async function enter(code: string, page?: string): Promise<WebSocket> {
 
 // Two households of the script's own, so the seed is untouched.
 const emails = [0, 1].map((i) => `measure-${Date.now()}-${i}@example.com`);
-for (const email of emails) boardDoc.patch("DASH", [{ op: "add", path: "/households/-", value: { email, names: "Ada Measure, Femi Measure" } }], "setup");
-const [mine, theirs] = emails.map((email) => boardDoc.read("DASH")!.households.find((h) => h.email === email)!);
-householdDoc.patch(mine!.code, [{ op: "replace", path: "/answer", value: "yes" }], "setup");
-const guest = householdDoc.read(mine!.code)!.guests[1]!.id;
+for (const email of emails) await asCouple([{ op: "add", path: "/households/-", value: { email, names: "Ada Measure, Femi Measure" } }]);
+const households = (await board()).households;
+const [mine, theirs] = emails.map((email) => households.find((h) => h.email === email)!);
+await asHousehold(mine!.code, [{ op: "replace", path: "/answer", value: "yes" }]);
+const guest = (await household(mine!.code)).guests[1]!.id;
 
 const sender = await enter(mine!.code);
 send(sender, "session", [{ op: "replace", path: "/page", value: `?guest=${guest}` }]); // the drawer open, as it would be

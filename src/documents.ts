@@ -33,6 +33,9 @@ export function createDocuments(local: Local) {
   const listeners = new Set<(change: Change) => void | Promise<void>>();
   const inflight = new Set<Promise<unknown>>();
   const waiting = new Map<string, { v: number; resolve: () => void }[]>();
+  // Changes are told one at a time, in the order they came: what one change sets going (a
+  // compartment keeping who is here) is done before the next is told, so it is never done twice.
+  let telling: Promise<void> = Promise.resolve();
 
   // the one stream of changes: every publish on a document's channel
   local.onPublish((doc, data) => {
@@ -43,13 +46,13 @@ export function createDocuments(local: Local) {
       if (data.v !== undefined && h.v !== undefined && data.v > h.v + 1) {
         // a change missed: the copy is not to be trusted -- load it again, and tell as a whole-document change
         held.delete(doc);
-        track(load(doc).then(() => tell({ doc, ops: [{ op: "replace", path: "", value: held.get(doc)?.value }], v: held.get(doc)?.v })));
+        track(load(doc).then(() => told({ doc, ops: [{ op: "replace", path: "", value: held.get(doc)?.value }], v: held.get(doc)?.v })));
         return;
       }
       h.value = h.value === undefined ? h.value : applied(h.value, data.ops);
       if (data.v !== undefined) h.v = data.v;
     }
-    track(tell({ doc, ops: data.ops, v: data.v }));
+    track(told({ doc, ops: data.ops, v: data.v }));
     if (data.v !== undefined) for (const w of waiting.get(doc)?.filter((w) => w.v <= data.v) ?? []) w.resolve();
   });
 
@@ -64,8 +67,20 @@ export function createDocuments(local: Local) {
     return p.finally(() => inflight.delete(p));
   }
 
+  /** Tells every listener; one that fails is logged, and the rest are told all the same. */
   async function tell(change: Change): Promise<void> {
-    for (const fn of listeners) await fn(change);
+    for (const fn of listeners) {
+      try {
+        await fn(change);
+      } catch (err) {
+        console.error(`eta: telling a change to ${change.doc} failed:`, err);
+      }
+    }
+  }
+
+  /** Tells `change` once every change before it has been told. */
+  function told(change: Change): Promise<void> {
+    return (telling = telling.then(() => tell(change)));
   }
 
   /** Opens `doc` in delta and holds it. Loading twice at once loads once. */

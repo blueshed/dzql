@@ -136,7 +136,9 @@ export function createServer(example: Example, port: number | string = process.e
       shaped.map((op) => ({ ...op, path: at + op.path })) as never,
       { identity: who(ws), cursor: ws.data.sessionId, undoable: kind !== "fact" },
     );
-    return !("error" in written) && written.ops.length > 0;
+    if ("error" in written || written.ops.length === 0) return false;
+    await owner.wrote?.(ws, docId, ops);
+    return true;
   }
 
   /** Undo or redo, in delta mode: delta walks the session's cursor; the change is told like any other. */
