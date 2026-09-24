@@ -44,6 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`@blueshed/delta` ^0.7.0 and `@blueshed/railroad` ^0.13.0.** Read delta's Breaking list: an
+  undo that meets someone else's write now answers `{ ops: [], conflict }` where it used to fail.
+
 - **The ticker's city picker is an island** (`examples/ticker/applets/city-picker-applet.tsx`):
   93 lines of hand-built DOM, listeners and highlight bookkeeping became 61 (49 of code, from 79),
   its suggestions a keyed `list()` over a computed. It still reads the zones from the server's
@@ -59,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   test read, are gone.
 
 ### Fixed
+
+- **Undo no longer puts a row back over what someone wrote since**, and **an undo that no longer
+  applies no longer sticks** the session's Undo on it: both delta's, taken with 0.7.0. The two
+  wedding tests that pinned them as known failures now pass.
 
 - **A message that is not a write, or a write whose handling throws, is answered.** A write must
   name its document (a string) and carry one op or more, each `add`, `replace` or `remove` with a

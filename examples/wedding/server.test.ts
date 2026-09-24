@@ -671,7 +671,7 @@ describe("the couple", () => {
 describe("undo beside someone else", () => {
   const undo = (ws: WebSocket) => send(ws, "ledger", [{ op: "remove", path: "/latest" }]);
 
-  test.failing("one tab takes back its note, and the note another tab wrote after it stays", async () => {
+  test("one tab takes back its note, and the note another tab wrote after it stays", async () => {
     const mine = await enter(code), theirs = await enter(code);
     await send(mine, "household", [{ op: "replace", path: "/message", value: "Tess is vegetarian." }]);
     await send(theirs, "household", [{ op: "replace", path: "/message", value: "Tom brings a cake." }]);
@@ -685,7 +685,7 @@ describe("undo beside someone else", () => {
     }
   });
 
-  test.failing("an undo that no longer applies does not stick: the next Undo walks back the write before it", async () => {
+  test("an undo that no longer applies does not stick: the next Undo walks back the write before it", async () => {
     const mine = await enter(code), theirs = await enter(code);
     const answer = (await household(code)).answer;
     await send(mine, "household", [{ op: "replace", path: "/answer", value: answer === "no" ? "yes" : "no" }]);
