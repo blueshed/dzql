@@ -1,6 +1,6 @@
 import { assemble } from "./compartments";
-import { closeConnection, openConnection, resolveName, sees, setActiveCompartments } from "./compartments/audience";
-import { fragmentsMessage, renderMessage, renderRequested } from "./compartments/render";
+import { closeConnection, openConnection, resolveName, sees, setActiveCompartments, wireName } from "./compartments/audience";
+import { fragmentsMessage, renderMessage, renderRequested, type RenderRequest } from "./compartments/render";
 import type { ConnectionData } from "./connection";
 import type { Example } from "./example";
 import type { PatchOp } from "./json-patch";
@@ -25,18 +25,19 @@ const sent = new WeakMap<Bun.ServerWebSocket<ConnectionData>, Drawn>();
  * the page whole when its outline changed (a different page) or `whole` says so (a first drawing,
  * a refused write handing the page back).
  */
-function redraw(ws: Bun.ServerWebSocket<ConnectionData>, renderFor: (sessionId: string) => string, whole = false): void {
+function redraw(ws: Bun.ServerWebSocket<ConnectionData>, renderFor: (sessionId: string) => string, whole = false, written?: RenderRequest["written"]): void {
   const next = drawing(ws, () => renderFor(ws.data.sessionId));
   const prev = sent.get(ws);
   sent.set(ws, next);
-  const ops = prev && !whole ? diff(prev, next) : undefined;
+  const ops = prev && !whole ? diff(prev, next, written && wireName(written.docType, written.docId, ws)) : undefined;
   if (ops === undefined) ws.send(renderMessage(next.html));
   else if (ops.length > 0) ws.send(fragmentsMessage(ops));
 }
 
-renderRequested.on((sockets) => {
+renderRequested.on((request) => {
   if (!active) return; // unreachable in practice: nothing can fire this before a server exists
-  for (const ws of sockets) redraw(ws, active.assembled.renderFor);
+  const { sockets, written }: RenderRequest = Symbol.iterator in request ? { sockets: request } : request;
+  for (const ws of sockets) redraw(ws, active.assembled.renderFor, false, written);
 });
 
 export function createServer(example: Example, port: number | string = process.env.PORT ?? 3000) {

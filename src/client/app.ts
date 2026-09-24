@@ -2,7 +2,7 @@ import { applets } from "../applets";
 import type { PatchOp } from "../json-patch";
 import { formValue } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
-import { morph, morphElement, removeNode } from "./morph";
+import { morph, morphElement, morphTag, removeNode } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -191,6 +191,8 @@ function applyFragments(ops: HtmlOp[]) {
     if (!target) continue;
     if (op.op === "replace") {
       morphElement(target, op.html, hooks);
+    } else if (op.op === "tag") {
+      morphTag(target, op.html, hooks);
     } else if (op.op === "remove") {
       removeNode(target, hooks);
     } else {

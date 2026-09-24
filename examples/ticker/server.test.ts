@@ -182,7 +182,7 @@ describe("the ticker", () => {
     // the clock is a thing (rule 15): its drawer holds the city, and every zone to choose from
     write(ws, "desk", [{ op: "replace", path: "/page", value: "?clock" }]);
     await expectMessage(ws, "patch");
-    const { html } = await expectMessage(ws, "render");
+    const { page: html } = await expectMessage(ws, "render");
     expect(html).toContain('id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="{&quot;city&quot;:&quot;Zurich&quot;}"><datalist>');
     expect(html).toContain('<option value="Asia/Tokyo">Tokyo (UTC+09:00)</option>');
     expect(html).toContain('<option value="America/Vancouver">Vancouver (UTC-0');
@@ -267,12 +267,19 @@ describe("the ticker", () => {
     write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.07 }]);
     await expectMessage(ws, "patch");
     expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: '[data-eta-part="b-CHRL"]' }]);
-    // dropping asks first, from the drawer; the write that answers puts the modal away, and the page comes whole
+    // dropping asks first, from the drawer: the drawer's layer closes, the modal's opens, the ground
+    // goes inert and the site's tag says where -- and none of it is the page
     html = await page([{ op: "replace", path: "/page", value: "board?symbol=CHRL" }]);
     expect(html).toContain(`data-value="board?confirm=CHRL"`);
-    html = await page([{ op: "replace", path: "/page", value: "board?confirm=CHRL" }]);
+    write(ws, "desk", [{ op: "replace", path: "/page", value: "board?confirm=CHRL" }]);
+    await expectMessage(ws, "patch");
+    const asked = await expectMessage(ws, "render");
+    expect(asked.html).toBeUndefined();
+    const sent = (asked.ops as { op: string; target: string }[]).map((o) => `${o.op} ${/data-eta-part="(.*)"/.exec(o.target)![1]}`);
+    expect(sent).toEqual(["tag site", "tag ground", "tag b-CHRL", "replace drawers", "replace modals"]);
+    html = asked.page!;
     expect(html).toContain('<dialog open class="modal" aria-label="Stop watching CHRL">');
-    expect(html).toContain("<div inert>");
+    expect(html).toContain('class="ground" inert>');
     write(ws, "watchlist", [{ op: "remove", path: "/symbols/0" }]);
     await expectMessage(ws, "patch");
     html = (await expectMessage(ws, "render")).page;

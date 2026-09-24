@@ -83,15 +83,23 @@ A render names the regions of its page with `part(key, html)`: its root element 
 row, an applet's mount -- where a change should travel alone. The kernel keeps what each
 connection was last sent and, after a write, draws its page again and sends what differs:
 
-- a part whose outline changed is replaced (`replace`, morphed in place);
+- a part whose own tag changed and nothing inside it (a class, `inert`, an applet's props) is sent
+  its tag alone (`tag`); one whose inside changed is replaced (`replace`, morphed in place);
 - a list -- a part whose rows are parts, in one run -- has rows put in (`after`, `before`) and
   taken out (`remove`); a list that was empty, or whose rows changed order, is replaced;
 - nothing, when nothing on the page changed;
 - the page whole only when its own outline changed: a different page.
 
 A key is unique on its page (drawn twice the same is fine; two different things under one key are
-no part, and what holds them is sent). An applet that takes its document's ops (`data-doc`) is
-compared without its props. Nothing is hand-written, and the stories check the result: each
+no part, and what holds them is sent). After a write to the document an applet takes the ops of
+(`data-doc`), its props are not compared -- it has the ops; after any other write they are, and
+go as its tag when they changed.
+
+Drawers and modals go through `layers(page, drawer, modal)` (src/bento.ts): the ground (the page,
+and the drawer's layer over it) and the modal's layer, each always there and empty when nothing is
+open, so opening or closing one sends its layer; a modal puts the ground `inert` by its tag. Make
+the page's outermost element a part too (the wedding's and the ticker's `.site`), so its class and
+its `data-page` go as a tag. Nothing is hand-written, and the stories check the result: each
 member's page, rebuilt from exactly what they were sent, must equal a fresh render.
 
 ## Documents

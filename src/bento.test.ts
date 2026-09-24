@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { address, bento, choice, inertWhile, matches, parseAddress, patchCollections, prop, rows, type Collections } from "./bento";
+import { address, bento, choice, layers, matches, parseAddress, patchCollections, prop, rows, type Collections } from "./bento";
 import { esc, join, write } from "./html";
 
 // an example's icons, as the bento sees them: a name and a size in, markup out
@@ -164,8 +164,9 @@ describe("the surfaces", () => {
     expect(drop).toContain(`<p class="note">Its row leaves.</p>`);
     expect(drop).toContain(`class="tool danger"${open}><i data-icon="trash" data-size="16"></i>Stop watching</button>`);
     expect(b.confirmModal("t", "q", open, close)).toContain("Remove</button>");
-    expect(inertWhile(true, "<p/>")).toBe("<div inert><p/></div>");
-    expect(inertWhile(false, "<p/>")).toBe("<p/>");
+    // the layers are always there, empty when nothing is open; a modal puts the ground inert
+    expect(layers("<p/>", "", "")).toBe(`<div data-eta-part="ground" class="ground"><p/><div data-eta-part="drawers" class="layer"></div></div><div data-eta-part="modals" class="layer"></div>`);
+    expect(layers("<p/>", "<aside/>", "<dialog/>")).toBe(`<div data-eta-part="ground" class="ground" inert><p/><div data-eta-part="drawers" class="layer"><aside/></div></div><div data-eta-part="modals" class="layer"><dialog/></div>`);
   });
 });
 

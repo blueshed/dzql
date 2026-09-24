@@ -154,7 +154,16 @@ export function choice(label: string, options: Option[], locked = false): string
 }
 
 /** The page behind a modal is `inert` while it asks -- nothing else may be touched (rule 14). */
-export const inertWhile = (modalOpen: boolean, html: string): string => (modalOpen ? `<div inert>${html}</div>` : html);
+/**
+ * A page with what may open over it: the ground -- the page, and the drawer's layer over it -- and
+ * the modal's layer. Each layer is always there, empty when nothing is open, so opening or closing
+ * a drawer or a modal sends that layer alone (src/parts.ts); a modal puts the ground behind it
+ * `inert` by its own tag, which is sent alone too. The wrappers are `display: contents`.
+ */
+export function layers(page: string, drawer: string, modal: string): string {
+  const ground = `<div class="ground"${modal ? " inert" : ""}>${page}${part("drawers", `<div class="layer">${drawer}</div>`)}</div>`;
+  return part("ground", ground) + part("modals", `<div class="layer">${modal}</div>`);
+}
 
 /** The surfaces, bound to an example's icons and its tray's document. */
 export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOptions<I>) {
@@ -352,7 +361,7 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
   /**
    * A modal: new or delete, one question, nothing else (rule 14). Not `<dialog>.showModal()` --
    * the kernel's client learns no such call, the shape is HTML -- so it carries its own scrim, the
-   * way a sheet does, and the page behind it is put `inert` by the caller (`inertWhile`).
+   * way a sheet does, and the page behind it is put `inert` by `layers`.
    */
   function modal(title: string, close: string, body: string): string {
     return join(`<div class="scrim modal-scrim"${close}></div>`, `<dialog open class="modal" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${body}</dialog>`);

@@ -4,7 +4,7 @@
 // at the bottom right. A row is a symbol: its drawer holds what it is and what it can carry, watch
 // or drop. Watching is the plus and a modal; dropping asks in one too.
 
-import { address, bento, inertWhile, matches, parseAddress, prop, rows, type Crumb, type OpenOptions } from "../../../src/bento";
+import { address, bento, layers, matches, parseAddress, prop, rows, type Crumb, type OpenOptions } from "../../../src/bento";
 import { esc, write } from "../../../src/html";
 import { part } from "../../../src/parts";
 import type { ClockDocument } from "../documents/clock";
@@ -143,8 +143,11 @@ export function page(v: View): string {
   const desk: Crumb = { label: "The desk", back: go("") };
   const trail = opened ? [desk, { label: `the ${opened.key}` }] : [desk];
   const modal = modals(v);
-  const body = boxPage(trail, [], cells, opened) + drawer(v);
   const over = drawer(v);
-  // the page's address goes in the URL (the kernel client mirrors data-page), so the back button closes a drawer and a link opens one
-  return `<div class="site${modal || over ? " locked" : ""}" data-page="${esc(v.ui.page ?? "")}" data-page-write='${JSON.stringify({ doc: "desk", op: "replace", path: "/page" })}'>${inertWhile(!!modal, body)}${modal}</div>`;
+  // the page's address goes in the URL (the kernel client mirrors data-page), so the back button closes a drawer and a link opens one;
+  // the site is a part, so a drawer opening changes its tag (locked, the address) and its drawer layer, and nothing else is sent
+  return part(
+    "site",
+    `<div class="site${modal || over ? " locked" : ""}" data-page="${esc(v.ui.page ?? "")}" data-page-write='${JSON.stringify({ doc: "desk", op: "replace", path: "/page" })}'>${layers(boxPage(trail, [], cells, opened), over, modal)}</div>`,
+  );
 }

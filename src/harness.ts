@@ -3,7 +3,7 @@ import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
 import type { Stories, Story, Write } from "./stories";
-import { comparable } from "./parts";
+import { comparable, splitTag } from "./parts";
 
 export { comparable };
 
@@ -29,7 +29,7 @@ export type Outcome = { name: string; failures: string[] };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number };
 
 type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; answered: (() => void)[] };
-type HtmlOp = { op: "replace" | "after" | "before" | "remove"; target: string; html?: string };
+type HtmlOp = { op: "replace" | "tag" | "after" | "before" | "remove"; target: string; html?: string };
 type Snapshot = Map<string, string>;
 
 /** How long the server is given to finish with the sockets a story closed, before its transaction is rolled back. */
@@ -41,8 +41,16 @@ const ledgerSinceStmt = db.query<{ id: number; doc: string; undoable: number }, 
 const UNDO: Write = { doc: "ledger", ops: [{ op: "remove", path: "/latest" }] };
 const REDO: Write = { doc: "ledger", ops: [{ op: "add", path: "/latest" }] };
 
-/** One fragment op applied to a page as the client applies it: the first element the selector names is replaced, appended to, or removed. */
+/** One fragment op applied to a page as the client applies it: the first element the selector names is replaced, put beside, or removed, or given a new opening tag. */
 function applyOp(page: string, op: HtmlOp): string {
+  if (op.op === "tag") {
+    // the part's opening tag, swapped as text, so the page reads exactly as a fresh render would
+    const at = page.indexOf(op.target.slice(1, -1)); // `data-eta-part="<key>"`, as the tag carries it
+    if (at < 0) return page;
+    const start = page.lastIndexOf("<", at);
+    const [old] = splitTag(page.slice(start));
+    return page.slice(0, start) + op.html! + page.slice(start + old.length);
+  }
   let done = false;
   return new HTMLRewriter()
     .on(op.target, {

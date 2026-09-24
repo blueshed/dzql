@@ -112,5 +112,5 @@ export function notify(
   if (result.applied.length === 0) return;
   for (const ws of echoTo) ws.send(patchMessage(wireName(docType, docId, ws), result.version, result.applied));
   const redraw = renderTo ?? [...new Set([...echoTo, ...readersOf(docType, docId)])];
-  if (redraw.length > 0) renderRequested.emit(redraw);
+  if (redraw.length > 0) renderRequested.emit({ sockets: redraw, written: { docType, docId } });
 }

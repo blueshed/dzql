@@ -28,7 +28,7 @@ import {
   firstNameOf,
   formatDay,
   frame,
-  inertWhile,
+  layers,
   isComing,
   isGuestOut,
   matches,
@@ -81,7 +81,7 @@ export function householdPages(v: HouseholdView): string {
     at.new === "guests" ? addModal("Name our plus-one", [{ name: "name", label: "Their name" }], write("household", "add", "/guests/-"), close(v))
     : at.new === "asks" ? addModal("Ask to bring someone", [{ name: "name", label: "Who to ask for" }], write("household", "add", "/asks/-"), close(v), "Ask")
     : "";
-  const body = join(inertWhile(modalOpen, join(page, guestSheet(v), giftSheet(v), answerSheet(v))), modal);
+  const body = layers(page, join(guestSheet(v), giftSheet(v), answerSheet(v)), modal);
   return frame(false, body, ui.page ?? "", locked);
 }
 

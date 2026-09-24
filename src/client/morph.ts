@@ -124,6 +124,20 @@ export function morph(target: Element, html: string, hooks: MorphHooks = {}): vo
 }
 
 /**
+ * Gives an existing element the attributes of `tag`, an opening tag, and leaves what is inside it
+ * alone -- a render in parts' `tag`, for a part whose own attributes changed and nothing else. An
+ * applet's element is told when its props change, as in a morph.
+ */
+export function morphTag(old: Element, tag: string, hooks: MorphHooks = {}): void {
+  const holder = document.createElement("template");
+  holder.innerHTML = tag;
+  const next = holder.content.firstElementChild;
+  if (!next) return;
+  if (isApplet(old)) morphApplet(old, next, hooks);
+  else morphAttributes(old, next);
+}
+
+/**
  * Reconciles one existing element against the HTML of one element -- a fragment render's
  * `replace`. Same tag (and same applet, if any) is morphed in place; anything else is swapped
  * for the new element, applets inside the old one cleaned up first.

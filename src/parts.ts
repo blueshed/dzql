@@ -16,8 +16,12 @@ export function part(key: string, html: string): string {
   return tagged;
 }
 
-/** A page as it compares: an applet that takes its document's patches (`data-doc`) is compared without its props, which follow the patches, not the renders. */
+/** A page with the props of every applet that takes its document's patches (`data-doc`) left out: how the stories compare a page, since props follow the patches between renders. */
 export const comparable = (html: string): string => html.replace(/<[^>]*\sdata-doc="[^"]*"[^>]*>/g, (tag) => tag.replace(/\sdata-props="[^"]*"/, ""));
+
+/** `html` with the props left out of the applets that take `doc`'s patches: after a write to `doc`, they have its ops already. */
+const takingPatchesOf = (doc: string | undefined) => (html: string): string =>
+  doc === undefined ? html : html.replace(/<[^>]*\sdata-doc="[^"]*"[^>]*>/g, (tag) => (tag.includes(` data-doc="${doc}"`) ? tag.replace(/\sdata-props="[^"]*"/, "") : tag));
 
 type Node = { key: string | null; html: string; skeleton: string; children: string[] };
 /** A drawn page: its HTML, and its parts as a tree (the page itself is the node keyed `null`). */
@@ -59,7 +63,7 @@ function layout(page: string, recorded: Recorded[]): Drawn {
     const children = parts.filter((p) => parentOf.get(p.key) === key).sort((a, b) => html.indexOf(a.html) - html.indexOf(b.html));
     let skeleton = html;
     for (const c of children) skeleton = skeleton.replace(c.html, placeholder(c.key));
-    nodes.set(key, { key, html, skeleton: comparable(skeleton), children: children.map((c) => c.key) });
+    nodes.set(key, { key, html, skeleton, children: children.map((c) => c.key) });
   };
   make(null, page);
   for (const p of parts) make(p.key, p.html);
@@ -70,21 +74,31 @@ const target = (key: string): string => `[data-eta-part="${key.replaceAll('"', '
 
 /**
  * What to send to bring a page drawn as `prev` to `next`: HTML ops, `[]` when nothing on it
- * changed, or undefined when the page's own outline changed and it must go whole.
+ * changed, or undefined when the page's own outline changed and it must go whole. `patched`, the
+ * document just written as this page names it: an applet that takes its patches has had them, so
+ * its props are not compared; any other change to its props (another document's) is sent.
  */
-export function diff(prev: Drawn, next: Drawn): HtmlOp[] | undefined {
+export function diff(prev: Drawn, next: Drawn, patched?: string): HtmlOp[] | undefined {
   const ops: HtmlOp[] = [];
-  return settle(null, prev, next, ops) ? ops : undefined;
+  return settle(null, prev, next, ops, takingPatchesOf(patched)) ? ops : undefined;
 }
 
-/** Brings the node `key` up to date through ops on what is inside it; false when it cannot, and must be replaced whole. */
-function settle(key: string | null, prev: Drawn, next: Drawn, ops: HtmlOp[]): boolean {
+/**
+ * Brings the node `key` up to date through ops on it and what is inside it; false when it cannot,
+ * and must be replaced whole. A part whose own tag changed and not what is inside it (a class, an
+ * `inert`, the page's address) is sent its tag alone.
+ */
+function settle(key: string | null, prev: Drawn, next: Drawn, ops: HtmlOp[], seen: (html: string) => string): boolean {
   const p = prev.nodes.get(key);
   const n = next.nodes.get(key);
   if (!p || !n) return false;
+  const [pTag, pInside] = (key === null ? ["", p.skeleton] : splitTag(p.skeleton)).map(seen) as [string, string];
+  const [nTag, nInside] = (key === null ? ["", n.skeleton] : splitTag(n.skeleton)).map(seen) as [string, string];
+  const tag: HtmlOp | undefined = pTag !== nTag ? { op: "tag", target: target(key!), html: splitTag(n.html)[0] } : undefined;
 
-  if (p.skeleton !== n.skeleton) {
-    if (!isList(p) || !isList(n) || stripped(p) !== stripped(n)) return false;
+  if (pInside !== nInside) {
+    if (!isList(pInside) || !isList(nInside) || pInside.replace(RUN, "") !== nInside.replace(RUN, "")) return false;
+    if (tag) ops.push(tag);
     // A list: the same outline around a run of rows. Rows gone are taken out; rows kept keep their
     // order and are settled in turn; new rows go in after the row before them, or before the row
     // after them. A list that was empty has neither, and is replaced.
@@ -93,23 +107,36 @@ function settle(key: string | null, prev: Drawn, next: Drawn, ops: HtmlOp[]): bo
     if (kept.length === 0 && n.children.length > 0) return false;
     for (const gone of p.children.filter((c) => !n.children.includes(c))) ops.push({ op: "remove", target: target(gone) });
     n.children.forEach((c, i) => {
-      if (p.children.includes(c)) return settleChild(c, prev, next, ops);
+      if (p.children.includes(c)) return settleChild(c, prev, next, ops, seen);
       const html = next.nodes.get(c)!.html;
       if (i > 0) ops.push({ op: "after", target: target(n.children[i - 1]!), html });
       else ops.push({ op: "before", target: target(n.children.find((k) => p.children.includes(k))!), html });
     });
     return true;
   }
-  for (const c of n.children) settleChild(c, prev, next, ops);
+  if (tag) ops.push(tag);
+  for (const c of n.children) settleChild(c, prev, next, ops, seen);
   return true;
 }
 
-function settleChild(key: string, prev: Drawn, next: Drawn, ops: HtmlOp[]): void {
-  if (!settle(key, prev, next, ops)) ops.push({ op: "replace", target: target(key), html: next.nodes.get(key)!.html });
+/** An element's opening tag, and the rest: read with its quoted attribute values respected. */
+export function splitTag(html: string): [string, string] {
+  let quote = "";
+  for (let i = html.indexOf("<"); i < html.length; i++) {
+    const c = html[i]!;
+    if (quote) {
+      if (c === quote) quote = "";
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === ">") return [html.slice(0, i + 1), html.slice(i + 1)];
+  }
+  return [html, ""];
+}
+
+function settleChild(key: string, prev: Drawn, next: Drawn, ops: HtmlOp[], seen: (html: string) => string): void {
+  if (!settle(key, prev, next, ops, seen)) ops.push({ op: "replace", target: target(key), html: next.nodes.get(key)!.html });
 }
 
 const RUN = /(?:<!--part:[^>]*-->)+/g;
 
-/** A node whose child parts sit in one unbroken run: a list. */
-const isList = (node: Node): boolean => (node.skeleton.match(RUN) ?? []).length <= 1;
-const stripped = (node: Node): string => node.skeleton.replace(RUN, "");
+/** An inside whose child parts sit in one unbroken run: a list. */
+const isList = (inside: string): boolean => (inside.match(RUN) ?? []).length <= 1;

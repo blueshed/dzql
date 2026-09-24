@@ -169,7 +169,7 @@ describe("the welcome", () => {
   test("a new connection is greeted with the welcome: the save-the-date and the code form", async () => {
     const ws = connect();
     await opened(ws);
-    const { html } = await expectMessage(ws, "render");
+    const { page: html } = await expectMessage(ws, "render");
     expect(html).toContain("Rowena");
     expect(html).toContain('data-write=\'{"doc":"session","op":"replace","path":"/code"}\'');
     expect(html).toContain('class="site at-welcome"');
@@ -210,7 +210,7 @@ describe("a household", () => {
     const ws = await enter(code);
     write(ws, "session", [{ op: "replace", path: "/page", value: "gifts" }]);
     await expectMessage(ws, "patch");
-    const { html } = await expectMessage(ws, "render");
+    const { page: html } = await expectMessage(ws, "render");
     expect(html).toContain("Gifts");
     expect(html).toContain("Honeymoon fund");
     write(ws, "session", [{ op: "replace", path: "/page", value: "" }]);
@@ -492,22 +492,23 @@ describe("a household", () => {
     // the parts a render names, by key
     const targets = async (ws: WebSocket) => ((await expectMessage(ws, "render")).ops as { op: string; target: string }[]).map((o) => `${o.op} ${/data-eta-part="(.*)"/.exec(o.target)![1]}`);
 
+    // an applet's mount has nothing inside it, so a look goes as its tag alone -- the new props.
     // a look: the family photo and the open drawer's dress for the household, the photo of everyone, the board's and the family's photos for the couple, the home's small reading
     write(mine, "household", [{ op: "replace", path: `/guests/${guest}/minifigure/hair`, value: "curls" }]);
     await expectMessage(mine, "patch");
-    expect(await targets(mine)).toEqual(["replace family-photo", `replace dress-${guest}`]);
+    expect(await targets(mine)).toEqual(["tag family-photo", `tag dress-${guest}`]);
     await expectMessage(list, "patch");
     await expectQuiet(list); // the list reading shows no looks
-    expect(await targets(everyone)).toEqual(["replace everyone-photo"]); // they are coming, so in it
+    expect(await targets(everyone)).toEqual(["tag everyone-photo"]); // they are coming, so in it
     await expectQuiet(elsewhere);
     await expectMessage(board, "patch");
-    expect(await targets(board)).toEqual(["replace board-photo"]);
+    expect(await targets(board)).toEqual(["tag board-photo"]);
     await expectMessage(family, "patch");
-    expect(await targets(family)).toEqual(["replace family-photo"]);
+    expect(await targets(family)).toEqual(["tag family-photo"]);
     await expectMessage(familyBox, "patch");
-    expect(await targets(familyBox)).toEqual(["replace family-mini"]); // the family box's small reading of them, still
+    expect(await targets(familyBox)).toEqual(["tag family-mini"]); // the family box's small reading of them, still
     await expectMessage(home, "patch");
-    expect(await targets(home)).toEqual(["replace board-mini"]); // the home's small reading of the families, still
+    expect(await targets(home)).toEqual(["tag board-mini"]); // the home's small reading of the families, still
     // the welcome is drawn again too (every open page is, for a household's write) and nothing on
     // it changed, so it is sent nothing
     await expectQuiet(welcome);
@@ -516,7 +517,7 @@ describe("a household", () => {
     await page(family, [{ op: "replace", path: `/reading/family-${hid}`, value: "list" }]);
     write(mine, "household", [{ op: "replace", path: `/guests/${guest}/choices/2/dish`, value: 5 }]);
     await expectMessage(mine, "patch");
-    expect(await targets(mine)).toEqual([`replace menu-${guest}`]);
+    expect(await targets(mine)).toEqual([`tag menu-${guest}`]);
     await expectMessage(list, "patch");
     expect(await targets(list)).toEqual([`replace guest-${guest}`]);
     await expectQuiet(everyone);
@@ -606,7 +607,7 @@ describe("the couple", () => {
     let html = (await expectMessage(ws, "render")).page;
     expect(html).toContain('<dialog open class="modal" aria-label="Add a course">');
     expect(html).toContain("The course&#39;s name");
-    expect(html).toContain("<div inert>");
+    expect(html).toContain('class="ground" inert>');
     write(ws, "board", [{ op: "add", path: "/courses/-", value: "Pudding" }]);
     await expectMessage(ws, "patch");
     // the board has no fragments: the page comes whole
@@ -615,7 +616,7 @@ describe("the couple", () => {
     expect(pudding).toBeTruthy();
     // the write that answers the question closes the modal
     expect(html).not.toContain('class="modal"');
-    expect(html).not.toContain("<div inert>");
+    expect(html).not.toContain(`class="ground" inert`);
 
     // removing asks in a modal too -- a modal is new or delete and nothing else (rule 14)
     write(ws, "session", [{ op: "replace", path: "/page", value: `courses?confirm=courses/${pudding.id}` }]);
