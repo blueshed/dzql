@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.48.0] - 2026-09-25
+
 ### Breaking (for example authors)
 
 - **The stories check delivery, not only pages.** A story that passed may now fail, by name:
