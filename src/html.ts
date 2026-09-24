@@ -14,9 +14,13 @@ export function esc(value: unknown): string {
 
 export type Op = "add" | "replace" | "remove";
 
-/** The attributes that make an element write: `data-write` (the document, the op, the path) and, when there is one, `data-value`. */
+/**
+ * The attributes that make an element write: `data-write` (the document, the op, the path) and,
+ * when there is one, `data-value`. The spec is JSON in single quotes, so a quote or an ampersand
+ * in it -- a path built from what someone typed -- is escaped, and cannot end the attribute.
+ */
 export function write(doc: string, op: Op, path: string, value?: unknown): string {
-  const spec = JSON.stringify({ doc, op, path });
+  const spec = JSON.stringify({ doc, op, path }).replaceAll("&", "&amp;").replaceAll("'", "&#39;");
   return ` data-write='${spec}'${value === undefined ? "" : ` data-value="${esc(value)}"`}`;
 }
 

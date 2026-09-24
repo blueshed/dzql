@@ -37,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`inspect` gives at most 100 entries a document**, however many it asks for: `limit: 1e9` asked
   delta for a document's whole history, and every event waited on the answer. A limit that is not
   a whole number is the default (the latest).
+- **`write()` escapes its spec** (`src/html.ts`): the JSON sits in single quotes, and a `'` or `&`
+  in it -- a path built from what someone typed, `/rooms/lobby' onclick='…/topic` -- ended the
+  attribute and began another. Both are escaped now; nothing else in the output changes.
 - **Two compartments owning one document type throw** when the example is assembled, naming the
   type (the kernel's own `ledger` among them). Before, the last silently won.
 

@@ -18,6 +18,17 @@ describe("html", () => {
     expect(open).toBe(` data-write='{"doc":"desk","op":"replace","path":"/open"}' data-value="board"`);
   });
 
+  test("a path built from what someone typed cannot end write's attribute", () => {
+    const typed = write("session", "replace", "/rooms/lobby' onclick='alert(1)/topic & more");
+    const seen: Record<string, string> = {};
+    new HTMLRewriter()
+      .on("button", { element: (el) => void Object.assign(seen, Object.fromEntries(el.attributes)) })
+      .transform(`<button${typed}>Set</button>`);
+    expect(Object.keys(seen)).toEqual(["data-write"]);
+    const decoded = seen["data-write"]!.replaceAll("&#39;", "'").replaceAll("&amp;", "&"); // as a browser reads the attribute
+    expect(JSON.parse(decoded)).toEqual({ doc: "session", op: "replace", path: "/rooms/lobby' onclick='alert(1)/topic & more" });
+  });
+
   test("join drops what is not a string", () => {
     expect(join("a", false, null, undefined, "b")).toBe("ab");
   });
