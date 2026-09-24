@@ -1,29 +1,53 @@
 @startuml
-title Classes: the documents' shapes
+title Classes: the documents, and the tables beneath them
 hide empty methods
+left to right direction
 
-class "room:<name>" as RoomDoc <<document>> {
-  name
-  members
-  messages
+package "What people read" {
+  class "room:<name>" as RoomDoc <<document>> {
+    name
+    members
+    messages
+  }
+  class "session" as SessionDoc <<document>> {
+    name
+    room
+  }
+  class "lobby" as LobbyDoc <<document>> {
+    rooms
+  }
+  class Message {
+    author
+    text
+    at
+  }
 }
 
-class "session" as SessionDoc <<document>> {
-  name
-  room
-}
-
-class "lobby" as LobbyDoc <<document>> {
-  rooms
-}
-
-class Message {
-  author
-  text
-  at
+package "What is stored" {
+  class rooms <<table>> {
+    name
+  }
+  class messages <<table>> {
+    room
+    author
+    text
+    at
+  }
+  class sessions <<table>> {
+    name
+    room
+  }
 }
 
 RoomDoc *-- "0..*" Message : messages
 SessionDoc ..> RoomDoc : room names one >
 LobbyDoc ..> RoomDoc : lists the ones with people in >
+
+RoomDoc *-- rooms : root
+RoomDoc *-- messages : includes
+SessionDoc *-- sessions : root
+rooms "1" -- "0..*" messages : holds >
+
+note right of RoomDoc : members: transient,\nno table, kept in memory
+note right of LobbyDoc : transient: no table,\nkept in memory
 @enduml

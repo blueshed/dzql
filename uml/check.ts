@@ -90,7 +90,16 @@ export function readTypes(src: string): Types {
       refused: literals(type.match(/refused:\s*((?:"[^"]*"\s*\|?\s*)+)/)?.[1] ?? ""),
     };
   });
-  for (const k of ["Documents", "Writes"]) interfaces.delete(k);
+  // each table in Tables is a class too: its columns are the fields of its inline shape
+  for (const [table, type] of interfaces.get("Tables")?.types ?? []) {
+    const cols: Iface = { fields: [], types: new Map() };
+    for (const mem of members(type.replace(/^\{|\}$/g, ""))) {
+      const f = mem.match(/^(\w+)\??\s*:\s*([\s\S]*)$/);
+      if (f) { cols.fields.push(f[1]!); cols.types.set(f[1]!, f[2]!.trim()); }
+    }
+    interfaces.set(table, cols);
+  }
+  for (const k of ["Documents", "Writes", "Tables"]) interfaces.delete(k);
   return { interfaces, unions, documents, writes };
 }
 

@@ -40,6 +40,13 @@ export interface LobbyDoc {
   rooms: Transient<string[]>;
 }
 
+/** The tables beneath the documents' persistent parts. The transient parts have none: they are kept in memory. */
+export interface Tables {
+  rooms: { name: string };
+  messages: { room: string; author: string; text: string; at: string };
+  sessions: { name: string | null; room: string | null };
+}
+
 /** The documents, by the name they are opened by, and who has each open. */
 export interface Documents {
   "room:<name>": { shape: RoomDoc; openedBy: "everyone in the room" };
