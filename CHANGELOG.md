@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   To move across: a page is told every change to each document it reads, shown or not, so a page
   that reads a document it does not show leaks it by patch. Read only what the page shows, or cut
   the document by who reads it.
+- **A document kept off the ledger says so: `Compartment.ledger: false`.** A write whose ledger
+  entry disagrees with its compartment is reported as a failure: one registered in delta without
+  `{ ledger: true }` whose compartment does not say `ledger: false` (no undo could ever work), and
+  one that says it and is recorded all the same. To move across: add `ledger: false` to the
+  compartment of each document you register without a ledger, as the ticker's desk and the
+  wedding's session now do.
 
 ### Added
 

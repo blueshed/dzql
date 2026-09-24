@@ -129,6 +129,10 @@ export function createServer(example: Example, port: number | string = process.e
       { identity: who(ws), cursor: ws.data.sessionId, undoable: kind !== "fact" },
     );
     if ("error" in written || written.ops.length === 0) return false;
+    if ((written.entry === undefined) !== (owner.ledger === false)) {
+      const why = owner.ledger === false ? "its compartment keeps it off the ledger (ledger: false), yet delta recorded the write" : "delta recorded no ledger entry: register it with { ledger: true }, or say its compartment keeps it off the ledger (ledger: false)";
+      failed(`writing ${owner.own ? owner.docType : `${owner.docType}:${docId}`}`, new Error(why)); // a session's own named by type: its id is a credential
+    }
     await owner.wrote?.(ws, docId, ops);
     return true;
   }

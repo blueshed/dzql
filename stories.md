@@ -127,7 +127,8 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    the page back. Whatever the kernel reports failing while a story runs fails it, so a refusal
    that is really a crash is not a refusal.
 4. Undo, and every page must be as it was before; redo, and every page must be as it was after.
-   Skipped when the write is off the ledger, when the ledger says it is a fact, or when its author
+   Skipped when the write is off the ledger (its compartment says `ledger: false`, and the kernel
+   reports a write that disagrees), when the ledger says it is a fact, or when its author
    has gone -- before the undo, or because of it (undoing the write that gave you your name).
 5. Report by story name. A failing story is a sentence, not a stack trace.
 

@@ -38,6 +38,7 @@ export type Compartment = {
   own?: true;                              // keyed by the session id: that session's alone, named by type
   permit?(ws, op, docId): boolean;         // may it write this path of this document? omitted: nobody may
   kind?: Kind;                             // where its truth lives: written (default), fact, live, sourced, static
+  ledger?: false;                          // kept off the ledger (a visit): said, so one left off by mistake is caught
   at?: string;                             // where eta's paths sit in the document ("/sessions")
   shape?(ws, docId, ops): PatchOp[];       // the wire's ops as the document takes them (a fresh write only)
   changed?(docId, ops): void | Promise<void>;    // after any change to it is told: keep what follows from it true
@@ -122,8 +123,10 @@ An example's documents are delta's. `delta.ts` defines the schema (`defineSchema
 prefixed with the example's name, `chat_`), creates the tables, seeds them when empty, and
 registers the documents on a `createLocal()`: `registerDocs(..., { ledger: true })` for what is
 written and undone, `registerMemory` for what is live. A tray may go in a registry of its own with
-no ledger where a visit is not history (the ticker's desk, the wedding's session); chat's session
-is on the ledger, so undo right after entering a room takes you out of it. A document is a root
+no ledger where a visit is not history (the ticker's desk, the wedding's session), and its
+compartment says `ledger: false`: the kernel reports a write whose ledger entry disagrees with its
+compartment, so a document left off the ledger by mistake (no undo could ever work) is caught.
+Chat's session is on the ledger, so undo right after entering a room takes you out of it. A document is a root
 row and the collections it includes, each a map of rows by id; two documents may include the same
 rows, and delta's fan-out carries a write to every one that holds them. `defineSchema`,
 `defineDoc` and their options (`include`, `implied` for a document that opens empty until its

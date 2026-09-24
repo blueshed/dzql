@@ -49,16 +49,16 @@ Everything below is the least that makes it pass.
    `src/db`'s `db`, a seed run into empty tables, and the documents registered on a
    `createLocal()`: `registerDocs(..., { ledger: true })` for what is written and undone,
    `registerMemory` for what is live. A tray may be kept off the ledger, in a registry of its own,
-   where a visit is not history (the ticker's desk, the wedding's session); chat's session is on
-   it. Cut documents by who reads them: a page is told every change to what it read. How to write
+   where a visit is not history (the ticker's desk, the wedding's session), and its compartment
+   then says `ledger: false`; chat's session is on it. Cut documents by who reads them: a page is told every change to what it read. How to write
    `defineSchema` and `defineDoc` (`root`, `include`, `implied`, `temporal`) is delta's own
    `delta-doc` skill (`node_modules/@blueshed/delta/.claude/skills/delta-doc/`).
 3. **`documents/<thing>.ts`** -- `read(id)`, from `read("<docType>:<id>")` in `src/documents.ts`,
    adapting delta's rows into what the views want; and the pure rules a write follows
    (`after(state, ops)`), tested directly.
 4. **`compartments/<thing>.ts`** -- `docType`, `resolveDoc`, `permit`, `own` if its documents are
-   keyed by the session id, `kind` if not `written`, `at` if its fields sit under the root
-   (`/sessions`), and `shape`: the wire's ops as the document takes them (validated, an id minted,
+   keyed by the session id, `kind` if not `written`, `ledger: false` if it is kept off the ledger,
+   `at` if its fields sit under the root (`/sessions`), and `shape`: the wire's ops as the document takes them (validated, an id minted,
    a nested path turned into rows), nothing when nothing applies. `changed` keeps a live document
    true after any change; `wrote` does what follows for the writer alone. The kernel tells every
    change itself: echoed to who sees it, every page that read it drawn again, each sent only the

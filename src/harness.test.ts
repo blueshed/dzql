@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import { createLocal } from "@blueshed/delta/local";
+import { registerMemory } from "@blueshed/delta/kinds";
+import { defineDoc, registerDocs } from "@blueshed/delta/sqlite";
 import { example } from "../examples/chat";
+import { db, schema } from "../examples/chat/delta";
 import { stories } from "../examples/chat/stories";
 import type { Compartment } from "./compartments/compartment";
 import { read } from "./documents";
@@ -69,6 +73,20 @@ describe("stories harness", () => {
     const failures = await failuresOf(unanswered, only("Nobody can take"));
     expect(failures).toContain("refused, but ada was not answered: a refusal hands the page back");
     expect(failures).toContain("the server failed drawing a page: the page cannot be drawn");
+  }, 30000);
+
+  test("a write that is not on the ledger fails, unless its compartment keeps it off; a compartment that says so and is on it fails too", async () => {
+    // chat's documents left off the ledger by mistake: no undo could ever work
+    const bare = createLocal();
+    registerDocs(bare.server, db, schema, [defineDoc("session:", { root: "sessions", include: [], implied: true }), defineDoc("room:", { root: "rooms", include: ["messages"], implied: true })], []);
+    registerMemory(bare.server, { prefix: "here:", empty: () => ({ people: {} }) });
+    registerMemory(bare.server, { prefix: "lobby:", empty: () => ({ rooms: {} }) });
+    const forgot = await failuresOf({ ...example, delta: bare }, only("Ada says hello"));
+    expect(forgot).toContain("the server failed writing room:general: delta recorded no ledger entry: register it with { ledger: true }, or say its compartment keeps it off the ledger (ledger: false)");
+    expect(forgot.some((f) => f.startsWith("the server failed writing session: delta recorded no ledger entry"))).toBe(true); // a session's own, named by type
+
+    const lying = await failuresOf(withRoom((room) => ({ ...room, ledger: false })), only("Ada says hello"));
+    expect(lying).toContain("the server failed writing room:general: its compartment keeps it off the ledger (ledger: false), yet delta recorded the write");
   }, 30000);
 
   test("an applet that follows its document's patches is compared without its props; any other element keeps them", () => {

@@ -11,6 +11,7 @@ const WRITABLE = new Set(["page", "reading", "filter", "hide"]);
 
 export const desk: Compartment = {
   docType: "desk",
+  ledger: false, // a visit is not history (../delta.ts)
   own: true, // keyed by the session id: this session's alone
   at: "/desks",
   resolveDoc(ws) {

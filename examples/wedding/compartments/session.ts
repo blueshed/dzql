@@ -16,6 +16,7 @@ const WRITABLE = new Set(["code", "resend", "page", "reading", "filter", "hide"]
 
 export const session: Compartment = {
   docType: "session",
+  ledger: false, // a visit is not history (../delta.ts)
   own: true, // keyed by the session id: this session's alone
   at: "/visits", // eta's `/page` is the document's `/visits/page`
   resolveDoc(ws) {
