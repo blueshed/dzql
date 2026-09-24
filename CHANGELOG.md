@@ -69,6 +69,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   machine) through `at(view, server.url, path?)` in `src/webview.ts`; WebKit's views are apart
   already. The four copies of `waitFor` are that file's one.
 
+- **`bun run stories` says what to do next for an example with stories and no app.**
+  `ETA_EXAMPLE=londons` failed with `Cannot find module examples/londons/index.ts`; it now
+  says "examples/londons has 149 stories and no app yet (no index.ts): build the least that
+  makes the first one pass", and an example with no `stories.ts` is told it starts there. Both
+  exit 1.
+
 ### Added
 
 - **`failed(what, err)` and `onFailure(fn)`** (`src/failed.ts`): every failure the kernel catches
