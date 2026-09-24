@@ -129,7 +129,7 @@ async function show() {
   $("#error").hidden = d.ok; $("#error").textContent = d.error ?? "";
   const drift = d.drift ?? [];
   $("#drift").hidden = !drift.length;
-  $("#drift").innerHTML = `<b>Drifts from ${vocab.against}</b><ul>${drift.map((x) => `<li>${x.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</li>`).join("")}</ul>`;
+  $("#drift").innerHTML = `<b>${d.kind === "canvas" ? "Not as told" : `Drifts from ${vocab.against}`}</b><ul>${drift.map((x) => `<li>${x.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</li>`).join("")}</ul>`;
   $("#agrees").hidden = !!drift.length || !d.kind || d.kind === "other";
   $("#agrees").textContent = `✓ agrees with ${vocab.against} (${d.kind})${d.kind === "document" ? " · highlighted: the transient parts; the rest is persistent" : ""}`;
   const [svg, src] = await Promise.all([fetch(`/svg/${d.name}`).then((r) => (r.ok ? r.text() : "")), fetch(`/src/${d.name}`).then((r) => (r.ok ? r.text() : ""))]);

@@ -30,19 +30,25 @@ function loadStories() {
 }
 if (await Bun.file(STORIES).exists()) loadStories();
 
-// A model with a canvas.ts draws itself end to end on one canvas (dist/stories.svg), again whenever a
-// diagram, the stories or the canvas's layout changes; the canvas also gives the diagrams their order.
+// A model with a canvas.ts draws itself end to end on one canvas (dist/stories.svg): Londons from
+// its agreements, chat from a real run of its stories. It is drawn again whenever a diagram, the
+// vocabulary, the canvas, or a file the canvas says it is drawn from changes; it also gives the
+// diagrams their order.
 const CANVAS = `${dir}/canvas.ts`;
 let order: string[] = [];
 const rank = (name: string) => (order.includes(name) ? order.indexOf(name) : order.length);
 let canvasTimer: Timer | undefined;
+const watching = new Set<string>(); // what else the canvas is drawn from, as it says
 function canvasSoon() {
   clearTimeout(canvasTimer);
   canvasTimer = setTimeout(async () => {
     if (!(await Bun.file(CANVAS).exists())) return;
     const drew = Bun.spawnSync(["bun", CANVAS]);
-    const out = drew.exitCode === 0 ? JSON.parse(drew.stdout.toString()) : { ok: false, warnings: [], error: drew.stderr.toString().trim() };
+    // the canvas's report is its last line: a run it makes may log before it
+    const last = drew.stdout.toString().trim().split("\n").at(-1) ?? "";
+    const out = drew.exitCode === 0 && last.startsWith("{") ? JSON.parse(last) : { ok: false, warnings: [], error: drew.stderr.toString().trim().split("\n").slice(-3).join(" ") };
     order = out.order ?? order;
+    for (const f of out.watch ?? []) if (!watching.has(f)) { watching.add(f); watch(f, () => canvasSoon()); }
     const d: Diagram = { name: "stories", ok: out.ok, at: Date.now(), kind: "canvas" as Kind, drift: out.warnings, ...(out.error ? { error: out.error } : {}) };
     diagrams.set("stories", d);
     console.log(`${d.ok ? "✓" : "✗"} stories.svg (the canvas)${d.error ? ` — ${d.error}` : ""}${d.drift?.length ? ` — ${d.drift.join("; ")}` : ""}`);
@@ -125,7 +131,7 @@ async function render(file: string): Promise<void> {
     console.log(`${res.ok ? "✓" : "✗"} ${name}.svg${d.error ? ` — ${d.error}` : ""}${d.drift?.length ? ` — drifts from ${against}: ${d.drift.join("; ")}` : ""}`);
     tell({ type: "changed", diagram: d });
     if (!stories && linkedTo(kind)) await redrawLinking();
-    if (stories) canvasSoon();
+    canvasSoon();
   } catch (e) {
     const d: Diagram = { name, ok: false, at: Date.now(), error: `PlantUML is not answering at ${PLANTUML} (${(e as Error).message}). Is it up? docker compose up -d --wait` };
     diagrams.set(name, d);
@@ -183,14 +189,13 @@ watch(dir, (_event, file) => {
   typesTimer = setTimeout(async () => {
     await loadTypes();
     await checkAll();
+    canvasSoon();
     for (const f of await readdir(SRC)) if (isSource(f)) soon(f); // flavours and links follow types.ts
   }, 120);
 });
 
-if (stories) {
-  canvasSoon();
-  watch(dir, (_event, file) => { if (file === "canvas.ts") canvasSoon(); });
-}
+canvasSoon();
+watch(dir, (_event, file) => { if (file === "canvas.ts") canvasSoon(); });
 
 // stories.ts re-exports the example's stories: watch the file they are told in.
 if (stories) {
