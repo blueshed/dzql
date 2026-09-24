@@ -42,6 +42,7 @@ const WRITABLE_PATHS = new Set(["/name", "/room"]);
 
 export const session: Compartment = {
   docType: "session",
+  own: true, // keyed by the session id: this session's alone
   resolveDoc(ws) {
     return ws.data.sessionId; // every connection always sees its own session
   },

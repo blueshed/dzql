@@ -27,6 +27,7 @@ export function createLedgerCompartment(
 ): Compartment {
   return {
     docType: "ledger",
+    own: true, // a session's own ledger: its undo cursor
     // No render(): it has no view of its own, and is excluded from
     // assemble()'s render/inspect list -- an example's own compartments already
     // cover every state, and there's no ledger:<id> document to report on

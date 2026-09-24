@@ -64,8 +64,8 @@ function renderRoom(name: string, room: string, people: string[], transcript: Ch
 }
 
 // Which connections currently see a room is the kernel's own question now (change-request.md
-// item 1, `audienceFor("room", room)`): `resolveDoc` below already says which room a socket
-// sees, which is exactly `sees`'s default, so this compartment keeps no registry of its own.
+// item 1, `audienceFor("room", room)`): `resolveDoc` below says which room a socket is in,
+// and a connection sees the one it is in, so this compartment keeps no registry of its own.
 
 // Presence is live connection state, not persisted data, so it's assembled here (from the
 // kernel's open-connection registry + a session lookup per socket) rather than living in

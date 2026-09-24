@@ -2,10 +2,11 @@ import type { ServerWebSocket } from "bun";
 import type { ConnectionData } from "../connection";
 import type { Example } from "../example";
 import type { LedgerEntry } from "../ledger";
-import { history, prefixDoc } from "../ledger";
+import { history, prefixDoc, splitDoc } from "../ledger";
+import { shownTo } from "../reading";
 import type { Compartment } from "./compartment";
 import { createLedgerCompartment } from "./ledger";
-import { wireName } from "./audience";
+import { sees, wireName } from "./audience";
 
 /** A ledger entry as `inspect` tells it. A session id is a person's only credential, so it never
  * goes on the wire: `mine` says whether the asker wrote the entry, which is all a reader may ask. */
@@ -37,7 +38,8 @@ export function assemble(example: Example): Assembled {
 
   const renderFor = (sessionId: string): string => example.render(sessionId);
 
-  // Legibility: what this connection can currently see, and its most recent ledger entries --
+  // Legibility: every document this connection sees -- the one of each type it is on, then
+  // whatever else its page read -- and each one's most recent ledger entries,
   // so a person (or a late-joining `watch`) can answer "what happened" from the wire, without
   // adding a log line. `limit` (default 1, the longstanding "just the head" behavior) is how far
   // back to look; a watcher catching up before it watches asks for more. The tray's own document
@@ -45,12 +47,21 @@ export function assemble(example: Example): Assembled {
   // render() the fallback path needs it for, and no ledger:<id> document to report a version for
   // (real entries live under the owning document's own key).
   function inspectFor(ws: ServerWebSocket<ConnectionData>, limit = 1): Inspection {
-    const docs: InspectDoc[] = [];
+    const seen: string[] = [];
     for (const compartment of example.compartments) {
       const docId = compartment.resolveDoc(ws);
-      if (docId === undefined) continue;
-      const doc = wireName(compartment.docType, docId, ws); // as the wire names it: whole, or the bare type for a session's own
-      const entries = history(prefixDoc(compartment.docType, docId), limit).map(({ sessionId, ...entry }) => ({ ...entry, doc, mine: sessionId === ws.data.sessionId }));
+      if (docId !== undefined) seen.push(prefixDoc(compartment.docType, docId));
+    }
+    for (const name of shownTo(ws)) {
+      const { docType, docId } = splitDoc(name);
+      const owner = example.compartments.find((c) => c.docType === docType);
+      if (owner && sees(owner, ws, docId)) seen.push(name); // not another session's own
+    }
+    const docs: InspectDoc[] = [];
+    for (const name of new Set(seen)) {
+      const { docType, docId } = splitDoc(name);
+      const doc = wireName(docType, docId, ws); // as the wire names it: whole, or the bare type for a session's own
+      const entries = history(name, limit).map(({ sessionId, ...entry }) => ({ ...entry, doc, mine: sessionId === ws.data.sessionId }));
       docs.push({ doc, version: entries[0]?.version ?? 0, entries });
     }
     return { docs };

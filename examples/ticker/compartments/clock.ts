@@ -10,6 +10,7 @@ import { notify } from "../../../src/compartments/audience";
 
 export const clock: Compartment = {
   docType: "clock",
+  own: true, // keyed by the session id: this session's alone
   // No render(): the ticker compartment renders the page, the clock within it.
   resolveDoc(ws) {
     return ws.data.sessionId;

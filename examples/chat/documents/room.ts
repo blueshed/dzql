@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { reading } from "../../../src/reading";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { prefixDoc, record } from "../../../src/ledger";
@@ -36,6 +37,7 @@ export function list(): string[] {
 }
 
 export function read(name: string, limit = 50): RoomDocument {
+  reading("room", name);
   const row = transcriptStmt.get(name, limit);
   const transcript: ChatMessage[] = row ? JSON.parse(row.doc).reverse() : [];
   return { transcript };

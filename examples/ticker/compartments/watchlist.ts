@@ -19,6 +19,7 @@ function closeAsked(sessionId: string, applied: { op: string }[]): void {
 
 export const watchlist: Compartment = {
   docType: "watchlist",
+  own: true, // keyed by the session id: this session's alone
   // No render(): the ticker compartment renders the page, this list within it.
   resolveDoc(ws) {
     return ws.data.sessionId;

@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { reading } from "../../../src/reading";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { prefixDoc, record } from "../../../src/ledger";
@@ -21,6 +22,7 @@ const quoteStmt = db.query<{ price: number }, [string]>("SELECT price FROM quote
 const tickStmt = db.query<unknown, [number, number, string]>("UPDATE quotes SET prev = price, price = ?, updated_at = ? WHERE symbol = ?");
 
 export function read(): MarketDocument {
+  reading("ticker", MARKET);
   return Object.fromEntries(quotesStmt.all().map(({ symbol, ...quote }) => [symbol, quote]));
 }
 

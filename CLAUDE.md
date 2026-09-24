@@ -48,8 +48,9 @@ Two words have two meanings each, so say which:
 - HTML is the only vocabulary. No node or JSON tree on the wire or in the client.
 - A write names a document and a JSON Pointer path, never a function name.
 - A document is named whole on the wire, `<docType>:<docId>`, so one socket holds any documents;
-  only a connection's own session-keyed documents go by their type alone. A connection writes
-  only what it `sees`.
+  only a session's `own` documents go by their type alone, since the id is a credential.
+- A connection sees what its page read: a document's `read()` calls `reading(docType, id)`, and
+  the kernel keeps what each drawing read. It is told about, and may write, only what it sees.
 - The server is the only renderer. The client morphs; it never replaces `innerHTML`, and it never
   descends into a `[data-applet]` element.
 - No client-side domain state beyond the small op-log in `window.eta.docs()`.

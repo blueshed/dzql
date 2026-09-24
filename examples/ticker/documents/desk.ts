@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { reading } from "../../../src/reading";
 import { address, parseAddress, patchCollections, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
@@ -17,6 +18,7 @@ const readStmt = db.query<{ ui: string }, [string]>("SELECT ui FROM desks WHERE 
 const upsertStmt = db.query<unknown, [string, string]>("INSERT INTO desks (session_id, ui) VALUES (?1, ?2) ON CONFLICT(session_id) DO UPDATE SET ui = ?2");
 
 export function read(sessionId: string): Ui {
+  reading("desk", sessionId);
   const row = readStmt.get(sessionId);
   return row ? (JSON.parse(row.ui) as Ui) : {};
 }

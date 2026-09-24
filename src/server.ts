@@ -4,6 +4,7 @@ import { fragmentsMessage, renderMessage, renderRequested } from "./compartments
 import type { ConnectionData } from "./connection";
 import type { Example } from "./example";
 import type { PatchOp } from "./json-patch";
+import { drawing } from "./reading";
 
 // One example per process is an invariant: a running eta process serves
 // exactly one example, and this tracks which (so the renderRequested
@@ -23,12 +24,14 @@ renderRequested.on((request) => {
     // The owning compartment may say exactly what changed on this page (HTML ops), or that
     // nothing did (`[]`); when it does not answer, the page goes whole, and the morph finds what
     // changed.
-    const ops = write && owner?.fragments?.(ws, write.docId, write.result);
+    // Whatever the drawing reads is what this connection sees from now on (src/reading.ts): the
+    // page replaces what it saw; a fragment adds to it.
+    const ops = write && drawing(ws, false, () => owner?.fragments?.(ws, write.docId, write.result));
     if (ops) {
       if (ops.length > 0) ws.send(fragmentsMessage(ops));
       continue;
     }
-    ws.send(renderMessage(active.assembled.renderFor(ws.data.sessionId)));
+    ws.send(renderMessage(drawing(ws, true, () => active!.assembled.renderFor(ws.data.sessionId))));
   }
 });
 
@@ -45,7 +48,7 @@ export function createServer(example: Example, port: number | string = process.e
   setActiveCompartments(byDocType);
 
   function pushRender(ws: Bun.ServerWebSocket<ConnectionData>) {
-    ws.send(renderMessage(renderFor(ws.data.sessionId)));
+    ws.send(renderMessage(drawing(ws, true, () => renderFor(ws.data.sessionId))));
   }
 
   const server = Bun.serve<ConnectionData>({

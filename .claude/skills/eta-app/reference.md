@@ -33,7 +33,7 @@ runs `examples/${ETA_EXAMPLE}/index.ts` (default `chat`); one process serves one
 export type Compartment = {
   docType: string;                         // the type of document it owns: "session", "room"
   resolveDoc(ws): string | undefined;      // the one of this type the connection is on (a bare name)
-  sees?(ws, docId): boolean;               // does it see this one; default: resolveDoc(ws) === docId
+  own?: true;                              // keyed by the session id: that session's alone, named by type
   permit(ws, op, docId): boolean;          // may it write this path of this document?
   write(ws, docId, ops, undoes?): WriteResult; // apply, then notify()
   fragments?(ws, docId, result): HtmlOp[] | undefined;
@@ -42,10 +42,16 @@ export type Compartment = {
 };
 ```
 
-- **Any number of documents of one type.** A connection sees whichever documents `sees` says:
-  this month's appointments and last month's, two rooms side by side. `resolveDoc` is only the
-  one it is on. A document's id may be criteria (`month:2026-09`); `permit` is given it.
-- **`sees`, then `permit`, then `patch()`.** A connection writes only what it sees (the kernel
+- **A connection sees what its page read.** While the kernel draws a page for a connection, every
+  document whose `read()` calls `reading(docType, id)` (`src/reading.ts`) is noted; those, and the
+  one of each type it is on (`resolveDoc`), are what it is told about and may write. Show this
+  month's appointments beside last month's and both are seen; stop showing one and it is not.
+  Nothing declares who sees what. A document's id may be criteria (`month:2026-09`); `permit` is
+  given it.
+- **`own` for a session's own documents** (session, desk, watchlist, the ledger): seen by that
+  session alone, whatever reads them -- chat's presence reads everyone's name from their sessions
+  -- and named on the wire by type, since the id is a credential.
+- **Seen, then `permit`, then `patch()`.** A connection writes only what it sees (the kernel
   checks, before `permit` is asked); may it write this path of this document is `permit`'s; is
   this value valid is the document's `patch()`'s.
 - **One `write`, fresh or walked.** Fresh from the wire, `permit` said yes and `undoes` is
@@ -85,7 +91,9 @@ a tick with `[]`, because its board applet took the patch.
 ## Documents
 
 A document module owns its SQL (prepared statements at module load) and exports `read(id)` and
-`patch(id, ops, sessionId, undoes?)`. `patch`:
+`patch(id, ops, sessionId, undoes?)`. `read` begins `reading(docType, id)`: that is how a page that
+shows it comes to see it, and a read that forgets leaves that page stale (the stories say whose).
+`patch`:
 
 - parses each op's JSON Pointer path, validates and trims the value, and skips what is invalid
   (not pushed to `applied`);
@@ -115,9 +123,9 @@ its documents import `db` from there, so migrations run before any prepared stat
 HTML is the only vocabulary. No JSON tree of app state.
 
 - **A document is named whole: `<docType>:<docId>`** (`room:general`, `month:2026-09`), so one
-  socket holds any number of documents, of any types. The exception is a document keyed by the
-  connection's own session id (its session, its ledger, its desk): it is named by its type alone,
-  since the id is a credential.
+  socket holds any number of documents, of any types. The exception is an `own` document (a
+  session's session, ledger, desk): it is named by its type alone, since the id is a credential. A
+  document keyed by a live session's id that is not `own` is refused by name, loudly.
 - Client to server: `{doc, ops: [{op, path, value?}]}`. `doc` is a whole name, or a bare type
   meaning the one of that type this connection is on (`resolveDoc`). `path` is a JSON Pointer,
   never a verb.

@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { reading } from "../../../src/reading";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { prefixDoc, record } from "../../../src/ledger";
@@ -34,6 +35,7 @@ const readStmt = db.query<{ tz: string }, [string]>("SELECT tz FROM clocks WHERE
 const upsertStmt = db.query<unknown, [string, string]>("INSERT INTO clocks (session_id, tz) VALUES (?1, ?2) ON CONFLICT(session_id) DO UPDATE SET tz = ?2");
 
 export function read(sessionId: string): ClockDocument {
+  reading("clock", sessionId);
   const tz = readStmt.get(sessionId)?.tz ?? DEFAULT_TZ;
   return { tz, city: cityOf(tz), offset: offsetOf(tz) };
 }

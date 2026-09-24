@@ -20,6 +20,7 @@ const WRITABLE = new Set(["code", "resend", "page", "reading", "filter", "hide"]
 
 export const session: Compartment = {
   docType: "session",
+  own: true, // keyed by the session id: this session's alone
   resolveDoc(ws) {
     return ws.data.sessionId; // every connection always sees its own visit
   },

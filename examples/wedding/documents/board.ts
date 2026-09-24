@@ -1,5 +1,6 @@
 import type { SQLQueryBindings } from "bun:sqlite";
 import { db } from "../db";
+import { reading } from "../../../src/reading";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { prefixDoc, record } from "../../../src/ledger";
@@ -92,6 +93,7 @@ function totals(households: householdDoc.HouseholdDocument[], cs: Course[]): Tot
 }
 
 export function read(code: string): BoardDocument | undefined {
+  reading("board", code);
   const w = boardStmt.get(code);
   if (!w) return undefined;
   const households = householdCodesStmt.all(w.id).map((r) => householdDoc.read(r.code)!);

@@ -6,8 +6,7 @@ import { allOpenSockets, notify } from "../../../src/compartments/audience";
 import { boardPages } from "../views/board";
 
 // The couple's document: the wedding and everything beneath it. Written by the couple, who
-// arrived by the wedding's own code; read by them alone (`resolveDoc` below is `sees`'s own
-// default here -- the couple's tabs, nobody else, change-request.md item 1), though what they
+// arrived by the wedding's own code; read by them alone (`resolveDoc` below: the couple's tabs, nobody else), though what they
 // keep (the courses, the gifts, the events, where to stay) is on every household's pages, so a
 // write here asks everyone to re-render.
 

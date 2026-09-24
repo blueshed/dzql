@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { reading } from "../../../src/reading";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { prefixDoc, record } from "../../../src/ledger";
@@ -26,6 +27,7 @@ const revokeStmt = db.query<unknown, [number, string]>(
 );
 
 export function read(id: string): SessionDocument {
+  reading("session", id);
   const row = readStmt.get(id);
   return row ? JSON.parse(row.doc) : { name: null, room: null };
 }

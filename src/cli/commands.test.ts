@@ -205,6 +205,7 @@ const widgets = new Map<string, WidgetState>();
 
 const widgetCompartment: Compartment = {
   docType: "widget",
+  own: true,
   resolveDoc(ws) {
     return ws.data.sessionId;
   },

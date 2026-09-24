@@ -6,6 +6,7 @@ import type { Compartment } from "../../../src/compartments/compartment";
 import { allOpenSockets, audienceFor, notify } from "../../../src/compartments/audience";
 import { renderRequested } from "../../../src/compartments/render";
 import { esc } from "../../../src/html";
+import { reading } from "../../../src/reading";
 import { sessionPatched } from "./session";
 
 // Who is in a room, as a document of its own: `here:<room>`, the names of everyone connected to
@@ -30,6 +31,7 @@ export function renderPeople(people: string[], me: string): string {
  * One session in two tabs is one person.
  */
 export function peopleIn(room: string, only?: ServerWebSocket<ConnectionData>, as?: string): string[] {
+  reading("here", room);
   const sockets = audienceFor("here", room);
   if (only && !sockets.includes(only)) sockets.push(only);
   const names = sockets.map((ws) => (ws === only ? (as ?? null) : sessionDoc.read(ws.data.sessionId).name));

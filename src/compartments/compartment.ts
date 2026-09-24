@@ -10,20 +10,17 @@ export type Compartment = {
   docType: string;
   /**
    * The document of this type this connection is on, or undefined if none: what a write naming the
-   * type alone (`{doc: "room"}`) means, and who sees a document when `sees` is not given. A
-   * connection may see and write any number of others, named whole (`room:kitchen`), as `sees` says.
+   * type alone (`{doc: "room"}`) means, and always seen. A connection sees and may write any number
+   * of others, named whole (`room:kitchen`): whatever its page read.
    */
   resolveDoc(ws: ServerWebSocket<ConnectionData>): string | undefined;
   /**
-   * Does this connection see `docId` -- not necessarily its *own* `resolveDoc(ws)`, which only
-   * answers for the one document this connection writes to (change-request.md item 1). Omit for
-   * the common case: a document seen by nobody but whoever `resolveDoc` already names for it
-   * (`src/compartments/audience.ts`'s `audienceFor` falls back to exactly that check). Implement
-   * it when someone sees a document that isn't theirs to write -- the wedding's `household` is
-   * everyone's own household code, but also every couple's tab, which has no household code of
-   * its own to `resolveDoc` toward.
+   * Its documents are keyed by the session id: each is seen by its own session alone, and named on
+   * the wire by its type alone, since the id is a person's only credential. A session, a ledger, a
+   * desk. Who sees any other document is derived: the one a connection is on (`resolveDoc`), and
+   * whatever its page read (`reading`, in the document's `read()`).
    */
-  sees?(ws: ServerWebSocket<ConnectionData>, docId: string): boolean;
+  own?: true;
   /**
    * May this connection apply `op` to `docId`? Asked only once the connection sees `docId`, so a
    * compartment whose documents are all alike to the writer (the room you are in) can ignore it; one

@@ -13,7 +13,7 @@ import { welcome } from "../views/welcome";
 // A household's document, written by the household that arrived by its code. Nearly everything
 // it writes changes what everyone sees -- an answer puts figures in the photo every code watches,
 // a claim takes a gift from every other household, the couple's board counts it all -- so a write
-// here echoes to those who see the document (change-request.md item 1's `sees`, below) and asks
+// here echoes to those who see the document (its own tabs, and the couple's, whose board reads it) and asks
 // everyone to re-render (still everyone, on purpose: an aggregate view -- the couple's totals,
 // the "everyone" photo -- can change from any household's write, and there is no smaller
 // audience for that yet; item 1's kernel registry is what this now reaches through, not a
@@ -34,8 +34,8 @@ const RULES: Rule[] = [
   { path: /^\/claims\/\d+$/, ops: ["remove"] },
 ];
 
-/** Echoes a household document's ops to everyone who sees it (its own tabs, and the couple's --
- * `sees` below), then asks everyone to bring their page up to date -- naming the write, so
+/** Echoes a household document's ops to everyone who sees it (its own tabs, and the couple's,
+ * whose board reads it), then asks everyone to bring their page up to date -- naming the write, so
  * `fragments` below can say what that means per page. Shared by a direct write and by undo
  * landing on this doc. */
 
@@ -72,13 +72,8 @@ export const household: Compartment = {
     const session = sessionDoc.read(ws.data.sessionId);
     return session.kind === "household" ? session.code! : undefined;
   },
-  // Beyond its own tabs (what `resolveDoc` alone would answer with), the couple sees every
-  // household through the board -- change-request.md item 1's reason a compartment needs its
-  // own `sees` at all, not just `resolveDoc`'s default.
-  sees(ws, docId) {
-    const session = sessionDoc.read(ws.data.sessionId);
-    return session.kind === "couple" || (session.kind === "household" && session.code === docId);
-  },
+  // Beyond its own tabs (`resolveDoc`), the couple see every household: the board reads each one
+  // it draws, so their page's reads say so (src/reading.ts).
   permit(ws, op) {
     const session = sessionDoc.read(ws.data.sessionId);
     if (session.kind !== "household") return false;

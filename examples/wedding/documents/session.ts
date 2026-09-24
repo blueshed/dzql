@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { reading } from "../../../src/reading";
 import { parseAddress, patchCollections, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
@@ -45,6 +46,7 @@ const upsertStmt = db.query<unknown, [string, string | null, string, string | nu
 `);
 
 export function read(id: string): SessionDocument {
+  reading("session", id);
   const row = readStmt.get(id);
   if (!row) return { code: null, kind: null, ui: {}, note: null };
   // A code that has since stopped existing reads as no code at all: the tab is back at the welcome.

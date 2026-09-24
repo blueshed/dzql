@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { reading } from "../../../src/reading";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { prefixDoc, record } from "../../../src/ledger";
@@ -20,6 +21,7 @@ const maxSeqStmt = db.query<{ seq: number | null }, [string]>("SELECT MAX(seq) A
 const updateSeqStmt = db.query<unknown, [number, string, string]>("UPDATE watchlists SET seq = ? WHERE session_id = ? AND symbol = ?");
 
 export function read(sessionId: string): WatchlistDocument {
+  reading("watchlist", sessionId);
   return { symbols: listStmt.all(sessionId).map((r) => r.symbol) };
 }
 

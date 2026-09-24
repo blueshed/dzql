@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { reading } from "../../../src/reading";
 import type { PatchOp } from "../../../src/json-patch";
 import { prefixDoc, record } from "../../../src/ledger";
 import * as delta from "../delta";
@@ -19,6 +20,7 @@ export function list(): string[] {
 
 /** The room's conversation, oldest first: its ids are time-ordered, so the key is the order. */
 export function read(name: string, limit = 50): Message[] {
+  reading("room", name);
   const messages = Object.values(delta.open(name).messages);
   messages.sort((a, b) => (a.id < b.id ? -1 : 1));
   return messages.slice(-limit);

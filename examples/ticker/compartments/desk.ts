@@ -13,6 +13,7 @@ const WRITABLE = new Set(["page", "reading", "filter", "hide"]);
 
 export const desk: Compartment = {
   docType: "desk",
+  own: true, // keyed by the session id: this session's alone
   resolveDoc(ws) {
     return ws.data.sessionId;
   },

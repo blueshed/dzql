@@ -14,8 +14,8 @@ import type { HtmlOp } from "../../../src/compartments/render";
 // page needs rendering. The feed runs only while someone is connected: the market moves while
 // it is watched, and a test suite that never opens a socket never starts it. "Everyone" is the
 // kernel's own open-connection registry (change-request.md item 1), not a set this module keeps
-// itself -- `resolveDoc` below already names the one market for any socket, which is `sees`'s
-// default, so audienceFor("ticker", MARKET) already answers "who's open" for free.
+// itself -- `resolveDoc` below names the one market for any socket, so every connection sees it
+// and audienceFor("ticker", MARKET) already answers "who's open" for free.
 
 let feed: ReturnType<typeof setInterval> | undefined;
 

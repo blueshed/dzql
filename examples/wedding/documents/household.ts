@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { reading } from "../../../src/reading";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { prefixDoc, record } from "../../../src/ledger";
@@ -91,6 +92,7 @@ function guestsOf(householdId: number): Guest[] {
 }
 
 export function read(code: string): HouseholdDocument | undefined {
+  reading("household", code);
   const row = householdStmt.get(code);
   if (!row) return undefined;
   return { ...row, guests: guestsOf(row.id), asks: asksStmt.all(row.id), claims: claimsStmt.all(row.id).map((c) => c.gift_id) };

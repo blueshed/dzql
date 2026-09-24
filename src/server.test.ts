@@ -6,7 +6,8 @@ import type { PatchOp } from "./json-patch";
 import { patchMessage } from "./json-patch";
 import { prefixDoc, record } from "./ledger";
 import { renderRequested } from "./compartments/render";
-import { notify } from "./compartments/audience";
+import { closeConnection, notify, openConnection, wireName } from "./compartments/audience";
+import { reading } from "./reading";
 import { createServer } from "./server";
 
 // A tiny, self-contained compartment + example -- not chat, not anything under
@@ -51,6 +52,7 @@ function noteWrite(ws: Bun.ServerWebSocket<{ sessionId: string }>, id: string, o
 
 const noteCompartment: Compartment = {
   docType: "note",
+  own: true,
   resolveDoc(ws) {
     return ws.data.sessionId;
   },
@@ -70,17 +72,22 @@ const noteCompartment: Compartment = {
   },
 };
 
-// Documents whose name is criteria: a month of appointments, `month:2026-09`. Every connection
-// sees July, August and September at once; July is closed, so it is seen and not written; any
-// other month is seen by nobody. The month a connection is on (a bare `month`) is September.
-const SEEN_MONTHS = ["2026-07", "2026-08", "2026-09"];
+// Documents whose name is criteria: a month of appointments, `month:2026-09`. Nothing declares
+// who sees one: a session's page shows the months `showing` gives it, and reading them is what
+// makes them seen. July is closed, so it can be seen and not written. The month a connection is on
+// (a bare `month`) is September.
 const months = new Map<string, string[]>();
 const monthPermits: string[] = [];
+const showing = new Map<string, string[]>();
+
+function readMonth(id: string): string[] {
+  reading("month", id);
+  return months.get(id) ?? [];
+}
 
 const monthCompartment: Compartment = {
   docType: "month",
   resolveDoc: () => "2026-09",
-  sees: (_ws, docId) => SEEN_MONTHS.includes(docId),
   permit(_ws, op, docId) {
     monthPermits.push(docId);
     return op.op === "add" && op.path === "/appointments/-" && docId !== "2026-07";
@@ -102,7 +109,9 @@ function makeExample(name: string): Example {
   return {
     name,
     compartments: [noteCompartment, monthCompartment],
-    render: (sessionId) => `<p class="note">${readNote(sessionId).text}</p>`,
+    render: (sessionId) =>
+      `<p class="note">${readNote(sessionId).text}</p>` +
+      (showing.get(sessionId) ?? []).map((m) => `<ul data-month="${m}">${readMonth(m).map((a) => `<li>${a}</li>`).join("")}</ul>`).join(""),
     active: () => true,
     index,
   };
@@ -118,10 +127,11 @@ const htmlOf = (m: WireMessage): string =>
 const queues = new WeakMap<WebSocket, WireMessage[]>();
 const waiters = new WeakMap<WebSocket, ((message: WireMessage) => void)[]>();
 
-function connect(server: ReturnType<typeof createServer>): WebSocket {
+function connect(server: ReturnType<typeof createServer>, sessionId?: string): WebSocket {
   const url = new URL("/ws", server.url);
   url.protocol = "ws:";
-  const ws = new WebSocket(url);
+  // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
+  const ws: WebSocket = sessionId ? new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } }) : new WebSocket(url);
 
   const queue: WireMessage[] = [];
   const pending: ((message: WireMessage) => void)[] = [];
@@ -301,7 +311,7 @@ describe("createServer's one-example-per-process invariant", () => {
   });
 });
 
-describe("one socket, any documents: a document is named whole on the wire", () => {
+describe("one socket, any documents: a document is named whole, and seen because the page read it", () => {
   let server: ReturnType<typeof createServer>;
 
   beforeAll(() => {
@@ -319,10 +329,19 @@ describe("one socket, any documents: a document is named whole on the wire", () 
     return message;
   }
 
-  test("this month and last month, side by side on one socket, each echoed by its whole name", async () => {
-    const a = connect(server);
-    const b = connect(server);
-    await Promise.all([opened(a), opened(b)]);
+  /** A connection whose page shows `shows`, opened and drawn. */
+  async function showingMonths(...shows: string[]): Promise<{ ws: WebSocket; sessionId: string }> {
+    const sessionId = crypto.randomUUID();
+    showing.set(sessionId, shows);
+    const ws = connect(server, sessionId);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    return { ws, sessionId };
+  }
+
+  test("this month and last month, side by side on one page, each told by its whole name", async () => {
+    const { ws: a } = await showingMonths("2026-08", "2026-09");
+    const { ws: b } = await showingMonths("2026-08", "2026-09");
 
     write(a, "month:2026-09", [{ op: "add", path: "/appointments/-", value: "dentist" }]);
     expect(await nextPatch(a)).toMatchObject({ doc: "month:2026-09", ops: [{ value: "dentist" }] });
@@ -336,18 +355,33 @@ describe("one socket, any documents: a document is named whole on the wire", () 
     b.close();
   });
 
-  test("a bare type is the document of that type the connection is on", async () => {
-    const ws = connect(server);
-    await opened(ws);
+  test("stop showing a month and you stop being told about it, or writing it", async () => {
+    const { ws: a, sessionId } = await showingMonths("2026-08", "2026-09");
+    const { ws: b } = await showingMonths("2026-08");
+
+    showing.set(sessionId, ["2026-09"]);
+    write(a, "nothing:here", [{ op: "add", path: "/x", value: 1 }]); // refused: the page is drawn again, without August
+    await expectMessage(a, "render");
+
+    write(b, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "vet" }]);
+    await nextPatch(b);
+    write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "not mine now" }]);
+    expect((await nextMessage(a)).type).toBe("render"); // no patch about August came first, and the write was refused
+    expect(months.get("2026-08")).not.toContain("not mine now");
+
+    a.close();
+    b.close();
+  });
+
+  test("a bare type is the document of that type the connection is on, seen without being shown", async () => {
+    const { ws } = await showingMonths();
     write(ws, "month", [{ op: "add", path: "/appointments/-", value: "haircut" }]);
     expect(await nextPatch(ws)).toMatchObject({ doc: "month:2026-09", ops: [{ value: "haircut" }] });
     ws.close();
   });
 
   test("permit judges by the name: last month's closed one is seen and not written", async () => {
-    const ws = connect(server);
-    await opened(ws);
-    await expectMessage(ws, "render");
+    const { ws } = await showingMonths("2026-07");
     const before = months.get("2026-07")?.length ?? 0;
     write(ws, "month:2026-07", [{ op: "add", path: "/appointments/-", value: "too late" }]);
     await expectMessage(ws, "render"); // refused: the page again, and nothing else
@@ -356,10 +390,8 @@ describe("one socket, any documents: a document is named whole on the wire", () 
     ws.close();
   });
 
-  test("a document the connection does not see is refused before its owner is asked", async () => {
-    const ws = connect(server);
-    await opened(ws);
-    await expectMessage(ws, "render");
+  test("a document the page does not show is refused before its owner is asked", async () => {
+    const { ws } = await showingMonths("2026-08");
     const asked = monthPermits.length;
     write(ws, "month:1999-01", [{ op: "add", path: "/appointments/-", value: "sneaky" }]);
     await expectMessage(ws, "render");
@@ -369,11 +401,22 @@ describe("one socket, any documents: a document is named whole on the wire", () 
   });
 
   test("a name nothing owns is refused", async () => {
-    const ws = connect(server);
-    await opened(ws);
-    await expectMessage(ws, "render");
+    const { ws } = await showingMonths();
     write(ws, "nothing:here", [{ op: "add", path: "/x", value: 1 }]);
     expect((await nextMessage(ws)).type).toBe("render");
     ws.close();
+  });
+
+  test("a session's own document goes by its type; one keyed by a live session and not own is refused by name", () => {
+    const me = { data: { sessionId: "s-me" } } as unknown as Bun.ServerWebSocket<{ sessionId: string }>;
+    const other = { data: { sessionId: "s-other" } } as unknown as Bun.ServerWebSocket<{ sessionId: string }>;
+    openConnection(other);
+    try {
+      expect(wireName("note", "s-other", me)).toBe("note"); // note is `own`
+      expect(wireName("month", "2026-09", me)).toBe("month:2026-09");
+      expect(() => wireName("month", "s-other", me)).toThrow("own");
+    } finally {
+      closeConnection(other);
+    }
   });
 });
