@@ -155,7 +155,12 @@ want there (numbers for ids, a guest's look as one object), and put the pure rul
 
 **The ledger** is delta's (`delta_ledger`): every write with its inverse, its version, who made it,
 and the cursor undo walks -- the session. The kernel's ledger compartment takes `remove /latest`
-(undo) and `add /latest` (redo) and asks delta to walk the session's cursor.
+(undo) and `add /latest` (redo) and asks delta to walk the session's cursor. Two limits, while
+delta 0.6.0 applies an inverse as recorded (`examples/wedding/server.test.ts` pins both as
+`test.failing`): an undo puts a row back as the write found it, over whatever anyone wrote to it
+since; and no compartment is asked again, so a rule of time or state (the wedding's deadline)
+does not hold against Undo. An undo whose inverse no longer applies (the row is gone) fails, and
+the session's Undo stays on it.
 
 ## The wire
 

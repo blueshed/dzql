@@ -51,7 +51,9 @@ wedding).
 ## Why eta
 
 - **Undo and redo.** A write to a document on delta's ledger is a patch recorded with its
-  inverse. Undo walks your own writes back, even while others keep writing.
+  inverse. Undo walks your own writes back, newest first, even while others keep writing -- but
+  it puts back a row as your write found it, over anything written to that row since (delta
+  0.6.0 applies the inverse unguarded), and it does not ask the permit again.
 - **Stories are the tests.** An example is a list of sentences -- who does what, and who then
   sees it -- and `bun run stories` checks each one over real sockets, with its undo and redo.
 - **A small client.** The kernel's client is about 2.7 KB minified and gzipped: a morph, the write
