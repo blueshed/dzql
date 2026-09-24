@@ -137,7 +137,7 @@ export function check(name: string, puml: string, t: Types): Checked {
     const states = new Set<string>(), events = new Set<string>();
     for (const m of puml.matchAll(/^\s*(\[\*\]|\w+)\s*-+>\s*(\[\*\]|\w+)\s*(?::\s*(.+))?$/gm)) {
       for (const s of [m[1]!, m[2]!]) if (s !== "[*]") states.add(s);
-      if (m[3]) events.add(m[3].split("[")[0]!.trim());
+      if (m[3]) events.add(m[3].split(/[\[\/]/)[0]!.trim());
     }
     const union = [...t.unions].find(([k, v]) => k.endsWith("State") && v.some((x) => [...states].some((s) => norm(s) === norm(x))));
     if (!union) drift.push(`no union ending in "State" in types.ts has these states`);
@@ -171,7 +171,16 @@ export function check(name: string, puml: string, t: Types): Checked {
     }
   }
 
+  // A refusal Api gives is drawn when a diagram says its reason, anywhere: a reply, or a
+  // transition's action (`enter a name [blank] / a name is needed`).
+  for (const r of reasons(t)) if (norm(puml).includes(norm(r))) uses.add(`reason:${r}`);
+
   return { name, kind, drift, uses };
+}
+
+/** Every reason an Api method can refuse with: the string literals given to `reason`. */
+export function reasons(t: Types): string[] {
+  return [...new Set([...(t.interfaces.get("Api")?.methods.values() ?? [])].flatMap((r) => r))].filter((w) => /\s/.test(w));
 }
 
 /** What types.ts has that no diagram draws yet. */
@@ -181,5 +190,6 @@ export function undrawn(t: Types, all: Checked[]): string[] {
   for (const k of t.interfaces.keys()) if (k !== "Api" && !used.has(k)) out.push(`${k} (a class)`);
   for (const m of t.interfaces.get("Api")?.methods.keys() ?? []) if (!used.has(`Api.${m}`)) out.push(`Api.${m}`);
   for (const k of t.unions.keys()) if (k.endsWith("State") && !used.has(k)) out.push(`${k} (states)`);
+  for (const r of reasons(t)) if (!used.has(`reason:${r}`)) out.push(`the refusal "${r}"`);
   return out;
 }

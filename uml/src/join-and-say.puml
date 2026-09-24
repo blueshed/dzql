@@ -1,13 +1,17 @@
 @startuml
-title Dee joins general and says hello
+title Dee enters a name, then general, and says hello
 actor "Dee" as dee
 participant "Chat" as app
 actor "Ada, Bob (in general)" as general
 actor "Cy (in the kitchen)" as kitchen
 
-dee -> app : chooseName("Dee")
-app --> dee : ok, which room?
-dee -> app : chooseRoom("general")
+dee -> app : enterName("")
+app --> dee : a name is needed
+dee -> app : enterName("Dee")
+app --> dee : ok
+dee -> app : enterRoomName("")
+app --> dee : a room's name is needed
+dee -> app : enterRoomName("general")
 app --> dee : the room, its members, its messages
 app -> general : Dee arrives
 dee -> app : say("hello")

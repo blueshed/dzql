@@ -3,9 +3,9 @@ title Use cases: chat
 left to right direction
 actor Person
 rectangle "Chat" {
-  usecase "Choose a name" as name
-  usecase "Choose a room" as room
-  usecase "Choose another room" as move
+  usecase "Enter a name" as name
+  usecase "Enter a room's name\n(goes in; makes it if nobody has)" as room
+  usecase "Enter another room's name" as move
   usecase "Say something" as say
   usecase "Leave the room" as leave
   usecase "Log out" as logout

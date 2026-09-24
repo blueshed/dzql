@@ -1,10 +1,13 @@
 @startuml
 title States: a session
 [*] --> Nameless
-Nameless --> Named : choose a name
-Nameless --> Nameless : choose a room [no name yet]
-Named --> InRoom : choose a room
-InRoom --> InRoom : choose another room
+Nameless --> Named : enter a name
+Nameless --> Nameless : enter a name [blank] / a name is needed
+Nameless --> Nameless : enter a room's name / enter a name first
+Named --> InRoom : enter a room's name
+Named --> Named : enter a room's name [blank] / a room's name is needed
+InRoom --> InRoom : enter another room's name
+InRoom --> InRoom : enter a room's name [blank] / a room's name is needed
 InRoom --> InRoom : say something
 InRoom --> Named : leave
 Named --> [*] : log out

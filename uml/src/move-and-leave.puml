@@ -1,11 +1,11 @@
 @startuml
-title Cy moves from the kitchen to general, then logs out
+title Cy enters general's name from the kitchen, then logs out
 actor "Cy" as cy
 participant "Chat" as app
 actor "the kitchen" as kitchen
 actor "general" as general
 
-cy -> app : chooseRoom("general")
+cy -> app : enterRoomName("general")
 app --> cy : the room, its members, its messages
 app -> kitchen : Cy has gone
 app -> general : Cy arrives
