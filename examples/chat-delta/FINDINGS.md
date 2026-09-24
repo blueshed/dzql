@@ -28,16 +28,21 @@ applet (railroad here; React would do), and a delta document underneath?*
   restore*. chat, the wedding and the ticker are unaffected (10, 46, 16); `bun test` 324, 100%.
 - **In a browser**, Ada in a tab and Bob from eta's CLI: a message reaches the room as one patch of
   ~265 B and nothing else; an undo is one 121 B `remove`; a redo brings the same row back under the
-  same id. Presence still costs a patch and a whole page (~3.5 KB), since that is not delta's.
+  same id. Presence was a patch and a whole page (~3.5 KB, the transcript's props included); since
+  it became its own document (below) it is a patch and the `#people` strip (~350 B).
 - The adapter (`delta.ts`) is ~45 lines. The room document (`documents/room.ts`) went from 98
   lines of hand-written SQL, inverses and index arithmetic to 34.
 
 ## Findings
 
-1. **One channel, one source.** The browser found what the stories could not: eta echoes its own
+1. **One channel, one source.** The browser found what the stories could not: eta echoed its own
    presence ops (`/people/-`) on the room's channel, which is delta's document. The applet's
-   `applyOps` met a path it does not hold and threw. Fixed by filtering in the applet; the rule
-   is that a channel carries one document's ops, so presence should be a document of its own.
+   `applyOps` met a path it does not hold and threw. The rule is that a channel carries one
+   document's ops, so presence is now a document of its own, `here:<room>`
+   (`compartments/here.ts`): eta's, live, never on the ledger, written by nobody over the wire.
+   The room compartment lost all its presence code and answers `fragments` with `[]`; the applet
+   lost its filter. Sabotaged (`here` telling nobody), both arrival stories fail.
+   `here` has no ledger, so `inspect` always reports it at v0; its version is a count kept in memory.
 2. **The harness cannot see into an applet.** Canon 2 leaves out a `data-doc` applet's props,
    trusting that the patches carry it. With applets on delta ops the harness could check it: lay
    each member's received ops onto the props they last had (delta's `applyOps`) and compare with

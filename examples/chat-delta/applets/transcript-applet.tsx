@@ -61,14 +61,13 @@ registerApplet("transcript", {
   update(el, props) {
     state.get(el)?.props.set(props as Props);
   },
-  // The room's echo: delta's ops, laid onto the same map the props hold. The room's channel also
-  // carries eta's own presence ops (`/people/...`), which are not delta's and not this applet's.
+  // The room's echo: delta's ops, laid onto the same map the props hold. The room's channel
+  // carries nothing else (who is here is `here`'s).
   patch(el, ops) {
     const s = state.get(el);
-    const mine = (ops as DeltaOp[]).filter((op) => op.path.startsWith("/messages/"));
-    if (!s || mine.length === 0) return;
+    if (!s) return;
     const next = structuredClone(s.props.peek());
-    applyOps(next, mine);
+    applyOps(next, ops as DeltaOp[]);
     s.props.set(next);
     scrollToNewest(el);
   },
