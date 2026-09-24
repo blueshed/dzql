@@ -8,6 +8,10 @@ What a builder must not break. How the pieces work is in the eta-app skill
 - Bun only: never `node`, `npm` or `yarn`.
 - Tests: `bun test`. `.env.test` keeps it off the dev database and `bunfig.toml` fails the run
   below 100% coverage.
+- The gate, before any commit that should ship: `bun run check` (`tsc --noEmit`), `bun test`,
+  `bun run stories:all` (every example's stories). A release is `/publish`
+  (`.claude/commands/publish.md`), shared with railroad and delta: follow it, don't edit it.
+  Write what lands under `## [Unreleased]` in `CHANGELOG.md` as it lands, breaking changes first.
 - Verify every bug fix by reverting it, watching the new test fail, then restoring it.
 - No new dependencies without asking. The one the examples have is `lucide`, the icon set; the
   kernel imports no icon set.
@@ -34,9 +38,11 @@ it, and everything else is derived from it.
   code is the kernel's or it is not shared.
 - Before adding or extending an example, or touching the `Compartment` contract, an example's
   `delta.ts`, the applet registry or the wire, load the eta-app skill.
-- Documents are delta's (`@blueshed/delta`, Workshop/docs/eta-on-delta.md): eta owns people and
-  pages, delta owns documents, their ledger and their one stream of changes. `package.json` takes
-  it from `../blueshed/delta`, a copy: after changing delta, `bun install --force`.
+- Documents are delta's: `@blueshed/delta` is a dependency, and its own README and skill
+  (`delta-doc`, in `node_modules/@blueshed/delta/.claude/skills/`) say how it works. eta owns
+  people and pages; delta owns documents, their ledger and their one stream of changes.
+  `package.json` takes it from `../blueshed/delta`, a copy: after changing delta,
+  `bun install --force`.
 
 Two words have two meanings each, so say which:
 

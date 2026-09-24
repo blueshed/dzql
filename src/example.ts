@@ -34,7 +34,7 @@ export type Example = {
   /** The page served at "/", via Bun's HTML import. */
   index: HTMLBundle;
   /**
-   * The example's documents, in delta, in this process (Workshop/docs/eta-on-delta.md): its backends
+   * The example's documents, in delta, in this process (`@blueshed/delta`): its backends
    * registered on a `createLocal()`. The kernel keeps each page's documents from delta's stream of
    * changes, writes through delta, and the ledger is delta's.
    */

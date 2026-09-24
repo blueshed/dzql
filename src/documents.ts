@@ -4,7 +4,7 @@ import { reading } from "./reading";
 import { splitDoc } from "./names";
 import type { PatchOp } from "./json-patch";
 
-// eta's documents are delta's (Workshop/docs/eta-on-delta.md). eta keeps a copy of every document
+// eta's documents are delta's (`@blueshed/delta`). eta keeps a copy of every document
 // an open page reads, kept current from delta's one stream of changes -- this process's writes and,
 // over Postgres, other processes' alike -- so a page is drawn from memory, synchronously, and never
 // reads the database per viewer, per redraw. A read of a document not held yet throws `Pending`:

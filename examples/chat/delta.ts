@@ -3,7 +3,7 @@ import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { db } from "../../src/db";
 
-// Chat's documents, in delta (Workshop/docs/eta-on-delta.md). A session -- your name, your room --
+// Chat's documents, in delta (`@blueshed/delta`). A session -- your name, your room --
 // and a room's messages are written by people, stored, and on the ledger. Who is in a room, and
 // which rooms there are, are live: kept by the server from the sessions and the connections, in
 // memory. The tables are chat's own (`chat_`), beside anything else in the database.

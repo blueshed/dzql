@@ -3,7 +3,7 @@ import type { ConnectionData } from "../connection";
 import type { PatchOp } from "../json-patch";
 
 /**
- * Where a document's truth lives (Workshop/docs/eta-on-delta.md): `written` by people, stored,
+ * Where a document's truth lives (`@blueshed/delta`): `written` by people, stored,
  * undoable; a `fact`, stored and never undone; `live`, held in this process; `sourced`, read from
  * outside; `static`, fixed for the release. Only `written` and `fact` are written from the wire.
  */

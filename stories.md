@@ -3,8 +3,8 @@
 *15 September 2026. Written after `history/change-request.md`, which is done as a list: what the wedding
 asked of the kernel, item by item. This is not a list. It says what the three examples, the
 kernel and the change request were reaching for, so that the next thing built is built towards
-it. It comes out of a longer history, `Workshop/docs/documents-history.md`: seven projects that each
-tried to keep what a person sees truthful to what a database holds. The reader is Peter, and any
+it. It comes out of a longer history: seven projects that each tried to keep what a person sees
+truthful to what a database holds. The reader is Peter, and any
 builder handed this repo.*
 
 ## The claim

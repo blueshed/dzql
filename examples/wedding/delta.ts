@@ -3,7 +3,7 @@ import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { db } from "../../src/db";
 
-// The wedding's documents, in delta (Workshop/docs/eta-on-delta.md). One set of tables, seen as
+// The wedding's documents, in delta (`@blueshed/delta`). One set of tables, seen as
 // several documents, each cut for who reads it:
 //
 // - `board:<wedding>` -- the couple's: the wedding and everything beneath it, every household whole.

@@ -3,7 +3,7 @@ import { createLocal } from "@blueshed/delta/local";
 import { db } from "../../src/db";
 import { DEFAULT_TZ } from "./documents/clock";
 
-// The ticker's documents, in delta (Workshop/docs/eta-on-delta.md). The market is a fact: ticked
+// The ticker's documents, in delta (`@blueshed/delta`). The market is a fact: ticked
 // by the feed, or typed by anyone, recorded and never undone. A watchlist and a clock are a
 // session's own, written by the person, and undoable. The desk -- where the session is on the
 // page -- is the session's too, but nothing on it is anyone's doing: it is kept, and never on
