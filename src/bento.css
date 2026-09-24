@@ -196,3 +196,7 @@ dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
    its group is drawn over everything else while it moves */
 ::view-transition-group(*) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.2, 0, 0, 1); }
 ::view-transition-group(moving) { z-index: 1; }
+
+/* the connection gone: the page stays as it was, inert, until the server draws it again (src/client/app.ts) */
+#app[data-offline] { opacity: 0.55; }
+#app[data-offline]::before { content: "Reconnecting\2026"; position: fixed; top: var(--space-lg); left: 50%; translate: -50% 0; z-index: 90; padding: var(--space-xs) var(--space-md); border-radius: var(--radius-panel); background: var(--ink); color: var(--card); font-size: 13px; }

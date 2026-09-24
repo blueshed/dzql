@@ -193,6 +193,10 @@ An element writes through `data-write='{"doc","op","path"}'`:
   render that changes a field nobody is in shows the new value (an undo's), so it is not sent
   again; a field someone is in keeps what they type.
 
+When the connection drops, the page stays as it was -- what is typed, what applets hold -- but
+`inert`, and `#app` is marked `data-offline` (`src/bento.css` dims it and says so) until the
+server, reached again, draws it afresh.
+
 `autofocus` means "this field is waiting for the caret": after a render the client focuses it, but
 only when nothing has the caret. `data-autoscroll` pins a list to its foot when it grows.
 

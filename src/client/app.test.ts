@@ -338,4 +338,21 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string>(`document.querySelector('[data-eta-part="a"]').textContent`)).toBe("drawn by the applet");
   });
 
+  test("a connection that drops leaves the page as it was, inert and marked, until it is back", async () => {
+    await using view = await open();
+    await pushRender(view, `<form><input id="say" name="text"></form>`);
+    await waitFor(view, `document.getElementById('say') !== null`, (v) => v === true);
+    await view.click("#say");
+    await view.type("half typ");
+
+    await view.evaluate(`window.eta.socket().close()`);
+    await waitFor(view, `document.getElementById('app').hasAttribute('data-offline')`, (v) => v === true, 1000);
+    expect(await view.evaluate<boolean>(`document.getElementById('app').inert`)).toBe(true);
+    expect(await view.evaluate<string>(`document.getElementById('say').value`)).toBe("half typ");
+
+    await waitFor(view, `window.eta.socket().readyState === 1`, (v) => v === true, 3000); // back, after the backoff
+    expect(await view.evaluate<boolean>(`document.getElementById('app').inert || document.getElementById('app').hasAttribute('data-offline')`)).toBe(false);
+    expect(await view.evaluate<string>(`document.getElementById('say').value`)).toBe("half typ");
+  });
+
 });

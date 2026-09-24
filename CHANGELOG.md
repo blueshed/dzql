@@ -42,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A render in parts never reaches inside an applet** (`src/client/app.ts`). Its targets were
   found anywhere in the page, so a part inside an applet's element was replaced, or had rows put
   beside it, over what the applet drew. The applet's own element may still be a part.
+- **A dropped connection leaves the page as it was** (`src/client/app.ts`, `src/bento.css`).
+  It was replaced by "Disconnected. Reconnecting…", which threw away what was half typed and
+  unmounted every applet (the ticker's sparkline histories, a half-dressed figure). Now `#app` is
+  made `inert` and marked `data-offline` -- the bento dims it and says "Reconnecting…" -- until
+  the socket is open again and the server draws the page.
 - **`inspect` gives at most 100 entries a document**, however many it asks for: `limit: 1e9` asked
   delta for a document's whole history, and every event waited on the answer. A limit that is not
   a whole number is the default (the latest).

@@ -365,6 +365,8 @@ function connect() {
   // whenever it happens, should retry promptly rather than inherit an old backoff.
   socket.addEventListener("open", () => {
     reconnectDelay = RECONNECT_DELAY_MS;
+    app.inert = false;
+    delete app.dataset.offline;
   });
 
   socket.addEventListener("message", (event) => {
@@ -387,8 +389,11 @@ function connect() {
     }
   });
 
+  // The connection gone, the page stays as it is -- what is typed, what applets hold -- but is not
+  // to be used (src/bento.css says so) until the server, reached again, draws it afresh.
   socket.addEventListener("close", () => {
-    render("Disconnected. Reconnecting&hellip;");
+    app.inert = true;
+    app.dataset.offline = "";
     setTimeout(connect, reconnectDelay);
     reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY_MS);
   });
