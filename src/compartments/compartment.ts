@@ -1,7 +1,6 @@
 import type { ServerWebSocket } from "bun";
 import type { ConnectionData } from "../connection";
 import type { PatchOp } from "../json-patch";
-import type { HtmlOp } from "./render";
 
 export type WriteResult = { version: number; applied: PatchOp[] };
 
@@ -41,15 +40,6 @@ export type Compartment = {
    * the wedding keeps only a name) it does only when `undoes` is undefined.
    */
   write(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[], undoes?: number): WriteResult;
-  /**
-   * The HTML ops that bring this connection's page up to date after `result` was applied to
-   * `docId` -- the delta in HTML's terms. `[]` says the write changed nothing on this
-   * connection's page (nothing is sent); `undefined` declines, and the page goes whole -- the
-   * morph finds what changed. So `fragments` is the exception: answer only where smaller is
-   * worth the care, since every target named has to be right for every state the page can be in.
-   * A compartment may answer for some writes and decline the rest.
-   */
-  fragments?(ws: ServerWebSocket<ConnectionData>, docId: string, result: WriteResult): HtmlOp[] | undefined;
   onOpen?(ws: ServerWebSocket<ConnectionData>): void;
   onClose?(ws: ServerWebSocket<ConnectionData>): void;
 };

@@ -3,6 +3,9 @@ import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
 import type { Stories, Story, Write } from "./stories";
+import { comparable } from "./parts";
+
+export { comparable };
 
 // Runs an example's stories against it, over real sockets, and reports by story name. See
 // stories.md ("The harness"). Canon 1 is checked here: for every member of the cast, a fresh
@@ -26,7 +29,7 @@ export type Outcome = { name: string; failures: string[] };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number };
 
 type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; answered: (() => void)[] };
-type HtmlOp = { op: "replace" | "add" | "remove"; target: string; html?: string };
+type HtmlOp = { op: "replace" | "after" | "before" | "remove"; target: string; html?: string };
 type Snapshot = Map<string, string>;
 
 /** How long the server is given to finish with the sockets a story closed, before its transaction is rolled back. */
@@ -47,24 +50,23 @@ function applyOp(page: string, op: HtmlOp): string {
         if (done) return;
         done = true;
         if (op.op === "replace") el.replace(op.html!, { html: true });
-        else if (op.op === "add") el.append(op.html!, { html: true });
+        else if (op.op === "after") el.after(op.html!, { html: true });
+        else if (op.op === "before") el.before(op.html!, { html: true });
         else el.remove();
       },
     })
     .transform(page);
 }
 
-type Heard = { type: string; html?: string; ops?: HtmlOp[] };
+export type Heard = { type: string; html?: string; ops?: HtmlOp[] };
 
 /** A member's open page after one more message: only renders change it. */
-function hear(page: string, message: Heard): string {
+export function hear(page: string, message: Heard): string {
   if (message.type !== "render") return page;
   if (message.html !== undefined) return message.html;
   return (message.ops ?? []).reduce(applyOp, page);
 }
 
-/** A page as it is compared: an applet that follows its document's patches is left out by its props. */
-export const comparable = (page: string): string => page.replace(/<[^>]*\sdata-doc="[^"]*"[^>]*>/g, (tag) => tag.replace(/\sdata-props="[^"]*"/, ""));
 
 function ledgerMax(): number {
   return ledgerMaxStmt.get()?.id ?? 0;

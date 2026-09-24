@@ -1,6 +1,7 @@
 import type { ServerWebSocket } from "bun";
 import type { ConnectionData } from "./connection";
 import { prefixDoc } from "./ledger";
+import { drawParts, type Drawn } from "./parts";
 
 // What a connection sees is what its page read. While the kernel draws a page for a connection,
 // every document the drawing reads says so (`reading`, called by the document's own `read()`), and
@@ -16,21 +17,15 @@ export function reading(docType: string, docId: string): void {
   drawings.at(-1)?.add(prefixDoc(docType, docId));
 }
 
-/**
- * Draws for `ws` and keeps what the drawing read: in place of what its page read before, when
- * `whole` (the page); added to it, when not (a fragment of the page, which changes part of it and
- * leaves the rest as it was).
- */
-export function drawing<T>(ws: ServerWebSocket<ConnectionData>, whole: boolean, draw: () => T): T {
+/** Draws the page for `ws`, in parts (src/parts.ts), and keeps what the drawing read in place of what its page read before. */
+export function drawing(ws: ServerWebSocket<ConnectionData>, draw: () => string): Drawn {
   const read = new Set<string>();
   drawings.push(read);
   try {
-    return draw();
+    return drawParts(draw);
   } finally {
     drawings.pop();
-    const before = shown.get(ws);
-    if (whole || !before) shown.set(ws, read);
-    else for (const doc of read) before.add(doc);
+    shown.set(ws, read);
   }
 }
 

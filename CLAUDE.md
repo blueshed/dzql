@@ -53,6 +53,9 @@ Two words have two meanings each, so say which:
   the kernel keeps what each drawing read. It is told about, and may write, only what it sees.
 - The server is the only renderer. The client morphs; it never replaces `innerHTML`, and it never
   descends into a `[data-applet]` element.
+- A page is sent in parts: after a write, each page that read the document gets only the parts of
+  it that changed (`part(key, html)`, src/parts.ts), worked out by comparing, never hand-written; the
+  whole page goes only when it is a different page.
 - No client-side domain state beyond the small op-log in `window.eta.docs()`.
 - `patch()` is a document's only write path and one transaction: its statements, the ledger row
   and the version it returns commit together or not at all.

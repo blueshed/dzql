@@ -52,12 +52,11 @@ Everything below is the least that makes it pass.
 4. **`documents/<thing>.ts`** -- `read(id)`, and `patch(id, ops, sessionId, undoes?)`: the only write
    path, one transaction, each op's inverse computed, one `record(...)` at the end. Is this value
    valid is `patch()`'s question; may this connection write this path is `permit()`'s.
-5. **`compartments/<thing>.ts`** -- `docType`, `resolveDoc`, `permit`, `write`, and what it needs of
-   `sees`, `fragments`, `onOpen`, `onClose`. `write()` ends by calling
+5. **`compartments/<thing>.ts`** -- `docType`, `resolveDoc`, `permit`, `write`, `own` if its documents
+   are keyed by the session id, and what it needs of `onOpen`, `onClose`. `write()` ends by calling
    `notify(docType, docId, result)`, which echoes the ops to everyone who sees the document and
-   asks for their pages to be brought up to date, the writer included. Implement `fragments` only
-   where answering smaller than the page is worth the care: every target it names has to be right for
-   every state the page can be in, and no story checks it.
+   redraws every page that read it; each is sent only the parts that changed. Name the page's
+   regions with `part(key, html)` where a change should travel alone; nothing else says what goes.
 6. **`applets/<name>.ts`** -- only if the vocabulary above says so. Split drawing (`<name>.ts`, pure,
    tested directly) from mounting (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`)
    when there is drawing worth testing.

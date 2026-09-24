@@ -9,7 +9,7 @@ import { example } from "./index";
 
 /** The names of who is here, across the head of the conversation (`#people`: a face and a name each). */
 function peopleIn(html: string): string[] {
-  const faces = html.match(/<div id="people"[^>]*>(.*?)<\/div>/)?.[1] ?? "";
+  const faces = html.match(/<div [^>]*id="people"[^>]*>(.*?)<\/div>/)?.[1] ?? "";
   return [...faces.matchAll(/<span class="note">([^<]*)<\/span>/g)].map((m) => m[1]!);
 }
 
@@ -495,7 +495,7 @@ describe("chat", () => {
     await login(b, "Bob", room);
 
     const joinedUpdate = await joined;
-    expect(joinedUpdate.ops).toMatchObject([{ op: "replace", target: "#people" }]);
+    expect(joinedUpdate.ops).toMatchObject([{ op: "replace", target: '[data-eta-part="people"]' }]);
     expect(peopleIn(htmlOf(joinedUpdate))).toEqual(["Alice", "Bob"]);
 
     const left = presenceUpdate(a);
@@ -555,11 +555,14 @@ describe("chat", () => {
     await login(b, "Bob", room);
     await bJoined; // people broadcast triggered by Bob joining, not this test's focus
 
-    const bLeft = presenceUpdate(a); // subscribe before Bob logs out
+    // Alice's page read Bob's session (his name), so his logging out redraws it -- the strip of who
+    // is here, without him -- before the room's presence op arrives, which then changes nothing more.
+    const heard = [nextMessage(a), nextMessage(a)]; // subscribe before Bob logs out
     write(b, "session", [{ op: "remove", path: "/name" }]);
-    const bLeftUpdate = await bLeft;
-
-    expect(peopleIn(htmlOf(bLeftUpdate))).toEqual(["Alice"]);
+    const [first, second] = await Promise.all(heard);
+    expect(first!.type).toBe("render");
+    expect(peopleIn(htmlOf(first!))).toEqual(["Alice"]);
+    expect(second).toMatchObject({ type: "patch", ops: [{ op: "remove", path: "/people/1" }] });
 
     a.close();
     b.close();
@@ -583,14 +586,22 @@ describe("chat", () => {
     const aPatch = await expectMessage(a, "patch");
     expect(aPatch.doc).toBe(`room:${room}`);
     expect(aPatch.ops).toEqual([{ op: "add", path: "/transcript/-", value: { name: "Alice", text: uniqueText } }]);
-    // the render is a fragment: the one <li>, appended to the transcript
+    // the room was empty, so there is no row to put it beside: the list is sent, with its one message
     const aRender = await expectMessage(a, "render");
-    expect(aRender.ops).toMatchObject([{ op: "add", target: "#messages" }]);
+    expect(aRender.ops).toMatchObject([{ op: "replace", target: '[data-eta-part="messages"]' }]);
     expect(htmlOf(aRender)).toContain(uniqueText);
     expect(htmlOf(aRender)).not.toContain("<form"); // not the page
 
     expect(await bPatch).toMatchObject({ type: "patch", doc: `room:${room}` });
     expect(htmlOf(await bRender)).toContain(uniqueText);
+
+    // the second goes as the one row, after the first, and nothing else
+    const firstId = readRoom(room).transcript[0]!.id;
+    write(a, "room", [{ op: "add", path: "/transcript/-", value: "and again" }]);
+    await expectMessage(a, "patch");
+    const again = await expectMessage(a, "render");
+    const secondId = readRoom(room).transcript[1]!.id;
+    expect(again.ops).toEqual([{ op: "after", target: `[data-eta-part="m${firstId}"]`, html: `<li data-eta-part="m${secondId}" id="m${secondId}" class="mine"><span class="face me" aria-hidden="true">A</span><div class="body"><span class="bubble">and again</span></div></li>` }]);
     a.close();
     b.close();
   });
@@ -635,17 +646,17 @@ describe("chat", () => {
     expect(aPatch.doc).toBe(`room:${room}`);
     expect(aPatch.ops).toEqual([{ op: "remove", path: "/transcript/1" }]);
     const aRender = await expectMessage(a, "render");
-    expect(aRender.ops).toEqual([{ op: "remove", target: `#m${secondId}` }]);
+    expect(aRender.ops).toEqual([{ op: "remove", target: `[data-eta-part="m${secondId}"]` }]);
 
     expect(await bPatch).toMatchObject({ type: "patch", doc: `room:${room}` });
-    expect((await bRender).ops).toEqual([{ op: "remove", target: `#m${secondId}` }]);
+    expect((await bRender).ops).toEqual([{ op: "remove", target: `[data-eta-part="m${secondId}"]` }]);
 
     const entries = history(`room:${room}`);
     expect(entries).toHaveLength(3); // two sends, one undo
     expect(entries[0]?.ops).toEqual([{ op: "remove", path: "/transcript/1" }]);
 
-    // Bob sends after Alice's first; Alice undoes her first: Bob's message now starts a run, so
-    // its <li> is redrawn (with his name) beside the removal.
+    // Bob sends after Alice's first; Alice undoes her first. Bob's message started a run before
+    // (it followed Alice's) and starts one still, so nothing about it changed: the removal alone.
     let aIncoming = nextMessage(a);
     let aRenderIncoming = nextMessage(a);
     write(b, "room", [{ op: "add", path: "/transcript/-", value: "bob after" }]);
@@ -653,15 +664,14 @@ describe("chat", () => {
     await expectMessage(b, "render");
     await aIncoming;
     await aRenderIncoming;
-    const [firstId, bobId] = readRoom(room).transcript.map((m) => m.id);
+    const [firstId] = readRoom(room).transcript.map((m) => m.id);
     const bRender2 = nextMessage(b);
     write(a, "ledger", [{ op: "remove", path: "/latest" }]);
     await expectMessage(a, "patch");
     const aUndo = await expectMessage(a, "render");
-    expect(aUndo.ops).toMatchObject([{ op: "remove", target: `#m${firstId}` }, { op: "replace", target: `#m${bobId}` }]);
-    expect(htmlOf(aUndo)).toContain('<span class="name">Bob</span>');
+    expect(aUndo.ops).toEqual([{ op: "remove", target: `[data-eta-part="m${firstId}"]` }]);
     expect(await bRender2).toMatchObject({ type: "patch" }); // Bob's echo of Alice's undo
-    expect((await nextMessage(b)).ops).toMatchObject([{ op: "remove", target: `#m${firstId}` }, { op: "replace", target: `#m${bobId}` }]);
+    expect((await nextMessage(b)).ops).toEqual([{ op: "remove", target: `[data-eta-part="m${firstId}"]` }]);
 
     a.close();
     b.close();

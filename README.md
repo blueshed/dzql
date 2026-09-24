@@ -65,11 +65,15 @@ documents, compartments, applets, client, migrations; `src/` never imports from 
 
 ## Cost
 
-A write reaches every connection that sees its document as a patch echo and then a render. From
-0.12.0 (morph, don't replace) to 0.23.0 the render was always the whole page; since 0.24.0 a compartment
-may answer with the delta in HTML's terms instead -- `Compartment.fragments` -- and the page, whole,
-is what goes when it does not: the morph finds what changed, so the page is always right. Measured with each example's own script (`DB_PATH=:memory: bun
-examples/<name>/scripts/measure-render-cost.ts`):
+A write reaches everyone who sees its document as a patch echo, and everyone whose page read it
+as a render. From 0.12.0 (morph, don't replace) to 0.23.0 the render was always the whole page;
+from 0.24.0 a compartment could hand-write the delta in HTML's terms (`fragments`), and the page
+went whole where it did not. Now a page is sent in parts: a render names its regions
+(`part(key, html)`; the bento's cells, rows and drawers are parts already), the kernel draws the
+page again after a write and sends only the parts that differ from what that connection was last
+sent -- a part replaced, a row put in or taken out -- and the page whole only when it is a different
+page. Nothing is hand-written, and nothing is sent to a page that did not change. Measured with
+each example's own script (`DB_PATH=:memory: bun examples/<name>/scripts/measure-render-cost.ts`):
 
 Chat, a room at 100 messages and 5 members, bytes sent to each *other* member per message:
 
@@ -77,34 +81,38 @@ Chat, a room at 100 messages and 5 members, bytes sent to each *other* member pe
 |---|---|---|---|
 | 0.4.0 (append) | 159 B | 120 B | 279 B |
 | 0.12.0 to 0.23.0 (full page) | 159 B | 7373 B | 7532 B |
-| 0.24.0 (fragment: one `<li>`) | 159 B | 268 B | 427 B |
-| now (the same `<li>`, as a bubble) | 159 B | 266 B | 425 B |
+| 0.24.0 to 0.46.0 (hand-written: one `<li>`) | 159 B | 266 B | 425 B |
+| now (parts) | 196 B | 608 B | 804 B |
+
+The hand-written fragment was wrong: a room shows its latest 50 messages, and it only ever
+appended, so an open page grew past 50 while a fresh one did not. Parts send what makes the page
+true: the new message after the last, the oldest taken out, and the new first one again, since it
+now starts a run and shows its name.
 
 The wedding, one guest's top changed to green, bytes sent to each viewer:
 
-| viewer | 0.23.0 (full page) | now (fragments) |
-|---|---|---|
-| the sender, drawer open | 14146 B | 1692 B |
-| the same household, a second tab on its box | 11387 B | 1215 B |
-| the couple, on their home | 8912 B | 3570 B (the photo of everyone, redrawn) |
-| another household, on its box | 10879 B | 0 B |
-| another household, on the everyone page | 3781 B | 1612 B |
+| viewer | 0.23.0 (full page) | 0.46.0 (hand-written) | now (parts) |
+|---|---|---|---|
+| the sender, drawer open | 14146 B | 1692 B | 1794 B |
+| the same household, a second tab on its box | 11387 B | 1215 B | 1272 B |
+| the couple, on their home | 8912 B | 3570 B | 3626 B |
+| another household, on its box | 10879 B | 0 B | 0 B |
+| another household, on the everyone page | 3781 B | 1612 B | 1664 B |
+
+The same pieces the wedding's seventy lines of `fragments` named, found by comparing the page;
+the few bytes more are each part's `data-eta-part` and target.
 
 The ticker, one price tick, five viewers watching the symbol, bytes sent to each:
 
 | | bytes |
 |---|---|
 | the tick as a bare JSON feed (`{s, p, t}`), for comparison | 41 B |
-| eta: the patch echo, and nothing else | 104 B |
+| eta: the patch echo, and nothing else | 111 B |
 
-No render follows a tick: the board applet names the market document (`data-doc="ticker"`) and
-takes the ops itself (`Applet.patch`), so the delta is the update. The clock is the same shape:
-it is drawn and driven in the browser, where the time is, and when you choose another city the
-only thing that crosses the wire is the clock document's `replace /tz`, which the applet takes.
-
-An applet's props still go whole when they change (the wedding's photo re-sends every figure for
-one changed top), and every connection is still asked -- the answer is now often nothing, but the
-fan-out is the same.
+No render follows a tick for a page on the box: the board applet names the market document
+(`data-doc="ticker:market"`) and takes the ops itself (`Applet.patch`), and an applet that does so
+is compared without its props, so the page has not changed. A page reading the market as rows is
+sent the one row that moved. The clock is the same shape as the board.
 
 ## Poking at it
 

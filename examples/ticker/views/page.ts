@@ -6,6 +6,7 @@
 
 import { address, bento, inertWhile, matches, parseAddress, prop, rows, type Crumb, type OpenOptions } from "../../../src/bento";
 import { esc, write } from "../../../src/html";
+import { part } from "../../../src/parts";
 import type { ClockDocument } from "../documents/clock";
 import { ZONES, cityOf, offsetOf } from "../documents/clock";
 import type { Ui } from "../documents/desk";
@@ -69,20 +70,20 @@ function priceState(q: Quote): string {
 const symbolRow = (id: string, symbol: string, quote: Quote, ui: Ui, o: { hushed?: boolean; hidden?: boolean; note?: string } = {}): string =>
   row({ id, tap: go(address(where(ui).path, "symbol", symbol)), chosen: where(ui).what === "symbol" && where(ui).which === symbol, lead: `<span class="symbol">${esc(symbol)}</span>`, what: quote.name, state: priceState(quote), mark: "pencil", ...o });
 
-/** The board as a list: a row per watched symbol. Replaced alone on a tick, when it is open. */
-export function boardList(v: View): string {
+/** The board as a list: a row per watched symbol, each a part, so a tick sends the row it moved. */
+function boardList(v: View): string {
   const items = v.list.symbols.filter((s) => v.market[s]).map((s) => symbolRow(`b-${s}`, s, v.market[s]!, v.ui));
-  return `<div id="board-list">${rows(items, "Nothing watched yet. The plus asks which symbol.")}</div>`;
+  return part("board-list", `<div id="board-list">${rows(items, "Nothing watched yet. The plus asks which symbol.")}</div>`);
 }
 
-/** The market as a list: every quote, watched ones said so; find dims what the word misses. Replaced alone on a tick, when it is open. */
-export function marketRows(v: View): string {
+/** The market as a list: every quote, watched ones said so; find dims what the word misses. Each row a part, so a tick sends the row it moved. */
+function marketRows(v: View): string {
   const word = v.ui.filter?.market;
   const items = Object.entries(v.market).map(([s, q]) => {
     const miss = !matches(`${s} ${q.name}`, word);
     return symbolRow(`m-${s}`, s, q, v.ui, { hushed: miss, hidden: miss && v.ui.hide?.market, note: v.list.symbols.includes(s) ? "watching" : undefined });
   });
-  return `<div id="market-rows">${rows(items, "The market is closed.")}</div>`;
+  return part("market-rows", `<div id="market-rows">${rows(items, "The market is closed.")}</div>`);
 }
 
 // ───────────────────────────── the page ─────────────────────────────

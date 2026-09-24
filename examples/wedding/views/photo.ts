@@ -7,6 +7,7 @@ import type { HouseholdDocument } from "../documents/household";
 import type { Spec } from "../applets/figure";
 import { esc } from "./html";
 import { address } from "../../../src/bento";
+import { part } from "../../../src/parts";
 import { isGuestOut, matches, specOf } from "./shared";
 
 export type { PhotoEntry };
@@ -18,7 +19,7 @@ export const ghostSpec = (name: string): Spec => ({
 
 /** The photo applet's mount point, keyed by `id` so a fragment render can replace just it. */
 export function photoMount(id: string, entries: PhotoEntry[], label: string, reveal = false): string {
-  return `<div id="${esc(id)}" data-applet="photo" data-props="${esc(JSON.stringify({ entries, label, reveal }))}"></div>`;
+  return part(id, `<div id="${esc(id)}" data-applet="photo" data-props="${esc(JSON.stringify({ entries, label, reveal }))}"></div>`);
 }
 
 /** The household's guests as photo entries -- a tap opens the guest's drawer, and rings while it

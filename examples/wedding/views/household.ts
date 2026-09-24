@@ -11,6 +11,7 @@ import { addModal, addTool, boxPage, cell, choice, findControl, prop, readingSwi
 import type { DressProps } from "../applets/dress";
 import type { MenuProps } from "../applets/menu";
 import { esc, join, nav, open, write } from "./html";
+import { part } from "../../../src/parts";
 import { icon } from "./icons";
 import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
 
@@ -267,13 +268,13 @@ function everyoneOpen(v: HouseholdView, familyKey: string | null): { open: OpenO
 
 // ───────────────────────────── the drawers ─────────────────────────────
 
-/** The dressing applet's mount for one guest. Replaced alone when their look changes. */
+/** The dressing applet's mount for one guest: a part, sent alone when their look changes. */
 export function dressMount(v: HouseholdView, g: Guest): string {
   const dress: DressProps = { guestId: g.id, spec: specOf(g.minifigure), firstName: firstNameOf(g.name), out: isGuestOut(g, v.h) };
-  return `<div id="dress-${g.id}" data-applet="dress" data-props="${esc(JSON.stringify(dress))}"></div>`;
+  return part(`dress-${g.id}`, `<div id="dress-${g.id}" data-applet="dress" data-props="${esc(JSON.stringify(dress))}"></div>`);
 }
 
-/** The menu applet's mount for one guest. Replaced alone when a choice changes. */
+/** The menu applet's mount for one guest: a part, sent alone when a choice changes. */
 export function menuMount(v: HouseholdView, g: Guest): string {
   const menu: MenuProps = {
     guestId: g.id,
@@ -283,7 +284,7 @@ export function menuMount(v: HouseholdView, g: Guest): string {
     out: isGuestOut(g, v.h),
     locked: !v.open,
   };
-  return `<div id="menu-${g.id}" data-applet="menu" data-props="${esc(JSON.stringify(menu))}"></div>`;
+  return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu" data-props="${esc(JSON.stringify(menu))}"></div>`);
 }
 
 /** The guest's drawer: the dressing sheet, coming as one choice (rule 13, off the line), the hint, and the menu. */

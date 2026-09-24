@@ -8,6 +8,7 @@ import { prefixDoc, record } from "./ledger";
 import { renderRequested } from "./compartments/render";
 import { closeConnection, notify, openConnection, wireName } from "./compartments/audience";
 import { reading } from "./reading";
+import { part } from "./parts";
 import { createServer } from "./server";
 
 // A tiny, self-contained compartment + example -- not chat, not anything under
@@ -43,9 +44,7 @@ function noteWrite(ws: Bun.ServerWebSocket<{ sessionId: string }>, id: string, o
   const result: WriteResult = { version, applied };
   if (applied.length > 0) {
     ws.send(patchMessage("note", version, applied));
-    // Ask for the render through the bus, naming the write, so `fragments` below gets its say
-    // and, absent that, rule 2's default (a single replace of this compartment's own element).
-    renderRequested.emit({ sockets: [ws], write: { docType: "note", docId: id, result } });
+    renderRequested.emit([ws]);
   }
   return result;
 }
@@ -61,14 +60,6 @@ const noteCompartment: Compartment = {
   },
   write(ws, id, ops, undoes) {
     return noteWrite(ws, id, ops, undoes);
-  },
-  // Text beginning "frag" is answered as one HTML op; "quiet" as nothing at all; anything
-  // else declines, and the kernel sends the page.
-  fragments(ws, id) {
-    const { text } = readNote(id);
-    if (text.startsWith("frag")) return [{ op: "replace", target: ".note", html: `<p class="note">${text}</p>` }];
-    if (text.startsWith("quiet")) return [];
-    return undefined;
   },
 };
 
@@ -102,7 +93,6 @@ const monthCompartment: Compartment = {
     notify("month", id, result);
     return result;
   },
-  fragments: () => [],
 };
 
 function makeExample(name: string): Example {
@@ -111,7 +101,7 @@ function makeExample(name: string): Example {
     compartments: [noteCompartment, monthCompartment],
     render: (sessionId) =>
       `<p class="note">${readNote(sessionId).text}</p>` +
-      (showing.get(sessionId) ?? []).map((m) => `<ul data-month="${m}">${readMonth(m).map((a) => `<li>${a}</li>`).join("")}</ul>`).join(""),
+      (showing.get(sessionId) ?? []).map((m) => part(`month-${m}`, `<ul data-month="${m}">${readMonth(m).map((a, i) => part(`${m}-${i}`, `<li>${a}</li>`)).join("")}</ul>`)).join(""),
     active: () => true,
     index,
   };
@@ -208,7 +198,7 @@ describe("createServer, generically (no example from the examples directory invo
     const patch = await expectMessage(ws, "patch");
     expect(patch.doc).toBe("note");
     expect(patch.ops).toEqual([{ op: "replace", path: "/text", value: "hello kernel" }]);
-    // "hello kernel" doesn't start with "frag"/"quiet", so fragments() declines and the page goes whole
+    // the note's page has no parts: a change to it sends it whole
     const rendered = await expectMessage(ws, "render");
     expect(rendered.ops).toBeUndefined();
     expect(rendered.html).toBe('<p class="note">hello kernel</p>');
@@ -228,30 +218,6 @@ describe("createServer, generically (no example from the examples directory invo
     // nothing left to redo: a render, no patch
     write(ws, "ledger", [{ op: "add", path: "/latest" }]);
     await expectMessage(ws, "render");
-
-    ws.close();
-  });
-
-  test("a compartment's fragments are sent instead of the page; nothing is sent when it says nothing changed; its own element (not the page) when it declines", async () => {
-    const ws = connect(server);
-    await opened(ws);
-    await expectMessage(ws, "render");
-
-    write(ws, "note", [{ op: "replace", path: "/text", value: "frag one" }]);
-    await expectMessage(ws, "patch");
-    const fragment = await expectMessage(ws, "render");
-    expect(fragment.html).toBeUndefined();
-    expect(fragment.ops).toEqual([{ op: "replace", target: ".note", html: '<p class="note">frag one</p>' }]);
-
-    write(ws, "note", [{ op: "replace", path: "/text", value: "quiet" }]);
-    await expectMessage(ws, "patch");
-    // no render follows: the next thing this connection hears is the next write's echo
-    write(ws, "note", [{ op: "replace", path: "/text", value: "plain" }]);
-    await expectMessage(ws, "patch");
-    // "plain" declines fragments(), so the page goes whole
-    const own = await expectMessage(ws, "render");
-    expect(own.ops).toBeUndefined();
-    expect(own.html).toBe('<p class="note">plain</p>');
 
     ws.close();
   });
@@ -350,6 +316,31 @@ describe("one socket, any documents: a document is named whole, and seen because
     write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "optician" }]);
     expect(await nextPatch(a)).toMatchObject({ doc: "month:2026-08", ops: [{ value: "optician" }] });
     expect(await nextPatch(b)).toMatchObject({ doc: "month:2026-08", ops: [{ value: "optician" }] });
+
+    a.close();
+    b.close();
+  });
+
+  test("a new appointment goes out as the one row, beside the row before it, to every page showing the month", async () => {
+    const { ws: a } = await showingMonths("2026-08");
+    const { ws: b } = await showingMonths("2026-08", "2026-09");
+    const rows = (months.get("2026-08") ?? []).length;
+    if (rows === 0) {
+      write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "first" }]); // a list that was empty is replaced whole
+      await nextPatch(a);
+      await expectMessage(a, "render");
+      await nextPatch(b);
+      await expectMessage(b, "render");
+    }
+    const at = (months.get("2026-08") ?? []).length;
+
+    write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "physio" }]);
+    await nextPatch(a);
+    const sentToA = await expectMessage(a, "render");
+    expect(sentToA.html).toBeUndefined();
+    expect(sentToA.ops).toEqual([{ op: "after", target: `[data-eta-part="2026-08-${at - 1}"]`, html: `<li data-eta-part="2026-08-${at}">physio</li>` }]);
+    await nextPatch(b);
+    expect((await expectMessage(b, "render")).ops).toEqual(sentToA.ops);
 
     a.close();
     b.close();

@@ -5,6 +5,7 @@ import type { ConnectionData } from "./connection";
 import type { Example } from "./example";
 import type { PatchOp } from "./json-patch";
 import { drawing } from "./reading";
+import { diff, type Drawn } from "./parts";
 
 // One example per process is an invariant: a running eta process serves
 // exactly one example, and this tracks which (so the renderRequested
@@ -16,23 +17,26 @@ import { drawing } from "./reading";
 // tests do, in the same process) doesn't trip the guard below.
 let active: { example: Example; assembled: ReturnType<typeof assemble> } | undefined;
 
-renderRequested.on((request) => {
+// What each connection was last sent, so the next drawing sends only what differs (src/parts.ts).
+const sent = new WeakMap<Bun.ServerWebSocket<ConnectionData>, Drawn>();
+
+/**
+ * Draws a connection's page and sends what changed: the parts that differ, nothing if none do, or
+ * the page whole when its outline changed (a different page) or `whole` says so (a first drawing,
+ * a refused write handing the page back).
+ */
+function redraw(ws: Bun.ServerWebSocket<ConnectionData>, renderFor: (sessionId: string) => string, whole = false): void {
+  const next = drawing(ws, () => renderFor(ws.data.sessionId));
+  const prev = sent.get(ws);
+  sent.set(ws, next);
+  const ops = prev && !whole ? diff(prev, next) : undefined;
+  if (ops === undefined) ws.send(renderMessage(next.html));
+  else if (ops.length > 0) ws.send(fragmentsMessage(ops));
+}
+
+renderRequested.on((sockets) => {
   if (!active) return; // unreachable in practice: nothing can fire this before a server exists
-  const { sockets, write } = "sockets" in request ? request : { sockets: request, write: undefined };
-  const owner = write ? active.assembled.byDocType.get(write.docType) : undefined;
-  for (const ws of sockets) {
-    // The owning compartment may say exactly what changed on this page (HTML ops), or that
-    // nothing did (`[]`); when it does not answer, the page goes whole, and the morph finds what
-    // changed.
-    // Whatever the drawing reads is what this connection sees from now on (src/reading.ts): the
-    // page replaces what it saw; a fragment adds to it.
-    const ops = write && drawing(ws, false, () => owner?.fragments?.(ws, write.docId, write.result));
-    if (ops) {
-      if (ops.length > 0) ws.send(fragmentsMessage(ops));
-      continue;
-    }
-    ws.send(renderMessage(drawing(ws, true, () => active!.assembled.renderFor(ws.data.sessionId))));
-  }
+  for (const ws of sockets) redraw(ws, active.assembled.renderFor);
 });
 
 export function createServer(example: Example, port: number | string = process.env.PORT ?? 3000) {
@@ -48,7 +52,7 @@ export function createServer(example: Example, port: number | string = process.e
   setActiveCompartments(byDocType);
 
   function pushRender(ws: Bun.ServerWebSocket<ConnectionData>) {
-    ws.send(renderMessage(drawing(ws, true, () => renderFor(ws.data.sessionId))));
+    redraw(ws, renderFor, true);
   }
 
   const server = Bun.serve<ConnectionData>({

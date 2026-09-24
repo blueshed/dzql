@@ -90,7 +90,4 @@ export const room: Compartment = {
     notify("room", roomName, result); // everyone in the room, the writer too
     return result;
   },
-  // A message, sent or walked back, is the transcript applet's to draw from the echo: nothing
-  // follows it. (Who is here is `here`'s document, on its own channel.)
-  fragments: () => [],
 };

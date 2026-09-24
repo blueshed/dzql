@@ -1,12 +1,13 @@
 import type { ServerWebSocket } from "bun";
 import * as roomDoc from "../documents/room";
-import type { ChatMessage, RoomPatchResult } from "../documents/room";
+import type { ChatMessage } from "../documents/room";
 import * as sessionDoc from "../documents/session";
 import type { ConnectionData } from "../../../src/connection";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { allOpenSockets, audienceFor, notify } from "../../../src/compartments/audience";
-import { renderRequested, type HtmlOp } from "../../../src/compartments/render";
+import { renderRequested } from "../../../src/compartments/render";
+import { part } from "../../../src/parts";
 import { history, prefixDoc } from "../../../src/ledger";
 import { bento, rows } from "../../../src/bento";
 import { esc, join, write } from "../../../src/html";
@@ -32,23 +33,23 @@ function renderRooms(name: string, rooms: string[]): string {
     key: "rooms",
     body: join(
       `<p class="note">You are <b class="user-label">${esc(name)}</b>. Which room?</p>`,
-      `<div class="list">${rows(rooms.map((r) => row({ id: `r-${slug(r)}`, tap: enter(r), what: `#${r}`, mark: "chevron" })), "No rooms yet. Name the first.")}</div>`,
+      `<div class="list">${rows(rooms.map((r) => row({ id: `r-${slug(r)}`, tap: enter(r), what: `#${r}`, mark: "chevron" })), "No rooms yet. Name the first.", "room-list")}</div>`,
       `<form class="say"${write("session", "replace", "/room")}><input name="room" autocomplete="off" required placeholder="A new room" aria-label="A new room"><button type="submit" class="tool">Go in</button></form>`,
     ),
   });
 }
 
-/** Who is here, across the head of the conversation; redrawn alone when someone arrives or leaves. */
+/** Who is here, across the head of the conversation: a part, sent alone when someone arrives or leaves. */
 function renderPeople(people: string[], me: string): string {
-  return `<div id="people" class="people" aria-label="Here">${people.map((p) => `<span class="who">${face(p, p === me)}<span class="note">${esc(p)}</span></span>`).join("")}</div>`;
+  return part("people", `<div id="people" class="people" aria-label="Here">${people.map((p) => `<span class="who">${face(p, p === me)}<span class="note">${esc(p)}</span></span>`).join("")}</div>`);
 }
 
-/** A message is a bubble: yours on the right, everyone else's on the left with a face, the name shown only on the first of a run. */
+/** A message is a bubble, and a part: yours on the right, everyone else's on the left with a face, the name shown only on the first of a run. */
 function renderMessage(message: ChatMessage, index: number, messages: ChatMessage[], viewer: string): string {
   const mine = message.name === viewer;
   const firstOfRun = index === 0 || messages[index - 1]!.name !== message.name;
   const nameLine = !mine && firstOfRun ? `<span class="name">${esc(message.name)}</span>` : "";
-  return `<li id="m${message.id}"${mine ? ' class="mine"' : ""}>${face(message.name, mine)}<div class="body">${nameLine}<span class="bubble">${esc(message.text)}</span></div></li>`;
+  return part(`m${message.id}`, `<li id="m${message.id}"${mine ? ' class="mine"' : ""}>${face(message.name, mine)}<div class="body">${nameLine}<span class="bubble">${esc(message.text)}</span></div></li>`);
 }
 
 /** Say something: the room's conversation, and the form at its foot. "Chat" in the trail is the way back to the rooms. */
@@ -57,7 +58,7 @@ function renderRoom(name: string, room: string, people: string[], transcript: Ch
     key: "conversation",
     body: join(
       renderPeople(people, name),
-      `<ul class="messages" id="messages" data-autoscroll>${transcript.map((m, i) => renderMessage(m, i, transcript, name)).join("")}</ul>`,
+      part("messages", `<ul class="messages" id="messages" data-autoscroll>${transcript.map((m, i) => renderMessage(m, i, transcript, name)).join("")}</ul>`),
       `<form class="say"${write("room", "add", "/transcript/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message #${esc(room)}" aria-label="Say"><button type="submit" class="tool">Send</button></form>`,
     ),
   });
@@ -165,31 +166,8 @@ export const room: Compartment = {
     const { name } = sessionDoc.read(ws.data.sessionId);
     const shaped = undoes === undefined ? ops.map((op) => ({ ...op, value: { name, text: op.value } })) : ops;
     const result = roomDoc.patch(roomName, shaped, ws.data.sessionId, undoes);
-    notify("room", roomName, result); // everyone in the room, the writer too, naming the write so `fragments` can answer with the one <li>
+    notify("room", roomName, result); // everyone in the room, the writer too; each is sent the parts of their page that changed
     return result;
-  },
-  // The delta in HTML's terms: a sent message is one <li> appended; a message walked back by
-  // undo is its <li> removed, and the message after it redrawn, since it may now start a run
-  // (and so show its name); an arrival or a departure redraws who is here. Anything else is
-  // left to the full render.
-  fragments(ws, roomName, result): HtmlOp[] | undefined {
-    const { name, room: current } = sessionDoc.read(ws.data.sessionId);
-    if (!name || current !== roomName) return undefined;
-    const ops: HtmlOp[] = [];
-    const isPresence = (op: PatchOp) => op.path === "/people/-" || /^\/people\/\d+$/.test(op.path);
-    if (result.applied.some(isPresence)) ops.push({ op: "replace", target: "#people", html: renderPeople(peopleIn(roomName), name) });
-    const { added, removed } = result as RoomPatchResult;
-    const { transcript } = roomDoc.read(roomName);
-    if (added) {
-      const at = transcript.length - 1;
-      ops.push({ op: "add", target: "#messages", html: renderMessage(transcript[at]!, at, transcript, name) });
-    }
-    if (removed) {
-      ops.push({ op: "remove", target: `#m${removed.id}` });
-      const next = transcript.findIndex((m) => m.id > removed.id);
-      if (next >= 0) ops.push({ op: "replace", target: `#m${transcript[next]!.id}`, html: renderMessage(transcript[next]!, next, transcript, name) });
-    }
-    return ops;
   },
   onOpen(ws) {
     const { name, room: current } = sessionDoc.read(ws.data.sessionId);

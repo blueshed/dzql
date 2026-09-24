@@ -89,22 +89,28 @@ export function audienceFor(docType: string, docId: string, exclude?: ServerWebS
   return [...openSockets].filter((ws) => ws !== exclude && sees(owner, ws, docId));
 }
 
+/** Every open connection whose page, as last drawn, read the document -- a session's own included: chat's presence reads everyone's name from their sessions. */
+export function readersOf(docType: string, docId: string): ServerWebSocket<ConnectionData>[] {
+  return [...openSockets].filter((ws) => shows(ws, docType, docId));
+}
+
 /**
- * Tells people about a write: echoes its applied ops, then asks for their pages to be brought up
- * to date (a compartment's `fragments`, or its own element, or the page). The one thing besides
- * applying the patch that every `write()` needs to do. By default both go to everyone who sees
- * the document, the writer included. `echoTo` narrows or replaces that audience (chat's presence
- * leaves out the socket that came or went); `renderTo` widens who is redrawn without widening
- * who gets the ops (the wedding redraws every open page, since totals and the photo draw on every
- * household). A no-op patch tells nobody.
+ * Tells people about a write: echoes its applied ops to everyone who sees the document, the writer
+ * included, and redraws those and everyone else whose page read it -- each is sent only the parts
+ * of their page that changed (src/parts.ts). A page that read another session's own document is
+ * redrawn and never sent its ops. `echoTo` narrows or replaces who hears the ops (chat's presence
+ * leaves out the socket that came or went); `renderTo` replaces who is redrawn (the wedding
+ * redraws every open page, since totals and the photo draw on every household). A no-op patch
+ * tells nobody.
  */
 export function notify(
   docType: string,
   docId: string,
   result: WriteResult,
-  { echoTo = audienceFor(docType, docId), renderTo = echoTo }: { echoTo?: ServerWebSocket<ConnectionData>[]; renderTo?: ServerWebSocket<ConnectionData>[] } = {},
+  { echoTo = audienceFor(docType, docId), renderTo }: { echoTo?: ServerWebSocket<ConnectionData>[]; renderTo?: ServerWebSocket<ConnectionData>[] } = {},
 ): void {
   if (result.applied.length === 0) return;
   for (const ws of echoTo) ws.send(patchMessage(wireName(docType, docId, ws), result.version, result.applied));
-  if (renderTo.length > 0) renderRequested.emit({ sockets: renderTo, write: { docType, docId, result } });
+  const redraw = renderTo ?? [...new Set([...echoTo, ...readersOf(docType, docId)])];
+  if (redraw.length > 0) renderRequested.emit(redraw);
 }

@@ -8,6 +8,7 @@
 // that document at the paths `patchCollections` below applies.
 
 import { esc, join, write } from "./html";
+import { part } from "./parts";
 import type { PatchOp } from "./json-patch";
 import { parsePointer } from "./json-pointer";
 import { slug, tray, type Compartment, type Tray } from "./tray";
@@ -136,8 +137,11 @@ const COLUMNS = 3;
 /** Whether find's word hits `text`; no word, or a blank one, hits everything. */
 export const matches = (text: string, word: string | undefined): boolean => !word?.trim() || text.toLowerCase().includes(word.trim().toLowerCase());
 
-/** A list: its rows, and nothing when there are none but the note that says so. */
-export const rows = (items: string[], empty: string): string => (items.length ? `<div class="rows">${items.join("")}</div>` : `<p class="note">${esc(empty)}</p>`);
+/** A list: its rows, and nothing when there are none but the note that says so. Given a `key`, the list is a part of its own, so a row coming or going is sent alone. */
+export const rows = (items: string[], empty: string, key?: string): string => {
+  const html = items.length ? `<div class="rows">${items.join("")}</div>` : `<p class="note">${esc(empty)}</p>`;
+  return key ? part(key, html) : html;
+};
 
 /** A property in a drawer: its name, and its value or the control that sets it. */
 export const prop = (name: string, value: string): string => `<div class="prop"><span class="prop-name cap">${esc(name)}</span><div class="prop-value">${value}</div></div>`;
@@ -255,7 +259,7 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
   function windowOf(trail: Crumb[], open: OpenOptions): string {
     const chev = `<span class="chev">${icon("chevron-right", 14)}</span>`;
     const ways = trail.slice(0, -1).map((c) => (c.back !== undefined ? `<a class="cell-back" href="#"${c.back}>${esc(c.label)}</a>` : `<span class="cell-root">${esc(c.label)}</span>`) + chev);
-    return join(
+    return part(open.key, join(
       `<div class="cell open" data-key="${open.key}" data-moving="${esc(open.key)}">`,
       `<div class="cell-head cap">${ways.join("")}<span class="cell-name">${esc(trail[trail.length - 1]!.label)}</span></div>`,
       `<div class="rail work">`,
@@ -266,7 +270,7 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
       `<div class="full">${open.body}${open.note ? `<p class="note">${esc(open.note)}</p>` : ""}</div>`,
       pageTools(),
       "</div>",
-    );
+    ));
   }
 
   /**
@@ -283,7 +287,7 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
     const cornersOf = (t: Tray, key: string): string => t.cells.find((c) => c.key === key)!.corners.join(" ");
     const placed = cells.map((c) => {
       if (open && c.key === open.key) return windowOf(trail, open);
-      return c.html.replace(`data-key="${c.key}"`, `data-key="${c.key}" data-corners="${cornersOf(wide, c.key)}" data-corners-phone="${cornersOf(narrow, c.key)}" style="grid-area: ${c.key}"`);
+      return part(c.key, c.html.replace(`data-key="${c.key}"`, `data-key="${c.key}" data-corners="${cornersOf(wide, c.key)}" data-corners-phone="${cornersOf(narrow, c.key)}" style="grid-area: ${c.key}"`));
     });
     const areas = (t: Tray): string => t.areas.replace(/\n/g, " ");
     return join(
@@ -309,7 +313,7 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
     const classes = ["row", o.tap && "tap", o.hushed && "hushed"].filter(Boolean).join(" ");
     const attrs = join(o.id && ` id="${esc(o.id)}"`, o.tap && ` role="button" tabindex="0"${o.tap}`, o.chosen !== undefined && ` aria-pressed="${o.chosen}"`, o.chosen && " data-reveal", o.hidden && " hidden");
     const mark = o.mark === "pencil" ? `<span class="mark">${icon("pencil", 16)}</span>` : o.mark === "chevron" ? `<span class="mark">${icon("chevron-right", 18)}</span>` : "";
-    return join(
+    const html = join(
       `<div class="${classes}"${attrs}>`,
       o.lead && `<span class="lead">${o.lead}</span>`,
       `<span class="words"><span class="what">${esc(o.what)}</span>${o.note ? `<span class="note">${esc(o.note)}</span>` : ""}</span>`,
@@ -317,6 +321,7 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
       mark,
       "</div>",
     );
+    return o.id ? part(o.id, html) : html; // a row with an id is sent alone when it alone changed
   }
 
   // ───────────────────────────── the drawer ─────────────────────────────
@@ -330,10 +335,15 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
   function sheet(id: string, title: string, body: string, close: string, className = ""): string {
     return join(
       `<div class="scrim"${close}></div>`,
-      `<div id="${esc(id)}" class="sheet${className ? ` ${className}` : ""}" role="dialog" aria-label="${esc(title)}">`,
-      `<div class="sheet-head"><h2>${esc(title)}</h2><button type="button" class="tool quiet sheet-close" aria-label="Close"${close}>${icon("x", 18)}</button></div>`,
-      `<div class="sheet-body">${body}</div>`,
-      "</div>",
+      part(
+        id,
+        join(
+          `<div id="${esc(id)}" class="sheet${className ? ` ${className}` : ""}" role="dialog" aria-label="${esc(title)}">`,
+          `<div class="sheet-head"><h2>${esc(title)}</h2><button type="button" class="tool quiet sheet-close" aria-label="Close"${close}>${icon("x", 18)}</button></div>`,
+          `<div class="sheet-body">${body}</div>`,
+          "</div>",
+        ),
+      ),
     );
   }
 

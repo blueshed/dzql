@@ -7,8 +7,8 @@ are the contract itself, and where this file and the code disagree, the code is 
 
 `Example.render(sessionId)` returns the whole page for a session, as HTML. It is the only renderer:
 it decides which screen (chat: the name form, the rooms, or the room) and reads whichever documents
-it must. A compartment owns a document, not a place on the page. A write is answered with what its
-compartment's `fragments` says changed, or with the page.
+it must. A compartment owns a document, not a place on the page. After a write, every page that
+read the document is drawn again and sent only the parts of it that changed (below).
 
 ## `Example` (`src/example.ts`)
 
@@ -36,7 +36,6 @@ export type Compartment = {
   own?: true;                              // keyed by the session id: that session's alone, named by type
   permit(ws, op, docId): boolean;          // may it write this path of this document?
   write(ws, docId, ops, undoes?): WriteResult; // apply, then notify()
-  fragments?(ws, docId, result): HtmlOp[] | undefined;
   onOpen?(ws): void;
   onClose?(ws): void;
 };
@@ -66,27 +65,34 @@ export type Compartment = {
 ## Telling a write (`src/compartments/audience.ts`)
 
 - `notify(docType, docId, result, {echoTo?, renderTo?})` is the one way. It echoes the applied ops
-  and asks for pages to be brought up to date; by default both go to everyone who sees the
-  document, the writer included. `echoTo` replaces who hears the ops (chat's presence leaves out
-  the socket that came or went); `renderTo` widens who is redrawn (the wedding passes
-  `allOpenSockets()`, since totals and the photo draw on every household). Nothing applied tells
+  to everyone who sees the document, the writer included, and redraws those and everyone else
+  whose page read it (a session's `own` document too: its ops never go to them, its effect on
+  their page does). `echoTo` replaces who hears the ops (chat's presence leaves out the socket
+  that came or went); `renderTo` replaces who is redrawn (the wedding passes `allOpenSockets()`,
+  since totals and the photo draw on every household). Nothing applied tells
   nobody. Never send a patch or ask for a render by hand.
 - `audienceFor(docType, docId, exclude?)`: every open connection that sees the document.
 - The kernel never brings a write's own connection up to date separately. A `write()` that forgets
   to `notify` leaves its writer stale, and the stories catch it.
 
-## `fragments`: smaller than the page
+## Parts: what is sent (`src/parts.ts`)
 
-```ts
-type HtmlOp = { op: "replace" | "add"; target: string; html: string } | { op: "remove"; target: string };
-```
+A render names the regions of its page with `part(key, html)`: its root element is tagged
+`data-eta-part="<key>"`. The bento's cells, the open window, rows with an id, lists given a key
+(`rows(items, empty, key)`) and drawers are parts already; name the rest -- a strip, a list, a
+row, an applet's mount -- where a change should travel alone. The kernel keeps what each
+connection was last sent and, after a write, draws its page again and sends what differs:
 
-`replace` morphs one element (give it an id), `add` appends inside one, `remove` takes one out.
-`[]` says nothing on this connection's page changed; `undefined` declines and the page goes. The
-morph finds what changed in a page, so the page is always right. Answer smaller only where it is
-worth the care: every target has to be right for every state the page can be in, and the ticker's
-hand-kept lists went stale four times. Chat answers a message with one `<li>`; the ticker answers
-a tick with `[]`, because its board applet took the patch.
+- a part whose outline changed is replaced (`replace`, morphed in place);
+- a list -- a part whose rows are parts, in one run -- has rows put in (`after`, `before`) and
+  taken out (`remove`); a list that was empty, or whose rows changed order, is replaced;
+- nothing, when nothing on the page changed;
+- the page whole only when its own outline changed: a different page.
+
+A key is unique on its page (drawn twice the same is fine; two different things under one key are
+no part, and what holds them is sent). An applet that takes its document's ops (`data-doc`) is
+compared without its props. Nothing is hand-written, and the stories check the result: each
+member's page, rebuilt from exactly what they were sent, must equal a fresh render.
 
 ## Documents
 
@@ -131,7 +137,7 @@ HTML is the only vocabulary. No JSON tree of app state.
   never a verb.
 - Server to client: `{type: "patch", doc, version, ops}`, `doc` named whole (what was applied;
   kept in `window.eta.docs()` under that name), then `{type: "render", html}` (the page) or `{type: "render", ops}`
-  (fragments).
+  (the parts that changed).
 - `{type: "inspect", limit?}` answers with the documents this connection sees and their latest
   ledger entries. An entry says `mine: true|false`, never who.
 - **A session id never goes on the wire.** It is the `session_id` cookie and a person's only
@@ -194,7 +200,7 @@ export type Applet = {
 Mount point: `<div data-applet="board" data-doc="ticker:market" data-props='{...}'>`, the
 document named as the wire names it. Data reaches an
 applet as new props on a render (`update`), or, for a document that changes often, as the patch
-itself (`patch`, with `fragments` answering `[]`). Register in `client/main.ts` before importing
+itself (`patch`; its props are left out when the page is compared, so no HTML follows). Register in `client/main.ts` before importing
 `src/client/app`. Split drawing (`<name>.ts`, pure, tested directly) from mounting
 (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`) when there is drawing worth
 testing. `client/index.html` must have an element with `id="app"`.

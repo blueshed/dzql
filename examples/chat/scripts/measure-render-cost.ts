@@ -1,5 +1,5 @@
 // Measures what a room write costs on the wire for every other member: a patch echo and
-// then whatever the render is -- a full page (0.12.0 to 0.23.0) or, since fragment renders,
+// then whatever the render is -- a full page (0.12.0 to 0.23.0) or, since renders in parts,
 // the one appended <li>. Not a test -- a report. Run with
 // `DB_PATH=:memory: bun examples/chat/scripts/measure-render-cost.ts`.
 import { patch as patchRoom } from "../documents/room";
@@ -105,7 +105,7 @@ for (const [patchP, renderP] of incoming) {
   const [patchRaw, renderRaw] = await Promise.all([patchP, renderP]);
   afterPatchBytes += Buffer.byteLength(patchRaw, "utf8");
   afterRenderBytes += Buffer.byteLength(renderRaw, "utf8");
-  renderKind = JSON.parse(renderRaw).ops ? "fragment render (one <li>)" : "full render";
+  renderKind = JSON.parse(renderRaw).ops ? "render in parts" : "full render";
 }
 
 const afterPatchAvg = afterPatchBytes / others.length;

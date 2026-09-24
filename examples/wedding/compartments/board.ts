@@ -31,9 +31,8 @@ const RULES: Rule[] = [
   { path: new RegExp(`^/courses/\\d+/${CHILD}/\\d+/\\w+$`), ops: ["replace", "remove"] },
 ];
 
-// No `fragments` here yet: the couple's writes are rare beside a household's, and each one
-// changes counts and lists on many pages, so every page goes out whole.
-
+// The couple's writes change counts and lists on many pages: every open page is drawn again, and
+// each is sent only the parts of it that changed.
 
 /** The couple's pages. The board is always there in practice: read() only reports a kind for a code that exists. */
 export function renderBoard(session: sessionDoc.SessionDocument): string | undefined {

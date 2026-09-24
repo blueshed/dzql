@@ -5,13 +5,12 @@ import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment, WriteResult } from "../../../src/compartments/compartment";
 import { audienceFor, notify } from "../../../src/compartments/audience";
 import * as deskDoc from "../documents/desk";
-import { boardList, marketRows, page, reading, where } from "../views/page";
-import type { HtmlOp } from "../../../src/compartments/render";
+import { page } from "../views/page";
 
 // The market, and the page. A tick -- from the feed below, or typed by anyone through the wire
 // or the CLI -- is a write to the market document, echoed to every connection; the board applet
-// on each page takes the ops itself (Applet.patch), so `fragments` answers that nothing on the
-// page needs rendering. The feed runs only while someone is connected: the market moves while
+// on each page takes the ops itself (Applet.patch), and a page is sent only the parts of it that
+// show a price. The feed runs only while someone is connected: the market moves while
 // it is watched, and a test suite that never opens a socket never starts it. "Everyone" is the
 // kernel's own open-connection registry (change-request.md item 1), not a set this module keeps
 // itself -- `resolveDoc` below names the one market for any socket, so every connection sees it
@@ -23,7 +22,7 @@ let feed: ReturnType<typeof setInterval> | undefined;
 const TICK_MS = Number(process.env.TICK_MS ?? 500);
 const MAX_MOVE = 0.006;
 
-/** One tick, from wherever it comes: applied, echoed to everyone, the pages told (and answered with nothing to render). */
+/** One tick, from wherever it comes: applied, echoed to everyone, each page sent what changed on it. */
 export function tick(ops: PatchOp[], sessionId: string): WriteResult {
   const result = market.patch(ops, sessionId);
   notify("ticker", market.MARKET, result);
@@ -69,21 +68,9 @@ export const ticker: Compartment = {
   write(ws, _docId, ops) {
     return tick(ops, ws.data.sessionId);
   },
-  // A tick is recorded as not undoable, so the ledger's cursor never lands here.
-  // The board applet took the ops, so on the box there is nothing to render; a session reading
-  // the market's rows, or the board as a list, has those rows redrawn and nothing else.
-  fragments(ws): HtmlOp[] | undefined {
-    const ui = deskDoc.read(ws.data.sessionId);
-    // a symbol's drawer says its price too: rather than list one more target that has to be right
-    // for every state the desk can be in, decline, and the kernel redraws this compartment whole
-    const at = where(ui);
-    if (at.what === "symbol" || at.what === "confirm") return undefined;
-    const v = { list: watchlistDoc.read(ws.data.sessionId), market: market.read(), clock: clockDoc.read(ws.data.sessionId), ui };
-    const ops: HtmlOp[] = [];
-    if (at.path === "market") ops.push({ op: "replace", target: "#market-rows", html: marketRows(v) });
-    if (at.path === "board" && reading(ui) === "list") ops.push({ op: "replace", target: "#board-list", html: boardList(v) });
-    return ops;
-  },
+  // A tick is recorded as not undoable, so the ledger's cursor never lands here. What each page
+  // is sent after one is worked out from its parts: the board applet takes the ops, so on the box
+  // nothing; the market's rows, the board as a list, a symbol's drawer -- whatever shows a price.
   onOpen() {
     startFeed();
   },

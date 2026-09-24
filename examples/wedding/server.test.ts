@@ -3,6 +3,7 @@ import type { PatchOp } from "../../src/json-patch";
 import type { HtmlOp } from "../../src/compartments/render";
 import { history, prefixDoc } from "../../src/ledger";
 import { createServer } from "../../src/server";
+import { hear, type Heard } from "../../src/harness";
 import * as boardDoc from "./documents/board";
 import * as householdDoc from "./documents/household";
 import { example } from "./index";
@@ -32,12 +33,17 @@ type WireMessage = {
   version?: number;
   ops?: PatchOp[] | HtmlOp[];
   docs?: { doc: string; version: number }[];
+  /** For a render: the page this connection holds once it is applied. */
+  page?: string;
 };
 
 // A persistent per-socket FIFO queue, not a fresh {once:true} listener per nextMessage() call: two
 // messages sent back-to-back by the server (a patch echo immediately followed by its render) can
 // both dispatch before test code re-subscribes after awaiting the first, silently dropping one.
 const queues = new WeakMap<WebSocket, WireMessage[]>();
+const held = new WeakMap<WebSocket, string>();
+/** The page this connection holds now, from everything it has been sent. */
+const heldPage = (ws: WebSocket): string => held.get(ws) ?? "";
 const waiters = new WeakMap<WebSocket, ((message: WireMessage) => void)[]>();
 
 function connect(cookie?: string): WebSocket {
@@ -51,8 +57,15 @@ function connect(cookie?: string): WebSocket {
   const pending: ((message: WireMessage) => void)[] = [];
   queues.set(ws, queue);
   waiters.set(ws, pending);
+  let page = "";
   ws.addEventListener("message", (event) => {
     const message = JSON.parse(event.data as string) as WireMessage;
+    // the page this connection holds, kept as the client keeps it: a whole render replaces it, a
+    // render in parts is applied part by part (the harness's own `hear`)
+    if (message.type === "render") {
+      message.page = page = hear(page, message as Heard);
+      held.set(ws, page);
+    }
     const waiter = pending.shift();
     if (waiter) waiter(message);
     else queue.push(message);
@@ -168,10 +181,10 @@ describe("the welcome", () => {
     await opened(ws);
     await expectMessage(ws, "render");
     write(ws, "session", [{ op: "replace", path: "/code", value: "NOPE" }]);
-    expect((await expectMessage(ws, "render")).html).toContain("That code was not recognised.");
+    expect((await expectMessage(ws, "render")).page).toContain("That code was not recognised.");
     write(ws, "session", [{ op: "replace", path: "/resend", value: "x@example.com" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain("Sent, if we know that address.");
+    expect((await expectMessage(ws, "render")).page).toContain("Sent, if we know that address.");
     ws.close();
   });
 
@@ -180,7 +193,7 @@ describe("the welcome", () => {
     await opened(ws);
     await expectMessage(ws, "render");
     write(ws, "session", [{ op: "replace", path: "/page", value: "gifts" }]);
-    expect((await expectMessage(ws, "render")).html).toContain("at-welcome");
+    expect((await expectMessage(ws, "render")).page).toContain("at-welcome");
     write(ws, "household", [{ op: "replace", path: "/answer", value: "yes" }]);
     await expectMessage(ws, "render");
     write(ws, "board", [{ op: "replace", path: "/name1", value: "X" }]);
@@ -202,13 +215,13 @@ describe("a household", () => {
     expect(html).toContain("Honeymoon fund");
     write(ws, "session", [{ op: "replace", path: "/page", value: "" }]);
     await expectMessage(ws, "patch");
-    const box = (await expectMessage(ws, "render")).html;
+    const box = (await expectMessage(ws, "render")).page;
     expect(box).toContain(`<b aria-current="page">${code}</b>`);
     expect(box).toContain('data-applet="photo"');
     expect(box).toContain("Tess");
     write(ws, "session", [{ op: "remove", path: "/code" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain("at-welcome");
+    expect((await expectMessage(ws, "render")).page).toContain("at-welcome");
     ws.close();
   });
 
@@ -226,7 +239,7 @@ describe("a household", () => {
     await expectMessage(other, "patch");
     await expectMessage(other, "render");
     await expectMessage(couple, "patch");
-    expect((await expectMessage(couple, "render")).html).toMatch(/\d+ answered/);
+    expect((await expectMessage(couple, "render")).page).toMatch(/\d+ answered/);
     // a stranger's household sees the world change (the photo, the board's counts) but never the other household's patch
     expect((await expectMessage(stranger, "render")).type).toBe("render");
     await expectQuiet(stranger);
@@ -290,7 +303,7 @@ describe("a household", () => {
     await refused("household", [{ op: "replace", path: `/guests/${householdDoc.read(code)!.guests[0]!.id}/coming`, value: 1 }]);
     write(ws, "session", [{ op: "replace", path: "/page", value: "?answer" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain("Answers closed on");
+    expect((await expectMessage(ws, "render")).page).toContain("Answers closed on");
     write(ws, "household", [{ op: "replace", path: "/message", value: "Still allowed" }]);
     await expectMessage(ws, "patch");
     expect(htmlOf(await expectMessage(ws, "render"))).toContain("Still allowed");
@@ -303,19 +316,19 @@ describe("a household", () => {
     const guest = householdDoc.read(code)!.guests[0]!;
     write(ws, "session", [{ op: "replace", path: "/page", value: `?guest=${guest.id}` }]);
     await expectMessage(ws, "patch");
-    let html = (await expectMessage(ws, "render")).html;
+    let html = (await expectMessage(ws, "render")).page;
     expect(html).toContain('data-applet="dress"');
     expect(html).toContain('data-applet="menu"');
     expect(html).toContain(`aria-label="${guest.name}"`);
     write(ws, "session", [{ op: "replace", path: "/page", value: "?gift=1" }]);
     await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    html = (await expectMessage(ws, "render")).page;
     expect(html).not.toContain('data-applet="dress"');
     expect(html).toContain("Le Creuset casserole");
     expect(html).toContain('data-write=\'{"doc":"household","op":"add","path":"/claims/-"}\' data-value="1"');
     write(ws, "session", [{ op: "replace", path: "/page", value: "?answer" }]);
     await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    html = (await expectMessage(ws, "render")).page;
     expect(html).toContain('aria-label="Our answer"');
     expect(html).toContain('data-write=\'{"doc":"household","op":"replace","path":"/answer"}\' data-value="yes"');
     ws.close();
@@ -326,17 +339,17 @@ describe("a household", () => {
     const page = async (value: string) => {
       write(ws, "session", [{ op: "replace", path: "/page", value }]);
       await expectMessage(ws, "patch");
-      return (await expectMessage(ws, "render")).html;
+      return (await expectMessage(ws, "render")).page;
     };
     await page("guests"); // the guests grow into the window (rule 7); their list reading is there
     write(ws, "session", [{ op: "replace", path: "/reading/guests", value: "list" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain('class="row tap"');
+    expect((await expectMessage(ws, "render")).page).toContain('class="row tap"');
     expect(await page("asks")).toContain("Ask to bring someone");
     // the plus asks in a modal; the add that answers it closes it (rule 14)
     write(ws, "session", [{ op: "replace", path: "/page", value: "asks?new=asks" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain('<dialog open class="modal" aria-label="Ask to bring someone">');
+    expect((await expectMessage(ws, "render")).page).toContain('<dialog open class="modal" aria-label="Ask to bring someone">');
     write(ws, "household", [{ op: "add", path: "/asks/-", value: "Modal Friend" }]);
     await expectMessage(ws, "patch");
     expect(htmlOf(await expectMessage(ws, "render"))).not.toContain('class="modal"');
@@ -373,19 +386,19 @@ describe("a household", () => {
     // opening find: the field appears, empty, dimming nobody
     write(ws, "session", [{ op: "replace", path: "/filter/guests", value: "" }]);
     await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    html = (await expectMessage(ws, "render")).page;
     expect(html).toContain('class="filter"');
     expect(html).not.toContain(" hushed");
 
     // typing dims what the word misses, keeps the rest lit, and tallies -- in both readings
     write(ws, "session", [{ op: "replace", path: "/filter/guests", value: guests[0]!.name }]);
     await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    html = (await expectMessage(ws, "render")).page;
     expect(html).toContain(`&quot;hushed&quot;:true`); // the photo applet's own props, one entry hushed
     expect(html).toContain(`>1 of ${guests.length}</span>`);
     write(ws, "session", [{ op: "replace", path: "/reading/guests", value: "list" }]);
     await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    html = (await expectMessage(ws, "render")).page;
     expect(html).toContain('class="row tap hushed"');
     expect(html).toContain(`>1 of ${guests.length}</span>`);
 
@@ -394,14 +407,14 @@ describe("a household", () => {
     const askId = householdDoc.read(code)!.asks.at(-1)!.id;
     write(ws, "session", [{ op: "replace", path: "/page", value: "guests" }]);
     await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    html = (await expectMessage(ws, "render")).page;
     expect(html).toContain('class="row hushed"');
     householdDoc.patch(code, [{ op: "remove", path: `/asks/${askId}` }], "setup");
 
     // closing find forgets the word: nothing dims, no field, no tally
     write(ws, "session", [{ op: "remove", path: "/filter/guests" }]);
     await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    html = (await expectMessage(ws, "render")).page;
     expect(html).not.toContain('class="filter"');
     expect(html).not.toContain(" hushed");
     expect(html).not.toContain('class="tally"');
@@ -413,7 +426,7 @@ describe("a household", () => {
     const giftName = boardDoc.read("DASH")!.gifts[0]!.name;
     write(ws, "session", [{ op: "replace", path: "/filter/gifts", value: giftName }]);
     await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    html = (await expectMessage(ws, "render")).page;
     expect(html).toContain('class="filter"');
     expect(html).toContain('class="row tap hushed"');
     ws.close();
@@ -449,8 +462,10 @@ describe("a household", () => {
     ws.close();
   });
 
-  test("a look or a choice goes out as fragments: the pieces that show that guest, per viewer, and nothing to anyone else", async () => {
+  test("a look or a choice goes out as the parts that show that guest, per viewer, and nothing to anyone else", async () => {
     const guest = householdDoc.read(code)!.guests[0]!.id;
+    const answered = householdDoc.read(code)!.answer;
+    householdDoc.patch(code, [{ op: "replace", path: "/answer", value: "yes" }], "setup"); // coming: in the photo of everyone
     const mine = await enter(code);
     const list = await enter(code);
     const everyone = await enter("OKAFOR");
@@ -474,51 +489,52 @@ describe("a household", () => {
     await page(board, [{ op: "replace", path: "/page", value: "households" }]);
     await page(family, [{ op: "replace", path: "/page", value: `households/${hid}/guests` }]);
     await page(familyBox, [{ op: "replace", path: "/page", value: `households/${hid}` }]);
-    const targets = async (ws: WebSocket) => ((await expectMessage(ws, "render")).ops as { target: string }[]).map((o) => o.target);
+    // the parts a render names, by key
+    const targets = async (ws: WebSocket) => ((await expectMessage(ws, "render")).ops as { op: string; target: string }[]).map((o) => `${o.op} ${/data-eta-part="(.*)"/.exec(o.target)![1]}`);
 
     // a look: the family photo and the open drawer's dress for the household, the photo of everyone, the board's and the family's photos for the couple, the home's small reading
     write(mine, "household", [{ op: "replace", path: `/guests/${guest}/minifigure/hair`, value: "curls" }]);
     await expectMessage(mine, "patch");
-    expect(await targets(mine)).toEqual(["#family-photo", `#dress-${guest}`]);
+    expect(await targets(mine)).toEqual(["replace family-photo", `replace dress-${guest}`]);
     await expectMessage(list, "patch");
     await expectQuiet(list); // the list reading shows no looks
-    expect(await targets(everyone)).toEqual(["#everyone-photo"]);
+    expect(await targets(everyone)).toEqual(["replace everyone-photo"]); // they are coming, so in it
     await expectQuiet(elsewhere);
     await expectMessage(board, "patch");
-    expect(await targets(board)).toEqual(["#board-photo"]);
+    expect(await targets(board)).toEqual(["replace board-photo"]);
     await expectMessage(family, "patch");
-    expect(await targets(family)).toEqual(["#family-photo"]);
+    expect(await targets(family)).toEqual(["replace family-photo"]);
     await expectMessage(familyBox, "patch");
-    expect(await targets(familyBox)).toEqual(["#family-mini"]); // the family box's small reading of them, still
+    expect(await targets(familyBox)).toEqual(["replace family-mini"]); // the family box's small reading of them, still
     await expectMessage(home, "patch");
-    expect(await targets(home)).toEqual(["#board-mini"]); // the home's small reading of the families, still
-    // welcome has no code, so household.render() is the one showing it (rule 1: it can still be
-    // the whole page) -- and since household is this write's owner, welcome is asked too.
-    expect(htmlOf(await expectMessage(welcome, "render"))).toContain("at-welcome");
+    expect(await targets(home)).toEqual(["replace board-mini"]); // the home's small reading of the families, still
+    // the welcome is drawn again too (every open page is, for a household's write) and nothing on
+    // it changed, so it is sent nothing
+    await expectQuiet(welcome);
 
     // a choice: the drawer's menu and the list's row for the household, the family's row for the couple, nothing for the photos
     await page(family, [{ op: "replace", path: `/reading/family-${hid}`, value: "list" }]);
     write(mine, "household", [{ op: "replace", path: `/guests/${guest}/choices/2/dish`, value: 5 }]);
     await expectMessage(mine, "patch");
-    expect(await targets(mine)).toEqual([`#menu-${guest}`]);
+    expect(await targets(mine)).toEqual([`replace menu-${guest}`]);
     await expectMessage(list, "patch");
-    expect(await targets(list)).toEqual([`#guest-${guest}`]);
+    expect(await targets(list)).toEqual([`replace guest-${guest}`]);
     await expectQuiet(everyone);
     await expectMessage(board, "patch");
     await expectQuiet(board);
     await expectMessage(family, "patch");
-    expect(await targets(family)).toEqual([`#guest-${guest}`]);
+    expect(await targets(family)).toEqual([`replace guest-${guest}`]);
     await expectMessage(familyBox, "patch");
     await expectQuiet(familyBox); // a choice shows in no small reading
 
-    // anything else still goes out as this compartment's own element (its whole page, in
-    // substance -- household has no smaller answer for a plain message change)
-    write(mine, "household", [{ op: "replace", path: "/message", value: "whole page" }]);
+    // anything else goes out the same way: what shows it, to whoever's page shows it
+    write(mine, "household", [{ op: "replace", path: "/message", value: "a message" }]);
     await expectMessage(mine, "patch");
-    expect(htmlOf(await expectMessage(mine, "render"))).toContain("whole page");
-    expect(htmlOf(await expectMessage(elsewhere, "render"))).not.toBe("");
+    expect(htmlOf(await expectMessage(mine, "render"))).toContain("a message");
+    await expectQuiet(elsewhere);
 
     householdDoc.patch(code, [{ op: "remove", path: `/guests/${guest}/choices/2/dish` }, { op: "replace", path: `/guests/${guest}/minifigure/hair`, value: "none" }], "setup");
+    householdDoc.patch(code, [answered === null ? { op: "remove", path: "/answer" } : { op: "replace", path: "/answer", value: answered }], "setup");
     for (const ws of [mine, list, everyone, elsewhere, board, family, home, welcome]) ws.close();
   });
 
@@ -537,13 +553,13 @@ describe("the couple", () => {
     const page = async (value: string) => {
       write(ws, "session", [{ op: "replace", path: "/page", value }]);
       await expectMessage(ws, "patch");
-      return (await expectMessage(ws, "render")).html;
+      return (await expectMessage(ws, "render")).page;
     };
-    expect(await page("")).toContain('class="bubble couple thing"');
+    expect(heldPage(ws)).toContain('class="bubble couple thing"'); // entered at home
     // the welcome is a "thing" (rule 15): ✎ opens its own drawer, where its picture lives
     write(ws, "session", [{ op: "replace", path: "/page", value: "?answer" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain('data-applet="picture-field"');
+    expect((await expectMessage(ws, "render")).page).toContain('data-applet="picture-field"');
     write(ws, "session", [{ op: "replace", path: "/page", value: "" }]);
     await expectMessage(ws, "patch");
     await expectMessage(ws, "render");
@@ -552,11 +568,11 @@ describe("the couple", () => {
     expect(households).toContain('data-applet="photo"');
     write(ws, "session", [{ op: "replace", path: "/reading/households", value: "list" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain('class="row tap"');
+    expect((await expectMessage(ws, "render")).page).toContain('class="row tap"');
     // the code is a thing (rule 15): its drawer holds the email, the plus-ones and the way to chase them
     write(ws, "session", [{ op: "replace", path: "/page", value: `households/${hid}?keep=households/${hid}` }]);
     await expectMessage(ws, "patch");
-    const family = (await expectMessage(ws, "render")).html;
+    const family = (await expectMessage(ws, "render")).page;
     expect(family).toContain("Plus-ones");
     expect(family).toContain("Chase them");
     write(ws, "session", [{ op: "replace", path: "/page", value: `households/${hid}` }]);
@@ -567,27 +583,27 @@ describe("the couple", () => {
     for (const table of ["courses", "gifts", "events", "places"]) expect(await page(table)).toContain("Add a ");
     write(ws, "session", [{ op: "replace", path: "/page", value: "courses?keep=courses/1" }]);
     await expectMessage(ws, "patch");
-    const drawer = (await expectMessage(ws, "render")).html;
+    const drawer = (await expectMessage(ws, "render")).page;
     expect(drawer).toContain("Add a dish");
     expect(drawer).toContain("Remove this course");
     write(ws, "session", [{ op: "replace", path: "/page", value: "gifts?keep=gifts/2" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain('aria-label="Shared: any number may claim it"');
+    expect((await expectMessage(ws, "render")).page).toContain('aria-label="Shared: any number may claim it"');
     write(ws, "session", [{ op: "replace", path: "/page", value: "events?keep=events/1" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain("2027-04-02T13:00");
+    expect((await expectMessage(ws, "render")).page).toContain("2027-04-02T13:00");
     write(ws, "session", [{ op: "replace", path: "/page", value: "places?keep=places/1" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain("how far, how to book");
+    expect((await expectMessage(ws, "render")).page).toContain("how far, how to book");
     write(ws, "session", [{ op: "replace", path: "/page", value: "places?keep=nope/1" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).not.toContain("keep-sheet");
+    expect((await expectMessage(ws, "render")).page).not.toContain("keep-sheet");
 
     // adding is a plus on the collection's rail and a modal asking one question, the name; the
     // page behind it is inert while it asks (rule 14)
     write(ws, "session", [{ op: "replace", path: "/page", value: "courses?new=courses" }]);
     await expectMessage(ws, "patch");
-    let html = (await expectMessage(ws, "render")).html;
+    let html = (await expectMessage(ws, "render")).page;
     expect(html).toContain('<dialog open class="modal" aria-label="Add a course">');
     expect(html).toContain("The course&#39;s name");
     expect(html).toContain("<div inert>");
@@ -604,7 +620,7 @@ describe("the couple", () => {
     // removing asks in a modal too -- a modal is new or delete and nothing else (rule 14)
     write(ws, "session", [{ op: "replace", path: "/page", value: `courses?confirm=courses/${pudding.id}` }]);
     await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    html = (await expectMessage(ws, "render")).page;
     expect(html).toContain(`Remove &quot;Pudding&quot; from the list?`);
     write(ws, "board", [{ op: "remove", path: `/courses/${pudding.id}` }]);
     await expectMessage(ws, "patch");
@@ -613,10 +629,10 @@ describe("the couple", () => {
     // a stale or nonsense confirm target renders no modal at all
     write(ws, "session", [{ op: "replace", path: "/page", value: "courses?confirm=courses/999999" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).not.toContain('class="modal"');
+    expect((await expectMessage(ws, "render")).page).not.toContain('class="modal"');
     write(ws, "session", [{ op: "replace", path: "/page", value: "courses?confirm=nope/1" }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).not.toContain('class="modal"');
+    expect((await expectMessage(ws, "render")).page).not.toContain('class="modal"');
     ws.close();
   });
 
@@ -637,7 +653,7 @@ describe("the couple", () => {
     await expectMessage(ws, "render");
     write(ws, "session", [{ op: "replace", path: "/filter/households", value: matching.code }]);
     await expectMessage(ws, "patch");
-    let html = (await expectMessage(ws, "render")).html;
+    let html = (await expectMessage(ws, "render")).page;
     expect(html).toContain('class="filter"');
     expect(html).toContain(`&quot;hushed&quot;:true`);
     expect(html).toContain(`>1 of ${households.length}</span>`);
@@ -647,7 +663,7 @@ describe("the couple", () => {
     householdDoc.patch(other.code, [{ op: "add", path: "/asks/-", value: "Someone Else" }], "setup");
     write(ws, "session", [{ op: "replace", path: "/reading/households", value: "list" }]);
     await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    html = (await expectMessage(ws, "render")).page;
     expect(html).toContain(`class="row tap hushed" id="household-${other.id}"`);
     expect(html).toContain(`class="row tap" id="household-${matching.id}"`); // the matching household, not hushed
     expect(html).toContain("1 ask waiting"); // its waiting ask rides on its row as a note, not a row of its own
@@ -664,7 +680,7 @@ describe("the couple", () => {
     const giftName = boardDoc.read("DASH")!.gifts[0]!.name;
     write(ws, "session", [{ op: "replace", path: "/filter/gifts", value: giftName }]);
     await expectMessage(ws, "patch");
-    html = (await expectMessage(ws, "render")).html;
+    html = (await expectMessage(ws, "render")).page;
     expect(html).toContain('class="filter"');
     expect(html).toContain('class="row tap hushed"');
     expect(html).toContain(`>1 of ${boardDoc.read("DASH")!.gifts.length}</span>`);
@@ -679,12 +695,12 @@ describe("the couple", () => {
     boardDoc.patch("DASH", [{ op: "replace", path: `/households/${hid}/asks/${ask.id}/reply`, value: "no" }], "setup");
     write(ws, "session", [{ op: "replace", path: "/page", value: `households/${hid}/guests` }, { op: "replace", path: `/reading/family-${hid}`, value: "list" }]);
     await expectMessage(ws, "patch");
-    const list = (await expectMessage(ws, "render")).html;
+    const list = (await expectMessage(ws, "render")).page;
     expect(list).toContain('>coming</span>');
     expect(list).toContain('>not said</span>');
     write(ws, "session", [{ op: "replace", path: "/page", value: `households/${hid}/asks` }]);
     await expectMessage(ws, "patch");
-    const asks = (await expectMessage(ws, "render")).html;
+    const asks = (await expectMessage(ws, "render")).page;
     expect(asks).toContain("Answered");
     expect(asks).toContain('class="answer-word no"');
     expect(asks).toContain(">Waiting</span>"); // the waiting ask's row carries the couple's yes or no
@@ -706,12 +722,12 @@ describe("the couple", () => {
     const ws = await enter(crowd.code);
     write(ws, "session", [{ op: "replace", path: "/page", value: "everyone" }]);
     await expectMessage(ws, "patch");
-    const families = (await expectMessage(ws, "render")).html;
+    const families = (await expectMessage(ws, "render")).page;
     expect(families).toContain("Tap a family to see them");
     expect(families).toContain("&quot;count&quot;:17");
     write(ws, "session", [{ op: "replace", path: "/page", value: `everyone/${crowd.id}` }]);
     await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).html).toContain("One family, 17 of them.");
+    expect((await expectMessage(ws, "render")).page).toContain("One family, 17 of them.");
     ws.close();
     write(couple, "ledger", [{ op: "remove", path: "/latest" }]); // the crowd goes home
     await expectMessage(couple, "patch");
@@ -726,7 +742,7 @@ describe("the couple", () => {
     await expectMessage(household, "patch");
     await expectMessage(household, "render");
     await expectMessage(couple, "patch");
-    expect((await expectMessage(couple, "render")).html).toMatch(/\d+ asks? waiting/);
+    expect((await expectMessage(couple, "render")).page).toMatch(/\d+ asks? waiting/);
     const ask = householdDoc.read(code)!.asks[0]!;
 
     write(household, "board", [{ op: "replace", path: `/households/${hid}/asks/${ask.id}/reply`, value: "yes" }]);
@@ -736,7 +752,7 @@ describe("the couple", () => {
     write(couple, "board", [{ op: "replace", path: `/households/${hid}/asks/${ask.id}/reply`, value: "yes" }]);
     expect(await expectMessage(couple, "patch")).toMatchObject({ doc: "board:DASH" });
     await expectMessage(couple, "render");
-    expect((await expectMessage(household, "render")).html).toContain("Friend");
+    expect((await expectMessage(household, "render")).page).toContain("Friend");
     expect(householdDoc.read(code)!.guests.map((g) => g.name)).toContain("Friend");
 
     write(couple, "ledger", [{ op: "remove", path: "/latest" }]);
@@ -774,7 +790,7 @@ describe("the couple", () => {
     write(couple, "ledger", [{ op: "remove", path: "/latest" }]);
     await expectMessage(couple, "patch");
     await expectMessage(couple, "render");
-    expect((await expectMessage(tab, "render")).html).toContain("at-welcome");
+    expect((await expectMessage(tab, "render")).page).toContain("at-welcome");
     couple.close();
     tab.close();
   });

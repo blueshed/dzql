@@ -7,6 +7,7 @@ import { allOpenSockets, audienceFor, notify } from "../../../src/compartments/a
 import { renderRequested } from "../../../src/compartments/render";
 import { esc } from "../../../src/html";
 import { reading } from "../../../src/reading";
+import { part } from "../../../src/parts";
 import { sessionPatched } from "./session";
 
 // Who is in a room, as a document of its own: `here:<room>`, the names of everyone connected to
@@ -19,9 +20,9 @@ import { sessionPatched } from "./session";
 /** The first letter of a name, as the face it wears. */
 export const face = (name: string, me: boolean): string => `<span class="face${me ? " me" : ""}" aria-hidden="true">${esc(name.charAt(0).toUpperCase())}</span>`;
 
-/** Who is here, across the head of the conversation; redrawn alone when someone arrives or leaves. */
+/** Who is here, across the head of the conversation: a part, sent alone when someone arrives or leaves. */
 export function renderPeople(people: string[], me: string): string {
-  return `<div id="people" class="people" aria-label="Here">${people.map((p) => `<span class="who">${face(p, p === me)}<span class="note">${esc(p)}</span></span>`).join("")}</div>`;
+  return part("people", `<div id="people" class="people" aria-label="Here">${people.map((p) => `<span class="who">${face(p, p === me)}<span class="note">${esc(p)}</span></span>`).join("")}</div>`);
 }
 
 /**
@@ -93,12 +94,6 @@ export const here: Compartment = {
   // Nobody writes who is here; it follows the session and the sockets.
   permit: () => false,
   write: () => ({ version: 0, applied: [] }),
-  // Someone came or went: the strip of who is here, and nothing else on the page.
-  fragments(ws, room) {
-    const { name, room: current } = sessionDoc.read(ws.data.sessionId);
-    if (!name || current !== room) return undefined;
-    return [{ op: "replace", target: "#people", html: renderPeople(peopleIn(room), name) }];
-  },
   onOpen(ws) {
     const { name, room } = sessionDoc.read(ws.data.sessionId);
     if (room && name) announceJoin(room, ws, name);

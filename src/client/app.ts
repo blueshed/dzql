@@ -179,26 +179,27 @@ function render(html: string) {
   }
 }
 
-// A fragment render: the delta in HTML's terms (see src/compartments/render.ts). Each op names an
-// element by selector; a target the page no longer has is skipped -- the next full render puts
-// things right, as it would after a reconnect.
+// The page in parts: what changed since the last drawing, in HTML's terms (src/parts.ts). Each op
+// names a part; a target the page no longer has is skipped -- the next full render puts things
+// right, as it would after a reconnect. Afterwards, the same care as a whole render.
 function applyFragments(ops: HtmlOp[]) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
+  const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
 
   for (const op of ops) {
     const target = app.querySelector(op.target);
     if (!target) continue;
     if (op.op === "replace") {
       morphElement(target, op.html, hooks);
-    } else if (op.op === "add") {
-      const holder = document.createElement("template");
-      holder.innerHTML = op.html;
-      target.append(holder.content);
-    } else {
+    } else if (op.op === "remove") {
       removeNode(target, hooks);
+    } else {
+      target.insertAdjacentHTML(op.op === "after" ? "afterend" : "beforebegin", op.html);
     }
   }
   settle(before);
+  syncPage();
+  revealChanged(previousReveal);
 }
 
 // After any render, full or fragment: mount what appeared, give the caret to a field that is
