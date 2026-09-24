@@ -10,6 +10,8 @@ import { closeConnection, openConnection, wireName } from "./compartments/audien
 import { read } from "./documents";
 import { part } from "./parts";
 import { createServer } from "./server";
+import { assemble, type Inspection } from "./compartments";
+import { onFailure } from "./failed";
 
 // A tiny, self-contained example -- not chat, not anything under the examples directory -- so
 // this file proves the kernel on its own: a note per session (its own document), and months of
@@ -41,6 +43,9 @@ const noteCompartment: Compartment = {
   at: "/notes",
   resolveDoc(ws) {
     return ws.data.sessionId;
+  },
+  onOpen(ws) {
+    if (ws.data.sessionId === "opens-badly") throw new Error("an open that fails");
   },
   permit(_ws, op) {
     return op.path === "/text" && op.op === "replace";
@@ -210,7 +215,7 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
-  test("an event whose handling fails is logged, and the events after it are still handled", async () => {
+  test("a write whose handling fails is logged and handed back, and the events after it are still handled", async () => {
     const ws = connect(server);
     await opened(ws);
     await expectMessage(ws, "render");
@@ -220,6 +225,7 @@ describe("createServer, generically (no example from the examples directory invo
     try {
       write(ws, "note", [{ op: "replace", path: "/text", value: "boom" }]);
       write(ws, "note", [{ op: "replace", path: "/text", value: "after the boom" }]);
+      expect(htmlOf(await expectMessage(ws, "render"))).not.toContain("boom"); // the page, handed back as it was
       expect((await expectMessage(ws, "patch")).ops).toEqual([{ op: "replace", path: "", value: { text: "after the boom" } }]);
       expect(logged).toHaveLength(1);
       expect(String((logged[0] as unknown[])[1])).toContain("boom");
@@ -275,6 +281,70 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
+  test("an open that fails is reported, and the page is drawn all the same", async () => {
+    const failures: string[] = [];
+    const stop = onFailure((what, err) => void failures.push(`${what}: ${(err as Error).message}`));
+    try {
+      const ws = connect(server, "opens-badly");
+      await opened(ws);
+      expect(htmlOf(await expectMessage(ws, "render"))).toContain('<p class="note">');
+      expect(failures).toEqual(["handling an event: an open that fails"]);
+      ws.close();
+    } finally {
+      stop();
+    }
+  });
+
+  test("a message that is not a write is refused as one: the page handed back, nothing failing, nothing written", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const failures: string[] = [];
+    const stop = onFailure((what) => void failures.push(what));
+    try {
+      for (const raw of [
+        "not json",
+        "7",
+        "null",
+        JSON.stringify({ doc: 7, ops: [{ op: "replace", path: "/text", value: "x" }] }),
+        JSON.stringify({ doc: "note", ops: "boom" }),
+        JSON.stringify({ doc: "note", ops: [] }),
+        JSON.stringify({ doc: "note", ops: [null] }),
+        JSON.stringify({ doc: "note", ops: [{ op: "move", path: "/text" }] }),
+        JSON.stringify({ doc: "note", ops: [{ op: "replace", path: "text", value: "x" }] }),
+        JSON.stringify({ doc: "note", ops: [{ op: "replace", path: 7, value: "x" }] }),
+      ]) {
+        ws.send(raw);
+        expect(htmlOf(await expectMessage(ws, "render"))).toContain('<p class="note">');
+      }
+    } finally {
+      stop();
+    }
+    expect(failures).toEqual([]);
+    ws.close();
+  });
+
+  test("inspect gives at most a hundred entries a document, however many it asks for", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    for (let i = 0; i <= 100; i++) {
+      write(ws, "note", [{ op: "replace", path: "/text", value: `note ${i}` }]);
+      await expectMessage(ws, "patch");
+      await expectMessage(ws, "render");
+    }
+    const entries = async (limit: unknown): Promise<number> => {
+      ws.send(JSON.stringify({ type: "inspect", limit }));
+      const answer = (await expectMessage(ws, "inspect")) as unknown as Inspection;
+      return answer.docs.find((d) => d.doc === "note")!.entries.length;
+    };
+    expect(await entries(1e9)).toBe(100);
+    expect(await entries(-5)).toBe(1);
+    expect(await entries("lots")).toBe(1); // not a count: the default, the latest
+    expect(await entries(3)).toBe(3);
+    ws.close();
+  });
+
   test("an unpermitted op is rejected without crashing: no patch echo, just a re-render", async () => {
     const ws = connect(server);
     await opened(ws);
@@ -295,6 +365,13 @@ describe("createServer's one-example-per-process invariant", () => {
     } finally {
       first.stop(true);
     }
+  });
+
+  test("two compartments owning one document type throw, the kernel's ledger among them", () => {
+    const twice = { ...makeExample("twice"), compartments: [noteCompartment, noteCompartment] };
+    expect(() => assemble(twice)).toThrow('twice: two compartments own "note"');
+    const ledgered = { ...makeExample("ledgered"), compartments: [{ ...noteCompartment, docType: "ledger" }] };
+    expect(() => assemble(ledgered)).toThrow(`ledgered: two compartments own "ledger" (the kernel's own ledger)`);
   });
 
   test("calling it again with the very same example object does not throw", () => {

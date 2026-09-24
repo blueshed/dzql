@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { waitFor } from "../webview";
 import fixture from "./app.test.html";
 
 let server: ReturnType<typeof Bun.serve>;
@@ -25,21 +26,6 @@ afterAll(() => {
   server.stop(true);
 });
 
-async function waitFor(
-  view: Bun.WebView,
-  script: string,
-  predicate: (value: unknown) => boolean,
-  timeout = 5000,
-): Promise<unknown> {
-  const start = Date.now();
-  let last: unknown;
-  while (Date.now() - start < timeout) {
-    last = await view.evaluate(script);
-    if (predicate(last)) return last;
-    await Bun.sleep(20);
-  }
-  throw new Error(`Timed out waiting for \`${script}\`; last value: ${JSON.stringify(last)}`);
-}
 
 /** Opens a fresh view on the fixture and waits for app.ts's socket to be open. */
 async function open(): Promise<Bun.WebView> {
@@ -65,6 +51,12 @@ async function pushRender(view: Bun.WebView, html: string): Promise<void> {
   await view.evaluate(
     `window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(payload)} }))`,
   );
+}
+
+/** Simulates the server sending any message -- a patch, a render in parts -- on app.ts's own socket. */
+async function push(view: Bun.WebView, message: unknown): Promise<void> {
+  const payload = JSON.stringify(message);
+  await view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(payload)} }))`);
 }
 
 describe("app.ts in a real browser, with a stubbed socket", () => {
@@ -281,5 +273,111 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
       doc: "session",
       ops: [{ op: "replace", path: "/filter/guests", value: "xyz" }],
     });
+  });
+  test("waitFor says what it waited for, and the last value it saw, when the wait runs out", async () => {
+    await using view = await open();
+    expect(waitFor(view, `1 + 1`, (v) => v === 3, 60)).rejects.toThrow("Timed out waiting for `1 + 1`; last value: 2");
+  });
+
+  test("after an undo, a field nobody is in shows the value undone to, and leaving another field sends nothing again", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const form = (message: string, note: string) =>
+      `<form data-write-on="blur" id="f">
+        <input id="msg" value="${message}" data-write='{"doc":"household","op":"replace","path":"/message"}'>
+        <textarea id="note" data-write='{"doc":"household","op":"replace","path":"/note"}'>${note}</textarea>
+        <input id="other" value="x" data-write='{"doc":"household","op":"replace","path":"/other"}'>
+      </form><button id="elsewhere">elsewhere</button>`;
+    await pushRender(view, form("Hello", "Soon"));
+    await waitFor(view, `document.getElementById('msg') !== null`, (v) => v === true);
+
+    await view.click("#msg");
+    await view.type("Hi");
+    await view.click("#note");
+    await view.type("er");
+    await view.click("#other"); // leaving each field sends it
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await pushRender(view, form("HelloHi", "Sooner")); // the writes, echoed and drawn
+    await pushRender(view, form("Hello", "Soon")); // then undone, and drawn again
+
+    expect(await view.evaluate<string>(`document.getElementById('msg').value`)).toBe("Hello");
+    expect(await view.evaluate<string>(`document.getElementById('note').value`)).toBe("Soon");
+    await view.click("#elsewhere"); // leaving the untouched field
+    await Bun.sleep(50);
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(2); // the undone values are not sent again
+
+    // a field someone is in keeps what they are typing, whatever the render says
+    await view.click("#msg");
+    await view.type("!");
+    await pushRender(view, form("Hola", "Soon"));
+    expect(await view.evaluate<string>(`document.getElementById('msg').value`)).toBe("Hello!");
+  });
+
+  test("a render in parts never reaches inside an applet; the applet's own element may still be a part", async () => {
+    await using view = await open();
+    await pushRender(view, `<div data-applet="unregistered" data-eta-part="a" class="one"><ul data-eta-part="inside"><li>drawn by the applet</li></ul></div>`);
+    await waitFor(view, `document.querySelector('[data-eta-part="a"]') !== null`, (v) => v === true);
+    await push(view, {
+      type: "render",
+      ops: [
+        { op: "replace", target: '[data-eta-part="inside"]', html: `<ul data-eta-part="inside"><li>the server's</li></ul>` },
+        { op: "after", target: '[data-eta-part="inside"]', html: `<p>more</p>` },
+        { op: "tag", target: '[data-eta-part="a"]', html: `<div data-applet="unregistered" data-eta-part="a" class="two">` },
+      ],
+    });
+    await waitFor(view, `document.querySelector('[data-eta-part="a"]').className`, (v) => v === "two");
+    expect(await view.evaluate<string>(`document.querySelector('[data-eta-part="a"]').textContent`)).toBe("drawn by the applet");
+  });
+
+  test("a connection that drops leaves the page as it was, inert and marked, until it is back", async () => {
+    await using view = await open();
+    await pushRender(view, `<form><input id="say" name="text"></form>`);
+    await waitFor(view, `document.getElementById('say') !== null`, (v) => v === true);
+    await view.click("#say");
+    await view.type("half typ");
+
+    await view.evaluate(`window.eta.socket().close()`);
+    await waitFor(view, `document.getElementById('app').hasAttribute('data-offline')`, (v) => v === true, 1000);
+    expect(await view.evaluate<boolean>(`document.getElementById('app').inert`)).toBe(true);
+    expect(await view.evaluate<string>(`document.getElementById('say').value`)).toBe("half typ");
+
+    await waitFor(view, `window.eta.socket().readyState === 1`, (v) => v === true, 3000); // back, after the backoff
+    expect(await view.evaluate<boolean>(`document.getElementById('app').inert || document.getElementById('app').hasAttribute('data-offline')`)).toBe(false);
+    expect(await view.evaluate<string>(`document.getElementById('say').value`)).toBe("half typ");
+  });
+
+  test("a form clears as it sends: what is typed while the write is on its way is kept, whoever's echo comes", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const room = `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>`;
+    await pushRender(view, room);
+    await waitFor(view, `document.getElementById('text') !== null`, (v) => v === true);
+    await view.click("#text");
+    await view.type("first");
+    await view.press("Enter");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<string>(`document.getElementById('text').value`)).toBe("");
+
+    await view.type("second"); // before the first is echoed
+    await push(view, { type: "patch", doc: "room:general", version: 3, ops: [{ op: "add", path: "/messages/a1", value: { name: "Ada", text: "first" } }] });
+    await push(view, { type: "render", ops: [{ op: "replace", target: "#say", html: room }] });
+    expect(await view.evaluate<string>(`document.getElementById('text').value`)).toBe("second");
+  });
+
+  test("a refused write keeps what is typed after it: the page handed back ends the wait, so nobody's echo clears the field", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const room = `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>`;
+    await pushRender(view, room);
+    await waitFor(view, `document.getElementById('text') !== null`, (v) => v === true);
+    await view.click("#text");
+    await view.type("  ");
+    await view.press("Enter");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    await pushRender(view, room); // refused: the page, handed back
+
+    await view.type("hello, I was just say");
+    await push(view, { type: "patch", doc: "room:general", version: 9, ops: [{ op: "add", path: "/messages/b1", value: { name: "Bob", text: "hi all" } }] });
+    expect(await view.evaluate<string>(`document.getElementById('text').value`)).toBe("  hello, I was just say");
   });
 });

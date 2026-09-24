@@ -11,7 +11,7 @@ documents, patches and HTML that a person can read.
 
 ## Try it
 
-You need Bun. `bun install` brings `@blueshed/delta` 0.6.0 from npm.
+You need Bun. `bun install` brings `@blueshed/delta` and `@blueshed/railroad` from npm.
 
 ```
 bun install
@@ -36,25 +36,28 @@ That is chat, the smallest example. Two more, and a mock-up:
 `ETA_EXAMPLE=<name>` picks the example for `bun run dev`, `start`, `stories` and `cli` (default
 `chat`); `dev:wedding`, `dev:ticker` and `stories:all` set it themselves. The CLI also needs
 `ETA_URL` for the server it talks to (default `ws://localhost:3000`). `.env.example` explains every
-setting, among them `ETA_URL`, `TICK_MS` and `CLOCK_TZ` (the ticker) and `REVEAL` (the
-wedding).
+setting, `TICK_MS` and `CLOCK_TZ` (the ticker) and `REVEAL` (the wedding) among them.
 
 ## What it pairs with
 
 - **[@blueshed/delta](https://www.npmjs.com/package/@blueshed/delta)** keeps the documents, their ledger and their one stream
   of changes. eta owns people and pages; delta owns the data. An example's `delta.ts` says which
   tables it has and which documents are cut from them.
-- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** can draw an applet, the part of a page that keeps
-  state of its own in the browser. No example uses it today; an example may, and eta does not
-  depend on it.
+- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** draws an island: an
+  applet, the part of a page that keeps state of its own in the browser, written as a railroad
+  component (`island()`, `src/island.ts`). The ticker's city picker is one. The kernel's client
+  does not import it; a page with an island carries railroad too (about 2 KB gzipped for
+  `signal` and `mount`, 4 KB with `list`).
 
 ## Why eta
 
 - **Undo and redo.** A write to a document on delta's ledger is a patch recorded with its
-  inverse. Undo walks your own writes back, even while others keep writing.
+  inverse. Undo walks your own writes back, newest first, even while others keep writing -- but
+  it puts back a row as your write found it, over anything written to that row since (delta
+  0.6.0 applies the inverse unguarded), and it does not ask the permit again.
 - **Stories are the tests.** An example is a list of sentences -- who does what, and who then
   sees it -- and `bun run stories` checks each one over real sockets, with its undo and redo.
-- **A small client.** The kernel's client is about 2.7 KB minified and gzipped: a morph, the write
+- **A small client.** The kernel's client is about 2.9 KB minified and gzipped: a morph, the write
   gestures and an applet registry. There is no framework to learn.
 - **Nothing else to run.** Bun and SQLite, one process, one file.
 - **A readable wire.** `bun run cli watch` prints every patch as it happens; `bun run cli undo`
@@ -78,15 +81,12 @@ changed. Each example measures this with a script
 - **The ticker**, one price tick: a 186 B patch to each viewer, and no HTML. The same tick as a
   bare JSON feed would be 41 B.
 
-Up to 0.23.0 every write sent the whole page: 7.4 KB to each member for one chat message, 8.9 KB
-to the couple for the wedding's green top. `CHANGELOG.md` has the steps between.
-
 ## Commands
 
 ```
 bun run dev          # chat, watching for changes (dev:wedding, dev:ticker too)
 bun run start        # detached, in production mode; bun run stop stops it
-bun test             # the tests; below 100% coverage the run fails
+bun test             # the tests
 bun run check        # the type check
 bun run stories      # one example's stories; stories:all runs every example's
 bun run cli <verb>   # a terminal client: inspect, watch, undo, redo, write, and the example's own

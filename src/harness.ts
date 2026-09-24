@@ -5,6 +5,7 @@ import { createServer } from "./server";
 import type { Stories, Story, Write } from "./stories";
 import { applyPatch, type PatchOp } from "./json-patch";
 import { settled } from "./documents";
+import { onFailure } from "./failed";
 import { comparable, splitTag } from "./parts";
 
 export { comparable };
@@ -17,8 +18,12 @@ export { comparable };
 // only the page they are on. Then the story is undone and redone as its author, and the pages
 // must go back and forth with it; a write the ledger calls a fact (undoable = 0) must survive its
 // undo instead, and an author the example no longer counts as active (logged out) gets no undo.
-// A `cannot` must change no page and add nothing to the ledger. Each story runs inside one
-// database transaction that is rolled back afterwards, so every story starts from the cast alone.
+// A `cannot` must change no page, add nothing to the ledger, and be answered: a refusal hands the
+// writer's page back. Delivery is checked as well as pages: a member the story says is `unseen`
+// must be told of no document -- no patch -- by the write, its undo or its redo, and anything the
+// kernel reports failing while a story runs (a message, a drawing, a change being told) fails the
+// story. Each story runs inside one database transaction that is rolled back afterwards, so every
+// story starts from the cast alone.
 //
 // Canon 2 is checked here too, without a browser: every member's open page is kept as the client
 // would keep it -- a full render replaces it, a fragment render is applied target by target -- and
@@ -157,6 +162,9 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   const ledger = ledgerOf();
   const ledgerMax = ledger.max;
   const outcomes: Outcome[] = [];
+  // what the kernel reports failing goes to the story being told
+  let failing: string[] | undefined;
+  const hearFailures = onFailure((what, err) => failing?.push(`the server failed ${what}: ${err instanceof Error ? err.message : String(err)}`));
 
   async function snapshot(cast: Member[]): Promise<Snapshot> {
     return new Map(await Promise.all(cast.map(async (m) => [m.name, await draw(m.sessionId)] as const)));
@@ -201,6 +209,21 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     await settle(cast);
   }
 
+  /** Where each member's inbox stands now, to ask later what they were sent since. */
+  const mark = (cast: Member[]): Map<Member, number> => new Map(cast.map((m) => [m, m.inbox.length]));
+
+  /** What `m` has been sent since `from`, parsed. */
+  const sentSince = (m: Member, from: Map<Member, number>): Heard[] => m.inbox.slice(from.get(m)).map((raw) => JSON.parse(raw) as Heard);
+
+  /** An `unseen` member is told of nothing: sent no document's ops. */
+  function untold(cast: Member[], unseen: string[] | undefined, from: Map<Member, number>, when: string, failures: string[]): void {
+    for (const m of cast) {
+      if (!unseen?.includes(m.name)) continue;
+      const docs = new Set(sentSince(m, from).filter((h) => h.type === "patch").map((h) => h.doc));
+      for (const doc of docs) failures.push(`${when}, ${m.name} was told of ${doc}, and should not have been`);
+    }
+  }
+
   function differs(a: Snapshot, b: Snapshot, name: string): boolean {
     return a.get(name) !== b.get(name);
   }
@@ -209,12 +232,12 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     for (const m of cast) if (differs(a, b, m.name)) failures.push(`${what}: ${m.name}'s page differs${excerpt(a.get(m.name)!, b.get(m.name)!)}`);
   }
 
-  /** Canon 2: what each member's open page holds must be what a fresh render shows. */
   /** The patch stream: what each member's applets hold must be what a fresh render gives them. */
   async function held(cast: Member[], when: string, failures: string[]): Promise<void> {
     for (const m of cast) failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, await draw(m.sessionId)));
   }
 
+  /** Canon 2: what each member's open page holds must be what a fresh render shows. */
   async function stale(cast: Member[], when: string, failures: string[]): Promise<void> {
     await held(cast, when, failures);
     for (const m of cast) {
@@ -226,6 +249,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
 
   async function tell(story: Story): Promise<Outcome> {
     const failures: string[] = [];
+    failing = failures;
     db.exec("BEGIN");
     const cast: Member[] = [];
     try {
@@ -239,7 +263,9 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       if ("cannot" in story) {
         const before = await snapshot(cast);
         const ledgerBefore = ledgerMax();
+        const from = mark(cast);
         await send(cast, who, story.cannot);
+        if (!sentSince(who, from).some((h) => h.type === "render")) failures.push(`refused, but ${who.name} was not answered: a refusal hands the page back`);
         compare(before, await snapshot(cast), cast, "refused, but", failures);
         await stale(cast, "after the refusal", failures);
         if (ledgerMax() !== ledgerBefore) failures.push("refused, but the ledger moved");
@@ -257,9 +283,10 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
 
       const before = await snapshot(cast);
       const ledgerBefore = ledgerMax();
-      who.inbox.length = 0;
+      let from = mark(cast);
       await send(cast, who, story.does);
-      if (process.env.STORY_TRACE) for (const raw of who.inbox) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
+      if (process.env.STORY_TRACE) for (const raw of who.inbox.slice(from.get(who))) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
+      untold(cast, story.unseen, from, "after the story", failures);
       const after = await snapshot(cast);
       const entries = ledger.since(ledgerBefore);
       await stale(cast, "after the story", failures);
@@ -276,16 +303,20 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       if (!(await active(who.sessionId))) return { name: story.name, failures }; // the author has gone (logged out): no undo is theirs to press
 
       const facts = entries.every((e) => e.undoable === 0);
+      from = mark(cast);
       await send(cast, who, UNDO);
       const afterUndo = await snapshot(cast);
       await stale(cast, "after undo", failures);
+      untold(cast, story.unseen, from, "after undo", failures);
       if (facts) compare(after, afterUndo, cast, "a fact, yet undo changed it", failures);
       else {
         compare(before, afterUndo, cast, "undo did not restore", failures);
         if (!(await active(who.sessionId))) return { name: story.name, failures }; // the undo was their going (a name taken back): no redo is theirs to press
+        from = mark(cast);
         await send(cast, who, REDO);
         compare(after, await snapshot(cast), cast, "redo did not restore", failures);
         await stale(cast, "after redo", failures);
+        untold(cast, story.unseen, from, "after redo", failures);
       }
       return { name: story.name, failures };
     } finally {
@@ -294,6 +325,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       await server.idle(); // every close handled, and what it set going
       db.exec("ROLLBACK");
       await documents.release(new Set()); // the next story reads from the rolled-back database
+      failing = undefined;
     }
   }
 
@@ -301,6 +333,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     const only = process.env.STORY; // run only the stories whose name contains this
     for (const story of stories.stories) if (!only || story.name.includes(only)) outcomes.push(await tell(story));
   } finally {
+    hearFailures();
     server.stop(true);
   }
   const failed = outcomes.filter((o) => o.failures.length > 0).length;

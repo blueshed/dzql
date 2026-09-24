@@ -7,6 +7,107 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking (for example authors)
+
+- **The stories check delivery, not only pages.** A story that passed may now fail, by name:
+  - an `unseen` member told of any document -- sent a patch -- by the write, its undo or its redo
+    (`cy was told of room:general, and should not have been`);
+  - a `cannot` whose writer is not answered with the page (`refused, but ada was not answered`);
+  - anything the kernel reports failing while the story runs (`the server failed handling a
+    write: …`), so a refusal that is really a throw is no longer a refusal.
+
+  To move across: a page is told every change to each document it reads, shown or not, so a page
+  that reads a document it does not show leaks it by patch. Read only what the page shows, or cut
+  the document by who reads it.
+- **`audienceFor(docType, docId)` takes no third argument.** Its `exclude` was passed by nobody.
+  To move across: filter the socket out of what it returns.
+- **A document kept off the ledger says so: `Compartment.ledger: false`.** A write whose ledger
+  entry disagrees with its compartment is reported as a failure: one registered in delta without
+  `{ ledger: true }` whose compartment does not say `ledger: false` (no undo could ever work), and
+  one that says it and is recorded all the same. To move across: add `ledger: false` to the
+  compartment of each document you register without a ledger, as the ticker's desk and the
+  wedding's session now do.
+
+### Added
+
+- **Islands: an applet written as a railroad component** (`island(render, reduce?)`,
+  `src/island.ts`). eta depends on `@blueshed/railroad` `^0.12.0`, and the tsconfig says
+  `jsx: "react-jsx"`, `jsxImportSource: "@blueshed/railroad"`. `render(props, ctx, el)` gets its
+  props as a signal and reads what the server drew inside `el` before it is replaced; `update` sets
+  the props, and `reduce(props, ops)`, when given, is the applet's `patch`. Built on railroad's
+  `signal` and `mount` alone; it draws only inside its element and never binds that element's
+  attributes, which stay the morph's. The kernel's client does not import it: a page with an
+  island carries railroad (about 2 KB gzipped for `signal` and `mount`, 4 KB with `list`).
+- **`failed(what, err)` and `onFailure(fn)`** (`src/failed.ts`): every failure the kernel catches
+  -- a message, a drawing, a change being told -- is logged in one place and heard by whoever
+  listens. The stories harness listens.
+
+### Changed
+
+- **The ticker's city picker is an island** (`examples/ticker/applets/city-picker-applet.tsx`):
+  93 lines of hand-built DOM, listeners and highlight bookkeeping became 61 (49 of code, from 79),
+  its suggestions a keyed `list()` over a computed. It still reads the zones from the server's
+  `<option>`s. The ticker's page grows from 5.3 KB to 9.2 KB gzipped, railroad's `list` most of
+  it. The board (whose flash needs each row drawn afresh), the clock (a frame loop) and the
+  wedding's applets (drawn by pure, tested functions) stay as they are.
+- **The README and the eta-app reference say what undo does on delta 0.6.0**: it puts a row back
+  as the write found it, over what anyone wrote to it since; no compartment is asked again, so a
+  deadline does not hold against it; and an undo whose inverse no longer applies sticks. The
+  wedding's server tests pin all three as `test.failing`, so bun says when delta fixes one.
+- **One set of open sockets.** The server kept its own beside `src/compartments/audience.ts`'s;
+  it reads that one (`allOpenSockets()`). `Assembled.renderFor` and `Documents.held`, which only a
+  test read, are gone.
+
+### Fixed
+
+- **A message that is not a write, or a write whose handling throws, is answered.** A write must
+  name its document (a string) and carry one op or more, each `add`, `replace` or `remove` with a
+  JSON Pointer path (`""` or starting `/`); anything else -- not JSON, `ops` not a list, a `null`
+  op, a path without its slash -- is refused like any refusal: the writer's page handed back.
+  Before, each of those threw inside the server, was logged, and the writer heard nothing. A write
+  whose `permit`, `shape` or `wrote` throws is reported (`failed`) and handed back too.
+- **After an undo, a field shows the value undone to** (`src/client/morph.ts`). Once typed in, a
+  field's value no longer follows its `value` attribute (nor a textarea's its text), so it went on
+  showing the undone value, and an editing form (`data-write-on`), comparing it with what was
+  rendered, sent it again on the next blur -- reverting the undo. A render that changes a field
+  nobody is in now sets what it shows; a field someone is in keeps what they type.
+- **A render in parts never reaches inside an applet** (`src/client/app.ts`). Its targets were
+  found anywhere in the page, so a part inside an applet's element was replaced, or had rows put
+  beside it, over what the applet drew. The applet's own element may still be a part.
+- **A dropped connection leaves the page as it was** (`src/client/app.ts`, `src/bento.css`).
+  It was replaced by "Disconnected. Reconnecting…", which threw away what was half typed and
+  unmounted every applet (the ticker's sparkline histories, a half-dressed figure). Now `#app` is
+  made `inert` and marked `data-offline` -- the bento dims it and says "Reconnecting…" -- until
+  the socket is open again and the server draws the page.
+- **A form clears as it sends, and a refused write hands back what was sent** (`src/client/app.ts`).
+  A form waited for the echo of a write to its document to reset. So a refused write left it
+  waiting, and the next echo of anyone's write there cleared what had been typed since; and what
+  a quick typist typed before their own echo came was appended to the sent text, then wiped by
+  the echo (chat's browser test, fifteen messages in a row, lost and merged several). Now the form
+  is cleared on submit; the page whole before the echo -- a refusal's answer -- puts the sent
+  values back into each field not typed in since. No echo, anyone's, clears a field.
+- **A page is drawn even when a compartment's `onOpen` fails.** The failure stopped the event
+  before the first drawing, so the tab sat on "Connecting…"; it is reported, and the page drawn.
+- **`inspect` gives at most 100 entries a document**, however many it asks for: `limit: 1e9` asked
+  delta for a document's whole history, and every event waited on the answer. A limit that is not
+  a whole number is the default (the latest).
+- **`write()` escapes its spec** (`src/html.ts`): the JSON sits in single quotes, and a `'` or `&`
+  in it -- a path built from what someone typed, `/rooms/lobby' onclick='…/topic` -- ended the
+  attribute and began another. Both are escaped now; nothing else in the output changes.
+- **Two compartments owning one document type throw** when the example is assembled, naming the
+  type (the kernel's own `ledger` among them). Before, the last silently won.
+- **The browser tests pass on Chrome** (Linux, the Claude Code sandbox). Every `Bun.WebView` of
+  a process shares one Chrome profile there, and a cookie ignores the port, so each view after a
+  test's first opened already signed in, and waited for ever for the name form: 19 failed. Each
+  view now goes to a host of its own (`view3.localhost`: Chrome takes every `*.localhost` to this
+  machine) through `at(view, server.url, path?)` in `src/webview.ts`; WebKit's views are apart
+  already. The four copies of `waitFor` are that file's one.
+- **`bun run stories` says what to do next for an example with stories and no app.**
+  `ETA_EXAMPLE=londons` failed with `Cannot find module examples/londons/index.ts`; it now
+  says "examples/londons has 149 stories and no app yet (no index.ts): build the least that
+  makes the first one pass", and an example with no `stories.ts` is told it starts there. Both
+  exit 1.
+
 ## [0.47.0] - 2026-09-24
 
 ### Breaking (for example authors)

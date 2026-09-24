@@ -38,6 +38,7 @@ export type Compartment = {
   own?: true;                              // keyed by the session id: that session's alone, named by type
   permit?(ws, op, docId): boolean;         // may it write this path of this document? omitted: nobody may
   kind?: Kind;                             // where its truth lives: written (default), fact, live, sourced, static
+  ledger?: false;                          // kept off the ledger (a visit): said, so one left off by mistake is caught
   at?: string;                             // where eta's paths sit in the document ("/sessions")
   shape?(ws, docId, ops): PatchOp[];       // the wire's ops as the document takes them (a fresh write only)
   changed?(docId, ops): void | Promise<void>;    // after any change to it is told: keep what follows from it true
@@ -122,8 +123,10 @@ An example's documents are delta's. `delta.ts` defines the schema (`defineSchema
 prefixed with the example's name, `chat_`), creates the tables, seeds them when empty, and
 registers the documents on a `createLocal()`: `registerDocs(..., { ledger: true })` for what is
 written and undone, `registerMemory` for what is live. A tray may go in a registry of its own with
-no ledger where a visit is not history (the ticker's desk, the wedding's session); chat's session
-is on the ledger, so undo right after entering a room takes you out of it. A document is a root
+no ledger where a visit is not history (the ticker's desk, the wedding's session), and its
+compartment says `ledger: false`: the kernel reports a write whose ledger entry disagrees with its
+compartment, so a document left off the ledger by mistake (no undo could ever work) is caught.
+Chat's session is on the ledger, so undo right after entering a room takes you out of it. A document is a root
 row and the collections it includes, each a map of rows by id; two documents may include the same
 rows, and delta's fan-out carries a write to every one that holds them. `defineSchema`,
 `defineDoc` and their options (`include`, `implied` for a document that opens empty until its
@@ -152,7 +155,12 @@ want there (numbers for ids, a guest's look as one object), and put the pure rul
 
 **The ledger** is delta's (`delta_ledger`): every write with its inverse, its version, who made it,
 and the cursor undo walks -- the session. The kernel's ledger compartment takes `remove /latest`
-(undo) and `add /latest` (redo) and asks delta to walk the session's cursor.
+(undo) and `add /latest` (redo) and asks delta to walk the session's cursor. Two limits, while
+delta 0.6.0 applies an inverse as recorded (`examples/wedding/server.test.ts` pins both as
+`test.failing`): an undo puts a row back as the write found it, over whatever anyone wrote to it
+since; and no compartment is asked again, so a rule of time or state (the wedding's deadline)
+does not hold against Undo. An undo whose inverse no longer applies (the row is gone) fails, and
+the session's Undo stays on it.
 
 ## The wire
 
@@ -165,6 +173,9 @@ HTML is the only vocabulary. No JSON tree of app state.
 - Client to server: `{doc, ops: [{op, path, value?}]}`. `doc` is a whole name, or a bare type
   meaning the one of that type this connection is on (`resolveDoc`). `path` is a JSON Pointer,
   never a verb.
+  Anything that is not such a write, and a write whose handling throws, is answered as a refusal
+  is: the page whole. A throw is reported through `failed()` (`src/failed.ts`), which fails the
+  story it happened in.
 - Server to client: `{type: "patch", doc, version, ops}`, `doc` named whole (what was applied;
   kept in `window.eta.docs()` under that name), then `{type: "render", html}` (the page) or `{type: "render", ops}`
   (the parts that changed).
@@ -175,13 +186,21 @@ HTML is the only vocabulary. No JSON tree of app state.
 
 An element writes through `data-write='{"doc","op","path"}'`:
 
-- a **form** writes on submit: its one field's value, or a record of several. It resets only when
-  its own write is echoed, so a refused write keeps what was typed;
+- a **form** writes on submit: its one field's value, or a record of several. It clears as it
+  sends, and a refused write -- answered with the page whole, before any echo of the form's
+  document -- hands back what was sent, into each field not typed in since. What is typed while a
+  write is on its way is kept, whoever's echo comes;
 - a **button or row** writes on click, with `data-value` if it has one. A click in a field never
   writes;
 - a form with **`data-write-on="blur"`, `"change"` or `"input"`** edits in place: `data-write` goes
   on each field, and every field whose value differs from what was rendered becomes one op in one
-  message. `"input"` is debounced ~150ms, flushed when focus leaves, and never repeats itself.
+  message. `"input"` is debounced ~150ms, flushed when focus leaves, and never repeats itself. A
+  render that changes a field nobody is in shows the new value (an undo's), so it is not sent
+  again; a field someone is in keeps what they type.
+
+When the connection drops, the page stays as it was -- what is typed, what applets hold -- but
+`inert`, and `#app` is marked `data-offline` (`src/bento.css` dims it and says so) until the
+server, reached again, draws it afresh.
 
 `autofocus` means "this field is waiting for the caret": after a render the client focuses it, but
 only when nothing has the caret. `data-autoscroll` pins a list to its foot when it grows.
@@ -217,7 +236,8 @@ then a modal. A list of five needs no find.
 ## Applets (`src/applets.ts`)
 
 Only for a piece of the page whose client-side state a re-render would destroy. The morph never
-descends into `[data-applet]`.
+descends into `[data-applet]`, and nor does a render in parts: the applet's own element may be a
+part (its tag, its props), nothing inside it.
 
 ```ts
 export type Applet = {
@@ -226,6 +246,17 @@ export type Applet = {
   patch?(el, ops): void;      // the ops of the document named in data-doc, as they are echoed
 };
 ```
+
+**An island** is an applet written as a railroad component (`@blueshed/railroad`): `island(render,
+reduce?)` (`src/island.ts`) returns the `Applet`. `render(props, ctx, el)` gets its props as a
+signal, reads what the server drew inside `el` (the ticker's zones, as `<option>`s) and returns
+what replaces it; `update` sets the props, and `reduce(props, ops)`, when given, is `patch`. It
+draws only inside `el` and never binds `el`'s own attributes -- they are the page's, the morph's to
+keep. Write one where the applet builds and updates DOM by hand (the ticker's city picker); where
+it draws HTML from a pure function that is tested on its own (the wedding's menu and dress), keep
+that. A page with an island carries railroad, and the kernel's client does not (the README says
+what each costs). Its file is `<name>-applet.tsx` (the tsconfig says
+`jsxImportSource: "@blueshed/railroad"`).
 
 Mount point: `<div data-applet="board" data-doc="ticker:market" data-at="/quotes" data-props='{...}'>`,
 the document named as the wire names it. Data reaches an applet as new props on a render

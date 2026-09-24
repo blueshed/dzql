@@ -34,6 +34,13 @@ export type Compartment = {
   permit?(ws: ServerWebSocket<ConnectionData>, op: PatchOp, docId: string): boolean;
   /** What kind of document it is: where its truth lives. Default `written`. */
   kind?: Kind;
+  /**
+   * Its documents are kept off the ledger -- registered in delta without `ledger: true` -- because
+   * a write to one is not history: a visit, the page a tab is on. Undo passes it by. Said here so a
+   * document left off the ledger by mistake is told from one kept off it on purpose: the kernel
+   * reports a write whose ledger entry disagrees with this.
+   */
+  ledger?: false;
   /** Where eta's paths sit within the document (a session's fields at `/sessions`). */
   at?: string;
   /**

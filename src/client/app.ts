@@ -188,7 +188,8 @@ function applyFragments(ops: HtmlOp[]) {
 
   for (const op of ops) {
     const target = app.querySelector(op.target);
-    if (!target) continue;
+    // what is inside an applet is the applet's, as it is to the morph: its own element may be a part, nothing in it
+    if (!target || target.parentElement?.closest("[data-applet]")) continue;
     if (op.op === "replace") {
       morphElement(target, op.html, hooks);
     } else if (op.op === "tag") {
@@ -234,9 +235,10 @@ function send(doc: string, ops: PatchOp[]) {
   socket?.send(JSON.stringify({ doc, ops }));
 }
 
-// A form resets on the echo of its own write, not on submit, so a refused
-// or lost write hands the person's text back instead of silently eating it.
-let pendingReset: { form: HTMLFormElement; doc: string } | undefined;
+// A form clears as it sends, and a refused write hands back what was sent: a refusal is answered
+// with the page whole, before any echo of the form's document. So what someone types while the
+// write is on its way is theirs -- no echo, anyone's, clears it -- and a refusal never eats text.
+let sending: { doc: string; sent: [HTMLInputElement | HTMLTextAreaElement, string][] } | undefined;
 
 // An element says what it writes via data-write; a form's field is the
 // value (or a record of its fields, if it has more than one), a button/li's
@@ -248,8 +250,10 @@ app.addEventListener("submit", (event) => {
   const spec = form.dataset.write;
   if (!spec) return;
   const { doc, op, path } = JSON.parse(spec) as WriteSpec;
-  pendingReset = { form, doc };
+  const fields = [...form.elements].filter((f): f is HTMLInputElement | HTMLTextAreaElement => f instanceof HTMLInputElement || f instanceof HTMLTextAreaElement);
+  sending = { doc, sent: fields.map((f) => [f, f.value]) };
   send(doc, [{ op, path, value: formValue(form) }]);
+  form.reset();
 });
 
 app.addEventListener("click", (event) => {
@@ -364,13 +368,21 @@ function connect() {
   // whenever it happens, should retry promptly rather than inherit an old backoff.
   socket.addEventListener("open", () => {
     reconnectDelay = RECONNECT_DELAY_MS;
+    app.inert = false;
+    delete app.dataset.offline;
   });
 
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
     if (message.type === "render") {
       if (message.ops) applyFragments(message.ops);
-      else render(message.html);
+      else {
+        // the page whole before the echo: the form's write was refused -- what was sent goes back
+        // in each field not typed in since
+        for (const [field, value] of sending?.sent ?? []) if (field.value === field.defaultValue) field.value = value;
+        sending = undefined;
+        render(message.html);
+      }
     } else if (message.type === "patch") {
       recordPatch(message.doc, message.version, message.ops);
       // An applet watching this document takes the ops itself (see Applet.patch): the delta is
@@ -379,15 +391,15 @@ function connect() {
         if (el.dataset.doc === message.doc) applets[el.dataset.applet!]?.patch?.(el, message.ops);
       }
       if (lastSent && isNamed(lastSent.doc, message.doc) && message.ops.length > 0) lastSent.echoed = true;
-      if (pendingReset && isNamed(pendingReset.doc, message.doc) && message.ops.length > 0) {
-        pendingReset.form.reset();
-        pendingReset = undefined;
-      }
+      if (sending && isNamed(sending.doc, message.doc) && message.ops.length > 0) sending = undefined; // it landed
     }
   });
 
+  // The connection gone, the page stays as it is -- what is typed, what applets hold -- but is not
+  // to be used (src/bento.css says so) until the server, reached again, draws it afresh.
   socket.addEventListener("close", () => {
-    render("Disconnected. Reconnecting&hellip;");
+    app.inert = true;
+    app.dataset.offline = "";
     setTimeout(connect, reconnectDelay);
     reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY_MS);
   });

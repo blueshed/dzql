@@ -49,16 +49,16 @@ Everything below is the least that makes it pass.
    `src/db`'s `db`, a seed run into empty tables, and the documents registered on a
    `createLocal()`: `registerDocs(..., { ledger: true })` for what is written and undone,
    `registerMemory` for what is live. A tray may be kept off the ledger, in a registry of its own,
-   where a visit is not history (the ticker's desk, the wedding's session); chat's session is on
-   it. Cut documents by who reads them: a page is told every change to what it read. How to write
+   where a visit is not history (the ticker's desk, the wedding's session), and its compartment
+   then says `ledger: false`; chat's session is on it. Cut documents by who reads them: a page is told every change to what it read. How to write
    `defineSchema` and `defineDoc` (`root`, `include`, `implied`, `temporal`) is delta's own
    `delta-doc` skill (`node_modules/@blueshed/delta/.claude/skills/delta-doc/`).
 3. **`documents/<thing>.ts`** -- `read(id)`, from `read("<docType>:<id>")` in `src/documents.ts`,
    adapting delta's rows into what the views want; and the pure rules a write follows
    (`after(state, ops)`), tested directly.
 4. **`compartments/<thing>.ts`** -- `docType`, `resolveDoc`, `permit`, `own` if its documents are
-   keyed by the session id, `kind` if not `written`, `at` if its fields sit under the root
-   (`/sessions`), and `shape`: the wire's ops as the document takes them (validated, an id minted,
+   keyed by the session id, `kind` if not `written`, `ledger: false` if it is kept off the ledger,
+   `at` if its fields sit under the root (`/sessions`), and `shape`: the wire's ops as the document takes them (validated, an id minted,
    a nested path turned into rows), nothing when nothing applies. `changed` keeps a live document
    true after any change; `wrote` does what follows for the writer alone. The kernel tells every
    change itself: echoed to who sees it, every page that read it drawn again, each sent only the
@@ -68,16 +68,18 @@ Everything below is the least that makes it pass.
    computed whole from the tables in `changed`, written as the difference with `serverWrite`.
 6. **`applets/<name>.ts`** -- only if the vocabulary above says so. Split drawing (`<name>.ts`, pure,
    tested directly) from mounting (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`)
-   when there is drawing worth testing.
+   when there is drawing worth testing. An applet that builds and updates its DOM by hand is
+   better an island: a railroad component made an applet by `island()` (`<name>-applet.tsx`,
+   reference.md "Applets").
 7. **`client/index.html` + `client/main.ts`** -- `main.ts` imports the example's applets, then
    `src/client/app`. The stylesheet imports `src/bento.css` first, then says its own tokens.
 8. **`index.ts`** -- `export const example: Example = { name, compartments, render, active, index, delta, who?, routes? }`. `render(sessionId)` is the whole page.
 9. **`cli.ts`** (optional) -- an `aliases` table of short verbs that build `{doc, ops}`; no database.
-10. **Tests** -- a test for each document's rules and shapes, a `server.test.ts` that drives writes and undo over a real
-    websocket (this is where delivery is checked: who is told, and with what), a
-    `client/app.test.ts` for what only a browser can show. The gate is `bun run check`,
-    `bun test` (100% coverage) and `bun run stories:all`; verify a bug fix by reverting it and
-    watching the test fail.
+10. **Tests** -- a test for each document's rules and shapes, a `server.test.ts` that drives writes
+    and undo over a real websocket (for what a story cannot say: a tab closing, two writes racing), a
+    `client/app.test.ts` for what only a browser can show (`Bun.WebView`: open each view at
+    `at(view, server.url)` and wait with `waitFor`, both `src/webview.ts`, so each is a browser of
+    its own on Chrome too). The gate, and what the browser tests need, are CLAUDE.md's.
 
 None of this needs a file under `src/` edited. When it seems to, read `reference.md`'s "When it
 looks like you need to touch `src/`" first: a missing seam is rare, and a workaround is never it.

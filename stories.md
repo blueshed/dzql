@@ -120,10 +120,15 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    render every member fresh from the tables.
 2. Send the story's `does` as its session, and wait for the wire to go quiet.
 3. Canon 1. Render every member fresh again. For each name in `seen`, that member's page must
-   differ from before; for each name in `unseen`, nothing of theirs may differ. For a `cannot`,
-   nothing anywhere may differ, and the ledger must not have moved.
+   differ from before; for each name in `unseen`, nothing of theirs may differ, and they must have
+   been told of nothing: sent no document's ops, by the write, its undo or its redo (a page that
+   reads a document is told every change to it, shown or not). For a `cannot`, nothing anywhere
+   may differ, the ledger must not have moved, and the writer must be answered: a refusal hands
+   the page back. Whatever the kernel reports failing while a story runs fails it, so a refusal
+   that is really a crash is not a refusal.
 4. Undo, and every page must be as it was before; redo, and every page must be as it was after.
-   Skipped when the write is off the ledger, when the ledger says it is a fact, or when its author
+   Skipped when the write is off the ledger (its compartment says `ledger: false`, and the kernel
+   reports a write that disagrees), when the ledger says it is a fact, or when its author
    has gone -- before the undo, or because of it (undoing the write that gave you your name).
 5. Report by story name. A failing story is a sentence, not a stack trace.
 

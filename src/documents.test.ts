@@ -33,7 +33,7 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     let runs = 0;
     expect(await settled(documents, () => (runs++, documents.read<{ n: number }>("slow:1")))).toEqual({ n: 0 });
     expect(runs).toBe(2);
-    expect(documents.held("slow:1")).toBe(true);
+    expect(documents.names()).toContain("slow:1");
   });
 
   test("a write resolves once its change is back and held -- after the answer, as over Postgres", async () => {

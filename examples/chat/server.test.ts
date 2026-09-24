@@ -158,12 +158,13 @@ describe("websocket write protocol", () => {
     ws.close();
   });
 
-  test("invalid JSON is ignored instead of crashing the connection", async () => {
+  test("invalid JSON is refused like any write that is not one, instead of crashing the connection", async () => {
     const ws = connect();
     await opened(ws);
     await expectMessage(ws, "render"); // initial name form
 
-    ws.send("not-json{{{"); // produces no response; the server must not crash
+    ws.send("not-json{{{"); // not a write: the page handed back, and the server goes on
+    expect(htmlOf(await expectMessage(ws, "render"))).toContain('id="name"');
 
     write(ws, "session", [{ op: "replace", path: "/name", value: "Still here" }]);
     await expectMessage(ws, "patch");

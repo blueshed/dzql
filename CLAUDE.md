@@ -7,14 +7,16 @@ What a builder must not break. How the pieces work is in the eta-app skill
 
 - Bun only: never `node`, `npm` or `yarn`.
 - Tests: `bun test`. `.env.test` keeps it off the dev database and `bunfig.toml` fails the run
-  below 100% coverage.
+  below 100% coverage. The browser tests (`Bun.WebView`) need Chrome or Chromium on Linux:
+  `BUN_CHROME_PATH` names it (`/opt/chromium/chrome-shim.sh` in a sandbox that has staged one).
 - The gate, before any commit that should ship: `bun run check` (`tsc --noEmit`), `bun test`,
   `bun run stories:all` (every example's stories). A release is `/publish`
   (`.claude/commands/publish.md`), shared with railroad and delta: follow it, don't edit it.
   Write what lands under `## [Unreleased]` in `CHANGELOG.md` as it lands, breaking changes first.
 - Verify every bug fix by reverting it, watching the new test fail, then restoring it.
-- No new dependencies without asking. The one the examples have is `lucide`, the icon set; the
-  kernel imports no icon set.
+- No new dependencies without asking. eta depends on `@blueshed/delta` (documents) and
+  `@blueshed/railroad` (islands, `src/island.ts`: the one kernel file that imports it, and not
+  the client's); the examples add `lucide`, the icon set; the kernel imports no icon set.
 
 ## Stories first
 
@@ -38,12 +40,11 @@ it, and everything else is derived from it.
   code is the kernel's or it is not shared.
 - Before adding or extending an example, or touching the `Compartment` contract, an example's
   `delta.ts`, the applet registry or the wire, load the eta-app skill.
-- Documents are delta's: `@blueshed/delta` is a dependency, and its own README and skill
-  (`delta-doc`, in `node_modules/@blueshed/delta/.claude/skills/`) say how it works. eta owns
-  people and pages; delta owns documents, their ledger and their one stream of changes.
-  It comes from npm (`^0.6.0`). To try a change to delta before it is released, point
-  `package.json` at a checkout (`file:../blueshed/delta`, a copy: `bun install --force` after
-  each change) and put it back before committing.
+- Documents are delta's: eta owns people and pages; delta owns documents, their ledger and their
+  one stream of changes. Its own README and skill (`delta-doc`, in
+  `node_modules/@blueshed/delta/.claude/skills/`) say how it works. To try a change to delta
+  before it is released, point `package.json` at a checkout (`file:../blueshed/delta`, a copy:
+  `bun install --force` after each change) and put it back before committing.
 
 Two words have two meanings each, so say which:
 
@@ -63,8 +64,10 @@ Two words have two meanings each, so say which:
 - A connection sees what its page read: a page reads a document through `read("<docType>:<id>")`
   (src/documents.ts), and the kernel keeps what each drawing read. It is told about, and may write,
   only what it sees. So cut documents by who reads them: a page is told every change to one.
-- The server is the only renderer. The client morphs; it never replaces `innerHTML`, and it never
-  descends into a `[data-applet]` element.
+- The server is the only renderer. The client morphs; it never replaces `innerHTML`, and neither
+  it nor a render in parts descends into a `[data-applet]` element. An applet may be an island, a
+  railroad component (`island()`): it draws only inside its element and never binds that
+  element's attributes, which are the page's.
 - A page is sent in parts: after a write, each page that read the document gets only the parts of
   it that changed (`part(key, html)`, src/parts.ts), worked out by comparing, never hand-written; the
   whole page goes only when it is a different page.
