@@ -7,13 +7,11 @@ rectangle "Chat" {
   usecase "Enter a room's name\n(goes in; makes it if nobody has)" as room
   usecase "Enter another room's name" as move
   usecase "Say something" as say
-  usecase "Leave the room" as leave
   usecase "Log out" as logout
 }
 Person --> name
 Person --> room
 Person --> say
-Person --> leave
 Person --> logout
 move .> room : <<extend>>
 @enduml

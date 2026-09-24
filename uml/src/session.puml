@@ -9,7 +9,6 @@ Named --> Named : enter a room's name [blank] / a room's name is needed
 InRoom --> InRoom : enter another room's name
 InRoom --> InRoom : enter a room's name [blank] / a room's name is needed
 InRoom --> InRoom : say something
-InRoom --> Named : leave
 Named --> [*] : log out
 InRoom --> [*] : log out
 @enduml
