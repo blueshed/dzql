@@ -1,30 +1,25 @@
 # eta
 
-**eta builds apps that several people use at once, where every change reaches everyone who should see it, and nobody who shouldn't, and proves it before anyone logs in.**
+**eta builds apps that several people use at once, where every change reaches everyone who should
+see it and nobody who shouldn't, and checks that before anyone signs in.**
 
 You start by writing the app as stories: who does what, and who then sees it. "Ann asks for three
-days off, and Mo sees it waiting on the calendar." eta runs those stories against the real app.
-It checks that the write lands, that the right people's pages change, that nobody else is even
-told, and that undo puts every page back. The stories are both the specification and the test,
-and nothing gets built that no story needs.
+days off, and Mo sees it waiting on the calendar." eta runs every story against the real app,
+over real sockets. It checks that the write lands, that the right people's pages change and
+nobody else's does, that anyone the story says must not even be told is sent nothing, and that
+undo and redo put every page back. The stories are the specification and the test, and the rule
+is to build nothing a story doesn't need.
 
-The server draws every page as HTML and the browser patches it in place, so there's no client
-framework, no API and no cache to keep in step. It's one Bun process. Every change is a document
-patch from delta, so each person sees their own page update as it happens and can undo what they
-did, even while others keep writing. Where a piece of a page must keep state in the browser, like
-a drag or a chart, it's a small railroad applet, and only there.
+The usual stack for this -- a client framework, an API, a cache, a socket server -- is a lot to
+carry for a wedding site or a booking board. eta is one Bun process: the server draws every page
+as HTML, the browser patches it in place, and what crosses the wire is documents, patches and
+HTML a person can read. Every change is a document patch from delta, so each person's page
+updates as it happens, and each can undo their own writes while others keep writing. Where a
+piece of a page must keep state in the browser, like a drag or a chart, it's a small railroad
+applet, and only there.
 
-In one line: **multi-person live apps told as stories and proved by them, drawn on the server, on
-delta's live documents.**
-
-eta is a small kernel for live apps that several people use at once, drawn on the server. Every
-change is a patch to a document, so everyone who can see it is told at once, and anyone can undo
-their own.
-
-It exists because the usual stack for this -- a client framework, an API, a cache, a socket
-server -- is a lot to carry for a wedding site or a booking board. eta is one Bun process: the
-server draws every page as HTML, the browser morphs it in place, and what crosses the wire is
-documents, patches and HTML that a person can read.
+In one line: **multi-person live apps told as stories and checked by them, drawn on the server,
+on delta's live documents.**
 
 ## Try it
 
@@ -74,9 +69,10 @@ sites whose pages may open a socket) among them.
 ## Why eta
 
 - **Undo and redo.** A write to a document on delta's ledger is a patch recorded with its
-  inverse. Undo walks your own writes back, newest first, even while others keep writing -- but
-  it puts back a row as your write found it, over anything written to that row since (delta
-  0.6.0 applies the inverse unguarded), and it does not ask the permit again.
+  inverse. Undo walks your own writes back, newest first, even while others keep writing, and
+  sets back only what your write changed: if someone has changed it since, the undo is refused
+  and says so. A compartment can refuse one that breaks a rule of time or state
+  (`permitUndo`: answers closed at the deadline).
 - **Stories are the tests.** An example is a list of sentences -- who does what, and who then
   sees it -- and `bun run stories` checks each one over real sockets, with its undo and redo.
 - **A small client.** The kernel's client is about 2.9 KB minified and gzipped: a morph, the write
