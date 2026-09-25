@@ -3,8 +3,9 @@
 // did not have: a tick is seen through an applet (the board takes the ops itself; no render
 // follows), so "seen" means a fresh render from the tables differs, not that HTML crossed the
 // wire; and a tick is a fact -- recorded with undoable = false -- so the undo the harness runs
-// after every `does` must find the ledger says so and leave the price where it is. One page, so
-// `seen` lists who notices.
+// after every `does` must find the ledger says so and leave the price where it is. Whoever a story
+// does not say sees it must not: Bo, on his board, watches only Bravo, and his board is told only
+// the quotes it shows (a row per symbol, each on `quote:<SYMBOL>`).
 import type { PatchOp } from "../../src/json-patch";
 import { story, type Stories, type Write } from "../../src/stories";
 
@@ -27,9 +28,9 @@ function at(where: string): Write {
 export const stories: Stories = {
   cast: {
     ann: [watch("ALPH"), watch("BRVO")],
-    bo: [watch("BRVO")],
-    feed: [], // the market's author: a session that is nobody, typing ticks as the feed would
-    fresh: [], // just arrived: an empty watchlist, the default city
+    bo: [watch("BRVO"), at("board")], // on his board, where only what he watches moves
+    feed: [at("board")], // the market's author: a session that is nobody, typing ticks as the feed would, its own board empty
+    fresh: [at("board")], // just arrived: an empty watchlist, the default city
   },
   at,
   stories: [
@@ -55,7 +56,7 @@ export const stories: Stories = {
 
     // ── Where you stand decides what you see ──
     story("Bravo ticks; Ann, reading her board as a list, and Bo, in the market, each see the row move", { as: "feed", does: tick("BRVO", 66.6), seen: { ann: "board @ reading.board=list", bo: "market" } }),
-    story("Bravo ticks while Ann has its drawer open, and the drawer's price moves with it", { as: "feed", does: tick("BRVO", 66.7), seen: { ann: "market?symbol=BRVO" } }),
+    story("Bravo ticks while Ann has its drawer open: her drawer's price moves with it, and so does Bo's board", { as: "feed", does: tick("BRVO", 66.7), seen: { ann: "market?symbol=BRVO", bo: "board" } }),
     story("Nobody can go to a window the desk does not have", { as: "ann", cannot: at("attic") }),
   ],
 };

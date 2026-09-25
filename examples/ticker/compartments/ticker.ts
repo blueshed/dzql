@@ -53,6 +53,18 @@ export function stopFeed(): void {
 
 const TICK_PATH = /^\/[A-Z0-9.]+\/price$/;
 
+/**
+ * One symbol of the market, as its own document (`quote:<SYMBOL>`): what a board row reads, so a
+ * board is told only the symbols it watches. Written only through the market, whose ticks delta
+ * tells it; nobody writes one from the wire.
+ */
+export const quote: Compartment = {
+  docType: "quote",
+  kind: "fact",
+  at: "/quotes", // the document is the row: eta's paths start at it
+  resolveDoc: () => undefined,
+};
+
 /** The desk: the whole page, from every document a session has. */
 export const render = (sessionId: string): string =>
   page({ list: watchlistDoc.read(sessionId), market: market.read(), clock: clockDoc.read(sessionId), ui: deskDoc.read(sessionId) });

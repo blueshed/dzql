@@ -19,9 +19,6 @@ export function part(key: string, html: string): string {
 /** A page with the props of every applet that takes its document's patches (`data-doc`) left out: how the stories compare a page, since props follow the patches between renders. */
 export const comparable = (html: string): string => html.replace(/<[^>]*\sdata-doc="[^"]*"[^>]*>/g, (tag) => tag.replace(/\sdata-props="[^"]*"/, ""));
 
-/** `html` with the props left out of the applets that take `doc`'s patches: after a write to `doc`, they have its ops already. */
-const takingPatchesOf = (doc: string | undefined) => (html: string): string =>
-  doc === undefined ? html : html.replace(/<[^>]*\sdata-doc="[^"]*"[^>]*>/g, (tag) => (tag.includes(` data-doc="${doc}"`) ? tag.replace(/\sdata-props="[^"]*"/, "") : tag));
 
 type Node = { key: string | null; html: string; skeleton: string; children: string[] };
 /** A drawn page: its HTML, and its parts as a tree (the page itself is the node keyed `null`). */
@@ -74,13 +71,14 @@ const target = (key: string): string => `[data-eta-part="${key.replaceAll('"', '
 
 /**
  * What to send to bring a page drawn as `prev` to `next`: HTML ops, `[]` when nothing on it
- * changed, or undefined when the page's own outline changed and it must go whole. `patched`, the
- * document just written as this page names it: an applet that takes its patches has had them, so
- * its props are not compared; any other change to its props (another document's) is sent.
+ * changed, or undefined when the page's own outline changed and it must go whole. An applet that
+ * takes its document's patches (`data-doc`) is never sent its props again: its props are that
+ * document, whose every change reaches the page as a patch (the stories check they are, `unheld`
+ * in src/harness.ts). So they are not compared.
  */
-export function diff(prev: Drawn, next: Drawn, patched?: string): HtmlOp[] | undefined {
+export function diff(prev: Drawn, next: Drawn): HtmlOp[] | undefined {
   const ops: HtmlOp[] = [];
-  return settle(null, prev, next, ops, takingPatchesOf(patched)) ? ops : undefined;
+  return settle(null, prev, next, ops, comparable) ? ops : undefined;
 }
 
 /**

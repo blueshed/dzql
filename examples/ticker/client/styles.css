@@ -36,10 +36,11 @@ input { font-size: 15px; }
 .row .state .price small { font-size: 11px; font-weight: 500; }
 .row .state .price.up small { color: var(--up); } .row .state .price.down small { color: var(--down); } .row .state .price.flat small { color: var(--muted); }
 
-/* ── the board: the applet's own SVG table, a sparkline each; a tick flashes its row ── */
+/* ── the board: a row applet per watched symbol, its own SVG with a sparkline; a tick flashes its row ── */
 .reading.sparkline { border-radius: var(--radius-thumb); overflow: hidden; }
 .market .empty, .empty { color: var(--muted); background: var(--well); border: 1px dashed var(--line); border-radius: var(--radius-thumb); padding: 1rem; margin: 0; }
-svg.board { display: block; background: var(--well); border: 1px solid var(--line); border-radius: var(--radius-thumb); padding: 0.5rem 0; font-size: 14px; }
+.board:has(svg) { background: var(--well); border: 1px solid var(--line); border-radius: var(--radius-thumb); padding: 0.5rem 0; }
+svg.board { display: block; font-size: 14px; }
 svg.board text { fill: var(--ink); }
 svg.board .symbol { font-weight: 700; fill: var(--accent); }
 svg.board .name { fill: var(--muted); font-size: 12px; }

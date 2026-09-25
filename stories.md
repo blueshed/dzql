@@ -64,9 +64,9 @@ Every word in those is one eta already has. `as` is a session. `does` is a `{doc
 exactly as the browser or the CLI would send it. `seen` names who should notice and where: a page,
 and whatever else the example's `at` understands, because a person sees only the page they are on
 and a story says where its change shows; in an example with one page (chat's is the room; the
-ticker has one), `seen` is just a list of names. `unseen` names who must notice nothing, where the
-cast left them; anyone in neither is not asked, since a home page with counts on it changes for
-many reasons and a story asserts only what it says. `cannot` is a refusal: the permit table's
+ticker has one), `seen` is just a list of names. Everyone else in the cast must notice nothing, where the cast
+left them: a story says everyone who sees its change, counts on a home page included, so one that
+leaves someone out fails by name. `unseen` names who must not even be told: sent no document's ops. `cannot` is a refusal: the permit table's
 other half, told as a sentence, whichever layer refuses (the permit, a document that finds nothing
 to change, a session with no document to resolve). A `cannot` with `told` also says what the
 refused person is shown, beside the control that sent it (`refuse`, in the eta-app skill). Undo is a story too, and a redo, and the
@@ -121,9 +121,9 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    render every member fresh from the tables.
 2. Send the story's `does` as its session, and wait for the wire to go quiet.
 3. Canon 1. Render every member fresh again. For each name in `seen`, that member's page must
-   differ from before; for each name in `unseen`, nothing of theirs may differ, and they must have
-   been told of nothing: sent no document's ops, by the write, its undo or its redo (a page that
-   reads a document is told every change to it, shown or not). For a `cannot`, nothing anywhere
+   differ from before; for everyone else, nothing of theirs may differ; and each name in `unseen`
+   must have been told of nothing: sent no document's ops, by the write, its undo or its redo (a
+   page that reads a document is told every change to it, shown or not). For a `cannot`, nothing anywhere
    may differ, the ledger must not have moved, and the writer must be answered: a refusal hands
    the page back. With `told`, the writer's page must show that reason, and nothing else of it
    may differ. Whatever the kernel reports failing while a story runs fails it, so a refusal

@@ -20,7 +20,9 @@ export { comparable };
 // must go back and forth with it; a write the ledger calls a fact (undoable = 0) must survive its
 // undo instead, and an author the example no longer counts as active (logged out) gets no undo.
 // A `cannot` must change no page, add nothing to the ledger, and be answered: a refusal hands the
-// writer's page back, and shows them why when the story says what they are `told`, and nothing else. Delivery is checked as well as pages: a member the story says is `unseen`
+// writer's page back, and shows them why when the story says what they are `told`, and nothing
+// else. For a `does`, nobody the story does not say sees it may notice it: a story names everyone
+// whose page changes. Delivery is checked as well as pages: a member the story says is `unseen`
 // must be told of no document -- no patch -- by the write, its undo or its redo, and anything the
 // kernel reports failing while a story runs (a message, a drawing, a change being told) fails the
 // story. Each story runs inside one database transaction that is rolled back afterwards, so every
@@ -289,6 +291,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
         else if (where !== undefined && stories.at) await send(cast, m, stories.at(where));
       }
 
+
       const before = await snapshot(cast);
       const ledgerBefore = ledgerMax();
       let from = mark(cast);
@@ -299,12 +302,12 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       const entries = ledger.since(ledgerBefore);
       await stale(cast, "after the story", failures);
 
-      // Only what the story says is asked: `seen` must notice, `unseen` must not; anyone in
-      // neither is left alone (a home page with counts on it changes for many reasons).
+      // `seen` must notice, and everyone else must not (R3): nobody's page changes unless the story
+      // says so. An `unseen` member is further told of nothing (above).
       for (const m of cast) {
         if (seen.has(m.name)) {
           if (!differs(before, after, m.name)) failures.push(`${m.name} did not see it${where(seen.get(m.name))}`);
-        } else if (story.unseen?.includes(m.name) && differs(before, after, m.name)) failures.push(`${m.name} noticed, and should not have`);
+        } else if (differs(before, after, m.name)) failures.push(`${m.name} noticed, and should not have${excerpt(before.get(m.name)!, after.get(m.name)!)}`);
       }
 
       if (entries.length === 0) return { name: story.name, failures }; // off the ledger: nothing to undo

@@ -47,6 +47,14 @@ describe("stories harness", () => {
     expect(report.outcomes[1]!.failures).toContain('eve did not see it on ""');
   }, 30000);
 
+  test("a story names everyone who sees its change: someone left out whose page changes fails it, by name", async () => {
+    const report = await run(example, {
+      cast: stories.cast,
+      stories: [{ name: "Ada says hello, and only Ada sees it", as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "hello" }] }, seen: ["ada"] }],
+    });
+    expect(report.outcomes[0]!.failures.map((f) => f.split("\n")[0])).toEqual(["bob noticed, and should not have"]);
+  }, 30000);
+
   // Delivery, not only pages: chat broken on purpose, three ways its own stories could not see.
   const only = (prefix: string): Story[] => stories.stories.filter((s) => s.name.startsWith(prefix));
   const withRoom = (f: (room: Compartment) => Compartment): Example => ({ ...example, compartments: example.compartments.map((c) => (c.docType === "room" ? f(c) : c)) });

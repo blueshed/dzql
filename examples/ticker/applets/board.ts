@@ -1,22 +1,23 @@
-// The board applet's drawing and patch logic: the watched symbols as an SVG table with a
-// sparkline each, and how a tick (`replace /<SYMBOL>/price`) moves a quote and extends its
-// history. Both are pure functions over a BoardState, tested here without a browser; the
-// mounting that owns that state per element is board-applet.ts, imported only by client/main.ts
-// (change-request.md item 4).
+// The board applet's drawing and patch logic: one watched symbol, a row with a sparkline, and how a
+// tick moves its quote and extends its history. The board is a row per watched symbol, each an
+// applet on that symbol's own document (`quote:<SYMBOL>`), so a board is told only what it shows.
+// Both are pure functions over a RowState, tested here without a browser; the mounting that owns
+// that state per element is board-applet.ts, imported only by client/main.ts.
 
 import type { PatchOp } from "../../../src/json-patch";
 
 export type Quote = { name: string; price: number; prev: number };
 
-export interface BoardProps {
-  symbols: string[];
-  quotes: Record<string, Quote>;
+export interface RowProps {
+  symbol: string;
+  /** The quote as its document holds it (`quote:<SYMBOL>`): the patches land here. */
+  quote: Quote;
 }
 
-export interface BoardState {
-  props: BoardProps;
-  /** The last prices seen per symbol, oldest first, for the sparkline. */
-  history: Record<string, number[]>;
+export interface RowState {
+  props: RowProps;
+  /** The last prices seen, oldest first, for the sparkline. */
+  history: number[];
 }
 
 export const HISTORY = 40;
@@ -36,46 +37,39 @@ export function sparkline(prices: number[], w = 120, h = 18): string {
 }
 
 /** One row: symbol, name, price, the change since the last tick, the sparkline. `up`/`down` on the row is what the stylesheet flashes. */
-export function rowSvg(symbol: string, quote: Quote, history: number[], y: number): string {
+export function rowSvg(symbol: string, quote: Quote, history: number[]): string {
   const change = quote.price - quote.prev;
   const dir = change > 0 ? "up" : change < 0 ? "down" : "flat";
   const pct = quote.prev ? ((change / quote.prev) * 100).toFixed(2) : "0.00";
   return (
-    `<g class="row ${dir}" data-row="${esc(symbol)}" transform="translate(0 ${y})">` +
+    `<svg class="board" viewBox="0 0 ${W} ${ROW}" width="100%" aria-label="${esc(symbol)}">` +
+    `<g class="row ${dir}" data-row="${esc(symbol)}">` +
     `<text class="symbol" x="0" y="18">${esc(symbol)}</text>` +
     `<text class="name" x="70" y="18">${esc(quote.name)}</text>` +
     `<text class="price" x="330" y="18" text-anchor="end">${quote.price.toFixed(2)}</text>` +
     `<text class="change" x="480" y="18" text-anchor="end">${change >= 0 ? "+" : ""}${change.toFixed(2)} (${pct}%)</text>` +
     `<g class="spark" transform="translate(510 4)">${sparkline(history)}</g>` +
-    `</g>`
+    `</g></svg>`
   );
 }
 
-export function boardSvg(state: BoardState): string {
-  const { symbols, quotes } = state.props;
-  if (!symbols.length) return `<p class="empty">Nothing watched yet. Add a symbol.</p>`;
-  const rows = symbols.map((s, i) => (quotes[s] ? rowSvg(s, quotes[s]!, state.history[s] ?? [quotes[s]!.price], i * ROW) : "")).join("");
-  return `<svg class="board" viewBox="0 0 ${W} ${symbols.length * ROW}" width="100%" aria-label="the board">${rows}</svg>`;
-}
+/** The row as its state draws it. */
+export const drawRow = (s: RowState): string => rowSvg(s.props.symbol, s.props.quote, s.history);
 
 /**
- * Applies a market patch to the state: a tick moves a quote and extends its history. The market's
- * stream says a tick as the quote it leaves, whole (`replace /ALPH {price, prev, ...}`). Returns
- * the symbols touched.
+ * Applies the quote's own patch to the state: a tick is the row it leaves, whole (`replace ""`,
+ * `{price, prev, ...}`), which moves the quote and extends its history. True when it moved.
  */
-export function applyOps(s: BoardState, ops: PatchOp[]): string[] {
-  const touched: string[] = [];
+export function applyOps(s: RowState, ops: PatchOp[]): boolean {
+  let moved = false;
   for (const op of ops) {
-    const m = /^\/([A-Z0-9.]+)$/.exec(op.path);
     const value = op.value as { price?: unknown; prev?: unknown } | undefined;
-    if (!m || op.op !== "replace" || typeof value?.price !== "number") continue;
-    const symbol = m[1]!;
-    const quote = s.props.quotes[symbol];
-    if (!quote) continue;
+    if (op.path !== "" || op.op !== "replace" || typeof value?.price !== "number") continue;
+    const quote = s.props.quote;
     quote.prev = Number(value.prev ?? quote.price);
     quote.price = value.price;
-    s.history[symbol] = [...(s.history[symbol] ?? [quote.prev]), quote.price].slice(-HISTORY);
-    touched.push(symbol);
+    s.history = [...s.history, quote.price].slice(-HISTORY);
+    moved = true;
   }
-  return touched;
+  return moved;
 }

@@ -91,13 +91,13 @@ async function open(): Promise<WebSocket> {
 }
 
 describe("the ticker", () => {
-  test("the page carries the clock, the watchlist and the board with the market as props", async () => {
+  test("the page carries the clock, the watchlist and the board, empty until something is watched", async () => {
     const ws = connect();
     await opened(ws);
     const { html } = await expectMessage(ws, "render");
     expect(html).toContain('data-applet="clock"');
     expect(html).toContain('id="board-count"');
-    expect(html).toContain('data-applet="board" data-doc="ticker:market"');
+    expect(html).toContain('<div id="board" class="board"><p class="empty">Nothing watched yet.');
     expect(html).toContain("16 symbols, every quote");
     ws.close();
   });
@@ -122,7 +122,10 @@ describe("the ticker", () => {
     await expectMessage(a, "patch");
     await expectMessage(a, "render");
     write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 2 }]);
-    await expectMessage(a, "patch");
+    // a watches DLTA now, so its board row is told of the quote too, as the row it leaves
+    const told = [await expectMessage(a, "patch"), await expectMessage(a, "patch")];
+    expect(told.map((m) => m.doc).sort()).toEqual(["quote:DLTA", "ticker:market"]);
+    expect(told.find((m) => m.doc === "quote:DLTA")).toMatchObject({ ops: [{ op: "replace", path: "", value: { price: before + 2 } }] });
     await expectMessage(b, "patch");
     write(a, "ledger", [{ op: "remove", path: "/latest" }]);
     expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: [] } }] });
@@ -154,7 +157,7 @@ describe("the ticker", () => {
     write(a, "watchlist", [{ op: "add", path: "/symbols/-", value: "echo" }]);
     expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: ["ECHO"] } }] });
     const page = (await expectMessage(a, "render")).page as string;
-    expect(page).toContain("&quot;symbols&quot;:[&quot;ECHO&quot;]"); // the board's mount, with its new props
+    expect(page).toContain('<div id="quote-ECHO" data-applet="board" data-doc="quote:ECHO"'); // the board's new row, on the quote's own document
     expect(page).toContain('<span id="board-count">1</span>'); // the count on its head
     expect(page).toContain('<p class="cell-summary">watched, live</p>'); // and the line that said "nothing watched yet"
     await expectQuiet(b);
@@ -276,16 +279,19 @@ describe("the ticker", () => {
     expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-pressed="true" data-reveal>/);
     expect(html).toContain("Stop watching");
     // with the drawer open a tick sends the row and the drawer, since the drawer says the price too;
-    // with it closed, the row alone
-    write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.05 }]);
-    await expectMessage(ws, "patch");
-    const tick = await expectMessage(ws, "render");
+    // with it closed, the row alone. CHRL is watched now, so the tick comes as the market's patch
+    // and, where a board row shows it, the quote's own.
+    const ticked = async (price: number) => {
+      write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: price }]);
+      const renders = (await heard(ws)).filter((m) => m.type === "render");
+      expect(renders).toHaveLength(1);
+      return renders[0]!;
+    };
+    const tick = await ticked(13.05);
     expect(tick.html).toBeUndefined();
     expect(tick.page).toContain("13.05");
     await page([{ op: "replace", path: "/page", value: "board" }]);
-    write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.07 }]);
-    await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: '[data-eta-part="b-CHRL"]' }]);
+    expect((await ticked(13.07)).ops).toMatchObject([{ op: "replace", target: '[data-eta-part="b-CHRL"]' }]);
     // dropping asks first, from the drawer: the drawer's layer closes, the modal's opens, the ground
     // goes inert and the site's tag says where -- and none of it is the page
     html = await page([{ op: "replace", path: "/page", value: "board?symbol=CHRL" }]);

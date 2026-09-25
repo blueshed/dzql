@@ -1,39 +1,36 @@
-// The board applet's mounting: the state per element (props and the sparkline history derived
-// from ticks seen so far), redrawn on mount, on a watchlist change, and on the market's own tick
-// echo. Imported only by client/main.ts, like chat's room-picker -- not measured by the coverage
-// table, since only a real browser drives it; the drawing and patch logic above it are
-// (change-request.md item 4).
+// The board applet's mounting: a row per watched symbol, each on its quote's own document, with
+// its sparkline history derived from the ticks seen so far -- the state a render would destroy.
+// Drawn on mount and on the quote's own tick echo. Imported only by client/main.ts -- not measured
+// by the coverage table, since only a real browser drives it; the drawing and patch logic are
+// board.ts.
 
 import { registerApplet } from "../../../src/applets";
-import { applyOps, boardSvg, type BoardProps, type BoardState } from "./board";
+import { applyOps, drawRow, type RowProps, type RowState } from "./board";
 
-const state = new WeakMap<HTMLElement, BoardState>();
+const state = new WeakMap<HTMLElement, RowState>();
 
 const draw = (el: HTMLElement) => {
-  el.innerHTML = boardSvg(state.get(el)!);
+  el.innerHTML = drawRow(state.get(el)!);
 };
 
 registerApplet("board", {
   mount(el, ctx) {
-    const props = ctx.props as BoardProps;
-    state.set(el, { props, history: Object.fromEntries(Object.entries(props.quotes).map(([s, q]) => [s, [q.prev, q.price]])) });
+    const props = ctx.props as RowProps;
+    state.set(el, { props, history: [props.quote.prev, props.quote.price] });
     draw(el);
     return () => state.delete(el);
   },
-  // The watchlist changed: new symbols, the same market; the histories seen so far are kept.
+  // New props from a render (a name changed): the history seen so far is kept.
   update(el, props) {
     const s = state.get(el);
     if (!s) return;
-    const next = props as BoardProps;
-    for (const [symbol, quote] of Object.entries(next.quotes)) if (!s.history[symbol]) s.history[symbol] = [quote.prev, quote.price];
-    s.props = next;
+    s.props = props as RowProps;
     draw(el);
   },
-  // A tick: the market's own op, straight from the echo. The row it touches is redrawn, and its
-  // `up`/`down` class arriving fresh is what makes it flash.
+  // A tick: the quote's own op, straight from the echo. The row is redrawn, and its `up`/`down`
+  // class arriving fresh is what makes it flash.
   patch(el, ops) {
     const s = state.get(el);
-    if (!s) return;
-    if (applyOps(s, ops).length) draw(el);
+    if (s && applyOps(s, ops)) draw(el);
   },
 });

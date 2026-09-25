@@ -41,14 +41,14 @@ const track = (p: Promise<unknown>): void => {
  * different page) or `whole` says so (a first drawing, a refused write handing the page back).
  * A drawing that fails is logged, and the connection's next drawing goes ahead.
  */
-function redraw(ws: Socket, whole = false, written?: { docType: string; docId: string }): Promise<void> {
+function redraw(ws: Socket, whole = false): Promise<void> {
   const next = (drawingFor.get(ws) ?? Promise.resolve()).then(async () => {
     if (!active) return;
     const { assembled } = active;
     const drawn = await settled(assembled.documents, () => drawing(ws, () => assembled.page(ws.data.sessionId)));
     const prev = sent.get(ws);
     sent.set(ws, drawn);
-    const ops = prev && !whole ? diff(prev, drawn, written && wireName(written.docType, written.docId, ws)) : undefined;
+    const ops = prev && !whole ? diff(prev, drawn) : undefined;
     if (ops === undefined) ws.send(renderMessage(drawn.html));
     else if (ops.length > 0) ws.send(fragmentsMessage(ops));
   });
@@ -85,7 +85,7 @@ function tellChanges(documents: Documents): void {
     const wire = wireOps(owner, docId, ops as PatchOp[]);
     const echoTo = await settled(documents, () => audienceFor(docType, docId));
     for (const ws of echoTo) ws.send(patchMessage(wireName(docType, docId, ws), v ?? 0, wire));
-    for (const ws of new Set([...echoTo, ...readersOf(docType, docId)])) void redraw(ws, false, { docType, docId });
+    for (const ws of new Set([...echoTo, ...readersOf(docType, docId)])) void redraw(ws);
     await owner.changed?.(docId, wire);
   });
 }

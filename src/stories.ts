@@ -26,8 +26,9 @@ export type Told = { as: string } & (
       /** The write. Followed, when run, by its undo and its redo, with `seen` holding in reverse. */
       does: Write;
       seen: Seen;
-      /** Who must notice nothing, where the cast left them. Anyone named in neither is not asked:
-       * a home page with counts on it changes for many reasons, and a story asserts only what it says. */
+      /** Who must not even be told: sent no document's ops, by the write, its undo or its redo.
+       * Everyone not in `seen` must already notice nothing -- their page, where the cast left them,
+       * the same -- so a story says everyone who sees it, counts on a home page included. */
       unseen?: string[];
     }
   | {

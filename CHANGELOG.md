@@ -21,10 +21,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **An undo that meets someone else's later write says so** ("Someone has changed that since,
   so it cannot be undone.") instead of doing nothing silently. The kernel draws why an undo or
   redo was refused over the page.
+- **A story names everyone who sees its change.** Anyone in the cast not in `seen` must notice
+  nothing -- their page, where the cast left them, the same -- so a story that leaves out someone
+  whose page changes fails by name (`bob noticed, and should not have`). `unseen` now means the
+  stronger claim: told of nothing at all.
 - **`told` on a `cannot` story**: the reason the refused person must be shown. Their page may
   change by that line and nothing else; a reason shown that no story says fails as a change.
 
 ### Changed
+
+- **An applet that takes its document's patches is never sent its props again** (src/parts.ts):
+  they are that document, whose every change reaches the page as a patch. Before, a write to any
+  other document sent them again; now nothing does, so an applet's props must be its document
+  alone -- which the stories already checked.
+- **The ticker's board is a row applet per watched symbol**, each on its own `quote:<SYMBOL>`
+  document, so a board is told only the quotes it shows. It held the whole market before, so
+  every page changed on every tick, for symbols nobody on it watched.
+- **The stories name everyone who sees**: chat's, the ticker's and the wedding's stories now say
+  who else notices (Dee's list of rooms losing an empty kitchen; Ben's home page counts).
 
 - **The wedding refuses an unknown code** instead of writing "That code was not recognised."
   into the visit, so a wrong code is no longer a write, and no longer on the ledger.

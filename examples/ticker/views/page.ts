@@ -10,7 +10,7 @@ import { part } from "../../../src/parts";
 import type { ClockDocument } from "../documents/clock";
 import { ZONES, cityOf, offsetOf } from "../documents/clock";
 import type { Ui } from "../documents/desk";
-import { MARKET, type MarketDocument, type Quote } from "../documents/market";
+import { quote, type MarketDocument, type Quote } from "../documents/market";
 import type { WatchlistDocument } from "../documents/watchlist";
 import { icon } from "./icons";
 
@@ -25,12 +25,15 @@ export type View = { list: WatchlistDocument; market: MarketDocument; clock: Clo
 
 // ───────────────────────────── the applets' mounts ─────────────────────────────
 
-/** The board applet's mount: the watched symbols and every quote they need, keyed so a watchlist change replaces just this. */
+/**
+ * The board: a row per watched symbol, each an applet on that symbol's own document, so a board is
+ * told only the symbols it watches and each row takes its own ticks.
+ */
 export function boardMount(list: WatchlistDocument, market: MarketDocument): string {
-  // the board takes the market's ticks, so it holds the market -- every quote, at /quotes -- and
-  // draws the watched ones: a tick for any symbol lands on what it holds
   const symbols = list.symbols.filter((s) => market[s]);
-  return `<div id="board" data-applet="board" data-doc="ticker:${MARKET}" data-at="/quotes" data-props="${esc(JSON.stringify({ symbols, quotes: market }))}"></div>`;
+  if (!symbols.length) return `<div id="board" class="board"><p class="empty">Nothing watched yet. Add a symbol.</p></div>`;
+  const rowOf = (symbol: string) => `<div id="quote-${esc(symbol)}" data-applet="board" data-doc="quote:${esc(symbol)}" data-at="/quote" data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`;
+  return `<div id="board" class="board">${symbols.map(rowOf).join("")}</div>`;
 }
 
 /** How many are watched, on the board's head; replaced with the board when the list changes. */

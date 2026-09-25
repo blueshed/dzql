@@ -104,13 +104,12 @@ describe("diff", () => {
     expect(diff(draw(() => view("a")), draw(() => view("b")))).toEqual([{ op: "replace", target: '[data-eta-part="drawer"]', html: `<aside data-eta-part="drawer">b</aside>` }]);
   });
 
-  test("after a write to an applet's own document its props are not compared, since it took the ops; after any other write they are", () => {
-    const mount = (p: string) => `<main>${part("board", `<div data-applet="board" data-doc="ticker:market" data-props="${p}"></div>`)}</main>`;
-    expect(diff(draw(() => mount("1")), draw(() => mount("2")), "ticker:market")).toEqual([]);
-    expect(diff(draw(() => mount("1")), draw(() => mount("2")), "watchlist")).toEqual([
-      { op: "tag", target: '[data-eta-part="board"]', html: `<div data-eta-part="board" data-applet="board" data-doc="ticker:market" data-props="2">` },
+  test("an applet that takes its document's patches is never sent its props again: they are the document, which reaches it as patches; any other applet's are", () => {
+    const mount = (p: string, doc = ` data-doc="quote:ALPH"`) => `<main>${part("board", `<div data-applet="board"${doc} data-props="${p}"></div>`)}</main>`;
+    expect(diff(draw(() => mount("1")), draw(() => mount("2")))).toEqual([]);
+    expect(diff(draw(() => mount("1", "")), draw(() => mount("2", "")))).toEqual([
+      { op: "tag", target: '[data-eta-part="board"]', html: `<div data-eta-part="board" data-applet="board" data-props="2">` },
     ]);
-    expect(diff(draw(() => mount("1")), draw(() => mount("2")))).toHaveLength(1);
     expect(comparable(`<div data-doc="d" data-props="x"></div>`)).toBe(`<div data-doc="d"></div>`);
   });
 });

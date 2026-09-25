@@ -274,16 +274,21 @@ that. A page with an island carries railroad, and the kernel's client does not (
 what each costs). Its file is `<name>-applet.tsx` (the tsconfig says
 `jsxImportSource: "@blueshed/railroad"`).
 
-Mount point: `<div data-applet="board" data-doc="ticker:market" data-at="/quotes" data-props='{...}'>`,
+Mount point: `<div data-applet="board" data-doc="quote:BRVO" data-at="/quote" data-props='{...}'>`,
 the document named as the wire names it. Data reaches an applet as new props on a render
-(`update`), or, for a document that changes often, as the patch itself (`patch`; after a write
-to that document its props are not compared, so no HTML follows).
+(`update`), or, for a document that changes often, as the patch itself (`patch`: an applet with a
+`data-doc` is never sent its props again, since every change to its document reaches it as a
+patch, so no HTML follows).
 
 An applet that takes a document's patches holds that document in its props, whole, at `data-at`
 (the root when not given), rows as delta holds them (their id and parent key included): the ops
 must land on it, and say everything the document did. The stories check it -- each member's
 applet props, as last sent with every patch since laid on, must be what a fresh render gives it.
-So a board holds the whole market and draws the watched rows, and takes a tick as the quote whole. Register in `client/main.ts` before importing
+Cut the document to what the applet shows: the ticker's board is a row applet per watched
+symbol, each on that symbol's own document (`quote:<SYMBOL>`, a view of the market's row that
+delta tells of every tick), so a board is told only the quotes it shows, and takes a tick as its
+quote whole. An applet that held the whole market to draw a few rows would be sent every tick,
+and its page would change for symbols nobody on it watches. Register in `client/main.ts` before importing
 `src/client/app`. Split drawing (`<name>.ts`, pure, tested directly) from mounting
 (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`) when there is drawing worth
 testing. `client/index.html` must have an element with `id="app"`.
