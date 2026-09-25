@@ -29,7 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - three months at a time with Previous, Today and Next, today marked; the months are in the
     address, so the URL and the back button follow them;
   - each person one colour everywhere (d3's Tableau10, less its red, which is a clash here), a bar
-    waiting a tint and approved filled, and a key;
+    waiting a tint and approved filled, and a key; a bar says whose it is, or for yours what it
+    is, and all of it on hover; a tap on any bar opens its drawer, your own included -- a drag
+    only begins once it moves;
   - a draft rides in the team's document beside the requests, so asking for it is one change and
     one Undo gives the draft back; a page is sent only its own person's draft.
 - **`sessionCookie(id)`** (src/server.ts): the kernel's session cookie, for a route that starts a

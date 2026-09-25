@@ -12,7 +12,7 @@ type Drag =
   | { kind: "select"; anchor: string }
   | { kind: "move" | "start" | "end"; id: string; grab: string; starts: string; ends: string };
 
-type State = { props: CalendarProps; preview: Preview | null; drag?: Drag; moved: boolean };
+type State = { props: CalendarProps; preview: Preview | null; drag?: Drag; moved: boolean; pointer?: number };
 
 const state = new WeakMap<HTMLElement, State>();
 
@@ -23,6 +23,15 @@ const draw = (el: HTMLElement) => {
 
 const DAY_MS = 86_400_000;
 const between = (a: string, b: string): number => Math.round((Date.parse(b) - Date.parse(a)) / DAY_MS);
+
+/** Follows a pointer wherever it goes, so a drag goes on over the edge of a bar or a week. */
+function capture(el: HTMLElement, pointer: number): void {
+  try {
+    el.setPointerCapture(pointer);
+  } catch {
+    // a pointer the browser does not know (a test's): the drag still follows it over the calendar
+  }
+}
 
 /** The day under a point: the week it is in, and its column of seven. */
 function dayAt(x: number, y: number): string | null {
@@ -54,11 +63,11 @@ registerApplet("calendar", {
         draw(el);
       }
       s.moved = false;
-      try {
-        el.setPointerCapture(e.pointerId); // the drag goes on over the edge of a bar or a week
-      } catch {
-        // a pointer the browser does not know (a test's): the drag still follows it over the calendar
-      }
+      s.pointer = e.pointerId;
+      // across empty days the drag starts at once; on a bar it starts only once it moves, so a
+      // tap is still a tap on the bar, and opens its drawer (a captured pointer's click would land
+      // on the calendar, not the bar)
+      if (s.drag.kind === "select") capture(el, e.pointerId);
       e.preventDefault();
     });
     el.addEventListener("pointermove", (e) => {
@@ -74,8 +83,10 @@ registerApplet("calendar", {
       } else if (d.kind === "start") next = { id: d.id, starts: day > d.ends ? d.ends : day, ends: d.ends };
       else next = { id: d.id, starts: d.starts, ends: day < d.starts ? d.starts : day };
       if (s.preview && s.preview.starts === next.starts && s.preview.ends === next.ends) return;
+      if (d.kind !== "select" && next.starts === d.starts && next.ends === d.ends) return; // not moved off its own days yet
+      if (d.kind !== "select" && !s.moved) capture(el, s.pointer!); // it is a drag now: follow it off the bar
       s.preview = next;
-      s.moved = d.kind === "select" || next.starts !== d.starts || next.ends !== d.ends;
+      s.moved = true;
       draw(el);
     });
     el.addEventListener("pointerup", () => {

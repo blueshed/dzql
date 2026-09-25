@@ -137,19 +137,21 @@ export function calendarHtml(p: CalendarProps, preview: Preview | null = null): 
   const nameOf = (id: string) => p.team.people.find((x) => x.id === id)?.name ?? "";
 
   const bar = (span: Span, week: (string | null)[], o: { id: string | null; person: string; status: Status | "draft" }) => {
-    const worked = workingDaysOf(span);
-    const cols = week.map((d, i) => (d && worked.includes(d) ? i : -1)).filter((i) => i >= 0);
+    const workDays = workingDaysOf(span);
+    const cols = week.map((d, i) => (d && workDays.includes(d) ? i : -1)).filter((i) => i >= 0);
     if (!cols.length) return "";
     const [c0, c1] = [cols[0]!, cols.at(-1)!];
     const mine = o.person === p.me;
-    const name = mine ? "" : nameOf(o.person);
-    const ends = `${worked[0]! < week[c0]! ? " open-start" : ""}${worked.at(-1)! > week[c1]! ? " open-end" : ""}`;
+    // on the bar: whose it is, or for yours -- your colour says whose -- what it is
+    const shown = o.status === "draft" ? "draft" : mine ? WORD[o.status] : nameOf(o.person);
+    const ends = `${workDays[0]! < week[c0]! ? " open-start" : ""}${workDays.at(-1)! > week[c1]! ? " open-end" : ""}`;
     const movable = mine && o.status === "asked";
-    const label = o.status === "draft" ? `your draft, ${days(span)}` : `${mine ? "you" : name}, ${WORD[o.status]}, ${days(span)}`;
+    const label = o.status === "draft" ? `your draft, ${days(span)}` : `${mine ? "you" : nameOf(o.person)}, ${WORD[o.status]}, ${days(span)}`;
+    const whole = `${o.status === "draft" ? "Your draft" : mine ? "Yours" : nameOf(o.person)} · ${o.status === "draft" ? "not asked for yet" : WORD[o.status]} · ${days(span)} · ${worked(span)}`;
     const opens = go(o.id === null ? `${p.place}?draft` : `${p.place}?request=${o.id}`);
     const pressed = o.id === null ? "" : ` aria-pressed="${p.open === o.id}"`;
     const grips = movable ? `<span class="grip start" aria-hidden="true"></span><span class="grip end" aria-hidden="true"></span>` : "";
-    return `<button type="button" class="bar ${o.status} who-${colourOf(p.team.people, o.person)}${ends}${movable ? " movable" : ""}" style="grid-column: ${c0 + 1} / span ${c1 - c0 + 1}"${o.id ? ` data-request="${esc(o.id)}"` : ""}${pressed}${opens}>${grips}<span aria-hidden="true">${esc(name)}</span><span class="sr-only">${esc(label)}</span></button>`;
+    return `<button type="button" class="bar ${o.status} who-${colourOf(p.team.people, o.person)}${ends}${movable ? " movable" : ""}" style="grid-column: ${c0 + 1} / span ${c1 - c0 + 1}" title="${esc(whole)}"${o.id ? ` data-request="${esc(o.id)}"` : ""}${pressed}${opens}>${grips}<span aria-hidden="true">${esc(shown)}</span><span class="sr-only">${esc(label)}</span></button>`;
   };
 
   const month = (m: string) => {

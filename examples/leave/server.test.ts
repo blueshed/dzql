@@ -364,6 +364,9 @@ describe("time, on its own (./calendar.ts)", () => {
     expect(html).toContain('class="bar asked who-0 open-end movable" style="grid-column: 4 / span 2"'); // hers, Thu and Fri, going on after the weekend
     expect(html).toContain('class="bar asked who-0 open-start movable" style="grid-column: 1 / span 1"'); // her Monday
     expect(html).toContain('<span class="grip start" aria-hidden="true"></span>');
+    expect(html).toContain('title="Yours · waiting · Thu 8 – Mon 12 Oct · 3 working days"'); // the whole of it, on hover
+    expect(html).toContain('title="Bo · waiting · Mon 5 – Fri 9 Oct · 5 working days"');
+    expect(html).toMatch(/<span aria-hidden="true">waiting<\/span><span class="sr-only">you, waiting/); // yours says what it is, your colour whose
     expect(html.match(/class="date clash"/g)).toHaveLength(2);
     expect(html).toContain('class="date today" style="grid-column: 3" aria-current="date"');
     expect(html).toContain('<li><span class="swatch who-0" aria-hidden="true"></span>you</li>');
@@ -371,6 +374,7 @@ describe("time, on its own (./calendar.ts)", () => {
     const drafted = calendarHtml(props({ draft: { starts: "2026-10-19", ends: "2026-10-20" } }));
     expect(drafted).toContain('class="bar draft who-0" style="grid-column: 1 / span 2"');
     expect(drafted).toContain('data-value="2026-10?draft"');
+    expect(drafted).toContain('title="Your draft · not asked for yet · Mon 19 – Tue 20 Oct · 2 working days"');
     const moving = calendarHtml(props(), { id: "2", starts: "2026-10-13", ends: "2026-10-14" });
     expect(moving).toContain("you, waiting, Tue 13 – Wed 14 Oct"); // where a drag would put it
     expect(moving.match(/class="date clash"/g)).toBeNull(); // and what that would mean
