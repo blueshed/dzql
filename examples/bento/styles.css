@@ -28,7 +28,7 @@
   --ink-rgb: 30, 36, 48;
   --muted: #6b6b74;
   --line: rgba(30, 36, 48, 0.14);
-  --edge: rgba(30, 36, 48, 0.25); /* a control's border */
+  --edge: rgba(30, 36, 48, 0.52); /* a control's border: 3:1 against the card (WCAG 1.4.11) */
   --accent: #2f63bf;
   --selected: #c9484a; /* the one "this is picked": a pin and a face both ring in it */
   --selected-rgb: 201, 72, 74;
@@ -184,6 +184,7 @@ body.windowed { overflow: hidden; }
 .filter { position: absolute; z-index: 3; top: calc(var(--space-lg) + var(--control) * 2 + var(--space-md) + 1px); right: calc(var(--space-lg) + var(--control) + var(--space-md)); display: flex; align-items: center; gap: var(--space-sm); height: var(--control); padding: 0 var(--space-md) 0 var(--space-sm); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); transition: right 200ms ease; }
 .filter[hidden] { display: none; }
 .filter input { width: 160px; height: 24px; border: 0; background: transparent; font: inherit; font-size: 14px; color: var(--ink); outline: none; }
+.filter:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; } /* the field draws none: the bar shows the focus */
 .filter input::placeholder { color: var(--muted); }
 .tally { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .hushed { opacity: 0.3; }

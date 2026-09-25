@@ -41,6 +41,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The kernel's CSS, for everyone who reads it** (src/bento.css): one focus ring for every
+  control, drawn outside it (inside a stack, which clips); the find bar shows focus while its
+  field has it; what is chosen or pressed is outlined in forced colours, where shadows and
+  backgrounds are taken away; the window opening and the rails stepping aside are still under
+  reduced motion; `.sr-only` uses `clip-path`. Each example's `--edge` -- a control's border -- is
+  now at least 3:1 against its card (WCAG 1.4.11), so fields and stacks read more firmly.
+
 - **An applet that takes its document's patches is never sent its props again** (src/parts.ts):
   they are that document, whose every change reaches the page as a patch. Before, a write to any
   other document sent them again; now nothing does, so an applet's props must be its document

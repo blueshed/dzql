@@ -15,7 +15,7 @@
   --ink: #2B2B33; --navy: #1E3F8F; --royal: #2F63BF; --gold: #C9A227; --gold-soft: rgba(201, 162, 39, 0.45);
   --burgundy: #7B2F4B; --leaf: #6E9A42; --amber: #D9A21B; --muted: #6B6B74;
   --ink-rgb: 30, 63, 143; /* the light: every shadow tints toward the ink */
-  --line: rgba(43, 43, 51, 0.14); --edge: rgba(43, 43, 51, 0.25);
+  --line: rgba(43, 43, 51, 0.14); --edge: rgba(43, 43, 51, 0.55);
   --serif: "Cinzel", "Trajan Pro", "Times New Roman", serif;
   --sans: "Josefin Sans", "Futura", "Avenir Next", "Helvetica Neue", sans-serif;
   --script: "Pinyon Script", "Snell Roundhand", "Brush Script MT", cursive;

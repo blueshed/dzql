@@ -9,6 +9,7 @@
    An example's own stylesheet imports this first (`@import "../../../src/bento.css";`), then says
    its tokens on :root and whatever is its own. The tokens this reads:
      --paper --tray --card --card-hover --well --ink --muted --line --edge --ink-rgb
+     (--edge is a control's border: at least 3:1 against --card, WCAG 1.4.11; --line is a hairline)
      --accent (links, tools, what is pressed)  --mark (the pencil)  --add  --danger
    and, with the defaults below, the corner family, the spaces, the control sizes and the shadows. */
 
@@ -26,7 +27,10 @@
   --shadow-window: 0 20px 50px rgba(var(--ink-rgb), 0.25);
 }
 * { box-sizing: border-box; }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* one focus ring for every control, drawn outside it so a pressed (accent) control keeps it; a part
+   that draws its own (a field, a compartment, a row) says so below */
+:where(a, button, summary, [role="button"], [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .icon { flex: 0 0 auto; }
 
 /* ── controls: a button with a word, a field, a choice ── */
@@ -54,6 +58,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .stack { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); overflow: hidden; }
 .stack > .tool { width: var(--control); height: var(--control); padding: 0; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); }
 .stack > .tool:last-child { border-bottom: 0; }
+.stack > .tool:focus-visible { outline-offset: -3px; } /* the stack clips what is outside it */
 .stack > .tool:hover { background: rgba(var(--ink-rgb), 0.06); }
 .stack > .tool[aria-pressed="true"] { background: var(--accent); color: var(--card); }
 .stack.across { flex-direction: row; }
@@ -69,7 +74,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .crumbs .crumb { display: inline-flex; align-items: center; }
 .crumbs .sep { display: inline-flex; align-items: center; justify-content: center; width: 22px; color: var(--muted); }
 .crumbs a { color: var(--accent); text-decoration: none; }
-.crumbs a:hover, .crumbs a:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+.crumbs a:hover, .crumbs a:focus-visible { text-decoration: underline; text-underline-offset: 3px; } /* and the ring */
 .crumbs b { font-weight: 600; }
 
 /* ── the tray: compartments cut into it, walled by its padding. Computed by src/tray.ts, which
@@ -126,7 +131,8 @@ body:has(.page.windowed) { overflow: hidden; }
 /* find: its field beside the rail, the tally, the eye (rule 17) */
 .filter { position: absolute; z-index: 3; top: var(--space-lg); right: calc(var(--space-lg) + var(--control) + var(--space-md)); display: flex; align-items: center; gap: var(--space-sm); height: var(--control); padding: 0 2px 0 var(--space-md); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
 .filter input { width: 140px; height: 24px; padding: 0; border: 0; background: transparent; font-size: 14px; }
-.filter input:focus-visible { outline: none; }
+.filter input:focus-visible { outline: none; } /* the bar it sits in shows the focus */
+.filter:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .filter .tally { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .filter .tool { width: 26px; height: 26px; padding: 0; border: 0; border-radius: var(--radius-inner); background: transparent; color: var(--ink); }
 .filter .tool[aria-pressed="true"] { background: var(--accent); color: var(--card); }
@@ -205,3 +211,16 @@ dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
 /* the connection gone: the page stays as it was, inert, until the server draws it again (src/client/app.ts) */
 #app[data-offline] { opacity: 0.55; }
 #app[data-offline]::before { content: "Reconnecting\2026"; position: fixed; top: var(--space-lg); left: 50%; translate: -50% 0; z-index: 90; padding: var(--space-xs) var(--space-md); border-radius: var(--radius-panel); background: var(--ink); color: var(--card); font-size: 13px; }
+
+/* ── what the reader has asked for ── */
+/* no motion: the window opening, and the rails stepping aside for the drawer, are still (the sheet and the modal already are) */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none; }
+  .rail, .cell.open .page-tools, .filter, .full { transition: none; }
+}
+/* forced colours (Windows High Contrast) take away shadows and backgrounds: what is chosen or
+   pressed is drawn with an outline instead */
+@media (forced-colors: active) {
+  .thing[aria-pressed="true"], .row[aria-pressed="true"], .tool[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .cell, .stack, .sheet, dialog.modal, .walk-said { border: 1px solid CanvasText; }
+}

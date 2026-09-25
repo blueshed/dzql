@@ -7,14 +7,14 @@
 :root {
   color-scheme: light dark;
   --paper: #f4faf4; --tray: #d9e8d9; --card: #ffffff; --card-hover: #fbfdfb; --well: #eaf3ea;
-  --ink: #0b3d0b; --accent: #2f7d32; --muted: #5f6f5f; --line: rgba(11, 61, 11, 0.14); --edge: rgba(11, 61, 11, 0.28);
+  --ink: #0b3d0b; --accent: #2f7d32; --muted: #5f6f5f; --line: rgba(11, 61, 11, 0.14); --edge: rgba(11, 61, 11, 0.55);
   --mine: #dff0df; --ink-rgb: 11, 61, 11;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --paper: #0b0f0b; --tray: #1c2a1c; --card: #121b12; --card-hover: #17231a; --well: #0e160e;
-    --ink: #d8f5d8; --accent: #8fdc8f; --muted: #93a893; --line: rgba(216, 245, 216, 0.16); --edge: rgba(216, 245, 216, 0.32);
+    --ink: #d8f5d8; --accent: #8fdc8f; --muted: #93a893; --line: rgba(216, 245, 216, 0.16); --edge: rgba(216, 245, 216, 0.4);
     --mine: #1a3a1a; --ink-rgb: 0, 0, 0;
   }
 }
