@@ -23,20 +23,24 @@ another name and go into the same room: each of you sees the other arrive and sp
 bottom right, takes back your own last write, and the other sees it go: your last message, or, if
 you have only just come in, your coming into the room.
 
-That is chat, the smallest example. Two more, and a mock-up:
+That is chat, the smallest example. Three more, and a mock-up:
 
 - `bun run dev:wedding` (port 3001): a site for one wedding. The codes are `DASH` (the couple),
   `OKAFOR` and `BEN` (two households). There is a Lego minifigure builder, and a photo of
   everyone coming that fills in live.
 - `bun run dev:ticker` (port 3002): a price board and a Swiss railway clock, both drawn in the
   browser.
+- `bun run dev:leave` (port 3004): a small team asks for days off and a manager answers. People
+  sign in: `ann@leave.example` and `bo@leave.example` ask, `mo@leave.example` answers; each
+  password is the name and `-password` (`ann-password`).
 - `bun run dev:bento` (port 3003): the bento mock-up, a page to look at and click, with no eta
   behind it.
 
 `ETA_EXAMPLE=<name>` picks the example for `bun run dev`, `start`, `stories` and `cli` (default
-`chat`); `dev:wedding`, `dev:ticker` and `stories:all` set it themselves. The CLI also needs
+`chat`); `dev:wedding`, `dev:ticker`, `dev:leave` and `stories:all` set it themselves. The CLI also needs
 `ETA_URL` for the server it talks to (default `ws://localhost:3000`). `.env.example` explains every
-setting, `TICK_MS` and `CLOCK_TZ` (the ticker) and `REVEAL` (the wedding) among them.
+setting, `TICK_MS` and `CLOCK_TZ` (the ticker), `REVEAL` (the wedding) and `ETA_ORIGINS` (other
+sites whose pages may open a socket) among them.
 
 ## What it pairs with
 

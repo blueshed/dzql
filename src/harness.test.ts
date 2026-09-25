@@ -103,6 +103,15 @@ describe("stories harness", () => {
     expect(placeOf("<p>no address</p>")).toBeUndefined();
   });
 
+  test("a cast signs in through the example's own sign-in route; one that cannot is said, not run as a visitor", async () => {
+    const { example: leave } = await import("../examples/leave/index");
+    const { stories: told } = await import("../examples/leave/stories");
+    const first = told.stories.slice(0, 1);
+    expect((await run(leave, { ...told, stories: first })).failed).toBe(0);
+    const wrong = { ...told, stories: first, signIn: (name: string) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@leave.example`, password: "not-it" } }) };
+    expect(run(leave, wrong)).rejects.toThrow("ann could not sign in at /login: 303");
+  }, 30000);
+
   // Delivery, not only pages: chat broken on purpose, three ways its own stories could not see.
   const only = (prefix: string): Story[] => stories.stories.filter((s) => s.name.startsWith(prefix));
   const withRoom = (f: (room: Compartment) => Compartment): Example => ({ ...example, compartments: example.compartments.map((c) => (c.docType === "room" ? f(c) : c)) });

@@ -126,7 +126,7 @@ export interface Field {
   name: string;
   label: string;
   placeholder?: string;
-  type?: "text" | "email" | "number";
+  type?: "text" | "email" | "number" | "date";
   required?: boolean;
   value?: string;
 }
@@ -367,8 +367,8 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
     return join(`<div class="scrim modal-scrim"${close}></div>`, `<dialog open class="modal" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${body}</dialog>`);
   }
 
-  /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs. `add` is the form's write, `close` the one that puts the modal away. */
-  function addModal(title: string, fields: Field[], add: string, close: string, verb = "Add"): string {
+  /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs. `add` is the form's write, `close` the one that puts the modal away; `said`, why the last try was refused (src/refusal.ts `refused`), beneath the fields. */
+  function addModal(title: string, fields: Field[], add: string, close: string, verb = "Add", said = ""): string {
     const inputs = fields
       .map(
         (f, i) =>
@@ -376,7 +376,7 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
       )
       .join("");
     const foot = `<div class="modal-foot">${tool("Cancel", { kind: "quiet", write: close })}${tool(verb, { icon: "plus", kind: "add", write: "", submit: true })}</div>`;
-    return modal(title, close, `<form${add}>${inputs}${foot}</form>`);
+    return modal(title, close, `<form${add}>${inputs}${said}${foot}</form>`);
   }
 
   /** Removing a thing asks in a modal too -- a modal is new or delete and nothing else (rule 14). */

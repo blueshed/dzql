@@ -29,6 +29,26 @@ export type Example = {
 undo: a stale, logged-out tab must not walk back a write made before it went stale. `src/start.ts`
 runs `examples/${ETA_EXAMPLE}/index.ts` (default `chat`); one process serves one example.
 
+**Signing people in** (leave does it). A session is anonymous until the example says who it is,
+and a password never crosses the socket:
+
+- The sign-in page is a plain `<form method="post" action="/login">` (no `data-write`: the client
+  lets it post), answered by a route on `Example.routes`. The route checks the password
+  (`Bun.password.verify`, against a hash in a table no document includes), refuses a post from
+  another site (delta's `refuseOrigin`), and for a good one starts a **fresh** session -- never the
+  visit's own id -- writes who it is into the session document with `serverWrite`, and answers
+  `303 /` with `sessionCookie(id)` (src/server.ts: the kernel's cookie, its attributes). A wrong
+  one is told on the page it came from: `tell(visit, { doc, path, reason })`, drawn by `refused`.
+- Who you are is then the session document's; the session's `permit` refuses it over the wire,
+  but allows taking it back (signing out, which every tab of the session hears). `who` gives delta
+  the person, `active` whether anyone is signed in.
+- An id is text, as the wire says it, whatever a backend names a new row (a UUID on SQLite, a
+  serial on Postgres): never `Number()` one.
+- `/ws` refuses a socket opened from another site: no `Origin`, or the page's own, or one listed
+  in `ETA_ORIGINS` (comma-separated).
+- In the stories, `signIn(name)` gives the route and the form for a member of the cast; the
+  harness posts it and starts them from the page it signs them into.
+
 ## `Compartment` (`src/compartments/compartment.ts`)
 
 ```ts

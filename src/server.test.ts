@@ -179,6 +179,18 @@ describe("createServer, generically (no example from the examples directory invo
     expect(other.headers.get("content-type")).toContain("text/html");
   });
 
+  test("a socket opened from another site is refused, unless ETA_ORIGINS lists it", async () => {
+    const from = (origin: string) => fetch(new URL("/ws", server.url), { headers: { Origin: origin } });
+    expect((await from("https://elsewhere.example")).status).toBe(403);
+    process.env.ETA_ORIGINS = "https://allowed.example, https://also.example";
+    try {
+      expect((await from("https://allowed.example")).status).toBe(400); // let through: then not an upgrade at all
+      expect((await from("https://elsewhere.example")).status).toBe(403);
+    } finally {
+      delete process.env.ETA_ORIGINS;
+    }
+  });
+
   test("a non-upgrade request to /ws is rejected", async () => {
     const res = await fetch(new URL("/ws", server.url));
     expect(res.status).toBe(400);

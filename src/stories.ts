@@ -52,6 +52,13 @@ export type Story = { name: string } & Told;
 
 export type Stories = {
   cast: Cast;
+  /**
+   * How a member of the cast signs in, when the example has people who must: the example's own
+   * sign-in route and the form it takes. The harness posts it, as a browser would, and the member's
+   * session is the one the answer's cookie names -- so a password never crosses the wire, and a
+   * story starts from a signed-in page. Undefined for a member who stays a visitor.
+   */
+  signIn?: (name: string) => { path: string; form: Record<string, string> } | undefined;
   /** The write that puts a session where a `seen` record says -- the example's own grammar for
    * "where", a page at least. Omit in an example with one page, where `seen` lists names. */
   at?: (where: string) => Write;

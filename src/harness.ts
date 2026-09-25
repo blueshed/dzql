@@ -219,10 +219,20 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     return new Map(await Promise.all(cast.map(async (m) => [m.name, await draw(m.sessionId)] as const)));
   }
 
+  /** Signs a member in through the example's own route, as a browser posts its form: the session the answer's cookie names, or undefined for a visitor. */
+  async function signIn(name: string): Promise<string | undefined> {
+    const how = stories.signIn?.(name);
+    if (!how) return undefined;
+    const res = await fetch(new URL(how.path, server.url), { method: "POST", body: new URLSearchParams(how.form), redirect: "manual" });
+    const sessionId = /(?:^|;\s*|,\s*)session_id=([^;,\s]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
+    if (!sessionId) throw new Error(`${name} could not sign in at ${how.path}: ${res.status}`);
+    return sessionId;
+  }
+
   async function connect(name: string): Promise<Member> {
     const url = new URL("/ws", server.url);
     url.protocol = "ws:";
-    const sessionId = crypto.randomUUID();
+    const sessionId = (await signIn(name)) ?? crypto.randomUUID();
     // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
     const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } });
     const member: Member = { name, sessionId, ws, inbox: [], page: "", taken: new Map(), answered: [] };

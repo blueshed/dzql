@@ -246,9 +246,9 @@ let sending: { doc: string; sent: [HTMLInputElement | HTMLTextAreaElement, strin
 app.addEventListener("submit", (event) => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
-  event.preventDefault();
   const spec = form.dataset.write;
-  if (!spec) return;
+  if (!spec) return; // not a write: a plain form posts as the browser does (a sign-in)
+  event.preventDefault();
   const { doc, op, path } = JSON.parse(spec) as WriteSpec;
   const fields = [...form.elements].filter((f): f is HTMLInputElement | HTMLTextAreaElement => f instanceof HTMLInputElement || f instanceof HTMLTextAreaElement);
   sending = { doc, sent: fields.map((f) => [f, f.value]) };

@@ -10,8 +10,21 @@ import { splitDoc } from "./names";
 import { drawing, shownTo } from "./reading";
 import { diff, type Drawn } from "./parts";
 import { Refusal, refuse, tell } from "./refusal";
+import { refuseOrigin } from "@blueshed/delta/server";
 
 type Socket = Bun.ServerWebSocket<ConnectionData>;
+
+/** Other sites whose pages may open a socket here, from `ETA_ORIGINS` (comma-separated); by default only the page's own. */
+const origins = (): string[] | undefined => process.env.ETA_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean);
+
+/**
+ * The cookie that names a session -- its id, a person's only credential: sent back on every
+ * request, never readable by a script, never sent from another site. An example that signs people
+ * in sets it with a fresh id, never the one the visit had before (a fixed session).
+ */
+export function sessionCookie(sessionId: string): string {
+  return new Bun.Cookie("session_id", sessionId, { path: "/", httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" }).serialize();
+}
 
 // One example per process is an invariant: a running eta process serves exactly one example, and
 // this tracks which, so the one place changes are told from (below) draws through it. It's cleared
@@ -231,20 +244,13 @@ export function createServer(example: Example, port: number | string = process.e
       "/*": example.index,
       "/api/health": () => Response.json({ ok: true }),
       "/ws": (req: Bun.BunRequest, server: Bun.Server<ConnectionData>) => {
+        // A socket is not bound by the same-origin policy: one opened from another site is refused
+        // before it is a session (delta's rule: no Origin, or the page's own, or ETA_ORIGINS).
+        const refused = refuseOrigin(req, origins());
+        if (refused) return refused;
         const sessionId = req.cookies.get("session_id") ?? crypto.randomUUID();
-        if (!req.cookies.has("session_id")) {
-          req.cookies.set("session_id", sessionId, {
-            path: "/",
-            httpOnly: true,
-            sameSite: "lax",
-            secure: process.env.NODE_ENV === "production",
-          });
-        }
-
         const headers = new Headers();
-        for (const setCookie of req.cookies.toSetCookieHeaders()) {
-          headers.append("Set-Cookie", setCookie);
-        }
+        if (!req.cookies.has("session_id")) headers.append("Set-Cookie", sessionCookie(sessionId));
 
         if (server.upgrade(req, { data: { sessionId }, headers })) return;
         return new Response("Upgrade failed", { status: 400 });

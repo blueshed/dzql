@@ -38,10 +38,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The wedding can do what its stories say**: a household takes back its answer, and leaves a
   guest's coming "not sure"; the couple edit a household's email, add a guest to its invitation,
   and take one off (a drawer, then a modal that asks). The stories found each missing.
+- **leave, a fourth example: people sign in.** A small team asks for days off and a manager
+  answers. A sign-in page posts an email and password to the example's own route (never over the
+  socket); a good one starts a fresh session with who it is, a wrong one is told on the page.
+  Twelve stories, from asking and answering to what nobody may do.
+- **`sessionCookie(id)`** (src/server.ts): the kernel's session cookie, for a route that starts a
+  session; **`signIn`** on `Stories`: the cast signs in through the example's own route;
+  **`date`** fields in `addModal`, and its **`said`**: why the last try was refused.
+- **`/ws` refuses a socket opened from another site** unless `ETA_ORIGINS` lists it (delta's
+  `refuseOrigin`).
 - **`told` on a `cannot` story**: the reason the refused person must be shown. Their page may
   change by that line and nothing else; a reason shown that no story says fails as a change.
 
 ### Changed
+
+- **A plain form posts.** The client stopped every form's submit, so a form without
+  `data-write` (a sign-in page) could never post; it now stops only a form that writes.
 
 - **Takes @blueshed/delta 0.8.0 and @blueshed/railroad 0.14.0.** Nothing in eta changes for
   them: eta serves its own socket (delta's new Origin check is `createWs`'s), keeps its documents
