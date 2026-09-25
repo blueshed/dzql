@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
 import { createServer } from "../../src/server";
 import { hear, type Heard } from "../../src/harness";
-import { alsoOff, clashes, colourOf, daysOf, may, nextDay, offOn, placed, shape, type Person, type Team } from "./documents";
+import { alsoOff, clashes, colourOf, daysOf, isWorkingDay, workingDaysOf, may, nextDay, offOn, placed, shape, type Person, type Team } from "./documents";
 import { days } from "./page";
 import { example } from "./index";
 
@@ -112,6 +112,7 @@ describe("the pages", () => {
     expect(await go(ann, "mine")).toContain("Fri 13 Nov");
     const drawer = await go(ann, "mine?request=2");
     expect(drawer).toContain("Your leave");
+    expect(drawer).toContain("Fri 13 Nov · 1 working day");
     expect(drawer).toContain("Take it back");
     expect(drawer).not.toContain("Approve"); // her own: nobody answers their own
     expect(await go(ann, "mine?confirm=2")).toContain("Take back Fri 13 Nov?");
@@ -167,7 +168,8 @@ describe("the pages", () => {
       expect(cal.match(/class="date clash"/g)).toHaveLength(2); // Thu 8 and Fri 9: Ann and Bo
       expect(cal).toContain('<span class="sr-only">Ann, waiting, Thu 8 – Mon 12 Oct</span>');
       expect(cal).toContain('data-value="calendar/2026-10?request=1"><span aria-hidden="true">Bo</span>'); // Bo's week, one bar, Mon to Fri, named
-      expect(cal).toContain('open-end" style="grid-column: 4 / span 4"'); // Ann's goes on into the next week
+      expect(cal).toContain('open-end" style="grid-column: 4 / span 2"'); // Ann's Thursday and Friday, going on after the weekend
+      expect(cal).toContain('open-start" style="grid-column: 1 / span 1"'); // her Monday; the weekend between is nobody's
       expect(cal).toContain(`<button type="button" class="bar asked who-1" style="grid-column: 1 / span 5" aria-pressed="false" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="calendar/2026-10?request=1">`); // Bo's week, in his colour, opens his request, at the same months
       const opened = await go(mo, "calendar/2026-10?request=1");
       expect(opened).toContain('aria-pressed="true" data-write=\'{"doc":"session","op":"replace","path":"/page"}\' data-value="calendar/2026-10?request=1"'); // lit while its drawer is open
@@ -297,6 +299,20 @@ describe("the rules, on their own", () => {
       { op: "replace", path: "/requests/1/answered_by", value: "3" },
     ]);
     expect(shape(ann, [{ op: "remove", path: "/requests/1" }])).toEqual([{ op: "remove", path: "/requests/1" }]);
+  });
+
+  test("a weekend is nobody's leave: a clash only on a working day, and a request of only a weekend is refused", () => {
+    expect(isWorkingDay("2026-10-09")).toBe(true); // a Friday
+    expect(isWorkingDay("2026-10-10")).toBe(false);
+    expect(isWorkingDay("2026-10-11")).toBe(false);
+    expect(workingDaysOf({ starts: "2026-10-09", ends: "2026-10-12" })).toEqual(["2026-10-09", "2026-10-12"]);
+    const weekend: Team = { ...t, requests: [
+      { id: "1", person_id: "1", starts: "2026-10-10", ends: "2026-10-11", status: "approved", answered_by: "3" },
+      { id: "2", person_id: "3", starts: "2026-10-09", ends: "2026-10-12", status: "approved", answered_by: "3" },
+    ] };
+    expect(clashes(offOn(weekend))).toEqual([]);
+    expect(alsoOff(weekend, weekend.requests[1]!)).toEqual([]);
+    expect(() => shape(ann, [{ op: "add", path: "/requests/-", value: { starts: "2026-10-10", ends: "2026-10-11" } }])).toThrow("There are no working days in those.");
   });
 
   test("who is off when: every day a request covers, declined ones not at all; a clash is two people, not one person twice", () => {

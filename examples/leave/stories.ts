@@ -21,6 +21,7 @@ export const stories: Stories = {
     // ── asking ──
     story("Ann asks for the first days of December off, and Mo and Bo see it on the team's list", { as: "ann", from: "mine?new", does: ask("2026-12-01", "2026-12-04"), seen: { ann: "mine", mo: "team", bo: "team" } }),
     story("Ann asks for days that end before they begin, and is told so", { as: "ann", from: "mine?new", cannot: ask("2026-12-04", "2026-12-01"), told: "The last day is before the first." }),
+    story("Ann asks for a weekend off, and is told it has no working days in it", { as: "ann", from: "mine?new", cannot: ask("2026-10-10", "2026-10-11"), told: "There are no working days in those." }),
     story("Bo takes back his week in October before Mo has answered", { as: "bo", from: "mine?confirm=1", does: withdraw(1), seen: { bo: "mine", mo: "team", ann: "team" } }),
 
     // ── seeing who is off when ──

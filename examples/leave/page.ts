@@ -2,7 +2,7 @@ import { address, bento, choice, layers, parseAddress, prop, rows, type Crumb, t
 import { esc, join, write } from "../../src/html";
 import { part } from "../../src/parts";
 import { refused } from "../../src/refusal";
-import { alsoOff, clashes, colourOf, offOn, session as sessionOf, team as teamOf, type Person, type Request, type Status, type Team } from "./documents";
+import { alsoOff, clashes, colourOf, isWorkingDay, offOn, workingDaysOf, session as sessionOf, team as teamOf, type Person, type Request, type Status, type Team } from "./documents";
 import { icon } from "./icons";
 
 // leave's pages. Signed out, one: sign in. Signed in, a box of two compartments -- your leave, and
@@ -66,11 +66,13 @@ function calendar(t: Team, me: Person, off: Map<string, Request[]>, open: string
     .filter((r) => r.status !== "declined" && r.ends >= first && r.starts <= last)
     .sort((a, b) => a.starts.localeCompare(b.starts) || b.ends.localeCompare(a.ends));
   const bar = (r: Request, week: (string | null)[]) => {
-    const cols = week.map((d, i) => (d && d >= r.starts && d <= r.ends ? i : -1)).filter((i) => i >= 0);
+    // the bar covers the request's working days in this week; a weekend is nobody's leave
+    const cols = week.map((d, i) => (d && d >= r.starts && d <= r.ends && isWorkingDay(d) ? i : -1)).filter((i) => i >= 0);
     if (!cols.length) return "";
     const [c0, c1] = [cols[0]!, cols.at(-1)!];
     const name = r.person_id === me.id ? "" : nameOf(t, r.person_id);
-    const ends = `${r.starts < week[c0]! ? " open-start" : ""}${r.ends > week[c1]! ? " open-end" : ""}`;
+    const worked = workingDaysOf(r);
+    const ends = `${worked[0]! < week[c0]! ? " open-start" : ""}${worked.at(-1)! > week[c1]! ? " open-end" : ""}`;
     const said = `${r.person_id === me.id ? "you" : name}, ${WORD[r.status]}, ${days(r)}`;
     return `<button type="button" class="bar ${r.status} who-${colourOf(t, r.person_id)}${ends}" style="grid-column: ${c0 + 1} / span ${c1 - c0 + 1}" aria-pressed="${open === r.id}"${go(address(path, "request", r.id))}><span aria-hidden="true">${esc(name)}</span><span class="sr-only">${esc(said)}</span></button>`;
   };
@@ -82,7 +84,7 @@ function calendar(t: Team, me: Person, off: Map<string, Request[]>, open: string
     while (cells.length % 7) cells.push(null);
     const weeks = Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
     const week = (wk: (string | null)[]) =>
-      `<div class="week">${wk.map((d, i) => `<span class="date${d && clashing.has(d) ? " clash" : ""}${d === today ? " today" : ""}" style="grid-column: ${i + 1}"${d === today ? ' aria-current="date"' : ""}>${d ? Number(d.slice(8)) : ""}${d === today ? '<span class="sr-only">, today</span>' : ""}${d && clashing.has(d) ? '<span class="sr-only">, a clash</span>' : ""}</span>`).join("")}${requests.map((r) => bar(r, wk)).join("")}</div>`;
+      `<div class="week">${wk.map((d, i) => `<span class="date${d && clashing.has(d) ? " clash" : ""}${d === today ? " today" : ""}${i > 4 ? " weekend" : ""}" style="grid-column: ${i + 1}"${d === today ? ' aria-current="date"' : ""}>${d ? Number(d.slice(8)) : ""}${d === today ? '<span class="sr-only">, today</span>' : ""}${d && clashing.has(d) ? '<span class="sr-only">, a clash</span>' : ""}</span>`).join("")}${requests.map((r) => bar(r, wk)).join("")}</div>`;
     const title = first.toLocaleDateString("en-GB", { timeZone: "UTC", month: "long", year: "numeric" });
     return `<section class="month" aria-label="${esc(title)}"><h3 class="cap">${esc(title)}</h3><div class="weekdays" aria-hidden="true">${WEEKDAYS.map((d) => `<span>${d}</span>`).join("")}</div>${weeks.map(week).join("")}</section>`;
   };
@@ -92,6 +94,12 @@ function calendar(t: Team, me: Person, off: Map<string, Request[]>, open: string
     : `<p class="note">Nobody is off in these months.</p>`;
   return part("calendar", `<div id="calendar">${key}<div class="calendar">${months.map(month).join("")}</div></div>`);
 }
+
+/** How many working days a request takes. */
+const worked = (r: Request): string => {
+  const n = workingDaysOf(r).length;
+  return `${n} working ${n === 1 ? "day" : "days"}`;
+};
 
 /** A person's colour, as a dot beside their name. */
 const swatch = (t: Team, personId: string): string => `<span class="swatch who-${colourOf(t, personId)}" aria-hidden="true"></span>`;
@@ -121,7 +129,7 @@ function requestSheet(t: Team, me: Person, r: Request, path: string): string {
       : "";
   const body = join(
     `<div class="props">`,
-    prop("Days", `<span>${esc(days(r))}</span>`),
+    prop("Days", `<span>${esc(days(r))} · ${worked(r)}</span>`),
     prop("It is", `<span class="state-${r.status}">${WORD[r.status]}${r.answered_by ? ` by ${esc(nameOf(t, r.answered_by))}` : ""}</span>`),
     also.length > 0 && prop("Also off", also.map(({ request: o, days: n }) => `<span>${esc(o.person_id === me.id ? "You" : nameOf(t, o.person_id))}, ${WORD[o.status]}: ${n} ${n === 1 ? "day" : "days"} of these</span>`).join("")),
     answer,

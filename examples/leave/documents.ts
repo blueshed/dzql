@@ -53,10 +53,19 @@ export function daysOf(r: Pick<Request, "starts" | "ends">): string[] {
   return out;
 }
 
-/** Who is off on each day: every request not declined, by the days it covers. */
+/** Monday to Friday: the days leave is taken from. */
+export const isWorkingDay = (day: string): boolean => {
+  const weekday = new Date(`${day}T00:00:00Z`).getUTCDay();
+  return weekday !== 0 && weekday !== 6;
+};
+
+/** The working days a request covers: what it takes, and all anyone is off. */
+export const workingDaysOf = (r: Pick<Request, "starts" | "ends">): string[] => daysOf(r).filter(isWorkingDay);
+
+/** Who is off on each working day: every request not declined, by the working days it covers. */
 export function offOn(t: Team): Map<string, Request[]> {
   const off = new Map<string, Request[]>();
-  for (const r of t.requests) if (r.status !== "declined") for (const d of daysOf(r)) off.set(d, [...(off.get(d) ?? []), r]);
+  for (const r of t.requests) if (r.status !== "declined") for (const d of workingDaysOf(r)) off.set(d, [...(off.get(d) ?? []), r]);
   return off;
 }
 
@@ -72,12 +81,12 @@ export function colourOf(t: Team, personId: string): number {
 /** The days on which more than one person is off. */
 export const clashes = (off: Map<string, Request[]>): string[] => [...off].filter(([, rs]) => new Set(rs.map((r) => r.person_id)).size > 1).map(([d]) => d);
 
-/** Who else is off during `r`, and on how many of its days: what a manager weighs before answering. */
+/** Who else is off during `r`, and on how many of its working days: what a manager weighs before answering. */
 export function alsoOff(t: Team, r: Request): { request: Request; days: number }[] {
-  const mine = new Set(daysOf(r));
+  const mine = new Set(workingDaysOf(r));
   return t.requests
     .filter((o) => o.person_id !== r.person_id && o.status !== "declined")
-    .map((o) => ({ request: o, days: daysOf(o).filter((d) => mine.has(d)).length }))
+    .map((o) => ({ request: o, days: workingDaysOf(o).filter((d) => mine.has(d)).length }))
     .filter((o) => o.days > 0);
 }
 
@@ -119,6 +128,7 @@ export function shape(me: Person, ops: PatchOp[]): PatchOp[] {
       const { starts, ends } = (op.value ?? {}) as { starts?: unknown; ends?: unknown };
       if (typeof starts !== "string" || typeof ends !== "string" || !DAY.test(starts) || !DAY.test(ends)) return [];
       if (ends < starts) throw refuse("The last day is before the first.");
+      if (!workingDaysOf({ starts, ends }).length) throw refuse("There are no working days in those.");
       return [{ op: "add", path: "/requests/-", value: { person_id: me.id, starts, ends, status: "asked", answered_by: null } }];
     }
     if (op.op === "replace") return [op, { op: "replace", path: `/requests/${id}/answered_by`, value: me.id }];
