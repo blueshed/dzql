@@ -9,7 +9,8 @@ description: Use this skill before writing any code under examples/<name>/ — a
 eta is a kernel (`src/`) plus examples (`examples/<name>/`). The kernel never imports anything
 under `examples/`; an example is everything needed to turn the kernel into a running app. This file
 is the order to work in. `reference.md` beside it is how each piece works, one section per piece;
-the types in `src/` are the contract itself.
+the types in `src/` are the contract itself. New to eta? `first-app.md` at the root walks chat,
+then leave, in the order you meet the words.
 
 ## 0. The story, first
 

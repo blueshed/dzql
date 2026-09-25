@@ -99,6 +99,7 @@ bun run cli <verb>   # a terminal client: inspect, watch, undo, redo, write, and
 
 ## Where to go next
 
+- `first-app.md`: your first app, step by step, with the words met at each step.
 - `stories.md`: what eta is for, and how stories drive it.
 - `.claude/skills/eta-app/`: how to build or extend an example, step by step, with the contracts
   in `reference.md`.
