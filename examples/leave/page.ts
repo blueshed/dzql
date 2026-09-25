@@ -2,7 +2,7 @@ import { address, bento, choice, layers, parseAddress, prop } from "../../src/be
 import { esc, join, write, writes } from "../../src/html";
 import { part } from "../../src/parts";
 import { refused } from "../../src/refusal";
-import { alsoOff, calendarHtml, clashes, days, listRows, nextMonth, offOn, prevMonth, rowHtml, worked, workingDaysOf, type CalendarProps, type ListProps } from "./calendar";
+import { alsoOff, calendarHtml, clashes, days, listRows, nextMonth, offOn, prevMonth, rowHtml, stillMine, worked, workingDaysOf, type CalendarProps, type ListProps } from "./calendar";
 import { session as sessionOf, team as teamOf, type Person, type Request, type Span, type Status, type Team } from "./documents";
 import { icon } from "./icons";
 
@@ -51,23 +51,23 @@ function dayFields(doc: string, base: string, s: Partial<Span>, sessionId: strin
 /** A request's drawer: its days and state, who else is off, and what this person may do with it. */
 function requestSheet(t: Team, me: Person, r: Request, path: string, sessionId: string): string {
   const mine = r.person_id === me.id;
-  const waiting = r.status === "asked";
+  const open = stillMine(me, r); // yours to move or take back
   const answer =
-    !mine && me.role === "manager" && waiting
+    !mine && me.role === "manager" && r.status === "asked"
       ? prop("Answer", choice("Answer", [
           { text: "Approve", on: false, write: write("team", "replace", `/requests/${r.id}/status`, "approved"), kind: "yes" },
           { text: "Decline", on: false, write: write("team", "replace", `/requests/${r.id}/status`, "declined"), kind: "no" },
         ]))
       : "";
   const body = join(
-    mine && waiting && dayFields("team", `/requests/${r.id}`, r, sessionId),
+    open && dayFields("team", `/requests/${r.id}`, r, sessionId),
     `<div class="props">`,
     prop("Days", `<span>${esc(days(r))} · ${worked(r)}</span>`),
     prop("It is", `<span class="state-${r.status}">${WORD[r.status]}${r.answered_by ? ` by ${esc(nameOf(t, r.answered_by))}` : ""}</span>`),
     r.status !== "declined" && also(t, me, r, r.person_id),
     answer,
     `</div>`,
-    mine && waiting && `<div class="sheet-foot">${tool("Take it back", { icon: "trash", kind: "danger", write: go(address(path, "confirm", r.id)) })}</div>`,
+    open && `<div class="sheet-foot">${tool("Take it back", { icon: "trash", kind: "danger", write: go(address(path, "confirm", r.id)) })}</div>`,
   );
   return sheet("request", mine ? "Your leave" : nameOf(t, r.person_id), body, go(path), "request-sheet");
 }
@@ -77,7 +77,7 @@ function draftSheet(t: Team, me: Person, draft: Span | null, path: string, sessi
   const clashing = draft ? clashes(offOn([...t.requests, { id: "draft", person_id: me.id, ...draft, status: "asked", answered_by: null }])).filter((d) => workingDaysOf(draft).includes(d)).length : 0;
   const body = join(
     dayFields("team", "/draft", draft ?? {}, sessionId),
-    draft && `<div class="props">${prop("Days", `<span>${esc(days(draft))} · ${worked(draft)}</span>`)}${also(t, me, draft, me.id)}${prop("Clashes", `<span class="${clashing ? "state-declined" : ""}">${clashing ? `${clashing} ${clashing === 1 ? "day" : "days"} with someone else off` : "none"}</span>`)}</div>`,
+    draft && `<div class="props">${prop("Days", `<span>${esc(days(draft))} · ${worked(draft)}</span>`)}${me.role === "manager" ? prop("Asked for", `<span>approved at once, by you: you manage the team</span>`) : ""}${also(t, me, draft, me.id)}${prop("Clashes", `<span class="${clashing ? "state-declined" : ""}">${clashing ? `${clashing} ${clashing === 1 ? "day" : "days"} with someone else off` : "none"}</span>`)}</div>`,
     refused(sessionId, "team", "/requests/-"),
     `<div class="sheet-foot">${tool("Ask", { icon: "plus", kind: "add", write: write("team", "add", "/requests/-"), disabled: !draft })}${tool("Cancel", { kind: "quiet", write: draft ? write("team", "remove", "/draft") : go(path) })}</div>`,
   );
@@ -116,7 +116,7 @@ export function render(sessionId: string): string {
   const body = list ? listMount({ me: me.id, team: t, open }) : calendarMount({ from, today, me: me.id, team: t, draft, open, place: path });
   const r = open === null ? undefined : t.requests.find((x) => x.id === open);
   const drawer = what === "request" && r ? requestSheet(t, me, r, path, sessionId) : what === "draft" ? draftSheet(t, me, draft, path, sessionId) : "";
-  const modal = what === "confirm" && r && r.person_id === me.id && r.status === "asked" ? confirmModal("Take it back", `Take back ${days(r)}?`, write("team", "remove", `/requests/${r.id}`), go(address(path, "request", r.id)), "Take it back") : "";
+  const modal = what === "confirm" && r && stillMine(me, r) ? confirmModal("Take it back", `Take back ${days(r)}?`, write("team", "remove", `/requests/${r.id}`), go(address(path, "request", r.id)), "Take it back") : "";
   return part(
     "site",
     `<div class="site${modal || drawer ? " locked" : ""}" data-page="${esc(page)}" data-page-write='${JSON.stringify({ doc: "session", op: "replace", path: "/page" })}'>${layers(collectionPage([{ label: t.name }], { key: "leave", reading, tools, body }), drawer, modal)}</div>`,

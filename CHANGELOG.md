@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     marked on the calendar; Ask sends it, Cancel drops it;
   - drag your own waiting request to move it, or a grip to stretch it; a manager answers from a
     request's drawer; answered, a request stays as it is;
+  - a manager's own leave is approved at once, by them, and shown to everyone ("approved by Mo"),
+    so the team is warned who will not be around; it stays theirs to move or take back;
+  - the key is the whole team in its colours, yourself as "you";
   - working days only: a weekend is nobody's leave, and a request of only a weekend is refused;
   - three months at a time with Previous, Today and Next, today marked; the months are in the
     address, so the URL and the back button follow them;

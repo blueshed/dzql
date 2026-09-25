@@ -64,6 +64,13 @@ export const worked = (r: Span): string => {
   return `${n} working ${n === 1 ? "day" : "days"}`;
 };
 
+/**
+ * Is this request still its asker's to move or take back? While it waits -- and a manager's own,
+ * which they approved themselves, stays theirs: nobody else answers it.
+ */
+export const stillMine = (me: Person, r: Request): boolean =>
+  r.person_id === me.id && (r.status === "asked" || (me.role === "manager" && r.status === "approved" && r.answered_by === me.id));
+
 // ───────────────────────────── who is off when ─────────────────────────────
 
 /** Who is off on each working day: every request not declined, by the working days it covers. */
@@ -135,6 +142,7 @@ export function calendarHtml(p: CalendarProps, preview: Preview | null = null): 
     .filter((r) => r.status !== "declined" && r.ends >= first && r.starts <= last)
     .sort((a, b) => a.starts.localeCompare(b.starts) || b.ends.localeCompare(a.ends));
   const nameOf = (id: string) => p.team.people.find((x) => x.id === id)?.name ?? "";
+  const self = p.team.people.find((x) => x.id === p.me);
 
   const bar = (span: Span, week: (string | null)[], o: { id: string | null; person: string; status: Status | "draft" }) => {
     const workDays = workingDaysOf(span);
@@ -145,7 +153,8 @@ export function calendarHtml(p: CalendarProps, preview: Preview | null = null): 
     // on the bar: whose it is, or for yours -- your colour says whose -- what it is
     const shown = o.status === "draft" ? "draft" : mine ? WORD[o.status] : nameOf(o.person);
     const ends = `${workDays[0]! < week[c0]! ? " open-start" : ""}${workDays.at(-1)! > week[c1]! ? " open-end" : ""}`;
-    const movable = mine && o.status === "asked";
+    const request = o.id === null ? undefined : p.team.requests.find((x) => x.id === o.id);
+    const movable = !!request && !!self && stillMine(self, request);
     const label = o.status === "draft" ? `your draft, ${days(span)}` : `${mine ? "you" : nameOf(o.person)}, ${WORD[o.status]}, ${days(span)}`;
     const whole = `${o.status === "draft" ? "Your draft" : mine ? "Yours" : nameOf(o.person)} · ${o.status === "draft" ? "not asked for yet" : WORD[o.status]} · ${days(span)} · ${worked(span)}`;
     const opens = go(o.id === null ? `${p.place}?draft` : `${p.place}?request=${o.id}`);
@@ -177,11 +186,11 @@ export function calendarHtml(p: CalendarProps, preview: Preview | null = null): 
     return `<section class="month" aria-label="${esc(title)}"><h3 class="cap">${esc(title)}</h3><div class="weekdays" aria-hidden="true">${WEEKDAYS.map((d) => `<span>${d}</span>`).join("")}</div>${weeks.map(week).join("")}</section>`;
   };
 
-  const people = [...new Set([...requests.map((r) => r.person_id), ...(draft ? [p.me] : [])])].sort((a, b) => colourOf(p.team.people, a) - colourOf(p.team.people, b));
-  const key = people.length
-    ? `<ul class="key" aria-label="Who is who">${people.map((id) => `<li><span class="swatch who-${colourOf(p.team.people, id)}" aria-hidden="true"></span>${esc(id === p.me ? "you" : nameOf(id))}</li>`).join("")}</ul>`
-    : `<p class="note">Nobody is off in these months. Drag across days to ask for some.</p>`;
-  return `${key}<div class="calendar">${months.map(month).join("")}</div>`;
+  // the whole team in its colours, off in these months or not; you as you
+  const everyone = p.team.people.map((x) => x.id).sort((a, b) => colourOf(p.team.people, a) - colourOf(p.team.people, b));
+  const key = `<ul class="key" aria-label="Who is who">${everyone.map((id) => `<li><span class="swatch who-${colourOf(p.team.people, id)}" aria-hidden="true"></span>${esc(id === p.me ? "you" : nameOf(id))}</li>`).join("")}</ul>`;
+  const none = requests.length || draft ? "" : `<p class="note">Nobody is off in these months. Drag across days to ask for some.</p>`;
+  return `${key}${none}<div class="calendar">${months.map(month).join("")}</div>`;
 }
 
 // ───────────────────────────── the list ─────────────────────────────

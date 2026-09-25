@@ -3,7 +3,7 @@ import { address, parseAddress } from "../../src/bento";
 import type { PatchOp } from "../../src/json-patch";
 import { parsePointer } from "../../src/json-pointer";
 import { refuse } from "../../src/refusal";
-import { workingDaysOf, type Person, type Request, type Span, type Team } from "./calendar";
+import { stillMine, workingDaysOf, type Person, type Request, type Span, type Team } from "./calendar";
 
 export type { Person, Request, Role, Span, Status, Team } from "./calendar";
 
@@ -68,8 +68,9 @@ export function shapeSession(before: Session, ops: PatchOp[]): PatchOp[] {
 
 /**
  * May `me` write `op` to the team, as it stands? Your own draft is yours to set, change and drop;
- * asking is anyone's; moving a request, or taking it back, is its asker's, while it waits;
- * answering is a manager's, for someone else, while it waits.
+ * asking is anyone's; moving a request, or taking it back, is its asker's while it waits (and a
+ * manager's own, which they approved themselves); answering is a manager's, for someone else,
+ * while it waits.
  */
 export function may(me: Person, op: PatchOp, t: Team): boolean {
   const [coll, id, field] = parsePointer(op.path);
@@ -77,10 +78,10 @@ export function may(me: Person, op: PatchOp, t: Team): boolean {
   if (coll !== "requests") return false;
   if (op.op === "add") return id === "-" && field === undefined;
   const r = t.requests.find((x) => x.id === id);
-  if (!r || r.status !== "asked") return false;
-  if (op.op === "remove") return field === undefined && r.person_id === me.id;
-  if (field === "starts" || field === "ends") return r.person_id === me.id && typeof op.value === "string" && DAY.test(op.value);
-  return field === "status" && me.role === "manager" && r.person_id !== me.id && (op.value === "approved" || op.value === "declined");
+  if (!r) return false;
+  if (op.op === "remove") return field === undefined && stillMine(me, r);
+  if (field === "starts" || field === "ends") return stillMine(me, r) && typeof op.value === "string" && DAY.test(op.value);
+  return field === "status" && r.status === "asked" && me.role === "manager" && r.person_id !== me.id && (op.value === "approved" || op.value === "declined");
 }
 
 /** Where a person's draft is in the team's document. */
@@ -97,7 +98,7 @@ function checked(s: Span): Span {
  * The ops as the team takes them. Your draft (`/draft`, the wire's word for it) is your row of the
  * drafts, set whole (a drag) or a day at a time (the drawer's fields), refused when it ends before
  * it begins, dropped when you cancel it. An ask -- your draft, or days said on the wire -- is made
- * whole (who, waiting) and its days checked, and asking for your draft drops it in the same change,
+ * whole (who, waiting; a manager's own approved at once, by them) and its days checked, and asking for your draft drops it in the same change,
  * so one Undo gives it back. A move is checked as the days it leaves; an answer is signed by who
  * gave it.
  */
@@ -120,7 +121,9 @@ export function shape(me: Person, ops: PatchOp[], t: Team): PatchOp[] {
       const said = (op.value ?? draft) as Partial<Span> | null;
       if (!said || typeof said.starts !== "string" || typeof said.ends !== "string" || !DAY.test(said.starts) || !DAY.test(said.ends)) return [];
       const { starts, ends } = checked({ starts: said.starts, ends: said.ends });
-      const asked: PatchOp = { op: "add", path: "/requests/-", value: { person_id: me.id, starts, ends, status: "asked", answered_by: null } };
+      // a manager's own leave: nobody else answers it, so it is approved at once, by them, for all to see
+      const manager = me.role === "manager";
+      const asked: PatchOp = { op: "add", path: "/requests/-", value: { person_id: me.id, starts, ends, status: manager ? "approved" : "asked", answered_by: manager ? me.id : null } };
       return op.value === undefined ? [asked, { op: "remove", path: mine }] : [asked];
     }
     if (field === "starts" || field === "ends") {

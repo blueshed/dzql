@@ -10,8 +10,9 @@ import { story, type Stories, type Write } from "../../src/stories";
 // requests they drag to move. A place is a month (`2026-10`) or the list, and what is open over it.
 //
 // Bo has asked for a week in October (request 1) and Ann for a day in November (request 2), both
-// waiting for Mo; Mo has approved Ann's days before Christmas (request 3). Ann has a draft in
-// October, not yet asked for; Bo's draft is only a weekend.
+// waiting for Mo; Mo has approved Ann's days before Christmas (request 3), and taken a week in
+// October himself (request 4): a manager's own leave is approved at once, by him, for all to see.
+// Ann has a draft in October, not yet asked for; Bo's draft is only a weekend; Mo's is in November.
 
 const session = (...ops: PatchOp[]): Write => ({ doc: "session", ops });
 const draft = (starts: string, ends: string): Write => ({ doc: "team", ops: [{ op: "replace", path: "/draft", value: { starts, ends } }] });
@@ -21,7 +22,7 @@ const answer = (id: number, status: "approved" | "declined"): Write => ({ doc: "
 const withdraw = (id: number): Write => ({ doc: "team", ops: [{ op: "remove", path: `/requests/${id}` }] });
 
 export const stories: Stories = {
-  cast: { ann: [draft("2026-10-08", "2026-10-12")], bo: [draft("2026-10-10", "2026-10-11")], mo: [], visitor: [] },
+  cast: { ann: [draft("2026-10-08", "2026-10-12")], bo: [draft("2026-10-10", "2026-10-11")], mo: [draft("2026-11-23", "2026-11-24")], visitor: [] },
   signIn: (name) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@leave.example`, password: `${name}-password` } }),
   at: (where) => session({ op: "replace", path: "/page", value: where }),
   stories: [
@@ -35,6 +36,11 @@ export const stories: Stories = {
     story("Ann drags her day in November to the Friday after, and Mo and Bo see it move", { as: "ann", from: "2026-11", does: move(2, "2026-11-20", "2026-11-20"), seen: { ann: "2026-11", mo: "2026-11", bo: "2026-11" } }),
     story("Bo takes back his week in October before Mo has answered", { as: "bo", from: "2026-10?confirm=1", does: withdraw(1), seen: { bo: "2026-10", mo: "2026-10", ann: "2026-10" } }),
 
+    // ── a manager's own leave ──
+    story("Mo asks for two days in November, and as the manager they are approved at once, by him", { as: "mo", from: "2026-11?draft", does: askDraft, seen: { mo: "2026-11", ann: "2026-11", bo: "2026-11" } }),
+    story("Mo moves the week he approved for himself, and the team sees it move", { as: "mo", from: "2026-10", does: move(4, "2026-10-26", "2026-10-30"), seen: { mo: "2026-10", ann: "2026-10", bo: "2026-10" } }),
+    story("Mo takes back the week he approved for himself", { as: "mo", from: "2026-10?confirm=4", does: withdraw(4), seen: { mo: "2026-10", ann: "2026-10", bo: "2026-10" } }),
+
     // ── answering ──
     story("Mo approves Bo's week from its drawer, and Bo sees it approved", { as: "mo", from: "2026-10?request=1", does: answer(1, "approved"), seen: { mo: "2026-10?request=1", bo: "2026-10", ann: "2026-10" } }),
     story("Mo declines Ann's day in November, and Ann sees it declined", { as: "mo", from: "2026-11?request=2", does: answer(2, "declined"), seen: { mo: "2026-11?request=2", ann: "2026-11", bo: "2026-11" } }),
@@ -44,6 +50,7 @@ export const stories: Stories = {
     story("Only a manager answers: Ann cannot approve Bo's week", { as: "ann", from: "2026-10?request=1", cannot: answer(1, "approved") }),
     story("Ann cannot move Bo's week", { as: "ann", from: "2026-10", cannot: move(1, "2026-10-12", "2026-10-16") }),
     story("Ann cannot move days Mo has already approved", { as: "ann", from: "2026-12?request=3", cannot: move(3, "2026-12-28", "2026-12-31") }),
+    story("Ann cannot take back Mo's week", { as: "ann", from: "2026-10?request=4", cannot: withdraw(4) }),
     story("Ann cannot take back Bo's request", { as: "ann", cannot: withdraw(1) }),
     story("A visitor who has not signed in cannot ask for leave", { as: "visitor", cannot: askDraft }),
     story("Ann cannot make herself a manager", { as: "ann", cannot: { doc: "team", ops: [{ op: "replace", path: "/people/1/role", value: "manager" }] } }),

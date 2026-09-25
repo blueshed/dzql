@@ -202,6 +202,33 @@ describe("the page", () => {
     }
   });
 
+  test("a manager's own leave is approved at once, by them, for all to see; theirs to move or take back, and nobody else's", async () => {
+    const mo = await withMo();
+    const ann = await withAnn();
+    try {
+      const drafting = await go(mo, "2026-11?draft");
+      expect(drafting).toContain("Ask for leave");
+      await send(mo, "team", [{ op: "replace", path: "/draft", value: { starts: "2026-11-05", ends: "2026-11-05" } }]);
+      expect(mo.page).toContain("approved at once, by you: you manage the team");
+      await send(mo, "team", [{ op: "add", path: "/requests/-" }]);
+      expect(mo.page).toContain('<span class="sr-only">you, approved, Thu 5 Nov</span>');
+      await settle(ann);
+      expect(await go(ann, "2026-11")).toContain('<span class="sr-only">Mo, approved, Thu 5 Nov</span>'); // the staff are warned
+      const his = await go(mo, "2026-10?request=4");
+      expect(his).toContain("approved by Mo");
+      expect(his).toContain("Take it back"); // he approved it: it is still his
+      expect(his).toContain('"path":"/requests/4/starts"');
+      expect(await go(ann, "2026-10?request=4")).not.toContain("Take it back");
+      expect(await go(mo, "2026-12?request=3")).not.toContain("Take it back"); // Ann's, which he approved: not his to move
+      expect(await go(ann, "2026-10")).toMatch(/<li><span class="swatch who-2" aria-hidden="true"><\/span>Mo<\/li>/); // everyone in the key
+    } finally {
+      await undo(mo); // the ask
+      await undo(mo); // the draft
+      mo.ws.close();
+      ann.ws.close();
+    }
+  });
+
   test("a request just asked for opens its drawer by the id delta gave it, and can be taken back", async () => {
     const ann = await withAnn();
     try {
@@ -275,6 +302,11 @@ describe("the rules, on their own", () => {
     expect(may(mo, { op: "replace", path: "/requests/1/status", value: "maybe" }, t)).toBe(false);
     expect(may(ann, { op: "replace", path: "/requests/1/status", value: "approved" }, t)).toBe(false);
     expect(may(ann, { op: "replace", path: "/people/1/role", value: "manager" }, t)).toBe(false);
+    const own: Team = { ...t, requests: [...t.requests, { id: "4", person_id: "3", starts: "2026-10-19", ends: "2026-10-23", status: "approved", answered_by: "3" }] };
+    expect(may(mo, { op: "remove", path: "/requests/4" }, own)).toBe(true); // his own, approved by him
+    expect(may(mo, { op: "replace", path: "/requests/4/ends", value: "2026-10-22" }, own)).toBe(true);
+    expect(may(mo, { op: "remove", path: "/requests/2" }, own)).toBe(false); // Ann's, approved by him: hers, and answered
+    expect(may(mo, { op: "replace", path: "/requests/4/status", value: "declined" }, own)).toBe(false); // answered already
   });
 
   test("a draft is your row, set, changed a day at a time, dropped; asking for it drops it in the same change; a move and an answer as the team takes them", () => {
@@ -302,6 +334,9 @@ describe("the rules, on their own", () => {
       { op: "replace", path: "/requests/1/answered_by", value: "3" },
     ]);
     expect(shape(ann, [{ op: "remove", path: "/requests/1" }], t)).toEqual([{ op: "remove", path: "/requests/1" }]);
+    expect(shape(mo, [{ op: "add", path: "/requests/-", value: { starts: "2026-11-05", ends: "2026-11-05" } }], t)).toEqual([
+      { op: "add", path: "/requests/-", value: { person_id: "3", starts: "2026-11-05", ends: "2026-11-05", status: "approved", answered_by: "3" } }, // a manager's own: approved, by them
+    ]);
   });
 });
 
@@ -381,7 +416,9 @@ describe("time, on its own (./calendar.ts)", () => {
     const selecting = calendarHtml(props(), { id: null, starts: "2026-10-06", ends: "2026-10-06" });
     expect(selecting).toContain("your draft, Tue 6 Oct");
     expect(calendarHtml(props({ open: "1" }))).toContain('aria-pressed="true"');
-    expect(calendarHtml(props({ from: "2027-03" }))).toContain("Nobody is off in these months.");
+    const quiet = calendarHtml(props({ from: "2027-03" }));
+    expect(quiet).toContain("Nobody is off in these months.");
+    expect(quiet).toContain('<li><span class="swatch who-1" aria-hidden="true"></span>Bo</li>'); // the key is the whole team, off or not
   });
 
   test("the list: every request by its first day, yours by colour, a row that opens its drawer, saying where it stands", () => {
