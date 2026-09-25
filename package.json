@@ -20,8 +20,8 @@
     "@types/bun": "latest"
   },
   "dependencies": {
-    "@blueshed/delta": "^0.7.0",
-    "@blueshed/railroad": "^0.13.0",
+    "@blueshed/delta": "^0.8.0",
+    "@blueshed/railroad": "^0.14.0",
     "lucide": "^1.46.0"
   }
 }

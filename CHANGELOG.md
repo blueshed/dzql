@@ -41,6 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Takes @blueshed/delta 0.8.0 and @blueshed/railroad 0.14.0.** Nothing in eta changes for
+  them: eta serves its own socket (delta's new Origin check is `createWs`'s), keeps its documents
+  on SQLite in process, and names no global `JSX`.
+
 - **The kernel's CSS, for everyone who reads it** (src/bento.css): one focus ring for every
   control, drawn outside it (inside a stack, which clips); the find bar shows focus while its
   field has it; what is chosen or pressed is outlined in forced colours, where shadows and
