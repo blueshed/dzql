@@ -25,6 +25,7 @@ export const stories: Stories = {
 
     // ── seeing who is off when ──
     story("Ann asks for days that overlap Bo's week in October, and everyone's calendar marks the clash", { as: "ann", from: "mine?new", does: ask("2026-10-08", "2026-10-12"), seen: { ann: "calendar", mo: "calendar", bo: "calendar" } }),
+    story("Mo opens Bo's week from the calendar and approves it, and Bo sees it approved", { as: "mo", from: "calendar?request=1", does: answer(1, "approved"), seen: { mo: "calendar?request=1", bo: "mine", ann: "team" } }),
 
     // ── answering ──
     story("Mo approves Bo's week in October, and Bo sees it approved", { as: "mo", from: "team?request=1", does: answer(1, "approved"), seen: { mo: "team?request=1", bo: "mine", ann: "team" } }),

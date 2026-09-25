@@ -55,9 +55,10 @@ const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
  * covers in that week, in its person's colour with their name on it (yours without: the key says
  * which is you) -- waiting a tint, approved filled -- and bars that share a day stack, so a clash is
  * two bars over the same day, and its date is marked. A bar that goes on past the week, or the
- * month, is open at that end. Declined days are nobody's.
+ * month, is open at that end. Declined days are nobody's. A bar is its request: a tap opens its
+ * drawer, and it is lit while the drawer is open.
  */
-function calendar(t: Team, me: Person, off: Map<string, Request[]>): string {
+function calendar(t: Team, me: Person, off: Map<string, Request[]>, open: string | undefined): string {
   const offDays = [...off.keys()].sort();
   if (!offDays.length) return `<p class="note">Nobody is off.</p>`;
   const months: string[] = [];
@@ -69,9 +70,9 @@ function calendar(t: Team, me: Person, off: Map<string, Request[]>): string {
     if (!cols.length) return "";
     const [c0, c1] = [cols[0]!, cols.at(-1)!];
     const name = r.person_id === me.id ? "" : nameOf(t, r.person_id);
-    const open = `${r.starts < week[c0]! ? " open-start" : ""}${r.ends > week[c1]! ? " open-end" : ""}`;
+    const ends = `${r.starts < week[c0]! ? " open-start" : ""}${r.ends > week[c1]! ? " open-end" : ""}`;
     const said = `${r.person_id === me.id ? "you" : name}, ${WORD[r.status]}, ${days(r)}`;
-    return `<span class="bar ${r.status} who-${colourOf(t, r.person_id)}${open}" style="grid-column: ${c0 + 1} / span ${c1 - c0 + 1}"><span aria-hidden="true">${esc(name)}</span><span class="sr-only">${esc(said)}</span></span>`;
+    return `<button type="button" class="bar ${r.status} who-${colourOf(t, r.person_id)}${ends}" style="grid-column: ${c0 + 1} / span ${c1 - c0 + 1}" aria-pressed="${open === r.id}"${go(address("calendar", "request", r.id))}><span aria-hidden="true">${esc(name)}</span><span class="sr-only">${esc(said)}</span></button>`;
   };
   const month = (m: string) => {
     const first = new Date(`${m}-01T00:00:00Z`);
@@ -145,7 +146,7 @@ export function render(sessionId: string): string {
       : path === "team"
         ? { key: "team", body: rows(teamRows(t, others, open), "Nobody else has asked.", "team-rows") }
         : path === "calendar"
-          ? { key: "calendar", body: calendar(t, me, off) }
+          ? { key: "calendar", body: calendar(t, me, off, open) }
           : undefined;
   const LABEL: Record<string, string> = { mine: "your leave", team: "the team", calendar: "the calendar" };
   const trail: Crumb[] = [{ label: t.name, back: go("") }, ...(opened ? [{ label: LABEL[opened.key]! }] : [])];

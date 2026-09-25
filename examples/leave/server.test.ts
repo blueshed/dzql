@@ -166,9 +166,12 @@ describe("the pages", () => {
       expect(cal).toContain("October 2026");
       expect(cal.match(/class="date clash"/g)).toHaveLength(2); // Thu 8 and Fri 9: Ann and Bo
       expect(cal).toContain('<span class="sr-only">Ann, waiting, Thu 8 – Mon 12 Oct</span>');
-      expect(cal).toContain('style="grid-column: 1 / span 5"><span aria-hidden="true">Bo</span>'); // Bo's week, one bar, Mon to Fri
+      expect(cal).toContain('data-value="calendar?request=1"><span aria-hidden="true">Bo</span>'); // Bo's week, one bar, Mon to Fri, named
       expect(cal).toContain('open-end" style="grid-column: 4 / span 4"'); // Ann's goes on into the next week
-      expect(cal).toContain('<span class="bar asked who-1" style="grid-column: 1 / span 5">'); // Bo's colour, the same on every page
+      expect(cal).toContain(`<button type="button" class="bar asked who-1" style="grid-column: 1 / span 5" aria-pressed="false" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="calendar?request=1">`); // Bo's week, in his colour, opens his request
+      const opened = await go(mo, "calendar?request=1");
+      expect(opened).toContain('aria-pressed="true" data-write=\'{"doc":"session","op":"replace","path":"/page"}\' data-value="calendar?request=1"'); // lit while its drawer is open
+      expect(opened).toContain("Approve");
       expect(cal).toContain('<li><span class="swatch who-0" aria-hidden="true"></span>Ann</li>'); // the key
       expect(await go(ann, "calendar")).toContain('<li><span class="swatch who-0" aria-hidden="true"></span>you</li>');
       expect(await go(ann, "calendar")).toContain('<span class="sr-only">you, waiting, Thu 8 – Mon 12 Oct</span>'); // hers in her colour, not her name
@@ -198,7 +201,7 @@ describe("the pages", () => {
     try {
       expect(await go(mo, "team?request=1")).not.toContain("Also off");
       expect(await go(mo, "calendar")).toContain("Nobody is off.");
-      expect(await go(mo, "calendar?request=1")).toContain('data-page="calendar"'); // nothing opens over the calendar: he stays on it
+      expect(await go(mo, "calendar?new")).toContain('data-page="calendar"'); // nothing is asked for from the calendar: he stays on it
     } finally {
       await send(mo, "ledger", [{ op: "remove", path: "/latest" }]);
       await send(mo, "ledger", [{ op: "remove", path: "/latest" }]);
@@ -239,7 +242,8 @@ describe("the rules, on their own", () => {
     expect(placed("mine?wander")).toBeUndefined();
     expect(placed("attic")).toBeUndefined();
     expect(placed("calendar")).toBe("calendar");
-    expect(placed("calendar?request=1")).toBeUndefined();
+    expect(placed("calendar?request=1")).toBe("calendar?request=1"); // a bar opens its request
+    expect(placed("calendar?new")).toBeUndefined();
     expect(placed(undefined)).toBe("");
   });
 

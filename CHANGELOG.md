@@ -44,7 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Twelve stories, from asking and answering to what nobody may do.
 - **leave's calendar**: the team's days off month by month, a week to a row, each request a bar
   across its days in its person's colour, with their name on it (a key says which colour is you),
-  waiting a tint and approved filled, bars that share a day stacked,
+  waiting a tint and approved filled, bars that share a day stacked, and each bar a button that
+  opens its request's drawer (lit while it is open), to answer or take back from the calendar,
   and a day with more than one person off marked as a clash (and counted on the box); a request's drawer says who else is
   off during it -- what a manager weighs before answering.
 - **A story's place must exist.** Putting a member where a story says, the harness now checks

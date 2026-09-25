@@ -59,6 +59,9 @@ h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
 /* a bar: waiting a tint of its person's colour with a darker edge, approved filled */
 .bar { height: 1.35rem; margin: 0 2px; padding: 0 var(--space-xs); border: 1.5px solid color-mix(in srgb, var(--who) 70%, var(--ink)); border-radius: 999px; background: color-mix(in srgb, var(--who) 42%, var(--card)); font-size: 11px; font-weight: 600; line-height: calc(1.35rem - 3px); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bar.approved { background: var(--who); border-color: var(--who); color: var(--who-ink); }
+button.bar { display: block; font: inherit; font-size: 11px; font-weight: 600; text-align: left; cursor: pointer; }
+.bar:hover { filter: brightness(0.95); }
+.bar[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); } /* its drawer is open */
 .bar.open-start { border-left-style: dashed; border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: 0; }
 .bar.open-end { border-right-style: dashed; border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: 0; }
 @media (forced-colors: active) {
