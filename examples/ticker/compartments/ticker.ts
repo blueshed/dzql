@@ -61,7 +61,7 @@ const TICK_PATH = /^\/[A-Z0-9.]+\/price$/;
 export const quote: Compartment = {
   docType: "quote",
   kind: "fact",
-  at: "/quotes", // the document is the row: eta's paths start at it
+  under: "/quotes", // the document is the row: eta's paths start at it
   resolveDoc: () => undefined,
 };
 
@@ -72,7 +72,7 @@ export const render = (sessionId: string): string =>
 export const ticker: Compartment = {
   docType: "ticker",
   kind: "fact", // on the ledger, never undone
-  at: "/quotes", // eta's `/ALPH/price` is the document's `/quotes/ALPH/price`
+  under: "/quotes", // eta's `/ALPH/price` is the document's `/quotes/ALPH/price`
   resolveDoc() {
     return market.MARKET; // everyone sees the one market
   },

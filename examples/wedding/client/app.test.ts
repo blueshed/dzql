@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { at, waitFor } from "../../../src/webview";
+import { urlFor, waitFor } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { asCouple, board, household } from "../setup";
 import { example } from "../index";
@@ -22,7 +22,7 @@ afterAll(() => {
 const CRUMBS = `document.querySelector('.crumbs')?.textContent ?? null`;
 
 async function enter(view: Bun.WebView, who: string) {
-  await view.navigate(at(view, server.url));
+  await view.navigate(urlFor(view, server.url));
   await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
   // the welcome's own message can push the code box below the default viewport's fold
   await view.scrollTo("#code");
@@ -39,7 +39,7 @@ describe("the wedding in a real browser", () => {
     // the box shows the family still, in the guests compartment's small reading
     const names = await waitFor(view, `[...document.querySelectorAll('[data-applet="photo"] .print text')].map((t) => t.textContent)`, (v) => Array.isArray(v) && v.length === 2);
     expect(names).toEqual(["Ada", "Femi"]);
-    // opening the compartment grows it into the window (rule 7), where the figures can be tapped
+    // opening the cell grows it into the window (rule 7), where the figures can be tapped
     await view.evaluate(`document.querySelector('.cell[data-key="guests"]').click()`);
     await waitFor(view, `document.querySelector('.cell.open [data-applet="photo"] svg') !== null`, (v) => v === true);
 
@@ -110,12 +110,12 @@ describe("the wedding in a real browser", () => {
     // reopening a link to a page while already signed in (the session cookie survives, same as a
     // reload): the URL is what was actually asked for, so the session catches up to it, rather
     // than a fresh render of the session's still-current page snapping the URL back to "/"
-    await view.navigate(at(view, server.url, "stay"));
+    await view.navigate(urlFor(view, server.url, "stay"));
     await waitFor(view, `location.pathname`, (v) => v === "/stay");
     await waitFor(view, CRUMBS, (v) => typeof v === "string" && v.includes("Where to stay"));
 
     // and a link with a drawer in it opens the drawer
-    await view.navigate(at(view, server.url, `gifts${gift}`));
+    await view.navigate(urlFor(view, server.url, `gifts${gift}`));
     await waitFor(view, `document.querySelector('#gift-sheet') !== null`, (v) => v === true);
   }, 20000);
 
@@ -135,7 +135,7 @@ describe("the wedding in a real browser", () => {
   test("editing a gift's fields in its drawer writes on blur, batches fields changed together, and does not reset", async () => {
     await using view = new Bun.WebView();
     // the couple's own code, not a household's: the keep drawers are theirs to edit
-    await view.navigate(at(view, server.url));
+    await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
     await view.scrollTo("#code");
     await view.click("#code");
@@ -180,7 +180,7 @@ describe("the wedding in a real browser", () => {
     await asCouple([{ op: "replace", path: "/message", value: "can't wait" }]);
 
     await using view = new Bun.WebView();
-    await view.navigate(at(view, server.url));
+    await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
     await view.scrollTo("#code");
     await view.click("#code");

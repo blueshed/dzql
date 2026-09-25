@@ -6,7 +6,7 @@ import { prefixDoc, splitDoc } from "../names";
 import { shownTo } from "../reading";
 import type { Compartment } from "./compartment";
 import { createLedgerCompartment } from "./ledger";
-import { createRefusalCompartment, refused } from "../refusal";
+import { createRefusalCompartment, reasonFor } from "../refusal";
 import { sees, wireName, wireOps } from "./audience";
 import { createDocuments, settled, type Documents } from "../documents";
 
@@ -56,7 +56,7 @@ export function assemble(example: Example): Assembled {
   // Undo and redo are the kernel's own tools (the ledger, bento's page tools), so the kernel says
   // why one was refused, over whatever page the example draws.
   const page = (sessionId: string): string => {
-    const said = refused(sessionId, "ledger", "/latest");
+    const said = reasonFor(sessionId, "ledger", "/latest");
     return example.render(sessionId) + (said && `<div class="walk-said">${said}</div>`);
   };
   const draw = (sessionId: string): Promise<string> => settled(documents, () => page(sessionId));
@@ -65,7 +65,7 @@ export function assemble(example: Example): Assembled {
   // whatever else its page read -- and each one's most recent ledger entries,
   // so a person (or a late-joining `watch`) can answer "what happened" from the wire, without
   // adding a log line. `limit` (default 1, the longstanding "just the head" behavior) is how far
-  // back to look; a watcher catching up before it watches asks for more. The tray's own document
+  // back to look; a watcher catching up before it watches asks for more. The session's own document
   // is included (it can be worth recording to, chat's is); the ledger itself is excluded -- no
   // render() the fallback path needs it for, and no ledger:<id> document to report a version for
   // (real entries live under the owning document's own key).

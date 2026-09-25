@@ -1,6 +1,6 @@
 /* The look of the kernel's bento surfaces (src/bento.ts), drawn as the mock-up is
-   (examples/bento/styles.css): a page is a box, a tray with compartments cut into it and the trail
-   above. A compartment grows into the window: the trail floats top-left in it, the compartment's
+   (examples/bento/styles.css): a page is a box, a tray with cells cut into it and the trail
+   above. A cell grows into the window: the trail floats top-left in it, the cell's
    tools stand at the right edge as stacks of square buttons, the page's tools are one more stack at
    the bottom right, and the reading keeps clear of them. A figure in the reading opens the drawer:
    a panel at the right from 820px, a sheet from the foot below. One family of corners, one control
@@ -29,7 +29,7 @@
 * { box-sizing: border-box; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 /* one focus ring for every control, drawn outside it so a pressed (accent) control keeps it; a part
-   that draws its own (a field, a compartment, a row) says so below */
+   that draws its own (a field, a cell, a row) says so below */
 :where(a, button, summary, [role="button"], [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .icon { flex: 0 0 auto; }
 
@@ -77,8 +77,8 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .crumbs a:hover, .crumbs a:focus-visible { text-decoration: underline; text-underline-offset: 3px; } /* and the ring */
 .crumbs b { font-weight: 600; }
 
-/* ── the tray: compartments cut into it, walled by its padding. Computed by src/tray.ts, which
-   hands over the areas for three columns and for one, and each compartment's tray corners. ── */
+/* ── the tray: cells cut into it, walled by its padding. Computed by src/grid.ts, which
+   hands over the areas for three columns and for one, and each cell's tray corners. ── */
 .page.box { margin: 0; }
 .cells { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: var(--tray-areas-phone); gap: var(--space-md); padding: var(--space-md); background: var(--tray); border-radius: var(--radius-tray); box-shadow: var(--shadow-tray); }
 .cell { position: relative; display: flex; flex-direction: column; gap: var(--space-sm); min-height: 96px; min-width: 0; padding: var(--space-lg); background: var(--card); border-radius: 0; overflow: hidden; }
@@ -91,7 +91,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .chev.pencil, .thing .pencil { color: var(--mark); }
 .cell-summary { margin: -4px 0 0; font-size: 14px; color: var(--muted); }
 .cell-body { position: relative; flex: 1; min-height: 0; }
-/* a compartment that is a thing: ✎, a tap opens its drawer, lit while it is open (rule 15) */
+/* a cell that is a thing: ✎, a tap opens its drawer, lit while it is open (rule 15) */
 .thing[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
 @media (max-width: 819px) {
   .cell[data-corners-phone~="tl"] { border-top-left-radius: var(--radius-corner); }
@@ -107,7 +107,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
   .cell[data-corners~="bl"] { border-bottom-left-radius: var(--radius-corner); }
 }
 
-/* ── the window: the compartment open. Opening goes nowhere (rule 7): the same element, named for
+/* ── the window: the cell open. Opening goes nowhere (rule 7): the same element, named for
    the view transition, grows to the screen less a margin; the page behind holds still. ── */
 .cell.open { position: fixed; inset: var(--space-sm); z-index: 40; padding: 0; gap: 0; border-radius: var(--radius-tray); box-shadow: var(--shadow-window); cursor: default; background: var(--card); }
 @media (min-width: 820px) { .cell.open { inset: var(--space-2xl); } }
@@ -125,7 +125,7 @@ body:has(.page.windowed) { overflow: hidden; }
 .full { position: absolute; inset: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 60px 60px 72px var(--space-lg); border-radius: inherit; }
 @media (min-width: 820px) { .full { padding: 72px var(--clear) 96px var(--space-2xl); } }
 .full > .note { margin: var(--space-md) 0 0; }
-/* the rails: the compartment's own tools at the right edge, the page's at the bottom right (rule 9) */
+/* the rails: the cell's own tools at the right edge, the page's at the bottom right (rule 9) */
 .rail { position: absolute; z-index: 3; right: var(--space-lg); top: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-md); }
 .cell.open .page-tools { position: absolute; z-index: 3; right: var(--space-lg); bottom: var(--space-lg); }
 /* find: its field beside the rail, the tally, the eye (rule 17) */
@@ -203,7 +203,7 @@ dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
 @media (prefers-reduced-motion: reduce) { dialog.modal { animation: none; } }
 
 
-/* the same element, two sizes: only the compartment that moves is named (src/client/app.ts), and
+/* the same element, two sizes: only the cell that moves is named (src/client/app.ts), and
    its group is drawn over everything else while it moves */
 ::view-transition-group(*) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.2, 0, 0, 1); }
 ::view-transition-group(moving) { z-index: 1; }

@@ -1,13 +1,13 @@
-// The tray: where a box's compartments sit, computed from what the box declares rather than drawn
-// by hand. A box says its compartments in its own order and how much of the tray each deserves --
+// The tray: where a box's cells sit, computed from what the box declares rather than drawn
+// by hand. A box says its cells in its own order and how much of the tray each deserves --
 // its span in columns and in rows ("bigger for what matters more", apples.md) -- and the tray
 // places them first-fit, left to right, top to bottom, in as many rows as they need. The result is
-// a CSS grid: its template areas, and for each compartment its area and which corners of the tray
-// it touches, since a compartment is cut into the tray -- square where its walls meet another,
+// a CSS grid: its template areas, and for each cell its area and which corners of the tray
+// it touches, since a cell is cut into the tray -- square where its walls meet another,
 // curved only where it sits in a corner of the tray. Pure and viewport-free: a view computes one
 // tray per column count it lays out for (three across, one on a phone) and lets CSS pick.
 
-export interface Compartment {
+export interface Cell {
   /** Names the grid area; letters, digits and hyphens only (a view slugs its labels). */
   key: string;
   /** Columns it spans; clamped to the tray's. Default 1. */
@@ -24,11 +24,11 @@ export interface Placed {
   row: number;
   span: number;
   rows: number;
-  /** The tray's corners this compartment sits in, so it may take the tray's curve there. */
+  /** The tray's corners this cell sits in, so it may take the tray's curve there. */
   corners: Corner[];
 }
 
-export interface Tray {
+export interface Grid {
   columns: number;
   rows: number;
   /** `grid-template-areas`, one quoted row per line; an empty cell is `.`. */
@@ -44,8 +44,8 @@ export function slug(label: string): string {
   return /^[a-z]/.test(s) ? s : `c-${s || "x"}`;
 }
 
-/** Places the compartments in a tray `columns` wide. */
-export function tray(compartments: Compartment[], columns: number): Tray {
+/** Places the cells in a tray `columns` wide. */
+export function grid(asked: Cell[], columns: number): Grid {
   if (!Number.isInteger(columns) || columns < 1) throw new Error(`a tray needs at least one column, not ${columns}`);
   const grid: (string | null)[][] = []; // rows of columns; null is free
   const rowAt = (r: number): (string | null)[] => (grid[r] ??= Array<string | null>(columns).fill(null));
@@ -57,9 +57,9 @@ export function tray(compartments: Compartment[], columns: number): Tray {
   const cells: Placed[] = [];
   const seen = new Set<string>();
   let fromRow = 0; // the box's order is kept: nothing is placed above the row the last one started on
-  for (const { key, span: wanted = 1, rows = 1 } of compartments) {
+  for (const { key, span: wanted = 1, rows = 1 } of asked) {
     if (!KEY.test(key)) throw new Error(`"${key}" is not a grid-area name; slug() it first`);
-    if (seen.has(key)) throw new Error(`two compartments called "${key}"`);
+    if (seen.has(key)) throw new Error(`two cells called "${key}"`);
     seen.add(key);
     const span = Math.max(1, Math.min(Math.floor(wanted), columns));
     const tall = Math.max(1, Math.floor(rows));
@@ -77,7 +77,7 @@ export function tray(compartments: Compartment[], columns: number): Tray {
     }
   }
 
-  // a gap at the end of the last row is nobody's; the compartment before it grows across it, so
+  // a gap at the end of the last row is nobody's; the cell before it grows across it, so
   // the tray's bottom edge is whole and its corner belongs to someone
   const rows = grid.length;
   if (rows > 0) {

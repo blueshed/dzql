@@ -82,7 +82,7 @@ export const household: Compartment = {
   // After the deadline an answer is locked, to Undo too: a walk that would set back an answer, a
   // guest's coming or their choices is refused, and says why. A walk sets back only the fields its
   // entry changed, so what else a household did -- a look, a claim -- still walks.
-  walkable(_ws, _id, ops) {
+  permitUndo(_ws, _id, ops) {
     if (weddingDoc.answersOpen()) return true;
     if (ops.some((op) => op.op === "replace" && Object.keys((op.value ?? {}) as object).some((f) => DATED.has(f)))) throw refuse("Answers closed at the deadline.");
     return true;
@@ -92,10 +92,10 @@ export const household: Compartment = {
     return householdDoc.shape(householdDoc.read(id)!, offer, ops);
   },
   // the modal that asked is put away by the write that answers it
-  async wrote(ws, _id, ops: PatchOp[]) {
+  async afterWrite(ws, _id, ops: PatchOp[]) {
     const put = sessionDoc.answered(sessionDoc.read(ws.data.sessionId), ops);
     if (put.length > 0) await serverWrite(`session:${ws.data.sessionId}`, put);
   },
   // an answer, a look, a coming, a claim: what everyone sees of this household follows
-  changed: () => keepEveryone(),
+  afterChange: () => keepEveryone(),
 };

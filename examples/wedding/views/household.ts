@@ -1,5 +1,5 @@
 // A household's pages: their box -- the answer in place, a thing with ✎; the guests as the family
-// photo, the big compartment; asks, gifts, the day, where to stay, everyone -- each compartment
+// photo, the big cell; asks, gifts, the day, where to stay, everyone -- each cell
 // growing into the window (rule 7); and the drawers: a guest's (dress the figure, coming, the
 // meal), a gift's (claim it), the answer's. Which page and which drawer is the session's word.
 
@@ -7,10 +7,10 @@ import type { Guest, HouseholdDocument } from "../documents/household";
 import { over, type SessionDocument } from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { Course, Gift, Wedding } from "../documents/wedding";
-import { addModal, addTool, boxPage, cell, choice, findControl, prop, readingSwitch, row, rows, sheet, tool, type Crumb, type OpenOptions } from "./bento";
+import { addModal, addTool, boxPage, cell, choice, findControl, prop, readingSwitch, row, rows, drawer, tool, type Crumb, type OpenOptions } from "./bento";
 import type { DressProps } from "../applets/dress";
 import type { MenuProps } from "../applets/menu";
-import { esc, join, nav, open, write, writes } from "./html";
+import { esc, join, nav, open, write, appletWrites } from "./html";
 import { part } from "../../../src/parts";
 import { icon } from "./icons";
 import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
@@ -56,7 +56,7 @@ export type HouseholdView = {
   names: boolean;
 };
 
-/** Which compartment the page names, grown into the window (rule 7), and the crumbs it adds to the trail. */
+/** Which cell the page names, grown into the window (rule 7), and the crumbs it adds to the trail. */
 function openFor(v: HouseholdView, head: string, second: string | undefined): { open?: OpenOptions; crumbs: Crumb[] } {
   if (head === "guests") return { open: guestsOpen(v), crumbs: [{ label: "Guests" }] };
   if (head === "asks") return { open: asksOpen(v), crumbs: [{ label: "Asks" }] };
@@ -100,7 +100,7 @@ function speechBubble(h: HouseholdDocument, open: boolean, answer: string): stri
   );
 }
 
-/** The box's own compartments, in their place in the tray -- all six, whether the box is shown
+/** The box's own cells, in their place in the tray -- all six, whether the box is shown
  * whole or one of them is grown into the window. */
 function boxCells(v: HouseholdView) {
   const { h, gifts, photo } = v;
@@ -109,7 +109,7 @@ function boxCells(v: HouseholdView) {
   const openGifts = gifts.filter((g) => g.shared || g.taken === 0).length;
   const coming = h.guests.filter(isComing).length;
   return [
-    // the family photo is the small reading of the guests, still (no taps) until the compartment opens
+    // the family photo is the small reading of the guests, still (no taps) until the cell opens
     cell({ name: "guests", mark: "users", count: h.guests.length, big: true, opens: nav("guests"), summary: h.guests.length ? `${coming} coming` : "nobody named yet", body: h.guests.length ? `<div class="mini photo">${familyMini(v)}</div>` : undefined }),
     cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting` : h.asks.length ? "all answered" : "ask to bring someone", opens: nav("asks") }),
     cell({ name: "gifts", mark: "gift", count: gifts.length, summary: `${h.claims.length ? `${h.claims.length} claimed by us · ` : ""}${openGifts} open`, opens: nav("gifts") }),
@@ -271,7 +271,7 @@ function everyoneOpen(v: HouseholdView, familyKey: string | null): { open: OpenO
 /** The dressing applet's mount for one guest: a part, sent alone when their look changes. */
 export function dressMount(v: HouseholdView, g: Guest): string {
   const dress: DressProps = { guestId: g.id, spec: specOf(g.minifigure), firstName: firstNameOf(g.name), out: isGuestOut(g, v.h) };
-  return part(`dress-${g.id}`, `<div id="dress-${g.id}" data-applet="dress"${writes(["household", `/guests/${g.id}/minifigure`])} data-props="${esc(JSON.stringify(dress))}"></div>`);
+  return part(`dress-${g.id}`, `<div id="dress-${g.id}" data-applet="dress"${appletWrites(["household", `/guests/${g.id}/minifigure`])} data-props="${esc(JSON.stringify(dress))}"></div>`);
 }
 
 /** The menu applet's mount for one guest: a part, sent alone when a choice changes. */
@@ -284,7 +284,7 @@ export function menuMount(v: HouseholdView, g: Guest): string {
     out: isGuestOut(g, v.h),
     locked: !v.open,
   };
-  return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu"${writes(["household", `/guests/${g.id}/choices`])} data-props="${esc(JSON.stringify(menu))}"></div>`);
+  return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu"${appletWrites(["household", `/guests/${g.id}/choices`])} data-props="${esc(JSON.stringify(menu))}"></div>`);
 }
 
 /** The guest's drawer: the dressing sheet, coming as one choice (rule 13, off the line), the hint, and the menu. */
@@ -307,7 +307,7 @@ function guestSheet(v: HouseholdView): string {
     `<div class="props">${prop("Coming", coming)}</div>`,
     menuMount(v, g),
   );
-  return sheet("guest-sheet", g.name, body, close(v), "guest-sheet");
+  return drawer("guest-sheet", g.name, body, close(v), "guest-sheet");
 }
 
 /** The gift whole -- the picture, the words, where to find it, what it is to us -- and the one thing this household may change: claimed by us. */
@@ -332,7 +332,7 @@ function giftSheet(v: HouseholdView): string {
     prop("Claimed by us", claim),
     "</div>",
   );
-  return sheet("gift-sheet", g.name, body, close(v), "gift-sheet");
+  return drawer("gift-sheet", g.name, body, close(v), "gift-sheet");
 }
 
 const DEFAULT_WORDS: Record<"yes" | "maybe" | "no", string> = {
@@ -356,5 +356,5 @@ function answerSheet(v: HouseholdView): string {
       `<form class="words-form"${write("household", "replace", "/message")}><textarea name="message" rows="3" placeholder="Say something to the couple" aria-label="Our words">${esc(h.message ?? "")}</textarea><div class="form-foot">${tool("Save our words", { write: "", submit: true })}</div></form>`,
     )}</div>`,
   );
-  return sheet("answer-sheet", "Our answer", body, close(v), "answer-sheet");
+  return drawer("answer-sheet", "Our answer", body, close(v), "answer-sheet");
 }

@@ -115,7 +115,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string[]>(`window.__named`)).toEqual([]); // the window itself did not change, only what is in it
   });
 
-  test("with several data-moving candidates on screen at once, only the one that actually changed transitions (W3: a box with more than one openable compartment)", async () => {
+  test("with several data-moving candidates on screen at once, only the one that actually changed transitions (W3: a box with more than one openable cell)", async () => {
     await using view = await open();
     await stubSend(view);
 
@@ -123,7 +123,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     // any one of them is known to be the next thing opened
     await pushRender(
       view,
-      `<div id="tray">
+      `<div id="grid">
         <div id="asks" data-moving="asks"><p>Asks</p></div>
         <div id="gifts" data-moving="gifts"><p>Gifts</p></div>
         <div id="day" data-moving="day"><p>The day</p></div>
@@ -146,7 +146,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     // since nothing about them changed just because a sibling opened
     await pushRender(
       view,
-      `<div id="tray">
+      `<div id="grid">
         <div id="asks" data-moving="asks"><p>Asks</p></div>
         <div id="gifts" data-moving="gifts" class="open"><p>Gifts, grown into the window</p></div>
         <div id="day" data-moving="day"><p>The day</p></div>

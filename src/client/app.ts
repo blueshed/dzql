@@ -123,7 +123,7 @@ window.addEventListener("popstate", () => {
 // `movingElement` parses the incoming HTML (a `<template>`, same technique `applyFragments` uses
 // below) to find out whether the render still has it, without touching the live DOM yet.
 //
-// A box with more than one openable compartment (W3) marks every one of them `data-moving` at
+// A box with more than one openable cell (W3) marks every one of them `data-moving` at
 // once -- each is a candidate for the next thing to grow, and the render can't know in advance
 // which -- so the page as it is may carry several. Only one of them is actually transitioning:
 // the one whose matching element in the render differs from what's on screen now (a still-closed
@@ -133,7 +133,7 @@ function movingElement(html: string): HTMLElement | undefined {
   holder.innerHTML = html;
   for (const current of app.querySelectorAll<HTMLElement>("[data-moving]")) {
     const stillThere = holder.content.querySelector(`[data-moving="${CSS.escape(current.dataset.moving!)}"]`);
-    // A move is the element itself changing -- a compartment opening into the window, or closing --
+    // A move is the element itself changing -- a cell opening into the window, or closing --
     // which shows in its own tag. What is inside it changing (a row more, a message) is not one,
     // and a transition then would swallow the keys of someone typing in it.
     if (stillThere && (stillThere.cloneNode(false) as Element).outerHTML !== (current.cloneNode(false) as Element).outerHTML) return current;

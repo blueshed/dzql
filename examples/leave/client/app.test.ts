@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { at, waitFor } from "../../../src/webview";
+import { urlFor, waitFor } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { example } from "../index";
 
@@ -16,7 +16,7 @@ afterAll(() => {
 describe("leave in a real browser", () => {
   test("the sign-in page posts as a plain form, the password never on the socket, and Ann is on the calendar", async () => {
     await using view = new Bun.WebView();
-    await view.navigate(at(view, server.url));
+    await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('form.sign-in') !== null`, (v) => v === true);
     await view.click("input[name=email]");
     await view.type("ann@leave.example");
@@ -31,7 +31,7 @@ describe("leave in a real browser", () => {
 
   test("a drag across days is a draft, its drawer saying what it would mean; asked for, the bar drags to other days", async () => {
     await using view = new Bun.WebView();
-    await view.navigate(at(view, server.url));
+    await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('form.sign-in') !== null`, (v) => v === true);
     await view.evaluate(`(() => { const f = document.querySelector('form.sign-in'); f.email.value = 'ann@leave.example'; f.password.value = 'ann-password'; f.requestSubmit(); return 1; })()`);
     await waitFor(view, `document.querySelector('.calendar-view .month') !== null`, (v) => v === true);

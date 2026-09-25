@@ -38,7 +38,7 @@ cast: {
   stranger: [],
 },
 // Where a member must be to notice, in this example's own words: a page, and after " @ " what
-// else the tray holds there (a drawer open, a list reading).
+// else the session holds there (a drawer open, a list reading).
 at: (where) => ...one session write...,
 
 story("Femi's top turns green, and the photo everyone watches changes", {
@@ -51,7 +51,7 @@ story("The Okafors leave the caterer a note, and only the couple read it", {
   as: "okafors",
   does: household("replace", "/message", "Ada is vegetarian."),
   seen: { okafors: "", couple: "households/1" },
-  unseen: ["ben", "benToo"],
+  untold: ["ben", "benToo"],
 });
 
 story("A household cannot change the couple's welcome", {
@@ -62,13 +62,13 @@ story("A household cannot change the couple's welcome", {
 
 Every word in those is one eta already has. `as` is a session. `does` is a `{doc, ops}` message,
 exactly as the browser or the CLI would send it. `seen` names who should notice and where: a page,
-and whatever else the example's `at` understands, because a person sees only the page they are on
+and whatever else the example's `goTo` understands, because a person sees only the page they are on
 and a story says where its change shows; in an example with one page (chat's is the room; the
 ticker has one), `seen` is just a list of names. Where people sign in, the cast signs in through the example's
 own sign-in page (`signIn`), since a password is never a write. A place a story names must be a
 place the example has: the harness checks the member's page stands where it was put. Everyone else in the cast must notice nothing, where the cast
 left them: a story says everyone who sees its change, counts on a home page included, so one that
-leaves someone out fails by name. `unseen` names who must not even be told: sent no document's ops. `cannot` is a refusal: the permit table's
+leaves someone out fails by name. `untold` names who must not even be told: sent no document's ops. `cannot` is a refusal: the permit table's
 other half, told as a sentence, whichever layer refuses (the permit, a document that finds nothing
 to change, a session with no document to resolve). A `cannot` with `told` also says what the
 refused person is shown, beside the control that sent it (`refuse`, in the eta-app skill). Undo is a story too, and a redo, and the
@@ -82,7 +82,7 @@ scroll through with the groom and ask "is this true?". The object after it is wh
 *Learned from the first run (15 September).* The shape was first written with `seen` naming a
 compartment. The wedding showed that a household's whole page is one compartment and the couple's
 another, so the word carried nothing; what decided whether someone noticed was the page they were
-on, and for choices and coming, the reading of the list. `seen` now names where. And `unseen` was
+on, and for choices and coming, the reading of the list. `seen` now names where. And `untold` was
 first every member not in `seen`; the wedding's home pages, with their counts and the photo,
 noticed nearly everything, so silence now means silence.
 
@@ -125,11 +125,11 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    control), and find on their open page the control that sends the story's write -- a
    `data-write` with its document, op and path, and a button's own value; a field or a form sends
    whatever is typed; an applet declares what it writes (`data-writes`). None is a failure: a
-   story nobody can do from a page is not a story (`outside` marks a write from a feed or the CLI).
+   story nobody can do from a page is not a story (`offPage` marks a write from a feed or the CLI).
    Then send the `does` as its session, wait for the wire to go quiet, and it must have landed:
    someone was told of a changed document.
 3. Canon 1. Render every member fresh again. For each name in `seen`, that member's page must
-   differ from before; for everyone else, nothing of theirs may differ; and each name in `unseen`
+   differ from before; for everyone else, nothing of theirs may differ; and each name in `untold`
    must have been told of nothing: sent no document's ops, by the write, its undo or its redo (a
    page that reads a document is told every change to it, shown or not). For a `cannot`, nothing anywhere
    may differ, the ledger must not have moved, and the writer must be answered: a refusal hands
@@ -161,7 +161,7 @@ for more than it checks:
   story tells is a story nobody wrote. While permit tables are written by hand that check would
   run backwards -- it would push a builder to write a story after a feature, to justify it -- so it
   waits until the table is derived from the stories.
-- **A story about the tray cannot fail.** Any write to a session's own state changes its author's
+- **A story about the session cannot fail.** Any write to a session's own state changes its author's
   page, so "Ada opens the people, and only her page shows the window" passes whatever the code
   does. Such a story proves nothing. Tell what a person wants; where they must stand to see it is
   what `seen`'s place is for.

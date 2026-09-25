@@ -210,8 +210,8 @@ registerDocs(delta.server, db, schema, [defineDoc("widget:", { root: "widgets", 
 
 const widgetCompartment: Compartment = {
   docType: "widget",
-  own: true,
-  at: "/widgets",
+  perSession: true,
+  under: "/widgets",
   resolveDoc(ws) {
     return ws.data.sessionId;
   },

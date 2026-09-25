@@ -30,8 +30,8 @@ const board = (op: "add" | "replace" | "remove", path: string, value?: unknown):
 /** Where someone must stand to see it, as one session write: the page's address -- the page, and
  * after a `?` the one thing open over it ("gifts?gift=1", "?answer") -- and after " @ " how a
  * collection is read there (`reading.guests=list`). */
-function at(where: string): Write {
-  const [page = "", rest] = where.split(" @ ");
+function goTo(address: string): Write {
+  const [page = "", rest] = address.split(" @ ");
   const ops: PatchOp[] = [{ op: "replace", path: "/page", value: page }];
   for (const pair of rest ? rest.split(", ") : []) {
     const [key, value] = pair.split("=") as [string, string];
@@ -48,7 +48,7 @@ export const stories: Stories = {
     benToo: [session("/code", "BEN")], // Ben's household, a second tab
     stranger: [],
   },
-  at,
+  goTo,
   stories: [
     // ── The welcome, before a code ──
     story("A stranger types the couple's code and is on the board", { as: "stranger", does: session("/code", "DASH"), seen: ["stranger"] }),
@@ -57,7 +57,7 @@ export const stories: Stories = {
     story("Without a code there is no page to go to", { as: "stranger", cannot: session("/page", "gifts") }),
 
     // ── Going somewhere, and leaving ──
-    story("The Okafors open the gift list, and only their tab moves", { as: "okafors", does: session("/page", "gifts"), seen: ["okafors"], unseen: ["couple", "ben", "benToo", "stranger"] }),
+    story("The Okafors open the gift list, and only their tab moves", { as: "okafors", does: session("/page", "gifts"), seen: ["okafors"], untold: ["couple", "ben", "benToo", "stranger"] }),
     story("Leaving the site forgets the code", { as: "okafors", does: session("/code"), seen: ["okafors"] }),
 
     // ── A household answers ──
@@ -65,7 +65,7 @@ export const stories: Stories = {
     story("The Okafors take their answer back", { as: "okafors", does: household("remove", "/answer"), seen: { okafors: "?answer", couple: "households", benToo: "everyone", ben: "" } }),
     story("Femi is not coming after all, and the photo loses him", { as: "okafors", from: "?guest=2", does: household("replace", "/guests/2/coming", "0"), seen: { okafors: "", couple: "households", benToo: "everyone", ben: "" } }),
     story("Femi's coming is left undecided, and the list shows it", { as: "okafors", from: "guests?guest=2", does: household("remove", "/guests/2/coming"), seen: { okafors: "guests @ reading.guests=list", couple: "households/1/guests @ reading.family-1=list" } }),
-    story("The Okafors leave the caterer a note, and only the couple read it", { as: "okafors", from: "?answer", does: household("replace", "/message", "Ada is vegetarian."), seen: { okafors: "", couple: "households/1" }, unseen: ["ben", "benToo"] }),
+    story("The Okafors leave the caterer a note, and only the couple read it", { as: "okafors", from: "?answer", does: household("replace", "/message", "Ada is vegetarian."), seen: { okafors: "", couple: "households/1" }, untold: ["ben", "benToo"] }),
     story("The Okafors take the note back, emptying it", { as: "okafors", from: "?answer", does: household("replace", "/message", ""), seen: { okafors: "", couple: "households/1" } }),
 
     // ── Guests, figures, choices ──

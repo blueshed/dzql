@@ -31,7 +31,7 @@ story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not",
   as: "ada",
   does: say("hello"),        // the write: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "hello" }] }
   seen: ["ada", "bob"],      // whose page must change
-  unseen: ["cy", "dee", "eve"], // who must not even be sent it
+  untold: ["cy", "dee", "eve"], // who must not even be sent it
 }),
 ```
 
@@ -129,6 +129,10 @@ export const room: Compartment = {
   a blank value dropped. If it returns nothing, the write is refused.
 - A write the browser can refuse first (`required`, `pattern`) should be refused there.
 
+Both run before a write. The other hooks are named for when they run too: `permitUndo` before an
+undo or redo (step 10), `afterWrite` after a fresh write, for the writer, and `afterChange` after
+any change from anyone. Chat's room uses `afterChange` to keep the list of rooms.
+
 ## 6. Put it together
 
 `examples/<name>/index.ts` exports the example:
@@ -163,7 +167,7 @@ What the common failures mean:
 |---|---|
 | `X did not see it` | The write landed, but X's page did not change. Does their page read the document? |
 | `X noticed, and should not have` | X's page changed and the story didn't say so. Name X in `seen`, or stop showing it to X. |
-| `after the story, X was told of doc, and should not have been` | X is in `unseen`, and their page reads that document. Cut the document smaller. |
+| `after the story, X was told of doc, and should not have been` | X is in `untold`, and their page reads that document. Cut the document smaller. |
 | `X has no control on their page for …` | No button or form on X's page sends that write. Build it, or say where X stands (step 8). |
 | `nothing landed: X's write was refused` | Check `permit` and `shape`. |
 | `refused, but X was not told "…"` | The story expects a reason (`told`), and the page does not show it (step 9). |
@@ -175,17 +179,18 @@ Once they pass, add a server test for anything a story cannot see, and keep `bun
 ## 8. Where people are
 
 Chat has one page. Most apps have several, plus drawers and modals, and that is where the
-**session** comes in: each visitor's own document, holding where they are. (The docs also call
-it the **tray**.)
+**session** comes in: each visitor's own document, holding where they are.
 
-- Its compartment says `own: true`: it belongs to one session, and is named on the wire by its
+- Its compartment says `perSession: true`: it belongs to one session, and is named on the wire by its
   type alone, because the session id is a credential.
 - It says `ledger: false`: moving about is not history, so Undo skips it.
 - Where you are is one **address**: `path?what=which`, like `2026-10?request=1` in leave, the
   October calendar with request 1's drawer open. It goes in the URL, so the back button works.
 
-A story then says where each person stands: `seen: { mo: "2026-10?request=1" }`. It also says
-where the author acts: `from: "2026-10?draft"` puts them where the control is. The harness checks
+Your stories say how to put someone at an address, once: leave's is
+`goTo: (address) => ({ doc: "session", ops: [{ op: "replace", path: "/page", value: address }] })`.
+Then a story says where each person stands, `seen: { mo: "2026-10?request=1" }`, and where the
+author acts, `from: "2026-10?draft"`, which puts them where the control is. The harness checks
 that they really got there, so a place your app does not have is a failure, not a silent pass.
 
 ## 9. Saying no, and why
@@ -197,7 +202,7 @@ When a person can make a write that must be refused, tell them why:
 if (ends < starts) throw refuse("The last day is before the first.");
 ```
 
-Draw the reason beside the control that sent it: `refused(sessionId, doc, path)` gives the line.
+Draw the reason beside the control that sent it: `reasonFor(sessionId, doc, path)` gives the line.
 The story then says `told: "The last day is before the first."`. A plain `false` from `permit`
 refuses without a word; that is right for a write no page offers.
 
@@ -205,7 +210,7 @@ refuses without a word; that is right for a write no page offers.
 
 Undo and redo are free: every write is recorded with its opposite. Two things to know:
 
-- If Undo must obey a rule of time or state (answers close at a deadline), add `walkable` to the
+- If Undo must obey a rule of time or state (answers close at a deadline), add `permitUndo` to the
   compartment. It is asked before an undo, and may refuse with a reason.
 - **One Undo reverses one write to one document.** If a gesture changes two documents, Undo takes
   two presses. So keep what changes together in one document; leave keeps a person's draft beside
@@ -230,7 +235,7 @@ drag halfway through, a scroll position, a chart's history. That piece is an **a
 (`src/applets.ts`): client code that draws inside one element.
 
 - It sends its own writes with `ctx.send(doc, ops)`.
-- Its mount says what it writes, `writes(["team", "/requests"], …)`, so the stories can find the
+- Its mount says what it writes, `appletWrites(["team", "/requests"], …)`, so the stories can find the
   control.
 - It is updated in one of two ways, and you must choose:
   - **On a document** (`data-doc`): its props are that document, kept current by its changes,

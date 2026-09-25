@@ -22,7 +22,7 @@ export { comparable };
 // A `cannot` must change no page, add nothing to the ledger, and be answered: a refusal hands the
 // writer's page back, and shows them why when the story says what they are `told`, and nothing
 // else. For a `does`, nobody the story does not say sees it may notice it: a story names everyone
-// whose page changes. Delivery is checked as well as pages: a member the story says is `unseen`
+// whose page changes. Delivery is checked as well as pages: a member the story says is `untold`
 // must be told of no document -- no patch -- by the write, its undo or its redo, and anything the
 // kernel reports failing while a story runs (a message, a drawing, a change being told) fails the
 // story. Each story runs inside one database transaction that is rolled back afterwards, so every
@@ -88,12 +88,12 @@ export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string 
 
 // The patch stream, checked. An applet that takes a document's patches (`data-doc`) holds props: the
 // ones the last render gave it, with every patch for that document laid on since, at the place in
-// its props the document sits (`data-at`, the root by default). That is what the client's applet
+// its props the document sits (`data-under`, the root by default). That is what the client's applet
 // holds, and it must be what a fresh render would give it -- or the ops did not say everything the
 // document did, or props that changed for another reason were never sent.
 
 /** An applet that takes a document's patches, as a member's page holds it. */
-type Taken = { applet: string; doc: string; at: string; props: string; ops: PatchOp[] };
+type Taken = { applet: string; doc: string; under: string; props: string; ops: PatchOp[] };
 
 const unescape = (value: string): string => value.replaceAll("&quot;", '"').replaceAll("&#39;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
 
@@ -105,7 +105,7 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
       element(el) {
         const applet = el.getAttribute("data-applet") ?? "";
         const key = el.getAttribute("id") ?? el.getAttribute("data-eta-part") ?? `${applet}#${found.size}`;
-        found.set(key, { applet, doc: el.getAttribute("data-doc")!, at: el.getAttribute("data-at") ?? "", props: unescape(el.getAttribute("data-props") ?? "null") });
+        found.set(key, { applet, doc: el.getAttribute("data-doc")!, under: el.getAttribute("data-under") ?? "", props: unescape(el.getAttribute("data-props") ?? "null") });
       },
     })
     .transform(page);
@@ -169,7 +169,7 @@ export function retake(taken: Map<string, Taken>, page: string): void {
   for (const key of taken.keys()) if (!now.has(key)) taken.delete(key);
   for (const [key, a] of now) {
     const held = taken.get(key);
-    if (!held || held.props !== a.props || held.doc !== a.doc || held.at !== a.at) taken.set(key, { ...a, ops: [] });
+    if (!held || held.props !== a.props || held.doc !== a.doc || held.under !== a.under) taken.set(key, { ...a, ops: [] });
   }
 }
 
@@ -194,7 +194,7 @@ export function unheld(whose: string, taken: Map<string, Taken>, freshPage: stri
 /** What an applet holds now: its props with the ops it has taken laid on; or why the ops do not land. */
 export function holding(t: Taken): { value: unknown } | { error: string } {
   try {
-    return { value: applyPatch(JSON.parse(t.props), t.ops.map((op) => ({ ...op, path: t.at + op.path }))) };
+    return { value: applyPatch(JSON.parse(t.props), t.ops.map((op) => ({ ...op, path: t.under + op.path }))) };
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -274,13 +274,13 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   }
 
   /**
-   * Puts a member where a story says (`Stories.at`). Where a page says where it stands
+   * Puts a member where a story says (`Stories.goTo`). Where a page says where it stands
    * (`data-page`), it must now stand there: a place the example does not have leaves them where
    * they were, and a story that claims they saw something there has not shown it.
    */
   async function put(cast: Member[], m: Member, where: string, failures: string[]): Promise<void> {
-    if (!stories.at) return;
-    await send(cast, m, stories.at(where));
+    if (!stories.goTo) return;
+    await send(cast, m, stories.goTo(where));
     const stands = placeOf(m.page);
     const asked = where.split(" @ ")[0]!;
     if (stands !== undefined && stands !== asked) failures.push(`${m.name} could not be put on ${JSON.stringify(where)}: their page is at ${JSON.stringify(stands)}`);
@@ -292,10 +292,10 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   /** What `m` has been sent since `from`, parsed. */
   const sentSince = (m: Member, from: Map<Member, number>): Heard[] => m.inbox.slice(from.get(m)).map((raw) => JSON.parse(raw) as Heard);
 
-  /** An `unseen` member is told of nothing: sent no document's ops. */
-  function untold(cast: Member[], unseen: string[] | undefined, from: Map<Member, number>, when: string, failures: string[]): void {
+  /** An `untold` member is told of nothing: sent no document's ops. */
+  function checkUntold(cast: Member[], untold: string[] | undefined, from: Map<Member, number>, when: string, failures: string[]): void {
     for (const m of cast) {
-      if (!unseen?.includes(m.name)) continue;
+      if (!untold?.includes(m.name)) continue;
       const docs = new Set(sentSince(m, from).filter((h) => h.type === "patch").map((h) => h.doc));
       for (const doc of docs) failures.push(`${when}, ${m.name} was told of ${doc}, and should not have been`);
     }
@@ -361,7 +361,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       }
 
       // Who should notice, and where: a list leaves them where the cast put them; a record puts
-      // each where it says, in the example's own grammar for "where" (`Stories.at`).
+      // each where it says, in the example's own grammar for "where" (`Stories.goTo`).
       const seen = new Map<string, string | undefined>(Array.isArray(story.seen) ? story.seen.map((n) => [n, undefined]) : Object.entries(story.seen));
       for (const [name, where] of seen) {
         const m = cast.find((c) => c.name === name);
@@ -371,9 +371,9 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
 
 
       if (story.from !== undefined) await put(cast, who, story.from, failures);
-      // P1: the author's page offers a control for it -- unless it comes from outside any page
+      // P1: the author's page offers a control for it -- unless it comes from no page (`offPage`)
       const offered = controlsOn(who.page);
-      if (!story.outside) for (const op of story.does.ops) if (!offered.some((c) => offers(c, story.does.doc, op))) failures.push(`${who.name} has no control on their page for ${op.op} ${op.path} on ${story.does.doc}`);
+      if (!story.offPage) for (const op of story.does.ops) if (!offered.some((c) => offers(c, story.does.doc, op))) failures.push(`${who.name} has no control on their page for ${op.op} ${op.path} on ${story.does.doc}`);
 
       const before = await snapshot(cast);
       const ledgerBefore = ledgerMax();
@@ -384,17 +384,17 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       // so the undo and the redo are looked at from where each was taken -- where the author stands
       // is theirs, not the write's.
       const landed = placeOf(who.page);
-      const moved = stories.at && stood !== undefined && landed !== undefined && stood !== landed;
+      const moved = stories.goTo && stood !== undefined && landed !== undefined && stood !== landed;
       // it landed: a document changed, and someone was told (a refusal changes none)
       if (!cast.some((m) => sentSince(m, from).some((h) => h.type === "patch" && h.doc !== "refusal"))) failures.push(`nothing landed: ${who.name}'s write was refused`);
       if (process.env.STORY_TRACE) for (const raw of who.inbox.slice(from.get(who))) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
-      untold(cast, story.unseen, from, "after the story", failures);
+      checkUntold(cast, story.untold, from, "after the story", failures);
       const after = await snapshot(cast);
       const entries = ledger.since(ledgerBefore);
       await stale(cast, "after the story", failures);
 
       // `seen` must notice, and everyone else must not (R3): nobody's page changes unless the story
-      // says so. An `unseen` member is further told of nothing (above).
+      // says so. An `untold` member is further told of nothing (above).
       for (const m of cast) {
         if (seen.has(m.name)) {
           if (!differs(before, after, m.name)) failures.push(`${m.name} did not see it${where(seen.get(m.name))}`);
@@ -407,20 +407,20 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       const facts = entries.every((e) => e.undoable === 0);
       from = mark(cast);
       await send(cast, who, UNDO);
-      if (moved) await send(cast, who, stories.at!(stood!));
+      if (moved) await send(cast, who, stories.goTo!(stood!));
       const afterUndo = await snapshot(cast);
       await stale(cast, "after undo", failures);
-      untold(cast, story.unseen, from, "after undo", failures);
+      checkUntold(cast, story.untold, from, "after undo", failures);
       if (facts) compare(after, afterUndo, cast, "a fact, yet undo changed it", failures);
       else {
         compare(before, afterUndo, cast, "undo did not restore", failures);
         if (!(await active(who.sessionId))) return { name: story.name, failures }; // the undo was their going (a name taken back): no redo is theirs to press
         from = mark(cast);
         await send(cast, who, REDO);
-        if (moved) await send(cast, who, stories.at!(landed!));
+        if (moved) await send(cast, who, stories.goTo!(landed!));
         compare(after, await snapshot(cast), cast, "redo did not restore", failures);
         await stale(cast, "after redo", failures);
-        untold(cast, story.unseen, from, "after redo", failures);
+        checkUntold(cast, story.untold, from, "after redo", failures);
       }
       return { name: story.name, failures };
     } finally {

@@ -21,8 +21,8 @@ async function closeAsked(sessionId: string, ops: PatchOp[]): Promise<void> {
 
 export const watchlist: Compartment = {
   docType: "watchlist",
-  own: true, // keyed by the session id: this session's alone
-  at: "/watchlists", // eta's `/symbols` is the document's `/watchlists/symbols`
+  perSession: true, // keyed by the session id: this session's alone
+  under: "/watchlists", // eta's `/symbols` is the document's `/watchlists/symbols`
   // No render(): the ticker compartment renders the page, this list within it.
   resolveDoc(ws) {
     return ws.data.sessionId;
@@ -35,5 +35,5 @@ export const watchlist: Compartment = {
     const next = watchlistDoc.after(symbols, ops, market.has);
     return next.join() === symbols.join() ? [] : [{ op: "replace", path: "/symbols", value: next }];
   },
-  wrote: (_ws, sessionId, ops) => closeAsked(sessionId, ops),
+  afterWrite: (_ws, sessionId, ops) => closeAsked(sessionId, ops),
 };

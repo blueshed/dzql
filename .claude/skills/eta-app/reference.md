@@ -38,7 +38,7 @@ and a password never crosses the socket:
   another site (delta's `refuseOrigin`), and for a good one starts a **fresh** session -- never the
   visit's own id -- writes who it is into the session document with `serverWrite`, and answers
   `303 /` with `sessionCookie(id)` (src/server.ts: the kernel's cookie, its attributes). A wrong
-  one is told on the page it came from: `tell(visit, { doc, path, reason })`, drawn by `refused`.
+  one is told on the page it came from: `tell(visit, { doc, path, reason })`, drawn by `reasonFor`.
 - Who you are is then the session document's; the session's `permit` refuses it over the wire,
   but allows taking it back (signing out, which every tab of the session hears). `who` gives delta
   the person, `active` whether anyone is signed in.
@@ -51,21 +51,28 @@ and a password never crosses the socket:
 
 ## `Compartment` (`src/compartments/compartment.ts`)
 
+A compartment looks after one type of document: which one a page is on, who may write to it, and
+what a write becomes. Its hooks are listed in the order they run.
+
 ```ts
 export type Compartment = {
-  docType: string;                         // the type of document it owns: "session", "room"
-  resolveDoc(ws): string | undefined;      // the one of this type the connection is on (a bare name)
-  own?: true;                              // keyed by the session id: that session's alone, named by type
-  permit?(ws, op, docId): boolean;         // may it write this path of this document? omitted: nobody may
-  walkable?(ws, docId, ops): boolean;      // may an undo or redo walk these ops onto it? omitted: any walk
-  kind?: Kind;                             // where its truth lives: written (default), fact, live, sourced, static
-  ledger?: false;                          // kept off the ledger (a visit): said, so one left off by mistake is caught
-  at?: string;                             // where eta's paths sit in the document ("/sessions")
-  shape?(ws, docId, ops): PatchOp[];       // the wire's ops as the document takes them (a fresh write only)
-  changed?(docId, ops): void | Promise<void>;    // after any change to it is told: keep what follows from it true
-  wrote?(ws, docId, ops): void | Promise<void>;  // after a fresh write from this connection: what follows for the writer
-  onOpen?(ws): void | Promise<void>;
-  onClose?(ws): void | Promise<void>;
+  docType: string;                         // the type of document it looks after: "session", "room"
+  resolveDoc(ws): string | undefined;      // which one of this type this person is on (chat: the room they are in)
+  perSession?: true;                       // one per session: that session's alone, named by type on the wire
+  kind?: Kind;                             // written (default), fact (never undone), live, sourced, static
+  ledger?: false;                          // Undo skips it (a visit): said, so one left off by mistake is caught
+  under?: string;                          // where the wire's paths sit in the document ("/sessions")
+
+  // before a write
+  permit?(ws, op, docId): boolean;         // may they make this change? omitted: nobody may
+  shape?(ws, docId, ops): PatchOp[];       // what the page sent, as the document keeps it
+  // before an undo or redo
+  permitUndo?(ws, docId, ops): boolean;    // may it go ahead? omitted: always
+  // after
+  afterWrite?(ws, docId, ops): void | Promise<void>;  // after a fresh write, for the writer alone
+  afterChange?(docId, ops): void | Promise<void>;     // after any change from anyone, undo included
+  onOpen?(ws): void | Promise<void>;       // a page connected
+  onClose?(ws): void | Promise<void>;      // a page closed
 };
 ```
 
@@ -76,7 +83,7 @@ export type Compartment = {
   Nothing declares who sees what. A document's id may be criteria (`month:2026-09`); `permit` is
   given it. So cut documents by who reads them: the wedding's households read `wedding:1` (the
   lists) and `everyone:1` (what they may know of each other), never the couple's board.
-- **`own` for a session's own documents** (session, desk, watchlist, the ledger): seen by that
+- **`perSession` for a session's own documents** (session, desk, watchlist, the ledger): seen by that
   session alone, whatever reads them -- chat's presence reads everyone's name from their sessions
   -- and named on the wire by type, since the id is a credential. Their id is taken out of every
   op value on the wire.
@@ -91,24 +98,24 @@ export type Compartment = {
   nobody has -- `permit` or `shape` throws `refuse("That code was not recognised.")`
   (`src/refusal.ts`). The kernel keeps the reason in the session's own `refusal` document (in
   memory, off the ledger: a refusal is not something that happened) until the session's next
-  write, and the page draws it beside the control that sent it: `refused(sessionId, doc, path)`,
+  write, and the page draws it beside the control that sent it: `reasonFor(sessionId, doc, path)`,
   the `doc` and `path` of that control's `data-write`, gives the line (`<p class="refused"
   role="alert">`) or nothing. A plain `false` stays silent: a write no control offers has
   nowhere to say why. Where the browser can refuse it first (`required`, `pattern`), let it.
-- **Undo is looked at before it walks.** The kernel asks delta what the walk would write (in
-  eta's paths) and asks the document's owner, `walkable(ws, docId, ops)`: not `permit`, since undo
+- **Undo is checked before it runs.** The kernel asks delta what the undo or redo would write (in
+  eta's paths) and asks the document's owner, `permitUndo(ws, docId, ops)`: not `permit`, since undo
   may do what permit refuses (a message taken back), but a rule of time or state that holds against
-  Undo too -- the wedding refuses a walk that would set back an answer after the deadline, with
-  `refuse("Answers closed at the deadline.")`. A walk that meets someone else's later write
+  Undo too -- the wedding refuses an undo that would set back an answer after the deadline, with
+  `refuse("Answers closed at the deadline.")`. An undo that meets someone else's later write
   changes nothing (delta moves the cursor past it) and says so. The kernel draws why an undo or
   redo was refused over the page (`.walk-said`), since Undo is its own tool.
 - **By kind.** `written` is on the ledger and undoable; a `fact` is recorded, never undone (the
   ticker's ticks); `live` is held in memory and written by the server, never from the wire
   (chat's who is here); `sourced` and `static` are read, never written.
-- **What follows from a change.** `changed(docId, ops)` runs after every change to the document
+- **What follows from a change.** `afterChange(docId, ops)` runs after every change to the document
   is told -- a write, an undo, another process's -- to keep a live document true from what is
   (chat's presence and list of rooms, the wedding's `everyone`): compute it whole, write the
-  difference with `serverWrite`. `wrote(ws, docId, ops)` runs after a fresh write from this
+  difference with `serverWrite`. `afterWrite(ws, docId, ops)` runs after a fresh write from this
   connection, with the ops as the wire said them: the modal that asked is put away by the write
   that answers it. Never write another compartment's document from `shape`.
 
@@ -116,7 +123,7 @@ export type Compartment = {
 
 Every change reaches the kernel on one stream -- delta's publish, whether this process wrote it or
 another did over Postgres -- and is told from one place: its ops echoed to everyone who sees the
-document (at eta's paths, `at` taken off; an `own` document's id scrubbed), and every page that
+document (at the wire's paths, `under` taken off; a `perSession` document's id scrubbed), and every page that
 read it drawn again, each sent only the parts that changed. Changes are told one at a time, in
 order, and events are handled one at a time: an `inspect` is answered after everything the
 events before it set going. Never send a patch or ask for a render by hand.
@@ -158,7 +165,7 @@ member's page, rebuilt from exactly what they were sent, must equal a fresh rend
 An example's documents are delta's. `delta.ts` defines the schema (`defineSchema`; the tables
 prefixed with the example's name, `chat_`), creates the tables, seeds them when empty, and
 registers the documents on a `createLocal()`: `registerDocs(..., { ledger: true })` for what is
-written and undone, `registerMemory` for what is live. A tray may go in a registry of its own with
+written and undone, `registerMemory` for what is live. A session may go in a registry of its own with
 no ledger where a visit is not history (the ticker's desk, the wedding's session), and its
 compartment says `ledger: false`: the kernel reports a write whose ledger entry disagrees with its
 compartment, so a document left off the ledger by mistake (no undo could ever work) is caught.
@@ -181,8 +188,8 @@ want there (numbers for ids, a guest's look as one object), and put the pure rul
   fills it in; the reader treats null as empty all the same.
 - No migrations: `createTables` makes what is missing, and the seed runs into empty tables.
 - `serverWrite(doc, ops)` is the server's own write -- no person, no cursor, never undone -- for
-  what `changed` keeps. It goes straight to delta, so its paths are the document's own, not eta's:
-  `at` is not added (`/desks/page`, `/quotes${path}`, not `/page`). Tests and scripts write as a
+  what `afterChange` keeps. It goes straight to delta, so its paths are the document's own, not eta's:
+  `under` is not added (`/desks/page`, `/quotes${path}`, not `/page`). Tests and scripts write as a
   person would through the same `shape` (the wedding's `setup.ts`).
 - A page's reads go through `read()`. What goes to the tables directly is what no page reads as a
   document: what a live document is computed from (chat's rooms spoken in, the wedding's
@@ -203,9 +210,9 @@ the session's Undo stays on it.
 HTML is the only vocabulary. No JSON tree of app state.
 
 - **A document is named whole: `<docType>:<docId>`** (`room:general`, `month:2026-09`), so one
-  socket holds any number of documents, of any types. The exception is an `own` document (a
+  socket holds any number of documents, of any types. The exception is an `perSession` document (a
   session's session, ledger, desk): it is named by its type alone, since the id is a credential. A
-  document keyed by a live session's id that is not `own` is refused by name, loudly.
+  document keyed by a live session's id that is not `perSession` is refused by name, loudly.
 - Client to server: `{doc, ops: [{op, path, value?}]}`. `doc` is a whole name, or a bare type
   meaning the one of that type this connection is on (`resolveDoc`). `path` is a JSON Pointer,
   never a verb.
@@ -255,18 +262,18 @@ back button closes a drawer and a link opens one. On first load the session catc
 ## Pages: the bento (`src/bento.ts`, `src/bento.css`)
 
 The rules are `examples/bento/README.md`. Bind the surfaces once per example:
-`bento({icon, tray, leave?})`, where `icon` is the example's own icon function, `tray` the docType
+`bento({icon, session, leave?})`, where `icon` is the example's own icon function, `session` the docType
 find and the reading switch write to, and `leave` the last of the page's tools. It returns
 `boxPage`, `collectionPage`, `crumbs`, `cell`, `row`, `tool`, `pageTools`, `addTool`,
-`findControl`, `readingSwitch`, `sheet`, `addModal`, `confirmModal`. A page is a **box** (`boxPage(trail, inPlace, cells, open?)`:
-compartments in a tray, one grown into the window) or a **collection** (`collectionPage(trail,
+`findControl`, `readingSwitch`, `drawer`, `addModal`, `confirmModal`. A page is a **box** (`boxPage(trail, inPlace, cells, open?)`:
+cells in a tray, one grown into the window) or a **collection** (`collectionPage(trail,
 open)`: the window alone). Every gesture is a `data-write` string the caller hands in.
 `patchCollections(ui, op)` applies what find and the reading switch write (`/filter/<key>`,
 `/hide/<key>`, `/reading/<key>`). The stylesheet imports `src/bento.css` first, then says its
 tokens. `data-moving` names the element that grows (a view transition runs only when its own tag
 changes); `data-reveal` scrolls the chosen row into the clear.
 
-Escalate only as the data forces: in place, then the compartment, then a drawer, then a window,
+Escalate only as the data forces: in place, then the cell, then a drawer, then a window,
 then a modal. A list of five needs no find.
 
 ## Applets (`src/applets.ts`)
@@ -294,13 +301,13 @@ that. A page with an island carries railroad, and the kernel's client does not (
 what each costs). Its file is `<name>-applet.tsx` (the tsconfig says
 `jsxImportSource: "@blueshed/railroad"`).
 
-Mount point: `<div data-applet="board" data-doc="quote:BRVO" data-at="/quote" data-props='{...}'>`,
+Mount point: `<div data-applet="board" data-doc="quote:BRVO" data-under="/quote" data-props='{...}'>`,
 the document named as the wire names it. Data reaches an applet as new props on a render
 (`update`), or, for a document that changes often, as the patch itself (`patch`: an applet with a
 `data-doc` is never sent its props again, since every change to its document reaches it as a
 patch, so no HTML follows).
 
-An applet that takes a document's patches holds that document in its props, whole, at `data-at`
+An applet that takes a document's patches holds that document in its props, whole, at `data-under`
 (the root when not given), rows as delta holds them (their id and parent key included): the ops
 must land on it, and say everything the document did. The stories check it -- each member's
 applet props, as last sent with every patch since laid on, must be what a fresh render gives it.
@@ -314,7 +321,7 @@ and its page would change for symbols nobody on it watches. Register in `client/
 testing. `client/index.html` must have an element with `id="app"`.
 
 **An applet's controls are drawn in the browser**, so the stories cannot find them in the page.
-Its mount says what they write: `writes([doc, path], …)` (src/html.ts) puts `data-writes` on it, and a
+Its mount says what they write: `appletWrites([doc, path], …)` (src/html.ts) puts `data-writes` on it, and a
 story's write under that path counts as offered (the wedding's dress and menu; leave's calendar,
 which writes a draft and moves requests). An applet that sends writes of its own -- a drag let go --
 uses `ctx.send(doc, ops)`. An applet whose props mix a document with the page's own state (leave's
@@ -331,6 +338,6 @@ the CLI talks to a running server over the same socket a browser does.
 
 It usually means a seam is missing, not that the example is special. A per-example "may this
 session write" is `Example.active`; an extra HTTP route is `Example.routes`; a fresh write that
-differs from its undo is `shape` (undo is never shaped); what follows a write is `changed` or
-`wrote`. Never teach the kernel the name of a specific document, applet
+differs from its undo is `shape` (undo is never shaped); what follows a write is `afterChange` or
+`afterWrite`. Never teach the kernel the name of a specific document, applet
 or compartment.

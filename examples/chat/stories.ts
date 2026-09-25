@@ -18,14 +18,14 @@ export const stories: Stories = {
     story("Without a name you cannot enter a room", { as: "eve", cannot: room("general") }),
 
     // ── what room ──
-    story("Dee goes into general, and Ada and Bob see her arrive", { as: "dee", does: room("general"), seen: ["dee", "ada", "bob"], unseen: ["cy"] }),
-    story("Dee names a room nobody has made, and is in it", { as: "dee", does: room("attic"), seen: ["dee"], unseen: ["ada", "bob", "cy"] }),
+    story("Dee goes into general, and Ada and Bob see her arrive", { as: "dee", does: room("general"), seen: ["dee", "ada", "bob"], untold: ["cy"] }),
+    story("Dee names a room nobody has made, and is in it", { as: "dee", does: room("attic"), seen: ["dee"], untold: ["ada", "bob", "cy"] }),
     story("Without a room name you cannot enter a room", { as: "dee", cannot: room("  ") }),
     story("Cy leaves the kitchen, and the kitchen, empty now, leaves Dee's list of rooms", { as: "cy", does: leave, seen: ["cy", "dee"] }),
     story("Bob leaves, and the room shows him gone", { as: "bob", does: leave, seen: ["bob", "ada"] }),
 
     // ── say something ──
-    story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", { as: "ada", does: say("hello"), seen: ["ada", "bob"], unseen: ["cy", "dee", "eve"] }),
+    story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", { as: "ada", does: say("hello"), seen: ["ada", "bob"], untold: ["cy", "dee", "eve"] }),
     story("Nobody can take a message back over the wire; only Undo can", { as: "ada", cannot: { doc: "room", ops: [{ op: "remove", path: "/messages/any" }] } }),
 
     // ── and going ──

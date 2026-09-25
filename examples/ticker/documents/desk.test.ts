@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { after, between, type Ui } from "./desk";
 
-describe("the desk (the ticker's tray)", () => {
+describe("the desk (the ticker's session)", () => {
   test("the desk keeps one address: a window it has, and over it a symbol, the clock, the ask or the asking-first; anywhere else is nowhere", () => {
     const go = (ui: Ui, value: unknown) => after(ui, [{ op: "replace", path: "/page", value }]);
     expect(go({}, "board")).toEqual({ page: "board" });

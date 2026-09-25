@@ -20,7 +20,7 @@ customer could call true or false. Run `bun run stories` (`ETA_EXAMPLE=<name>`) 
 Everything below is the least that makes it pass.
 
 - Build nothing no story needs. If the thing you are about to add has no story, it has no reason.
-- Do not write a story to justify something already built. A story that describes the tray's
+- Do not write a story to justify something already built. A story that describes the session's
   state ("opens the drawer", "the modal asks") cannot fail and proves nothing; tell what the
   person wants, and use `seen`'s place for where they must stand to see it.
 - A refusal is a story too (`cannot`): the other half of what a person may do.
@@ -32,7 +32,7 @@ Everything below is the least that makes it pass.
   The page is the example's one `render(sessionId)`: which screen, in what order, reading
   whichever documents it must. An example with a lot of HTML keeps the functions that build it in
   files of their own (the wedding's and the ticker's `views/`); chat's are beside its room.
-- The **tray** is the session's own document -- who you are, which page you are on -- and a
+- The **session** is each visitor's own document -- who you are, which page you are on -- and a
   compartment like any other (chat's and the wedding's `session`, the ticker's `desk`); list it
   first. Keep as little in it as the stories need: a page and its open drawer are one address, not
   six fields.
@@ -49,7 +49,7 @@ Everything below is the least that makes it pass.
 2. **`delta.ts`** -- the schema (`defineSchema`, tables named `<name>_...`), `createTables` against
    `src/db`'s `db`, a seed run into empty tables, and the documents registered on a
    `createLocal()`: `registerDocs(..., { ledger: true })` for what is written and undone,
-   `registerMemory` for what is live. A tray may be kept off the ledger, in a registry of its own,
+   `registerMemory` for what is live. A session may be kept off the ledger, in a registry of its own,
    where a visit is not history (the ticker's desk, the wedding's session), and its compartment
    then says `ledger: false`; chat's session is on it. Cut documents by who reads them: a page is told every change to what it read. How to write
    `defineSchema` and `defineDoc` (`root`, `include`, `implied`, `temporal`) is delta's own
@@ -57,16 +57,16 @@ Everything below is the least that makes it pass.
 3. **`documents/<thing>.ts`** -- `read(id)`, from `read("<docType>:<id>")` in `src/documents.ts`,
    adapting delta's rows into what the views want; and the pure rules a write follows
    (`after(state, ops)`), tested directly.
-4. **`compartments/<thing>.ts`** -- `docType`, `resolveDoc`, `permit`, `own` if its documents are
+4. **`compartments/<thing>.ts`** -- `docType`, `resolveDoc`, `permit`, `perSession` if its documents are
    keyed by the session id, `kind` if not `written`, `ledger: false` if it is kept off the ledger,
-   `at` if its fields sit under the root (`/sessions`), and `shape`: the wire's ops as the document takes them (validated, an id minted,
-   a nested path turned into rows), nothing when nothing applies. `changed` keeps a live document
-   true after any change; `wrote` does what follows for the writer alone. The kernel tells every
+   `under` if its fields sit under the root (`/sessions`), and `shape`: the wire's ops as the document takes them (validated, an id minted,
+   a nested path turned into rows), nothing when nothing applies. `afterChange` keeps a live document
+   true after any change; `afterWrite` does what follows for the writer alone. The kernel tells every
    change itself: echoed to who sees it, every page that read it drawn again, each sent only the
    parts that changed. Name the page's regions with `part(key, html)` where a change should travel
    alone; nothing else says what goes.
 5. **What is live** -- a document the server keeps (who is here, who stands in the photo):
-   computed whole from the tables in `changed`, written as the difference with `serverWrite`.
+   computed whole from the tables in `afterChange`, written as the difference with `serverWrite`.
 6. **`applets/<name>.ts`** -- only if the vocabulary above says so. Split drawing (`<name>.ts`, pure,
    tested directly) from mounting (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`)
    when there is drawing worth testing. An applet that builds and updates its DOM by hand is
@@ -79,7 +79,7 @@ Everything below is the least that makes it pass.
 10. **Tests** -- a test for each document's rules and shapes, a `server.test.ts` that drives writes
     and undo over a real websocket (for what a story cannot say: a tab closing, two writes racing), a
     `client/app.test.ts` for what only a browser can show (`Bun.WebView`: open each view at
-    `at(view, server.url)` and wait with `waitFor`, both `src/webview.ts`, so each is a browser of
+    `urlFor(view, server.url)` and wait with `waitFor`, both `src/webview.ts`, so each is a browser of
     its own on Chrome too). The gate, and what the browser tests need, are CLAUDE.md's.
 
 None of this needs a file under `src/` edited. When it seems to, read `reference.md`'s "When it

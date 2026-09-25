@@ -4,7 +4,7 @@ import { esc, join, write } from "./html";
 
 // an example's icons, as the bento sees them: a name and a size in, markup out
 const icon = (name: string, size = 16): string => `<i data-icon="${name}" data-size="${size}"></i>`;
-const b = bento({ icon, tray: "desk", leave: { text: "Leave", icon: "door", path: "/code" } });
+const b = bento({ icon, session: "desk", leave: { text: "Leave", icon: "door", path: "/code" } });
 const open = write("desk", "replace", "/open", "board");
 
 describe("html", () => {
@@ -57,19 +57,19 @@ describe("the surfaces", () => {
     expect(out).toContain(`{"doc":"ledger","op":"remove","path":"/latest"}`);
     expect(out).toContain(`{"doc":"ledger","op":"add","path":"/latest"}`);
     expect(out).toContain(`class="tool quiet" aria-label="Leave" data-write='{"doc":"desk","op":"remove","path":"/code"}'><i data-icon="door"`);
-    const plain = bento({ icon, tray: "desk" }).pageTools();
+    const plain = bento({ icon, session: "desk" }).pageTools();
     expect(plain).toContain('class="stack page-tools"');
     expect(plain).not.toContain("quiet");
   });
 
-  test("the reading switch writes the tray's /reading/<key>, the current one pressed; the plus writes /new", () => {
+  test("the reading switch writes the session's /reading/<key>, the current one pressed; the plus writes /new", () => {
     const out = b.readingSwitch("board", "list", [["spark", "chart"], ["list", "list"]]);
     expect(out).toContain(`aria-checked="false" aria-pressed="false" aria-label="spark" data-write='{"doc":"desk","op":"replace","path":"/reading/board"}' data-value="spark"><i data-icon="chart"`);
     expect(out).toContain('aria-checked="true" aria-pressed="true" aria-label="list"');
     expect(b.addTool(open, "Watch")).toContain(`aria-label="Watch"${open}>`);
   });
 
-  test("find: closed, a tool that opens it; open, the field, the tally and the eye, each a write to the tray", () => {
+  test("find: closed, a tool that opens it; open, the field, the tally and the eye, each a write to the session", () => {
     const closed = b.findControl("market", { shown: 3, total: 3 });
     expect(closed.filter).toBeUndefined();
     expect(closed.tool).toContain(`aria-pressed="false" data-write='{"doc":"desk","op":"replace","path":"/filter/market"}' data-value=""`);
@@ -82,7 +82,7 @@ describe("the surfaces", () => {
     expect(hid.filter).toContain(`aria-label="Show what misses" aria-pressed="true" data-write='{"doc":"desk","op":"remove","path":"/hide/market"}'><i data-icon="eye-off"`);
   });
 
-  test("a compartment: › and data-moving when it opens, ✎ and pressed when it is a thing, neither when it is only read", () => {
+  test("a cell: › and data-moving when it opens, ✎ and pressed when it is a thing, neither when it is only read", () => {
     const opens = b.cell({ name: "The board", mark: "chart", count: 2, big: true, opens: open, summary: "live", body: "<svg/>" });
     expect(opens).toMatchObject({ key: "the-board", span: 3, rows: 1 });
     expect(opens.html).toContain(`<div class="cell big" data-key="the-board" data-moving="the-board" role="button" tabindex="0"${open}>`);
@@ -97,7 +97,7 @@ describe("the surfaces", () => {
     expect(read.html).toBe('<div class="cell" data-key="quiet"><div class="cell-head cap"><span class="cell-name">quiet</span></div></div>');
   });
 
-  test("a box: the trail and the page's tools above, what is in place, each compartment in its area with its corners", () => {
+  test("a box: the trail and the page's tools above, what is in place, each cell in its area with its corners", () => {
     const cells = [b.cell({ name: "board", big: true, opens: open }), b.cell({ name: "market" }), b.cell({ name: "clock" })];
     const out = b.boxPage([{ label: "The desk" }], ["<p>in place</p>"], cells);
     expect(out).toContain('<b aria-current="page">The desk</b></span></nav><div class="stack page-tools across"');
@@ -107,7 +107,7 @@ describe("the surfaces", () => {
     expect(out).toContain('data-key="clock" data-corners="br" data-corners-phone="br bl" style="grid-area: clock"');
   });
 
-  test("a box with one open: that compartment is the window -- the way back and its name, its rail, find's field, the reading, a note, the page's tools", () => {
+  test("a box with one open: that cell is the window -- the way back and its name, its rail, find's field, the reading, a note, the page's tools", () => {
     const cells = [b.cell({ name: "board", opens: open }), b.cell({ name: "market", opens: open })];
     const back = write("desk", "remove", "/open");
     const out = b.boxPage([{ label: "The desk", back }, { label: "the market" }], [], cells, { key: "market", reading: "<i>reading</i>", tools: ["<i>find</i>"], filter: "<i>filter</i>", body: "<i>rows</i>", note: "a note" });
@@ -153,16 +153,16 @@ describe("the surfaces", () => {
 
   test("the drawer and its properties; a choice among a few", () => {
     const close = write("desk", "remove", "/focus");
-    const out = b.sheet("drawer", "ALPH", prop("Name", "<span>Alpha</span>"), close, "wide");
+    const out = b.drawer("drawer", "ALPH", prop("Name", "<span>Alpha</span>"), close, "wide");
     expect(out).toContain(`<div class="scrim"${close}></div><div data-eta-part="drawer" id="drawer" class="sheet wide" role="dialog" aria-label="ALPH">`);
     expect(out).toContain('<div class="prop"><span class="prop-name cap">Name</span><div class="prop-value"><span>Alpha</span></div></div>');
-    expect(b.sheet("d", "t", "", close)).toContain('class="sheet" role');
+    expect(b.drawer("d", "t", "", close)).toContain('class="sheet" role');
     const pick = choice("Coming?", [{ text: "Yes", on: true, write: open, kind: "yes" }, { text: "No", on: false, write: open }], true);
     expect(pick).toContain(`<button type="button" class="tool yes" role="radio" aria-checked="true" aria-pressed="true"${open} disabled>Yes</button>`);
     expect(choice("x", [{ text: "No", on: false, write: open }])).toContain(`class="tool" role="radio" aria-checked="false" aria-pressed="false"${open}>No`);
   });
 
-  test("the modals: adding asks for the fields it needs, removing asks one question; cancelling writes the tray", () => {
+  test("the modals: adding asks for the fields it needs, removing asks one question; cancelling writes the session", () => {
     const close = write("desk", "replace", "/page", "rooms");
     const add = b.addModal("A new room", [{ name: "room", label: "Its name" }, { name: "seats", label: "Seats", type: "number", required: false, value: "4", placeholder: "how many" }], open, close);
     expect(add).toContain(`<div class="scrim modal-scrim"${close}></div><dialog open class="modal" aria-label="A new room"><h3>A new room</h3><form${open}>`);

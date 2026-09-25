@@ -1,7 +1,7 @@
 import { address, bento, choice, layers, parseAddress, prop } from "../../src/bento";
-import { esc, join, write, writes } from "../../src/html";
+import { esc, join, write, appletWrites } from "../../src/html";
 import { part } from "../../src/parts";
-import { refused } from "../../src/refusal";
+import { reasonFor } from "../../src/refusal";
 import { alsoOff, calendarHtml, clashes, days, listRows, nextMonth, offOn, prevMonth, rowHtml, stillMine, worked, workingDaysOf, type CalendarProps, type ListProps } from "./calendar";
 import { session as sessionOf, team as teamOf, type Person, type Request, type Span, type Status, type Team } from "./documents";
 import { icon } from "./icons";
@@ -12,7 +12,7 @@ import { icon } from "./icons";
 // request's drawer is where a manager answers, and where you change or take back your own. The
 // drawers' fields do everything a drag does, for a keyboard.
 
-const { tool, collectionPage, sheet, confirmModal, addTool } = bento({ icon, tray: "session", leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
+const { tool, collectionPage, drawer, confirmModal, addTool } = bento({ icon, session: "session", leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
 
 const go = (page: string): string => write("session", "replace", "/page", page);
 
@@ -25,7 +25,7 @@ function signInPage(sessionId: string): string {
     `<form class="sign-in" method="post" action="/login">`,
     `<label class="modal-field"><span class="note">Email</span><input name="email" type="email" autocomplete="username" required autofocus></label>`,
     `<label class="modal-field"><span class="note">Password</span><input name="password" type="password" autocomplete="current-password" required></label>`,
-    refused(sessionId, "session", "/login"),
+    reasonFor(sessionId, "session", "/login"),
     `<button type="submit" class="tool">Sign in</button>`,
     `</form></section>`,
   );
@@ -44,7 +44,7 @@ function also(t: Team, me: Person, span: Span, personId: string): string {
 /** A span's two days as fields, each writing its own path when it changes: the drawer's way to do what a drag does. */
 function dayFields(doc: string, base: string, s: Partial<Span>, sessionId: string): string {
   const field = (which: "starts" | "ends", label: string) =>
-    `<label class="modal-field"><span class="note">${label}</span><input type="date" name="${which}"${write(doc, "replace", `${base}/${which}`)} value="${esc(s[which] ?? "")}"></label>${refused(sessionId, doc, `${base}/${which}`)}`;
+    `<label class="modal-field"><span class="note">${label}</span><input type="date" name="${which}"${write(doc, "replace", `${base}/${which}`)} value="${esc(s[which] ?? "")}"></label>${reasonFor(sessionId, doc, `${base}/${which}`)}`;
   return `<form class="days" data-write-on="change">${field("starts", "First day")}${field("ends", "Last day")}</form>`;
 }
 
@@ -69,7 +69,7 @@ function requestSheet(t: Team, me: Person, r: Request, path: string, sessionId: 
     `</div>`,
     open && `<div class="sheet-foot">${tool("Take it back", { icon: "trash", kind: "danger", write: go(address(path, "confirm", r.id)) })}</div>`,
   );
-  return sheet("request", mine ? "Your leave" : nameOf(t, r.person_id), body, go(path), "request-sheet");
+  return drawer("request", mine ? "Your leave" : nameOf(t, r.person_id), body, go(path), "request-sheet");
 }
 
 /** Your draft's drawer: its days, what it would mean -- working days, who else is off, the clashes -- and asking for it, or not. */
@@ -78,10 +78,10 @@ function draftSheet(t: Team, me: Person, draft: Span | null, path: string, sessi
   const body = join(
     dayFields("team", "/draft", draft ?? {}, sessionId),
     draft && `<div class="props">${prop("Days", `<span>${esc(days(draft))} · ${worked(draft)}</span>`)}${me.role === "manager" ? prop("Asked for", `<span>approved at once, by you: you manage the team</span>`) : ""}${also(t, me, draft, me.id)}${prop("Clashes", `<span class="${clashing ? "state-declined" : ""}">${clashing ? `${clashing} ${clashing === 1 ? "day" : "days"} with someone else off` : "none"}</span>`)}</div>`,
-    refused(sessionId, "team", "/requests/-"),
+    reasonFor(sessionId, "team", "/requests/-"),
     `<div class="sheet-foot">${tool("Ask", { icon: "plus", kind: "add", write: write("team", "add", "/requests/-"), disabled: !draft })}${tool("Cancel", { kind: "quiet", write: draft ? write("team", "remove", "/draft") : go(path) })}</div>`,
   );
-  return sheet("draft", draft ? "Your draft" : "Ask for leave", body, go(path), "draft-sheet");
+  return drawer("draft", draft ? "Your draft" : "Ask for leave", body, go(path), "draft-sheet");
 }
 
 /** The page for a session. */
@@ -125,7 +125,7 @@ export function render(sessionId: string): string {
 
 /** The calendar applet's mount: drawn here first, so the page reads before a script runs, then kept by the applet, which adds the drags. It writes your draft, and moves your requests. */
 const calendarMount = (p: CalendarProps): string =>
-  part("calendar", `<div id="calendar" class="calendar-view" data-applet="calendar"${writes(["team", "/draft"], ["team", "/requests"])} data-props="${esc(JSON.stringify(p))}">${calendarHtml(p)}</div>`);
+  part("calendar", `<div id="calendar" class="calendar-view" data-applet="calendar"${appletWrites(["team", "/draft"], ["team", "/requests"])} data-props="${esc(JSON.stringify(p))}">${calendarHtml(p)}</div>`);
 
 /** The list applet's mount: every request, drawn as it scrolls into view. */
 const listMount = (p: ListProps): string => {

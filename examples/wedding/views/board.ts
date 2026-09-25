@@ -1,12 +1,12 @@
 // The couple's pages: their home -- the welcome as a thing with ✎, then households, courses,
-// gifts, events and where to stay as compartments, each growing into the window; a family's box
+// gifts, events and where to stay as cells, each growing into the window; a family's box
 // as the couple read it -- their guests, their asks, their code; and the drawers where the four
 // lists they keep are edited, a row each.
 
 import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
 import { over, type SessionDocument } from "../documents/session";
-import { addModal, addTool, boxPage, cell, choice, confirmModal, findControl, prop, readingSwitch, row, rows, sheet, tool, type Crumb, type OpenOptions } from "./bento";
+import { addModal, addTool, boxPage, cell, choice, confirmModal, findControl, prop, readingSwitch, row, rows, drawer, tool, type Crumb, type OpenOptions } from "./bento";
 import { esc, join, nav, open as openAt, write } from "./html";
 import { icon } from "./icons";
 import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
@@ -49,7 +49,7 @@ const KEEP: Record<KeepTable, { label: string; noun: string }> = {
 };
 const isKeepTable = (s: string): s is KeepTable => s in KEEP;
 
-/** Which compartment of the home the page names, grown into the window (rule 7). */
+/** Which cell of the home the page names, grown into the window (rule 7). */
 function openFor(v: BoardView, head: string): { open?: OpenOptions; crumbs: Crumb[] } {
   if (head === "households") return { open: householdsOpen(v), crumbs: [{ label: "Households" }] };
   if (isKeepTable(head)) return { open: keepOpen(v, head), crumbs: [{ label: KEEP[head].label }] };
@@ -103,7 +103,7 @@ function familyGuestSheet(v: BoardView, h: HouseholdDocument): string {
     `<div class="props">${prop("Coming", `<span>${g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming"}</span>`)}</div>`,
     `<div class="sheet-foot">${tool("Take off the invitation", { icon: "trash", kind: "danger", write: open_(v, "confirm", `guests/${g.id}`) })}</div>`,
   );
-  return sheet("family-guest-sheet", g.name, body, close(v), "guest-sheet");
+  return drawer("family-guest-sheet", g.name, body, close(v), "guest-sheet");
 }
 
 /** The modal asking to take a guest off a family's invitation (rule 14); cancelling goes back to their drawer. */
@@ -164,10 +164,10 @@ function welcomeSheet(v: BoardView): string {
     `</div></form>`,
     `<div class="props">${prop("Picture", join(b.picture_key && `<div class="sheet-pic">${picture(b.picture_key, "")}</div>`, pictureField("/picture_key", b.picture_key)))}</div>`,
   );
-  return sheet("welcome-sheet", "Our welcome", body, close(v), "welcome-sheet");
+  return drawer("welcome-sheet", "Our welcome", body, close(v), "welcome-sheet");
 }
 
-/** The home's compartments, all five, whether shown whole or one of them is grown into the window. */
+/** The home's cells, all five, whether shown whole or one of them is grown into the window. */
 function boxCells(v: BoardView) {
   const { b } = v;
   const claimed = b.gifts.filter((g) => g.taken > 0).length;
@@ -342,7 +342,7 @@ function codeSheet(v: BoardView, h: HouseholdDocument | undefined): string {
     `</div></form>`,
     `<div class="sheet-foot">${chaseLink(h)}</div>`,
   );
-  return sheet("code-sheet", "The code", body, close(v), "code-sheet");
+  return drawer("code-sheet", "The code", body, close(v), "code-sheet");
 }
 
 // ───────────────────────────── keeping ─────────────────────────────
@@ -475,5 +475,5 @@ function keepSheet(v: BoardView): string {
   // removing asks in a modal (rule 14) -- the drawer only opens it; `confirmRemove` does the write
   const remove = `<div class="sheet-foot">${tool(`Remove this ${noun}`, { icon: "trash", kind: "danger", write: open_(v, "confirm", at.slice(1)) })}</div>`;
   const body = join(`<form data-write-on="blur"><div class="props">${props.join("")}${order}</div></form>`, extra, remove);
-  return sheet("keep-sheet", found.name, body, close(v), "keep-sheet");
+  return drawer("keep-sheet", found.name, body, close(v), "keep-sheet");
 }

@@ -1,10 +1,10 @@
 /* The bento, drawn on purpose.
 
-   A page is a box: a tray on paper with compartments cut into it, and the trail above it saying
-   where you are. A compartment shows the state of one thing in a small reading -- a map, a crowd, a grid
+   A page is a box: a tray on paper with cells cut into it, and the trail above it saying
+   where you are. A cell shows the state of one thing in a small reading -- a map, a crowd, a grid
    of pictures, a list. Opening one does not go anywhere: the same element grows into a window
    (a View Transition morphs the shape), and the window is the rule for everything opened,
-   whatever it holds. The trail floats top-left in the window; the compartment's own tools stand
+   whatever it holds. The trail floats top-left in the window; the cell's own tools stand
    on the right edge as stacks of square buttons, the way Leaflet draws its controls; the page's
    tools -- undo, redo, leave -- are one more stack at the bottom right; and the content, the
    reading, scrolls underneath, bigger than the window when it is a picture. A figure in the
@@ -12,7 +12,7 @@
    foot on a phone. The rails step aside for it and the reading scrolls the figure into the clear.
 
    One family of corners: controls 6px with 4px inside them, a thumbnail 8, the panel 20, the
-   tray 28. The compartments are cut into the tray as a real one is: their walls
+   tray 28. The cells are cut into the tray as a real one is: their walls
    meet square, and only where one sits in a corner of the tray does it take the tray's curve,
    less the wall. Circles are for faces, and nothing else is a pill. Every shadow
    tints toward the ink so they read as one light. Icons are lucide's, drawn by createIcons from
@@ -38,7 +38,7 @@
   --radius-thumb: 8px;
   --radius-panel: 20px;
   --radius-tray: 28px;
-  --radius-corner: calc(var(--radius-tray) - var(--space-md)); /* a compartment's corner where it meets the tray's */
+  --radius-corner: calc(var(--radius-tray) - var(--space-md)); /* a cell's corner where it meets the tray's */
 
   --space-xs: 6px;
   --space-sm: 8px;
@@ -68,7 +68,7 @@ svg { flex: 0 0 auto; }
 .crumbs .sep { display: inline-flex; align-items: center; justify-content: center; width: 22px; color: var(--muted); }
 .crumbs .sep svg { width: 14px; height: 14px; }
 
-/* ── the tray: compartments cut into it, walled by its padding ── */
+/* ── the tray: cells cut into it, walled by its padding ── */
 .bento {
   display: grid;
   grid-template-columns: 1.3fr 1fr 1fr 1fr;
@@ -94,7 +94,7 @@ svg { flex: 0 0 auto; }
 .cell:not(.open)[data-cell="photos"] { border-radius: 0 var(--radius-corner) 0 0; }
 .cell:not(.open)[data-cell="answer"] { border-radius: 0 0 var(--radius-corner) 0; }
 
-/* ── a compartment, closed: its name and mark, a › because it opens, a summary, a small reading ── */
+/* ── a cell, closed: its name and mark, a › because it opens, a summary, a small reading ── */
 .cell {
   position: relative;
   display: flex;
@@ -129,7 +129,7 @@ svg { flex: 0 0 auto; }
 
 /* the small readings */
 .mini { height: 100%; }
-/* a small reading is cut as its compartment is: square where the compartment is, curved where it
+/* a small reading is cut as its cell is: square where the cell is, curved where it
    curves, less the padding between them */
 .mini.map, .mini.crowd { position: relative; background: var(--well); border-radius: 0; }
 .cell[data-cell="stay"] .mini.map { border-radius: calc(var(--radius-corner) - var(--space-lg)) 0 0 calc(var(--radius-corner) - var(--space-lg)); }
@@ -142,12 +142,12 @@ svg { flex: 0 0 auto; }
 .note { color: var(--muted); font-size: 13px; }
 .mini.words { margin: 0; font-size: 16px; line-height: 1.35; color: var(--ink); }
 
-/* a compartment that is a thing: ✎ instead of ›, and a tap opens its drawer, not a window; while
+/* a cell that is a thing: ✎ instead of ›, and a tap opens its drawer, not a window; while
    the drawer is open it shows it is chosen, as a row does */
 .thing .pencil { color: var(--accent); }
 .thing[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--selected); }
 
-/* ── a compartment, opened: the window ── */
+/* ── a cell, opened: the window ── */
 .cell.open {
   position: fixed;
   inset: var(--space-sm);
@@ -209,7 +209,7 @@ body.windowed { overflow: hidden; }
 .cell.open .chev svg { width: 14px; height: 14px; }
 
 /* the rails: stacks of square buttons with a hairline between, the camera under the trail and the
-   work at the right edge; the compartment's own tools, and nothing of the page's */
+   work at the right edge; the cell's own tools, and nothing of the page's */
 .rail { position: absolute; z-index: 3; display: flex; flex-direction: column; gap: var(--space-md); }
 .rail.camera { left: var(--space-lg); top: calc(var(--space-lg) + var(--control) + var(--space-md)); }
 .rail.work { right: var(--space-lg); top: var(--space-lg); }
@@ -286,7 +286,7 @@ body.windowed { overflow: hidden; }
   body.panel-on .full.thumbs-grid, body.panel-on .full.list { padding-right: calc(var(--panel) + var(--space-2xl) + 80px); }
 }
 
-/* the same element, two sizes: a morph, not a cut. Only the compartment that moves is named
+/* the same element, two sizes: a morph, not a cut. Only the cell that moves is named
    (app.ts), and its group is drawn over everything else while it moves. */
 ::view-transition-group(*) { animation-duration: 260ms; animation-timing-function: cubic-bezier(0.2, 0, 0, 1); }
 ::view-transition-group(moving) { z-index: 1; }
@@ -308,7 +308,7 @@ body.windowed { overflow: hidden; }
 .panel-body textarea { width: 100%; min-height: 72px; padding: var(--space-sm) var(--space-md); font: inherit; font-size: 15px; color: var(--ink); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); resize: vertical; }
 .panel-body .modal-field + .modal-field { margin-top: var(--space-lg); }
 
-/* ── on a phone the tray is a column: one compartment under another, the tray's curve at the top
+/* ── on a phone the tray is a column: one cell under another, the tray's curve at the top
    of the first and the foot of the last, the walls square between. Last in the file so it wins
    over the desktop cuts above. ── */
 @media (max-width: 719px) {

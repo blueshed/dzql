@@ -24,7 +24,7 @@ const withdraw = (id: number): Write => ({ doc: "team", ops: [{ op: "remove", pa
 export const stories: Stories = {
   cast: { ann: [draft("2026-10-08", "2026-10-12")], bo: [draft("2026-10-10", "2026-10-11")], mo: [draft("2026-11-23", "2026-11-24")], visitor: [] },
   signIn: (name) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@leave.example`, password: `${name}-password` } }),
-  at: (where) => session({ op: "replace", path: "/page", value: where }),
+  goTo: (address) => session({ op: "replace", path: "/page", value: address }),
   stories: [
     // ── asking: a draft first, to see what it would mean ──
     story("Ann drags across two days in Bo's week, and sees the clash before she asks", { as: "ann", from: "2026-10", does: draft("2026-10-06", "2026-10-07"), seen: { ann: "2026-10" } }),

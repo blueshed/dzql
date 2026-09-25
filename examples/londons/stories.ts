@@ -27,27 +27,27 @@
 // picture are boxes: an organisation, a catalogue product, an engagement.
 //
 // THE PAGES, per actor. The root is the organisation (a person, for a worker); home is its box,
-// and home is the move queue: every compartment shows its count and is marked when it is your
-// move. `""` is home. Names below are pages; after " @ " is what the tray holds there:
+// and home is the move queue: every cell shows its count and is marked when it is your
+// move. `""` is home. Names below are pages; after " @ " is what the session holds there:
 // `drawer=<kind>/<id>` (a figure's drawer: its properties, marked ✎), `time=<day>` (the time tool
-// on a map or a wall), `reading.<compartment>=<reading>` (a compartment read another way). A
+// on a map or a wall), `reading.<cell>=<reading>` (a cell read another way). A
 // modal is never named: a named thing is made or destroyed in one question and the modal is gone;
-// the story says which compartment then shows it.
-//   authority:   "" (box: series, profile) · "series/1" (the wall of the year; compartments:
+// the story says which cell then shows it.
+//   authority:   "" (box: series, profile) · "series/1" (the wall of the year; cells:
 //                venues with the choice on the row, occasions on the wall, permits in an
 //                occasion's drawer)
-//   venueOwner:  "" (box: venues, profile) · "venue/1" (the map; compartments drawn on it: areas
+//   venueOwner:  "" (box: venues, profile) · "venue/1" (the map; cells drawn on it: areas
 //                and their sites, hosting as a strip with the choice on the row, occasions on the
 //                time tool, delegations in an occasion's drawer, permits on the sites) ·
 //                "venue/1/deployments" (the map with the deployments proposed at the venue, the
 //                choice on each)
 //   promoter:    "" (box: occasions delegated to it, campaigns, profile) · "occasion/1" (the map,
-//                rights coloured by package; compartments: packages, the events and moments on
+//                rights coloured by package; cells: packages, the events and moments on
 //                the time tool) · "campaigns" (a collection; a campaign's drawer)
 //   sponsor:     "" (the queue: scenarios awaiting approval, campaigns on the market, brands,
 //                engagements, stock, profile) · "market" (a collection of campaigns on offer,
 //                each row's rights on the map beneath; buy on the row) · "engagements/1" (a box:
-//                the brief in place, scenarios as a compartment with approve/reject on the row) ·
+//                the brief in place, scenarios as a cell with approve/reject on the row) ·
 //                "brands" · "stock"
 //   contractor:  "" (the queue: commissions, offers to answer, blocked builds, catalogue,
 //                projects, custody, rates, profile) · "catalogue" (a collection) · "catalogue/1"
@@ -55,7 +55,7 @@
 //                placements on the rights; the brief read beside it; drawers for a placement, a
 //                face, a requirement; propose/withdraw as tools) · "projects/1" (the map with the
 //                deployments on the sites, and the wall of its days: windows, trips, assignments;
-//                supply lines as a compartment with the offers' choice on the row) · "custody" ·
+//                supply lines as a cell with the offers' choice on the row) · "custody" ·
 //                "rates"
 //   supplier:    "" (the queue: open lines with offer on the row, my offers) · "open-supply" ·
 //                "opportunities" (a collection; an offer's drawer)
@@ -92,8 +92,8 @@ const many = (doc: string, sets: [string, unknown][]): Write => ({ doc, ops: set
 const code = (value: string): Write => w("session", "replace", "/code", value);
 
 /** "page @ key=value, key=value" as one session write: the page first, since it closes drawers. */
-function at(where: string): Write {
-  const [page, rest] = where.split(" @ ");
+function goTo(address: string): Write {
+  const [page, rest] = address.split(" @ ");
   const ops: PatchOp[] = [{ op: "replace", path: "/page", value: page }];
   for (const pair of rest ? rest.split(", ") : []) {
     const [key, raw] = pair.split("=") as [string, string];
@@ -113,18 +113,18 @@ export const stories: Stories = {
     worker: [code("SAM")],
     stranger: [],
   },
-  at,
+  goTo,
   stories: [
     // ── Coming in: the box of an organisation ──
     story("A venue owner registers their organisation, and stands in its box", { as: "stranger", does: w("profile", "add", "/-", { name: "Fenmoor Racecourse Co", base_location: "Liverpool", role: "venue-owner" }), seen: { stranger: "" } }),
     story("Sam registers as a worker, and stands on the wall of an empty week", { as: "stranger", does: w("worker", "add", "/-", { name: "Sam Reilly", skills: "rigger", day_rate: 240 }), seen: { stranger: "" } }),
-    story("The Downs Company changes its name in place on its box, and nobody else's box moves", { as: "venueOwner", does: many("profile", [["/name", "The Downs Company Racecourses"], ["/base_location", "Newmarket"]]), seen: { venueOwner: "" }, unseen: ["authority", "promoter", "sponsor", "contractor", "supplier", "worker"] }),
+    story("The Downs Company changes its name in place on its box, and nobody else's box moves", { as: "venueOwner", does: many("profile", [["/name", "The Downs Company Racecourses"], ["/base_location", "Newmarket"]]), seen: { venueOwner: "" }, untold: ["authority", "promoter", "sponsor", "contractor", "supplier", "worker"] }),
     story("The Board changes where it is based, in place", { as: "authority", does: w("profile", "replace", "/base_location", "London"), seen: { authority: "" } }),
     story("Festival Promotions gives its box a picture", { as: "promoter", does: w("profile", "replace", "/image_url", "/pictures/festival.png"), seen: { promoter: "" } }),
     story("Harrow changes where it is based", { as: "sponsor", does: w("profile", "replace", "/base_location", "Dublin"), seen: { sponsor: "" } }),
     story("Londons changes where it is based", { as: "contractor", does: w("profile", "replace", "/base_location", "Bristol"), seen: { contractor: "" } }),
     story("Northgate Signs changes its name", { as: "supplier", does: w("profile", "replace", "/name", "Northgate Signs Ltd"), seen: { supplier: "" } }),
-    story("The Downs Company declares it also promotes, and the roles compartment on its box shows two", { as: "venueOwner", does: w("profile", "add", "/roles/-", { role: "promoter" }), seen: { venueOwner: "" } }),
+    story("The Downs Company declares it also promotes, and the roles cell on its box shows two", { as: "venueOwner", does: w("profile", "add", "/roles/-", { role: "promoter" }), seen: { venueOwner: "" } }),
     story("The Downs Company retires a role in the role's drawer; it stays on the box, dated", { as: "venueOwner", does: w("profile", "replace", "/roles/1/valid_to", "2027-12-31"), seen: { venueOwner: " @ drawer=role/1" } }),
     story("Harrow declares a role", { as: "sponsor", does: w("profile", "add", "/roles/-", { role: "supplier" }), seen: { sponsor: "" } }),
     story("Harrow revalidates a role it had retired", { as: "sponsor", does: w("profile", "replace", "/roles/1/valid_to", null), seen: { sponsor: " @ drawer=role/1" } }),
@@ -174,7 +174,7 @@ export const stories: Stories = {
     story("Festival Promotions moves an event in its drawer, and the time tool follows", { as: "promoter", does: many("occasion", [["/events/1/from_at", "2027-03-19T10:30"], ["/events/1/to_at", "2027-03-19T18:30"]]), seen: { promoter: "occasion/1 @ drawer=event/1" } }),
     story("Festival Promotions strikes an event created in error; it is retired in its drawer, not deleted, and the time tool greys it", { as: "promoter", does: w("occasion", "replace", "/events/1/valid_to", "2027-01-01"), seen: { promoter: "occasion/1 @ drawer=event/1" } }),
     story("Festival Promotions strikes a moment", { as: "promoter", does: w("occasion", "replace", "/moments/1/valid_to", "2027-01-01"), seen: { promoter: "occasion/1 @ drawer=moment/1" } }),
-    story("Festival Promotions names a package, and a new colour appears in the packages compartment beside the map; the venue sees it on its occasion", { as: "promoter", does: w("occasion", "add", "/packages/-", { name: "Parade ring" }), seen: { promoter: "occasion/1", venueOwner: "venue/1 @ drawer=occasion/1" } }),
+    story("Festival Promotions names a package, and a new colour appears in the packages cell beside the map; the venue sees it on its occasion", { as: "promoter", does: w("occasion", "add", "/packages/-", { name: "Parade ring" }), seen: { promoter: "occasion/1", venueOwner: "venue/1 @ drawer=occasion/1" } }),
     story("Festival Promotions paints the parade ring screen with the draft package's colour, for four days", { as: "promoter", does: w("occasion", "add", "/packages/1/rights/-", { site_id: 1, from_at: "2027-03-16T09:00", to_at: "2027-03-19T19:00" }), seen: { promoter: "occasion/1", venueOwner: "venue/1 @ time=2027-03-16" } }),
     story("Festival Promotions widens a right's window in its drawer on an offered package, and the market's row shows the new hours", { as: "promoter", does: many("occasion", [["/packages/2/rights/2/from_at", "2027-03-16T08:00"], ["/packages/2/rights/2/to_at", "2027-03-19T20:00"]]), seen: { promoter: "occasion/1 @ drawer=right/2", venueOwner: "venue/1 @ time=2027-03-16", sponsor: "market" } }),
     story("Festival Promotions renames a package in its drawer", { as: "promoter", does: w("occasion", "replace", "/packages/1/name", "Parade ring, all four days"), seen: { promoter: "occasion/1 @ drawer=package/1", venueOwner: "venue/1 @ drawer=occasion/1" } }),
@@ -190,7 +190,7 @@ export const stories: Stories = {
     story("Harrow's market rows carry buy, never offer", { as: "sponsor", cannot: w("campaigns", "replace", "/1/status", "offered") }),
 
     // ── The sponsor: brands, the brief in place, stock ──
-    story("Harrow adds a brand, and the brands compartment on its box shows two", { as: "sponsor", does: w("sponsor", "add", "/brands/-", { name: "Harrow 0.0" }), seen: { sponsor: "" }, unseen: ["contractor", "promoter"] }),
+    story("Harrow adds a brand, and the brands cell on its box shows two", { as: "sponsor", does: w("sponsor", "add", "/brands/-", { name: "Harrow 0.0" }), seen: { sponsor: "" }, untold: ["contractor", "promoter"] }),
     story("Harrow renames a brand in its drawer and gives it a picture", { as: "sponsor", does: many("sponsor", [["/brands/1/name", "Harrow Draught"], ["/brands/1/image_url", "/pictures/harp.png"]]), seen: { sponsor: "brands @ drawer=brand/1" } }),
     story("Harrow drops artwork into a brand's drawer", { as: "sponsor", does: w("sponsor", "add", "/brands/1/artwork/-", { url: "/pictures/gold-cup-2027.png" }), seen: { sponsor: "brands @ drawer=brand/1" } }),
     story("Harrow replaces a piece of artwork", { as: "sponsor", does: w("sponsor", "replace", "/brands/1/artwork/1/url", "/pictures/gold-cup-2027-v2.png"), seen: { sponsor: "brands @ drawer=brand/1" } }),
@@ -227,15 +227,15 @@ export const stories: Stories = {
     story("A campaign not on offer has no row on the market to buy from", { as: "sponsor", cannot: w("market", "replace", "/1/status", "agreed") }),
 
     // ── The catalogue: a collection, and a product's box ──
-    story("Londons creates a product, and it is a row in the catalogue; no one else's page moves", { as: "contractor", does: w("catalogue", "add", "/-", { name: "3m A-frame", kind: "module", cost: 800, markup_percent: 30, rentable_days: 5 }), seen: { contractor: "catalogue" }, unseen: ["sponsor", "worker"] }),
+    story("Londons creates a product, and it is a row in the catalogue; no one else's page moves", { as: "contractor", does: w("catalogue", "add", "/-", { name: "3m A-frame", kind: "module", cost: 800, markup_percent: 30, rentable_days: 5 }), seen: { contractor: "catalogue" }, untold: ["sponsor", "worker"] }),
     story("Londons changes a product's details in place on its box, and Sam's build, which uses it, reads the new name", { as: "contractor", does: many("catalogue", [["/1/name", "6m banner frame, aluminium"], ["/1/cost", 2400], ["/1/rentable_days", 7]]), seen: { contractor: "catalogue/1", worker: "assignments/1" } }),
     story("Londons retires the LED tower on its box; revalidating is the same field", { as: "contractor", does: w("catalogue", "replace", "/2/valid_to", "2027-06-30"), seen: { contractor: "catalogue/2" } }),
-    story("Londons adds a part in the parts compartment", { as: "contractor", does: w("catalogue", "add", "/1/parts/-", { child_product_id: 2, qty: 2 }), seen: { contractor: "catalogue/1" } }),
+    story("Londons adds a part in the parts cell", { as: "contractor", does: w("catalogue", "add", "/1/parts/-", { child_product_id: 2, qty: 2 }), seen: { contractor: "catalogue/1" } }),
     story("Londons changes a part's quantity on its row", { as: "contractor", does: w("catalogue", "replace", "/1/parts/1/qty", 3), seen: { contractor: "catalogue/1" } }),
-    story("Londons adds a face in the faces compartment", { as: "contractor", does: w("catalogue", "add", "/1/faces/-", { name: "Reverse" }), seen: { contractor: "catalogue/1" } }),
+    story("Londons adds a face in the faces cell", { as: "contractor", does: w("catalogue", "add", "/1/faces/-", { name: "Reverse" }), seen: { contractor: "catalogue/1" } }),
     story("Londons renames a face in its drawer", { as: "contractor", does: w("catalogue", "replace", "/1/faces/1/name", "Front, trackside"), seen: { contractor: "catalogue/1 @ drawer=face/1" } }),
     story("Londons says in the face's drawer which products it can carry", { as: "contractor", does: w("catalogue", "add", "/1/faces/1/supports/-", { product_id: 2 }), seen: { contractor: "catalogue/1 @ drawer=face/1" } }),
-    story("Londons adds a lifecycle task in the tasks compartment, and Sam's build gains a step to tick", { as: "contractor", does: w("catalogue", "add", "/1/tasks/-", { kind: "build", name: "Level the base", duration_mins: 30, skill: "rigger", crew: 2 }), seen: { contractor: "catalogue/1", worker: "assignments/1" } }),
+    story("Londons adds a lifecycle task in the tasks cell, and Sam's build gains a step to tick", { as: "contractor", does: w("catalogue", "add", "/1/tasks/-", { kind: "build", name: "Level the base", duration_mins: 30, skill: "rigger", crew: 2 }), seen: { contractor: "catalogue/1", worker: "assignments/1" } }),
     story("Londons changes a task's duration and crew in its drawer", { as: "contractor", does: many("catalogue", [["/1/tasks/1/duration_mins", 90], ["/1/tasks/1/crew", 3]]), seen: { contractor: "catalogue/1 @ drawer=task/1", worker: "assignments/1" } }),
     story("Londons links a task to the one it depends on, in its drawer, and Sam's list reorders", { as: "contractor", does: w("catalogue", "add", "/1/tasks/1/depends/-", { depends_on_task_id: 2 }), seen: { contractor: "catalogue/1 @ drawer=task/1", worker: "assignments/1" } }),
     story("Londons adds a resource to a task", { as: "contractor", does: w("catalogue", "add", "/1/tasks/1/resources/-", { resource_product_id: 2, qty: 1, shared: true }), seen: { contractor: "catalogue/1 @ drawer=task/1" } }),

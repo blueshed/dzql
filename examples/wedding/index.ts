@@ -3,7 +3,7 @@ import * as sessionDoc from "./documents/session";
 import * as weddingDoc from "./documents/wedding";
 import { delta } from "./delta";
 import { welcome } from "./views/welcome";
-import { refused } from "../../src/refusal";
+import { reasonFor } from "../../src/refusal";
 import { board, everyone, renderBoard, wedding, welcome as welcomeDoc } from "./compartments/board";
 import { household, renderHousehold } from "./compartments/household";
 import { session } from "./compartments/session";
@@ -17,7 +17,7 @@ export const example: Example = {
   render(sessionId) {
     const visit = sessionDoc.read(sessionId);
     const page = visit.kind === "household" ? renderHousehold(visit) : visit.kind === "couple" ? renderBoard(visit) : undefined;
-    return page ?? welcome(weddingDoc.welcome(), visit.note, refused(sessionId, "session", "/code"));
+    return page ?? welcome(weddingDoc.welcome(), visit.note, reasonFor(sessionId, "session", "/code"));
   },
   // The same guard every write path already needs: a tab that has left (or whose code no longer
   // exists) shouldn't be able to write, undo included, as if it were still in.

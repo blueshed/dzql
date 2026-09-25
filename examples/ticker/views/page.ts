@@ -1,5 +1,5 @@
 // The desk, drawn as the bento mock-up draws a page (examples/bento): a box with three
-// compartments -- the board, big, with two readings; the market; the clock, a thing whose drawer
+// cells -- the board, big, with two readings; the market; the clock, a thing whose drawer
 // holds the city -- each growing into the window when opened, the tools on the rail, the page's
 // at the bottom right. A row is a symbol: its drawer holds what it is and what it can carry, watch
 // or drop. Watching is the plus and a modal; dropping asks in one too.
@@ -14,7 +14,7 @@ import { quote, type MarketDocument, type Quote } from "../documents/market";
 import type { WatchlistDocument } from "../documents/watchlist";
 import { icon } from "./icons";
 
-const { tool, readingSwitch, addTool, findControl, cell, boxPage, row, sheet, addModal, confirmModal } = bento({ icon, tray: "desk" });
+const { tool, readingSwitch, addTool, findControl, cell, boxPage, row, drawer, addModal, confirmModal } = bento({ icon, session: "desk" });
 
 /** Going somewhere on the desk -- a window, a drawer over it, a modal -- is one write: the address. */
 const go = (page: string): string => write("desk", "replace", "/page", page);
@@ -32,7 +32,7 @@ export type View = { list: WatchlistDocument; market: MarketDocument; clock: Clo
 export function boardMount(list: WatchlistDocument, market: MarketDocument): string {
   const symbols = list.symbols.filter((s) => market[s]);
   if (!symbols.length) return `<div id="board" class="board"><p class="empty">Nothing watched yet. Add a symbol.</p></div>`;
-  const rowOf = (symbol: string) => `<div id="quote-${esc(symbol)}" data-applet="board" data-doc="quote:${esc(symbol)}" data-at="/quote" data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`;
+  const rowOf = (symbol: string) => `<div id="quote-${esc(symbol)}" data-applet="board" data-doc="quote:${esc(symbol)}" data-under="/quote" data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`;
   return `<div id="board" class="board">${symbols.map(rowOf).join("")}</div>`;
 }
 
@@ -111,10 +111,10 @@ function marketOpen(v: View): OpenOptions {
 }
 
 /** The drawer: a symbol's properties and what it carries -- watch, or drop -- or the clock's city. */
-function drawer(v: View): string {
+function openDrawer(v: View): string {
   const { path, what, which = "" } = where(v.ui);
   const close = go(path);
-  if (what === "clock") return sheet("drawer", "The clock", `<div class="props">${prop("City", cityMount(v.clock))}${prop("Now", `<span>${esc(v.clock.city)} (UTC${esc(v.clock.offset)})</span>`)}</div>`, close);
+  if (what === "clock") return drawer("drawer", "The clock", `<div class="props">${prop("City", cityMount(v.clock))}${prop("Now", `<span>${esc(v.clock.city)} (UTC${esc(v.clock.offset)})</span>`)}</div>`, close);
   const q = what === "symbol" ? v.market[which] : undefined;
   if (!q) return "";
   const watched = v.list.symbols.includes(which);
@@ -122,7 +122,7 @@ function drawer(v: View): string {
     ? tool("Stop watching", { icon: "trash", kind: "danger", write: go(address(path, "confirm", which)) })
     : tool("Watch", { icon: "plus", kind: "add", write: write("watchlist", "add", "/symbols/-", which) });
   const props = prop("Name", `<span>${esc(q.name)}</span>`) + prop("Price", priceState(q)) + prop("Watched", `<span>${watched ? "yes" : "no"}</span>`);
-  return sheet("drawer", which, `<div class="props">${props}</div><div class="sheet-foot">${carry}</div>`, close);
+  return drawer("drawer", which, `<div class="props">${props}</div><div class="sheet-foot">${carry}</div>`, close);
 }
 
 /** The modals: which symbol to watch; whether to stop watching one. One question each; cancelling goes back to where it was asked from. */
@@ -134,7 +134,7 @@ function modals(v: View): string {
   return confirmModal(`Stop watching ${which}`, "Its row leaves the board. Undo brings it back.", write("watchlist", "remove", `/symbols/${at}`), go(address(path, "symbol", which)), "Stop watching");
 }
 
-/** The desk: the box, or one compartment grown into the window; the drawer and the modal over it. */
+/** The desk: the box, or one cell grown into the window; the drawer and the modal over it. */
 export function page(v: View): string {
   const at = where(v.ui);
   const symbols = Object.keys(v.market);
@@ -147,7 +147,7 @@ export function page(v: View): string {
   const desk: Crumb = { label: "The desk", back: go("") };
   const trail = opened ? [desk, { label: `the ${opened.key}` }] : [desk];
   const modal = modals(v);
-  const over = drawer(v);
+  const over = openDrawer(v);
   // the page's address goes in the URL (the kernel client mirrors data-page), so the back button closes a drawer and a link opens one;
   // the site is a part, so a drawer opening changes its tag (locked, the address) and its drawer layer, and nothing else is sent
   return part(

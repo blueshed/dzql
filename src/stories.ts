@@ -14,7 +14,7 @@ export type Cast = Record<string, Write[]>;
 /**
  * Who should notice. A list names members and leaves them where the cast put them. A record
  * names, for each member, where they must be to notice -- a page, and whatever else the
- * example's `at` understands (a drawer open, a list reading) -- and the harness puts them there
+ * example's `goTo` understands (a drawer open, a list reading) -- and the harness puts them there
  * before it looks, because a person sees only the page they are on, and a story says where its
  * change shows.
  */
@@ -23,24 +23,29 @@ export type Seen = string[] | Record<string, string>;
 /** What a story tells, before it has a name. */
 export type Told = { as: string } & (
   | {
-      /** The write. Followed, when run, by its undo and its redo, with `seen` holding in reverse.
-       * The author's open page must offer a control that sends it (`data-write`), and it must land. */
+      /**
+       * The write the author makes. Their page must offer a control that sends it, and it must land.
+       * The harness then undoes and redoes it, and checks each puts every page back.
+       */
       does: Write;
-      /** Where the author stands to do it, in the example's own grammar (`Stories.at`): the drawer or
-       * the modal that holds the control. Omitted: where `seen` or the cast put them. */
+      /** The address the author acts from: the drawer or modal that holds the control (`"2026-10?draft"`). Omitted: where `seen` or the cast put them. */
       from?: string;
-      /** It comes from outside any page -- a feed, the CLI -- so no control is looked for. */
-      outside?: true;
+      /** It comes from no page -- a feed, the CLI -- so no control is looked for. */
+      offPage?: true;
       seen: Seen;
-      /** Who must not even be told: sent no document's ops, by the write, its undo or its redo.
-       * Everyone not in `seen` must already notice nothing -- their page, where the cast left them,
-       * the same -- so a story says everyone who sees it, counts on a home page included. */
-      unseen?: string[];
+      /**
+       * Who must not even be sent the document's changes, by the write, its undo or its redo.
+       *
+       * Stronger than being left out of `seen`: everyone not in `seen` is already checked to see no
+       * change on their page. `untold` also checks that nothing was sent. Use it where a page reading
+       * too much would leak (Cy, in the kitchen, is not sent general's messages).
+       */
+      untold?: string[];
     }
   | {
-      /** A refusal: the permit table's other half. Nothing may change, and the ledger must not move. */
+      /** A write that must be refused. Nothing may change, and the ledger must not move. */
       cannot: Write;
-      /** Where the author stands to try it, as for a `does`. */
+      /** The address the author tries it from, as for a `does`. */
       from?: string;
       /** What the refused person is told, beside the control that sent it (`refuse`, src/refusal.ts):
        * the one change their page may show. Omitted: they are told nothing. */
@@ -59,10 +64,15 @@ export type Stories = {
    * story starts from a signed-in page. Undefined for a member who stays a visitor.
    */
   signIn?: (name: string) => { path: string; form: Record<string, string> } | undefined;
-  /** The write that puts a session where a `seen` record says -- the example's own grammar for
-   * "where": a page's address, then, after " @ ", anything else it understands. Where a page says
-   * where it stands (`data-page`), the harness checks it got there. Omit in an example with one page, where `seen` lists names. */
-  at?: (where: string) => Write;
+  /**
+   * The write that puts a person at an address: for `from`, and for the places in a `seen` record.
+   * Leave's is `replace /page` on the session.
+   *
+   * - An address is the example's own: a page's address, then, after " @ ", anything else it understands.
+   * - Where a page says where it stands (`data-page`), the harness checks the person got there.
+   * - Omit it in an example with one page, where `seen` is a list of names.
+   */
+  goTo?: (address: string) => Write;
   stories: Story[];
 };
 

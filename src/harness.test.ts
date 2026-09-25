@@ -33,7 +33,7 @@ describe("stories harness", () => {
       cast: stories.cast,
       stories: [
         { name: "a ghost speaks", as: "ghost", does: { doc: "room", ops: [] }, seen: {} },
-        { name: "Ada says hello and Eve, who is nowhere, sees it", as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "hi" }] }, seen: { eve: "" }, unseen: ["cy"] },
+        { name: "Ada says hello and Eve, who is nowhere, sees it", as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "hi" }] }, seen: { eve: "" }, untold: ["cy"] },
         // a refusal that is false: Ada may speak, so her page changes, and the excerpt says where
         { name: "Ada cannot say hello", as: "ada", cannot: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "hi" }] } },
         // a refusal told as saying why, where chat's says nothing
@@ -120,7 +120,7 @@ describe("stories harness", () => {
   const withRoom = (f: (room: Compartment) => Compartment): Example => ({ ...example, compartments: example.compartments.map((c) => (c.docType === "room" ? f(c) : c)) });
   const failuresOf = async (broken: Example, told: Story[]): Promise<string[]> => (await run(broken, { ...stories, stories: told })).outcomes.flatMap((o) => o.failures);
 
-  test("someone the story says is unseen, told of the document all the same, fails it: a page that reads what it does not show", async () => {
+  test("someone the story says is untold, told of the document all the same, fails it: a page that reads what it does not show", async () => {
     const leaky: Example = { ...example, render: (sessionId) => (read("room:general"), example.render(sessionId)) };
     const failures = await failuresOf(leaky, only("Ada says hello"));
     expect(failures).toContain("after the story, cy was told of room:general, and should not have been");
@@ -187,11 +187,11 @@ describe("hear: a member's page, kept as the client keeps it", () => {
 });
 
 describe("the patch stream: what an applet that takes a document's patches holds", () => {
-  const mount = (props: string, at = "") => `<main><div id="board" data-applet="board" data-doc="ticker:market"${at ? ` data-at="${at}"` : ""} data-props="${props}"></div><div data-applet="plain" data-props="{}"></div></main>`;
+  const mount = (props: string, under = "") => `<main><div id="board" data-applet="board" data-doc="ticker:market"${under ? ` data-under="${under}"` : ""} data-props="${props}"></div><div data-applet="plain" data-props="{}"></div></main>`;
 
   test("a page's applets that take patches, by id, with their props unescaped and where the document sits", () => {
     const found = takersOn(mount("{&quot;quotes&quot;:{&quot;A&quot;:1}}", "/quotes"));
-    expect([...found]).toEqual([["board", { applet: "board", doc: "ticker:market", at: "/quotes", props: '{"quotes":{"A":1}}' }]]);
+    expect([...found]).toEqual([["board", { applet: "board", doc: "ticker:market", under: "/quotes", props: '{"quotes":{"A":1}}' }]]);
     expect([...takersOn(`<i data-doc="x"></i><b data-doc="y" data-eta-part="p"></b>`).keys()]).toEqual(["#0", "p"]);
   });
 
@@ -219,7 +219,7 @@ describe("the patch stream: what an applet that takes a document's patches holds
   });
 
   test("ops land where the document sits in the props, or say why they do not", () => {
-    expect(holding({ applet: "board", doc: "d", at: "/quotes", props: '{"quotes":{"A":1}}', ops: [{ op: "replace", path: "/A", value: 3 }] })).toEqual({ value: { quotes: { A: 3 } } });
-    expect(holding({ applet: "board", doc: "d", at: "", props: '{"quotes":{}}', ops: [{ op: "replace", path: "/A", value: 3 }] })).toEqual({ error: "replace /A: no such member" });
+    expect(holding({ applet: "board", doc: "d", under: "/quotes", props: '{"quotes":{"A":1}}', ops: [{ op: "replace", path: "/A", value: 3 }] })).toEqual({ value: { quotes: { A: 3 } } });
+    expect(holding({ applet: "board", doc: "d", under: "", props: '{"quotes":{}}', ops: [{ op: "replace", path: "/A", value: 3 }] })).toEqual({ error: "replace /A: no such member" });
   });
 });

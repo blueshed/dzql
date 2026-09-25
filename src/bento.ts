@@ -1,17 +1,17 @@
 // The surfaces a page that is a box is made of, drawn as the bento mock-up draws them
-// (examples/bento): the trail (where am I), the tray and its compartments, the window a
-// compartment grows into, the stacks of tools that float in it, the rows of a list, the drawer (a
+// (examples/bento): the trail (where am I), the tray and its cells, the window a
+// cell grows into, the stacks of tools that float in it, the rows of a list, the drawer (a
 // panel at the right from 820px, a sheet from the foot on a phone) and its properties, the modal.
 // `src/bento.css` is their look, in an example's own tokens. No example knowledge here: an example
-// binds this once to its own icons and to the document its tray's state is written to
-// (`bento({icon, tray})`), and every gesture is then a `data-write` the caller hands in, or one to
+// binds this once to its own icons and to the document its page's state is written to
+// (`bento({icon, session})`), and every gesture is then a `data-write` the caller hands in, or one to
 // that document at the paths `patchCollections` below applies.
 
 import { esc, join, write } from "./html";
 import { part } from "./parts";
 import type { PatchOp } from "./json-patch";
 import { parsePointer } from "./json-pointer";
-import { slug, tray, type Compartment, type Tray } from "./tray";
+import { slug, grid, type Cell, type Grid } from "./grid";
 
 /** The marks the surfaces draw themselves, by the names an example's icons must know them by. */
 export type BentoIcon = "chevron-right" | "pencil" | "x" | "undo" | "redo" | "plus" | "trash" | "search" | "eye" | "eye-off";
@@ -21,9 +21,9 @@ export interface BentoOptions<I extends string> {
    * brings only the marks the surfaces it uses draw (chat: the chevron, undo, redo), and its own
    * render tests are what say so if one is missing. */
   icon(name: I | BentoIcon, size?: number): string;
-  /** The docType the tray's state is written to: chat's and the wedding's `session`, the ticker's `desk`. */
-  tray: string;
-  /** Leaving, the last of the page's tools, set apart by a rule: removes `path` from the tray. Without one (the ticker: nobody signed in) there is only undo and redo. */
+  /** The docType the page's state is written to, the session: chat's and the wedding's `session`, the ticker's `desk`. */
+  session: string;
+  /** Leaving, the last of the page's tools, set apart by a rule: removes `path` from the session. Without one (the ticker: nobody signed in) there is only undo and redo. */
   leave?: { text: string; icon: NoInfer<I> | BentoIcon; path: string };
 }
 
@@ -40,7 +40,7 @@ export interface CellOptions<I extends string> {
   summary?: string | null;
   /** The write that opens it into the window: › into it. A thing (rule 15) has none and carries ✎ instead. */
   opens?: string;
-  /** The tray's own name for it, when it differs from `slug(name)` ("the day" opens under "day"). */
+  /** Its key, when it differs from `slug(name)` ("the day" opens under "day"). */
   key?: string;
   /** Spans the tray: the one that matters more (rule 5). */
   big?: boolean;
@@ -53,18 +53,18 @@ export interface CellOptions<I extends string> {
   thing?: { open: string; chosen: boolean };
 }
 
-/** A compartment as the tray places it: its html, and how much of the tray it asked for. */
-export interface Placeable extends Compartment {
+/** A cell as the tray places it: its html, and how much of the tray it asked for. */
+export interface Placeable extends Cell {
   html: string;
 }
 
-/** What grows into the window when a compartment opens (rules 7, 8): its reading, its tools on the rail, a note. */
+/** What grows into the window when a cell opens (rules 7, 8): its reading, its tools on the rail, a note. */
 export interface OpenOptions {
-  /** The key of the compartment that grows: `cell()`'s own. */
+  /** The key of the cell that grows: `cell()`'s own. */
   key: string;
   /** The reading switch, a stack of its own at the top of the rail (rule 16). */
   reading?: string;
-  /** The compartment's other tools -- find, plus -- one stack beneath it. */
+  /** The cell's other tools -- find, plus -- one stack beneath it. */
   tools?: string[];
   /** Find's field, open beside its tool (rule 17). */
   filter?: string;
@@ -165,8 +165,8 @@ export function layers(page: string, drawer: string, modal: string): string {
   return part("ground", ground) + part("modals", `<div class="layer">${modal}</div>`);
 }
 
-/** The surfaces, bound to an example's icons and its tray's document. */
-export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOptions<I>) {
+/** The surfaces, bound to an example's icons and its session document. */
+export function bento<I extends string>({ icon, session: trayDoc, leave }: BentoOptions<I>) {
   // ───────────────────────────── where am I ─────────────────────────────
 
   /** The trail from the root to the ground you stand on. The last is where you are; each earlier crumb with a `back` is a way back. */
@@ -239,14 +239,14 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
 
   // ───────────────────────────── the tray ─────────────────────────────
 
-  /** A compartment, closed: its mark and name, a › because it opens (✎ when it is a thing), a summary, a small reading. */
+  /** A cell, closed: its mark and name, a › because it opens (✎ when it is a thing), a summary, a small reading. */
   function cell(o: CellOptions<I>): Placeable {
     const key = o.key ?? slug(o.name);
     const name = `<span class="cell-name">${esc(o.name)}${o.count != null ? ` · ${o.count}` : ""}</span>`;
     const mark = o.mark ? `<span class="cell-icon">${icon(o.mark, 18)}</span>` : "";
     const chev = o.opens ? `<span class="chev">${icon("chevron-right", 18)}</span>` : o.thing ? `<span class="chev pencil">${icon("pencil", 16)}</span>` : "";
     const tap = o.opens ?? o.thing?.open;
-    // rule 7 (K1): a compartment that opens names itself for the view transition, in the box's
+    // rule 7 (K1): a cell that opens names itself for the view transition, in the box's
     // render and the open render alike -- one attribute, one element
     const moving = o.opens ? ` data-moving="${esc(key)}"` : "";
     const thing = o.thing ? ` aria-pressed="${o.thing.chosen}"` : "";
@@ -261,9 +261,9 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
   }
 
   /**
-   * The window: the compartment open. Its head is the whole trail, as the page's own is, so the
+   * The window: the cell open. Its head is the whole trail, as the page's own is, so the
    * way to the root is never lost by opening something: every earlier crumb with a `back` is a way
-   * back, one without is only named, and the last is the compartment's name.
+   * back, one without is only named, and the last is the cell's name.
    */
   function windowOf(trail: Crumb[], open: OpenOptions): string {
     const chev = `<span class="chev">${icon("chevron-right", 14)}</span>`;
@@ -284,21 +284,21 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
 
   /**
    * A page that is a box: the trail and the page's tools above, the ground's own in place, the
-   * compartments in the tray -- or, when `open` names one, that compartment grown into the window
+   * cells in the tray -- or, when `open` names one, that cell grown into the window
    * (rule 7: the same element, `data-moving`, bigger), with its trail floating top-left, its rail
    * at the right and the page's tools at the bottom right (rule 9). The tray is computed
-   * (src/tray.ts): each compartment lands in its area, first-fit in the box's own order, and learns
+   * (src/grid.ts): each cell lands in its area, first-fit in the box's own order, and learns
    * which of the tray's corners it sits in, for three columns and for one.
    */
   function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], open?: OpenOptions): string {
-    const wide = tray(cells, COLUMNS);
-    const narrow = tray(cells, 1);
-    const cornersOf = (t: Tray, key: string): string => t.cells.find((c) => c.key === key)!.corners.join(" ");
+    const wide = grid(cells, COLUMNS);
+    const narrow = grid(cells, 1);
+    const cornersOf = (t: Grid, key: string): string => t.cells.find((c) => c.key === key)!.corners.join(" ");
     const placed = cells.map((c) => {
       if (open && c.key === open.key) return windowOf(trail, open);
       return part(c.key, c.html.replace(`data-key="${c.key}"`, `data-key="${c.key}" data-corners="${cornersOf(wide, c.key)}" data-corners-phone="${cornersOf(narrow, c.key)}" style="grid-area: ${c.key}"`));
     });
-    const areas = (t: Tray): string => t.areas.replace(/\n/g, " ");
+    const areas = (t: Grid): string => t.areas.replace(/\n/g, " ");
     return join(
       `<header class="page-head">${crumbs(trail)}${open ? "" : pageTools("across")}</header>`,
       `<section class="page box${open ? " windowed" : ""}">`,
@@ -337,11 +337,11 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
 
   /**
    * A sheet: a panel docked at the right from 820px, a drawer rising from the foot on a phone,
-   * over a scrim that closes it. Rendered whenever the tray says it is open; `close` is the
+   * over a scrim that closes it. Rendered whenever the session says it is open; `close` is the
    * write that closes it. The body keeps its own scroll across renders because the morph keeps
    * the element.
    */
-  function sheet(id: string, title: string, body: string, close: string, className = ""): string {
+  function drawer(id: string, title: string, body: string, close: string, className = ""): string {
     return join(
       `<div class="scrim"${close}></div>`,
       part(
@@ -367,7 +367,7 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
     return join(`<div class="scrim modal-scrim"${close}></div>`, `<dialog open class="modal" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${body}</dialog>`);
   }
 
-  /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs. `add` is the form's write, `close` the one that puts the modal away; `said`, why the last try was refused (src/refusal.ts `refused`), beneath the fields. */
+  /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs. `add` is the form's write, `close` the one that puts the modal away; `said`, why the last try was refused (src/refusal.ts `reasonFor`), beneath the fields. */
   function addModal(title: string, fields: Field[], add: string, close: string, verb = "Add", said = ""): string {
     const inputs = fields
       .map(
@@ -385,7 +385,7 @@ export function bento<I extends string>({ icon, tray: trayDoc, leave }: BentoOpt
     return modal(title, close, `<p class="note">${esc(question)}</p>${foot}`);
   }
 
-  return { crumbs, tool, pageTools, readingSwitch, addTool, findControl, cell, boxPage, collectionPage, row, sheet, addModal, confirmModal };
+  return { crumbs, tool, pageTools, readingSwitch, addTool, findControl, cell, boxPage, collectionPage, row, drawer, addModal, confirmModal };
 }
 
 // ───────────────────────────── where you are ─────────────────────────────
@@ -408,9 +408,9 @@ export function parseAddress(page = ""): Address {
 /** The address of `path`, with `what` (and which one) open over it; with no `what`, the page alone. */
 export const address = (path: string, what?: string, which: string | number = ""): string => (what ? `${path}?${what}${which === "" ? "" : `=${which}`}` : path);
 
-// ───────────────────────────── the tray's own state ─────────────────────────────
+// ───────────────────────────── the session's own state ─────────────────────────────
 
-/** What `readingSwitch` and `findControl` write, as the tray's document keeps it, each by the collection's name. */
+/** What `readingSwitch` and `findControl` write, as the session keeps it, each by the collection's name. */
 export type Collections = {
   /** How each collection is being read: "photo", "list", ... */
   reading?: Record<string, string>;
@@ -424,7 +424,7 @@ export type Collections = {
  * Applies one op at `/reading/<key>`, `/filter/<key>` or `/hide/<key>` to `ui`, in place. False
  * when the path is not one of those, or a remove finds nothing there. Closing find removes just
  * its own key (rule 17: everything is lit again, not merely emptied) and forgets the eye with it.
- * A tray document's shape tries this after its own fields.
+ * A session's shape tries this after its own fields.
  */
 export function patchCollections(ui: Collections, op: PatchOp): boolean {
   const [field, key] = parsePointer(op.path);

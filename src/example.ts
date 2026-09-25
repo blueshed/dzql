@@ -29,7 +29,10 @@ export type Example = {
   compartments: Compartment[];
   /** The whole page for this session, as HTML. The server is the only renderer, and this is all of it: which screen, in what order, reading whichever documents it must. */
   render(sessionId: string): string;
-  /** May this session write at all right now? */
+  /**
+   * May this session write at all right now? Chat's: once it has a name. Leave's: once it is signed in.
+   * A tab left open after signing out may not write, nor undo what it wrote before.
+   */
   active(sessionId: string): boolean;
   /** The page served at "/", via Bun's HTML import. */
   index: HTMLBundle;

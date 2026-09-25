@@ -30,7 +30,7 @@ export function write(doc: string, op: Op, path: string, value?: unknown): strin
  * several: `data-writes='[{"doc","path"}]'`. Only the story harness reads it (a control for the
  * story's write).
  */
-export function writes(...under: [doc: string, path: string][]): string {
+export function appletWrites(...under: [doc: string, path: string][]): string {
   return ` data-writes='${JSON.stringify(under.map(([doc, path]) => ({ doc, path }))).replaceAll("&", "&amp;").replaceAll("'", "&#39;")}'`;
 }
 

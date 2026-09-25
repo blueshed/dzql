@@ -4,7 +4,7 @@ import type { Compartment } from "../../../src/compartments/compartment";
 import { join, write } from "../../../src/html";
 import { keepPresence } from "../presence";
 
-// The session is the tray: the ground the room sits on -- your name and your room, kept in delta
+// The session: the ground the room sits on -- your name and your room, kept in delta
 // (`session:<id>`, ../delta.ts), your own and nobody else's. What a write to it may be is here:
 // a name or a room, trimmed, a blank ignored; logging out is the name taken back, and the room
 // with it. Who is in a room follows from the sessions (../presence.ts).
@@ -26,8 +26,8 @@ const WRITABLE_PATHS = new Set(["/name", "/room"]);
 
 export const session: Compartment = {
   docType: "session",
-  own: true, // keyed by the session id: this session's alone
-  at: "/sessions", // eta's `/name` is the document's `/sessions/name`
+  perSession: true, // keyed by the session id: this session's alone
+  under: "/sessions", // eta's `/name` is the document's `/sessions/name`
   resolveDoc(ws) {
     return ws.data.sessionId; // every connection always sees its own session
   },
@@ -52,7 +52,7 @@ export const session: Compartment = {
     return shaped;
   },
   // a name or a room moved -- by a write, an undo, a redo: who is where follows
-  changed: () => keepPresence(),
+  afterChange: () => keepPresence(),
   onOpen: () => keepPresence(),
   onClose: () => keepPresence(),
 };

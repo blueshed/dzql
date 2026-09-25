@@ -51,12 +51,12 @@ export const board: Compartment = {
   },
   shape: (_ws, id, ops) => boardDoc.shape(boardDoc.held(id), ops),
   // the modal that asked is put away by the write that answers it
-  async wrote(ws, _id, ops: PatchOp[]) {
+  async afterWrite(ws, _id, ops: PatchOp[]) {
     const put = sessionDoc.answered(sessionDoc.read(ws.data.sessionId), ops);
     if (put.length > 0) await serverWrite(`session:${ws.data.sessionId}`, put);
   },
   // a reply, a guest, a gift taken off: what everyone sees follows
-  changed: () => keepEveryone(),
+  afterChange: () => keepEveryone(),
 };
 
 /** What a household reads of the wedding (`wedding:<id>`): written by the couple, through the board, and by nobody from the wire. */

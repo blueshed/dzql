@@ -5,7 +5,7 @@ import type { Compartment } from "../../../src/compartments/compartment";
 import { keepEveryone } from "../everyone";
 
 // A visit (`session:<id>`): who this session is (a code) and where it is on the site. This is the
-// tray (change-request.md item 10) -- the ground the household and board compartments sit on, not
+// session (change-request.md item 10) -- the ground the household and board compartments sit on, not
 // a place of its own on the page: it has no `render`. It takes the writes that move around the
 // page -- a code, a page, a drawer, a reading -- and, as a first page opens, makes sure `everyone`
 // (../everyone.ts) says who stands in the photo.
@@ -17,8 +17,8 @@ const WRITABLE = new Set(["code", "resend", "page", "reading", "filter", "hide"]
 export const session: Compartment = {
   docType: "session",
   ledger: false, // a visit is not history (../delta.ts)
-  own: true, // keyed by the session id: this session's alone
-  at: "/visits", // eta's `/page` is the document's `/visits/page`
+  perSession: true, // keyed by the session id: this session's alone
+  under: "/visits", // eta's `/page` is the document's `/visits/page`
   resolveDoc(ws) {
     return ws.data.sessionId; // every connection always sees its own visit
   },

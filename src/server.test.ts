@@ -12,7 +12,7 @@ import { part } from "./parts";
 import { createServer } from "./server";
 import { assemble, type Inspection } from "./compartments";
 import { onFailure } from "./failed";
-import { refuse, refused } from "./refusal";
+import { refuse, reasonFor } from "./refusal";
 
 // A tiny, self-contained example -- not chat, not anything under the examples directory -- so
 // this file proves the kernel on its own: a note per session (its own document), and months of
@@ -40,8 +40,8 @@ function readNote(id: string): string {
 
 const noteCompartment: Compartment = {
   docType: "note",
-  own: true,
-  at: "/notes",
+  perSession: true,
+  under: "/notes",
   resolveDoc(ws) {
     return ws.data.sessionId;
   },
@@ -94,7 +94,7 @@ function makeExample(name: string): Example {
     compartments: [noteCompartment, monthCompartment],
     render: (sessionId) => {
       if (readNote(sessionId) === "undrawable") throw new Error("undrawable"); // a page whose drawing fails
-      return `<p class="note">${readNote(sessionId)}</p>` + refused(sessionId, "note", "/text") +
+      return `<p class="note">${readNote(sessionId)}</p>` + reasonFor(sessionId, "note", "/text") +
         (showing.get(sessionId) ?? []).map((m) => part(`month-${m}`, `<ul data-month="${m}">${readMonth(m).map((a) => part(`a-${a.id}`, `<li>${a.what}</li>`)).join("")}</ul>`)).join("");
     },
     active: () => true,
@@ -555,14 +555,14 @@ describe("one socket, any documents: a document is named whole, and seen because
     ws.close();
   });
 
-  test("a session's own document goes by its type; one keyed by a live session and not own is refused by name", () => {
+  test("a session's own document goes by its type; one keyed by a live session and not perSession is refused by name", () => {
     const me = { data: { sessionId: "s-me" } } as unknown as Bun.ServerWebSocket<{ sessionId: string }>;
     const other = { data: { sessionId: "s-other" } } as unknown as Bun.ServerWebSocket<{ sessionId: string }>;
     openConnection(other);
     try {
-      expect(wireName("note", "s-other", me)).toBe("note"); // note is `own`
+      expect(wireName("note", "s-other", me)).toBe("note"); // note is `perSession`
       expect(wireName("month", "2026-09", me)).toBe("month:2026-09");
-      expect(() => wireName("month", "s-other", me)).toThrow("own");
+      expect(() => wireName("month", "s-other", me)).toThrow("perSession");
     } finally {
       closeConnection(other);
     }

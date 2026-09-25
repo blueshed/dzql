@@ -6,7 +6,7 @@ import type { Compartment } from "../../../src/compartments/compartment";
 import { part } from "../../../src/parts";
 import { bento, rows } from "../../../src/bento";
 import { esc, join, write } from "../../../src/html";
-import { slug } from "../../../src/tray";
+import { slug } from "../../../src/grid";
 import { icon } from "../icons";
 import { renderNameForm } from "./session";
 import { keepLobby } from "../presence";
@@ -17,7 +17,7 @@ import { keepLobby } from "../presence";
 // with who is here across its head. The trail is the way back, and the page's tools are undo,
 // redo and logging out. Nothing here is kept between taps: what the page shows is the session's
 // name and room, and the room's messages and people.
-const { collectionPage, row } = bento({ icon, tray: "session", leave: { text: "Log out", icon: "log-out", path: "/name" } });
+const { collectionPage, row } = bento({ icon, session: "session", leave: { text: "Log out", icon: "log-out", path: "/name" } });
 
 /** The first letter of a name, as the face it wears. */
 const face = (name: string, me: boolean): string => `<span class="face${me ? " me" : ""}" aria-hidden="true">${esc(name.charAt(0).toUpperCase())}</span>`;
@@ -88,7 +88,7 @@ export const room: Compartment = {
       .map((text): PatchOp => ({ op: "add", path: `/messages/${Bun.randomUUIDv7()}`, value: { name, text, sent_at: Date.now() } }));
   },
   // the first message in a room puts it on the list, and undoing the last takes it off
-  changed: () => keepLobby(),
+  afterChange: () => keepLobby(),
 };
 
 /** Who is in a room: live, kept by the server (../presence.ts), written by nobody on the wire. */

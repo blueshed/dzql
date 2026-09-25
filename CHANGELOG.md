@@ -9,12 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
-- **`writes()` takes pairs** (src/html.ts): an applet's mount may write under several paths, so
-  `writes(doc, path)` is now `writes([doc, path], …)`. The wedding's dress and menu say
-  `writes(["household", path])`.
+- **One word, one meaning: names renamed so they say what they are, and when they run.** No
+  behaviour changes; rename and the gate passes. Compartment hooks are named for when they run
+  (`permit`, `shape` before a write; `permitUndo` before an undo; `afterWrite`, `afterChange` after).
+
+  | Was | Now | Where |
+  |---|---|---|
+  | `walkable(ws, docId, ops)` | `permitUndo(ws, docId, ops)` | `Compartment` |
+  | `wrote(ws, docId, ops)` | `afterWrite(ws, docId, ops)` | `Compartment` |
+  | `changed(docId, ops)` | `afterChange(docId, ops)` | `Compartment` |
+  | `own: true` | `perSession: true` | `Compartment` |
+  | `at: "/sessions"` | `under: "/sessions"` | `Compartment` |
+  | `unseen: [...]` | `untold: [...]` | a story |
+  | `outside: true` | `offPage: true` | a story |
+  | `at: (where) => Write` | `goTo: (address) => Write` | `Stories` |
+  | `bento({ icon, tray })` | `bento({ icon, session })` | src/bento.ts |
+  | `sheet(...)` | `drawer(...)` | what `bento()` returns |
+  | `refused(sessionId, doc, path)` | `reasonFor(sessionId, doc, path)` | src/refusal.ts |
+  | `writes(doc, path)` | `appletWrites([doc, path], …)`: pairs, since a mount may write under several paths | src/html.ts |
+  | `data-at="/quote"` | `data-under="/quote"` | an applet's mount |
+  | `src/tray.ts`: `tray()`, `Compartment`, `Tray` | `src/grid.ts`: `grid()`, `Cell`, `Grid` | the box's layout |
+  | `at(view, url)` | `urlFor(view, url)` | src/webview.ts |
+
+  In the docs, the session is "the session" (no longer "the tray"); *tray* is only the bento's
+  box, and a place in it is a *cell*. *Compartment* means only the kernel's.
 
 ### Added
 
+- **`first-app.md`: your first app, step by step.** Chat, then leave, with each word explained
+  where it is first met, and what each story failure means.
 - **leave, a fourth example: people sign in, and a team's leave is one calendar.** A sign-in page
   posts an email and password to the example's own route, never over the socket: a good one
   starts a fresh session with who it is (never the visit's own id), a wrong one is told on the

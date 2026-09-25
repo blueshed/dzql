@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { at, waitFor } from "../../../src/webview";
+import { urlFor, waitFor } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { tick } from "../compartments/ticker";
 import type { MarketDocument } from "../documents/market";
@@ -24,7 +24,7 @@ afterAll(() => {
 describe("the ticker in a real browser", () => {
   test("the board applet takes a tick from the patch itself -- no render -- and the clock runs on its own", async () => {
     await using view = new Bun.WebView();
-    await view.navigate(at(view, server.url));
+    await view.navigate(urlFor(view, server.url));
     // the board grows into the window; the plus on its rail asks which symbol in a modal
     await waitFor(view, `document.querySelector('.cell[data-key="board"]') !== null`, (v) => v === true);
     await view.evaluate(`document.querySelector('.cell[data-key="board"]').click()`);

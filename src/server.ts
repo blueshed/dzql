@@ -85,7 +85,7 @@ const heard = new WeakSet<Documents>();
 /**
  * A change to a document -- a write here, an undo, or another process's over Postgres -- is told
  * from here, and only here: its ops echoed to everyone who sees the document, in eta's paths (a
- * compartment's `at` taken off), and every page that read it drawn again.
+ * compartment's `under` taken off), and every page that read it drawn again.
  */
 function tellChanges(documents: Documents): void {
   if (heard.has(documents)) return;
@@ -99,7 +99,7 @@ function tellChanges(documents: Documents): void {
     const echoTo = await settled(documents, () => audienceFor(docType, docId));
     for (const ws of echoTo) ws.send(patchMessage(wireName(docType, docId, ws), v ?? 0, wire));
     for (const ws of new Set([...echoTo, ...readersOf(docType, docId)])) void redraw(ws);
-    await owner.changed?.(docId, wire);
+    await owner.afterChange?.(docId, wire);
   });
 }
 
@@ -159,7 +159,7 @@ export function createServer(example: Example, port: number | string = process.e
     if (!(await settled(documents, () => ops.every((op) => owner.permit?.(ws, op, docId) ?? false)))) return false;
     const shaped = owner.shape ? await settled(documents, () => owner.shape!(ws, docId, ops)) : ops;
     if (shaped.length === 0) return false;
-    const at = owner.at ?? "";
+    const at = owner.under ?? "";
     const written = await documents.write(
       `${owner.docType}:${docId}`,
       shaped.map((op) => ({ ...op, path: at + op.path })) as never,
@@ -168,15 +168,15 @@ export function createServer(example: Example, port: number | string = process.e
     if ("error" in written || written.ops.length === 0) return false;
     if ((written.entry === undefined) !== (owner.ledger === false)) {
       const why = owner.ledger === false ? "its compartment keeps it off the ledger (ledger: false), yet delta recorded the write" : "delta recorded no ledger entry: register it with { ledger: true }, or say its compartment keeps it off the ledger (ledger: false)";
-      failed(`writing ${owner.own ? owner.docType : `${owner.docType}:${docId}`}`, new Error(why)); // a session's own named by type: its id is a credential
+      failed(`writing ${owner.perSession ? owner.docType : `${owner.docType}:${docId}`}`, new Error(why)); // a session's own named by type: its id is a credential
     }
-    await owner.wrote?.(ws, docId, ops);
+    await owner.afterWrite?.(ws, docId, ops);
     return true;
   }
 
   /**
    * Undo or redo: delta walks the session's cursor; the change is told like any other. The walk is
-   * looked at first, and the document's owner may refuse it (`walkable`). One that meets someone
+   * looked at first, and the document's owner may refuse it (`permitUndo`). One that meets someone
    * else's later write changes nothing -- delta moves the cursor past it -- and says so.
    */
   async function walk(ws: Socket, ops: PatchOp[]): Promise<boolean> {
@@ -188,7 +188,7 @@ export function createServer(example: Example, port: number | string = process.e
     if (!plan) return false; // nothing to walk
     const { docType, docId } = splitDoc(plan.doc);
     const owner = byDocType.get(docType);
-    if (!plan.conflict && owner?.walkable && !(await settled(documents, () => owner.walkable!(ws, docId, wireOps(owner, docId, plan.ops as PatchOp[]))))) return false;
+    if (!plan.conflict && owner?.permitUndo && !(await settled(documents, () => owner.permitUndo!(ws, docId, wireOps(owner, docId, plan.ops as PatchOp[]))))) return false;
     const walked = await documents.walk(way, by, { entry: plan.entry });
     if (walked?.conflict) throw refuse(`Someone has changed that since, so it cannot be ${way === "undo" ? "undone" : "redone"}.`);
     return walked !== null;

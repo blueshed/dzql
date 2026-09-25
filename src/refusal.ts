@@ -29,12 +29,12 @@ const none = (): Refused => ({ doc: null, path: null, reason: null });
  * Why this session's last write was refused, as a line to draw beside the control that sent it --
  * the `doc` and `path` of that control's own `data-write` -- or nothing.
  */
-export function refused(sessionId: string, doc: string, path: string): string {
+export function reasonFor(sessionId: string, doc: string, path: string): string {
   const r = read<Refused>(`refusal:${sessionId}`);
   return r.reason && r.doc === doc && r.path === path ? said(r.reason) : "";
 }
 
-/** The line that says why: what `refused` draws, and what the story harness looks for. */
+/** The line that says why: what `reasonFor` draws, and what the story harness looks for. */
 export const said = (reason: string): string => `<p class="refused" role="alert">${esc(reason)}</p>`;
 
 /** After a session's write: keeps why it was refused, or clears what an earlier write was told. */
@@ -50,5 +50,5 @@ const registered = new WeakSet<Local>();
 export function createRefusalCompartment(delta: Local): Compartment {
   if (!registered.has(delta)) registerMemory(delta.server, { prefix: "refusal:", empty: none });
   registered.add(delta);
-  return { docType: "refusal", own: true, kind: "live", resolveDoc: (ws) => ws.data.sessionId };
+  return { docType: "refusal", perSession: true, kind: "live", resolveDoc: (ws) => ws.data.sessionId };
 }
