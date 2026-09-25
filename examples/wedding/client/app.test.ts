@@ -45,9 +45,9 @@ describe("the wedding in a real browser", () => {
 
     const guest = (await household(code)).guests[1]!;
     await view.evaluate(`document.querySelector('[data-applet="photo"] .slot[data-key="${guest.id}"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
-    await waitFor(view, `document.querySelector('.guest-sheet .dress') !== null`, (v) => v === true);
-    expect(await view.evaluate<string>(`document.querySelector('.guest-sheet h2').textContent`)).toBe(guest.name);
-    expect(await view.evaluate<boolean>(`document.querySelector('.guest-sheet .menu') !== null`)).toBe(true);
+    await waitFor(view, `document.querySelector('.guest-drawer .dress') !== null`, (v) => v === true);
+    expect(await view.evaluate<string>(`document.querySelector('.guest-drawer h2').textContent`)).toBe(guest.name);
+    expect(await view.evaluate<boolean>(`document.querySelector('.guest-drawer .menu') !== null`)).toBe(true);
 
     // touch the top: the dots appear (the applet's own state); a dot is a write, and the figure redraws from the render
     await view.evaluate(`document.querySelector('.callout-top').click()`);
@@ -93,10 +93,10 @@ describe("the wedding in a real browser", () => {
     // the drawer away and leaves the page, and a link with it in opens it
     await view.evaluate(`document.querySelector('.cell.open .row.tap').click()`);
     await waitFor(view, `location.search`, (v) => typeof v === "string" && v.startsWith("?gift="));
-    await waitFor(view, `document.querySelector('#gift-sheet') !== null`, (v) => v === true);
+    await waitFor(view, `document.querySelector('#gift-drawer') !== null`, (v) => v === true);
     const gift = await view.evaluate(`location.search`);
     await view.evaluate(`history.back()`);
-    await waitFor(view, `document.querySelector('#gift-sheet') === null`, (v) => v === true);
+    await waitFor(view, `document.querySelector('#gift-drawer') === null`, (v) => v === true);
     expect(await view.evaluate<string>(`location.pathname + location.search`)).toBe("/gifts");
 
     // the browser's own back button: a popstate, not a click in the page -- the session follows
@@ -116,7 +116,7 @@ describe("the wedding in a real browser", () => {
 
     // and a link with a drawer in it opens the drawer
     await view.navigate(urlFor(view, server.url, `gifts${gift}`));
-    await waitFor(view, `document.querySelector('#gift-sheet') !== null`, (v) => v === true);
+    await waitFor(view, `document.querySelector('#gift-drawer') !== null`, (v) => v === true);
   }, 20000);
 
   test("the answer: the pencil opens the drawer, an option writes it, the bubble shows it, Undo takes it back", async () => {
@@ -126,8 +126,8 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelectorAll('.answer-option').length`, (v) => v === 3);
     await view.evaluate(`document.querySelector('.answer-option[data-value="maybe"]').click()`);
     await waitFor(view, `document.querySelector('.bubble.ours .face-mark')?.classList.contains('maybe')`, (v) => v === true);
-    await view.evaluate(`document.querySelector('.sheet-close').click()`);
-    await waitFor(view, `document.querySelector('.sheet') === null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('.drawer-close').click()`);
+    await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
     await view.evaluate(`document.querySelector('[data-write*="ledger"]').click()`);
     await waitFor(view, `document.querySelector('.bubble.ours .face-mark')?.classList.contains('maybe')`, (v) => v === false);
   });
@@ -147,14 +147,14 @@ describe("the wedding in a real browser", () => {
     const giftId = (await board()).gifts.at(-1)!.id;
 
     await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/page", value: "gifts?keep=gifts/${giftId}" }] }))`);
-    await waitFor(view, `document.querySelector('.keep-sheet input[name=name]') !== null`, (v) => v === true);
+    await waitFor(view, `document.querySelector('.keep-drawer input[name=name]') !== null`, (v) => v === true);
 
     // change two fields of the same editing form before either loses focus, then trigger just one:
     // the write must carry both, not only the field whose event fired. Blanking the name is a
     // required field's write the server refuses (see documents/values.ts's `text`); the
     // description's is accepted, so exactly one of the two lands.
     await view.evaluate(`(() => {
-      const form = document.querySelector('.keep-sheet form');
+      const form = document.querySelector('.keep-drawer form');
       form.querySelector('input[name=name]').value = '';
       form.querySelector('input[name=description]').value = 'a good one';
       form.querySelector('input[name=description]').dispatchEvent(new Event('focusout', { bubbles: true }));
@@ -172,8 +172,8 @@ describe("the wedding in a real browser", () => {
     // the drawer does not reset on the echo of an editing write, unlike a creating form: the
     // render that follows the description's write must not also snap the *refused* name edit
     // back to the server's old value -- it stays blank, the refusal handed back as is.
-    expect(await view.evaluate<string>(`document.querySelector('.keep-sheet input[name=name]').value`)).toBe("");
-    expect(await view.evaluate<string>(`document.querySelector('.keep-sheet input[name=description]').value`)).toBe("a good one");
+    expect(await view.evaluate<string>(`document.querySelector('.keep-drawer input[name=name]').value`)).toBe("");
+    expect(await view.evaluate<string>(`document.querySelector('.keep-drawer input[name=description]').value`)).toBe("a good one");
   });
 
   test("the welcome's message textarea writes on blur too, comparing against its rendered content, not an input's value attribute", async () => {
@@ -189,25 +189,25 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('.bubble.couple') !== null`, (v) => v === true);
     // the welcome is a "thing" (rule 15): its message lives in its own drawer now
     await view.evaluate(`document.querySelector('.bubble.couple').click()`);
-    await waitFor(view, `document.querySelector('.welcome-sheet textarea') !== null`, (v) => v === true);
+    await waitFor(view, `document.querySelector('.welcome-drawer textarea') !== null`, (v) => v === true);
 
     // blurring without changing the textarea must send nothing at all: the comparison has to be
     // against what was actually rendered (defaultValue), not an attribute a <textarea> doesn't
     // even have -- checked on the client's own record of what it sent, since the server's
     // no-op-if-unchanged guard would otherwise hide a spurious send from the document itself.
-    await view.evaluate(`document.querySelector('.welcome-sheet textarea').dispatchEvent(new Event('focusout', { bubbles: true }))`);
+    await view.evaluate(`document.querySelector('.welcome-drawer textarea').dispatchEvent(new Event('focusout', { bubbles: true }))`);
     await Bun.sleep(200);
     // lastSent is still the code-entry's session write from login above -- nothing for "board" followed it
     expect(await view.evaluate<string>(`window.eta.inspect().lastSent?.doc`)).toBe("session");
     expect((await board()).message).toBe("can't wait");
 
     await view.evaluate(`(() => {
-      const box = document.querySelector('.welcome-sheet textarea');
+      const box = document.querySelector('.welcome-drawer textarea');
       box.value = 'so happy for you both';
       box.dispatchEvent(new Event('focusout', { bubbles: true }));
     })()`);
 
-    await waitFor(view, `document.querySelector('.welcome-sheet textarea').value`, (v) => v === "so happy for you both");
+    await waitFor(view, `document.querySelector('.welcome-drawer textarea').value`, (v) => v === "so happy for you both");
     expect((await board()).message).toBe("so happy for you both");
   });
 

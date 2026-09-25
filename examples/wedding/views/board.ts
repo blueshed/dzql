@@ -101,9 +101,9 @@ function familyGuestSheet(v: BoardView, h: HouseholdDocument): string {
   if (!g) return "";
   const body = join(
     `<div class="props">${prop("Coming", `<span>${g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming"}</span>`)}</div>`,
-    `<div class="sheet-foot">${tool("Take off the invitation", { icon: "trash", kind: "danger", write: open_(v, "confirm", `guests/${g.id}`) })}</div>`,
+    `<div class="drawer-foot">${tool("Take off the invitation", { icon: "trash", kind: "danger", write: open_(v, "confirm", `guests/${g.id}`) })}</div>`,
   );
-  return drawer("family-guest-sheet", g.name, body, close(v), "guest-sheet");
+  return drawer("family-guest-drawer", g.name, body, close(v), "guest-drawer");
 }
 
 /** The modal asking to take a guest off a family's invitation (rule 14); cancelling goes back to their drawer. */
@@ -162,9 +162,9 @@ function welcomeSheet(v: BoardView): string {
     prop("Answers by", field("/deadline", "deadline", b.deadline ?? "", "Answers by", "2027-02-01")),
     prop("Your words", `<textarea name="message"${write("board", "replace", "/message")} rows="3" placeholder="Your words on the welcome" aria-label="Your words on the welcome">${esc(b.message ?? "")}</textarea>`),
     `</div></form>`,
-    `<div class="props">${prop("Picture", join(b.picture_key && `<div class="sheet-pic">${picture(b.picture_key, "")}</div>`, pictureField("/picture_key", b.picture_key)))}</div>`,
+    `<div class="props">${prop("Picture", join(b.picture_key && `<div class="drawer-pic">${picture(b.picture_key, "")}</div>`, pictureField("/picture_key", b.picture_key)))}</div>`,
   );
-  return drawer("welcome-sheet", "Our welcome", body, close(v), "welcome-sheet");
+  return drawer("welcome-drawer", "Our welcome", body, close(v), "welcome-drawer");
 }
 
 /** The home's cells, all five, whether shown whole or one of them is grown into the window. */
@@ -340,9 +340,9 @@ function codeSheet(v: BoardView, h: HouseholdDocument | undefined): string {
     prop("Email", field(`/households/${h.id}/email`, "email", h.email, "Their email", "", "email")),
     prop("Plus-ones", field(`/households/${h.id}/plus_ones`, "plus_ones", String(h.plus_ones), "Plus-ones they may name", "0", "number")),
     `</div></form>`,
-    `<div class="sheet-foot">${chaseLink(h)}</div>`,
+    `<div class="drawer-foot">${chaseLink(h)}</div>`,
   );
-  return drawer("code-sheet", "The code", body, close(v), "code-sheet");
+  return drawer("code-drawer", "The code", body, close(v), "code-drawer");
 }
 
 // ───────────────────────────── keeping ─────────────────────────────
@@ -473,7 +473,7 @@ function keepSheet(v: BoardView): string {
     );
   }
   // removing asks in a modal (rule 14) -- the drawer only opens it; `confirmRemove` does the write
-  const remove = `<div class="sheet-foot">${tool(`Remove this ${noun}`, { icon: "trash", kind: "danger", write: open_(v, "confirm", at.slice(1)) })}</div>`;
+  const remove = `<div class="drawer-foot">${tool(`Remove this ${noun}`, { icon: "trash", kind: "danger", write: open_(v, "confirm", at.slice(1)) })}</div>`;
   const body = join(`<form data-write-on="blur"><div class="props">${props.join("")}${order}</div></form>`, extra, remove);
-  return drawer("keep-sheet", found.name, body, close(v), "keep-sheet");
+  return drawer("keep-drawer", found.name, body, close(v), "keep-drawer");
 }

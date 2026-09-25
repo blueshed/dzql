@@ -154,9 +154,9 @@ describe("the surfaces", () => {
   test("the drawer and its properties; a choice among a few", () => {
     const close = write("desk", "remove", "/focus");
     const out = b.drawer("drawer", "ALPH", prop("Name", "<span>Alpha</span>"), close, "wide");
-    expect(out).toContain(`<div class="scrim"${close}></div><div data-eta-part="drawer" id="drawer" class="sheet wide" role="dialog" aria-label="ALPH">`);
+    expect(out).toContain(`<div class="scrim"${close}></div><div data-eta-part="drawer" id="drawer" class="drawer wide" role="dialog" aria-label="ALPH">`);
     expect(out).toContain('<div class="prop"><span class="prop-name cap">Name</span><div class="prop-value"><span>Alpha</span></div></div>');
-    expect(b.drawer("d", "t", "", close)).toContain('class="sheet" role');
+    expect(b.drawer("d", "t", "", close)).toContain('class="drawer" role');
     const pick = choice("Coming?", [{ text: "Yes", on: true, write: open, kind: "yes" }, { text: "No", on: false, write: open }], true);
     expect(pick).toContain(`<button type="button" class="tool yes" role="radio" aria-checked="true" aria-pressed="true"${open} disabled>Yes</button>`);
     expect(choice("x", [{ text: "No", on: false, write: open }])).toContain(`class="tool" role="radio" aria-checked="false" aria-pressed="false"${open}>No`);

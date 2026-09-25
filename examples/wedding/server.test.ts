@@ -479,7 +479,7 @@ describe("the couple", () => {
     expect(await at(ws, "gifts?keep=gifts/2")).toContain('aria-label="Shared: any number may claim it"');
     expect(await at(ws, "events?keep=events/1")).toContain("2027-04-02T13:00");
     expect(await at(ws, "places?keep=places/1")).toContain("how far, how to book");
-    expect(await at(ws, "places?keep=nope/1")).not.toContain("keep-sheet");
+    expect(await at(ws, "places?keep=nope/1")).not.toContain("keep-drawer");
 
     // adding is a plus on the collection's rail and a modal asking one question, the name; the
     // page behind it is inert while it asks (rule 14)
@@ -727,7 +727,7 @@ describe("the couple keep a family's invitation", () => {
     const ben = (await board()).households.find((h) => h.code === "BEN")!;
     const guest = ben.guests[0]!;
     const drawer = await at(ws, `households/${ben.id}/guests?guest=${guest.id}`);
-    expect(drawer).toContain('class="sheet');
+    expect(drawer).toContain('class="drawer');
     expect(drawer).toContain("Take off the invitation");
     const asked = await at(ws, `households/${ben.id}/guests?confirm=guests/${guest.id}`);
     expect(asked).toContain(`Take ${guest.name} off the BEN invitation?`);

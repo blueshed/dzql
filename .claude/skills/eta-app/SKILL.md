@@ -27,8 +27,9 @@ Everything below is the least that makes it pass.
 
 ## Vocabulary, once
 
-- A **Compartment** (`src/compartments/compartment.ts`) owns one `docType`: who sees its
-  document, which writes are allowed, and what the wire's write becomes. Its documents are delta's. It has no place on the page.
+- A **Compartment** (`src/compartments/compartment.ts`) looks after one type of document: which
+  one a page is on, who may write to it, and what a write becomes. Its documents are delta's. It
+  has no place on the page.
   The page is the example's one `render(sessionId)`: which screen, in what order, reading
   whichever documents it must. An example with a lot of HTML keeps the functions that build it in
   files of their own (the wedding's and the ticker's `views/`); chat's are beside its room.
@@ -36,9 +37,11 @@ Everything below is the least that makes it pass.
   compartment like any other (chat's and the wedding's `session`, the ticker's `desk`); list it
   first. Keep as little in it as the stories need: a page and its open drawer are one address, not
   six fields.
-- An **applet** is only for a piece of the page whose client-side state a re-render would destroy
-  (the ticker's board keeps sparkline histories no document holds). It is not "the view for X";
-  plain `data-write` HTML is the default.
+- An **applet** is only for a piece of the page whose state in the browser a redraw would destroy
+  (a drag halfway through; the ticker's board keeps sparkline histories no document holds). It is
+  not "the view for X"; plain `data-write` HTML is the default.
+- A **cell** is a place in a bento box, and the **tray** is the box the cells are cut into. They
+  are how a page looks; a compartment is how a document is kept.
 - The **bento** is how a page looks and moves (`examples/bento/README.md`, built in `src/bento.ts`
   and `src/bento.css`): a page is a box or a collection. It is a way of seeing, not a list of
   features to have.

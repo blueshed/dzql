@@ -44,11 +44,11 @@ describe("leave in a real browser", () => {
       return 1;
     })()`);
     await view.evaluate(`(() => { __point('pointerdown', __day(7)); __point('pointermove', __day(8)); __point('pointerup', __day(8)); return 1; })()`);
-    await waitFor(view, `document.querySelector('.draft-sheet')?.textContent ?? ''`, (v) => String(v).includes("2 working days"));
-    expect(await view.evaluate<string>(`document.querySelector('.draft-sheet').textContent`)).toContain("Bo, waiting: 2 days of these");
+    await waitFor(view, `document.querySelector('.draft-drawer')?.textContent ?? ''`, (v) => String(v).includes("2 working days"));
+    expect(await view.evaluate<string>(`document.querySelector('.draft-drawer').textContent`)).toContain("Bo, waiting: 2 days of these");
     expect(await view.evaluate<number>(`document.querySelectorAll('.calendar-view .date.clash').length`)).toBe(2);
     // Ask, then drag the bar a week on
-    await view.evaluate(`[...document.querySelectorAll('.draft-sheet button')].find((b) => b.textContent.trim() === 'Ask').click()`);
+    await view.evaluate(`[...document.querySelectorAll('.draft-drawer button')].find((b) => b.textContent.trim() === 'Ask').click()`);
     await waitFor(view, `[...document.querySelectorAll('.calendar-view .bar .sr-only')].some((s) => s.textContent === 'you, waiting, Wed 7 – Thu 8 Oct')`, (v) => v === true);
     // grabbed over its Wednesday, dropped on the next Wednesday: a week later
     await view.evaluate(`(() => {

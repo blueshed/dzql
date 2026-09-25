@@ -82,7 +82,7 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .photo-card .welcome-pic { display: block; width: 100%; height: auto; border-radius: var(--radius-panel); border: 2px solid var(--gold); background: #EFE8D8; }
 
 /* ── the bento's surfaces (src/bento.css), where the wedding's differ: serif heads, the photo, the answer ── */
-.sheet-head h2 { font-family: var(--serif); font-size: 19px; color: var(--navy); }
+.drawer-head h2 { font-family: var(--serif); font-size: 19px; color: var(--navy); }
 dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy); }
 .tool.yes[aria-pressed="true"] { background: var(--leaf); border-color: var(--leaf); }
 .tool.no[aria-pressed="true"] { background: var(--burgundy); border-color: var(--burgundy); }
@@ -118,8 +118,8 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 .face-mark { border-radius: 50%; display: grid; place-items: center; color: #fff; flex: 0 0 auto; }
 .face-mark.yes { background: var(--leaf); } .face-mark.maybe { background: var(--amber); } .face-mark.no { background: #B5443B; }
 .face-mark.none { border: 2px dashed var(--muted); color: var(--muted); font-size: 20px; }
-.sheet-pic img.pic { display: block; width: 100%; max-height: 40vh; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); }
-.sheet .words { margin: var(--space-md) 0 0; line-height: 1.4; }
+.drawer-pic img.pic { display: block; width: 100%; max-height: 40vh; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); }
+.drawer .words { margin: var(--space-md) 0 0; line-height: 1.4; }
 .prop .code { font-family: var(--serif); font-weight: 600; letter-spacing: 0.08em; }
 .props .pair { padding: var(--space-xs) 0; }
 .hint { margin: var(--space-sm) 0 var(--space-md); font-size: 13px; color: var(--muted); }

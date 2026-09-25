@@ -67,9 +67,9 @@ function requestSheet(t: Team, me: Person, r: Request, path: string, sessionId: 
     r.status !== "declined" && also(t, me, r, r.person_id),
     answer,
     `</div>`,
-    open && `<div class="sheet-foot">${tool("Take it back", { icon: "trash", kind: "danger", write: go(address(path, "confirm", r.id)) })}</div>`,
+    open && `<div class="drawer-foot">${tool("Take it back", { icon: "trash", kind: "danger", write: go(address(path, "confirm", r.id)) })}</div>`,
   );
-  return drawer("request", mine ? "Your leave" : nameOf(t, r.person_id), body, go(path), "request-sheet");
+  return drawer("request", mine ? "Your leave" : nameOf(t, r.person_id), body, go(path), "request-drawer");
 }
 
 /** Your draft's drawer: its days, what it would mean -- working days, who else is off, the clashes -- and asking for it, or not. */
@@ -79,9 +79,9 @@ function draftSheet(t: Team, me: Person, draft: Span | null, path: string, sessi
     dayFields("team", "/draft", draft ?? {}, sessionId),
     draft && `<div class="props">${prop("Days", `<span>${esc(days(draft))} · ${worked(draft)}</span>`)}${me.role === "manager" ? prop("Asked for", `<span>approved at once, by you: you manage the team</span>`) : ""}${also(t, me, draft, me.id)}${prop("Clashes", `<span class="${clashing ? "state-declined" : ""}">${clashing ? `${clashing} ${clashing === 1 ? "day" : "days"} with someone else off` : "none"}</span>`)}</div>`,
     reasonFor(sessionId, "team", "/requests/-"),
-    `<div class="sheet-foot">${tool("Ask", { icon: "plus", kind: "add", write: write("team", "add", "/requests/-"), disabled: !draft })}${tool("Cancel", { kind: "quiet", write: draft ? write("team", "remove", "/draft") : go(path) })}</div>`,
+    `<div class="drawer-foot">${tool("Ask", { icon: "plus", kind: "add", write: write("team", "add", "/requests/-"), disabled: !draft })}${tool("Cancel", { kind: "quiet", write: draft ? write("team", "remove", "/draft") : go(path) })}</div>`,
   );
-  return drawer("draft", draft ? "Your draft" : "Ask for leave", body, go(path), "draft-sheet");
+  return drawer("draft", draft ? "Your draft" : "Ask for leave", body, go(path), "draft-drawer");
 }
 
 /** The page for a session. */

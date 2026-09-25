@@ -15,9 +15,12 @@ export function esc(value: unknown): string {
 export type Op = "add" | "replace" | "remove";
 
 /**
- * The attributes that make an element write: `data-write` (the document, the op, the path) and,
- * when there is one, `data-value`. The spec is JSON in single quotes, so a quote or an ampersand
- * in it -- a path built from what someone typed -- is escaped, and cannot end the attribute.
+ * Makes a control write: a form on submit, a button or row on click.
+ * `<form${write("room", "add", "/messages/-")}>` sends the field's value to `room`'s messages.
+ *
+ * - Gives `data-write` (the document, the op, the path) and, with a value, `data-value`.
+ * - The spec is JSON in single quotes, escaped, so a path built from what someone typed cannot end
+ *   the attribute.
  */
 export function write(doc: string, op: Op, path: string, value?: unknown): string {
   const spec = JSON.stringify({ doc, op, path }).replaceAll("&", "&amp;").replaceAll("'", "&#39;");
@@ -25,10 +28,11 @@ export function write(doc: string, op: Op, path: string, value?: unknown): strin
 }
 
 /**
- * An applet's mount says what its own controls write -- drawn in the browser, so no `data-write`
- * is there for the stories to find -- as a document and the path they write under, one pair or
- * several: `data-writes='[{"doc","path"}]'`. Only the story harness reads it (a control for the
- * story's write).
+ * Says what an applet's controls write, on its mount: `appletWrites(["team", "/draft"], ["team", "/requests"])`.
+ *
+ * - An applet's controls are drawn in the browser, so the stories cannot find them in the page;
+ *   a story's write under one of these paths counts as offered instead.
+ * - Gives `data-writes='[{"doc","path"}]'`. Only the story harness reads it.
  */
 export function appletWrites(...under: [doc: string, path: string][]): string {
   return ` data-writes='${JSON.stringify(under.map(([doc, path]) => ({ doc, path }))).replaceAll("&", "&amp;").replaceAll("'", "&#39;")}'`;

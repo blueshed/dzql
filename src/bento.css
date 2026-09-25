@@ -51,8 +51,8 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 /* why a write was refused, beside the control that sent it (src/refusal.ts) */
 .refused { margin: var(--space-xs) 0 0; color: var(--danger); }
 /* why an undo or redo was refused: the kernel's, over the page, above the page's tools */
-.walk-said { position: fixed; z-index: 80; bottom: calc(var(--space-lg) + 2 * var(--control) + var(--space-md)); right: var(--space-lg); max-width: min(320px, calc(100vw - 2 * var(--space-lg))); padding: var(--space-sm) var(--space-md); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
-.walk-said .refused { margin: 0; }
+.undo-said { position: fixed; z-index: 80; bottom: calc(var(--space-lg) + 2 * var(--control) + var(--space-md)); right: var(--space-lg); max-width: min(320px, calc(100vw - 2 * var(--space-lg))); padding: var(--space-sm) var(--space-md); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
+.undo-said .refused { margin: 0; }
 
 /* ── a stack: square buttons with a hairline between, drawn like a Leaflet control ── */
 .stack { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); overflow: hidden; }
@@ -141,9 +141,9 @@ body:has(.page.windowed) { overflow: hidden; }
 /* the rails step aside for the drawer, and the reading reflows to the clear beside it (rule 18) */
 @media (min-width: 820px) {
   .rail, .cell.open .page-tools, .filter, .full { transition: right 200ms ease, padding-right 200ms ease; }
-  main#app:has(.sheet) .rail, main#app:has(.sheet) .cell.open .page-tools { right: calc(var(--panel) + var(--space-2xl) + var(--space-lg)); }
-  main#app:has(.sheet) .filter { right: calc(var(--panel) + var(--space-2xl) + var(--space-lg) + var(--control) + var(--space-md)); }
-  main#app:has(.sheet) .full { padding-right: calc(var(--panel) + var(--space-2xl) + var(--clear)); }
+  main#app:has(.drawer) .rail, main#app:has(.drawer) .cell.open .page-tools { right: calc(var(--panel) + var(--space-2xl) + var(--space-lg)); }
+  main#app:has(.drawer) .filter { right: calc(var(--panel) + var(--space-2xl) + var(--space-lg) + var(--control) + var(--space-md)); }
+  main#app:has(.drawer) .full { padding-right: calc(var(--panel) + var(--space-2xl) + var(--clear)); }
   [data-reveal] { scroll-margin: var(--space-2xl) calc(var(--panel) + var(--space-2xl) + var(--clear)) var(--space-2xl) var(--space-2xl); }
 }
 @media (max-width: 819px) { [data-reveal] { scroll-margin: 64px 16px 80px 16px; } }
@@ -170,13 +170,13 @@ body:has(.page.windowed) { overflow: hidden; }
 /* the page's layers (layers() in bento.ts): wrappers that are always there, and lay out nothing */
 .ground, .layer { display: contents; }
 .scrim { position: fixed; inset: 0; z-index: 50; background: rgba(var(--ink-rgb), 0.35); }
-.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; margin: 0 auto; max-width: 560px; max-height: 88dvh; display: flex; flex-direction: column; background: var(--card); color: var(--ink); border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: 0 -8px 30px rgba(var(--ink-rgb), 0.2); animation: sheet-rise 200ms ease-out; }
-@keyframes sheet-rise { from { transform: translateY(24px); opacity: 0.5; } to { transform: none; opacity: 1; } }
-.sheet-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); padding: var(--space-lg) var(--space-lg) var(--space-sm); }
-.sheet-head h2 { font-size: 17px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sheet-close { width: var(--control); height: var(--control); padding: 0; border: 0; border-radius: var(--radius-inner); }
-.sheet-body { flex: 1 1 auto; overflow: auto; overscroll-behavior: contain; padding: 0 var(--space-lg) calc(var(--space-2xl) + env(safe-area-inset-bottom, 0px)); }
-.sheet-foot { display: flex; gap: var(--space-sm); padding: var(--space-lg) 0 0; }
+.drawer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; margin: 0 auto; max-width: 560px; max-height: 88dvh; display: flex; flex-direction: column; background: var(--card); color: var(--ink); border-radius: var(--radius-panel) var(--radius-panel) 0 0; box-shadow: 0 -8px 30px rgba(var(--ink-rgb), 0.2); animation: drawer-rise 200ms ease-out; }
+@keyframes drawer-rise { from { transform: translateY(24px); opacity: 0.5; } to { transform: none; opacity: 1; } }
+.drawer-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); padding: var(--space-lg) var(--space-lg) var(--space-sm); }
+.drawer-head h2 { font-size: 17px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drawer-close { width: var(--control); height: var(--control); padding: 0; border: 0; border-radius: var(--radius-inner); }
+.drawer-body { flex: 1 1 auto; overflow: auto; overscroll-behavior: contain; padding: 0 var(--space-lg) calc(var(--space-2xl) + env(safe-area-inset-bottom, 0px)); }
+.drawer-foot { display: flex; gap: var(--space-sm); padding: var(--space-lg) 0 0; }
 /* a thing's properties, each by its kind: its name in small caps, its value or the control that sets it */
 .props { display: flex; flex-direction: column; }
 .prop { display: grid; grid-template-columns: 6rem minmax(0, 1fr); align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: 1px solid var(--line); }
@@ -185,17 +185,17 @@ body:has(.page.windowed) { overflow: hidden; }
 .prop-value { min-width: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
 .prop-value .field { width: 100%; }
 @media (min-width: 820px) {
-  .sheet { left: auto; right: var(--space-2xl); top: var(--space-2xl); bottom: var(--space-2xl); width: var(--panel); max-width: none; max-height: none; border-radius: var(--radius-panel); border: 1px solid var(--edge); box-shadow: 0 8px 30px rgba(var(--ink-rgb), 0.2); z-index: 60; }
+  .drawer { left: auto; right: var(--space-2xl); top: var(--space-2xl); bottom: var(--space-2xl); width: var(--panel); max-width: none; max-height: none; border-radius: var(--radius-panel); border: 1px solid var(--edge); box-shadow: 0 8px 30px rgba(var(--ink-rgb), 0.2); z-index: 60; }
   .scrim:not(.modal-scrim) { background: transparent; } /* beside the reading, not over it */
 }
-@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .drawer { animation: none; } }
 /* while a drawer or a modal is open, the page behind holds still on a phone (rules 6, 14) */
 body:has(.site.locked) { overflow: hidden; }
 
 /* ── the modal: new or delete, one question, nothing else may be touched while it asks (rule 14).
    Rendered `open`, not shown by script, so it carries its own scrim and is centred by hand. ── */
 .modal-scrim { z-index: 70; }
-dialog.modal { position: fixed; inset: 0; margin: auto; z-index: 71; width: min(420px, calc(100vw - 2 * var(--space-2xl))); height: fit-content; max-height: calc(100dvh - 48px); overflow: auto; border: 0; padding: var(--space-xl) var(--space-xl) var(--space-2xl); background: var(--card); color: var(--ink); border-radius: var(--radius-panel); box-shadow: 0 20px 50px rgba(var(--ink-rgb), 0.3); animation: sheet-rise 160ms ease-out; }
+dialog.modal { position: fixed; inset: 0; margin: auto; z-index: 71; width: min(420px, calc(100vw - 2 * var(--space-2xl))); height: fit-content; max-height: calc(100dvh - 48px); overflow: auto; border: 0; padding: var(--space-xl) var(--space-xl) var(--space-2xl); background: var(--card); color: var(--ink); border-radius: var(--radius-panel); box-shadow: 0 20px 50px rgba(var(--ink-rgb), 0.3); animation: drawer-rise 160ms ease-out; }
 dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
 .modal-field { display: flex; flex-direction: column; gap: var(--space-xs); margin-bottom: var(--space-md); }
 .modal-field input { width: 100%; }
@@ -222,5 +222,5 @@ dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
    pressed is drawn with an outline instead */
 @media (forced-colors: active) {
   .thing[aria-pressed="true"], .row[aria-pressed="true"], .tool[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
-  .cell, .stack, .sheet, dialog.modal, .walk-said { border: 1px solid CanvasText; }
+  .cell, .stack, .drawer, dialog.modal, .undo-said { border: 1px solid CanvasText; }
 }

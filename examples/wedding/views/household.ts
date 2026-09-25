@@ -307,7 +307,7 @@ function guestSheet(v: HouseholdView): string {
     `<div class="props">${prop("Coming", coming)}</div>`,
     menuMount(v, g),
   );
-  return drawer("guest-sheet", g.name, body, close(v), "guest-sheet");
+  return drawer("guest-drawer", g.name, body, close(v), "guest-drawer");
 }
 
 /** The gift whole -- the picture, the words, where to find it, what it is to us -- and the one thing this household may change: claimed by us. */
@@ -324,7 +324,7 @@ function giftSheet(v: HouseholdView): string {
       ])
     : `<span class="note">taken by another household</span>`;
   const body = join(
-    g.picture_key && `<div class="sheet-pic">${picture(g.picture_key, g.name)}</div>`,
+    g.picture_key && `<div class="drawer-pic">${picture(g.picture_key, g.name)}</div>`,
     g.description && `<p class="words">${esc(g.description)}</p>`,
     `<div class="props">`,
     prop("It is", `<span class="state-${st.cls}">${esc(st.word)}</span>`),
@@ -332,7 +332,7 @@ function giftSheet(v: HouseholdView): string {
     prop("Claimed by us", claim),
     "</div>",
   );
-  return drawer("gift-sheet", g.name, body, close(v), "gift-sheet");
+  return drawer("gift-drawer", g.name, body, close(v), "gift-drawer");
 }
 
 const DEFAULT_WORDS: Record<"yes" | "maybe" | "no", string> = {
@@ -350,11 +350,11 @@ function answerSheet(v: HouseholdView): string {
   const body = join(
     v.open ? "" : `<p class="note">Answers closed on ${esc(formatDay(v.w.deadline ?? ""))}.</p>`,
     `<div class="answer-options" role="radiogroup" aria-label="Are you coming?">${option("yes")}${option("maybe")}${option("no")}</div>`,
-    h.answer && v.open && `<div class="sheet-foot">${tool("Take back our answer", { kind: "quiet", write: write("household", "remove", "/answer") })}</div>`,
+    h.answer && v.open && `<div class="drawer-foot">${tool("Take back our answer", { kind: "quiet", write: write("household", "remove", "/answer") })}</div>`,
     `<div class="props">${prop(
       "Our words",
       `<form class="words-form"${write("household", "replace", "/message")}><textarea name="message" rows="3" placeholder="Say something to the couple" aria-label="Our words">${esc(h.message ?? "")}</textarea><div class="form-foot">${tool("Save our words", { write: "", submit: true })}</div></form>`,
     )}</div>`,
   );
-  return drawer("answer-sheet", "Our answer", body, close(v), "answer-sheet");
+  return drawer("answer-drawer", "Our answer", body, close(v), "answer-drawer");
 }

@@ -30,9 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   | `data-at="/quote"` | `data-under="/quote"` | an applet's mount |
   | `src/tray.ts`: `tray()`, `Compartment`, `Tray` | `src/grid.ts`: `grid()`, `Cell`, `Grid` | the box's layout |
   | `at(view, url)` | `urlFor(view, url)` | src/webview.ts |
+  | `.sheet`, `.sheet-head`/`-body`/`-foot`/`-close`, `sheet-rise` | `.drawer`, `.drawer-head`/`-body`/`-foot`/`-close`, `drawer-rise` | src/bento.css, and a page's own `*-sheet` classes |
+  | `.walk-said` | `.undo-said` | why an undo was refused, over the page |
 
   In the docs, the session is "the session" (no longer "the tray"); *tray* is only the bento's
-  box, and a place in it is a *cell*. *Compartment* means only the kernel's.
+  box, and a place in it is a *cell*. *Compartment* means only the kernel's. The skill's
+  `reference.md` is rewritten plainly: what each piece is, an example, then the details.
 
 ### Added
 

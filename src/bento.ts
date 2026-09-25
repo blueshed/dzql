@@ -336,7 +336,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
   // ───────────────────────────── the drawer ─────────────────────────────
 
   /**
-   * A sheet: a panel docked at the right from 820px, a drawer rising from the foot on a phone,
+   * A drawer: a panel docked at the right from 820px, a sheet rising from the foot on a phone,
    * over a scrim that closes it. Rendered whenever the session says it is open; `close` is the
    * write that closes it. The body keeps its own scroll across renders because the morph keeps
    * the element.
@@ -347,9 +347,9 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
       part(
         id,
         join(
-          `<div id="${esc(id)}" class="sheet${className ? ` ${className}` : ""}" role="dialog" aria-label="${esc(title)}">`,
-          `<div class="sheet-head"><h2>${esc(title)}</h2><button type="button" class="tool quiet sheet-close" aria-label="Close"${close}>${icon("x", 18)}</button></div>`,
-          `<div class="sheet-body">${body}</div>`,
+          `<div id="${esc(id)}" class="drawer${className ? ` ${className}` : ""}" role="dialog" aria-label="${esc(title)}">`,
+          `<div class="drawer-head"><h2>${esc(title)}</h2><button type="button" class="tool quiet drawer-close" aria-label="Close"${close}>${icon("x", 18)}</button></div>`,
+          `<div class="drawer-body">${body}</div>`,
           "</div>",
         ),
       ),

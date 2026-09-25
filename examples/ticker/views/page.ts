@@ -122,7 +122,7 @@ function openDrawer(v: View): string {
     ? tool("Stop watching", { icon: "trash", kind: "danger", write: go(address(path, "confirm", which)) })
     : tool("Watch", { icon: "plus", kind: "add", write: write("watchlist", "add", "/symbols/-", which) });
   const props = prop("Name", `<span>${esc(q.name)}</span>`) + prop("Price", priceState(q)) + prop("Watched", `<span>${watched ? "yes" : "no"}</span>`);
-  return drawer("drawer", which, `<div class="props">${props}</div><div class="sheet-foot">${carry}</div>`, close);
+  return drawer("drawer", which, `<div class="props">${props}</div><div class="drawer-foot">${carry}</div>`, close);
 }
 
 /** The modals: which symbol to watch; whether to stop watching one. One question each; cancelling goes back to where it was asked from. */

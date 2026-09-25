@@ -320,7 +320,7 @@ describe("the ticker", () => {
     html = await page([{ op: "replace", path: "/page", value: "board?confirm=ZZZZ" }]);
     expect(html).not.toContain('class="modal"');
     html = await page([{ op: "replace", path: "/page", value: "board?symbol=ZZZZ" }]);
-    expect(html).not.toContain('class="sheet"');
+    expect(html).not.toContain('class="drawer"');
     ws.close();
   });
 

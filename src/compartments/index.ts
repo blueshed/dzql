@@ -57,7 +57,7 @@ export function assemble(example: Example): Assembled {
   // why one was refused, over whatever page the example draws.
   const page = (sessionId: string): string => {
     const said = reasonFor(sessionId, "ledger", "/latest");
-    return example.render(sessionId) + (said && `<div class="walk-said">${said}</div>`);
+    return example.render(sessionId) + (said && `<div class="undo-said">${said}</div>`);
   };
   const draw = (sessionId: string): Promise<string> => settled(documents, () => page(sessionId));
 
