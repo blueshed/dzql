@@ -30,9 +30,10 @@ That is chat, the smallest example. Three more, and a mock-up:
   everyone coming that fills in live.
 - `bun run dev:ticker` (port 3002): a price board and a Swiss railway clock, both drawn in the
   browser.
-- `bun run dev:leave` (port 3004): a small team asks for days off and a manager answers. People
-  sign in: `ann@leave.example` and `bo@leave.example` ask, `mo@leave.example` answers; each
-  password is the name and `-password` (`ann-password`).
+- `bun run dev:leave` (port 3004): a small team's leave, on one calendar. Drag across days for a
+  draft and see who else is off before you ask; drag your own waiting request to move it; a
+  manager answers. People sign in: `ann@leave.example` and `bo@leave.example` ask,
+  `mo@leave.example` answers; each password is the name and `-password` (`ann-password`).
 - `bun run dev:bento` (port 3003): the bento mock-up, a page to look at and click, with no eta
   behind it.
 

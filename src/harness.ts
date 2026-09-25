@@ -135,7 +135,12 @@ export function controlsOn(page: string): Control[] {
     })
     .on("[data-page-write]", { element: (el) => void found.push({ ...spec(el.getAttribute("data-page-write"))!, free: true }) })
     .on("[data-applet][data-doc]", { element: (el) => void found.push({ doc: el.getAttribute("data-doc")!, free: true }) })
-    .on("[data-writes]", { element: (el) => void found.push({ ...spec(el.getAttribute("data-writes"))!, free: true, under: true }) })
+    .on("[data-writes]", {
+      element(el) {
+        const said = JSON.parse(unescape(el.getAttribute("data-writes")!)) as { doc: string; path: string } | { doc: string; path: string }[];
+        for (const w of Array.isArray(said) ? said : [said]) found.push({ ...w, free: true, under: true });
+      },
+    })
     .transform(page);
   return found;
 }

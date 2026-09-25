@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking (for example authors)
+
+- **`writes()` takes pairs** (src/html.ts): an applet's mount may write under several paths, so
+  `writes(doc, path)` is now `writes([doc, path], …)`. The wedding's dress and menu say
+  `writes(["household", path])`.
+
+### Added
+
+- **leave, a fourth example: people sign in, and a team's leave is one calendar.** A sign-in page
+  posts an email and password to the example's own route, never over the socket: a good one
+  starts a fresh session with who it is (never the visit's own id), a wrong one is told on the
+  page. Then one page -- a calendar, or the same requests as a list (drawn as it scrolls) -- and one
+  drawer:
+  - drag across days (or type them in the drawer) for a **draft**, whose drawer says what it would
+    mean before you ask: how many working days, who else is off, the clashes it would make, also
+    marked on the calendar; Ask sends it, Cancel drops it;
+  - drag your own waiting request to move it, or a grip to stretch it; a manager answers from a
+    request's drawer; answered, a request stays as it is;
+  - working days only: a weekend is nobody's leave, and a request of only a weekend is refused;
+  - three months at a time with Previous, Today and Next, today marked; the months are in the
+    address, so the URL and the back button follow them;
+  - each person one colour everywhere (d3's Tableau10, less its red, which is a clash here), a bar
+    waiting a tint and approved filled, and a key;
+  - a draft rides in the team's document beside the requests, so asking for it is one change and
+    one Undo gives the draft back; a page is sent only its own person's draft.
+- **`sessionCookie(id)`** (src/server.ts): the kernel's session cookie, for a route that starts a
+  session; **`signIn`** on `Stories`: the cast signs in through the example's own route;
+  **`date`** fields in `addModal`, and its **`said`**: why the last try was refused.
+- **`/ws` refuses a socket opened from another site** unless `ETA_ORIGINS` lists it (delta's
+  `refuseOrigin`).
+- **A story's place must exist.** Putting a member where a story says, the harness now checks
+  their page stands there (`data-page`): a place the example does not have used to leave them
+  where they were, silently, and a story could claim they saw something on it.
+
+### Fixed
+
+- **A plain form posts.** The client stopped every form's submit, so a form without
+  `data-write` (a sign-in page) could never post; it now stops only a form that writes.
+
 ## [0.49.0] - 2026-09-25
 
 ### Added
@@ -38,36 +77,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The wedding can do what its stories say**: a household takes back its answer, and leaves a
   guest's coming "not sure"; the couple edit a household's email, add a guest to its invitation,
   and take one off (a drawer, then a modal that asks). The stories found each missing.
-- **leave, a fourth example: people sign in.** A small team asks for days off and a manager
-  answers. A sign-in page posts an email and password to the example's own route (never over the
-  socket); a good one starts a fresh session with who it is, a wrong one is told on the page.
-  Twelve stories, from asking and answering to what nobody may do.
-- **leave counts working days only**: a weekend is nobody's leave, so a clash is only ever on a
-  working day, a bar skips the weekend, a drawer says how many working days a request takes, and
-  a request with no working day in it is refused ("There are no working days in those.").
-- **leave's calendar**: three months at a time from this one, today marked, moved through with
-  Previous, Today and Next (the months are in the address, `calendar/2026-10`, so the URL and
-  the back button follow them); the team's days off a week to a row, each request a bar
-  across its days in its person's colour, with their name on it (a key says which colour is you),
-  waiting a tint and approved filled, bars that share a day stacked, and each bar a button that
-  opens its request's drawer (lit while it is open), to answer or take back from the calendar,
-  and a day with more than one person off marked as a clash (and counted on the box); a request's drawer says who else is
-  off during it -- what a manager weighs before answering.
-- **A story's place must exist.** Putting a member where a story says, the harness now checks
-  their page stands there (`data-page`): a place the example does not have used to leave them
-  where they were, silently, and a story could claim they saw something on it.
-- **`sessionCookie(id)`** (src/server.ts): the kernel's session cookie, for a route that starts a
-  session; **`signIn`** on `Stories`: the cast signs in through the example's own route;
-  **`date`** fields in `addModal`, and its **`said`**: why the last try was refused.
-- **`/ws` refuses a socket opened from another site** unless `ETA_ORIGINS` lists it (delta's
-  `refuseOrigin`).
 - **`told` on a `cannot` story**: the reason the refused person must be shown. Their page may
   change by that line and nothing else; a reason shown that no story says fails as a change.
 
 ### Changed
-
-- **A plain form posts.** The client stopped every form's submit, so a form without
-  `data-write` (a sign-in page) could never post; it now stops only a form that writes.
 
 - **Takes @blueshed/delta 0.8.0 and @blueshed/railroad 0.14.0.** Nothing in eta changes for
   them: eta serves its own socket (delta's new Origin check is `createWs`'s), keeps its documents

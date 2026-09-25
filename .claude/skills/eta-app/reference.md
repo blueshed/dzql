@@ -314,8 +314,12 @@ and its page would change for symbols nobody on it watches. Register in `client/
 testing. `client/index.html` must have an element with `id="app"`.
 
 **An applet's controls are drawn in the browser**, so the stories cannot find them in the page.
-Its mount says what they write: `writes(doc, path)` (src/html.ts) puts `data-writes` on it, and a
-story's write under that path counts as offered (the wedding's dress and menu).
+Its mount says what they write: `writes([doc, path], …)` (src/html.ts) puts `data-writes` on it, and a
+story's write under that path counts as offered (the wedding's dress and menu; leave's calendar,
+which writes a draft and moves requests). An applet that sends writes of its own -- a drag let go --
+uses `ctx.send(doc, ops)`. An applet whose props mix a document with the page's own state (leave's
+calendar: the requests, and the month and your draft) takes no `data-doc`: it is re-sent its props
+on every render, and draws from them (`update`).
 
 ## CLI
 

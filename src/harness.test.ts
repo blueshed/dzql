@@ -86,6 +86,7 @@ describe("stories harness", () => {
       `<div class="site" data-page="gifts?new=gifts" data-page-write='{"doc":"session","op":"replace","path":"/page"}'></div>`,
       `<div data-applet="clock" data-doc="clock" data-props="{}"></div>`,
       `<div data-applet="dress" data-writes='{"doc":"household","path":"/guests/2/minifigure"}'></div>`,
+      `<div data-applet="calendar" data-writes='[{"doc":"session","path":"/draft"},{"doc":"team","path":"/requests"}]'></div>`,
     ].join("");
     const cs = controlsOn(page);
     const any = (doc: string, op: PatchOp) => cs.some((c) => offers(c, doc, op));
@@ -98,6 +99,8 @@ describe("stories harness", () => {
     expect(any("clock", { op: "replace", path: "/tz", value: "Asia/Tokyo" })).toBe(true);
     expect(any("household", { op: "replace", path: "/guests/2/minifigure/top", value: "#fff" })).toBe(true);
     expect(any("household", { op: "replace", path: "/guests/3/minifigure/top", value: "#fff" })).toBe(false);
+    expect(any("session", { op: "replace", path: "/draft", value: {} })).toBe(true); // one of several it says it writes
+    expect(any("team", { op: "replace", path: "/requests/2/starts", value: "2026-11-20" })).toBe(true);
     expect(any("watchlist", { op: "add", path: "/symbols/-", value: "X" })).toBe(false);
     expect(placeOf(page)).toBe("gifts?new=gifts");
     expect(placeOf("<p>no address</p>")).toBeUndefined();

@@ -271,7 +271,7 @@ function everyoneOpen(v: HouseholdView, familyKey: string | null): { open: OpenO
 /** The dressing applet's mount for one guest: a part, sent alone when their look changes. */
 export function dressMount(v: HouseholdView, g: Guest): string {
   const dress: DressProps = { guestId: g.id, spec: specOf(g.minifigure), firstName: firstNameOf(g.name), out: isGuestOut(g, v.h) };
-  return part(`dress-${g.id}`, `<div id="dress-${g.id}" data-applet="dress"${writes("household", `/guests/${g.id}/minifigure`)} data-props="${esc(JSON.stringify(dress))}"></div>`);
+  return part(`dress-${g.id}`, `<div id="dress-${g.id}" data-applet="dress"${writes(["household", `/guests/${g.id}/minifigure`])} data-props="${esc(JSON.stringify(dress))}"></div>`);
 }
 
 /** The menu applet's mount for one guest: a part, sent alone when a choice changes. */
@@ -284,7 +284,7 @@ export function menuMount(v: HouseholdView, g: Guest): string {
     out: isGuestOut(g, v.h),
     locked: !v.open,
   };
-  return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu"${writes("household", `/guests/${g.id}/choices`)} data-props="${esc(JSON.stringify(menu))}"></div>`);
+  return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu"${writes(["household", `/guests/${g.id}/choices`])} data-props="${esc(JSON.stringify(menu))}"></div>`);
 }
 
 /** The guest's drawer: the dressing sheet, coming as one choice (rule 13, off the line), the hint, and the menu. */

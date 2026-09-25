@@ -26,11 +26,12 @@ export function write(doc: string, op: Op, path: string, value?: unknown): strin
 
 /**
  * An applet's mount says what its own controls write -- drawn in the browser, so no `data-write`
- * is there for the stories to find -- as a document and the path they write under:
- * `data-writes='{"doc","path"}'`. Only the story harness reads it (a control for the story's write).
+ * is there for the stories to find -- as a document and the path they write under, one pair or
+ * several: `data-writes='[{"doc","path"}]'`. Only the story harness reads it (a control for the
+ * story's write).
  */
-export function writes(doc: string, path: string): string {
-  return ` data-writes='${JSON.stringify({ doc, path }).replaceAll("&", "&amp;").replaceAll("'", "&#39;")}'`;
+export function writes(...under: [doc: string, path: string][]): string {
+  return ` data-writes='${JSON.stringify(under.map(([doc, path]) => ({ doc, path }))).replaceAll("&", "&amp;").replaceAll("'", "&#39;")}'`;
 }
 
 /** Joins the pieces of a view, dropping anything that is not a string (a `cond && html` that was false). */

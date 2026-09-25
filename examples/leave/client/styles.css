@@ -30,9 +30,6 @@ h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
 .door form { display: flex; flex-direction: column; gap: var(--space-sm); }
 .door input { width: 100%; }
 
-/* a run of one person's requests: their name, once, above it */
-.rows .run { margin: var(--space-lg) 0 var(--space-xs); color: var(--muted); }
-.rows .run:first-child { margin-top: 0; }
 
 /* ── the calendar: a week a row of seven days; a request a bar across its days, stacked where they share one ── */
 .calendar { display: grid; grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); gap: var(--space-2xl); }
@@ -64,12 +61,36 @@ h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
 button.bar { display: block; font: inherit; font-size: 11px; font-weight: 600; text-align: left; cursor: pointer; }
 .bar:hover { filter: brightness(0.95); }
 .bar[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); } /* its drawer is open */
+/* your draft: dashed, a tint of your colour -- what you would ask for, not yet asked */
+.bar.draft { border-style: dashed; background: color-mix(in srgb, var(--who) 18%, var(--card)); }
+/* your own waiting requests: dragged to move, stretched by a grip at either end */
+.bar { position: relative; }
+.bar.movable { cursor: grab; }
+.bar .grip { position: absolute; top: 0; bottom: 0; width: 8px; cursor: ew-resize; }
+.bar .grip.start { left: 0; }
+.bar .grip.end { right: 0; }
+.calendar-view .week { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .bar.open-start { border-left-style: dashed; border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: 0; }
 .bar.open-end { border-right-style: dashed; border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: 0; }
 @media (forced-colors: active) {
   .week .date.clash { background: Highlight; color: HighlightText; }
   .bar.approved { border-width: 3px; } /* the colours are gone: approved is the heavier edge */
 }
+
+/* ── the list: every request, a row each, drawn as it scrolls into view ── */
+.vlist { position: relative; max-height: calc(100dvh - 12rem); overflow: auto; overscroll-behavior: contain; }
+.vspace { position: relative; }
+.vitem { position: absolute; left: 0; right: 0; height: 52px; }
+.list-view [role="list"]:not(.vlist) { display: flex; flex-direction: column; } /* before the applet: every row, drawn by the server */
+.vrow { display: grid; grid-template-columns: auto 5rem 1fr auto; align-items: center; gap: var(--space-md); width: 100%; height: 52px; padding: 0 var(--space-md); border: 0; border-bottom: 1px solid var(--line); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.vrow:hover { background: rgba(var(--ink-rgb), 0.04); }
+.vrow[aria-pressed="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+.vrow .who { font-weight: 600; }
+.vrow .state { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+/* the drawer's two days, a field each */
+form.days { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-sm); margin-bottom: var(--space-md); }
+form.days input { width: 100%; min-width: 0; }
 
 .state-approved { color: var(--add); }
 .state-declined { color: var(--danger); }
