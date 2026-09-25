@@ -65,7 +65,8 @@ exactly as the browser or the CLI would send it. `seen` names who should notice 
 and whatever else the example's `at` understands, because a person sees only the page they are on
 and a story says where its change shows; in an example with one page (chat's is the room; the
 ticker has one), `seen` is just a list of names. Where people sign in, the cast signs in through the example's
-own sign-in page (`signIn`), since a password is never a write. Everyone else in the cast must notice nothing, where the cast
+own sign-in page (`signIn`), since a password is never a write. A place a story names must be a
+place the example has: the harness checks the member's page stands where it was put. Everyone else in the cast must notice nothing, where the cast
 left them: a story says everyone who sees its change, counts on a home page included, so one that
 leaves someone out fails by name. `unseen` names who must not even be told: sent no document's ops. `cannot` is a refusal: the permit table's
 other half, told as a sentence, whichever layer refuses (the permit, a document that finds nothing

@@ -42,6 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   answers. A sign-in page posts an email and password to the example's own route (never over the
   socket); a good one starts a fresh session with who it is, a wrong one is told on the page.
   Twelve stories, from asking and answering to what nobody may do.
+- **leave's calendar**: the team's days off month by month, yours by colour, a day with more than
+  one person off marked as a clash (and counted on the box); a request's drawer says who else is
+  off during it -- what a manager weighs before answering.
+- **A story's place must exist.** Putting a member where a story says, the harness now checks
+  their page stands there (`data-page`): a place the example does not have used to leave them
+  where they were, silently, and a story could claim they saw something on it.
 - **`sessionCookie(id)`** (src/server.ts): the kernel's session cookie, for a route that starts a
   session; **`signIn`** on `Stories`: the cast signs in through the example's own route;
   **`date`** fields in `addModal`, and its **`said`**: why the last try was refused.

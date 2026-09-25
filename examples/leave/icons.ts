@@ -1,6 +1,6 @@
 // The marks leave draws, by our names for them, and lucide's outlines behind each. The kernel's
 // bento (src/bento.ts) asks for its own marks by these names too.
-import { CalendarDays, ChevronRight, LogOut, Pencil, Plus, Redo2, Trash2, Undo2, Users, X } from "lucide";
+import { CalendarDays, CalendarRange, ChevronRight, LogOut, Pencil, Plus, Redo2, Trash2, Undo2, Users, X } from "lucide";
 import { svg, type IconNode } from "../../src/icons";
 
 const ICONS = {
@@ -13,6 +13,7 @@ const ICONS = {
   trash: Trash2,
   "log-out": LogOut,
   calendar: CalendarDays,
+  month: CalendarRange,
   users: Users,
 } satisfies Record<string, IconNode>;
 

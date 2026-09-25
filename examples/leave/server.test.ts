@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
 import { createServer } from "../../src/server";
 import { hear, type Heard } from "../../src/harness";
-import { may, placed, shape, type Person, type Team } from "./documents";
+import { alsoOff, clashes, daysOf, may, nextDay, offOn, placed, shape, type Person, type Team } from "./documents";
 import { days } from "./page";
 import { example } from "./index";
 
@@ -153,6 +153,54 @@ describe("the pages", () => {
     ann.ws.close();
   });
 
+  test("the calendar: who is off when, a clash marked, across the new year; a manager answering is told who else is off", async () => {
+    const ann = await open((await signIn("ann@leave.example", "ann-password")).sessionId!);
+    const mo = await open((await signIn("mo@leave.example", "mo-password")).sessionId!);
+    expect(await go(mo, "")).toContain("no days with more than one off");
+
+    await go(ann, "mine?new");
+    await send(ann, "team", [{ op: "add", path: "/requests/-", value: { starts: "2026-10-08", ends: "2026-10-12" } }]);
+    let asked = 1;
+    try {
+      const cal = await go(mo, "calendar");
+      expect(cal).toContain("October 2026");
+      expect(cal.match(/<td class="clash">/g)).toHaveLength(2); // Thu 8 and Fri 9: Ann and Bo
+      expect(cal).toContain('<span class="sr-only">Ann, waiting</span>');
+      expect(await go(ann, "calendar")).toContain('<span class="sr-only">you, waiting</span>'); // hers in her colour, not her name
+      expect(await go(mo, "")).toContain("2 days with more than one off");
+      const bo = await go(mo, "team?request=1");
+      expect(bo).toContain("Also off");
+      expect(bo).toContain("Ann, waiting: 2 days of these");
+      expect(await go(ann, "team?request=1")).toContain("You, waiting: 2 days of these");
+
+      await go(ann, "mine?new");
+      await send(ann, "team", [{ op: "add", path: "/requests/-", value: { starts: "2026-12-31", ends: "2027-01-01" } }]);
+      asked = 2;
+      const year = await go(mo, "calendar");
+      expect(year).toContain("December 2026");
+      expect(year).toContain("January 2027");
+    } finally {
+      for (let i = 0; i < asked; i++) await send(ann, "ledger", [{ op: "remove", path: "/latest" }]); // the asks taken back: as it was
+      ann.ws.close();
+      mo.ws.close();
+    }
+  });
+
+  test("with every request declined, nobody is off, and a declined request tells of no one", async () => {
+    const mo = await open((await signIn("mo@leave.example", "mo-password")).sessionId!);
+    await send(mo, "team", [{ op: "replace", path: "/requests/1/status", value: "declined" }]);
+    await send(mo, "team", [{ op: "replace", path: "/requests/2/status", value: "declined" }]);
+    try {
+      expect(await go(mo, "team?request=1")).not.toContain("Also off");
+      expect(await go(mo, "calendar")).toContain("Nobody is off.");
+      expect(await go(mo, "calendar?request=1")).toContain('data-page="calendar"'); // nothing opens over the calendar: he stays on it
+    } finally {
+      await send(mo, "ledger", [{ op: "remove", path: "/latest" }]);
+      await send(mo, "ledger", [{ op: "remove", path: "/latest" }]);
+      mo.ws.close();
+    }
+  });
+
   test("Bo, with nothing asked for, is told so; Mo sees a team with nobody waiting on him when nobody is", async () => {
     const bo = await open((await signIn("bo@leave.example", "bo-password")).sessionId!);
     await go(bo, "mine?confirm=1");
@@ -185,6 +233,8 @@ describe("the rules, on their own", () => {
     expect(placed("mine?confirm=0199a1b2-c3d4")).toBe("mine?confirm=0199a1b2-c3d4"); // an id delta named
     expect(placed("mine?wander")).toBeUndefined();
     expect(placed("attic")).toBeUndefined();
+    expect(placed("calendar")).toBe("calendar");
+    expect(placed("calendar?request=1")).toBeUndefined();
     expect(placed(undefined)).toBe("");
   });
 
@@ -214,6 +264,25 @@ describe("the rules, on their own", () => {
       { op: "replace", path: "/requests/1/answered_by", value: "3" },
     ]);
     expect(shape(ann, [{ op: "remove", path: "/requests/1" }])).toEqual([{ op: "remove", path: "/requests/1" }]);
+  });
+
+  test("who is off when: every day a request covers, declined ones not at all; a clash is two people, not one person twice", () => {
+    expect(nextDay("2026-12-31")).toBe("2027-01-01");
+    expect(daysOf({ starts: "2026-10-30", ends: "2026-11-02" })).toEqual(["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02"]);
+    const busy: Team = {
+      ...t,
+      requests: [
+        { id: "1", person_id: "1", starts: "2026-10-05", ends: "2026-10-06", status: "asked", answered_by: null },
+        { id: "2", person_id: "3", starts: "2026-10-06", ends: "2026-10-07", status: "approved", answered_by: "3" },
+        { id: "3", person_id: "1", starts: "2026-10-07", ends: "2026-10-07", status: "asked", answered_by: null },
+        { id: "4", person_id: "3", starts: "2026-10-05", ends: "2026-10-05", status: "declined", answered_by: "3" },
+      ],
+    };
+    const off = offOn(busy);
+    expect([...off.keys()].sort()).toEqual(["2026-10-05", "2026-10-06", "2026-10-07"]);
+    expect(clashes(off).sort()).toEqual(["2026-10-06", "2026-10-07"]);
+    expect(alsoOff(busy, busy.requests[0]!).map((o) => [o.request.id, o.days])).toEqual([["2", 1]]);
+    expect(clashes(offOn({ ...t, requests: [busy.requests[0]!, { ...busy.requests[0]!, id: "5" }] }))).toEqual([]); // one person twice
   });
 
   test("days as a person says them", () => {

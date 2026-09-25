@@ -60,7 +60,8 @@ export type Stories = {
    */
   signIn?: (name: string) => { path: string; form: Record<string, string> } | undefined;
   /** The write that puts a session where a `seen` record says -- the example's own grammar for
-   * "where", a page at least. Omit in an example with one page, where `seen` lists names. */
+   * "where": a page's address, then, after " @ ", anything else it understands. Where a page says
+   * where it stands (`data-page`), the harness checks it got there. Omit in an example with one page, where `seen` lists names. */
   at?: (where: string) => Write;
   stories: Story[];
 };

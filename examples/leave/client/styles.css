@@ -34,5 +34,19 @@ h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
 .rows .run { margin: var(--space-lg) 0 var(--space-xs); color: var(--muted); }
 .rows .run:first-child { margin-top: 0; }
 
+/* ── the calendar: a month a table, a week a row; who is off by initial, a clash marked ── */
+.calendar { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: var(--space-xl); }
+table.month { width: 100%; border-collapse: collapse; table-layout: fixed; }
+table.month caption { text-align: left; padding-bottom: var(--space-sm); }
+table.month th { font-size: 11px; font-weight: 600; color: var(--muted); padding-bottom: var(--space-xs); }
+table.month td { height: 3rem; vertical-align: top; padding: 2px; border: 1px solid var(--line); }
+table.month .date { display: block; font-size: 11px; color: var(--muted); }
+table.month td.clash { background: color-mix(in srgb, var(--danger) 12%, var(--card)); outline: 2px solid var(--danger); outline-offset: -2px; }
+.off { display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; margin: 1px; border-radius: 50%; font-size: 11px; font-weight: 700; border: 1px solid var(--ink); color: var(--ink); }
+.off.approved { background: var(--ink); color: var(--card); }
+.off.mine { border-color: var(--accent); color: var(--accent); }
+.off.mine.approved { background: var(--accent); color: var(--card); }
+@media (forced-colors: active) { table.month td.clash { outline-color: Highlight; } }
+
 .state-approved { color: var(--add); }
 .state-declined { color: var(--danger); }

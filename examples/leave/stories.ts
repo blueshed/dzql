@@ -23,6 +23,9 @@ export const stories: Stories = {
     story("Ann asks for days that end before they begin, and is told so", { as: "ann", from: "mine?new", cannot: ask("2026-12-04", "2026-12-01"), told: "The last day is before the first." }),
     story("Bo takes back his week in October before Mo has answered", { as: "bo", from: "mine?confirm=1", does: withdraw(1), seen: { bo: "mine", mo: "team", ann: "team" } }),
 
+    // ── seeing who is off when ──
+    story("Ann asks for days that overlap Bo's week in October, and everyone's calendar marks the clash", { as: "ann", from: "mine?new", does: ask("2026-10-08", "2026-10-12"), seen: { ann: "calendar", mo: "calendar", bo: "calendar" } }),
+
     // ── answering ──
     story("Mo approves Bo's week in October, and Bo sees it approved", { as: "mo", from: "team?request=1", does: answer(1, "approved"), seen: { mo: "team?request=1", bo: "mine", ann: "team" } }),
     story("Mo declines Ann's day in November, and Ann sees it declined", { as: "mo", from: "team?request=2", does: answer(2, "declined"), seen: { mo: "team?request=2", ann: "mine", bo: "team" } }),

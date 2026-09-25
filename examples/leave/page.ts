@@ -2,7 +2,7 @@ import { address, bento, choice, layers, parseAddress, prop, rows, type Crumb, t
 import { esc, join, write } from "../../src/html";
 import { part } from "../../src/parts";
 import { refused } from "../../src/refusal";
-import { session as sessionOf, team as teamOf, type Person, type Request, type Status, type Team } from "./documents";
+import { alsoOff, clashes, offOn, session as sessionOf, team as teamOf, type Person, type Request, type Status, type Team } from "./documents";
 import { icon } from "./icons";
 
 // leave's pages. Signed out, one: sign in. Signed in, a box of two compartments -- your leave, and
@@ -48,9 +48,50 @@ function teamRows(t: Team, others: Request[], open: string | undefined): string[
   return order.flatMap((id) => [`<p class="cap run">${esc(nameOf(t, id))}</p>`, ...others.filter((r) => r.person_id === id).map((r) => requestRow(r, "team", open))]);
 }
 
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/**
+ * The calendar: the months anyone is off, a week to a row. Each day says who is off -- a person by
+ * their initial, waiting outlined, approved filled, and yours in your own colour rather than your
+ * name -- and a day with more than one person off is a clash. Declined days are nobody's.
+ */
+function calendar(t: Team, me: Person, off: Map<string, Request[]>): string {
+  const days = [...off.keys()].sort();
+  if (!days.length) return `<p class="note">Nobody is off.</p>`;
+  const months: string[] = [];
+  for (let m = days[0]!.slice(0, 7); m <= days.at(-1)!.slice(0, 7); m = nextMonth(m)) months.push(m);
+  const who = (r: Request) => {
+    const name = nameOf(t, r.person_id);
+    const label = `${r.person_id === me.id ? "you" : name}, ${WORD[r.status]}`;
+    return `<span class="off ${r.status}${r.person_id === me.id ? " mine" : ""}" aria-hidden="true">${esc(name.charAt(0))}</span><span class="sr-only">${esc(label)}</span>`;
+  };
+  const clashing = new Set(clashes(off));
+  const month = (m: string) => {
+    const first = new Date(`${m}-01T00:00:00Z`);
+    const lead = (first.getUTCDay() + 6) % 7; // Monday first
+    const length = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+    const cells = [...Array(lead).fill(`<td></td>`), ...Array.from({ length }, (_, i) => {
+      const day = `${m}-${String(i + 1).padStart(2, "0")}`;
+      const rs = off.get(day) ?? [];
+      return `<td${clashing.has(day) ? ' class="clash"' : ""}><span class="date">${i + 1}</span>${rs.map(who).join("")}${clashing.has(day) ? '<span class="sr-only">, a clash</span>' : ""}</td>`;
+    })];
+    const weeks = Array.from({ length: Math.ceil(cells.length / 7) }, (_, w) => `<tr>${cells.slice(w * 7, w * 7 + 7).join("")}</tr>`);
+    const title = first.toLocaleDateString("en-GB", { timeZone: "UTC", month: "long", year: "numeric" });
+    return `<table class="month"><caption class="cap">${esc(title)}</caption><thead><tr>${WEEKDAYS.map((d) => `<th scope="col">${d}</th>`).join("")}</tr></thead><tbody>${weeks.join("")}</tbody></table>`;
+  };
+  return part("calendar", `<div id="calendar" class="calendar">${months.map(month).join("")}</div>`);
+}
+
+/** The month after `m` (YYYY-MM). */
+const nextMonth = (m: string): string => {
+  const [y, mo] = m.split("-").map(Number) as [number, number];
+  return mo === 12 ? `${y + 1}-01` : `${y}-${String(mo + 1).padStart(2, "0")}`;
+};
+
 /** A request's drawer: its days and state, and what this person may do with it. */
 function requestSheet(t: Team, me: Person, r: Request, path: string): string {
   const mine = r.person_id === me.id;
+  const also = r.status === "declined" ? [] : alsoOff(t, r);
   const answer =
     !mine && me.role === "manager" && r.status === "asked"
       ? prop("Answer", choice("Answer", [
@@ -62,6 +103,7 @@ function requestSheet(t: Team, me: Person, r: Request, path: string): string {
     `<div class="props">`,
     prop("Days", `<span>${esc(days(r))}</span>`),
     prop("It is", `<span class="state-${r.status}">${WORD[r.status]}${r.answered_by ? ` by ${esc(nameOf(t, r.answered_by))}` : ""}</span>`),
+    also.length > 0 && prop("Also off", also.map(({ request: o, days: n }) => `<span>${esc(o.person_id === me.id ? "You" : nameOf(t, o.person_id))}, ${WORD[o.status]}: ${n} ${n === 1 ? "day" : "days"} of these</span>`).join("")),
     answer,
     `</div>`,
     mine && r.status === "asked" && `<div class="sheet-foot">${tool("Take it back", { icon: "trash", kind: "danger", write: go(address(path, "confirm", r.id)) })}</div>`,
@@ -79,17 +121,23 @@ export function render(sessionId: string): string {
   const mine = t.requests.filter((r) => r.person_id === me.id);
   const others = t.requests.filter((r) => r.person_id !== me.id);
   const waiting = me.role === "manager" ? others.filter((r) => r.status === "asked").length : 0;
+  const off = offOn(t);
+  const clash = clashes(off).length;
   const cells = [
     cell({ name: "your leave", key: "mine", mark: "calendar", count: mine.length, big: true, opens: go("mine"), summary: mine.length ? `${mine.filter((r) => r.status === "asked").length} waiting` : "nothing asked for yet" }),
     cell({ name: "the team", key: "team", mark: "users", count: others.length, span: 3, opens: go("team"), summary: waiting ? `${waiting} waiting for you` : `${others.length} asked by others` }),
+    cell({ name: "the calendar", key: "calendar", mark: "month", count: clash || null, span: 3, opens: go("calendar"), summary: clash ? `${clash} ${clash === 1 ? "day" : "days"} with more than one off` : "no days with more than one off" }),
   ];
   const opened: OpenOptions | undefined =
     path === "mine"
       ? { key: "mine", tools: [addTool(go(address("mine", "new")), "Ask for leave")], body: rows(mine.map((r) => requestRow(r, path, open)), "Nothing asked for yet. The plus asks.", "mine-rows") }
       : path === "team"
         ? { key: "team", body: rows(teamRows(t, others, open), "Nobody else has asked.", "team-rows") }
-        : undefined;
-  const trail: Crumb[] = [{ label: t.name, back: go("") }, ...(opened ? [{ label: opened.key === "mine" ? "your leave" : "the team" }] : [])];
+        : path === "calendar"
+          ? { key: "calendar", body: calendar(t, me, off) }
+          : undefined;
+  const LABEL: Record<string, string> = { mine: "your leave", team: "the team", calendar: "the calendar" };
+  const trail: Crumb[] = [{ label: t.name, back: go("") }, ...(opened ? [{ label: LABEL[opened.key]! }] : [])];
   const r = open === undefined ? undefined : t.requests.find((x) => x.id === open);
   const drawer = what === "request" && r ? requestSheet(t, me, r, path) : "";
   const modal =

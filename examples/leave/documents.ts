@@ -38,14 +38,46 @@ export function session(sessionId: string): Session {
   return { person, page: person ? (row.page ?? "") : "" };
 }
 
+// ───────────────────────────── who is off when ─────────────────────────────
+
+/** The day after `day` (YYYY-MM-DD). */
+export const nextDay = (day: string): string => new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+
+/** Every day a request covers, first to last. */
+export function daysOf(r: Pick<Request, "starts" | "ends">): string[] {
+  const out: string[] = [];
+  for (let d = r.starts; d <= r.ends; d = nextDay(d)) out.push(d);
+  return out;
+}
+
+/** Who is off on each day: every request not declined, by the days it covers. */
+export function offOn(t: Team): Map<string, Request[]> {
+  const off = new Map<string, Request[]>();
+  for (const r of t.requests) if (r.status !== "declined") for (const d of daysOf(r)) off.set(d, [...(off.get(d) ?? []), r]);
+  return off;
+}
+
+/** The days on which more than one person is off. */
+export const clashes = (off: Map<string, Request[]>): string[] => [...off].filter(([, rs]) => new Set(rs.map((r) => r.person_id)).size > 1).map(([d]) => d);
+
+/** Who else is off during `r`, and on how many of its days: what a manager weighs before answering. */
+export function alsoOff(t: Team, r: Request): { request: Request; days: number }[] {
+  const mine = new Set(daysOf(r));
+  return t.requests
+    .filter((o) => o.person_id !== r.person_id && o.status !== "declined")
+    .map((o) => ({ request: o, days: daysOf(o).filter((d) => mine.has(d)).length }))
+    .filter((o) => o.days > 0);
+}
+
 // ───────────────────────────── where you are ─────────────────────────────
 
 /** An address this session may stand at, or undefined: the box, your leave or the team's, and over it one request's drawer, the ask, or the asking-first. */
 export function placed(value: unknown): string | undefined {
   const { path, what, which = "" } = parseAddress(String(value ?? ""));
-  if (path !== "" && path !== "mine" && path !== "team") return undefined;
+  if (path !== "" && path !== "mine" && path !== "team" && path !== "calendar") return undefined;
   if (what === undefined) return path;
   if (what === "new") return path === "mine" ? address(path, what) : undefined;
+  if (path === "calendar") return undefined; // the calendar is read, and nothing opens over it
   if ((what === "request" || what === "confirm") && ID.test(which)) return address(path, what, which);
   return undefined;
 }

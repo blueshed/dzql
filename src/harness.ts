@@ -268,6 +268,19 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     await settle(cast);
   }
 
+  /**
+   * Puts a member where a story says (`Stories.at`). Where a page says where it stands
+   * (`data-page`), it must now stand there: a place the example does not have leaves them where
+   * they were, and a story that claims they saw something there has not shown it.
+   */
+  async function put(cast: Member[], m: Member, where: string, failures: string[]): Promise<void> {
+    if (!stories.at) return;
+    await send(cast, m, stories.at(where));
+    const stands = placeOf(m.page);
+    const asked = where.split(" @ ")[0]!;
+    if (stands !== undefined && stands !== asked) failures.push(`${m.name} could not be put on ${JSON.stringify(where)}: their page is at ${JSON.stringify(stands)}`);
+  }
+
   /** Where each member's inbox stands now, to ask later what they were sent since. */
   const mark = (cast: Member[]): Map<Member, number> => new Map(cast.map((m) => [m, m.inbox.length]));
 
@@ -320,7 +333,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       if (!who) return { name: story.name, failures: [`no one in the cast is called ${story.as}`] };
 
       if ("cannot" in story) {
-        if (story.from !== undefined && stories.at) await send(cast, who, stories.at(story.from));
+        if (story.from !== undefined) await put(cast, who, story.from, failures);
         const before = await snapshot(cast);
         const ledgerBefore = ledgerMax();
         const from = mark(cast);
@@ -348,11 +361,11 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       for (const [name, where] of seen) {
         const m = cast.find((c) => c.name === name);
         if (!m) failures.push(`no one in the cast is called ${name}`);
-        else if (where !== undefined && stories.at) await send(cast, m, stories.at(where));
+        else if (where !== undefined) await put(cast, m, where, failures);
       }
 
 
-      if (story.from !== undefined && stories.at) await send(cast, who, stories.at(story.from));
+      if (story.from !== undefined) await put(cast, who, story.from, failures);
       // P1: the author's page offers a control for it -- unless it comes from outside any page
       const offered = controlsOn(who.page);
       if (!story.outside) for (const op of story.does.ops) if (!offered.some((c) => offers(c, story.does.doc, op))) failures.push(`${who.name} has no control on their page for ${op.op} ${op.path} on ${story.does.doc}`);
