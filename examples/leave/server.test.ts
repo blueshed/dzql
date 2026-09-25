@@ -162,19 +162,19 @@ describe("the pages", () => {
     await send(ann, "team", [{ op: "add", path: "/requests/-", value: { starts: "2026-10-08", ends: "2026-10-12" } }]);
     let asked = 1;
     try {
-      const cal = await go(mo, "calendar");
+      const cal = await go(mo, "calendar/2026-10");
       expect(cal).toContain("October 2026");
       expect(cal.match(/class="date clash"/g)).toHaveLength(2); // Thu 8 and Fri 9: Ann and Bo
       expect(cal).toContain('<span class="sr-only">Ann, waiting, Thu 8 – Mon 12 Oct</span>');
-      expect(cal).toContain('data-value="calendar?request=1"><span aria-hidden="true">Bo</span>'); // Bo's week, one bar, Mon to Fri, named
+      expect(cal).toContain('data-value="calendar/2026-10?request=1"><span aria-hidden="true">Bo</span>'); // Bo's week, one bar, Mon to Fri, named
       expect(cal).toContain('open-end" style="grid-column: 4 / span 4"'); // Ann's goes on into the next week
-      expect(cal).toContain(`<button type="button" class="bar asked who-1" style="grid-column: 1 / span 5" aria-pressed="false" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="calendar?request=1">`); // Bo's week, in his colour, opens his request
-      const opened = await go(mo, "calendar?request=1");
-      expect(opened).toContain('aria-pressed="true" data-write=\'{"doc":"session","op":"replace","path":"/page"}\' data-value="calendar?request=1"'); // lit while its drawer is open
+      expect(cal).toContain(`<button type="button" class="bar asked who-1" style="grid-column: 1 / span 5" aria-pressed="false" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="calendar/2026-10?request=1">`); // Bo's week, in his colour, opens his request, at the same months
+      const opened = await go(mo, "calendar/2026-10?request=1");
+      expect(opened).toContain('aria-pressed="true" data-write=\'{"doc":"session","op":"replace","path":"/page"}\' data-value="calendar/2026-10?request=1"'); // lit while its drawer is open
       expect(opened).toContain("Approve");
       expect(cal).toContain('<li><span class="swatch who-0" aria-hidden="true"></span>Ann</li>'); // the key
-      expect(await go(ann, "calendar")).toContain('<li><span class="swatch who-0" aria-hidden="true"></span>you</li>');
-      expect(await go(ann, "calendar")).toContain('<span class="sr-only">you, waiting, Thu 8 – Mon 12 Oct</span>'); // hers in her colour, not her name
+      expect(await go(ann, "calendar/2026-10")).toContain('<li><span class="swatch who-0" aria-hidden="true"></span>you</li>');
+      expect(await go(ann, "calendar/2026-10")).toContain('<span class="sr-only">you, waiting, Thu 8 – Mon 12 Oct</span>'); // hers in her colour, not her name
       expect(await go(mo, "")).toContain("2 days with more than one off");
       const bo = await go(mo, "team?request=1");
       expect(bo).toContain("Also off");
@@ -184,14 +184,34 @@ describe("the pages", () => {
       await go(ann, "mine?new");
       await send(ann, "team", [{ op: "add", path: "/requests/-", value: { starts: "2026-12-31", ends: "2027-01-01" } }]);
       asked = 2;
-      const year = await go(mo, "calendar");
+      const year = await go(mo, "calendar/2026-12");
       expect(year).toContain("December 2026");
       expect(year).toContain("January 2027");
+      expect(year).toContain("February 2027"); // three months from the one it names
+      expect(year).toContain('data-value="calendar/2026-09"'); // previous: the three before
+      expect(year).toContain('data-value="calendar/2027-03"'); // next: the three after
+      expect(await go(mo, "calendar/2027-01")).toContain('data-value="calendar/2026-10"'); // back across the year
     } finally {
       for (let i = 0; i < asked; i++) await send(ann, "ledger", [{ op: "remove", path: "/latest" }]); // the asks taken back: as it was
       ann.ws.close();
       mo.ws.close();
     }
+  });
+
+  test("the calendar opens at this month, today marked, and Today brings it back from wherever it has been moved to", async () => {
+    const mo = await open((await signIn("mo@leave.example", "mo-password")).sessionId!);
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    const title = now.toLocaleDateString("en-GB", { timeZone: "UTC", month: "long", year: "numeric" });
+    const here = await go(mo, "calendar");
+    expect(here).toContain(title);
+    expect(here).toContain(`aria-current="date">${Number(today.slice(8))}<span class="sr-only">, today</span>`);
+    expect(here).toMatch(/aria-label="Today" aria-pressed="true"/);
+    const away = await go(mo, "calendar/2031-05");
+    expect(away).toContain("May 2031");
+    expect(away).not.toContain('aria-current="date"');
+    expect(away).toMatch(/aria-label="Today" aria-pressed="false" data-write='[^']*' data-value="calendar"/);
+    mo.ws.close();
   });
 
   test("with every request declined, nobody is off, and a declined request tells of no one", async () => {
@@ -200,8 +220,9 @@ describe("the pages", () => {
     await send(mo, "team", [{ op: "replace", path: "/requests/2/status", value: "declined" }]);
     try {
       expect(await go(mo, "team?request=1")).not.toContain("Also off");
-      expect(await go(mo, "calendar")).toContain("Nobody is off.");
-      expect(await go(mo, "calendar?new")).toContain('data-page="calendar"'); // nothing is asked for from the calendar: he stays on it
+      expect(await go(mo, "calendar/2026-10")).toContain("Nobody is off in these months.");
+      expect(await go(mo, "calendar/2026-10?new")).toContain('data-page="calendar/2026-10"'); // nothing is asked for from the calendar: he stays on it
+      expect(await go(mo, "calendar/2026-13")).toContain('data-page="calendar/2026-10"'); // no such month: he stays where he was
     } finally {
       await send(mo, "ledger", [{ op: "remove", path: "/latest" }]);
       await send(mo, "ledger", [{ op: "remove", path: "/latest" }]);
@@ -243,6 +264,9 @@ describe("the rules, on their own", () => {
     expect(placed("attic")).toBeUndefined();
     expect(placed("calendar")).toBe("calendar");
     expect(placed("calendar?request=1")).toBe("calendar?request=1"); // a bar opens its request
+    expect(placed("calendar/2026-10?request=1")).toBe("calendar/2026-10?request=1");
+    expect(placed("calendar/2026-13")).toBeUndefined();
+    expect(placed("calendar/soon")).toBeUndefined();
     expect(placed("calendar?new")).toBeUndefined();
     expect(placed(undefined)).toBe("");
   });

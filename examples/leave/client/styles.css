@@ -42,6 +42,7 @@ h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
 .week { grid-auto-flow: row dense; row-gap: 3px; padding: 2px 0 var(--space-sm); border-top: 1px solid var(--line); min-height: 3rem; }
 .week .date { grid-row: 1; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.6; border-radius: var(--radius-inner); }
 .week .date.clash { background: var(--danger); color: var(--card); font-weight: 700; }
+.week .date.today { box-shadow: inset 0 0 0 2px var(--accent); color: var(--accent); font-weight: 700; }
 /* who is who: d3's Tableau10 (d3-scale-chromatic), less its red -- red is a clash here -- with purple
    and brown darkened so a name on them reads at 4.5:1. The same person, the same colour, everywhere. */
 .who-0 { --who: #4e79a7; --who-ink: #ffffff; }

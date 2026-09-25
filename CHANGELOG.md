@@ -42,7 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   answers. A sign-in page posts an email and password to the example's own route (never over the
   socket); a good one starts a fresh session with who it is, a wrong one is told on the page.
   Twelve stories, from asking and answering to what nobody may do.
-- **leave's calendar**: the team's days off month by month, a week to a row, each request a bar
+- **leave's calendar**: three months at a time from this one, today marked, moved through with
+  Previous, Today and Next (the months are in the address, `calendar/2026-10`, so the URL and
+  the back button follow them); the team's days off a week to a row, each request a bar
   across its days in its person's colour, with their name on it (a key says which colour is you),
   waiting a tint and approved filled, bars that share a day stacked, and each bar a button that
   opens its request's drawer (lit while it is open), to answer or take back from the calendar,

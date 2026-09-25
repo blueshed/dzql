@@ -14,6 +14,9 @@ export type Status = "asked" | "approved" | "declined";
 export type Request = { id: string; person_id: string; starts: string; ends: string; status: Status; answered_by: string | null };
 export type Team = { name: string; people: Person[]; requests: Request[] };
 
+/** The calendar at a month: `calendar/2026-10`. */
+const MONTH = /^calendar\/\d{4}-(0[1-9]|1[0-2])$/;
+
 /** An id as delta names a row: letters, digits and dashes. */
 const ID = /^[\w-]+$/;
 
@@ -80,10 +83,10 @@ export function alsoOff(t: Team, r: Request): { request: Request; days: number }
 
 // ───────────────────────────── where you are ─────────────────────────────
 
-/** An address this session may stand at, or undefined: the box, your leave, the team's or the calendar, and over it one request's drawer or the asking-first, and over your leave the ask. */
+/** An address this session may stand at, or undefined: the box, your leave, the team's, or the calendar (from this month, or from a month it names), and over it one request's drawer or the asking-first, and over your leave the ask. */
 export function placed(value: unknown): string | undefined {
   const { path, what, which = "" } = parseAddress(String(value ?? ""));
-  if (path !== "" && path !== "mine" && path !== "team" && path !== "calendar") return undefined;
+  if (path !== "" && path !== "mine" && path !== "team" && path !== "calendar" && !MONTH.test(path)) return undefined;
   if (what === undefined) return path;
   if (what === "new") return path === "mine" ? address(path, what) : undefined;
   if ((what === "request" || what === "confirm") && ID.test(which)) return address(path, what, which);

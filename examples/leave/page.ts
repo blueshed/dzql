@@ -51,20 +51,20 @@ function teamRows(t: Team, others: Request[], open: string | undefined): string[
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /**
- * The calendar: the months anyone is off, a week to a row. A request is a bar across the days it
+ * The calendar: three months from `from`, a week to a row, today marked. A request is a bar across the days it
  * covers in that week, in its person's colour with their name on it (yours without: the key says
  * which is you) -- waiting a tint, approved filled -- and bars that share a day stack, so a clash is
  * two bars over the same day, and its date is marked. A bar that goes on past the week, or the
  * month, is open at that end. Declined days are nobody's. A bar is its request: a tap opens its
  * drawer, and it is lit while the drawer is open.
  */
-function calendar(t: Team, me: Person, off: Map<string, Request[]>, open: string | undefined): string {
-  const offDays = [...off.keys()].sort();
-  if (!offDays.length) return `<p class="note">Nobody is off.</p>`;
-  const months: string[] = [];
-  for (let m = offDays[0]!.slice(0, 7); m <= offDays.at(-1)!.slice(0, 7); m = nextMonth(m)) months.push(m);
+function calendar(t: Team, me: Person, off: Map<string, Request[]>, open: string | undefined, path: string, from: string, today: string): string {
+  const months = [from, nextMonth(from), nextMonth(nextMonth(from))];
+  const [first, last] = [`${months[0]}-01`, `${months[2]}-31`];
   const clashing = new Set(clashes(off));
-  const requests = t.requests.filter((r) => r.status !== "declined").sort((a, b) => a.starts.localeCompare(b.starts) || b.ends.localeCompare(a.ends));
+  const requests = t.requests
+    .filter((r) => r.status !== "declined" && r.ends >= first && r.starts <= last)
+    .sort((a, b) => a.starts.localeCompare(b.starts) || b.ends.localeCompare(a.ends));
   const bar = (r: Request, week: (string | null)[]) => {
     const cols = week.map((d, i) => (d && d >= r.starts && d <= r.ends ? i : -1)).filter((i) => i >= 0);
     if (!cols.length) return "";
@@ -72,7 +72,7 @@ function calendar(t: Team, me: Person, off: Map<string, Request[]>, open: string
     const name = r.person_id === me.id ? "" : nameOf(t, r.person_id);
     const ends = `${r.starts < week[c0]! ? " open-start" : ""}${r.ends > week[c1]! ? " open-end" : ""}`;
     const said = `${r.person_id === me.id ? "you" : name}, ${WORD[r.status]}, ${days(r)}`;
-    return `<button type="button" class="bar ${r.status} who-${colourOf(t, r.person_id)}${ends}" style="grid-column: ${c0 + 1} / span ${c1 - c0 + 1}" aria-pressed="${open === r.id}"${go(address("calendar", "request", r.id))}><span aria-hidden="true">${esc(name)}</span><span class="sr-only">${esc(said)}</span></button>`;
+    return `<button type="button" class="bar ${r.status} who-${colourOf(t, r.person_id)}${ends}" style="grid-column: ${c0 + 1} / span ${c1 - c0 + 1}" aria-pressed="${open === r.id}"${go(address(path, "request", r.id))}><span aria-hidden="true">${esc(name)}</span><span class="sr-only">${esc(said)}</span></button>`;
   };
   const month = (m: string) => {
     const first = new Date(`${m}-01T00:00:00Z`);
@@ -82,17 +82,25 @@ function calendar(t: Team, me: Person, off: Map<string, Request[]>, open: string
     while (cells.length % 7) cells.push(null);
     const weeks = Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
     const week = (wk: (string | null)[]) =>
-      `<div class="week">${wk.map((d, i) => `<span class="date${d && clashing.has(d) ? " clash" : ""}" style="grid-column: ${i + 1}">${d ? Number(d.slice(8)) : ""}${d && clashing.has(d) ? '<span class="sr-only">, a clash</span>' : ""}</span>`).join("")}${requests.map((r) => bar(r, wk)).join("")}</div>`;
+      `<div class="week">${wk.map((d, i) => `<span class="date${d && clashing.has(d) ? " clash" : ""}${d === today ? " today" : ""}" style="grid-column: ${i + 1}"${d === today ? ' aria-current="date"' : ""}>${d ? Number(d.slice(8)) : ""}${d === today ? '<span class="sr-only">, today</span>' : ""}${d && clashing.has(d) ? '<span class="sr-only">, a clash</span>' : ""}</span>`).join("")}${requests.map((r) => bar(r, wk)).join("")}</div>`;
     const title = first.toLocaleDateString("en-GB", { timeZone: "UTC", month: "long", year: "numeric" });
     return `<section class="month" aria-label="${esc(title)}"><h3 class="cap">${esc(title)}</h3><div class="weekdays" aria-hidden="true">${WEEKDAYS.map((d) => `<span>${d}</span>`).join("")}</div>${weeks.map(week).join("")}</section>`;
   };
   const people = [...new Set(requests.map((r) => r.person_id))].sort((a, b) => colourOf(t, a) - colourOf(t, b)); // the team's order, the colours' own
-  const key = `<ul class="key" aria-label="Who is who">${people.map((id) => `<li>${swatch(t, id)}${esc(id === me.id ? "you" : nameOf(t, id))}</li>`).join("")}</ul>`;
+  const key = people.length
+    ? `<ul class="key" aria-label="Who is who">${people.map((id) => `<li>${swatch(t, id)}${esc(id === me.id ? "you" : nameOf(t, id))}</li>`).join("")}</ul>`
+    : `<p class="note">Nobody is off in these months.</p>`;
   return part("calendar", `<div id="calendar">${key}<div class="calendar">${months.map(month).join("")}</div></div>`);
 }
 
 /** A person's colour, as a dot beside their name. */
 const swatch = (t: Team, personId: string): string => `<span class="swatch who-${colourOf(t, personId)}" aria-hidden="true"></span>`;
+
+/** The month before `m` (YYYY-MM). */
+const prevMonth = (m: string): string => {
+  const [y, mo] = m.split("-").map(Number) as [number, number];
+  return mo === 1 ? `${y - 1}-12` : `${y}-${String(mo - 1).padStart(2, "0")}`;
+};
 
 /** The month after `m` (YYYY-MM). */
 const nextMonth = (m: string): string => {
@@ -129,6 +137,9 @@ export function render(sessionId: string): string {
   if (!me) return signInPage(sessionId);
   const t = teamOf();
   const { path, what, which } = parseAddress(page);
+  const [area, month] = path.split("/");
+  const today = new Date().toISOString().slice(0, 10);
+  const from = month ?? today.slice(0, 7); // the calendar starts at the month its address names, or this one
   const open = what === "request" || what === "confirm" ? which : undefined;
   const mine = t.requests.filter((r) => r.person_id === me.id);
   const others = t.requests.filter((r) => r.person_id !== me.id);
@@ -145,8 +156,17 @@ export function render(sessionId: string): string {
       ? { key: "mine", tools: [addTool(go(address("mine", "new")), "Ask for leave")], body: rows(mine.map((r) => requestRow(r, path, open)), "Nothing asked for yet. The plus asks.", "mine-rows") }
       : path === "team"
         ? { key: "team", body: rows(teamRows(t, others, open), "Nobody else has asked.", "team-rows") }
-        : path === "calendar"
-          ? { key: "calendar", body: calendar(t, me, off, open) }
+        : area === "calendar"
+          ? {
+              key: "calendar",
+              // moving through time: the three months before, back to today, the three after
+              tools: [
+                tool("Previous", { icon: "chevron-left", iconOnly: true, write: go(`calendar/${prevMonth(prevMonth(prevMonth(from)))}`) }),
+                tool("Today", { icon: "today", iconOnly: true, pressed: from === today.slice(0, 7), write: go("calendar") }),
+                tool("Next", { icon: "chevron-right", iconOnly: true, write: go(`calendar/${nextMonth(nextMonth(nextMonth(from)))}`) }),
+              ],
+              body: calendar(t, me, off, open, path, from, today),
+            }
           : undefined;
   const LABEL: Record<string, string> = { mine: "your leave", team: "the team", calendar: "the calendar" };
   const trail: Crumb[] = [{ label: t.name, back: go("") }, ...(opened ? [{ label: LABEL[opened.key]! }] : [])];
