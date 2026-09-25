@@ -44,6 +44,8 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .tool.danger { border-color: var(--danger); color: var(--danger); }
 .tool[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--card); }
 .pick { display: inline-flex; gap: var(--space-xs); }
+/* why a write was refused, beside the control that sent it (src/refusal.ts) */
+.refused { margin: var(--space-xs) 0 0; color: var(--danger); }
 
 /* ── a stack: square buttons with a hairline between, drawn like a Leaflet control ── */
 .stack { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); overflow: hidden; }

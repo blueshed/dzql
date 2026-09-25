@@ -29,7 +29,8 @@ export type Compartment = {
    * May this connection apply `op` to `docId`? Asked only once the connection sees `docId`, so a
    * compartment whose documents are all alike to the writer (the room you are in) can ignore it; one
    * whose name is criteria (this month's appointments, last month's) judges by it. Omitted: nobody
-   * may (a live, sourced or static document, which no one writes from the wire).
+   * may (a live, sourced or static document, which no one writes from the wire). A refusal a
+   * person should be told throws `refuse(reason)` (src/refusal.ts) instead of returning false.
    */
   permit?(ws: ServerWebSocket<ConnectionData>, op: PatchOp, docId: string): boolean;
   /** What kind of document it is: where its truth lives. Default `written`. */
@@ -46,7 +47,8 @@ export type Compartment = {
   /**
    * For a fresh write only: the ops as the document takes them, from
    * the ops as the wire said them -- an id minted, the author and the time added, a blank taken out.
-   * An undo or a redo is delta's, and never shaped.
+   * An undo or a redo is delta's, and never shaped. Nothing: refused without a word; `refuse(reason)`
+   * thrown: refused, and the person told why.
    */
   shape?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): PatchOp[];
   /** After a change to it has been told -- to keep what follows from it true (who is here, a list of rooms). */

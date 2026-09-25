@@ -6,6 +6,7 @@ import { prefixDoc, splitDoc } from "../names";
 import { shownTo } from "../reading";
 import type { Compartment } from "./compartment";
 import { createLedgerCompartment } from "./ledger";
+import { createRefusalCompartment } from "../refusal";
 import { sees, wireName, wireOps } from "./audience";
 import { createDocuments, settled, type Documents } from "../documents";
 
@@ -20,7 +21,7 @@ export type InspectDoc = { doc: string; version: number; entries: InspectEntry[]
 export type Inspection = { docs: InspectDoc[] };
 
 export type Assembled = {
-  /** The example's compartments and the kernel's own ledger, for lifecycle (`onOpen`/`onClose`) and write dispatch. */
+  /** The example's compartments and the kernel's own (the ledger, refusals), for lifecycle (`onOpen`/`onClose`) and write dispatch. */
   compartments: Compartment[];
   /** Every entry above, indexed by the docType it owns -- what server.ts's dispatcher resolves a `{doc, ops}` write against. */
   byDocType: Map<string, Compartment>;
@@ -32,18 +33,18 @@ export type Assembled = {
 };
 
 /**
- * Wires one example's compartments into a running set: appends the kernel's own ledger
- * compartment, and returns the render/inspect/dispatch surface server.ts needs -- without
+ * Wires one example's compartments into a running set: appends the kernel's own ledger and
+ * refusal compartments, and returns the render/inspect/dispatch surface server.ts needs -- without
  * server.ts ever importing a specific example's compartments itself.
  */
 export function assemble(example: Example): Assembled {
-  const ledger = createLedgerCompartment(example.active);
+  const kernel = [createLedgerCompartment(example.active), createRefusalCompartment(example.delta)];
 
-  const compartments = [...example.compartments, ledger];
+  const compartments = [...example.compartments, ...kernel];
   const byDocType = new Map<string, Compartment>();
   for (const compartment of compartments) {
     // two owners of one type would leave the first silently unreachable
-    if (byDocType.has(compartment.docType)) throw new Error(`${example.name}: two compartments own "${compartment.docType}"${compartment === ledger ? " (the kernel's own ledger)" : ""}`);
+    if (byDocType.has(compartment.docType)) throw new Error(`${example.name}: two compartments own "${compartment.docType}"${kernel.includes(compartment) ? " (the kernel's own)" : ""}`);
     byDocType.set(compartment.docType, compartment);
   }
 

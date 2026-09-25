@@ -66,6 +66,14 @@ export type Compartment = {
   example's to choose (`/guests/2/minifigure/top`); `shape` translates it, and a write that shapes
   to nothing is refused (the page handed back). Undo and redo are delta's: an entry's inverse,
   never shaped.
+- **A refusal can say why.** Where a person can make a write the server must refuse -- a code
+  nobody has -- `permit` or `shape` throws `refuse("That code was not recognised.")`
+  (`src/refusal.ts`). The kernel keeps the reason in the session's own `refusal` document (in
+  memory, off the ledger: a refusal is not something that happened) until the session's next
+  write, and the page draws it beside the control that sent it: `refused(sessionId, doc, path)`,
+  the `doc` and `path` of that control's `data-write`, gives the line (`<p class="refused"
+  role="alert">`) or nothing. A plain `false` stays silent: a write no control offers has
+  nowhere to say why. Where the browser can refuse it first (`required`, `pattern`), let it.
 - **By kind.** `written` is on the ledger and undoable; a `fact` is recorded, never undone (the
   ticker's ticks); `live` is held in memory and written by the server, never from the wire
   (chat's who is here); `sourced` and `static` are read, never written.

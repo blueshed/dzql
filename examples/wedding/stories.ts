@@ -52,7 +52,7 @@ export const stories: Stories = {
   stories: [
     // ── The welcome, before a code ──
     story("A stranger types the couple's code and is on the board", { as: "stranger", does: session("/code", "DASH"), seen: ["stranger"] }),
-    story("A stranger types a code nobody has, and the welcome says so", { as: "stranger", does: session("/code", "NOPE"), seen: ["stranger"] }),
+    story("A stranger types a code nobody has, and is told it was not recognised", { as: "stranger", cannot: session("/code", "NOPE"), told: "That code was not recognised." }),
     story("A stranger asks for their code again, and the welcome says it is sent if known", { as: "stranger", does: session("/resend", "ada@example.com"), seen: ["stranger"] }),
     story("Without a code there is no page to go to", { as: "stranger", cannot: session("/page", "gifts") }),
 

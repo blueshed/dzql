@@ -68,7 +68,8 @@ ticker has one), `seen` is just a list of names. `unseen` names who must notice 
 cast left them; anyone in neither is not asked, since a home page with counts on it changes for
 many reasons and a story asserts only what it says. `cannot` is a refusal: the permit table's
 other half, told as a sentence, whichever layer refuses (the permit, a document that finds nothing
-to change, a session with no document to resolve). Undo is a story too, and a redo, and the
+to change, a session with no document to resolve). A `cannot` with `told` also says what the
+refused person is shown, beside the control that sent it (`refuse`, in the eta-app skill). Undo is a story too, and a redo, and the
 harness runs them for free: every `does` is followed by its undo and its redo, and the seeing
 must hold in reverse -- unless the ledger says the write is a fact (a tick), which undo must
 leave alone, or the author has since gone (logged out), who has no undo to press.
@@ -124,7 +125,8 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    been told of nothing: sent no document's ops, by the write, its undo or its redo (a page that
    reads a document is told every change to it, shown or not). For a `cannot`, nothing anywhere
    may differ, the ledger must not have moved, and the writer must be answered: a refusal hands
-   the page back. Whatever the kernel reports failing while a story runs fails it, so a refusal
+   the page back. With `told`, the writer's page must show that reason, and nothing else of it
+   may differ. Whatever the kernel reports failing while a story runs fails it, so a refusal
    that is really a crash is not a refusal.
 4. Undo, and every page must be as it was before; redo, and every page must be as it was after.
    Skipped when the write is off the ledger (its compartment says `ledger: false`, and the kernel

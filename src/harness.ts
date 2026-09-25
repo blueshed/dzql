@@ -7,6 +7,7 @@ import { applyPatch, type PatchOp } from "./json-patch";
 import { settled } from "./documents";
 import { onFailure } from "./failed";
 import { comparable, splitTag } from "./parts";
+import { said } from "./refusal";
 
 export { comparable };
 
@@ -19,7 +20,7 @@ export { comparable };
 // must go back and forth with it; a write the ledger calls a fact (undoable = 0) must survive its
 // undo instead, and an author the example no longer counts as active (logged out) gets no undo.
 // A `cannot` must change no page, add nothing to the ledger, and be answered: a refusal hands the
-// writer's page back. Delivery is checked as well as pages: a member the story says is `unseen`
+// writer's page back, and shows them why when the story says what they are `told`, and nothing else. Delivery is checked as well as pages: a member the story says is `unseen`
 // must be told of no document -- no patch -- by the write, its undo or its redo, and anything the
 // kernel reports failing while a story runs (a message, a drawing, a change being told) fails the
 // story. Each story runs inside one database transaction that is rolled back afterwards, so every
@@ -266,7 +267,14 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
         const from = mark(cast);
         await send(cast, who, story.cannot);
         if (!sentSince(who, from).some((h) => h.type === "render")) failures.push(`refused, but ${who.name} was not answered: a refusal hands the page back`);
-        compare(before, await snapshot(cast), cast, "refused, but", failures);
+        const after = await snapshot(cast);
+        if (story.told !== undefined) {
+          // told why: the one change the writer's page may show
+          const page = after.get(who.name)!;
+          if (!page.includes(said(story.told))) failures.push(`refused, but ${who.name} was not told "${story.told}"`);
+          after.set(who.name, page.replace(said(story.told), ""));
+        }
+        compare(before, after, cast, "refused, but", failures);
         await stale(cast, "after the refusal", failures);
         if (ledgerMax() !== ledgerBefore) failures.push("refused, but the ledger moved");
         return { name: story.name, failures };

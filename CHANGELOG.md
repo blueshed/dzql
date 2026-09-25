@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A refused write can say why.** A compartment's `permit` or `shape` throws
+  `refuse(reason)` (`src/refusal.ts`); the kernel keeps the reason in the session's own
+  `refusal` document -- in memory, off the ledger -- until the session's next write, and a page
+  draws it beside the control that sent it with `refused(sessionId, doc, path)`. A plain `false`
+  stays silent. The kernel appends a `refusal` compartment beside its ledger, so an example may
+  not own a type of that name.
+- **`told` on a `cannot` story**: the reason the refused person must be shown. Their page may
+  change by that line and nothing else; a reason shown that no story says fails as a change.
+
+### Changed
+
+- **The wedding refuses an unknown code** instead of writing "That code was not recognised."
+  into the visit, so a wrong code is no longer a write, and no longer on the ledger.
+
 ## [0.48.0] - 2026-09-25
 
 ### Breaking (for example authors)

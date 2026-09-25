@@ -9,6 +9,7 @@ import { failed } from "./failed";
 import { splitDoc } from "./names";
 import { drawing, shownTo } from "./reading";
 import { diff, type Drawn } from "./parts";
+import { Refusal, tell } from "./refusal";
 
 type Socket = Bun.ServerWebSocket<ConnectionData>;
 
@@ -185,13 +186,17 @@ export function createServer(example: Example, port: number | string = process.e
     }
     // A write that applied something is told from its change, the writer's page with the rest.
     // Nothing applied -- refused, not a write at all, an unknown document, nothing to walk, or a
-    // failure on the way -- hands the page back.
+    // failure on the way -- hands the page back. A refusal that says why is kept for the page to
+    // draw, until the session's next write (src/refusal.ts).
     let wrote = false;
+    let refusal: Refusal | undefined;
     try {
       wrote = isWrite(message) && (await write(ws, message));
     } catch (err) {
-      failed("handling a write", err);
+      if (err instanceof Refusal) refusal = err;
+      else failed("handling a write", err);
     }
+    if (isWrite(message)) await tell(ws.data.sessionId, refusal && { doc: message.doc, path: message.ops[0]!.path, reason: refusal.reason });
     if (!wrote) void redraw(ws, true);
   }
 

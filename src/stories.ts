@@ -33,6 +33,9 @@ export type Told = { as: string } & (
   | {
       /** A refusal: the permit table's other half. Nothing may change, and the ledger must not move. */
       cannot: Write;
+      /** What the refused person is told, beside the control that sent it (`refuse`, src/refusal.ts):
+       * the one change their page may show. Omitted: they are told nothing. */
+      told?: string;
     }
 );
 

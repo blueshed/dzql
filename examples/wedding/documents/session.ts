@@ -4,10 +4,11 @@ import { parseAddress, patchCollections, type Collections } from "../../../src/b
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { integer } from "./values";
+import { refuse } from "../../../src/refusal";
 
 // A visit, kept in delta (`session:<id>`, ../delta.ts): what one session is doing on the site.
 // `code` is who they are; the page and how its collections are read is where they are; `note` is
-// the one line the welcome says back. Nothing here goes on the ledger: which page a tab is on, or
+// what the welcome says back to a resend. Nothing here goes on the ledger: which page a tab is on, or
 // which drawer it has open, is not the wedding's history, and a household pressing Undo means
 // "take back my last answer", never "go back a page".
 
@@ -83,8 +84,8 @@ function after(before: Visit, ops: PatchOp[]): Visit {
     if (field === "code") {
       const code = removing ? "" : String(op.value ?? "").trim().toUpperCase();
       if (removing) Object.assign(next, { code: null, page: null, reading: null, filter: null, hide: null, note: null });
-      // The one refusal the welcome says out loud: the page would otherwise look exactly as before.
-      else if (!code || !whose(code)) next.note = "That code was not recognised.";
+      // Said beside the code box (src/refusal.ts): the page would otherwise look exactly as before.
+      else if (!code || !whose(code)) throw refuse("That code was not recognised.");
       else Object.assign(next, { code, page: null, reading: null, filter: null, hide: null, note: null });
     } else if (field === "resend") {
       const email = String(op.value ?? "").trim();

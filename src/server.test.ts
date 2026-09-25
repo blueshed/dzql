@@ -12,6 +12,7 @@ import { part } from "./parts";
 import { createServer } from "./server";
 import { assemble, type Inspection } from "./compartments";
 import { onFailure } from "./failed";
+import { refuse, refused } from "./refusal";
 
 // A tiny, self-contained example -- not chat, not anything under the examples directory -- so
 // this file proves the kernel on its own: a note per session (its own document), and months of
@@ -52,6 +53,7 @@ const noteCompartment: Compartment = {
   },
   shape(_ws, _id, ops) {
     if (ops.some((op) => op.value === "boom")) throw new Error("boom"); // a write whose handling fails
+    if (ops.some((op) => op.value === "")) throw refuse("A note needs words."); // a write refused, and why
     return ops;
   },
 };
@@ -92,7 +94,7 @@ function makeExample(name: string): Example {
     compartments: [noteCompartment, monthCompartment],
     render: (sessionId) => {
       if (readNote(sessionId) === "undrawable") throw new Error("undrawable"); // a page whose drawing fails
-      return `<p class="note">${readNote(sessionId)}</p>` +
+      return `<p class="note">${readNote(sessionId)}</p>` + refused(sessionId, "note", "/text") +
         (showing.get(sessionId) ?? []).map((m) => part(`month-${m}`, `<ul data-month="${m}">${readMonth(m).map((a) => part(`a-${a.id}`, `<li>${a.what}</li>`)).join("")}</ul>`)).join("");
     },
     active: () => true,
@@ -345,6 +347,43 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
+  test("a refusal that says why is shown to its writer alone, off the ledger, until their next write; nobody writes one from the wire", async () => {
+    const ws = connect(server);
+    const other = connect(server);
+    await Promise.all([opened(ws), opened(other)]);
+    await expectMessage(ws, "render");
+    await expectMessage(other, "render");
+    // everything a write is answered with: events are handled in order, so all that comes before
+    // the answer to an inspect sent after it, and the inspect's own answer
+    const answer = async (doc: string, ops: PatchOp[]): Promise<{ messages: WireMessage[]; inspection: Inspection }> => {
+      write(ws, doc, ops);
+      ws.send(JSON.stringify({ type: "inspect" }));
+      const messages: WireMessage[] = [];
+      for (let m = await nextMessage(ws); ; m = await nextMessage(ws)) {
+        if (m.type === "inspect") return { messages, inspection: m as unknown as Inspection };
+        messages.push(m);
+      }
+    };
+    const page = (messages: WireMessage[]): string => htmlOf(messages.filter((m) => m.type === "render").at(-1)!);
+    const patched = (messages: WireMessage[]): (string | undefined)[] => messages.filter((m) => m.type === "patch").map((m) => m.doc);
+    const reason = '<p class="refused" role="alert">A note needs words.</p>';
+
+    const told = await answer("note", [{ op: "replace", path: "/text", value: "" }]);
+    expect(page(told.messages)).toContain(reason);
+    expect(patched(told.messages)).toEqual(["refusal"]); // its own, named by type alone
+    expect(told.inspection.docs.find((d) => d.doc === "note")!.entries).toEqual([]); // nothing happened
+    await server.idle();
+    expect(queues.get(other)!).toEqual([]); // the other session is told nothing
+
+    // nobody writes a refusal from the wire; and that write, refused without a word, is the
+    // session's next, so what it was told goes
+    const next = await answer("refusal", [{ op: "replace", path: "/reason", value: "I say so." }]);
+    expect(page(next.messages)).not.toContain("refused");
+    expect(patched(next.messages)).toEqual(["refusal"]);
+    ws.close();
+    other.close();
+  });
+
   test("an unpermitted op is rejected without crashing: no patch echo, just a re-render", async () => {
     const ws = connect(server);
     await opened(ws);
@@ -371,7 +410,7 @@ describe("createServer's one-example-per-process invariant", () => {
     const twice = { ...makeExample("twice"), compartments: [noteCompartment, noteCompartment] };
     expect(() => assemble(twice)).toThrow('twice: two compartments own "note"');
     const ledgered = { ...makeExample("ledgered"), compartments: [{ ...noteCompartment, docType: "ledger" }] };
-    expect(() => assemble(ledgered)).toThrow(`ledgered: two compartments own "ledger" (the kernel's own ledger)`);
+    expect(() => assemble(ledgered)).toThrow(`ledgered: two compartments own "ledger" (the kernel's own)`);
   });
 
   test("calling it again with the very same example object does not throw", () => {
