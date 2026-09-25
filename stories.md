@@ -119,16 +119,25 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
 
 1. Connect the cast over real sockets to a real server, apply each member's setup writes, and
    render every member fresh from the tables.
-2. Send the story's `does` as its session, and wait for the wire to go quiet.
+2. Put the author where the story says they act (`from`: the drawer or modal that holds the
+   control), and find on their open page the control that sends the story's write -- a
+   `data-write` with its document, op and path, and a button's own value; a field or a form sends
+   whatever is typed; an applet declares what it writes (`data-writes`). None is a failure: a
+   story nobody can do from a page is not a story (`outside` marks a write from a feed or the CLI).
+   Then send the `does` as its session, wait for the wire to go quiet, and it must have landed:
+   someone was told of a changed document.
 3. Canon 1. Render every member fresh again. For each name in `seen`, that member's page must
    differ from before; for everyone else, nothing of theirs may differ; and each name in `unseen`
    must have been told of nothing: sent no document's ops, by the write, its undo or its redo (a
    page that reads a document is told every change to it, shown or not). For a `cannot`, nothing anywhere
    may differ, the ledger must not have moved, and the writer must be answered: a refusal hands
    the page back. With `told`, the writer's page must show that reason, and nothing else of it
-   may differ. Whatever the kernel reports failing while a story runs fails it, so a refusal
+   may differ; without it, a button on the writer's page that sends exactly the refused write is
+   a control that always fails. Whatever the kernel reports failing while a story runs fails it, so a refusal
    that is really a crash is not a refusal.
 4. Undo, and every page must be as it was before; redo, and every page must be as it was after.
+   Where the author stands is theirs, not the write's: a write that put a modal away is looked
+   at from where each was taken.
    Skipped when the write is off the ledger (its compartment says `ledger: false`, and the kernel
    reports a write that disagrees), when the ledger says it is a fact, or when its author
    has gone -- before the undo, or because of it (undoing the write that gave you your name).
@@ -143,6 +152,9 @@ for more than it checks:
   a write that reaches the tables and not someone's open page fails, by name. An applet that takes
   its document's patches itself is compared without its props. What the morph then does with the
   HTML, and what an applet draws, are the browser tests' to check.
+- **A permitted write no story tells is not found.** Every control a story uses is on a page, and
+  a button offered that is always refused fails; but the other way round -- a write the server
+  accepts that no page offers -- needs a list of what is permitted.
 - **No permit table is checked against the stories.** The intent was that a permitted write no
   story tells is a story nobody wrote. While permit tables are written by hand that check would
   run backwards -- it would push a builder to write a story after a feature, to justify it -- so it
@@ -156,8 +168,9 @@ for more than it checks:
 
 - **Not a modelling tool.** No `model.db`, no site to browse the entities, no predicates over a
   schema. The stories are in the app's own repo, in one file, in the wire's words.
-- **Not a story language.** A story is a TypeScript object with five keys and a name. If it
-  needs a sixth key the first `stories.ts` will say so; it will not need a grammar.
+- **Not a story language.** A story is a TypeScript object with a name and a few keys: who,
+  the write or the refusal, who sees it, and where the author acts. Each key came from a story
+  that needed it; it will not need a grammar.
 - **Not generated code.** Claude writes the compartments by hand from the stories, and a person
   can read both. When the permit table is the first thing derived rather than written, that is
   one function over the stories, not a code generator.

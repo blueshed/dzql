@@ -2,7 +2,7 @@
 import { address } from "../../../src/bento";
 import { write } from "../../../src/html";
 
-export { esc, join, write } from "../../../src/html";
+export { esc, join, write, writes } from "../../../src/html";
 
 /** Going to a page is a write to the session: the trail below the root ("" is the box at the root). */
 export const nav = (page: string): string => write("session", "replace", "/page", page);

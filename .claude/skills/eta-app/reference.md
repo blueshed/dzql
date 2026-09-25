@@ -293,6 +293,10 @@ and its page would change for symbols nobody on it watches. Register in `client/
 (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`) when there is drawing worth
 testing. `client/index.html` must have an element with `id="app"`.
 
+**An applet's controls are drawn in the browser**, so the stories cannot find them in the page.
+Its mount says what they write: `writes(doc, path)` (src/html.ts) puts `data-writes` on it, and a
+story's write under that path counts as offered (the wedding's dress and menu).
+
 ## CLI
 
 `src/cli.ts` knows `inspect`, `watch`, `undo`, `redo` and `write <doc> <op> <path> [value]`. An

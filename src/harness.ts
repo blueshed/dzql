@@ -112,6 +112,52 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
   return found;
 }
 
+/**
+ * A control a page offers (src/html.ts `write`): the document, op and path it writes, and the value
+ * a button carries (`data-value`, sent as a string). A field or a form writes whatever is typed, so
+ * any value; so does the page's address (`data-page-write`). An applet draws its own controls in
+ * the browser: one on a document (`data-doc`) offers any write to it, and one whose mount says what
+ * it writes (`data-writes`, src/html.ts) any write under that path.
+ */
+export type Control = { doc: string; op?: string; path?: string; value?: string; free: boolean; under?: true };
+
+/** Every control on a page, as the server drew it. */
+export function controlsOn(page: string): Control[] {
+  const found: Control[] = [];
+  const spec = (attr: string | null) => (attr === null ? undefined : (JSON.parse(unescape(attr)) as { doc: string; op: string; path: string }));
+  new HTMLRewriter()
+    .on("[data-write]", {
+      element(el) {
+        const s = spec(el.getAttribute("data-write"))!;
+        const value = el.getAttribute("data-value");
+        found.push({ ...s, value: value === null ? undefined : unescape(value), free: ["form", "input", "textarea", "select"].includes(el.tagName) });
+      },
+    })
+    .on("[data-page-write]", { element: (el) => void found.push({ ...spec(el.getAttribute("data-page-write"))!, free: true }) })
+    .on("[data-applet][data-doc]", { element: (el) => void found.push({ doc: el.getAttribute("data-doc")!, free: true }) })
+    .on("[data-writes]", { element: (el) => void found.push({ ...spec(el.getAttribute("data-writes"))!, free: true, under: true }) })
+    .transform(page);
+  return found;
+}
+
+/** Where a page stands: its address, which the kernel's client mirrors in the URL (`data-page`). */
+export const placeOf = (page: string): string | undefined => {
+  const m = /\sdata-page="([^"]*)"/.exec(page);
+  return m ? unescape(m[1]!) : undefined;
+};
+
+/** The same document: named whole on one side and by its type alone on the other (`room`, `room:general`) counts. */
+const sameDoc = (a: string, b: string): boolean => a === b || a.startsWith(`${b}:`) || b.startsWith(`${a}:`);
+
+/** Does `c` send this op to this document? A free control sends any value; a button only its own. */
+export function offers(c: Control, doc: string, op: PatchOp): boolean {
+  if (!sameDoc(c.doc, doc)) return false;
+  if (c.under) return op.path === c.path || op.path.startsWith(`${c.path}/`); // an applet's own, under its path
+  if (c.op === undefined) return true; // an applet on the document
+  if (c.op !== op.op || c.path !== op.path) return false;
+  return c.free || (c.value === undefined ? !("value" in op) || op.value === undefined : "value" in op && String(op.value) === c.value);
+}
+
 /** A member's applets after a render: one whose props the render changed starts again from them; one it left alone keeps the ops it has taken. */
 export function retake(taken: Map<string, Taken>, page: string): void {
   const now = takersOn(page);
@@ -264,9 +310,13 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       if (!who) return { name: story.name, failures: [`no one in the cast is called ${story.as}`] };
 
       if ("cannot" in story) {
+        if (story.from !== undefined && stories.at) await send(cast, who, stories.at(story.from));
         const before = await snapshot(cast);
         const ledgerBefore = ledgerMax();
         const from = mark(cast);
+        // P3: a button on the author's page that sends exactly this, refused without a word, is a control that always fails
+        const buttons = controlsOn(who.page).filter((c) => !c.free && c.op !== undefined);
+        if (story.told === undefined && story.cannot.ops.every((op) => buttons.some((c) => offers(c, story.cannot.doc, op)))) failures.push(`${who.name}'s page offers this, and it is refused without a word: a control that always fails`);
         await send(cast, who, story.cannot);
         if (!sentSince(who, from).some((h) => h.type === "render")) failures.push(`refused, but ${who.name} was not answered: a refusal hands the page back`);
         const after = await snapshot(cast);
@@ -292,10 +342,23 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       }
 
 
+      if (story.from !== undefined && stories.at) await send(cast, who, stories.at(story.from));
+      // P1: the author's page offers a control for it -- unless it comes from outside any page
+      const offered = controlsOn(who.page);
+      if (!story.outside) for (const op of story.does.ops) if (!offered.some((c) => offers(c, story.does.doc, op))) failures.push(`${who.name} has no control on their page for ${op.op} ${op.path} on ${story.does.doc}`);
+
       const before = await snapshot(cast);
       const ledgerBefore = ledgerMax();
+      const stood = placeOf(who.page);
       let from = mark(cast);
       await send(cast, who, story.does);
+      // Where the write left its author: answering a modal puts it away (off the ledger, a visit),
+      // so the undo and the redo are looked at from where each was taken -- where the author stands
+      // is theirs, not the write's.
+      const landed = placeOf(who.page);
+      const moved = stories.at && stood !== undefined && landed !== undefined && stood !== landed;
+      // it landed: a document changed, and someone was told (a refusal changes none)
+      if (!cast.some((m) => sentSince(m, from).some((h) => h.type === "patch" && h.doc !== "refusal"))) failures.push(`nothing landed: ${who.name}'s write was refused`);
       if (process.env.STORY_TRACE) for (const raw of who.inbox.slice(from.get(who))) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
       untold(cast, story.unseen, from, "after the story", failures);
       const after = await snapshot(cast);
@@ -316,6 +379,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       const facts = entries.every((e) => e.undoable === 0);
       from = mark(cast);
       await send(cast, who, UNDO);
+      if (moved) await send(cast, who, stories.at!(stood!));
       const afterUndo = await snapshot(cast);
       await stale(cast, "after undo", failures);
       untold(cast, story.unseen, from, "after undo", failures);
@@ -325,6 +389,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
         if (!(await active(who.sessionId))) return { name: story.name, failures }; // the undo was their going (a name taken back): no redo is theirs to press
         from = mark(cast);
         await send(cast, who, REDO);
+        if (moved) await send(cast, who, stories.at!(landed!));
         compare(after, await snapshot(cast), cast, "redo did not restore", failures);
         await stale(cast, "after redo", failures);
         untold(cast, story.unseen, from, "after redo", failures);

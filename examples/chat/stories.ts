@@ -21,7 +21,7 @@ export const stories: Stories = {
     story("Dee goes into general, and Ada and Bob see her arrive", { as: "dee", does: room("general"), seen: ["dee", "ada", "bob"], unseen: ["cy"] }),
     story("Dee names a room nobody has made, and is in it", { as: "dee", does: room("attic"), seen: ["dee"], unseen: ["ada", "bob", "cy"] }),
     story("Without a room name you cannot enter a room", { as: "dee", cannot: room("  ") }),
-    story("Cy comes over from the kitchen: Ada and Bob see Cy arrive, and the kitchen, empty now, leaves Dee's list of rooms", { as: "cy", does: room("general"), seen: ["cy", "ada", "bob", "dee"] }),
+    story("Cy leaves the kitchen, and the kitchen, empty now, leaves Dee's list of rooms", { as: "cy", does: leave, seen: ["cy", "dee"] }),
     story("Bob leaves, and the room shows him gone", { as: "bob", does: leave, seen: ["bob", "ada"] }),
 
     // ── say something ──

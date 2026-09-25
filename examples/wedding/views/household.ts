@@ -10,7 +10,7 @@ import type { Course, Gift, Wedding } from "../documents/wedding";
 import { addModal, addTool, boxPage, cell, choice, findControl, prop, readingSwitch, row, rows, sheet, tool, type Crumb, type OpenOptions } from "./bento";
 import type { DressProps } from "../applets/dress";
 import type { MenuProps } from "../applets/menu";
-import { esc, join, nav, open, write } from "./html";
+import { esc, join, nav, open, write, writes } from "./html";
 import { part } from "../../../src/parts";
 import { icon } from "./icons";
 import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
@@ -271,7 +271,7 @@ function everyoneOpen(v: HouseholdView, familyKey: string | null): { open: OpenO
 /** The dressing applet's mount for one guest: a part, sent alone when their look changes. */
 export function dressMount(v: HouseholdView, g: Guest): string {
   const dress: DressProps = { guestId: g.id, spec: specOf(g.minifigure), firstName: firstNameOf(g.name), out: isGuestOut(g, v.h) };
-  return part(`dress-${g.id}`, `<div id="dress-${g.id}" data-applet="dress" data-props="${esc(JSON.stringify(dress))}"></div>`);
+  return part(`dress-${g.id}`, `<div id="dress-${g.id}" data-applet="dress"${writes("household", `/guests/${g.id}/minifigure`)} data-props="${esc(JSON.stringify(dress))}"></div>`);
 }
 
 /** The menu applet's mount for one guest: a part, sent alone when a choice changes. */
@@ -284,7 +284,7 @@ export function menuMount(v: HouseholdView, g: Guest): string {
     out: isGuestOut(g, v.h),
     locked: !v.open,
   };
-  return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu" data-props="${esc(JSON.stringify(menu))}"></div>`);
+  return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu"${writes("household", `/guests/${g.id}/choices`)} data-props="${esc(JSON.stringify(menu))}"></div>`);
 }
 
 /** The guest's drawer: the dressing sheet, coming as one choice (rule 13, off the line), the hint, and the menu. */
@@ -297,6 +297,7 @@ function guestSheet(v: HouseholdView): string {
     [
       { text: "Yes", on: g.coming === 1, write: write("household", "replace", `/guests/${g.id}/coming`, "1"), kind: "yes" },
       { text: "No", on: g.coming === 0, write: write("household", "replace", `/guests/${g.id}/coming`, "0"), kind: "no" },
+      { text: "Not sure", on: g.coming === null, write: write("household", "remove", `/guests/${g.id}/coming`) },
     ],
     !v.open,
   );
@@ -349,6 +350,7 @@ function answerSheet(v: HouseholdView): string {
   const body = join(
     v.open ? "" : `<p class="note">Answers closed on ${esc(formatDay(v.w.deadline ?? ""))}.</p>`,
     `<div class="answer-options" role="radiogroup" aria-label="Are you coming?">${option("yes")}${option("maybe")}${option("no")}</div>`,
+    h.answer && v.open && `<div class="sheet-foot">${tool("Take back our answer", { kind: "quiet", write: write("household", "remove", "/answer") })}</div>`,
     `<div class="props">${prop(
       "Our words",
       `<form class="words-form"${write("household", "replace", "/message")}><textarea name="message" rows="3" placeholder="Say something to the couple" aria-label="Our words">${esc(h.message ?? "")}</textarea><div class="form-foot">${tool("Save our words", { write: "", submit: true })}</div></form>`,

@@ -35,17 +35,17 @@ export const stories: Stories = {
   at,
   stories: [
     // ── A watchlist is one person's ──
-    story("Ann watches Charlie Metals, and only her board grows", { as: "ann", does: watch("CHRL"), seen: ["ann"] }),
-    story("Ann, on her board, watches Charlie Metals, and it joins the board in front of her", { as: "ann", does: watch("CHRL"), seen: { ann: "board" } }),
-    story("Ann drops Alpha, and her board loses a row", { as: "ann", does: drop(0), seen: ["ann"] }),
+    story("Ann watches Charlie Metals, and only her board grows", { as: "ann", from: "board?new", does: watch("CHRL"), seen: ["ann"] }),
+    story("Ann, on her board, watches Charlie Metals, and it joins the board in front of her", { as: "ann", from: "board?new", does: watch("CHRL"), seen: { ann: "board" } }),
+    story("Ann drops Alpha, and her board loses a row", { as: "ann", from: "market?confirm=ALPH", does: drop(0), seen: ["ann"] }),
     story("Ann cannot watch a symbol the market does not quote", { as: "ann", cannot: watch("ZZZZ") }),
     story("Ann cannot watch Alpha twice", { as: "ann", cannot: watch("ALPH") }),
     story("Ann cannot drop a row she does not have", { as: "ann", cannot: drop(5) }),
 
     // ── The market is everyone's, through the applet ──
-    story("Bravo ticks, and every board watching it moves; nobody's page is rendered", { as: "feed", does: tick("BRVO", 65.01), seen: ["ann", "bo"] }),
-    story("Alpha ticks, and Bo, not watching it, notices nothing", { as: "feed", does: tick("ALPH", 190.0), seen: ["ann"] }),
-    story("A tick is a fact: it stays on the ledger and Undo passes over it", { as: "feed", does: tick("BRVO", 63.5), seen: ["ann", "bo"] }),
+    story("Bravo ticks, and every board watching it moves; nobody's page is rendered", { as: "feed", outside: true, does: tick("BRVO", 65.01), seen: ["ann", "bo"] }),
+    story("Alpha ticks, and Bo, not watching it, notices nothing", { as: "feed", outside: true, does: tick("ALPH", 190.0), seen: ["ann"] }),
+    story("A tick is a fact: it stays on the ledger and Undo passes over it", { as: "feed", outside: true, does: tick("BRVO", 63.5), seen: ["ann", "bo"] }),
     story("Nobody can invent a symbol from the wire", { as: "feed", cannot: tick("ZZZZ", 1) }),
     story("A price cannot be taken away, only moved", { as: "feed", cannot: { doc: "ticker", ops: [{ op: "remove", path: "/BRVO/price" }] } }),
 
@@ -55,8 +55,8 @@ export const stories: Stories = {
     story("Ann cannot set her clock to a city nobody has", { as: "ann", cannot: city("Mars/Olympus") }),
 
     // ── Where you stand decides what you see ──
-    story("Bravo ticks; Ann, reading her board as a list, and Bo, in the market, each see the row move", { as: "feed", does: tick("BRVO", 66.6), seen: { ann: "board @ reading.board=list", bo: "market" } }),
-    story("Bravo ticks while Ann has its drawer open: her drawer's price moves with it, and so does Bo's board", { as: "feed", does: tick("BRVO", 66.7), seen: { ann: "market?symbol=BRVO", bo: "board" } }),
+    story("Bravo ticks; Ann, reading her board as a list, and Bo, in the market, each see the row move", { as: "feed", outside: true, does: tick("BRVO", 66.6), seen: { ann: "board @ reading.board=list", bo: "market" } }),
+    story("Bravo ticks while Ann has its drawer open: her drawer's price moves with it, and so does Bo's board", { as: "feed", outside: true, does: tick("BRVO", 66.7), seen: { ann: "market?symbol=BRVO", bo: "board" } }),
     story("Nobody can go to a window the desk does not have", { as: "ann", cannot: at("attic") }),
   ],
 };

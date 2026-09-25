@@ -24,6 +24,15 @@ export function write(doc: string, op: Op, path: string, value?: unknown): strin
   return ` data-write='${spec}'${value === undefined ? "" : ` data-value="${esc(value)}"`}`;
 }
 
+/**
+ * An applet's mount says what its own controls write -- drawn in the browser, so no `data-write`
+ * is there for the stories to find -- as a document and the path they write under:
+ * `data-writes='{"doc","path"}'`. Only the story harness reads it (a control for the story's write).
+ */
+export function writes(doc: string, path: string): string {
+  return ` data-writes='${JSON.stringify({ doc, path }).replaceAll("&", "&amp;").replaceAll("'", "&#39;")}'`;
+}
+
 /** Joins the pieces of a view, dropping anything that is not a string (a `cond && html` that was false). */
 export function join(...parts: (string | false | null | undefined)[]): string {
   return parts.filter((p): p is string => typeof p === "string").join("");

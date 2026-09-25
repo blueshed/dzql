@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { PatchOp } from "./json-patch";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { defineDoc, registerDocs } from "@blueshed/delta/sqlite";
@@ -8,7 +9,7 @@ import { stories } from "../examples/chat/stories";
 import type { Compartment } from "./compartments/compartment";
 import { read } from "./documents";
 import type { Example } from "./example";
-import { comparable, hear, holding, print, retake, run, takersOn, unheld } from "./harness";
+import { comparable, controlsOn, hear, holding, offers, placeOf, print, retake, run, takersOn, unheld } from "./harness";
 import type { Story } from "./stories";
 
 // The harness against chat's own stories: one outcome per story, named as the story is, and the
@@ -54,6 +55,53 @@ describe("stories harness", () => {
     });
     expect(report.outcomes[0]!.failures.map((f) => f.split("\n")[0])).toEqual(["bob noticed, and should not have"]);
   }, 30000);
+
+  test("a story is done from the author's page: no control for it fails, so does a write that lands nothing, and so does a button offered that is always refused", async () => {
+    const say = { doc: "room", ops: [{ op: "add" as const, path: "/messages/-", value: "hi" }] };
+    const room = (value: string) => ({ doc: "session", ops: [{ op: "replace" as const, path: "/room", value }] });
+    const report = await run(example, {
+      cast: stories.cast,
+      stories: [
+        // Dee is choosing a room: nowhere on her page to say anything, and nothing to say it in
+        { name: "Dee speaks before she is in a room", as: "dee", does: say, seen: ["dee"] },
+        // the form is there; a blank name is refused, so nothing lands
+        { name: "Dee enters a room with no name", as: "dee", does: room("  "), seen: ["dee"] },
+        // a button on Dee's page sends exactly this: a story that calls it refused says so
+        { name: "Dee cannot go into general", as: "dee", cannot: room("general") },
+      ],
+    });
+    const first = (i: number) => report.outcomes[i]!.failures.map((f) => f.split("\n")[0]);
+    expect(first(0)).toContain("dee has no control on their page for add /messages/- on room");
+    expect(first(0)).toContain("nothing landed: dee's write was refused");
+    expect(first(1)).not.toContain("dee has no control on their page for replace /room on session");
+    expect(first(1)).toContain("nothing landed: dee's write was refused");
+    expect(first(2)).toContain("dee's page offers this, and it is refused without a word: a control that always fails");
+  }, 30000);
+
+  test("controls: a button sends its own value, a field or a form any, an applet on a document any write to it, one that says what it writes any under that path", () => {
+    const page = [
+      `<button data-write='{"doc":"room","op":"replace","path":"/name"}' data-value="Tess &amp; Tom">x</button>`,
+      `<button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>undo</button>`,
+      `<form data-write='{"doc":"room","op":"add","path":"/messages/-"}'></form>`,
+      `<div class="site" data-page="gifts?new=gifts" data-page-write='{"doc":"session","op":"replace","path":"/page"}'></div>`,
+      `<div data-applet="clock" data-doc="clock" data-props="{}"></div>`,
+      `<div data-applet="dress" data-writes='{"doc":"household","path":"/guests/2/minifigure"}'></div>`,
+    ].join("");
+    const cs = controlsOn(page);
+    const any = (doc: string, op: PatchOp) => cs.some((c) => offers(c, doc, op));
+    expect(any("room", { op: "replace", path: "/name", value: "Tess & Tom" })).toBe(true);
+    expect(any("room", { op: "replace", path: "/name", value: "Bo" })).toBe(false);
+    expect(any("ledger", { op: "remove", path: "/latest" })).toBe(true);
+    expect(any("ledger", { op: "remove", path: "/latest", value: "x" })).toBe(false);
+    expect(any("room:general", { op: "add", path: "/messages/-", value: "anything" })).toBe(true);
+    expect(any("session", { op: "replace", path: "/page", value: "day" })).toBe(true);
+    expect(any("clock", { op: "replace", path: "/tz", value: "Asia/Tokyo" })).toBe(true);
+    expect(any("household", { op: "replace", path: "/guests/2/minifigure/top", value: "#fff" })).toBe(true);
+    expect(any("household", { op: "replace", path: "/guests/3/minifigure/top", value: "#fff" })).toBe(false);
+    expect(any("watchlist", { op: "add", path: "/symbols/-", value: "X" })).toBe(false);
+    expect(placeOf(page)).toBe("gifts?new=gifts");
+    expect(placeOf("<p>no address</p>")).toBeUndefined();
+  });
 
   // Delivery, not only pages: chat broken on purpose, three ways its own stories could not see.
   const only = (prefix: string): Story[] => stories.stories.filter((s) => s.name.startsWith(prefix));

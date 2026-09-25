@@ -73,7 +73,7 @@ export function boardPages(v: BoardView): string {
   }
   const newTable = isKeepTable(at.new ?? "") ? (at.new as KeepTable) : undefined;
   const modalOpen = !!at.new || !!at.confirm;
-  const locked = modalOpen || !!at.keep || !!at.answering;
+  const locked = modalOpen || !!at.keep || !!at.answering || at.focus !== undefined;
   const modal = join(
     newTable && addModal(`Add a ${KEEP[newTable].noun}`, [{ name: "name", label: `The ${KEEP[newTable].noun}'s name` }], write("board", "add", `/${newTable}/-`), close(v)),
     at.new === "households" &&
@@ -88,10 +88,30 @@ export function boardPages(v: BoardView): string {
         close(v),
         "Invite",
       ),
-    confirmRemove(v),
+    h && at.new === "guests" && addModal("Add a guest", [{ name: "name", label: "Their name" }], write("board", "add", `/households/${h.id}/guests/-`), close(v)),
+    h ? confirmTakeOff(v, h) : confirmRemove(v),
   );
-  const body = layers(page, join(keepSheet(v), codeSheet(v, h), welcomeSheet(v)), modal);
+  const body = layers(page, join(keepSheet(v), codeSheet(v, h), h ? familyGuestSheet(v, h) : "", welcomeSheet(v)), modal);
   return frame(false, body, ui.page ?? "", locked);
+}
+
+/** A family's guest's drawer, as the couple read it: whether they are coming, and taking them off the invitation, which asks first. */
+function familyGuestSheet(v: BoardView, h: HouseholdDocument): string {
+  const g = h.guests.find((x) => x.id === over(v.session.ui).focus);
+  if (!g) return "";
+  const body = join(
+    `<div class="props">${prop("Coming", `<span>${g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming"}</span>`)}</div>`,
+    `<div class="sheet-foot">${tool("Take off the invitation", { icon: "trash", kind: "danger", write: open_(v, "confirm", `guests/${g.id}`) })}</div>`,
+  );
+  return sheet("family-guest-sheet", g.name, body, close(v), "guest-sheet");
+}
+
+/** The modal asking to take a guest off a family's invitation (rule 14); cancelling goes back to their drawer. */
+function confirmTakeOff(v: BoardView, h: HouseholdDocument): string {
+  const [what, idText] = (over(v.session.ui).confirm ?? "").split("/");
+  const g = what === "guests" ? h.guests.find((x) => String(x.id) === idText) : undefined;
+  if (!g) return "";
+  return confirmModal(`Take ${g.name} off`, `Take ${g.name} off the ${h.code} invitation?`, write("board", "remove", `/households/${h.id}/guests/${g.id}`), open_(v, "guest", g.id), "Take off");
 }
 
 /** The modal asking to confirm a removal -- a modal is new or delete and nothing else (rule 14). */
@@ -204,6 +224,9 @@ export const familyPhoto = (h: HouseholdDocument, id = "family-photo"): string =
 export const familyGuestRow = (v: BoardView, g: HouseholdDocument["guests"][number]): string =>
   row({
     id: `guest-${g.id}`,
+    tap: open_(v, "guest", g.id),
+    chosen: over(v.session.ui).focus === g.id,
+    mark: "pencil",
     what: g.name,
     note: choicesLine(g, v.b.courses),
     state: answerWord(g.coming === null ? "none" : isComing(g) ? "yes" : "no", g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming"),
@@ -287,6 +310,7 @@ function familyGuestsOpen(v: BoardView, h: HouseholdDocument): OpenOptions {
   return {
     key: "guests",
     reading: h.guests.length ? readingSwitch(key, reading(v, key), [["photo", "camera"], ["list", "list"]]) : undefined,
+    tools: [addTool(open_(v, "new", "guests"), "Add a guest")],
     body: photo
       ? h.guests.length ? `<div class="reading photo">${familyPhoto(h)}</div>` : `<p class="note">Nobody named yet.</p>`
       : rows(h.guests.map((g) => familyGuestRow(v, g)), "Nobody named yet."),
@@ -313,7 +337,7 @@ function codeSheet(v: BoardView, h: HouseholdDocument | undefined): string {
   const body = join(
     `<form data-write-on="blur"><div class="props">`,
     prop("Code", `<span class="code">${esc(h.code)}</span>`),
-    prop("Email", `<span>${esc(h.email)}</span>`),
+    prop("Email", field(`/households/${h.id}/email`, "email", h.email, "Their email", "", "email")),
     prop("Plus-ones", field(`/households/${h.id}/plus_ones`, "plus_ones", String(h.plus_ones), "Plus-ones they may name", "0", "number")),
     `</div></form>`,
     `<div class="sheet-foot">${chaseLink(h)}</div>`,

@@ -720,3 +720,22 @@ describe("undo beside someone else", () => {
     }
   });
 });
+
+describe("the couple keep a family's invitation", () => {
+  test("a guest's drawer says whether they are coming, and taking them off asks first; the email is edited in place", async () => {
+    const ws = await enter("DASH");
+    const ben = (await board()).households.find((h) => h.code === "BEN")!;
+    const guest = ben.guests[0]!;
+    const drawer = await at(ws, `households/${ben.id}/guests?guest=${guest.id}`);
+    expect(drawer).toContain('class="sheet');
+    expect(drawer).toContain("Take off the invitation");
+    const asked = await at(ws, `households/${ben.id}/guests?confirm=guests/${guest.id}`);
+    expect(asked).toContain(`Take ${guest.name} off the BEN invitation?`);
+    expect(asked).toContain(`data-write='{"doc":"board","op":"remove","path":"/households/${ben.id}/guests/${guest.id}"}'`);
+    expect(await at(ws, `households/${ben.id}/guests?confirm=guests/999`)).not.toContain("Take off the invitation?"); // nobody by that id: nothing asks
+    expect(await at(ws, `households/${ben.id}/guests?guest=999`)).not.toContain("Take off the invitation");
+    const code = await at(ws, `households/${ben.id}?keep=households/${ben.id}`);
+    expect(code).toContain(`data-write='{"doc":"board","op":"replace","path":"/households/${ben.id}/email"}'`);
+    ws.close();
+  });
+});

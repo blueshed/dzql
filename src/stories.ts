@@ -23,8 +23,14 @@ export type Seen = string[] | Record<string, string>;
 /** What a story tells, before it has a name. */
 export type Told = { as: string } & (
   | {
-      /** The write. Followed, when run, by its undo and its redo, with `seen` holding in reverse. */
+      /** The write. Followed, when run, by its undo and its redo, with `seen` holding in reverse.
+       * The author's open page must offer a control that sends it (`data-write`), and it must land. */
       does: Write;
+      /** Where the author stands to do it, in the example's own grammar (`Stories.at`): the drawer or
+       * the modal that holds the control. Omitted: where `seen` or the cast put them. */
+      from?: string;
+      /** It comes from outside any page -- a feed, the CLI -- so no control is looked for. */
+      outside?: true;
       seen: Seen;
       /** Who must not even be told: sent no document's ops, by the write, its undo or its redo.
        * Everyone not in `seen` must already notice nothing -- their page, where the cast left them,
@@ -34,6 +40,8 @@ export type Told = { as: string } & (
   | {
       /** A refusal: the permit table's other half. Nothing may change, and the ledger must not move. */
       cannot: Write;
+      /** Where the author stands to try it, as for a `does`. */
+      from?: string;
       /** What the refused person is told, beside the control that sent it (`refuse`, src/refusal.ts):
        * the one change their page may show. Omitted: they are told nothing. */
       told?: string;

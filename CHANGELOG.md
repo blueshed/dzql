@@ -25,6 +25,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nothing -- their page, where the cast left them, the same -- so a story that leaves out someone
   whose page changes fails by name (`bob noticed, and should not have`). `unseen` now means the
   stronger claim: told of nothing at all.
+- **A story is done from the page.** Before a `does` is sent, the author's open page must offer a
+  control for it (a `data-write` with its document, op, path and a button's own value), from
+  where the story says they act (`from`, the example's own grammar); `outside: true` marks a
+  write from a feed or the CLI. The write must then land: someone told of a changed document. A
+  `cannot` whose exact write a button on the author's page offers, refused without `told`, fails
+  as a control that always fails. An applet says what its own controls write with `writes()`
+  (`data-writes`). Where the author stands after a write that put a modal away is theirs: undo
+  and redo are looked at from where each was taken.
+- **The wedding can do what its stories say**: a household takes back its answer, and leaves a
+  guest's coming "not sure"; the couple edit a household's email, add a guest to its invitation,
+  and take one off (a drawer, then a modal that asks). The stories found each missing.
 - **`told` on a `cannot` story**: the reason the refused person must be shown. Their page may
   change by that line and nothing else; a reason shown that no story says fails as a change.
 
