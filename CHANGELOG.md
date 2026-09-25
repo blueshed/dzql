@@ -43,7 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   socket); a good one starts a fresh session with who it is, a wrong one is told on the page.
   Twelve stories, from asking and answering to what nobody may do.
 - **leave's calendar**: the team's days off month by month, a week to a row, each request a bar
-  across its days with the person's name on it (yours by colour), bars that share a day stacked,
+  across its days in its person's colour, with their name on it (a key says which colour is you),
+  waiting a tint and approved filled, bars that share a day stacked,
   and a day with more than one person off marked as a clash (and counted on the box); a request's drawer says who else is
   off during it -- what a manager weighs before answering.
 - **A story's place must exist.** Putting a member where a story says, the harness now checks

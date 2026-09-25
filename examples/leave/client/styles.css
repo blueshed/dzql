@@ -42,13 +42,29 @@ h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
 .week { grid-auto-flow: row dense; row-gap: 3px; padding: 2px 0 var(--space-sm); border-top: 1px solid var(--line); min-height: 3rem; }
 .week .date { grid-row: 1; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.6; border-radius: var(--radius-inner); }
 .week .date.clash { background: var(--danger); color: var(--card); font-weight: 700; }
-.bar { height: 1.35rem; margin: 0 2px; padding: 0 var(--space-xs); border: 1.5px solid var(--ink); border-radius: 999px; font-size: 11px; font-weight: 600; line-height: calc(1.35rem - 3px); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bar.approved { background: var(--ink); color: var(--card); }
-.bar.mine { border-color: var(--accent); color: var(--accent); }
-.bar.mine.approved { background: var(--accent); color: var(--card); }
+/* who is who: d3's Tableau10 (d3-scale-chromatic), less its red -- red is a clash here -- with purple
+   and brown darkened so a name on them reads at 4.5:1. The same person, the same colour, everywhere. */
+.who-0 { --who: #4e79a7; --who-ink: #ffffff; }
+.who-1 { --who: #f28e2c; --who-ink: #1d2733; }
+.who-2 { --who: #76b7b2; --who-ink: #1d2733; }
+.who-3 { --who: #59a14f; --who-ink: #1d2733; }
+.who-4 { --who: #edc949; --who-ink: #1d2733; }
+.who-5 { --who: #8c5f80; --who-ink: #ffffff; }
+.who-6 { --who: #ff9da7; --who-ink: #1d2733; }
+.who-7 { --who: #7e5c48; --who-ink: #ffffff; }
+.who-8 { --who: #bab0ab; --who-ink: #1d2733; }
+.swatch { display: inline-block; width: 0.7rem; height: 0.7rem; margin-right: var(--space-xs); border-radius: 50%; background: var(--who); vertical-align: -0.05rem; }
+.key { display: flex; flex-wrap: wrap; gap: var(--space-lg); margin: 0 0 var(--space-lg); padding: 0; list-style: none; font-size: 13px; }
+
+/* a bar: waiting a tint of its person's colour with a darker edge, approved filled */
+.bar { height: 1.35rem; margin: 0 2px; padding: 0 var(--space-xs); border: 1.5px solid color-mix(in srgb, var(--who) 70%, var(--ink)); border-radius: 999px; background: color-mix(in srgb, var(--who) 42%, var(--card)); font-size: 11px; font-weight: 600; line-height: calc(1.35rem - 3px); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar.approved { background: var(--who); border-color: var(--who); color: var(--who-ink); }
 .bar.open-start { border-left-style: dashed; border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: 0; }
 .bar.open-end { border-right-style: dashed; border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: 0; }
-@media (forced-colors: active) { .week .date.clash { background: Highlight; color: HighlightText; } }
+@media (forced-colors: active) {
+  .week .date.clash { background: Highlight; color: HighlightText; }
+  .bar.approved { border-width: 3px; } /* the colours are gone: approved is the heavier edge */
+}
 
 .state-approved { color: var(--add); }
 .state-declined { color: var(--danger); }

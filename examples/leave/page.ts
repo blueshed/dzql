@@ -2,7 +2,7 @@ import { address, bento, choice, layers, parseAddress, prop, rows, type Crumb, t
 import { esc, join, write } from "../../src/html";
 import { part } from "../../src/parts";
 import { refused } from "../../src/refusal";
-import { alsoOff, clashes, offOn, session as sessionOf, team as teamOf, type Person, type Request, type Status, type Team } from "./documents";
+import { alsoOff, clashes, colourOf, offOn, session as sessionOf, team as teamOf, type Person, type Request, type Status, type Team } from "./documents";
 import { icon } from "./icons";
 
 // leave's pages. Signed out, one: sign in. Signed in, a box of two compartments -- your leave, and
@@ -45,17 +45,17 @@ function requestRow(r: Request, path: string, open: string | undefined): string 
 /** Everyone else's requests, a run per person in the order they first asked, each person's name said once at the head of their run. */
 function teamRows(t: Team, others: Request[], open: string | undefined): string[] {
   const order = [...new Set(others.map((r) => r.person_id))];
-  return order.flatMap((id) => [`<p class="cap run">${esc(nameOf(t, id))}</p>`, ...others.filter((r) => r.person_id === id).map((r) => requestRow(r, "team", open))]);
+  return order.flatMap((id) => [`<p class="cap run">${swatch(t, id)}${esc(nameOf(t, id))}</p>`, ...others.filter((r) => r.person_id === id).map((r) => requestRow(r, "team", open))]);
 }
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /**
  * The calendar: the months anyone is off, a week to a row. A request is a bar across the days it
- * covers in that week, with the person's name on it -- waiting outlined, approved filled, yours in
- * your own colour -- and bars that share a day stack, so a clash is two bars over the same day, and
- * its date is marked. A bar that goes on past the week, or the month, is open at that end. Declined
- * days are nobody's.
+ * covers in that week, in its person's colour with their name on it (yours without: the key says
+ * which is you) -- waiting a tint, approved filled -- and bars that share a day stack, so a clash is
+ * two bars over the same day, and its date is marked. A bar that goes on past the week, or the
+ * month, is open at that end. Declined days are nobody's.
  */
 function calendar(t: Team, me: Person, off: Map<string, Request[]>): string {
   const offDays = [...off.keys()].sort();
@@ -71,7 +71,7 @@ function calendar(t: Team, me: Person, off: Map<string, Request[]>): string {
     const name = r.person_id === me.id ? "" : nameOf(t, r.person_id);
     const open = `${r.starts < week[c0]! ? " open-start" : ""}${r.ends > week[c1]! ? " open-end" : ""}`;
     const said = `${r.person_id === me.id ? "you" : name}, ${WORD[r.status]}, ${days(r)}`;
-    return `<span class="bar ${r.status}${r.person_id === me.id ? " mine" : ""}${open}" style="grid-column: ${c0 + 1} / span ${c1 - c0 + 1}"><span aria-hidden="true">${esc(name)}</span><span class="sr-only">${esc(said)}</span></span>`;
+    return `<span class="bar ${r.status} who-${colourOf(t, r.person_id)}${open}" style="grid-column: ${c0 + 1} / span ${c1 - c0 + 1}"><span aria-hidden="true">${esc(name)}</span><span class="sr-only">${esc(said)}</span></span>`;
   };
   const month = (m: string) => {
     const first = new Date(`${m}-01T00:00:00Z`);
@@ -85,8 +85,13 @@ function calendar(t: Team, me: Person, off: Map<string, Request[]>): string {
     const title = first.toLocaleDateString("en-GB", { timeZone: "UTC", month: "long", year: "numeric" });
     return `<section class="month" aria-label="${esc(title)}"><h3 class="cap">${esc(title)}</h3><div class="weekdays" aria-hidden="true">${WEEKDAYS.map((d) => `<span>${d}</span>`).join("")}</div>${weeks.map(week).join("")}</section>`;
   };
-  return part("calendar", `<div id="calendar" class="calendar">${months.map(month).join("")}</div>`);
+  const people = [...new Set(requests.map((r) => r.person_id))].sort((a, b) => colourOf(t, a) - colourOf(t, b)); // the team's order, the colours' own
+  const key = `<ul class="key" aria-label="Who is who">${people.map((id) => `<li>${swatch(t, id)}${esc(id === me.id ? "you" : nameOf(t, id))}</li>`).join("")}</ul>`;
+  return part("calendar", `<div id="calendar">${key}<div class="calendar">${months.map(month).join("")}</div></div>`);
 }
+
+/** A person's colour, as a dot beside their name. */
+const swatch = (t: Team, personId: string): string => `<span class="swatch who-${colourOf(t, personId)}" aria-hidden="true"></span>`;
 
 /** The month after `m` (YYYY-MM). */
 const nextMonth = (m: string): string => {

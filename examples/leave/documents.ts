@@ -57,6 +57,15 @@ export function offOn(t: Team): Map<string, Request[]> {
   return off;
 }
 
+/** How many colours tell people apart (client/styles.css: `who-0` to `who-8`). */
+export const COLOURS = 9;
+
+/** A person's colour: their place in the team, by id, so it is the same on every page and every day. */
+export function colourOf(t: Team, personId: string): number {
+  const ids = t.people.map((p) => p.id).sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+  return Math.max(0, ids.indexOf(personId)) % COLOURS;
+}
+
 /** The days on which more than one person is off. */
 export const clashes = (off: Map<string, Request[]>): string[] => [...off].filter(([, rs]) => new Set(rs.map((r) => r.person_id)).size > 1).map(([d]) => d);
 

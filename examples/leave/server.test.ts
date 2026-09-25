@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
 import { createServer } from "../../src/server";
 import { hear, type Heard } from "../../src/harness";
-import { alsoOff, clashes, daysOf, may, nextDay, offOn, placed, shape, type Person, type Team } from "./documents";
+import { alsoOff, clashes, colourOf, daysOf, may, nextDay, offOn, placed, shape, type Person, type Team } from "./documents";
 import { days } from "./page";
 import { example } from "./index";
 
@@ -168,6 +168,9 @@ describe("the pages", () => {
       expect(cal).toContain('<span class="sr-only">Ann, waiting, Thu 8 – Mon 12 Oct</span>');
       expect(cal).toContain('style="grid-column: 1 / span 5"><span aria-hidden="true">Bo</span>'); // Bo's week, one bar, Mon to Fri
       expect(cal).toContain('open-end" style="grid-column: 4 / span 4"'); // Ann's goes on into the next week
+      expect(cal).toContain('<span class="bar asked who-1" style="grid-column: 1 / span 5">'); // Bo's colour, the same on every page
+      expect(cal).toContain('<li><span class="swatch who-0" aria-hidden="true"></span>Ann</li>'); // the key
+      expect(await go(ann, "calendar")).toContain('<li><span class="swatch who-0" aria-hidden="true"></span>you</li>');
       expect(await go(ann, "calendar")).toContain('<span class="sr-only">you, waiting, Thu 8 – Mon 12 Oct</span>'); // hers in her colour, not her name
       expect(await go(mo, "")).toContain("2 days with more than one off");
       const bo = await go(mo, "team?request=1");
@@ -285,6 +288,14 @@ describe("the rules, on their own", () => {
     expect(clashes(off).sort()).toEqual(["2026-10-06", "2026-10-07"]);
     expect(alsoOff(busy, busy.requests[0]!).map((o) => [o.request.id, o.days])).toEqual([["2", 1]]);
     expect(clashes(offOn({ ...t, requests: [busy.requests[0]!, { ...busy.requests[0]!, id: "5" }] }))).toEqual([]); // one person twice
+  });
+
+  test("a person's colour is their place in the team by id, the same everywhere, and nobody is left without one", () => {
+    expect(colourOf(t, "1")).toBe(0);
+    expect(colourOf(t, "3")).toBe(1);
+    expect(colourOf(t, "nobody")).toBe(0);
+    const many: Team = { ...t, people: Array.from({ length: 12 }, (_, i) => ({ id: String(i + 1), name: `P${i + 1}`, role: "member" as const })) };
+    expect(colourOf(many, "10")).toBe(0); // 10 sorts after 9, not after 1: the tenth comes round again
   });
 
   test("days as a person says them", () => {
