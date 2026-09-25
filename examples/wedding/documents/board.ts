@@ -122,6 +122,9 @@ const isEmail = (value: unknown): value is string => typeof value === "string" &
  * it moves: a yes to an ask makes the guest it asked for, a move renumbers the list, a course
  * taken off takes its choices with it. Delta's inverse is what undo walks.
  */
+/** Two ids the same: the store keeps a serial as a number, a path carries it as text. */
+const same = (a: unknown, b: unknown): boolean => a != null && b != null && String(a) === String(b);
+
 export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()): PatchOp[] {
   // a working copy: each op sees the ones before it in the message
   const d = structuredClone(doc) as Required<Doc>;
@@ -139,7 +142,7 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
     else rows[id!] = { id: id!, ...(op.value as object) };
   };
   const removeGuest = (gid: string) => {
-    for (const a of Object.values(d.asks)) if (a.guest_id === gid) emit({ op: "replace", path: `/asks/${a.id}/guest_id`, value: null });
+    for (const a of Object.values(d.asks)) if (same(a.guest_id, gid)) emit({ op: "replace", path: `/asks/${a.id}/guest_id`, value: null });
     emit({ op: "remove", path: `/guests/${gid}` });
   };
   const addGuest = (hid: string, value: Record<string, unknown>): string => {
@@ -188,11 +191,11 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
         addGuest(h.id, { name, named_by: "couple" });
       } else if (field === "guests") {
         const guest = d.guests[key2 ?? ""];
-        if (!guest || guest.households_id !== h.id || more !== undefined || op.op !== "remove") continue;
+        if (!guest || !same(guest.households_id, h.id) || more !== undefined || op.op !== "remove") continue;
         removeGuest(guest.id);
       } else if (field === "asks" && more === "reply") {
         const ask = d.asks[key2 ?? ""];
-        if (!ask || ask.households_id !== h.id) continue;
+        if (!ask || !same(ask.households_id, h.id)) continue;
         const value = op.op === "remove" ? null : op.value;
         if ((value !== null && value !== "yes" && value !== "no") || ask.reply === value) continue;
         emit({ op: "replace", path: `/asks/${ask.id}/reply`, value });
@@ -215,7 +218,7 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
   function list(table: string, parentId: string | undefined, seg: string[], op: PatchOp): void {
     const spec = LISTS[table]!;
     const rows = d[table as keyof Doc] as Rows;
-    const siblings = () => Object.values(rows).filter((r) => !spec.parent || r[`${spec.parent}_id`] === parentId).sort((a, b) => Number(a.seq) - Number(b.seq) || Number(a.id) - Number(b.id));
+    const siblings = () => Object.values(rows).filter((r) => !spec.parent || same(r[`${spec.parent}_id`], parentId)).sort((a, b) => Number(a.seq) - Number(b.seq) || Number(a.id) - Number(b.id));
     const [key, col, ...more] = seg;
 
     if (key === "-") {
@@ -235,12 +238,12 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
     }
 
     const row = rows[key ?? ""];
-    if (!row || (spec.parent && row[`${spec.parent}_id`] !== parentId)) return;
+    if (!row || (spec.parent && !same(row[`${spec.parent}_id`], parentId))) return;
 
     if (col === undefined) {
       if (op.op !== "remove") return;
       forget(table, row.id);
-      for (const child of spec.children ?? []) for (const r of Object.values(d[child as keyof Doc] as Rows)) if (r[`${table}_id`] === row.id) forget(child, r.id);
+      for (const child of spec.children ?? []) for (const r of Object.values(d[child as keyof Doc] as Rows)) if (same(r[`${table}_id`], row.id)) forget(child, r.id);
       emit({ op: "remove", path: `/${table}/${row.id}` });
       return;
     }
@@ -253,7 +256,7 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
       const to = op.op === "remove" ? undefined : integer(op.value);
       if (to === undefined) return;
       const order = siblings();
-      const from = order.findIndex((r) => r.id === row.id);
+      const from = order.findIndex((r) => same(r.id, row.id));
       order.splice(from, 1);
       order.splice(Math.min(Math.max(to, 1), order.length + 1) - 1, 0, row);
       order.forEach((r, i) => {
@@ -269,19 +272,19 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
 
   /** What goes with a row taken off: a gift's claims, and every choice of a course, a dish or a drink. */
   function forget(table: string, id: string): void {
-    if (table === "gifts") for (const c of Object.values(d.claims)) if (c.gift_id === id) emit({ op: "remove", path: `/claims/${c.id}` });
+    if (table === "gifts") for (const c of Object.values(d.claims)) if (same(c.gift_id, id)) emit({ op: "remove", path: `/claims/${c.id}` });
     if (table !== "courses" && table !== "dishes" && table !== "drinks") return;
     for (const g of Object.values(d.guests)) {
       const choices = structuredClone((g.choices as Record<string, { dish: number | null; drink: number | null }> | null) ?? {});
       let moved = false;
       for (const [course, choice] of Object.entries(choices)) {
-        if (table === "courses" && course === id) {
+        if (table === "courses" && same(course, id)) {
           delete choices[course];
           moved = true;
-        } else if (table === "dishes" && String(choice.dish) === id) {
+        } else if (table === "dishes" && same(choice.dish, id)) {
           choice.dish = null;
           moved = true;
-        } else if (table === "drinks" && String(choice.drink) === id) {
+        } else if (table === "drinks" && same(choice.drink, id)) {
           choice.drink = null;
           moved = true;
         }

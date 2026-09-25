@@ -37,6 +37,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   box, and a place in it is a *cell*. *Compartment* means only the kernel's. The skill's
   `reference.md` is rewritten plainly: what each piece is, an example, then the details.
 
+### Changed
+
+- **delta 0.9.0: one app on every backend.** A write is now told to every document that holds a
+  row it changed on Postgres too (server or in process), so the reference's "whether this
+  process wrote it or another did over Postgres" holds for every document. Ids are serials, read
+  as numbers; the wedding's `shape` compares ids by value (a path carries them as text), which
+  also mended two things the numbers exposed: removing a dish clears the guests' choices of it,
+  and removing a gift takes its claims. leave's browser test waits until the first month shown
+  is October, not merely until October is on the page.
+
 ### Added
 
 - **`first-app.md`: your first app, step by step.** Chat, then leave, with each word explained

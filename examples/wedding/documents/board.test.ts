@@ -96,7 +96,7 @@ describe("what a couple's write becomes", () => {
       ),
     ).toEqual([]);
     const [added] = shaped({ op: "add", path: "/households/2/guests/-", value: { name: "Mara" } });
-    expect(added!.value).toEqual({ households_id: "2", name: "Mara", named_by: "couple" });
+    expect(added!.value).toEqual({ households_id: 2, name: "Mara", named_by: "couple" });
     expect(shaped({ op: "remove", path: "/households/2/guests/3" })).toEqual([{ op: "remove", path: "/guests/3" }]);
   });
 
@@ -105,7 +105,7 @@ describe("what a couple's write becomes", () => {
     const gid = yes[1]!.path.split("/")[2]!;
     expect(yes).toEqual([
       { op: "replace", path: "/asks/1/reply", value: "yes" },
-      { op: "add", path: `/guests/${gid}`, value: { households_id: "1", name: "Kemi Okafor", named_by: "ask", coming: 1 } },
+      { op: "add", path: `/guests/${gid}`, value: { households_id: 1, name: "Kemi Okafor", named_by: "ask", coming: 1 } },
       { op: "replace", path: "/asks/1/guest_id", value: gid },
     ]);
     // the same message, the yes and then the no: the guest made, then taken out, and the ask let go of them
@@ -121,7 +121,7 @@ describe("what a couple's write becomes", () => {
     const [course] = shaped({ op: "add", path: "/courses/-", value: "Cheese" });
     expect(course!.value).toEqual({ name: "Cheese", seq: 5 });
     const [dish] = shaped({ op: "add", path: "/courses/2/dishes/-", value: { name: "Tagine", dietary: "vg", seq: 1, nope: 1 } });
-    expect(dish!.value).toEqual({ name: "Tagine", dietary: "vg", seq: 4, courses_id: "2" });
+    expect(dish!.value).toEqual({ name: "Tagine", dietary: "vg", seq: 4, courses_id: 2 });
     const next = read()!.gifts.length + 1; // the seed's three, and any another test file has added
     expect(shaped({ op: "add", path: "/gifts/-", value: { name: "A tree", shared: "yes" } })[0]!.value).toEqual({ name: "A tree", shared: 1, seq: next });
     expect(shaped({ op: "add", path: "/gifts/-", value: { name: "A kettle" } })[0]!.value).toEqual({ name: "A kettle", shared: 0, seq: next });

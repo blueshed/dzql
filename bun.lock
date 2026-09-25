@@ -5,7 +5,7 @@
     "": {
       "name": "eta",
       "dependencies": {
-        "@blueshed/delta": "^0.8.0",
+        "@blueshed/delta": "^0.9.0",
         "@blueshed/railroad": "^0.14.0",
         "lucide": "^1.46.0",
       },
@@ -15,7 +15,7 @@
     },
   },
   "packages": {
-    "@blueshed/delta": ["@blueshed/delta@0.8.0", "", { "peerDependencies": { "@blueshed/railroad": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0", "jose": "^6.0.0", "pg": "^8.20.0" }, "optionalPeers": ["@blueshed/railroad", "jose", "pg"], "bin": { "delta": "cli.ts" } }, "sha512-VXNawSiBYEBoGtogpuA7J8183QnZzgCGwDOyiO75obQXnVKLyQXqCrRFVF++BVjLPmwDi1rpXwiaW8eKAKWumg=="],
+    "@blueshed/delta": ["@blueshed/delta@0.9.0", "", { "peerDependencies": { "@blueshed/railroad": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0", "@electric-sql/pglite": "^0.5.4", "jose": "^6.0.0", "pg": "^8.20.0" }, "optionalPeers": ["@blueshed/railroad", "@electric-sql/pglite", "jose", "pg"], "bin": { "delta": "cli.ts" } }, "sha512-hPXIefBdqhnltHBX0kJD6XB2RRWer/9j6wLUrDIIYMFeXl49RIEE4dz0vIITf8y82x4wBgr1/bIx5L+pRK2ZMA=="],
 
     "@blueshed/railroad": ["@blueshed/railroad@0.14.0", "", {}, "sha512-477ZI0z7W47l+1U5Khvtd9CxqHKlzNLlhpe90JrdSrwFXibPYMMkoeZ+uLWU8hu92NE3z+K8c6rQoeMwS2W+5A=="],
 

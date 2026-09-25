@@ -36,7 +36,8 @@ describe("leave in a real browser", () => {
     await view.evaluate(`(() => { const f = document.querySelector('form.sign-in'); f.email.value = 'ann@leave.example'; f.password.value = 'ann-password'; f.requestSubmit(); return 1; })()`);
     await waitFor(view, `document.querySelector('.calendar-view .month') !== null`, (v) => v === true);
     await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/page", value: "2026-10" }] }))`);
-    await waitFor(view, `document.querySelector('.calendar-view')?.textContent.includes('October 2026')`, (v) => v === true);
+    // the first month shown is October: the calendar shows three, so October's name alone does not prove the page moved
+    await waitFor(view, `document.querySelector('.calendar-view .month')?.textContent.includes('October 2026')`, (v) => v === true);
     // a pointer, as a mouse moves it: down on one day, over another, up
     await view.evaluate(`(() => {
       window.__point = (type, el) => { const r = el.getBoundingClientRect(); const init = { bubbles: true, cancelable: true, pointerId: 1, button: 0, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }; el.dispatchEvent(new PointerEvent(type, init)); };
