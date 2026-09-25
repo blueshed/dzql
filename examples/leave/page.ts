@@ -51,33 +51,39 @@ function teamRows(t: Team, others: Request[], open: string | undefined): string[
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /**
- * The calendar: the months anyone is off, a week to a row. Each day says who is off -- a person by
- * their initial, waiting outlined, approved filled, and yours in your own colour rather than your
- * name -- and a day with more than one person off is a clash. Declined days are nobody's.
+ * The calendar: the months anyone is off, a week to a row. A request is a bar across the days it
+ * covers in that week, with the person's name on it -- waiting outlined, approved filled, yours in
+ * your own colour -- and bars that share a day stack, so a clash is two bars over the same day, and
+ * its date is marked. A bar that goes on past the week, or the month, is open at that end. Declined
+ * days are nobody's.
  */
 function calendar(t: Team, me: Person, off: Map<string, Request[]>): string {
-  const days = [...off.keys()].sort();
-  if (!days.length) return `<p class="note">Nobody is off.</p>`;
+  const offDays = [...off.keys()].sort();
+  if (!offDays.length) return `<p class="note">Nobody is off.</p>`;
   const months: string[] = [];
-  for (let m = days[0]!.slice(0, 7); m <= days.at(-1)!.slice(0, 7); m = nextMonth(m)) months.push(m);
-  const who = (r: Request) => {
-    const name = nameOf(t, r.person_id);
-    const label = `${r.person_id === me.id ? "you" : name}, ${WORD[r.status]}`;
-    return `<span class="off ${r.status}${r.person_id === me.id ? " mine" : ""}" aria-hidden="true">${esc(name.charAt(0))}</span><span class="sr-only">${esc(label)}</span>`;
-  };
+  for (let m = offDays[0]!.slice(0, 7); m <= offDays.at(-1)!.slice(0, 7); m = nextMonth(m)) months.push(m);
   const clashing = new Set(clashes(off));
+  const requests = t.requests.filter((r) => r.status !== "declined").sort((a, b) => a.starts.localeCompare(b.starts) || b.ends.localeCompare(a.ends));
+  const bar = (r: Request, week: (string | null)[]) => {
+    const cols = week.map((d, i) => (d && d >= r.starts && d <= r.ends ? i : -1)).filter((i) => i >= 0);
+    if (!cols.length) return "";
+    const [c0, c1] = [cols[0]!, cols.at(-1)!];
+    const name = r.person_id === me.id ? "" : nameOf(t, r.person_id);
+    const open = `${r.starts < week[c0]! ? " open-start" : ""}${r.ends > week[c1]! ? " open-end" : ""}`;
+    const said = `${r.person_id === me.id ? "you" : name}, ${WORD[r.status]}, ${days(r)}`;
+    return `<span class="bar ${r.status}${r.person_id === me.id ? " mine" : ""}${open}" style="grid-column: ${c0 + 1} / span ${c1 - c0 + 1}"><span aria-hidden="true">${esc(name)}</span><span class="sr-only">${esc(said)}</span></span>`;
+  };
   const month = (m: string) => {
     const first = new Date(`${m}-01T00:00:00Z`);
     const lead = (first.getUTCDay() + 6) % 7; // Monday first
     const length = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
-    const cells = [...Array(lead).fill(`<td></td>`), ...Array.from({ length }, (_, i) => {
-      const day = `${m}-${String(i + 1).padStart(2, "0")}`;
-      const rs = off.get(day) ?? [];
-      return `<td${clashing.has(day) ? ' class="clash"' : ""}><span class="date">${i + 1}</span>${rs.map(who).join("")}${clashing.has(day) ? '<span class="sr-only">, a clash</span>' : ""}</td>`;
-    })];
-    const weeks = Array.from({ length: Math.ceil(cells.length / 7) }, (_, w) => `<tr>${cells.slice(w * 7, w * 7 + 7).join("")}</tr>`);
+    const cells: (string | null)[] = [...Array<null>(lead).fill(null), ...Array.from({ length }, (_, i) => `${m}-${String(i + 1).padStart(2, "0")}`)];
+    while (cells.length % 7) cells.push(null);
+    const weeks = Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
+    const week = (wk: (string | null)[]) =>
+      `<div class="week">${wk.map((d, i) => `<span class="date${d && clashing.has(d) ? " clash" : ""}" style="grid-column: ${i + 1}">${d ? Number(d.slice(8)) : ""}${d && clashing.has(d) ? '<span class="sr-only">, a clash</span>' : ""}</span>`).join("")}${requests.map((r) => bar(r, wk)).join("")}</div>`;
     const title = first.toLocaleDateString("en-GB", { timeZone: "UTC", month: "long", year: "numeric" });
-    return `<table class="month"><caption class="cap">${esc(title)}</caption><thead><tr>${WEEKDAYS.map((d) => `<th scope="col">${d}</th>`).join("")}</tr></thead><tbody>${weeks.join("")}</tbody></table>`;
+    return `<section class="month" aria-label="${esc(title)}"><h3 class="cap">${esc(title)}</h3><div class="weekdays" aria-hidden="true">${WEEKDAYS.map((d) => `<span>${d}</span>`).join("")}</div>${weeks.map(week).join("")}</section>`;
   };
   return part("calendar", `<div id="calendar" class="calendar">${months.map(month).join("")}</div>`);
 }

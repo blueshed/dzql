@@ -164,9 +164,11 @@ describe("the pages", () => {
     try {
       const cal = await go(mo, "calendar");
       expect(cal).toContain("October 2026");
-      expect(cal.match(/<td class="clash">/g)).toHaveLength(2); // Thu 8 and Fri 9: Ann and Bo
-      expect(cal).toContain('<span class="sr-only">Ann, waiting</span>');
-      expect(await go(ann, "calendar")).toContain('<span class="sr-only">you, waiting</span>'); // hers in her colour, not her name
+      expect(cal.match(/class="date clash"/g)).toHaveLength(2); // Thu 8 and Fri 9: Ann and Bo
+      expect(cal).toContain('<span class="sr-only">Ann, waiting, Thu 8 – Mon 12 Oct</span>');
+      expect(cal).toContain('style="grid-column: 1 / span 5"><span aria-hidden="true">Bo</span>'); // Bo's week, one bar, Mon to Fri
+      expect(cal).toContain('open-end" style="grid-column: 4 / span 4"'); // Ann's goes on into the next week
+      expect(await go(ann, "calendar")).toContain('<span class="sr-only">you, waiting, Thu 8 – Mon 12 Oct</span>'); // hers in her colour, not her name
       expect(await go(mo, "")).toContain("2 days with more than one off");
       const bo = await go(mo, "team?request=1");
       expect(bo).toContain("Also off");

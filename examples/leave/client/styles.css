@@ -34,19 +34,21 @@ h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
 .rows .run { margin: var(--space-lg) 0 var(--space-xs); color: var(--muted); }
 .rows .run:first-child { margin-top: 0; }
 
-/* ── the calendar: a month a table, a week a row; who is off by initial, a clash marked ── */
-.calendar { display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: var(--space-xl); }
-table.month { width: 100%; border-collapse: collapse; table-layout: fixed; }
-table.month caption { text-align: left; padding-bottom: var(--space-sm); }
-table.month th { font-size: 11px; font-weight: 600; color: var(--muted); padding-bottom: var(--space-xs); }
-table.month td { height: 3rem; vertical-align: top; padding: 2px; border: 1px solid var(--line); }
-table.month .date { display: block; font-size: 11px; color: var(--muted); }
-table.month td.clash { background: color-mix(in srgb, var(--danger) 12%, var(--card)); outline: 2px solid var(--danger); outline-offset: -2px; }
-.off { display: inline-grid; place-items: center; width: 1.25rem; height: 1.25rem; margin: 1px; border-radius: 50%; font-size: 11px; font-weight: 700; border: 1px solid var(--ink); color: var(--ink); }
-.off.approved { background: var(--ink); color: var(--card); }
-.off.mine { border-color: var(--accent); color: var(--accent); }
-.off.mine.approved { background: var(--accent); color: var(--card); }
-@media (forced-colors: active) { table.month td.clash { outline-color: Highlight; } }
+/* ── the calendar: a week a row of seven days; a request a bar across its days, stacked where they share one ── */
+.calendar { display: grid; grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); gap: var(--space-2xl); }
+.month h3 { margin-bottom: var(--space-sm); }
+.weekdays, .week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.weekdays span { font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; padding-bottom: var(--space-xs); }
+.week { grid-auto-flow: row dense; row-gap: 3px; padding: 2px 0 var(--space-sm); border-top: 1px solid var(--line); min-height: 3rem; }
+.week .date { grid-row: 1; font-size: 11px; color: var(--muted); text-align: center; line-height: 1.6; border-radius: var(--radius-inner); }
+.week .date.clash { background: var(--danger); color: var(--card); font-weight: 700; }
+.bar { height: 1.35rem; margin: 0 2px; padding: 0 var(--space-xs); border: 1.5px solid var(--ink); border-radius: 999px; font-size: 11px; font-weight: 600; line-height: calc(1.35rem - 3px); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar.approved { background: var(--ink); color: var(--card); }
+.bar.mine { border-color: var(--accent); color: var(--accent); }
+.bar.mine.approved { background: var(--accent); color: var(--card); }
+.bar.open-start { border-left-style: dashed; border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: 0; }
+.bar.open-end { border-right-style: dashed; border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: 0; }
+@media (forced-colors: active) { .week .date.clash { background: Highlight; color: HighlightText; } }
 
 .state-approved { color: var(--add); }
 .state-declined { color: var(--danger); }
