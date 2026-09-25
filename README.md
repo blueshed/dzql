@@ -1,5 +1,22 @@
 # eta
 
+**eta builds apps that several people use at once, where every change reaches everyone who should see it, and nobody who shouldn't, and proves it before anyone logs in.**
+
+You start by writing the app as stories: who does what, and who then sees it. "Ann asks for three
+days off, and Mo sees it waiting on the calendar." eta runs those stories against the real app.
+It checks that the write lands, that the right people's pages change, that nobody else is even
+told, and that undo puts every page back. The stories are both the specification and the test,
+and nothing gets built that no story needs.
+
+The server draws every page as HTML and the browser patches it in place, so there's no client
+framework, no API and no cache to keep in step. It's one Bun process. Every change is a document
+patch from delta, so each person sees their own page update as it happens and can undo what they
+did, even while others keep writing. Where a piece of a page must keep state in the browser, like
+a drag or a chart, it's a small railroad applet, and only there.
+
+In one line: **multi-person live apps told as stories and proved by them, drawn on the server, on
+delta's live documents.**
+
 eta is a small kernel for live apps that several people use at once, drawn on the server. Every
 change is a patch to a document, so everyone who can see it is told at once, and anyone can undo
 their own.
