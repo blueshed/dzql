@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   draws it beside the control that sent it with `refused(sessionId, doc, path)`. A plain `false`
   stays silent. The kernel appends a `refusal` compartment beside its ledger, so an example may
   not own a type of that name.
+- **Undo is looked at before it walks** (`walkable` on a compartment): the owner of the
+  document may refuse a walk its rules forbid, and say why. The wedding's answers are locked at
+  the deadline to Undo too.
+- **An undo that meets someone else's later write says so** ("Someone has changed that since,
+  so it cannot be undone.") instead of doing nothing silently. The kernel draws why an undo or
+  redo was refused over the page.
 - **`told` on a `cannot` story**: the reason the refused person must be shown. Their page may
   change by that line and nothing else; a reason shown that no story says fails as a change.
 

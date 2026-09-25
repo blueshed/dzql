@@ -22,6 +22,7 @@ export class Pending extends Error {
 
 export type Change = { doc: string; ops: DeltaOp[]; v?: number };
 export type Written = { ops: DeltaOp[]; inverse: DeltaOp[]; version?: number; entry?: number };
+export type Walked = { doc: string; entry?: number; ops: DeltaOp[]; version?: number; conflict?: string[] };
 export type Writer = { identity: unknown; cursor: string; undoable?: boolean };
 
 type Held = { value: any; v?: number };
@@ -124,12 +125,17 @@ export function createDocuments(local: Local) {
       return written;
     },
 
-    /** Undo or redo along a session's cursor: delta walks it; the change comes back like any other. */
-    async walk(way: "undo" | "redo", by: Writer): Promise<{ doc: string } | null> {
-      const answer = await local.as(by.identity).call(way, { cursor: by.cursor });
-      const result = answer.result as ({ doc: string } & Written) | null | undefined;
+    /**
+     * Undo or redo along a session's cursor: delta walks it; the change comes back like any other.
+     * `dry` answers what the walk would do -- the entry, its ops, a conflict -- and walks nothing;
+     * `entry` walks only if that is still the cursor's next. A walk that meets someone else's later
+     * write changes nothing and says `conflict`, and the cursor moves past it all the same.
+     */
+    async walk(way: "undo" | "redo", by: Writer, o: { dry?: boolean; entry?: number } = {}): Promise<Walked | null> {
+      const answer = await local.as(by.identity).call(way, { cursor: by.cursor, ...o });
+      const result = answer.result as Walked | null | undefined;
       if (!result) return null;
-      await caughtUp(result.doc, result.version);
+      if (!o.dry) await caughtUp(result.doc, result.version);
       return result;
     },
 

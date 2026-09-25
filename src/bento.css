@@ -46,6 +46,9 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .pick { display: inline-flex; gap: var(--space-xs); }
 /* why a write was refused, beside the control that sent it (src/refusal.ts) */
 .refused { margin: var(--space-xs) 0 0; color: var(--danger); }
+/* why an undo or redo was refused: the kernel's, over the page, above the page's tools */
+.walk-said { position: fixed; z-index: 80; bottom: calc(var(--space-lg) + 2 * var(--control) + var(--space-md)); right: var(--space-lg); max-width: min(320px, calc(100vw - 2 * var(--space-lg))); padding: var(--space-sm) var(--space-md); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
+.walk-said .refused { margin: 0; }
 
 /* ── a stack: square buttons with a hairline between, drawn like a Leaflet control ── */
 .stack { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); overflow: hidden; }

@@ -33,6 +33,13 @@ export type Compartment = {
    * person should be told throws `refuse(reason)` (src/refusal.ts) instead of returning false.
    */
   permit?(ws: ServerWebSocket<ConnectionData>, op: PatchOp, docId: string): boolean;
+  /**
+   * May this connection's undo or redo walk `ops` onto `docId`? Asked before the walk, with the ops
+   * it would write in eta's paths. Not `permit`: undo may do what permit refuses (a message taken
+   * back); this is for a rule of time or state that holds against Undo too (answers closed at a
+   * deadline). Omitted: any walk. Throw `refuse(reason)` to say why.
+   */
+  walkable?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): boolean;
   /** What kind of document it is: where its truth lives. Default `written`. */
   kind?: Kind;
   /**

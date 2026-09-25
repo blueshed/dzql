@@ -6,6 +6,7 @@ import type { Compartment } from "../../../src/compartments/compartment";
 import { serverWrite } from "../../../src/documents";
 import { householdPages, type HouseholdView } from "../views/household";
 import { keepEveryone } from "../everyone";
+import { refuse } from "../../../src/refusal";
 
 // A household's document (`household:<id>`), written by the household that arrived by its code.
 // Nearly everything it writes changes what others see -- an answer puts figures in the photo every
@@ -28,6 +29,9 @@ const RULES: Rule[] = [
   { path: /^\/claims\/-$/, ops: ["add"] },
   { path: /^\/claims\/\d+$/, ops: ["remove"] },
 ];
+
+/** The fields the dated rules write, as the document holds them: `/households` answer, a guest's coming and choices. */
+const DATED = new Set(["answer", "coming", "choices"]);
 
 /** Everything a household's pages read, for this session. */
 function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined {
@@ -73,6 +77,14 @@ export const household: Compartment = {
       const h = householdDoc.read(session.id!)!;
       return h.guests.filter((g) => g.named_by === "household").length < h.plus_ones;
     }
+    return true;
+  },
+  // After the deadline an answer is locked, to Undo too: a walk that would set back an answer, a
+  // guest's coming or their choices is refused, and says why. A walk sets back only the fields its
+  // entry changed, so what else a household did -- a look, a claim -- still walks.
+  walkable(_ws, _id, ops) {
+    if (weddingDoc.answersOpen()) return true;
+    if (ops.some((op) => op.op === "replace" && Object.keys((op.value ?? {}) as object).some((f) => DATED.has(f)))) throw refuse("Answers closed at the deadline.");
     return true;
   },
   shape(_ws, id, ops) {

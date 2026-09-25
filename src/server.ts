@@ -9,7 +9,7 @@ import { failed } from "./failed";
 import { splitDoc } from "./names";
 import { drawing, shownTo } from "./reading";
 import { diff, type Drawn } from "./parts";
-import { Refusal, tell } from "./refusal";
+import { Refusal, refuse, tell } from "./refusal";
 
 type Socket = Bun.ServerWebSocket<ConnectionData>;
 
@@ -44,8 +44,8 @@ const track = (p: Promise<unknown>): void => {
 function redraw(ws: Socket, whole = false, written?: { docType: string; docId: string }): Promise<void> {
   const next = (drawingFor.get(ws) ?? Promise.resolve()).then(async () => {
     if (!active) return;
-    const { example, assembled } = active;
-    const drawn = await settled(assembled.documents, () => drawing(ws, () => example.render(ws.data.sessionId)));
+    const { assembled } = active;
+    const drawn = await settled(assembled.documents, () => drawing(ws, () => assembled.page(ws.data.sessionId)));
     const prev = sent.get(ws);
     sent.set(ws, drawn);
     const ops = prev && !whole ? diff(prev, drawn, written && wireName(written.docType, written.docId, ws)) : undefined;
@@ -161,11 +161,24 @@ export function createServer(example: Example, port: number | string = process.e
     return true;
   }
 
-  /** Undo or redo: delta walks the session's cursor; the change is told like any other. */
+  /**
+   * Undo or redo: delta walks the session's cursor; the change is told like any other. The walk is
+   * looked at first, and the document's owner may refuse it (`walkable`). One that meets someone
+   * else's later write changes nothing -- delta moves the cursor past it -- and says so.
+   */
   async function walk(ws: Socket, ops: PatchOp[]): Promise<boolean> {
     const ledger = byDocType.get("ledger")!;
     if (!(await settled(documents, () => ops.every((op) => ledger.permit!(ws, op, ws.data.sessionId))))) return false;
-    return (await documents.walk(ops[0]!.op === "add" ? "redo" : "undo", { identity: who(ws), cursor: ws.data.sessionId })) !== null;
+    const way = ops[0]!.op === "add" ? "redo" : "undo";
+    const by = { identity: who(ws), cursor: ws.data.sessionId };
+    const plan = await documents.walk(way, by, { dry: true });
+    if (!plan) return false; // nothing to walk
+    const { docType, docId } = splitDoc(plan.doc);
+    const owner = byDocType.get(docType);
+    if (!plan.conflict && owner?.walkable && !(await settled(documents, () => owner.walkable!(ws, docId, wireOps(owner, docId, plan.ops as PatchOp[]))))) return false;
+    const walked = await documents.walk(way, by, { entry: plan.entry });
+    if (walked?.conflict) throw refuse(`Someone has changed that since, so it cannot be ${way === "undo" ? "undone" : "redone"}.`);
+    return walked !== null;
   }
 
   /**

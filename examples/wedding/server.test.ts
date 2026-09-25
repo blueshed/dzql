@@ -664,10 +664,9 @@ describe("the couple", () => {
   });
 });
 
-// Undo beside someone else. The ledger is delta's (0.6.0): it applies a write's recorded inverse
-// blind, and asks nobody whether the walk is still allowed. These say what should be true, and
-// fail today -- bun says so when one starts to pass, and the `.failing` comes off
-// (scratchpad cross-repo.md, to delta: guarded inverses; a walk the caller can ask about first).
+// Undo beside someone else. The ledger is delta's: a walk sets back only what its entry changed,
+// where nobody has changed it since, or walks nothing and says so; and eta looks at a walk before
+// it is taken, so the document's own rules (a deadline) hold against Undo too.
 describe("undo beside someone else", () => {
   const undo = (ws: WebSocket) => send(ws, "ledger", [{ op: "remove", path: "/latest" }]);
 
@@ -691,7 +690,8 @@ describe("undo beside someone else", () => {
     await send(mine, "household", [{ op: "replace", path: "/answer", value: answer === "no" ? "yes" : "no" }]);
     await send(mine, "household", [{ op: "add", path: "/claims/-", value: 3 }]);
     await send(theirs, "household", [{ op: "remove", path: "/claims/3" }]); // the claim goes, from the other tab
-    await undo(mine); // the claim's undo: nothing left to take back
+    const told = await undo(mine); // the claim's undo: nothing left to take back, and Undo says so
+    expect(told.page).toContain("Someone has changed that since, so it cannot be undone.");
     await undo(mine);
     try {
       expect((await household(code)).answer).toBe(answer);
@@ -702,7 +702,7 @@ describe("undo beside someone else", () => {
     }
   });
 
-  test.failing("after the deadline an answer is locked, to Undo too", async () => {
+  test("after the deadline an answer is locked, to Undo too", async () => {
     const ws = await enter(code);
     const answer = (await household(code)).answer;
     await send(ws, "household", [{ op: "replace", path: "/answer", value: answer === "maybe" ? "yes" : "maybe" }]);
@@ -711,7 +711,7 @@ describe("undo beside someone else", () => {
     await heard(ws); // the household's page shows the deadline
     try {
       await refused(ws, "household", [{ op: "replace", path: "/answer", value: "no" }]);
-      await undo(ws);
+      expect((await undo(ws)).page).toContain("Answers closed at the deadline.");
       expect((await household(code)).answer).toBe(answered);
     } finally {
       await asCouple([{ op: "remove", path: "/deadline" }]);

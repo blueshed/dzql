@@ -6,7 +6,7 @@ import { prefixDoc, splitDoc } from "../names";
 import { shownTo } from "../reading";
 import type { Compartment } from "./compartment";
 import { createLedgerCompartment } from "./ledger";
-import { createRefusalCompartment } from "../refusal";
+import { createRefusalCompartment, refused } from "../refusal";
 import { sees, wireName, wireOps } from "./audience";
 import { createDocuments, settled, type Documents } from "../documents";
 
@@ -25,6 +25,8 @@ export type Assembled = {
   compartments: Compartment[];
   /** Every entry above, indexed by the docType it owns -- what server.ts's dispatcher resolves a `{doc, ops}` write against. */
   byDocType: Map<string, Compartment>;
+  /** The page for a session: the example's, and why its last undo or redo was refused, if it was. */
+  page(sessionId: string): string;
   /** The page, drawn until every document it reads is held. */
   draw(sessionId: string): Promise<string>;
   inspectFor(ws: ServerWebSocket<ConnectionData>, limit?: number): Promise<Inspection>;
@@ -51,7 +53,13 @@ export function assemble(example: Example): Assembled {
   const documents = copies.get(example) ?? createDocuments(example.delta);
   copies.set(example, documents);
 
-  const draw = (sessionId: string): Promise<string> => settled(documents, () => example.render(sessionId));
+  // Undo and redo are the kernel's own tools (the ledger, bento's page tools), so the kernel says
+  // why one was refused, over whatever page the example draws.
+  const page = (sessionId: string): string => {
+    const said = refused(sessionId, "ledger", "/latest");
+    return example.render(sessionId) + (said && `<div class="walk-said">${said}</div>`);
+  };
+  const draw = (sessionId: string): Promise<string> => settled(documents, () => page(sessionId));
 
   // Legibility: every document this connection sees -- the one of each type it is on, then
   // whatever else its page read -- and each one's most recent ledger entries,
@@ -94,5 +102,5 @@ export function assemble(example: Example): Assembled {
     return { docs };
   }
 
-  return { compartments, byDocType, draw, inspectFor, documents };
+  return { compartments, byDocType, page, draw, inspectFor, documents };
 }

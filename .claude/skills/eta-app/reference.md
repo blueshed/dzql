@@ -37,6 +37,7 @@ export type Compartment = {
   resolveDoc(ws): string | undefined;      // the one of this type the connection is on (a bare name)
   own?: true;                              // keyed by the session id: that session's alone, named by type
   permit?(ws, op, docId): boolean;         // may it write this path of this document? omitted: nobody may
+  walkable?(ws, docId, ops): boolean;      // may an undo or redo walk these ops onto it? omitted: any walk
   kind?: Kind;                             // where its truth lives: written (default), fact, live, sourced, static
   ledger?: false;                          // kept off the ledger (a visit): said, so one left off by mistake is caught
   at?: string;                             // where eta's paths sit in the document ("/sessions")
@@ -74,6 +75,13 @@ export type Compartment = {
   the `doc` and `path` of that control's `data-write`, gives the line (`<p class="refused"
   role="alert">`) or nothing. A plain `false` stays silent: a write no control offers has
   nowhere to say why. Where the browser can refuse it first (`required`, `pattern`), let it.
+- **Undo is looked at before it walks.** The kernel asks delta what the walk would write (in
+  eta's paths) and asks the document's owner, `walkable(ws, docId, ops)`: not `permit`, since undo
+  may do what permit refuses (a message taken back), but a rule of time or state that holds against
+  Undo too -- the wedding refuses a walk that would set back an answer after the deadline, with
+  `refuse("Answers closed at the deadline.")`. A walk that meets someone else's later write
+  changes nothing (delta moves the cursor past it) and says so. The kernel draws why an undo or
+  redo was refused over the page (`.walk-said`), since Undo is its own tool.
 - **By kind.** `written` is on the ledger and undoable; a `fact` is recorded, never undone (the
   ticker's ticks); `live` is held in memory and written by the server, never from the wire
   (chat's who is here); `sourced` and `static` are read, never written.
