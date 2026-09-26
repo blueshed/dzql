@@ -114,6 +114,24 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('#stay-drawer') !== null`, (v) => v === true);
   }, 20000);
 
+  test("beside a docked drawer the page is in reach: one tap goes from the gifts to the day, one to a guest; Escape puts the drawer away", async () => {
+    await using view = new Bun.WebView({ width: 1280, height: 800 }); // wide enough that the drawer docks
+    await enter(view, code);
+    await waitFor(view, `document.querySelector('#family-photo svg') !== null`, (v) => v === true);
+    await view.click('.rail [aria-label="Gifts"]');
+    await waitFor(view, `document.querySelector('#gifts-drawer') !== null`, (v) => v === true);
+    await Bun.sleep(300); // the rail steps aside for the drawer
+    await view.click('.rail [aria-label="The day"]'); // a real click, where the tool stands: nothing lies over it
+    await waitFor(view, `document.querySelector('#day-drawer') !== null`, (v) => v === true);
+    const guest = (await household(code)).guests[0]!;
+    // a figure never stands still (its attitude animates), so the tap is where it stands now
+    const at = await view.evaluate<{ x: number; y: number }>(`(() => { const r = document.querySelector('#family-photo .slot[data-key="${guest.id}"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+    await view.click(at.x, at.y);
+    await waitFor(view, `document.querySelector('.guest-drawer') !== null`, (v) => v === true);
+    await view.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))`);
+    await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
+  }, 15000);
+
   test("the answer: the pencil opens the drawer, an option writes it, the bubble shows it, Undo takes it back", async () => {
     await using view = new Bun.WebView();
     await enter(view, code);

@@ -39,6 +39,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A drawer docked at the right leaves the page in reach** (todo n58). From 820px the drawer had
+  a transparent scrim over the whole page, so every tap beside it only closed it: the next guest,
+  the next drawer, Undo, each took two. The docked drawer has no scrim now; only the phone's sheet
+  and the modal keep one. It goes by its ×, by what is tapped next, or by **Escape**, which the
+  client now handles: it presses the last `[data-escape]` on the page, and `bento()` marks a
+  drawer's × and a modal's scrim, so what was opened last is put away first. Something that takes
+  Escape for itself (the ticker's city picker, emptying its word) claims it with
+  `preventDefault()`. Rules 14 and 18 say so.
+- **Find's bar on a phone takes the row under the trail** (todo n60, its second point), rather
+  than covering it, and the reading moves down to keep clear; its buttons keep their size whatever
+  an example says of buttons.
 - **The wedding: a household's page is its photo**, as leave's is its calendar. The box of six
   cells -- guests, asks, gifts, the day, where to stay, everyone -- was one thing and three pieces
   of information. Now one page:
@@ -51,7 +62,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - gifts, the day and where to stay are tools on the rail, each opening a drawer that is read and
     put away; the gifts drawer holds every gift whole with the one thing to do with it (Claim it,
     Give to it, Unclaim);
-  - find is gone from the household's page: a family is a few people;
+  - find (rule 17) looks for someone by name in the photo and the list alike: whoever it misses
+    dims, and with the eye steps out of the photo; everyone's photo is nameless until the day, so
+    it has none;
   - every photo the wedding draws now fits its frame, feet included: the applet's mount takes the
     frame's height, so the drawing scales to it instead of to the width.
 

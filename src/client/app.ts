@@ -267,6 +267,17 @@ app.addEventListener("click", (event) => {
   send(doc, value !== undefined ? [{ op, path, value }] : [{ op, path }]);
 });
 
+// Escape puts away what was opened last: it presses the last `[data-escape]` on the page -- a
+// modal's scrim is drawn after the drawer it may open over -- as a click would, so it sends that
+// control's own write and nothing the page did not offer.
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || event.defaultPrevented) return;
+  const away = [...app.querySelectorAll<HTMLElement>("[data-escape]")].at(-1);
+  if (!away) return;
+  event.preventDefault();
+  away.click();
+});
+
 // A `data-write-on="blur"|"change"|"input"` form is an editing one, not a creating one:
 // `data-write` lives on its *fields*, each naming its own path, and the form commits on that
 // trigger instead of a submit -- one op per field whose live value has diverged from what the

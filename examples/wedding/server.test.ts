@@ -365,6 +365,47 @@ describe("a household", () => {
     couple.close();
   });
 
+  test("find looks for someone by name in the photo and the list: dims whoever it misses, tallies, the eye takes them out, and it forgets on close (rule 17)", async () => {
+    const ws = await enter(code);
+    const guests = (await household(code)).guests;
+    const [found, missed] = [guests[0]!, guests[1]!];
+    await at(ws, "");
+
+    // opening find: the field, empty, dimming nobody
+    let html = await go(ws, [{ op: "replace", path: "/filter/guests", value: "" }]);
+    expect(html).toContain('class="filter"');
+    expect(html).not.toContain("&quot;hushed&quot;:true");
+
+    // a word: the photo dims whoever it misses, and the tally counts the people this reading shows
+    html = await go(ws, [{ op: "replace", path: "/filter/guests", value: found.name }]);
+    expect(html).toContain(`&quot;key&quot;:&quot;${missed.id}&quot;`);
+    expect(html).toContain("&quot;hushed&quot;:true");
+    const waiting = (await household(code)).asks.filter((a) => a.reply === null).length;
+    expect(html).toContain(`>1 of ${guests.length + waiting}</span>`);
+    // the eye: whoever it misses steps out of the photo
+    html = await go(ws, [{ op: "replace", path: "/hide/guests", value: true }]);
+    expect(html).not.toContain(`&quot;key&quot;:&quot;${missed.id}&quot;`);
+    expect(html).toContain(`&quot;key&quot;:&quot;${found.id}&quot;`);
+
+    // the list: the same word, the same eye; someone asked for is found by their own name
+    await asHousehold(code, [{ op: "add", path: "/asks/-", value: "Nobody Matching" }]);
+    html = await at(ws, "list");
+    expect(html).toMatch(new RegExp(`class="row tap hushed" id="guest-${missed.id}"[^>]* hidden>`));
+    expect(html).toMatch(/class="row hushed" id="ask-\d+" hidden>/);
+    expect(html).toContain(`class="row tap" id="guest-${found.id}"`);
+
+    // everyone's photo is nameless until the day: no find there, and the word waits for the way back
+    expect(await at(ws, "everyone")).not.toContain('class="filter"');
+    expect(await at(ws, "")).toContain(`value="${found.name}"`);
+
+    // closing find forgets the word and the eye: nothing dims, no field, no tally
+    html = await go(ws, [{ op: "remove", path: "/filter/guests" }]);
+    expect(html).not.toContain('class="filter"');
+    expect(html).not.toContain("&quot;hushed&quot;:true");
+    expect(html).toContain(`&quot;key&quot;:&quot;${missed.id}&quot;`);
+    ws.close();
+  });
+
   test("undo walks back this session's own writes, newest first; nothing left, nothing moves", async () => {
     const ws = await enter(code);
     const guest = (await household(code)).guests[0]!;

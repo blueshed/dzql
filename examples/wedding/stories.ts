@@ -6,9 +6,10 @@
 // id, never by position.
 //
 // Where: the page's address -- the page, and after a `?` the one thing open over it -- and after
-// " @ ", `reading.family-1=list` (how one of the couple's collections is read). A household's page
-// is its photo: "" (the household, with a waiting ask as a ghost), "list" (the same people as a
-// list) or "everyone" (the photo every household watches); over it, a guest's drawer (`?guest=2`),
+// " @ ", how a collection is read (`reading.family-1=list`) or what find is looking for
+// (`filter.guests=Femi`, rule 17). A household's page is its photo: "" (the household, with a
+// waiting ask as a ghost), "list" (the same people as a list) or "everyone" (the photo every
+// household watches); over it, a guest's drawer (`?guest=2`),
 // the answer's (`?answer`), the plus's modal (`?new=guests` names a plus-one, `?new=asks` asks the
 // couple), and the information a household reads and puts away: `?gifts`, `?day`, `?stay`. The
 // couple's are "" (the welcome and the counts), "households", "households/<id>" (a family's box),
@@ -60,6 +61,7 @@ export const stories: Stories = {
 
     // ── Going somewhere, and leaving ──
     story("The Okafors open the gift list, and only their tab moves", { as: "okafors", does: session("/page", "?gifts"), seen: ["okafors"], untold: ["couple", "ben", "benToo", "stranger"] }),
+    story("The Okafors look for Femi, and everyone else in their photo dims; only their page changes", { as: "okafors", from: " @ filter.guests=", does: session("/filter/guests", "Femi"), seen: ["okafors"], untold: ["couple", "ben", "benToo", "stranger"] }),
     story("Leaving the site forgets the code", { as: "okafors", does: session("/code"), seen: ["okafors"] }),
 
     // ── A household answers ──

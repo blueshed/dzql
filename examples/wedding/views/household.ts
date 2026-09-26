@@ -1,23 +1,24 @@
 // A household's page: their photo, as leave's is its calendar. What they say is the bubble over it,
 // a thing with ✎; their guests stand in it, and a tap on one opens their drawer -- dress them, say
 // whether they are coming, choose the meal; a waiting ask stands as a ghost. The same people as a
-// list, or the photo every household watches, are readings of it (rule 16). The plus brings
-// someone: names a plus-one while one is owed, asks the couple after. Gifts, the day and where to
-// stay are what the couple tell every household: tools on the rail, each opening a drawer that is
-// read, used (a gift claimed) and put away. Which reading and which drawer is the session's word.
+// list, or the photo every household watches, are readings of it (rule 16), and find looks for
+// someone in the first two by name (rule 17). The plus brings someone: names a plus-one while one
+// is owed, asks the couple after. Gifts, the day and where to stay are what the couple tell every
+// household: tools on the rail, each opening a drawer that is read, used (a gift claimed) and put
+// away. Which reading and which drawer is the session's word.
 
 import type { Guest, HouseholdDocument } from "../documents/household";
 import { over, type Info, type SessionDocument } from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { Course, Gift, Wedding } from "../documents/wedding";
-import { addModal, addTool, choice, collectionPage, prop, row, rows, drawer, tool, type Crumb } from "./bento";
+import { addModal, addTool, choice, collectionPage, findControl, prop, row, rows, drawer, tool, type Crumb } from "./bento";
 import type { DressProps } from "../applets/dress";
 import type { MenuProps } from "../applets/menu";
 import { esc, join, nav, open, write, appletWrites } from "./html";
 import { part } from "../../../src/parts";
 import { icon, type IconName } from "./icons";
 import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
-import { answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, layers, isComing, isGuestOut, picture, placeRows, plural, specOf, timetableRows } from "./shared";
+import { answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, layers, isComing, isGuestOut, matches, picture, placeRows, plural, specOf, timetableRows } from "./shared";
 
 /** Opening something over the page this household is on -- a drawer, a modal -- and putting it away: both are going somewhere (views/html.ts). */
 const open_ = (v: HouseholdView, what: string, which: string | number = ""): string => open(over(v.session.ui).path, what, which);
@@ -38,6 +39,12 @@ export type HouseholdView = {
   /** Does the photo carry names? */
   names: boolean;
 };
+
+/** Find's word and its eye on the household's people (rule 17): by name, the photo and the list alike. */
+const findOf = (v: HouseholdView): { word?: string; hide?: boolean } => ({ word: v.session.ui.filter?.guests, hide: v.session.ui.hide?.guests });
+
+/** Whoever was asked for and is not a guest: waiting (a ghost in the photo), or refused (in the list alone). */
+const askedFor = (v: HouseholdView, refused: boolean) => v.h.asks.filter((a) => a.reply === null || (refused && a.reply === "no"));
 
 /** How the page is read: the household's photo (""), the same people as a list, or everyone's photo -- with one family open in it. */
 type Reading = { as: "us" | "list" | "everyone"; family: string | null };
@@ -69,10 +76,15 @@ export function householdPage(v: HouseholdView): string {
 
   const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${READINGS.map(([text, as, path, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${read.as === as}" aria-pressed="${read.as === as}" aria-label="${text}"${nav(path)}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
   const owed = v.h.guests.filter((g) => g.named_by === "household").length < v.h.plus_ones;
+  // find, on the people this reading shows: everyone's photo is nameless until the day
+  const { word, hide } = findOf(v);
+  const people = [...v.h.guests, ...askedFor(v, read.as === "list")].map((p) => p.name);
+  const find = read.as !== "everyone" && people.length ? findControl("guests", { word, hide, shown: people.filter((n) => matches(n, word)).length, total: people.length }) : undefined;
   const tools = [
+    find?.tool ?? "",
     ...INFO.map(([text, what, mark]) => tool(text, { icon: mark, iconOnly: true, pressed: at.info === what, write: at.info === what ? close(v) : open_(v, what) })),
     addTool(open_(v, "new", owed ? "guests" : "asks"), owed ? "Name our plus-one" : "Ask to bring someone"),
-  ];
+  ].filter(Boolean);
   const said = v.open && v.w.deadline ? `<p class="note">Answers by ${esc(formatDay(v.w.deadline))}.</p>` : "";
   const body = join(
     `<div class="photo-page">`,
@@ -81,7 +93,7 @@ export function householdPage(v: HouseholdView): string {
     read.as === "list" ? listReading(v) : read.as === "everyone" ? everyone!.body : usReading(v),
     `</div>`,
   );
-  const page = collectionPage(trail, { key: "photo", reading, tools, body });
+  const page = collectionPage(trail, { key: "photo", reading, tools, filter: find?.filter, body });
 
   const modal =
     at.new === "guests" ? addModal("Name our plus-one", [{ name: "name", label: "Their name" }], write("household", "add", "/guests/-"), close(v))
@@ -109,7 +121,7 @@ function speechBubble(h: HouseholdDocument, open: boolean, answer: string): stri
 
 /** The household's photo's mount: every guest, a waiting ask as a ghost; the chosen one rings while
  * their drawer is open. Replaced alone when a look changes. */
-export const familyPhoto = (v: HouseholdView): string => photoMount("family-photo", familyEntries(v.h, over(v.session.ui)), "your household, as minifigures");
+export const familyPhoto = (v: HouseholdView): string => photoMount("family-photo", familyEntries(v.h, over(v.session.ui), findOf(v)), "your household, as minifigures");
 
 /** The page read as the household's photo: the page itself. */
 function usReading(v: HouseholdView): string {
@@ -117,12 +129,16 @@ function usReading(v: HouseholdView): string {
   return `<div class="reading photo">${familyPhoto(v)}</div><p class="note">Tap anyone to dress them and choose their meal.</p>`;
 }
 
-/** One guest as a row: the name, their choices, whether they are coming; ✎ the drawer, lit while it is open (rule 13). */
+/** One guest as a row: the name, their choices, whether they are coming; ✎ the drawer, lit while it is open (rule 13). Find dims it, or with the eye hides it, when the word misses. */
 export function guestRow(v: HouseholdView, g: Guest): string {
+  const { word, hide } = findOf(v);
+  const miss = !matches(g.name, word);
   return row({
     id: `guest-${g.id}`,
     tap: open_(v, "guest", g.id),
     chosen: over(v.session.ui).focus === g.id,
+    hushed: miss,
+    hidden: miss && hide,
     what: g.name,
     note: choicesLine(g, v.courses),
     state: answerWord(g.coming === null ? "none" : isComing(g) ? "yes" : "no", g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming"),
@@ -132,11 +148,14 @@ export function guestRow(v: HouseholdView, g: Guest): string {
 
 /** The same people as a list: the guests, then whoever was asked for and is not a guest -- waiting, or refused. */
 function listReading(v: HouseholdView): string {
-  const asked = v.h.asks.filter((a) => a.reply !== "yes");
+  const { word, hide } = findOf(v);
   return rows(
     [
       ...v.h.guests.map((g) => guestRow(v, g)),
-      ...asked.map((a) => row({ id: `ask-${a.id}`, what: a.name, state: a.reply === "no" ? answerWord("no", "the couple said no") : answerWord("none", "asked for") })),
+      ...askedFor(v, true).map((a) => {
+        const miss = !matches(a.name, word);
+        return row({ id: `ask-${a.id}`, what: a.name, hushed: miss, hidden: miss && hide, state: a.reply === "no" ? answerWord("no", "the couple said no") : answerWord("none", "asked for") });
+      }),
     ],
     "Nobody is named on your invitation yet.",
   );

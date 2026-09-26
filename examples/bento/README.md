@@ -61,7 +61,8 @@ Each rule names where the mock-up honours it.
     give, waits in its drawer as one control, not on the line.
 14. **A modal is new or delete.** The plus on a collection's rail asks one question, the name,
     with everything behind it dimmed because nothing else may be touched while it asks. Answer,
-    and the thing is on its list. Nothing else is a modal.
+    and the thing is on its list; Escape, or a tap on the dimmed page, cancels. Nothing else is a
+    modal.
 15. **A cell may be a thing, not a collection.** It carries ✎, not ›. A tap does not open a
     window: it opens the thing's drawer, with each property by its kind, and the cell shows
     it is chosen while the drawer is open. *Our answer* is one: the answer as a choice, the words
@@ -80,7 +81,9 @@ Each rule names where the mock-up honours it.
     chosen figure into the clear beside it, the browser's own scroll-into-view. The box does not
     move: the tray keeps its shape and the drawer overlaps it, since a thing's properties are
     read in the drawer, not on the cell behind it. A window never changes size because
-    its content changed.
+    its content changed. Beside a docked drawer the page is still in reach: a tap on another
+    figure opens its drawer, a tool on the rail does what it does, and × or Escape puts the drawer
+    away. Only the phone's sheet dims the page, and a tap on that closes it.
 
 ## What eta already does with this
 

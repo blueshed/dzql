@@ -230,6 +230,35 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "session", ops: [{ op: "remove", path: "/filter/rooms" }] });
   });
 
+  test("Escape presses what was opened last -- the last [data-escape] on the page -- and nothing when nothing is open, or something took the key first", async () => {
+    await using view = await open();
+    await stubSend(view);
+    // (the WebView's press() does not deliver a keydown, so the key is dispatched as the browser would)
+    const key = (name: string, on = "document") => view.evaluate(`${on}.dispatchEvent(new KeyboardEvent('keydown', { key: '${name}', bubbles: true, cancelable: true }))`);
+
+    await pushRender(view, `<p id="page">nothing open</p>`);
+    await waitFor(view, `document.getElementById('page') !== null`, (v) => v === true);
+    await key("Escape");
+    expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([]);
+
+    // a drawer's × and, drawn after it, a modal's scrim: the modal was opened last
+    await pushRender(
+      view,
+      `<aside><button id="x" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="">×</button><input id="own"></aside>` +
+        `<div id="scrim" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="?drawer"></div>`,
+    );
+    await waitFor(view, `document.getElementById('scrim') !== null`, (v) => v === true);
+    await key("Enter"); // another key is nobody's
+    // a field (or an applet) that takes Escape for itself says so, and the page leaves it be
+    await view.evaluate(`document.getElementById('own').addEventListener('keydown', (e) => e.preventDefault())`);
+    await key("Escape", "document.getElementById('own')");
+    expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([]);
+
+    await key("Escape");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "session", ops: [{ op: "replace", path: "/page", value: "?drawer" }] });
+  });
+
   test("a data-write-on=\"input\" form sends once after several keystrokes, debounced, and never repeats an unchanged value", async () => {
     await using view = await open();
     await stubSend(view);
