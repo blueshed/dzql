@@ -132,6 +132,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **A plain form posts.** The client stopped every form's submit, so a form without
   `data-write` (a sign-in page) could never post; it now stops only a form that writes.
+- **The wedding's welcome, laid out again.** Its forms used the bento's list `.row` (a rule under
+  each, bled margins) and its buttons had lost their padding and border to the bento's reset; the
+  forms are `.entry` now, the gold and ghost buttons are padded, and the code's button says
+  "Open", since the card above it already says "Open our household".
 
 ## [0.49.0] - 2026-09-25
 
