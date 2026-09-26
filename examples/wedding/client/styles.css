@@ -113,6 +113,20 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 .gift-words .note { margin: 2px 0 0; }
 .gift-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-sm); font-size: 13px; }
 .info-drawer .when-where { margin: 0 0 var(--space-md); font-family: var(--serif); color: var(--navy); line-height: 1.5; }
+/* a family's drawer, and the lists the couple keep: a line each -- the words, the state, the one
+   control -- and a new one named in place at the foot */
+.lines { display: flex; flex-direction: column; }
+.line { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: 1px solid var(--line); }
+.line:last-child { border-bottom: 0; }
+.line .words { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.line .what { font-weight: 600; }
+.line .note { font-size: 13px; }
+.line .answer-word { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.add-here { margin: var(--space-md) 0 var(--space-lg); }
+.drawer .row .words { flex: 1 1 10rem; } /* in a drawer's narrow width the words keep theirs, and the state goes under them */
+.add-here .field { flex: 1 1 auto; min-width: 0; }
+.family-drawer .bubble { max-width: none; margin: 0 0 var(--space-md); box-shadow: none; border: 1px solid var(--line); }
+.family-drawer .bubble::after { display: none; }
 .row .lead img.pic { width: 56px; height: 56px; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); display: block; }
 .row .lead .when { display: inline-block; min-width: 4rem; color: var(--navy); font-weight: 600; font-size: 14px; }
 .row .state a { color: var(--navy); }

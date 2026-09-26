@@ -19,8 +19,8 @@ afterAll(() => {
 });
 
 
-/** The trail: above the couple's box, or in the head of the household's page, which is a window of its own. */
-const CRUMBS = `(document.querySelector('.crumbs') ?? document.querySelector('.cell.open .cell-head'))?.textContent ?? null`;
+/** The trail, in the head of the page: a household's and the couple's are each a window of its own. */
+const CRUMBS = `document.querySelector('.cell.open .cell-head')?.textContent ?? null`;
 
 async function enter(view: Bun.WebView, who: string) {
   await view.navigate(urlFor(view, server.url));
@@ -145,6 +145,24 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('.bubble.ours .face-mark')?.classList.contains('maybe')`, (v) => v === false);
   });
 
+  test("the couple's page is the photo of families: a tap on a family opens its drawer, and Escape puts it away", async () => {
+    await using view = new Bun.WebView({ width: 1280, height: 800 });
+    await view.navigate(urlFor(view, server.url));
+    await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
+    await view.scrollTo("#code");
+    await view.click("#code");
+    await view.type("DASH");
+    await view.click("button.gold");
+    await waitFor(view, `document.querySelector('#board-photo svg .slot[role="button"]') !== null`, (v) => v === true);
+    // a figure never stands still, so the tap is where it stands now
+    const at = await view.evaluate<{ x: number; y: number }>(`(() => { const r = document.querySelector('#board-photo .slot[role="button"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+    await view.click(at.x, at.y);
+    await waitFor(view, `document.querySelector('.family-drawer') !== null`, (v) => v === true);
+    expect(await view.evaluate<string>(`location.search`)).toMatch(/^\?family=\d+$/);
+    await view.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))`);
+    await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
+  }, 15000);
+
   test("editing a gift's fields in its drawer writes on blur, batches fields changed together, and does not reset", async () => {
     await using view = new Bun.WebView();
     // the couple's own code, not a household's: the keep drawers are theirs to edit
@@ -159,7 +177,7 @@ describe("the wedding in a real browser", () => {
     await asCouple([{ op: "add", path: "/gifts/-", value: { name: "Toaster", description: "starter" } }]);
     const giftId = (await board()).gifts.at(-1)!.id;
 
-    await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/page", value: "gifts?keep=gifts/${giftId}" }] }))`);
+    await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/page", value: "?keep=gifts/${giftId}" }] }))`);
     await waitFor(view, `document.querySelector('.keep-drawer input[name=name]') !== null`, (v) => v === true);
 
     // change two fields of the same editing form before either loses focus, then trigger just one:

@@ -8,7 +8,7 @@
 // away. Which reading and which drawer is the session's word.
 
 import type { Guest, HouseholdDocument } from "../documents/household";
-import { over, type Info, type SessionDocument } from "../documents/session";
+import { over, type Named, type SessionDocument } from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { Course, Gift, Wedding } from "../documents/wedding";
 import { addModal, addTool, choice, collectionPage, findControl, prop, row, rows, drawer, tool, type Crumb } from "./bento";
@@ -61,7 +61,7 @@ const READINGS: [text: string, as: Reading["as"], path: string, mark: IconName][
 ];
 
 /** The information the couple give every household, each a tool on the rail and a drawer. */
-const INFO: [text: string, what: Info, mark: IconName][] = [
+const INFO: [text: string, what: Named, mark: IconName][] = [
   ["Gifts", "gifts", "gift"],
   ["The day", "day", "calendar"],
   ["Where to stay", "stay", "bed"],
@@ -82,7 +82,7 @@ export function householdPage(v: HouseholdView): string {
   const find = read.as !== "everyone" && people.length ? findControl("guests", { word, hide, shown: people.filter((n) => matches(n, word)).length, total: people.length }) : undefined;
   const tools = [
     find?.tool ?? "",
-    ...INFO.map(([text, what, mark]) => tool(text, { icon: mark, iconOnly: true, pressed: at.info === what, write: at.info === what ? close(v) : open_(v, what) })),
+    ...INFO.map(([text, what, mark]) => tool(text, { icon: mark, iconOnly: true, pressed: at.drawer === what, write: at.drawer === what ? close(v) : open_(v, what) })),
     addTool(open_(v, "new", owed ? "guests" : "asks"), owed ? "Name our plus-one" : "Ask to bring someone"),
   ].filter(Boolean);
   const said = v.open && v.w.deadline ? `<p class="note">Answers by ${esc(formatDay(v.w.deadline))}.</p>` : "";
@@ -254,7 +254,7 @@ function giftState(g: Gift, mine: boolean): { word: string; cls: string } {
 
 /** The gifts, read in a drawer and put away: each whole -- its picture, its words, where to find it, what it is to us -- and the one thing this household may do with it. */
 function giftsSheet(v: HouseholdView): string {
-  if (over(v.session.ui).info !== "gifts") return "";
+  if (over(v.session.ui).drawer !== "gifts") return "";
   const gifts = v.gifts.map((g) => {
     const mine = v.h.claims.includes(g.id);
     const st = giftState(g, mine);
@@ -280,14 +280,14 @@ function giftsSheet(v: HouseholdView): string {
 
 /** The day, read in a drawer: when and where, then what happens. */
 function daySheet(v: HouseholdView): string {
-  if (over(v.session.ui).info !== "day") return "";
+  if (over(v.session.ui).drawer !== "day") return "";
   const body = join(`<p class="when-where">${esc(formatDay(v.w.day))}${v.w.venue ? `<br>${esc(v.w.venue)}` : ""}</p>`, timetableRows(v.events));
   return drawer("day-drawer", "The day", body, close(v), "info-drawer");
 }
 
 /** Where to stay, read in a drawer. */
 function staySheet(v: HouseholdView): string {
-  if (over(v.session.ui).info !== "stay") return "";
+  if (over(v.session.ui).drawer !== "stay") return "";
   return drawer("stay-drawer", "Where to stay", placeRows(v.places), close(v), "info-drawer");
 }
 

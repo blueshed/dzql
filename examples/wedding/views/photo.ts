@@ -58,6 +58,8 @@ export interface Family {
   tap?: PhotoEntry["tap"];
   /** Find's word missed this whole family (rule 17). */
   hushed?: boolean;
+  /** Its drawer is open: the family figure rings (rule 13). */
+  chosen?: boolean;
 }
 
 /**
@@ -79,6 +81,7 @@ export function familiesPhoto(families: Family[], open: string | null): { entrie
     count: f.members.length,
     tap: f.tap,
     hushed: f.hushed,
+    chosen: f.chosen,
   }));
   return { entries, label: "the photo: the families", level: "families", shown: entries.length };
 }

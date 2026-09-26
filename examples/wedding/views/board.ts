@@ -1,37 +1,21 @@
-// The couple's pages: their home -- the welcome as a thing with ✎, then households, courses,
-// gifts, events and where to stay as cells, each growing into the window; a family's box
-// as the couple read it -- their guests, their asks, their code; and the drawers where the four
-// lists they keep are edited, a row each.
+// The couple's page: the photo of every family, as a household's is its own. Their welcome is the
+// bubble over it, a thing with ✎. A tap on a family opens its drawer -- their answer and words,
+// their guests (added, taken off), whoever they asked for (yes or no), their email and plus-ones.
+// The same families as a list is the other reading (rule 16); find looks for a family by its code
+// or a name (rule 17); the plus invites a household. The four lists the couple keep -- courses,
+// gifts, events, where to stay -- are tools on the rail, each a drawer of rows that takes a new one
+// in place, and a row opens a drawer of its own, whose × goes back to its list.
 
 import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
 import { over, type SessionDocument } from "../documents/session";
-import { addModal, addTool, boxPage, cell, choice, confirmModal, findControl, prop, readingSwitch, row, rows, drawer, tool, type Crumb, type OpenOptions } from "./bento";
+import { addModal, addTool, choice, collectionPage, confirmModal, findControl, prop, row, rows, drawer, tool } from "./bento";
 import { esc, join, nav, open as openAt, write } from "./html";
-import { icon } from "./icons";
-import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
-import {
-  answerOf,
-  answerSays,
-  answerWord,
-  choicesLine,
-  coupleName,
-  coursesSummary,
-  eventsSummary,
-  faceMark,
-  firstNameOf,
-  formatDay,
-  frame,
-  layers,
-  isComing,
-  matches,
-  picture,
-  placeRows,
-  placesSummary,
-  plural,
-  specOf,
-  timetableRows,
-} from "./shared";
+import { address } from "../../../src/bento";
+import { part } from "../../../src/parts";
+import { icon, type IconName } from "./icons";
+import { familiesPhoto, photoMount, type Family, type PhotoEntry } from "./photo";
+import { answerOf, answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, layers, isComing, matches, picture, placeRows, plural, specOf, timetableRows } from "./shared";
 import { inPhoto } from "../documents/wedding";
 
 /** Opening something over the page the couple are on -- a drawer, a modal -- and putting it away: both are going somewhere (views/html.ts). */
@@ -41,41 +25,50 @@ const close = (v: BoardView): string => nav(over(v.session.ui).path);
 export type BoardView = { session: SessionDocument; b: BoardDocument };
 
 type KeepTable = "courses" | "gifts" | "events" | "places";
-const KEEP: Record<KeepTable, { label: string; noun: string }> = {
-  courses: { label: "Courses", noun: "course" },
-  gifts: { label: "Gifts", noun: "gift" },
-  events: { label: "Events", noun: "event" },
-  places: { label: "Where to stay", noun: "place" },
+const KEEP: Record<KeepTable, { label: string; noun: string; mark: IconName }> = {
+  courses: { label: "Courses", noun: "course", mark: "utensils" },
+  gifts: { label: "Gifts", noun: "gift", mark: "gift" },
+  events: { label: "Events", noun: "event", mark: "calendar" },
+  places: { label: "Where to stay", noun: "place", mark: "bed" },
 };
 const isKeepTable = (s: string): s is KeepTable => s in KEEP;
 
-/** Which cell of the home the page names, grown into the window (rule 7). */
-function openFor(v: BoardView, head: string): { open?: OpenOptions; crumbs: Crumb[] } {
-  if (head === "households") return { open: householdsOpen(v), crumbs: [{ label: "Households" }] };
-  if (isKeepTable(head)) return { open: keepOpen(v, head), crumbs: [{ label: KEEP[head].label }] };
-  return { crumbs: [] };
-}
+/** The list a row's keep drawer belongs to (`courses/2` is the courses'), if any. */
+const keptIn = (v: BoardView): { table: KeepTable; id: number } | undefined => {
+  const [table = "", id] = (over(v.session.ui).keep ?? "").split("/");
+  return isKeepTable(table) ? { table, id: Number(id) } : undefined;
+};
 
-export function boardPages(v: BoardView): string {
+/** Find's word on the families, and the eye (rule 17): a family is found by its code or any of its names. */
+const findOf = (v: BoardView) => ({ word: v.session.ui.filter?.households, hide: v.session.ui.hide?.households });
+const hits = (h: HouseholdDocument, word: string | undefined): boolean => matches(`${h.code} ${h.guests.map((g) => g.name).join(" ")}`, word);
+
+export function boardPage(v: BoardView): string {
   const { b } = v;
   const ui = v.session.ui;
-  const trail: Crumb[] = [{ label: coupleName(b), back: nav("") }];
   const at = over(ui);
-  const [head, hid, third] = at.path.split("/");
-  const h = head === "households" && hid ? b.households.find((x) => String(x.id) === hid) : undefined;
-  let page: string;
-  if (h) {
-    const familyTrail: Crumb[] = [...trail, { label: "Households", back: nav("households") }, { label: h.code, back: nav(`households/${h.id}`) }];
-    page = familyBox(v, h, familyTrail, third);
-  } else {
-    const { open, crumbs } = openFor(v, head);
-    page = boxPage(open ? [...trail, ...crumbs] : trail, [welcomePreview(b, !!at.answering, open_(v, "answer"))], boxCells(v), open);
-  }
-  const newTable = isKeepTable(at.new ?? "") ? (at.new as KeepTable) : undefined;
-  const modalOpen = !!at.new || !!at.confirm;
-  const locked = modalOpen || !!at.keep || !!at.answering || at.focus !== undefined;
+  const list = at.path === "list";
+  const { word, hide } = findOf(v);
+
+  const readings: [text: string, on: boolean, path: string, mark: IconName][] = [
+    ["Everyone", !list, "", "camera"],
+    ["List", list, "list", "list"],
+  ];
+  const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${readings.map(([text, on, path, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${on}" aria-pressed="${on}" aria-label="${text}"${nav(path)}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
+  const find = b.households.length ? findControl("households", { word, hide, shown: b.households.filter((h) => hits(h, word)).length, total: b.households.length }) : undefined;
+  const kept = keptIn(v)?.table;
+  const tools = [
+    find?.tool ?? "",
+    ...(Object.keys(KEEP) as KeepTable[]).map((table) => {
+      const on = at.drawer === table || kept === table;
+      return tool(KEEP[table].label, { icon: KEEP[table].mark, iconOnly: true, pressed: on, write: on ? close(v) : open_(v, table) });
+    }),
+    addTool(open_(v, "new", "households"), "Invite a household"),
+  ].filter(Boolean);
+  const body = join(`<div class="photo-page">`, welcomeBubble(b, !!at.answering, open_(v, "answer")), list ? householdsList(v) : photoReading(v), `</div>`);
+  const page = collectionPage([{ label: coupleName(b) }], { key: "photo", reading, tools, filter: find?.filter, body });
+
   const modal = join(
-    newTable && addModal(`Add a ${KEEP[newTable].noun}`, [{ name: "name", label: `The ${KEEP[newTable].noun}'s name` }], write("board", "add", `/${newTable}/-`), close(v)),
     at.new === "households" &&
       addModal(
         "Invite a household",
@@ -88,67 +81,168 @@ export function boardPages(v: BoardView): string {
         close(v),
         "Invite",
       ),
-    h && at.new === "guests" && addModal("Add a guest", [{ name: "name", label: "Their name" }], write("board", "add", `/households/${h.id}/guests/-`), close(v)),
-    h ? confirmTakeOff(v, h) : confirmRemove(v),
+    confirmTakeOff(v),
+    confirmRemove(v),
   );
-  const body = layers(page, join(keepSheet(v), codeSheet(v, h), h ? familyGuestSheet(v, h) : "", welcomeSheet(v)), modal);
-  return frame(false, body, ui.page ?? "", locked);
+  const drawers = join(familySheet(v), listSheet(v), keepSheet(v), welcomeSheet(v));
+  return frame(false, layers(page, drawers, modal), ui.page ?? "", !!modal || !!drawers);
 }
 
-/** A family's guest's drawer, as the couple read it: whether they are coming, and taking them off the invitation, which asks first. */
-function familyGuestSheet(v: BoardView, h: HouseholdDocument): string {
-  const g = h.guests.find((x) => x.id === over(v.session.ui).focus);
-  if (!g) return "";
-  const body = join(
-    `<div class="props">${prop("Coming", `<span>${g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming"}</span>`)}</div>`,
-    `<div class="drawer-foot">${tool("Take off the invitation", { icon: "trash", kind: "danger", write: open_(v, "confirm", `guests/${g.id}`) })}</div>`,
+// ───────────────────────────── the page ─────────────────────────────
+
+/** The welcome as the couple's own thing (rule 15), over the photo: their words, the day, the place, the deadline, carrying ✎;
+ * a tap opens the drawer where the whole of it is edited, and it is lit while that drawer is open. Their names are the trail's. */
+function welcomeBubble(b: BoardDocument, open: boolean, edit: string): string {
+  return join(
+    `<div class="bubble couple thing" role="button" tabindex="0" aria-pressed="${open}"${edit}>`,
+    `<div class="bubble-words${b.message ? "" : " empty"}"><span>${esc(b.message || "Your words on the welcome")}</span>`,
+    `<span class="note">${esc(formatDay(b.day))}${b.venue ? ` · ${esc(b.venue)}` : ""}${b.deadline ? ` · answers by ${esc(formatDay(b.deadline))}` : ""}</span></div>`,
+    `<span class="pencil" aria-hidden="true">${icon("pencil", 16)}</span>`,
+    "</div>",
   );
-  return drawer("family-guest-drawer", g.name, body, close(v), "guest-drawer");
 }
 
-/** The modal asking to take a guest off a family's invitation (rule 14); cancelling goes back to their drawer. */
-function confirmTakeOff(v: BoardView, h: HouseholdDocument): string {
-  const [what, idText] = (over(v.session.ui).confirm ?? "").split("/");
-  const g = what === "guests" ? h.guests.find((x) => String(x.id) === idText) : undefined;
-  if (!g) return "";
-  return confirmModal(`Take ${g.name} off`, `Take ${g.name} off the ${h.code} invitation?`, write("board", "remove", `/households/${h.id}/guests/${g.id}`), open_(v, "guest", g.id), "Take off");
+/** Every household as a family: its guests as members, the answer at their feet, the code on the family figure's chest; a tap
+ * opens the family's drawer, and it rings while that is open. Find's word hushes a whole family at once; with the eye, it
+ * steps out of the photo. */
+function boardFamilies(v: BoardView): Family[] {
+  const { path, family } = over(v.session.ui);
+  const { word, hide } = findOf(v);
+  const families: Family[] = [];
+  for (const h of [...v.b.households].sort((a, b) => a.code.localeCompare(b.code))) {
+    const hush = !hits(h, word);
+    if (!h.guests.length || (hush && hide)) continue;
+    const mark = answerOf(h);
+    const tap: PhotoEntry["tap"] = { doc: "session", op: { op: "replace", path: "/page", value: address(path, "family", h.id) } };
+    const chosen = family === h.id;
+    const members: PhotoEntry[] = h.guests.map((g) => {
+      const state = inPhoto({ coming: g.coming, answer: h.answer });
+      return { key: String(g.id), spec: specOf(g.minifigure, g.name), ghost: state === "ghost", out: state === null, mark, tap, hushed: hush, chosen };
+    });
+    families.push({ key: String(h.id), members, label: h.code, mark, ghost: mark === "maybe", out: mark === "no" || mark === "none", tap, hushed: hush, chosen });
+  }
+  return families;
 }
 
-/** The modal asking to confirm a removal -- a modal is new or delete and nothing else (rule 14). */
-function confirmRemove(v: BoardView): string {
-  const confirm = over(v.session.ui).confirm ?? "";
-  const [table, idText] = confirm.split("/");
-  if (!table || !isKeepTable(table)) return "";
-  const id = Number(idText);
-  const list = v.b[table] as { id: number; name: string }[];
-  const found = list.find((r) => r.id === id);
-  if (!found) return "";
-  const { noun } = KEEP[table];
-  return confirmModal(`Remove this ${noun}`, `Remove "${found.name}" from the list?`, write("board", "remove", `/${table}/${id}`), open_(v, "keep", confirm)); // cancelling goes back to the drawer it was asked from
+/** The photo of families: its mount, replaced alone when a look changes. */
+export function boardPhoto(v: BoardView): string {
+  const { entries, label } = familiesPhoto(boardFamilies(v), null);
+  return photoMount("board-photo", entries, label);
 }
 
-// ───────────────────────────── the home ─────────────────────────────
+/** The page read as the photo: every family, and what the caterer needs to know of them. */
+function photoReading(v: BoardView): string {
+  const t = v.b.totals;
+  if (!v.b.households.some((h) => h.guests.length)) return `<p class="note">Nobody invited yet.</p>`;
+  const counts = `${plural(t.households, "household", "households")} · ${t.answered} answered · ${t.coming} coming${t.asksWaiting ? ` · ${plural(t.asksWaiting, "ask", "asks")} waiting` : ""}`;
+  return `<div class="reading photo">${boardPhoto(v)}</div><p class="note">${esc(counts)}. Tap a family to see them; at their feet, their answer.</p>`;
+}
+
+/** The page read as a list: a household a row, those still to answer first, ✎ its drawer. */
+function householdsList(v: BoardView): string {
+  const { word, hide } = findOf(v);
+  const family = over(v.session.ui).family;
+  const rank: Record<string, number> = { none: 0, maybe: 1, yes: 2, no: 3 };
+  const sorted = [...v.b.households].sort((x, y) => rank[answerOf(x)]! - rank[answerOf(y)]! || x.code.localeCompare(y.code));
+  return rows(
+    sorted.map((h) => {
+      const names = h.guests.map((g) => firstNameOf(g.name) + (g.coming === null || isComing(g) ? "" : " (not coming)")).join(", ");
+      const waiting = h.asks.filter((a) => a.reply === null).length;
+      return row({
+        id: `household-${h.id}`,
+        tap: open_(v, "family", h.id),
+        chosen: family === h.id,
+        hushed: !hits(h, word),
+        hidden: !hits(h, word) && hide,
+        what: h.code,
+        note: [names || "nobody named yet", waiting ? `${plural(waiting, "ask", "asks")} waiting` : ""].filter(Boolean).join(" · "),
+        state: answerWord(answerOf(h)),
+        mark: "pencil",
+      });
+    }),
+    "Nobody invited yet.",
+  );
+}
+
+// ───────────────────────────── a family ─────────────────────────────
 
 /** A field edited where it is: its own path, written when it loses focus (see the enclosing `data-write-on="blur"` form). */
 function field(path: string, name: string, value: string, label: string, placeholder = "", type = "text"): string {
   return `<input class="field"${write("board", "replace", path)} name="${esc(name)}" type="${type}" value="${esc(value)}" placeholder="${esc(placeholder)}" aria-label="${esc(label)}" autocomplete="off">`;
 }
 
+/** A form that adds one thing by its name, in place, at the foot of what it adds to. */
+const addInPlace = (path: string, noun: string): string =>
+  `<form class="pair add-here"${write("board", "add", path)}><input class="field" name="name" placeholder="${esc(`A new ${noun}`)}" aria-label="${esc(`A new ${noun}'s name`)}" autocomplete="off" required>${tool(`Add a ${noun}`, { icon: "plus", kind: "add", write: "", submit: true })}</form>`;
+
+const chaseLink = (h: HouseholdDocument): string =>
+  `<a class="tool quiet" href="mailto:${esc(h.email)}?subject=${encodeURIComponent("Just checking in")}">${icon("mail")}Chase them</a>`;
+
+/** What the family says, as the couple read it: the same bubble as the household's own, not theirs to touch. */
+function familyBubble(h: HouseholdDocument): string {
+  const words = h.message ?? "";
+  return `<div class="bubble theirs${h.answer ? " answered" : ""}">${faceMark(h.answer)}<div class="bubble-words${words ? "" : " empty"}">${esc(words || (h.answer ? `${answerSays(h.answer)}.` : "No answer yet."))}</div></div>`;
+}
+
+/** A guest on a family's invitation: their name, their choices, whether they are coming, and taking them off, which asks first. Sent alone when it alone changed. */
+const guestLine = (v: BoardView, h: HouseholdDocument, g: HouseholdDocument["guests"][number]): string =>
+  part(
+    `guest-${g.id}`,
+    join(
+      `<div class="line" id="guest-${g.id}"><span class="words"><span class="what">${esc(g.name)}</span><span class="note">${esc(choicesLine(g, v.b.courses))}</span></span>`,
+      answerWord(g.coming === null ? "none" : isComing(g) ? "yes" : "no", g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming"),
+      tool(`Take ${g.name} off`, { icon: "trash", kind: "danger", iconOnly: true, write: open_(v, "confirm", `households/${h.id}/guests/${g.id}`) }),
+      `</div>`,
+    ),
+  );
+
+/** Someone a family asked for and who is not a guest: waiting for the couple's yes or no, on its line -- the one decision it is for -- or refused. */
+function askLine(h: HouseholdDocument, a: HouseholdDocument["asks"][number]): string {
+  const reply =
+    a.reply === "no" ? answerWord("no", "no")
+    : choice(`${a.name}, asked for`, [
+        { text: "Yes", on: false, write: write("board", "replace", `/households/${h.id}/asks/${a.id}/reply`, "yes"), kind: "yes" },
+        { text: "No", on: false, write: write("board", "replace", `/households/${h.id}/asks/${a.id}/reply`, "no"), kind: "no" },
+      ]);
+  return `<div class="line" id="ask-${a.id}"><span class="words"><span class="what">${esc(a.name)}</span></span>${reply}</div>`;
+}
+
+/** A family's drawer: what they say, their guests, whoever they asked for, and their invitation -- the email, the plus-ones, the way to chase them. */
+function familySheet(v: BoardView): string {
+  const id = over(v.session.ui).family;
+  const h = id === undefined ? undefined : v.b.households.find((x) => x.id === id);
+  if (!h) return "";
+  const asked = h.asks.filter((a) => a.reply !== "yes");
+  const body = join(
+    familyBubble(h),
+    `<h3 class="cap">Guests</h3>`,
+    h.guests.length ? `<div class="lines">${h.guests.map((g) => guestLine(v, h, g)).join("")}</div>` : `<p class="note">Nobody named yet.</p>`,
+    addInPlace(`/households/${h.id}/guests/-`, "guest"),
+    asked.length > 0 && `<h3 class="cap">Asked for</h3><div class="lines">${asked.map((a) => askLine(h, a)).join("")}</div>`,
+    `<h3 class="cap">The invitation</h3>`,
+    `<form data-write-on="blur"><div class="props">`,
+    prop("Email", field(`/households/${h.id}/email`, "email", h.email, "Their email", "", "email")),
+    prop("Plus-ones", field(`/households/${h.id}/plus_ones`, "plus_ones", String(h.plus_ones), "Plus-ones they may name", "0", "number")),
+    `</div></form>`,
+    `<div class="drawer-foot">${chaseLink(h)}</div>`,
+  );
+  return drawer("family-drawer", h.code, body, close(v), "family-drawer");
+}
+
+/** The modal asking to take a guest off a family's invitation (rule 14); cancelling goes back to the family's drawer. */
+function confirmTakeOff(v: BoardView): string {
+  const [what, hid, sub, gid] = (over(v.session.ui).confirm ?? "").split("/");
+  const h = what === "households" && sub === "guests" ? v.b.households.find((x) => String(x.id) === hid) : undefined;
+  const g = h?.guests.find((x) => String(x.id) === gid);
+  if (!h || !g) return "";
+  return confirmModal("Take off the invitation", `Take ${g.name} off the ${h.code} invitation?`, write("board", "remove", `/households/${h.id}/guests/${g.id}`), open_(v, "family", h.id), "Take off");
+}
+
+// ───────────────────────────── the welcome ─────────────────────────────
+
 /** A picture for the welcome, a gift or a place: the one applet, since choosing a file and sending it is the browser's job. */
 export const pictureField = (path: string, current: string | null): string =>
   `<div data-applet="picture-field" data-props="${esc(JSON.stringify({ doc: "board", path, current }))}"></div>`;
-
-/** The welcome as the couple's own thing (rule 15): the names, the day, the deadline, carrying ✎;
- * a tap opens the drawer where the whole of it is edited, and it is lit while that drawer is open. */
-function welcomePreview(b: BoardDocument, open: boolean, edit: string): string {
-  return join(
-    `<div class="bubble couple thing" role="button" tabindex="0" aria-pressed="${open}"${edit}>`,
-    `<div class="bubble-words"><span class="welcome-names">${esc(coupleName(b))}</span>`,
-    `<span class="note">${esc(formatDay(b.day))}${b.venue ? ` · ${esc(b.venue)}` : ""}${b.deadline ? ` · answers by ${esc(formatDay(b.deadline))}` : ""}</span></div>`,
-    `<span class="pencil" aria-hidden="true">${icon("pencil", 16)}</span>`,
-    "</div>",
-  );
-}
 
 /** The welcome's drawer: every property it carries, each its own path, written on blur. */
 function welcomeSheet(v: BoardView): string {
@@ -167,227 +261,27 @@ function welcomeSheet(v: BoardView): string {
   return drawer("welcome-drawer", "Our welcome", body, close(v), "welcome-drawer");
 }
 
-/** The home's cells, all five, whether shown whole or one of them is grown into the window. */
-function boxCells(v: BoardView) {
+// ───────────────────────────── the lists they keep ─────────────────────────────
+
+/** A list the couple keep, in a drawer: a row each, ✎ its own drawer; a new one named at the foot, in place. */
+function listSheet(v: BoardView): string {
+  const table = over(v.session.ui).drawer;
+  if (!table || !isKeepTable(table)) return "";
   const { b } = v;
-  const claimed = b.gifts.filter((g) => g.taken > 0).length;
-  const shared = b.gifts.filter((g) => g.shared).length;
-  const t = b.totals;
-  return [
-    cell({ name: "households", mark: "home", count: t.households, big: true, summary: `${t.answered} answered · ${t.coming} coming${t.asksWaiting ? ` · ${plural(t.asksWaiting, "ask", "asks")} waiting` : ""}`, opens: nav("households"), body: boardFamilies(b.households).length ? `<div class="mini photo">${boardMini(b)}</div>` : undefined }),
-    cell({ name: "courses", mark: "utensils", count: b.courses.length, summary: coursesSummary(b.courses), opens: nav("courses") }),
-    cell({ name: "gifts", mark: "gift", count: b.gifts.length, summary: b.gifts.length ? `${claimed} claimed${shared ? ` · ${shared} shared` : ""}` : "none yet", opens: nav("gifts") }),
-    cell({ name: "events", mark: "calendar", count: b.events.length, summary: eventsSummary(b.events), opens: nav("events") }),
-    cell({ name: "where to stay", mark: "bed", count: b.places.length, summary: placesSummary(b.places), opens: nav("places"), key: "places" }),
-  ];
-}
-
-// ───────────────────────────── the households ─────────────────────────────
-
-export const reading = (v: BoardView, key: string): string => v.session.ui.reading?.[key] ?? "photo";
-
-const chaseLink = (h: HouseholdDocument): string =>
-  `<a class="tool quiet" href="mailto:${esc(h.email)}?subject=${encodeURIComponent("Just checking in")}">${icon("mail")}Chase them</a>`;
-
-/** Every household as a family: its guests as members, the code on the family figure's chest, the
- * answer at its feet. Find's word (rule 17) hushes a whole family at once, by its code and names. */
-function boardFamilies(households: HouseholdDocument[], word?: string): Family[] {
-  const families: Family[] = [];
-  for (const h of [...households].sort((a, b) => a.code.localeCompare(b.code))) {
-    const mark = answerOf(h);
-    const tap: PhotoEntry["tap"] = { doc: "session", op: { op: "replace", path: "/page", value: `households/${h.id}` } };
-    const hush = word !== undefined && !matches(`${h.code} ${h.guests.map((g) => g.name).join(" ")}`, word);
-    const members: PhotoEntry[] = h.guests.map((g) => {
-      const state = inPhoto({ coming: g.coming, answer: h.answer });
-      return { key: String(g.id), spec: specOf(g.minifigure, g.name), ghost: state === "ghost", out: state === null, mark, tap, hushed: hush };
-    });
-    if (!members.length) continue;
-    families.push({ key: String(h.id), members, label: h.code, mark, ghost: mark === "maybe", out: mark === "no" || mark === "none", tap, hushed: hush });
-  }
-  return families;
-}
-
-/** The photo of families as the home's small reading: still, no taps. Replaced alone when a look changes. */
-export const boardMini = (b: BoardDocument): string =>
-  photoMount("board-mini", familiesPhoto(boardFamilies(b.households), null).entries.map((e) => ({ ...e, tap: undefined })), "the families");
-
-/** The board's photo of families: its mount, replaced alone when a look changes. */
-export function boardPhoto(v: BoardView): string {
-  const { entries, label } = familiesPhoto(boardFamilies(v.b.households, v.session.ui.filter?.households), null);
-  return photoMount("board-photo", entries, label);
-}
-
-/** A family's photo as the couple read it, no taps. Replaced alone when a look changes. */
-export const familyPhoto = (h: HouseholdDocument, id = "family-photo"): string => photoMount(id, familyEntries(h), `${h.code}, as minifigures`);
-
-/** A family's guest as a row: name, choices, whether coming. Replaced alone when a choice changes. */
-export const familyGuestRow = (v: BoardView, g: HouseholdDocument["guests"][number]): string =>
-  row({
-    id: `guest-${g.id}`,
-    tap: open_(v, "guest", g.id),
-    chosen: over(v.session.ui).focus === g.id,
-    mark: "pencil",
-    what: g.name,
-    note: choicesLine(g, v.b.courses),
-    state: answerWord(g.coming === null ? "none" : isComing(g) ? "yes" : "no", g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming"),
-  });
-
-/** The households grown into the window: the photo of families or the list (rule 16), find, and the plus that invites. */
-function householdsOpen(v: BoardView): OpenOptions {
-  const { b } = v;
-  const word = v.session.ui.filter?.households;
-  const hide = v.session.ui.hide?.households;
-  const hits = (h: HouseholdDocument) => word === undefined || matches(`${h.code} ${h.guests.map((g) => g.name).join(" ")}`, word);
-  const find = findControl("households", { word, hide, shown: b.households.filter(hits).length, total: b.households.length });
-  const photo = reading(v, "households") === "photo";
+  const { noun, label } = KEEP[table];
+  const openRow = (id: number) => open_(v, "keep", `${table}/${id}`);
   let body: string;
-  if (photo) {
-    body = boardFamilies(b.households).length ? `<div class="reading photo">${boardPhoto(v)}</div>` : `<p class="note">Nobody invited yet.</p>`;
-  } else {
-    const rank: Record<string, number> = { none: 0, maybe: 1, yes: 2, no: 3 };
-    const sorted = [...b.households].sort((x, y) => rank[answerOf(x)]! - rank[answerOf(y)]! || x.code.localeCompare(y.code));
-    body = rows(
-      sorted.map((h) => {
-        const names = h.guests.map((g) => firstNameOf(g.name) + (g.coming === null || isComing(g) ? "" : " (not coming)")).join(", ");
-        const waiting = h.asks.filter((a) => a.reply === null).length;
-        return row({
-          id: `household-${h.id}`,
-          tap: nav(`households/${h.id}`),
-          hushed: !hits(h),
-          hidden: !hits(h) && hide,
-          what: h.code,
-          note: [names || "nobody named yet", waiting ? `${plural(waiting, "ask", "asks")} waiting` : ""].filter(Boolean).join(" · "),
-          state: answerWord(answerOf(h)),
-          mark: "chevron",
-        });
-      }),
-      "Nobody invited yet.",
-    );
-  }
-  return {
-    key: "households",
-    reading: readingSwitch("households", reading(v, "households"), [["photo", "camera"], ["list", "list"]]),
-    tools: [b.households.length ? find.tool : "", addTool(open_(v, "new", "households"), "Invite a household")].filter(Boolean),
-    filter: find.filter,
-    body,
-    note: photo && word === undefined ? "Tap a family to see them. At their feet, their answer." : null,
-  };
-}
-
-/** A family's bubble as the couple read it: the same display as the household's own, not theirs to touch. */
-function familyBubble(h: HouseholdDocument): string {
-  const words = h.message ?? "";
-  return `<div class="bubble theirs${h.answer ? " answered" : ""}">${faceMark(h.answer)}<div class="bubble-words${words ? "" : " empty"}">${esc(words || (h.answer ? `${answerSays(h.answer)}.` : "No answer yet."))}</div></div>`;
-}
-
-/** The yes or no the couple give an ask, on its row: the one decision the row is for. */
-const replyChoice = (h: HouseholdDocument, askId: number): string =>
-  choice(`${h.code}'s ask`, [
-    { text: "Yes", on: false, write: write("board", "replace", `/households/${h.id}/asks/${askId}/reply`, "yes"), kind: "yes" },
-    { text: "No", on: false, write: write("board", "replace", `/households/${h.id}/asks/${askId}/reply`, "no"), kind: "no" },
-  ]);
-
-/** A family's own asks, grown into their own box's window (rule 7: the same "asks" cell, its own key). */
-function familyAsksOpen(h: HouseholdDocument): OpenOptions {
-  const body = rows(
-    h.asks.map((a) =>
-      row({
-        id: `ask-${a.id}`,
-        what: a.name,
-        note: a.reply === "yes" ? "yes — a guest now" : a.reply === "no" ? "no" : "waiting for your answer",
-        state: a.reply === null ? replyChoice(h, a.id) : answerWord(a.reply),
-      }),
-    ),
-    "They have not asked for anyone.",
-  );
-  return { key: "asks", body };
-}
-
-/** A family's guests, grown into the window: the photo or the list, as the couple read them. */
-function familyGuestsOpen(v: BoardView, h: HouseholdDocument): OpenOptions {
-  const key = `family-${h.id}`;
-  const photo = reading(v, key) === "photo";
-  return {
-    key: "guests",
-    reading: h.guests.length ? readingSwitch(key, reading(v, key), [["photo", "camera"], ["list", "list"]]) : undefined,
-    tools: [addTool(open_(v, "new", "guests"), "Add a guest")],
-    body: photo
-      ? h.guests.length ? `<div class="reading photo">${familyPhoto(h)}</div>` : `<p class="note">Nobody named yet.</p>`
-      : rows(h.guests.map((g) => familyGuestRow(v, g)), "Nobody named yet."),
-  };
-}
-
-/** A family's own box, as the couple read it: their guests, their asks, and the code -- a thing
- * (rule 15) whose drawer holds the email, the plus-ones and the way to chase them. */
-function familyBox(v: BoardView, h: HouseholdDocument, trail: Crumb[], third: string | undefined): string {
-  const waiting = h.asks.filter((a) => a.reply === null).length;
-  const cells = [
-    cell({ name: "guests", mark: "users", count: h.guests.length, big: true, opens: nav(`households/${h.id}/guests`), key: "guests", summary: `${h.guests.filter(isComing).length} coming`, body: h.guests.length ? `<div class="mini photo">${familyPhoto(h, "family-mini")}</div>` : undefined }),
-    cell({ name: "asks", mark: "question", count: h.asks.length, summary: waiting ? `${waiting} waiting for your answer` : h.asks.length ? "all answered" : "none", opens: nav(`households/${h.id}/asks`), key: "asks" }),
-    cell({ name: "the code", mark: "mail", summary: `${h.code} · ${h.email}`, thing: { open: open_(v, "keep", `households/${h.id}`), chosen: over(v.session.ui).keep === `households/${h.id}` } }),
-  ];
-  const open = third === "asks" ? familyAsksOpen(h) : third === "guests" ? familyGuestsOpen(v, h) : undefined;
-  const crumbs: Crumb[] = third === "asks" ? [{ label: "Asks" }] : third === "guests" ? [{ label: "Guests" }] : [];
-  return boxPage([...trail, ...crumbs], [familyBubble(h)], cells, open);
-}
-
-/** The code's drawer: the family's email, how many plus-ones they may name, and the way to chase them. */
-function codeSheet(v: BoardView, h: HouseholdDocument | undefined): string {
-  if (!h || over(v.session.ui).keep !== `households/${h.id}`) return "";
-  const body = join(
-    `<form data-write-on="blur"><div class="props">`,
-    prop("Code", `<span class="code">${esc(h.code)}</span>`),
-    prop("Email", field(`/households/${h.id}/email`, "email", h.email, "Their email", "", "email")),
-    prop("Plus-ones", field(`/households/${h.id}/plus_ones`, "plus_ones", String(h.plus_ones), "Plus-ones they may name", "0", "number")),
-    `</div></form>`,
-    `<div class="drawer-foot">${chaseLink(h)}</div>`,
-  );
-  return drawer("code-drawer", "The code", body, close(v), "code-drawer");
-}
-
-// ───────────────────────────── keeping ─────────────────────────────
-
-const openKeep = (v: BoardView, table: KeepTable) => (id: number) => open_(v, "keep", `${table}/${id}`);
-
-/** The row the couple have open in a keep table, if it is this one's. */
-function keptIn(v: BoardView, table: KeepTable): number | undefined {
-  const [t, id] = (over(v.session.ui).keep ?? "").split("/");
-  return t === table ? Number(id) : undefined;
-}
-
-/** The couple's collections -- courses, gifts, events, where to stay: a row each, ✎ its drawer, the plus on the rail. */
-function keepOpen(v: BoardView, table: KeepTable): OpenOptions {
-  const { b } = v;
-  const { noun } = KEEP[table];
-  const chosen = keptIn(v, table);
-  const open = openKeep(v, table);
-  const tools: string[] = [];
-  let body: string;
-  let filter: string | undefined;
-  if (table === "events") body = timetableRows(b.events, { open, chosen });
-  else if (table === "places") body = placeRows(b.places, { open, chosen });
+  if (table === "events") body = timetableRows(b.events, { open: openRow });
+  else if (table === "places") body = placeRows(b.places, { open: openRow });
   else if (table === "courses") {
-    body = rows(
-      b.courses.map((c) => row({ id: `course-${c.id}`, tap: open(c.id), chosen: chosen === c.id, what: c.name, note: `${plural(c.dishes.length, "dish", "dishes")} · ${plural(c.drinks.length, "drink", "drinks")}`, mark: "pencil" })),
-      "No courses yet.",
-    );
+    body = rows(b.courses.map((c) => row({ id: `course-${c.id}`, tap: openRow(c.id), what: c.name, note: `${plural(c.dishes.length, "dish", "dishes")} · ${plural(c.drinks.length, "drink", "drinks")}`, mark: "pencil" })), "No courses yet.");
   } else {
-    // find (rule 17) is on the gifts, the one list long enough to need it
-    const word = v.session.ui.filter?.gifts;
-    const hide = v.session.ui.hide?.gifts;
-    const hits = (g: BoardDocument["gifts"][number]) => word === undefined || matches(g.name, word);
-    const find = findControl("gifts", { word, hide, shown: b.gifts.filter(hits).length, total: b.gifts.length });
-    if (b.gifts.length) tools.push(find.tool);
-    filter = find.filter;
     body = rows(
       b.gifts.map((g) =>
         row({
           id: `gift-${g.id}`,
-          tap: open(g.id),
-          chosen: chosen === g.id,
-          hushed: !hits(g),
-          hidden: !hits(g) && hide,
-          lead: g.picture_key ? picture(g.picture_key, g.name) : undefined,
+          tap: openRow(g.id),
+          lead: g.picture_key ? picture(g.picture_key, "") : undefined,
           what: g.name,
           note: g.description,
           state: `<span>${g.shared ? "shared · " : ""}${g.claimants.length ? `claimed by ${esc(g.claimants.join(", "))}` : "unclaimed"}</span>`,
@@ -397,15 +291,24 @@ function keepOpen(v: BoardView, table: KeepTable): OpenOptions {
       "No gifts yet.",
     );
   }
-  tools.push(addTool(open_(v, "new", table), `Add a ${noun}`));
-  return { key: table, tools, filter, body };
+  return drawer(`${table}-drawer`, label, join(body, addInPlace(`/${table}/-`, noun)), close(v), "list-drawer");
 }
 
-/** The row's drawer: its properties, each a field; a course's dishes and drinks; its place in the order; Remove at the foot. */
+/** The modal asking to confirm a removal -- a modal is new or delete and nothing else (rule 14); cancelling goes back to the row's drawer. */
+function confirmRemove(v: BoardView): string {
+  const confirm = over(v.session.ui).confirm ?? "";
+  const [table = "", idText] = confirm.split("/");
+  if (!isKeepTable(table)) return "";
+  const found = (v.b[table] as { id: number; name: string }[]).find((r) => r.id === Number(idText));
+  if (!found) return "";
+  return confirmModal(`Remove this ${KEEP[table].noun}`, `Remove "${found.name}" from the list?`, write("board", "remove", `/${table}/${found.id}`), open_(v, "keep", confirm));
+}
+
+/** A row's drawer: its properties, each a field; a course's dishes and drinks; its place in the order; Remove at the foot. Its × goes back to its list. */
 function keepSheet(v: BoardView): string {
-  const [table, idText] = (over(v.session.ui).keep ?? "").split("/");
-  if (!table || !isKeepTable(table)) return "";
-  const id = Number(idText);
+  const kept = keptIn(v);
+  if (!kept) return "";
+  const { table, id } = kept;
   const list = v.b[table] as { id: number; name: string; seq: number }[];
   const found = list.find((r) => r.id === id);
   if (!found) return "";
@@ -437,11 +340,9 @@ function keepSheet(v: BoardView): string {
     const drinkRows = c.drinks.map((d) =>
       join(`<div class="pair">`, field(`${at}/drinks/${d.id}/name`, "name", d.name, "Drink", "drink"), tool(`remove ${d.name}`, { icon: "trash", kind: "danger", iconOnly: true, write: write("board", "remove", `${at}/drinks/${d.id}`) }), "</div>"),
     );
-    const addForm = (kind: "dishes" | "drinks", word: string) =>
-      `<form class="pair"${write("board", "add", `${at}/${kind}/-`)}><input class="field" name="name" placeholder="A ${word}" aria-label="${esc(`A new ${word}`)}" autocomplete="off" required>${tool(`Add a ${word}`, { icon: "plus", kind: "add", write: "", submit: true })}</form>`;
     extra = join(
-      `<h3 class="cap">Dishes</h3><form data-write-on="blur"><div class="props">${dishRows.join("")}</div></form>${addForm("dishes", "dish")}`,
-      `<h3 class="cap">Drinks</h3><form data-write-on="blur"><div class="props">${drinkRows.join("")}</div></form>${addForm("drinks", "drink")}`,
+      `<h3 class="cap">Dishes</h3><form data-write-on="blur"><div class="props">${dishRows.join("")}</div></form>${addInPlace(`${at}/dishes/-`, "dish")}`,
+      `<h3 class="cap">Drinks</h3><form data-write-on="blur"><div class="props">${drinkRows.join("")}</div></form>${addInPlace(`${at}/drinks/-`, "drink")}`,
     );
   } else if (table === "gifts") {
     const g = v.b.gifts.find((x) => x.id === id)!;
@@ -475,5 +376,5 @@ function keepSheet(v: BoardView): string {
   // removing asks in a modal (rule 14) -- the drawer only opens it; `confirmRemove` does the write
   const remove = `<div class="drawer-foot">${tool(`Remove this ${noun}`, { icon: "trash", kind: "danger", write: open_(v, "confirm", at.slice(1)) })}</div>`;
   const body = join(`<form data-write-on="blur"><div class="props">${props.join("")}${order}</div></form>`, extra, remove);
-  return drawer("keep-drawer", found.name, body, close(v), "keep-drawer");
+  return drawer("keep-drawer", found.name, body, open_(v, table), "keep-drawer");
 }

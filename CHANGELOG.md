@@ -50,9 +50,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Find's bar on a phone takes the row under the trail** (todo n60, its second point), rather
   than covering it, and the reading moves down to keep clear; its buttons keep their size whatever
   an example says of buttons.
-- **The wedding: a household's page is its photo**, as leave's is its calendar. The box of six
-  cells -- guests, asks, gifts, the day, where to stay, everyone -- was one thing and three pieces
-  of information. Now one page:
+- **The wedding: each page is a photo** -- a household's of its own people, the couple's of every
+  family -- as leave's is its calendar. A household's box of six cells (guests, asks, gifts, the
+  day, where to stay, everyone) was one thing and three pieces of information. Now one page:
   - the household's guests stand in the photo, their answer the bubble over it; a tap on someone
     opens their drawer (dress them, coming or not, the meal); someone asked for stands as a ghost,
     still, where before a tap on them went to an asks page;
@@ -68,9 +68,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - every photo the wedding draws now fits its frame, feet included: the applet's mount takes the
     frame's height, so the drawing scales to it instead of to the width.
 
-  The addresses are `""`, `"list"` and `"everyone"`, with `?gifts`, `?day` and `?stay` over them.
-  The stories moved with them, and the Okafors' ask became Ben's: a household with a plus-one to
-  name is offered that first. The couple's pages are as they were.
+  The couple's home of five cells, and a box of three more for each family, are one page too:
+  - the photo of every family, the answer at their feet, the welcome the bubble over it (their
+    words and the day; their names are the trail's), the caterer's counts beneath; or the same
+    families as a list; find looks for a family by its code or a name, and the eye takes the rest
+    out;
+  - a tap on a family opens its drawer, and its figures ring: what they say, their guests (whether
+    coming, what they chose; a new one named in place; taking one off asks first, then comes back
+    here), whoever they asked for (yes or no on the line), their email and plus-ones, Chase them;
+  - courses, gifts, events and where to stay are tools on the rail, each a drawer of rows with a
+    new one named in place at its foot; a row opens its own drawer, whose × goes back to the list,
+    and removing it asks first, then goes back to the list too;
+  - the plus invites a household; find on the gifts is gone with the gifts' window.
+
+  A household's addresses are `""`, `"list"` and `"everyone"`, with `?gifts`, `?day` and `?stay`
+  over them; the couple's are `""` and `"list"`, with `?family=1`, `?courses`, `?gifts`,
+  `?events`, `?places` and `?keep=courses/1`. The stories moved with them, and the Okafors' ask
+  became Ben's: a household with a plus-one to name is offered that first.
 - **delta 0.9.0: one app on every backend.** A write is now told to every document that holds a
   row it changed on Postgres too (server or in process), so the reference's "whether this
   process wrote it or another did over Postgres" holds for every document. Ids are serials, read
