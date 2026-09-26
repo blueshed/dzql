@@ -17,21 +17,26 @@ export type Kind = "household" | "couple";
 export type Ui = {
   /**
    * Where the visit is: one address (src/bento.ts). The trail below the root -- "" is the
-   * household's box or the couple's home; "asks", "households/3/asks" -- and after a `?` the one
-   * thing open over it: a guest's drawer (`?guest=2`), a gift's (`?gift=1`), a row's keep drawer
-   * (`?keep=courses/2`), the answer (`?answer`), the modal asking a new thing's name
-   * (`?new=guests`), the modal confirming a removal (`?confirm=courses/2`).
+   * household's photo or the couple's home; "everyone", "households/3/asks" -- and after a `?`
+   * the one thing open over it: a guest's drawer (`?guest=2`), what the couple tell every
+   * household (`?gifts`, `?day`, `?stay`), a row's keep drawer (`?keep=courses/2`), the answer
+   * (`?answer`), the modal asking a new thing's name (`?new=guests`), the modal confirming a
+   * removal (`?confirm=courses/2`).
    */
   page?: string;
 } & Collections; // how each collection is read, find's word, the eye: by the collection's name
 
+/** What the couple tell every household, each read in a drawer of its own and put away. */
+export type Info = "gifts" | "day" | "stay";
+const INFO = new Set<string>(["gifts", "day", "stay"]);
+
 /** What is open over the page, read out of the address: the path, and at most one of the rest. */
-export type Over = { path: string; focus?: number; gift?: number; keep?: string; answering?: true; new?: string; confirm?: string };
+export type Over = { path: string; focus?: number; info?: Info; keep?: string; answering?: true; new?: string; confirm?: string };
 
 export function over(ui: Ui): Over {
   const { path, what, which = "" } = parseAddress(ui.page);
   if (what === "guest") return { path, focus: integer(which) };
-  if (what === "gift") return { path, gift: integer(which) };
+  if (what && INFO.has(what)) return { path, info: what as Info };
   if (what === "answer") return { path, answering: true };
   if (what === "keep" || what === "new" || what === "confirm") return { path, [what]: which };
   return { path };

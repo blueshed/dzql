@@ -39,6 +39,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The wedding: a household's page is its photo**, as leave's is its calendar. The box of six
+  cells -- guests, asks, gifts, the day, where to stay, everyone -- was one thing and three pieces
+  of information. Now one page:
+  - the household's guests stand in the photo, their answer the bubble over it; a tap on someone
+    opens their drawer (dress them, coming or not, the meal); someone asked for stands as a ghost,
+    still, where before a tap on them went to an asks page;
+  - the same page read three ways (rule 16): the photo, everyone's photo, or a list, which also
+    says who was asked for and whether the couple said no;
+  - one plus brings someone: it names a plus-one while one is owed, and after that asks the couple;
+  - gifts, the day and where to stay are tools on the rail, each opening a drawer that is read and
+    put away; the gifts drawer holds every gift whole with the one thing to do with it (Claim it,
+    Give to it, Unclaim);
+  - find is gone from the household's page: a family is a few people;
+  - every photo the wedding draws now fits its frame, feet included: the applet's mount takes the
+    frame's height, so the drawing scales to it instead of to the width.
+
+  The addresses are `""`, `"list"` and `"everyone"`, with `?gifts`, `?day` and `?stay` over them.
+  The stories moved with them, and the Okafors' ask became Ben's: a household with a plus-one to
+  name is offered that first. The couple's pages are as they were.
 - **delta 0.9.0: one app on every backend.** A write is now told to every document that holds a
   row it changed on Postgres too (server or in process), so the reference's "whether this
   process wrote it or another did over Postgres" holds for every document. Ids are serials, read

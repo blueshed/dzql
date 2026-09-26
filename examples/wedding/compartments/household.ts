@@ -4,7 +4,7 @@ import * as weddingDoc from "../documents/wedding";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { serverWrite } from "../../../src/documents";
-import { householdPages, type HouseholdView } from "../views/household";
+import { householdPage, type HouseholdView } from "../views/household";
 import { keepEveryone } from "../everyone";
 import { refuse } from "../../../src/refusal";
 
@@ -33,7 +33,7 @@ const RULES: Rule[] = [
 /** The fields the dated rules write, as the document holds them: `/households` answer, a guest's coming and choices. */
 const DATED = new Set(["answer", "coming", "choices"]);
 
-/** Everything a household's pages read, for this session. */
+/** Everything a household's page reads, for this session. */
 function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined {
   const h = householdDoc.read(session.id!);
   if (!h) return undefined;
@@ -52,10 +52,10 @@ function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined
   };
 }
 
-/** A household's pages. `viewFor` is always there in practice: read() only reports a kind for a code that exists. */
+/** A household's page. `viewFor` is always there in practice: read() only reports a kind for a code that exists. */
 export function renderHousehold(session: sessionDoc.SessionDocument): string | undefined {
   const v = viewFor(session);
-  return v && householdPages(v);
+  return v && householdPage(v);
 }
 
 export const household: Compartment = {
