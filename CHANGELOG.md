@@ -39,6 +39,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A drawer docked at the right leaves the page in reach** (todo n58). From 820px the drawer had
+  a transparent scrim over the whole page, so every tap beside it only closed it: the next guest,
+  the next drawer, Undo, each took two. The docked drawer has no scrim now; only the phone's sheet
+  and the modal keep one. It goes by its ×, by what is tapped next, or by **Escape**, which the
+  client now handles: it presses the last `[data-escape]` on the page, and `bento()` marks a
+  drawer's × and a modal's scrim, so what was opened last is put away first. Something that takes
+  Escape for itself (the ticker's city picker, emptying its word) claims it with
+  `preventDefault()`. Rules 14 and 18 say so.
+- **Find's bar on a phone takes the row under the trail** (todo n60, its second point), rather
+  than covering it, and the reading moves down to keep clear; its buttons keep their size whatever
+  an example says of buttons.
+- **The wedding: each page is a photo** -- a household's of its own people, the couple's of every
+  family -- as leave's is its calendar. A household's box of six cells (guests, asks, gifts, the
+  day, where to stay, everyone) was one thing and three pieces of information. Now one page:
+  - the household's guests stand in the photo, their answer the bubble over it; a tap on someone
+    opens their drawer (dress them, coming or not, the meal); someone asked for stands as a ghost,
+    still, where before a tap on them went to an asks page;
+  - the same page read three ways (rule 16): the photo, everyone's photo, or a list, which also
+    says who was asked for and whether the couple said no;
+  - one plus brings someone: it names a plus-one while one is owed, and after that asks the couple;
+  - gifts, the day and where to stay are tools on the rail, each opening a drawer that is read and
+    put away; the gifts drawer holds every gift whole with the one thing to do with it (Claim it,
+    Give to it, Unclaim);
+  - find (rule 17) looks for someone by name in the photo and the list alike: whoever it misses
+    dims, and with the eye steps out of the photo; everyone's photo is nameless until the day, so
+    it has none;
+  - every photo the wedding draws now fits its frame, feet included: the applet's mount takes the
+    frame's height, so the drawing scales to it instead of to the width.
+
+  The couple's home of five cells, and a box of three more for each family, are one page too:
+  - the photo of every family, the answer at their feet, the welcome the bubble over it (their
+    words and the day; their names are the trail's), the caterer's counts beneath; or the same
+    families as a list; find looks for a family by its code or a name, and the eye takes the rest
+    out;
+  - a tap on a family opens its drawer, and its figures ring: what they say, their guests (whether
+    coming, what they chose; a new one named in place; taking one off asks first, then comes back
+    here), whoever they asked for (yes or no on the line), their email and plus-ones, Chase them;
+  - courses, gifts, events and where to stay are tools on the rail, each a drawer of rows with a
+    new one named in place at its foot; a row opens its own drawer, whose × goes back to the list,
+    and removing it asks first, then goes back to the list too;
+  - the plus invites a household; find on the gifts is gone with the gifts' window.
+
+  A household's addresses are `""`, `"list"` and `"everyone"`, with `?gifts`, `?day` and `?stay`
+  over them; the couple's are `""` and `"list"`, with `?family=1`, `?courses`, `?gifts`,
+  `?events`, `?places` and `?keep=courses/1`. The stories moved with them, and the Okafors' ask
+  became Ben's: a household with a plus-one to name is offered that first.
 - **delta 0.9.0: one app on every backend.** A write is now told to every document that holds a
   row it changed on Postgres too (server or in process), so the reference's "whether this
   process wrote it or another did over Postgres" holds for every document. Ids are serials, read

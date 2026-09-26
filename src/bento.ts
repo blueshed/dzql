@@ -336,10 +336,10 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
   // ───────────────────────────── the drawer ─────────────────────────────
 
   /**
-   * A drawer: a panel docked at the right from 820px, a sheet rising from the foot on a phone,
-   * over a scrim that closes it. Rendered whenever the session says it is open; `close` is the
-   * write that closes it. The body keeps its own scroll across renders because the morph keeps
-   * the element.
+   * A drawer: a panel docked at the right from 820px, beside a page still in reach; a sheet
+   * rising from the foot on a phone, over a scrim that closes it. Rendered whenever the session
+   * says it is open; `close` is the write that closes it, and its × is what Escape presses. The
+   * body keeps its own scroll across renders because the morph keeps the element.
    */
   function drawer(id: string, title: string, body: string, close: string, className = ""): string {
     return join(
@@ -348,7 +348,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
         id,
         join(
           `<div id="${esc(id)}" class="drawer${className ? ` ${className}` : ""}" role="dialog" aria-label="${esc(title)}">`,
-          `<div class="drawer-head"><h2>${esc(title)}</h2><button type="button" class="tool quiet drawer-close" aria-label="Close"${close}>${icon("x", 18)}</button></div>`,
+          `<div class="drawer-head"><h2>${esc(title)}</h2><button type="button" class="tool quiet drawer-close" aria-label="Close" data-escape${close}>${icon("x", 18)}</button></div>`,
           `<div class="drawer-body">${body}</div>`,
           "</div>",
         ),
@@ -361,10 +361,10 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
   /**
    * A modal: new or delete, one question, nothing else (rule 14). Not `<dialog>.showModal()` --
    * the kernel's client learns no such call, the shape is HTML -- so it carries its own scrim, the
-   * way a sheet does, and the page behind it is put `inert` by `layers`.
+   * way a sheet does, and the page behind it is put `inert` by `layers`. Escape presses the scrim.
    */
   function modal(title: string, close: string, body: string): string {
-    return join(`<div class="scrim modal-scrim"${close}></div>`, `<dialog open class="modal" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${body}</dialog>`);
+    return join(`<div class="scrim modal-scrim" data-escape${close}></div>`, `<dialog open class="modal" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${body}</dialog>`);
   }
 
   /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs. `add` is the form's write, `close` the one that puts the modal away; `said`, why the last try was refused (src/refusal.ts `reasonFor`), beneath the fields. */

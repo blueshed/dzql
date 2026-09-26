@@ -155,6 +155,7 @@ describe("the surfaces", () => {
     const close = write("desk", "remove", "/focus");
     const out = b.drawer("drawer", "ALPH", prop("Name", "<span>Alpha</span>"), close, "wide");
     expect(out).toContain(`<div class="scrim"${close}></div><div data-eta-part="drawer" id="drawer" class="drawer wide" role="dialog" aria-label="ALPH">`);
+    expect(out).toContain(`<button type="button" class="tool quiet drawer-close" aria-label="Close" data-escape${close}>`); // what Escape presses
     expect(out).toContain('<div class="prop"><span class="prop-name cap">Name</span><div class="prop-value"><span>Alpha</span></div></div>');
     expect(b.drawer("d", "t", "", close)).toContain('class="drawer" role');
     const pick = choice("Coming?", [{ text: "Yes", on: true, write: open, kind: "yes" }, { text: "No", on: false, write: open }], true);
@@ -165,13 +166,13 @@ describe("the surfaces", () => {
   test("the modals: adding asks for the fields it needs, removing asks one question; cancelling writes the session", () => {
     const close = write("desk", "replace", "/page", "rooms");
     const add = b.addModal("A new room", [{ name: "room", label: "Its name" }, { name: "seats", label: "Seats", type: "number", required: false, value: "4", placeholder: "how many" }], open, close);
-    expect(add).toContain(`<div class="scrim modal-scrim"${close}></div><dialog open class="modal" aria-label="A new room"><h3>A new room</h3><form${open}>`);
+    expect(add).toContain(`<div class="scrim modal-scrim" data-escape${close}></div><dialog open class="modal" aria-label="A new room"><h3>A new room</h3><form${open}>`);
     expect(add).toContain('<input name="room" type="text" value="" placeholder="" autocomplete="off" required autofocus>');
     expect(add).toContain('<input name="seats" type="number" min="0" value="4" placeholder="how many" autocomplete="off">');
     expect(add).toContain('type="submit" class="tool add"><i data-icon="plus" data-size="16"></i>Add</button>');
     expect(b.addModal("t", [], open, close, "Make it")).toContain("Make it</button>");
     const drop = b.confirmModal("Stop watching ALPH", "Its row leaves.", open, close, "Stop watching");
-    expect(drop).toContain(`<div class="scrim modal-scrim"${close}></div>`);
+    expect(drop).toContain(`<div class="scrim modal-scrim" data-escape${close}></div>`);
     expect(drop).toContain(`<p class="note">Its row leaves.</p>`);
     expect(drop).toContain(`class="tool danger"${open}><i data-icon="trash" data-size="16"></i>Stop watching</button>`);
     expect(b.confirmModal("t", "q", open, close)).toContain("Remove</button>");

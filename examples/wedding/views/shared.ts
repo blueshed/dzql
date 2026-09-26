@@ -65,23 +65,6 @@ export function answerWord(mark: AnswerMark, word = ANSWER_WORD[mark]): string {
   return `<span class="answer-word ${mark}"><i class="dot ${mark}"></i>${esc(word)}</span>`;
 }
 
-export function eventsSummary(events: Event[]): string {
-  if (!events.length) return "none yet";
-  const first = events[0]!.when_at ? formatWhen(events[0]!.when_at) : null;
-  return `${plural(events.length, "event", "events")}${first ? ` · from ${first}` : ""}`;
-}
-
-export function placesSummary(places: Place[]): string {
-  return places.length ? plural(places.length, "place", "places") : "none yet";
-}
-
-/** What the courses hold, one line: "8 dishes · 8 drinks". */
-export function coursesSummary(courses: Course[]): string {
-  const dishes = courses.reduce((n, c) => n + c.dishes.length, 0);
-  const drinks = courses.reduce((n, c) => n + c.drinks.length, 0);
-  return courses.length ? `${plural(dishes, "dish", "dishes")} · ${plural(drinks, "drink", "drinks")}` : "none yet";
-}
-
 /** A guest's choices as one line: "Soup & Prosecco · Sea bass · —", a dash for a course not chosen in. */
 export function choicesLine(g: Guest, courses: Course[]): string {
   const parts = courses.map((c) => {

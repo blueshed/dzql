@@ -39,7 +39,10 @@ const picker = island<ClockProps>((props, ctx, el) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       active.set(step(active.peek(), shown.peek().length, e.key));
-    } else if (e.key === "Escape") query.set("");
+    } else if (e.key === "Escape" && query.peek()) {
+      e.preventDefault(); // the first Escape empties the word; the next puts the drawer away
+      query.set("");
+    }
   };
   return (
     <>

@@ -1,7 +1,7 @@
 // Measures what one household write costs on the wire for everyone else connected: a guest's
 // top changed to green, with the sender's own household open in a second tab, the couple on
-// their home, another household on its box, and a third on the everyone page. Not a test -- a
-// report. Run with `DB_PATH=:memory: bun examples/wedding/scripts/measure-render-cost.ts`.
+// their photo of families, another household on its photo, and a third reading everyone's. Not a
+// test -- a report. Run with `DB_PATH=:memory: bun examples/wedding/scripts/measure-render-cost.ts`.
 import { createServer } from "../../../src/server";
 import { asCouple, asHousehold, board, household } from "../setup";
 import { example } from "../index";
@@ -65,10 +65,10 @@ send(sender, "session", [{ op: "replace", path: "/page", value: `?guest=${guest}
 await nextMessage(sender);
 await nextMessage(sender);
 const audience: [string, WebSocket][] = [
-  ["the same household, a second tab on its box", await enter(mine!.code)],
-  ["the couple, on their home", await enter("DASH")],
-  ["another household, on its box", await enter(theirs!.code)],
-  ["another household, on the everyone page", await enter(theirs!.code, "everyone")],
+  ["the same household, a second tab on its photo", await enter(mine!.code)],
+  ["the couple, on their photo of families", await enter("DASH")],
+  ["another household, on its photo", await enter(theirs!.code)],
+  ["another household, reading everyone", await enter(theirs!.code, "everyone")],
 ];
 for (const [, ws] of audience) queues.get(ws)!.length = 0;
 queues.get(sender)!.length = 0;

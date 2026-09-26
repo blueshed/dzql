@@ -19,7 +19,8 @@ afterAll(() => {
 });
 
 
-const CRUMBS = `document.querySelector('.crumbs')?.textContent ?? null`;
+/** The trail, in the head of the page: a household's and the couple's are each a window of its own. */
+const CRUMBS = `document.querySelector('.cell.open .cell-head')?.textContent ?? null`;
 
 async function enter(view: Bun.WebView, who: string) {
   await view.navigate(urlFor(view, server.url));
@@ -33,15 +34,12 @@ async function enter(view: Bun.WebView, who: string) {
 }
 
 describe("the wedding in a real browser", () => {
-  test("a code opens the household; the photo applet mounts with the family; a tap on a figure opens the guest's drawer with the dress and menu applets", async () => {
+  test("a code opens the household's photo, the family standing in it; a tap on a figure opens the guest's drawer with the dress and menu applets", async () => {
     await using view = new Bun.WebView();
     await enter(view, code.toLowerCase());
-    // the box shows the family still, in the guests compartment's small reading
-    const names = await waitFor(view, `[...document.querySelectorAll('[data-applet="photo"] .print text')].map((t) => t.textContent)`, (v) => Array.isArray(v) && v.length === 2);
+    // the page is the photo: the family stands in it, and a figure can be tapped
+    const names = await waitFor(view, `[...document.querySelectorAll('#family-photo .print text')].map((t) => t.textContent)`, (v) => Array.isArray(v) && v.length === 2);
     expect(names).toEqual(["Ada", "Femi"]);
-    // opening the cell grows it into the window (rule 7), where the figures can be tapped
-    await view.evaluate(`document.querySelector('.cell[data-key="guests"]').click()`);
-    await waitFor(view, `document.querySelector('.cell.open [data-applet="photo"] svg') !== null`, (v) => v === true);
 
     const guest = (await household(code)).guests[1]!;
     await view.evaluate(`document.querySelector('[data-applet="photo"] .slot[data-key="${guest.id}"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
@@ -66,17 +64,16 @@ describe("the wedding in a real browser", () => {
     expect((await household(code)).guests[1]!.choices["2"]).toEqual({ dish: 5, drink: null });
   });
 
-  test("switching the guests from the photo to the list swaps the applet for rows, and back", async () => {
+  test("reading the page as a list swaps the photo for rows, and back", async () => {
     await using view = new Bun.WebView();
     await enter(view, code);
-    await view.evaluate(`document.querySelector('.cell[data-key="guests"]').click()`);
-    await waitFor(view, `document.querySelector('.cell.open [data-applet="photo"] svg') !== null`, (v) => v === true);
-    // the reading switch is a stack on the window's rail: the reading not pressed is the other one
-    await view.evaluate(`document.querySelector('.cell.open .rail [role="radio"]:not([aria-pressed="true"])').click()`);
+    await waitFor(view, `document.querySelector('#family-photo svg') !== null`, (v) => v === true);
+    // the reading switch is a stack on the page's rail
+    await view.evaluate(`document.querySelector('.rail [role="radio"][aria-label="List"]').click()`);
     await waitFor(view, `document.querySelectorAll('.cell.open .row').length`, (v) => v === 2);
     expect(await view.evaluate<boolean>(`document.querySelector('.cell.open svg.photo') === null`)).toBe(true);
-    await view.evaluate(`document.querySelector('.cell.open .rail [role="radio"]:not([aria-pressed="true"])').click()`);
-    await waitFor(view, `document.querySelector('.cell.open [data-applet="photo"] svg') !== null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('.rail [role="radio"][aria-label="Us"]').click()`);
+    await waitFor(view, `document.querySelector('#family-photo svg') !== null`, (v) => v === true);
   });
 
   test("the page follows into the URL; the browser's back button sends the session there; reopening a link catches the session up to it", async () => {
@@ -84,40 +81,56 @@ describe("the wedding in a real browser", () => {
     await enter(view, code);
     expect(await view.evaluate<string>(`location.pathname`)).toBe("/");
 
-    // navigating via the UI is a session write, as always -- the URL follows it
-    await view.evaluate(`document.querySelector('[data-value="gifts"]').click()`);
-    await waitFor(view, `location.pathname`, (v) => v === "/gifts");
-    await waitFor(view, CRUMBS, (v) => typeof v === "string" && v.includes("Gifts"));
+    // reading the page another way is a session write, as always -- the URL follows it
+    await view.evaluate(`document.querySelector('.rail [role="radio"][aria-label="List"]').click()`);
+    await waitFor(view, `location.pathname`, (v) => v === "/list");
+    await waitFor(view, `document.querySelector('.cell.open .rows') !== null`, (v) => v === true);
 
-    // a drawer is part of the address: opening a gift's puts it in the URL, the back button puts
-    // the drawer away and leaves the page, and a link with it in opens it
-    await view.evaluate(`document.querySelector('.cell.open .row.tap').click()`);
-    await waitFor(view, `location.search`, (v) => typeof v === "string" && v.startsWith("?gift="));
-    await waitFor(view, `document.querySelector('#gift-drawer') !== null`, (v) => v === true);
-    const gift = await view.evaluate(`location.search`);
+    // a drawer is part of the address: opening the gifts puts them in the URL, the back button puts
+    // the drawer away and leaves the reading, and a link with one in opens it
+    await view.evaluate(`document.querySelector('.rail [aria-label="Gifts"]').click()`);
+    await waitFor(view, `location.search`, (v) => v === "?gifts");
+    await waitFor(view, `document.querySelector('#gifts-drawer') !== null`, (v) => v === true);
     await view.evaluate(`history.back()`);
-    await waitFor(view, `document.querySelector('#gift-drawer') === null`, (v) => v === true);
-    expect(await view.evaluate<string>(`location.pathname + location.search`)).toBe("/gifts");
+    await waitFor(view, `document.querySelector('#gifts-drawer') === null`, (v) => v === true);
+    expect(await view.evaluate<string>(`location.pathname + location.search`)).toBe("/list");
 
     // the browser's own back button: a popstate, not a click in the page -- the session follows
-    // the URL back, rather than the URL being the only thing that moved (every household page's
-    // crumbs include the household's own code, so the absence of "Gifts" is what distinguishes
-    // having actually left that page from the URL having merely changed underneath it)
+    // the URL back, rather than the URL being the only thing that moved (the photo is back, the
+    // rows gone, which the URL alone could not have done)
     await view.evaluate(`history.back()`);
     await waitFor(view, `location.pathname`, (v) => v === "/");
-    await waitFor(view, CRUMBS, (v) => typeof v === "string" && v.includes(code) && !v.includes("Gifts"));
+    await waitFor(view, `document.querySelector('#family-photo') !== null && document.querySelector('.cell.open .rows') === null`, (v) => v === true);
 
     // reopening a link to a page while already signed in (the session cookie survives, same as a
     // reload): the URL is what was actually asked for, so the session catches up to it, rather
     // than a fresh render of the session's still-current page snapping the URL back to "/"
-    await view.navigate(urlFor(view, server.url, "stay"));
-    await waitFor(view, `location.pathname`, (v) => v === "/stay");
-    await waitFor(view, CRUMBS, (v) => typeof v === "string" && v.includes("Where to stay"));
+    await view.navigate(urlFor(view, server.url, "everyone"));
+    await waitFor(view, `location.pathname`, (v) => v === "/everyone");
+    await waitFor(view, `document.querySelector('#everyone-photo') !== null`, (v) => v === true);
 
     // and a link with a drawer in it opens the drawer
-    await view.navigate(urlFor(view, server.url, `gifts${gift}`));
-    await waitFor(view, `document.querySelector('#gift-drawer') !== null`, (v) => v === true);
+    await view.navigate(urlFor(view, server.url, "list?stay"));
+    await waitFor(view, `document.querySelector('#stay-drawer') !== null`, (v) => v === true);
   }, 20000);
+
+  test("beside a docked drawer the page is in reach: one tap goes from the gifts to the day, one to a guest; Escape puts the drawer away", async () => {
+    await using view = new Bun.WebView({ width: 1280, height: 800 }); // wide enough that the drawer docks
+    await enter(view, code);
+    await waitFor(view, `document.querySelector('#family-photo svg') !== null`, (v) => v === true);
+    await view.click('.rail [aria-label="Gifts"]');
+    await waitFor(view, `document.querySelector('#gifts-drawer') !== null`, (v) => v === true);
+    await Bun.sleep(300); // the rail steps aside for the drawer
+    await view.click('.rail [aria-label="The day"]'); // a real click, where the tool stands: nothing lies over it
+    await waitFor(view, `document.querySelector('#day-drawer') !== null`, (v) => v === true);
+    const guest = (await household(code)).guests[0]!;
+    // a figure never stands still (its attitude animates), so the tap is where it stands now
+    const at = await view.evaluate<{ x: number; y: number }>(`(() => { const r = document.querySelector('#family-photo .slot[data-key="${guest.id}"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+    await view.click(at.x, at.y);
+    await waitFor(view, `document.querySelector('.guest-drawer') !== null`, (v) => v === true);
+    await view.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))`);
+    await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
+  }, 15000);
 
   test("the answer: the pencil opens the drawer, an option writes it, the bubble shows it, Undo takes it back", async () => {
     await using view = new Bun.WebView();
@@ -131,6 +144,24 @@ describe("the wedding in a real browser", () => {
     await view.evaluate(`document.querySelector('[data-write*="ledger"]').click()`);
     await waitFor(view, `document.querySelector('.bubble.ours .face-mark')?.classList.contains('maybe')`, (v) => v === false);
   });
+
+  test("the couple's page is the photo of families: a tap on a family opens its drawer, and Escape puts it away", async () => {
+    await using view = new Bun.WebView({ width: 1280, height: 800 });
+    await view.navigate(urlFor(view, server.url));
+    await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
+    await view.scrollTo("#code");
+    await view.click("#code");
+    await view.type("DASH");
+    await view.click("button.gold");
+    await waitFor(view, `document.querySelector('#board-photo svg .slot[role="button"]') !== null`, (v) => v === true);
+    // a figure never stands still, so the tap is where it stands now
+    const at = await view.evaluate<{ x: number; y: number }>(`(() => { const r = document.querySelector('#board-photo .slot[role="button"]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+    await view.click(at.x, at.y);
+    await waitFor(view, `document.querySelector('.family-drawer') !== null`, (v) => v === true);
+    expect(await view.evaluate<string>(`location.search`)).toMatch(/^\?family=\d+$/);
+    await view.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))`);
+    await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
+  }, 15000);
 
   test("editing a gift's fields in its drawer writes on blur, batches fields changed together, and does not reset", async () => {
     await using view = new Bun.WebView();
@@ -146,7 +177,7 @@ describe("the wedding in a real browser", () => {
     await asCouple([{ op: "add", path: "/gifts/-", value: { name: "Toaster", description: "starter" } }]);
     const giftId = (await board()).gifts.at(-1)!.id;
 
-    await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/page", value: "gifts?keep=gifts/${giftId}" }] }))`);
+    await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/page", value: "?keep=gifts/${giftId}" }] }))`);
     await waitFor(view, `document.querySelector('.keep-drawer input[name=name]') !== null`, (v) => v === true);
 
     // change two fields of the same editing form before either loses focus, then trigger just one:

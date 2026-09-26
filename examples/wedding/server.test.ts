@@ -200,15 +200,15 @@ describe("the welcome", () => {
 });
 
 describe("a household", () => {
-  test("entering a code opens the household's box, with the photo applet given its family; a page is a session write; leaving returns to the welcome", async () => {
+  test("entering a code opens the household's photo, the photo applet given its family; a drawer is a session write; leaving returns to the welcome", async () => {
     const ws = await enter(code);
-    const gifts = await at(ws, "gifts");
-    expect(gifts).toContain("Gifts");
+    const page = await at(ws, "");
+    expect(page).toContain(`<span class="cell-name">${code}</span>`);
+    expect(page).toContain('id="family-photo" data-applet="photo"');
+    expect(page).toContain("Tess");
+    const gifts = await at(ws, "?gifts");
+    expect(gifts).toContain('aria-label="Gifts"');
     expect(gifts).toContain("Honeymoon fund");
-    const box = await at(ws, "");
-    expect(box).toContain(`<b aria-current="page">${code}</b>`);
-    expect(box).toContain('data-applet="photo"');
-    expect(box).toContain("Tess");
     expect(await go(ws, [{ op: "remove", path: "/code" }])).toContain("at-welcome");
     ws.close();
   });
@@ -218,6 +218,7 @@ describe("a household", () => {
     const other = await enter(code); // a second tab, same household
     const couple = await enter("DASH");
     const stranger = await enter("OKAFOR");
+    await at(stranger, "everyone"); // another household sees this one only in the photo of everyone
 
     const h = await send(mine, "household", [{ op: "replace", path: "/answer", value: "maybe" }]);
     expect(h.patches[0]).toMatchObject({ doc: householdDoc(), ops: [{ op: "replace", path: "/households", value: { answer: "maybe" } }] });
@@ -270,9 +271,16 @@ describe("a household", () => {
     await refused(ws, "board", [{ op: "replace", path: "/name1", value: "X" }]);
     await refused(ws, "nothing", [{ op: "replace", path: "/x", value: "X" }]);
 
-    // one plus-one is owed: the first is taken, the second refused
-    expect((await send(ws, "household", [{ op: "add", path: "/guests/-", value: "Plus One" }])).page).toContain("Plus");
+    // one plus-one is owed: the plus names them, in a modal (rule 14); the first is taken and the
+    // modal put away, the second refused, and the plus asks the couple after
+    const plus = await at(ws, "?new=guests");
+    expect(plus).toContain('aria-label="Name our plus-one"');
+    expect(plus).toContain('<dialog open class="modal" aria-label="Name our plus-one">');
+    const named = (await send(ws, "household", [{ op: "add", path: "/guests/-", value: "Plus One" }])).page;
+    expect(named).toContain("Plus");
+    expect(named).not.toContain('class="modal"');
     await refused(ws, "household", [{ op: "add", path: "/guests/-", value: "Plus Two" }]);
+    expect(await at(ws, "")).toContain(`aria-label="Ask to bring someone" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="?new=asks"`);
 
     // after the deadline the answer, coming and the choices are locked; the look and the words are not
     await asCouple([{ op: "replace", path: "/deadline", value: "2000-01-01" }]);
@@ -285,83 +293,116 @@ describe("a household", () => {
     ws.close();
   });
 
-  test("the drawers: a guest's (the dress and menu applets), a gift's, the answer's -- each opened and closed by a session write", async () => {
+  test("the drawers: a guest's (the dress and menu applets), the answer's, and the gifts, the day and where to stay -- each a tool, pressed while its drawer is open", async () => {
     const ws = await enter(code);
     const guest = (await household(code)).guests[0]!;
     let html = await at(ws, `?guest=${guest.id}`);
     expect(html).toContain('data-applet="dress"');
     expect(html).toContain('data-applet="menu"');
     expect(html).toContain(`aria-label="${guest.name}"`);
-    html = await at(ws, "?gift=1");
-    expect(html).not.toContain('data-applet="dress"');
-    expect(html).toContain("Le Creuset casserole");
-    expect(html).toContain('data-write=\'{"doc":"household","op":"add","path":"/claims/-"}\' data-value="1"');
     html = await at(ws, "?answer");
     expect(html).toContain('aria-label="Our answer"');
     expect(html).toContain('data-write=\'{"doc":"household","op":"replace","path":"/answer"}\' data-value="yes"');
+
+    // the gifts: each whole, and what this household may do with it; the tool, pressed, puts the drawer away
+    html = await at(ws, "?gifts");
+    expect(html).not.toContain('data-applet="dress"');
+    expect(html).toContain(`aria-label="Gifts" aria-pressed="true" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value=""`);
+    expect(html).toContain("Le Creuset casserole");
+    expect(html).toContain('data-write=\'{"doc":"household","op":"add","path":"/claims/-"}\' data-value="1"');
+    expect(html).toContain("open · anyone may"); // the honeymoon fund, shared, given to by nobody yet
+    // claimed: it is ours to unclaim; shared, another household's giving is counted, never named
+    const email = `giver-${Date.now()}@example.com`;
+    await asCouple([{ op: "add", path: "/households/-", value: { email, names: "Gil Giver" } }]);
+    const other = (await board()).households.find((x) => x.email === email)!;
+    await asHousehold(other.code, [{ op: "add", path: "/claims/-", value: 2 }, { op: "add", path: "/claims/-", value: 3 }]);
+    html = (await send(ws, "household", [{ op: "add", path: "/claims/-", value: 1 }])).page;
+    expect(html).toContain('<span class="state-yes">claimed by us</span>');
+    expect(html).toContain('data-write=\'{"doc":"household","op":"remove","path":"/claims/1"}\'');
+    expect(html).toContain("1 household has given · anyone may");
+    expect(html).toContain('<span class="state-no">taken</span>'); // the knives, not shared, the other household's
+    await send(ws, "household", [{ op: "remove", path: "/claims/1" }]);
+    await asHousehold(other.code, [{ op: "remove", path: "/claims/2" }, { op: "remove", path: "/claims/3" }]); // the gifts as the other tests find them
+
+    html = await at(ws, "?day");
+    expect(html).toContain('aria-label="The day"');
+    expect(html).toContain("Ceremony");
+    html = await at(ws, "?stay");
+    expect(html).toContain('aria-label="Where to stay"');
+    expect(html).toContain("Brooks Guesthouse");
     ws.close();
   });
 
-  test("the list reading, the asks page, the day, where to stay, everyone (and one family), a page that does not exist", async () => {
+  test("the page read three ways: the photo, the list with whoever was asked for, everyone (and one family); a page that does not exist is the photo", async () => {
     const ws = await enter(code);
-    await at(ws, "guests"); // the guests grow into the window (rule 7); their list reading is there
-    expect(await go(ws, [{ op: "replace", path: "/reading/guests", value: "list" }])).toContain('class="row tap"');
-    expect(await at(ws, "asks")).toContain("Ask to bring someone");
-    // the plus asks in a modal; the add that answers it closes it (rule 14)
-    expect(await at(ws, "asks?new=asks")).toContain('<dialog open class="modal" aria-label="Ask to bring someone">');
-    expect((await send(ws, "household", [{ op: "add", path: "/asks/-", value: "Modal Friend" }])).page).not.toContain('class="modal"');
-    // a waiting ask, then answered both ways -- the asks list's own row for each
+    // a waiting ask stands in the photo as a ghost, still: nothing of theirs to open
     await asHousehold(code, [{ op: "add", path: "/asks/-", value: "Robin Friend" }]);
     const askId = (await household(code)).asks.at(-1)!.id;
-    // the guests' list reading carries a waiting ask as a ghost row, beneath the named guests
-    expect(await at(ws, "guests")).toContain("a waiting ask — not a guest yet");
-    expect(await at(ws, "asks")).toContain("waiting");
-    await asCouple([{ op: "replace", path: `/households/${hid}/asks/${askId}/reply`, value: "yes" }]);
-    expect(await at(ws, "asks")).toContain("yes — a guest now");
+    expect(await at(ws, "")).toContain(`{&quot;key&quot;:&quot;ask-${askId}&quot;,&quot;ghost&quot;:true`);
+    // the list: the guests' rows, then whoever was asked for and is not a guest
+    let html = await at(ws, "list");
+    expect(html).toContain('class="row tap"');
+    expect(html).toContain('<span class="what">Robin Friend</span>');
+    expect(html).toContain(">asked for</span>");
     await asCouple([{ op: "replace", path: `/households/${hid}/asks/${askId}/reply`, value: "no" }]);
-    expect(await at(ws, "asks")).toContain("no");
-    expect(await at(ws, "day")).toContain("Ceremony");
-    expect(await at(ws, "stay")).toContain("Brooks Guesthouse");
+    expect((await heard(ws)).page).toContain(">the couple said no</span>");
+    // the photo every household watches, and one family in it
     expect(await at(ws, "everyone")).toContain("in the photo");
-    expect(await at(ws, "everyone/1")).toContain("One family");
+    html = await at(ws, "everyone/1");
+    expect(html).toContain('<span class="cell-name">One family</span>');
     expect(await at(ws, "everyone/999")).not.toContain("One family");
-    expect(await at(ws, "nowhere")).toContain(`<b aria-current="page">${code}</b>`); // the box
+    expect(await at(ws, "nowhere")).toContain('id="family-photo"');
     ws.close();
+
+    // a household nobody is named on yet: the photo says so
+    const couple = await enter("DASH");
+    const nobody = `empty-${Date.now()}@example.com`;
+    await send(couple, "board", [{ op: "add", path: "/households/-", value: nobody }]);
+    const empty = await enter((await board()).households.find((x) => x.email === nobody)!.code);
+    expect((await heard(empty)).page).toContain("Nobody is named on your invitation yet.");
+    await send(couple, "ledger", [{ op: "remove", path: "/latest" }]);
+    empty.close();
+    couple.close();
   });
 
-  test("find dims what the word misses, keeps lit what it hits, tallies, and forgets on close (rule 17)", async () => {
+  test("find looks for someone by name in the photo and the list: dims whoever it misses, tallies, the eye takes them out, and it forgets on close (rule 17)", async () => {
     const ws = await enter(code);
     const guests = (await household(code)).guests;
-    await at(ws, "guests"); // find is on the guests' window
+    const [found, missed] = [guests[0]!, guests[1]!];
+    await at(ws, "");
 
-    // opening find: the field appears, empty, dimming nobody
+    // opening find: the field, empty, dimming nobody
     let html = await go(ws, [{ op: "replace", path: "/filter/guests", value: "" }]);
     expect(html).toContain('class="filter"');
-    expect(html).not.toContain(" hushed");
+    expect(html).not.toContain("&quot;hushed&quot;:true");
 
-    // typing dims what the word misses, keeps the rest lit, and tallies -- in both readings
-    html = await go(ws, [{ op: "replace", path: "/filter/guests", value: guests[0]!.name }]);
-    expect(html).toContain(`&quot;hushed&quot;:true`); // the photo applet's own props, one entry hushed
+    // a word: the photo dims whoever it misses, and the tally counts the people this reading shows
+    html = await go(ws, [{ op: "replace", path: "/filter/guests", value: found.name }]);
+    expect(html).toContain(`&quot;key&quot;:&quot;${missed.id}&quot;`);
+    expect(html).toContain("&quot;hushed&quot;:true");
     const waiting = (await household(code)).asks.filter((a) => a.reply === null).length;
     expect(html).toContain(`>1 of ${guests.length + waiting}</span>`);
-    html = await go(ws, [{ op: "replace", path: "/reading/guests", value: "list" }]);
-    expect(html).toContain('class="row tap hushed"');
+    // the eye: whoever it misses steps out of the photo
+    html = await go(ws, [{ op: "replace", path: "/hide/guests", value: true }]);
+    expect(html).not.toContain(`&quot;key&quot;:&quot;${missed.id}&quot;`);
+    expect(html).toContain(`&quot;key&quot;:&quot;${found.id}&quot;`);
 
-    // a waiting ask hushes too, by its own name, when the word misses it
+    // the list: the same word, the same eye; someone asked for is found by their own name
     await asHousehold(code, [{ op: "add", path: "/asks/-", value: "Nobody Matching" }]);
-    expect(await at(ws, "guests")).toContain('class="row hushed"');
+    html = await at(ws, "list");
+    expect(html).toMatch(new RegExp(`class="row tap hushed" id="guest-${missed.id}"[^>]* hidden>`));
+    expect(html).toMatch(/class="row hushed" id="ask-\d+" hidden>/);
+    expect(html).toContain(`class="row tap" id="guest-${found.id}"`);
 
-    // closing find forgets the word: nothing dims, no field, no tally
+    // everyone's photo is nameless until the day: no find there, and the word waits for the way back
+    expect(await at(ws, "everyone")).not.toContain('class="filter"');
+    expect(await at(ws, "")).toContain(`value="${found.name}"`);
+
+    // closing find forgets the word and the eye: nothing dims, no field, no tally
     html = await go(ws, [{ op: "remove", path: "/filter/guests" }]);
     expect(html).not.toContain('class="filter"');
-    expect(html).not.toContain(" hushed");
-    expect(html).not.toContain('class="tally"');
-
-    // the gifts collection carries find too, once open, dimming its own rows
-    await at(ws, "gifts");
-    html = await go(ws, [{ op: "replace", path: "/filter/gifts", value: (await board()).gifts[0]!.name }]);
-    expect(html).toContain('class="filter"');
-    expect(html).toContain('class="row tap hushed"');
+    expect(html).not.toContain("&quot;hushed&quot;:true");
+    expect(html).toContain(`&quot;key&quot;:&quot;${missed.id}&quot;`);
     ws.close();
   });
 
@@ -395,22 +436,18 @@ describe("a household", () => {
     const elsewhere = await enter("OKAFOR");
     const couple = await enter("DASH");
     const family = await enter("DASH");
-    const familyBox = await enter("DASH");
-    const home = await enter("DASH");
     const welcome = connect(); // no code yet
     await opened(welcome);
     await heard(welcome);
-    await at(mine, `guests?guest=${guest.id}`);
-    await go(list, [{ op: "replace", path: "/page", value: "guests" }, { op: "replace", path: "/reading/guests", value: "list" }]);
+    await at(mine, `?guest=${guest.id}`);
+    await at(list, "list");
     await at(everyone, "everyone");
-    await at(elsewhere, "gifts");
-    await at(couple, "households");
-    await at(family, `households/${hid}/guests`);
-    await at(familyBox, `households/${hid}`);
+    await at(elsewhere, "?gifts");
+    await at(family, `?family=${hid}`);
 
     // an applet's mount has nothing inside it, so a look goes as its tag alone -- the new props.
     // a look: the family photo and the open drawer's dress for the household, the photo of
-    // everyone, the board's and the family's photos for the couple, the home's small reading
+    // everyone, the couple's photo of families (under a family's drawer too)
     const look = await send(mine, "household", [{ op: "replace", path: `/guests/${guest.id}/minifigure/hair`, value: "curls" }]);
     expect(look.targets).toEqual(["tag family-photo", `tag dress-${guest.id}`]);
     expect((await heard(list)).targets).toEqual([]); // the list reading shows no looks
@@ -419,28 +456,24 @@ describe("a household", () => {
     expect(e.targets).toEqual(["tag everyone-photo"]); // they are coming, so in it
     expect((await heard(elsewhere)).renders).toEqual([]); // told, but nothing on its page shows it
     expect((await heard(couple)).targets).toEqual(["tag board-photo"]);
-    expect((await heard(family)).targets).toEqual(["tag family-photo"]);
-    expect((await heard(familyBox)).targets).toEqual(["tag family-mini"]); // the family box's small reading of them, still
-    expect((await heard(home)).targets).toEqual(["tag board-mini"]); // the home's small reading of the families, still
+    expect((await heard(family)).targets).toEqual(["tag board-photo"]);
     const w = await heard(welcome);
     expect([...w.patches, ...w.renders]).toEqual([]); // a visitor reads the welcome, which no household moves
 
-    // a choice: the drawer's menu and the list's row for the household, the family's row for the couple, nothing for the photos
-    await go(family, [{ op: "replace", path: `/reading/family-${hid}`, value: "list" }]);
+    // a choice: the drawer's menu and the list's row for the household, the guest's line in the family's drawer for the couple, nothing for the photos
     expect((await send(mine, "household", [{ op: "replace", path: `/guests/${guest.id}/choices/2/dish`, value: 5 }])).targets).toEqual([`tag menu-${guest.id}`]);
     expect((await heard(list)).targets).toEqual([`replace guest-${guest.id}`]);
     const e2 = await heard(everyone);
     expect([...e2.patches, ...e2.renders]).toEqual([]); // a choice is not everyone's to see
     expect((await heard(couple)).targets).toEqual([]);
     expect((await heard(family)).targets).toEqual([`replace guest-${guest.id}`]);
-    expect((await heard(familyBox)).targets).toEqual([]); // a choice shows in no small reading
 
     // anything else goes out the same way: what shows it, to whoever's page shows it
     expect((await send(mine, "household", [{ op: "replace", path: "/message", value: "a message" }])).page).toContain("a message");
     const quiet = await heard(elsewhere);
     expect([...quiet.patches, ...quiet.renders]).toEqual([]);
 
-    for (const ws of [mine, list, everyone, elsewhere, couple, family, familyBox, home, welcome]) ws.close();
+    for (const ws of [mine, list, everyone, elsewhere, couple, family, welcome]) ws.close();
     await asHousehold(code, [{ op: "remove", path: `/guests/${guest.id}/choices/2/dish` }, { op: "replace", path: `/guests/${guest.id}/minifigure/hair`, value: guest.minifigure.hair }]);
     await asHousehold(code, [answered === null ? { op: "remove", path: "/answer" } : { op: "replace", path: "/answer", value: answered }]);
   });
@@ -455,52 +488,58 @@ describe("a household", () => {
 });
 
 describe("the couple", () => {
-  test("the couple's code opens the home, the households, a family, its asks, and the four lists", async () => {
+  test("the couple's code opens the photo of families; a family, the welcome, the four lists and a row of each are drawers; a new one is named in place; a removal asks first, then goes back to its list", async () => {
     const ws = await enter("DASH");
-    expect(held.get(ws)).toContain('class="bubble couple thing"'); // entered at home
+    expect(held.get(ws)).toContain('class="bubble couple thing"'); // the welcome, over the photo
+    expect(held.get(ws)).toContain('id="board-photo" data-applet="photo"');
     // the welcome is a "thing" (rule 15): ✎ opens its own drawer, where its picture lives
     expect(await at(ws, "?answer")).toContain('data-applet="picture-field"');
-    await at(ws, "");
-    const households = await at(ws, "households");
-    expect(households).toContain("Invite a household");
-    expect(households).toContain('data-applet="photo"');
-    expect(await go(ws, [{ op: "replace", path: "/reading/households", value: "list" }])).toContain('class="row tap"');
-    // the code is a thing (rule 15): its drawer holds the email, the plus-ones and the way to chase them
-    const family = await at(ws, `households/${hid}?keep=households/${hid}`);
-    expect(family).toContain("Plus-ones");
-    expect(family).toContain("Chase them");
-    await at(ws, `households/${hid}`);
-    expect(await at(ws, "households/2/asks")).toContain("They have not asked for anyone."); // Ben, who never has
-    expect(await at(ws, "households/999999")).toContain("Invite a household");
-    for (const table of ["courses", "gifts", "events", "places"]) expect(await at(ws, table)).toContain("Add a ");
-    const drawer = await at(ws, "courses?keep=courses/1");
-    expect(drawer).toContain("Add a dish");
-    expect(drawer).toContain("Remove this course");
-    expect(await at(ws, "gifts?keep=gifts/2")).toContain('aria-label="Shared: any number may claim it"');
-    expect(await at(ws, "events?keep=events/1")).toContain("2027-04-02T13:00");
-    expect(await at(ws, "places?keep=places/1")).toContain("how far, how to book");
-    expect(await at(ws, "places?keep=nope/1")).not.toContain("keep-drawer");
+    expect(await at(ws, "list")).toContain(`class="row tap" id="household-${hid}"`); // the other reading: a household a row
 
-    // adding is a plus on the collection's rail and a modal asking one question, the name; the
-    // page behind it is inert while it asks (rule 14)
-    let html = await at(ws, "courses?new=courses");
-    expect(html).toContain('<dialog open class="modal" aria-label="Add a course">');
-    expect(html).toContain("The course&#39;s name");
-    expect(html).toContain('class="ground" inert>');
+    // a family's drawer: their guests (a new one named in place), their invitation, the way to chase them; the plus invites
+    let html = await at(ws, `?family=${hid}`);
+    expect(html).toContain(`class="drawer family-drawer" role="dialog" aria-label="${code}"`);
+    expect(html).toContain(`data-write='{"doc":"board","op":"add","path":"/households/${hid}/guests/-"}'`);
+    expect(html).toContain("Plus-ones");
+    expect(html).toContain("Chase them");
+    expect(await at(ws, "?family=999999")).not.toContain('class="drawer');
+    expect(await at(ws, "list?new=households")).toContain('<dialog open class="modal" aria-label="Invite a household">');
+
+    // the four lists: a tool each, pressed while its drawer is open, and a new one named at the foot
+    for (const table of ["courses", "gifts", "events", "places"]) {
+      html = await at(ws, `?${table}`);
+      expect(html).toContain(`id="${table}-drawer"`);
+      expect(html).toContain(`data-write='{"doc":"board","op":"add","path":"/${table}/-"}'`);
+    }
+    // a row's own drawer: its × goes back to its list, whose tool stays pressed
+    html = await at(ws, "?keep=courses/1");
+    expect(html).toContain("Add a dish");
+    expect(html).toContain("Remove this course");
+    expect(html).toContain(`aria-label="Courses" aria-pressed="true"`);
+    expect(html).toContain(`aria-label="Close" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="?courses"`);
+    expect(await at(ws, "?keep=gifts/2")).toContain('aria-label="Shared: any number may claim it"');
+    expect(await at(ws, "?keep=events/1")).toContain("2027-04-02T13:00");
+    expect(await at(ws, "?keep=places/1")).toContain("how far, how to book");
+    expect(await at(ws, "?keep=nope/1")).not.toContain("keep-drawer");
+    expect(await at(ws, "?keep=courses/999999")).not.toContain("keep-drawer");
+
+    // named in place: the list's drawer stays open, with the new row in it
+    await at(ws, "?courses");
     html = (await send(ws, "board", [{ op: "add", path: "/courses/-", value: "Pudding" }])).page;
     const pudding = (await board()).courses.find((c) => c.name === "Pudding")!;
-    expect(pudding).toBeTruthy();
-    // the write that answers the question closes the modal
-    expect(html).not.toContain('class="modal"');
-    expect(html).not.toContain(`class="ground" inert`);
+    expect(html).toContain(`id="course-${pudding.id}"`);
+    expect(html).toContain('id="courses-drawer"');
 
-    // removing asks in a modal too -- a modal is new or delete and nothing else (rule 14)
-    expect(await at(ws, `courses?confirm=courses/${pudding.id}`)).toContain(`Remove &quot;Pudding&quot; from the list?`);
-    expect((await send(ws, "board", [{ op: "remove", path: `/courses/${pudding.id}` }])).page).not.toContain('class="modal"');
+    // removing asks in a modal -- a modal is new or delete and nothing else (rule 14); answered, back to the list
+    html = await at(ws, `?confirm=courses/${pudding.id}`);
+    expect(html).toContain(`Remove &quot;Pudding&quot; from the list?`);
+    expect(html).toContain('class="ground" inert>');
+    html = (await send(ws, "board", [{ op: "remove", path: `/courses/${pudding.id}` }])).page;
+    expect(html).not.toContain('class="modal"');
+    expect(html).toContain('data-page="?courses"');
     expect((await board()).courses.some((c) => c.id === pudding.id)).toBe(false);
     // a stale or nonsense confirm target renders no modal at all
-    expect(await at(ws, "courses?confirm=courses/999999")).not.toContain('class="modal"');
-    expect(await at(ws, "courses?confirm=nope/1")).not.toContain('class="modal"');
+    for (const target of ["courses/999999", "nope/1", `households/${hid}/guests/999999`, "households/999999/guests/1"]) expect(await at(ws, `?confirm=${target}`)).not.toContain('class="modal"');
     ws.close();
   });
 
@@ -545,7 +584,7 @@ describe("the couple", () => {
     ws.close();
   });
 
-  test("find dims households and the couple's own gifts, keeps lit what it hits, and tallies (rule 17)", async () => {
+  test("find looks for a family by its code or a name: dims the rest in the photo and the list, tallies, and the eye takes them out (rule 17)", async () => {
     // two households this test alone owns, so the asks it adds disturb no one else's
     const stamp = Date.now();
     for (const who of ["findme", "other"]) await asCouple([{ op: "add", path: "/households/-", value: { email: `${who}-${stamp}@example.com`, names: `${who} ${stamp}` } }]);
@@ -554,46 +593,43 @@ describe("the couple", () => {
     const matching = households.find((h) => h.email === `findme-${stamp}@example.com`)!;
     const other = households.find((h) => h.email === `other-${stamp}@example.com`)!;
 
-    // households, the photo reading: opening find dims the family the word misses
-    await at(ws, "households");
+    // the photo: opening find dims the families the word misses
     let html = await go(ws, [{ op: "replace", path: "/filter/households", value: matching.code }]);
     expect(html).toContain('class="filter"');
     expect(html).toContain(`&quot;hushed&quot;:true`);
     expect(html).toContain(`>1 of ${households.length}</span>`);
+    // the eye: they step out of the photo
+    html = await go(ws, [{ op: "replace", path: "/hide/households", value: true }]);
+    expect(html).not.toContain(`&quot;hushed&quot;:true`);
 
-    // the list reading: the same word hushes the row, and any of its own waiting asks
+    // the list: the same word hides the rows it misses; a household's waiting ask rides on its row as a note
     await asHousehold(matching.code, [{ op: "add", path: "/asks/-", value: "Someone Matching" }]);
     await asHousehold(other.code, [{ op: "add", path: "/asks/-", value: "Someone Else" }]);
-    html = await go(ws, [{ op: "replace", path: "/reading/households", value: "list" }]);
-    expect(html).toContain(`class="row tap hushed" id="household-${other.id}"`);
-    expect(html).toContain(`class="row tap" id="household-${matching.id}"`); // the matching household, not hushed
-    expect(html).toMatch(/\d+ asks? waiting/); // its waiting ask rides on its row as a note, not a row of its own
-    await go(ws, [{ op: "remove", path: "/filter/households" }]);
+    html = await at(ws, "list");
+    expect(html).toMatch(new RegExp(`class="row tap hushed" id="household-${other.id}"[^>]* hidden>`));
+    expect(html).toContain(`class="row tap" id="household-${matching.id}"`);
+    expect(html).toMatch(/\d+ asks? waiting/);
 
-    // the couple's own gifts, kept: find dims the same way
-    await at(ws, "gifts");
-    const gifts = (await board()).gifts;
-    html = await go(ws, [{ op: "replace", path: "/filter/gifts", value: gifts[0]!.name }]);
-    expect(html).toContain('class="filter"');
-    expect(html).toContain('class="row tap hushed"');
-    expect(html).toContain(`>1 of ${gifts.length}</span>`);
+    // closing find forgets the word and the eye
+    html = await go(ws, [{ op: "remove", path: "/filter/households" }]);
+    expect(html).not.toContain('class="filter"');
+    expect(html).not.toContain(" hidden>");
     ws.close();
   });
 
-  test("a family's box reads its guests as the photo or the list, and its asks once answered", async () => {
+  test("a family's drawer: whether each guest is coming and what they chose, and whoever they asked for -- waiting, with the couple's yes or no, or refused; their figures ring in the photo", async () => {
     const ws = await enter("DASH");
     const guest = (await household(code)).guests[0]!.id;
     await asHousehold(code, [{ op: "replace", path: `/guests/${guest}/coming`, value: 1 }, { op: "add", path: "/asks/-", value: "Answered" }, { op: "add", path: "/asks/-", value: "Waiting" }]);
     const ask = (await household(code)).asks.find((a) => a.name === "Answered")!;
     await asCouple([{ op: "replace", path: `/households/${hid}/asks/${ask.id}/reply`, value: "no" }]);
-    const list = await go(ws, [{ op: "replace", path: "/page", value: `households/${hid}/guests` }, { op: "replace", path: `/reading/family-${hid}`, value: "list" }]);
-    expect(list).toContain(">coming</span>");
-    expect(list).toContain(">not said</span>");
-    const asks = await at(ws, `households/${hid}/asks`);
-    expect(asks).toContain("Answered");
-    expect(asks).toContain('class="answer-word no"');
-    expect(asks).toContain(">Waiting</span>"); // the waiting ask's row carries the couple's yes or no
-    expect(asks).toContain('class="pick" role="radiogroup" aria-label="'); // the couple's yes or no, one choice
+    const drawer = await at(ws, `?family=${hid}`);
+    expect(drawer).toContain(">coming</span>");
+    expect(drawer).toContain(">not said</span>");
+    expect(drawer).toContain(">Asked for</h3>");
+    expect(drawer).toContain('<span class="what">Answered</span></span><span class="answer-word no">');
+    expect(drawer).toContain('<span class="what">Waiting</span></span><div class="pick" role="radiogroup" aria-label="Waiting, asked for">'); // the couple's yes or no, one choice
+    expect(drawer).toContain("&quot;chosen&quot;:true");
     await asHousehold(code, [{ op: "remove", path: `/guests/${guest}/coming` }]);
     ws.close();
   });
@@ -609,8 +645,12 @@ describe("the couple", () => {
     const families = await at(ws, "everyone");
     expect(families).toContain("Tap a family to see them");
     expect(families).toContain("&quot;count&quot;:17");
-    expect(await at(ws, `everyone/${crowd.id}`)).toContain("One family, 17 of them.");
+    const family = await at(ws, `everyone/${crowd.id}`);
+    expect(family).toContain('<span class="cell-name">One family</span>');
+    expect(family).toContain("17 of them.");
     ws.close();
+    // the couple's photo, at the families level too: the crowd one figure, ringing while its drawer is open
+    expect(await at(couple, `?family=${crowd.id}`)).toMatch(new RegExp(`&quot;count&quot;:17,&quot;tap&quot;:[^}]*}},&quot;hushed&quot;:false,&quot;chosen&quot;:true`));
     await heard(couple);
     await send(couple, "ledger", [{ op: "remove", path: "/latest" }]); // the crowd goes home
     couple.close();
@@ -722,20 +762,21 @@ describe("undo beside someone else", () => {
 });
 
 describe("the couple keep a family's invitation", () => {
-  test("a guest's drawer says whether they are coming, and taking them off asks first; the email is edited in place", async () => {
+  test("taking a guest off asks first, and goes back to the family's drawer; the email is edited in place", async () => {
     const ws = await enter("DASH");
-    const ben = (await board()).households.find((h) => h.code === "BEN")!;
-    const guest = ben.guests[0]!;
-    const drawer = await at(ws, `households/${ben.id}/guests?guest=${guest.id}`);
-    expect(drawer).toContain('class="drawer');
-    expect(drawer).toContain("Take off the invitation");
-    const asked = await at(ws, `households/${ben.id}/guests?confirm=guests/${guest.id}`);
-    expect(asked).toContain(`Take ${guest.name} off the BEN invitation?`);
-    expect(asked).toContain(`data-write='{"doc":"board","op":"remove","path":"/households/${ben.id}/guests/${guest.id}"}'`);
-    expect(await at(ws, `households/${ben.id}/guests?confirm=guests/999`)).not.toContain("Take off the invitation?"); // nobody by that id: nothing asks
-    expect(await at(ws, `households/${ben.id}/guests?guest=999`)).not.toContain("Take off the invitation");
-    const code = await at(ws, `households/${ben.id}?keep=households/${ben.id}`);
-    expect(code).toContain(`data-write='{"doc":"board","op":"replace","path":"/households/${ben.id}/email"}'`);
+    const email = `takeoff-${Date.now()}@example.com`;
+    await asCouple([{ op: "add", path: "/households/-", value: { email, names: "Tak Test, Tik Test" } }]);
+    const h = (await board()).households.find((x) => x.email === email)!;
+    const guest = h.guests[0]!;
+    const drawer = await at(ws, `?family=${h.id}`);
+    expect(drawer).toContain(`aria-label="Take ${guest.name} off"`);
+    expect(drawer).toContain(`data-write='{"doc":"board","op":"replace","path":"/households/${h.id}/email"}'`);
+    const asked = await at(ws, `?confirm=households/${h.id}/guests/${guest.id}`);
+    expect(asked).toContain(`Take ${guest.name} off the ${h.code} invitation?`);
+    expect(asked).toContain(`data-write='{"doc":"board","op":"remove","path":"/households/${h.id}/guests/${guest.id}"}'`);
+    const after = (await send(ws, "board", [{ op: "remove", path: `/households/${h.id}/guests/${guest.id}` }])).page;
+    expect(after).toContain(`data-page="?family=${h.id}"`);
+    expect(after).not.toContain(`aria-label="Take ${guest.name} off"`);
     ws.close();
   });
 });

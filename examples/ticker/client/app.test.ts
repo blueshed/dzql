@@ -80,5 +80,15 @@ describe("the ticker in a real browser", () => {
     await waitFor(view, `document.querySelector('svg.clock .label').textContent`, (v) => v === "London");
     expect(await view.evaluate<string>(`document.querySelector('#city input').placeholder`)).toBe("London");
     expect(await view.evaluate<number>(`window.eta.docs().clock.ops.length`)).toBe(1);
+
+    // Escape: the first empties the picker's word and leaves the drawer open; the next puts the drawer away
+    await view.click("#city input");
+    await view.type("par");
+    await waitFor(view, `document.querySelectorAll('#city .suggestions li').length > 0`, (v) => v === true);
+    await arrow("Escape");
+    await waitFor(view, `document.querySelector('#city input').value`, (v) => v === "");
+    expect(await view.evaluate<boolean>(`document.querySelector('.drawer') !== null`)).toBe(true);
+    await arrow("Escape");
+    await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
   }, 15000);
 });
