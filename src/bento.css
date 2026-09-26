@@ -136,6 +136,12 @@ body:has(.page.windowed) { overflow: hidden; }
 .filter .tally { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .filter .tool { width: 26px; height: 26px; min-height: 0; padding: 0; border: 0; border-radius: var(--radius-inner); background: transparent; color: var(--ink); } /* its own size, whatever an example says of buttons */
 .filter .tool[aria-pressed="true"] { background: var(--accent); color: var(--card); }
+/* beside its own tool, wherever that stands in the rail; a browser that cannot anchor keeps it at
+   the rail's top */
+@supports (anchor-name: --find) {
+  .rail .tool.find { anchor-name: --find; }
+  @media (min-width: 820px) { .filter { position-anchor: --find; position-area: left span-bottom; top: auto; right: auto; margin-right: var(--space-md); } }
+}
 /* on a phone the bar beside the rail would cover the trail: it takes the row under it, and the
    reading moves down to keep clear of both */
 @media (max-width: 819.98px) {

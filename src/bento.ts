@@ -213,13 +213,14 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
   const addTool = (open: string, label: string): string => tool(label, { icon: "plus", write: open, iconOnly: true, label });
 
   /**
-   * Find (rule 17): on the rail, a tool pressed while it is open; open, a field beside the rail
-   * writing the word as it is typed (K3), the eye that hides what misses instead of dimming it, and
-   * the tally of how many of all the word hits. Closing forgets the word and the eye.
+   * Find (rule 17): on the rail, a tool pressed while it is open; open, a field beside that tool,
+   * wherever it stands in the rail (`.find`, the field's anchor), writing the word as it is typed
+   * (K3), the eye that hides what misses instead of fading it, and the tally of how many of all the
+   * word hits. Closing forgets the word and the eye.
    */
   function findControl(key: string, f: FindState): { tool: string; filter?: string } {
     const open = f.word !== undefined;
-    const button = tool("Find", { icon: "search", iconOnly: true, pressed: open, write: open ? write(trayDoc, "remove", `/filter/${key}`) : write(trayDoc, "replace", `/filter/${key}`, "") });
+    const button = tool("Find", { icon: "search", iconOnly: true, pressed: open, write: open ? write(trayDoc, "remove", `/filter/${key}`) : write(trayDoc, "replace", `/filter/${key}`, "") }).replace('class="tool"', 'class="tool find"');
     if (!open) return { tool: button };
     const eye = tool(f.hide ? "Show what misses" : "Hide what misses", {
       icon: f.hide ? "eye-off" : "eye",

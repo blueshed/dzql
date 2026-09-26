@@ -39,6 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A dim is find's alone** (rule 17). The wedding faded a guest who was not coming, and a
+  ghost, so with find open a faded figure meant either "missed" or "not coming". Now nothing fades
+  but what find misses; each guest has the mark at their feet the couple's families had (their own
+  coming where they said it, else the household's answer), in the household's photo and the
+  couple's, and a ghost is dashed paper, not faint.
 - **A drawer docked at the right leaves the page in reach** (todo n58). From 820px the drawer had
   a transparent scrim over the whole page, so every tap beside it only closed it: the next guest,
   the next drawer, Undo, each took two. The docked drawer has no scrim now; only the phone's sheet
@@ -136,6 +141,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   each, bled margins) and its buttons had lost their padding and border to the bento's reset; the
   forms are `.entry` now, the gold and ghost buttons are padded, and the code's button says
   "Open", since the card above it already says "Open our household".
+- **Find's field opens beside its own tool.** It was placed at the rail's top, so on a page whose
+  rail starts with the reading switch (the wedding's) it opened beside the camera, two tools above
+  find. The field is anchored to find's tool (`.tool.find`, CSS anchor positioning); a browser that
+  cannot anchor keeps it at the rail's top.
 
 ## [0.49.0] - 2026-09-25
 

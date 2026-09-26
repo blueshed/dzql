@@ -8,7 +8,7 @@ import type { Spec } from "../applets/figure";
 import { esc } from "./html";
 import { address } from "../../../src/bento";
 import { part } from "../../../src/parts";
-import { isGuestOut, matches, specOf } from "./shared";
+import { guestMark, isGuestOut, matches, specOf } from "./shared";
 
 export type { PhotoEntry };
 
@@ -22,15 +22,17 @@ export function photoMount(id: string, entries: PhotoEntry[], label: string, rev
   return part(id, `<div id="${esc(id)}" data-applet="photo" data-props="${esc(JSON.stringify({ entries, label, reveal }))}"></div>`);
 }
 
-/** The household's guests as photo entries -- a tap opens the guest's drawer, and rings while it
- * is open (`focus`, rule 13) -- with a waiting ask as a ghost, still: someone asked for, not yet a
- * guest, with nothing of theirs to open. Find's word (rule 17) dims whoever it misses, by name;
- * with the eye, they step out of the photo. */
+/** The household's guests as photo entries, each with whether they are coming at their feet -- a
+ * tap opens the guest's drawer, and rings while it is open (`focus`, rule 13) -- with a waiting ask
+ * as a ghost, still: someone asked for, not yet a guest, with nothing of theirs to open. Find's word
+ * (rule 17) fades whoever it misses, by name, and fading means nothing else; with the eye, they
+ * step out of the photo. */
 export function familyEntries(h: HouseholdDocument, live?: { path: string; focus?: number }, find: { word?: string; hide?: boolean } = {}): PhotoEntry[] {
   const misses = (name: string) => find.word !== undefined && !matches(name, find.word);
   const entries: PhotoEntry[] = h.guests.map((g) => ({
     key: String(g.id),
     out: isGuestOut(g, h),
+    mark: guestMark(g, h),
     spec: specOf(g.minifigure, g.name.split(/\s+/)[0]),
     tap: live ? { doc: "session", op: { op: "replace", path: "/page", value: address(live.path, "guest", g.id) } } : undefined,
     chosen: !!live && g.id === live.focus,

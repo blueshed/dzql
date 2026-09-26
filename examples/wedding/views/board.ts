@@ -15,7 +15,7 @@ import { address } from "../../../src/bento";
 import { part } from "../../../src/parts";
 import { icon, type IconName } from "./icons";
 import { familiesPhoto, photoMount, type Family, type PhotoEntry } from "./photo";
-import { answerOf, answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, layers, isComing, matches, picture, placeRows, plural, specOf, timetableRows } from "./shared";
+import { answerOf, answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, guestMark, layers, isComing, matches, picture, placeRows, plural, specOf, timetableRows } from "./shared";
 import { inPhoto } from "../documents/wedding";
 
 /** Opening something over the page the couple are on -- a drawer, a modal -- and putting it away: both are going somewhere (views/html.ts). */
@@ -102,7 +102,8 @@ function welcomeBubble(b: BoardDocument, open: boolean, edit: string): string {
   );
 }
 
-/** Every household as a family: its guests as members, the answer at their feet, the code on the family figure's chest; a tap
+/** Every household as a family: its guests as members, each with whether they are coming at their feet (the family figure
+ * with the household's answer), the code on the family figure's chest; a tap
  * opens the family's drawer, and it rings while that is open. Find's word hushes a whole family at once; with the eye, it
  * steps out of the photo. */
 function boardFamilies(v: BoardView): Family[] {
@@ -117,7 +118,7 @@ function boardFamilies(v: BoardView): Family[] {
     const chosen = family === h.id;
     const members: PhotoEntry[] = h.guests.map((g) => {
       const state = inPhoto({ coming: g.coming, answer: h.answer });
-      return { key: String(g.id), spec: specOf(g.minifigure, g.name), ghost: state === "ghost", out: state === null, mark, tap, hushed: hush, chosen };
+      return { key: String(g.id), spec: specOf(g.minifigure, g.name), ghost: state === "ghost", out: state === null, mark: guestMark(g, h), tap, hushed: hush, chosen };
     });
     families.push({ key: String(h.id), members, label: h.code, mark, ghost: mark === "maybe", out: mark === "no" || mark === "none", tap, hushed: hush, chosen });
   }

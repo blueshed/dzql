@@ -15,9 +15,9 @@ export interface PhotoEntry {
   spec: Spec;
   /** A maybe stands in the photo as a ghost; so does a waiting ask in the family. */
   ghost?: boolean;
-  /** Not in the photo: faded and still (the board shows everyone). */
+  /** Not coming: still, the mark at their feet saying no (the board shows everyone). */
   out?: boolean;
-  /** A traffic light at the feet: the household's answer (the board). */
+  /** A traffic light at the feet: whether this guest is coming, or a family figure's answer. */
   mark?: string;
   /** A family figure standing for this many: the count at its shoulder. */
   count?: number;
@@ -25,7 +25,7 @@ export interface PhotoEntry {
   tap?: Tap;
   /** This figure's drawer is open: rings (rule 13), scrolls into the clear beside it (K2). */
   chosen?: boolean;
-  /** Find's word missed this one: dims, never hides (rule 17). */
+  /** Find's word missed this one: it fades, never hides (rule 17), and a fade says nothing else. */
   hushed?: boolean;
 }
 

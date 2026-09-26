@@ -163,6 +163,17 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
   }, 15000);
 
+  test("find's field opens beside its own tool, below the reading in the rail, not at the rail's top (rule 17)", async () => {
+    await using view = new Bun.WebView({ width: 1280, height: 800 });
+    await enter(view, code.toLowerCase());
+    await view.click(".rail .tool.find");
+    await waitFor(view, `document.querySelector('.filter') !== null`, (v) => v === true);
+    const beside = await view.evaluate<{ top: number; gap: number }>(`(() => { const t = document.querySelector('.rail .tool.find').getBoundingClientRect(), f = document.querySelector('.filter').getBoundingClientRect(); return { top: f.top - t.top, gap: t.left - f.right }; })()`);
+    expect(Math.abs(beside.top)).toBeLessThan(2);
+    expect(beside.gap).toBeGreaterThan(0);
+    expect(beside.gap).toBeLessThan(24);
+  }, 15000);
+
   test("editing a gift's fields in its drawer writes on blur, batches fields changed together, and does not reset", async () => {
     await using view = new Bun.WebView();
     // the couple's own code, not a household's: the keep drawers are theirs to edit

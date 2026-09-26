@@ -75,7 +75,8 @@ Each rule names where the mock-up honours it.
 17. **The filter dims and counts.** Find pops a field open beside its tool; what it misses dims,
     what it hits stays lit, and the tally says how many of all. An eye beside the field hides what
     misses instead of dimming it, for a long list, and the tally still counts all. Close the tool
-    and everything is lit and shown again.
+    and everything is lit and shown again. A dim is find's alone: nothing else on a page is dimmed,
+    so whatever state a thing is in is said some other way (the wedding's mark at a guest's feet).
 18. **The rails step aside for the drawer, and the content moves; the window does not.** When the
     drawer opens over the right edge, the stacks slide left of it and the reading scrolls the
     chosen figure into the clear beside it, the browser's own scroll-into-view. The box does not

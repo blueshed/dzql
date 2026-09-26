@@ -37,7 +37,7 @@ export function specOf(look: Look, name?: string): Spec {
   return { ...rest, name };
 }
 
-/** Not coming: said so, or not said while the household said no. Faded and still. */
+/** Not coming: said so, or not said while the household said no. Still, and marked no at their feet (guestMark). */
 export function isGuestOut(g: Pick<Guest, "coming">, h: Pick<HouseholdDocument, "answer">): boolean {
   return g.coming === 0 || (g.coming === null && h.answer === "no");
 }
@@ -60,6 +60,10 @@ export const answerSays = (answer: Answer | null): string => (answer ? ANSWER_SA
 export type AnswerMark = Answer | "none";
 const ANSWER_WORD: Record<AnswerMark, string> = { yes: "coming", maybe: "maybe", no: "not coming", none: "no answer yet" };
 export const answerOf = (h: Pick<HouseholdDocument, "answer">): AnswerMark => h.answer ?? "none";
+
+/** The mark at one guest's feet: their own coming where it is said, the household's answer where it is not. */
+export const guestMark = (g: Pick<Guest, "coming">, h: Pick<HouseholdDocument, "answer">): AnswerMark =>
+  isGuestOut(g, h) ? "no" : isComing(g) ? "yes" : answerOf(h);
 
 export function answerWord(mark: AnswerMark, word = ANSWER_WORD[mark]): string {
   return `<span class="answer-word ${mark}"><i class="dot ${mark}"></i>${esc(word)}</span>`;

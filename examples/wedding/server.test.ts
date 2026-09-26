@@ -365,7 +365,7 @@ describe("a household", () => {
     couple.close();
   });
 
-  test("find looks for someone by name in the photo and the list: dims whoever it misses, tallies, the eye takes them out, and it forgets on close (rule 17)", async () => {
+  test("find looks for someone by name in the photo and the list: fades whoever it misses, tallies, the eye takes them out, and it forgets on close (rule 17)", async () => {
     const ws = await enter(code);
     const guests = (await household(code)).guests;
     const [found, missed] = [guests[0]!, guests[1]!];
@@ -403,6 +403,32 @@ describe("a household", () => {
     expect(html).not.toContain('class="filter"');
     expect(html).not.toContain("&quot;hushed&quot;:true");
     expect(html).toContain(`&quot;key&quot;:&quot;${missed.id}&quot;`);
+    ws.close();
+  });
+
+  test("the mark at each guest's feet says whether they are coming: their own word where they said it, else the household's answer", async () => {
+    const stamp = Date.now();
+    const email = `marks-${stamp}@example.com`;
+    await asCouple([{ op: "add", path: "/households/-", value: { email, names: `Ann ${stamp}, Bo ${stamp}, Cy ${stamp}` } }]);
+    const h = (await board()).households.find((x) => x.email === email)!;
+    const [ann, bo, cy] = h.guests.map((g) => String(g.id));
+    const ws = await enter(h.code);
+    const marks = (html: string) => {
+      const props = /id="family-photo" data-applet="photo" data-props="([^"]*)"/.exec(html)![1]!.replaceAll("&quot;", '"').replaceAll("&amp;", "&");
+      return Object.fromEntries((JSON.parse(props).entries as { key: string; mark?: string }[]).map((e) => [e.key, e.mark]));
+    };
+    expect(marks(await at(ws, ""))).toEqual({ [ann!]: "none", [bo!]: "none", [cy!]: "none" });
+
+    await asHousehold(h.code, [
+      { op: "replace", path: "/answer", value: "maybe" },
+      { op: "replace", path: `/guests/${ann}/coming`, value: "yes" },
+      { op: "replace", path: `/guests/${bo}/coming`, value: "no" },
+    ]);
+    expect(marks((await heard(ws)).page)).toEqual({ [ann!]: "yes", [bo!]: "no", [cy!]: "maybe" });
+
+    // a household's no speaks for whoever has not said
+    await asHousehold(h.code, [{ op: "replace", path: "/answer", value: "no" }]);
+    expect(marks((await heard(ws)).page)).toEqual({ [ann!]: "yes", [bo!]: "no", [cy!]: "no" });
     ws.close();
   });
 
@@ -584,7 +610,7 @@ describe("the couple", () => {
     ws.close();
   });
 
-  test("find looks for a family by its code or a name: dims the rest in the photo and the list, tallies, and the eye takes them out (rule 17)", async () => {
+  test("find looks for a family by its code or a name: fades the rest in the photo and the list, tallies, and the eye takes them out (rule 17)", async () => {
     // two households this test alone owns, so the asks it adds disturb no one else's
     const stamp = Date.now();
     for (const who of ["findme", "other"]) await asCouple([{ op: "add", path: "/households/-", value: { email: `${who}-${stamp}@example.com`, names: `${who} ${stamp}` } }]);

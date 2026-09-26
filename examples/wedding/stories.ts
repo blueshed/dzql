@@ -62,13 +62,13 @@ export const stories: Stories = {
 
     // ── Going somewhere, and leaving ──
     story("The Okafors open the gift list, and only their tab moves", { as: "okafors", does: session("/page", "?gifts"), seen: ["okafors"], untold: ["couple", "ben", "benToo", "stranger"] }),
-    story("The Okafors look for Femi, and everyone else in their photo dims; only their page changes", { as: "okafors", from: " @ filter.guests=", does: session("/filter/guests", "Femi"), seen: ["okafors"], untold: ["couple", "ben", "benToo", "stranger"] }),
+    story("The Okafors look for Femi, and everyone else in their photo fades; only their page changes", { as: "okafors", from: " @ filter.guests=", does: session("/filter/guests", "Femi"), seen: ["okafors"], untold: ["couple", "ben", "benToo", "stranger"] }),
     story("Leaving the site forgets the code", { as: "okafors", does: session("/code"), seen: ["okafors"] }),
 
     // ── A household answers ──
     story("The Okafors say maybe, and the couple's photo and everyone's change", { as: "okafors", does: household("replace", "/answer", "maybe"), seen: { okafors: "?answer", couple: "", benToo: "everyone" } }),
     story("The Okafors take their answer back", { as: "okafors", does: household("remove", "/answer"), seen: { okafors: "?answer", couple: "", benToo: "everyone" } }),
-    story("Femi is not coming after all, and the photo loses him", { as: "okafors", from: "?guest=2", does: household("replace", "/guests/2/coming", "0"), seen: { okafors: "", couple: "", benToo: "everyone" } }),
+    story("Femi is not coming after all: the mark at his feet says so, and he leaves everyone's photo", { as: "okafors", from: "?guest=2", does: household("replace", "/guests/2/coming", "0"), seen: { okafors: "", couple: "", benToo: "everyone" } }),
     story("Femi's coming is left undecided, and the list shows it", { as: "okafors", from: "list?guest=2", does: household("remove", "/guests/2/coming"), seen: { okafors: "list", couple: "?family=1" } }),
     story("The Okafors leave the caterer a note, and only the couple read it", { as: "okafors", from: "?answer", does: household("replace", "/message", "Ada is vegetarian."), seen: { okafors: "", couple: "?family=1" }, untold: ["ben", "benToo"] }),
     story("The Okafors take the note back, emptying it", { as: "okafors", from: "?answer", does: household("replace", "/message", ""), seen: { okafors: "", couple: "?family=1" } }),

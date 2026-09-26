@@ -218,12 +218,11 @@ svg .mark-yes { fill: #7FAE4E; stroke: #6E9A42; } svg .mark-maybe { fill: #D9A21
 svg .mark-none { fill: none; stroke: #6B6B74; stroke-dasharray: 2 1.5; }
 svg .count circle { fill: var(--navy); stroke: var(--card); stroke-width: 1.5; }
 svg .count text { fill: var(--paper); font-family: var(--sans); font-size: 10px; font-weight: 700; }
-/* a ghost: a waiting ask in the family, a maybe in the photo. Still and faint, dashed at every edge */
-svg .fig.ghost { opacity: 0.45; }
+/* a fade is find's alone (rule 17): whether someone is coming is the mark at their feet */
+/* a ghost: a waiting ask in the family, a maybe in the photo. Still, dashed at every edge */
 svg .fig.ghost .body, svg .fig.ghost .head, svg .fig.ghost .swing { animation: none !important; }
 svg .fig.ghost .torso, svg .fig.ghost .leg, svg .fig.ghost .head > rect, svg .fig.ghost .swing rect, svg .fig.ghost .swing circle { stroke: #6B6B74; stroke-width: 1.5; stroke-dasharray: 3 3; }
-/* not coming: still and faded */
-.fig.out { opacity: 0.4; }
+/* not coming: still */
 .fig.out .body, .fig.out .head, .fig.out .swing, .fig.out .glasses, .fig.out .leg { animation: none !important; }
 /* the print is simply there; only the reveal, the day's, once, makes it come down from the top */
 .print { font-family: var(--sans); font-weight: 600; letter-spacing: 0.02em; }
