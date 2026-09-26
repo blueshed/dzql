@@ -143,8 +143,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Open", since the card above it already says "Open our household".
 - **Find's field opens beside its own tool.** It was placed at the rail's top, so on a page whose
   rail starts with the reading switch (the wedding's) it opened beside the camera, two tools above
-  find. The field is anchored to find's tool (`.tool.find`, CSS anchor positioning); a browser that
-  cannot anchor keeps it at the rail's top.
+  find. The field is anchored to find's tool (`.tool.find`, CSS anchor positioning), and goes with
+  it when a drawer moves the rail; a browser that cannot anchor keeps it at the rail's top.
 
 ## [0.49.0] - 2026-09-25
 

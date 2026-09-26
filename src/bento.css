@@ -155,7 +155,8 @@ body:has(.page.windowed) { overflow: hidden; }
 @media (min-width: 820px) {
   .rail, .cell.open .page-tools, .filter, .full { transition: right 200ms ease, padding-right 200ms ease; }
   main#app:has(.drawer) .rail, main#app:has(.drawer) .cell.open .page-tools { right: calc(var(--panel) + var(--space-2xl) + var(--space-lg)); }
-  main#app:has(.drawer) .filter { right: calc(var(--panel) + var(--space-2xl) + var(--space-lg) + var(--control) + var(--space-md)); }
+  /* an anchored field goes with its tool; one that cannot anchor steps aside with the rail */
+  @supports not (anchor-name: --find) { main#app:has(.drawer) .filter { right: calc(var(--panel) + var(--space-2xl) + var(--space-lg) + var(--control) + var(--space-md)); } }
   main#app:has(.drawer) .full { padding-right: calc(var(--panel) + var(--space-2xl) + var(--clear)); }
   [data-reveal] { scroll-margin: var(--space-2xl) calc(var(--panel) + var(--space-2xl) + var(--clear)) var(--space-2xl) var(--space-2xl); }
 }

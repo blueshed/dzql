@@ -163,15 +163,24 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
   }, 15000);
 
-  test("find's field opens beside its own tool, below the reading in the rail, not at the rail's top (rule 17)", async () => {
+  test("find's field opens beside its own tool, below the reading in the rail, not at the rail's top, and stays beside it when a drawer moves the rail (rules 17, 18)", async () => {
     await using view = new Bun.WebView({ width: 1280, height: 800 });
     await enter(view, code.toLowerCase());
     await view.click(".rail .tool.find");
     await waitFor(view, `document.querySelector('.filter') !== null`, (v) => v === true);
-    const beside = await view.evaluate<{ top: number; gap: number }>(`(() => { const t = document.querySelector('.rail .tool.find').getBoundingClientRect(), f = document.querySelector('.filter').getBoundingClientRect(); return { top: f.top - t.top, gap: t.left - f.right }; })()`);
-    expect(Math.abs(beside.top)).toBeLessThan(2);
-    expect(beside.gap).toBeGreaterThan(0);
-    expect(beside.gap).toBeLessThan(24);
+    const BESIDE = `(() => { const t = document.querySelector('.rail .tool.find').getBoundingClientRect(), f = document.querySelector('.filter').getBoundingClientRect(); return { top: f.top - t.top, gap: t.left - f.right }; })()`;
+    const expectBeside = (beside: { top: number; gap: number }) => {
+      expect(Math.abs(beside.top)).toBeLessThan(2);
+      expect(beside.gap).toBeGreaterThan(0);
+      expect(beside.gap).toBeLessThan(24);
+    };
+    expectBeside(await view.evaluate(BESIDE));
+
+    // a drawer docks at the right and the rail steps aside for it; the field goes with its tool
+    await view.click('.rail .tool[aria-label="Gifts"]');
+    await waitFor(view, `document.querySelector('.drawer') !== null`, (v) => v === true);
+    await waitFor(view, `document.querySelector('.rail').getAnimations().length === 0`, (v) => v === true);
+    expectBeside(await view.evaluate(BESIDE));
   }, 15000);
 
   test("editing a gift's fields in its drawer writes on blur, batches fields changed together, and does not reset", async () => {
