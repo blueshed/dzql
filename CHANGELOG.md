@@ -175,6 +175,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and a refused add whose page dropped the option chosen came back with the next one. Now a render
   shows the choice someone made and has not seen drawn, by its value while it is still offered,
   else what is drawn now, whether or not they are in the select.
+- **An editing form says a thing once until a write lands, and may say it again after.** An
+  `input` form dropped a commit identical to the last it sent, for good: choose travel, undo,
+  choose travel again, and the second choice went nowhere. `blur` and `change` forms had no such
+  guard, so leaving a field twice sent it twice before the echo. Every editing form now drops a
+  repeat until a write lands (a patch), and not after.
 
 ## [0.49.0] - 2026-09-25
 

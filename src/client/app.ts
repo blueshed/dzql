@@ -297,8 +297,9 @@ document.addEventListener("keydown", (event) => {
 // "input" (bento-request.md K3) is the same commit, debounced to ~150ms after the last keystroke
 // anywhere in the form so a burst of typing becomes one message, not one per key; a `focusout`
 // inside such a form flushes any pending write at once, same as leaving the field would for
-// "blur". A commit identical to the last one *this form* actually sent is dropped rather than
-// resent -- typing back to an already-sent value shouldn't repeat it on the wire.
+// "blur". Whatever the trigger, a commit identical to the last one *this form* sent is dropped
+// until a write lands -- typing back to a value on its way, or leaving a field twice, says nothing
+// new -- and not after: once an echo or an undo has been drawn, the same value is news again.
 function rendered(field: Field): string {
   if (field instanceof HTMLSelectElement) return drawnOption(field)?.value ?? "";
   return field instanceof HTMLTextAreaElement ? field.defaultValue : (field.getAttribute("value") ?? "");
@@ -321,16 +322,15 @@ function onEditTrigger(event: Event, trigger: "blur" | "change") {
   if (!(field instanceof HTMLElement) || !field.matches("[data-write]")) return;
   const form = field.closest("form");
   if (!form || form.dataset.writeOn !== trigger) return;
-  const change = editingChange(form);
-  if (change) send(change.doc, change.ops);
+  commitEdit(form);
 }
 
 const INPUT_DEBOUNCE_MS = 150;
 const inputTimers = new WeakMap<HTMLFormElement, ReturnType<typeof setTimeout>>();
-// The ops of the last message *this form* actually sent, so retyping back to an
-// already-sent value doesn't repeat it -- keyed by form, not by field, since a commit is
+// The ops of the last message *this form* actually sent, until a write lands, so retyping back to
+// an already-sent value doesn't repeat it -- keyed by form, not by field, since a commit is
 // every changed field in one message (bento-request.md K3).
-const lastEditSent = new WeakMap<HTMLFormElement, string>();
+let lastEditSent = new WeakMap<HTMLFormElement, string>();
 
 function commitEdit(form: HTMLFormElement) {
   const change = editingChange(form);
@@ -412,6 +412,7 @@ function connect() {
       }
       if (lastSent && isNamed(lastSent.doc, message.doc) && message.ops.length > 0) lastSent.echoed = true;
       if (sending && isNamed(sending.doc, message.doc) && message.ops.length > 0) sending = undefined; // it landed
+      if (message.ops.length > 0) lastEditSent = new WeakMap(); // a write landed: what was sent may be said again
     }
   });
 

@@ -62,11 +62,12 @@ async function push(view: Bun.WebView, message: unknown): Promise<void> {
 }
 
 /** Chooses `value` in the select at `selector` as a person would: the WebView cannot open its menu,
- * so the choice is made as the browser makes it, the value set and then `change`. */
+ * so the choice is made as the browser makes it, the value set, then `input` and `change`. */
 async function choose(view: Bun.WebView, selector: string, value: string): Promise<void> {
   await view.evaluate(`(() => {
     const select = document.querySelector(${JSON.stringify(selector)});
     select.value = ${JSON.stringify(value)};
+    select.dispatchEvent(new Event("input", { bubbles: true }));
     select.dispatchEvent(new Event("change", { bubbles: true }));
   })()`);
 }
@@ -456,6 +457,36 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.evaluate(`(() => { const s = document.getElementById('tags'); s.options[1].selected = true; s.dispatchEvent(new Event("change", { bubbles: true })); })()`);
     await Bun.sleep(50);
     expect(await view.evaluate<number>(`window.__sent.length`)).toBe(1);
+  });
+
+  test("an editing form says a thing once until a write lands, then may say it again: leaving twice sends once, and after an undo the same choice goes", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const landed = (version: number, kind: string) => push(view, { type: "patch", doc: "trip:1", version, ops: [{ op: "replace", path: "/kind", value: kind }] });
+    for (const on of ["blur", "input"]) {
+      await pushRender(view, `<p>elsewhere</p>`); // a page of its own, so each form is a new one
+      await pushRender(view, tripForm("Temple", "eat", on));
+      await waitFor(view, `document.getElementById('f')?.dataset.writeOn`, (v) => v === on);
+      await view.evaluate(`window.__sent = []`);
+
+      await view.evaluate(`document.getElementById('kind').focus()`);
+      await choose(view, "#kind", "travel");
+      await view.evaluate(`document.getElementById('title').focus()`); // leaving it
+      await view.evaluate(`document.getElementById('kind').focus()`);
+      await view.evaluate(`document.getElementById('title').focus()`); // and again, before the echo
+      await Bun.sleep(250); // past the input form's debounce
+      expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([{ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "travel" }] }]);
+
+      await landed(2, "travel"); // echoed
+      await pushRender(view, tripForm("Temple", "travel", on));
+      await landed(3, "eat"); // undone
+      await pushRender(view, tripForm("Temple", "eat", on));
+      await view.evaluate(`document.getElementById('kind').focus()`);
+      await choose(view, "#kind", "travel"); // the same choice, news again
+      await view.evaluate(`document.getElementById('title').focus()`);
+      await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+      expect(await view.evaluate<Sent>(`window.__sent[1]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "travel" }] });
+    }
   });
 
   test("a choice not yet sent is the person's: a render that moves the drawn option under it keeps it, and leaving sends it", async () => {
