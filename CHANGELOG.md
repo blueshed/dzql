@@ -151,6 +151,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lunged again. The field is the window's last child now. And the photo applet, told only that
   find's fade changed (`onlyFadeChanged`), fades and lights each figure where it stands rather than
   drawing the photo again.
+- **A `<select>` is a field** (`src/client/app.ts`). An editing form (`data-write-on`) compared
+  each field with its `value` attribute, which a select does not have, so every commit sent each
+  select in the form too, at what it showed: a `change` form whenever another field changed, a
+  `blur` form on merely tabbing through one. And a refused write handed back what was typed, not
+  what was chosen. What a select rendered is the option drawn `selected`, else its first; it is
+  sent only when it differs from that, and a refusal hands it back.
 
 ## [0.49.0] - 2026-09-25
 

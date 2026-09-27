@@ -235,10 +235,13 @@ function send(doc: string, ops: PatchOp[]) {
   socket?.send(JSON.stringify({ doc, ops }));
 }
 
+/** What a form holds a value in: typed, or chosen. */
+type Field = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+
 // A form clears as it sends, and a refused write hands back what was sent: a refusal is answered
 // with the page whole, before any echo of the form's document. So what someone types while the
 // write is on its way is theirs -- no echo, anyone's, clears it -- and a refusal never eats text.
-let sending: { doc: string; sent: [HTMLInputElement | HTMLTextAreaElement, string][] } | undefined;
+let sending: { doc: string; sent: [Field, string][] } | undefined;
 
 // An element says what it writes via data-write; a form's field is the
 // value (or a record of its fields, if it has more than one), a button/li's
@@ -250,7 +253,7 @@ app.addEventListener("submit", (event) => {
   if (!spec) return; // not a write: a plain form posts as the browser does (a sign-in)
   event.preventDefault();
   const { doc, op, path } = JSON.parse(spec) as WriteSpec;
-  const fields = [...form.elements].filter((f): f is HTMLInputElement | HTMLTextAreaElement => f instanceof HTMLInputElement || f instanceof HTMLTextAreaElement);
+  const fields = [...form.elements].filter((f): f is Field => f instanceof HTMLInputElement || f instanceof HTMLTextAreaElement || f instanceof HTMLSelectElement);
   sending = { doc, sent: fields.map((f) => [f, f.value]) };
   send(doc, [{ op, path, value: formValue(form) }]);
   form.reset();
@@ -286,20 +289,22 @@ document.addEventListener("keydown", (event) => {
 // No reset follows: an editing field's value is the document's own, not something to hand back or
 // clear. A <textarea>'s rendered content has no `value` attribute to compare against -- it's the
 // element's text at parse time, which the DOM keeps as `defaultValue` even after typing changes
-// `value`. Same comparison, different property.
+// `value`. Same comparison, different property. A <select> has neither: what was rendered is the
+// option rendered `selected`, else its first, which is what it shows until someone chooses.
 // "input" (bento-request.md K3) is the same commit, debounced to ~150ms after the last keystroke
 // anywhere in the form so a burst of typing becomes one message, not one per key; a `focusout`
 // inside such a form flushes any pending write at once, same as leaving the field would for
 // "blur". A commit identical to the last one *this form* actually sent is dropped rather than
 // resent -- typing back to an already-sent value shouldn't repeat it on the wire.
-function rendered(field: HTMLInputElement | HTMLTextAreaElement): string {
+function rendered(field: Field): string {
+  if (field instanceof HTMLSelectElement) return ([...field.options].find((o) => o.defaultSelected) ?? field.options[0])?.value ?? "";
   return field instanceof HTMLTextAreaElement ? field.defaultValue : (field.getAttribute("value") ?? "");
 }
 
 function editingChange(form: HTMLFormElement): { doc: string; ops: PatchOp[] } | undefined {
   const ops: PatchOp[] = [];
   let doc: string | undefined;
-  for (const field of form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("[data-write]")) {
+  for (const field of form.querySelectorAll<Field>("[data-write]")) {
     if (field.value === rendered(field)) continue;
     const spec = JSON.parse(field.dataset.write!) as WriteSpec;
     doc = spec.doc;
@@ -389,8 +394,8 @@ function connect() {
       if (message.ops) applyFragments(message.ops);
       else {
         // the page whole before the echo: the form's write was refused -- what was sent goes back
-        // in each field not typed in since
-        for (const [field, value] of sending?.sent ?? []) if (field.value === field.defaultValue) field.value = value;
+        // in each field not typed in, or chosen in, since
+        for (const [field, value] of sending?.sent ?? []) if (field.value === rendered(field)) field.value = value;
         sending = undefined;
         render(message.html);
       }
