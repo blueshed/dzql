@@ -69,6 +69,13 @@ async function choose(view: Bun.WebView, selector: string, value: string): Promi
   })()`);
 }
 
+/** A trip's editing form: its title typed, its kind chosen, `kind` the option drawn `selected`. */
+const tripForm = (title: string, kind: string) =>
+  `<form data-write-on="change" id="f">
+    <input id="title" value="${title}" data-write='{"doc":"trip","op":"replace","path":"/title"}'>
+    <select id="kind" data-write='{"doc":"trip","op":"replace","path":"/kind"}'>${["see", "eat", "travel"].map((k) => `<option${k === kind ? " selected" : ""}>${k}</option>`).join("")}</select>
+  </form>`;
+
 describe("app.ts in a real browser, with a stubbed socket", () => {
   test("a full render with a matching data-moving element transitions in place and clears its name after", async () => {
     await using view = await open();
@@ -355,12 +362,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
   test("a select in a data-write-on=\"change\" form goes only when it is chosen, and after an undo shows what was undone to", async () => {
     await using view = await open();
     await stubSend(view);
-    const form = (title: string, kind: string) =>
-      `<form data-write-on="change" id="f">
-        <input id="title" value="${title}" data-write='{"doc":"trip","op":"replace","path":"/title"}'>
-        <select id="kind" data-write='{"doc":"trip","op":"replace","path":"/kind"}'>${["see", "eat", "travel"].map((k) => `<option${k === kind ? " selected" : ""}>${k}</option>`).join("")}</select>
-      </form>`;
-    await pushRender(view, form("Temple", "eat"));
+    await pushRender(view, tripForm("Temple", "eat"));
     await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
 
     await view.click("#title");
@@ -368,13 +370,13 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.evaluate(`document.getElementById('title').blur()`);
     await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
     expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the select, left as it was drawn
-    await pushRender(view, form("Temple gate", "eat"));
+    await pushRender(view, tripForm("Temple gate", "eat"));
 
     await choose(view, "#kind", "travel");
     await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
     expect(await view.evaluate<Sent>(`window.__sent[1]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "travel" }] });
-    await pushRender(view, form("Temple gate", "travel")); // echoed and drawn
-    await pushRender(view, form("Temple gate", "eat")); // then undone, and drawn again
+    await pushRender(view, tripForm("Temple gate", "travel")); // echoed and drawn
+    await pushRender(view, tripForm("Temple gate", "eat")); // then undone, and drawn again
     expect(await view.evaluate<string>(`document.getElementById('kind').value`)).toBe("eat");
 
     await view.click("#title");
@@ -382,6 +384,29 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.evaluate(`document.getElementById('title').blur()`);
     await waitFor(view, `window.__sent.length`, (v) => v === 3, 1000);
     expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gates" }] }); // the undone choice is not sent again
+  });
+
+  test("after an undo, a select nobody is in shows its drawn option, even one chosen by hand before, so the next commit does not revert the undo", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, tripForm("Temple", "see"));
+    await waitFor(view, `document.getElementById('kind') !== null`, (v) => v === true);
+
+    await choose(view, "#kind", "eat");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    await pushRender(view, tripForm("Temple", "eat")); // echoed and drawn
+    await choose(view, "#kind", "travel");
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await pushRender(view, tripForm("Temple", "travel"));
+    // undone, back to an option chosen by hand: Chrome no longer moves an option once chosen by its `selected`
+    await pushRender(view, tripForm("Temple", "eat"));
+    expect(await view.evaluate<string>(`document.getElementById('kind').value`)).toBe("eat");
+
+    await view.click("#title");
+    await view.type(" gate");
+    await view.evaluate(`document.getElementById('title').blur()`);
+    await waitFor(view, `window.__sent.length`, (v) => v === 3, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not travel, which would revert the undo
   });
 
   test("tabbing through a select in a data-write-on=\"blur\" form sends nothing; choosing in it, then leaving, sends it alone", async () => {

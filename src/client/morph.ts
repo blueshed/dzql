@@ -65,6 +65,11 @@ function showRendered(el: Element, name: string): void {
   else if (el instanceof HTMLInputElement && name === "checked") el.checked = el.defaultChecked;
 }
 
+/** The option a select was drawn showing: the one rendered `selected`, else its first. */
+export function drawnOption(select: HTMLSelectElement): HTMLOptionElement | undefined {
+  return [...select.options].find((o) => o.defaultSelected) ?? select.options[0];
+}
+
 // An applet's subtree is the applet's: reconcile the element itself, but
 // never descend into its children -- a morph diffing "the new HTML" against
 // DOM the applet manages by hand would fight it for its own children.
@@ -86,8 +91,13 @@ function morphNode(old: ChildNode, next: ChildNode, hooks: MorphHooks): void {
     morphAttributes(old, next);
     const area = old instanceof HTMLTextAreaElement ? old : undefined;
     const text = area?.defaultValue;
+    const select = old instanceof HTMLSelectElement ? old : undefined;
+    const option = select && drawnOption(select);
     morphChildren(old, next, hooks);
     if (area && area.defaultValue !== text && area !== document.activeElement) area.value = area.defaultValue; // as showRendered, for a textarea's text
+    // and for a select's option: Chrome no longer moves an option by its `selected` once someone has chosen it
+    const drawn = select && drawnOption(select);
+    if (drawn && drawn !== option && select !== document.activeElement) drawn.selected = true;
   } else if (old.textContent !== next.textContent) {
     old.textContent = next.textContent;
   }

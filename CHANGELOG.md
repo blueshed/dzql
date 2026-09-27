@@ -157,6 +157,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `blur` form on merely tabbing through one. And a refused write handed back what was typed, not
   what was chosen. What a select rendered is the option drawn `selected`, else its first; it is
   sent only when it differs from that, and a refusal hands it back.
+- **After an undo, a select shows its drawn option in Chrome too** (`src/client/morph.ts`). Chrome
+  no longer moves an option by its `selected` once someone has chosen it, so an undo back to an
+  option chosen by hand earlier left the select showing the undone one, and the next commit sent
+  it again, reverting the undo. A render that changes a select's drawn option now shows it, unless
+  someone is in the select, as it already does a textarea's text. WebKit moved it already.
 
 ## [0.49.0] - 2026-09-25
 

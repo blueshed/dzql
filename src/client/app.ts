@@ -2,7 +2,7 @@ import { applets } from "../applets";
 import type { PatchOp } from "../json-patch";
 import { formValue } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
-import { morph, morphElement, morphTag, removeNode } from "./morph";
+import { drawnOption, morph, morphElement, morphTag, removeNode } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -297,7 +297,7 @@ document.addEventListener("keydown", (event) => {
 // "blur". A commit identical to the last one *this form* actually sent is dropped rather than
 // resent -- typing back to an already-sent value shouldn't repeat it on the wire.
 function rendered(field: Field): string {
-  if (field instanceof HTMLSelectElement) return ([...field.options].find((o) => o.defaultSelected) ?? field.options[0])?.value ?? "";
+  if (field instanceof HTMLSelectElement) return drawnOption(field)?.value ?? "";
   return field instanceof HTMLTextAreaElement ? field.defaultValue : (field.getAttribute("value") ?? "");
 }
 
