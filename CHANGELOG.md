@@ -165,7 +165,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   drawn `selected`, else the first not disabled (none in a list, `size` over 1); it is sent only
   when it differs from that, and a refusal hands it back. A `multiple` select is left out on
   purpose: it holds several values and a write carries one, so an editing form never sends it, a
-  refusal does not hand it back, and a render leaves what is chosen in it to the browser.
+  refusal does not hand it back, and a render leaves what is chosen in it to the browser. A form
+  that creates still sends only its last choice (`formValue`: quiet and late go as `late`).
 - **A select keeps a choice not yet drawn, by its value, and otherwise shows what is drawn**
   (`src/client/morph.ts`). Chrome no longer moves an option by its `selected` once someone has
   chosen it, and leaves the caret in a select after a pick, so an undo (or another member's change)

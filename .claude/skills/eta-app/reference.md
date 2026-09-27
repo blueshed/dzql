@@ -349,7 +349,8 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
   sent again; a field someone is in keeps what they type. A select was rendered showing the last
   option drawn `selected`, else its first not disabled; it keeps a choice not yet drawn, by its
   value, however its options move, and otherwise shows what is drawn. A `multiple` select is not
-  a field (a write carries one value): an editing form never sends it, nor a refusal hands it back.
+  a field (a write carries one value): an editing form never sends it, nor a refusal hands it back,
+  and a form that creates sends only its last choice.
 
 Also:
 

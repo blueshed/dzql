@@ -81,7 +81,7 @@ export function drawnOption(select: HTMLSelectElement): HTMLOptionElement | unde
 function showChosen(select: HTMLSelectElement, chosen: string | undefined): void {
   const offered = chosen === undefined ? undefined : [...select.options].find((o) => o.value === chosen && !o.matches(":disabled"));
   const option = offered ?? drawnOption(select);
-  if (option) option.selected = true;
+  if (option && !option.selected) option.selected = true; // one already chosen is left be: an open menu keeps its place
 }
 
 // An applet's subtree is the applet's: reconcile the element itself, but
