@@ -346,7 +346,8 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
   goes on each field, and every field whose value differs from what was rendered becomes one op
   in one message. `"input"` is debounced about 150ms, sent when focus leaves, and never repeats
   itself. A render that changes a field nobody is in shows the new value (an undo's), so it is not
-  sent again; a field someone is in keeps what they type.
+  sent again; a field someone is in keeps what they type. A select keeps a choice not yet drawn,
+  by its value, however its options move, and otherwise shows what is drawn.
 
 Also:
 

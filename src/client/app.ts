@@ -394,7 +394,8 @@ function connect() {
       if (message.ops) applyFragments(message.ops);
       else {
         // the page whole before the echo: the form's write was refused -- what was sent goes back
-        // in each field not typed in, or chosen in, since
+        // in each field not typed in, or chosen in, since; the morph then keeps a choice by its
+        // value, or shows the drawn option if the page no longer offers it (morph.ts)
         for (const [field, value] of sending?.sent ?? []) if (field.value === rendered(field)) field.value = value;
         sending = undefined;
         render(message.html);

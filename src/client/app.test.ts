@@ -72,8 +72,8 @@ async function choose(view: Bun.WebView, selector: string, value: string): Promi
 }
 
 /** A trip's editing form: its title typed, its kind chosen, `kind` the option drawn `selected`. */
-const tripForm = (title: string, kind: string) =>
-  `<form data-write-on="change" id="f">
+const tripForm = (title: string, kind: string, on = "change") =>
+  `<form data-write-on="${on}" id="f">
     <input id="title" value="${title}" data-write='{"doc":"trip","op":"replace","path":"/title"}'>
     <select id="kind" data-write='{"doc":"trip","op":"replace","path":"/kind"}'>${["see", "eat", "travel"].map((k) => `<option${k === kind ? " selected" : ""}>${k}</option>`).join("")}</select>
   </form>`;
@@ -388,19 +388,21 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gates" }] }); // the undone choice is not sent again
   });
 
-  test("after an undo, a select nobody is in shows its drawn option, even one chosen by hand before, so the next commit does not revert the undo", async () => {
+  test("after an undo, a select shows its drawn option, even one chosen by hand before and with someone still in it, so the next commit does not revert the undo", async () => {
     await using view = await open();
     await stubSend(view);
     await pushRender(view, tripForm("Temple", "see"));
     await waitFor(view, `document.getElementById('kind') !== null`, (v) => v === true);
 
+    await view.evaluate(`document.getElementById('kind').focus()`); // a pick from its menu leaves the caret in it
     await choose(view, "#kind", "eat");
     await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
     await pushRender(view, tripForm("Temple", "eat")); // echoed and drawn
     await choose(view, "#kind", "travel");
     await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
     await pushRender(view, tripForm("Temple", "travel"));
-    // undone, back to an option chosen by hand: Chrome no longer moves an option once chosen by its `selected`
+    // undone, back to an option chosen by hand. Only Chrome shows this one: it no longer moves an
+    // option by its `selected` once someone has chosen it, where WebKit moves it whatever was chosen
     await pushRender(view, tripForm("Temple", "eat"));
     expect(await view.evaluate<string>(`document.getElementById('kind').value`)).toBe("eat");
 
@@ -409,6 +411,56 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.evaluate(`document.getElementById('title').blur()`);
     await waitFor(view, `window.__sent.length`, (v) => v === 3, 1000);
     expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not travel, which would revert the undo
+  });
+
+  test("a choice not yet sent is the person's: a render that moves the drawn option under it keeps it, and leaving sends it", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, tripForm("Temple", "eat", "blur"));
+    await waitFor(view, `document.getElementById('kind') !== null`, (v) => v === true);
+
+    await view.evaluate(`document.getElementById('kind').focus()`);
+    await choose(view, "#kind", "travel");
+    await pushRender(view, tripForm("Temple", "see", "blur")); // another member's change, before this one is sent
+    expect(await view.evaluate<string>(`document.getElementById('kind').value`)).toBe("travel");
+    await view.evaluate(`document.getElementById('title').focus()`);
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "travel" }] });
+  });
+
+  test("a choice goes with its value, not its place: an option added before it leaves it chosen", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const add = (days: string[]) =>
+      `<form id="add" data-write='{"doc":"trip","op":"add","path":"/stops/-"}'><input id="what" name="what"><select id="day" name="day">${days.map((d) => `<option>${d}</option>`).join("")}</select></form>`;
+    await pushRender(view, add(["D1", "D2", "D3"]));
+    await waitFor(view, `document.getElementById('day') !== null`, (v) => v === true);
+    await choose(view, "#day", "D3");
+    await pushRender(view, add(["D0", "D1", "D2", "D3"])); // someone added a day before the first
+    expect(await view.evaluate<string>(`document.getElementById('day').value`)).toBe("D3");
+  });
+
+  test("a refused add whose page no longer offers the option chosen hands back the drawn one, with what was typed", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const book = (slots: string[], taken = "") =>
+      `<form id="book" data-write='{"doc":"diary","op":"add","path":"/bookings/-"}'><input id="who" name="who"><select id="slot" name="slot">${slots.map((s) => `<option${s === taken ? " disabled" : ""}>${s}</option>`).join("")}</select></form>`;
+    await pushRender(view, book(["9:00", "10:00", "10:30"]));
+    await waitFor(view, `document.getElementById('who') !== null`, (v) => v === true);
+    await view.click("#who");
+    await view.type("Ada");
+    await choose(view, "#slot", "10:00");
+    await view.press("Enter");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    await pushRender(view, book(["9:00", "10:30"])); // refused: 10:00 was taken meanwhile, and is gone
+    expect(await view.evaluate<string[]>(`[document.getElementById('who').value, document.getElementById('slot').value]`)).toEqual(["Ada", "9:00"]);
+
+    await choose(view, "#slot", "10:30");
+    await view.click("#who");
+    await view.press("Enter");
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await pushRender(view, book(["9:00", "10:30"], "10:30")); // refused: 10:30 is shown, but not to be had
+    expect(await view.evaluate<string[]>(`[document.getElementById('who').value, document.getElementById('slot').value]`)).toEqual(["Ada", "9:00"]);
   });
 
   test("tabbing through a select in a data-write-on=\"blur\" form sends nothing; choosing in it, then leaving, sends it alone", async () => {

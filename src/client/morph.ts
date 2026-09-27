@@ -70,6 +70,19 @@ export function drawnOption(select: HTMLSelectElement): HTMLOptionElement | unde
   return [...select.options].find((o) => o.defaultSelected) ?? select.options[0];
 }
 
+/**
+ * A select, after a render, shows the choice someone made and has not yet seen drawn -- by its value,
+ * wherever the options moved, while it is still offered -- or else what is drawn now, whether or not
+ * they are in it. Neither browser does this: the morph reuses an option by its place, so a choice
+ * would slide to whatever value its place now has, and a newly drawn option takes the choice away,
+ * except in Chrome from an option someone has chosen before, which then stays chosen however it is drawn.
+ */
+function showChosen(select: HTMLSelectElement, chosen: string | undefined): void {
+  const offered = chosen === undefined ? undefined : [...select.options].find((o) => o.value === chosen && !o.matches(":disabled"));
+  const option = offered ?? drawnOption(select);
+  if (option) option.selected = true;
+}
+
 // An applet's subtree is the applet's: reconcile the element itself, but
 // never descend into its children -- a morph diffing "the new HTML" against
 // DOM the applet manages by hand would fight it for its own children.
@@ -92,12 +105,10 @@ function morphNode(old: ChildNode, next: ChildNode, hooks: MorphHooks): void {
     const area = old instanceof HTMLTextAreaElement ? old : undefined;
     const text = area?.defaultValue;
     const select = old instanceof HTMLSelectElement ? old : undefined;
-    const option = select && drawnOption(select);
+    const chosen = select && select.value !== (drawnOption(select)?.value ?? "") ? select.value : undefined; // not yet drawn
     morphChildren(old, next, hooks);
     if (area && area.defaultValue !== text && area !== document.activeElement) area.value = area.defaultValue; // as showRendered, for a textarea's text
-    // and for a select's option: Chrome no longer moves an option by its `selected` once someone has chosen it
-    const drawn = select && drawnOption(select);
-    if (drawn && drawn !== option && select !== document.activeElement) drawn.selected = true;
+    if (select) showChosen(select, chosen);
   } else if (old.textContent !== next.textContent) {
     old.textContent = next.textContent;
   }
