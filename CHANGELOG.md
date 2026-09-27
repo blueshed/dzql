@@ -132,6 +132,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A story's place must exist.** Putting a member where a story says, the harness now checks
   their page stands there (`data-page`): a place the example does not have used to leave them
   where they were, silently, and a story could claim they saw something on it.
+- **The add modal asks with a select, or for a link** (`src/bento.ts`). `addModal`'s fields could
+  only be typed text, email, number or date, so an example that asked where on a line, or what kind
+  of stop, copied the modal by hand, and the copy lost `said`. A `Field` given `options` is a select
+  of them (`value` names the one drawn chosen, else the first is), and `type` may be `url`. There
+  is still no bare modal: a modal is new or delete (rule 14). A refused add hands back the option
+  chosen, as it does what was typed.
 
 ### Fixed
 

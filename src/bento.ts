@@ -126,7 +126,9 @@ export interface Field {
   name: string;
   label: string;
   placeholder?: string;
-  type?: "text" | "email" | "number" | "date";
+  type?: "text" | "email" | "number" | "date" | "url";
+  /** Given, the field is chosen, not typed: a select of these, `value` the one drawn chosen, else the first. */
+  options?: { value: string; text: string }[];
   required?: boolean;
   value?: string;
 }
@@ -370,13 +372,16 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     return join(`<div class="scrim modal-scrim" data-escape${close}></div>`, `<dialog open class="modal" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${body}</dialog>`);
   }
 
-  /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs. `add` is the form's write, `close` the one that puts the modal away; `said`, why the last try was refused (src/refusal.ts `reasonFor`), beneath the fields. */
+  /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs, typed or chosen. `add` is the form's write, `close` the one that puts the modal away; `said`, why the last try was refused (src/refusal.ts `reasonFor`), beneath the fields. */
   function addModal(title: string, fields: Field[], add: string, close: string, verb = "Add", said = ""): string {
     const inputs = fields
-      .map(
-        (f, i) =>
-          `<label class="modal-field"><span class="note">${esc(f.label)}</span><input name="${esc(f.name)}" type="${f.type ?? "text"}"${f.type === "number" ? ' min="0"' : ""} value="${esc(f.value ?? "")}" placeholder="${esc(f.placeholder ?? "")}" autocomplete="off"${f.required === false ? "" : " required"}${i === 0 ? " autofocus" : ""}></label>`,
-      )
+      .map((f, i) => {
+        const asked = `${f.required === false ? "" : " required"}${i === 0 ? " autofocus" : ""}`;
+        const control = f.options
+          ? `<select name="${esc(f.name)}"${asked}>${f.options.map((o) => `<option value="${esc(o.value)}"${o.value === f.value ? " selected" : ""}>${esc(o.text)}</option>`).join("")}</select>`
+          : `<input name="${esc(f.name)}" type="${f.type ?? "text"}"${f.type === "number" ? ' min="0"' : ""} value="${esc(f.value ?? "")}" placeholder="${esc(f.placeholder ?? "")}" autocomplete="off"${asked}>`;
+        return `<label class="modal-field"><span class="note">${esc(f.label)}</span>${control}</label>`;
+      })
       .join("");
     const foot = `<div class="modal-foot">${tool("Cancel", { kind: "quiet", write: close })}${tool(verb, { icon: "plus", kind: "add", write: "", submit: true })}</div>`;
     return modal(title, close, `<form${add}>${inputs}${said}${foot}</form>`);

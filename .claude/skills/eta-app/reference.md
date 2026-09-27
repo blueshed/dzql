@@ -389,6 +389,11 @@ const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "s
   cells in a tray, one of which may be grown into the window; its layout is computed by `grid()`
   (`src/grid.ts`). A collection (`collectionPage(trail, open)`) is the window alone.
 - Every gesture is a `data-write` string you hand in.
+- A modal is new or delete (rule 14), so there are two and no bare one. `addModal(title, fields,
+  add, close, verb?, said?)` asks for a new thing: each `Field` is typed (`type`: `text`, `email`,
+  `number`, `date` or `url`), or, given `options` (`{ value, text }`), chosen from a select, its
+  `value` the option drawn chosen, else the first. A refused add hands back what was typed and
+  chosen, with `said` beneath. `confirmModal` asks before a removal.
 - `patchCollections(ui, op)` applies what find and the reading switch write (`/filter/<key>`,
   `/hide/<key>`, `/reading/<key>`).
 - The stylesheet imports `src/bento.css` first, then says its own tokens.

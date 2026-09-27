@@ -214,7 +214,7 @@ body:has(.site.locked) { overflow: hidden; }
 dialog.modal { position: fixed; inset: 0; margin: auto; z-index: 71; width: min(420px, calc(100vw - 2 * var(--space-2xl))); height: fit-content; max-height: calc(100dvh - 48px); overflow: auto; border: 0; padding: var(--space-xl) var(--space-xl) var(--space-2xl); background: var(--card); color: var(--ink); border-radius: var(--radius-panel); box-shadow: 0 20px 50px rgba(var(--ink-rgb), 0.3); animation: drawer-rise 160ms ease-out; }
 dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
 .modal-field { display: flex; flex-direction: column; gap: var(--space-xs); margin-bottom: var(--space-md); }
-.modal-field input { width: 100%; }
+.modal-field input, .modal-field select { width: 100%; }
 .modal-foot { display: flex; justify-content: flex-end; gap: var(--space-sm); margin-top: var(--space-lg); }
 @media (prefers-reduced-motion: reduce) { dialog.modal { animation: none; } }
 

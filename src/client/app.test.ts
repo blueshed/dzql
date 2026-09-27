@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { bento, type Field } from "../bento";
+import { write } from "../html";
 import { waitFor } from "../webview";
 import fixture from "./app.test.html";
 
@@ -522,5 +524,31 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
     await pushRender(view, add); // refused: the page, handed back
     expect(await view.evaluate<string[]>(`[document.getElementById('title').value, document.getElementById('kind').value]`)).toEqual(["Fushimi", "travel"]);
+  });
+
+  test("the bento's add modal asks with a select and a link, and a refused add hands back what was typed and chosen", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const { addModal } = bento({ icon: () => "", session: "session" });
+    const fields: Field[] = [
+      { name: "title", label: "What" },
+      { name: "kind", label: "Its kind", options: ["see", "eat", "travel"].map((k) => ({ value: k, text: k })), value: "see" },
+      { name: "url", label: "A link", type: "url", required: false },
+    ];
+    const ask = (said = "") => addModal("A stop in Kyoto", fields, write("trip", "add", "/events/-"), write("session", "replace", "/page", "kyoto"), "Add", said);
+    await pushRender(view, ask());
+    await waitFor(view, `document.activeElement?.name`, (v) => v === "title", 1000); // the first field waits for the caret
+    expect(await view.evaluate<string[]>(`["title", "kind", "url"].map((n) => document.querySelector('[name=' + n + ']').type)`)).toEqual(["text", "select-one", "url"]);
+    await view.type("Fushimi Inari");
+    await choose(view, "[name=kind]", "travel");
+    await view.click("[name=url]");
+    await view.type("https://inari.jp");
+    await view.press("Enter");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi Inari", kind: "travel", url: "https://inari.jp" } }] });
+
+    await pushRender(view, ask(`<p class="refused" role="alert">Kyoto has that stop already.</p>`)); // refused: the page, handed back, saying why
+    await waitFor(view, `document.querySelector('.refused') !== null`, (v) => v === true);
+    expect(await view.evaluate<string[]>(`["title", "kind", "url"].map((n) => document.querySelector('[name=' + n + ']').value)`)).toEqual(["Fushimi Inari", "travel", "https://inari.jp"]);
   });
 });

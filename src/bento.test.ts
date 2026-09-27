@@ -182,6 +182,15 @@ describe("the surfaces", () => {
     expect(layers("<p/>", "", "")).toBe(`<div data-eta-part="ground" class="ground"><p/><div data-eta-part="drawers" class="layer"></div></div><div data-eta-part="modals" class="layer"></div>`);
     expect(layers("<p/>", "<aside/>", "<dialog/>")).toBe(`<div data-eta-part="ground" class="ground" inert><p/><div data-eta-part="drawers" class="layer"><aside/></div></div><div data-eta-part="modals" class="layer"><dialog/></div>`);
   });
+
+  test("a modal's field may be chosen, not typed: given options it is a select, its value the option drawn chosen; or it is a link", () => {
+    const close = write("desk", "replace", "/page", "kyoto");
+    const kinds = [{ value: "see", text: "See" }, { value: "eat", text: "Eat & drink" }];
+    const add = b.addModal("A stop in Kyoto", [{ name: "kind", label: "Its kind", options: kinds, value: "eat" }, { name: "url", label: "A link", type: "url", required: false }], open, close);
+    expect(add).toContain('<label class="modal-field"><span class="note">Its kind</span><select name="kind" required autofocus><option value="see">See</option><option value="eat" selected>Eat &amp; drink</option></select></label>');
+    expect(add).toContain('<input name="url" type="url" value="" placeholder="" autocomplete="off">');
+    expect(b.addModal("t", [{ name: "kind", label: "k", options: kinds, required: false }], open, close)).toContain('<select name="kind" autofocus><option value="see">See</option><option value="eat">'); // none given: the first is what it shows
+  });
 });
 
 describe("a page's address", () => {
