@@ -161,8 +161,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   each field with its `value` attribute, which a select does not have, so every commit sent each
   select in the form too, at what it showed: a `change` form whenever another field changed, a
   `blur` form on merely tabbing through one. And a refused write handed back what was typed, not
-  what was chosen. What a select rendered is the option drawn `selected`, else its first; it is
-  sent only when it differs from that, and a refusal hands it back.
+  what was chosen. What a select rendered is the option the browser shows as drawn -- the last
+  drawn `selected`, else the first not disabled (none in a list, `size` over 1); it is sent only
+  when it differs from that, and a refusal hands it back. A `multiple` select is left out on
+  purpose: it holds several values and a write carries one, so an editing form never sends it, a
+  refusal does not hand it back, and a render leaves what is chosen in it to the browser.
 - **A select keeps a choice not yet drawn, by its value, and otherwise shows what is drawn**
   (`src/client/morph.ts`). Chrome no longer moves an option by its `selected` once someone has
   chosen it, and leaves the caret in a select after a pick, so an undo (or another member's change)

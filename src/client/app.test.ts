@@ -413,6 +413,51 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not travel, which would revert the undo
   });
 
+  test("what a select was drawn showing is the browser's own: the last option drawn `selected`, else the first not disabled, and in a list none", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const form = (pick = "") =>
+      `<form data-write-on="blur" id="f">
+        <select id="pick" data-write='{"doc":"trip","op":"replace","path":"/kind"}'><option value="" disabled>Pick one</option>${["see", "eat"].map((k) => `<option${k === pick ? " selected" : ""}>${k}</option>`).join("")}</select>
+        <select id="both" data-write='{"doc":"trip","op":"replace","path":"/mood"}'><option selected>calm</option><option selected>keen</option></select>
+        <select id="list" size="3" data-write='{"doc":"trip","op":"replace","path":"/pace"}'><option>slow</option><option>fast</option></select>
+      </form><button id="elsewhere">elsewhere</button>`;
+    await pushRender(view, form());
+    await waitFor(view, `document.getElementById('pick') !== null`, (v) => v === true);
+    expect(await view.evaluate<string[]>(`["pick", "both", "list"].map((id) => document.getElementById(id).value)`)).toEqual(["see", "keen", ""]);
+
+    for (const id of ["pick", "both", "list", "elsewhere"]) await view.evaluate(`document.getElementById('${id}').focus()`); // tabbing through all three
+    await Bun.sleep(50);
+    expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([]);
+
+    await pushRender(view, form("eat")); // another member's choice
+    await pushRender(view, form()); // undone: the browser's first, never the placeholder
+    expect(await view.evaluate<string>(`document.getElementById('pick').value`)).toBe("see");
+  });
+
+  test("a multiple select is not a field: an editing form never sends it, nor does a render choose in it", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const form = (title: string) =>
+      `<form data-write-on="change" id="f">
+        <input id="title" value="${title}" data-write='{"doc":"trip","op":"replace","path":"/title"}'>
+        <select multiple id="tags" data-write='{"doc":"trip","op":"replace","path":"/tags"}'><option>quiet</option><option>busy</option></select>
+      </form>`;
+    await pushRender(view, form("Temple"));
+    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
+    await view.click("#title");
+    await view.type(" gate");
+    await view.evaluate(`document.getElementById('title').blur()`);
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] });
+
+    await pushRender(view, form("Temple gate")); // echoed
+    expect(await view.evaluate<number>(`document.getElementById('tags').selectedOptions.length`)).toBe(0);
+    await view.evaluate(`(() => { const s = document.getElementById('tags'); s.options[1].selected = true; s.dispatchEvent(new Event("change", { bubbles: true })); })()`);
+    await Bun.sleep(50);
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(1);
+  });
+
   test("a choice not yet sent is the person's: a render that moves the drawn option under it keeps it, and leaving sends it", async () => {
     await using view = await open();
     await stubSend(view);

@@ -235,8 +235,11 @@ function send(doc: string, ops: PatchOp[]) {
   socket?.send(JSON.stringify({ doc, ops }));
 }
 
-/** What a form holds a value in: typed, or chosen. */
+/** What a form holds a value in: typed, or chosen. A `multiple` select holds several values where a
+ * write carries one, so it is not a field: an editing form never sends it, and a refusal does not hand it back. */
 type Field = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+const isField = (el: Element): el is Field =>
+  el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el instanceof HTMLSelectElement && !el.multiple);
 
 // A form clears as it sends, and a refused write hands back what was sent: a refusal is answered
 // with the page whole, before any echo of the form's document. So what someone types while the
@@ -253,7 +256,7 @@ app.addEventListener("submit", (event) => {
   if (!spec) return; // not a write: a plain form posts as the browser does (a sign-in)
   event.preventDefault();
   const { doc, op, path } = JSON.parse(spec) as WriteSpec;
-  const fields = [...form.elements].filter((f): f is Field => f instanceof HTMLInputElement || f instanceof HTMLTextAreaElement || f instanceof HTMLSelectElement);
+  const fields = [...form.elements].filter(isField);
   sending = { doc, sent: fields.map((f) => [f, f.value]) };
   send(doc, [{ op, path, value: formValue(form) }]);
   form.reset();
@@ -290,7 +293,7 @@ document.addEventListener("keydown", (event) => {
 // clear. A <textarea>'s rendered content has no `value` attribute to compare against -- it's the
 // element's text at parse time, which the DOM keeps as `defaultValue` even after typing changes
 // `value`. Same comparison, different property. A <select> has neither: what was rendered is the
-// option rendered `selected`, else its first, which is what it shows until someone chooses.
+// option it was drawn showing, by the browser's own rule (drawnOption), until someone chooses.
 // "input" (bento-request.md K3) is the same commit, debounced to ~150ms after the last keystroke
 // anywhere in the form so a burst of typing becomes one message, not one per key; a `focusout`
 // inside such a form flushes any pending write at once, same as leaving the field would for
@@ -304,7 +307,7 @@ function rendered(field: Field): string {
 function editingChange(form: HTMLFormElement): { doc: string; ops: PatchOp[] } | undefined {
   const ops: PatchOp[] = [];
   let doc: string | undefined;
-  for (const field of form.querySelectorAll<Field>("[data-write]")) {
+  for (const field of [...form.querySelectorAll("[data-write]")].filter(isField)) {
     if (field.value === rendered(field)) continue;
     const spec = JSON.parse(field.dataset.write!) as WriteSpec;
     doc = spec.doc;

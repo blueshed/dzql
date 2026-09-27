@@ -65,9 +65,10 @@ function showRendered(el: Element, name: string): void {
   else if (el instanceof HTMLInputElement && name === "checked") el.checked = el.defaultChecked;
 }
 
-/** The option a select was drawn showing: the one rendered `selected`, else its first. */
+/** The option a select was drawn showing, by the browser's own rule: the last rendered `selected`, else its first not disabled -- or, in a list (`size` over 1), none. */
 export function drawnOption(select: HTMLSelectElement): HTMLOptionElement | undefined {
-  return [...select.options].find((o) => o.defaultSelected) ?? select.options[0];
+  const options = [...select.options];
+  return options.findLast((o) => o.defaultSelected) ?? (select.size > 1 ? undefined : options.find((o) => !o.matches(":disabled")));
 }
 
 /**
@@ -104,7 +105,7 @@ function morphNode(old: ChildNode, next: ChildNode, hooks: MorphHooks): void {
     morphAttributes(old, next);
     const area = old instanceof HTMLTextAreaElement ? old : undefined;
     const text = area?.defaultValue;
-    const select = old instanceof HTMLSelectElement ? old : undefined;
+    const select = old instanceof HTMLSelectElement && !old.multiple ? old : undefined; // a multiple select is not a field (app.ts): the browser's alone
     const chosen = select && select.value !== (drawnOption(select)?.value ?? "") ? select.value : undefined; // not yet drawn
     morphChildren(old, next, hooks);
     if (area && area.defaultValue !== text && area !== document.activeElement) area.value = area.defaultValue; // as showRendered, for a textarea's text
