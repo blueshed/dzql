@@ -183,6 +183,27 @@ describe("the wedding in a real browser", () => {
     expectBeside(await view.evaluate(BESIDE));
   }, 15000);
 
+  test("find fades and lights the figures where they stand: the photo is not drawn again as find opens, looks and closes (rule 17)", async () => {
+    await using view = new Bun.WebView({ width: 1280, height: 800 });
+    await enter(view, code.toLowerCase());
+    // the photo's element and its drawing, tagged: a redraw would leave them untagged
+    const SAME = `(() => { const m = document.querySelector('#family-photo'), s = m.querySelector('svg'), same = m.__tag === 1 && s.__tag === 1; m.__tag = 1; s.__tag = 1; return same; })()`;
+    await view.evaluate(SAME);
+
+    await view.click(".rail .tool.find");
+    await waitFor(view, `document.querySelector('.filter') !== null`, (v) => v === true);
+    expect(await view.evaluate<boolean>(SAME)).toBe(true);
+
+    await view.click(".filter input");
+    await view.type("femi");
+    await waitFor(view, `document.querySelector('#family-photo .slot.hushed') !== null`, (v) => v === true);
+    expect(await view.evaluate<boolean>(SAME)).toBe(true);
+
+    await view.click(".rail .tool.find");
+    await waitFor(view, `document.querySelector('.filter') === null && document.querySelector('#family-photo .slot.hushed') === null`, (v) => v === true);
+    expect(await view.evaluate<boolean>(SAME)).toBe(true);
+  }, 15000);
+
   test("editing a gift's fields in its drawer writes on blur, batches fields changed together, and does not reset", async () => {
     await using view = new Bun.WebView();
     // the couple's own code, not a household's: the keep drawers are theirs to edit

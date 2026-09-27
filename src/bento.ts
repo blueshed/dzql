@@ -276,9 +276,11 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
       open.reading,
       open.tools && open.tools.length > 0 && `<div class="stack">${open.tools.join("")}</div>`,
       "</div>",
-      open.filter,
       `<div class="full">${open.body}${open.note ? `<p class="note">${esc(open.note)}</p>` : ""}</div>`,
       pageTools(),
+      // last, though it floats beside find's tool: find opening and closing adds and takes away the
+      // window's last child, so the morph (matching by position) meets the reading where it was
+      open.filter,
       "</div>",
     ));
   }

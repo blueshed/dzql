@@ -107,14 +107,16 @@ describe("the surfaces", () => {
     expect(out).toContain('data-key="clock" data-corners="br" data-corners-phone="br bl" style="grid-area: clock"');
   });
 
-  test("a box with one open: that cell is the window -- the way back and its name, its rail, find's field, the reading, a note, the page's tools", () => {
+  test("a box with one open: that cell is the window -- the way back and its name, its rail, the reading, a note, the page's tools, and find's field last", () => {
     const cells = [b.cell({ name: "board", opens: open }), b.cell({ name: "market", opens: open })];
     const back = write("desk", "remove", "/open");
     const out = b.boxPage([{ label: "The desk", back }, { label: "the market" }], [], cells, { key: "market", reading: "<i>reading</i>", tools: ["<i>find</i>"], filter: "<i>filter</i>", body: "<i>rows</i>", note: "a note" });
     expect(out).toContain('<section class="page box windowed">');
     expect(out).not.toContain("page-tools across"); // the page's tools are in the window instead
     expect(out).toContain(`<div data-eta-part="market" class="cell open" data-key="market" data-moving="market"><div class="cell-head cap"><a class="cell-back" href="#"${back}>The desk</a>`);
-    expect(out).toContain('<span class="cell-name">the market</span></div><div class="rail work"><i>reading</i><div class="stack"><i>find</i></div></div><i>filter</i><div class="full"><i>rows</i><p class="note">a note</p></div><div class="stack page-tools"');
+    expect(out).toContain('<span class="cell-name">the market</span></div><div class="rail work"><i>reading</i><div class="stack"><i>find</i></div></div><div class="full"><i>rows</i><p class="note">a note</p></div><div class="stack page-tools"');
+    // last, so find opening and closing moves nothing the morph matches by position
+    expect(out).toMatch(/<div class="stack page-tools"[^]*<\/div><i>filter<\/i><\/div>/);
     expect(out).toContain('data-key="board" data-corners='); // the rest of the box holds still behind it
     // a window on the root has no way back, and may have no tools at all
     const bare = b.boxPage([{ label: "rooms" }], [], cells, { key: "board", body: "" });

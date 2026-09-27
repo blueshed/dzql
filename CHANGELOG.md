@@ -145,6 +145,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rail starts with the reading switch (the wedding's) it opened beside the camera, two tools above
   find. The field is anchored to find's tool (`.tool.find`, CSS anchor positioning), and goes with
   it when a drawer moves the rail; a browser that cannot anchor keeps it at the rail's top.
+- **Find no longer draws the photo again.** Its field came between the rail and the reading, so
+  opening or closing it shifted every later child of the window, and the morph (matching by
+  position) rebuilt the reading and remounted the photo: every figure walked in and every bomber
+  lunged again. The field is the window's last child now. And the photo applet, told only that
+  find's fade changed (`onlyFadeChanged`), fades and lights each figure where it stands rather than
+  drawing the photo again.
 
 ## [0.49.0] - 2026-09-25
 

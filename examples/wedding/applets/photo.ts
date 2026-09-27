@@ -38,6 +38,13 @@ export interface PhotoProps {
 
 const n = (x: number): string => x.toFixed(1);
 
+/** Whether `next` differs from `prev` only in what find fades (rule 17): the same figures, in the
+ * same order, alike in all else -- so the fade can change where they stand, not the photo be drawn again. */
+export function onlyFadeChanged(prev: PhotoProps, next: PhotoProps): boolean {
+  const still = (p: PhotoProps) => JSON.stringify({ ...p, entries: p.entries.map(({ hushed, ...rest }) => rest) });
+  return still(prev) === still(next);
+}
+
 /** The photo as one SVG. `arriving` are the keys that walk in; `descend` makes the names come down from the top. */
 export function photoSvg(entries: PhotoEntry[], label: string, arriving: Set<string> = new Set(), descend = false): string {
   const { slots, box } = arrange(entries.map((e) => e.spec));
@@ -77,7 +84,7 @@ export function photoSvg(entries: PhotoEntry[], label: string, arriving: Set<str
     // rule 13: a figure rings to show it is chosen -- an ellipse behind it, roughly its own bounds
     const ring = entry.chosen ? `<ellipse class="ring" cx="50" cy="72" rx="58" ry="80"/>` : "";
     const hush = entry.hushed ? " hushed" : "";
-    return `<g class="slot${entry.chosen ? " chosen" : ""}${hush}" transform="translate(${n(slot.x)} ${n(slot.y)}) scale(${slot.s.toFixed(3)})"${tap}${reveal}>${ring}${mark}${count}${inner}</g>`;
+    return `<g class="slot${entry.chosen ? " chosen" : ""}${hush}" transform="translate(${n(slot.x)} ${n(slot.y)}) scale(${slot.s.toFixed(3)})"${tap}${reveal} data-slot="${esc(entry.key)}">${ring}${mark}${count}${inner}</g>`;
   });
   return `<svg class="photo" viewBox="${viewBox}" aria-label="${esc(label)}">${figures.join("")}</svg>`;
 }
