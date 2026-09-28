@@ -18,7 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     each): a remove or replace of what is not there is a 404, and its whole batch is refused
     (a server's own writer that diffs from a copy: the next entry); a memory document refuses
     with 404 for what is not there, where it said 400; a row moved through a document goes only
-    under a parent the document holds; `owns` or `shared` without an auth module throws; the
+    under a parent the document holds, and a list's own row replaced out of the list's scope is a
+    404; a second `registerDocs` of a prefix another registration holds throws; `owns` or
+    `shared` without an auth module throws; the
     browser client's `doc.data` is a `ReadonlySignal`, and an `onConnect` that calls through DI
     connects. eta's kernel uses none of the last three.
   - **railroad 0.15's, where the app uses railroad itself**: each tag's props are typed, so
