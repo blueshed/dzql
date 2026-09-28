@@ -11,7 +11,7 @@ import { read } from "./documents";
 import { appletProps, appletWrites, write } from "./html";
 import type { Example } from "./example";
 import { size } from "./costs";
-import { comparable, controlsOn, costly, goesTo, hear, holding, largest, MOST_PROPS, offers, placeOf, print, retake, run, takersOn, unheld, type Outcome, type Report, type Trace, type Wire } from "./harness";
+import { comparable, controlsOn, goesTo, hear, holding, largest, MOST_PROPS, offers, placeOf, print, propsCost, retake, run, takersOn, unheld, type Outcome, type Report, type Trace, type Wire } from "./harness";
 import { diff, drawParts, part, splitTag } from "./parts";
 import type { Story } from "./stories";
 import { refuse } from "./refusal";
@@ -691,23 +691,23 @@ describe("stories harness", () => {
   });
 });
 
-describe("costly: what a render sends in props, which the harness says and does not fail on", () => {
+describe("propsCost: what a render sends in props, which the harness says and does not fail on", () => {
   // a strip's stops, past what props should carry
   const stops = Object.fromEntries(Array.from({ length: 150 }, (_, i) => [String(i), { title: `stop ${i}`, day: i % 9 }]));
-  const size = (props: unknown) => `${(Buffer.byteLength(JSON.stringify(props)) / 1024).toFixed(1)} KB`;
+  const sized = (props: unknown) => size(Buffer.byteLength(JSON.stringify(props)));
   const strip = (props: unknown, watch?: { doc: string; under?: string }, more = "") => `<div id="s" data-applet="strip"${more}${appletProps(props, watch)}>paint</div>`;
   const whole = (html: string) => ({ type: "render", html });
 
   test("a mount whose own props pass MOST_PROPS, however it is sent; one that watches its document is weighed without it", () => {
     expect(Buffer.byteLength(JSON.stringify({ me: "ann", stops }))).toBeGreaterThan(MOST_PROPS);
-    expect(costly("ann", "", whole(`<main>${strip({ me: "ann", stops })}</main>`))).toEqual([
-      { kind: "big", applet: "strip", says: `ann was sent the strip applet's props, ${size({ me: "ann", stops })}, which go again whenever they change: let it watch the document they come from (appletProps(props, { doc })), and keep them to what it shows, and for whom` },
+    expect(propsCost("ann", "", whole(`<main>${strip({ me: "ann", stops })}</main>`))).toEqual([
+      { kind: "big", applet: "strip", says: `ann was sent the strip applet's props, ${sized({ me: "ann", stops })}, which go again whenever they change: let it watch the document they come from (appletProps(props, { doc })), and keep them to what it shows, and for whom` },
     ]);
-    expect(costly("ann", "", whole(strip({ me: "ann", trip: { stops } }, { doc: "trip:1", under: "/trip" })))).toEqual([]);
-    expect(costly("ann", "", whole(strip({ me: "ann", stops, trip: {} }, { doc: "trip:1", under: "/trip" })))).toEqual([
-      { kind: "big", applet: "strip", says: `ann was sent the strip applet's props, ${size({ me: "ann", stops })} beside the document it watches, which go again whenever they change: keep them to what it shows, and for whom` },
+    expect(propsCost("ann", "", whole(strip({ me: "ann", trip: { stops } }, { doc: "trip:1", under: "/trip" })))).toEqual([]);
+    expect(propsCost("ann", "", whole(strip({ me: "ann", stops, trip: {} }, { doc: "trip:1", under: "/trip" })))).toEqual([
+      { kind: "big", applet: "strip", says: `ann was sent the strip applet's props, ${sized({ me: "ann", stops })} beside the document it watches, which go again whenever they change: keep them to what it shows, and for whom` },
     ]);
-    expect(costly("ann", "", { type: "patch", doc: "trip:1" })).toEqual([]);
+    expect(propsCost("ann", "", { type: "patch", doc: "trip:1" })).toEqual([]);
   });
 
   test("in parts, a mount sent with the very props the page had: with its tag, drawn again for its inside, or in a part drawn again around it", () => {
@@ -716,17 +716,17 @@ describe("costly: what a render sends in props, which the harness says and does 
     const page = `<main><section data-eta-part="day"><h2>Day 1</h2>${part("s", strip({ ...small, trip: { a: 1 } }, watching))}</section></main>`;
     const again = (how: string) => [{ kind: "again" as const, applet: "strip", says: `ann was sent the strip applet's props again, as they were, ${how}` }];
     const tagged = splitTag(part("s", strip({ ...small, trip: { a: 2 } }, watching, ` class="open"`)))[0];
-    expect(costly("ann", page, { type: "render", ops: [{ op: "tag", target: '[data-eta-part="s"]', html: tagged }] })).toEqual(again("with its tag, for something else on it: keep that beside its mount"));
-    expect(costly("ann", page, { type: "render", ops: [{ op: "replace", target: '[data-eta-part="s"]', html: part("s", strip({ ...small, trip: { a: 2 } }, watching)) }] })).toEqual(
+    expect(propsCost("ann", page, { type: "render", ops: [{ op: "tag", target: '[data-eta-part="s"]', html: tagged }] })).toEqual(again("with its tag, for something else on it: keep that beside its mount"));
+    expect(propsCost("ann", page, { type: "render", ops: [{ op: "replace", target: '[data-eta-part="s"]', html: part("s", strip({ ...small, trip: { a: 2 } }, watching)) }] })).toEqual(
       again("drawn again for what the server paints inside it, which the applet paints over: let it watch the document it paints from"),
     );
     const day = `<section data-eta-part="day"><h2>Day one</h2>${part("s", strip({ ...small, trip: { a: 2 } }, watching))}</section>`;
-    expect(costly("ann", page, { type: "render", ops: [{ op: "replace", target: '[data-eta-part="day"]', html: day }] })).toEqual(
+    expect(propsCost("ann", page, { type: "render", ops: [{ op: "replace", target: '[data-eta-part="day"]', html: day }] })).toEqual(
       again(`in a part drawn again around it ([data-eta-part="day"]) for something else in it: make what changed there a part of its own`),
     );
     // props that changed, a mount new to the page, and a row taken out, cost nothing
     const moved = part("s", strip({ me: "bo", trip: { a: 1 } }, watching));
-    expect(costly("ann", page, { type: "render", ops: [{ op: "replace", target: '[data-eta-part="s"]', html: moved }, { op: "after", target: '[data-eta-part="s"]', html: `<div id="t" data-applet="strip"${appletProps(small)}></div>` }, { op: "remove", target: '[data-eta-part="x"]' }] })).toEqual([]);
+    expect(propsCost("ann", page, { type: "render", ops: [{ op: "replace", target: '[data-eta-part="s"]', html: moved }, { op: "after", target: '[data-eta-part="s"]', html: `<div id="t" data-applet="strip"${appletProps(small)}></div>` }, { op: "remove", target: '[data-eta-part="x"]' }] })).toEqual([]);
   });
 
   test("a run says each cost once for each applet, in the first story that sent it, and the report prints it after the stories", async () => {

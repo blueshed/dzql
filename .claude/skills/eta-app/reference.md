@@ -590,7 +590,7 @@ registerDocs(delta.server, db, schema, [defineDoc("trip:", { root: "trips", incl
   compartment of its own that permits nothing: it is written through the trip.
   `src/documents.test.ts` holds both.
 
-The harness warns, and does not fail, where props cost (`costly`, src/harness.ts; `bun run
+The harness warns, and does not fail, where props cost (`propsCost`, src/harness.ts; `bun run
 stories` prints each once, under the first story that sent it):
 
 - a mount whose own props, its document left out, pass 4 KB (`MOST_PROPS`): watch the document

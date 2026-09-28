@@ -78,7 +78,7 @@ export type Trace = {
   /** What the ledger took: the ops as written, and their inverse -- which holds what was there before. */
   ledger: { doc: string; undoable: number; ops: PatchOp[]; inverse: PatchOp[] }[];
 };
-/** What the stories found costly (`costly`), which does not fail them: each kind for each applet once, in the first story that sent it. */
+/** What the stories found props cost (`propsCost`), which does not fail them: each kind for each applet once, in the first story that sent it. */
 export type Warning = { story: string; says: string };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number; warnings?: Warning[]; byHand?: ByHand };
 
@@ -171,7 +171,7 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
 export const MOST_PROPS = 4096;
 
 /** A cost a render put on the wire in props: which kind, the applet, and what to say. */
-export type Cost = { kind: "big" | "again"; applet: string; says: string };
+export type PropsCost = { kind: "big" | "again"; applet: string; says: string };
 
 type Mount = { key: string; applet: string; own: string; watching: boolean };
 
@@ -192,21 +192,18 @@ function mountsIn(html: string): Mount[] {
   return found;
 }
 
-/** A size in KB, to a tenth. */
-const kb = (bytes: number): string => `${(bytes / 1024).toFixed(1)} KB`;
-
 /** What a render sends `whose` page, drawn as `page`, costs in props: a mount whose own props pass MOST_PROPS; in parts, one sent with the props the page had for it. */
-export function costly(whose: string, page: string, message: Heard): Cost[] {
+export function propsCost(whose: string, page: string, message: Heard): PropsCost[] {
   if (message.type !== "render") return [];
   const sent = message.html !== undefined ? [{ html: message.html, op: undefined }] : (message.ops ?? []).flatMap((op) => (op.html === undefined ? [] : [{ html: op.html, op }]));
   const had = new Map(mountsIn(page).map((m) => [m.key, m.own]));
-  const costs: Cost[] = [];
+  const costs: PropsCost[] = [];
   for (const { html, op } of sent) {
     for (const m of mountsIn(html)) {
-      const size = Buffer.byteLength(m.own);
-      if (size > MOST_PROPS) {
+      const bytes = Buffer.byteLength(m.own);
+      if (bytes > MOST_PROPS) {
         const how = m.watching ? "keep them to what it shows, and for whom" : "let it watch the document they come from (appletProps(props, { doc })), and keep them to what it shows, and for whom";
-        costs.push({ kind: "big", applet: m.applet, says: `${whose} was sent the ${m.applet} applet's props, ${kb(size)}${m.watching ? " beside the document it watches" : ""}, which go again whenever they change: ${how}` });
+        costs.push({ kind: "big", applet: m.applet, says: `${whose} was sent the ${m.applet} applet's props, ${size(bytes)}${m.watching ? " beside the document it watches" : ""}, which go again whenever they change: ${how}` });
       }
       if (op && had.get(m.key) === m.own) {
         const itself = mountsIn(splitTag(html)[0])[0]?.key === m.key; // the part is the mount
@@ -454,7 +451,7 @@ export function holding(t: Taken): { value: unknown } | { error: string } {
 /** The part a render op is about: the one its HTML carries (a part replaced, put in, or given a new tag), or the last its target names (one taken out). */
 function partOf(op: HtmlOp): string {
   const carried = /data-eta-part="([^"]*)"/.exec(op.html ?? "");
-  if (carried) return unescape(carried[1]!);
+  if (carried) return decoded(carried[1]!);
   const named = [...op.target.matchAll(/data-eta-part="((?:\\.|[^"\\])*)"/g)].at(-1);
   return named ? named[1]!.replaceAll('\\"', '"') : op.target;
 }
@@ -525,7 +522,10 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
   // what a render costs in props goes to the story being told, once for each applet and kind
   let telling: string | undefined;
   const warned = new Map<string, Warning>();
-  const warn = (cost: Cost): void => void (telling !== undefined && !warned.has(`${cost.kind} ${cost.applet}`) && warned.set(`${cost.kind} ${cost.applet}`, { story: telling, says: cost.says }));
+  const warn = (found: PropsCost): void => {
+    const key = `${found.kind} ${found.applet}`;
+    if (telling !== undefined && !warned.has(key)) warned.set(key, { story: telling, says: found.says });
+  };
 
   // Where a person can go, judged from where each story starts: the cast, as its own writes left
   // it, and the story's premise. The places a story names are walked in a cast of its own in that
@@ -599,7 +599,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       const message = JSON.parse(String(event.data)) as Heard;
       if (message.type === "inspect") return member.answered.shift()?.();
       member.inbox.push(String(event.data));
-      costly(name, member.page, message).forEach(warn);
+      propsCost(name, member.page, message).forEach(warn);
       member.page = hear(member.page, message);
       if (message.type === "render") {
         retake(member.taken, member.page);

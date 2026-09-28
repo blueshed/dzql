@@ -51,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     alone, where it sent 566 B (a 218 B patch and 348 B of HTML: the photo's entries again).
 - **`appletProps(props)`, the one helper that quotes props into an attribute** (todo n105), in place
   of JSON quoted by hand: once, whatever the props hold.
-- **The harness says where props cost, and does not fail** (`costly`, `Report.warnings`): a mount
+- **The harness says where props cost, and does not fail** (`propsCost`, `Report.warnings`): a mount
   whose own props, its document left out, pass 4 KB (`MOST_PROPS`); and a mount sent again in parts
   with the very props the page had -- with its tag for something else on it, drawn again for what
   is inside it, or in a part drawn again around it -- each once for each applet, under the first
