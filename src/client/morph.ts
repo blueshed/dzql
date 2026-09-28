@@ -155,14 +155,13 @@ export function removeNode(node: ChildNode, hooks: MorphHooks): void {
 }
 
 /**
- * Which of `olds` each of `nexts` reuses, in order: the longest run of the same types the two have in
- * common. So a child put in or taken out ahead of its siblings leaves them be, where matching by place
- * alone rebuilt every one after it (and took the caret from a button among them). The same head and
- * tail are matched by place first, so a long list changed in the middle costs little; a middle too
- * big to compare is matched by place, as before.
+ * Which of `olds` each of `nexts` reuses, in order, noted in `matched`: the longest run of the same
+ * types the two have in common. So a child put in or taken out ahead of its siblings leaves them be,
+ * where matching by place alone rebuilt every one after it (and took the caret from a button among
+ * them). The same head and tail are matched by place first, so a long list changed in the middle
+ * costs little; a middle too big to compare is matched by place, as before.
  */
-function matchInOrder(olds: ChildNode[], nexts: ChildNode[]): Map<ChildNode, ChildNode> {
-  const matched = new Map<ChildNode, ChildNode>();
+function matchInOrder(olds: ChildNode[], nexts: ChildNode[], matched: Map<ChildNode, ChildNode>): void {
   let head = 0;
   while (head < olds.length && head < nexts.length && sameType(olds[head]!, nexts[head]!)) matched.set(nexts[head]!, olds[head++]!);
   let tail = 0;
@@ -174,7 +173,7 @@ function matchInOrder(olds: ChildNode[], nexts: ChildNode[]): Map<ChildNode, Chi
   const n = nexts.slice(head, nexts.length - tail);
   if (o.length * n.length > 250_000) {
     n.forEach((node, i) => o[i] && sameType(o[i]!, node) && matched.set(node, o[i]!));
-    return matched;
+    return;
   }
   // longest common subsequence, by type: runs[i][j] is its length over n from i and o from j
   const width = o.length + 1;
@@ -189,7 +188,6 @@ function matchInOrder(olds: ChildNode[], nexts: ChildNode[]): Map<ChildNode, Chi
     else if (runs[(i + 1) * width + j]! >= runs[i * width + j + 1]!) i++;
     else j++;
   }
-  return matched;
 }
 
 /** The ids inside a node, its own not counted. */
@@ -198,41 +196,36 @@ const idsWithin = (node: ChildNode): string[] => (isElement(node) ? [...node.que
 function morphChildren(old: Element, next: Element, hooks: MorphHooks): void {
   const oldNodes = [...old.childNodes];
   const newNodes = [...next.childNodes];
-
-  const oldByKey = new Map<string, ChildNode>();
-  for (const node of oldNodes) {
-    const k = key(node);
-    if (k) oldByKey.set(k, node);
-  }
+  /** Each new child, and the old one it reuses. */
+  const matched = new Map<ChildNode, ChildNode>();
 
   // a child with an id is its own by the id; the rest by type, in order
-  const byKey = new Map<ChildNode, ChildNode>();
+  const oldByKey = new Map<string, ChildNode>();
+  for (const node of oldNodes) if (key(node)) oldByKey.set(key(node)!, node);
   for (const node of newNodes) {
-    const k = key(node);
-    const match = k ? oldByKey.get(k) : undefined;
-    if (match) byKey.set(node, match);
+    const match = key(node) && oldByKey.get(key(node)!);
+    if (match) matched.set(node, match);
   }
   // one without is known by the ids inside it: the child holding a row or an applet goes on holding it,
   // whatever stands around it (a window closing drops its rail and tools, and draws a summary)
   const unkeyedOld = oldNodes.filter((node) => !key(node));
   const holding = new Map<string, ChildNode>();
   for (const node of unkeyedOld) for (const id of idsWithin(node)) if (!holding.has(id)) holding.set(id, node);
-  const byIds = new Map<ChildNode, ChildNode>();
   const held = new Set<ChildNode>();
   for (const node of newNodes) {
-    if (byKey.has(node)) continue;
+    if (matched.has(node)) continue;
     const match = idsWithin(node).map((id) => holding.get(id)).find((old) => old && !held.has(old) && sameType(old, node));
     if (match) {
-      byIds.set(node, match);
+      matched.set(node, match);
       held.add(match);
     }
   }
-  const inOrder = matchInOrder(
+  matchInOrder(
     unkeyedOld.filter((node) => !held.has(node)),
-    newNodes.filter((node) => !byKey.has(node) && !byIds.has(node)),
+    newNodes.filter((node) => !matched.has(node)),
+    matched,
   );
-  const matchOf = (node: ChildNode): ChildNode | undefined => byKey.get(node) ?? byIds.get(node) ?? inOrder.get(node);
-  const used = new Set(newNodes.map(matchOf));
+  const used = new Set(matched.values());
 
   // what is not reused goes first, so what stays need not move past it (a node moved loses the caret)
   for (const node of oldNodes) {
@@ -240,7 +233,7 @@ function morphChildren(old: Element, next: Element, hooks: MorphHooks): void {
   }
 
   newNodes.forEach((newNode, i) => {
-    const match = matchOf(newNode);
+    const match = matched.get(newNode);
     if (match) {
       const atPosition = old.childNodes[i];
       if (match !== atPosition) old.insertBefore(match, atPosition ?? null);
