@@ -190,6 +190,7 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     await documents.write("trip:1", [{ op: "replace", path: "/stops/a/day", value: "d2" }], by);
     await documents.quiet();
     expect(told).toEqual(["trip:1 add hearts", "trip:1 replace stops", "strip:1 replace stops", "days:1 replace ", "trip:1 replace stops", "strip:1 replace stops", "days:1 replace "]);
-    expect(documents.read<{ stops: unknown[] }>("days:1")).toEqual({ stops: [{ id: "a", day: "d2", title: "Temple" }] });
+    expect(documents.read<{ stops: Record<string, { note: string }> }>("strip:1").stops.a!.note).toBe("shoes off"); // every column
+    expect(documents.read<{ stops: unknown[] }>("days:1")).toEqual({ stops: [{ id: "a", day: "d2", title: "Temple" }] }); // only what it selects
   });
 });

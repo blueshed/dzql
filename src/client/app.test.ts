@@ -1030,7 +1030,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
   test("a render drawn between pressing a box and letting go leaves it be, so the click ticks it as the person meant, and nothing undoes the other's tick", async () => {
     await using view = await open();
     await stubSend(view);
-    for (const [touched, press] of [
+    for (const [touched, pressing] of [
       [false, `document.getElementById('paid').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`],
       [true, `document.getElementById('paid').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`],
       [false, `(() => { const box = document.getElementById('paid'); box.focus(); box.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true })); })()`], // Space, held
@@ -1044,7 +1044,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
         }
       }
       await view.evaluate(`window.__sent = []`);
-      await view.evaluate(press);
+      await view.evaluate(pressing);
       await pushRender(view, ticksForm("Temple", false, true, "see")); // someone else ticked it, drawn while the finger (or Space) is down
       await view.evaluate(`document.getElementById('paid').click()`); // let go
       await Bun.sleep(50);
