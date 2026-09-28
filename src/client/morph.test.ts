@@ -76,6 +76,17 @@ describe("morph", () => {
     expect(result).toEqual([true, true, true, true, "EM"]);
   });
 
+  test("a child without an id goes on holding the ids inside it: a window closing keeps its applet, whatever stands around it", async () => {
+    const result = await run(`
+      const board = '<div id="board"><div id="line-FXTR" data-applet="board"></div></div>';
+      root.innerHTML = '<div class="cell open"><div class="cell-head">Board</div><div class="rail"></div><div class="full">' + board + '</div><div class="stack"></div></div>';
+      root.querySelector('#line-FXTR')._kept = true;
+      window.morph(root, '<div class="cell"><div class="cell-head">Board</div><p class="cell-summary">3 watched</p><div class="cell-body">' + board + '</div></div>');
+      return [root.querySelector('#line-FXTR')._kept === true, [...root.firstChild.children].map((el) => el.className)];
+    `);
+    expect(result).toEqual([true, ["cell-head", "cell-summary", "cell-body"]]);
+  });
+
   test("removes leftover children when the new list is shorter", async () => {
     const result = await run(`
       root.innerHTML = '<li>1</li><li>2</li><li>3</li>';

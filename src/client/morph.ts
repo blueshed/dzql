@@ -192,6 +192,9 @@ function matchInOrder(olds: ChildNode[], nexts: ChildNode[]): Map<ChildNode, Chi
   return matched;
 }
 
+/** The ids inside a node, its own not counted. */
+const idsWithin = (node: ChildNode): string[] => (isElement(node) ? [...node.querySelectorAll("[id]")].map((el) => el.id) : []);
+
 function morphChildren(old: Element, next: Element, hooks: MorphHooks): void {
   const oldNodes = [...old.childNodes];
   const newNodes = [...next.childNodes];
@@ -209,11 +212,26 @@ function morphChildren(old: Element, next: Element, hooks: MorphHooks): void {
     const match = k ? oldByKey.get(k) : undefined;
     if (match) byKey.set(node, match);
   }
+  // one without is known by the ids inside it: the child holding a row or an applet goes on holding it,
+  // whatever stands around it (a window closing drops its rail and tools, and draws a summary)
+  const unkeyedOld = oldNodes.filter((node) => !key(node));
+  const holding = new Map<string, ChildNode>();
+  for (const node of unkeyedOld) for (const id of idsWithin(node)) if (!holding.has(id)) holding.set(id, node);
+  const byIds = new Map<ChildNode, ChildNode>();
+  const held = new Set<ChildNode>();
+  for (const node of newNodes) {
+    if (byKey.has(node)) continue;
+    const match = idsWithin(node).map((id) => holding.get(id)).find((old) => old && !held.has(old) && sameType(old, node));
+    if (match) {
+      byIds.set(node, match);
+      held.add(match);
+    }
+  }
   const inOrder = matchInOrder(
-    oldNodes.filter((node) => !key(node)),
-    newNodes.filter((node) => !byKey.has(node)),
+    unkeyedOld.filter((node) => !held.has(node)),
+    newNodes.filter((node) => !byKey.has(node) && !byIds.has(node)),
   );
-  const matchOf = (node: ChildNode): ChildNode | undefined => byKey.get(node) ?? inOrder.get(node);
+  const matchOf = (node: ChildNode): ChildNode | undefined => byKey.get(node) ?? byIds.get(node) ?? inOrder.get(node);
   const used = new Set(newNodes.map(matchOf));
 
   // what is not reused goes first, so what stays need not move past it (a node moved loses the caret)
