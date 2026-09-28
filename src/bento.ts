@@ -392,7 +392,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     return join(`<div class="scrim modal-scrim" data-escape${close}></div>`, `<dialog open class="modal" aria-label="${esc(title)}"><h3>${esc(title)}</h3>${body}</dialog>`);
   }
 
-  /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs, typed or chosen. `add` is the form's write, `close` the one that puts the modal away; `said`, why the last try was refused (src/refusal.ts `reasonFor`), beneath the fields. */
+  /** Adding a thing is the plus and a modal asking for it -- its name, or the few fields it needs, typed or chosen. `add` is the form's write, `close` the one that puts the modal away; `said`, why the last try was refused (src/refusal.ts `toldAt`), beneath the fields. */
   function addModal(title: string, fields: Field[], add: string, close: string, verb = "Add", said = ""): string {
     const inputs = fields
       .map((f, i) => {

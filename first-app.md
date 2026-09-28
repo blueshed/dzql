@@ -204,7 +204,7 @@ When a person can make a write that must be refused, tell them why:
 if (ends < starts) throw refuse("The last day is before the first.");
 ```
 
-Draw the reason beside the control that sent it: `reasonFor(sessionId, doc, path)` gives the line.
+Draw the reason beside the control that sent it: `toldAt(sessionId, doc, path)` gives the line.
 The story then says `told: "The last day is before the first."`. A plain `false` from `permit`
 refuses without a word; that is right for a write no page offers.
 

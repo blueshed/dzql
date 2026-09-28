@@ -26,7 +26,7 @@ export type View = {
   market: MarketDocument;
   clock: ClockDocument;
   ui: Ui;
-  /** Why the last watch was refused, drawn beside the ask's field (src/refusal.ts `reasonFor`), or "". */
+  /** Why the last watch was refused, drawn beside the ask's field (src/refusal.ts `toldAt`), or "". */
   said?: string;
 };
 

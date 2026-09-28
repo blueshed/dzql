@@ -153,7 +153,7 @@ describe("the ticker", () => {
     await refused("watchlist", [{ op: "replace", path: "/symbols/0", value: "x" }]);
     // permitted, and refused with why: the reason is kept in the session's own refusal document, and the page handed back
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "NOPE" }]);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "refusal", ops: expect.arrayContaining([{ op: "replace", path: "/reason", value: "The market does not quote NOPE." }]) });
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "told", ops: expect.arrayContaining([{ op: "replace", path: "/reason", value: "The market does not quote NOPE." }]) });
     await expectMessage(ws, "render");
     await expectQuiet(ws);
     ws.close();

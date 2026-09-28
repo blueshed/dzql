@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking (for example authors)
+
+- **`reasonFor` is `toldAt`, and what a session is told has a kind: why a write was refused, or
+  what one did** (todo n91, n100). `tell(sessionId, { doc, path, reason })` still tells a refusal;
+  `tell(sessionId, { doc, path, said })` tells a success, as a route that answered a form does (a
+  password changed), and `toldAt(sessionId, doc, path)` draws either: `<p class="refused"
+  role="alert">` or `<p class="said" role="status">`. Before, a success could only be told as a
+  reason, and was drawn as a refusal. What to change:
+  - **Every `reasonFor(` is `toldAt(`**, with the same arguments.
+  - **A success told as a reason** (a route's "Your password is changed." at a path of its own,
+    restyled) is `said`, and may share its form's path: the kind says which it is.
+  - **The kernel's document for it is `told:<session>`, not `refusal:<session>`**, and holds
+    `{ doc, path, reason, said }`: a test that looks for its patches looks for `doc: "told"`.
+  - **`said(reason)` is gone from `src/refusal.ts`**: the story harness no longer looks for the
+    line's markup, and draws the page without what its author was told to compare the rest.
+
 ### Added
 
 - **A story's cost on the wire** (todo n93). japan-eta ran for a day at 8 KB a vote, for a

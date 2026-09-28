@@ -60,11 +60,12 @@
 .tool.danger { border-color: var(--danger); color: var(--danger); }
 .tool:is([aria-pressed="true"], [aria-expanded="true"], [role="radio"][aria-checked="true"]) { background: var(--accent); border-color: var(--accent); color: var(--card); } /* on, chosen, or its drawer open */
 .pick { display: inline-flex; gap: var(--space-xs); }
-/* why a write was refused, beside the control that sent it (src/refusal.ts) */
-.refused { margin: var(--space-xs) 0 0; color: var(--danger); }
-/* why an undo or redo was refused: the kernel's, over the page, above the page's tools */
+/* what a write was told, beside the control that sent it (src/refusal.ts): why it was refused, or what it did */
+.refused, .said { margin: var(--space-xs) 0 0; }
+.refused { color: var(--danger); }
+/* what an undo or redo did, or why it was refused: the kernel's, over the page, above the page's tools */
 .undo-said { box-sizing: border-box; position: fixed; z-index: 80; bottom: calc(var(--space-lg) + 2 * var(--control) + var(--space-md)); right: var(--space-lg); max-width: min(320px, calc(100vw - 2 * var(--space-lg))); padding: var(--space-sm) var(--space-md); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
-.undo-said .refused { margin: 0; }
+.undo-said .refused, .undo-said .said { margin: 0; }
 
 /* ── a stack: square buttons with a hairline between, drawn like a Leaflet control ── */
 .stack { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); overflow: hidden; }

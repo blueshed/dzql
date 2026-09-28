@@ -7,7 +7,7 @@ import { applyPatch, type PatchOp, type WriteId } from "./json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
 import { comparable, decoded, ownProps, splitTag } from "./parts";
-import { said } from "./refusal";
+import { toldNothing } from "./refusal";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
 import { size, tap } from "./costs";
@@ -588,6 +588,11 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         else stored.set(doc, result);
       },
     };
+    return drawFrom(copy, sessionId);
+  }
+
+  /** A page drawn from `copy`, made the active documents while it draws, and only then: a drawing is synchronous. */
+  function drawFrom(copy: Documents, sessionId: string): Promise<string> {
     return settled(copy, () => {
       const serving = activeDocuments();
       setActiveDocuments(copy);
@@ -598,6 +603,9 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       }
     });
   }
+
+  /** A member's page as though they had been told nothing (src/refusal.ts), as a snapshot has it (`unversioned`): what they were told, left out, is checked on its own. */
+  const unsaid = async (sessionId: string): Promise<string> => unversioned(await drawFrom(toldNothing(documents, sessionId), sessionId));
 
   async function snapshot(cast: Member[]): Promise<Snapshot> {
     return new Map(await Promise.all(cast.map(async (m) => [m.name, unversioned(await draw(m.sessionId))] as const)));
@@ -681,8 +689,8 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
   /** What answered write `id`, sent by `m` since `from`: its own echo (a patch), its refusal, or nothing. */
   const answerTo = (m: Member, id: WriteId, from: Map<Member, number>): Heard | undefined => sentSince(m, from).find((h) => h.id === id && (h.type === "patch" || h.type === "refused"));
 
-  /** Did something land since `from`: a document changed, and someone was told (a refusal changes none)? */
-  const landedSince = (cast: Member[], from: Map<Member, number>): boolean => cast.some((m) => sentSince(m, from).some((h) => h.type === "patch" && h.doc !== "refusal"));
+  /** Did something land since `from`: a document changed, and someone was told (what a session is told of a write changes none)? */
+  const landedSince = (cast: Member[], from: Map<Member, number>): boolean => cast.some((m) => sentSince(m, from).some((h) => h.type === "patch" && h.doc !== "told"));
 
   /**
    * The story's own premise, made after the cast's writes: each write as its member. Why it does
@@ -835,11 +843,11 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         const after = await snapshot(cast);
         if (story.told !== undefined) {
           // told why: by the refusal of their own write, and on their page, the one change it may show
-          const page = after.get(who.name)!;
+          const without = await unsaid(who.sessionId);
           const reason = answer?.type === "refused" ? answer.reason : undefined;
           if (reason !== story.told) failures.push(`refused, but ${who.name} was not told "${story.told}"${reason === undefined ? "" : `: they were told "${reason}"`}`);
-          else if (!page.includes(said(story.told))) failures.push(`refused and told "${story.told}", but ${who.name}'s page does not show it`);
-          after.set(who.name, page.replace(said(story.told), ""));
+          else if (after.get(who.name) === without) failures.push(`refused and told "${story.told}", but ${who.name}'s page does not show it`);
+          after.set(who.name, without);
         }
         compare(before, after, cast, "refused, but", failures);
         await stale(cast, "after the refusal", failures);

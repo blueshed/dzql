@@ -15,7 +15,7 @@ import { part } from "./parts";
 import { createServer } from "./server";
 import { assemble, type Inspection } from "./compartments";
 import { onFailure } from "./failed";
-import { refuse, reasonFor } from "./refusal";
+import { refuse, tell, toldAt } from "./refusal";
 
 // A tiny, self-contained example -- not chat, not anything under the examples directory -- so
 // this file proves the kernel on its own: a note per session (its own document), and months of
@@ -103,7 +103,7 @@ function makeExample(name: string): Example {
     compartments: [noteCompartment, monthCompartment, tickCompartment],
     render: (sessionId) => {
       if (readNote(sessionId) === "undrawable") throw new Error("undrawable"); // a page whose drawing fails
-      return `<p class="note">${readNote(sessionId)}</p>` + reasonFor(sessionId, "note", "/text") +
+      return `<p class="note">${readNote(sessionId)}</p>` + toldAt(sessionId, "note", "/text") +
         (showing.get(sessionId) ?? []).map((m) => part(`month-${m}`, `<ul data-month="${m}">${readMonth(m).map((a) => part(`a-${a.id}`, `<li>${a.what}</li>`)).join("")}</ul>`)).join("");
     },
     active: () => true,
@@ -465,18 +465,31 @@ describe("createServer, generically (no example from the examples directory invo
 
     const told = await answer("note", [{ op: "replace", path: "/text", value: "" }]);
     expect(page(told.messages)).toContain(reason);
-    expect(patched(told.messages)).toEqual(["refusal"]); // its own, named by type alone
+    expect(patched(told.messages)).toEqual(["told"]); // its own, named by type alone
     expect(told.inspection.docs.find((d) => d.doc === "note")!.entries).toEqual([]); // nothing happened
     await server.idle();
     expect(queues.get(other)!).toEqual([]); // the other session is told nothing
 
     // nobody writes a refusal from the wire; and that write, refused without a word, is the
     // session's next, so what it was told goes
-    const next = await answer("refusal", [{ op: "replace", path: "/reason", value: "I say so." }]);
+    const next = await answer("told", [{ op: "replace", path: "/reason", value: "I say so." }]);
     expect(page(next.messages)).not.toContain("refused");
-    expect(patched(next.messages)).toEqual(["refusal"]);
+    expect(patched(next.messages)).toEqual(["told"]);
     ws.close();
     other.close();
+  });
+
+  test("a session may be told what went well -- a route that answered a form tells it -- drawn beside the control as a status, where a refusal is an alert; its next write takes it away", async () => {
+    const ws = connect(server, "told-by-a-route");
+    await opened(ws);
+    await expectMessage(ws, "render");
+    await tell("told-by-a-route", { doc: "note", path: "/text", said: "Your note is kept." });
+    await server.idle();
+    expect(htmlOf((await until(ws)).at(-1)!)).toContain('<p class="note"></p><p class="said" role="status">Your note is kept.</p>');
+
+    write(ws, "note", [{ op: "replace", path: "/text", value: "kept" }], 1);
+    expect(htmlOf((await until(ws)).filter((m) => m.type === "render").at(-1)!)).toBe('<p class="note">kept</p>');
+    ws.close();
   });
 
   test("a refused write is answered `refused` with its own id, and why when it says, before the page is handed back", async () => {

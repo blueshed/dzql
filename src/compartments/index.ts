@@ -6,7 +6,7 @@ import { prefixDoc, splitDoc } from "../names";
 import { shownTo } from "../reading";
 import type { Compartment } from "./compartment";
 import { createLedgerCompartment } from "./ledger";
-import { createRefusalCompartment, reasonFor } from "../refusal";
+import { createToldCompartment, toldAt } from "../refusal";
 import { sees, wireName, wireOps } from "./audience";
 import { createDocuments, settled, type Documents } from "../documents";
 
@@ -21,11 +21,11 @@ export type InspectDoc = { doc: string; version: number; entries: InspectEntry[]
 export type Inspection = { docs: InspectDoc[] };
 
 export type Assembled = {
-  /** The example's compartments and the kernel's own (the ledger, refusals), for lifecycle (`onOpen`/`onClose`) and write dispatch. */
+  /** The example's compartments and the kernel's own (the ledger, what a session is told), for lifecycle (`onOpen`/`onClose`) and write dispatch. */
   compartments: Compartment[];
   /** Every entry above, indexed by the docType it owns -- what server.ts's dispatcher resolves a `{doc, ops}` write against. */
   byDocType: Map<string, Compartment>;
-  /** The page for a session: the example's, and why its last undo or redo was refused, if it was. */
+  /** The page for a session: the example's, and what its last undo or redo did, or why it was refused. */
   page(sessionId: string): string;
   /** The page, drawn until every document it reads is held. */
   draw(sessionId: string): Promise<string>;
@@ -36,11 +36,11 @@ export type Assembled = {
 
 /**
  * Wires one example's compartments into a running set: appends the kernel's own ledger and
- * refusal compartments, and returns the render/inspect/dispatch surface server.ts needs -- without
+ * told compartments, and returns the render/inspect/dispatch surface server.ts needs -- without
  * server.ts ever importing a specific example's compartments itself.
  */
 export function assemble(example: Example): Assembled {
-  const kernel = [createLedgerCompartment(example.active), createRefusalCompartment(example.delta)];
+  const kernel = [createLedgerCompartment(example.active), createToldCompartment(example.delta)];
 
   const compartments = [...example.compartments, ...kernel];
   const byDocType = new Map<string, Compartment>();
@@ -53,11 +53,11 @@ export function assemble(example: Example): Assembled {
   const documents = copies.get(example) ?? createDocuments(example.delta);
   copies.set(example, documents);
 
-  // Undo and redo are the kernel's own tools (the ledger, bento's page tools), so the kernel says
-  // why one was refused, over whatever page the example draws.
+  // Undo and redo are the kernel's own tools (the ledger, bento's page tools), so the kernel draws
+  // what one did, or why it was refused, over whatever page the example draws.
   const page = (sessionId: string): string => {
-    const said = reasonFor(sessionId, "ledger", "/latest");
-    return example.render(sessionId) + (said && `<div class="undo-said">${said}</div>`);
+    const line = toldAt(sessionId, "ledger", "/latest");
+    return example.render(sessionId) + (line && `<div class="undo-said">${line}</div>`);
   };
   const draw = (sessionId: string): Promise<string> => settled(documents, () => page(sessionId));
 

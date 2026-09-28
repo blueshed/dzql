@@ -53,7 +53,8 @@ and the password never crosses the socket.
    into the session with `serverWrite`, and answers `303 /` with `sessionCookie(id)`
    (`src/server.ts`: the kernel's cookie and its attributes).
 4. A wrong one is told on the page it came from: `tell(visit, { doc, path, reason })`, drawn by
-   `reasonFor`.
+   `toldAt`. A route that does what a form asked (a password changed) says so the same way, as a
+   success: `tell(visit, { doc, path, said: "Your password is changed." })`.
 
 Then:
 
@@ -131,7 +132,7 @@ Each step answers one question.
 
 Undo and redo are delta's too: an entry's inverse, never shaped.
 
-### Saying why a write was refused
+### Saying why a write was refused, or what one did
 
 Throw `refuse(reason)` from `permit` or `shape` (`src/refusal.ts`), and the person is told why,
 beside the control that sent it:
@@ -140,10 +141,13 @@ beside the control that sent it:
 if (ends < starts) throw refuse("The last day is before the first.");
 ```
 
-- The page draws the line with `reasonFor(sessionId, doc, path)`, where `doc` and `path` are the
-  control's `data-write`. It gives `<p class="refused" role="alert">`, or nothing.
-- The kernel keeps the reason in the session's own `refusal` document (in memory, off the ledger:
-  a refusal is not something that happened) until the session's next write.
+- The page draws the line with `toldAt(sessionId, doc, path)`, where `doc` and `path` are the
+  control's `data-write`. It gives `<p class="refused" role="alert">`, `<p class="said"
+  role="status">` for a success, or nothing.
+- A success is told, not thrown: `tell(sessionId, { doc, path, said })`, from a route that answered
+  a form. A line is one kind or the other: `reason` or `said`.
+- The kernel keeps the line in the session's own `told` document (in memory, off the ledger: being
+  told is not something that happened) until the session's next write.
 - The page that sent the write is also answered `{type: "refused", id, reason}`, by the write's
   own id (see The wire): the refusal is that write's, whatever else was sent since.
 - A plain `false` refuses without a word. That is right for a write no control offers: there is
