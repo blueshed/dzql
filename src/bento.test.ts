@@ -104,7 +104,7 @@ describe("the surfaces", () => {
     const cells = [b.cell({ name: "board", big: true, opens: open }), b.cell({ name: "market" }), b.cell({ name: "clock" })];
     const out = b.boxPage([{ label: "The desk" }], ["<p>in place</p>"], cells);
     expect(out).toContain('<b aria-current="page">The desk</b></span></nav><div class="stack page-tools across"');
-    expect(out).toContain('<section class="page box"><p>in place</p><div class="cells"');
+    expect(out).toContain('<section class="page box"><div class="in-place"><p>in place</p></div><div class="cells"');
     expect(out).toContain(`--tray-areas: "board board board" "market clock clock"; --tray-areas-phone: "board" "market" "clock"`);
     expect(out).toContain('data-key="board" data-corners="tl tr" data-corners-phone="tl tr" style="grid-area: board"');
     expect(out).toContain('data-key="clock" data-corners="br" data-corners-phone="br bl" style="grid-area: clock"');
@@ -127,6 +127,7 @@ describe("the surfaces", () => {
     expect(out).not.toMatch(/class="cell open"[^>]* inert/);
     expect(b.boxPage([{ label: "The desk" }], ["<p>in place</p>"], cells, { key: "market", body: "" })).toContain('<div class="in-place" inert><p>in place</p></div>');
     expect(b.boxPage([{ label: "The desk" }], ["<p>in place</p>"], cells)).not.toContain("inert"); // closed, all of it is there
+    expect(b.boxPage([{ label: "The desk" }], [], cells)).toContain('<div class="in-place"></div><div class="cells"'); // the wrapper always, so opening changes only its tag
     // a window on the root has no way back, and may have no tools at all
     const bare = b.boxPage([{ label: "rooms" }], [], cells, { key: "board", body: "" });
     expect(bare).toContain('<div class="cell-head cap"><span class="cell-name">rooms</span></div><div class="rail work"></div><div class="full"></div>');
@@ -355,6 +356,22 @@ describe("the surfaces in a browser", () => {
       expect(await pressesAround(view, ".filter .tool, .cell.open .cell-back", touch)).toEqual([]);
     });
   }
+
+  test("opening a window moves nothing else: the tray, the cell that grows and what is in place are the same elements, and what is typed in place stays", async () => {
+    const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "market", opens: go("market"), summary: "16 symbols" })];
+    const inPlace = [`<p class="note">said once</p>`, `<form id="say"><input name="t" value=""></form>`];
+    const closed = b.boxPage([{ label: "The desk" }], inPlace, cells);
+    const opened = b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], inPlace, cells, { key: "market", body: "" });
+    await using view = await show(closed);
+    await view.evaluate(`(() => { window.__was = ['.cells', '[data-moving="market"]', '#say'].map((s) => document.querySelector(s)); document.querySelector('#say input').value = 'half typed'; })()`);
+    const same = `['.cells', '[data-moving="market"]', '#say'].map((s, i) => document.querySelector(s) === window.__was[i]).concat(document.querySelector('#say input').value)`;
+    await draw(view, opened);
+    await waitFor(view, `document.querySelector('.cell.open') !== null`, (v) => v === true);
+    expect(await view.evaluate<unknown[]>(same)).toEqual([true, true, true, "half typed"]);
+    await draw(view, closed);
+    await waitFor(view, `document.querySelector('.cell.open') === null`, (v) => v === true);
+    expect(await view.evaluate<unknown[]>(same)).toEqual([true, true, true, "half typed"]);
+  });
 
   // the page whole, or in parts as the ticker's goes: the site a part, the layers in it (src/parts.ts works out what changed)
   for (const sent_ of ["whole", "in parts"] as const) {

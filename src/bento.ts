@@ -315,7 +315,10 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     return join(
       `<header class="page-head"${behind}>${crumbs(trail)}${open ? "" : pageTools("across")}</header>`,
       `<section class="page box${open ? " windowed" : ""}">`,
-      ...(open && inPlace.length ? [`<div class="in-place" inert>`, ...inPlace, "</div>"] : inPlace),
+      // always wrapped, so a window opening changes the wrapper's tag and nothing the morph matches by position
+      `<div class="in-place"${behind}>`,
+      ...inPlace,
+      "</div>",
       `<div class="cells" style='--tray-areas: ${areas(wide)}; --tray-areas-phone: ${areas(narrow)}'>${placed.join("")}</div>`,
       "</section>",
     );
