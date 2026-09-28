@@ -773,7 +773,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       const ways = new Map<string, Map<string, Step[]>>();
       for (const [name, places] of wanted) {
         const m = walking.find((w) => w.name === name)!;
-        ways.set(name, await waysFor(state, name, state.starts.get(name), places, (place) => send(walking, m, stories.goTo!(place))));
+        ways.set(name, await waysFor(state, name, state.starts.get(name), places, async (place) => { await send(walking, m, stories.goTo!(place)); }));
       }
       return { state, ways };
     } finally {
