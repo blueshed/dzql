@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **A write carries an id, and what answers it is its own** (todo n14; n5 said why, this says
+  whose). The wire is `{id?, doc, ops}`: the echo of the change a write made goes to its writer
+  with the write's id (`{type: "patch", …, id}`), and a write that applies nothing is answered
+  `{type: "refused", id, reason?}` before the page is handed back. So a form's values go back only
+  on its own write's refusal -- a page sent whole for another reason while it is on its way
+  (someone else's write turning the page into another) no longer puts the sent text back -- its
+  own echo ends the wait, and `eta.inspect().lastSent` (now `{id, doc, ops, echoed, refused,
+  reason?}`) is marked only by its own echo or refusal, never anyone's echo of its document or an
+  earlier write's refusal. The harness sends every write with an id: a `does` lands when its
+  author is echoed that id, a `cannot` must be refused by it, and its `told` must be the reason
+  that refusal gave; a refused `does` or premise says why. A page sent whole now says `wire: 2`.
+  - A page from before this (a tab left open over the deploy) sends no id and is answered as it
+    always was; a new page that meets a server of another wire (a rollback) loads itself again,
+    once a minute at most.
+  - A browser test that draws the page by hand sends `renderMessage(html)` (so it says the wire,
+    or the page loads again), and one that refuses a write sends `{type: "refused", id}` first:
+    a page whole alone hands nothing back now. `src/client/app.test.ts` keeps each write's id in
+    `window.__ids`, and `pushRefused` refuses the last.
+  - A harness failure for a refusal reads `refused, but <who> was not answered: …` or `refused,
+    but it landed …`, where it read `a refusal hands the page back`.
+
 - **An applet's mount says exactly what it writes** (todo n78): `appletWrites([doc, op, path], …)`,
   where a segment that is only `*` is any one segment (`["team", "replace", "/requests/*/starts"]`).
   `appletWrites([doc, path], …)` offered every write under each path, so a page that lost a
