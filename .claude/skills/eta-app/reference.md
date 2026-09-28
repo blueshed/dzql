@@ -355,7 +355,9 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
   it holds differs, as it would from a form that creates. It keeps a tick not yet drawn (a
   radio's by its value, while its group offers it) and otherwise shows what is drawn. A
   `multiple` select is not a field here (a write carries one value): an editing form never sends
-  it, nor a refusal hands it back.
+  it, nor a refusal hands it back. Escape (which presses the last `[data-escape]`) and the back
+  button first say the editing form someone is in, as leaving its field would: a drawer's words
+  are not lost with it, though WebKit fires no `focusout` for a field a render takes out.
 
 Also:
 
