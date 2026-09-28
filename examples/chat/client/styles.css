@@ -45,7 +45,7 @@ input { font-size: 15px; }
 .people { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: var(--space-md); list-style: none; margin: 0 0 var(--space-md); padding: 0 0 var(--space-md); border-bottom: 1px solid var(--line); }
 .people .who { display: inline-flex; align-items: center; gap: var(--space-xs); }
 .face { display: inline-grid; place-items: center; width: var(--control); height: var(--control); border-radius: 50%; border: 1px solid var(--edge); background: var(--well); font-size: 14px; font-weight: 700; flex: 0 0 auto; }
-.face.me { background: var(--mine); border-color: var(--accent); color: var(--accent); } /* you, among who is here: your colour, not your name */
+.face.me { background: var(--mine); border-color: var(--accent); color: var(--ink); } /* you, among who is here: your colour and the accent's ring, not your name */
 .face-gap { width: var(--control); flex: 0 0 auto; } /* a run's later messages keep the face's place */
 
 /* ── the conversation: bubbles, then the one form that says something ── */
