@@ -82,9 +82,13 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .page.box { margin: 0; }
 .cells { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: var(--tray-areas-phone); gap: var(--space-md); padding: var(--space-md); background: var(--tray); border-radius: var(--radius-tray); box-shadow: var(--shadow-tray); }
 .cell { position: relative; display: flex; flex-direction: column; gap: var(--space-sm); min-height: 96px; min-width: 0; padding: var(--space-lg); background: var(--card); border-radius: 0; overflow: hidden; }
-.cell[role="button"] { cursor: pointer; }
-.cell[role="button"]:hover { background: var(--card-hover); }
-.cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }
+/* a cell that opens is tapped anywhere on it, and its name is its button: the keyboard's stop, the
+   ring drawn round the whole cell */
+.cell:has(> .cell-head > button.cell-name) { cursor: pointer; }
+.cell:has(> .cell-head > button.cell-name):hover { background: var(--card-hover); }
+.cell:has(> .cell-head > button.cell-name:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }
+.cell-head > button.cell-name { text-align: start; letter-spacing: inherit; text-transform: inherit; }
+.cell-head > button.cell-name:focus-visible { outline: none; }
 .cell-head { display: flex; align-items: center; gap: 7px; }
 .cell-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cell-icon, .chev { display: inline-flex; align-items: center; color: var(--accent); }
@@ -92,7 +96,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .cell-summary { margin: -4px 0 0; font-size: 14px; color: var(--muted); }
 .cell-body { position: relative; flex: 1; min-height: 0; }
 /* a cell that is a thing: ✎, a tap opens its drawer, lit while it is open (rule 15) */
-.thing[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
+.thing[aria-pressed="true"], .thing:has(> .cell-head > [aria-pressed="true"]) { box-shadow: inset 0 0 0 2px var(--accent); }
 @media (max-width: 819px) {
   .cell[data-corners-phone~="tl"] { border-top-left-radius: var(--radius-corner); }
   .cell[data-corners-phone~="tr"] { border-top-right-radius: var(--radius-corner); }
@@ -174,7 +178,7 @@ body:has(.page.windowed) { overflow: hidden; }
 .row .state { flex: 0 0 auto; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; text-align: right; }
 .row .mark { flex: 0 0 auto; display: inline-flex; color: var(--mark); }
 .row .mark .icon-chevron-right { color: var(--accent); }
-.row.tap { cursor: pointer; }
+.row.tap { width: calc(100% + 2 * var(--space-md)); text-align: start; cursor: pointer; } /* a button, the whole line */
 .row.tap:hover { background: rgba(var(--ink-rgb), 0.04); }
 .row.tap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .row[aria-pressed="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
@@ -237,6 +241,6 @@ dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
 /* forced colours (Windows High Contrast) take away shadows and backgrounds: what is chosen or
    pressed is drawn with an outline instead */
 @media (forced-colors: active) {
-  .thing[aria-pressed="true"], .row[aria-pressed="true"], .tool[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .thing[aria-pressed="true"], .thing:has(> .cell-head > [aria-pressed="true"]), .row[aria-pressed="true"], .tool[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
   .cell, .stack, .drawer, dialog.modal, .undo-said { border: 1px solid CanvasText; }
 }

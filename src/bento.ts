@@ -242,19 +242,24 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
 
   // ───────────────────────────── the tray ─────────────────────────────
 
-  /** A cell, closed: its mark and name, a › because it opens (✎ when it is a thing), a summary, a small reading. */
+  /**
+   * A cell, closed: its mark and name, a › because it opens (✎ when it is a thing), a summary, a
+   * small reading. One that opens is tapped anywhere (its write is the cell's), and its name is a
+   * button, so Tab stops there and Enter or Space opens it; a thing's is pressed while its drawer is open.
+   */
   function cell(o: CellOptions<I>): Placeable {
     const key = o.key ?? slug(o.name);
-    const name = `<span class="cell-name">${esc(o.name)}${o.count != null ? ` · ${o.count}` : ""}</span>`;
+    const tap = o.opens ?? o.thing?.open;
+    const said = `${esc(o.name)}${o.count != null ? ` · ${o.count}` : ""}`;
+    const pressed = o.thing ? ` aria-pressed="${o.thing.chosen}"` : "";
+    const name = tap ? `<button type="button" class="cell-name"${pressed}>${said}</button>` : `<span class="cell-name">${said}</span>`;
     const mark = o.mark ? `<span class="cell-icon">${icon(o.mark, 18)}</span>` : "";
     const chev = o.opens ? `<span class="chev">${icon("chevron-right", 18)}</span>` : o.thing ? `<span class="chev pencil">${icon("pencil", 16)}</span>` : "";
-    const tap = o.opens ?? o.thing?.open;
     // rule 7 (K1): a cell that opens names itself for the view transition, in the box's
     // render and the open render alike -- one attribute, one element
     const moving = o.opens ? ` data-moving="${esc(key)}"` : "";
-    const thing = o.thing ? ` aria-pressed="${o.thing.chosen}"` : "";
     const html = join(
-      `<div class="cell${o.big ? " big" : ""}${o.thing ? " thing" : ""}" data-key="${key}"${moving}${thing}${tap ? ` role="button" tabindex="0"${tap}` : ""}>`,
+      `<div class="cell${o.big ? " big" : ""}${o.thing ? " thing" : ""}" data-key="${key}"${moving}${tap ?? ""}>`,
       `<div class="cell-head cap">${mark}${name}${chev}</div>`,
       o.summary && `<p class="cell-summary">${esc(o.summary)}</p>`,
       o.body && `<div class="cell-body">${o.body}</div>`,
@@ -322,18 +327,19 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
 
   // ───────────────────────────── the rows ─────────────────────────────
 
-  /** A row of a list: one line per thing, the same columns on every list -- a lead, the words, the state, the mark. */
+  /** A row of a list: one line per thing, the same columns on every list -- a lead, the words, the state, the mark. One that taps is a button, the whole line. */
   function row(o: RowOptions): string {
     const classes = ["row", o.tap && "tap", o.hushed && "hushed"].filter(Boolean).join(" ");
-    const attrs = join(o.id && ` id="${esc(o.id)}"`, o.tap && ` role="button" tabindex="0"${o.tap}`, o.chosen !== undefined && ` aria-pressed="${o.chosen}"`, o.chosen && " data-reveal", o.hidden && " hidden");
+    const attrs = join(o.id && ` id="${esc(o.id)}"`, o.tap, o.chosen !== undefined && ` aria-pressed="${o.chosen}"`, o.chosen && " data-reveal", o.hidden && " hidden");
     const mark = o.mark === "pencil" ? `<span class="mark">${icon("pencil", 16)}</span>` : o.mark === "chevron" ? `<span class="mark">${icon("chevron-right", 18)}</span>` : "";
+    const tag = o.tap ? "button" : "div";
     const html = join(
-      `<div class="${classes}"${attrs}>`,
+      `<${tag}${o.tap ? ' type="button"' : ""} class="${classes}"${attrs}>`,
       o.lead && `<span class="lead">${o.lead}</span>`,
       `<span class="words"><span class="what">${esc(o.what)}</span>${o.note ? `<span class="note">${esc(o.note)}</span>` : ""}</span>`,
       o.state && `<span class="state">${o.state}</span>`,
       mark,
-      "</div>",
+      `</${tag}>`,
     );
     return o.id ? part(o.id, html) : html; // a row with an id is sent alone when it alone changed
   }

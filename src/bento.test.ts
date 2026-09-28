@@ -1,6 +1,8 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { address, bento, choice, layers, matches, parseAddress, patchCollections, prop, rows, type Collections } from "./bento";
 import { esc, join, write } from "./html";
+import { waitFor } from "./webview";
+import fixture from "./bento.test.html";
 
 // an example's icons, as the bento sees them: a name and a size in, markup out
 const icon = (name: string, size = 16): string => `<i data-icon="${name}" data-size="${size}"></i>`;
@@ -82,15 +84,15 @@ describe("the surfaces", () => {
     expect(hid.filter).toContain(`aria-label="Show what misses" aria-pressed="true" data-write='{"doc":"desk","op":"remove","path":"/hide/market"}'><i data-icon="eye-off"`);
   });
 
-  test("a cell: › and data-moving when it opens, ✎ and pressed when it is a thing, neither when it is only read", () => {
+  test("a cell: › and data-moving when it opens, ✎ and pressed when it is a thing, neither when it is only read; its name is its button when it opens", () => {
     const opens = b.cell({ name: "The board", mark: "chart", count: 2, big: true, opens: open, summary: "live", body: "<svg/>" });
     expect(opens).toMatchObject({ key: "the-board", span: 3, rows: 1 });
-    expect(opens.html).toContain(`<div class="cell big" data-key="the-board" data-moving="the-board" role="button" tabindex="0"${open}>`);
-    expect(opens.html).toContain('<span class="cell-name">The board · 2</span><span class="chev"><i data-icon="chevron-right"');
+    expect(opens.html).toContain(`<div class="cell big" data-key="the-board" data-moving="the-board"${open}>`);
+    expect(opens.html).toContain('<button type="button" class="cell-name">The board · 2</button><span class="chev"><i data-icon="chevron-right"');
     expect(opens.html).toContain('<p class="cell-summary">live</p><div class="cell-body"><svg/></div>');
     const thing = b.cell({ name: "clock", key: "c", span: 2, thing: { open, chosen: true } });
     expect(thing).toMatchObject({ key: "c", span: 2 });
-    expect(thing.html).toContain(`<div class="cell thing" data-key="c" aria-pressed="true" role="button" tabindex="0"${open}>`);
+    expect(thing.html).toContain(`<div class="cell thing" data-key="c"${open}><div class="cell-head cap"><button type="button" class="cell-name" aria-pressed="true">clock</button>`);
     expect(thing.html).toContain('<span class="chev pencil">');
     const read = b.cell({ name: "quiet" });
     expect(read.span).toBe(1);
@@ -143,9 +145,10 @@ describe("the surfaces", () => {
     expect(out).not.toContain('class="cells"');
   });
 
-  test("a row: a lead, the words, the state, the mark; tapped, chosen, hushed or hidden as it is told", () => {
+  test("a row: a lead, the words, the state, the mark; tapped (a button, the whole line), chosen, hushed or hidden as it is told", () => {
     const out = b.row({ id: "r-1", tap: open, chosen: true, hushed: true, hidden: true, lead: "<img>", what: "Ada & co", note: "two", state: "<b>here</b>", mark: "pencil" });
-    expect(out).toContain(`<div data-eta-part="r-1" class="row tap hushed" id="r-1" role="button" tabindex="0"${open} aria-pressed="true" data-reveal hidden>`);
+    expect(out).toStartWith(`<button data-eta-part="r-1" type="button" class="row tap hushed" id="r-1"${open} aria-pressed="true" data-reveal hidden>`);
+    expect(out).toEndWith("</button>");
     expect(out).toContain('<span class="lead"><img></span><span class="words"><span class="what">Ada &amp; co</span><span class="note">two</span></span><span class="state"><b>here</b></span><span class="mark"><i data-icon="pencil"');
     expect(b.row({ what: "plain", mark: "chevron" })).toBe('<div class="row"><span class="words"><span class="what">plain</span></span><span class="mark"><i data-icon="chevron-right" data-size="18"></i></span></div>');
     expect(b.row({ what: "read only" })).not.toContain("mark");
@@ -250,5 +253,64 @@ describe("patchCollections", () => {
     expect(patchCollections(ui, remove("/hide/market"))).toBe(false);
     expect(patchCollections(ui, remove("/filter/rooms"))).toBe(false);
     expect(ui).toEqual({ filter: { market: "al" } });
+  });
+});
+
+// The surfaces as a person meets them: drawn in a real browser with the kernel's stylesheet and its
+// client (src/client/app.ts), the socket stubbed as src/client/app.test.ts stubs it -- what the
+// client would send is kept in `window.__sent`, and a render is a message on its own socket.
+describe("the surfaces in a browser", () => {
+  let server: ReturnType<typeof Bun.serve>;
+  beforeAll(() => {
+    server = Bun.serve({
+      port: 0,
+      routes: { "/": fixture, "/ws": (req, server) => (server.upgrade(req, { data: {} }) ? undefined : new Response("Upgrade failed", { status: 400 })) },
+      websocket: { open() {}, message() {}, close() {} },
+    });
+  });
+  afterAll(() => server.stop(true));
+
+  /** A phone's view of `html`, drawn as a render the server sent. */
+  async function show(html: string, width = 375): Promise<Bun.WebView> {
+    const view = new Bun.WebView({ width, height: 740 });
+    await view.navigate(server.url.toString());
+    await waitFor(view, `window.eta?.socket()?.readyState === 1`, (v) => v === true);
+    await view.evaluate(`(() => { window.__sent = []; window.eta.socket().send = (data) => window.__sent.push(JSON.parse(data)); })()`);
+    await draw(view, html);
+    return view;
+  }
+
+  /** The server drawing the page again. */
+  async function draw(view: Bun.WebView, html: string): Promise<void> {
+    const payload = JSON.stringify({ type: "render", html });
+    await view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(payload)} }))`);
+    await waitFor(view, `document.getElementById('app').innerHTML.length > 0`, (v) => v === true);
+  }
+
+  const sent = (view: Bun.WebView) => view.evaluate<{ doc: string; ops: { op: string; path: string; value?: unknown }[] }[]>(`window.__sent`);
+  const go = (page: string) => write("desk", "replace", "/page", page);
+
+  test("what opens is a button: each cell, thing and row that opens is where a Tab stops, and Space or Enter opens it", async () => {
+    const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } }), b.cell({ name: "quiet" })];
+    const list = rows([b.row({ id: "r-a", tap: go("?symbol=A"), what: "Alpha", mark: "pencil" }), b.row({ id: "r-b", what: "Beta" })], "none");
+    await using view = await show(b.boxPage([{ label: "The desk" }], [list], cells));
+    // where a Tab stops in each: the element itself, or what in it takes the keyboard
+    const stop = (selector: string) => `(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el.matches('button, a[href], [tabindex]') ? el : el.querySelector('button, a[href], [tabindex]'); })()`;
+    const opens: [string, string][] = [['.cell[data-key="board"]', "board"], ['.cell[data-key="clock"]', "?clock"], ["#r-a", "?symbol=A"]];
+    for (const [selector, page] of opens) {
+      await view.evaluate(`(window.__sent = [], ${stop(selector)}.focus())`);
+      await view.press("Space");
+      await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000).catch(() => {});
+      expect({ selector, sent: await sent(view) }).toEqual({ selector, sent: [{ doc: "desk", ops: [{ op: "replace", path: "/page", value: page }] }] });
+      expect(await view.evaluate<string>(`${stop(selector)}.tagName`)).toBe("BUTTON"); // so Enter opens it too: the browser's own
+      // WebKit's press("Enter") is an editing command, not a key, so it is Chrome that says so
+      if (process.platform !== "darwin") {
+        await view.press("Enter");
+        await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+      }
+    }
+    // what only reads is not a stop at all
+    expect(await view.evaluate<boolean>(`document.querySelector('.cell[data-key="quiet"]').matches(':is(button, [tabindex]), :has(button, [tabindex])')`)).toBe(false);
+    expect(await view.evaluate<boolean>(`document.getElementById('r-b').matches(':is(button, [tabindex]), :has(button, [tabindex])')`)).toBe(false);
   });
 });

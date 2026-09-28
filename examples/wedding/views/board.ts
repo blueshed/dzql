@@ -91,14 +91,14 @@ export function boardPage(v: BoardView): string {
 // ───────────────────────────── the page ─────────────────────────────
 
 /** The welcome as the couple's own thing (rule 15), over the photo: their words, the day, the place, the deadline, carrying ✎;
- * a tap opens the drawer where the whole of it is edited, and it is lit while that drawer is open. Their names are the trail's. */
+ * a button: a tap opens the drawer where the whole of it is edited, and it is lit while that drawer is open. Their names are the trail's. */
 function welcomeBubble(b: BoardDocument, open: boolean, edit: string): string {
   return join(
-    `<div class="bubble couple thing" role="button" tabindex="0" aria-pressed="${open}"${edit}>`,
-    `<div class="bubble-words${b.message ? "" : " empty"}"><span>${esc(b.message || "Your words on the welcome")}</span>`,
-    `<span class="note">${esc(formatDay(b.day))}${b.venue ? ` · ${esc(b.venue)}` : ""}${b.deadline ? ` · answers by ${esc(formatDay(b.deadline))}` : ""}</span></div>`,
+    `<button type="button" class="bubble couple thing" aria-pressed="${open}"${edit}>`,
+    `<span class="bubble-words${b.message ? "" : " empty"}"><span>${esc(b.message || "Your words on the welcome")}</span>`,
+    `<span class="note">${esc(formatDay(b.day))}${b.venue ? ` · ${esc(b.venue)}` : ""}${b.deadline ? ` · answers by ${esc(formatDay(b.deadline))}` : ""}</span></span>`,
     `<span class="pencil" aria-hidden="true">${icon("pencil", 16)}</span>`,
-    "</div>",
+    "</button>",
   );
 }
 

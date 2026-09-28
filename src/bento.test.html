@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./bento.css" />
+    <style>
+      /* an example's own: its tokens, as src/bento.css's header lists them, and its small caps */
+      :root { --paper: #f6f3ee; --tray: #e7e1d6; --card: #fffdf9; --card-hover: #f4efe6; --well: #efe9df; --ink: #2a2622; --muted: #6b645c; --line: #e3ddd3; --edge: #8a8278; --ink-rgb: 42, 38, 34; --accent: #1f3f8f; }
+      body { margin: 0; padding: 16px 0; background: var(--paper); color: var(--ink); font-family: system-ui, sans-serif; font-size: 15px; line-height: 1.45; }
+      .cap { font-size: 11.5px; line-height: 16px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <main id="app"></main>
+    <script type="module" src="./client/app.test.entry.ts"></script>
+  </body>
+</html>

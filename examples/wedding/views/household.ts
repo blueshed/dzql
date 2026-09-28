@@ -106,16 +106,16 @@ export function householdPage(v: HouseholdView): string {
 
 // ───────────────────────────── the page ─────────────────────────────
 
-/** What the household says, over the photo: the chosen face and the words. A thing (rule 15): ✎
- * opens the answer's drawer, and it is lit while the drawer is open. */
+/** What the household says, over the photo: the chosen face and the words. A thing (rule 15), and a
+ * button: ✎ opens the answer's drawer, and it is lit while the drawer is open. */
 function speechBubble(h: HouseholdDocument, open: boolean, answer: string): string {
   const words = h.message ?? "";
   return join(
-    `<div class="bubble ours thing${h.answer ? " answered" : ""}" role="button" tabindex="0" aria-pressed="${open}"${answer}>`,
+    `<button type="button" class="bubble ours thing${h.answer ? " answered" : ""}" aria-pressed="${open}"${answer}>`,
     faceMark(h.answer),
-    `<div class="bubble-words${words ? "" : " empty"}">${esc(words || (h.answer ? `${answerSays(h.answer)}.` : "Are you coming?"))}</div>`,
+    `<span class="bubble-words${words ? "" : " empty"}">${esc(words || (h.answer ? `${answerSays(h.answer)}.` : "Are you coming?"))}</span>`,
     `<span class="pencil" aria-hidden="true">${icon("pencil", 16)}</span>`,
-    "</div>",
+    "</button>",
   );
 }
 

@@ -181,6 +181,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   choose travel again, and the second choice went nowhere. `blur` and `change` forms had no such
   guard, so leaving a field twice sent it twice before the echo. Every editing form now drops a
   repeat until a write lands (a patch), and not after.
+- **What opens, opens from the keyboard** (todo n57). A cell, a row and the wedding's bubbles were
+  `div`s with `role="button"`: Tab reached them, and Enter and Space did nothing. A cell's name is
+  its button now (the cell is still tapped anywhere; a thing's name carries `aria-pressed`), a row
+  that taps is a `<button>`, the whole line, and so are the bubbles.
 
 ## [0.49.0] - 2026-09-25
 

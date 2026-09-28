@@ -142,7 +142,7 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 .bubble::after { content: ""; position: absolute; left: 26px; bottom: -12px; border: 12px solid transparent; border-top-color: var(--card); border-bottom: 0; }
 .bubble.theirs { grid-template-columns: auto minmax(0, 1fr); }
 .bubble.couple { grid-template-columns: minmax(0, 1fr) auto; }
-.bubble.thing { cursor: pointer; }
+.bubble.thing { width: 100%; text-align: start; cursor: pointer; } /* a button: as wide as the words may be, and read from the start */
 .bubble-words { font-size: 16px; line-height: 1.35; display: flex; flex-direction: column; gap: 2px; }
 .bubble-words.empty { color: var(--muted); }
 .welcome-names { font-family: var(--serif); font-weight: 600; font-size: 18px; color: var(--navy); }
