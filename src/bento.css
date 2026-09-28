@@ -32,6 +32,9 @@
    that draws its own (a field, a cell, a row) says so below */
 :where(a, button, summary, [role="button"], [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .icon { flex: 0 0 auto; }
+/* a target drawn smaller than a finger is pressed over a finger's size: the drawing stays, and the
+   hit area is --touch each way, centred on it (a way back on the trail, in the window's trail, find's eye) */
+.crumbs a::after, .cell.open .cell-back::after, .filter .tool::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, var(--touch)); height: max(100%, var(--touch)); translate: -50% -50%; }
 
 /* ── controls: a button with a word, a field, a choice ── */
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
@@ -46,7 +49,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .tool.quiet { border-color: var(--edge); color: var(--ink); font-weight: 500; }
 .tool.add { border-color: var(--add); color: var(--add); }
 .tool.danger { border-color: var(--danger); color: var(--danger); }
-.tool[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--card); }
+.tool:is([aria-pressed="true"], [aria-expanded="true"]) { background: var(--accent); border-color: var(--accent); color: var(--card); } /* on, or its drawer open */
 .pick { display: inline-flex; gap: var(--space-xs); }
 /* why a write was refused, beside the control that sent it (src/refusal.ts) */
 .refused { margin: var(--space-xs) 0 0; color: var(--danger); }
@@ -60,7 +63,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .stack > .tool:last-child { border-bottom: 0; }
 .stack > .tool:focus-visible { outline-offset: -3px; } /* the stack clips what is outside it */
 .stack > .tool:hover { background: rgba(var(--ink-rgb), 0.06); }
-.stack > .tool[aria-pressed="true"] { background: var(--accent); color: var(--card); }
+.stack > .tool:is([aria-pressed="true"], [aria-expanded="true"]) { background: var(--accent); color: var(--card); }
 .stack.across { flex-direction: row; }
 .stack.across > .tool { border-bottom: 0; border-right: 1px solid var(--line); }
 .stack.across > .tool:last-child { border-right: 0; }
@@ -70,10 +73,10 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 
 /* ── where am I: the trail, and the page's tools beside it on the box ── */
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); margin: 0 var(--space-lg) var(--space-lg); min-height: var(--control); }
-.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; row-gap: calc(var(--touch) - 1lh); } /* a trail that wraps keeps its lines a touch apart, so no crumb's press area lies over another's */
 .crumbs .crumb { display: inline-flex; align-items: center; }
 .crumbs .sep { display: inline-flex; align-items: center; justify-content: center; width: 22px; color: var(--muted); }
-.crumbs a { color: var(--accent); text-decoration: none; }
+.crumbs a { position: relative; color: var(--accent); text-decoration: none; }
 .crumbs a:hover, .crumbs a:focus-visible { text-decoration: underline; text-underline-offset: 3px; } /* and the ring */
 .crumbs b { font-weight: 600; }
 
@@ -82,9 +85,13 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .page.box { margin: 0; }
 .cells { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: var(--tray-areas-phone); gap: var(--space-md); padding: var(--space-md); background: var(--tray); border-radius: var(--radius-tray); box-shadow: var(--shadow-tray); }
 .cell { position: relative; display: flex; flex-direction: column; gap: var(--space-sm); min-height: 96px; min-width: 0; padding: var(--space-lg); background: var(--card); border-radius: 0; overflow: hidden; }
-.cell[role="button"] { cursor: pointer; }
-.cell[role="button"]:hover { background: var(--card-hover); }
-.cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }
+/* a cell that opens is tapped anywhere on it, and its name is its button: the keyboard's stop, the
+   ring drawn round the whole cell */
+.cell:has(> .cell-head > button.cell-name) { cursor: pointer; }
+.cell:has(> .cell-head > button.cell-name):hover { background: var(--card-hover); }
+.cell:has(> .cell-head > button.cell-name:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }
+.cell-head > button.cell-name { text-align: start; letter-spacing: inherit; text-transform: inherit; }
+.cell-head > button.cell-name:focus-visible { outline: none; }
 .cell-head { display: flex; align-items: center; gap: 7px; }
 .cell-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cell-icon, .chev { display: inline-flex; align-items: center; color: var(--accent); }
@@ -92,7 +99,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .cell-summary { margin: -4px 0 0; font-size: 14px; color: var(--muted); }
 .cell-body { position: relative; flex: 1; min-height: 0; }
 /* a cell that is a thing: ✎, a tap opens its drawer, lit while it is open (rule 15) */
-.thing[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
+.thing[aria-expanded="true"], .thing:has(> .cell-head > [aria-expanded="true"]) { box-shadow: inset 0 0 0 2px var(--accent); }
 @media (max-width: 819px) {
   .cell[data-corners-phone~="tl"] { border-top-left-radius: var(--radius-corner); }
   .cell[data-corners-phone~="tr"] { border-top-right-radius: var(--radius-corner); }
@@ -113,9 +120,12 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 @media (min-width: 820px) { .cell.open { inset: var(--space-2xl); } }
 .cell.open:hover { background: var(--card); }
 body:has(.page.windowed) { overflow: hidden; }
+/* what is in place on the box, put inert behind an open window: a wrapper that lays out nothing */
+.in-place { display: contents; }
 /* the trail floats top-left, a control: the box it came from is the way back */
 .cell.open .cell-head { position: absolute; top: var(--space-lg); left: var(--space-lg); z-index: 3; gap: 2px; height: var(--control); max-width: calc(100% - 2 * var(--space-lg) - var(--control) - var(--space-md)); padding: 0 var(--space-md) 0 2px; background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
-.cell.open .cell-back { display: inline-flex; align-items: center; height: 26px; padding: 0 var(--space-sm); border-radius: var(--radius-inner); color: var(--accent); text-decoration: none; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell.open .cell-back { position: relative; display: inline-flex; align-items: center; height: 26px; padding: 0 var(--space-sm); border-radius: var(--radius-inner); color: var(--accent); text-decoration: none; flex: 0 1 auto; min-width: 0; }
+.cell.open .cell-back > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* its words give way, not its hit area */
 /* a name that stands first (the root, nothing before it) keeps the inset a crumb before it would have, so the trail does not shift when it grows */
 .cell.open .cell-head > .cell-name:first-child { padding-left: var(--space-sm); }
 .cell.open .cell-root { display: inline-flex; align-items: center; height: 26px; padding: 0 var(--space-sm); color: var(--muted); white-space: nowrap; }
@@ -130,11 +140,11 @@ body:has(.page.windowed) { overflow: hidden; }
 .cell.open .page-tools { position: absolute; z-index: 3; right: var(--space-lg); bottom: var(--space-lg); }
 /* find: its field beside the rail, the tally, the eye (rule 17) */
 .filter { position: absolute; z-index: 3; top: var(--space-lg); right: calc(var(--space-lg) + var(--control) + var(--space-md)); display: flex; align-items: center; gap: var(--space-sm); height: var(--control); padding: 0 2px 0 var(--space-md); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
-.filter input { width: 140px; height: 24px; padding: 0; border: 0; background: transparent; font-size: 14px; }
+.filter input { width: 140px; height: 24px; padding: 0; border: 0; background: transparent; } /* 16px, as every field: iOS zooms into a smaller one */
 .filter input:focus-visible { outline: none; } /* the bar it sits in shows the focus */
 .filter:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .filter .tally { font-size: 12px; color: var(--muted); white-space: nowrap; }
-.filter .tool { width: 26px; height: 26px; min-height: 0; padding: 0; border: 0; border-radius: var(--radius-inner); background: transparent; color: var(--ink); } /* its own size, whatever an example says of buttons */
+.filter .tool { position: relative; flex: none; width: 26px; height: 26px; min-height: 0; padding: 0; border: 0; border-radius: var(--radius-inner); background: transparent; color: var(--ink); } /* its own size, whatever an example says of buttons, however narrow the bar */
 .filter .tool[aria-pressed="true"] { background: var(--accent); color: var(--card); }
 /* beside its own tool, wherever that stands in the rail; a browser that cannot anchor keeps it at
    the rail's top */
@@ -146,6 +156,8 @@ body:has(.page.windowed) { overflow: hidden; }
    reading moves down to keep clear of both */
 @media (max-width: 819.98px) {
   .filter { top: calc(var(--space-lg) + var(--control) + var(--space-sm)); left: var(--space-lg); }
+  /* the field takes what the tally and the eye leave: it is its form that stands in the bar */
+  .filter form { display: flex; flex: 1 1 auto; min-width: 0; }
   .filter input { flex: 1 1 auto; width: auto; min-width: 0; }
   .cell.open:has(> .filter) .full { padding-top: calc(2 * var(--space-lg) + 2 * var(--control) + var(--space-sm)); }
 }
@@ -174,10 +186,10 @@ body:has(.page.windowed) { overflow: hidden; }
 .row .state { flex: 0 0 auto; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; text-align: right; }
 .row .mark { flex: 0 0 auto; display: inline-flex; color: var(--mark); }
 .row .mark .icon-chevron-right { color: var(--accent); }
-.row.tap { cursor: pointer; }
+.row.tap { width: calc(100% + 2 * var(--space-md)); text-align: start; cursor: pointer; } /* a button, the whole line */
 .row.tap:hover { background: rgba(var(--ink-rgb), 0.04); }
 .row.tap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.row[aria-pressed="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+.row[aria-expanded="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
 
 
 /* ── the drawer: a figure's properties -- a panel at the right from 820px, a sheet from the foot below ── */
@@ -237,6 +249,6 @@ dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
 /* forced colours (Windows High Contrast) take away shadows and backgrounds: what is chosen or
    pressed is drawn with an outline instead */
 @media (forced-colors: active) {
-  .thing[aria-pressed="true"], .row[aria-pressed="true"], .tool[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .thing[aria-expanded="true"], .thing:has(> .cell-head > [aria-expanded="true"]), .row[aria-expanded="true"], .tool:is([aria-pressed="true"], [aria-expanded="true"]) { outline: 2px solid Highlight; outline-offset: -2px; }
   .cell, .stack, .drawer, dialog.modal, .undo-said { border: 1px solid CanvasText; }
 }

@@ -13,7 +13,7 @@ describe("photoSvg", () => {
     const svg = photoSvg(entries, "the family");
     expect(svg).toStartWith('<svg class="photo" viewBox="');
     expect(svg).toContain('aria-label="the family"');
-    expect(svg).toContain('role="button" tabindex="0" data-key="1" aria-pressed="false"');
+    expect(svg).toContain('role="button" tabindex="0" data-key="1" aria-expanded="false"');
     expect(svg).toContain('class="fig att-nodding ghost"');
     expect(svg).toContain('class="fig att-nodding out"');
     expect(svg).toContain('class="mark mark-yes"');
@@ -28,16 +28,16 @@ describe("photoSvg", () => {
   test("a figure that stands for a family is a button named for it, since nothing printed on it says what a tap opens", () => {
     const tap = { doc: "session", op: { op: "replace" as const, path: "/page", value: "everyone/4" } };
     const svg = photoSvg([{ key: "4", spec: look, count: 5, tap, name: "a family of 5" }], "the photo: the families");
-    expect(svg).toContain('role="button" tabindex="0" data-key="4" aria-label="a family of 5" aria-pressed="false"');
+    expect(svg).toContain('role="button" tabindex="0" data-key="4" aria-label="a family of 5" aria-expanded="false"');
   });
 
-  test("a chosen figure rings, is marked pressed, and scrolls into the clear (K2, rule 13)", () => {
+    test("a chosen figure rings, is marked expanded (its drawer is open), and scrolls into the clear (K2, rule 13)", () => {
     const entries: PhotoEntry[] = [
       { key: "1", spec: { ...look, name: "Ada" }, tap: { doc: "session", op: { op: "replace", path: "/page", value: "guests?guest=1" } }, chosen: true },
       { key: "2", spec: look },
     ];
     const svg = photoSvg(entries, "the family");
-    expect(svg).toContain('role="button" tabindex="0" data-key="1" aria-pressed="true"');
+    expect(svg).toContain('role="button" tabindex="0" data-key="1" aria-expanded="true"');
     expect(svg).toContain(' data-reveal data-slot="1">');
     expect(svg).toContain('<g class="slot chosen"');
     expect(svg).toContain('<ellipse class="ring" cx="50" cy="72" rx="58" ry="80"/>');

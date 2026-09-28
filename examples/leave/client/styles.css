@@ -60,7 +60,7 @@ h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
 .bar.approved { background: var(--who); border-color: var(--who); color: var(--who-ink); }
 button.bar { display: block; font: inherit; font-size: 11px; font-weight: 600; text-align: left; cursor: pointer; }
 .bar:hover { filter: brightness(0.95); }
-.bar[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); } /* its drawer is open */
+.bar[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ink); } /* its drawer is open */
 /* your draft: dashed, a tint of your colour -- what you would ask for, not yet asked */
 .bar.draft { border-style: dashed; background: color-mix(in srgb, var(--who) 18%, var(--card)); }
 /* your own waiting requests: dragged to move, stretched by a grip at either end */
@@ -84,7 +84,7 @@ button.bar { display: block; font: inherit; font-size: 11px; font-weight: 600; t
 .list-view [role="list"]:not(.vlist) { display: flex; flex-direction: column; } /* before the applet: every row, drawn by the server */
 .vrow { display: grid; grid-template-columns: auto 5rem 1fr auto; align-items: center; gap: var(--space-md); width: 100%; height: 52px; padding: 0 var(--space-md); border: 0; border-bottom: 1px solid var(--line); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .vrow:hover { background: rgba(var(--ink-rgb), 0.04); }
-.vrow[aria-pressed="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+.vrow[aria-expanded="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
 .vrow .who { font-weight: 600; }
 .vrow .state { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 

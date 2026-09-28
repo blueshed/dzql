@@ -158,9 +158,9 @@ export function calendarHtml(p: CalendarProps, preview: Preview | null = null): 
     const label = o.status === "draft" ? `your draft, ${days(span)}` : `${mine ? "you" : nameOf(o.person)}, ${WORD[o.status]}, ${days(span)}`;
     const whole = `${o.status === "draft" ? "Your draft" : mine ? "Yours" : nameOf(o.person)} · ${o.status === "draft" ? "not asked for yet" : WORD[o.status]} · ${days(span)} · ${worked(span)}`;
     const opens = go(o.id === null ? `${p.place}?draft` : `${p.place}?request=${o.id}`);
-    const pressed = o.id === null ? "" : ` aria-pressed="${p.open === o.id}"`;
+    const expanded = o.id === null ? "" : ` aria-expanded="${p.open === o.id}"`; // its drawer, open or not
     const grips = movable ? `<span class="grip start" aria-hidden="true"></span><span class="grip end" aria-hidden="true"></span>` : "";
-    return `<button type="button" class="bar ${o.status} who-${colourOf(p.team.people, o.person)}${ends}${movable ? " movable" : ""}" style="grid-column: ${c0 + 1} / span ${c1 - c0 + 1}" title="${esc(whole)}"${o.id ? ` data-request="${esc(o.id)}"` : ""}${pressed}${opens}>${grips}<span aria-hidden="true">${esc(shown)}</span><span class="sr-only">${esc(label)}</span></button>`;
+    return `<button type="button" class="bar ${o.status} who-${colourOf(p.team.people, o.person)}${ends}${movable ? " movable" : ""}" style="grid-column: ${c0 + 1} / span ${c1 - c0 + 1}" title="${esc(whole)}"${o.id ? ` data-request="${esc(o.id)}"` : ""}${expanded}${opens}>${grips}<span aria-hidden="true">${esc(shown)}</span><span class="sr-only">${esc(label)}</span></button>`;
   };
 
   const month = (m: string) => {
@@ -218,4 +218,4 @@ export function listRows(p: ListProps): Row[] {
 
 /** A row as the list applet draws it: a button that opens the request's drawer, saying where it stands in the whole list (a window of it is drawn at a time). */
 export const rowHtml = (row: Row, open: string | null, at?: number, of?: number): string =>
-  `<button type="button" class="vrow" role="listitem"${at ? ` aria-posinset="${at}" aria-setsize="${of}"` : ""} aria-pressed="${open === row.id}"${go(`list?request=${row.id}`)}><span class="swatch who-${row.colour}" aria-hidden="true"></span><span class="who">${esc(row.who)}</span>${row.mine ? '<span class="sr-only">yours</span>' : ""}<span class="when">${esc(row.days)}<span class="note"> · ${esc(row.worked)}</span></span><span class="state">${esc(row.state)}</span></button>`;
+  `<button type="button" class="vrow" role="listitem"${at ? ` aria-posinset="${at}" aria-setsize="${of}"` : ""} aria-expanded="${open === row.id}"${go(`list?request=${row.id}`)}><span class="swatch who-${row.colour}" aria-hidden="true"></span><span class="who">${esc(row.who)}</span>${row.mine ? '<span class="sr-only">yours</span>' : ""}<span class="when">${esc(row.days)}<span class="note"> · ${esc(row.worked)}</span></span><span class="state">${esc(row.state)}</span></button>`;

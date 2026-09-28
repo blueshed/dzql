@@ -82,7 +82,10 @@ export interface ToolOptions<I extends string> {
   label?: string;
   /** In a stack (rule 9): a square button, the word for a screen reader only. */
   iconOnly?: boolean;
+  /** A toggle, and whether it is on: find, the eye. */
   pressed?: boolean;
+  /** What opens a drawer, and whether it is open: the tool is drawn lit, and a screen reader hears it expanded. */
+  expanded?: boolean;
   disabled?: boolean;
   submit?: boolean;
 }
@@ -100,7 +103,7 @@ export interface RowOptions {
   id?: string;
   /** What a tap writes: the row's drawer, or the page it goes into. A row without one is read only. */
   tap?: string;
-  /** Lit across its whole line while its drawer is open (rule 13), and scrolled into the clear (K2). */
+  /** Lit across its whole line while its drawer is open (rule 13), and scrolled into the clear (K2); a screen reader hears it expanded. */
   chosen?: boolean;
   /** Find's word missed it (rule 17): dimmed, or with the eye, hidden. */
   hushed?: boolean;
@@ -190,7 +193,8 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     const word = o.iconOnly ? `<span class="sr-only">${esc(text)}</span>` : esc(text);
     const label = o.label ?? (o.iconOnly ? text : undefined); // a square button says its word to a screen reader
     const pressed = o.pressed === undefined ? "" : ` aria-pressed="${o.pressed}"`;
-    return `<button type="${o.submit ? "submit" : "button"}" class="tool${o.kind ? ` ${o.kind}` : ""}"${label ? ` aria-label="${esc(label)}"` : ""}${pressed}${o.disabled ? " disabled" : ""}${o.write}>${o.icon ? icon(o.icon) : ""}${word}</button>`;
+    const expanded = o.expanded === undefined ? "" : ` aria-expanded="${o.expanded}"`;
+    return `<button type="${o.submit ? "submit" : "button"}" class="tool${o.kind ? ` ${o.kind}` : ""}"${label ? ` aria-label="${esc(label)}"` : ""}${pressed}${expanded}${o.disabled ? " disabled" : ""}${o.write}>${o.icon ? icon(o.icon) : ""}${word}</button>`;
   }
 
   /** The page's own tools -- undo and redo, writes to the ledger, the kernel's own document, and leaving -- one stack, at the bottom right of the window, or across beside the trail on the box (rule 9). */
@@ -242,19 +246,25 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
 
   // ───────────────────────────── the tray ─────────────────────────────
 
-  /** A cell, closed: its mark and name, a › because it opens (✎ when it is a thing), a summary, a small reading. */
+  /**
+   * A cell, closed: its mark and name, a › because it opens (✎ when it is a thing), a summary, a
+   * small reading. One that opens is tapped anywhere (its write is the cell's), and its name is a
+   * button, so Tab stops there and Enter or Space opens it: expanded while a thing's drawer is open,
+   * and never while it opens a window, since the window is what it grows into.
+   */
   function cell(o: CellOptions<I>): Placeable {
     const key = o.key ?? slug(o.name);
-    const name = `<span class="cell-name">${esc(o.name)}${o.count != null ? ` · ${o.count}` : ""}</span>`;
+    const tap = o.opens ?? o.thing?.open;
+    const said = `${esc(o.name)}${o.count != null ? ` · ${o.count}` : ""}`;
+    const expanded = ` aria-expanded="${!!o.thing?.chosen}"`;
+    const name = tap ? `<button type="button" class="cell-name"${expanded}>${said}</button>` : `<span class="cell-name">${said}</span>`;
     const mark = o.mark ? `<span class="cell-icon">${icon(o.mark, 18)}</span>` : "";
     const chev = o.opens ? `<span class="chev">${icon("chevron-right", 18)}</span>` : o.thing ? `<span class="chev pencil">${icon("pencil", 16)}</span>` : "";
-    const tap = o.opens ?? o.thing?.open;
     // rule 7 (K1): a cell that opens names itself for the view transition, in the box's
     // render and the open render alike -- one attribute, one element
     const moving = o.opens ? ` data-moving="${esc(key)}"` : "";
-    const thing = o.thing ? ` aria-pressed="${o.thing.chosen}"` : "";
     const html = join(
-      `<div class="cell${o.big ? " big" : ""}${o.thing ? " thing" : ""}" data-key="${key}"${moving}${thing}${tap ? ` role="button" tabindex="0"${tap}` : ""}>`,
+      `<div class="cell${o.big ? " big" : ""}${o.thing ? " thing" : ""}" data-key="${key}"${moving}${tap ?? ""}>`,
       `<div class="cell-head cap">${mark}${name}${chev}</div>`,
       o.summary && `<p class="cell-summary">${esc(o.summary)}</p>`,
       o.body && `<div class="cell-body">${o.body}</div>`,
@@ -266,14 +276,16 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
   /**
    * The window: the cell open. Its head is the whole trail, as the page's own is, so the
    * way to the root is never lost by opening something: every earlier crumb with a `back` is a way
-   * back, one without is only named, and the last is the cell's name.
+   * back, one without is only named, and the last is the cell's name. It is a region by that name,
+   * so what a screen reader says as the keyboard goes in is what opened.
    */
   function windowOf(trail: Crumb[], open: OpenOptions): string {
     const chev = `<span class="chev">${icon("chevron-right", 14)}</span>`;
-    const ways = trail.slice(0, -1).map((c) => (c.back !== undefined ? `<a class="cell-back" href="#"${c.back}>${esc(c.label)}</a>` : `<span class="cell-root">${esc(c.label)}</span>`) + chev);
+    const ways = trail.slice(0, -1).map((c) => (c.back !== undefined ? `<a class="cell-back" href="#"${c.back}><span>${esc(c.label)}</span></a>` : `<span class="cell-root">${esc(c.label)}</span>`) + chev);
+    const name = esc(trail[trail.length - 1]!.label);
     return part(open.key, join(
-      `<div class="cell open" data-key="${open.key}" data-moving="${esc(open.key)}">`,
-      `<div class="cell-head cap">${ways.join("")}<span class="cell-name">${esc(trail[trail.length - 1]!.label)}</span></div>`,
+      `<div class="cell open" data-key="${open.key}" data-moving="${esc(open.key)}" role="region" aria-label="${name}">`,
+      `<div class="cell-head cap">${ways.join("")}<span class="cell-name">${name}</span></div>`,
       `<div class="rail work">`,
       open.reading,
       open.tools && open.tools.length > 0 && `<div class="stack">${open.tools.join("")}</div>`,
@@ -293,21 +305,27 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
    * (rule 7: the same element, `data-moving`, bigger), with its trail floating top-left, its rail
    * at the right and the page's tools at the bottom right (rule 9). The tray is computed
    * (src/grid.ts): each cell lands in its area, first-fit in the box's own order, and learns
-   * which of the tray's corners it sits in, for three columns and for one.
+   * which of the tray's corners it sits in, for three columns and for one. While a window is open,
+   * what is behind it -- the trail, the other cells, what is in place -- is `inert`: not to be
+   * reached or heard until it closes.
    */
   function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], open?: OpenOptions): string {
     const wide = grid(cells, COLUMNS);
     const narrow = grid(cells, 1);
     const cornersOf = (t: Grid, key: string): string => t.cells.find((c) => c.key === key)!.corners.join(" ");
+    const behind = open ? " inert" : "";
     const placed = cells.map((c) => {
       if (open && c.key === open.key) return windowOf(trail, open);
-      return part(c.key, c.html.replace(`data-key="${c.key}"`, `data-key="${c.key}" data-corners="${cornersOf(wide, c.key)}" data-corners-phone="${cornersOf(narrow, c.key)}" style="grid-area: ${c.key}"`));
+      return part(c.key, c.html.replace(`data-key="${c.key}"`, `data-key="${c.key}" data-corners="${cornersOf(wide, c.key)}" data-corners-phone="${cornersOf(narrow, c.key)}" style="grid-area: ${c.key}"${behind}`));
     });
     const areas = (t: Grid): string => t.areas.replace(/\n/g, " ");
     return join(
-      `<header class="page-head">${crumbs(trail)}${open ? "" : pageTools("across")}</header>`,
+      `<header class="page-head"${behind}>${crumbs(trail)}${open ? "" : pageTools("across")}</header>`,
       `<section class="page box${open ? " windowed" : ""}">`,
+      // always wrapped, so a window opening changes the wrapper's tag and nothing the morph matches by position
+      `<div class="in-place"${behind}>`,
       ...inPlace,
+      "</div>",
       `<div class="cells" style='--tray-areas: ${areas(wide)}; --tray-areas-phone: ${areas(narrow)}'>${placed.join("")}</div>`,
       "</section>",
     );
@@ -322,18 +340,19 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
 
   // ───────────────────────────── the rows ─────────────────────────────
 
-  /** A row of a list: one line per thing, the same columns on every list -- a lead, the words, the state, the mark. */
+  /** A row of a list: one line per thing, the same columns on every list -- a lead, the words, the state, the mark. One that taps is a button, the whole line. */
   function row(o: RowOptions): string {
     const classes = ["row", o.tap && "tap", o.hushed && "hushed"].filter(Boolean).join(" ");
-    const attrs = join(o.id && ` id="${esc(o.id)}"`, o.tap && ` role="button" tabindex="0"${o.tap}`, o.chosen !== undefined && ` aria-pressed="${o.chosen}"`, o.chosen && " data-reveal", o.hidden && " hidden");
+    const attrs = join(o.id && ` id="${esc(o.id)}"`, o.tap, o.chosen !== undefined && ` aria-expanded="${o.chosen}"`, o.chosen && " data-reveal", o.hidden && " hidden");
     const mark = o.mark === "pencil" ? `<span class="mark">${icon("pencil", 16)}</span>` : o.mark === "chevron" ? `<span class="mark">${icon("chevron-right", 18)}</span>` : "";
+    const tag = o.tap ? "button" : "div";
     const html = join(
-      `<div class="${classes}"${attrs}>`,
+      `<${tag}${o.tap ? ' type="button"' : ""} class="${classes}"${attrs}>`,
       o.lead && `<span class="lead">${o.lead}</span>`,
       `<span class="words"><span class="what">${esc(o.what)}</span>${o.note ? `<span class="note">${esc(o.note)}</span>` : ""}</span>`,
       o.state && `<span class="state">${o.state}</span>`,
       mark,
-      "</div>",
+      `</${tag}>`,
     );
     return o.id ? part(o.id, html) : html; // a row with an id is sent alone when it alone changed
   }

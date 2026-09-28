@@ -280,7 +280,7 @@ describe("the ticker", () => {
     expect(html).toContain('class="row tap hushed" id="m-ALPH"');
     expect(html).toContain(">1 of 16</span>");
     html = await page([{ op: "replace", path: "/hide/market", value: true }]);
-    expect(html).toMatch(/id="m-ALPH"[^>]* aria-pressed="false" hidden>/);
+    expect(html).toMatch(/id="m-ALPH"[^>]* aria-expanded="false" hidden>/);
     html = await page([{ op: "remove", path: "/filter/market" }]);
     expect(html).not.toContain("hushed");
     // a tick sends a session reading the market the one row it moved, and nothing to one on the box
@@ -302,7 +302,7 @@ describe("the ticker", () => {
     const chosen = await expectMessage(ws, "render");
     expect((chosen.ops as { op: string; target: string }[]).map((o) => `${o.op} ${/data-eta-part="(.*)"/.exec(o.target)![1]}`)).toEqual(["tag site", "tag quote-CHRL", "replace drawers"]);
     html = chosen.page!;
-    expect(html).toContain(`<div data-eta-part="quote-CHRL" id="quote-CHRL" data-applet="board" data-doc="quote:CHRL" data-under="/quote" role="button" tabindex="0" data-write='{"doc":"desk","op":"replace","path":"/page"}' data-value="board?symbol=CHRL" aria-pressed="true" data-reveal data-props=`);
+    expect(html).toContain(`<div data-eta-part="quote-CHRL" id="quote-CHRL" data-applet="board" data-doc="quote:CHRL" data-under="/quote" role="button" tabindex="0" data-write='{"doc":"desk","op":"replace","path":"/page"}' data-value="board?symbol=CHRL" aria-expanded="true" data-reveal data-props=`);
     expect(html).toContain("Stop watching");
     // the board row has the move and the sparkline, and a narrow board hides its name: its drawer gives the name
     const fromRow = html.slice(html.indexOf('id="drawer"'));
@@ -311,7 +311,7 @@ describe("the ticker", () => {
     html = await page([{ op: "replace", path: "/reading/board", value: "list" }]);
     // a list row has the name and the price: from it, the drawer gives the move and the sparkline
     expect(html!.slice(html!.indexOf('id="drawer"'))).toContain('<span class="prop-name cap">Moved</span>');
-    expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-pressed="true" data-reveal>/);
+    expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-expanded="true" data-reveal>/);
     expect(html).toContain("Stop watching");
     // with the drawer open a tick sends the row and the drawer, since the drawer says the move;
     // with it closed, the row alone. CHRL is watched now, so the tick comes as the market's patch

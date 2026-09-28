@@ -304,6 +304,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   choose travel again, and the second choice went nowhere. `blur` and `change` forms had no such
   guard, so leaving a field twice sent it twice before the echo. Every editing form now drops a
   repeat until a write lands (a patch), and not after.
+- **What opens, opens from the keyboard** (todo n57). A cell, a row and the wedding's bubbles were
+  `div`s with `role="button"`: Tab reached them, and Enter and Space did nothing. A cell's name is
+  its button now (the cell is still tapped anywhere), a row that taps is a `<button>`, the whole
+  line, and so are the bubbles. What opens a window, a drawer or a modal says `aria-expanded`, not
+  `aria-pressed`, which a screen reader called a toggle though a second press left the drawer
+  open: a thing's name, a chosen row, the wedding's bubbles, its drawer tools (`tool()`'s new
+  `expanded`) and its figures, leave's bars and rows. Find, the eye and the radios stay pressed.
+- **Behind an open window the box is inert, and the keyboard goes with the cell** (todo n59). The
+  box's trail, its other cells and what is in place could still be tabbed through and heard behind
+  a window. `boxPage` puts them `inert` while one is open (what is in place in a wrapper that is
+  always there, so opening changes only its tag). And a window opened from the keyboard
+  left it nowhere: now the client gives it to the first control of the cell that moved (the way
+  back as it opens, its name as it closes), whether the page came whole or in parts. The window
+  is a region named by its title, so a screen reader says what opened as the keyboard goes in.
+- **A phone may zoom, and does not have to** (todo n60, the rest). iOS zooms into a field under
+  16px: find's was 14px, the ticker's and chat's 15px; every field is 16px now. The wedding's
+  viewport said `maximum-scale=1`, so the reader could not zoom at all; it no longer does. A way
+  back on the trail was 16px tall where it is pressed; it is `--touch` each way, drawn as it was,
+  and a trail that wraps keeps its lines a touch apart, so one crumb's press never lands on the next.
+  And find's field kept its own width in the bar under the trail, which at 320 pushed the eye out
+  of it; the field now takes what the tally and the eye leave.
+- **Find's eye and the window's way back are pressed over a touch** (todo n48). Both are drawn
+  26px, under the kernel's own `--touch`; each keeps its drawing and is pressed over `--touch` each
+  way, as the trail's crumbs are. The way back's words are in a span of their own, which gives way
+  to a long trail instead of the link.
+- **The bento's rules say what the keyboard does** (todo n56). Rule 19 in
+  `examples/bento/README.md`: what a finger opens, the keyboard opens; the keyboard goes into a
+  window and back to its cell; the box behind a window is inert; Escape puts away what was opened
+  last. The skill's reference says an example's own opener is a `<button>`.
+- **The keyboard is never left nowhere** (`src/client/app.ts`). Escape in a drawer, or from a modal,
+  left the keyboard on the page itself; in Chrome the + that opens a modal kept the keyboard as it
+  went inert, so the modal's first field never took it; and a window opened by back or forward put
+  the cell with the keyboard behind it. After each drawing, a keyboard on nothing or on something
+  inert goes back to what opened a drawer or modal that has just gone, else to a field waiting for
+  it, else into the cell that has just moved.
 
 ## [0.49.0] - 2026-09-25
 

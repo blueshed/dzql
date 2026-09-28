@@ -86,6 +86,15 @@ Each rule names where the mock-up honours it.
     figure opens its drawer, a tool on the rail does what it does, and × or Escape puts the drawer
     away. Only the phone's sheet dims the page, and a tap on that closes it.
 
+## The keyboard
+
+19. **The keyboard opens what a finger does.** A cell, a row, a thing and a figure are buttons:
+    Tab stops on each, and Enter or Space does what a tap does. Opening a window takes the keyboard
+    into it, onto its trail, and says the window's name; closing the window puts it back on the
+    cell. While a window is open the box behind it is inert, not to be reached or heard until it
+    closes, as the page is behind a modal (rule 14). Escape puts away the drawer or the modal
+    opened last, and the keyboard goes back to what opened it. Nothing leaves the keyboard nowhere.
+
 ## What eta already does with this
 
 The rules are built in the kernel: `src/bento.ts` draws the trail, the tray, the window, the

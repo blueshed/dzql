@@ -135,10 +135,18 @@ function movingElement(html: string): HTMLElement | undefined {
     const stillThere = holder.content.querySelector(`[data-moving="${CSS.escape(current.dataset.moving!)}"]`);
     // A move is the element itself changing -- a cell opening into the window, or closing --
     // which shows in its own tag. What is inside it changing (a row more, a message) is not one,
-    // and a transition then would swallow the keys of someone typing in it.
-    if (stillThere && (stillThere.cloneNode(false) as Element).outerHTML !== (current.cloneNode(false) as Element).outerHTML) return current;
+    // and a transition then would swallow the keys of someone typing in it. Nor is being put
+    // `inert`: the cells behind an open window are, and hold still.
+    if (stillThere && ownTag(stillThere) !== ownTag(current)) return current;
   }
   return undefined;
+}
+
+/** An element's own tag, less `inert`. */
+function ownTag(el: Element): string {
+  const tag = el.cloneNode(false) as Element;
+  tag.removeAttribute("inert");
+  return tag.outerHTML;
 }
 
 // Rule 18 of bento-request.md's K2: after a full render's morph, an element newly carrying
@@ -156,8 +164,10 @@ function render(html: string) {
   const moving = movingElement(html);
 
   const apply = () => {
+    const was = beforeDrawing();
     morph(app, html, hooks);
     settle(before);
+    afterDrawing(was);
     syncPage();
     revealChanged(previousReveal);
   };
@@ -179,12 +189,81 @@ function render(html: string) {
   }
 }
 
+// Where the keyboard goes (the bento's rule 19). Drawing the page again may take away what had the
+// keyboard, or put it behind something `inert` (a modal's ground, the box behind a window); then the
+// keyboard is nowhere, and it is given, in turn, to: what opened a drawer or a modal that has just
+// gone (a dialog, in HTML's words); a field waiting for the caret (`autofocus`: a browser honours it
+// once per document, so one a later drawing brings, a modal's first, would otherwise wait for a
+// click); the first control of a cell that has just moved (rule 7: the window's way back as it
+// opens, the cell's name as it closes), the one the keyboard was in first. Never from somewhere it is.
+const CONTROL = "a[href], button, input, select, textarea, [tabindex]";
+const DIALOG = "dialog, [role='dialog']";
+
+/** What opened each drawer or modal on the page: where the keyboard goes back to when it goes. */
+const openedBy = new Map<Element, HTMLElement>();
+/** The control last pressed, until the page is next drawn: what opened whatever that drawing brings. */
+let pressed: HTMLElement | undefined;
+
+type Before = { focused: Element | null; cells: Map<string, string>; dialogs: Set<Element> };
+
+function beforeDrawing(): Before {
+  return {
+    focused: document.activeElement,
+    cells: new Map([...app.querySelectorAll<HTMLElement>("[data-moving]")].map((el) => [el.dataset.moving!, ownTag(el)])),
+    dialogs: new Set(app.querySelectorAll(DIALOG)),
+  };
+}
+
+const keyboardLost = (): boolean => {
+  const at = document.activeElement;
+  return !at || at === document.body || !!at.closest("[inert]");
+};
+
+/** Gives the keyboard to the first that takes it: not gone, disabled, inert or undrawn. */
+function giveKeyboard(candidates: Iterable<HTMLElement>): boolean {
+  for (const el of candidates) {
+    if (!el.isConnected) continue;
+    el.focus();
+    if (document.activeElement === el) return true;
+  }
+  return false;
+}
+
+function afterDrawing(was: Before): void {
+  const press = pressed;
+  pressed = undefined;
+  const gone: HTMLElement[] = [];
+  for (const [dialog, by] of openedBy) {
+    if (dialog.isConnected) continue;
+    openedBy.delete(dialog);
+    gone.push(by);
+  }
+  const opener = press ?? (was.focused instanceof HTMLElement && was.focused !== document.body ? was.focused : undefined);
+  for (const dialog of app.querySelectorAll(DIALOG)) {
+    // a new one: what was pressed, or had the keyboard, opened it
+    if (!was.dialogs.has(dialog)) {
+      if (opener) openedBy.set(dialog, opener);
+    } else if (press?.isConnected && !press.closest(DIALOG)) {
+      openedBy.set(dialog, press); // one still open, opened again by a press beside it: the next figure beside a docked drawer
+    }
+  }
+
+  if (!keyboardLost()) return;
+  if (giveKeyboard(gone) || giveKeyboard(app.querySelectorAll<HTMLElement>("[autofocus]"))) return;
+  const inside = was.focused?.closest<HTMLElement>("[data-moving]")?.dataset.moving;
+  const moved = [...app.querySelectorAll<HTMLElement>("[data-moving]")]
+    .filter((el) => was.cells.has(el.dataset.moving!) && was.cells.get(el.dataset.moving!) !== ownTag(el))
+    .sort((a, b) => Number(b.dataset.moving === inside) - Number(a.dataset.moving === inside));
+  for (const cell of moved) if (giveKeyboard([...cell.querySelectorAll<HTMLElement>(CONTROL)].filter((el) => el.tabIndex >= 0))) return;
+}
+
 // The page in parts: what changed since the last drawing, in HTML's terms (src/parts.ts). Each op
 // names a part; a target the page no longer has is skipped -- the next full render puts things
 // right, as it would after a reconnect. Afterwards, the same care as a whole render.
 function applyFragments(ops: HtmlOp[]) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
   const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
+  const was = beforeDrawing();
 
   for (const op of ops) {
     const target = app.querySelector(op.target);
@@ -201,18 +280,15 @@ function applyFragments(ops: HtmlOp[]) {
     }
   }
   settle(before);
+  afterDrawing(was);
   syncPage();
   revealChanged(previousReveal);
 }
 
-// After any render, full or fragment: mount what appeared, give the caret to a field that is
-// waiting for it, and pin what grew. A browser honours `autofocus` once per document, so a field
-// a later render brings in would otherwise wait for a click. Only when nothing has the caret --
-// the row that was tapped is gone, the form that was submitted is gone -- never from a field
-// someone is in.
+// After any render, full or fragment: mount what appeared and pin what grew (and then, afterDrawing,
+// give the keyboard somewhere if the drawing left it nowhere).
 function settle(before: Map<HTMLElement, number>) {
   mountApplets();
-  if (document.activeElement === document.body) app.querySelector<HTMLElement>("[autofocus]")?.focus();
 
   // Pin to the bottom only when this render actually added content here, or
   // the element itself just appeared (a fresh load, entering a room) -- an
@@ -268,6 +344,7 @@ app.addEventListener("click", (event) => {
   // neither is a gesture. Putting the caret in find's field must not send a blank replace.
   if (!target || target.matches("form, input, textarea, select")) return;
   event.preventDefault();
+  pressed = target;
   const { doc, op, path } = JSON.parse(target.dataset.write!) as WriteSpec;
   const value = target.dataset.value;
   send(doc, value !== undefined ? [{ op, path, value }] : [{ op, path }]);

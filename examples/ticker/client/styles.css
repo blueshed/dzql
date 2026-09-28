@@ -24,7 +24,6 @@ h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
 .cap { font-size: 11.5px; line-height: 16px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: var(--ink); }
 .note { color: var(--muted); font-size: 13px; }
 p.note { margin: 0 0 var(--space-md); }
-input { font-size: 15px; }
 .cell { min-height: 120px; }
 
 /* the small readings: the board applet, the clock's face. A well is cut square, as the cell it sits in

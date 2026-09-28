@@ -403,6 +403,12 @@ const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "s
 - The stylesheet imports `src/bento.css` first, then says its own tokens.
 - `data-moving` names the element that grows (a view transition runs only when its own tag
   changes). `data-reveal` scrolls the chosen row into the clear.
+- What opens is a button (rule 19): a cell's name is its button, and a row that taps is a
+  `<button>`, so Enter and Space open them. An opener of the example's own is a `<button>` too
+  (the wedding's bubbles), never a `div` with `role="button"`, which nothing opens from the
+  keyboard; a figure in an applet's SVG says `role="button"` and answers Enter and Space itself.
+  While a window is open the box behind it is `inert`, and the client keeps the keyboard with the
+  cell as it opens and closes.
 
 Escalate only as the data forces: in place, then the cell, then a drawer, then a window, then a
 modal. A list of five needs no find.

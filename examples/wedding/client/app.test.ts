@@ -34,6 +34,14 @@ async function enter(view: Bun.WebView, who: string) {
 }
 
 describe("the wedding in a real browser", () => {
+  test("on a phone the reader may zoom: the viewport does not hold the scale, and no field is under 16px, which iOS would zoom into", async () => {
+    await using view = new Bun.WebView({ width: 375, height: 740 });
+    await view.navigate(urlFor(view, server.url));
+    await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
+    expect(await view.evaluate<string>(`document.querySelector('meta[name=viewport]').content`)).not.toMatch(/maximum-scale|user-scalable/);
+    expect(await view.evaluate<string[]>(`[...document.querySelectorAll('input, select, textarea')].map((el) => el.name + ' ' + getComputedStyle(el).fontSize)`)).toEqual(["code 16px", "email 16px"]);
+  });
+
   test("a code opens the household's photo, the family standing in it; a tap on a figure opens the guest's drawer with the dress and menu applets", async () => {
     await using view = new Bun.WebView();
     await enter(view, code.toLowerCase());

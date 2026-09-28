@@ -48,7 +48,7 @@ export function boardMount(list: WatchlistDocument, market: MarketDocument, ui?:
   const tap = (symbol: string): string => {
     if (!ui) return "";
     const chosen = where(ui).what === "symbol" && where(ui).which === symbol;
-    return ` role="button" tabindex="0"${go(address("board", "symbol", symbol))} aria-pressed="${chosen}"${chosen ? " data-reveal" : ""}`;
+    return ` role="button" tabindex="0"${go(address("board", "symbol", symbol))} aria-expanded="${chosen}"${chosen ? " data-reveal" : ""}`;
   };
   const rowOf = (symbol: string) => part(`quote-${symbol}`, `<div id="quote-${esc(symbol)}" data-applet="board" data-doc="quote:${esc(symbol)}" data-under="/quote"${tap(symbol)} data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`);
   return `<div id="board" class="board">${symbols.map(rowOf).join("")}</div>`;

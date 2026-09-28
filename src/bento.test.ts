@@ -1,6 +1,9 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { address, bento, choice, layers, matches, parseAddress, patchCollections, prop, rows, type Collections } from "./bento";
 import { esc, join, write } from "./html";
+import { diff, drawParts, part } from "./parts";
+import { waitFor } from "./webview";
+import fixture from "./bento.test.html";
 
 // an example's icons, as the bento sees them: a name and a size in, markup out
 const icon = (name: string, size = 16): string => `<i data-icon="${name}" data-size="${size}"></i>`;
@@ -49,6 +52,8 @@ describe("the surfaces", () => {
     expect(square).toContain('class="tool quiet" aria-label="Find" aria-pressed="true" disabled>');
     expect(square).toContain('<span class="sr-only">Find</span>');
     expect(b.tool("Go", { submit: true, label: "Go now", write: "" })).toContain('type="submit" class="tool" aria-label="Go now"');
+    // a toggle is pressed; what opens a drawer is expanded while the drawer is open
+    expect(b.tool("Gifts", { icon: "search", iconOnly: true, expanded: true, write: "" })).toContain('class="tool" aria-label="Gifts" aria-expanded="true">');
   });
 
   test("the page's tools are undo, redo and leaving; without a leave there are only the two", () => {
@@ -82,15 +87,15 @@ describe("the surfaces", () => {
     expect(hid.filter).toContain(`aria-label="Show what misses" aria-pressed="true" data-write='{"doc":"desk","op":"remove","path":"/hide/market"}'><i data-icon="eye-off"`);
   });
 
-  test("a cell: › and data-moving when it opens, ✎ and pressed when it is a thing, neither when it is only read", () => {
+  test("a cell: › and data-moving when it opens, ✎ and expanded while its drawer is open when it is a thing, neither when it is only read; its name is its button when it opens", () => {
     const opens = b.cell({ name: "The board", mark: "chart", count: 2, big: true, opens: open, summary: "live", body: "<svg/>" });
     expect(opens).toMatchObject({ key: "the-board", span: 3, rows: 1 });
-    expect(opens.html).toContain(`<div class="cell big" data-key="the-board" data-moving="the-board" role="button" tabindex="0"${open}>`);
-    expect(opens.html).toContain('<span class="cell-name">The board · 2</span><span class="chev"><i data-icon="chevron-right"');
+    expect(opens.html).toContain(`<div class="cell big" data-key="the-board" data-moving="the-board"${open}>`);
+    expect(opens.html).toContain('<button type="button" class="cell-name" aria-expanded="false">The board · 2</button><span class="chev"><i data-icon="chevron-right"'); // it opens the window, and is gone while it is open
     expect(opens.html).toContain('<p class="cell-summary">live</p><div class="cell-body"><svg/></div>');
     const thing = b.cell({ name: "clock", key: "c", span: 2, thing: { open, chosen: true } });
     expect(thing).toMatchObject({ key: "c", span: 2 });
-    expect(thing.html).toContain(`<div class="cell thing" data-key="c" aria-pressed="true" role="button" tabindex="0"${open}>`);
+    expect(thing.html).toContain(`<div class="cell thing" data-key="c"${open}><div class="cell-head cap"><button type="button" class="cell-name" aria-expanded="true">clock</button>`);
     expect(thing.html).toContain('<span class="chev pencil">');
     const read = b.cell({ name: "quiet" });
     expect(read.span).toBe(1);
@@ -101,7 +106,7 @@ describe("the surfaces", () => {
     const cells = [b.cell({ name: "board", big: true, opens: open }), b.cell({ name: "market" }), b.cell({ name: "clock" })];
     const out = b.boxPage([{ label: "The desk" }], ["<p>in place</p>"], cells);
     expect(out).toContain('<b aria-current="page">The desk</b></span></nav><div class="stack page-tools across"');
-    expect(out).toContain('<section class="page box"><p>in place</p><div class="cells"');
+    expect(out).toContain('<section class="page box"><div class="in-place"><p>in place</p></div><div class="cells"');
     expect(out).toContain(`--tray-areas: "board board board" "market clock clock"; --tray-areas-phone: "board" "market" "clock"`);
     expect(out).toContain('data-key="board" data-corners="tl tr" data-corners-phone="tl tr" style="grid-area: board"');
     expect(out).toContain('data-key="clock" data-corners="br" data-corners-phone="br bl" style="grid-area: clock"');
@@ -113,11 +118,18 @@ describe("the surfaces", () => {
     const out = b.boxPage([{ label: "The desk", back }, { label: "the market" }], [], cells, { key: "market", reading: "<i>reading</i>", tools: ["<i>find</i>"], filter: "<i>filter</i>", body: "<i>rows</i>", note: "a note" });
     expect(out).toContain('<section class="page box windowed">');
     expect(out).not.toContain("page-tools across"); // the page's tools are in the window instead
-    expect(out).toContain(`<div data-eta-part="market" class="cell open" data-key="market" data-moving="market"><div class="cell-head cap"><a class="cell-back" href="#"${back}>The desk</a>`);
+    expect(out).toContain(`<div data-eta-part="market" class="cell open" data-key="market" data-moving="market" role="region" aria-label="the market"><div class="cell-head cap"><a class="cell-back" href="#"${back}><span>The desk</span></a>`);
     expect(out).toContain('<span class="cell-name">the market</span></div><div class="rail work"><i>reading</i><div class="stack"><i>find</i></div></div><div class="full"><i>rows</i><p class="note">a note</p></div><div class="stack page-tools"');
     // last, so find opening and closing moves nothing the morph matches by position
     expect(out).toMatch(/<div class="stack page-tools"[^]*<\/div><i>filter<\/i><\/div>/);
     expect(out).toContain('data-key="board" data-corners='); // the rest of the box holds still behind it
+    // and is not to be reached or heard while the window is open: its trail, the other cells, what is in place
+    expect(out).toContain('<header class="page-head" inert>');
+    expect(out).toMatch(/<div data-eta-part="board" class="cell" data-key="board"[^>]* inert[ >]/);
+    expect(out).not.toMatch(/class="cell open"[^>]* inert/);
+    expect(b.boxPage([{ label: "The desk" }], ["<p>in place</p>"], cells, { key: "market", body: "" })).toContain('<div class="in-place" inert><p>in place</p></div>');
+    expect(b.boxPage([{ label: "The desk" }], ["<p>in place</p>"], cells)).not.toContain("inert"); // closed, all of it is there
+    expect(b.boxPage([{ label: "The desk" }], [], cells)).toContain('<div class="in-place"></div><div class="cells"'); // the wrapper always, so opening changes only its tag
     // a window on the root has no way back, and may have no tools at all
     const bare = b.boxPage([{ label: "rooms" }], [], cells, { key: "board", body: "" });
     expect(bare).toContain('<div class="cell-head cap"><span class="cell-name">rooms</span></div><div class="rail work"></div><div class="full"></div>');
@@ -130,22 +142,23 @@ describe("the surfaces", () => {
     const trail = [{ label: "Eta" }, { label: "Chat", back: leave }, { label: "#general", back: close }, { label: "conversation" }];
     const head = b.boxPage(trail, [], cells, { key: "conversation", body: "" }).match(/<div class="cell-head cap">.*?<\/div>/)![0];
     expect(head).toContain('<span class="cell-root">Eta</span>'); // named, but not a place
-    expect(head).toContain(`<a class="cell-back" href="#"${leave}>Chat</a>`);
-    expect(head).toContain(`<a class="cell-back" href="#"${close}>#general</a>`);
+    expect(head).toContain(`<a class="cell-back" href="#"${leave}><span>Chat</span></a>`);
+    expect(head).toContain(`<a class="cell-back" href="#"${close}><span>#general</span></a>`);
     expect(head).toContain('<span class="cell-name">conversation</span>');
     expect(head.match(/class="chev"/g)).toHaveLength(3);
   });
 
   test("a page that is a collection is the window alone: the trail, the rail, the reading, the page's tools, and no tray behind it", () => {
     const out = b.collectionPage([{ label: "Chat" }], { key: "rooms", tools: ["<i>plus</i>"], body: "<i>rows</i>" });
-    expect(out).toStartWith('<section class="page windowed"><div data-eta-part="rooms" class="cell open" data-key="rooms" data-moving="rooms"><div class="cell-head cap"><span class="cell-name">Chat</span></div>');
+    expect(out).toStartWith('<section class="page windowed"><div data-eta-part="rooms" class="cell open" data-key="rooms" data-moving="rooms" role="region" aria-label="Chat"><div class="cell-head cap"><span class="cell-name">Chat</span></div>');
     expect(out).toContain('<div class="stack"><i>plus</i></div></div><div class="full"><i>rows</i></div><div class="stack page-tools"');
     expect(out).not.toContain('class="cells"');
   });
 
-  test("a row: a lead, the words, the state, the mark; tapped, chosen, hushed or hidden as it is told", () => {
+  test("a row: a lead, the words, the state, the mark; tapped (a button, the whole line), chosen, hushed or hidden as it is told", () => {
     const out = b.row({ id: "r-1", tap: open, chosen: true, hushed: true, hidden: true, lead: "<img>", what: "Ada & co", note: "two", state: "<b>here</b>", mark: "pencil" });
-    expect(out).toContain(`<div data-eta-part="r-1" class="row tap hushed" id="r-1" role="button" tabindex="0"${open} aria-pressed="true" data-reveal hidden>`);
+    expect(out).toStartWith(`<button data-eta-part="r-1" type="button" class="row tap hushed" id="r-1"${open} aria-expanded="true" data-reveal hidden>`); // its drawer is open
+    expect(out).toEndWith("</button>");
     expect(out).toContain('<span class="lead"><img></span><span class="words"><span class="what">Ada &amp; co</span><span class="note">two</span></span><span class="state"><b>here</b></span><span class="mark"><i data-icon="pencil"');
     expect(b.row({ what: "plain", mark: "chevron" })).toBe('<div class="row"><span class="words"><span class="what">plain</span></span><span class="mark"><i data-icon="chevron-right" data-size="18"></i></span></div>');
     expect(b.row({ what: "read only" })).not.toContain("mark");
@@ -250,5 +263,247 @@ describe("patchCollections", () => {
     expect(patchCollections(ui, remove("/hide/market"))).toBe(false);
     expect(patchCollections(ui, remove("/filter/rooms"))).toBe(false);
     expect(ui).toEqual({ filter: { market: "al" } });
+  });
+});
+
+// The surfaces as a person meets them: drawn in a real browser with the kernel's stylesheet and its
+// client (src/client/app.ts), the socket stubbed as src/client/app.test.ts stubs it -- what the
+// client would send is kept in `window.__sent`, and a render is a message on its own socket.
+describe("the surfaces in a browser", () => {
+  let server: ReturnType<typeof Bun.serve>;
+  beforeAll(() => {
+    server = Bun.serve({
+      port: 0,
+      routes: { "/": fixture, "/ws": (req, server) => (server.upgrade(req, { data: {} }) ? undefined : new Response("Upgrade failed", { status: 400 })) },
+      websocket: { open() {}, message() {}, close() {} },
+    });
+  });
+  afterAll(() => server.stop(true));
+
+  /** A phone's view of `html`, drawn as a render the server sent. */
+  // `ETA_BROWSER=chrome bun test src/bento.test.ts` runs these on Chrome, the default elsewhere than macOS
+  const chrome = process.env.ETA_BROWSER === "chrome" || process.platform !== "darwin";
+  async function show(html: string, width = 375): Promise<Bun.WebView> {
+    const view = new Bun.WebView({ width, height: 740, ...(chrome ? { backend: "chrome" as const } : {}) });
+    await view.navigate(server.url.toString());
+    await waitFor(view, `window.eta?.socket()?.readyState === 1`, (v) => v === true);
+    await view.evaluate(`(() => { window.__sent = []; window.eta.socket().send = (data) => window.__sent.push(JSON.parse(data)); })()`);
+    await draw(view, html);
+    return view;
+  }
+
+  /** The server drawing the page again. */
+  async function draw(view: Bun.WebView, html: string): Promise<void> {
+    const payload = JSON.stringify({ type: "render", html });
+    await view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(payload)} }))`);
+    await waitFor(view, `document.getElementById('app').innerHTML.length > 0`, (v) => v === true);
+  }
+
+  const sent = (view: Bun.WebView) => view.evaluate<{ doc: string; ops: { op: string; path: string; value?: unknown }[] }[]>(`window.__sent`);
+  const go = (page: string) => write("desk", "replace", "/page", page);
+
+  /** Every control on the page that can take the keyboard, by the words it says. */
+  const reachable = (view: Bun.WebView) =>
+    view.evaluate<string[]>(`[...document.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')].filter((el) => { el.focus(); return document.activeElement === el; }).map((el) => el.textContent.trim() || el.getAttribute('aria-label'))`);
+
+  test("behind an open window nothing is reached or heard: the trail, the other cells and what is in place are inert", async () => {
+    const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "market", opens: go("market") }), b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } })];
+    const trail = [{ label: "The desk", back: go("") }, { label: "the market" }];
+    const inPlace = [`<button type="button" class="tool">Say</button>`];
+    await using view = await show(b.boxPage(trail, inPlace, cells, { key: "market", tools: [b.tool("Find", { icon: "search", iconOnly: true, write: go("market?find") })], body: rows([b.row({ tap: go("market?symbol=A"), what: "Alpha" })], "none") }));
+    // the window's own: its way back, its tool, its row, the page's tools
+    expect(await reachable(view)).toEqual(["The desk", "Find", "Alpha", "Undo", "Redo", "Leave"]);
+  });
+
+  /** Whether a press `off` px from the middle of each element `selector` matches, up or down (and to each side when it is narrower than that), lands on it. */
+  const pressesAround = (view: Bun.WebView, selector: string, off: string) =>
+    view.evaluate<string[]>(`[...document.querySelectorAll(${JSON.stringify(selector)})].flatMap((el) => {
+      const r = el.getBoundingClientRect(), off = parseFloat(${off}) / 2 - 1, x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const at = [[x, y - off], [x, y + off], ...(r.width < 2 * off ? [[x - off, y], [x + off, y]] : [])];
+      return at.filter(([px, py]) => !el.contains(document.elementFromPoint(px, py))).map(([px, py]) => el.textContent.trim() + ' misses ' + Math.round(px - x) + ',' + Math.round(py - y));
+    })`);
+  const touch = `getComputedStyle(document.documentElement).getPropertyValue('--touch')`;
+
+  for (const width of [320, 375, 768]) {
+    test(`on a phone ${width} wide (the phone's rules hold below 820): no field is under 16px, find's field fills its bar, and a way back on the trail is a touch tall where it is pressed`, async () => {
+      const cells = [b.cell({ name: "market", opens: go("market") })];
+      // the box on a ground of its own, its trail three deep: the root, a way back, where you are
+      await using view = await show(b.boxPage([{ label: "Eta" }, { label: "Chat", back: go("") }, { label: "The desk" }], [], cells), width);
+      expect(await pressesAround(view, ".crumbs a", touch)).toEqual([]);
+
+      const find = b.findControl("market", { word: "", shown: 3, total: 3 });
+      const window_ = b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], [], cells, { key: "market", tools: [find.tool], filter: find.filter, body: rows([b.row({ tap: go("?a"), what: "Alpha" })], "none") });
+      const asks = b.addModal("Watch a symbol", [{ name: "symbol", label: "Which" }, { name: "kind", label: "Kind", options: [{ value: "a", text: "a" }] }], go("new"), go(""));
+      const drawer = b.drawer("d", "Notes", `<form data-write-on="blur"><textarea name="n"></textarea></form>`, go(""));
+      await draw(view, layers(window_, drawer, asks));
+      await waitFor(view, `document.querySelectorAll('input, select, textarea').length`, (v) => v === 4);
+      const sizes = await view.evaluate<string[]>(`[...document.querySelectorAll('input, select, textarea')].map((el) => (el.name || el.type) + ' ' + getComputedStyle(el).fontSize)`);
+      expect(sizes).toEqual(["q 16px", "n 16px", "symbol 16px", "kind 16px"]);
+
+      // find's bar is the row under the trail; its field takes what the tally and the eye leave, and the eye keeps its size inside it
+      const bar = await view.evaluate<{ gap: number; eye: number; end: number }>(`(() => {
+        const bar = document.querySelector('.filter').getBoundingClientRect(), field = document.querySelector('.filter input').getBoundingClientRect();
+        const tally = document.querySelector('.filter .tally').getBoundingClientRect(), eye = document.querySelector('.filter .tool').getBoundingClientRect();
+        return { gap: Math.round(tally.left - field.right), eye: Math.round(eye.width), end: Math.round(bar.right - eye.right) };
+      })()`);
+      // the field up to the tally, the bar's gap between; the eye whole, at the bar's end (its padding and border from it)
+      expect(bar).toEqual({ gap: 8, eye: 26, end: 3 });
+    });
+  }
+
+  /** Presses over each element's press area (--touch each way, or itself where it is bigger) that land on another control. */
+  const pressesElsewhere = (view: Bun.WebView, selector: string) =>
+    view.evaluate<string[]>(`[...document.querySelectorAll(${JSON.stringify(selector)})].flatMap((el) => {
+      const r = el.getBoundingClientRect(), touch = parseFloat(${touch}), x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const hw = Math.max(r.width, touch) / 2 - 1, hh = Math.max(r.height, touch) / 2 - 1, out = [];
+      for (const dx of [-hw, -hw / 2, 0, hw / 2, hw]) for (const dy of [-hh, -hh / 2, 0, hh / 2, hh]) {
+        const hit = document.elementFromPoint(x + dx, y + dy)?.closest('a, button, input');
+        if (hit && hit !== el && !el.contains(hit)) out.push(el.textContent.trim() + ' at ' + Math.round(dx) + ',' + Math.round(dy) + ' is ' + hit.textContent.trim());
+      }
+      return out;
+    })`);
+
+  for (const width of [320, 375]) {
+    test(`${width} wide, a trail that wraps: each way back is pressed over a touch, and a press on one never lands on another`, async () => {
+      const trail = [{ label: "Rowena & Dashiell", back: go("a") }, { label: "The Okafors", back: go("b") }, { label: "Where to stay", back: go("c") }, { label: "the market" }];
+      await using view = await show(b.boxPage(trail, [], [b.cell({ name: "market", opens: go("market") })]), width);
+      expect(await view.evaluate<number>(`new Set([...document.querySelectorAll('.crumbs a, .crumbs b')].map((e) => Math.round(e.getBoundingClientRect().top))).size`)).toBeGreaterThan(1); // it wraps
+      expect(await pressesElsewhere(view, ".crumbs a")).toEqual([]);
+      expect(await pressesAround(view, ".crumbs a", touch)).toEqual([]);
+    });
+  }
+
+  for (const width of [375, 1280]) {
+    test(`${width} wide: find's eye and a way back in the window are drawn 26px, and pressed over a touch`, async () => {
+      const cells = [b.cell({ name: "market", opens: go("market") })];
+      const find = b.findControl("market", { word: "al", shown: 1, total: 3 });
+      await using view = await show(b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], [], cells, { key: "market", tools: [find.tool], filter: find.filter, body: "" }), width);
+      expect(await view.evaluate<number[]>(`['.filter .tool', '.cell.open .cell-back'].map((s) => document.querySelector(s).getBoundingClientRect().height)`)).toEqual([26, 26]);
+      expect(await pressesAround(view, ".filter .tool, .cell.open .cell-back", touch)).toEqual([]);
+    });
+  }
+
+  test("opening a window moves nothing else: the tray, the cell that grows and what is in place are the same elements, and what is typed in place stays", async () => {
+    const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "market", opens: go("market"), summary: "16 symbols" })];
+    const inPlace = [`<p class="note">said once</p>`, `<form id="say"><input name="t" value=""></form>`];
+    const closed = b.boxPage([{ label: "The desk" }], inPlace, cells);
+    const opened = b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], inPlace, cells, { key: "market", body: "" });
+    await using view = await show(closed);
+    await view.evaluate(`(() => { window.__was = ['.cells', '[data-moving="market"]', '#say'].map((s) => document.querySelector(s)); document.querySelector('#say input').value = 'half typed'; })()`);
+    const same = `['.cells', '[data-moving="market"]', '#say'].map((s, i) => document.querySelector(s) === window.__was[i]).concat(document.querySelector('#say input').value)`;
+    await draw(view, opened);
+    await waitFor(view, `document.querySelector('.cell.open') !== null`, (v) => v === true);
+    expect(await view.evaluate<unknown[]>(same)).toEqual([true, true, true, "half typed"]);
+    await draw(view, closed);
+    await waitFor(view, `document.querySelector('.cell.open') === null`, (v) => v === true);
+    expect(await view.evaluate<unknown[]>(same)).toEqual([true, true, true, "half typed"]);
+  });
+
+  // the page whole, or in parts as the ticker's goes: the site a part, the layers in it (src/parts.ts works out what changed)
+  for (const sent_ of ["whole", "in parts"] as const) {
+    test(`the keyboard goes with the cell: opening a window puts it on the way back, closing it puts it back on the cell (the page sent ${sent_})`, async () => {
+      const page = (market: boolean) => {
+        const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "market", opens: go("market") })];
+        const box = market
+          ? b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], [], cells, { key: "market", body: rows([b.row({ id: "r-a", tap: go("market?symbol=A"), what: "Alpha" })], "none") })
+          : b.boxPage([{ label: "The desk" }], [], cells);
+        return part("site", `<div class="site">${layers(box, "", "")}</div>`);
+      };
+      const drawn = [drawParts(() => page(false)), drawParts(() => page(true))] as const;
+      const [open, close] = [diff(drawn[0], drawn[1]), diff(drawn[1], drawn[0])];
+      if (sent_ === "in parts") expect([open?.length, close?.length]).toEqual([expect.any(Number), expect.any(Number)]); // parts, not the page whole
+      const send = (view: Bun.WebView, to: 0 | 1, ops?: unknown[]) =>
+        sent_ === "whole" ? draw(view, drawn[to].html) : view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(JSON.stringify({ type: "render", ops }))} }))`);
+      const focused = `document.activeElement.closest('.cell')?.dataset.key + ' ' + document.activeElement.textContent.trim()`;
+
+      await using view = await show(drawn[0].html);
+      await view.evaluate(`document.querySelector('.cell[data-key="market"] button').focus()`);
+      await view.press("Space");
+      await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+      await send(view, 1, open);
+      await waitFor(view, `document.querySelector('.cell.open') !== null`, (v) => v === true);
+      expect(await waitFor(view, focused, (v) => v === "market The desk", 1000).catch(() => view.evaluate(focused))).toBe("market The desk");
+      // what a screen reader says as the keyboard goes in: the window, by its name
+      expect(await view.evaluate<string[]>(`(() => { const w = document.activeElement.closest('.cell.open'); return [w.getAttribute('role'), w.getAttribute('aria-label')]; })()`)).toEqual(["region", "the market"]);
+
+      await view.evaluate(`document.activeElement.click()`); // the way back, as Enter on it would
+      expect((await sent(view)).at(-1)).toEqual({ doc: "desk", ops: [{ op: "replace", path: "/page", value: "" }] });
+      await send(view, 0, close);
+      await waitFor(view, `document.querySelector('.cell.open') === null`, (v) => v === true);
+      expect(await waitFor(view, focused, (v) => v === "market market", 1000).catch(() => view.evaluate(focused))).toBe("market market");
+    });
+  }
+
+  /** Where the keyboard is: the words of what has it, or nowhere -- the page itself, or something inert. */
+  const keyboard = `(() => { const at = document.activeElement; return !at || at === document.body || at.closest('[inert]') ? 'nowhere' : at.textContent.trim() || at.getAttribute('aria-label') || at.name; })()`;
+  const at = (view: Bun.WebView, where: string) => waitFor(view, keyboard, (v) => v === where, 1000).catch(() => view.evaluate(keyboard));
+
+  test("the keyboard is never left nowhere: Escape puts a drawer away and the keyboard goes back to what opened it", async () => {
+    const page = (open: boolean) => {
+      const list = rows([b.row({ id: "r-a", tap: go(open ? "" : "?a"), chosen: open, what: "Alpha" }), b.row({ id: "r-b", tap: go("?b"), chosen: false, what: "Beta" })], "none");
+      const box = b.collectionPage([{ label: "The desk" }], { key: "market", body: list });
+      return layers(box, open ? b.drawer("a", "Alpha", `<form data-write-on="blur"><input name="note" value="" aria-label="Note"></form>`, go("")) : "", "");
+    };
+    await using view = await show(page(false));
+    await view.evaluate(`document.getElementById('r-a').focus()`);
+    await view.press("Space");
+    await draw(view, page(true));
+    await waitFor(view, `document.querySelector('.drawer') !== null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('.drawer input').focus()`);
+    await view.press("Escape");
+    expect((await sent(view)).at(-1)).toEqual({ doc: "desk", ops: [{ op: "replace", path: "/page", value: "" }] });
+    await draw(view, page(false));
+    await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
+    expect(await at(view, "Alpha")).toBe("Alpha");
+  });
+
+  test("the keyboard is never left nowhere: a modal's field takes it though what opened the modal is inert, and Escape gives it back", async () => {
+    const plus = b.addTool(go("?new"), "Watch a symbol");
+    const page = (asking: boolean) =>
+      layers(b.collectionPage([{ label: "The desk" }], { key: "board", tools: [plus], body: "" }), "", asking ? b.addModal("Watch a symbol", [{ name: "symbol", label: "Which" }], write("watchlist", "add", "/symbols/-"), go("")) : "");
+    await using view = await show(page(false));
+    await view.evaluate(`document.querySelector('[aria-label="Watch a symbol"]').focus()`);
+    await view.press("Space");
+    await draw(view, page(true));
+    await waitFor(view, `document.querySelector('dialog') !== null`, (v) => v === true);
+    expect(await at(view, "symbol")).toBe("symbol");
+    await view.press("Escape");
+    await draw(view, page(false));
+    await waitFor(view, `document.querySelector('dialog') === null`, (v) => v === true);
+    expect(await at(view, "Watch a symbol")).toBe("Watch a symbol");
+  });
+
+  test("the keyboard is never left nowhere: a window opened by back or forward takes it from the cell it put behind", async () => {
+    const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "market", opens: go("market") })];
+    await using view = await show(b.boxPage([{ label: "The desk" }], [], cells));
+    await view.evaluate(`document.querySelector('.cell[data-key="board"] button').focus()`);
+    // the back button: the session goes to the market, and the page comes without a press
+    await draw(view, b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], [], cells, { key: "market", body: "" }));
+    await waitFor(view, `document.querySelector('.cell.open') !== null`, (v) => v === true);
+    expect(await at(view, "The desk")).toBe("The desk");
+  });
+
+  test("what opens is a button: each cell, thing and row that opens is where a Tab stops, and Space or Enter opens it", async () => {
+    const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } }), b.cell({ name: "quiet" })];
+    const list = rows([b.row({ id: "r-a", tap: go("?symbol=A"), what: "Alpha", mark: "pencil" }), b.row({ id: "r-b", what: "Beta" })], "none");
+    await using view = await show(b.boxPage([{ label: "The desk" }], [list], cells));
+    // where a Tab stops in each: the element itself, or what in it takes the keyboard
+    const stop = (selector: string) => `(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el.matches('button, a[href], [tabindex]') ? el : el.querySelector('button, a[href], [tabindex]'); })()`;
+    const opens: [string, string][] = [['.cell[data-key="board"]', "board"], ['.cell[data-key="clock"]', "?clock"], ["#r-a", "?symbol=A"]];
+    for (const [selector, page] of opens) {
+      await view.evaluate(`(window.__sent = [], ${stop(selector)}.focus())`);
+      await view.press("Space");
+      await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000).catch(() => {});
+      expect({ selector, sent: await sent(view) }).toEqual({ selector, sent: [{ doc: "desk", ops: [{ op: "replace", path: "/page", value: page }] }] });
+      expect(await view.evaluate<string>(`${stop(selector)}.tagName`)).toBe("BUTTON"); // so Enter opens it too: the browser's own
+      // WebKit's press("Enter") is an editing command, not a key, so it is Chrome that says so
+      if (chrome) {
+        await view.press("Enter");
+        await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+      }
+    }
+    // what only reads is not a stop at all
+    expect(await view.evaluate<boolean>(`document.querySelector('.cell[data-key="quiet"]').matches(':is(button, [tabindex]), :has(button, [tabindex])')`)).toBe(false);
+    expect(await view.evaluate<boolean>(`document.getElementById('r-b').matches(':is(button, [tabindex]), :has(button, [tabindex])')`)).toBe(false);
   });
 });
