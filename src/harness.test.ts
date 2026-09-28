@@ -144,8 +144,10 @@ describe("stories harness", () => {
 
   test("a row the tables lost fails the story too: a document they do not hold is drawn as nothing", async () => {
     const { example: ticker } = await import("../examples/ticker/index");
-    const { stories: told } = await import("../examples/ticker/stories");
-    const watches = { ...told, stories: told.stories.filter((s) => s.name.startsWith("Ann, on her board, watches Charlie")) };
+    // the ticker's own story, told here: Ann's desk says she is on her board
+    const desk = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/page", value: page }] });
+    const watch = { doc: "watchlist", ops: [{ op: "add" as const, path: "/symbols/-", value: "CHRL" }] };
+    const watches = { cast: { ann: [desk("board")] }, goTo: desk, stories: [{ name: "Ann, on her board, watches Charlie Metals", as: "ann", from: "board?new", does: watch, seen: { ann: "board" } }] };
     expect((await run(ticker, watches)).failed).toBe(0);
     // each desk row is lost as it is made: the copy keeps the desk, off the ledger, the tables do not
     db.run("CREATE TEMP TRIGGER lost AFTER INSERT ON ticker_desks BEGIN DELETE FROM ticker_desks WHERE id = NEW.id; END");
