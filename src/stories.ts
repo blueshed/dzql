@@ -43,7 +43,7 @@ type Does = {
   /**
    * How the author does it on their page. The story is then done by hand too, in a browser the
    * size of a phone, from where it starts: the gesture must send `does`, and it must land. Omitted:
-   * by hand (`gestures`), the control the page draws for it is pressed, typed into or chosen.
+   * by hand (`byHand`), the control the page draws for it is pressed, typed into or chosen.
    */
   gesture?: Gesture;
   seen: Seen;

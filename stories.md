@@ -229,8 +229,8 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    they are told about it -- a link in an email, a shared URL -- the cast says so in its own
    writes: a member the cast puts at an address arrived there as the link brings them, and their
    ways start from it.
-6. By hand, in a browser the size of a phone (`Bun.WebView`, `src/gestures.ts`): each story that
-   says its `gesture`, and with `STORY_GESTURES=1` (`run(example, stories, { gestures: true })`,
+6. By hand, in a browser the size of a phone (`Bun.WebView`, `src/by-hand.ts`): each story that
+   says its `gesture`, and with `STORY_BY_HAND=1` (`run(example, stories, undefined, { byHand: true })`,
    which `bun run stories:all` sets) every story, is done again as its author, in a tab of their
    session. From where the story starts, the controls on the way to where it is done are pressed,
    each landing where it leads (a step a person cannot take, covered on a phone, is left for

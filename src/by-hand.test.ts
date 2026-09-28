@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { example as chat } from "../examples/chat";
 import { stories as chatStories } from "../examples/chat/stories";
 import type { Example } from "./example";
-import { sameWrite } from "./gestures";
+import { sameWrite } from "./by-hand";
 import { run } from "./harness";
 import { write } from "./html";
 import type { Story } from "./stories";
@@ -17,13 +17,13 @@ const hello: Story = { name: "Ada says hello", as: "ada", does: say, seen: ["ada
 const chatWith = (change: (html: string) => string): Example => ({ ...chat, render: (sessionId) => change(chat.render(sessionId)) });
 const MESSAGE_FORM = /<form class="say"[^>]*data-write='\{"doc":"room"[^]*?<\/form>/;
 const told = async (example: Example, stories: Story[]) => (await run(example, { ...chatStories, stories })).outcomes.map((o) => o.failures);
-const byHand = async (example: Example, stories: Story[]) => (await run(example, { ...chatStories, stories }, undefined, { gestures: true })).outcomes.map((o) => o.failures);
+const byHand = async (example: Example, stories: Story[]) => (await run(example, { ...chatStories, stories }, undefined, { byHand: true })).outcomes.map((o) => o.failures);
 
 describe("the stories by hand", () => {
   test("a story a person can do passes by hand too: a form typed into and sent, a button pressed, a way pressed to where it is done", async () => {
-    const report = await run(chat, chatStories, undefined, { gestures: true });
+    const report = await run(chat, chatStories, undefined, { byHand: true });
     expect(report.outcomes.flatMap((o) => o.failures)).toEqual([]);
-    expect(report.byHand).toMatchObject({ stories: 7, gestures: 7, applets: 0 });
+    expect(report.byHand).toMatchObject({ stories: 7, presses: 7, applets: 0 });
 
     const { example: ticker } = await import("../examples/ticker/index");
     const { stories: told } = await import("../examples/ticker/stories");
@@ -32,7 +32,7 @@ describe("the stories by hand", () => {
       ...told.stories.filter((s) => s.name.startsWith("Ann watches Charlie Metals, and only") || s.name.startsWith("Ann sets her clock")), // a modal's select; the city picker, an applet's
       { name: "Ann, reading her board as a list, reads it as sparklines again", as: "ann", from: "board @ reading.board=list", does: reading("sparkline"), seen: ["ann"] }, // after " @ ", pressed there
     ];
-    const tickerReport = await run(ticker, { ...told, stories: ann }, undefined, { gestures: true });
+    const tickerReport = await run(ticker, { ...told, stories: ann }, undefined, { byHand: true });
     expect(tickerReport.outcomes.map((o) => o.failures)).toEqual([[], [], []]);
     expect(tickerReport.byHand!.applets).toBe(1);
   }, 60000);
@@ -83,7 +83,7 @@ describe("the stories by hand", () => {
     const plus = write("desk", "replace", "/page", "board?new");
     const flat: Example = { ...ticker, render: (sessionId) => ticker.render(sessionId).replaceAll(plus, ` style="display: block; width: 0; height: 0; padding: 0; border: 0; overflow: hidden"${plus}`) };
     expect((await run(flat, { ...told, stories: watches })).outcomes[0]!.failures).toEqual([]);
-    expect((await run(flat, { ...told, stories: watches }, undefined, { gestures: true })).outcomes[0]!.failures).toEqual(['by hand, ann could not get to "board?new": the way to "board?new" from "board": the control for it is of no size']);
+    expect((await run(flat, { ...told, stories: watches }, undefined, { byHand: true })).outcomes[0]!.failures).toEqual(['by hand, ann could not get to "board?new": the way to "board?new" from "board": the control for it is of no size']);
   }, 60000);
 
   test("a story may say its gesture: leave's drags on its calendar are done by hand whenever they are told, and must send the story's write", async () => {
@@ -95,7 +95,7 @@ describe("the stories by hand", () => {
       "Ann drags her day in November to the Friday after, and Mo and Bo see it move",
       "Mo moves the week he approved for himself, and the team sees it move",
     ]);
-    const report = await run(leave, { ...told, stories: drags }); // no `gestures`: a story that says its gesture asks for a browser
+    const report = await run(leave, { ...told, stories: drags }); // without `byHand`: a story that says its gesture asks for a browser
     expect(report.outcomes.map((o) => o.failures)).toEqual([[], [], []]);
     expect(report.byHand).toMatchObject({ stories: 3, applets: 0 });
 
@@ -122,7 +122,7 @@ describe("the stories by hand", () => {
       ["by hand, ada could not remove /name on session: the page sent remove /latest on ledger"],
       ["by hand, ada could not remove /name on session: the control for it is not on the page"],
     ]);
-    expect(report.byHand).toMatchObject({ stories: 3, gestures: 3 });
+    expect(report.byHand).toMatchObject({ stories: 3, presses: 3 });
 
     const shaped = (gesture: unknown, more: object = {}) => ({ name: "Ada logs out, somehow", as: "ada", does: logout, seen: ["ada", "bob"], gesture, ...more }) as Story; // as a story file that is not type-checked says it
     const report2 = await run(chat, {

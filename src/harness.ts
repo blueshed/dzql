@@ -8,7 +8,7 @@ import { activeDocuments, Pending, setActiveDocuments, settled, type Documents }
 import { onFailure } from "./failed";
 import { comparable, splitTag } from "./parts";
 import { said } from "./refusal";
-import { Hand, sameWrite } from "./gestures";
+import { Hand, sameWrite } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
 
 export { comparable };
@@ -47,7 +47,7 @@ export { comparable };
 // tests' to check.
 //
 // By hand, a story is done again in a browser the size of a phone, as a person does it
-// (src/gestures.ts): each story that says its `gesture`, and with `gestures` every story. Its
+// (src/by-hand.ts): each story that says its `gesture`, and with `byHand` every story. Its
 // write must be what the page sends, and it must land.
 
 export type Outcome = { name: string; failures: string[] };
@@ -65,8 +65,8 @@ export type Trace = {
 };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number; byHand?: ByHand };
 
-/** The stories done by hand in a browser (`gestures`, or a story's own `gesture`): how many, how many gestures (a press, a form typed into and sent, a drag), how many writes sent as an applet declares them, and how long it took. */
-export type ByHand = { stories: number; gestures: number; applets: number; ms: number };
+/** The stories done by hand in a browser (`byHand`, or a story's own `gesture`): how many, how many presses (a button pressed, a form typed into and sent, a drag), how many writes sent as an applet declares them, and how long it took. */
+export type ByHand = { stories: number; presses: number; applets: number; ms: number };
 
 type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; taken: Map<string, Taken>; answered: (() => void)[] };
 type HtmlOp = { op: "replace" | "tag" | "after" | "before" | "remove"; target: string; html?: string };
@@ -405,7 +405,7 @@ export function misshapen(story: Story): string[] {
   return why;
 }
 
-export async function run(example: Example, stories: Stories, observe?: (trace: Trace) => void, options: { gestures?: boolean } = {}): Promise<Report> {
+export async function run(example: Example, stories: Stories, observe?: (trace: Trace) => void, options: { byHand?: boolean } = {}): Promise<Report> {
   const server = createServer(example, 0);
   const { draw, page, documents } = assemble(example);
   const active = (sessionId: string): Promise<boolean> => settled(documents, () => example.active(sessionId));
@@ -794,7 +794,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     while (queue.length > 0 && missing() && via.size < MOST_PLACES) {
       const at = queue.shift()!;
       if (visit && !state.pages.get(name)?.has(at)) await visit(at);
-      // a page's own controls before an applet's: the gestures press what the page draws
+      // a page's own controls before an applet's: by hand, what the page draws is pressed
       const here = [...(state.pages.get(name)?.get(at)?.values() ?? [])].sort((a, b) => Number(!!a.pattern) - Number(!!b.pattern));
       for (const control of here) {
         const to = goesTo(control, stories.goTo!);
@@ -901,7 +901,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
   }
 
   /**
-   * The story by hand, in a browser that is the author's tab (src/gestures.ts): from where the
+   * The story by hand, in a browser that is the author's tab (src/by-hand.ts): from where the
    * story starts, the controls that lead to where it is done, pressed one by one, each landing
    * where it leads -- a step a person cannot take (covered on a phone, say) left for another way,
    * and only when none is left a failure; then the story's write, done with the control that sends
@@ -941,7 +941,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
           await send(cast, who, write);
           return undefined;
         }
-        tally.gestures++;
+        tally.presses++;
         const pressed = gesture ? await hand.gesture(gesture) : await hand.press(write.doc, write.ops);
         await settle(cast);
         if ("failure" in pressed) return pressed.failure;
@@ -997,14 +997,14 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     const only = process.env.STORY; // run only the stories whose name contains this
     const told: { story: Story; outcome: Outcome }[] = [];
     for (const story of stories.stories) if (!only || story.name.includes(only)) told.push({ story, outcome: await tell(story) });
-    // by hand: every story with `gestures`, and without it each that says its gesture
-    const byHandToo = (story: Story): boolean => (options.gestures || story.gesture !== undefined) && misshapen(story).length === 0;
+    // by hand: every story with `byHand`, and without it each that says its gesture
+    const byHandToo = (story: Story): boolean => (options.byHand || story.gesture !== undefined) && misshapen(story).length === 0;
     const startsFrom = stories.goTo ? await reach(told, byHandToo) : new Map<Story, State>();
     outcomes.push(...told.map(({ outcome }) => outcome));
     const handed = told.filter(({ story }) => byHandToo(story));
     if (handed.length > 0) {
       const started = performance.now();
-      const tally: ByHand = { stories: 0, gestures: 0, applets: 0, ms: 0 };
+      const tally: ByHand = { stories: 0, presses: 0, applets: 0, ms: 0 };
       const hand = new Hand(server.url);
       try {
         for (const { story, outcome } of handed) outcome.failures.push(...(await byHand(story, hand, tally, startsFrom.get(story))));
@@ -1029,7 +1029,7 @@ export function print(report: Report): void {
   }
   console.log(`\n${report.passed} passed, ${report.failed} failed`);
   const h = report.byHand;
-  if (h) console.log(`${h.stories} done by hand in a browser the size of a phone: ${h.gestures} gestures, ${h.applets} sent as an applet declares, in ${(h.ms / 1000).toFixed(1)}s`);
+  if (h) console.log(`${h.stories} done by hand in a browser the size of a phone: ${h.presses} presses, ${h.applets} sent as an applet declares, in ${(h.ms / 1000).toFixed(1)}s`);
 }
 
 /** A write in words: each op, its path and its value, and the document. */

@@ -302,17 +302,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   applet draws its own controls in the browser, where the harness cannot find them, so a story
   says how a person works one: `gesture: { drag: [from, to] }` or `{ press: selector }`, CSS
   selectors on the page. Such a story is done again whenever it is told, in a browser the size of
-  a phone (`Bun.WebView`, `src/gestures.ts`), as its author: from where it starts, the controls on
+  a phone (`Bun.WebView`, `src/by-hand.ts`), as its author: from where it starts, the controls on
   the way to its `from` are pressed, each landing where it leads (a step covered on a phone is
   left for another way), then the gesture is made -- a press a native click once the control
   holds still and nothing covers it, a drag a mouse's pointer events, each sent to what is under
   the pointer, then the click a browser sends, never `element.click()` (n98). What the page sent
   must be the story's write, and it must land (`by hand, ann could not replace /draft on team:
   the page sent replace /draft {…} on team`). leave's three drags on its calendar say theirs.
-  With `STORY_GESTURES=1` (`run(example, stories, undefined, { gestures: true })`) every story is done by
+  With `STORY_BY_HAND=1` (`run(example, stories, undefined, { byHand: true })`) every story is done by
   hand, its control pressed, typed into and sent, or chosen, so a control hidden by a stylesheet,
   covered, of no size, off a phone's screen, never still, or a field no form sends fails by name,
-  where without a browser it passed. `Report.byHand` counts the stories, gestures and time.
+  where without a browser it passed. `Report.byHand` counts the stories, presses and time.
   `bun run stories:all` does every story by hand (about 13 s more for the four examples). It
   found one: on a phone leave's draft drawer covers the page's tools, so "Ann signs out", told
   where the cast leaves her with the drawer open, is now told from the calendar (`from: ""`).

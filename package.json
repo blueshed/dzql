@@ -25,7 +25,7 @@
     "cli": "bun src/cli.ts",
     "test": "bun test",
     "stories": "bun --env-file=.env.test src/stories-run.ts",
-    "stories:all": "STORY_GESTURES=1 ETA_EXAMPLE=chat bun run stories && STORY_GESTURES=1 ETA_EXAMPLE=ticker bun run stories && STORY_GESTURES=1 ETA_EXAMPLE=wedding bun run stories && STORY_GESTURES=1 ETA_EXAMPLE=leave bun run stories",
+    "stories:all": "STORY_BY_HAND=1 ETA_EXAMPLE=chat bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=ticker bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=wedding bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=leave bun run stories",
     "check": "bunx tsc --noEmit",
     "costs": "bun --env-file=.env.test src/costs.ts",
     "modeller": "bun modeller/closure.ts",

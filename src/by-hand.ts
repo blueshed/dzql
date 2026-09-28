@@ -32,7 +32,7 @@ const PAGE = `(() => {
   const specOf = (el) => { try { return JSON.parse(el.dataset.write); } catch { return undefined; } };
   const named = (el) => el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + [...el.classList].map((c) => "." + c).join("");
   let marks = 0;
-  const mark = (el) => { const id = String(++marks); el.setAttribute("data-gesture", id); return '[data-gesture="' + id + '"]'; };
+  const mark = (el) => { const id = String(++marks); el.setAttribute("data-hand", id); return '[data-hand="' + id + '"]'; };
   const text = (v) => (v === undefined || v === null ? "" : String(v));
 
   // why a person could not press it, or "" when they could: the browser's own rules, then the eye's
