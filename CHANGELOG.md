@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **An applet offers only what its mount says it writes**, whatever document it reads. An applet
+  on a document (`data-doc`) counted as a control for every write to it, so the ticker's clock
+  stories passed from the box, where only the clock's face is, and still passed with the city
+  picker taken out of its drawer. Now a mount that says nothing offers nothing: the city picker
+  says `appletWrites(["clock", "replace", "/tz"])`, and the clock stories are told from its
+  drawer (`from: "?clock"`).
 - **An applet's mount says exactly what it writes** (todo n78): `appletWrites([doc, op, path], …)`,
   where a segment that is only `*` is any one segment (`["team", "replace", "/requests/*/starts"]`).
   `appletWrites([doc, path], …)` offered every write under each path, so a page that lost a
@@ -21,8 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and ends; the wedding's dress each look field, its menu a course's dish or drink, chosen or
   taken back, and its picture field the key at its own path, which it declared nowhere before
   (a story now puts a picture on the welcome). The photo's taps only go somewhere, as the page's
-  address does, and the ticker's city picker is an applet on its document, which offers any
-  write to it.
+  address does.
 - **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
   browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
   when not, as was a group of radios none of which was chosen. So a title and an unticked box

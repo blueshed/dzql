@@ -124,10 +124,11 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
  * A control a page offers (src/html.ts `write`): the document, op and path it writes, and the value
  * a button carries (`data-value`, sent as a string). A field or a form writes whatever is typed, so
  * any value; so does the page's address (`data-page-write`). An applet draws its own controls in
- * the browser: one on a document (`data-doc`) offers any write to it, and one whose mount says what
- * it writes (`data-writes`, src/html.ts) exactly those, where a `*` segment of its path is any one.
+ * the browser, so it offers only what its mount says it writes (`data-writes`, src/html.ts), where
+ * a `*` segment of its path is any one; one that says nothing offers nothing, whatever document it
+ * reads (`data-doc`), as the clock's face writes nothing to the clock it shows.
  */
-export type Control = { doc: string; op?: string; path?: string; value?: string; free: boolean; pattern?: true };
+export type Control = { doc: string; op: string; path: string; value?: string; free: boolean; pattern?: true };
 
 const OPS: readonly string[] = ["add", "replace", "remove"];
 
@@ -155,7 +156,6 @@ export function controlsOn(page: string, misdeclared: string[] = []): Control[] 
       },
     })
     .on("[data-page-write]", { element: (el) => void found.push({ ...spec(el.getAttribute("data-page-write"))!, free: true }) })
-    .on("[data-applet][data-doc]", { element: (el) => void found.push({ doc: el.getAttribute("data-doc")!, free: true }) })
     .on("[data-writes]", {
       element(el) {
         const raw = unescape(el.getAttribute("data-writes")!);
@@ -196,8 +196,7 @@ const fits = (pattern: string, path: string): boolean => {
 /** Does `c` send this op to this document? A free control sends any value; a button only its own. */
 export function offers(c: Control, doc: string, op: PatchOp): boolean {
   if (!sameDoc(c.doc, doc)) return false;
-  if (c.pattern) return c.op === op.op && fits(c.path!, op.path); // an applet's own: exactly what its mount names
-  if (c.op === undefined) return true; // an applet on the document
+  if (c.pattern) return c.op === op.op && fits(c.path, op.path); // an applet's own: exactly what its mount names
   if (c.op !== op.op || c.path !== op.path) return false;
   return c.free || (c.value === undefined ? !("value" in op) || op.value === undefined : "value" in op && String(op.value) === c.value);
 }
@@ -475,7 +474,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
         const ledgerBefore = ledgerMax();
         const from = mark(cast);
         // P3: a button on the author's page that sends exactly this, refused without a word, is a control that always fails
-        const buttons = controlsOn(who.page, failures).filter((c) => !c.free && c.op !== undefined);
+        const buttons = controlsOn(who.page, failures).filter((c) => !c.free);
         if (story.told === undefined && story.cannot.ops.every((op) => buttons.some((c) => offers(c, story.cannot.doc, op)))) failures.push(`${who.name}'s page offers this, and it is refused without a word: a control that always fails`);
         await send(cast, who, story.cannot);
         if (!sentSince(who, from).some((h) => h.type === "render")) failures.push(`refused, but ${who.name} was not answered: a refusal hands the page back`);

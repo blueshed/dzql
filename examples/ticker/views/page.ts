@@ -5,7 +5,7 @@
 // or drop. Watching is the plus and a modal; dropping asks in one too.
 
 import { address, bento, layers, matches, parseAddress, prop, rows, type Crumb, type OpenOptions } from "../../../src/bento";
-import { esc, write } from "../../../src/html";
+import { appletWrites, esc, write } from "../../../src/html";
 import { part } from "../../../src/parts";
 import type { ClockDocument } from "../documents/clock";
 import { ZONES, cityOf, offsetOf } from "../documents/clock";
@@ -78,7 +78,7 @@ export function zoneOptionsHtml(now = Date.now()): string {
 /** The clock's face; the cell's summary names the city. */
 const clockMount = (c: ClockDocument): string => `<div id="clock" data-applet="clock" data-doc="clock" data-props="${esc(JSON.stringify({ tz: c.tz }))}"></div>`;
 // the picker's zones are its children, HTML the server wrote; the applet reads them once and draws its own field
-const cityMount = (c: ClockDocument): string => `<div id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="${esc(JSON.stringify({ tz: c.tz }))}"><datalist>${zoneOptionsHtml()}</datalist></div>`;
+const cityMount = (c: ClockDocument): string => `<div id="city" class="city" data-applet="city-picker" data-doc="clock"${appletWrites(["clock", "replace", "/tz"])} data-props="${esc(JSON.stringify({ tz: c.tz }))}"><datalist>${zoneOptionsHtml()}</datalist></div>`;
 
 // A symbol's drawer shows how its price is moving, beside a row that says what it is and what it costs:
 // the move in per cent, and a sparkline of the ticks seen while the drawer is open, an applet on the

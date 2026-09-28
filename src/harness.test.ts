@@ -143,7 +143,7 @@ describe("stories harness", () => {
     expect(report.outcomes.map((o) => o.failures)).toEqual([["cy closed their tab: they are not there to see it"], ["nothing landed: closing eve's tab changed nothing"]]);
   }, 30000);
 
-  test("controls: a button sends its own value, a field or a form any, an applet on a document any write to it, one that says what it writes exactly that", () => {
+  test("controls: a button sends its own value, a field or a form any, an applet only what it says it writes", () => {
     const page = [
       `<button data-write='{"doc":"room","op":"replace","path":"/name"}' data-value="Tess &amp; Tom">x</button>`,
       `<button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>undo</button>`,
@@ -151,7 +151,8 @@ describe("stories harness", () => {
       `<input data-write='{"doc":"household","op":"replace","path":"/message"}' disabled>`,
       `<form data-write='{"doc":"room","op":"add","path":"/messages/-"}'></form>`,
       `<div class="site" data-page="gifts?new=gifts" data-page-write='{"doc":"session","op":"replace","path":"/page"}'></div>`,
-      `<div data-applet="clock" data-doc="clock" data-props="{}"></div>`,
+      `<div data-applet="clock" data-doc="clock" data-props="{}"></div>`, // on a document, and saying nothing: it offers nothing
+      `<div data-applet="city-picker" data-doc="clock"${appletWrites(["clock", "replace", "/tz"])} data-props="{}"></div>`,
       `<div data-applet="dress"${appletWrites(["household", "replace", "/guests/2/minifigure/top"])}></div>`,
       `<div data-applet="calendar"${appletWrites(["session", "replace", "/draft"], ["team", "replace", "/requests/*/starts"])}></div>`,
     ].join("");
@@ -165,7 +166,8 @@ describe("stories harness", () => {
     expect(any("household", { op: "replace", path: "/message", value: "hi" })).toBe(false);
     expect(any("room:general", { op: "add", path: "/messages/-", value: "anything" })).toBe(true);
     expect(any("session", { op: "replace", path: "/page", value: "day" })).toBe(true);
-    expect(any("clock", { op: "replace", path: "/tz", value: "Asia/Tokyo" })).toBe(true);
+    expect(any("clock", { op: "replace", path: "/tz", value: "Asia/Tokyo" })).toBe(true); // the picker says so
+    expect(any("clock", { op: "replace", path: "/face", value: "round" })).toBe(false); // the clock on the document says nothing
     expect(any("household", { op: "replace", path: "/guests/2/minifigure/top", value: "#fff" })).toBe(true);
     expect(any("household", { op: "replace", path: "/guests/3/minifigure/top", value: "#fff" })).toBe(false);
     expect(any("household", { op: "remove", path: "/guests/2/minifigure/top" })).toBe(false); // another op
@@ -187,6 +189,15 @@ describe("stories harness", () => {
     expect((await run(leave, { ...told, stories: first })).failed).toBe(0);
     const wrong = { ...told, stories: first, signIn: (name: string) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@leave.example`, password: "not-it" } }) };
     expect(run(leave, wrong)).rejects.toThrow("ann could not sign in at /login: 303");
+  }, 30000);
+
+  test("an applet on a document offers only what its mount says it writes: a drawer that lost its picker fails the story, though the clock's face reads the same document", async () => {
+    const { example: ticker } = await import("../examples/ticker/index");
+    const { stories: told } = await import("../examples/ticker/stories");
+    const tokyo = told.stories.filter((s) => s.name.startsWith("Ann sets her clock to Tokyo"));
+    expect((await run(ticker, { ...told, stories: tokyo })).outcomes[0]!.failures).toEqual([]);
+    const pickerless: Example = { ...ticker, render: (sessionId) => ticker.render(sessionId).replace(/<div id="city"[^]*?<\/datalist><\/div>/, "") };
+    expect((await run(pickerless, { ...told, stories: tokyo })).outcomes[0]!.failures).toEqual(["ann has no control on their page for replace /tz on clock"]);
   }, 30000);
 
   test("an applet offers only what its mount says it writes: a drawer that lost its control fails its story, whatever applet is beside it", async () => {
