@@ -144,7 +144,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   chosen, as it does what was typed.
 - **The README's numbers are measured, and `bun test` fails when they are stale** (todo n7).
   `bun run costs` (`src/costs.ts`) runs each example's `measure-render-cost.ts --json` in a process
-  of its own, builds and gzips the client and railroad, counts every example's stories, and writes
+  of its own (no .env, none of the caller's settings, so not `REVEAL`, and a clock stopped on a day
+  before the wedding: a run says the same on any day), builds and gzips the client and railroad,
+  counts every example's stories, and writes
   them where the README marks them (`<!-- measured:<name> -->`); `src/costs.test.ts` fails when
   the README says otherwise. The measure scripts wait by asking the server (`inspect`), not by a
   clock: chat's used to average in a stray arrival, so its 1,111 B (a 293 B patch) is 1.2 KB (345 B).

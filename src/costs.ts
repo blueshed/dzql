@@ -2,7 +2,9 @@
 // The README marks each number it quotes (`<!-- measured:<name> -->…<!-- /measured -->`), and this
 // measures them all: what one write sends everyone else, by each example's own script
 // (`examples/<name>/scripts/measure-render-cost.ts --json`, each in a process of its own, from an
-// empty database: a process serves one example); the kernel's client and railroad, built and
+// empty database, with no settings but its own, no .env, and a clock that stands still
+// (src/costs-clock.ts): a process serves one example, and a run says the same whatever the day or
+// the settings); the kernel's client and railroad, built and
 // gzipped as a browser is sent them; and each example's stories, counted. `bun run costs` writes
 // what it finds into the README; `--check` (src/costs.test.ts, so `bun test`) says where the
 // README differs, and fails.
@@ -56,9 +58,14 @@ function item(text: string): string {
   return [...lines, line].join("\n");
 }
 
-/** One example's measure script, run in a process of its own from an empty database. */
+/**
+ * One example's measure script, run in a process of its own from an empty database. It is given no
+ * setting of the caller's (`REVEAL` would put the names on the wedding's photo) and reads no .env,
+ * and its clock is stopped on a day before the wedding.
+ */
 async function measure(script: string): Promise<Measured> {
-  const run = Bun.spawn(["bun", script, "--json"], { cwd: root, env: { ...process.env, DB_PATH: ":memory:", TICK_MS: "0" }, stdout: "pipe", stderr: "pipe" });
+  const env = { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", DB_PATH: ":memory:", TICK_MS: "0" };
+  const run = Bun.spawn(["bun", "--no-env-file", "--preload", `${import.meta.dir}/costs-clock.ts`, script, "--json"], { cwd: root, env, stdout: "pipe", stderr: "pipe" });
   const [out, err, code] = await Promise.all([new Response(run.stdout).text(), new Response(run.stderr).text(), run.exited]);
   if (code !== 0) throw new Error(`${script} failed (${code}):\n${err}`);
   return JSON.parse(out.trim().split("\n").at(-1)!) as Measured;
