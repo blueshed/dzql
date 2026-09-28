@@ -19,6 +19,9 @@ export const PHONE = { width: 390, height: 844 };
 /** How long a control may take to hold still and come clear, and a page to answer. */
 const PATIENCE = 2000;
 
+/** How long a page must then send nothing more, after a gesture's write has landed. */
+const QUIET = 250;
+
 /** What a press did: the writes the page sent, or why a person could not have done it. */
 export type Pressed = { sent: Write[] } | { failure: string };
 
@@ -111,11 +114,14 @@ const PAGE = `(() => {
     return { failure: first };
   }
 
-  // what the page sends, kept to be read back; and a question the server answers after all it sent
+  // what the page sends, kept to be read back, and how much of it was sent when a press last went
+  // down; and a question the server answers after all it sent
   const socket = window.eta.socket();
   const send = socket.send.bind(socket);
   window.__sent = [];
   socket.send = (data) => { const m = JSON.parse(data); if (m.type !== "inspect") window.__sent.push(m); send(data); };
+  window.__down = -1;
+  addEventListener("pointerdown", () => { window.__down = window.__sent.length; }, true);
   const asked = () => new Promise((resolve) => {
     const on = (e) => { if (JSON.parse(e.data).type === "inspect") { socket.removeEventListener("message", on); resolve(true); } };
     socket.addEventListener("message", on);
@@ -166,6 +172,8 @@ const PAGE = `(() => {
 export class Hand {
   readonly view: Bun.WebView;
   private sent = 0;
+  /** What the page sent by itself since it was opened: before anything was pressed, or after a gesture's write. */
+  readonly strays: Write[] = [];
 
   constructor(private readonly url: URL) {
     this.view = new Bun.WebView(PHONE);
@@ -181,6 +189,7 @@ export class Hand {
     if (!(await this.until(`window.eta?.socket()?.readyState === 1 && ${drawn}`))) return `the page did not open at ${JSON.stringify(place ?? "")}`;
     await view.evaluate(PAGE);
     this.sent = 0;
+    this.strays.length = 0;
     return undefined;
   }
 
@@ -203,6 +212,7 @@ export class Hand {
   /** Does the write `doc`/`ops` as a person would, from whatever on the page sends it; what the page sent, once the server has answered it. */
   async press(doc: string, ops: PatchOp[]): Promise<Pressed> {
     const view = this.view;
+    this.strays.push(...(await this.since()));
     const planned = () => view.evaluate<Plan | { failure: string }>(`window.__hand.plan(${JSON.stringify(doc)}, ${JSON.stringify(ops)})`);
     let plan = await planned();
     try {
@@ -231,24 +241,46 @@ export class Hand {
     return this.heard(plan.how === "press" ? "pressed" : plan.how === "submit" ? "sent" : "left");
   }
 
-  /** Makes the gesture a story says, as a person would; what the page sent, once the server has answered it. */
+  /**
+   * Makes the gesture a story says, as a person would; what the page sent while it was made, from
+   * the press going down to the gesture done, once the server has answered it. What the page sent
+   * before the press is no gesture's but a stray; so is what it sends after (`quiet`).
+   */
   async gesture(gesture: Gesture): Promise<Pressed> {
-    if ("press" in gesture) {
-      const failure = await this.touch(gesture.press).then(() => undefined, (err: Error) => err.message);
-      return failure ? { failure } : this.heard("pressed");
-    }
-    const failure = await this.view.evaluate<string>(`window.__hand.drag(${JSON.stringify(gesture.drag[0])}, ${JSON.stringify(gesture.drag[1])})`);
-    return failure ? { failure } : this.heard("dragged");
+    const view = this.view;
+    const how = "press" in gesture ? "pressed" : "dragged";
+    await view.evaluate(`window.__down = -1`);
+    const failure = "press" in gesture ? await this.touch(gesture.press).then(() => "", (err: Error) => err.message) : await view.evaluate<string>(`window.__hand.drag(${JSON.stringify(gesture.drag[0])}, ${JSON.stringify(gesture.drag[1])})`);
+    if (failure) return { failure };
+    const done = await view.evaluate<number>(`window.__sent.length`);
+    await view.evaluate(`window.__hand.asked()`);
+    const [sent, down] = await view.evaluate<[Write[], number]>(`[window.__sent, window.__down]`);
+    const at = Math.max(down, this.sent);
+    this.strays.push(...sent.slice(this.sent, at));
+    const made = sent.slice(at, done);
+    this.sent = done;
+    return made.length > 0 ? { sent: made } : { failure: `the page sent nothing when it was ${how}` };
+  }
+
+  /** Waits the while a page should then be still, and keeps what it sent meanwhile as strays: nothing, from a page that writes once. */
+  async quiet(): Promise<void> {
+    await Bun.sleep(QUIET);
+    this.strays.push(...(await this.since()));
   }
 
   /** What the page sent since the last it was asked, once the server has answered it: at once for a press, after a pause for a field typed into. */
   private async heard(how: string): Promise<Pressed> {
     if (!(await this.until(`window.__sent.length > ${this.sent}`))) return { failure: `the page sent nothing when it was ${how}` };
     await this.view.evaluate(`window.__hand.asked()`);
+    return { sent: await this.since() };
+  }
+
+  /** What the page sent since it was last read. */
+  private async since(): Promise<Write[]> {
     const sent = await this.view.evaluate<Write[]>(`window.__sent`);
     const now = sent.slice(this.sent);
     this.sent = sent.length;
-    return { sent: now };
+    return now;
   }
 
   /** A tap on what `selector` names, once it holds still and nothing covers it. */
@@ -266,6 +298,9 @@ export class Hand {
     this.view.close();
   }
 }
+
+/** A write in words: each op, its path and its value, and the document. */
+export const worded = (w: Write): string => `${w.ops.map((op) => `${op.op} ${op.path}${op.value === undefined ? "" : ` ${JSON.stringify(op.value)}`}`).join(", ")} on ${w.doc}`;
 
 /** Does `sent` say what `story` writes? A value from a page is a string, so a value compares as the wire sends a button's (`String`), a record by its keys. */
 export function sameWrite(sent: Write, story: Write): boolean {

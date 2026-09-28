@@ -308,7 +308,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   holds still and nothing covers it, a drag a mouse's pointer events, each sent to what is under
   the pointer, then the click a browser sends, never `element.click()` (n98). What the page sent
   must be the story's write, and it must land (`by hand, ann could not replace /draft on team:
-  the page sent replace /draft {…} on team`). leave's three drags on its calendar say theirs.
+  the page sent replace /draft {…} on team`). A gesture's write is what the page sent from its
+  press going down to the gesture done; what the page sends by itself -- before anything is
+  pressed, or in the quarter second after a gesture's write lands -- fails the story. leave's
+  three drags on its calendar say theirs.
   With `STORY_BY_HAND=1` (`run(example, stories, undefined, { byHand: true })`) every story is done by
   hand, its control pressed, typed into and sent, or chosen, so a control hidden by a stylesheet,
   covered, of no size, off a phone's screen, never still, or a field no form sends fails by name,

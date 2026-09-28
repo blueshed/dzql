@@ -8,7 +8,7 @@ import { activeDocuments, Pending, setActiveDocuments, settled, type Documents }
 import { onFailure } from "./failed";
 import { comparable, splitTag } from "./parts";
 import { said } from "./refusal";
-import { Hand, sameWrite } from "./by-hand";
+import { Hand, sameWrite, worded } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
 
 export { comparable };
@@ -979,8 +979,11 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         const from = mark(cast);
         const why = await press(story.does!, story.gesture);
         if (why !== undefined) return by(`${who.name} could not ${story.does!.ops.map((op) => `${op.op} ${op.path}`).join(", ")} on ${story.does!.doc}: ${why}`);
-        if (!landedSince(cast, from)) by(`nothing landed: ${who.name}'s write was refused`);
+        if (!landedSince(cast, from)) return by(`nothing landed: ${who.name}'s write was refused`);
+        if (story.gesture) await hand.quiet(); // an applet's own code: after its write it must be still
       }
+      // what the page sent that nothing pressed asked for: before a press, or after the write
+      if (hand.strays.length > 0) by(`${who.name}'s page sent ${hand.strays.map(worded).join("; ")} by itself, unasked`);
       return failures;
     } finally {
       if (opened) {
@@ -1031,9 +1034,6 @@ export function print(report: Report): void {
   const h = report.byHand;
   if (h) console.log(`${h.stories} done by hand in a browser the size of a phone: ${h.presses} presses, ${h.applets} sent as an applet declares, in ${(h.ms / 1000).toFixed(1)}s`);
 }
-
-/** A write in words: each op, its path and its value, and the document. */
-const worded = (w: Write): string => `${w.ops.map((op) => `${op.op} ${op.path}${op.value === undefined ? "" : ` ${JSON.stringify(op.value)}`}`).join(", ")} on ${w.doc}`;
 
 function where(page: string | undefined): string {
   return page === undefined ? "" : ` on ${JSON.stringify(page)}`;

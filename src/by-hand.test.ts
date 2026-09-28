@@ -6,6 +6,7 @@ import { sameWrite } from "./by-hand";
 import { run } from "./harness";
 import { write } from "./html";
 import type { Story } from "./stories";
+import wrongPage from "./by-hand.test.html";
 
 // The stories by hand: each told as the harness tells it, then done in a browser the size of a
 // phone. A control the page draws can be there and still not be pressed; the harness without a
@@ -17,6 +18,11 @@ const hello: Story = { name: "Ada says hello", as: "ada", does: say, seen: ["ada
 const chatWith = (change: (html: string) => string): Example => ({ ...chat, render: (sessionId) => change(chat.render(sessionId)) });
 const MESSAGE_FORM = /<form class="say"[^>]*data-write='\{"doc":"room"[^]*?<\/form>/;
 const told = async (example: Example, stories: Story[]) => (await run(example, { ...chatStories, stories })).outcomes.map((o) => o.failures);
+/** leave, its calendar made wrong as `wrong` says (src/by-hand.test.entry.ts); "" is leave's own. */
+const leaveWith = async (wrong: string): Promise<Example> => {
+  const { example: leave } = await import("../examples/leave/index");
+  return { ...leave, index: wrongPage, render: (sessionId) => leave.render(sessionId).replace('data-applet="calendar"', `data-applet="calendar" data-wrong="${wrong}"`) };
+};
 const byHand = async (example: Example, stories: Story[]) => (await run(example, { ...chatStories, stories }, undefined, { byHand: true })).outcomes.map((o) => o.failures);
 
 describe("the stories by hand", () => {
@@ -109,6 +115,20 @@ describe("the stories by hand", () => {
       ["by hand, ann could not replace /draft on team: what it is dragged from is not on the page"],
       ["by hand, ann could not replace /draft on team: where it is dragged to is off the screen"],
     ]);
+  }, 60000);
+
+  test("a gesture's write is the one its events sent: a calendar that hears no pointer and writes by itself, late, fails; so does one that writes twice, or unasked before anything is pressed", async () => {
+    const { stories: told } = await import("../examples/leave/stories");
+    const across = told.stories.filter((s) => s.name.startsWith("Ann drags across"));
+    const failures = async (wrong: string) => (await run(await leaveWith(wrong), { ...told, stories: across })).outcomes[0]!.failures;
+    expect(await failures("")).toEqual([]);
+    for (const late of ["late-200", "late-1500"]) {
+      const failed = await failures(late);
+      expect(failed).toHaveLength(1);
+      expect(failed[0]).toStartWith("by hand, ann could not");
+    }
+    expect(await failures("twice")).toEqual([`by hand, ann's page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-07"} on team by itself, unasked`]);
+    expect(await failures("unasked")).toEqual([`by hand, ann's page sent replace /draft {"starts":"2026-10-13","ends":"2026-10-14"} on team by itself, unasked`]);
   }, 60000);
 
   test("a gesture may be a press, a tap where it says; it is a press or a drag, on a story that writes from a page", async () => {
