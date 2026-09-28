@@ -178,7 +178,8 @@ compartment's `permitUndo(ws, docId, ops)`.
   `serverWrite`.
 - **`afterWrite(ws, docId, ops)`** runs after a fresh write from this person, with the ops as the
   page sent them: what follows for the writer alone. Leave closes the draft's drawer once it is
-  asked for.
+  asked for. The write has landed by then: a throw here is the server's failure, reported
+  (`following a write to …`), never a refusal.
 - Never write another compartment's document from `shape`.
 
 ## Telling a change (`src/server.ts`)
@@ -320,8 +321,9 @@ Messages:
 
 - Client to server: `{id?, doc, ops: [{op, path, value?}]}`. `doc` is a whole name, or a bare type
   for the one of that type the page is on (`resolveDoc`). `path` is a JSON Pointer, never a verb.
-  `id` is the sender's own, a number or a string, which the server only hands back: the kernel's
-  client numbers its writes from 1, and the harness gives every write it sends one.
+  `id` is the sender's own, which the server only hands back: a number JSON can say, or a string
+  of at most 64 characters (`LONGEST_ID`). The kernel's client numbers its writes from 1, and the
+  harness gives every write it sends one.
 - Server to client: `{type: "patch", doc, version, ops, id?}`, with `doc` named whole (what was
   applied; kept in `window.eta.docs()` under that name). The echo sent to the writer of the change
   its write made (an undo's or a redo's too) carries the write's `id`; everyone else's, and the
@@ -330,8 +332,9 @@ Messages:
 - A write that applies nothing -- refused, not a write at all, nothing to undo, a throw on the way
   -- is answered `{type: "refused", id, reason?}` when it carries an id (`reason` when `refuse`
   said why), then with the page whole. A throw is reported through `failed()` (`src/failed.ts`),
-  which fails the story it happened in. A message whose `id` is neither a number nor a string is
-  not a write.
+  which fails the story it happened in. A message whose `id` is not one (a longer string, an
+  object) is not a write, and is answered by the page alone: nothing larger than an id goes back.
+  A number JSON cannot say back (`1e400`, Infinity) is no id.
 - `wire` on a page sent whole is the wire's version (`WIRE`, `src/json-patch.ts`: 2 since
   a write carries an id). A page from before ids sends none, and is answered as it always was: its
   writes echoed without one, a refusal by the page whole, and `refused` ignored, so a tab left open
