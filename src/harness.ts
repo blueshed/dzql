@@ -8,6 +8,7 @@ import { activeDocuments, Pending, setActiveDocuments, settled, type Documents }
 import { onFailure } from "./failed";
 import { comparable, decoded, ownProps, splitTag } from "./parts";
 import { toldNothing, toldTo } from "./refusal";
+import { esc } from "./html";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
 import { size, tap } from "./costs";
@@ -760,8 +761,11 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     const line = await settled(documents, () => toldTo(who.sessionId));
     const words = line?.said ?? line?.reason;
     if (expected !== undefined && line?.said !== expected) failures.push(`${when}, ${who.name} was not told "${expected}"${words === undefined ? "" : `: they were told "${words}"`}`);
-    else if (line && unversioned(await draw(who.sessionId)) === (await unsaid(who.sessionId))) failures.push(`${when}, ${who.name} was told "${words}", and their page does not show it`);
+    else if (words !== undefined && !shows(unversioned(await draw(who.sessionId)), await unsaid(who.sessionId), words)) failures.push(`${when}, ${who.name} was told "${words}", and their page does not show it`);
   }
+
+  /** Does `page` show what its member was told, in its own words, where the same page told nothing (`without`) does not? */
+  const shows = (page: string, without: string, words: string): boolean => page !== without && page.includes(esc(words));
 
   function differs(a: Snapshot, b: Snapshot, name: string): boolean {
     return a.get(name) !== b.get(name);
@@ -862,7 +866,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
           const without = await unsaid(who.sessionId);
           const reason = answer?.type === "refused" ? answer.reason : undefined;
           if (reason !== story.told) failures.push(`refused, but ${who.name} was not told "${story.told}"${reason === undefined ? "" : `: they were told "${reason}"`}`);
-          else if (after.get(who.name) === without) failures.push(`refused and told "${story.told}", but ${who.name}'s page does not show it`);
+          else if (!shows(after.get(who.name)!, without, story.told)) failures.push(`refused and told "${story.told}", but ${who.name}'s page does not show it`);
           after.set(who.name, without);
         }
         compare(before, after, cast, "refused, but", failures);

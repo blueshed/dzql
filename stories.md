@@ -234,8 +234,9 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    is theirs, and of that moment: the page before the write never said "Undone", nor will the page
    after the next. So the author's pages are compared as though they had been told nothing, the
    kernel's `told` document read as empty, here and in step 3, and what each told them is checked
-   on its own, where it left them: it must be on their page, and after the undo it must be the
-   story's `undone`, when the story says it. Only the line the kernel keeps is left out: words an
+   on its own, where it left them: it must be on their page, in its own words, and after the
+   undo it must be the story's `undone`, when the story says it. Only the line the kernel keeps
+   is left out: words an
    app keeps in a session of its own are the page's, and an undo that changes them does not
    restore it.
 5. After every story, where each could go, judged from where each story starts: the cast as its

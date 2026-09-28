@@ -642,6 +642,20 @@ describe("stories harness", () => {
       expect(await failuresIn(saved, [femi])).toContain('okafors did not see it on ""');
     }, 30000);
 
+    test("what the author is told must be on their page in its own words: a line drawn saying something else fails", async () => {
+      // every line the wedding's own pages draw says "No.", whatever it was told
+      const garbled: Example = { ...wedding, render: (sessionId) => wedding.render(sessionId).replace(/(<p class="(?:refused|said)" role="(?:alert|status)">)[^<]*/g, "$1No.") };
+      expect(await failuresIn(garbled, [named("A stranger types a code nobody has")])).toEqual(["refused and told \"That code was not recognised.\", but stranger's page does not show it"]);
+      // and chat's, where it says what Undo took back beside its form
+      const beside = saying({ doc: "room", path: "/messages/-" });
+      const ok: Example = { ...beside, render: (sessionId) => beside.render(sessionId).replace(/(role="status">)[^<]*/, "$1OK.") };
+      expect(await failuresOf(ok, [hello("Ada says hello, and Undo says so", "Undone: “hello”.")])).toEqual([
+        'after the story, ada was told "Sent.", and their page does not show it',
+        'after undo, ada was told "Undone: “hello”.", and their page does not show it',
+        'after redo, ada was told "Redone: “hello”.", and their page does not show it',
+      ]);
+    }, 30000);
+
   });
 
   test("an applet may name the only values a control of it sends: a tap that goes somewhere offers only there, and the values of one write go together", () => {
