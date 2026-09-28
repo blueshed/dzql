@@ -121,7 +121,7 @@ export function render(sessionId: string): string {
   const modal = what === "confirm" && r && stillMine(me, r) ? confirmModal("Take it back", `Take back ${days(r)}?`, write("team", "remove", `/requests/${r.id}`), go(address(path, "request", r.id)), "Take it back") : "";
   return part(
     "site",
-    `<div class="site${modal || drawer ? " locked" : ""}" data-page="${esc(page)}" data-page-write='${JSON.stringify({ doc: "session", op: "replace", path: "/page" })}'>${layers(collectionPage([{ label: t.name }], { key: "leave", reading, tools, body }), drawer, modal)}</div>`,
+    `<div class="site" data-page="${esc(page)}" data-page-write='${JSON.stringify({ doc: "session", op: "replace", path: "/page" })}'>${layers(collectionPage([{ label: t.name }], { key: "leave", reading, tools, body }), drawer, modal)}</div>`,
   );
 }
 

@@ -101,8 +101,7 @@ export function householdPage(v: HouseholdView): string {
     : at.new === "asks" ? addModal("Ask to bring someone", [{ name: "name", label: "Who to ask for" }], write("household", "add", "/asks/-"), close(v), "Ask")
     : "";
   const drawers = join(guestSheet(v), answerSheet(v), giftsSheet(v), daySheet(v), staySheet(v));
-  const locked = !!modal || !!drawers;
-  return frame(false, layers(page, drawers, modal), ui.page ?? "", locked);
+  return frame(false, layers(page, drawers, modal), ui.page ?? "");
 }
 
 // ───────────────────────────── the page ─────────────────────────────

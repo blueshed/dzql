@@ -210,9 +210,9 @@ export function page(v: View): string {
   const modal = modals(v);
   const over = openDrawer(v);
   // the page's address goes in the URL (the kernel client mirrors data-page), so the back button closes a drawer and a link opens one;
-  // the site is a part, so a drawer opening changes its tag (locked, the address) and its drawer layer, and nothing else is sent
+  // the site is a part, so a drawer opening changes its tag (the address) and its drawer layer, and nothing else is sent
   return part(
     "site",
-    `<div class="site${modal || over ? " locked" : ""}" data-page="${esc(v.ui.page ?? "")}" data-page-write='${JSON.stringify({ doc: "desk", op: "replace", path: "/page" })}'>${layers(boxPage(trail, [], cells, opened), over, modal)}</div>`,
+    `<div class="site" data-page="${esc(v.ui.page ?? "")}" data-page-write='${JSON.stringify({ doc: "desk", op: "replace", path: "/page" })}'>${layers(boxPage(trail, [], cells, opened), over, modal)}</div>`,
   );
 }

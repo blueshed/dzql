@@ -85,7 +85,7 @@ export function boardPage(v: BoardView): string {
     confirmRemove(v),
   );
   const drawers = join(familySheet(v), listSheet(v), keepSheet(v), welcomeSheet(v));
-  return frame(false, layers(page, drawers, modal), ui.page ?? "", !!modal || !!drawers);
+  return frame(false, layers(page, drawers, modal), ui.page ?? "");
 }
 
 // ───────────────────────────── the page ─────────────────────────────

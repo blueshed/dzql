@@ -422,6 +422,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The page behind an open drawer or modal holds still whatever the app calls its root** (todo
+  n81). `src/bento.css` held it by `body:has(.site.locked)`, a class two examples put on their
+  root, so an app with another root scrolled behind its modal. It holds while a layer of
+  `layers()` holds anything; the ticker, leave and the wedding no longer draw `locked`.
 - **The bento's CSS, finished** (todo n108). A drawer docked beside a window takes the window's
   curve at its outer corners, where its own smaller one poked past it; a `.field` in a property's
   value keeps a field's height, where the value's column shrank it to its text (the wedding said

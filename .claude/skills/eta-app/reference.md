@@ -238,7 +238,8 @@ Details:
 - Drawers and modals go through `layers(page, drawer, modal)` (`src/bento.ts`). There are two
   layers, each always there and empty when nothing is open: the ground (the page, with the drawer
   over it) and the modal's. Opening or closing one sends its layer, and a modal puts the ground
-  `inert` by its tag.
+  `inert` by its tag. They are the bento's frame: while a layer holds anything, the page behind
+  holds still.
 - Make the page's outermost element a part too (the wedding's and the ticker's `.site`), so its
   class and its `data-page` go as a tag.
 - The stories check the result: each member's page, rebuilt from exactly what they were sent,

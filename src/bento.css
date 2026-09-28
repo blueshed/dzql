@@ -224,8 +224,8 @@ body:has(.page.windowed) { overflow: hidden; }
   .scrim:not(.modal-scrim) { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .drawer { animation: none; } }
-/* while a drawer or a modal is open, the page behind holds still on a phone (rules 6, 14) */
-body:has(.site.locked) { overflow: hidden; }
+/* while a layer holds a drawer or a modal, the page behind holds still on a phone (rules 6, 14) */
+body:has(.layer > *) { overflow: hidden; }
 
 /* ── the modal: new or delete, one question, nothing else may be touched while it asks (rule 14).
    Rendered `open`, not shown by script, so it carries its own scrim and is centred by hand. ── */

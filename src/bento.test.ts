@@ -517,6 +517,20 @@ describe("the surfaces in a browser", () => {
     expect(unlike).toEqual({ own: [], framed: ["button", "input", "select", "textarea", "a", "details", "div", "p"] });
   });
 
+  test("while a layer holds a drawer or a modal, the page behind holds still, whatever the app calls its root", async () => {
+    const box = b.boxPage([{ label: "The desk" }], [], [b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } })]);
+    const trip = (drawer: string, modal: string) => `<div class="trip">${layers(box, drawer, modal)}</div>`;
+    const still = `getComputedStyle(document.body).overflow`;
+    await using view = await show(trip("", ""));
+    expect(await view.evaluate<string>(still)).toBe("visible");
+    await draw(view, trip(b.drawer("clock", "The clock", "", go("")), ""));
+    expect(await waitFor(view, still, (v) => v === "hidden", 1000).catch(() => view.evaluate(still))).toBe("hidden");
+    await draw(view, trip("", b.confirmModal("Stop the clock", "Sure?", go("?stop"), go(""))));
+    expect(await waitFor(view, `document.querySelector('dialog') && ${still}`, (v) => v === "hidden", 1000).catch(() => view.evaluate(still))).toBe("hidden");
+    await draw(view, trip("", ""));
+    expect(await waitFor(view, still, (v) => v === "visible", 1000).catch(() => view.evaluate(still))).toBe("visible");
+  });
+
   test("what opens is a button: each cell, thing and row that opens is where a Tab stops, and Space or Enter opens it", async () => {
     const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } }), b.cell({ name: "quiet" })];
     const list = rows([b.row({ id: "r-a", tap: go("?symbol=A"), what: "Alpha", mark: "pencil" }), b.row({ id: "r-b", what: "Beta" })], "none");

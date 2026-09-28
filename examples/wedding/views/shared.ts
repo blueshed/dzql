@@ -156,11 +156,8 @@ export function placeRows(places: Place[], o: ListOptions = {}): string {
  * the kernel client mirrors it into the URL and sends this write back on the browser's own
  * back/forward (change-request.md item 3). Pre-login (the welcome), there is no page to follow.
  */
-export function frame(atWelcome: boolean, body: string, page?: string, locked = false): string {
+export function frame(atWelcome: boolean, body: string, page?: string): string {
   const pageAttrs = page === undefined ? "" : ` data-page="${esc(page)}" data-page-write='${JSON.stringify({ doc: "session", op: "replace", path: "/page" })}'`;
-  // `locked` (a drawer or a modal open) holds the page behind it still on a phone: `styles.css`
-  // reads the class off `.site` via `body:has(.site.locked)`, since the render owns no element
-  // of `body` itself to add the class to directly.
-  // the site is a part: a drawer or a modal opening changes its tag (locked, the address) and a layer inside it, and nothing else is sent
-  return `<div class="flowers" aria-hidden="true"></div>` + part("site", `<div class="site${atWelcome ? " at-welcome" : ""}${locked ? " locked" : ""}"${pageAttrs}>${body}</div>`);
+  // the site is a part: a drawer or a modal opening changes its tag (the address) and a layer inside it, and nothing else is sent
+  return `<div class="flowers" aria-hidden="true"></div>` + part("site", `<div class="site${atWelcome ? " at-welcome" : ""}"${pageAttrs}>${body}</div>`);
 }
