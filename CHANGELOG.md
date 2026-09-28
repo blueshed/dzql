@@ -200,6 +200,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   alone, which names the first on the page: when the part it went to came first, the client and
   the harness took out the copy just put in and left the old one. A part that moved is now taken
   out of the part it left (`[data-eta-part="b"] [data-eta-part="head"]`).
+- **`waitFor` runs out with the clock fixed** (`src/webview.ts`, todo n83). It measured the wait
+  with `Date.now()`, which bun:test's `setSystemTime` stops, so a browser test that fixed the
+  date to open a page on a given day, then waited for something that never came, hung past its
+  own timeout instead of failing with what it waited for. It measures with `performance.now()`.
 
 ## [0.49.0] - 2026-09-25
 

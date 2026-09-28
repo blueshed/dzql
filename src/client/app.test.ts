@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
 import { bento, type Field } from "../bento";
 import { write } from "../html";
 import { diff, drawParts, part } from "../parts";
@@ -340,6 +340,16 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await using view = await open();
     expect(waitFor(view, `1 + 1`, (v) => v === 3, 60)).rejects.toThrow("Timed out waiting for `1 + 1`; last value: 2");
   });
+
+  test("waitFor runs out with the clock fixed, as a test that opens a page on a given day fixes it", async () => {
+    await using view = await open();
+    setSystemTime(new Date("2026-11-10T09:00:00Z")); // Date.now() stands still from here
+    try {
+      await expect(waitFor(view, `1 + 1`, (v) => v === 3, 60)).rejects.toThrow("Timed out waiting for `1 + 1`; last value: 2");
+    } finally {
+      setSystemTime();
+    }
+  }, 2000);
 
   test("after an undo, a field nobody is in shows the value undone to, and leaving another field sends nothing again", async () => {
     await using view = await open();
