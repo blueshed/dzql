@@ -255,6 +255,37 @@ describe("stories harness", () => {
     expect(failures).toEqual(["nothing landed: closing bob's tab changed nothing", "ada did not see it"]);
   }, 30000);
 
+  test("the fresh render is read from storage: a copy that drifted from the tables fails the story, by name", async () => {
+    // the tables changed behind delta's back: each message stored says other than what was said,
+    // and the copy every page is drawn from never hears of it -- so the pages agree with the copy
+    db.run("CREATE TEMP TRIGGER drift AFTER INSERT ON chat_messages BEGIN UPDATE chat_messages SET text = 'not what was said' WHERE id = NEW.id; END");
+    try {
+      const failures = await failuresOf(example, only("Ada says hello"));
+      expect(failures).toContain("after the story, ada's open page is not what a fresh render shows");
+      expect(failures).toContain("after the story, bob's open page is not what a fresh render shows");
+      expect(failures).toContain("after redo, ada's open page is not what a fresh render shows");
+    } finally {
+      db.run("DROP TRIGGER drift");
+    }
+  }, 30000);
+
+  test("a row the tables lost fails the story too: a document they do not hold is drawn as nothing", async () => {
+    const { example: ticker } = await import("../examples/ticker/index");
+    // the ticker's own story, told here: Ann's desk says she is on her board
+    const desk = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/page", value: page }] });
+    const watch = { doc: "watchlist", ops: [{ op: "add" as const, path: "/symbols/-", value: "CHRL" }] };
+    const watches = { cast: { ann: [desk("board")] }, goTo: desk, stories: [{ name: "Ann, on her board, watches Charlie Metals", as: "ann", from: "board?new", does: watch, seen: { ann: "board" } }] };
+    expect((await run(ticker, watches)).failed).toBe(0);
+    // each desk row is lost as it is made: the copy keeps the desk, off the ledger, the tables do not
+    db.run("CREATE TEMP TRIGGER lost AFTER INSERT ON ticker_desks BEGIN DELETE FROM ticker_desks WHERE id = NEW.id; END");
+    try {
+      const failures = (await run(ticker, watches)).outcomes.flatMap((o) => o.failures);
+      expect(failures).toContain("after the story, ann's open page is not what a fresh render shows");
+    } finally {
+      db.run("DROP TRIGGER lost");
+    }
+  }, 30000);
+
   test("a refusal that is really the server failing fails the story, and so does one nobody answers", async () => {
     const throwing = withRoom((room) => ({ ...room, permit: () => { throw new Error("a permit that throws"); } }));
     expect((await failuresOf(throwing, only("Nobody can take"))).some((f) => f.startsWith("the server failed") && f.endsWith("a permit that throws"))).toBe(true);

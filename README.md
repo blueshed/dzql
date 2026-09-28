@@ -63,8 +63,8 @@ sites whose pages may open a socket) among them.
 - **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** draws an island: an
   applet, the part of a page that keeps state of its own in the browser, written as a railroad
   component (`island()`, `src/island.ts`). The ticker's city picker is one. The kernel's client
-  does not import it; a page with an island carries railroad too (about 2 KB gzipped for
-  `signal` and `mount`, 4 KB with `list`).
+  does not import it; a page with an island carries railroad too (<!-- measured:railroad -->2.6 KB
+  gzipped for `signal` and `mount`, 3.5 KB with `list`<!-- /measured -->).
 
 ## Why eta
 
@@ -74,9 +74,11 @@ sites whose pages may open a socket) among them.
   and says so. A compartment can refuse one that breaks a rule of time or state
   (`permitUndo`: answers closed at the deadline).
 - **Stories are the tests.** An example is a list of sentences -- who does what, and who then
-  sees it -- and `bun run stories` checks each one over real sockets, with its undo and redo.
-- **A small client.** The kernel's client is about 2.9 KB minified and gzipped: a morph, the write
-  gestures and an applet registry. There is no framework to learn.
+  sees it -- and `bun run stories` checks each one over real sockets, with its undo and redo;
+  `bun run stories:all` runs every example's (<!-- measured:stories -->10 in chat, 21 in leave,
+  17 in ticker and 47 in wedding<!-- /measured -->).
+- **A small client.** The kernel's client is <!-- measured:client -->3.1 KB<!-- /measured --> minified
+  and gzipped: a morph, the write gestures and an applet registry. There is no framework to learn.
 - **Nothing else to run.** Bun and SQLite, one process, one file.
 - **A readable wire.** `bun run cli watch` prints every patch as it happens; `bun run cli undo`
   undoes the CLI session's own last write, from a terminal.
@@ -88,16 +90,22 @@ large consumer product.
 ## What a write costs
 
 After a write, each page that read the document is drawn again and sent only the parts that
-changed. Each example measures this with a script
-(`DB_PATH=:memory: bun examples/<name>/scripts/measure-render-cost.ts`). Today:
+changed. Each example measures what one write sends everyone else, with a script
+(`examples/<name>/scripts/measure-render-cost.ts`). `bun run costs` runs each from an empty
+database and writes what it finds here, and every other number this README quotes; `bun test`
+fails when the README says otherwise.
 
-- **Chat**, a room of 100 messages and 5 members: 1,111 B to each other member per message (a
-  293 B patch and 818 B of HTML).
-- **The wedding**, one guest's top changed to green: 1.8 KB to the same household's other tab,
-  3.8 KB to the couple, and to another household only the photo's one changed figure (302 B), with
-  no HTML.
-- **The ticker**, one price tick: a 186 B patch to each viewer, and no HTML. The same tick as a
-  bare JSON feed would be 41 B.
+<!-- measured:writes -->
+- **Chat**, one message in a room of 100 messages and 5 members: 1.2 KB to each other member (a
+  345 B patch and 844 B of HTML).
+- **The ticker**, one price tick with 5 viewers watching its symbol: 364 B to each other viewer
+  (patches of 186 B and 178 B, and no HTML). The same tick as a bare JSON feed would be 41 B.
+- **The wedding**, one guest's top changed to green: 2.2 KB to the same household's second tab, on
+  its photo (patches of 357 B and 300 B, and 1.5 KB of HTML); 5.2 KB to the couple, on their photo
+  of families (a 353 B patch and 4.8 KB of HTML); 300 B to another household, on its photo (one
+  patch and no HTML); and 1.9 KB to another household, reading everyone (a 300 B patch and 1.6 KB of
+  HTML).
+<!-- /measured -->
 
 ## Commands
 
@@ -108,6 +116,7 @@ bun test             # the tests
 bun run check        # the type check
 bun run stories      # one example's stories; stories:all runs every example's
 bun run cli <verb>   # a terminal client: inspect, watch, undo, redo, write, and the example's own
+bun run costs        # measures every number this README quotes, and writes it in
 ```
 
 ## Where to go next

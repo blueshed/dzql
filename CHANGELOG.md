@@ -111,6 +111,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also mended two things the numbers exposed: removing a dish clears the guests' choices of it,
   and removing a gift takes its claims. leave's browser test waits until the first month shown
   is October, not merely until October is on the page.
+- **The harness compares each open page with a render from storage** (todo n33, canon 2). The
+  fresh render read the copy the server draws from, so a copy that drifted from the tables was
+  compared with itself. Now each document it reads is opened again from delta's tables
+  (`open_at`). One they do not hold is drawn as nothing, as the kernel holds a document delta
+  cannot open, so a lost row fails; only a memory kind, which has no tables, comes from the copy.
 
 ### Added
 
@@ -172,6 +177,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of them (`value` names the one drawn chosen, else the first is), and `type` may be `url`. There
   is still no bare modal: a modal is new or delete (rule 14). A refused add hands back the option
   chosen, as it does what was typed.
+- **The README's numbers are measured, and `bun test` fails when they are stale** (todo n7).
+  `bun run costs` (`src/costs.ts`) runs each example's `measure-render-cost.ts --json` in a process
+  of its own (no .env, none of the caller's settings, so not `REVEAL`, and a clock stopped on a day
+  before the wedding: a run says the same on any day), builds and gzips the client and railroad,
+  counts every example's stories, and writes them where the README marks them
+  (`<!-- measured:<name> -->`); `src/costs.test.ts` fails when the README says otherwise: word for
+  word, but for a bundle's size, which stands while it is within 3% of a run's, so a minifier's few
+  bytes do not flip its rounding (railroad's 2,620 B is 9 B from showing as 2.5 KB rather than 2.6).
+  The measure scripts wait by asking the server (`inspect`), not by a clock. What the README said
+  was stale three ways: chat's script averaged a stray arrival from its setup into each member's
+  share, so 1,111 B (a 293 B patch) is 1.2 KB (345 B); a tick has been two patches, the market's and
+  the quote's, since the board was told only what it shows (25 Sep, the day after the README's 186 B
+  was copied), so it is 364 B; and the wedding's figures (1.8 KB and 3.8 KB, 24 Sep) predate each of
+  its pages becoming a photo, so they are 2.2 and 5.2 KB.
 
 ### Fixed
 
