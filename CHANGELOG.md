@@ -196,6 +196,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   back on the trail was 16px tall where it is pressed; it is `--touch` each way, drawn as it was.
   And find's field kept its own width in the bar under the trail, which at 320 pushed the eye out
   of it; the field now takes what the tally and the eye leave.
+- **Find's eye and the window's way back are pressed over a touch** (todo n48). Both are drawn
+  26px, under the kernel's own `--touch`; each keeps its drawing and is pressed over `--touch` each
+  way, as the trail's crumbs are. The way back's words are in a span of their own, which gives way
+  to a long trail instead of the link.
 
 ## [0.49.0] - 2026-09-25
 

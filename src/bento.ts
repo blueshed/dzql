@@ -275,7 +275,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
    */
   function windowOf(trail: Crumb[], open: OpenOptions): string {
     const chev = `<span class="chev">${icon("chevron-right", 14)}</span>`;
-    const ways = trail.slice(0, -1).map((c) => (c.back !== undefined ? `<a class="cell-back" href="#"${c.back}>${esc(c.label)}</a>` : `<span class="cell-root">${esc(c.label)}</span>`) + chev);
+    const ways = trail.slice(0, -1).map((c) => (c.back !== undefined ? `<a class="cell-back" href="#"${c.back}><span>${esc(c.label)}</span></a>` : `<span class="cell-root">${esc(c.label)}</span>`) + chev);
     return part(open.key, join(
       `<div class="cell open" data-key="${open.key}" data-moving="${esc(open.key)}">`,
       `<div class="cell-head cap">${ways.join("")}<span class="cell-name">${esc(trail[trail.length - 1]!.label)}</span></div>`,

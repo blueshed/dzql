@@ -116,7 +116,7 @@ describe("the surfaces", () => {
     const out = b.boxPage([{ label: "The desk", back }, { label: "the market" }], [], cells, { key: "market", reading: "<i>reading</i>", tools: ["<i>find</i>"], filter: "<i>filter</i>", body: "<i>rows</i>", note: "a note" });
     expect(out).toContain('<section class="page box windowed">');
     expect(out).not.toContain("page-tools across"); // the page's tools are in the window instead
-    expect(out).toContain(`<div data-eta-part="market" class="cell open" data-key="market" data-moving="market"><div class="cell-head cap"><a class="cell-back" href="#"${back}>The desk</a>`);
+    expect(out).toContain(`<div data-eta-part="market" class="cell open" data-key="market" data-moving="market"><div class="cell-head cap"><a class="cell-back" href="#"${back}><span>The desk</span></a>`);
     expect(out).toContain('<span class="cell-name">the market</span></div><div class="rail work"><i>reading</i><div class="stack"><i>find</i></div></div><div class="full"><i>rows</i><p class="note">a note</p></div><div class="stack page-tools"');
     // last, so find opening and closing moves nothing the morph matches by position
     expect(out).toMatch(/<div class="stack page-tools"[^]*<\/div><i>filter<\/i><\/div>/);
@@ -139,8 +139,8 @@ describe("the surfaces", () => {
     const trail = [{ label: "Eta" }, { label: "Chat", back: leave }, { label: "#general", back: close }, { label: "conversation" }];
     const head = b.boxPage(trail, [], cells, { key: "conversation", body: "" }).match(/<div class="cell-head cap">.*?<\/div>/)![0];
     expect(head).toContain('<span class="cell-root">Eta</span>'); // named, but not a place
-    expect(head).toContain(`<a class="cell-back" href="#"${leave}>Chat</a>`);
-    expect(head).toContain(`<a class="cell-back" href="#"${close}>#general</a>`);
+    expect(head).toContain(`<a class="cell-back" href="#"${leave}><span>Chat</span></a>`);
+    expect(head).toContain(`<a class="cell-back" href="#"${close}><span>#general</span></a>`);
     expect(head).toContain('<span class="cell-name">conversation</span>');
     expect(head.match(/class="chev"/g)).toHaveLength(3);
   });
@@ -343,6 +343,16 @@ describe("the surfaces in a browser", () => {
       })()`);
       // the field up to the tally, the bar's gap between; the eye whole, at the bar's end (its padding and border from it)
       expect(bar).toEqual({ gap: 8, eye: 26, end: 3 });
+    });
+  }
+
+  for (const width of [375, 1280]) {
+    test(`${width} wide: find's eye and a way back in the window are drawn 26px, and pressed over a touch`, async () => {
+      const cells = [b.cell({ name: "market", opens: go("market") })];
+      const find = b.findControl("market", { word: "al", shown: 1, total: 3 });
+      await using view = await show(b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], [], cells, { key: "market", tools: [find.tool], filter: find.filter, body: "" }), width);
+      expect(await view.evaluate<number[]>(`['.filter .tool', '.cell.open .cell-back'].map((s) => document.querySelector(s).getBoundingClientRect().height)`)).toEqual([26, 26]);
+      expect(await pressesAround(view, ".filter .tool, .cell.open .cell-back", touch)).toEqual([]);
     });
   }
 
