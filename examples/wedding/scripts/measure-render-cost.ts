@@ -1,7 +1,9 @@
 // Measures what one household write costs on the wire for everyone else connected: a guest's
 // top changed to green, with the sender's own household open in a second tab, the couple on
 // their photo of families, another household on its photo, and a third reading everyone's. Not a
-// test -- a report. Run with `DB_PATH=:memory: bun examples/wedding/scripts/measure-render-cost.ts`.
+// test -- a report. Run with `DB_PATH=:memory: bun examples/wedding/scripts/measure-render-cost.ts`;
+// with `--json`, what the README says (src/costs.ts, `bun run costs`).
+import type { Measured } from "../../../src/costs";
 import { createServer } from "../../../src/server";
 import { asCouple, asHousehold, board, household } from "../setup";
 import { example } from "../index";
@@ -35,6 +37,18 @@ function nextMessage(ws: WebSocket): Promise<string> {
   return new Promise((resolve) => waiters.get(ws)!.push(resolve));
 }
 
+/**
+ * Everything `ws` is sent until the server answers a question asked after it: events are handled
+ * one at a time, each once all the one before it set going is done, so nothing it was due is still
+ * to come.
+ */
+async function heard(ws: WebSocket): Promise<string[]> {
+  ws.send(JSON.stringify({ type: "inspect" }));
+  const raws: string[] = [];
+  for (let raw = await nextMessage(ws); JSON.parse(raw).type !== "inspect"; raw = await nextMessage(ws)) raws.push(raw);
+  return raws;
+}
+
 const send = (ws: WebSocket, doc: string, ops: unknown[]) => ws.send(JSON.stringify({ doc, ops }));
 
 async function enter(code: string, page?: string): Promise<WebSocket> {
@@ -65,30 +79,26 @@ send(sender, "session", [{ op: "replace", path: "/page", value: `?guest=${guest}
 await nextMessage(sender);
 await nextMessage(sender);
 const audience: [string, WebSocket][] = [
-  ["the same household, a second tab on its photo", await enter(mine!.code)],
+  ["the same household's second tab, on its photo", await enter(mine!.code)],
   ["the couple, on their photo of families", await enter("DASH")],
   ["another household, on its photo", await enter(theirs!.code)],
   ["another household, reading everyone", await enter(theirs!.code, "everyone")],
 ];
-for (const [, ws] of audience) queues.get(ws)!.length = 0;
-queues.get(sender)!.length = 0;
-
-/** Everything that arrives for this socket within a beat of the write. */
-async function collect(ws: WebSocket): Promise<string[]> {
-  await Bun.sleep(150);
-  return queues.get(ws)!.splice(0);
-}
+for (const ws of [sender, ...audience.map(([, ws]) => ws)]) await heard(ws);
 
 send(sender, "household", [{ op: "replace", path: `/guests/${guest}/minifigure/top`, value: "#7FAE4E" }]);
+const own = await heard(sender); // once the sender is answered, everyone else has been sent theirs
+const incoming = await Promise.all(audience.map(async ([who, ws]) => [who, await heard(ws)] as const));
 const bytes = (raws: string[]) => raws.reduce((n, raw) => n + Buffer.byteLength(raw, "utf8"), 0);
 const kinds = (raws: string[]) => raws.map((raw) => { const m = JSON.parse(raw); return m.type === "render" ? (m.ops ? `render ops(${m.ops.length})` : "render page") : m.type; }).join(" + ") || "nothing";
+const sizes = (raws: string[]) => raws.map((raw) => ({ type: JSON.parse(raw).type as string, bytes: Buffer.byteLength(raw, "utf8") }));
 
-console.log("One guest's top changed to green. Bytes sent to:");
-const own = await collect(sender);
-console.log(`  the sender (drawer open):                           ${String(bytes(own)).padStart(6)} B  ${kinds(own)}`);
-for (const [who, ws] of audience) {
-  const raws = await collect(ws);
-  console.log(`  ${who.padEnd(50)} ${String(bytes(raws)).padStart(6)} B  ${kinds(raws)}`);
+const measured: Measured = { name: "The wedding", what: "one guest's top changed to green", to: incoming.map(([who, raws]) => ({ who, heard: sizes(raws) })) };
+if (process.argv.includes("--json")) console.log(JSON.stringify(measured));
+else {
+  console.log("One guest's top changed to green. Bytes sent to:");
+  console.log(`  the sender (drawer open):                           ${String(bytes(own)).padStart(6)} B  ${kinds(own)}`);
+  for (const [who, raws] of incoming) console.log(`  ${who.padEnd(50)} ${String(bytes(raws)).padStart(6)} B  ${kinds(raws)}`);
 }
 
 for (const [, ws] of audience) ws.close();

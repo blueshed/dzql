@@ -15,7 +15,8 @@
     "test": "bun test",
     "stories": "bun --env-file=.env.test src/stories-run.ts",
     "stories:all": "ETA_EXAMPLE=chat bun run stories && ETA_EXAMPLE=ticker bun run stories && ETA_EXAMPLE=wedding bun run stories && ETA_EXAMPLE=leave bun run stories",
-    "check": "bunx tsc --noEmit"
+    "check": "bunx tsc --noEmit",
+    "costs": "bun --env-file=.env.test src/costs.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
