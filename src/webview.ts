@@ -63,14 +63,15 @@ export const MOUSE = `((points) => {
 /**
  * Presses what `selector` names as a person does with a mouse: scrolled into view, then pressed
  * and let go at its middle (MOUSE). Never `element.click()`, which sends no pointerdown or
- * pointerup and reaches the element whatever is drawn over it. Waits up to `timeout` ms for
- * nothing else to be at its middle, then throws, saying what is.
+ * pointerup and reaches the element whatever is drawn over it. Waits up to `timeout` ms for it
+ * to be pressable -- not disabled, and nothing else at its middle -- then throws, saying why not.
  */
 export async function press(view: Bun.WebView, selector: string, timeout = 2000): Promise<void> {
   let why: unknown;
   const pressed = `((selector) => {
     const el = document.querySelector(selector);
     if (!el) return "it is not on the page";
+    if (el.closest(":disabled:not(fieldset)")) return "it is disabled"; // a control, or in one, disabled itself or by its fieldset
     el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
     const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
     const top = document.elementFromPoint(x, y);

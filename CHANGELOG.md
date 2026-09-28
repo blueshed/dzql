@@ -44,7 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`press(view, selector)`, a press as a mouse makes one, for browser tests** (`src/webview.ts`,
   todo n98): scrolled to, pressed and let go at its middle, each pointer and mouse event to what
   is there as it is sent, then the click where a browser sends it, to what the press and the
-  release share, if that is still on the page. It throws, naming what covers the control. Never
+  release share, if that is still on the page. It throws for a control a person could not press:
+  disabled (itself, or by its fieldset), or covered, naming what covers it. Never
   `element.click()`, which sends no pointerdown or pointerup and reaches a control whatever
   covers it: japan-eta's strip redrew itself on pointerup, its real click reached nothing, and
   its test, clicking, passed. The skill shows it; by-hand's drag is the same mouse (`MOUSE`).

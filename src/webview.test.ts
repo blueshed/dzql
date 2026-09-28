@@ -48,4 +48,10 @@ describe("press: as a mouse does, never element.click()", () => {
     await expect(press(view, "#[", 100)).rejects.toThrow("cannot press #[: "); // no selector at all: the page's own error
     expect(await view.evaluate<string[]>(`heard`)).toEqual([]);
   });
+
+  test("what is disabled cannot be pressed, itself, by what is in it, or in a disabled fieldset, and it says so", async () => {
+    await using view = await page(`<button id="off" disabled><span id="inside">off</span></button><fieldset disabled><button id="held">held</button></fieldset>`);
+    for (const selector of ["#off", "#inside", "#held"]) await expect(press(view, selector, 100)).rejects.toThrow(`cannot press ${selector}: it is disabled`);
+    expect(await view.evaluate<string[]>(`heard`)).toEqual([]);
+  });
 });

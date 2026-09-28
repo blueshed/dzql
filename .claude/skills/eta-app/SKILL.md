@@ -111,8 +111,8 @@ Everything below is the least that makes it pass.
     reaches a control whatever is drawn over it, so a tap that goes nowhere passes (japan-eta's
     strip redrew itself on pointerup, and its real click reached nothing). `press` (`src/webview.ts`)
     scrolls to the control, presses and lets go at its middle, each event to what is there, then
-    sends the click where a browser would, and throws, naming what covers it, when something else
-    is at its middle. (`view.click(selector)` is the browser's own press, for a control already in
+    sends the click where a browser would; it throws for a control that is disabled, or covered,
+    naming what covers it. (`view.click(selector)` is the browser's own press, for a control already in
     view.)
 
     ```ts
