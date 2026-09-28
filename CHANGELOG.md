@@ -200,6 +200,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   26px, under the kernel's own `--touch`; each keeps its drawing and is pressed over `--touch` each
   way, as the trail's crumbs are. The way back's words are in a span of their own, which gives way
   to a long trail instead of the link.
+- **The bento's rules say what the keyboard does** (todo n56). Rule 19 in
+  `examples/bento/README.md`: what a finger opens, the keyboard opens; the keyboard goes into a
+  window and back to its cell; the box behind a window is inert; Escape puts away what was opened
+  last. The skill's reference says an example's own opener is a `<button>`.
 
 ## [0.49.0] - 2026-09-25
 
