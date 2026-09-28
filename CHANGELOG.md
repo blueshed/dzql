@@ -246,7 +246,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pressing (a drag, a selection being made), and a right-click or a lost window ends a press. `data-reveal` measures the bar the same way, so a revealed row
   lands below a header nobody declared. A declared `scroll-padding-top` overrides the measure.
   What a render takes out of the flow is no place to keep: a cell grown into the window (fixed,
-  or the one that moves) left the page behind it at its top, and there on close.
+  or the one that moves) left the page behind it at its top, and there on close. A scroller whose
+  top is scrolled off the window is kept from the window's top, and a scroller's place is put
+  back before the page's, which may be reading inside it.
 
 ## [0.49.0] - 2026-09-25
 

@@ -360,6 +360,17 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(kept).toEqual({ "a selection left above": 60, "after a right-click": 60, "after a press the window lost": 60 });
   });
 
+  test("the reader's place is kept in a scroller whose top is scrolled off the page, and the page stays where it is", async () => {
+    await using view = await open();
+    const rows = (gone: string[]) => Array.from({ length: 40 }, (_, i) => `r${i}`).filter((k) => !gone.includes(k)).map((k) => `<li id="${k}" data-eta-part="${k}" style="height:50px;margin:0">${k}</li>`).join("");
+    await pushRender(view, `<style>body { margin: 0 }</style><div style="height:400px"></div><div id="list" style="height:300px;overflow:auto"><header style="position:sticky;top:0;height:60px;background:#fff;z-index:1">the day</header><ul style="margin:0;padding:0;list-style:none">${rows([])}</ul></div><div style="height:2000px"></div>`);
+    await view.evaluate(`(() => { document.getElementById('list').scrollTop = 550; window.scrollTo(0, 500); })()`); // the list's top 100px above the window; r12 at its top
+    const where = `[scrollY, Math.round(document.getElementById('r12').getBoundingClientRect().top - document.getElementById('list').getBoundingClientRect().top)]`;
+    expect(await view.evaluate<number[]>(where)).toEqual([500, 110]);
+    await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r10"]' }] }); // under the list's header, out of sight
+    expect(await view.evaluate<number[]>(where)).toEqual([500, 110]);
+  });
+
   test("a cell that grows into a fixed window is no place to keep: the page behind stays where it was, open and closed", async () => {
     await using view = await open();
     const box = (open: boolean) =>

@@ -211,7 +211,7 @@ function readingTop(port: Element): number {
   if (declared !== "auto") return top + lengthIn(declared, port.clientHeight);
   let line = top;
   for (let bars = 0; bars < 3; bars++) {
-    const bar = document.elementsFromPoint(middleOf(port), line + 1).find((el) => el !== port && port.contains(el) && /sticky|fixed/.test(getComputedStyle(el).position));
+    const bar = document.elementsFromPoint(middleOf(port), Math.max(line, 0) + 1).find((el) => el !== port && port.contains(el) && /sticky|fixed/.test(getComputedStyle(el).position));
     const below = bar?.getBoundingClientRect().bottom ?? line;
     if (below <= line) break;
     line = below;
@@ -234,9 +234,9 @@ for (const type of ["pointerup", "touchend", "touchcancel", "contextmenu"]) docu
 window.addEventListener("blur", () => (holding = false)); // nor when the window loses the press
 document.addEventListener("pointercancel", (event) => event.pointerType === "touch" || (holding = false), true); // a touch goes on, as a scroll, until touchend
 
-/** The first element in `port`, in the page's order, whose top is at or below where reading starts. */
+/** The first element in `port`, in the page's order, whose top is at or below where reading starts -- in the window: a scroller's top may be scrolled off it, and a point off it cannot be looked at. */
 function readerIn(port: Element): Element | undefined {
-  const line = readingTop(port);
+  const line = Math.max(readingTop(port), 0);
   let at: Element | null | undefined = document.elementsFromPoint(middleOf(port), line + 1).find((el) => el !== port && port.contains(el));
   while (at) {
     const box: DOMRect = at.getBoundingClientRect();
@@ -262,7 +262,8 @@ function apart(el: Element, port: Element): boolean {
 function placesNow(): Place[] {
   if (holding) return [];
   const scrolled = [...app.querySelectorAll("*")].filter((el) => el.scrollTop > 0 && !(el instanceof HTMLTextAreaElement) && !el.closest("[data-applet]"));
-  const ports = document.documentElement.scrollTop > 0 ? [document.documentElement, ...scrolled] : scrolled;
+  // the innermost first: a scroller's place is put back before that of the one around it, which may be reading inside it
+  const ports = [...scrolled.reverse(), ...(document.documentElement.scrollTop > 0 ? [document.documentElement] : [])];
   return ports.flatMap((port) => {
     const at = readerIn(port);
     return at ? [{ port, at, top: at.getBoundingClientRect().top - topOf(port), apart: apart(at, port) }] : [];
