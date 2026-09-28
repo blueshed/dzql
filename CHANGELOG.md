@@ -317,7 +317,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   page sends is done by hand, its control pressed, typed into and sent, or chosen; each refusal
   a control of the page's own sends is tried so, and must not land; any other refusal told from a
   place is walked to. So a control hidden by a stylesheet, covered, of no size, off a phone's
-  screen, never still, or a field no form sends fails by name, where without a browser it passed.
+  screen, or a field no form sends fails by name, where without a browser it passed.
   Not done by hand: a refusal no control sends where the cast stands (that none does is the
   point), a write from no page, a tab closing. `Report.byHand` counts the stories, presses and
   time. `bun run stories:all` does so: 74 of the examples' 99 stories (61 writes pressed, 6

@@ -8,7 +8,7 @@ import { activeDocuments, Pending, setActiveDocuments, settled, type Documents }
 import { onFailure } from "./failed";
 import { comparable, splitTag } from "./parts";
 import { said } from "./refusal";
-import { Hand, sameWrite, worded } from "./by-hand";
+import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
 
 export { comparable };
@@ -299,9 +299,6 @@ export const placeOf = (page: string): string | undefined => {
   const m = /\sdata-page="([^"]*)"/.exec(page);
   return m ? unescape(m[1]!) : undefined;
 };
-
-/** The same document: named whole on one side and by its type alone on the other (`room`, `room:general`) counts. */
-const sameDoc = (a: string, b: string): boolean => a === b || a.startsWith(`${b}:`) || b.startsWith(`${a}:`);
 
 /** Does a path an applet names (`*` for any one member: an id, never `-`, the end of a list an append names as such) name this one? */
 const fits = (pattern: string, path: string): boolean => {
@@ -998,9 +995,9 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     } finally {
       if (opened) {
         // the tab closed, and the server told of it, before the story is rolled back
-        const author = cast.find((m) => m.name === story.as)!.sessionId;
         await hand.leave();
-        await until(() => allOpenSockets().filter((ws) => ws.data.sessionId === author).length <= 1);
+        const open = await stillOpen(cast.find((m) => m.name === story.as)!.sessionId);
+        if (open) failures.push(`by hand, ${story.as}'s tab did not close: ${open}`);
       }
       await disband(cast);
     }
@@ -1049,9 +1046,15 @@ function where(page: string | undefined): string {
   return page === undefined ? "" : ` on ${JSON.stringify(page)}`;
 }
 
-/** Waits until `holds`, or `ms` have passed: for what the server hears of a browser, which no question on the harness's own sockets can wait for. */
-async function until(holds: () => boolean, ms = 2000): Promise<void> {
-  for (const end = performance.now() + ms; !holds() && performance.now() < end; ) await Bun.sleep(5);
+/**
+ * Waits for the server to let go of every socket of `sessionId` but one (the harness's own), as it
+ * does of a tab that closes: what the server hears of a browser, which no question on the harness's
+ * own sockets can wait for. Why not, if it has not in `ms`.
+ */
+export async function stillOpen(sessionId: string, ms = 2000): Promise<string | undefined> {
+  const open = () => allOpenSockets().filter((ws) => ws.data.sessionId === sessionId).length;
+  for (const end = performance.now() + ms; open() > 1 && performance.now() < end; ) await Bun.sleep(5);
+  return open() > 1 ? `the server still held ${open()} of its sockets after ${ms} ms` : undefined;
 }
 
 /** With STORY_DIFF set, where two pages first part company -- for the builder, not the report. */

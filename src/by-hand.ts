@@ -11,7 +11,7 @@
 
 import type { PatchOp } from "./json-patch";
 import type { Gesture, Write } from "./stories";
-import { urlFor } from "./webview";
+import { urlFor, waitFor } from "./webview";
 
 /** A phone, held upright: the stories are pressed at the size most people hold them. */
 export const PHONE = { width: 390, height: 844 };
@@ -28,10 +28,13 @@ export type Pressed = { sent: Write[] } | { failure: string; none?: true };
 /** One control the page found for a write, and how a person sends it: a press, a form's fields and its submit, or an editing form's fields; or, first, the summary that opens the `<details>` it is folded in. */
 type Plan = { how: "press" | "submit" | "edit" | "open"; control: string; fields: { at: string; kind: "type" | "choose" | "tick"; text: string; none?: boolean }[]; submit?: string };
 
+/** The same document: named whole on one side and by its type alone on the other (`room`, `room:general`) counts. */
+export const sameDoc = (a: string, b: string): boolean => a === b || a.startsWith(`${b}:`) || b.startsWith(`${a}:`);
+
 // The page's side, a string since it runs in the browser: the elements that send a write, as the
 // kernel's client sends them (src/client/app.ts), and why a person could not press one.
 const PAGE = `(() => {
-  const same = (a, b) => a === b || a.startsWith(b + ":") || b.startsWith(a + ":");
+  const same = ${sameDoc};
   const specOf = (el) => { try { return JSON.parse(el.dataset.write); } catch { return undefined; } };
   const named = (el) => el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + [...el.classList].map((c) => "." + c).join("");
   let marks = 0;
@@ -42,7 +45,7 @@ const PAGE = `(() => {
   function why(el) {
     if (el.closest("[inert]")) return "inert, behind what is open over it";
     if (el.closest("[hidden]")) return "hidden";
-    if (el.disabled || el.closest("fieldset[disabled]")) return "disabled";
+    if (el.matches(":disabled")) return "disabled"; // itself, or in a disabled fieldset but for its first legend
     el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
     const r = el.getBoundingClientRect();
     if (el.checkVisibility && !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return "not to be seen";
@@ -213,8 +216,8 @@ export class Hand {
   }
 
   /** Whether `script` comes true in the page within its time: a page answers by drawing, which nothing else says it has done. */
-  private async until(script: string): Promise<boolean> {
-    for (const end = performance.now() + PATIENCE; ; await Bun.sleep(20)) if ((await this.view.evaluate(script)) === true || performance.now() > end) return (await this.view.evaluate(script)) === true;
+  private until(script: string): Promise<boolean> {
+    return waitFor(this.view, script, (v) => v === true, PATIENCE).then(() => true, () => false);
   }
 
   /** Does the write `doc`/`ops` as a person would, from whatever on the page sends it; what the page sent, once the server has answered it. */
@@ -321,6 +324,5 @@ export function sameWrite(sent: Write, story: Write): boolean {
     a !== null && b !== null && typeof a === "object" && typeof b === "object"
       ? Object.keys(b).every((k) => same((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])) && Object.keys(a).every((k) => k in b || blank((a as Record<string, unknown>)[k]))
       : String(a ?? "") === String(b ?? "");
-  const doc = (a: string, b: string) => a === b || a.startsWith(`${b}:`) || b.startsWith(`${a}:`);
-  return doc(sent.doc, story.doc) && sent.ops.length === story.ops.length && sent.ops.every((op, i) => op.op === story.ops[i]!.op && op.path === story.ops[i]!.path && same(op.value, story.ops[i]!.value));
+  return sameDoc(sent.doc, story.doc) && sent.ops.length === story.ops.length && sent.ops.every((op, i) => op.op === story.ops[i]!.op && op.path === story.ops[i]!.path && same(op.value, story.ops[i]!.value));
 }

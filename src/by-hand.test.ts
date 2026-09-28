@@ -3,7 +3,8 @@ import { example as chat } from "../examples/chat";
 import { stories as chatStories } from "../examples/chat/stories";
 import type { Example } from "./example";
 import { sameWrite } from "./by-hand";
-import { run } from "./harness";
+import { run, stillOpen } from "./harness";
+import { createServer } from "./server";
 import { write } from "./html";
 import type { Story } from "./stories";
 import wrongPage from "./by-hand.test.html";
@@ -58,7 +59,7 @@ describe("the stories by hand", () => {
     expect(await byHand(loose, [hello])).toEqual([["by hand, ada could not add /messages/- on room: its field is in no form that sends it"]]);
   }, 60000);
 
-  test("a press the client never hears sends nothing, and one that never holds still is never pressed", async () => {
+  test("a press the client never hears sends nothing; a button in a disabled fieldset's first legend is pressed", async () => {
     const logout = { doc: "session", ops: [{ op: "remove" as const, path: "/name" }] };
     const going: Story = { name: "Ada logs out", as: "ada", does: logout, seen: ["ada", "bob"] };
     const off = write("session", "remove", "/name");
@@ -66,9 +67,32 @@ describe("the stories by hand", () => {
     expect(await told(unheard, [going])).toEqual([[]]);
     expect(await byHand(unheard, [going])).toEqual([["by hand, ada could not remove /name on session: the page sent nothing when it was pressed"]]);
 
-    const restless = chatWith((html) => `<style>@keyframes restless { from { translate: 0 } to { translate: 40px } }</style>${html.replace(off, ` style="animation: restless 0.2s linear infinite"${off}`)}`);
-    expect(await byHand(restless, [going])).toEqual([["by hand, ada could not remove /name on session: the control for it is never still"]]);
+    // a button in a disabled fieldset's first legend is not disabled, as the browser has it (`:disabled`)
+    const legend = chatWith((html) => html.replace(/<button[^>]*aria-label="Log out"[^]*?<\/button>/, (b) => `<fieldset disabled><legend>${b}</legend></fieldset>`));
+    expect(await byHand(legend, [going])).toEqual([[]]);
   }, 60000);
+
+  test("a tab that does not close is said, not waited on in silence: the server still holding its socket", async () => {
+    const server = createServer(chat, 0);
+    const sessionId = crypto.randomUUID();
+    const url = new URL("/ws", server.url);
+    url.protocol = "ws:";
+    const tab = () =>
+      new Promise<WebSocket>((resolve) => {
+        // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
+        const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } });
+        ws.addEventListener("open", () => resolve(ws), { once: true });
+      });
+    const [kept, closing] = [await tab(), await tab()];
+    try {
+      expect(await stillOpen(sessionId, 50)).toBe("the server still held 2 of its sockets after 50 ms");
+      closing.close();
+      expect(await stillOpen(sessionId)).toBeUndefined();
+    } finally {
+      kept.close();
+      server.stop(true);
+    }
+  });
 
   test("what is folded in a <details> is opened first; a write the server refuses lands nothing by hand either", async () => {
     const folded = chatWith((html) => html.replace(MESSAGE_FORM, (form) => `<details><summary>Say something</summary>${form}</details>`));
