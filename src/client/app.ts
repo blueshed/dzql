@@ -119,6 +119,12 @@ const hooks: MorphHooks = {
     if (held) Object.assign(held, { props, v: versionOf(el as HTMLElement) }); // a render's: the patches go on from these
     applets[(el as HTMLElement).dataset.applet!]?.update?.(el as HTMLElement, props);
   },
+  // a watching applet's props are what it holds, patched since the render that gave them: a render
+  // is compared with those, not with its attribute, which is still the first render's
+  heldProps(el) {
+    const held = (el as HTMLElement).dataset.doc === undefined ? undefined : mounted.get(el as HTMLElement);
+    return held && JSON.stringify(held.props);
+  },
   pressed: (el) => el === boxPressed,
 };
 

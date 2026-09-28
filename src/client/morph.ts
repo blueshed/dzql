@@ -12,8 +12,10 @@
 export type MorphHooks = {
   /** Called when a mounted applet's element is about to be removed. */
   onAppletRemoved?(el: Element): void;
-  /** Called when a mounted applet's element survives but its data-props changed. */
+  /** Called when a mounted applet's element survives but its data-props changed: from what it holds (`heldProps`), or else from its attribute. */
   onAppletPropsChanged?(el: Element, props: unknown): void;
+  /** The props a mounted applet holds, as JSON, where they are not its attribute's: a watching applet's, patched since its render. */
+  heldProps?(el: Element): string | undefined;
   /** Whether someone is pressing this box: its tick is theirs until the click lands. */
   pressed?(el: Element): boolean;
 };
@@ -115,7 +117,7 @@ function showChosen(select: HTMLSelectElement, chosen: string | undefined): void
 // never descend into its children -- a morph diffing "the new HTML" against
 // DOM the applet manages by hand would fight it for its own children.
 function morphApplet(old: Element, next: Element, hooks: MorphHooks): void {
-  const before = old.getAttribute("data-props");
+  const before = hooks.heldProps?.(old) ?? old.getAttribute("data-props");
   morphAttributes(old, next, hooks);
   const after = old.getAttribute("data-props");
   if (hooks.onAppletPropsChanged && after !== before) {

@@ -786,12 +786,16 @@ describe("the patch stream: what an applet that takes a document's patches holds
     expect([...takersOn(`<i data-doc="x"></i><b data-doc="y" data-eta-part="p"></b>`).keys()]).toEqual(["#0", "p"]);
   });
 
-  test("a render that changes an applet's props starts it again from them; one that does not keeps what it took; one gone is let go", () => {
+  test("a render that carries an applet's mount with props other than it holds starts it again from them; one that does not carry it, or carries what it holds, keeps what it took; one gone is let go", () => {
     const taken = new Map();
     retake(taken, mount("{&quot;A&quot;:1}"));
     taken.get("board").ops.push({ op: "replace", path: "/A", value: 2 });
-    retake(taken, mount("{&quot;A&quot;:1}"));
+    retake(taken, mount("{&quot;A&quot;:1}"), { type: "render", ops: [{ op: "replace", target: "#elsewhere", html: "<p>x</p>" }] }); // not the mount: its attribute is still the first render's
     expect(holding(taken.get("board"))).toEqual({ value: { A: 2 } });
+    retake(taken, mount("{&quot;A&quot;:2}"), { type: "render", html: mount("{&quot;A&quot;:2}") }); // what it holds
+    expect(taken.get("board").ops).toHaveLength(1);
+    retake(taken, mount("{&quot;A&quot;:1}"), { type: "render", html: mount("{&quot;A&quot;:1}") }); // a page drawn afresh with the first render's props: undone while the socket was down
+    expect(holding(taken.get("board"))).toEqual({ value: { A: 1 } });
     retake(taken, mount("{&quot;A&quot;:5}"));
     expect(holding(taken.get("board"))).toEqual({ value: { A: 5 } });
     retake(taken, "<main></main>");
@@ -809,7 +813,7 @@ describe("the patch stream: what an applet that takes a document's patches holds
     expect(taken.get("t")).toMatchObject({ v: 1 });
     // a render drawn after the change comes before its patch, which it holds
     const two = rows('{"rows":[{"n":1},{"n":2}]}', 2);
-    retake(taken, two);
+    retake(taken, two, { type: "render", ops: [{ op: "tag", target: '[data-eta-part="t"]', html: splitTag(two.slice("<main>".length))[0] }] });
     taking(taken, { doc: "list:1", version: 2, ops: [{ op: "add", path: "/-", value: { n: 2 } }] });
     taking(taken, { doc: "list:1", version: 3, ops: [{ op: "add", path: "/-", value: { n: 3 } }] });
     taking(taken, { doc: "list:2", version: 9, ops: [{ op: "add", path: "/-", value: { n: 9 } }] }); // another document's

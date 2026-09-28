@@ -412,13 +412,21 @@ const stepKey = (step: Step): string => `${step.from}\n${JSON.stringify(step.con
 /** The most places the harness walks for one member, looking for a way to a place a story names: enough for any page's drawers, not for a calendar's every month. */
 const MOST_PLACES = 400;
 
-/** A member's applets after a render: one whose props the render changed starts again from them; one it left alone keeps the ops it has taken. */
-export function retake(taken: Map<string, Taken>, page: string): void {
+/**
+ * A member's applets after a render, as the client keeps them: one the render carries (the page
+ * whole, or in a part it sends) with props other than those it holds, patched since, starts again
+ * from them; one it carries with what it holds, or does not carry, keeps the ops it has taken --
+ * its attribute is still the render's that gave it them. Without `message`, the page came whole.
+ */
+export function retake(taken: Map<string, Taken>, page: string, message?: Heard): void {
   const now = takersOn(page);
+  const carried = message?.html !== undefined || !message ? undefined : new Set((message.ops ?? []).flatMap((op) => (op.html === undefined ? [] : [...takersOn(op.html).keys()])));
   for (const key of taken.keys()) if (!now.has(key)) taken.delete(key);
   for (const [key, a] of now) {
     const held = taken.get(key);
-    if (!held || held.props !== a.props || held.doc !== a.doc || held.under !== a.under) taken.set(key, { ...a, ops: [] });
+    if (held && carried && !carried.has(key)) continue;
+    const holds = held && holding(held);
+    if (!held || !("value" in holds!) || JSON.stringify(holds.value) !== a.props || held.doc !== a.doc || held.under !== a.under) taken.set(key, { ...a, ops: [] });
   }
 }
 
@@ -617,7 +625,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       propsCost(name, member.page, message).forEach(warn);
       member.page = hear(member.page, message);
       if (message.type === "render") {
-        retake(member.taken, member.page);
+        retake(member.taken, member.page, message);
         keep(member);
       }
       if (message.type === "patch") taking(member.taken, message as unknown as { doc: string; version: number; ops: PatchOp[] });

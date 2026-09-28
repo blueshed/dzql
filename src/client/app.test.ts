@@ -884,6 +884,20 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<unknown>(`[window.__sent, document.getElementById('t').textContent, window.__applets.t.updates.length]`)).toEqual([[{ type: "page" }], "ann: 7", 3]);
   });
 
+  test("a page sent whole after the socket went is what the applet draws, though its props are those of the first page: it compares them with what it holds", async () => {
+    await using view = await open();
+    const page = (n: number, v: number) => `<main>${part("t", `<div id="t" data-applet="tally"${appletProps({ me: "ann", rows: { a: { n } } }, { doc: "list:1", under: "/rows", v })}></div>`)}</main>`;
+    const text = `document.getElementById('t').textContent`;
+    await pushRender(view, page(1, 1));
+    await waitFor(view, text, (v) => v === "ann: 1");
+    await push(view, { type: "patch", doc: "list:1", version: 2, ops: [{ op: "replace", path: "/a/n", value: 5 }] });
+    await waitFor(view, text, (v) => v === "ann: 5");
+    await pushRender(view, page(1, 3)); // undone while the socket was down: the page drawn afresh
+    await waitFor(view, text, (v) => v === "ann: 1");
+    await pushRender(view, page(1, 3)); // and the same again is nothing new
+    expect(await view.evaluate<number>(`window.__applets.t.updates.length`)).toBe(2);
+  });
+
   test("props that are the document take its patches at the root; an applet with a patch of its own is given the ops instead, as before", async () => {
     await using view = await open();
     await pushRender(view, `<div id="root" data-applet="tally"${appletProps({ a: { n: 1 } }, { doc: "list:1" })}></div><div id="own" data-applet="ops"${appletProps({ a: { n: 1 } }, { doc: "list:1" })}></div>`);

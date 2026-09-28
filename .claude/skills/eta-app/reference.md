@@ -540,7 +540,8 @@ const props: CrowdProps = { everyone: everyone(), open: family, reveal: v.names 
 - **The mount says the version its props hold** (`data-v`, from `watch`), and a patch at or below
   it is passed over: the server's copy moves before its change is told, so a render drawn after a
   change can come before its patch. An op that then does not land is drift, and the page is asked
-  for afresh.
+  for afresh. A render is compared with the props the client holds, not with the mount's attribute
+  (still the first render's), so a page drawn afresh after the socket went is what it draws.
 - **It derives what it draws with a pure function, shared.** The applet runs it in the browser on
   each update; the server runs the same one for what the mount declares (`appletWrites`: the
   wedding's taps), for what the page says around it, and for a first paint inside the mount, so a
