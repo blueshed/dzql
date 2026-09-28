@@ -7,7 +7,7 @@ import { applyPatch, type PatchOp, type WriteId } from "./json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
 import { comparable, decoded, ownProps, splitTag } from "./parts";
-import { toldNothing } from "./refusal";
+import { toldNothing, toldTo } from "./refusal";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
 import { size, tap } from "./costs";
@@ -607,8 +607,9 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
   /** A member's page as though they had been told nothing (src/refusal.ts), as a snapshot has it (`unversioned`): what they were told, left out, is checked on its own. */
   const unsaid = async (sessionId: string): Promise<string> => unversioned(await drawFrom(toldNothing(documents, sessionId), sessionId));
 
-  async function snapshot(cast: Member[]): Promise<Snapshot> {
-    return new Map(await Promise.all(cast.map(async (m) => [m.name, unversioned(await draw(m.sessionId))] as const)));
+  /** Every member's page, drawn as a page is and without its watching mounts' versions (`unversioned`): `quiet`'s as though they had been told nothing, since what they are told is checked on its own (`checkTold`). */
+  async function snapshot(cast: Member[], quiet?: Member): Promise<Snapshot> {
+    return new Map(await Promise.all(cast.map(async (m) => [m.name, m === quiet ? await unsaid(m.sessionId) : unversioned(await draw(m.sessionId))] as const)));
   }
 
   /** Signs a member in through the example's own route, as a browser posts its form: the session the answer's cookie names, or undefined for a visitor. */
@@ -747,6 +748,18 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     }
   }
 
+  /**
+   * What `who` was told by what they just did (src/refusal.ts): shown on their page, and what the
+   * story says, where it says. It is theirs, and of that moment -- the page before it never said
+   * it, nor will the page after their next write -- so their pages are compared without it.
+   */
+  async function checkTold(who: Member, when: string, expected: string | undefined, failures: string[]): Promise<void> {
+    const line = await settled(documents, () => toldTo(who.sessionId));
+    const words = line?.said ?? line?.reason;
+    if (expected !== undefined && line?.said !== expected) failures.push(`${when}, ${who.name} was not told "${expected}"${words === undefined ? "" : `: they were told "${words}"`}`);
+    else if (line && unversioned(await draw(who.sessionId)) === (await unsaid(who.sessionId))) failures.push(`${when}, ${who.name} was told "${words}", and their page does not show it`);
+  }
+
   function differs(a: Snapshot, b: Snapshot, name: string): boolean {
     return a.get(name) !== b.get(name);
   }
@@ -826,7 +839,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
 
       if (story.cannot !== undefined) {
         if (story.from !== undefined) await put(cast, who, story.from, failures);
-        const before = await snapshot(cast);
+        const before = await snapshot(cast, who);
         const ledgerBefore = ledgerMax();
         const from = mark(cast);
         // P3: a button on the author's page that sends exactly this, refused without a word, is a control that always fails
@@ -890,7 +903,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       const offered = controlsOn(who.page, failures);
       if (!story.offPage) for (const op of story.does.ops) if (!offered.some((c) => offers(c, story.does.doc, op))) failures.push(`${who.name} has no control on their page for ${op.op} ${op.path} on ${story.does.doc}`);
 
-      const before = await snapshot(cast);
+      const before = await snapshot(cast, who);
       const ledgerBefore = ledgerMax();
       const stood = placeOf(who.page);
       let from = mark(cast);
@@ -905,31 +918,38 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       if (process.env.STORY_TRACE) for (const raw of who.inbox.slice(from.get(who))) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
       checkUntold(cast, story.untold, from, "after the story", failures);
       const after = await snapshot(cast);
+      await checkTold(who, "after the story", undefined, failures);
+      const quietAfter = new Map(after).set(who.name, await unsaid(who.sessionId)); // what the undo and the redo are compared with
       const entries = ledger.since(ledgerBefore);
       await stale(cast, "after the story", failures);
 
       noticed(before, after, cast, seen, failures); // an `untold` member is further told of nothing (above)
 
-      if (entries.length === 0) return outcome; // off the ledger: nothing to undo
-      if (!(await active(who.sessionId))) return outcome; // the author has gone (logged out): no undo is theirs to press
+      // off the ledger, or the author has gone (logged out): no undo is theirs to press
+      if (entries.length === 0 || !(await active(who.sessionId))) {
+        if (story.undone !== undefined) failures.push(`no undo follows to tell ${who.name} "${story.undone}"`);
+        return outcome;
+      }
 
       const facts = entries.every((e) => e.undoable === 0);
       from = mark(cast);
       await told(cast, who, UNDO, "undo");
       spent(story, outcome, "undo", cast, from);
+      await checkTold(who, "after undo", story.undone, failures); // where the undo left them, before they are put back
       if (moved) await send(cast, who, stories.goTo!(stood!));
-      const afterUndo = await snapshot(cast);
+      const afterUndo = await snapshot(cast, who);
       await stale(cast, "after undo", failures);
       checkUntold(cast, story.untold, from, "after undo", failures);
-      if (facts) compare(after, afterUndo, cast, "a fact, yet undo changed it", failures);
+      if (facts) compare(quietAfter, afterUndo, cast, "a fact, yet undo changed it", failures);
       else {
         compare(before, afterUndo, cast, "undo did not restore", failures);
         if (!(await active(who.sessionId))) return outcome; // the undo was their going (a name taken back): no redo is theirs to press
         from = mark(cast);
         await told(cast, who, REDO, "redo");
         spent(story, outcome, "redo", cast, from);
+        await checkTold(who, "after redo", undefined, failures);
         if (moved) await send(cast, who, stories.goTo!(landed!));
-        compare(after, await snapshot(cast), cast, "redo did not restore", failures);
+        compare(quietAfter, await snapshot(cast, who), cast, "redo did not restore", failures);
         await stale(cast, "after redo", failures);
         checkUntold(cast, story.untold, from, "after redo", failures);
       }

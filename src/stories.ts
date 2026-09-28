@@ -57,6 +57,12 @@ type Does = Budgeted & {
   gesture?: Gesture;
   seen: Seen;
   /**
+   * What the author is told once Undo takes it back (`afterWalk`, src/refusal.ts `tell`): "Undone:
+   * your answer." The undo must say it, and their page show it. Omitted: whatever an undo says is
+   * only checked to be shown, as whatever the write and the redo say is.
+   */
+  undone?: string;
+  /**
    * Who must not even be sent the document's changes, by the write, its undo or its redo.
    *
    * Stronger than being left out of `seen`: everyone not in `seen` is already checked to see no
@@ -97,7 +103,7 @@ type ClosesTab = Budgeted & {
  * be dropped without a word (`{ does, closesTab }` would close a tab and never write).
  */
 export const STORY_KEYS = {
-  does: ["does", "from", "offPage", "gesture", "seen", "untold", "budget"],
+  does: ["does", "from", "offPage", "gesture", "seen", "undone", "untold", "budget"],
   cannot: ["cannot", "from", "told", "budget"],
   closesTab: ["closesTab", "seen", "untold", "budget"],
 } as const satisfies { does: readonly (keyof Does)[]; cannot: readonly (keyof Cannot)[]; closesTab: readonly (keyof ClosesTab)[] };

@@ -716,5 +716,7 @@ It usually means a seam is missing from what you know, not that the example is s
 - an extra HTTP route is `Example.routes`;
 - a fresh write that differs from its undo is `shape` (undo is never shaped);
 - what follows a write is `afterChange` or `afterWrite`, and what follows an undo or redo `afterWalk`;
+- saying what just happened is `tell` (why, or what it did), never a field of your own session: the
+  harness compares an author's pages without what the kernel told them, and with what you keep.
 
 Never teach the kernel the name of a specific document, applet or compartment.

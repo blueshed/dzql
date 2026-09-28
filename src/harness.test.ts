@@ -14,7 +14,7 @@ import { size } from "./costs";
 import { comparable, controlsOn, goesTo, hear, holding, largest, MOST_PROPS, offers, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, type Outcome, type Report, type Trace, type Wire } from "./harness";
 import { diff, drawParts, part, splitTag } from "./parts";
 import type { Story } from "./stories";
-import { refuse } from "./refusal";
+import { refuse, tell, toldAt } from "./refusal";
 
 // The harness against chat's own stories: one outcome per story, named as the story is, and the
 // cast's setup shared by all. What each story finds is the example's business (a failing story is
@@ -572,6 +572,48 @@ describe("stories harness", () => {
 
     const lying = await failuresOf(withRoom((room) => ({ ...room, ledger: false })), only("Ada says hello"));
     expect(lying).toContain("the server failed writing room:general: its compartment keeps it off the ledger (ledger: false), yet delta recorded the write");
+  }, 30000);
+
+  // What happened, said to its author (src/refusal.ts): chat telling Ada her message is sent,
+  // beside the form, and what Undo took back, or Redo put back, over the page where Undo is.
+  const say = (text: string) => ({ doc: "room", ops: [{ op: "add" as const, path: "/messages/-", value: text }] });
+  const saying = (at = { doc: "ledger", path: "/latest" }): Example => ({
+    ...withRoom((room) => ({
+      ...room,
+      afterWrite: (ws) => tell(ws.data.sessionId, { doc: "room", path: "/messages/-", said: "Sent." }),
+      afterWalk: (ws, _id, { way, ops, inverse }) => {
+        const { text } = (way === "undo" ? inverse : ops)[0]!.value as { text: string };
+        return tell(ws.data.sessionId, { ...at, said: `${way === "undo" ? "Undone" : "Redone"}: “${text}”.` });
+      },
+    })),
+    render: (sessionId) => example.render(sessionId) + toldAt(sessionId, "room", "/messages/-"),
+  });
+
+  const hello = (name: string, undone?: string): Story => ({ name, as: "ada", does: say("hello"), seen: ["ada", "bob"], untold: ["cy", "dee", "eve"], undone });
+
+  test("what a write, its undo and its redo say to their author is theirs: the pages are compared without it, and a story says what Undo says", async () => {
+    const report = await run(saying(), {
+      ...stories,
+      stories: [
+        hello("Ada says hello"),
+        hello("Ada says hello, and Undo says it took it back", "Undone: “hello”."),
+        hello("Ada says hello, and Undo says something else", "Undone: hi."),
+        // what the premise's write said is the premise's: the refusal after it says nothing
+        { ...only("Nobody can take")[0]!, premise: { ada: [say("first")] } },
+      ],
+    });
+    expect(report.outcomes.map((o) => o.failures)).toEqual([[], [], ['after undo, ada was not told "Undone: hi.": they were told "Undone: “hello”."'], []]);
+  }, 30000);
+
+  test("what Undo says must be said and shown: a story's words the undo never says fail it, and so does a line the page does not draw, or an undo that never comes", async () => {
+    const undone = hello("Ada says hello, and Undo says so", "Undone: “hello”.");
+    expect(await failuresOf(example, [undone])).toEqual(['after undo, ada was not told "Undone: “hello”."']);
+    expect(await failuresOf(saying({ doc: "room", path: "/nowhere" }), [undone])).toEqual([
+      'after undo, ada was told "Undone: “hello”.", and their page does not show it',
+      'after redo, ada was told "Redone: “hello”.", and their page does not show it',
+    ]);
+    const logout = { doc: "session", ops: [{ op: "remove" as const, path: "/name" }] };
+    expect(await failuresOf(example, [{ name: "Ada logs out, and Undo says so", as: "ada", does: logout, seen: ["ada", "bob"], undone: "Undone: Ada." }])).toEqual(['no undo follows to tell ada "Undone: Ada."']);
   }, 30000);
 
   test("an applet may name the only values a control of it sends: a tap that goes somewhere offers only there, and the values of one write go together", () => {

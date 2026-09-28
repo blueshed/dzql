@@ -47,6 +47,13 @@ export function toldAt(sessionId: string, doc: string, path: string): string {
   return t.said ? `<p class="said" role="status">${esc(t.said)}</p>` : "";
 }
 
+/** What this session was last told, if anything: for the story harness, which checks it apart from the rest of the page. */
+export function toldTo(sessionId: string): Line | undefined {
+  const { doc, path, reason, said } = read<Kept>(toldDoc(sessionId));
+  if (doc === null || path === null) return undefined;
+  return reason !== null ? { doc, path, reason } : { doc, path, said: said ?? "" };
+}
+
 /** `documents`, read as though `sessionId` had been told nothing: a page drawn from them leaves its line out (the story harness checks the line on its own). */
 export function toldNothing(documents: Documents, sessionId: string): Documents {
   return { ...documents, read: <T>(doc: string): T => (doc === toldDoc(sessionId) ? (none() as T) : documents.read<T>(doc)) };

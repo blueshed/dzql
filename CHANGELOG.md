@@ -88,6 +88,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   server's failure (`following a walk of …`), and the walk stands. `permitUndo` is told the way too,
   as a fourth argument. Before, an app had to work out which way a walk went from what each way
   would have said, in `afterChange`.
+- **A story says what Undo tells its author: `undone`** (todo n89, n100). `does(…), undone:
+  "Undone: your answer."`: after the undo, the author must have been told exactly that, and their
+  page must show it. A story with `undone` whose write has no undo (off the ledger, or its author
+  gone) fails, since nothing will say it.
 
 ### Changed
 
@@ -106,6 +110,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to every page watching, and so read as a nicety.
 - **The kernel's client is 6.0 KB gzipped (5.6 KB)**: it lays a watched document's patches on its
   applet's props (`applyPatch`).
+- **The harness compares an author's pages without what they were told, and checks that on its
+  own** (todo n89, n100). What a write, its undo or its redo tells its author is of that moment:
+  the page before a write never said "Undone: …". So the author's page before the story, after the
+  undo and after the redo (and before and after a refusal) is drawn with the kernel's `told`
+  document read as empty, and after each of the write, the undo and the redo, where it left them,
+  whatever they were told must be on their page: `after undo, ada was told "…", and their page does
+  not show it`. Before, every undoable story of an app that said "Undone: …" failed (`undo did not
+  restore`), and so did a silent refusal after a write that had said something. Words an app keeps
+  in a session of its own are still the page's, compared whole: say what happened with `tell`.
 
 ### Fixed
 

@@ -202,7 +202,8 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    after a tab closes, only who is still looking is looked at. For a `cannot`, nothing anywhere
    may differ, the ledger must not have moved, and the writer must be answered: refused, by their
    own write's id, and the page handed back. With `told`, that refusal must give that reason, and
-   the writer's page must show it, and nothing else of it may differ; without it, a button on the
+   the writer's page must show it, and nothing else of it may differ (what an earlier write told
+   them is not this story's: step 4); without it, a button on the
    writer's page that sends exactly the refused write is
    a control that always fails. Whatever the kernel reports failing while a story runs fails it, so a refusal
    that is really a crash is not a refusal.
@@ -211,7 +212,17 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    at from where each was taken.
    Skipped when the write is off the ledger (its compartment says `ledger: false`, and the kernel
    reports a write that disagrees), when the ledger says it is a fact, or when its author
-   has gone -- before the undo, or because of it (undoing the write that gave you your name).
+   has gone -- before the undo, or because of it (undoing the write that gave you your name); a
+   story that says what its undo says (`undone`) then fails, since no undo says it.
+
+   What the write, the undo and the redo each tell their author (`tell`: "Undone: your answer.")
+   is theirs, and of that moment: the page before the write never said "Undone", nor will the page
+   after the next. So the author's pages are compared as though they had been told nothing, the
+   kernel's `told` document read as empty, here and in step 3, and what each told them is checked
+   on its own, where it left them: it must be on their page, and after the undo it must be the
+   story's `undone`, when the story says it. Only the line the kernel keeps is left out: words an
+   app keeps in a session of its own are the page's, and an undo that changes them does not
+   restore it.
 5. After every story, where each could go, judged from where each story starts: the cast as its
    own writes left it, and the story's premise. In a cast of its own in that state, rolled back
    after, the harness walks from where it put each member: every page they are drawn there is kept
