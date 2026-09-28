@@ -32,6 +32,13 @@ Everything below is the least that makes it pass.
   size of a phone, and the gesture must send its `does`. `STORY_BY_HAND=1 bun run stories` (and
   `bun run stories:all`) does by hand each write a page sends and each refusal a control of the
   page sends, pressing the controls the page draws.
+- A story has a cost on the wire, and `STORY_WIRE=1 bun run stories` says it: what the story's
+  write handed each page, before compression and as sent, and its biggest part (`photo 9.7 KB`).
+  A part far bigger than the write is where to look: a `part` cut coarser than what changes, or
+  an applet handed its props whole where it could take its document's patches (`data-doc`). Say
+  what a story may cost with `budget` (bytes before compression), on the story or on the
+  example's `Stories` for all of them; a page handed more fails the story (stories.md, "What a
+  story costs").
 
 ## Vocabulary, once
 
@@ -110,7 +117,7 @@ After a change to eta, pack again, then `bun remove eta && bun add` the tarball:
 keeps a tarball's first contents, through `bun add` again and `bun install --force` alike (Bun 1.4). The app then imports the kernel
 as `eta/src/...` (the stylesheet too: `@import "eta/src/bento.css"`), and has three small files
 where an example leans on eta's scripts: `server.ts` (`createServer(example)`, src/server.ts), a
-stories runner (`print(await run(example, stories, undefined, { byHand: !!process.env.STORY_BY_HAND }))`,
+stories runner (`print(await run(example, stories, undefined, { byHand: !!process.env.STORY_BY_HAND }), { wire: !!process.env.STORY_WIRE })`,
 src/harness.ts), and eta's `tsconfig.json`,
 `bunfig.toml` (the 100% gate) and `.env.test`. The steps above are the same. `Workshop/japan-eta`
 is one.

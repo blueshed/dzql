@@ -289,15 +289,53 @@ for more than it checks:
   does. Such a story proves nothing. Tell what a person wants; where they must stand to see it is
   what `seen`'s place is for.
 
+## What a story costs
+
+*28 September.* japan-eta ran for a day at 8 KB a vote, for a 146-byte patch, and nothing said
+so. So the harness keeps what each story's own step -- the write, the refusal, the tab closing;
+not the undo and redo it adds -- handed each member's page: the bytes as the page takes them, as
+they crossed the wire (compressed: the cast's sockets go through the tap `bun run costs` uses,
+src/costs.ts), and the biggest part, beside the write's own size. `STORY_WIRE=1 bun run stories`
+says it under each story. The wedding's:
+
+```
+ ok   The Okafors say maybe, and the couple's photo and everyone's change
+        a 77-byte write handed
+          couple  10,183 bytes (2.1 KB on the wire): photo 9.7 KB
+          okafors 14,339 bytes (2.9 KB on the wire): photo 9.9 KB
+          ben     514 bytes (248 B on the wire): everyone:1 patch 514 B
+          benToo  1,490 bytes (566 B on the wire): everyone-photo 950 B
+```
+
+A part is named by its key (`part(key, html)`); a page sent whole is "the whole page", and a
+document's ops are its patch. Here the couple are handed their whole photo again for one answer.
+
+A `budget` says what a story may cost: the most bytes its step may hand any one page, before
+compression -- what the page takes and morphs, and a size that does not move with the random ids
+a compressed one does. A page handed more fails the story, by name and with its biggest part. It
+goes beside the story's other expectations, or on the example's stories for every story, and a
+story's own stands in place of the example's. Chat's is 4 KB:
+
+```ts
+export const stories: Stories = {
+  cast: { ... },
+  budget: 4096,
+  stories: [
+    story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", {
+      as: "ada", does: say("hello"), seen: ["ada", "bob"], untold: ["cy", "dee", "eve"], budget: 1024,
+    }),
+```
+
 ## What we do not build
 
 - **Not a modelling tool.** No `model.db`, no site to browse the entities, no predicates over a
   schema. The stories are in the app's own repo, in one file, in the wire's words.
 - **Not a story language.** A story is a TypeScript object with a name and a few keys: who,
   the write, the refusal or the tab that closes, who sees it, where the author acts, how (a drag
-  on an applet), and what it alone starts from.
+  on an applet), what it alone starts from, and what it may cost.
   Each key came from a story that needed it (the premise, from a deadline passed for one story
-  only; the gesture, from leave's calendar and japan-eta's drags); it will not need a grammar.
+  only; the gesture, from leave's calendar and japan-eta's drags; the budget, from japan-eta's
+  votes); it will not need a grammar.
 - **Not generated code.** Claude writes the compartments by hand from the stories, and a person
   can read both. When the permit table is the first thing derived rather than written, that is
   one function over the stories, not a code generator.

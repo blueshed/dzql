@@ -60,7 +60,7 @@ describe("stories harness", () => {
 
   describe("a story's cost on the wire", () => {
     const pick = (start: string) => stories.stories.find((s) => s.name.startsWith(start))!;
-    const [hello, take, close] = [pick("Ada says hello"), pick("Nobody can take"), pick("Bob closes his tab")];
+    const [hello, take, close] = [{ ...pick("Ada says hello"), budget: undefined }, pick("Nobody can take"), pick("Bob closes his tab")]; // hello's own budget aside: each test says its own
 
     test("each member's page is handed what the story's own step sent it, as the page takes it and as it crossed the wire, beside the write's own size, with its biggest part named", async () => {
       const report = await run(example, { cast: stories.cast, stories: [hello, take, close] });

@@ -93,11 +93,12 @@ export async function measure(script: string): Promise<Measured> {
 }
 
 /**
- * A way in to the server on `port` for a measure, which sees what crosses the wire: a socket opened
- * to `url` is passed on to the server as it is, and the size of each text frame the server sends
- * back -- its payload, compressed when it was -- is kept under the session its upgrade's cookie
- * names. `heard(sessionId, raws)` sizes the last messages a session heard before one more (the
- * answer that ended them, as a measure's `heard` asks): each one's type, size, and size as sent.
+ * A way in to the server on `port` for a measure, or the stories' cast (src/harness.ts), which sees
+ * what crosses the wire: a socket opened to `url` is passed on to the server as it is, and the size
+ * of each text frame the server sends back -- its payload, compressed when it was -- is kept under
+ * the session its upgrade's cookie names. `heard(sessionId, raws)` sizes the last messages a
+ * session heard before one more (the answer that ended them, as a measure's `heard` asks, and the
+ * stories' `settle`): each one's type, size, and size as sent.
  */
 export async function tap(port: number): Promise<{ url: string; heard: (sessionId: string, raws: string[]) => Heard[]; close: () => void }> {
   const frames = new Map<string, number[]>();
