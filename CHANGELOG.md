@@ -412,6 +412,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The bento's CSS, finished** (todo n108). A drawer docked beside a window takes the window's
+  curve at its outer corners, where its own smaller one poked past it; a `.field` in a property's
+  value keeps a field's height, where the value's column shrank it to its text (the wedding said
+  so itself, and no longer does); a select that has the keyboard shows the bento's ring, not the
+  browser's own.
 - **A change that does not land on eta's copy of a document loads it again.** delta 0.10's
   `applyOps` refuses a remove or replace of what the copy does not hold, where it did nothing, so
   such a change (a copy that drifted) threw out of the copy's listener: the copy stayed behind,

@@ -155,9 +155,6 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 .face-mark.none { border: 2px dashed var(--muted); color: var(--muted); font-size: 20px; }
 .drawer-pic img.pic { display: block; width: 100%; max-height: 40vh; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); }
 .props .pair { padding: var(--space-xs) 0; }
-/* a property's field keeps a field's height: in the value's column a field's flex (src/bento.css) would
-   otherwise size it from nothing, to the height of its text */
-.prop-value > .field { flex: none; }
 .hint { margin: var(--space-sm) 0 var(--space-md); font-size: 13px; color: var(--muted); }
 .figure-box { position: sticky; top: 0; z-index: 2; background: var(--card); padding: var(--space-md) 0 4px; }
 /* ── the answer's drawer: every option whole, a face, its colour, its sentence ── */

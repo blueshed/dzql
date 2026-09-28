@@ -484,6 +484,22 @@ describe("the surfaces in a browser", () => {
     expect(await at(view, "The desk")).toBe("The desk");
   });
 
+  test("a drawer docked beside a window takes the window's curve at its outer corners; a field in a property keeps a field's height; a select's focus is the bento's ring", async () => {
+    const body = `<form data-write-on="blur"><div class="props">${prop("Name", `<input class="field" name="name" value="Alpha" aria-label="Name">`)}${prop("Kind", `<select class="field" name="kind" aria-label="Kind"><option>a</option></select>`)}</div></form>`;
+    const page = layers(b.collectionPage([{ label: "The desk" }], { key: "market", body: "" }), b.drawer("d", "Alpha", body, go("")), "");
+    await using view = await show(page, 1280);
+    const corners = `['.cell.open', '.drawer'].map((s) => { const c = getComputedStyle(document.querySelector(s)); return [c.borderTopRightRadius, c.borderBottomRightRadius]; })`;
+    const [window_, drawer] = await view.evaluate<string[][]>(corners);
+    expect(drawer).toEqual(window_!);
+    // the value's column is a column: a field there is a touch tall, not its text's height
+    expect(await view.evaluate<number[]>(`[...document.querySelectorAll('.prop-value > .field')].map((f) => f.getBoundingClientRect().height)`)).toEqual([40, 40]);
+    // from the name to the kind, as the keyboard goes (WebKit's Tab passes a select by, unless the Mac says otherwise): the select shows it has the keyboard, in the accent
+    await view.evaluate(`(document.querySelector('input.field').focus(), document.querySelector('select').focus())`);
+    await view.evaluate(`document.querySelector('.cell-name').style.color = 'var(--accent)'`);
+    const ring = `(() => { const s = document.activeElement, c = getComputedStyle(s); return [s.tagName, s.matches(':focus-visible'), c.outlineStyle, c.outlineColor === getComputedStyle(document.querySelector('.cell-name')).color]; })()`;
+    expect(await view.evaluate<unknown[]>(ring)).toEqual(["SELECT", true, "solid", true]);
+  });
+
   test("what opens is a button: each cell, thing and row that opens is where a Tab stops, and Space or Enter opens it", async () => {
     const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } }), b.cell({ name: "quiet" })];
     const list = rows([b.row({ id: "r-a", tap: go("?symbol=A"), what: "Alpha", mark: "pencil" }), b.row({ id: "r-b", what: "Beta" })], "none");

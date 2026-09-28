@@ -42,8 +42,8 @@ button:disabled { opacity: 0.45; cursor: default; }
 input, select, textarea { font: inherit; font-size: 16px; color: var(--ink); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); }
 input, select { height: var(--touch); padding: 0 var(--space-md); }
 textarea { width: 100%; padding: var(--space-sm) var(--space-md); resize: vertical; }
-input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
-.field { flex: 1; min-width: 0; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; } /* the bento's ring, not the browser's own blue */
+.field { flex: 1; min-width: 0; } /* in a row, it takes what the rest leave */
 .tool { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-xs); height: var(--touch); padding: 0 var(--space-lg); border: 1px solid var(--accent); border-radius: var(--radius-control); background: var(--card); color: var(--accent); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .tool:hover { background: var(--card-hover); }
 .tool.quiet { border-color: var(--edge); color: var(--ink); font-weight: 500; }
@@ -209,9 +209,11 @@ body:has(.page.windowed) { overflow: hidden; }
 .prop:last-child { border-bottom: 0; }
 .prop-name { color: var(--muted); }
 .prop-value { min-width: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
-.prop-value .field { width: 100%; }
+.prop-value > .field { width: 100%; flex: none; } /* the value's column is a column: a field there keeps a field's height */
+
 @media (min-width: 820px) {
-  .drawer { left: auto; right: var(--space-2xl); top: var(--space-2xl); bottom: var(--space-2xl); width: var(--panel); max-width: none; max-height: none; border-radius: var(--radius-panel); border: 1px solid var(--edge); box-shadow: 0 8px 30px rgba(var(--ink-rgb), 0.2); z-index: 60; }
+  /* its outer corners lie on the window's, so they take the window's curve, not poke past it */
+  .drawer { left: auto; right: var(--space-2xl); top: var(--space-2xl); bottom: var(--space-2xl); width: var(--panel); max-width: none; max-height: none; border-radius: var(--radius-panel) var(--radius-tray) var(--radius-tray) var(--radius-panel); border: 1px solid var(--edge); box-shadow: 0 8px 30px rgba(var(--ink-rgb), 0.2); z-index: 60; }
   /* docked beside the reading, not over it: the page stays in reach -- another figure, a tool on
      the rail, Undo -- and the drawer goes by its ×, by Escape, or by what is tapped next */
   .scrim:not(.modal-scrim) { display: none; }
