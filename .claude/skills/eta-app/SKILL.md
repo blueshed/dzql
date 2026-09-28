@@ -26,8 +26,8 @@ Everything below is the least that makes it pass.
 - A refusal is a story too (`cannot`): the other half of what a person may do.
 - What a write, an Undo or a Redo did may be told to the person who did it (`tell`, in
   reference.md): a line beside the control, or over the page where Undo is. A story says what its
-  undo must say with `undone: "Undone: your answer."` (the wedding's); the harness compares the
-  author's pages without it, and checks it on its own.
+  undo must say with `undone: "Undone: your answer."` and its redo with `redone` (the wedding's);
+  the harness compares the author's pages without the line, and checks it on its own.
 - A story's `from` is where a person does it, so a control must lead there: build the button
   that opens the drawer or the modal with the drawer or the modal, or the story fails (`no control
   leads ...`), since the harness can put anyone anywhere and a person cannot.

@@ -82,7 +82,8 @@ must hold in reverse -- unless the ledger says the write is a fact (a tick), whi
 leave alone, or the author has since gone (logged out), who has no undo to press.
 
 What the undo takes back may be said to its author, over the page where Undo is (`afterWalk` and
-`tell`, in the eta-app skill), and a `does` with `undone` says what it must say. The wedding's
+`tell`, in the eta-app skill), and a `does` with `undone` says what it must say, as `redone` does
+for the redo. The wedding's
 household is told, since its Undo may change a photo someone else is watching, or a drawer that
 is shut:
 
@@ -92,6 +93,7 @@ story("The Okafors say maybe, and the couple's photo and everyone's change", {
   does: household("replace", "/answer", "maybe"),
   seen: { okafors: "?answer", couple: "", benToo: "everyone" },
   undone: "Undone: your answer.",
+  redone: "Redone: your answer.",
 });
 ```
 
@@ -227,15 +229,15 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    at from where each was taken.
    Skipped when the write is off the ledger (its compartment says `ledger: false`, and the kernel
    reports a write that disagrees), when the ledger says it is a fact, or when its author
-   has gone -- before the undo, or because of it (undoing the write that gave you your name); a
-   story that says what its undo says (`undone`) then fails, since no undo says it.
+   has gone -- before the undo, or because of it (undoing the write that gave you your name).
 
    What the write, the undo and the redo each tell their author (`tell`: "Undone: your answer.")
    is theirs, and of that moment: the page before the write never said "Undone", nor will the page
    after the next. So the author's pages are compared as though they had been told nothing, the
    kernel's `told` document read as empty, here and in step 3, and what each told them is checked
    on its own, where it left them: it must be on their page, in its own words; after the undo it
-   must be the story's `undone`, when the story says it; and a walk is told something of its own
+   must be the story's `undone`, and after the redo its `redone`, when the story says them (a
+   story that says one, with no undo or redo to say it, fails); and a walk is told something of its own
    or nothing, so what the write said still up after the undo, or what the undo said after the
    redo, fails. Only the line the kernel keeps is left out: words an
    app keeps in a session of its own are the page's, and an undo that changes them does not
@@ -363,7 +365,7 @@ export const stories: Stories = {
   schema. The stories are in the app's own repo, in one file, in the wire's words.
 - **Not a story language.** A story is a TypeScript object with a name and a few keys: who,
   the write, the refusal or the tab that closes, who sees it, where the author acts, how (a drag
-  on an applet), what it alone starts from, what its undo says, and what it may cost.
+  on an applet), what it alone starts from, what its undo and redo say, and what it may cost.
   Each key came from a story that needed it (the premise, from a deadline passed for one story
   only; the gesture, from leave's calendar and japan-eta's drags; `undone`, from japan-eta's line
   that says what Undo took back; the budget, from japan-eta's votes); it will not need a grammar.

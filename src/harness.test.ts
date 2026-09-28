@@ -665,6 +665,14 @@ describe("stories harness", () => {
       expect(await failuresIn(saved, [{ ...maybe, undone: undefined }])).toEqual(['after undo, okafors is still told "Saved.", what the write told them']);
     }, 30000);
 
+    test("a story says what the redo says too: its words, said and shown, or no redo to say them", async () => {
+      const redoing = (name: string, redone: string) => ({ ...maybe, name, redone }) as Story;
+      const report = await run(wedding, { ...vows, stories: [redoing(maybe.name, "Redone: your answer."), redoing("…and Redo says something else", "Redone: nothing.")] });
+      expect(report.outcomes.map((o) => o.failures)).toEqual([[], ['after redo, okafors was not told "Redone: nothing.": they were told "Redone: your answer."']]);
+      // chat's Eve: the undo takes her name back, and with it her tab's right to redo
+      const eve = { ...only("Eve gives her name")[0]!, redone: "Redone: Eve." } as Story;
+      expect(await failuresOf(example, [eve])).toEqual(['no redo follows to tell eve "Redone: Eve."']);
+    }, 30000);
   });
 
   test("an applet may name the only values a control of it sends: a tap that goes somewhere offers only there, and the values of one write go together", () => {

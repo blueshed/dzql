@@ -88,16 +88,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   server's failure (`following a walk of …`), and the walk stands. `permitUndo` is told the way too,
   as a fourth argument. Before, an app had to work out which way a walk went from what each way
   would have said, in `afterChange`.
-- **A story says what Undo tells its author: `undone`** (todo n89, n100). `does(…), undone:
-  "Undone: your answer."`: after the undo, the author must have been told exactly that, and their
-  page must show it. A story with `undone` whose write has no undo (off the ledger, or its author
-  gone) fails, since nothing will say it.
+- **A story says what Undo and Redo tell its author: `undone` and `redone`** (todo n89, n100).
+  `does(…), undone: "Undone: your answer.", redone: "Redone: your answer."`: after the undo, the
+  author must have been told exactly the one, and after the redo the other, and their page must
+  show it. A story that says one whose write has no undo or redo to say it (off the ledger, a fact,
+  or its author gone) fails, since nothing will say it.
 - **The wedding's household is told what its Undo took back, and what Redo did again**: "Undone:
   your answer.", "Undone: claiming “Le Creuset casserole”.", "Redone: Femi Okafor's look.", over
   the page beside Undo, since what an undo changes may be in a drawer that is shut or a photo
   someone else is watching (`whatItDid` in `examples/wedding/documents/household.ts`, from the
-  walk's rows and what they wrote over). Two of its stories say it with `undone`: the answer, and a
-  plus-one named in a modal the write put away.
+  walk's rows and what they wrote over). Two of its stories say it with `undone` and `redone`: the
+  answer, and a plus-one named in a modal the write put away.
 
 ### Changed
 

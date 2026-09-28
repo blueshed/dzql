@@ -939,6 +939,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       // off the ledger, or the author has gone (logged out): no undo is theirs to press
       if (entries.length === 0 || !(await active(who.sessionId))) {
         if (story.undone !== undefined) failures.push(`no undo follows to tell ${who.name} "${story.undone}"`);
+        if (story.redone !== undefined) failures.push(`no redo follows to tell ${who.name} "${story.redone}"`);
         return outcome;
       }
 
@@ -952,13 +953,15 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       await stale(cast, "after undo", failures);
       checkUntold(cast, story.untold, from, "after undo", failures);
       if (facts) compare(quietAfter, afterUndo, cast, "a fact, yet undo changed it", failures);
-      else {
-        compare(before, afterUndo, cast, "undo did not restore", failures);
-        if (!(await active(who.sessionId))) return outcome; // the undo was their going (a name taken back): no redo is theirs to press
+      else compare(before, afterUndo, cast, "undo did not restore", failures);
+      // a fact has nothing to redo; and the undo may have been their going (a name taken back): no redo is theirs to press
+      if (facts || !(await active(who.sessionId))) {
+        if (story.redone !== undefined) failures.push(`no redo follows to tell ${who.name} "${story.redone}"`);
+      } else {
         from = mark(cast);
         await told(cast, who, REDO, "redo");
         spent(story, outcome, "redo", cast, from);
-        await checkTold(who, "after redo", undefined, failures, { line: undid, what: "the undo" });
+        await checkTold(who, "after redo", story.redone, failures, { line: undid, what: "the undo" });
         if (moved) await send(cast, who, stories.goTo!(landed!));
         compare(quietAfter, await snapshot(cast, who), cast, "redo did not restore", failures);
         await stale(cast, "after redo", failures);
