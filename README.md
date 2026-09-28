@@ -75,7 +75,8 @@ sites whose pages may open a socket) among them.
   (`permitUndo`: answers closed at the deadline).
 - **Stories are the tests.** An example is a list of sentences -- who does what, and who then
   sees it -- and `bun run stories` checks each one over real sockets, with its undo and redo;
-  `bun run stories:all` runs every example's (<!-- measured:stories -->11 in chat, 21 in leave, 17 in ticker and 50 in wedding<!-- /measured -->).
+  `bun run stories:all` runs every example's (<!-- measured:stories -->11 in chat, 21 in leave, 17 in ticker and 50 in wedding<!-- /measured -->),
+  each done again by hand in a browser the size of a phone, so a control nobody can press fails.
 - **A small client.** The kernel's client is <!-- measured:client -->5.6 KB<!-- /measured --> minified
   and gzipped: a morph, the write gestures and an applet registry. There is no framework to learn.
 - **Nothing else to run.** Bun and SQLite, one process, one file.
@@ -116,7 +117,7 @@ bun run dev          # chat, watching for changes (dev:wedding, dev:ticker too)
 bun run start        # detached, in production mode; bun run stop stops it
 bun test             # the tests
 bun run check        # the type check
-bun run stories      # one example's stories; stories:all runs every example's
+bun run stories      # one example's stories; stories:all runs every example's, by hand too
 bun run cli <verb>   # a terminal client: inspect, watch, undo, redo, write, and the example's own
 bun run costs        # measures every number this README quotes, and writes it in
 ```

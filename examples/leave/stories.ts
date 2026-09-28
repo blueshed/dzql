@@ -63,6 +63,6 @@ export const stories: Stories = {
     story("Ann cannot become Mo over the wire", { as: "ann", cannot: session({ op: "replace", path: "/person_id", value: "3" }) }),
 
     // ── and going ──
-    story("Ann signs out, and her page asks her to sign in", { as: "ann", does: session({ op: "remove", path: "/person_id" }), seen: ["ann"] }),
+    story("Ann signs out, and her page asks her to sign in", { as: "ann", from: "", does: session({ op: "remove", path: "/person_id" }), seen: ["ann"] }), // from the calendar: on a phone her draft's drawer covers the page's tools
   ],
 };

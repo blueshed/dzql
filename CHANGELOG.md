@@ -313,6 +313,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   hand, its control pressed, typed into and sent, or chosen, so a control hidden by a stylesheet,
   covered, of no size, off a phone's screen, never still, or a field no form sends fails by name,
   where without a browser it passed. `Report.byHand` counts the stories, gestures and time.
+  `bun run stories:all` does every story by hand (about 13 s more for the four examples). It
+  found one: on a phone leave's draft drawer covers the page's tools, so "Ann signs out", told
+  where the cast leaves her with the drawer open, is now told from the calendar (`from: ""`).
 - **An applet's mount may name the only values a control of it sends**: `appletWrites([doc, op,
   path, value], …)`, one for each, said as one write with its `values` on the mount. A story's
   write counts as offered only with one of them. It is how an applet says where it goes: the
