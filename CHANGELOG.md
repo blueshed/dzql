@@ -288,6 +288,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   types say so, and the harness refuses, by name and before running it, a story that mixes them
   or has a key it does not read (an old `unseen`), since a story file is not type-checked when it
   runs and the key would be dropped without a word.
+- **An app of its own can install eta.** `package.json` says what eta ships (`files`: `src`
+  without its tests, the eta-app skill, the docs), so `bun pm pack` makes a 41-file tarball an app
+  adds as a dependency, and the skill says how ("An app of its own"). A tarball, not `file:`: a
+  directory brings eta's own `node_modules`, and with it a second delta and railroad. The first
+  such app is the Japan journey planner (`Workshop/japan-eta`).
+
 - **`first-app.md`: your first app, step by step.** Chat, then leave, with each word explained
   where it is first met, and what each story failure means.
 - **leave, a fourth example: people sign in, and a team's leave is one calendar.** A sign-in page

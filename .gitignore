@@ -12,3 +12,6 @@ server.log
 # the bento canvas is generated (examples/bento/design/build.ts) and seeded; only the generator and the layout are source
 examples/bento/design/*.dc.html
 examples/bento/design/wedding-bento.html
+
+# a packed eta, for an app of its own to install (bun pm pack)
+*.tgz

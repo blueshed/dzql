@@ -89,5 +89,24 @@ Everything below is the least that makes it pass.
     `urlFor(view, server.url)` and wait with `waitFor`, both `src/webview.ts`, so each is a browser of
     its own on Chrome too). The gate, and what the browser tests need, are CLAUDE.md's.
 
+## An app of its own
+
+An app need not be an example: it can live in its own repo and install eta. `package.json` says
+what eta ships (`src` without its tests, these skills, the docs), so pack it and add the tarball,
+never `file:` or `bun link`: a linked checkout brings its own `node_modules`, and two copies of
+delta or railroad go inert (delta's skill, "Local development across repos").
+
+```sh
+cd ../blueshed/eta && bun pm pack && cd - && bun add ../blueshed/eta/eta-<version>.tgz
+```
+
+After a change to eta, pack again, then `bun remove eta && bun add` the tarball: the lockfile
+keeps a tarball's first contents, through `bun add` again and `bun install --force` alike (Bun 1.4). The app then imports the kernel
+as `eta/src/...` (the stylesheet too: `@import "eta/src/bento.css"`), and has three small files
+where an example leans on eta's scripts: `server.ts` (`createServer(example)`, src/server.ts), a
+stories runner (`print(await run(example, stories))`, src/harness.ts), and eta's `tsconfig.json`,
+`bunfig.toml` (the 100% gate) and `.env.test`. The steps above are the same. `Workshop/japan-eta`
+is one.
+
 None of this needs a file under `src/` edited. When it seems to, read `reference.md`'s "When it
 looks like you need to touch `src/`" first: a missing seam is rare, and a workaround is never it.
