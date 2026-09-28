@@ -145,7 +145,7 @@ const isDeclared = (w: unknown): w is { doc: string; op: string; path: string; v
 // `</li>` and `</tr>`. So the elements open here are kept, and closed as HTML's rules close them.
 
 /** An element open where the parser is: its tag, and whether the browser lets anyone press what is in it. */
-type Open = { tag: string; blocks?: "always" | "fieldset"; legends?: number; frees?: boolean; closed?: true };
+type Open = { tag: string; blocks?: "always" | "fieldset"; legends?: number; frees?: boolean; closed?: true; ends?: () => void; disabled?: true };
 
 /** The start tags that close an open `<p>`: HTML's "close a p element" (in button scope). */
 const CLOSES_P = new Set(["address", "article", "aside", "blockquote", "center", "details", "dialog", "dir", "div", "dl", "dd", "dt", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "li", "listing", "main", "menu", "nav", "ol", "p", "pre", "search", "section", "summary", "table", "ul", "xmp"]);
@@ -178,7 +178,13 @@ export function controlsOn(page: string, misdeclared: string[] = []): Control[] 
   const found: Control[] = [];
   const spec = (attr: string | null) => (attr === null ? undefined : (JSON.parse(unescape(attr)) as { doc: string; op: string; path: string }));
   const open: Open[] = [];
-  const closeTo = (at: number) => open.splice(at).forEach((e) => (e.closed = true));
+  const closeTo = (at: number) =>
+    open.splice(at).reverse().forEach((e) => {
+      e.closed = true;
+      e.ends?.();
+    });
+  // a select that writes sends only what it can choose: each option not disabled, by its value or its words
+  let choosing: { spec: { doc: string; op: string; path: string }; option?: { text: string } } | undefined;
   const pressable = (el: HTMLRewriterTypes.Element): boolean =>
     !el.hasAttribute("inert") && !el.hasAttribute("hidden") && !open.some((e, i) => e.blocks === "always" || (e.blocks === "fieldset" && !open[i + 1]?.frees));
   new HTMLRewriter()
@@ -200,18 +206,36 @@ export function controlsOn(page: string, misdeclared: string[] = []): Control[] 
         if (el.hasAttribute("inert") || el.hasAttribute("hidden") || tag === "template") entry.blocks = "always";
         else if (tag === "fieldset" && el.hasAttribute("disabled")) entry.blocks = "fieldset";
         if (tag === "legend" && parent?.tag === "fieldset") entry.frees = (parent.legends = (parent.legends ?? 0) + 1) === 1; // its first legend is not disabled
+        if (tag === "option" && choosing && !el.hasAttribute("disabled") && !(parent?.tag === "optgroup" && parent.disabled)) {
+          const value = el.getAttribute("value");
+          const option = { text: "" };
+          const said = choosing;
+          if (value === null) choosing.option = option;
+          entry.ends = () => void found.push({ ...said.spec, value: value === null ? option.text.replace(/\s+/g, " ").trim() : unescape(value), free: false });
+        }
+        if (tag === "optgroup" && el.hasAttribute("disabled")) entry.disabled = true; // its options choose nothing
         open.push(entry);
         el.onEndTag(() => {
           if (!entry.closed) closeTo(open.indexOf(entry));
         });
       },
     })
+    .on("option:not([value])", { text: (t) => void (choosing?.option && (choosing.option.text += t.text)) })
     .on("[data-write]", {
       element(el) {
         if (!pressable(el) || (el.hasAttribute("disabled") && ["button", "input", "textarea", "select"].includes(el.tagName))) return; // the browser sends nothing from it
         const s = spec(el.getAttribute("data-write"))!;
+        if (el.tagName === "select") {
+          // what it can choose, as each option ends; several at once is no one value, which the client never sends
+          if (el.hasAttribute("multiple")) return;
+          const at = open.at(-1)!;
+          choosing = { spec: s };
+          at.ends = () => void (choosing = undefined);
+          return;
+        }
+        if (el.tagName === "input" && el.getAttribute("type") === "radio") return void found.push({ ...s, value: unescape(el.getAttribute("value") ?? "on"), free: false }); // a radio sends its own value
         const value = el.getAttribute("data-value");
-        found.push({ ...s, value: value === null ? undefined : unescape(value), free: ["form", "input", "textarea", "select"].includes(el.tagName) });
+        found.push({ ...s, value: value === null ? undefined : unescape(value), free: ["form", "input", "textarea"].includes(el.tagName) });
       },
     })
     .on("[data-writes]", {
@@ -271,8 +295,7 @@ export function offers(c: Control, doc: string, op: PatchOp): boolean {
 export function goesTo(c: Control, goTo: (address: string) => Write): string | undefined {
   if (c.free || c.value === undefined) return undefined;
   const w = goTo(c.value);
-  const [op] = w.ops;
-  return w.ops.length === 1 && sameDoc(w.doc, c.doc) && op!.op === c.op && op!.path === c.path && "value" in op! && String(op.value) === c.value ? c.value : undefined;
+  return sameDoc(w.doc, c.doc) && w.ops.some((op) => op.op === c.op && op.path === c.path && "value" in op && String(op.value) === c.value) ? c.value : undefined; // the op of it that sets the address: going somewhere may put other things away too
 }
 
 /** One way on: from where a member stood, the control on their page there that took them to `to`. */

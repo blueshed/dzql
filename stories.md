@@ -161,8 +161,9 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
 2. Put the author where the story says they act (`from`: the drawer or modal that holds the
    control), and find on their open page the control that sends the story's write -- a
    `data-write` with its document, op and path, and a button's own value; a field or a form sends
-   whatever is typed; an applet declares exactly what it writes (`data-writes`: an op and a path
-   each, `*` for any one segment), and one that declares nothing offers nothing, whatever
+   whatever is typed, a select each option it can choose and a radio its value; an applet
+   declares exactly what it writes (`data-writes`: an op and a path each, `*` for any one
+   segment), and one that declares nothing offers nothing, whatever
    document it reads (the ticker's clock face shows the clock and writes none of it). A control
    the browser sends nothing from is none: drawn `disabled`, or `inert` (behind an open window or
    modal), `hidden`, in a `<template>`, or in a disabled fieldset (but for its first legend),
@@ -193,9 +194,10 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
 5. After every story, where each could go, judged from where each story starts: the cast as its
    own writes left it, and the story's premise. In a cast of its own in that state, rolled back
    after, the harness walks from where it put each member: every page they are drawn there is kept
-   by where it stands (`data-page`), with its controls, and a control leads somewhere when `goTo`
-   makes exactly its write of its own value (a button's `data-value`, or a value an applet's mount
-   names). The places their pages lead to, and the places those lead to, are where they can go.
+   by where it stands (`data-page`), with its controls, and a control leads somewhere when the op
+   of `goTo`'s write that sets the address is exactly what it sends of its own value (a button's
+   `data-value`, a radio's value, each option a select can choose, or a value an applet's mount
+   names); going somewhere may put other things away too. The places their pages lead to, and the places those lead to, are where they can go.
    Each story's `from`, and each place its `seen` puts someone, that no control leads them to
    fails the story, by name: `no control leads okafors to "?guest=2", where the story has them
    act`. After " @ ", what else the place holds (find's word, a reading) must be sent by a control

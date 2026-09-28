@@ -455,6 +455,23 @@ describe("stories harness", () => {
     expect(controlsOn(page).map((c) => goesTo(c, desk))).toEqual(["market", undefined, undefined, "?guest=2", undefined]); // the page's own address is none
   });
 
+  test("a select leads to each option it can choose, a radio to its value, and a goTo of several ops wherever it sets the address", () => {
+    const desk = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/page", value: page }] });
+    const select = `<form data-write-on="change"><select${write("desk", "replace", "/page")}><option value="market">Market</option><option value="attic" disabled>Attic</option><optgroup label="more" disabled><option value="cellar">Cellar</option></optgroup><option> the  clock </option><option>board</select></form>`;
+    expect(controlsOn(select).map((c) => goesTo(c, desk))).toEqual(["market", "the clock", "board"]); // what is disabled chooses nothing
+    const sends = (page: string, value: string) => controlsOn(page).some((c) => offers(c, "desk", { op: "replace", path: "/page", value }));
+    expect(sends(select, "market")).toBe(true);
+    expect(sends(select, "attic")).toBe(false); // a select sends only what it can choose
+    expect(sends(`<select multiple${write("desk", "replace", "/page")}><option value="market"></select>`, "market")).toBe(false); // several at once is no one value: the client never sends it
+    expect(controlsOn(`<select disabled${write("desk", "replace", "/page")}><option value="market"></select>`)).toEqual([]);
+    const radios = `<input type="radio" name="p" value="market"${write("desk", "replace", "/page")}><input type="radio" name="p"${write("desk", "replace", "/page")}>`;
+    expect(controlsOn(radios).map((c) => goesTo(c, desk))).toEqual(["market", "on"]);
+    expect(sends(radios, "board")).toBe(false);
+    // going somewhere also puts find away: a button that sets the address still leads there
+    const clearing = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/page", value: page }, { op: "remove" as const, path: "/filter" }] });
+    expect(controlsOn(`<button${write("desk", "replace", "/page", "market")}>m</button><button${write("desk", "remove", "/filter")}>f</button>`).map((c) => goesTo(c, clearing))).toEqual(["market", undefined]);
+  });
+
   test("an applet that follows its document's patches is compared without its props; any other element keeps them", () => {
     const board = `<div id="board" data-applet="board" data-doc="ticker" data-props="{&quot;price&quot;:1}"></div>`;
     const photo = `<div id="photo" data-applet="photo" data-props="{&quot;n&quot;:2}"></div>`;

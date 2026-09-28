@@ -19,7 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   names), and a place a story names that no control leads to fails the story, by name (`no
   control leads okafors to "?guest=2", where the story has them act`); after " @ ", what the
   place holds must be sent by a control on the page there. A plus another story's write drew is
-  not one this story starts with. It found leave's months (below) and the wedding photo's taps,
+  not one this story starts with. A control leads to an address when it sends the op of `goTo`'s
+  write that sets it: a button's value, a radio's, each option a select can choose (a select
+  now offers only those, and a `multiple` one nothing, which the client never sends), or a value
+  an applet names. It found leave's months (below) and the wedding photo's taps,
   which nothing declared.
 - **A control the browser will not press is none**, whatever is around it. The stories counted a
   button inside an `inert` box, a `hidden` element or a disabled fieldset as offered, since only
