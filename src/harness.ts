@@ -6,7 +6,7 @@ import { STORY_KEYS, type Gesture, type Stories, type Story, type Write } from "
 import { applyPatch, type PatchOp, type WriteId } from "./json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
-import { comparable, decoded, splitTag } from "./parts";
+import { comparable, decoded, ownProps, splitTag } from "./parts";
 import { said } from "./refusal";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
@@ -78,7 +78,9 @@ export type Trace = {
   /** What the ledger took: the ops as written, and their inverse -- which holds what was there before. */
   ledger: { doc: string; undoable: number; ops: PatchOp[]; inverse: PatchOp[] }[];
 };
-export type Report = { outcomes: Outcome[]; passed: number; failed: number; byHand?: ByHand };
+/** What the stories found costly (`costly`), which does not fail them: each kind for each applet once, in the first story that sent it. */
+export type Warning = { story: string; says: string };
+export type Report = { outcomes: Outcome[]; passed: number; failed: number; warnings?: Warning[]; byHand?: ByHand };
 
 /** The stories done by hand in a browser (`byHand`, or a story's own `gesture`): how many, how many presses (a button pressed, a form typed into and sent, a drag), how many writes sent as an applet declares them, and how long it took. */
 export type ByHand = { stories: number; presses: number; applets: number; ms: number };
@@ -156,6 +158,67 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
     })
     .transform(page);
   return found;
+}
+
+// What props cost (todo n94). An applet's data comes from a document it watches, and its props
+// say only what to show and for whom; props that carry the data themselves go again whole with
+// every change to it. So the harness says -- it does not fail -- where a render sends a mount whose
+// own props (the document it watches left out) pass MOST_PROPS, and where a render in parts sends a
+// mount with the very props the page already had for it: a part replaced around it, or its tag
+// sent for something else on it.
+
+/** How big a mount's own props, as JSON, may be before the harness says so: the document it watches left out. */
+export const MOST_PROPS = 4096;
+
+/** A cost a render put on the wire in props: which kind, the applet, and what to say. */
+export type Cost = { kind: "big" | "again"; applet: string; says: string };
+
+type Mount = { key: string; applet: string; own: string; watching: boolean };
+
+/** The applet mounts in some HTML, keyed as `takersOn` keys them, each with its own props: the document it watches left out. */
+function mountsIn(html: string): Mount[] {
+  const found: Mount[] = [];
+  new HTMLRewriter()
+    .on("[data-applet][data-props]", {
+      element(el) {
+        const applet = el.getAttribute("data-applet")!;
+        const key = el.getAttribute("id") ?? el.getAttribute("data-eta-part") ?? `${applet}#${found.length}`;
+        const props = decoded(el.getAttribute("data-props")!);
+        const watching = el.hasAttribute("data-doc");
+        found.push({ key, applet, watching, own: watching ? ownProps(props, decoded(el.getAttribute("data-under") ?? "")) : props });
+      },
+    })
+    .transform(html);
+  return found;
+}
+
+/** A size in KB, to a tenth. */
+const kb = (bytes: number): string => `${(bytes / 1024).toFixed(1)} KB`;
+
+/** What a render sends `whose` page, drawn as `page`, costs in props: a mount whose own props pass MOST_PROPS; in parts, one sent with the props the page had for it. */
+export function costly(whose: string, page: string, message: Heard): Cost[] {
+  if (message.type !== "render") return [];
+  const sent = message.html !== undefined ? [{ html: message.html, op: undefined }] : (message.ops ?? []).flatMap((op) => (op.html === undefined ? [] : [{ html: op.html, op }]));
+  const had = new Map(mountsIn(page).map((m) => [m.key, m.own]));
+  const costs: Cost[] = [];
+  for (const { html, op } of sent) {
+    for (const m of mountsIn(html)) {
+      const size = Buffer.byteLength(m.own);
+      if (size > MOST_PROPS) {
+        const how = m.watching ? "keep them to what it shows, and for whom" : "let it watch the document they come from (appletProps(props, { doc })), and keep them to what it shows, and for whom";
+        costs.push({ kind: "big", applet: m.applet, says: `${whose} was sent the ${m.applet} applet's props, ${kb(size)}${m.watching ? " beside the document it watches" : ""}, which go again whenever they change: ${how}` });
+      }
+      if (op && had.get(m.key) === m.own) {
+        const itself = mountsIn(splitTag(html)[0])[0]?.key === m.key; // the part is the mount
+        const how =
+          op.op === "tag" ? "with its tag, for something else on it: keep that beside its mount"
+          : itself ? "drawn again for what the server paints inside it, which the applet paints over: let it watch the document it paints from"
+          : `in a part drawn again around it (${op.target}) for something else in it: make what changed there a part of its own`;
+        costs.push({ kind: "again", applet: m.applet, says: `${whose} was sent the ${m.applet} applet's props again, as they were, ${how}` });
+      }
+    }
+  }
+  return costs;
 }
 
 /**
@@ -459,6 +522,10 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
   // what the kernel reports failing goes to the story being told
   let failing: string[] | undefined;
   const hearFailures = onFailure((what, err) => failing?.push(`the server failed ${what}: ${err instanceof Error ? err.message : String(err)}`));
+  // what a render costs in props goes to the story being told, once for each applet and kind
+  let telling: string | undefined;
+  const warned = new Map<string, Warning>();
+  const warn = (cost: Cost): void => void (telling !== undefined && !warned.has(`${cost.kind} ${cost.applet}`) && warned.set(`${cost.kind} ${cost.applet}`, { story: telling, says: cost.says }));
 
   // Where a person can go, judged from where each story starts: the cast, as its own writes left
   // it, and the story's premise. The places a story names are walked in a cast of its own in that
@@ -532,6 +599,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       const message = JSON.parse(String(event.data)) as Heard;
       if (message.type === "inspect") return member.answered.shift()?.();
       member.inbox.push(String(event.data));
+      costly(name, member.page, message).forEach(warn);
       member.page = hear(member.page, message);
       if (message.type === "render") {
         retake(member.taken, member.page);
@@ -694,6 +762,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     const failures: string[] = [];
     const outcome: Outcome = { name: story.name, failures };
     failing = failures;
+    telling = story.name;
     /** What a step of the story carried, for `observe`: what each of `cast` was sent since `from`, and the ledger's entries since `entry`. */
     function witness(phase: Trace["phase"], who: Member, write: Write | undefined, cast: Member[], from: Map<Member, number>, entry: number): void {
       observe?.({
@@ -837,6 +906,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     } finally {
       await disband(cast);
       failing = undefined;
+      telling = undefined;
     }
   }
 
@@ -1104,7 +1174,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     tapped.close();
   }
   const failed = outcomes.filter((o) => o.failures.length > 0).length;
-  return { outcomes, passed: outcomes.length - failed, failed, ...(byHandTally && { byHand: byHandTally }) };
+  return { outcomes, passed: outcomes.length - failed, failed, ...(warned.size > 0 && { warnings: [...warned.values()] }), ...(byHandTally && { byHand: byHandTally }) };
 }
 
 /** The report, story by story; with `wire`, under each story what it cost there (`cost`). */
@@ -1114,7 +1184,9 @@ export function print(report: Report, { wire = false }: { wire?: boolean } = {})
     for (const f of o.failures) console.log(`        ${f}`);
     if (wire && o.wire) for (const line of cost(o.wire)) console.log(`        ${line}`);
   }
-  console.log(`\n${report.passed} passed, ${report.failed} failed`);
+  const warnings = report.warnings ?? [];
+  for (const w of warnings) console.log(`warn  ${w.story}\n        ${w.says}`);
+  console.log(`\n${report.passed} passed, ${report.failed} failed${warnings.length ? `, ${warnings.length} ${warnings.length === 1 ? "warning" : "warnings"}` : ""}`);
   const h = report.byHand;
   if (h) console.log(`${h.stories} done by hand in a browser the size of a phone: ${h.presses} presses, ${h.applets} sent as an applet declares, in ${(h.ms / 1000).toFixed(1)}s`);
 }

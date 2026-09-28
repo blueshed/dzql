@@ -534,8 +534,9 @@ const props: CrowdProps = { everyone: everyone(), open: family, reveal: v.names 
   The rest is small: who is looking, what is open, a word to find by.
 - **The kernel's client keeps them.** Each patch to the document is laid on the props at `under`,
   and the applet is given them again, `update(el, props)`: it draws from its props whether they
-  came with a render or a patch, and needs no `patch` of its own. One that has a `patch` gets the
-  ops instead, as before (the ticker's).
+  came with a render or a patch, and needs no `patch` of its own (an island, no `reduce`). One
+  that has a `patch` gets the ops instead, as before (the ticker's). An op that does not land is
+  passed over: a render drawn after it already holds it.
 - **It derives what it draws with a pure function, shared.** The applet runs it in the browser on
   each update; the server runs the same one for what the mount declares (`appletWrites`: the
   wedding's taps), for what the page says around it, and for a first paint inside the mount, so a
@@ -554,10 +555,6 @@ const props: CrowdProps = { everyone: everyone(), open: family, reveal: v.names 
   other), not the board, whose rows carry every household's code.
 - **From props alone** (no `data-doc`) an applet is re-sent its props whenever they change, and
   draws from them (`update`). Keep that for props that are small, or that no document holds.
-
-The harness warns, and does not fail, where props cost: when a mount's props, its document left
-out, pass 4 KB; and when a mount is sent again with the props it already had (a part holding it
-replaced for something else: make the mount a part of its own).
 
 Cut a document to what its applet shows. The ticker's board is a row applet per watched symbol,
 each on that symbol's own document (`quote:<SYMBOL>`, a view of the market's row that delta tells
@@ -592,6 +589,45 @@ registerDocs(delta.server, db, schema, [defineDoc("trip:", { root: "trips", incl
 - Either is read as any document is (`read("strip:1")`, `data-doc="strip:1"`), and has a
   compartment of its own that permits nothing: it is written through the trip.
   `src/documents.test.ts` holds both.
+
+The harness warns, and does not fail, where props cost (`costly`, src/harness.ts; `bun run
+stories` prints each once, under the first story that sent it):
+
+- a mount whose own props, its document left out, pass 4 KB (`MOST_PROPS`): watch the document
+  they come from;
+- a mount sent again in parts with the props the page already had: with its tag, for something
+  else on it (keep that beside the mount); drawn again for what the server paints inside it (let
+  it watch its document, whose inside is not compared); or in a part drawn again around it for
+  something else in it (make what changed there a part of its own, as the wedding's photo of
+  everyone keeps its words in `everyone-note`).
+
+#### What japan-eta's strip would change to take it
+
+The strip (`views/strip.ts`, `applets/strip.ts`, `applets/strip-applet.ts`) sends `stripProps(t, me,
+everyone)` -- the legs, the stops, who travels and their names -- as 5.2 KB of props, again with
+every stop moved; the map (7.5 KB of pins) and the gestures do the same from the same trip. To
+watch the trip instead:
+
+1. `tripOf(doc)` (`documents/trip.ts`) moves where the browser can import it, a pure module of its
+   own: `trip()` and the rules a write follows stay behind, with `read` and `refuse`.
+2. `stripProps` moves beside `stripHtml` in `applets/strip.ts` (it needs only `lineColour` and
+   `travellers`, both pure) as `stripOf({ me, people, trip })`: what the strip draws, derived from
+   its small props -- `me`, and `people`, the travellers' names -- and the `trip:<id>` document as
+   `read` gives it.
+3. The mount says it, ``appletProps({ me, people, trip: doc }, { doc: `trip:${t.id}`, under: "/trip" })``,
+   in place of `data-props='${attr(...)}'`; `attr` goes (so do the map's and the gestures'
+   `quoted`, n105). `stripHtml(stripOf(props))` stays its first paint, and its `appletWrites` stay:
+   the server derives them from the same props.
+4. `strip-applet.ts` derives on mount and on each update, `stripOf(ctx.props)`, and keeps what a
+   drag holds as now; it needs no `patch`.
+5. Then a stop moved, a day dragged or nights traded sends the strip nothing but the trip's patch,
+   which the page is sent anyway. Its tag goes when `me` or a name changes, or a base comes or goes
+   (its declared writes), carrying the trip as it stands. The map and the gestures take it the same
+   way, on the same document.
+6. The trip document is drawn whole into the page, so before it does, it must hold nothing a page
+   must not carry beside what others write (an invitation's code); or the strip watches a document
+   cut from the trip for it (`strip:<id>`, above), which holds only what it shows, and is told of
+   every write to it: `under: "/strip"`, and `stripOf` reads that.
 
 ### An applet's controls
 

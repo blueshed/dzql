@@ -35,6 +35,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ticker, the wedding, the island, the client's boxes). It caught one: the ticker's test went back
   from the board's window through the scrim of the drawer open over it, which no person can
   press; it puts the drawer away first now.
+- **An applet's data comes from a document it watches; its props say only what to show and for
+  whom** (todo n94). `appletProps(props, { doc, under })` (`src/html.ts`) puts the document in the
+  props at `under`, beside the small ones (who is looking, what is open), and names it on the mount
+  (`data-doc`, `data-under`). The kernel's client keeps each mount's props, lays every patch to its
+  document on them there, and gives the applet them again (`update`), so it draws from its props
+  with a pure function the server runs too, for what the mount declares and a first paint. A page
+  is compared without the watched document and without what is inside the mount, so a change to the
+  document sends the mount nothing but the patch; the mount goes again only with its own tag (its
+  small props, a class, what it declares). An applet with a `patch` of its own still gets the ops,
+  and one with no `data-doc` is sent its props again as before. The skill says how, and what
+  japan-eta's strip would change to take it.
+  - **The wedding's photo of everyone watches `everyone:1`**, and derives who stands in it with
+    `crowd` (`applets/photo.ts`): a look changed sends a household reading it 218 B, the patch
+    alone, where it sent 566 B (a 218 B patch and 348 B of HTML: the photo's entries again).
+- **`appletProps(props)`, the one helper that quotes props into an attribute** (todo n105), in place
+  of JSON quoted by hand: once, whatever the props hold.
+- **The harness says where props cost, and does not fail** (`costly`, `Report.warnings`): a mount
+  whose own props, its document left out, pass 4 KB (`MOST_PROPS`); and a mount sent again in parts
+  with the very props the page had -- with its tag for something else on it, drawn again for what
+  is inside it, or in a part drawn again around it -- each once for each applet, under the first
+  story that sent it. In eta's own examples it names seven, each a part drawn again around a mount
+  for something else in it: the ticker's board, clock, city picker and spark, and the wedding's
+  household photo (in its page's part, drawn again as the gift list opens), dress and menu (in the
+  guest's drawer, drawn again as their coming changes).
 
 ### Changed
 
@@ -51,6 +75,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLAUDE.md says a todo item for a kernel bug that forced a workaround names its cost** (todo
   n97): bytes, time, or what the app gave up. n82's said the bug, not japan-eta's 7 KB per vote
   to every page watching, and so read as a nicety.
+- **The kernel's client is 6.0 KB gzipped (5.6 KB)**: it lays a watched document's patches on its
+  applet's props (`applyPatch`).
 
 ## [0.50.0] - 2026-09-28
 

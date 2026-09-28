@@ -92,6 +92,12 @@ function watchedTag(tag: string): string {
 
 const ROOT = Symbol("the document is all the props");
 
+/** A mount's own props, as JSON: its props (JSON) without the document it watches, at `under` -- nothing, when that is the root -- or as they are, when they cannot be read or it is not there. */
+export function ownProps(json: string, under: string): string {
+  const rest = without(json, under);
+  return rest === ROOT ? "" : rest === undefined ? json : JSON.stringify(rest);
+}
+
 /** Props without what sits at `under`: `ROOT` when that is all of them; undefined when they cannot be read, or nothing is there. */
 function without(json: string, under: string): unknown {
   if (under === "") return ROOT;

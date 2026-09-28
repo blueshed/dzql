@@ -239,13 +239,13 @@ drag halfway through, a scroll position, a chart's history. That piece is an **a
 - It sends its own writes with `ctx.send(doc, ops)`.
 - Its mount says exactly what it writes, `appletWrites(["team", "replace", "/requests/*/starts"], …)`
   (`*` is any one segment: the request's id), so the stories can find the control.
-- It is updated in one of two ways, and you must choose:
-  - **On a document** (`data-doc`): its props are that document, kept current by its changes;
-    a change reaches it as a patch, and the props go again only with the mount itself (a page
-    sent whole, its tag changed), so what follows where a person is goes on an element beside it.
-    Use this when the props are *only* the document (the ticker's rows).
-  - **From props**: re-sent its props on every redraw. Use this when the props mix a document
-    with where the person is (leave's calendar: the requests, plus the month and their draft).
+- Its data comes from a document it watches, and its props say only what to show and for whom:
+  `appletProps({ open, reveal, everyone }, { doc: "everyone:1", under: "/everyone" })` puts the
+  document in its props at `under`, beside the small ones. Each change to the document reaches it as
+  a patch, laid on its props by the kernel's client, and it is given them again (`update`); the
+  mount is not sent again for it. So it derives what it draws from its props with a pure function,
+  which the server runs too, for what the mount declares and a first paint (the wedding's photo of
+  everyone, `crowd`). Props with no document go again whenever they change: keep those small.
 - Test the drawing as a pure function, and the gestures in a real browser (`Bun.WebView`),
   pressed as a mouse presses (`press`, src/webview.ts), never with `element.click()`.
 
@@ -253,7 +253,8 @@ drag halfway through, a scroll position, a chart's history. That piece is an **a
 
 - **Stories name everyone who sees.** A page that changes for someone not in `seen` fails.
 - **Ids are text.** Always.
-- **An applet on a document must hold nothing but that document.**
+- **A watched document is drawn whole into the page.** Watch one cut for who reads it, with no
+  secret in it.
 - **One Undo is one document.** Keep a gesture's changes in one.
 - **Don't edit `src/` for one app.** If it seems you must, read the reference's "When it looks
   like you need to touch `src/`" first: a missing seam is rare.

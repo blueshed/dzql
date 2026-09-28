@@ -184,7 +184,8 @@ function everyoneReading(v: HouseholdView, familyKey: string | null): { body: st
     level === "families" ? `${total} in the photo, in ${shown} families. Tap a family to see them. Nobody knows whose is whose until the day.`
     : level === "family" ? `${shown} of them.`
     : `${total} in the photo: everyone whose household has said yes; a maybe stands as a ghost. ${v.names ? "It is the day: the names have come down." : "Nobody knows whose is whose until the day."}`;
-  return { body: total ? `<div class="reading photo framed">${everyonePhoto(props)}</div><p class="note">${esc(note)}</p>` : `<p class="note">Nobody yet.</p>`, crumbs };
+  // the words a part of their own: a count that changes sends them, and not the photo beside them
+  return { body: total ? `<div class="reading photo framed">${everyonePhoto(props)}</div>${part("everyone-note", `<p class="note">${esc(note)}</p>`)}` : `<p class="note">Nobody yet.</p>`, crumbs };
 }
 
 // ───────────────────────────── the drawers ─────────────────────────────

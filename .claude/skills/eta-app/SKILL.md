@@ -95,7 +95,9 @@ Everything below is the least that makes it pass.
    tested directly) from mounting (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`)
    when there is drawing worth testing. An applet that builds and updates its DOM by hand is
    better an island: a railroad component made an applet by `island()` (`<name>-applet.tsx`,
-   reference.md "Applets").
+   reference.md "Applets"). Its data comes from a document it watches (`appletProps(props, { doc,
+   under })`), and it derives what it draws with a pure function the server runs too; its props say
+   only what to show, and for whom (reference.md "the document it watches").
 7. **`client/index.html` + `client/main.ts`** -- `main.ts` imports the example's applets, then
    `src/client/app`. The stylesheet imports `src/bento.css` first, then says its own tokens; it
    draws only what is in `layers()`, so the page is drawn in it.
