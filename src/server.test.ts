@@ -576,6 +576,19 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
+  test("an undo or redo that says nothing takes away what its walker was told before, as a write does", async () => {
+    const ws = connect(server, "told-then-walks");
+    await opened(ws);
+    await expectMessage(ws, "render");
+    write(ws, "note", [{ op: "replace", path: "/text", value: "unsaid" }], 1);
+    await until(ws);
+    await tell("told-then-walks", { doc: "note", path: "/text", said: "Kept." }); // as a route might, after
+    await server.idle();
+    write(ws, "ledger", [{ op: "remove", path: "/latest" }], 2);
+    expect(htmlOf((await until(ws)).filter((m) => m.type === "render").at(-1)!)).toBe('<p class="note"></p>');
+    ws.close();
+  });
+
   test("a change told from outside any event -- a feed's tick, slow to follow -- does not cost a write made meanwhile its id", async () => {
     const ws = connect(server);
     await opened(ws);

@@ -7,7 +7,7 @@ import { applyPatch, type PatchOp, type WriteId } from "./json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
 import { comparable, decoded, ownProps, splitTag } from "./parts";
-import { toldNothing, toldTo } from "./refusal";
+import { toldNothing, toldTo, type Line } from "./refusal";
 import { esc } from "./html";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
@@ -753,15 +753,19 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
   }
 
   /**
-   * What `who` was told by what they just did (src/refusal.ts): shown on their page, and what the
-   * story says, where it says. It is theirs, and of that moment -- the page before it never said
-   * it, nor will the page after their next write -- so their pages are compared without it.
+   * What `who` was told by what they just did (src/refusal.ts): shown on their page, in its own
+   * words, and what the story says, where it says. It is theirs, and of that moment -- the page
+   * before it never said it, nor will the page after their next write -- so their pages are
+   * compared without it; and a walk that is told just what the step before it was (`before`, and
+   * what that was) was told nothing of its own. The line, for the next step to be told apart from.
    */
-  async function checkTold(who: Member, when: string, expected: string | undefined, failures: string[]): Promise<void> {
+  async function checkTold(who: Member, when: string, expected: string | undefined, failures: string[], before?: { line: Line | undefined; what: string }): Promise<Line | undefined> {
     const line = await settled(documents, () => toldTo(who.sessionId));
     const words = line?.said ?? line?.reason;
-    if (expected !== undefined && line?.said !== expected) failures.push(`${when}, ${who.name} was not told "${expected}"${words === undefined ? "" : `: they were told "${words}"`}`);
+    if (line && before && JSON.stringify(line) === JSON.stringify(before.line)) failures.push(`${when}, ${who.name} is still told "${words}", what ${before.what} told them`);
+    else if (expected !== undefined && line?.said !== expected) failures.push(`${when}, ${who.name} was not told "${expected}"${words === undefined ? "" : `: they were told "${words}"`}`);
     else if (words !== undefined && !shows(unversioned(await draw(who.sessionId)), await unsaid(who.sessionId), words)) failures.push(`${when}, ${who.name} was told "${words}", and their page does not show it`);
+    return line;
   }
 
   /** Does `page` show what its member was told, in its own words, where the same page told nothing (`without`) does not? */
@@ -925,7 +929,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       if (process.env.STORY_TRACE) for (const raw of who.inbox.slice(from.get(who))) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
       checkUntold(cast, story.untold, from, "after the story", failures);
       const after = await snapshot(cast);
-      await checkTold(who, "after the story", undefined, failures);
+      const wrote = await checkTold(who, "after the story", undefined, failures);
       const quietAfter = new Map(after).set(who.name, await unsaid(who.sessionId)); // what the undo and the redo are compared with
       const entries = ledger.since(ledgerBefore);
       await stale(cast, "after the story", failures);
@@ -942,7 +946,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       from = mark(cast);
       await told(cast, who, UNDO, "undo");
       spent(story, outcome, "undo", cast, from);
-      await checkTold(who, "after undo", story.undone, failures); // where the undo left them, before they are put back
+      const undid = await checkTold(who, "after undo", story.undone, failures, { line: wrote, what: "the write" }); // where the undo left them, before they are put back
       if (moved) await send(cast, who, stories.goTo!(stood!));
       const afterUndo = await snapshot(cast, who);
       await stale(cast, "after undo", failures);
@@ -954,7 +958,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         from = mark(cast);
         await told(cast, who, REDO, "redo");
         spent(story, outcome, "redo", cast, from);
-        await checkTold(who, "after redo", undefined, failures);
+        await checkTold(who, "after redo", undefined, failures, { line: undid, what: "the undo" });
         if (moved) await send(cast, who, stories.goTo!(landed!));
         compare(quietAfter, await snapshot(cast, who), cast, "redo did not restore", failures);
         await stale(cast, "after redo", failures);

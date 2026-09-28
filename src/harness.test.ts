@@ -656,6 +656,15 @@ describe("stories harness", () => {
       ]);
     }, 30000);
 
+    test("what a walk says is its own: after the redo, what the undo said is stale, and so after the undo is what the write said", async () => {
+      // the redo says what the undo did: "Undone: your answer.", still up after the redo
+      const stale = withHousehold((h) => ({ afterWalk: (ws, id, walk) => h.afterWalk!(ws, id, { ...walk, way: "undo" }) }));
+      expect(await failuresIn(stale, [maybe])).toEqual(['after redo, okafors is still told "Undone: your answer.", what the undo told them']);
+      // the undo says what the write did
+      const saved = withHousehold((h) => ({ afterWrite: (ws) => tell(ws.data.sessionId, { doc: "ledger", path: "/latest", said: "Saved." }), afterWalk: (ws, _id, walk) => (walk.way === "undo" ? tell(ws.data.sessionId, { doc: "ledger", path: "/latest", said: "Saved." }) : h.afterWalk!(ws, _id, walk)) }));
+      expect(await failuresIn(saved, [{ ...maybe, undone: undefined }])).toEqual(['after undo, okafors is still told "Saved.", what the write told them']);
+    }, 30000);
+
   });
 
   test("an applet may name the only values a control of it sends: a tap that goes somewhere offers only there, and the values of one write go together", () => {

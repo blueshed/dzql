@@ -124,7 +124,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for them to see -- and after each of the write, the undo and the redo, where it left them,
   whatever they were told must be on their page, in its own words: `after undo, ada was told "…",
   and their page does not show it`. So must a refusal's `told`, which is no longer looked for by
-  its markup. Before, every undoable story of an app that said "Undone: …" failed (`undo did not
+  its markup. A walk is told something of its own, or nothing: what the write said, still up after
+  the undo, or what the undo said, still up after the redo, fails (`after redo, okafors is still
+  told "Undone: your answer.", what the undo told them`). Before, every undoable story of an app that said "Undone: …" failed (`undo did not
   restore`), and so did a silent refusal after a write that had said something. Words an app keeps
   in a session of its own are still the page's, compared whole: say what happened with `tell`.
 
