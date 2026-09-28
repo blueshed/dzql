@@ -8,6 +8,7 @@ import { db, schema } from "../examples/chat/delta";
 import { stories } from "../examples/chat/stories";
 import type { Compartment } from "./compartments/compartment";
 import { read } from "./documents";
+import { appletWrites, write } from "./html";
 import type { Example } from "./example";
 import { comparable, controlsOn, hear, holding, offers, placeOf, print, retake, run, takersOn, unheld } from "./harness";
 import type { Story } from "./stories";
@@ -78,15 +79,15 @@ describe("stories harness", () => {
     expect(first(2)).toContain("dee's page offers this, and it is refused without a word: a control that always fails");
   }, 30000);
 
-  test("controls: a button sends its own value, a field or a form any, an applet on a document any write to it, one that says what it writes any under that path", () => {
+  test("controls: a button sends its own value, a field or a form any, an applet on a document any write to it, one that says what it writes exactly that", () => {
     const page = [
       `<button data-write='{"doc":"room","op":"replace","path":"/name"}' data-value="Tess &amp; Tom">x</button>`,
       `<button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>undo</button>`,
       `<form data-write='{"doc":"room","op":"add","path":"/messages/-"}'></form>`,
       `<div class="site" data-page="gifts?new=gifts" data-page-write='{"doc":"session","op":"replace","path":"/page"}'></div>`,
       `<div data-applet="clock" data-doc="clock" data-props="{}"></div>`,
-      `<div data-applet="dress" data-writes='{"doc":"household","path":"/guests/2/minifigure"}'></div>`,
-      `<div data-applet="calendar" data-writes='[{"doc":"session","path":"/draft"},{"doc":"team","path":"/requests"}]'></div>`,
+      `<div data-applet="dress"${appletWrites(["household", "replace", "/guests/2/minifigure/top"])}></div>`,
+      `<div data-applet="calendar"${appletWrites(["session", "replace", "/draft"], ["team", "replace", "/requests/*/starts"])}></div>`,
     ].join("");
     const cs = controlsOn(page);
     const any = (doc: string, op: PatchOp) => cs.some((c) => offers(c, doc, op));
@@ -99,8 +100,13 @@ describe("stories harness", () => {
     expect(any("clock", { op: "replace", path: "/tz", value: "Asia/Tokyo" })).toBe(true);
     expect(any("household", { op: "replace", path: "/guests/2/minifigure/top", value: "#fff" })).toBe(true);
     expect(any("household", { op: "replace", path: "/guests/3/minifigure/top", value: "#fff" })).toBe(false);
+    expect(any("household", { op: "remove", path: "/guests/2/minifigure/top" })).toBe(false); // another op
+    expect(any("household", { op: "replace", path: "/guests/2/minifigure", value: {} })).toBe(false); // above what it names
+    expect(any("household", { op: "replace", path: "/guests/2/minifigure/top/shade", value: "#fff" })).toBe(false); // below it
     expect(any("session", { op: "replace", path: "/draft", value: {} })).toBe(true); // one of several it says it writes
-    expect(any("team", { op: "replace", path: "/requests/2/starts", value: "2026-11-20" })).toBe(true);
+    expect(any("team", { op: "replace", path: "/requests/2/starts", value: "2026-11-20" })).toBe(true); // `*`: any one segment
+    expect(any("team", { op: "replace", path: "/requests/2/status", value: "approved" })).toBe(false); // not the applet's: its drawer's
+    expect(any("team", { op: "remove", path: "/requests/2" })).toBe(false);
     expect(any("watchlist", { op: "add", path: "/symbols/-", value: "X" })).toBe(false);
     expect(placeOf(page)).toBe("gifts?new=gifts");
     expect(placeOf("<p>no address</p>")).toBeUndefined();
@@ -113,6 +119,15 @@ describe("stories harness", () => {
     expect((await run(leave, { ...told, stories: first })).failed).toBe(0);
     const wrong = { ...told, stories: first, signIn: (name: string) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@leave.example`, password: "not-it" } }) };
     expect(run(leave, wrong)).rejects.toThrow("ann could not sign in at /login: 303");
+  }, 30000);
+
+  test("an applet offers only what its mount says it writes: a drawer that lost its control fails its story, whatever applet is beside it", async () => {
+    const { example: leave } = await import("../examples/leave/index");
+    const { stories: told } = await import("../examples/leave/stories");
+    const approve = write("team", "replace", "/requests/1/status", "approved");
+    const lost: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replace(approve, "") };
+    const report = await run(lost, { ...told, stories: told.stories.filter((s) => s.name.startsWith("Mo approves")) });
+    expect(report.outcomes.flatMap((o) => o.failures)).toContain("mo has no control on their page for replace /requests/1/status on team");
   }, 30000);
 
   // Delivery, not only pages: chat broken on purpose, three ways its own stories could not see.

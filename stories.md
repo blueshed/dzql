@@ -124,8 +124,9 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
 2. Put the author where the story says they act (`from`: the drawer or modal that holds the
    control), and find on their open page the control that sends the story's write -- a
    `data-write` with its document, op and path, and a button's own value; a field or a form sends
-   whatever is typed; an applet declares what it writes (`data-writes`). None is a failure: a
-   story nobody can do from a page is not a story (`offPage` marks a write from a feed or the CLI).
+   whatever is typed; an applet declares exactly what it writes (`data-writes`: an op and a path
+   each, `*` for any one segment). None is a failure: a story nobody can do from a page is not a
+   story (`offPage` marks a write from a feed or the CLI).
    Then send the `does` as its session, wait for the wire to go quiet, and it must have landed:
    someone was told of a changed document.
 3. Canon 1. Render every member fresh again. For each name in `seen`, that member's page must

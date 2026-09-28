@@ -235,8 +235,8 @@ drag halfway through, a scroll position, a chart's history. That piece is an **a
 (`src/applets.ts`): client code that draws inside one element.
 
 - It sends its own writes with `ctx.send(doc, ops)`.
-- Its mount says what it writes, `appletWrites(["team", "/requests"], …)`, so the stories can find the
-  control.
+- Its mount says exactly what it writes, `appletWrites(["team", "replace", "/requests/*/starts"], …)`
+  (`*` is any one segment: the request's id), so the stories can find the control.
 - It is updated in one of two ways, and you must choose:
   - **On a document** (`data-doc`): its props are that document, kept current by its changes,
     and never re-sent. Use this when the props are *only* the document (the ticker's rows).

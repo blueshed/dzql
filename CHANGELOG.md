@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **An applet's mount says exactly what it writes** (todo n78): `appletWrites([doc, op, path], …)`,
+  where a segment that is only `*` is any one segment (`["team", "replace", "/requests/*/starts"]`).
+  `appletWrites([doc, path], …)` offered every write under each path, so a page that lost a
+  control beside an applet (leave's Approve, in a drawer over the calendar that declared
+  `/requests`) still passed its story. Now a write the applet does not name is not offered.
+  The examples' declarations are exact: leave's calendar writes the draft and a request's starts
+  and ends; the wedding's dress each look field, its menu a course's dish or drink, chosen or
+  taken back.
 - **One word, one meaning: names renamed so they say what they are, and when they run.** No
   behaviour changes; rename and the gate passes. Compartment hooks are named for when they run
   (`permit`, `shape` before a write; `permitUndo` before an undo; `afterWrite`, `afterChange` after).
@@ -26,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   | `bento({ icon, tray })` | `bento({ icon, session })` | src/bento.ts |
   | `sheet(...)` | `drawer(...)` | what `bento()` returns |
   | `refused(sessionId, doc, path)` | `reasonFor(sessionId, doc, path)` | src/refusal.ts |
-  | `writes(doc, path)` | `appletWrites([doc, path], …)`: pairs, since a mount may write under several paths | src/html.ts |
+  | `writes(doc, path)` | `appletWrites([doc, op, path], …)`: one for each write the mount sends, exactly (above) | src/html.ts |
   | `data-at="/quote"` | `data-under="/quote"` | an applet's mount |
   | `src/tray.ts`: `tray()`, `Compartment`, `Tray` | `src/grid.ts`: `grid()`, `Cell`, `Grid` | the box's layout |
   | `at(view, url)` | `urlFor(view, url)` | src/webview.ts |

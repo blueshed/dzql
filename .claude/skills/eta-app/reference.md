@@ -455,15 +455,19 @@ would change for symbols nobody on it watches.
 ### An applet's controls
 
 An applet's controls are drawn in the browser, so the stories cannot find them in the page. Its
-mount says what they write instead:
+mount says exactly what they write instead: a document, an op and a path each, where a segment
+that is only `*` is any one segment (an id the applet reads from its props):
 
 ```ts
-`<div data-applet="calendar"${appletWrites(["team", "/draft"], ["team", "/requests"])} data-props="…">`
+`<div data-applet="calendar"${appletWrites(["team", "replace", "/draft"], ["team", "replace", "/requests/*/starts"], ["team", "replace", "/requests/*/ends"])} data-props="…">`
 ```
 
-- `appletWrites([doc, path], …)` (`src/html.ts`) puts `data-writes` on the mount, and a story's
-  write under one of those paths counts as offered (the wedding's dress and menu; leave's
-  calendar, which writes a draft and moves requests).
+- `appletWrites([doc, op, path], …)` (`src/html.ts`) puts `data-writes` on the mount, and a
+  story's write that one of those names counts as offered, with any value (the wedding's dress
+  and menu; leave's calendar, which writes a draft and moves requests).
+- Name only what the applet sends. A write above, below or beside what it names is not the
+  applet's, so a page that lost its own control for one (a drawer's Approve, under the
+  calendar's requests) fails its story.
 - The applet sends its writes with `ctx.send(doc, ops)`: a drag let go.
 
 ### Islands

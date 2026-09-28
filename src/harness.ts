@@ -117,9 +117,9 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
  * a button carries (`data-value`, sent as a string). A field or a form writes whatever is typed, so
  * any value; so does the page's address (`data-page-write`). An applet draws its own controls in
  * the browser: one on a document (`data-doc`) offers any write to it, and one whose mount says what
- * it writes (`data-writes`, src/html.ts) any write under that path.
+ * it writes (`data-writes`, src/html.ts) exactly those, where a `*` segment of its path is any one.
  */
-export type Control = { doc: string; op?: string; path?: string; value?: string; free: boolean; under?: true };
+export type Control = { doc: string; op?: string; path?: string; value?: string; free: boolean; pattern?: true };
 
 /** Every control on a page, as the server drew it. */
 export function controlsOn(page: string): Control[] {
@@ -137,8 +137,8 @@ export function controlsOn(page: string): Control[] {
     .on("[data-applet][data-doc]", { element: (el) => void found.push({ doc: el.getAttribute("data-doc")!, free: true }) })
     .on("[data-writes]", {
       element(el) {
-        const said = JSON.parse(unescape(el.getAttribute("data-writes")!)) as { doc: string; path: string } | { doc: string; path: string }[];
-        for (const w of Array.isArray(said) ? said : [said]) found.push({ ...w, free: true, under: true });
+        const said = JSON.parse(unescape(el.getAttribute("data-writes")!)) as { doc: string; op: string; path: string }[];
+        for (const w of said) found.push({ ...w, free: true, pattern: true });
       },
     })
     .transform(page);
@@ -154,10 +154,17 @@ export const placeOf = (page: string): string | undefined => {
 /** The same document: named whole on one side and by its type alone on the other (`room`, `room:general`) counts. */
 const sameDoc = (a: string, b: string): boolean => a === b || a.startsWith(`${b}:`) || b.startsWith(`${a}:`);
 
+/** Does a path an applet names (`*` for any one segment) name this one? */
+const fits = (pattern: string, path: string): boolean => {
+  const want = pattern.split("/");
+  const have = path.split("/");
+  return want.length === have.length && want.every((segment, i) => segment === "*" || segment === have[i]);
+};
+
 /** Does `c` send this op to this document? A free control sends any value; a button only its own. */
 export function offers(c: Control, doc: string, op: PatchOp): boolean {
   if (!sameDoc(c.doc, doc)) return false;
-  if (c.under) return op.path === c.path || op.path.startsWith(`${c.path}/`); // an applet's own, under its path
+  if (c.pattern) return c.op === op.op && fits(c.path!, op.path); // an applet's own: exactly what its mount names
   if (c.op === undefined) return true; // an applet on the document
   if (c.op !== op.op || c.path !== op.path) return false;
   return c.free || (c.value === undefined ? !("value" in op) || op.value === undefined : "value" in op && String(op.value) === c.value);

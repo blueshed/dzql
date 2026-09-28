@@ -13,6 +13,7 @@ import * as weddingDoc from "../documents/wedding";
 import type { Course, Gift, Wedding } from "../documents/wedding";
 import { addModal, addTool, choice, collectionPage, findControl, prop, row, rows, drawer, tool, type Crumb } from "./bento";
 import type { DressProps } from "../applets/dress";
+import { LOOK_FIELDS } from "../looks";
 import type { MenuProps } from "../applets/menu";
 import { esc, join, nav, open, write, appletWrites } from "./html";
 import { part } from "../../../src/parts";
@@ -205,7 +206,7 @@ function everyoneReading(v: HouseholdView, familyKey: string | null): { body: st
 /** The dressing applet's mount for one guest: a part, sent alone when their look changes. */
 export function dressMount(v: HouseholdView, g: Guest): string {
   const dress: DressProps = { guestId: g.id, spec: specOf(g.minifigure), firstName: firstNameOf(g.name), out: isGuestOut(g, v.h) };
-  return part(`dress-${g.id}`, `<div id="dress-${g.id}" data-applet="dress"${appletWrites(["household", `/guests/${g.id}/minifigure`])} data-props="${esc(JSON.stringify(dress))}"></div>`);
+  return part(`dress-${g.id}`, `<div id="dress-${g.id}" data-applet="dress"${appletWrites(...LOOK_FIELDS.map((field) => ["household", "replace", `/guests/${g.id}/minifigure/${field}`] as const))} data-props="${esc(JSON.stringify(dress))}"></div>`);
 }
 
 /** The menu applet's mount for one guest: a part, sent alone when a choice changes. */
@@ -218,7 +219,8 @@ export function menuMount(v: HouseholdView, g: Guest): string {
     out: isGuestOut(g, v.h),
     locked: !v.open,
   };
-  return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu"${appletWrites(["household", `/guests/${g.id}/choices`])} data-props="${esc(JSON.stringify(menu))}"></div>`);
+  const choose = (op: "replace" | "remove", kind: "dish" | "drink") => ["household", op, `/guests/${g.id}/choices/*/${kind}`] as const; // a course's, chosen or taken back
+  return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu"${appletWrites(choose("replace", "dish"), choose("remove", "dish"), choose("replace", "drink"), choose("remove", "drink"))} data-props="${esc(JSON.stringify(menu))}"></div>`);
 }
 
 /** The guest's drawer: the dressing sheet, coming as one choice (rule 13, off the line), the hint, and the menu. */
