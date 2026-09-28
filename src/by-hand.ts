@@ -302,11 +302,16 @@ export class Hand {
 /** A write in words: each op, its path and its value, and the document. */
 export const worded = (w: Write): string => `${w.ops.map((op) => `${op.op} ${op.path}${op.value === undefined ? "" : ` ${JSON.stringify(op.value)}`}`).join(", ")} on ${w.doc}`;
 
-/** Does `sent` say what `story` writes? A value from a page is a string, so a value compares as the wire sends a button's (`String`), a record by its keys. */
+/**
+ * Does `sent` say what `story` writes? A value from a page is a string, so a value compares as the
+ * wire sends a button's (`String`), a record by its keys: the story's, and no other but one a
+ * form sent blank (a field left empty).
+ */
 export function sameWrite(sent: Write, story: Write): boolean {
+  const blank = (v: unknown): boolean => String(v ?? "") === "";
   const same = (a: unknown, b: unknown): boolean =>
     a !== null && b !== null && typeof a === "object" && typeof b === "object"
-      ? Object.keys(b).every((k) => same((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]))
+      ? Object.keys(b).every((k) => same((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])) && Object.keys(a).every((k) => k in b || blank((a as Record<string, unknown>)[k]))
       : String(a ?? "") === String(b ?? "");
   const doc = (a: string, b: string) => a === b || a.startsWith(`${b}:`) || b.startsWith(`${a}:`);
   return doc(sent.doc, story.doc) && sent.ops.length === story.ops.length && sent.ops.every((op, i) => op.op === story.ops[i]!.op && op.path === story.ops[i]!.path && same(op.value, story.ops[i]!.value));

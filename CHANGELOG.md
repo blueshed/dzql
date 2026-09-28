@@ -307,7 +307,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   left for another way), then the gesture is made -- a press a native click once the control
   holds still and nothing covers it, a drag a mouse's pointer events, each sent to what is under
   the pointer, then the click a browser sends, never `element.click()` (n98). What the page sent
-  must be the story's write, and it must land (`by hand, ann could not replace /draft on team:
+  must be the story's write (a record with no key the story does not name, but for a field left
+  blank), and it must land (`by hand, ann could not replace /draft on team:
   the page sent replace /draft {…} on team`). A gesture's write is what the page sent from its
   press going down to the gesture done; what the page sends by itself -- before anything is
   pressed, or in the quarter second after a gesture's write lands -- fails the story. leave's

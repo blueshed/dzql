@@ -159,10 +159,20 @@ describe("the stories by hand", () => {
     expect(report2.byHand).toBeUndefined(); // not told, and not done by hand
   }, 60000);
 
+  test("a record the page sent with a key the story does not name is not its write, unless the key is blank: a calendar's half day fails", async () => {
+    const { stories: told } = await import("../examples/leave/stories");
+    const across = told.stories.filter((s) => s.name.startsWith("Ann drags across"));
+    expect((await run(await leaveWith("half"), { ...told, stories: across })).outcomes[0]!.failures).toEqual([
+      'by hand, ann could not replace /draft on team: the page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-07","half":true} on team',
+    ]);
+  }, 60000);
+
   test("what the page sent is the story's write: a value as the wire sends a button's, a record by its keys, a document by either name", () => {
     const add = (value: unknown) => ({ doc: "board", ops: [{ op: "add" as const, path: "/households/-", value }] });
     expect(sameWrite(add({ email: "a@b", plus_ones: "2" }), add({ email: "a@b", plus_ones: 2 }))).toBe(true);
     expect(sameWrite(add({ email: "a@b" }), add({ email: "a@b", plus_ones: 2 }))).toBe(false);
+    expect(sameWrite(add({ email: "a@b", plus_ones: "2", half: true }), add({ email: "a@b", plus_ones: 2 }))).toBe(false); // a key the story does not name
+    expect(sameWrite(add({ email: "a@b", names: "" }), add({ email: "a@b" }))).toBe(true); // but a field left blank (the wedding's invite)
     expect(sameWrite({ doc: "room:general", ops: say.ops }, say)).toBe(true);
     expect(sameWrite({ doc: "room:kitchen", ops: say.ops }, { doc: "room:general", ops: say.ops })).toBe(false);
     expect(sameWrite({ doc: "room", ops: [{ op: "add", path: "/messages/-", value: "hi" }] }, say)).toBe(false);
