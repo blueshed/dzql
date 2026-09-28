@@ -210,6 +210,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   top landed above the view, under a sticky header (a whole day on a phone). Such an element now
   comes by its top, below its margin; one that fits still comes by its nearest edge. The view is
   the nearest scroller's, or the window's, less its `scroll-padding` (a sticky header it declares).
+- **A page with a sticky header declares its height** (the eta-app skill, todo n85). A render
+  that took out the row hidden under an app's sticky header slid the rows below it up under the
+  header: the client keeps no reader's place, and the browser's scroll anchoring, in WebKit and
+  Chrome, chose that hidden row to anchor on. A page that says `html { scroll-padding-top:
+  <height> }` is anchored below its header, and `data-reveal` lands below it too. The skill says so.
 
 ## [0.49.0] - 2026-09-25
 
