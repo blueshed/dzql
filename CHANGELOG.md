@@ -97,6 +97,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also mended two things the numbers exposed: removing a dish clears the guests' choices of it,
   and removing a gift takes its claims. leave's browser test waits until the first month shown
   is October, not merely until October is on the page.
+- **The harness compares each open page with a render from storage** (todo n33, canon 2). The
+  fresh render read the copy the server draws from, so a copy that drifted from the tables was
+  compared with itself. Now each document it reads is opened again from delta's tables
+  (`open_at`); only what they cannot say (a memory kind, a row not made yet) comes from the copy.
 
 ### Added
 

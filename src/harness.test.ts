@@ -128,6 +128,20 @@ describe("stories harness", () => {
     expect(failures).toContain("after redo, dee was told of room:general, and should not have been");
   }, 30000);
 
+  test("the fresh render is read from storage: a copy that drifted from the tables fails the story, by name", async () => {
+    // the tables changed behind delta's back: each message stored says other than what was said,
+    // and the copy every page is drawn from never hears of it -- so the pages agree with the copy
+    db.run("CREATE TEMP TRIGGER drift AFTER INSERT ON chat_messages BEGIN UPDATE chat_messages SET text = 'not what was said' WHERE id = NEW.id; END");
+    try {
+      const failures = await failuresOf(example, only("Ada says hello"));
+      expect(failures).toContain("after the story, ada's open page is not what a fresh render shows");
+      expect(failures).toContain("after the story, bob's open page is not what a fresh render shows");
+      expect(failures).toContain("after redo, ada's open page is not what a fresh render shows");
+    } finally {
+      db.run("DROP TRIGGER drift");
+    }
+  }, 30000);
+
   test("a refusal that is really the server failing fails the story, and so does one nobody answers", async () => {
     const throwing = withRoom((room) => ({ ...room, permit: () => { throw new Error("a permit that throws"); } }));
     expect((await failuresOf(throwing, only("Nobody can take"))).some((f) => f.startsWith("the server failed") && f.endsWith("a permit that throws"))).toBe(true);

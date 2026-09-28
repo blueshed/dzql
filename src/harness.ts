@@ -4,7 +4,7 @@ import { assemble } from "./compartments";
 import { createServer } from "./server";
 import type { Stories, Story, Write } from "./stories";
 import { applyPatch, type PatchOp } from "./json-patch";
-import { settled } from "./documents";
+import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
 import { comparable, splitTag } from "./parts";
 import { said } from "./refusal";
@@ -30,10 +30,13 @@ export { comparable };
 //
 // Canon 2 is checked here too, without a browser: every member's open page is kept as the client
 // would keep it -- a full render replaces it, a fragment render is applied target by target -- and
-// after the story, its undo and its redo, that page must equal a fresh render. So a write that
-// reaches the tables but not someone's open page fails, by name. An applet that takes its
-// document's patches itself (`data-doc`) is compared without its props: they follow the patches,
-// not the renders. What the morph does with the HTML is the browser tests' to check.
+// after the story, its undo and its redo, that page must equal a fresh render from storage: each
+// document the page reads read again from delta's tables, not from the copy the server draws from.
+// So a write that reaches the tables but not someone's open page fails, by name, and so does a
+// copy that drifted from the tables, which a render from the copy would only compare with itself.
+// An applet that takes its document's patches itself (`data-doc`) is compared without its props:
+// they follow the patches, not the renders. What the morph does with the HTML is the browser
+// tests' to check.
 
 export type Outcome = { name: string; failures: string[] };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number };
@@ -55,6 +58,9 @@ function ledgerOf(): { max(): number; since(id: number): LedgerRow[] } {
   const since = db.query<LedgerRow, [number]>("SELECT id, doc, undoable FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id");
   return { max: () => max.get()?.id ?? 0, since: (id) => since.all(id) };
 }
+
+/** A time after every write: a document opened as it stood then (`open_at`) is its rows as they stand. */
+const AFTER_EVERY_WRITE = "9999-12-31T23:59:59.999Z";
 
 const UNDO: Write = { doc: "ledger", ops: [{ op: "remove", path: "/latest" }] };
 const REDO: Write = { doc: "ledger", ops: [{ op: "add", path: "/latest" }] };
@@ -211,7 +217,7 @@ export function hear(page: string, message: Heard): string {
 
 export async function run(example: Example, stories: Stories): Promise<Report> {
   const server = createServer(example, 0);
-  const { draw, documents } = assemble(example);
+  const { draw, page, documents } = assemble(example);
   const active = (sessionId: string): Promise<boolean> => settled(documents, () => example.active(sessionId));
   const ledger = ledgerOf();
   const ledgerMax = ledger.max;
@@ -219,6 +225,36 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   // what the kernel reports failing goes to the story being told
   let failing: string[] | undefined;
   const hearFailures = onFailure((what, err) => failing?.push(`the server failed ${what}: ${err instanceof Error ? err.message : String(err)}`));
+
+  /**
+   * Canon 2's fresh render: the page drawn from storage. Each document it reads is opened again
+   * from delta's tables (`open_at`); one they cannot say -- delta's memory kinds, whose memory is
+   * where they are kept, or a row not made yet -- is the server's copy. The page reads the active
+   * copy, so this one is made active while it draws, and only then: a drawing is synchronous.
+   */
+  async function fresh(sessionId: string): Promise<string> {
+    const stored = new Map<string, unknown>();
+    const copy: Documents = {
+      ...documents,
+      read: <T>(doc: string): T => {
+        if (!stored.has(doc)) throw new Pending(doc);
+        return stored.get(doc) as T;
+      },
+      load: async (doc: string) => {
+        const { result } = await example.delta.call("open_at", { doc, at: AFTER_EVERY_WRITE });
+        stored.set(doc, result ?? (await settled(documents, () => documents.read(doc))));
+      },
+    };
+    return settled(copy, () => {
+      const serving = activeDocuments();
+      setActiveDocuments(copy);
+      try {
+        return page(sessionId);
+      } finally {
+        setActiveDocuments(serving);
+      }
+    });
+  }
 
   async function snapshot(cast: Member[]): Promise<Snapshot> {
     return new Map(await Promise.all(cast.map(async (m) => [m.name, await draw(m.sessionId)] as const)));
@@ -311,16 +347,16 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
 
   /** The patch stream: what each member's applets hold must be what a fresh render gives them. */
   async function held(cast: Member[], when: string, failures: string[]): Promise<void> {
-    for (const m of cast) failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, await draw(m.sessionId)));
+    for (const m of cast) failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, await fresh(m.sessionId)));
   }
 
   /** Canon 2: what each member's open page holds must be what a fresh render shows. */
   async function stale(cast: Member[], when: string, failures: string[]): Promise<void> {
     await held(cast, when, failures);
     for (const m of cast) {
-      const fresh = comparable(await draw(m.sessionId));
+      const drawn = comparable(await fresh(m.sessionId));
       const held = comparable(m.page);
-      if (held !== fresh) failures.push(`${when}, ${m.name}'s open page is not what a fresh render shows${excerpt(fresh, held)}`);
+      if (held !== drawn) failures.push(`${when}, ${m.name}'s open page is not what a fresh render shows${excerpt(drawn, held)}`);
     }
   }
 
