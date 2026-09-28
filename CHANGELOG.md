@@ -94,7 +94,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   write that sets it: a button's value, a radio's, each option a select can choose (a select
   now offers only those, and a `multiple` one nothing, which the client never sends), or a value
   an applet names. It found leave's months (below) and the wedding photo's taps,
-  which nothing declared.
+  which nothing declared. Each place a story names is stood on in the walk, so what its own page
+  sends is asked even where the way ends there: a story told alone (`STORY=`), or one whose
+  place no other story goes past, failed its " @ " on a page the walk had never drawn.
 - **A control the browser will not press is none**, whatever is around it. The stories counted a
   button inside an `inert` box, a `hidden` element or a disabled fieldset as offered, since only
   the button's own `disabled` was looked at; keyboard and phone put the whole box `inert` behind

@@ -451,6 +451,15 @@ describe("stories harness", () => {
       ]);
     }, 30000);
 
+    test("a place named with \" @ \" is stood on, so what its page sends is asked, though no other place is wanted past it", async () => {
+      // told alone, Ann's board is only the end of her way from where the cast left her
+      const alone = named("Bravo ticks; Ann, reading her board as a list");
+      expect((await run(ticker, { ...told, stories: alone })).outcomes[0]!.failures).toEqual([]);
+      expect((await run(without(write("desk", "replace", "/reading/board", "list")), { ...told, stories: alone })).outcomes[0]!.failures).toEqual([
+        'no control leads ann to "board @ reading.board=list", where the story has them see it: nothing on their page at "board" sends replace /reading/board',
+      ]);
+    }, 30000);
+
     test("a way through a place no story stands on is walked, and one a page never offers is not a way at all", async () => {
       // Ann stands only where the cast put her; the way to Alpha's modal is through the market and Alpha's drawer
       const drops = named("Ann drops Alpha");

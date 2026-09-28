@@ -724,7 +724,8 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   /**
    * The ways from `start` to each of `places` for `name`, in `state`, over the controls their pages
    * there offered: a place's own is its address, before any " @ ". A place on the way that
-   * `name` has not stood on is stood on now (`visit`), so the way through any page is found.
+   * `name` has not stood on is stood on now (`visit`), so the way through any page is found; and so
+   * is each of `places` reached, so what its own page sends is known (what follows " @ ").
    */
   async function waysFor(state: State, name: string, start: string | undefined, places: Set<string>, visit: (place: string) => Promise<void>): Promise<Map<string, Step[]>> {
     const via = new Map<string, Step | undefined>();
@@ -746,6 +747,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     const ways = new Map<string, Step[]>();
     for (const place of places) {
       if (!via.has(place)) continue;
+      if (!state.pages.get(name)?.has(place)) await visit(place);
       const steps: Step[] = [];
       for (let step = via.get(place); step; step = via.get(step.from)) steps.unshift(step);
       ways.set(place, steps);
