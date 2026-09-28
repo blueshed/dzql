@@ -318,9 +318,10 @@ describe("stories harness", () => {
   }, 30000);
 
   test("the fresh render is read from storage: a copy that drifted from the tables fails the story, by name", async () => {
-    // the tables changed behind delta's back: each message stored says other than what was said,
-    // and the copy every page is drawn from never hears of it -- so the pages agree with the copy
-    db.run("CREATE TEMP TRIGGER drift AFTER INSERT ON chat_messages BEGIN UPDATE chat_messages SET text = 'not what was said' WHERE id = NEW.id; END");
+    // the tables changed behind delta's back: each message said brings in one nobody said, and the
+    // copy every page is drawn from never hears of it -- so the pages agree with the copy. (Not the
+    // said message itself: delta reads back each row it writes, as it is kept, and tells that.)
+    db.run("CREATE TEMP TRIGGER drift AFTER INSERT ON chat_messages BEGIN INSERT OR REPLACE INTO chat_messages (id, rooms_id, name, text, sent_at) VALUES (NEW.id || '~', NEW.rooms_id, NEW.name, 'not what was said', NEW.sent_at); END");
     try {
       const failures = await failuresOf(example, only("Ada says hello"));
       expect(failures).toContain("after the story, ada's open page is not what a fresh render shows");
@@ -338,8 +339,10 @@ describe("stories harness", () => {
     const watch = { doc: "watchlist", ops: [{ op: "add" as const, path: "/symbols/-", value: "CHRL" }] };
     const watches = { cast: { ann: [desk("board")] }, goTo: desk, stories: [{ name: "Ann, on her board, watches Charlie Metals", as: "ann", from: "board?new", does: watch, seen: { ann: "board" } }] };
     expect((await run(ticker, watches)).failed).toBe(0);
-    // each desk row is lost as it is made: the copy keeps the desk, off the ledger, the tables do not
-    db.run("CREATE TEMP TRIGGER lost AFTER INSERT ON ticker_desks BEGIN DELETE FROM ticker_desks WHERE id = NEW.id; END");
+    // Ann's desk row is lost when she watches: the copy keeps the desk, off the ledger, the tables do
+    // not. (Not as the desk is written: delta reads back each row it writes, and a desk it cannot
+    // find refuses the write.)
+    db.run("CREATE TEMP TRIGGER lost AFTER INSERT ON ticker_watchlists BEGIN DELETE FROM ticker_desks WHERE id = NEW.id; END");
     try {
       const failures = (await run(ticker, watches)).outcomes.flatMap((o) => o.failures);
       expect(failures).toContain("after the story, ann's open page is not what a fresh render shows");
