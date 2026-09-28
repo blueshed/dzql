@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { HISTORY, applyOps, drawRow, rowSvg, sparkline, type RowState } from "./board";
+import { HISTORY, applyOps, drawRow, drawSpark, rowSvg, sparkSvg, sparkline, type RowState } from "./board";
 
 const state = (): RowState => ({ props: { symbol: "ALPH", quote: { name: "Alpha Systems", price: 189.42, prev: 189.0 } }, history: [189.0, 189.42] });
 
@@ -21,6 +21,13 @@ describe("board", () => {
     expect(sparkline([1])).toBe("");
     expect(sparkline([1, 3, 2], 100, 10)).toBe('<polyline points="0.0,10.0 50.0,0.0 100.0,5.0" fill="none" stroke="currentColor" stroke-width="1.2"/>');
     expect(sparkline([2, 2], 100, 10)).toContain("0.0,10.0 100.0,10.0"); // flat stays flat
+  });
+
+  test("a drawer's sparkline is the line alone, coloured by the last move and said as the range it spans", () => {
+    expect(sparkSvg({ name: "x", price: 2, prev: 1 }, [1, 3, 2])).toStartWith('<svg class="sparkline up" viewBox="-1 -1 122 20" width="122" height="20" role="img" aria-label="3 prices, from 1.00 to 3.00"><polyline');
+    expect(sparkSvg({ name: "x", price: 1, prev: 2 }, [2, 1])).toContain('class="sparkline down"');
+    expect(sparkSvg({ name: "x", price: 1, prev: 1 }, [1, 1])).toContain('class="sparkline flat"');
+    expect(drawSpark(state())).toBe(sparkSvg(state().props.quote, [189.0, 189.42]));
   });
 
   test("the quote's own patch moves it and extends its history, capped; other ops are ignored", () => {

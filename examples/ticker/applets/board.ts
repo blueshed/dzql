@@ -56,6 +56,16 @@ export function rowSvg(symbol: string, quote: Quote, history: number[]): string 
 /** The row as its state draws it. */
 export const drawRow = (s: RowState): string => rowSvg(s.props.symbol, s.props.quote, s.history);
 
+/** The sparkline alone, in a symbol's drawer: coloured by the last move, and said as the range it spans. */
+export function sparkSvg(quote: Quote, history: number[]): string {
+  const dir = quote.price > quote.prev ? "up" : quote.price < quote.prev ? "down" : "flat";
+  const said = `${history.length} prices, from ${Math.min(...history).toFixed(2)} to ${Math.max(...history).toFixed(2)}`;
+  return `<svg class="sparkline ${dir}" viewBox="-1 -1 122 20" width="122" height="20" role="img" aria-label="${said}">${sparkline(history)}</svg>`;
+}
+
+/** The drawer's sparkline as its state draws it. */
+export const drawSpark = (s: RowState): string => sparkSvg(s.props.quote, s.history);
+
 /**
  * Applies the quote's own patch to the state: a tick is the row it leaves, whole (`replace ""`,
  * `{price, prev, ...}`), which moves the quote and extends its history. True when it moved.

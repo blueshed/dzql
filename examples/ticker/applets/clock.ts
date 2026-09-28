@@ -34,8 +34,8 @@ export function handsAt(hour: number, minute: number, secondsInMinute: number): 
   return { hour: ((hour % 12) + minute / 60) * 30, minute: minute * 6, second };
 }
 
-/** The face, the city's name on it, and the hands at twelve; the applet turns them. */
-export function clockSvg(city: string): string {
+/** The face and the hands at twelve; the applet turns them. The city is the cell's to say. */
+export function clockSvg(): string {
   const marks: string[] = [];
   for (let i = 0; i < 60; i++) {
     const big = i % 5 === 0;
@@ -49,7 +49,6 @@ export function clockSvg(city: string): string {
     `<g class="hand minute"><rect x="-1.9" y="-44" width="3.8" height="56" rx="0.5"/></g>` +
     `<g class="hand second"><rect x="-0.6" y="-32" width="1.2" height="50"/><circle cy="-32" r="4.5"/></g>` +
     `<circle class="pin" r="1.4"/>` +
-    `<text class="label" y="24" text-anchor="middle">${city.replaceAll("&", "&amp;").replaceAll("<", "&lt;")}</text>` +
     `</svg>`
   );
 }

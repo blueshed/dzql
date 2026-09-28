@@ -56,7 +56,7 @@ export const stories: Stories = {
 
     // ── Where you stand decides what you see ──
     story("Bravo ticks; Ann, reading her board as a list, and Bo, in the market, each see the row move", { as: "feed", offPage: true, does: tick("BRVO", 66.6), seen: { ann: "board @ reading.board=list", bo: "market" } }),
-    story("Bravo ticks while Ann has its drawer open: her drawer's price moves with it, and so does Bo's board", { as: "feed", offPage: true, does: tick("BRVO", 66.7), seen: { ann: "market?symbol=BRVO", bo: "board" } }),
+    story("Bravo ticks while Ann has its drawer open: her drawer says how it moved, and so does Bo's board", { as: "feed", offPage: true, does: tick("BRVO", 66.7), seen: { ann: "market?symbol=BRVO", bo: "board" } }),
     story("Nobody can go to a window the desk does not have", { as: "ann", cannot: goTo("attic") }),
   ],
 };

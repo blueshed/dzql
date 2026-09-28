@@ -6,7 +6,7 @@
 // drawing and time math above it are (change-request.md item 4).
 
 import { registerApplet } from "../../../src/applets";
-import { cityOf, clockSvg, handsAt, partsIn, tzAfter, type ClockProps } from "./clock";
+import { clockSvg, handsAt, partsIn, tzAfter, type ClockProps } from "./clock";
 
 const timers = new WeakMap<HTMLElement, number>();
 const zones = new WeakMap<HTMLElement, { tz: string }>();
@@ -15,7 +15,7 @@ registerApplet("clock", {
   mount(el, ctx) {
     const zone = { tz: (ctx.props as ClockProps).tz };
     zones.set(el, zone);
-    el.innerHTML = clockSvg(cityOf(zone.tz));
+    el.innerHTML = clockSvg();
     const hour = el.querySelector<SVGElement>(".hand.hour")!;
     const minute = el.querySelector<SVGElement>(".hand.minute")!;
     const second = el.querySelector<SVGElement>(".hand.second")!;
@@ -37,7 +37,7 @@ registerApplet("clock", {
   update(el, props) {
     setZone(el, (props as ClockProps).tz);
   },
-  // The city changed: the clock document's own op, off the echo. The name changes now, the hands on the next frame.
+  // The city changed: the clock document's own op, off the echo. The hands follow on the next frame.
   patch(el, ops) {
     const zone = zones.get(el);
     if (zone) setZone(el, tzAfter(zone.tz, ops));
@@ -46,8 +46,5 @@ registerApplet("clock", {
 
 function setZone(el: HTMLElement, tz: string): void {
   const zone = zones.get(el);
-  if (!zone) return;
-  zone.tz = tz;
-  const label = el.querySelector(".label");
-  if (label) label.textContent = cityOf(tz);
+  if (zone) zone.tz = tz;
 }

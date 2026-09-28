@@ -10,13 +10,12 @@ describe("clock", () => {
     expect(handsAt(0, 0, 59.9).second).toBe(360); // the stop: held at twelve until the minute
   });
 
-  test("the face has sixty marks, twelve of them large, three hands and the city's name", () => {
-    const svg = clockSvg("Zurich");
+  test("the face has sixty marks, twelve of them large, and three hands; the city is the cell's to say, not the face's", () => {
+    const svg = clockSvg();
     expect((svg.match(/<rect/g) ?? []).length).toBe(60 + 3);
     expect((svg.match(/height="12"/g) ?? []).length).toBe(12);
     expect(svg).toContain('class="hand second"');
-    expect(svg).toContain(">Zurich</text>");
-    expect(clockSvg("<b>")).toContain("&lt;b>");
+    expect(svg).not.toContain("<text");
   });
 
   test("the city is the zone's last segment, spoken; the zone after the clock's ops is its last replace", () => {

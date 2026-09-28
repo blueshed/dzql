@@ -25,19 +25,23 @@ export type View = { list: WatchlistDocument; market: MarketDocument; clock: Clo
 
 // ───────────────────────────── the applets' mounts ─────────────────────────────
 
+/** What the board says with nothing on it: once, where the plus that fills it is. */
+const NOTHING_WATCHED = "Nothing watched yet. The plus asks which symbol.";
+
 /**
  * The board: a row per watched symbol, each an applet on that symbol's own document, so a board is
- * told only the symbols it watches and each row takes its own ticks.
+ * told only the symbols it watches and each row takes its own ticks. Empty, the window says so; the
+ * box's cell has said it already.
  */
 export function boardMount(list: WatchlistDocument, market: MarketDocument): string {
   const symbols = list.symbols.filter((s) => market[s]);
-  if (!symbols.length) return `<div id="board" class="board"><p class="empty">Nothing watched yet. Add a symbol.</p></div>`;
+  if (!symbols.length) return `<div id="board" class="board"><p class="note">${NOTHING_WATCHED}</p></div>`;
   const rowOf = (symbol: string) => `<div id="quote-${esc(symbol)}" data-applet="board" data-doc="quote:${esc(symbol)}" data-under="/quote" data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`;
   return `<div id="board" class="board">${symbols.map(rowOf).join("")}</div>`;
 }
 
-/** How many are watched, on the board's head; replaced with the board when the list changes. */
-export const boardCount = (list: WatchlistDocument): string => `<span id="board-count">${list.symbols.length}</span>`;
+/** How many are watched, on the board's head -- nothing while none are, which the summary says; replaced with the board when the list changes. */
+export const boardCount = (list: WatchlistDocument): string | null => (list.symbols.length ? `<span id="board-count">${list.symbols.length}</span>` : null);
 
 // Every zone as "City (UTC+02:00)" -- or "City, Region (UTC-03:00)" where the zone names one --
 // the options the city picker reads at mount. Offsets move with the clocks twice a year, so the
@@ -57,35 +61,51 @@ export function zoneOptionsHtml(now = Date.now()): string {
   return zoneOptions;
 }
 
+/** The clock's face; the cell's summary names the city. */
 const clockMount = (c: ClockDocument): string => `<div id="clock" data-applet="clock" data-doc="clock" data-props="${esc(JSON.stringify({ tz: c.tz }))}"></div>`;
 // the picker's zones are its children, HTML the server wrote; the applet reads them once and draws its own field
 const cityMount = (c: ClockDocument): string => `<div id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="${esc(JSON.stringify({ tz: c.tz }))}"><datalist>${zoneOptionsHtml()}</datalist></div>`;
 
+// A symbol's drawer shows how its price is moving, beside a row that says what it is and what it costs:
+// the move in per cent, and a sparkline of the ticks seen while the drawer is open, an applet on the
+// quote's own document, as a board row is.
+const sparkMount = (symbol: string): string => `<div id="spark-${esc(symbol)}" class="spark" data-applet="spark" data-doc="quote:${esc(symbol)}" data-under="/quote" data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`;
+
 // ───────────────────────────── the rows ─────────────────────────────
+
+const direction = (q: Quote): "up" | "down" | "flat" => (q.price > q.prev ? "up" : q.price < q.prev ? "down" : "flat");
 
 /** A quote's price and its move since the last tick, as the row's state. */
 function priceState(q: Quote): string {
   const change = q.price - q.prev;
-  const dir = change > 0 ? "up" : change < 0 ? "down" : "flat";
-  return `<span class="price ${dir}">${q.price.toFixed(2)}<small>${change >= 0 ? "+" : ""}${change.toFixed(2)}</small></span>`;
+  return `<span class="price ${direction(q)}">${q.price.toFixed(2)}<small>${change >= 0 ? "+" : ""}${change.toFixed(2)}</small></span>`;
 }
 
-/** A row of a list: the symbol leads, the name is the words, the price is the state, ✎ its drawer. */
-const symbolRow = (id: string, symbol: string, quote: Quote, ui: Ui, o: { hushed?: boolean; hidden?: boolean; note?: string } = {}): string =>
-  row({ id, tap: go(address(where(ui).path, "symbol", symbol)), chosen: where(ui).what === "symbol" && where(ui).which === symbol, lead: `<span class="symbol">${esc(symbol)}</span>`, what: quote.name, state: priceState(quote), mark: "pencil", ...o });
+/** The move since the last tick, in per cent: what a row, which gives it in money, does not. */
+function percentMove(q: Quote): string {
+  const pct = q.prev ? ((q.price - q.prev) / q.prev) * 100 : 0;
+  return `<span class="move ${direction(q)}">${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%</span>`;
+}
+
+/** A row of a list: the symbol leads, the name is the words, the price is the state, ✎ its drawer. One on your board carries the board's mark. */
+const symbolRow = (id: string, symbol: string, quote: Quote, ui: Ui, o: { hushed?: boolean; hidden?: boolean; watched?: boolean } = {}): string => {
+  const { watched, ...shown } = o;
+  const mark = watched ? icon("board", 14, "on your board") : "";
+  return row({ id, tap: go(address(where(ui).path, "symbol", symbol)), chosen: where(ui).what === "symbol" && where(ui).which === symbol, lead: `<span class="symbol${watched ? " watched" : ""}">${esc(symbol)}${mark}</span>`, what: quote.name, state: priceState(quote), mark: "pencil", ...shown });
+};
 
 /** The board as a list: a row per watched symbol, each a part, so a tick sends the row it moved. */
 function boardList(v: View): string {
   const items = v.list.symbols.filter((s) => v.market[s]).map((s) => symbolRow(`b-${s}`, s, v.market[s]!, v.ui));
-  return part("board-list", `<div id="board-list">${rows(items, "Nothing watched yet. The plus asks which symbol.")}</div>`);
+  return part("board-list", `<div id="board-list">${rows(items, NOTHING_WATCHED)}</div>`);
 }
 
-/** The market as a list: every quote, watched ones said so; find dims what the word misses. Each row a part, so a tick sends the row it moved. */
+/** The market as a list: every quote, the watched ones marked; find dims what the word misses. Each row a part, so a tick sends the row it moved. */
 function marketRows(v: View): string {
   const word = v.ui.filter?.market;
   const items = Object.entries(v.market).map(([s, q]) => {
     const miss = !matches(`${s} ${q.name}`, word);
-    return symbolRow(`m-${s}`, s, q, v.ui, { hushed: miss, hidden: miss && v.ui.hide?.market, note: v.list.symbols.includes(s) ? "watching" : undefined });
+    return symbolRow(`m-${s}`, s, q, v.ui, { hushed: miss, hidden: miss && v.ui.hide?.market, watched: v.list.symbols.includes(s) });
   });
   return part("market-rows", `<div id="market-rows">${rows(items, "The market is closed.")}</div>`);
 }
@@ -110,18 +130,22 @@ function marketOpen(v: View): OpenOptions {
   return { key: "market", tools: [find.tool], filter: find.filter, body: marketRows(v), note: "A tick is replace /SYMBOL/price; type one from the CLI and watch it land." };
 }
 
-/** The drawer: a symbol's properties and what it carries -- watch, or drop -- or the clock's city. */
+/**
+ * The drawer: a symbol's move and what it carries -- watch, or drop -- or the clock's time zone. It
+ * says what the lit row or the cell beside it does not: the row has the name and the price, the
+ * button whether it is watched, the cell and the picker the city.
+ */
 function openDrawer(v: View): string {
   const { path, what, which = "" } = where(v.ui);
   const close = go(path);
-  if (what === "clock") return drawer("drawer", "The clock", `<div class="props">${prop("City", cityMount(v.clock))}${prop("Now", `<span>${esc(v.clock.city)} (UTC${esc(v.clock.offset)})</span>`)}</div>`, close);
+  if (what === "clock") return drawer("drawer", "Time zone", `<div class="props">${prop("City", cityMount(v.clock))}${prop("Offset", `<span>UTC${esc(v.clock.offset)}</span>`)}</div>`, close);
   const q = what === "symbol" ? v.market[which] : undefined;
   if (!q) return "";
   const watched = v.list.symbols.includes(which);
   const carry = watched
     ? tool("Stop watching", { icon: "trash", kind: "danger", write: go(address(path, "confirm", which)) })
     : tool("Watch", { icon: "plus", kind: "add", write: write("watchlist", "add", "/symbols/-", which) });
-  const props = prop("Name", `<span>${esc(q.name)}</span>`) + prop("Price", priceState(q)) + prop("Watched", `<span>${watched ? "yes" : "no"}</span>`);
+  const props = prop("Moved", percentMove(q)) + prop("Lately", sparkMount(which));
   return drawer("drawer", which, `<div class="props">${props}</div><div class="drawer-foot">${carry}</div>`, close);
 }
 
@@ -139,8 +163,8 @@ export function page(v: View): string {
   const at = where(v.ui);
   const symbols = Object.keys(v.market);
   const cells = [
-    cell({ key: "board", name: "the board", mark: "board", count: boardCount(v.list), big: true, opens: go("board"), summary: v.list.symbols.length ? "watched, live" : "nothing watched yet", body: `<div class="mini sparkline">${boardMount(v.list, v.market)}</div>` }),
-    cell({ key: "market", name: "the market", mark: "market", count: symbols.length, span: 2, opens: go("market"), summary: `${symbols.length} symbols, every quote` }),
+    cell({ key: "board", name: "the board", mark: "board", count: boardCount(v.list), big: true, opens: go("board"), summary: v.list.symbols.length ? "watched, live" : "nothing watched yet", body: v.list.symbols.length ? `<div class="mini sparkline">${boardMount(v.list, v.market)}</div>` : undefined }),
+    cell({ key: "market", name: "the market", mark: "market", count: symbols.length, span: 2, opens: go("market"), summary: "every quote, live" }),
     cell({ key: "clock", name: "the clock", mark: "clock", summary: v.clock.city, body: `<div class="mini face">${clockMount(v.clock)}</div>`, thing: { open: go(address("", "clock")), chosen: at.what === "clock" } }),
   ];
   const opened = at.path === "board" ? boardOpen(v) : at.path === "market" ? marketOpen(v) : undefined;

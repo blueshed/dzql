@@ -72,7 +72,7 @@ describe("the ticker in a real browser", () => {
 
     // the clock is a thing: its drawer holds the city picker. "lon" puts London first, ahead of
     // Blanc-Sablon; Enter takes the first; the clock document's write is taken by the applets --
-    // the name on the face changes, no render
+    // the hands turn to London's time, and the picker says London
     await view.evaluate(`document.querySelector('.cell.open .cell-back').click()`);
     await waitFor(view, `document.querySelector('.cell.thing') !== null && document.querySelector('.cell.open') === null`, (v) => v === true);
     await view.evaluate(`document.querySelector('.cell.thing').click()`);
@@ -91,7 +91,8 @@ describe("the ticker in a real browser", () => {
     await arrow("ArrowUp");
     expect(await view.evaluate<string>(`document.querySelector('#city .suggestions li.active').dataset.tz`)).toBe("Europe/London");
     await view.press("Enter");
-    await waitFor(view, `document.querySelector('svg.clock .label').textContent`, (v) => v === "London");
+    // at 12:00 UTC it is two in the afternoon in Zurich and one in London: the hour hand goes back an hour
+    await waitFor(view, `document.querySelector('svg.clock .hand.hour').getAttribute('transform')`, (v) => v === "rotate(30.00)");
     expect(await view.evaluate<string>(`document.querySelector('#city input').placeholder`)).toBe("London");
     expect(await view.evaluate<number>(`window.eta.docs().clock.ops.length`)).toBe(1);
 

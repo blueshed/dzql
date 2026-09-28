@@ -27,19 +27,21 @@ p.note { margin: 0 0 var(--space-md); }
 input { font-size: 15px; }
 .cell { min-height: 120px; }
 
-/* the small readings: the board applet, the clock's face */
-.mini.sparkline { border-radius: var(--radius-thumb); overflow: hidden; }
+/* the small readings: the board applet, the clock's face. A well is cut square, as the cell it sits in
+   is where it does not meet the tray's curve (rule 3) */
+.mini.sparkline { overflow: hidden; }
 .mini.face { display: grid; place-items: center; padding: var(--space-sm) 0 0; }
 .mini.face svg.clock { width: 120px; height: 120px; }
-.row .lead .symbol { display: inline-block; min-width: 3.5rem; font-weight: 700; }
+.row .lead .symbol { display: inline-flex; align-items: center; gap: 4px; min-width: 3.5rem; font-weight: 700; }
+/* a symbol on your board, in the market: the board's colour and its mark, not a word */
+.row .lead .symbol.watched { color: var(--accent); }
 .row .state .price { display: inline-flex; flex-direction: column; align-items: flex-end; text-transform: none; letter-spacing: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
 .row .state .price small { font-size: 11px; font-weight: 500; }
 .row .state .price.up small { color: var(--up); } .row .state .price.down small { color: var(--down); } .row .state .price.flat small { color: var(--muted); }
 
 /* ── the board: a row applet per watched symbol, its own SVG with a sparkline; a tick flashes its row ── */
-.reading.sparkline { border-radius: var(--radius-thumb); overflow: hidden; }
-.market .empty, .empty { color: var(--muted); background: var(--well); border: 1px dashed var(--line); border-radius: var(--radius-thumb); padding: 1rem; margin: 0; }
-.board:has(svg) { background: var(--well); border: 1px solid var(--line); border-radius: var(--radius-thumb); padding: 0.5rem 0; }
+.reading.sparkline { overflow: hidden; }
+.board:has(svg) { background: var(--well); border: 1px solid var(--line); padding: 0.5rem 0; }
 svg.board { display: block; font-size: 14px; }
 svg.board text { fill: var(--ink); }
 svg.board .symbol { font-weight: 700; fill: var(--accent); }
@@ -60,7 +62,9 @@ svg.clock .marks rect { fill: #111; }
 svg.clock .hand rect { fill: #111; }
 svg.clock .hand.second rect, svg.clock .hand.second circle { fill: #e0261b; }
 svg.clock .pin { fill: #111; }
-svg.clock .label { font-size: 6px; fill: #555; letter-spacing: 0.1em; }
+/* a symbol's drawer: the move in per cent, and the sparkline of what it has seen while open */
+.move { font-weight: 700; } .move.up { color: var(--up); } .move.down { color: var(--down); } .move.flat { color: var(--muted); }
+svg.sparkline { display: block; } svg.sparkline.up { color: var(--up); } svg.sparkline.down { color: var(--down); } svg.sparkline.flat { color: var(--muted); }
 /* the city picker, in the clock's drawer: a field, and the suggestions beneath it */
 .city { position: relative; }
 .city form { margin: 0; }
