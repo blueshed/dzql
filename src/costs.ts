@@ -4,8 +4,8 @@
 // (`examples/<name>/scripts/measure-render-cost.ts --json`, each in a process of its own, from an
 // empty database, with no settings but its own, no .env, and a clock that stands still
 // (src/costs-clock.ts): a process serves one example, and a run says the same whatever the day or
-// the settings); the kernel's client and railroad, built and
-// gzipped as a browser is sent them; and each example's stories, counted. `bun run costs` writes
+// the settings); the kernel's client and railroad, built and gzipped as a browser is sent them in
+// production; and each example's stories, counted. `bun run costs` writes
 // what it finds into the README; `--check` (src/costs.test.ts, so `bun test`) says where the
 // README differs, and fails. A bundle's size is the one figure not held to the byte: a minifier
 // moves it a few bytes at a time, so the README's figure stands while it is within 3% of a run's
@@ -82,9 +82,14 @@ export async function measure(script: string): Promise<Measured> {
   return JSON.parse(out.trim().split("\n").at(-1)!) as Measured;
 }
 
-/** A bundle as a browser is sent it: minified, then gzipped. One that does not build says why. */
+/**
+ * A bundle as a browser is sent it in production: minified, `process.env.NODE_ENV` as production
+ * says it (a bundle otherwise takes the builder's own, and keeps what a package says only in
+ * development), then gzipped. One that does not build says why.
+ */
 export async function gzipped(entry: string, source?: string): Promise<number> {
-  const built = await Bun.build({ entrypoints: [entry], minify: true, target: "browser", files: source === undefined ? undefined : { [entry]: source }, throw: false });
+  const files = source === undefined ? undefined : { [entry]: source };
+  const built = await Bun.build({ entrypoints: [entry], minify: true, target: "browser", define: { "process.env.NODE_ENV": '"production"' }, files, throw: false });
   if (!built.success) throw new Error(built.logs.join("\n"));
   return Bun.gzipSync(await built.outputs[0]!.text()).length;
 }

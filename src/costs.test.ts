@@ -125,6 +125,13 @@ test("a run that goes wrong says where: a measure that fails, with what it said;
   expect(gzipped(entry, "export const = ;")).rejects.toThrow("Expected identifier");
 });
 
+test("a bundle is measured as production builds it: what a package says only in development is not counted", async () => {
+  const entry = join(dir, "production.ts");
+  const client = `console.log("a small client");`;
+  const warning = `if (process.env.NODE_ENV !== "production") console.warn("${"said only in development; ".repeat(20)}");`;
+  expect(await gzipped(entry, warning + client)).toBe(await gzipped(entry, client));
+});
+
 test("a measure's clock stands still, on a day before the wedding's", async () => {
   try {
     const { STILL } = await import("./costs-clock");
