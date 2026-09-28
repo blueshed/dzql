@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   own, shown with chat's messages. It says plainly that a keyed part may move to another parent
   and goes as that move (n82, fixed in 0.50.0): japan-eta drew its days whole to dodge n82, and a
   heart on one stop sent its whole day.
+- **The skill shows how to cut an applet's document from one big one** (todo n96), with what delta
+  0.10 has: a recompute document (`defineCustomDoc`) holding only what the applet shows, read
+  again and told whole on every write to what it watches; or a plain document over just the
+  collections it shows, told row by row, every column. A trip's strip is the example, and
+  `src/documents.test.ts` holds both. delta's n70 (a document over some columns) would give both.
 
 ## [0.50.0] - 2026-09-28
 

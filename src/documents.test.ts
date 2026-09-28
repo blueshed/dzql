@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
 import { createLocal } from "@blueshed/delta/local";
+import { createTables, defineCustomDoc, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { createDocuments, Pending, read, serverWrite, settled, setActiveDocuments } from "./documents";
 
@@ -156,5 +158,38 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     expect(await settled(documents, () => read<{ people: Record<string, true> }>("here:x"))).toEqual({ people: { ada: true } });
     await expect(serverWrite("here:x", [{ op: "replace", path: "/nobody/x", value: 1 }])).rejects.toThrow("here:x");
     setActiveDocuments(undefined);
+  });
+
+  test("a view cut from a big document is held and told like any other: one over fewer collections hears only their rows; a recompute view is read again whole (the skill's strip)", async () => {
+    const db = new Database(":memory:");
+    const schema = defineSchema({
+      trips: { columns: { title: "text" }, temporal: false },
+      stops: { parent: "trips", columns: { day: "text", title: "text", note: "text?" }, temporal: false },
+      hearts: { parent: "stops", columns: { who: "text" }, temporal: false },
+    });
+    createTables(db, schema);
+    db.run("INSERT INTO trips (id, title) VALUES (1, 'Japan')");
+    db.run("INSERT INTO stops (id, trips_id, day, title) VALUES ('a', 1, 'd1', 'Temple')");
+    const local = createLocal();
+    const days = defineCustomDoc<{ trip: string }>("days:", {
+      watch: ["stops"],
+      parse: (trip) => ({ trip }),
+      recompute: (db, { trip }) => ({ stops: db.query("SELECT id, day, title FROM stops WHERE trips_id = ?").all(trip) }),
+    });
+    const docs = [defineDoc("trip:", { root: "trips", include: ["stops", "hearts"] }), defineDoc("strip:", { root: "trips", include: ["stops"] })];
+    registerDocs(local.server, db, schema, docs, [days], { ledger: true });
+    const documents = createDocuments(local);
+    const told: string[] = [];
+    documents.onChange((c) => void told.push(`${c.doc} ${c.ops.map((op) => `${op.op} ${op.path.split("/")[1] ?? ""}`)}`));
+    for (const doc of ["trip:1", "strip:1", "days:1"]) await documents.load(doc);
+    expect(documents.read<{ stops: unknown[] }>("days:1")).toEqual({ stops: [{ id: "a", day: "d1", title: "Temple" }] });
+
+    const by = { identity: "ada", cursor: "s" };
+    await documents.write("trip:1", [{ op: "add", path: "/hearts/-", value: { stops_id: "a", who: "ada" } }], by); // the trip's alone
+    await documents.write("trip:1", [{ op: "replace", path: "/stops/a/note", value: "shoes off" }], by); // the stop's row: both views, days whole
+    await documents.write("trip:1", [{ op: "replace", path: "/stops/a/day", value: "d2" }], by);
+    await documents.quiet();
+    expect(told).toEqual(["trip:1 add hearts", "trip:1 replace stops", "strip:1 replace stops", "days:1 replace ", "trip:1 replace stops", "strip:1 replace stops", "days:1 replace "]);
+    expect(documents.read<{ stops: unknown[] }>("days:1")).toEqual({ stops: [{ id: "a", day: "d2", title: "Temple" }] });
   });
 });

@@ -545,6 +545,34 @@ of every tick). So a board is told only the quotes it shows, and takes a tick as
 An applet that held the whole market to draw a few rows would be sent every tick, and its page
 would change for symbols nobody on it watches.
 
+When the app's document is one big one, cut the applet's from it in `delta.ts`: a second document
+over the same rows, which delta tells of every write to them. A trip's strip shows the bases and
+each stop's base, day and title, never the stops' notes or hearts:
+
+```ts
+const strip = defineCustomDoc<{ trip: string }>("strip:", {
+  watch: ["bases", "stops"],
+  parse: (trip) => ({ trip }),
+  recompute: (db, { trip }) => ({
+    bases: db.query("SELECT id, name FROM trip_bases WHERE trips_id = ?").all(trip),
+    stops: db.query("SELECT id, bases_id, day, title FROM trip_stops WHERE trips_id = ?").all(trip),
+  }),
+});
+registerDocs(delta.server, db, schema, [defineDoc("trip:", { root: "trips", include: ["bases", "stops", "hearts"] })], [strip], { ledger: true });
+```
+
+- A recompute document (`defineCustomDoc`, delta's skill, "Custom read docs") holds only what it
+  selects, but delta reads it again on every write to a collection it watches and it is told
+  whole, as `replace ""`: a note edited sends the strip, unchanged. Keep it small.
+- Where the applet shows whole rows, a plain document over just their collections is told row by
+  row: `defineDoc("strip:", { root: "trips", include: ["bases", "stops"] })`. It includes every
+  column, so a note goes to it as its stop's row, and a heart, in rows of its own, not at all.
+  delta's n70, a document over some of a row's columns, would give both: only what it shows, row
+  by row.
+- Either is read as any document is (`read("strip:1")`, `data-doc="strip:1"`), and has a
+  compartment of its own that permits nothing: it is written through the trip.
+  `src/documents.test.ts` holds both.
+
 ### An applet's controls
 
 An applet's controls are drawn in the browser, so the stories cannot find them in the page. Its
