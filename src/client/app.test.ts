@@ -62,6 +62,9 @@ async function push(view: Bun.WebView, message: unknown): Promise<void> {
   await view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(payload)} }))`);
 }
 
+/** Waits for the page to have drawn a frame: a scroll made by script is heard (its `scroll` event) at the next one, as a person's is long before any render comes. */
+const aFrame = (view: Bun.WebView) => view.evaluate(`new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))`);
+
 /** Chooses `value` in the select at `selector` as a person would: the WebView cannot open its menu,
  * so the choice is made as the browser makes it, the value set, then `input` and `change`. */
 async function choose(view: Bun.WebView, selector: string, value: string): Promise<void> {
@@ -326,6 +329,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     const r11 = `Math.round(document.getElementById('r11').getBoundingClientRect().top - document.getElementById('full').getBoundingClientRect().top)`;
     await pushRender(view, page());
     await view.evaluate(`document.getElementById('full').scrollTop = 550`); // r11 just under the header, r10 under it
+    await aFrame(view);
     expect(await view.evaluate<number>(r11)).toBe(60);
     await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r10"]' }] });
     expect(await view.evaluate<number>(r11)).toBe(60);
@@ -351,6 +355,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     ] as const) {
       await pushRender(view, page);
       await view.evaluate(`(() => { getSelection().removeAllRanges(); document.getElementById('full').scrollTop = 550; })()`); // r11 just under the header, r10 under it
+      await aFrame(view);
       if (before) await view.evaluate(before);
       else await view.click("#r12", { button: "right" });
       await view.evaluate(`document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))`); // put away a menu, if one opened
@@ -365,10 +370,30 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     const rows = (gone: string[]) => Array.from({ length: 40 }, (_, i) => `r${i}`).filter((k) => !gone.includes(k)).map((k) => `<li id="${k}" data-eta-part="${k}" style="height:50px;margin:0">${k}</li>`).join("");
     await pushRender(view, `<style>body { margin: 0 }</style><div style="height:400px"></div><div id="list" style="height:300px;overflow:auto"><header style="position:sticky;top:0;height:60px;background:#fff;z-index:1">the day</header><ul style="margin:0;padding:0;list-style:none">${rows([])}</ul></div><div style="height:2000px"></div>`);
     await view.evaluate(`(() => { document.getElementById('list').scrollTop = 550; window.scrollTo(0, 500); })()`); // the list's top 100px above the window; r12 at its top
+    await aFrame(view);
     const where = `[scrollY, Math.round(document.getElementById('r12').getBoundingClientRect().top - document.getElementById('list').getBoundingClientRect().top)]`;
     expect(await view.evaluate<number[]>(where)).toEqual([500, 110]);
     await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r10"]' }] }); // under the list's header, out of sight
     expect(await view.evaluate<number[]>(where)).toEqual([500, 110]);
+  });
+
+  test("keeping the place looks only at the scrollers someone has scrolled, not at every element on a long page", async () => {
+    await using view = await open();
+    const row = (i: number) => `<li id="r${i}" data-eta-part="r${i}" style="height:40px"><span>Row ${i}</span><span>value</span><span><b>x</b></span></li>`;
+    await pushRender(view, `<ul style="margin:0;padding:0;list-style:none">${Array.from({ length: 1000 }, (_, i) => row(i)).join("")}</ul>`);
+    await waitFor(view, `document.getElementById('app').querySelectorAll('*').length`, (v) => (v as number) >= 5000);
+    await view.evaluate(`window.scrollTo(0, 20000)`);
+    await aFrame(view);
+    const r500 = `Math.round(document.getElementById('r500').getBoundingClientRect().top)`;
+    const read = await view.evaluate<number>(r500);
+    await view.evaluate(`(() => {
+      window.__reads = 0;
+      const scrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop");
+      Object.defineProperty(Element.prototype, "scrollTop", { configurable: true, get() { window.__reads++; return scrollTop.get.call(this); }, set(v) { scrollTop.set.call(this, v); } });
+    })()`);
+    await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r10"]' }] });
+    expect(await view.evaluate<number>(`window.__reads`)).toBeLessThan(10);
+    expect(await view.evaluate<number>(r500)).toBe(read); // and the place is still kept
   });
 
   test("a cell that grows into a fixed window is no place to keep: the page behind stays where it was, open and closed", async () => {

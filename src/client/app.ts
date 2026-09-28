@@ -259,11 +259,19 @@ function apart(el: Element, port: Element): boolean {
   return false;
 }
 
+// The scrollers in the page someone has scrolled, heard as they scroll (a scroll does not bubble, so
+// it is heard on its way down): the only ones with a place to keep, so a render looks at no others.
+const scrollers = new Set<Element>();
+document.addEventListener("scroll", (event) => event.target instanceof Element && scrollers.add(event.target), true);
+
+const depth = (el: Element): number => (el.parentElement ? depth(el.parentElement) + 1 : 0);
+
 function placesNow(): Place[] {
   if (holding) return [];
-  const scrolled = [...app.querySelectorAll("*")].filter((el) => el.scrollTop > 0 && !(el instanceof HTMLTextAreaElement) && !el.closest("[data-applet]"));
+  for (const el of scrollers) if (!el.isConnected) scrollers.delete(el);
+  const scrolled = [...scrollers].filter((el) => app.contains(el) && el.scrollTop > 0 && !(el instanceof HTMLTextAreaElement) && !el.closest("[data-applet]"));
   // the innermost first: a scroller's place is put back before that of the one around it, which may be reading inside it
-  const ports = [...scrolled.reverse(), ...(document.documentElement.scrollTop > 0 ? [document.documentElement] : [])];
+  const ports = [...scrolled.sort((a, b) => depth(b) - depth(a)), ...(document.documentElement.scrollTop > 0 ? [document.documentElement] : [])];
   return ports.flatMap((port) => {
     const at = readerIn(port);
     return at ? [{ port, at, top: at.getBoundingClientRect().top - topOf(port), apart: apart(at, port) }] : [];
