@@ -181,6 +181,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   choose travel again, and the second choice went nowhere. `blur` and `change` forms had no such
   guard, so leaving a field twice sent it twice before the echo. Every editing form now drops a
   repeat until a write lands (a patch), and not after.
+- **A box or a radio is a field** (`src/client/app.ts`, todo n76). An editing form compared a
+  field's `value` with what was rendered, and a box's value is its `value` attribute or "on",
+  ticked or not: without a value attribute it went as "on" on every commit, with one it never
+  went, and nor did a radio. A refused write handed back no tick. What a box or a radio rendered
+  is now whether it was drawn `checked`; it goes only when its tick differs, a box as `true` or
+  `false` and a radio newly ticked as its value; a refusal hands the tick back; and a render keeps
+  a tick not yet drawn (a radio's by its value, while its group offers it) and otherwise shows
+  what is drawn, with the caret in it or not.
 
 ## [0.49.0] - 2026-09-25
 

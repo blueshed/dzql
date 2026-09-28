@@ -79,6 +79,18 @@ const tripForm = (title: string, kind: string, on = "change") =>
     <select id="kind" data-write='{"doc":"trip","op":"replace","path":"/kind"}'>${["see", "eat", "travel"].map((k) => `<option${k === kind ? " selected" : ""}>${k}</option>`).join("")}</select>
   </form>`;
 
+/** A trip's editing form in ticks: whether it is booked (a box with a value), whether it is paid (one without), and its kind (radios), each as drawn. */
+const ticksForm = (title: string, booked: boolean, paid: boolean, kind: string, on = "change") =>
+  `<form data-write-on="${on}" id="t">
+    <input id="title" value="${title}" data-write='{"doc":"trip","op":"replace","path":"/title"}'>
+    <input type="checkbox" id="booked" value="yes"${booked ? " checked" : ""} data-write='{"doc":"trip","op":"replace","path":"/booked"}'>
+    <input type="checkbox" id="paid"${paid ? " checked" : ""} data-write='{"doc":"trip","op":"replace","path":"/paid"}'>
+    ${["see", "eat", "travel"].map((k) => `<input type="radio" name="kind" id="kind-${k}" value="${k}"${k === kind ? " checked" : ""} data-write='{"doc":"trip","op":"replace","path":"/kind"}'>`).join("")}
+  </form>`;
+
+/** Which of a ticks form's boxes and radios are ticked, in order. */
+const ticked = `["booked", "paid", "kind-see", "kind-eat", "kind-travel"].filter((id) => document.getElementById(id).checked)`;
+
 describe("app.ts in a real browser, with a stubbed socket", () => {
   test("a full render with a matching data-moving element transitions in place and clears its name after", async () => {
     await using view = await open();
@@ -652,6 +664,103 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
     await pushRender(view, add); // refused: the page, handed back
     expect(await view.evaluate<string[]>(`[document.getElementById('title').value, document.getElementById('kind').value]`)).toEqual(["Fushimi", "travel"]);
+  });
+
+  test("a box or a radio in an editing form goes only when it is ticked or unticked: a box as whether it is ticked, a radio as its value", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, ticksForm("Temple", true, false, "see"));
+    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
+
+    await view.click("#title");
+    await view.type(" gate");
+    await view.evaluate(`document.getElementById('title').blur()`);
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the boxes, left as they were drawn
+    await pushRender(view, ticksForm("Temple gate", true, false, "see"));
+
+    await view.click("#paid");
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[1]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/paid", value: true }] });
+    await pushRender(view, ticksForm("Temple gate", true, true, "see"));
+
+    await view.click("#booked"); // drawn with a value, and ticked
+    await waitFor(view, `window.__sent.length`, (v) => v === 3, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/booked", value: false }] });
+    await pushRender(view, ticksForm("Temple gate", false, true, "see"));
+
+    await view.click("#kind-eat");
+    await waitFor(view, `window.__sent.length`, (v) => v === 4, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[3]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "eat" }] }); // not the radio it was chosen over
+  });
+
+  test("after an undo, a box and a radio show what they are drawn, a box even with the caret still in it, so the next commit does not revert the undo", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, ticksForm("Temple", false, false, "see"));
+    await waitFor(view, `document.getElementById('paid') !== null`, (v) => v === true);
+
+    await view.click("#kind-eat");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    await pushRender(view, ticksForm("Temple", false, false, "eat")); // echoed and drawn
+    await pushRender(view, ticksForm("Temple", false, false, "see")); // then undone
+    await view.click("#paid");
+    await view.evaluate(`document.getElementById('paid').focus()`); // a click leaves the caret in a box in Chrome
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await pushRender(view, ticksForm("Temple", false, true, "see"));
+    await pushRender(view, ticksForm("Temple", false, false, "see")); // undone, with the caret still in it
+    expect(await view.evaluate<string[]>(ticked)).toEqual(["kind-see"]);
+
+    await view.click("#title");
+    await view.type(" gate");
+    await view.evaluate(`document.getElementById('title').blur()`);
+    await waitFor(view, `window.__sent.length`, (v) => v === 3, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the tick or the choice undone
+  });
+
+  test("a tick not yet sent is the person's: a render that draws another choice keeps it, and leaving sends it", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, ticksForm("Temple", false, false, "see", "blur"));
+    await waitFor(view, `document.getElementById('paid') !== null`, (v) => v === true);
+
+    await view.evaluate(`["paid", "kind-travel"].forEach((id) => document.getElementById(id).click())`); // ticked, and not yet left
+    await pushRender(view, ticksForm("Temple", true, false, "eat", "blur")); // another member's change, before these are sent
+    expect(await view.evaluate<string[]>(ticked)).toEqual(["booked", "paid", "kind-travel"]);
+    await view.evaluate(`document.getElementById('title').focus()`);
+    await view.evaluate(`document.getElementById('title').blur()`);
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/paid", value: true }, { op: "replace", path: "/kind", value: "travel" }] });
+  });
+
+  test("a refused write hands back what was ticked, as it does what was typed, and keeps a choice made while it was on its way", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const add = `<form id="add" data-write='{"doc":"trip","op":"add","path":"/events/-"}'>
+      <input id="title" name="title">
+      <input type="checkbox" id="booked" name="booked">
+      ${["see", "eat", "travel"].map((k) => `<input type="radio" name="kind" id="kind-${k}" value="${k}"${k === "see" ? " checked" : ""}>`).join("")}
+    </form>`;
+    await pushRender(view, add);
+    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
+    await view.click("#booked");
+    await view.click("#kind-eat");
+    await view.click("#title");
+    await view.type("Fushimi");
+    await view.press("Enter");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi", booked: "on", kind: "eat" } }] });
+    const state = `[document.getElementById('title').value, document.getElementById('booked').checked, document.getElementById('kind-eat').checked]`;
+    expect(await view.evaluate<unknown[]>(state)).toEqual(["", false, false]); // cleared as it sends
+
+    await pushRender(view, add); // refused: the page, handed back
+    expect(await view.evaluate<unknown[]>(state)).toEqual(["Fushimi", true, true]);
+
+    await view.press("Enter");
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await view.click("#kind-travel"); // chosen again before the answer
+    await pushRender(view, add); // refused again
+    expect(await view.evaluate<unknown[]>(`[document.getElementById('title').value, document.getElementById('booked').checked, document.querySelector('[name=kind]:checked').value]`)).toEqual(["Fushimi", true, "travel"]);
   });
 
   test("the bento's add modal asks with a select and a link, and a refused add hands back what was typed and chosen", async () => {

@@ -348,7 +348,10 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
   sends the same message twice until a write lands; after that (an echo, an undo) it may. A render that changes a field nobody is in shows the new value (an undo's), so it is not
   sent again; a field someone is in keeps what they type. A select was rendered showing the last
   option drawn `selected`, else its first not disabled; it keeps a choice not yet drawn, by its
-  value, however its options move, and otherwise shows what is drawn. A `multiple` select is not
+  value, however its options move, and otherwise shows what is drawn. A box or a radio was
+  rendered ticked or not (`checked`), and goes only when its tick differs: a box as `true` or
+  `false`, a radio newly ticked as its value. It keeps a tick not yet drawn (a radio's by its
+  value, while its group offers it) and otherwise shows what is drawn. A `multiple` select is not
   a field (a write carries one value): an editing form never sends it, nor a refusal hands it back,
   and a form that creates sends only its last choice.
 

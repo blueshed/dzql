@@ -39,16 +39,17 @@ function key(node: ChildNode): string | undefined {
 }
 
 function morphAttributes(old: Element, next: Element): void {
+  const unsent = old instanceof HTMLInputElement && old.checked !== old.defaultChecked; // a tick not yet drawn
   for (const { name } of [...old.attributes]) {
     if (!next.hasAttribute(name)) {
       old.removeAttribute(name);
-      showRendered(old, name);
+      showRendered(old, name, unsent);
     }
   }
   for (const { name, value } of [...next.attributes]) {
     if (old.getAttribute(name) !== value) {
       old.setAttribute(name, value);
-      showRendered(old, name);
+      showRendered(old, name, unsent);
     }
   }
 }
@@ -58,11 +59,35 @@ function morphAttributes(old: Element, next: Element): void {
  * longer follows its `value` attribute (nor a textarea's its text), so after an undo it would go
  * on showing the value undone -- and an editing form, comparing it with what was rendered, would
  * send it again. Only when the render changed it, so an unrelated render keeps what is typed.
+ * A box or a radio is a select's kind of field (showChosen): it keeps a tick not yet drawn, and
+ * otherwise shows what is drawn, whether or not someone is in it.
  */
-function showRendered(el: Element, name: string): void {
-  if (el === document.activeElement) return;
-  if (el instanceof HTMLInputElement && name === "value") el.value = el.defaultValue;
-  else if (el instanceof HTMLInputElement && name === "checked") el.checked = el.defaultChecked;
+function showRendered(el: Element, name: string, unsent: boolean): void {
+  if (!(el instanceof HTMLInputElement)) return;
+  if (name === "checked") {
+    if (!unsent) el.checked = el.defaultChecked;
+  } else if (name === "value" && el !== document.activeElement) el.value = el.defaultValue;
+}
+
+/** The radios of one group: those of one name, in one form (or in none). */
+export const radiosOf = (form: HTMLFormElement | null, name: string): HTMLInputElement[] =>
+  [...document.querySelectorAll<HTMLInputElement>("input[type=radio]")].filter((r) => r.name === name && r.form === form);
+
+/**
+ * Runs a render, then shows each group of radios the choice someone made in it and has not yet seen
+ * drawn -- by its value, wherever the radios moved, while the group still offers it -- or else what
+ * the group is drawn showing: a select's rule (showChosen), for a group. Neither browser does this:
+ * the morph reuses a radio by its place, and a radio drawn ticked takes the tick from its group.
+ */
+function keepingChoices(render: () => void): void {
+  const chosen = [...document.querySelectorAll<HTMLInputElement>("input[type=radio]:checked:not([checked])")].filter((r) => r.name !== "");
+  const choices = chosen.map((r) => ({ form: r.form, name: r.name, value: r.value }));
+  render();
+  for (const { form, name, value } of choices) {
+    const group = radiosOf(form, name);
+    const radio = group.find((r) => r.value === value && !r.matches(":disabled")) ?? group.findLast((r) => r.defaultChecked);
+    if (radio && !radio.checked) radio.checked = true;
+  }
 }
 
 /** The option a select was drawn showing, by the browser's own rule: the last rendered `selected`, else its first not disabled -- or, in a list (`size` over 1), none. */
@@ -163,7 +188,7 @@ function morphChildren(old: Element, next: Element, hooks: MorphHooks): void {
 export function morph(target: Element, html: string, hooks: MorphHooks = {}): void {
   const next = document.createElement(target.tagName);
   next.innerHTML = html;
-  morphChildren(target, next, hooks);
+  keepingChoices(() => morphChildren(target, next, hooks));
 }
 
 /**
@@ -177,7 +202,7 @@ export function morphTag(old: Element, tag: string, hooks: MorphHooks = {}): voi
   const next = holder.content.firstElementChild;
   if (!next) return;
   if (isApplet(old)) morphApplet(old, next, hooks);
-  else morphAttributes(old, next);
+  else keepingChoices(() => morphAttributes(old, next));
 }
 
 /**
@@ -194,7 +219,7 @@ export function morphElement(old: Element, html: string, hooks: MorphHooks = {})
     return;
   }
   if (sameType(old, next)) {
-    morphNode(old, next, hooks);
+    keepingChoices(() => morphNode(old, next, hooks));
   } else {
     old.replaceWith(next.cloneNode(true));
     if (isApplet(old)) hooks.onAppletRemoved?.(old);
