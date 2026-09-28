@@ -229,6 +229,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `focusout` as it goes, WebKit (every iPhone browser) does not. So words typed in a drawer's
   editing form were lost on Escape or Back in WebKit, and went after the drawer's own write in
   Chrome. Both now say the editing form someone is in first.
+- **A write made while the socket is down is not taken for sent** (`src/client/app.ts`). When
+  the connection dropped, the page went inert and the field someone was in lost the caret, so an
+  editing form committed into the closed socket, and the client recorded it as sent: once back,
+  leaving the field again said nothing (the same message, not sent twice), and the words, still
+  in the field, looked kept. And a form submitted as the socket closed was cleared. A write is now
+  sent only on an open socket, and recorded only then, so the next commit says it, and the form
+  keeps what is typed.
 - **A page with a sticky header declares its height** (the eta-app skill, todo n85). A render
   that took out the row hidden under an app's sticky header slid the rows below it up under the
   header: the client keeps no reader's place, and the browser's scroll anchoring, in WebKit and

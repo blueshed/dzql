@@ -268,9 +268,12 @@ type WriteSpec = { doc: string; op: PatchOp["op"]; path: string };
  * name it so, or by its type alone (`room`), meaning the one of that type this page is on. */
 const isNamed = (named: string, echoed: string): boolean => echoed === named || echoed.startsWith(`${named}:`);
 
-function send(doc: string, ops: PatchOp[]) {
+/** Sends a write, and says whether it went: a socket that is not open drops what it is given, so a write then is not recorded as sent. */
+function send(doc: string, ops: PatchOp[]): boolean {
+  if (socket?.readyState !== WebSocket.OPEN) return false;
   lastSent = { doc, ops, echoed: false };
-  socket?.send(JSON.stringify({ doc, ops }));
+  socket.send(JSON.stringify({ doc, ops }));
+  return true;
 }
 
 /** A field (form-value.ts) an editing form sends and a refusal hands back. A `multiple` select holds several values where a
@@ -304,8 +307,9 @@ app.addEventListener("submit", (event) => {
   event.preventDefault();
   const { doc, op, path } = JSON.parse(spec) as WriteSpec;
   const fields = [...form.elements].filter(isField);
-  sending = { doc, sent: fields.map((f) => [f, held(f)]) };
-  send(doc, [{ op, path, value: formValue(form) }]);
+  const sent: [Field, string | boolean | null][] = fields.map((f) => [f, held(f)]);
+  if (!send(doc, [{ op, path, value: formValue(form) }])) return; // not sent: what is typed stays
+  sending = { doc, sent };
   form.reset();
 });
 
@@ -394,8 +398,7 @@ function commitEdit(form: HTMLFormElement) {
   if (!change) return;
   const key = JSON.stringify(change.ops);
   if (lastEditSent.get(form) === key) return;
-  lastEditSent.set(form, key);
-  send(change.doc, change.ops);
+  if (send(change.doc, change.ops)) lastEditSent.set(form, key); // one that did not go goes on the next commit
 }
 
 /**

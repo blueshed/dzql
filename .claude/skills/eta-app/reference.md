@@ -361,7 +361,8 @@ Also:
 
 - When the connection drops, the page stays as it was (what is typed, what applets hold), but
   `inert`, and `#app` is marked `data-offline` (`src/bento.css` dims it and says so) until the
-  server, reached again, draws it afresh.
+  server, reached again, draws it afresh. A write made while it is down is not sent, nor taken
+  for sent: a form keeps what is typed, and an editing form says it on its next commit.
 - `autofocus` means "this field is waiting for the caret": after a render the client focuses it,
   but only when nothing else has the caret.
 - `data-autoscroll` keeps a list at its foot as it grows.
