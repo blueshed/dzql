@@ -226,7 +226,7 @@ function readingTop(port: Element): number {
 // page, and any in it, as the bento's window is), the first element at or below where reading
 // starts (readingTop), and after it puts that element back where it was. Not while someone is
 // pressing (a drag, a scroll by touch, a selection being made) or has a range selected.
-type Place = { port: Element; at: Element; top: number };
+type Place = { port: Element; at: Element; top: number; apart: boolean };
 
 let holding = false;
 for (const type of ["pointerdown", "touchstart"]) document.addEventListener(type, () => (holding = true), true);
@@ -252,19 +252,26 @@ function after(el: Element, port: Element): Element | null {
   return null;
 }
 
+/** Whether `el`, or what holds it inside `port`, is placed apart from the flow of the page: fixed, or absolute. */
+function apart(el: Element, port: Element): boolean {
+  for (let at: Element | null = el; at && at !== port; at = at.parentElement) if (/fixed|absolute/.test(getComputedStyle(at).position)) return true;
+  return false;
+}
+
 function placesNow(): Place[] {
   if (holding || document.getSelection()?.type === "Range") return [];
   const scrolled = [...app.querySelectorAll("*")].filter((el) => el.scrollTop > 0 && !(el instanceof HTMLTextAreaElement) && !el.closest("[data-applet]"));
   const ports = document.documentElement.scrollTop > 0 ? [document.documentElement, ...scrolled] : scrolled;
   return ports.flatMap((port) => {
     const at = readerIn(port);
-    return at ? [{ port, at, top: at.getBoundingClientRect().top - topOf(port) }] : [];
+    return at ? [{ port, at, top: at.getBoundingClientRect().top - topOf(port), apart: apart(at, port) }] : [];
   });
 }
 
-function keepPlaces(places: Place[]): void {
-  for (const { port, at, top } of places) {
-    if (!port.isConnected || !port.contains(at)) continue; // what they read is gone: what follows takes its place
+/** Puts back what each place read, unless it is gone (what follows takes its place), or the render took it out of the page's flow: a cell grown into the window (`moving`, or now fixed) is not what is read behind it. */
+function keepPlaces(places: Place[], moving?: Element): void {
+  for (const { port, at, top, apart: was } of places) {
+    if (!port.isConnected || !port.contains(at) || moving?.contains(at) || (!was && apart(at, port))) continue;
     const moved = at.getBoundingClientRect().top - topOf(port) - top;
     if (Math.abs(moved) >= 1) port.scrollTop += moved;
   }
@@ -278,7 +285,7 @@ function render(html: string) {
   const apply = () => {
     const places = placesNow();
     morph(app, html, hooks);
-    keepPlaces(places);
+    keepPlaces(places, moving);
     settle(before);
     syncPage();
     revealChanged(previousReveal);

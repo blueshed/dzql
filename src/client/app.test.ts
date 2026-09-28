@@ -338,6 +338,22 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<number>(`document.getElementById('full').scrollTop`)).toBe(top); // left to the browser
   });
 
+  test("a cell that grows into a fixed window is no place to keep: the page behind stays where it was, open and closed", async () => {
+    await using view = await open();
+    const box = (open: boolean) =>
+      `<style>body { margin: 0 }</style><div style="height:100px">the trail</div>` +
+      ["asks", "market", "clock"].map((k) => `<div id="${k}" data-moving="${k}" style="height:300px${open && k === "market" ? ";position:fixed;inset:8px;overflow:auto" : ""}">${k}</div>`).join("") +
+      `<div style="height:200px"></div>`;
+    await pushRender(view, box(false));
+    await view.evaluate(`window.scrollTo(0, scrollY + document.getElementById('market').getBoundingClientRect().top - 100)`); // the market cell 100px down
+    const seen = [await view.evaluate<number>(`scrollY`)];
+    await pushRender(view, box(true)); // it grows into the window
+    seen.push(await view.evaluate<number>(`scrollY`));
+    await pushRender(view, box(false)); // and back
+    seen.push(await view.evaluate<number>(`scrollY`));
+    expect(seen).toEqual([300, 300, 300]); // the browser alone ends at 100 (WebKit) or 187 (Chrome)
+  });
+
   test("a revealed element lands below a sticky header the page does not declare", async () => {
     await using view = await open();
     const page = (height: string, reveal: boolean) =>
