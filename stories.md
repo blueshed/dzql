@@ -188,17 +188,19 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    Skipped when the write is off the ledger (its compartment says `ledger: false`, and the kernel
    reports a write that disagrees), when the ledger says it is a fact, or when its author
    has gone -- before the undo, or because of it (undoing the write that gave you your name).
-5. After every story, where each stood. Every page a member was drawn in the run is kept by where
-   it stands (`data-page`), with its controls; a control leads somewhere when `goTo` makes exactly
-   its write of its own value (a button's `data-value`, or a value an applet's mount names). From
-   where the cast put each member, the places their pages lead to, and the places those lead to,
-   are where they can go. Each story's `from`, and each place its `seen` puts someone, that no
-   control leads them to fails the story, by name: `no control leads okafors to "?guest=2", where
-   the story has them act`. After " @ ", what else the place holds (find's word, a reading) must
-   be sent by a control on the page there. A place on the way that no story stood on is stood on
-   then, in a cast of its own, rolled back after. A page that says nowhere it stands (a welcome
-   before a code) has nowhere to go, and is not asked. The URL and the back button are not
-   controls: a place only they reach is one a person must be told about.
+5. After every story, where each could go, judged from where each story starts: the cast as its
+   own writes left it, and the story's premise. In a cast of its own in that state, rolled back
+   after, the harness walks from where it put each member: every page they are drawn there is kept
+   by where it stands (`data-page`), with its controls, and a control leads somewhere when `goTo`
+   makes exactly its write of its own value (a button's `data-value`, or a value an applet's mount
+   names). The places their pages lead to, and the places those lead to, are where they can go.
+   Each story's `from`, and each place its `seen` puts someone, that no control leads them to
+   fails the story, by name: `no control leads okafors to "?guest=2", where the story has them
+   act`. After " @ ", what else the place holds (find's word, a reading) must be sent by a control
+   on the page there. The pages of the stories as they are told are not the walk's: a plus that
+   another story's write drew is not one this story starts with. A page that says nowhere it
+   stands (a welcome before a code) has nowhere to go, and is not asked. The URL and the back
+   button are not controls: a place only they reach is one a person must be told about.
 6. Report by story name. A failing story is a sentence, not a stack trace.
 
 *What it does not do yet (17 September).* Said plainly, because a builder will otherwise trust it

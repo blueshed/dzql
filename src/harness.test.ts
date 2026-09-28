@@ -411,6 +411,22 @@ describe("stories harness", () => {
     }, 30000);
   });
 
+  test("where a person can go is judged from where the story starts: a place another story's write opened is not one this story can reach", async () => {
+    const { example: wedding } = await import("../examples/wedding/index");
+    const { stories: told } = await import("../examples/wedding/stories");
+    // Ben has no plus-one, so nothing on his page opens the plus; the couple giving him one draws it there, for that story alone
+    const plus: Story = { name: "Ben, with no plus-one, cannot name one from the plus", as: "ben", from: "?new=guests", cannot: { doc: "household", ops: [{ op: "add", path: "/guests/-", value: "Someone Else" }] } };
+    const letBen = told.stories.find((s) => s.name.startsWith("The couple let Ben bring one more"))!;
+    const unreached = ['no control leads ben to "?new=guests", where the story has them act'];
+    for (const order of [[plus], [letBen, plus], [plus, letBen]]) {
+      const report = await run(wedding, { ...told, stories: order });
+      expect(report.outcomes.find((o) => o.name === plus.name)!.failures).toEqual(unreached);
+    }
+    // and its own premise is where it starts: given the plus-one, Ben can open the plus
+    const given = { ...plus, name: "Ben, given a plus-one, can open the plus", premise: { couple: [{ doc: "board", ops: [{ op: "replace" as const, path: "/households/2/plus_ones", value: 1 }] }] } };
+    expect((await run(wedding, { ...told, stories: [given] })).outcomes[0]!.failures.filter((f) => f.startsWith("no control leads"))).toEqual([]);
+  }, 60000);
+
   test("a control goes where goTo makes exactly its write: a button's own value, or the one an applet names; nothing that takes any value goes anywhere", () => {
     const desk = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/page", value: page }] });
     const page = [
