@@ -241,8 +241,9 @@ Details:
 
 - A key is unique on its page. The same thing drawn twice is fine; two different things under one
   key are no part, and what holds them is sent instead.
-- An applet on a document (`data-doc`) has the ops, so after a write to that document its props
-  are not compared. After any other write they are, and go as its tag when they changed.
+- A mount that watches a document (`data-doc`) is compared without that document and without what
+  is inside it: its patches keep both. The rest of its props is compared, and goes as its tag when
+  it changed (Applets, "the document it watches").
 - Drawers and modals go through `layers(page, drawer, modal)` (`src/bento.ts`). There are two
   layers, each always there and empty when nothing is open: the ground (the page, with the drawer
   over it) and the modal's. Opening or closing one sends its layer, and a modal puts the ground
@@ -503,8 +504,8 @@ history. Everything else is HTML from `render`.
 ```ts
 export type Applet = {
   mount(el, { props, send }): void | (() => void); // cleanup optional
-  update?(el, props): void;   // the element survived a render with new data-props
-  patch?(el, ops): void;      // the ops of the document named in data-doc, as they are told
+  update?(el, props): void;   // new props: a render's, or its document's patch laid on them
+  patch?(el, ops): void;      // the ops of the document named in data-doc, instead of update
 };
 ```
 
@@ -515,29 +516,48 @@ export type Applet = {
   imported only by `client/main.ts`) when there is drawing worth testing.
 - `client/index.html` must have an element with `id="app"`.
 
-### How an applet gets its data: choose one
+### How an applet gets its data: the document it watches
 
-The mount point names it:
+An applet's data comes from a document it watches; its props say only what to show, and for whom.
+The mount names the document and where it sits in the props, through `appletProps(props, watch?)`
+(`src/html.ts`), the one helper that quotes props into an attribute:
 
-```html
-<div data-applet="board" data-doc="quote:BRVO" data-under="/quote" data-props='{...}'>
+```ts
+// the wedding's photo of everyone: the `everyone` document, the family open in it, the names down or not
+const props: CrowdProps = { everyone: everyone(), open: family, reveal: v.names };
+`<div id="everyone-photo" data-applet="crowd"${taps}${appletProps(props, { doc: "everyone:1", under: "/everyone" })}></div>`
+// gives data-doc="everyone:1" data-under="/everyone" data-props="{…}"
 ```
 
-- **On a document** (`data-doc`): its props hold that document, and every change reaches it as a
-  patch (`patch`). A page is compared without them, so a change to its document sends the mount
-  nothing but the patch; they go again only with the mount itself -- a page sent whole, a part
-  that holds it replaced, or its own tag changed -- as the render drew them, and `update` gets
-  them if they differ from those it was given. So keep what follows where a person is
-  (`aria-expanded`, a class) off the mount, on an element beside it: the ticker's board row puts
-  its button there, and a drawer opening sends that button's tag, not the mount's props. Use this
-  when the props are *only* that document. The document sits in the props at `data-under` (the
-  root when not given), whole, with rows as delta holds them (their id and parent key
-  included). The ops must land on it and say everything the document did: the stories check
-  that each member's props, as last sent with every patch since, equal what a fresh render
-  gives.
-- **From props**: no `data-doc`. It is re-sent its props on every render, and draws from them
-  (`update`). Use this when the props mix a document with where the person is: leave's calendar
-  holds the requests, plus the month and the person's own draft.
+- **The props hold the document whole, at `under`** (the root when not given: the props are the
+  document), as the page is told it: rows as delta holds them, by id, their parent key included.
+  The rest is small: who is looking, what is open, a word to find by.
+- **The kernel's client keeps them.** Each patch to the document is laid on the props at `under`,
+  and the applet is given them again, `update(el, props)`: it draws from its props whether they
+  came with a render or a patch, and needs no `patch` of its own. One that has a `patch` gets the
+  ops instead, as before (the ticker's).
+- **It derives what it draws with a pure function, shared.** The applet runs it in the browser on
+  each update; the server runs the same one for what the mount declares (`appletWrites`: the
+  wedding's taps), for what the page says around it, and for a first paint inside the mount, so a
+  test or a story sees what a person does. So it lives where both import it (`applets/<name>.ts`,
+  pure, tested directly), never in the view alone.
+- **A change to the document sends the mount nothing but the patch.** A page is compared with the
+  watched document left out of the props, and nothing inside the mount: what the server draws in it
+  is its first paint, and the applet's after. The mount goes again only when its own tag changes --
+  its small props, a class, what it declares -- carrying the document as drawn then, or when a part
+  holding it is replaced. So keep what follows where a person is off the mount where it can be
+  (`aria-expanded`, a class), on an element beside it: the ticker's board row puts its button there.
+- **The patches must say everything the document did**: the stories check that each member's
+  props, as last sent with every patch since, equal what a fresh render gives.
+- **A watched document is sent whole**, with the mount and in every patch, so watch one cut for the
+  page's audience, holding no secret: the wedding's `everyone` (what households may see of each
+  other), not the board, whose rows carry every household's code.
+- **From props alone** (no `data-doc`) an applet is re-sent its props whenever they change, and
+  draws from them (`update`). Keep that for props that are small, or that no document holds.
+
+The harness warns, and does not fail, where props cost: when a mount's props, its document left
+out, pass 4 KB; and when a mount is sent again with the props it already had (a part holding it
+replaced for something else: make the mount a part of its own).
 
 Cut a document to what its applet shows. The ticker's board is a row applet per watched symbol,
 each on that symbol's own document (`quote:<SYMBOL>`, a view of the market's row that delta tells
