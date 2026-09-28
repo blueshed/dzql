@@ -238,7 +238,7 @@ function readingTop(port: Element): number {
 // page, and any in it, as the bento's window is), the first element at or below where reading
 // starts (readingTop), and after it puts that element back where it was. Not while someone is
 // pressing (a drag, a scroll by touch, a selection being made); a selection left there is no reason.
-type Place = { port: Element; at: Element; top: number; apart: boolean };
+type Place = [port: Element, at: Element, top: number, apart: boolean];
 
 let holding = false;
 for (const type of ["pointerdown", "touchstart"]) document.addEventListener(type, () => (holding = true), true);
@@ -286,34 +286,52 @@ function placesNow(): Place[] {
   const ports = [...scrolled.sort((a, b) => depth(b) - depth(a)), ...(document.documentElement.scrollTop > 0 ? [document.documentElement] : [])];
   return ports.flatMap((port) => {
     const at = readerIn(port);
-    return at ? [{ port, at, top: at.getBoundingClientRect().top - topOf(port), apart: apart(at, port) }] : [];
+    return at ? [[port, at, at.getBoundingClientRect().top - topOf(port), apart(at, port)] satisfies Place] : [];
   });
 }
 
 /** Puts back what each place read, unless it is gone (what follows takes its place), or the render took it out of the page's flow: a cell grown into the window (`moving`, or now fixed) is not what is read behind it. */
 function keepPlaces(places: Place[], moving?: Element): void {
-  for (const { port, at, top, apart: was } of places) {
+  for (const [port, at, top, was] of places) {
     if (!port.isConnected || !port.contains(at) || moving?.contains(at) || (!was && apart(at, port))) continue;
     const moved = at.getBoundingClientRect().top - topOf(port) - top;
     if (Math.abs(moved) >= 1) port.scrollTop += moved;
   }
 }
 
-function render(html: string) {
+/**
+ * A drawing of the page, whole or in parts, with the same care either way. What the page shows now
+ * is noted at once -- what may grow, what is revealed -- and the rest as it is drawn: who has the
+ * keyboard, and each reader's place. Then it draws, and puts back each place (but in `moving`, a
+ * cell grown into the window), pins what grew, mounts what appeared, gives the keyboard somewhere
+ * if the drawing left it nowhere, and follows the page in the URL and a reveal.
+ */
+function drawing(draw: () => void, moving?: Element): () => void {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
   const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
-  const moving = movingElement(html);
-
-  const apply = () => {
-    const was = beforeDrawing();
+  return () => {
+    const keyboard = keyboardAfter();
     const places = placesNow();
-    morph(app, html, hooks);
+    draw();
     keepPlaces(places, moving);
-    settle(before);
-    afterDrawing(was);
+    mountApplets();
+    // Pin to the bottom only when this render actually added content here, or
+    // the element itself just appeared (a fresh load, entering a room) -- an
+    // unrelated update (someone else's presence, an undo elsewhere) must not
+    // yank the scroll position out from under someone reading history.
+    for (const el of app.querySelectorAll<HTMLElement>("[data-autoscroll]")) {
+      const had = before.get(el);
+      if (had === undefined || el.childNodes.length > had) el.scrollTop = el.scrollHeight;
+    }
+    keyboard();
     syncPage();
     revealChanged(previousReveal);
   };
+}
+
+function render(html: string) {
+  const moving = movingElement(html);
+  const apply = drawing(() => morph(app, html, hooks), moving);
 
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (moving && !reduced && "startViewTransition" in document) {
@@ -347,16 +365,6 @@ const openedBy = new Map<Element, HTMLElement>();
 /** The control last pressed, until the page is next drawn: what opened whatever that drawing brings. */
 let pressed: HTMLElement | undefined;
 
-type Before = { focused: Element | null; cells: Map<string, string>; dialogs: Set<Element> };
-
-function beforeDrawing(): Before {
-  return {
-    focused: document.activeElement,
-    cells: new Map([...app.querySelectorAll<HTMLElement>("[data-moving]")].map((el) => [el.dataset.moving!, ownTag(el)])),
-    dialogs: new Set(app.querySelectorAll(DIALOG)),
-  };
-}
-
 const keyboardLost = (): boolean => {
   const at = document.activeElement;
   return !at || at === document.body || !!at.closest("[inert]");
@@ -372,32 +380,41 @@ function giveKeyboard(candidates: Iterable<HTMLElement>): boolean {
   return false;
 }
 
-function afterDrawing(was: Before): void {
-  const press = pressed;
-  pressed = undefined;
-  const gone: HTMLElement[] = [];
-  for (const [dialog, by] of openedBy) {
-    if (dialog.isConnected) continue;
-    openedBy.delete(dialog);
-    gone.push(by);
-  }
-  const opener = press ?? (was.focused instanceof HTMLElement && was.focused !== document.body ? was.focused : undefined);
-  for (const dialog of app.querySelectorAll(DIALOG)) {
-    // a new one: what was pressed, or had the keyboard, opened it
-    if (!was.dialogs.has(dialog)) {
-      if (opener) openedBy.set(dialog, opener);
-    } else if (press?.isConnected && !press.closest(DIALOG)) {
-      openedBy.set(dialog, press); // one still open, opened again by a press beside it: the next figure beside a docked drawer
+/**
+ * Notes, before a drawing, who has the keyboard, each cell's own tag and the dialogs open; what it
+ * answers, run after, gives the keyboard somewhere if the drawing left it nowhere.
+ */
+function keyboardAfter(): () => void {
+  const focused = document.activeElement;
+  const cells = new Map([...app.querySelectorAll<HTMLElement>("[data-moving]")].map((el) => [el.dataset.moving!, ownTag(el)]));
+  const dialogs = new Set(app.querySelectorAll(DIALOG));
+  return () => {
+    const press = pressed;
+    pressed = undefined;
+    const gone: HTMLElement[] = [];
+    for (const [dialog, by] of openedBy) {
+      if (dialog.isConnected) continue;
+      openedBy.delete(dialog);
+      gone.push(by);
     }
-  }
+    const opener = press ?? (focused instanceof HTMLElement && focused !== document.body ? focused : undefined);
+    for (const dialog of app.querySelectorAll(DIALOG)) {
+      // a new one: what was pressed, or had the keyboard, opened it
+      if (!dialogs.has(dialog)) {
+        if (opener) openedBy.set(dialog, opener);
+      } else if (press?.isConnected && !press.closest(DIALOG)) {
+        openedBy.set(dialog, press); // one still open, opened again by a press beside it: the next figure beside a docked drawer
+      }
+    }
 
-  if (!keyboardLost()) return;
-  if (giveKeyboard(gone) || giveKeyboard(app.querySelectorAll<HTMLElement>("[autofocus]"))) return;
-  const inside = was.focused?.closest<HTMLElement>("[data-moving]")?.dataset.moving;
-  const moved = [...app.querySelectorAll<HTMLElement>("[data-moving]")]
-    .filter((el) => was.cells.has(el.dataset.moving!) && was.cells.get(el.dataset.moving!) !== ownTag(el))
-    .sort((a, b) => Number(b.dataset.moving === inside) - Number(a.dataset.moving === inside));
-  for (const cell of moved) if (giveKeyboard([...cell.querySelectorAll<HTMLElement>(CONTROL)].filter((el) => el.tabIndex >= 0))) return;
+    if (!keyboardLost()) return;
+    if (giveKeyboard(gone) || giveKeyboard(app.querySelectorAll<HTMLElement>("[autofocus]"))) return;
+    const inside = focused?.closest<HTMLElement>("[data-moving]")?.dataset.moving;
+    const moved = [...app.querySelectorAll<HTMLElement>("[data-moving]")]
+      .filter((el) => cells.has(el.dataset.moving!) && cells.get(el.dataset.moving!) !== ownTag(el))
+      .sort((a, b) => Number(b.dataset.moving === inside) - Number(a.dataset.moving === inside));
+    for (const cell of moved) if (giveKeyboard([...cell.querySelectorAll<HTMLElement>(CONTROL)].filter((el) => el.tabIndex >= 0))) return;
+  };
 }
 
 // The page in parts: what changed since the last drawing, in HTML's terms (src/parts.ts). Each op
@@ -405,47 +422,24 @@ function afterDrawing(was: Before): void {
 // right, as it would after a reconnect. The ops keep a choice not yet drawn as one render does,
 // since a group of radios may span parts. Afterwards, the same care as a whole render.
 function applyFragments(ops: HtmlOp[]) {
-  const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
-  const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
-  const was = beforeDrawing();
-  const places = placesNow();
-
-  keepingChoices(() => {
-    for (const op of ops) {
-      const target = app.querySelector(op.target);
-      // what is inside an applet is the applet's, as it is to the morph: its own element may be a part, nothing in it
-      if (!target || target.parentElement?.closest("[data-applet]")) continue;
-      if (op.op === "replace") {
-        morphElement(target, op.html, hooks);
-      } else if (op.op === "tag") {
-        morphTag(target, op.html, hooks);
-      } else if (op.op === "remove") {
-        removeNode(target, hooks);
-      } else {
-        target.insertAdjacentHTML(op.op === "after" ? "afterend" : "beforebegin", op.html);
+  drawing(() =>
+    keepingChoices(() => {
+      for (const op of ops) {
+        const target = app.querySelector(op.target);
+        // what is inside an applet is the applet's, as it is to the morph: its own element may be a part, nothing in it
+        if (!target || target.parentElement?.closest("[data-applet]")) continue;
+        if (op.op === "replace") {
+          morphElement(target, op.html, hooks);
+        } else if (op.op === "tag") {
+          morphTag(target, op.html, hooks);
+        } else if (op.op === "remove") {
+          removeNode(target, hooks);
+        } else {
+          target.insertAdjacentHTML(op.op === "after" ? "afterend" : "beforebegin", op.html);
+        }
       }
-    }
-  });
-  keepPlaces(places);
-  settle(before);
-  afterDrawing(was);
-  syncPage();
-  revealChanged(previousReveal);
-}
-
-// After any render, full or fragment: mount what appeared and pin what grew (and then, afterDrawing,
-// give the keyboard somewhere if the drawing left it nowhere).
-function settle(before: Map<HTMLElement, number>) {
-  mountApplets();
-
-  // Pin to the bottom only when this render actually added content here, or
-  // the element itself just appeared (a fresh load, entering a room) -- an
-  // unrelated update (someone else's presence, an undo elsewhere) must not
-  // yank the scroll position out from under someone reading history.
-  for (const el of app.querySelectorAll<HTMLElement>("[data-autoscroll]")) {
-    const was = before.get(el);
-    if (was === undefined || el.childNodes.length > was) el.scrollTop = el.scrollHeight;
-  }
+    }),
+  )();
 }
 
 type WriteSpec = { doc: string; op: PatchOp["op"]; path: string };

@@ -272,7 +272,7 @@ describe("app.ts in a real browser", () => {
     expect(await viewA.evaluate<boolean>(`${m}.scrollTop + ${m}.clientHeight >= ${m}.scrollHeight - 1`)).toBe(true);
   }, 20000); // fifteen messages typed, one by one
 
-  // Fails until the kernel's client is fixed (todo n70): settle() in src/client/app.ts pins a
+  // Fails until the kernel's client is fixed (todo n70): drawing() in src/client/app.ts pins a
   // [data-autoscroll] list only when its count of children grows, and a full room's stays at fifty.
   // Remembering the last child instead makes it pass; make this a plain test() when that lands.
   test.failing("a full room still scrolls to the newest message: the fifty-first takes the oldest out, and lands in view", async () => {
