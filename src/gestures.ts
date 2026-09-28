@@ -1,14 +1,16 @@
-// The stories by hand (stories.md, "By gesture"). The harness finds a story's control in the page
+// The stories by hand (stories.md, "By hand"). The harness finds a story's control in the page
 // the server drew, which says only that it is there: it may be hidden by a stylesheet, covered by
 // something drawn over it, of no size, off a phone's screen, or a field no form sends. Here a real
 // browser (`Bun.WebView`, src/webview.ts) is the author's tab: it goes where the story is done by
 // pressing the controls that lead there, then does the story's write by pressing, typing into or
-// choosing in the control itself, and what it sent is what the harness checks. A tap is a native
-// click at the control's middle, once it holds still and nothing covers it. The keyboard is not
-// pressed: the WebView's Enter is an editing command, not a key, so it presses no button.
+// choosing in the control itself, or by the gesture the story says, and what it sent is what the
+// harness checks. A tap is a native click at the control's middle, once it holds still and nothing
+// covers it. A drag is a mouse's pointer events, each sent to what is under it, and then the click
+// a browser sends; never a script's `element.click()`. The keyboard is not pressed: the WebView's
+// Enter is an editing command, not a key, so it presses no button.
 
 import type { PatchOp } from "./json-patch";
-import type { Write } from "./stories";
+import type { Gesture, Write } from "./stories";
 import { urlFor } from "./webview";
 
 /** A phone, held upright: the stories are pressed at the size most people hold them. */
@@ -120,10 +122,39 @@ const PAGE = `(() => {
     send(JSON.stringify({ type: "inspect" }));
   });
   const stands = () => document.querySelector("#app [data-page]")?.dataset.page;
+  // a drag, as a mouse makes one: pressed at the middle of one element, moved to the middle of
+  // another, let go; each pointer event sent to what is under it (a mouse event after it, unless
+  // the press was cancelled), then the click, to what the press and the release share
+  function drag(from, to) {
+    const a = document.querySelector(from), b = document.querySelector(to);
+    const blocked = a ? why(a) : "not on the page";
+    if (blocked) return "what it is dragged from is " + blocked;
+    if (!b) return "where it is dragged to is not on the page";
+    const r = a.getBoundingClientRect(), s = b.getBoundingClientRect();
+    const [x0, y0, x1, y1] = [r.left + r.width / 2, r.top + r.height / 2, s.left + s.width / 2, s.top + s.height / 2];
+    if (x1 < 0 || y1 < 0 || x1 > innerWidth || y1 > innerHeight) return "where it is dragged to is off the screen";
+    let mice = true;
+    const at = (type, x, y, button, buttons) => {
+      const el = document.elementFromPoint(x, y);
+      const init = { bubbles: true, cancelable: true, composed: true, view: window, clientX: x, clientY: y, button, buttons, pointerId: 1, pointerType: "mouse", isPrimary: true };
+      const sent = el.dispatchEvent(new PointerEvent("pointer" + type, init));
+      if (type === "down") mice = sent;
+      if (mice) el.dispatchEvent(new MouseEvent("mouse" + type, init));
+      return el;
+    };
+    const down = at("down", x0, y0, 0, 1);
+    for (let i = 1; i <= 4; i++) at("move", x0 + ((x1 - x0) * i) / 4, y0 + ((y1 - y0) * i) / 4, -1, 1);
+    const up = at("up", x1, y1, 0, 0);
+    let shared = down;
+    while (shared && !shared.contains(up)) shared = shared.parentElement;
+    if (shared && shared.isConnected) shared.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, view: window, clientX: x1, clientY: y1 }));
+    return "";
+  }
+
   const choose = (selector, value) => { const el = document.querySelector(selector); el.value = value; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); };
   const clear = (selector) => { const el = document.querySelector(selector); el.focus(); el.select?.(); };
   const leave = () => document.activeElement?.blur();
-  window.__hand = { plan, why: (selector) => why(document.querySelector(selector)), asked, stands, choose, clear, leave };
+  window.__hand = { plan, why: (selector) => { const el = document.querySelector(selector); return el ? why(el) : "not on the page"; }, drag, asked, stands, choose, clear, leave };
   return true;
 })()`;
 
@@ -197,10 +228,24 @@ export class Hand {
     } catch (err) {
       return { failure: (err as Error).message };
     }
-    // what the page sent: at once for a press, after a pause for a field typed into
-    if (!(await this.until(`window.__sent.length > ${this.sent}`))) return { failure: `the page sent nothing when it was ${plan.how === "press" ? "pressed" : plan.how === "submit" ? "sent" : "left"}` };
-    await view.evaluate(`window.__hand.asked()`);
-    const sent = await view.evaluate<Write[]>(`window.__sent`);
+    return this.heard(plan.how === "press" ? "pressed" : plan.how === "submit" ? "sent" : "left");
+  }
+
+  /** Makes the gesture a story says, as a person would; what the page sent, once the server has answered it. */
+  async gesture(gesture: Gesture): Promise<Pressed> {
+    if ("press" in gesture) {
+      const failure = await this.touch(gesture.press).then(() => undefined, (err: Error) => err.message);
+      return failure ? { failure } : this.heard("pressed");
+    }
+    const failure = await this.view.evaluate<string>(`window.__hand.drag(${JSON.stringify(gesture.drag[0])}, ${JSON.stringify(gesture.drag[1])})`);
+    return failure ? { failure } : this.heard("dragged");
+  }
+
+  /** What the page sent since the last it was asked, once the server has answered it: at once for a press, after a pause for a field typed into. */
+  private async heard(how: string): Promise<Pressed> {
+    if (!(await this.until(`window.__sent.length > ${this.sent}`))) return { failure: `the page sent nothing when it was ${how}` };
+    await this.view.evaluate(`window.__hand.asked()`);
+    const sent = await this.view.evaluate<Write[]>(`window.__sent`);
     const now = sent.slice(this.sent);
     this.sent = sent.length;
     return { sent: now };

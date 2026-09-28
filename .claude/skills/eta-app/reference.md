@@ -563,6 +563,10 @@ it, `appletWrites(["clock", "replace", "/tz"])`):
 - A declaration that is not `[doc, op, path]` (the older `[doc, path]`) fails every story that
   meets it: `applet declaration must be [doc, op, path]`.
 - The applet sends its writes with `ctx.send(doc, ops)`: a drag let go.
+- A story says how a person works the applet's control, since the page cannot: `gesture: { drag:
+  [from, to] }` (leave's `day("2026-10-06")` to `day("2026-10-07")`) or `{ press: selector }`.
+  Done by hand, the drag is a mouse's pointer events, each sent to what is under the pointer:
+  wrap `setPointerCapture` in a `try`, since a test's pointer is refused it (leave's calendar).
 
 ### Islands
 

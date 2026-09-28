@@ -27,6 +27,10 @@ Everything below is the least that makes it pass.
 - A story's `from` is where a person does it, so a control must lead there: build the button
   that opens the drawer or the modal with the drawer or the modal, or the story fails (`no control
   leads ...`), since the harness can put anyone anywhere and a person cannot.
+- A drag or a tap on an applet is the story's `gesture`: `{ drag: [from, to] }` or `{ press }`,
+  CSS selectors on the page (leave's calendar). The story is then done by hand in a browser the
+  size of a phone, and the gesture must send its `does`. `STORY_GESTURES=1 bun run stories` does
+  every story by hand, pressing the controls the page draws; `bun run stories:all` does.
 
 ## Vocabulary, once
 
@@ -104,7 +108,8 @@ After a change to eta, pack again, then `bun remove eta && bun add` the tarball:
 keeps a tarball's first contents, through `bun add` again and `bun install --force` alike (Bun 1.4). The app then imports the kernel
 as `eta/src/...` (the stylesheet too: `@import "eta/src/bento.css"`), and has three small files
 where an example leans on eta's scripts: `server.ts` (`createServer(example)`, src/server.ts), a
-stories runner (`print(await run(example, stories))`, src/harness.ts), and eta's `tsconfig.json`,
+stories runner (`print(await run(example, stories, { gestures: !!process.env.STORY_GESTURES }))`,
+src/harness.ts), and eta's `tsconfig.json`,
 `bunfig.toml` (the 100% gate) and `.env.test`. The steps above are the same. `Workshop/japan-eta`
 is one.
 

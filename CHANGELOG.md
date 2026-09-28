@@ -298,7 +298,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `uml/src/*.puml` redrawn as they change on :3700 (`PORT` moves it), each diagram checked
     against `uml/types.ts`, or, for Londons, each agreement's arrows against the stories they
     cite. `bun run uml:check [londons]` checks once, without PlantUML.
-
+- **A story may say its gesture, and is then done by hand** (todo n107, n87's second half). An
+  applet draws its own controls in the browser, where the harness cannot find them, so a story
+  says how a person works one: `gesture: { drag: [from, to] }` or `{ press: selector }`, CSS
+  selectors on the page. Such a story is done again whenever it is told, in a browser the size of
+  a phone (`Bun.WebView`, `src/gestures.ts`), as its author: from where it starts, the controls on
+  the way to its `from` are pressed, each landing where it leads (a step covered on a phone is
+  left for another way), then the gesture is made -- a press a native click once the control
+  holds still and nothing covers it, a drag a mouse's pointer events, each sent to what is under
+  the pointer, then the click a browser sends, never `element.click()` (n98). What the page sent
+  must be the story's write, and it must land (`by hand, ann could not replace /draft on team:
+  the page sent replace /draft {…} on team`). leave's three drags on its calendar say theirs.
+  With `STORY_GESTURES=1` (`run(example, stories, undefined, { gestures: true })`) every story is done by
+  hand, its control pressed, typed into and sent, or chosen, so a control hidden by a stylesheet,
+  covered, of no size, off a phone's screen, never still, or a field no form sends fails by name,
+  where without a browser it passed. `Report.byHand` counts the stories, gestures and time.
 - **An applet's mount may name the only values a control of it sends**: `appletWrites([doc, op,
   path, value], …)`, one for each, said as one write with its `values` on the mount. A story's
   write counts as offered only with one of them. It is how an applet says where it goes: the

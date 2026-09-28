@@ -23,7 +23,7 @@ describe("the stories by hand", () => {
   test("a story a person can do passes by hand too: a form typed into and sent, a button pressed, a way pressed to where it is done", async () => {
     const report = await run(chat, chatStories, undefined, { gestures: true });
     expect(report.outcomes.flatMap((o) => o.failures)).toEqual([]);
-    expect(report.byHand).toMatchObject({ stories: 7, presses: 7, applets: 0 });
+    expect(report.byHand).toMatchObject({ stories: 7, gestures: 7, applets: 0 });
 
     const { example: ticker } = await import("../examples/ticker/index");
     const { stories: told } = await import("../examples/ticker/stories");
@@ -84,6 +84,59 @@ describe("the stories by hand", () => {
     const flat: Example = { ...ticker, render: (sessionId) => ticker.render(sessionId).replaceAll(plus, ` style="display: block; width: 0; height: 0; padding: 0; border: 0; overflow: hidden"${plus}`) };
     expect((await run(flat, { ...told, stories: watches })).outcomes[0]!.failures).toEqual([]);
     expect((await run(flat, { ...told, stories: watches }, undefined, { gestures: true })).outcomes[0]!.failures).toEqual(['by hand, ann could not get to "board?new": the way to "board?new" from "board": the control for it is of no size']);
+  }, 60000);
+
+  test("a story may say its gesture: leave's drags on its calendar are done by hand whenever they are told, and must send the story's write", async () => {
+    const { example: leave } = await import("../examples/leave/index");
+    const { stories: told } = await import("../examples/leave/stories");
+    const drags = told.stories.filter((s) => s.gesture !== undefined);
+    expect(drags.map((s) => s.name)).toEqual([
+      "Ann drags across two days in Bo's week, and sees the clash before she asks",
+      "Ann drags her day in November to the Friday after, and Mo and Bo see it move",
+      "Mo moves the week he approved for himself, and the team sees it move",
+    ]);
+    const report = await run(leave, { ...told, stories: drags }); // no `gestures`: a story that says its gesture asks for a browser
+    expect(report.outcomes.map((o) => o.failures)).toEqual([[], [], []]);
+    expect(report.byHand).toMatchObject({ stories: 3, applets: 0 });
+
+    // let go a day too far, and the page sends another draft; from nothing, nothing is dragged
+    const tuesday = '.week[data-month="2026-10"][data-monday="2026-10-05"] > .date:nth-child(2)';
+    const thursday = '.week[data-month="2026-10"][data-monday="2026-10-05"] > .date:nth-child(4)';
+    const dragged = (from: string, to: string) => ({ ...drags[0]!, gesture: { drag: [from, to] } }) as Story;
+    const [astray, nowhere, offscreen] = [dragged(tuesday, thursday), dragged(".nowhere", thursday), dragged(tuesday, '.week[data-month="2026-12"][data-monday="2026-12-28"] > .date:nth-child(4)')];
+    expect((await run(leave, { ...told, stories: [astray, nowhere, offscreen] })).outcomes.map((o) => o.failures)).toEqual([
+      ['by hand, ann could not replace /draft on team: the page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-08"} on team'],
+      ["by hand, ann could not replace /draft on team: what it is dragged from is not on the page"],
+      ["by hand, ann could not replace /draft on team: where it is dragged to is off the screen"],
+    ]);
+  }, 60000);
+
+  test("a gesture may be a press, a tap where it says; it is a press or a drag, on a story that writes from a page", async () => {
+    const logout = { doc: "session", ops: [{ op: "remove" as const, path: "/name" }] };
+    const going: Story = { name: "Ada logs out", as: "ada", does: logout, gesture: { press: 'button[aria-label="Log out"]' }, seen: ["ada", "bob"] };
+    const undo: Story = { ...going, gesture: { press: 'button[aria-label="Undo"]' } };
+    const nothing: Story = { ...going, gesture: { press: ".nowhere" } };
+    const report = await run(chat, { ...chatStories, stories: [going, undo, nothing] });
+    expect(report.outcomes.map((o) => o.failures)).toEqual([
+      [],
+      ["by hand, ada could not remove /name on session: the page sent remove /latest on ledger"],
+      ["by hand, ada could not remove /name on session: the control for it is not on the page"],
+    ]);
+    expect(report.byHand).toMatchObject({ stories: 3, gestures: 3 });
+
+    const shaped = (gesture: unknown, more: object = {}) => ({ name: "Ada logs out, somehow", as: "ada", does: logout, seen: ["ada", "bob"], gesture, ...more }) as Story; // as a story file that is not type-checked says it
+    const report2 = await run(chat, {
+      ...chatStories,
+      stories: [shaped({ drag: 'button[aria-label="Log out"]' }), shaped({ press: 1 }), shaped({ press: "a", drag: ["a", "b"] }), shaped({ press: "a" }, { offPage: true }), { name: "Eve cannot log Ada out", as: "eve", cannot: logout, gesture: { press: "a" } } as unknown as Story],
+    });
+    expect(report2.outcomes.map((o) => o.failures)).toEqual([
+      ['a gesture is { press: selector } or { drag: [from, to] }: this one is {"drag":"button[aria-label=\\"Log out\\"]"}'],
+      ['a gesture is { press: selector } or { drag: [from, to] }: this one is {"press":1}'],
+      ['a gesture is { press: selector } or { drag: [from, to] }: this one is {"press":"a","drag":["a","b"]}'],
+      ["a story from no page (offPage) has no gesture"],
+      ["a cannot story takes no gesture"],
+    ]);
+    expect(report2.byHand).toBeUndefined(); // not told, and not done by hand
   }, 60000);
 
   test("what the page sent is the story's write: a value as the wire sends a button's, a record by its keys, a document by either name", () => {

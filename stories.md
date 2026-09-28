@@ -110,6 +110,23 @@ story("Bob closes his tab, and Ada sees him leave general", {
 });
 ```
 
+A story that writes may say how a person does it, where the page cannot: an applet draws its own
+controls in the browser, so a drag across its days is the story's `gesture`, a `press` on what a
+CSS selector names or a `drag` from one to another. Leave's:
+
+```ts
+story("Ann drags across two days in Bo's week, and sees the clash before she asks", {
+  as: "ann",
+  from: "2026-10",
+  does: draft("2026-10-06", "2026-10-07"),
+  gesture: { drag: [day("2026-10-06"), day("2026-10-07")] }, // each day's date, in its week's row
+  seen: { ann: "2026-10" },
+});
+```
+
+A story with a gesture is done by hand whenever it is told (the harness, step 6), and the drag
+must send its `does`.
+
 A story is one of the three -- `does`, `cannot`, `closesTab` -- with only that one's keys. The
 harness refuses one that mixes them, or carries a key it does not read, before it runs: a story
 file is not type-checked when it runs, and a key nobody reads would be dropped without a word.
@@ -212,16 +229,31 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    they are told about it -- a link in an email, a shared URL -- the cast says so in its own
    writes: a member the cast puts at an address arrived there as the link brings them, and their
    ways start from it.
-6. Report by story name. A failing story is a sentence, not a stack trace.
+6. By hand, in a browser the size of a phone (`Bun.WebView`, `src/gestures.ts`): each story that
+   says its `gesture`, and with `STORY_GESTURES=1` (`run(example, stories, { gestures: true })`,
+   which `bun run stories:all` sets) every story, is done again as its author, in a tab of their
+   session. From where the story starts, the controls on the way to where it is done are pressed,
+   each landing where it leads (a step a person cannot take, covered on a phone, is left for
+   another way); then the write is done as a person does it: a button pressed, a form typed into
+   and sent, a select chosen, or the story's gesture. A press is a native click at the middle of
+   the control, once it holds still and nothing covers it, never a script's `element.click()`; a
+   drag is a mouse's pointer events, each sent to what is under the pointer, then the click a
+   browser sends. What the page sent must be the story's write, and it must land: `by hand, ann
+   could not replace /draft on team: the page sent replace /draft {…} on team`. A write only an
+   applet's own control sends is sent as its mount declares, unless the story says the gesture.
+7. Report by story name. A failing story is a sentence, not a stack trace.
 
 *What it does not do yet (17 September).* Said plainly, because a builder will otherwise trust it
 for more than it checks:
 
-- **A control hidden by a stylesheet still counts.** Without a browser the harness reads the
-  HTML, not what it looks like: a control under `display: none` by a class, `visibility:
-  hidden`, `aria-hidden`, covered by something drawn over it, of no size, or off a phone's
-  screen, is offered as if a person could press it. Only what HTML itself says is looked at:
-  `disabled`, `inert`, `hidden`, a `<template>`, a disabled fieldset.
+- **A control hidden by a stylesheet still counts, until the story is done by hand.** Without a
+  browser the harness reads the HTML, not what it looks like: a control under `display: none` by
+  a class, `visibility: hidden`, `aria-hidden`, covered by something drawn over it, of no size,
+  or off a phone's screen, is offered as if a person could press it. Only what HTML itself says
+  is looked at: `disabled`, `inert`, `hidden`, a `<template>`, a disabled fieldset. By hand
+  (step 6) each of those fails by name. By hand, a drag's pointer is not captured: its events go
+  to what is under it, so an applet must allow `setPointerCapture` to refuse a test's pointer
+  (leave's calendar does); and an applet's control no story says the gesture for is not worked.
 
 - **The morph is not under test.** Canon 2 is run without a browser: every member's open page is
   kept as the client would keep it -- a full render replaces it, a render in parts is applied
@@ -248,10 +280,10 @@ for more than it checks:
 - **Not a modelling tool.** No `model.db`, no site to browse the entities, no predicates over a
   schema. The stories are in the app's own repo, in one file, in the wire's words.
 - **Not a story language.** A story is a TypeScript object with a name and a few keys: who,
-  the write, the refusal or the tab that closes, who sees it, where the author acts, and what it
-  alone starts from.
+  the write, the refusal or the tab that closes, who sees it, where the author acts, how (a drag
+  on an applet), and what it alone starts from.
   Each key came from a story that needed it (the premise, from a deadline passed for one story
-  only); it will not need a grammar.
+  only; the gesture, from leave's calendar and japan-eta's drags); it will not need a grammar.
 - **Not generated code.** Claude writes the compartments by hand from the stories, and a person
   can read both. When the permit table is the first thing derived rather than written, that is
   one function over the stories, not a code generator.

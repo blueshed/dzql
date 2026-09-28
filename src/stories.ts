@@ -21,6 +21,14 @@ export type Cast = Record<string, Write[]>;
  */
 export type Seen = string[] | Record<string, string>;
 
+/**
+ * What a person does on their page, where the page alone cannot say how: a tap at the middle of
+ * what a CSS selector names (`press`), or a drag from the middle of the first to the middle of the
+ * second (`drag`), as a mouse moves. An applet draws its own controls, so this is how a story says
+ * how its control is worked: leave's calendar, dragged across two days.
+ */
+export type Gesture = { press: string } | { drag: [from: string, to: string] };
+
 /** A story that writes: `does`. */
 type Does = {
   /**
@@ -32,6 +40,12 @@ type Does = {
   from?: string;
   /** It comes from no page -- a feed, the CLI -- so no control is looked for. */
   offPage?: true;
+  /**
+   * How the author does it on their page. The story is then done by hand too, in a browser the
+   * size of a phone, from where it starts: the gesture must send `does`, and it must land. Omitted:
+   * by hand (`gestures`), the control the page draws for it is pressed, typed into or chosen.
+   */
+  gesture?: Gesture;
   seen: Seen;
   /**
    * Who must not even be sent the document's changes, by the write, its undo or its redo.
@@ -74,7 +88,7 @@ type ClosesTab = {
  * be dropped without a word (`{ does, closesTab }` would close a tab and never write).
  */
 export const STORY_KEYS = {
-  does: ["does", "from", "offPage", "seen", "untold"],
+  does: ["does", "from", "offPage", "gesture", "seen", "untold"],
   cannot: ["cannot", "from", "told"],
   closesTab: ["closesTab", "seen", "untold"],
 } as const satisfies { does: readonly (keyof Does)[]; cannot: readonly (keyof Cannot)[]; closesTab: readonly (keyof ClosesTab)[] };

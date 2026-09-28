@@ -2,7 +2,7 @@ import { db } from "./db";
 import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
-import { STORY_KEYS, type Stories, type Story, type Write } from "./stories";
+import { STORY_KEYS, type Gesture, type Stories, type Story, type Write } from "./stories";
 import { applyPatch, type PatchOp, type WriteId } from "./json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
@@ -45,6 +45,10 @@ export { comparable };
 // An applet that takes its document's patches itself (`data-doc`) is compared without its props:
 // they follow the patches, not the renders. What the morph does with the HTML is the browser
 // tests' to check.
+//
+// By hand, a story is done again in a browser the size of a phone, as a person does it
+// (src/gestures.ts): each story that says its `gesture`, and with `gestures` every story. Its
+// write must be what the page sends, and it must land.
 
 export type Outcome = { name: string; failures: string[] };
 
@@ -61,8 +65,8 @@ export type Trace = {
 };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number; byHand?: ByHand };
 
-/** The stories done by hand in a browser (`gestures`): how many, how many presses, how many writes sent as an applet declares them, and how long it took. */
-export type ByHand = { stories: number; presses: number; applets: number; ms: number };
+/** The stories done by hand in a browser (`gestures`, or a story's own `gesture`): how many, how many gestures (a press, a form typed into and sent, a drag), how many writes sent as an applet declares them, and how long it took. */
+export type ByHand = { stories: number; gestures: number; applets: number; ms: number };
 
 type Member = { name: string; sessionId: string; ws: WebSocket; inbox: string[]; page: string; taken: Map<string, Taken>; answered: (() => void)[] };
 type HtmlOp = { op: "replace" | "tag" | "after" | "before" | "remove"; target: string; html?: string };
@@ -159,6 +163,13 @@ const isDeclared = (w: unknown): w is { doc: string; op: string; path: string; v
   const { doc, op, path, values } = (typeof w === "object" && w !== null ? w : {}) as Record<string, unknown>;
   const valued = values === undefined || (Array.isArray(values) && values.length > 0 && values.every((v) => ["string", "number", "boolean"].includes(typeof v)));
   return typeof doc === "string" && doc !== "" && typeof op === "string" && OPS.includes(op) && typeof path === "string" && (path === "" || path.startsWith("/")) && valued;
+};
+
+/** Is this a story's gesture (`Gesture`, src/stories.ts): a press on one selector, or a drag from one to another, and nothing else? */
+const isGesture = (g: unknown): boolean => {
+  if (typeof g !== "object" || g === null || Object.keys(g).length !== 1) return false;
+  const { press, drag } = g as Record<string, unknown>;
+  return typeof press === "string" || (Array.isArray(drag) && drag.length === 2 && drag.every((s) => typeof s === "string"));
 };
 
 // Where a page's elements end. A streaming parser is told of an end tag that is written, and of
@@ -389,6 +400,8 @@ export function misshapen(story: Story): string[] {
   const takes: readonly string[] = ["name", "as", "premise", ...STORY_KEYS[kind]];
   const why = given.filter((key) => !takes.includes(key)).map((key) => `a ${kind} story takes no ${key}`);
   if (kind === "closesTab" && story.closesTab !== true) why.push(`closesTab is true, or left out: this one is ${JSON.stringify(story.closesTab)}`);
+  if (story.gesture !== undefined && !isGesture(story.gesture)) why.push(`a gesture is { press: selector } or { drag: [from, to] }: this one is ${JSON.stringify(story.gesture)}`);
+  else if (story.gesture !== undefined && story.offPage) why.push("a story from no page (offPage) has no gesture");
   return why;
 }
 
@@ -805,8 +818,11 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
    * Walks the places `wanted` names from where `story` starts -- the cast, then its premise -- in
    * a cast of its own, rolled back after: where each member stood, their pages there, and the ways
    * to each place. Undefined when the premise does not hold: the story says so when it is told.
+   * With `aside`, for a story done by hand, each place a step of a way leads to from where it
+   * starts is stood on too, so a step a person cannot take can be left for another way, whichever
+   * other stories are told.
    */
-  async function walk(story: Story, wanted: Map<string, Set<string>>): Promise<{ state: State; ways: Map<string, Map<string, Step[]>> } | undefined> {
+  async function walk(story: Story, wanted: Map<string, Set<string>>, aside: boolean): Promise<{ state: State; ways: Map<string, Map<string, Step[]>> } | undefined> {
     const state: State = { pages: new Map(), starts: new Map() };
     const walking: Member[] = [];
     db.exec("BEGIN");
@@ -821,7 +837,14 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       const ways = new Map<string, Map<string, Step[]>>();
       for (const [name, places] of wanted) {
         const m = walking.find((w) => w.name === name)!;
-        ways.set(name, await waysFor(state, name, state.starts.get(name), places, async (place) => { await send(walking, m, stories.goTo!(place)); }));
+        const visit = async (place: string) => void (await send(walking, m, stories.goTo!(place)));
+        const found = await waysFor(state, name, state.starts.get(name), places, visit);
+        ways.set(name, found);
+        const pages = state.pages.get(name)!;
+        if (aside) for (const { from } of [...found.values()].flat()) for (const c of [...pages.get(from)!.values()]) {
+          const to = goesTo(c, stories.goTo!);
+          if (to !== undefined && !pages.has(to)) await visit(to);
+        }
       }
       return { state, ways };
     } finally {
@@ -837,7 +860,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
    * else the place holds (find's word, a reading) must be sent by a control on the page there.
    * Places on the way that no story stood on are walked in a cast of their own, rolled back after.
    */
-  async function reach(told: { story: Story; outcome: Outcome }[]): Promise<Map<Story, State>> {
+  async function reach(told: { story: Story; outcome: Outcome }[], byHandToo: (story: Story) => boolean): Promise<Map<Story, State>> {
     const startsFrom = new Map<Story, State>();
     const named = told.filter(({ story }) => misshapen(story).length === 0 && stories.cast[story.as] !== undefined);
     const placesOf = (story: Story): [name: string, where: string, why: string][] => [
@@ -855,7 +878,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     for (const group of starting.values()) {
       const wanted = new Map<string, Set<string>>();
       for (const { story } of group) for (const [name, where] of placesOf(story)) (wanted.get(name) ?? wanted.set(name, new Set()).get(name)!).add(where.split(" @ ")[0]!);
-      const found = await walk(group[0]!.story, wanted);
+      const found = await walk(group[0]!.story, wanted, group.some(({ story }) => byHandToo(story)));
       if (!found) continue; // its premise does not hold: the story says so
       const { state, ways } = found;
       const lead = (name: string, where: string, why: string): string | undefined => {
@@ -882,14 +905,15 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
    * story starts, the controls that lead to where it is done, pressed one by one, each landing
    * where it leads -- a step a person cannot take (covered on a phone, say) left for another way,
    * and only when none is left a failure; then the story's write, done with the control that sends
-   * it (pressed, typed into and sent, or chosen), which must send the story's write, and land. A
-   * step or a write that only an applet's own control sends is sent as the applet declares it
-   * (its own browser tests press it). Everything else the story says was checked when it was
-   * told; this checks that a person could do it. A story with nothing to do by hand (a tab
-   * closing, a write from no page, a refusal where the cast stands) is not pressed.
+   * it (pressed, typed into and sent, or chosen) or by the story's own `gesture`, which must send
+   * the story's write, and land. A step or a write that only an applet's own control sends is sent
+   * as the applet declares it, unless the story says its gesture. Everything else the story says
+   * was checked when it was told; this checks that a person could do it. A story with nothing to
+   * do by hand (a tab closing, a write from no page, a refusal where the cast stands) is not
+   * pressed.
    */
   async function byHand(story: Story, hand: Hand, tally: ByHand, state: State | undefined): Promise<string[]> {
-    if (misshapen(story).length > 0 || story.closesTab || !stories.cast[story.as]) return [];
+    if (story.closesTab || !stories.cast[story.as]) return [];
     const writing = story.does !== undefined && !story.offPage;
     const seenAt = story.does !== undefined && story.seen && !Array.isArray(story.seen) ? story.seen[story.as] : undefined;
     const target = story.from ?? seenAt;
@@ -909,19 +933,19 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       const wrong = await hand.enter(who.sessionId, start);
       if (wrong) return by(wrong);
 
-      /** Sends `write` from the page, or as an applet declares it when only an applet's own control sends it; why a person could not, if they could not. */
-      const press = async (write: Write): Promise<string | undefined> => {
+      /** Sends `write` from the page -- by `gesture`, where the story says one -- or as an applet declares it when only an applet's own control sends it; why a person could not, if they could not. */
+      const press = async (write: Write, gesture?: Gesture): Promise<string | undefined> => {
         const own = controlsOn(who.page).filter((c) => write.ops.some((op) => offers(c, write.doc, op)));
-        if (own.length > 0 && own.every((c) => c.pattern)) {
+        if (!gesture && own.length > 0 && own.every((c) => c.pattern)) {
           tally.applets++;
           await send(cast, who, write);
           return undefined;
         }
-        tally.presses++;
-        const pressed = await hand.press(write.doc, write.ops);
+        tally.gestures++;
+        const pressed = gesture ? await hand.gesture(gesture) : await hand.press(write.doc, write.ops);
         await settle(cast);
         if ("failure" in pressed) return pressed.failure;
-        if (pressed.sent.length !== 1 || !sameWrite(pressed.sent[0]!, write)) return `the page sent ${pressed.sent.map((w) => `${w.ops.map((op) => `${op.op} ${op.path} ${JSON.stringify(op.value)}`).join(", ")} on ${w.doc}`).join("; ")}`;
+        if (pressed.sent.length !== 1 || !sameWrite(pressed.sent[0]!, write)) return `the page sent ${pressed.sent.map(worded).join("; ")}`;
         return undefined;
       };
 
@@ -953,7 +977,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       }
       if (writing) {
         const from = mark(cast);
-        const why = await press(story.does!);
+        const why = await press(story.does!, story.gesture);
         if (why !== undefined) return by(`${who.name} could not ${story.does!.ops.map((op) => `${op.op} ${op.path}`).join(", ")} on ${story.does!.doc}: ${why}`);
         if (!landedSince(cast, from)) by(`nothing landed: ${who.name}'s write was refused`);
       }
@@ -973,14 +997,17 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     const only = process.env.STORY; // run only the stories whose name contains this
     const told: { story: Story; outcome: Outcome }[] = [];
     for (const story of stories.stories) if (!only || story.name.includes(only)) told.push({ story, outcome: await tell(story) });
-    const startsFrom = stories.goTo ? await reach(told) : new Map<Story, State>();
+    // by hand: every story with `gestures`, and without it each that says its gesture
+    const byHandToo = (story: Story): boolean => (options.gestures || story.gesture !== undefined) && misshapen(story).length === 0;
+    const startsFrom = stories.goTo ? await reach(told, byHandToo) : new Map<Story, State>();
     outcomes.push(...told.map(({ outcome }) => outcome));
-    if (options.gestures) {
+    const handed = told.filter(({ story }) => byHandToo(story));
+    if (handed.length > 0) {
       const started = performance.now();
-      const tally: ByHand = { stories: 0, presses: 0, applets: 0, ms: 0 };
+      const tally: ByHand = { stories: 0, gestures: 0, applets: 0, ms: 0 };
       const hand = new Hand(server.url);
       try {
-        for (const { story, outcome } of told) outcome.failures.push(...(await byHand(story, hand, tally, startsFrom.get(story))));
+        for (const { story, outcome } of handed) outcome.failures.push(...(await byHand(story, hand, tally, startsFrom.get(story))));
       } finally {
         hand.close();
       }
@@ -1002,8 +1029,11 @@ export function print(report: Report): void {
   }
   console.log(`\n${report.passed} passed, ${report.failed} failed`);
   const h = report.byHand;
-  if (h) console.log(`${h.stories} done by hand in a browser the size of a phone: ${h.presses} presses, ${h.applets} sent as an applet declares, in ${(h.ms / 1000).toFixed(1)}s`);
+  if (h) console.log(`${h.stories} done by hand in a browser the size of a phone: ${h.gestures} gestures, ${h.applets} sent as an applet declares, in ${(h.ms / 1000).toFixed(1)}s`);
 }
+
+/** A write in words: each op, its path and its value, and the document. */
+const worded = (w: Write): string => `${w.ops.map((op) => `${op.op} ${op.path}${op.value === undefined ? "" : ` ${JSON.stringify(op.value)}`}`).join(", ")} on ${w.doc}`;
 
 function where(page: string | undefined): string {
   return page === undefined ? "" : ` on ${JSON.stringify(page)}`;

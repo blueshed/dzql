@@ -1,5 +1,6 @@
 import type { PatchOp } from "../../src/json-patch";
 import { story, type Stories, type Write } from "../../src/stories";
+import { mondayOf } from "./calendar";
 
 // A small team asks for days off, told as stories. See stories.md at the root. It is the example
 // that needs to know who you are: Ann and Bo ask, Mo manages and answers, and a visitor who has
@@ -21,24 +22,29 @@ const move = (id: number, starts: string, ends: string): Write => ({ doc: "team"
 const answer = (id: number, status: "approved" | "declined"): Write => ({ doc: "team", ops: [{ op: "replace", path: `/requests/${id}/status`, value: status }] });
 const withdraw = (id: number): Write => ({ doc: "team", ops: [{ op: "remove", path: `/requests/${id}` }] });
 
+// Where a drag on the calendar starts and ends (a story's `gesture`, done by hand in a browser the
+// size of a phone): a day, its date in its week's row of its month; a request, its bar.
+const day = (date: string): string => `.week[data-month="${date.slice(0, 7)}"][data-monday="${mondayOf(date)}"] > .date:nth-child(${((new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7) + 1})`;
+const bar = (id: number): string => `.bar[data-request="${id}"]`;
+
 export const stories: Stories = {
   cast: { ann: [draft("2026-10-08", "2026-10-12")], bo: [draft("2026-10-10", "2026-10-11")], mo: [draft("2026-11-23", "2026-11-24")], visitor: [] },
   signIn: (name) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@leave.example`, password: `${name}-password` } }),
   goTo: (address) => session({ op: "replace", path: "/page", value: address }),
   stories: [
     // ── asking: a draft first, to see what it would mean ──
-    story("Ann drags across two days in Bo's week, and sees the clash before she asks", { as: "ann", from: "2026-10", does: draft("2026-10-06", "2026-10-07"), seen: { ann: "2026-10" } }),
+    story("Ann drags across two days in Bo's week, and sees the clash before she asks", { as: "ann", from: "2026-10", does: draft("2026-10-06", "2026-10-07"), gesture: { drag: [day("2026-10-06"), day("2026-10-07")] }, seen: { ann: "2026-10" } }),
     story("Ann asks for her draft, and Mo and Bo see it waiting on the calendar", { as: "ann", from: "2026-10?draft", does: askDraft, seen: { ann: "2026-10", mo: "2026-10", bo: "2026-10" } }),
     story("Ann sets her draft's last day before its first, and is told so", { as: "ann", from: "2026-10?draft", cannot: { doc: "team", ops: [{ op: "replace", path: "/draft/ends", value: "2026-10-01" }] }, told: "The last day is before the first." }),
     story("Bo asks for a draft that is only a weekend, and is told it has no working days", { as: "bo", from: "2026-10?draft", cannot: askDraft, told: "There are no working days in those." }),
 
     // ── moving what is still waiting ──
-    story("Ann drags her day in November to the Friday after, and Mo and Bo see it move", { as: "ann", from: "2026-11", does: move(2, "2026-11-20", "2026-11-20"), seen: { ann: "2026-11", mo: "2026-11", bo: "2026-11" } }),
+    story("Ann drags her day in November to the Friday after, and Mo and Bo see it move", { as: "ann", from: "2026-11", does: move(2, "2026-11-20", "2026-11-20"), gesture: { drag: [bar(2), day("2026-11-20")] }, seen: { ann: "2026-11", mo: "2026-11", bo: "2026-11" } }),
     story("Bo takes back his week in October before Mo has answered", { as: "bo", from: "2026-10?confirm=1", does: withdraw(1), seen: { bo: "2026-10", mo: "2026-10", ann: "2026-10" } }),
 
     // ── a manager's own leave ──
     story("Mo asks for two days in November, and as the manager they are approved at once, by him", { as: "mo", from: "2026-11?draft", does: askDraft, seen: { mo: "2026-11", ann: "2026-11", bo: "2026-11" } }),
-    story("Mo moves the week he approved for himself, and the team sees it move", { as: "mo", from: "2026-10", does: move(4, "2026-10-26", "2026-10-30"), seen: { mo: "2026-10", ann: "2026-10", bo: "2026-10" } }),
+    story("Mo moves the week he approved for himself, and the team sees it move", { as: "mo", from: "2026-10", does: move(4, "2026-10-26", "2026-10-30"), gesture: { drag: [bar(4), day("2026-10-28")] }, seen: { mo: "2026-10", ann: "2026-10", bo: "2026-10" } }), // grabbed at its middle, the Wednesday
     story("Mo takes back the week he approved for himself", { as: "mo", from: "2026-10?confirm=4", does: withdraw(4), seen: { mo: "2026-10", ann: "2026-10", bo: "2026-10" } }),
 
     // ── answering ──
