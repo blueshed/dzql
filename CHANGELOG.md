@@ -101,7 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   surname the family shares once ("Ada", "Femi", "Kemi" under OKAFOR); the couple's list of
   households runs by answer, said at the head of each run rather than on every row, each run a
   group named by its head so a screen reader hears the answer as it enters the run; the day says
-  its place at its head, and an event says where only where it moves; a guest's drawer is named
+  its place at its head, and an event names where only where it moves (in the couple's list a
+  repeat says "same place", so a place not yet set is not mistaken for one); a guest's drawer is named
   for them in its title alone ("The meal", "Touch a part to change it"); a gift's state no longer
   repeats its control ("open" beside Claim it, "anyone may" beside Give to it); a confirm modal is
   named for what it takes away and asks once; a place's picture has no alt of its own beside its

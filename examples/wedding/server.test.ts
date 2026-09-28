@@ -668,8 +668,10 @@ describe("the couple", () => {
     expect(okafors).toContain('<span class="what">Ada</span>');
     expect(okafors).toContain('<span class="what">Femi</span>');
     expect(okafors).toContain('<span class="what">Kemi</span>'); // asked for
-    // the lists they keep: an event says where only where it moves (the seed's three are all at the Mount Without)
-    expect((await at(ws, "?events")).split('<span class="note">The Mount Without</span>').length - 1).toBe(1);
+    // the lists they keep: an event names where only where it moves, and a repeat says so (the seed's three are all at the Mount Without)
+    const events = await at(ws, "?events");
+    expect(events.split('<span class="note">The Mount Without</span>').length - 1).toBe(1);
+    expect(events.split('<span class="note">same place</span>').length - 1).toBe(2);
     const guest = (await household(code)).guests[0]!.id;
     await asHousehold(code, [{ op: "replace", path: `/guests/${guest}/coming`, value: 1 }, { op: "add", path: "/asks/-", value: "Answered" }, { op: "add", path: "/asks/-", value: "Waiting" }]);
     const ask = (await household(code)).asks.find((a) => a.name === "Answered")!;

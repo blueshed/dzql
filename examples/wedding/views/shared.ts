@@ -106,20 +106,23 @@ export interface ListOptions {
 const placeOf = (where: string | null | undefined): string => (where ?? "").split(",")[0]!.trim().toLowerCase();
 
 /** The timetable: a row per event -- when leads the line, then what, and where when it moves: an
- * event where the one before it was (or, from `at`, where the day is) does not say it again. */
+ * event where the one above it is (or, from `at`, where the day is) does not name it again. To a
+ * guest, reading, it says nothing; to the couple, keeping the list (`open`), it says "same place", so
+ * a place not yet set, which says nothing, is not taken for one said above. */
 export function timetableRows(events: Event[], o: ListOptions & { at?: string | null } = {}): string {
   let here = placeOf(o.at);
   return rows(
     events.map((e) => {
-      const moved = e.where_at && placeOf(e.where_at) !== here ? e.where_at : null;
-      if (e.where_at) here = placeOf(e.where_at);
+      const where = e.where_at ? placeOf(e.where_at) : "";
+      const said = !where ? null : where !== here ? e.where_at : o.open ? "same place" : null;
+      here = where; // an event with no place breaks the run: "same place" is only ever the row above's
       return row({
         id: `event-${e.id}`,
         tap: o.open?.(e.id),
         chosen: o.open ? o.chosen === e.id : undefined,
         lead: `<span class="when">${esc(e.when_at ? formatWhen(e.when_at) : "—")}</span>`,
         what: e.name,
-        note: [moved, e.notes].filter(Boolean).join(" · ") || null,
+        note: [said, e.notes].filter(Boolean).join(" · ") || null,
         mark: o.open ? "pencil" : undefined,
       });
     }),
