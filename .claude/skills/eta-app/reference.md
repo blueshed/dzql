@@ -457,7 +457,10 @@ const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "s
   chosen, with `said` beneath. `confirmModal` asks before a removal.
 - `patchCollections(ui, op)` applies what find and the reading switch write (`/filter/<key>`,
   `/hide/<key>`, `/reading/<key>`).
-- The stylesheet imports `src/bento.css` first, then says its own tokens.
+- The stylesheet imports `src/bento.css` first, then says its own tokens. `bento.css` draws the
+  frame, what `layers()` draws: its buttons, fields and boxes are the bento's only in there, so
+  every bento page is drawn in it (one nothing opens over is `layers(page, "", "")`, as chat's
+  are), and the page outside it (`body`, `#app`, an old page) is the app's to style.
 - `data-moving` names the element that grows (a view transition runs only when its own tag
   changes). `data-reveal` scrolls the chosen row into the clear.
 - What opens is a button (rule 19): a cell's name is its button, and a row that taps is a

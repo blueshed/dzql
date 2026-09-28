@@ -87,7 +87,7 @@ function draftSheet(t: Team, me: Person, draft: Span | null, path: string, sessi
 /** The page for a session. */
 export function render(sessionId: string): string {
   const { person: me, page } = sessionOf(sessionId);
-  if (!me) return signInPage(sessionId);
+  if (!me) return layers(signInPage(sessionId), "", ""); // the bento's frame, so the door is drawn with its controls
   const whole = teamOf();
   const draft = whole.drafts[me.id] ?? null;
   // a page carries its own person's draft and no one else's: nobody sees another's draft, nor is sent it

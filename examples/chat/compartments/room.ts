@@ -4,7 +4,7 @@ import * as sessionDoc from "../documents/session";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { part } from "../../../src/parts";
-import { bento, rows } from "../../../src/bento";
+import { bento, layers, rows } from "../../../src/bento";
 import { esc, join, write } from "../../../src/html";
 import { slug } from "../../../src/grid";
 import { icon } from "../icons";
@@ -70,12 +70,11 @@ function renderRoom(name: string, room: string, people: string[], transcript: Ch
   });
 }
 
-/** Chat's page: the three steps. No name, the name form; no room, the rooms; else the room. */
+/** Chat's page: the three steps, in the bento's frame (nothing opens over them). No name, the name form; no room, the rooms; else the room. */
 export function render(sessionId: string): string {
   const { name, room: current } = sessionDoc.read(sessionId);
-  if (!name) return renderNameForm();
-  if (!current) return renderRooms(name, roomDoc.list());
-  return renderRoom(name, current, roomDoc.people(current), roomDoc.read(current));
+  const page = !name ? renderNameForm() : !current ? renderRooms(name, roomDoc.list()) : renderRoom(name, current, roomDoc.people(current), roomDoc.read(current));
+  return layers(page, "", "");
 }
 
 /** A room's conversation, kept in delta (`room:<name>`): a message is written by someone with a name. */

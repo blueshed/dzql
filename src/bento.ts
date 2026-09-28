@@ -163,7 +163,8 @@ export function choice(label: string, options: Option[], locked = false): string
  * A page with what may open over it: the ground -- the page, and the drawer's layer over it -- and
  * the modal's layer. Each layer is always there, empty when nothing is open, so opening or closing
  * a drawer or a modal sends that layer alone (src/parts.ts); a modal puts the ground behind it
- * `inert` by its own tag, which is sent alone too. The wrappers are `display: contents`.
+ * `inert` by its own tag, which is sent alone too. The wrappers are `display: contents`, and the
+ * bento's frame: `src/bento.css` draws the elements in them, and no others.
  */
 export function layers(page: string, drawer: string, modal: string): string {
   const ground = `<div class="ground"${modal ? " inert" : ""}>${page}${part("drawers", `<div class="layer">${drawer}</div>`)}</div>`;

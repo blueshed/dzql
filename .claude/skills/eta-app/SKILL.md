@@ -85,7 +85,8 @@ Everything below is the least that makes it pass.
    better an island: a railroad component made an applet by `island()` (`<name>-applet.tsx`,
    reference.md "Applets").
 7. **`client/index.html` + `client/main.ts`** -- `main.ts` imports the example's applets, then
-   `src/client/app`. The stylesheet imports `src/bento.css` first, then says its own tokens.
+   `src/client/app`. The stylesheet imports `src/bento.css` first, then says its own tokens; it
+   draws only what is in `layers()`, so the page is drawn in it.
 8. **`index.ts`** -- `export const example: Example = { name, compartments, render, active, index, delta, who?, routes? }`. `render(sessionId)` is the whole page.
 9. **`cli.ts`** (optional) -- an `aliases` table of short verbs that build `{doc, ops}`; no database.
 10. **Tests** -- a test for each document's rules and shapes, a `server.test.ts` that drives writes

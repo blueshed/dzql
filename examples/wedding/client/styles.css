@@ -33,7 +33,7 @@
 /* ── base ── */
 html { color-scheme: light; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.45; }
-main#app { position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg) 96px; }
+main#app { box-sizing: border-box; position: relative; z-index: 1; max-width: 1000px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg) 96px; }
 a { color: var(--navy); }
 h2, h3 { margin: 0; font-size: 15px; font-weight: 600; }
 /* three sizes of type: the cap, the word, the note */

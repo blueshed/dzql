@@ -136,6 +136,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   them by `[aria-pressed="true"]` colours them by `[aria-checked="true"]` (the wedding's yes and no
   do). Leave's own reading switch, drawn by hand, carries `aria-checked` alone too, and the
   wedding's stylesheet no longer lights a checked radio itself: the kernel's rule does.
+- **`src/bento.css` draws the frame and nothing else** (todo n80). Its element rules (every box
+  `border-box`, the button and field resets, the focus rings, `[hidden]`) restyled every page of
+  an app that imported it, bento or not. They hold only inside what `layers()` draws, the ground
+  and the layers over it; the bento's classes (`.tool`, `.row`, …) still work wherever they are
+  put. What an app changes:
+  - **A page drawn outside `layers()` loses them**: put it in the frame (`layers(page, "", "")`,
+    nothing opens over it) to keep the bento's buttons and fields, as chat's pages, leave's
+    sign-in and the wedding's welcome now are; or style it as the app's own.
+  - **The app's own elements outside the frame say their own box-sizing**: `body`, `#app` (each
+    example's `main#app` is `border-box` now, so its width still counts its padding).
 - **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
   browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
   when not, as was a group of radios none of which was chosen. So a title and an unticked box

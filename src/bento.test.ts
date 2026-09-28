@@ -300,6 +300,9 @@ describe("the surfaces in a browser", () => {
     await waitFor(view, `document.getElementById('app').innerHTML.length > 0`, (v) => v === true);
   }
 
+  /** A page as an app draws it: in the bento's frame, with nothing open over it. */
+  const framed = (page: string): string => layers(page, "", "");
+
   const sent = (view: Bun.WebView) => view.evaluate<{ doc: string; ops: { op: string; path: string; value?: unknown }[] }[]>(`window.__sent`);
   const go = (page: string) => write("desk", "replace", "/page", page);
 
@@ -311,7 +314,7 @@ describe("the surfaces in a browser", () => {
     const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "market", opens: go("market") }), b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } })];
     const trail = [{ label: "The desk", back: go("") }, { label: "the market" }];
     const inPlace = [`<button type="button" class="tool">Say</button>`];
-    await using view = await show(b.boxPage(trail, inPlace, cells, { key: "market", tools: [b.tool("Find", { icon: "search", iconOnly: true, write: go("market?find") })], body: rows([b.row({ tap: go("market?symbol=A"), what: "Alpha" })], "none") }));
+    await using view = await show(framed(b.boxPage(trail, inPlace, cells, { key: "market", tools: [b.tool("Find", { icon: "search", iconOnly: true, write: go("market?find") })], body: rows([b.row({ tap: go("market?symbol=A"), what: "Alpha" })], "none") })));
     // the window's own: its way back, its tool, its row, the page's tools
     expect(await reachable(view)).toEqual(["The desk", "Find", "Alpha", "Undo", "Redo", "Leave"]);
   });
@@ -329,7 +332,7 @@ describe("the surfaces in a browser", () => {
     test(`on a phone ${width} wide (the phone's rules hold below 820): no field is under 16px, find's field fills its bar, and a way back on the trail is a touch tall where it is pressed`, async () => {
       const cells = [b.cell({ name: "market", opens: go("market") })];
       // the box on a ground of its own, its trail three deep: the root, a way back, where you are
-      await using view = await show(b.boxPage([{ label: "Eta" }, { label: "Chat", back: go("") }, { label: "The desk" }], [], cells), width);
+      await using view = await show(framed(b.boxPage([{ label: "Eta" }, { label: "Chat", back: go("") }, { label: "The desk" }], [], cells)), width);
       expect(await pressesAround(view, ".crumbs a", touch)).toEqual([]);
 
       const find = b.findControl("market", { word: "", shown: 3, total: 3 });
@@ -367,7 +370,7 @@ describe("the surfaces in a browser", () => {
   for (const width of [320, 375]) {
     test(`${width} wide, a trail that wraps: each way back is pressed over a touch, and a press on one never lands on another`, async () => {
       const trail = [{ label: "Rowena & Dashiell", back: go("a") }, { label: "The Okafors", back: go("b") }, { label: "Where to stay", back: go("c") }, { label: "the market" }];
-      await using view = await show(b.boxPage(trail, [], [b.cell({ name: "market", opens: go("market") })]), width);
+      await using view = await show(framed(b.boxPage(trail, [], [b.cell({ name: "market", opens: go("market") })])), width);
       expect(await view.evaluate<number>(`new Set([...document.querySelectorAll('.crumbs a, .crumbs b')].map((e) => Math.round(e.getBoundingClientRect().top))).size`)).toBeGreaterThan(1); // it wraps
       expect(await pressesElsewhere(view, ".crumbs a")).toEqual([]);
       expect(await pressesAround(view, ".crumbs a", touch)).toEqual([]);
@@ -378,7 +381,7 @@ describe("the surfaces in a browser", () => {
     test(`${width} wide: find's eye and a way back in the window are drawn 26px, and pressed over a touch`, async () => {
       const cells = [b.cell({ name: "market", opens: go("market") })];
       const find = b.findControl("market", { word: "al", shown: 1, total: 3 });
-      await using view = await show(b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], [], cells, { key: "market", tools: [find.tool], filter: find.filter, body: "" }), width);
+      await using view = await show(framed(b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], [], cells, { key: "market", tools: [find.tool], filter: find.filter, body: "" })), width);
       expect(await view.evaluate<number[]>(`['.filter .tool', '.cell.open .cell-back'].map((s) => document.querySelector(s).getBoundingClientRect().height)`)).toEqual([26, 26]);
       expect(await pressesAround(view, ".filter .tool, .cell.open .cell-back", touch)).toEqual([]);
     });
@@ -387,8 +390,8 @@ describe("the surfaces in a browser", () => {
   test("opening a window moves nothing else: the tray, the cell that grows and what is in place are the same elements, and what is typed in place stays", async () => {
     const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "market", opens: go("market"), summary: "16 symbols" })];
     const inPlace = [`<p class="note">said once</p>`, `<form id="say"><input name="t" value=""></form>`];
-    const closed = b.boxPage([{ label: "The desk" }], inPlace, cells);
-    const opened = b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], inPlace, cells, { key: "market", body: "" });
+    const closed = framed(b.boxPage([{ label: "The desk" }], inPlace, cells));
+    const opened = framed(b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], inPlace, cells, { key: "market", body: "" }));
     await using view = await show(closed);
     await view.evaluate(`(() => { window.__was = ['.cells', '[data-moving="market"]', '#say'].map((s) => document.querySelector(s)); document.querySelector('#say input').value = 'half typed'; })()`);
     const same = `['.cells', '[data-moving="market"]', '#say'].map((s, i) => document.querySelector(s) === window.__was[i]).concat(document.querySelector('#say input').value)`;
@@ -476,10 +479,10 @@ describe("the surfaces in a browser", () => {
 
   test("the keyboard is never left nowhere: a window opened by back or forward takes it from the cell it put behind", async () => {
     const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "market", opens: go("market") })];
-    await using view = await show(b.boxPage([{ label: "The desk" }], [], cells));
+    await using view = await show(framed(b.boxPage([{ label: "The desk" }], [], cells)));
     await view.evaluate(`document.querySelector('.cell[data-key="board"] button').focus()`);
     // the back button: the session goes to the market, and the page comes without a press
-    await draw(view, b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], [], cells, { key: "market", body: "" }));
+    await draw(view, framed(b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], [], cells, { key: "market", body: "" })));
     await waitFor(view, `document.querySelector('.cell.open') !== null`, (v) => v === true);
     expect(await at(view, "The desk")).toBe("The desk");
   });
@@ -500,10 +503,24 @@ describe("the surfaces in a browser", () => {
     expect(await view.evaluate<unknown[]>(ring)).toEqual(["SELECT", true, "solid", true]);
   });
 
+  test("bento.css draws the frame and nothing else: an app's own elements beside it are as the browser draws them", async () => {
+    const plain = `<button type="button">b</button><input aria-label="i"><select aria-label="s"><option>o</option></select><textarea aria-label="t"></textarea><a href="#">a</a><details><summary>s</summary></details><div style="padding: 10px; width: 50px"></div><p hidden style="display: block">h</p>`;
+    await using view = await show(`<div id="own">${plain}</div><div id="bare"></div>${framed(`<div id="framed">${plain}</div>`)}`);
+    const unlike = await view.evaluate<Record<string, string[]>>(`(() => {
+      // the same elements in a shadow root, where no page's stylesheet reaches: the browser's own look
+      const bare = document.getElementById('bare').attachShadow({ mode: 'open' });
+      bare.innerHTML = document.getElementById('own').innerHTML;
+      const look = (el) => { const c = getComputedStyle(el); let s = ''; for (let i = 0; i < c.length; i++) s += c[i] + ':' + c.getPropertyValue(c[i]) + ';'; return s; };
+      const unlike = (id) => [...document.getElementById(id).children].filter((el, i) => look(el) !== look(bare.children[i])).map((el) => el.tagName.toLowerCase());
+      return { own: unlike('own'), framed: unlike('framed') };
+    })()`);
+    expect(unlike).toEqual({ own: [], framed: ["button", "input", "select", "textarea", "a", "details", "div", "p"] });
+  });
+
   test("what opens is a button: each cell, thing and row that opens is where a Tab stops, and Space or Enter opens it", async () => {
     const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } }), b.cell({ name: "quiet" })];
     const list = rows([b.row({ id: "r-a", tap: go("?symbol=A"), what: "Alpha", mark: "pencil" }), b.row({ id: "r-b", what: "Beta" })], "none");
-    await using view = await show(b.boxPage([{ label: "The desk" }], [list], cells));
+    await using view = await show(framed(b.boxPage([{ label: "The desk" }], [list], cells)));
     // where a Tab stops in each: the element itself, or what in it takes the keyboard
     const stop = (selector: string) => `(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el.matches('button, a[href], [tabindex]') ? el : el.querySelector('button, a[href], [tabindex]'); })()`;
     const opens: [string, string][] = [['.cell[data-key="board"]', "board"], ['.cell[data-key="clock"]', "?clock"], ["#r-a", "?symbol=A"]];
