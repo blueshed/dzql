@@ -229,18 +229,30 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    they are told about it -- a link in an email, a shared URL -- the cast says so in its own
    writes: a member the cast puts at an address arrived there as the link brings them, and their
    ways start from it.
-6. By hand, in a browser the size of a phone (`Bun.WebView`, `src/by-hand.ts`): each story that
-   says its `gesture`, and with `STORY_BY_HAND=1` (`run(example, stories, undefined, { byHand: true })`,
-   which `bun run stories:all` sets) every story, is done again as its author, in a tab of their
-   session. From where the story starts, the controls on the way to where it is done are pressed,
-   each landing where it leads (a step a person cannot take, covered on a phone, is left for
-   another way); then the write is done as a person does it: a button pressed, a form typed into
-   and sent, a select chosen, or the story's gesture. A press is a native click at the middle of
-   the control, once it holds still and nothing covers it, never a script's `element.click()`; a
-   drag is a mouse's pointer events, each sent to what is under the pointer, then the click a
-   browser sends. What the page sent must be the story's write, and it must land: `by hand, ann
-   could not replace /draft on team: the page sent replace /draft {…} on team`. A write only an
-   applet's own control sends is sent as its mount declares, unless the story says the gesture.
+6. By hand, in a browser the size of a phone (`Bun.WebView`, `src/by-hand.ts`), as its author, in
+   a tab of their session: each story that says its `gesture`, and with `STORY_BY_HAND=1`
+   (`run(example, stories, undefined, { byHand: true })`, which `bun run stories:all` sets) these:
+   - a write from a page (`does`, not `offPage`): the controls on the way to where it is done are
+     pressed from where the story starts, each landing where it leads (a step a person cannot
+     take, covered on a phone, is left for another way), then the write is done as a person does
+     it -- a button pressed, a form typed into and sent, a select or a date chosen, or the
+     story's gesture. What the page sent must be the story's write, and it must land: `by hand,
+     ann could not replace /draft on team: the page sent replace /draft {…} on team`.
+   - a refusal whose write a control of the page's own sent when it was told: walked to, then
+     tried so, and it must not land. Where the control cannot make it (a select without that
+     choice), nobody can send it from the page, as the story says.
+   - any other refusal told from a place (`from`): walked to, and nothing pressed. One told where
+     the cast stands with no control that sends it is not done by hand: that none does is the
+     point. Nor is a write from no page, nor a tab closing.
+
+   A press is a native click at the middle of the control, once it holds still and nothing
+   covers it, never a script's `element.click()`; a drag is a mouse's pointer events, each sent
+   to what is under the pointer, then the click a browser sends. A gesture's write is what the
+   page sent from its press going down to the gesture done; what the page sends by itself,
+   before anything is pressed or in the quarter second after a gesture's write lands, fails the
+   story. A record may carry no key the story does not name, but for a field left blank. A write
+   only an applet's own control sends is sent as its mount declares, unless the story says the
+   gesture.
 7. Report by story name. A failing story is a sentence, not a stack trace.
 
 *What it does not do yet (17 September).* Said plainly, because a builder will otherwise trust it

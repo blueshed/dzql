@@ -19,8 +19,8 @@ if (!(await Bun.file(`${dir}/index.ts`).exists())) {
 }
 const { example } = await import(`${dir}/index.ts`);
 
-// STORY_BY_HAND=1 does every story by hand too, in a browser the size of a phone (src/by-hand.ts);
-// a story that says its gesture is done by hand whenever it is told
+// STORY_BY_HAND=1 does by hand too, in a browser the size of a phone (src/by-hand.ts), each write a
+// page sends and each refusal a control of it sends; a story that says its gesture, whenever it is told
 const report = await run(example, stories, undefined, { byHand: !!process.env.STORY_BY_HAND });
 print(report);
 process.exit(report.failed > 0 ? 1 : 0);

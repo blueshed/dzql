@@ -29,8 +29,9 @@ Everything below is the least that makes it pass.
   leads ...`), since the harness can put anyone anywhere and a person cannot.
 - A drag or a tap on an applet is the story's `gesture`: `{ drag: [from, to] }` or `{ press }`,
   CSS selectors on the page (leave's calendar). The story is then done by hand in a browser the
-  size of a phone, and the gesture must send its `does`. `STORY_BY_HAND=1 bun run stories` does
-  every story by hand, pressing the controls the page draws; `bun run stories:all` does.
+  size of a phone, and the gesture must send its `does`. `STORY_BY_HAND=1 bun run stories` (and
+  `bun run stories:all`) does by hand each write a page sends and each refusal a control of the
+  page sends, pressing the controls the page draws.
 
 ## Vocabulary, once
 

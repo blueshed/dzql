@@ -313,13 +313,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   press going down to the gesture done; what the page sends by itself -- before anything is
   pressed, or in the quarter second after a gesture's write lands -- fails the story. leave's
   three drags on its calendar say theirs.
-  With `STORY_BY_HAND=1` (`run(example, stories, undefined, { byHand: true })`) every story is done by
-  hand, its control pressed, typed into and sent, or chosen, so a control hidden by a stylesheet,
-  covered, of no size, off a phone's screen, never still, or a field no form sends fails by name,
-  where without a browser it passed. `Report.byHand` counts the stories, presses and time.
-  `bun run stories:all` does every story by hand (about 13 s more for the four examples). It
-  found one: on a phone leave's draft drawer covers the page's tools, so "Ann signs out", told
-  where the cast leaves her with the drawer open, is now told from the calendar (`from: ""`).
+  With `STORY_BY_HAND=1` (`run(example, stories, undefined, { byHand: true })`), each write a
+  page sends is done by hand, its control pressed, typed into and sent, or chosen; each refusal
+  a control of the page's own sends is tried so, and must not land; any other refusal told from a
+  place is walked to. So a control hidden by a stylesheet, covered, of no size, off a phone's
+  screen, never still, or a field no form sends fails by name, where without a browser it passed.
+  Not done by hand: a refusal no control sends where the cast stands (that none does is the
+  point), a write from no page, a tab closing. `Report.byHand` counts the stories, presses and
+  time. `bun run stories:all` does so: 74 of the examples' 99 stories (61 writes pressed, 6
+  refusals tried, 7 walked to), about 14 s more. It found one: on a phone leave's draft drawer
+  covers the page's tools, so "Ann signs out", told where the cast leaves her with the drawer
+  open, is now told from the calendar (`from: ""`).
 - **An applet's mount may name the only values a control of it sends**: `appletWrites([doc, op,
   path, value], …)`, one for each, said as one write with its `values` on the mount. A story's
   write counts as offered only with one of them. It is how an applet says where it goes: the

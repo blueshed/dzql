@@ -22,11 +22,11 @@ const PATIENCE = 2000;
 /** How long a page must then send nothing more, after a gesture's write has landed. */
 const QUIET = 250;
 
-/** What a press did: the writes the page sent, or why a person could not have done it. */
-export type Pressed = { sent: Write[] } | { failure: string };
+/** What a press did: the writes the page sent, or why a person could not have done it -- `none` when nothing on the page could send it at all. */
+export type Pressed = { sent: Write[] } | { failure: string; none?: true };
 
 /** One control the page found for a write, and how a person sends it: a press, a form's fields and its submit, or an editing form's fields; or, first, the summary that opens the `<details>` it is folded in. */
-type Plan = { how: "press" | "submit" | "edit" | "open"; control: string; fields: { at: string; kind: "type" | "choose" | "tick"; text: string }[]; submit?: string };
+type Plan = { how: "press" | "submit" | "edit" | "open"; control: string; fields: { at: string; kind: "type" | "choose" | "tick"; text: string; none?: boolean }[]; submit?: string };
 
 // The page's side, a string since it runs in the browser: the elements that send a write, as the
 // kernel's client sends them (src/client/app.ts), and why a person could not press one.
@@ -69,8 +69,10 @@ const PAGE = `(() => {
   }
 
   function field(el, value) {
-    const kind = el.matches("select") ? "choose" : el.matches("[type=checkbox], [type=radio]") ? "tick" : "type";
-    return { at: mark(el), kind, text: text(value) };
+    // a select's menu and a date's picker are the system's: chosen as the browser chooses, not typed
+    const kind = el.matches("select, [type=date], [type=time], [type=datetime-local], [type=month], [type=week], [type=color]") ? "choose" : el.matches("[type=checkbox], [type=radio]") ? "tick" : "type";
+    const none = el.matches("select") && ![...el.options].some((o) => !o.disabled && o.value === text(value)); // a choice it does not offer
+    return { at: mark(el), kind, text: text(value), none };
   }
 
   // how to send this write from the page, or why nobody can: one control for every op of it
@@ -86,12 +88,12 @@ const PAGE = `(() => {
           return { how: "edit", control: mark(form), fields: fields.map((c, i) => field(c.el, ops[i].value)) };
         }
       }
-      return { failure: "no one control sends all of it" };
+      return { failure: "no one control sends all of it", none: true };
     }
     const [op] = ops;
     const found = candidates(doc, op);
     const live = found.filter((c) => c.how !== "dead");
-    if (live.length === 0) return { failure: found.length ? "its field is in no form that sends it" : "nothing on the page sends it" };
+    if (live.length === 0) return { failure: found.length ? "its field is in no form that sends it" : "nothing on the page sends it", none: true };
     let first = "";
     for (const c of live) {
       // folded away in a <details>: its summary is pressed first, as a person opens it
@@ -160,7 +162,13 @@ const PAGE = `(() => {
   const choose = (selector, value) => { const el = document.querySelector(selector); el.value = value; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); };
   const clear = (selector) => { const el = document.querySelector(selector); el.focus(); el.select?.(); };
   const leave = () => document.activeElement?.blur();
-  window.__hand = { plan, why: (selector) => { const el = document.querySelector(selector); return el ? why(el) : "not on the page"; }, drag, asked, stands, choose, clear, leave };
+  // ...and a choice the page does not offer is one nobody can make
+  const planned = (doc, ops) => {
+    const p = plan(doc, ops);
+    const unchosen = p.fields && p.fields.find((f) => f.none);
+    return unchosen ? { failure: "it offers no choice of " + JSON.stringify(unchosen.text), none: true } : p;
+  };
+  window.__hand = { plan: planned, why: (selector) => { const el = document.querySelector(selector); return el ? why(el) : "not on the page"; }, drag, asked, stands, choose, clear, leave };
   return true;
 })()`;
 
@@ -222,7 +230,7 @@ export class Hand {
       }
       if ("failure" in plan) return plan;
       for (const f of plan.fields) {
-        if (f.kind === "choose") await view.evaluate(`window.__hand.choose(${JSON.stringify(f.at)}, ${JSON.stringify(f.text)})`); // a select's menu is the system's: chosen as the browser chooses
+        if (f.kind === "choose") await view.evaluate(`window.__hand.choose(${JSON.stringify(f.at)}, ${JSON.stringify(f.text)})`);
         else if (f.kind === "tick") await this.touch(f.at);
         else {
           await this.touch(f.at);

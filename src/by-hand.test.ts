@@ -29,7 +29,7 @@ describe("the stories by hand", () => {
   test("a story a person can do passes by hand too: a form typed into and sent, a button pressed, a way pressed to where it is done", async () => {
     const report = await run(chat, chatStories, undefined, { byHand: true });
     expect(report.outcomes.flatMap((o) => o.failures)).toEqual([]);
-    expect(report.byHand).toMatchObject({ stories: 7, presses: 7, applets: 0 });
+    expect(report.byHand).toMatchObject({ stories: 8, presses: 8, applets: 0 });
 
     const { example: ticker } = await import("../examples/ticker/index");
     const { stories: told } = await import("../examples/ticker/stories");
@@ -157,6 +157,25 @@ describe("the stories by hand", () => {
       ["a cannot story takes no gesture"],
     ]);
     expect(report2.byHand).toBeUndefined(); // not told, and not done by hand
+  }, 60000);
+
+  test("a refusal whose write a control on the page sends is tried by hand: leave's days hidden by a stylesheet fail the story that types one", async () => {
+    const { example: leave } = await import("../examples/leave/index");
+    const { stories: told } = await import("../examples/leave/stories");
+    const hidden: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replaceAll('<form class="days"', '<form class="days" style="display: none"') };
+    const report = await run(hidden, told, undefined, { byHand: true });
+    expect(report.outcomes.filter((o) => o.failures.length > 0).map((o) => [o.name, o.failures])).toEqual([
+      ["Ann sets her draft's last day before its first, and is told so", ["by hand, ann could not replace /draft/ends on team: the control for it is not to be seen"]],
+    ]);
+
+    // a symbol the Watch modal's select does not offer is one nobody can send from the page: its refusal is the wire's
+    const { example: ticker } = await import("../examples/ticker/index");
+    const { stories: watching } = await import("../examples/ticker/stories");
+    const unquoted = watching.stories.filter((s) => s.name.startsWith("Ann cannot watch a symbol"));
+    expect((await run(ticker, { ...watching, stories: unquoted }, undefined, { byHand: true })).outcomes[0]!.failures).toEqual([]);
+    // and a refusal that lands, sent from the page, fails when it is told and by hand
+    const hello: Story = { name: "Ada cannot say hello", as: "ada", cannot: say };
+    expect((await run(chat, { ...chatStories, stories: [hello] }, undefined, { byHand: true })).outcomes[0]!.failures).toContain("by hand, ada's write landed, and should have been refused");
   }, 60000);
 
   test("a record the page sent with a key the story does not name is not its write, unless the key is blank: a calendar's half day fails", async () => {

@@ -47,8 +47,9 @@ export { comparable };
 // tests' to check.
 //
 // By hand, a story is done again in a browser the size of a phone, as a person does it
-// (src/by-hand.ts): each story that says its `gesture`, and with `byHand` every story. Its
-// write must be what the page sends, and it must land.
+// (src/by-hand.ts): each story that says its `gesture`, and with `byHand` each write a page sends
+// and each refusal a control of the page sends (stories.md, the harness, step 6). Its write must
+// be what the page sends, and land, or be refused.
 
 export type Outcome = { name: string; failures: string[] };
 
@@ -413,6 +414,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
   const ledgerMax = ledger.max;
   const outcomes: Outcome[] = [];
   let byHandTally: ByHand | undefined;
+  const tryable = new Set<Story>(); // the refusals a control of the page's own sends, when told: tried by hand
   // what the kernel reports failing goes to the story being told
   let failing: string[] | undefined;
   const hearFailures = onFailure((what, err) => failing?.push(`the server failed ${what}: ${err instanceof Error ? err.message : String(err)}`));
@@ -663,6 +665,9 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         const from = mark(cast);
         // P3: a button on the author's page that sends exactly this, refused without a word, is a control that always fails
         const buttons = controlsOn(who.page, failures).filter((c) => !c.free);
+        // a control of the page's own that sends it is one to try by hand; with none, that none does is the point
+        const own = controlsOn(who.page).filter((c) => !c.pattern);
+        if (story.cannot.ops.every((op) => own.some((c) => offers(c, story.cannot.doc, op)))) tryable.add(story);
         if (story.told === undefined && story.cannot.ops.every((op) => buttons.some((c) => offers(c, story.cannot.doc, op)))) failures.push(`${who.name}'s page offers this, and it is refused without a word: a control that always fails`);
         const answer = answerTo(who, await told(cast, who, story.cannot, "cannot"), from);
         const handedBack = sentSince(who, from).some((h) => h.type === "render");
@@ -906,18 +911,19 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
    * where it leads -- a step a person cannot take (covered on a phone, say) left for another way,
    * and only when none is left a failure; then the story's write, done with the control that sends
    * it (pressed, typed into and sent, or chosen) or by the story's own `gesture`, which must send
-   * the story's write, and land. A step or a write that only an applet's own control sends is sent
-   * as the applet declares it, unless the story says its gesture. Everything else the story says
-   * was checked when it was told; this checks that a person could do it. A story with nothing to
-   * do by hand (a tab closing, a write from no page, a refusal where the cast stands) is not
-   * pressed.
+   * the story's write, and land; or, for a refusal a control of the page's own sends, pressed so,
+   * and it must not land. A step or a write that only an applet's own control sends is sent as the
+   * applet declares it, unless the story says its gesture. Everything else the story says was
+   * checked when it was told; this checks that a person could do it. A story with nothing to do
+   * by hand (a tab closing, a write from no page, a refusal no control sends where the cast
+   * stands) is not pressed.
    */
   async function byHand(story: Story, hand: Hand, tally: ByHand, state: State | undefined): Promise<string[]> {
     if (story.closesTab || !stories.cast[story.as]) return [];
-    const writing = story.does !== undefined && !story.offPage;
+    const tried = story.does !== undefined ? (story.offPage ? undefined : story.does) : tryable.has(story) ? story.cannot : undefined;
     const seenAt = story.does !== undefined && story.seen && !Array.isArray(story.seen) ? story.seen[story.as] : undefined;
     const target = story.from ?? seenAt;
-    if (!writing && target === undefined) return [];
+    if (!tried && target === undefined) return [];
     tally.stories++;
     const failures: string[] = [];
     const by = (what: string): string[] => (failures.push(`by hand, ${what}`), failures);
@@ -933,6 +939,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       const wrong = await hand.enter(who.sessionId, start);
       if (wrong) return by(wrong);
 
+      let none = false; // the last press found nothing on the page that could send its write at all
       /** Sends `write` from the page -- by `gesture`, where the story says one -- or as an applet declares it when only an applet's own control sends it; why a person could not, if they could not. */
       const press = async (write: Write, gesture?: Gesture): Promise<string | undefined> => {
         const own = controlsOn(who.page).filter((c) => write.ops.some((op) => offers(c, write.doc, op)));
@@ -944,7 +951,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         tally.presses++;
         const pressed = gesture ? await hand.gesture(gesture) : await hand.press(write.doc, write.ops);
         await settle(cast);
-        if ("failure" in pressed) return pressed.failure;
+        if ("failure" in pressed) return (none = !!pressed.none), pressed.failure;
         if (pressed.sent.length !== 1 || !sameWrite(pressed.sent[0]!, write)) return `the page sent ${pressed.sent.map(worded).join("; ")}`;
         return undefined;
       };
@@ -975,11 +982,14 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
           }
         }
       }
-      if (writing) {
+      if (tried) {
         const from = mark(cast);
-        const why = await press(story.does!, story.gesture);
-        if (why !== undefined) return by(`${who.name} could not ${story.does!.ops.map((op) => `${op.op} ${op.path}`).join(", ")} on ${story.does!.doc}: ${why}`);
-        if (!landedSince(cast, from)) return by(`nothing landed: ${who.name}'s write was refused`);
+        const why = await press(tried, story.gesture);
+        if (why !== undefined && story.cannot && none) return failures; // nobody could send it from the page: the refusal is for the wire's, as the story says
+        if (why !== undefined) return by(`${who.name} could not ${tried.ops.map((op) => `${op.op} ${op.path}`).join(", ")} on ${tried.doc}: ${why}`);
+        const landed = landedSince(cast, from);
+        if (story.does && !landed) return by(`nothing landed: ${who.name}'s write was refused`);
+        if (story.cannot && landed) return by(`${who.name}'s write landed, and should have been refused`);
         if (story.gesture) await hand.quiet(); // an applet's own code: after its write it must be still
       }
       // what the page sent that nothing pressed asked for: before a press, or after the write
@@ -1000,7 +1010,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     const only = process.env.STORY; // run only the stories whose name contains this
     const told: { story: Story; outcome: Outcome }[] = [];
     for (const story of stories.stories) if (!only || story.name.includes(only)) told.push({ story, outcome: await tell(story) });
-    // by hand: every story with `byHand`, and without it each that says its gesture
+    // by hand: with `byHand` each story that has something to do there, and without it each that says its gesture
     const byHandToo = (story: Story): boolean => (options.byHand || story.gesture !== undefined) && misshapen(story).length === 0;
     const startsFrom = stories.goTo ? await reach(told, byHandToo) : new Map<Story, State>();
     outcomes.push(...told.map(({ outcome }) => outcome));
