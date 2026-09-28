@@ -517,19 +517,27 @@ describe("the surfaces in a browser", () => {
     expect(unlike).toEqual({ own: [], framed: ["button", "input", "select", "textarea", "a", "details", "div", "p"] });
   });
 
-  test("while a layer holds a drawer or a modal, the page behind holds still, whatever the app calls its root", async () => {
-    const box = b.boxPage([{ label: "The desk" }], [], [b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } })]);
-    const trip = (drawer: string, modal: string) => `<div class="trip">${layers(box, drawer, modal)}</div>`;
-    const still = `getComputedStyle(document.body).overflow`;
-    await using view = await show(trip("", ""));
-    expect(await view.evaluate<string>(still)).toBe("visible");
-    await draw(view, trip(b.drawer("clock", "The clock", "", go("")), ""));
-    expect(await waitFor(view, still, (v) => v === "hidden", 1000).catch(() => view.evaluate(still))).toBe("hidden");
-    await draw(view, trip("", b.confirmModal("Stop the clock", "Sure?", go("?stop"), go(""))));
-    expect(await waitFor(view, `document.querySelector('dialog') && ${still}`, (v) => v === "hidden", 1000).catch(() => view.evaluate(still))).toBe("hidden");
-    await draw(view, trip("", ""));
-    expect(await waitFor(view, still, (v) => v === "visible", 1000).catch(() => view.evaluate(still))).toBe("visible");
-  });
+  // a wheel over the page, as a person scrolls it: whether the page moved
+  const wheels = async (view: Bun.WebView): Promise<boolean> => {
+    const from = await view.evaluate<number>(`scrollY`);
+    await view.scroll(0, 300);
+    return waitFor(view, `scrollY`, (y) => y !== from, 1000).then(() => true, () => false);
+  };
+
+  for (const width of [375, 1280]) {
+    test(`${width} wide, whatever the app calls its root: a modal holds the page behind it still; a drawer does ${width < 820 ? "too, its sheet over the page" : "not, docked beside a page still in reach (rule 18)"}`, async () => {
+      const box = b.boxPage([{ label: "The desk" }], [`<div style="height: 3000px"></div>`], [b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } })]);
+      const trip = (drawer: string, modal: string) => `<div class="trip">${layers(box, drawer, modal)}</div>`;
+      await using view = await show(trip(b.drawer("clock", "The clock", "", go("")), ""), width);
+      expect(await wheels(view)).toBe(width >= 820);
+      await draw(view, trip("", b.confirmModal("Stop the clock", "Sure?", go("?stop"), go(""))));
+      await waitFor(view, `!!document.querySelector('dialog')`, (v) => v === true);
+      expect(await wheels(view)).toBe(false);
+      await draw(view, trip("", ""));
+      await waitFor(view, `!document.querySelector('dialog')`, (v) => v === true);
+      expect(await wheels(view)).toBe(true);
+    });
+  }
 
   test("what opens is a button: each cell, thing and row that opens is where a Tab stops, and Space or Enter opens it", async () => {
     const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } }), b.cell({ name: "quiet" })];

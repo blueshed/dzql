@@ -222,8 +222,10 @@ body:has(.page.windowed) { overflow: hidden; }
      the rail, Undo -- and the drawer goes by its ×, by Escape, or by what is tapped next */
   .scrim:not(.modal-scrim) { display: none; }
 }
-/* while a layer holds a drawer or a modal, the page behind holds still on a phone (rules 6, 14) */
-body:has(.layer > *) { overflow: hidden; }
+/* the page behind holds still while a modal asks (rule 14), and below 820px while a drawer's sheet
+   covers it (rule 6); from 820px a docked drawer leaves the page in reach, scrolling (rule 18) */
+body:has(dialog.modal) { overflow: hidden; }
+@media (max-width: 819.98px) { body:has(.drawer) { overflow: hidden; } }
 
 /* ── the modal: new or delete, one question, nothing else may be touched while it asks (rule 14).
    Rendered `open`, not shown by script, so it carries its own scrim and is centred by hand. ── */

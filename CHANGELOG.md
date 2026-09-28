@@ -146,6 +146,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     sign-in and the wedding's welcome now are; or style it as the app's own.
   - **The app's own elements outside the frame say their own box-sizing**: `body`, `#app` (each
     example's `main#app` is `border-box` now, so its width still counts its padding).
+  - **The lock is the kernel's, and says when**: `.site.locked` holds nothing now. The page
+    behind holds still while a `dialog.modal` is open, at every width, and while a `.drawer` is
+    open below 820px, where its sheet covers the page; from 820px a docked drawer leaves the page
+    scrolling beside it (rule 18), where an example that drew `locked` held it still.
 - **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
   browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
   when not, as was a group of radios none of which was chosen. So a title and an unticked box
@@ -424,8 +428,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The page behind an open drawer or modal holds still whatever the app calls its root** (todo
   n81). `src/bento.css` held it by `body:has(.site.locked)`, a class two examples put on their
-  root, so an app with another root scrolled behind its modal. It holds while a layer of
-  `layers()` holds anything; the ticker, leave and the wedding no longer draw `locked`.
+  root, so an app with another root scrolled behind its modal. It holds while a modal is open,
+  and below 820px while a drawer is, whatever the root; the ticker, leave and the wedding no
+  longer draw `locked`.
 - **The bento's CSS, finished** (todo n108). A drawer docked beside a window takes the window's
   curve at its outer corners, where its own smaller one poked past it; a `.field` in a property's
   value keeps a field's height, where the value's column shrank it to its text (the wedding said
