@@ -156,6 +156,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   colour swatch take the controls' edge. `examples/wedding/client/contrast.test.ts` checks each
   pair against the stylesheet's own tokens: text at 4.5:1, a mark or a control's edge at 3:1. The
   wedding has one palette, light, whatever the reader prefers, and the test holds it to that.
+- **The wedding's rails, stacks and drawers keep the bento's measure** (todo n63). The welcome's
+  44px controls had spread to every button and field, so a rail's tools stood 32 by 44 and find's
+  field grew out of its bar; the height is the welcome's alone now. In a drawer a long state
+  ("shared · claimed by OKAFOR, BEN") goes under its row's words and wraps, where it squeezed the
+  words to one a line and ran past the drawer's edge. A figure that stands for a family in the
+  photo is a button a screen reader can name ("a family of 17").
 - **A plain form posts.** The client stopped every form's submit, so a form without
   `data-write` (a sign-in page) could never post; it now stops only a form that writes.
 - **The wedding's welcome, laid out again.** Its forms used the bento's list `.row` (a rule under

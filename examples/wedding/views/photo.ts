@@ -77,6 +77,8 @@ export function familiesPhoto(families: Family[], open: string | null): { entrie
   const entries: PhotoEntry[] = families.map((f) => ({
     key: f.key,
     spec: { ...f.members[0]!.spec, name: f.label },
+    // a button a screen reader can name: the code on its chest where the couple see one, and how many it stands for
+    name: `${f.label ? `${f.label}, ` : ""}a family of ${f.members.length}`,
     ghost: f.ghost,
     out: f.out,
     mark: f.mark,

@@ -690,12 +690,15 @@ describe("the couple", () => {
     const families = await at(ws, "everyone");
     expect(families).toContain("Tap a family to see them");
     expect(families).toContain("&quot;count&quot;:17");
+    expect(families).toContain("&quot;name&quot;:&quot;a family of 17&quot;"); // a figure a screen reader can name, and nameless to the eye until the day
     const family = await at(ws, `everyone/${crowd.id}`);
     expect(family).toContain('<span class="cell-name">One family</span>');
     expect(family).toContain("17 of them.");
     ws.close();
     // the couple's photo, at the families level too: the crowd one figure, ringing while its drawer is open
-    expect(await at(couple, `?family=${crowd.id}`)).toMatch(new RegExp(`&quot;count&quot;:17,&quot;tap&quot;:[^}]*}},&quot;hushed&quot;:false,&quot;chosen&quot;:true`));
+    const theirs = await at(couple, `?family=${crowd.id}`);
+    expect(theirs).toMatch(new RegExp(`&quot;count&quot;:17,&quot;tap&quot;:[^}]*}},&quot;hushed&quot;:false,&quot;chosen&quot;:true`));
+    expect(theirs).toContain(`&quot;name&quot;:&quot;${crowd.code}, a family of 17&quot;`);
     await heard(couple);
     await send(couple, "ledger", [{ op: "remove", path: "/latest" }]); // the crowd goes home
     couple.close();

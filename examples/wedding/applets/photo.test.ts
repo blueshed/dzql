@@ -25,6 +25,12 @@ describe("photoSvg", () => {
     expect(svg).not.toContain('class="ring"');
   });
 
+  test("a figure that stands for a family is a button named for it, since nothing printed on it says what a tap opens", () => {
+    const tap = { doc: "session", op: { op: "replace" as const, path: "/page", value: "everyone/4" } };
+    const svg = photoSvg([{ key: "4", spec: look, count: 5, tap, name: "a family of 5" }], "the photo: the families");
+    expect(svg).toContain('role="button" tabindex="0" data-key="4" aria-label="a family of 5" aria-pressed="false"');
+  });
+
   test("a chosen figure rings, is marked pressed, and scrolls into the clear (K2, rule 13)", () => {
     const entries: PhotoEntry[] = [
       { key: "1", spec: { ...look, name: "Ada" }, tap: { doc: "session", op: { op: "replace", path: "/page", value: "guests?guest=1" } }, chosen: true },
