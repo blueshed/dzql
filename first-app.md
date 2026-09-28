@@ -240,8 +240,8 @@ drag halfway through, a scroll position, a chart's history. That piece is an **a
 - Its mount says exactly what it writes, `appletWrites(["team", "replace", "/requests/*/starts"], …)`
   (`*` is any one segment: the request's id), so the stories can find the control.
 - Its data comes from a document it watches, and its props say only what to show and for whom:
-  `appletProps({ open, reveal, everyone }, { doc: "everyone:1", under: "/everyone" })` puts the
-  document in its props at `under`, beside the small ones. Each change to the document reaches it as
+  `appletProps({ open, reveal, everyone }, watch("everyone:1", "/everyone"))` puts the document in
+  its props at `under`, beside the small ones, and says the version it holds. Each change to the document reaches it as
   a patch, laid on its props by the kernel's client, and it is given them again (`update`); the
   mount is not sent again for it. So it derives what it draws from its props with a pure function,
   which the server runs too, for what the mount declares and a first paint (the wedding's photo of

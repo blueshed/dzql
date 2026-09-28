@@ -47,6 +47,8 @@ describe("html", () => {
     const watching = read(appletProps(props, { doc: `trip:"1"`, under: "/doc" }));
     expect(watching).toEqual({ "data-doc": `trip:"1"`, "data-under": "/doc", "data-props": JSON.stringify(props) });
     expect(appletProps({ tz: "UTC" }, { doc: "clock" })).toBe(` data-doc="clock" data-props="{&quot;tz&quot;:&quot;UTC&quot;}"`); // the props are the document
+    // the document's version, as the props hold it: the patches at or below it are held already
+    expect(appletProps({ tz: "UTC" }, { doc: "clock", v: 7 })).toBe(` data-doc="clock" data-v="7" data-props="{&quot;tz&quot;:&quot;UTC&quot;}"`);
   });
 
   test("join drops what is not a string", () => {

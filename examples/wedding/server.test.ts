@@ -715,7 +715,7 @@ describe("the couple", () => {
     expect(families).toContain("Tap a family to see them");
     // the photo watches everyone, and draws what `crowd` derives from its props: a figure a screen
     // reader can name, and nameless to the eye until the day, whose tap the mount says
-    const props = JSON.parse(decoded(/id="everyone-photo" data-applet="crowd" data-doc="everyone:1" data-under="\/everyone" data-props="([^"]*)"/.exec(families)![1]!));
+    const props = JSON.parse(decoded(/id="everyone-photo" data-applet="crowd" data-doc="everyone:1" data-under="\/everyone" data-v="\d+" data-props="([^"]*)"/.exec(families)![1]!));
     expect(crowd(props).photo.entries.find((e) => e.key === String(big.id))).toMatchObject({ count: 17, name: "a family of 17" });
     expect(families).toContain(`everyone/${big.id}`);
     const family = await at(ws, `everyone/${big.id}`);

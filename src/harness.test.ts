@@ -11,7 +11,7 @@ import { read } from "./documents";
 import { appletProps, appletWrites, write } from "./html";
 import type { Example } from "./example";
 import { size } from "./costs";
-import { comparable, controlsOn, goesTo, hear, holding, largest, MOST_PROPS, offers, placeOf, print, propsCost, retake, run, takersOn, unheld, type Outcome, type Report, type Trace, type Wire } from "./harness";
+import { comparable, controlsOn, goesTo, hear, holding, largest, MOST_PROPS, offers, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, type Outcome, type Report, type Trace, type Wire } from "./harness";
 import { diff, drawParts, part, splitTag } from "./parts";
 import type { Story } from "./stories";
 import { refuse } from "./refusal";
@@ -796,6 +796,30 @@ describe("the patch stream: what an applet that takes a document's patches holds
     expect(holding(taken.get("board"))).toEqual({ value: { A: 5 } });
     retake(taken, "<main></main>");
     expect(taken.size).toBe(0);
+  });
+
+  test("what a page shows is compared without the versions its watching mounts hold: an undo moves them on, and nobody sees it", () => {
+    expect(unversioned(`<div data-doc="d" data-v="12" data-props="{}"></div><p data-value="v">x</p>`)).toBe(`<div data-doc="d" data-props="{}"></div><p data-value="v">x</p>`);
+  });
+
+  test("a patch at or below the version the mount's props hold is held already, and passed over; above it, taken, and the version moves", () => {
+    const rows = (json: string, v: number) => `<main><div id="t" data-eta-part="t" data-applet="tally" data-doc="list:1" data-under="/rows" data-v="${v}" data-props="${json.replaceAll('"', "&quot;")}"></div></main>`;
+    const taken = new Map();
+    retake(taken, rows('{"rows":[{"n":1}]}', 1));
+    expect(taken.get("t")).toMatchObject({ v: 1 });
+    // a render drawn after the change comes before its patch, which it holds
+    const two = rows('{"rows":[{"n":1},{"n":2}]}', 2);
+    retake(taken, two);
+    taking(taken, { doc: "list:1", version: 2, ops: [{ op: "add", path: "/-", value: { n: 2 } }] });
+    taking(taken, { doc: "list:1", version: 3, ops: [{ op: "add", path: "/-", value: { n: 3 } }] });
+    taking(taken, { doc: "list:2", version: 9, ops: [{ op: "add", path: "/-", value: { n: 9 } }] }); // another document's
+    expect(holding(taken.get("t"))).toEqual({ value: { rows: [{ n: 1 }, { n: 2 }, { n: 3 }] } });
+    expect(taken.get("t").v).toBe(3);
+    // a mount that says no version takes every patch
+    const board = new Map();
+    retake(board, mount("{&quot;A&quot;:1}"));
+    taking(board, { doc: "ticker:market", version: 1, ops: [{ op: "replace", path: "/A", value: 2 }] });
+    expect([holding(board.get("board")), board.get("board").v]).toEqual([{ value: { A: 2 } }, undefined]);
   });
 
   test("a member's applets against a fresh page: held as it has them, missed props, ops that do not land; one not on the fresh page is the page's to say", () => {

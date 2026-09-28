@@ -134,7 +134,7 @@ function applyOp(page: string, op: HtmlOp): string {
     .transform(page);
 }
 
-export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string; id?: WriteId; reason?: string };
+export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string; version?: number; id?: WriteId; reason?: string };
 
 // The patch stream, checked. An applet that takes a document's patches (`data-doc`) holds props: the
 // ones the last render gave it, with every patch for that document laid on since, at the place in
@@ -142,8 +142,8 @@ export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string;
 // holds, and it must be what a fresh render would give it -- or the ops did not say everything the
 // document did, or props that changed for another reason were never sent.
 
-/** An applet that takes a document's patches, as a member's page holds it. */
-type Taken = { applet: string; doc: string; under: string; props: string; ops: PatchOp[] };
+/** An applet that takes a document's patches, as a member's page holds it: the props a render gave it, the document's version they hold when the mount says it (`data-v`), and the ops taken since. */
+type Taken = { applet: string; doc: string; under: string; props: string; v?: number; ops: PatchOp[] };
 
 /** The applets on a page that take a document's patches, by their id (or part, or place). */
 export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
@@ -153,7 +153,8 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
       element(el) {
         const applet = el.getAttribute("data-applet") ?? "";
         const key = el.getAttribute("id") ?? el.getAttribute("data-eta-part") ?? `${applet}#${found.size}`;
-        found.set(key, { applet, doc: el.getAttribute("data-doc")!, under: el.getAttribute("data-under") ?? "", props: decoded(el.getAttribute("data-props") ?? "null") });
+        const v = el.getAttribute("data-v");
+        found.set(key, { applet, doc: el.getAttribute("data-doc")!, under: el.getAttribute("data-under") ?? "", props: decoded(el.getAttribute("data-props") ?? "null"), ...(v !== null && { v: Number(v) }) });
       },
     })
     .transform(page);
@@ -421,6 +422,15 @@ export function retake(taken: Map<string, Taken>, page: string): void {
   }
 }
 
+/** A patch a member is told, as its applets on that document take it: passed over at or below the version their props hold, taken above it, and the version with it. */
+export function taking(taken: Map<string, Taken>, message: { doc: string; version: number; ops: PatchOp[] }): void {
+  for (const t of taken.values()) {
+    if (t.doc !== message.doc || (t.v !== undefined && message.version <= t.v)) continue;
+    t.ops.push(...message.ops);
+    if (t.v !== undefined) t.v = message.version;
+  }
+}
+
 /** JSON with its keys in order, so two values compare by what they hold. */
 const stable = (value: unknown): string =>
   JSON.stringify(value, (_key, v) => (v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v));
@@ -469,6 +479,9 @@ export function largest(raws: string[]): Part {
   });
   return parts.reduce((most, p) => (p.bytes > most.bytes ? p : most));
 }
+
+/** A page without the versions its watching mounts say they hold (`data-v`): each change moves one on, an undo too, and nobody sees it. */
+export const unversioned = (page: string): string => page.replace(/\sdata-v="\d+"/g, "");
 
 /** A member's open page after one more message: only renders change it. */
 export function hear(page: string, message: Heard): string {
@@ -558,6 +571,8 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         if (!stored.has(doc)) throw new Pending(doc);
         return stored.get(doc) as T;
       },
+      // the version a watching mount holds is not compared (`comparable`): the page read from storage says none
+      version: (doc: string): undefined => void copy.read(doc),
       load: async (doc: string) => {
         const { result, error } = await example.delta.call("open_at", { doc, at: AFTER_EVERY_WRITE });
         if (error?.message.startsWith("No handler matched")) stored.set(doc, await settled(documents, () => documents.read(doc)));
@@ -577,7 +592,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
   }
 
   async function snapshot(cast: Member[]): Promise<Snapshot> {
-    return new Map(await Promise.all(cast.map(async (m) => [m.name, await draw(m.sessionId)] as const)));
+    return new Map(await Promise.all(cast.map(async (m) => [m.name, unversioned(await draw(m.sessionId))] as const)));
   }
 
   /** Signs a member in through the example's own route, as a browser posts its form: the session the answer's cookie names, or undefined for a visitor. */
@@ -605,7 +620,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         retake(member.taken, member.page);
         keep(member);
       }
-      if (message.type === "patch") for (const t of member.taken.values()) if (t.doc === message.doc) t.ops.push(...(message.ops as unknown as PatchOp[]));
+      if (message.type === "patch") taking(member.taken, message as unknown as { doc: string; version: number; ops: PatchOp[] });
     });
     await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
     return member;

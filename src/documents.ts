@@ -126,11 +126,12 @@ export function createDocuments(local: Local) {
   return {
     /** The document as held, noting that the page being drawn read it; throws `Pending` when not held yet. */
     read<T = any>(doc: string): T {
-      const { docType, docId } = splitDoc(doc);
-      reading(docType, docId);
-      const h = held.get(doc);
-      if (!h) throw new Pending(doc);
-      return h.value as T;
+      return heldAs(doc).value as T;
+    },
+
+    /** The version the document is held at, as `read` reads it: what a watching applet's props hold (`watch`). */
+    version(doc: string): number | undefined {
+      return heldAs(doc).v;
     },
     load,
 
@@ -188,6 +189,15 @@ export function createDocuments(local: Local) {
     names: (): string[] => [...held.keys()],
   };
 
+  /** The document as held, noting that the page being drawn read it; throws `Pending` when not held yet. */
+  function heldAs(doc: string): Held {
+    const { docType, docId } = splitDoc(doc);
+    reading(docType, docId);
+    const h = held.get(doc);
+    if (!h) throw new Pending(doc);
+    return h;
+  }
+
   /** Waits until the held copy of `doc` has reached `version` -- at once in this process, after NOTIFY over Postgres. */
   function caughtUp(doc: string, version: number | undefined): Promise<void> {
     const h = held.get(doc);
@@ -228,6 +238,18 @@ export function setActiveDocuments(documents: Documents | undefined): void {
 export function read<T = any>(doc: string): T {
   if (!active) throw new Error("no documents: this example does not keep them in delta");
   return active.read<T>(doc);
+}
+
+/**
+ * A document an applet watches, for its mount (`appletProps(props, watch("everyone:1", "/everyone"))`,
+ * src/html.ts): its name, where it sits in the props, and the version it is held at as the page is
+ * drawn -- the one `read` gives -- so the client passes over a patch the props already hold. Read
+ * like any document, so the page is told its every change.
+ */
+export function watch(doc: string, under?: string): { doc: string; under?: string; v?: number } {
+  if (!active) throw new Error("no documents: this example does not keep them in delta");
+  const v = active.version(doc);
+  return { doc, ...(under !== undefined && { under }), ...(v !== undefined && { v }) };
 }
 
 /** The active example's documents, when it keeps them in delta. */

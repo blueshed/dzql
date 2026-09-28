@@ -22,8 +22,8 @@ window.__applets = {};
 const given = (el: HTMLElement): Given => (window.__applets[el.id] ??= { mounts: [], updates: [], patches: [] });
 
 /** What the tally shows: pure, from its props -- the document at `rows`, or the props themselves when they are the document. */
-const tally = (p: { me?: string; rows?: Rows } & Rows): string => {
-  const rows: Rows = p.rows ?? p;
+const tally = (p: { me?: string; rows?: Rows | { n: number }[] } & Rows): string => {
+  const rows = p.rows ?? p;
   const total = Object.values(rows).reduce((n, r) => n + (typeof r === "object" ? r.n : 0), 0);
   return p.me === undefined ? String(total) : `${p.me}: ${total}`;
 };

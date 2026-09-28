@@ -63,13 +63,14 @@ export function appletWrites(...writes: (readonly [doc: string, op: Op, path: st
  * data-under="/everyone"`; the root when `under` is not given: the props are the document).
  *
  * - The document is held whole at `under`, as the page is told it; the rest is small: what to show,
- *   and for whom. The kernel's client lays each patch to the document on the props there and gives
+ *   and for whom. `v` is its version as held (` data-v`): `watch(doc, under)` in src/documents.ts
+ *   gives all three, so the client passes over a patch the props already hold. The kernel's client lays each patch to the document on the props there and gives
  *   the applet them again (`update`), and a page is compared without the document, nor what is
  *   inside the mount (src/parts.ts): so a change to it sends the mount nothing but the patch.
  * - Without a document, the applet is sent its props again whenever they change.
  */
-export function appletProps(props: unknown, watch?: { doc: string; under?: string }): string {
-  const watching = watch ? ` data-doc="${esc(watch.doc)}"${watch.under ? ` data-under="${esc(watch.under)}"` : ""}` : "";
+export function appletProps(props: unknown, watch?: { doc: string; under?: string; v?: number }): string {
+  const watching = watch ? ` data-doc="${esc(watch.doc)}"${watch.under ? ` data-under="${esc(watch.under)}"` : ""}${watch.v === undefined ? "" : ` data-v="${watch.v}"`}` : "";
   return `${watching} data-props="${esc(JSON.stringify(props))}"`;
 }
 

@@ -520,13 +520,14 @@ export type Applet = {
 
 An applet's data comes from a document it watches; its props say only what to show, and for whom.
 The mount names the document and where it sits in the props, through `appletProps(props, watch?)`
-(`src/html.ts`), the one helper that quotes props into an attribute:
+(`src/html.ts`), the one helper that quotes props into an attribute, and `watch(doc, under)`
+(`src/documents.ts`), which reads the document for the page and says the version it is held at:
 
 ```ts
 // the wedding's photo of everyone: the `everyone` document, the family open in it, the names down or not
 const props: CrowdProps = { everyone: everyone(), open: family, reveal: v.names };
-`<div id="everyone-photo" data-applet="crowd"${taps}${appletProps(props, { doc: "everyone:1", under: "/everyone" })}></div>`
-// gives data-doc="everyone:1" data-under="/everyone" data-props="{…}"
+`<div id="everyone-photo" data-applet="crowd"${taps}${appletProps(props, watch("everyone:1", "/everyone"))}></div>`
+// gives data-doc="everyone:1" data-under="/everyone" data-v="7" data-props="{…}"
 ```
 
 - **The props hold the document whole, at `under`** (the root when not given: the props are the
@@ -535,8 +536,11 @@ const props: CrowdProps = { everyone: everyone(), open: family, reveal: v.names 
 - **The kernel's client keeps them.** Each patch to the document is laid on the props at `under`,
   and the applet is given them again, `update(el, props)`: it draws from its props whether they
   came with a render or a patch, and needs no `patch` of its own (an island, no `reduce`). One
-  that has a `patch` gets the ops instead, as before (the ticker's). An op that does not land is
-  passed over: a render drawn after it already holds it.
+  that has a `patch` gets the ops instead, as before (the ticker's).
+- **The mount says the version its props hold** (`data-v`, from `watch`), and a patch at or below
+  it is passed over: the server's copy moves before its change is told, so a render drawn after a
+  change can come before its patch. An op that then does not land is drift, and the page is asked
+  for afresh.
 - **It derives what it draws with a pure function, shared.** The applet runs it in the browser on
   each update; the server runs the same one for what the mount declares (`appletWrites`: the
   wedding's taps), for what the page says around it, and for a first paint inside the mount, so a
@@ -616,7 +620,7 @@ watch the trip instead:
    `travellers`, both pure) as `stripOf({ me, people, trip })`: what the strip draws, derived from
    its small props -- `me`, and `people`, the travellers' names -- and the `trip:<id>` document as
    `read` gives it.
-3. The mount says it, ``appletProps({ me, people, trip: doc }, { doc: `trip:${t.id}`, under: "/trip" })``,
+3. The mount says it, ``appletProps({ me, people, trip: doc }, watch(`trip:${t.id}`, "/trip"))``,
    in place of `data-props='${attr(...)}'`; `attr` goes (so do the map's and the gestures'
    `quoted`, n105). `stripHtml(stripOf(props))` stays its first paint, and its `appletWrites` stay:
    the server derives them from the same props.

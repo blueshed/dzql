@@ -84,14 +84,14 @@ export const decoded = (value: string): string =>
 /** Whether a start tag is an applet's that watches a document: it has `data-doc` of its own. */
 export const watches = (tag: string): boolean => tag.includes("data-doc") && attributes(tag).some((a) => a.name === "data-doc");
 
-/** A watching mount's tag, its props without the document they hold. */
+/** A watching mount's tag, its props without the document they hold, and without the version of it they hold (`data-v`). */
 function watchedTag(tag: string): string {
   const all = attributes(tag);
   const props = all.find((a) => a.name === "data-props");
-  if (!props) return tag;
-  const rest = without(props.value, all.find((a) => a.name === "data-under")?.value ?? "");
-  if (rest === undefined) return tag;
-  return tag.slice(0, props.from) + (rest === ROOT ? "" : ` data-props="${esc(JSON.stringify(rest))}"`) + tag.slice(props.to);
+  const rest = props && without(props.value, all.find((a) => a.name === "data-under")?.value ?? "");
+  const changed = all.filter((a) => a.name === "data-v" || (a === props && rest !== undefined)).reverse(); // from the end, so each stands where it was found
+  const now = (a: Attribute): string => (a === props && rest !== ROOT ? ` data-props="${esc(JSON.stringify(rest))}"` : "");
+  return changed.reduce((t, a) => t.slice(0, a.from) + now(a) + t.slice(a.to), tag);
 }
 
 const ROOT = Symbol("the document is all the props");

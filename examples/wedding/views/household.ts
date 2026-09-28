@@ -17,6 +17,7 @@ import { LOOK_FIELDS } from "../looks";
 import type { MenuProps } from "../applets/menu";
 import { esc, join, nav, open, write, appletProps, appletWrites } from "./html";
 import { part } from "../../../src/parts";
+import { watch } from "../../../src/documents";
 import { icon, type IconName } from "./icons";
 import { familyEntries, photoMount, tapsOf } from "./photo";
 import { crowd, type CrowdProps } from "../applets/photo";
@@ -170,7 +171,7 @@ const crowdOf = (v: HouseholdView, family: string | null): CrowdProps => ({ ever
 
 /** The photo of everyone's mount: it watches the `everyone` document, so a look changed reaches it as a patch and nothing else; it says where each family's tap goes. */
 function everyonePhoto(props: CrowdProps): string {
-  const doc = { doc: `everyone:${weddingDoc.WEDDING}`, under: "/everyone" };
+  const doc = watch(`everyone:${weddingDoc.WEDDING}`, "/everyone");
   return part("everyone-photo", `<div id="everyone-photo" data-applet="crowd"${appletProps(props, doc)}${tapsOf(crowd(props).photo.entries)}></div>`);
 }
 

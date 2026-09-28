@@ -3,7 +3,7 @@ import { Database } from "bun:sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { createTables, defineCustomDoc, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { registerMemory } from "@blueshed/delta/kinds";
-import { createDocuments, Pending, read, serverWrite, settled, setActiveDocuments } from "./documents";
+import { activeDocuments, createDocuments, Pending, read, serverWrite, settled, setActiveDocuments, watch } from "./documents";
 
 /** delta as the Postgres backend behaves: a write is answered first, and its change published later (over NOTIFY). */
 function laggingDelta() {
@@ -157,6 +157,28 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     await serverWrite("here:x", [{ op: "add", path: "/people/ada", value: true }]);
     expect(await settled(documents, () => read<{ people: Record<string, true> }>("here:x"))).toEqual({ people: { ada: true } });
     await expect(serverWrite("here:x", [{ op: "replace", path: "/nobody/x", value: 1 }])).rejects.toThrow("here:x");
+    setActiveDocuments(undefined);
+  });
+
+  test("watch names a document for an applet's mount, with where it sits in its props and the version it is held at, which moves with each change", async () => {
+    setActiveDocuments(undefined);
+    expect(() => watch("slow:1")).toThrow("no documents");
+    const { local, flush } = laggingDelta();
+    const documents = createDocuments(local);
+    setActiveDocuments(documents);
+    expect(() => watch("slow:1")).toThrow(Pending); // read like any document: loaded, and the drawing run again
+    expect(await settled(documents, () => watch("slow:1", "/slow"))).toEqual({ doc: "slow:1", under: "/slow", v: 0 });
+    const writing = documents.write("slow:1", [{ op: "replace", path: "/n", value: 5 }], { identity: "ada", cursor: "s1" });
+    await Bun.sleep(5);
+    flush();
+    await writing;
+    expect(watch("slow:1")).toEqual({ doc: "slow:1", v: 1 });
+    // a memory document has its version too; a document delta does not have, none, and none goes on the mount
+    const memory = createLocal();
+    registerMemory(memory.server, { prefix: "here:", empty: () => ({}) });
+    setActiveDocuments(createDocuments(memory));
+    expect(await settled(activeDocuments(), () => watch("here:x"))).toEqual({ doc: "here:x", v: 0 });
+    expect(await settled(activeDocuments(), () => watch("nothing:x"))).toEqual({ doc: "nothing:x" });
     setActiveDocuments(undefined);
   });
 

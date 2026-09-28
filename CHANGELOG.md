@@ -43,9 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with a pure function the server runs too, for what the mount declares and a first paint. A page
   is compared without the watched document and without what is inside the mount, so a change to the
   document sends the mount nothing but the patch; the mount goes again only with its own tag (its
-  small props, a class, what it declares). An applet with a `patch` of its own still gets the ops,
-  and one with no `data-doc` is sent its props again as before. The skill says how, and what
-  japan-eta's strip would change to take it.
+  small props, a class, what it declares). `watch(doc, under)` (`src/documents.ts`) names the
+  document with the version it is held at (`data-v`): a patch at or below it is passed over, since
+  a render drawn after a change can come before its patch, and one that then does not land asks for
+  the page afresh. An applet with a `patch` of its own still gets the ops, and one with no
+  `data-doc` is sent its props again as before. The skill says how, and
+  what japan-eta's strip would change to take it.
   - **The wedding's photo of everyone watches `everyone:1`**, and derives who stands in it with
     `crowd` (`applets/photo.ts`): a look changed sends a household reading it 218 B, the patch
     alone, where it sent 566 B (a 218 B patch and 348 B of HTML: the photo's entries again).

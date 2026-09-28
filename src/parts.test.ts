@@ -186,6 +186,12 @@ describe("diff", () => {
     expect(diff(draw(() => held("Day 1", one)), draw(() => held("Day one", two)))).toEqual([{ op: "replace", target: '[data-eta-part="day"]', html: part("day", `<section><h2>Day one</h2>${watching({ me: "ann" }, two, "paint")}</section>`) }]);
   });
 
+  test("the version of the document a mount says it holds is the document's too: a change to it alone sends nothing", () => {
+    const at = (v: number, doc: object) => `<main>${part("strip", `<div id="strip" data-applet="strip"${appletProps({ me: "ann", trip: doc }, { doc: "trip:1", under: "/trip", v })}></div>`)}</main>`;
+    expect(diff(draw(() => at(1, trip({ a: "Temple" }))), draw(() => at(2, trip({ a: "Garden" }))))).toEqual([]);
+    expect(comparable(`<div data-doc="d" data-v="3" data-under="/x" data-props="{&quot;x&quot;:1,&quot;me&quot;:1}"></div>`)).toBe(`<div data-doc="d" data-under="/x" data-props="{&quot;me&quot;:1}"></div>`);
+  });
+
   test("a watching mount that is a void element holds nothing inside it: what follows it is still compared", () => {
     for (const mount of [`<input data-applet="pick"${appletProps({ at: 1 }, { doc: "d:1" })}>`, `<img data-applet="pick"${appletProps({ at: 1 }, { doc: "d:1" })} />`]) {
       const page = (text: string) => `<main>${part("p", `<section>${mount}<p>${text}</p></section>`)}</main>`;

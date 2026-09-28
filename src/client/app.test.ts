@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
 import { bento, choice, type Field } from "../bento";
 import { appletProps, write } from "../html";
-import { diff, drawParts, part } from "../parts";
+import { diff, drawParts, part, splitTag } from "../parts";
 import { press, waitFor } from "../webview";
 import { renderMessage } from "../compartments/render";
 import fixture from "./app.test.html";
@@ -841,8 +841,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await patch(2, [{ op: "add", path: "/b", value: { n: 2 } }]);
     await waitFor(view, `document.getElementById('t').textContent`, (v) => v === "ann: 3");
     await patch(3, [{ op: "replace", path: "/n", value: 9 }], "list:2"); // another document's: not this applet's
-    // one that does not land -- what a render drawn after it already holds -- is passed over, and the rest lands
-    await patch(4, [{ op: "remove", path: "/gone" }, { op: "replace", path: "/a/n", value: 5 }]);
+    await patch(4, [{ op: "replace", path: "/a/n", value: 5 }]); // a mount that says no version takes every patch
     await waitFor(view, `document.getElementById('t').textContent`, (v) => v === "ann: 7");
     expect(await given()).toEqual({
       mounts: [{ me: "ann", rows: { a: { n: 1 } } }],
@@ -861,6 +860,28 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await waitFor(view, `document.getElementById('t').textContent`, (v) => v === "bo: 10");
     expect((await given()).updates.slice(2)).toEqual([{ me: "bo", rows: { a: { n: 5 }, b: { n: 2 } } }, { me: "bo", rows: { z: { n: 10 } } }]);
     expect(await view.evaluate<boolean>(`document.getElementById('t')._probe`)).toBe(true);
+  });
+
+  test("a patch a render already holds is not laid on again: the mount says the document's version, and the patches at or below it are passed over", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const mount = (rows: { n: number }[], v: number) => part("t", `<div id="t" data-applet="tally"${appletProps({ me: "ann", rows }, { doc: "list:1", under: "/rows", v })}></div>`);
+    const text = `document.getElementById('t').textContent`;
+    await pushRender(view, `<main>${mount([{ n: 1 }], 1)}</main>`);
+    await waitFor(view, text, (v) => v === "ann: 1");
+    // the server's copy moved on before its change was told: a render drawn after it comes first, then its patch
+    await push(view, { type: "render", ops: [{ op: "tag", target: '[data-eta-part="t"]', html: splitTag(mount([{ n: 1 }, { n: 2 }], 2))[0] }] });
+    await waitFor(view, text, (v) => v === "ann: 3");
+    await push(view, { type: "patch", doc: "list:1", version: 2, ops: [{ op: "add", path: "/-", value: { n: 2 } }] });
+    await push(view, { type: "render", ops: [{ op: "tag", target: '[data-eta-part="t"]', html: splitTag(mount([{ n: 2 }], 3))[0] }] }); // the first row gone, drawn
+    await push(view, { type: "patch", doc: "list:1", version: 3, ops: [{ op: "remove", path: "/0" }] }); // and then told
+    await push(view, { type: "patch", doc: "list:1", version: 4, ops: [{ op: "add", path: "/-", value: { n: 5 } }] }); // one it does not hold
+    await waitFor(view, text, (v) => v === "ann: 7");
+    expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([]);
+    // an op that does not land on what it holds is drift: the page is asked for afresh, and the props are left as they were
+    await push(view, { type: "patch", doc: "list:1", version: 5, ops: [{ op: "remove", path: "/9" }] });
+    await waitFor(view, `window.__sent.length`, (v) => v === 1);
+    expect(await view.evaluate<unknown>(`[window.__sent, document.getElementById('t').textContent, window.__applets.t.updates.length]`)).toEqual([[{ type: "page" }], "ann: 7", 3]);
   });
 
   test("props that are the document take its patches at the root; an applet with a patch of its own is given the ops instead, as before", async () => {

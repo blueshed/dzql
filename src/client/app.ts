@@ -41,9 +41,14 @@ window.eta = {
 };
 
 // Each mounted applet: its cleanup, and its props -- as a render gave them, with every patch to the
-// document it watches (`data-doc`) laid on since, at `data-under`: what it draws from. Not domain
-// state of the client's own: the mount's, which the applet holds whatever the client does.
-const mounted = new Map<HTMLElement, { cleanup: () => void; props: unknown }>();
+// document it watches (`data-doc`) laid on since, at `data-under`: what it draws from -- and the
+// document's version they hold (`data-v`), when the mount says it. Not domain state of the
+// client's own: the mount's, which the applet holds whatever the client does.
+type Held = { cleanup: () => void; props: unknown; v?: number };
+const mounted = new Map<HTMLElement, Held>();
+
+/** The version of its document a mount's props hold, as the render says it; none when it does not. */
+const versionOf = (el: HTMLElement): number | undefined => (el.dataset.v === undefined ? undefined : Number(el.dataset.v));
 
 function mountApplets() {
   app.querySelectorAll<HTMLElement>("[data-applet]").forEach((el) => {
@@ -52,33 +57,37 @@ function mountApplets() {
     if (!applet) return;
     const props = el.dataset.props ? JSON.parse(el.dataset.props) : undefined;
     const cleanup = applet.mount(el, { props, send });
-    mounted.set(el, { cleanup: cleanup ?? (() => {}), props });
+    mounted.set(el, { cleanup: cleanup ?? (() => {}), props, v: versionOf(el) });
   });
 }
 
 /**
  * A patch to the document `el` watches: laid on its props at `data-under`, and the applet given
- * them again (`update`) -- or, where it takes the ops itself (`patch`), given those. An op that does
- * not land is one the props hold already: a render drawn after it, since the server's copy moves
- * before its change is told, so each of the rest still lands.
+ * them again (`update`) -- or, where it takes the ops itself (`patch`), given those. One at or
+ * below the version its props hold is held already: the server's copy moves before its change is
+ * told, so a render drawn after it can come first. One that does not land on them is drift, and
+ * the page is asked for afresh, which the applet then draws.
  */
-function watched(el: HTMLElement, held: { props: unknown }, ops: PatchOp[]): void {
+function watched(el: HTMLElement, held: Held, version: number, ops: PatchOp[]): void {
+  if (held.v !== undefined && version <= held.v) return;
   const under = el.dataset.under ?? "";
-  const at = ops.map((op) => ({ ...op, path: under + op.path }));
   try {
-    held.props = applyPatch(held.props, at);
+    held.props = applyPatch(held.props, ops.map((op) => ({ ...op, path: under + op.path })));
   } catch {
-    held.props = at.reduce((props, op) => {
-      try {
-        return applyPatch(props, [op]);
-      } catch {
-        return props;
-      }
-    }, held.props);
+    return askForThePage();
   }
+  if (held.v !== undefined) held.v = version;
   const applet = applets[el.dataset.applet!];
   if (applet?.patch) applet.patch(el, ops);
   else applet?.update?.(el, held.props);
+}
+
+/** Asks the server for the page whole: a message that is no write is answered by the page (src/server.ts). Once, until it comes. */
+let askedAfresh = false;
+function askForThePage(): void {
+  if (askedAfresh || socket?.readyState !== WebSocket.OPEN) return;
+  askedAfresh = true;
+  socket.send(JSON.stringify({ type: "page" }));
 }
 
 // A render morphs the existing tree instead of replacing it, so an element a
@@ -107,7 +116,7 @@ const hooks: MorphHooks = {
   },
   onAppletPropsChanged(el, props) {
     const held = mounted.get(el as HTMLElement);
-    if (held) held.props = props; // a render's: the patches go on from these
+    if (held) Object.assign(held, { props, v: versionOf(el as HTMLElement) }); // a render's: the patches go on from these
     applets[(el as HTMLElement).dataset.applet!]?.update?.(el as HTMLElement, props);
   },
   pressed: (el) => el === boxPressed,
@@ -692,6 +701,7 @@ function connect() {
       if (message.ops) applyFragments(message.ops);
       else if (message.wire === WIRE || !reloadForWire()) {
         if (sending?.unanswered) handBack(); // the page drawn afresh, after its socket went
+        askedAfresh = false;
         render(message.html);
         if (afresh) {
           // and each editing form says, once, what the page does not show: an edit dropped as the
@@ -715,7 +725,7 @@ function connect() {
       docs.set(message.doc, { version: message.version, ops: [...heard, ...message.ops].slice(-MAX_OPS_KEPT_PER_DOC) });
       // An applet watching this document takes the ops as its props (or the ops, see Applet.patch):
       // the delta is its update, and no render follows for it.
-      for (const [el, held] of mounted) if (el.dataset.doc === message.doc && message.ops.length > 0) watched(el, held, message.ops);
+      for (const [el, held] of mounted) if (el.dataset.doc === message.doc && message.ops.length > 0) watched(el, held, message.version, message.ops);
       // this page's own write, echoed ("yours": the id is its own): it landed
       if (lastSent && lastSent.id === message.id) lastSent.echoed = true;
       if (sending && sending.id === message.id) sending = undefined;
