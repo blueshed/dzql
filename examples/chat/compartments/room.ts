@@ -30,7 +30,7 @@ function renderRooms(name: string, rooms: string[]): string {
     body: join(
       `<p class="note">You are <b class="user-label">${esc(name)}</b>. Which room?</p>`,
       `<div class="list">${rows(rooms.map((r) => row({ id: `r-${slug(r)}`, tap: enter(r), what: `#${r}`, mark: "chevron" })), "No rooms yet. Name the first.", "room-list")}</div>`,
-      `<form class="say"${write("session", "replace", "/room")}><input name="room" autocomplete="off" required placeholder="A new room" aria-label="A new room"><button type="submit" class="tool">Go in</button></form>`,
+      `<form class="say" aria-label="Go into a new room"${write("session", "replace", "/room")}><input name="room" autocomplete="off" required placeholder="A new room" aria-label="A new room"><button type="submit" class="tool">Go in</button></form>`,
     ),
   });
 }
@@ -65,7 +65,7 @@ function renderRoom(name: string, room: string, people: string[], transcript: Ch
     body: join(
       renderPeople(people, name),
       part("messages", `<ul class="messages" id="messages" data-autoscroll>${transcript.map((m, i) => renderMessage(m, i, transcript, name)).join("")}</ul>`),
-      `<form class="say"${write("room", "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message" aria-label="Message"><button type="submit" class="tool">Send</button></form>`,
+      `<form class="say" aria-label="Say something"${write("room", "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message" aria-label="Message"><button type="submit" class="tool">Send</button></form>`,
     ),
   });
 }

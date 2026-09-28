@@ -11,7 +11,7 @@ const say = (text: string): Write => ({ doc: "room", ops: [{ op: "add", path: "/
 // chat exists that one of these does not need. The cast: Ada and Bob are in general, Cy is in the
 // kitchen, Dee has a name and is choosing a room, Eve has only just arrived. A story hands a page
 // 4.5 KB at most (`budget`), by its write, its undo or its redo: a place you go to comes whole, and
-// after that only what changed in it. The most is Dee's attic taken back, 4,339 bytes: the lobby again.
+// after that only what changed in it. The most is Dee's attic taken back, 4,401 bytes: the lobby again.
 export const stories: Stories = {
   cast: { ada: [name("Ada"), room("general")], bob: [name("Bob"), room("general")], cy: [name("Cy"), room("kitchen")], dee: [name("Dee")], eve: [] },
   budget: 4608,

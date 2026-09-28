@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Stories` for every story. A story whose step, undo or redo hands any one page more fails, by
   name, with the step and its biggest part; a story's own stands in place of the example's, and
   one that is not a whole number of bytes is said, and its story not run. Chat's stories hold
-  4.5 KB (the most is Dee's attic taken back, 4,339 bytes), and a message 1 KB.
+  4.5 KB (the most is Dee's attic taken back, 4,401 bytes), and a message 1 KB.
 - **`press(view, selector)`, a press as a mouse makes one, for browser tests** (`src/webview.ts`,
   todo n98): scrolled to, pressed and let go at its middle, each pointer and mouse event to what
   is there as it is sent, then the click where a browser sends it, to what the press and the
@@ -131,13 +131,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   refusal back over HTTP.
 - **A page's writes are tools for an assistant, for an app that opts in** (todo n99): its
   `client/main.ts` imports `eta/src/client/tools` after the kernel's client (chat's does). It
-  reads the page as it is after each drawing into tools: every control a person could press (not `inert`, `hidden` or
-  disabled, as the stories count them) -- a form (its fields the input), an editing form (one tool
-  for all its fields, set in one write), the buttons and rows that make one write (their values a
-  choice), an applet's `appletWrites` (a `*` named in the input's path) -- and `undo` and `redo`,
-  which take a `change`. A tool is named by its write (`add.room.messages.-`), titled and described
-  from what the page says (aria-label, legend, label, text), and makes the write its control would,
-  nothing more; the server permits it as it does a person's. Each answers as `eta.send` does.
+  reads the page as it is after each drawing into tools: every control the app has labelled that
+  a person could press (not `inert`, `hidden` or disabled, as the stories count them) -- a form
+  (its fields the input), an editing form (one tool for all its fields, set in one write), the
+  buttons and rows of one label (which one, by the path or value that differs), an applet's
+  `appletWrites` (a `*` named in the input's path) -- and `undo` and `redo`, which take a
+  `change`. A tool is named and described only in the app's words: the label it gave the control
+  (an `aria-label`, a form's legend, a field's label), at most 80 characters, never what the
+  control shows, which may be anyone's words and which an assistant would read as an instruction;
+  so a tool stays as it is while the page's content changes, and is registered once. It makes the
+  write its control would, nothing more; the server permits it as it does a person's. Each answers
+  as `eta.send` does. Chat labels its two forms.
   Where the browser has WebMCP (`document.modelContext`, the W3C draft) each tool is registered
   with it, once while the page offers it as it was, and withdrawn by its signal when it goes or
   changes; where it has none, nothing is registered, and `window.eta.tools()` lists them and

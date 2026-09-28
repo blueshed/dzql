@@ -43,16 +43,16 @@ describe("chat, with an assistant in the page", () => {
     await view.click("#name");
     await view.type("Ada");
     await view.click("button[type=submit]");
-    await waitFor(view, LIVE, (v) => (v as string[]).includes("replace.session.room"));
+    await waitFor(view, LIVE, (v) => (v as string[]).includes("go_into_a_new_room"));
     const room = `helpers-${crypto.randomUUID().slice(0, 8)}`;
     await view.click("input[name=room]");
     await view.type(room);
     await view.press("Enter");
-    const live = await waitFor(view, LIVE, (v) => (v as string[]).includes("add.room.messages.-"));
-    expect((live as string[]).toSorted()).toEqual(["add.room.messages.-", "redo", "remove.session.name", "remove.session.room", "undo"]); // in a room: say, leave it, sign out, undo, redo
+    const live = await waitFor(view, LIVE, (v) => (v as string[]).includes("say_something"));
+    expect((live as string[]).toSorted()).toEqual(["log_out", "redo", "say_something", "undo"]); // in a room: what chat labels -- say something, log out -- and undo, redo
 
     // the assistant: one call, the page's own write, answered with the handle that names it
-    const said = await execute(view, "add.room.messages.-", { text: "Booked the 9:40 to Nara" });
+    const said = await execute(view, "say_something", { text: "Booked the 9:40 to Nara" });
     expect(said).toMatchObject({ echoed: true, doc: `room:${room}`, ops: [{ op: "add", value: { text: "Booked the 9:40 to Nara", name: "Ada" } }] });
     expect(said.change).toMatch(/^[0-9a-f]{16}$/);
     await waitFor(view, MESSAGES, (v) => (v as string).includes("Nara"));

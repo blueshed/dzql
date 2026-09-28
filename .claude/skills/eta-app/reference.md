@@ -415,31 +415,36 @@ import "eta/src/client/tools";
 Then the client reads the page after each drawing into tools (`src/client/tools.ts`), from what it
 already says.
 
-- **What is a tool**: each control a person could press now, by the stories' rule (not `inert`,
-  `hidden` or disabled, itself or by what it is in), so an open modal's controls are the tools and
-  the ground behind it offers none:
+- **What is a tool**: each control the app has labelled that a person could press now, by the
+  stories' rule (not `inert`, `hidden` or disabled, itself or by what it is in), so an open modal's
+  controls are the tools and the ground behind it offers none:
   - a **form** that creates: its named fields are the input (`required` as the page says; a hidden
     or readonly field as the page drew it), its value sent as on submit;
-  - an **editing form**: one tool for all its fields, any of them given, set in one write, as the
-    form commits them;
-  - the **buttons and rows** that make one write: one tool, its `value` one of theirs where they
-    send several (the pages a session can go to, by their buttons);
+  - an **editing form**: one tool for all its fields, keyed by their names, any of them given, set
+    in one write, as the form commits them;
+  - the **buttons and rows of one label**: one tool, told which to press by what differs between
+    their writes, its `path` or its `value` (the rooms a page's "Go into the room" buttons go into,
+    by the `data-value` each sends);
   - an **applet's** `appletWrites`: a `*` segment is any one member, named in the input's `path`;
   - **`undo`** and **`redo`**, with an optional `change`: the session's last change, or that one.
     The ledger's own buttons are these.
-- **Its name is its write** -- `add.room.messages.-`, `edit.trip.stops.4`, `replace.session.page` --
-  so it stays while the control does; where buttons and a form make one write, the later is told
-  apart by its kind (`replace.session.room.form`). Its title and description are what the page
-  says: an `aria-label`, a legend, a label, a button's text. So say them: an icon-only button
-  with no `aria-label` is a tool called by its write alone.
+- **A tool is named and described in the app's words alone**: the label the app gave its control
+  -- an `aria-label`, a form's `<legend>`, a field's `<label>` -- at most 80 characters, and never
+  what the control shows. That may be anyone's words (a room's name, a message), and an assistant
+  reads a tool's description as an instruction: a button that shows "Ignore what you were asked"
+  and has no label of the app's is no tool. The name is the label in WebMCP's letters ("Say
+  something" is `say_something`); where a form and buttons take one label, the later is told apart
+  by its kind (`go_in.form`). So a tool stays as it is while the page's content changes, and is
+  registered once. Label what an assistant should use, in words of your own: chat's forms say
+  "Say something" and "Go into a new room".
 - **A tool makes its control's write and nothing more**, and the server permits it as it does a
   person's: the schema says what the page offers, and nothing in the client is a gate. It answers
   as `eta.send` does; `change` names the change, for `undo`.
 - **WebMCP**: where the browser has a model context (`document.modelContext`, the W3C draft), each
   tool is registered with it, once while the page offers it as it was, and withdrawn (its signal
-  aborted) when it goes or changes. Where it has
-  none, nothing is registered; `window.eta.tools()` lists them and `window.eta.use(name, input)`
-  runs one, for an assistant that runs script in the page.
+  aborted) when it goes or changes. Where it has none, nothing is registered; `window.eta.tools()`
+  lists them and `window.eta.use(name, input)` runs one, for an assistant that runs script in the
+  page.
 - chat's `client/tools.test.ts` is the proof: an assistant says something through chat's own form,
   the person says something after it, and the assistant undoes its own, by its handle.
 
