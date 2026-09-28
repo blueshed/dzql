@@ -470,8 +470,9 @@ describe("a household", () => {
     let h = await send(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     expect(h.patches[0]).toMatchObject({ doc: householdDoc(), ops: [{ op: "remove", path: `/claims/3-${hid}` }] });
     expect((await household(code)).claims).not.toContain(3);
-    const said = (words: string) => `<div class="undo-said"><p class="said" role="status">${esc(words)}</p></div>`; // over the page, where Undo is
+    const said = (words: string) => `<div data-eta-part="undo-said" class="undo-said"><p class="said" role="status">${esc(words)}</p></div>`; // over the page, where Undo is
     expect(h.page).toContain(said("Undone: claiming “A set of good knives”."));
+    expect(h.renders.map((r) => r.html)).toEqual([undefined]); // what it says goes as a part of its own: the page is not sent whole for it
 
     h = await send(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     expect(h.patches[0]).toMatchObject({ doc: householdDoc(), ops: [{ op: "replace", path: `/guests/${guest.id}`, value: { top: guest.minifigure.top, built_at: guest.minifigure.built_at } }] });

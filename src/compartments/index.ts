@@ -4,6 +4,7 @@ import type { Example } from "../example";
 import type { PatchOp } from "../json-patch";
 import { prefixDoc, splitDoc } from "../names";
 import { shownTo } from "../reading";
+import { part } from "../parts";
 import type { Compartment } from "./compartment";
 import { createLedgerCompartment } from "./ledger";
 import { createToldCompartment, toldAt } from "../refusal";
@@ -54,10 +55,11 @@ export function assemble(example: Example): Assembled {
   copies.set(example, documents);
 
   // Undo and redo are the kernel's own tools (the ledger, bento's page tools), so the kernel draws
-  // what one did (`afterWalk` says), or why it was refused, over whatever page the example draws.
+  // what one did (`afterWalk` says), or why it was refused, over whatever page the example draws:
+  // a part of its own, so what it says goes alone, not the page again.
   const page = (sessionId: string): string => {
     const line = toldAt(sessionId, "ledger", "/latest");
-    return example.render(sessionId) + (line && `<div class="undo-said">${line}</div>`);
+    return example.render(sessionId) + (line && part("undo-said", `<div class="undo-said">${line}</div>`));
   };
   const draw = (sessionId: string): Promise<string> => settled(documents, () => page(sessionId));
 

@@ -558,8 +558,8 @@ describe("createServer, generically (no example from the examples directory invo
     const pageAfter = async (doc: string, ops: PatchOp[], id: WriteId): Promise<string> => (write(ws, doc, ops, id), htmlOf((await until(ws)).filter((m) => m.type === "render").at(-1)!));
     walks.length = 0;
     expect(await pageAfter("note", [{ op: "replace", path: "/text", value: "said" }], 1)).toBe('<p class="note">said</p><p class="said" role="status">Noted.</p>');
-    expect(await pageAfter("ledger", [{ op: "remove", path: "/latest" }], 2)).toBe('<p class="note"></p><div class="undo-said"><p class="said" role="status">Undone: “said”.</p></div>');
-    expect(await pageAfter("ledger", [{ op: "add", path: "/latest" }], 3)).toBe('<p class="note">said</p><div class="undo-said"><p class="said" role="status">Redone: “said”.</p></div>');
+    expect(await pageAfter("ledger", [{ op: "remove", path: "/latest" }], 2)).toBe('<p class="note"></p><div data-eta-part="undo-said" class="undo-said"><p class="said" role="status">Undone: “said”.</p></div>');
+    expect(await pageAfter("ledger", [{ op: "add", path: "/latest" }], 3)).toBe('<p class="note">said</p><div data-eta-part="undo-said" class="undo-said"><p class="said" role="status">Redone: “said”.</p></div>');
     // each walk is told which way it went, what it wrote and what that wrote over
     expect(walks).toEqual([
       { way: "undo", ops: [{ op: "replace", path: "", value: { text: "" } }], inverse: [{ op: "replace", path: "", value: { text: "said" } }] },

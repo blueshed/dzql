@@ -144,6 +144,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (Undo, Redo and leaving) or the window's margin moved them: after an undo, neither Undo nor Redo
   could be pressed until the next write. It now stands beside the tools, level with their foot,
   and steps aside with them for a docked drawer.
+- **What Undo says goes as a part of its own.** The kernel drew the line outside any part, so saying
+  it sent the walker's page whole again: the Okafors' undo of a maybe was handed 28,696 bytes,
+  14,376 without the line. It is 14,789 now, the line going beside the page's last part.
 - **What follows a write can say what it did.** The kernel let go of what a session had been told
   after a write's `afterWrite`, so a line told there was taken away as it was said. It now lets go
   of it as the write lands, before `afterWrite` (or `afterWalk`) runs; a write that applies nothing
