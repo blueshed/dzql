@@ -170,7 +170,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   field grew out of its bar; the height is the welcome's alone now. In a drawer a long state
   ("shared · claimed by OKAFOR, BEN") goes under its row's words and wraps, where it squeezed the
   words to one a line and ran past the drawer's edge. A figure that stands for a family in the
-  photo is a button a screen reader can name ("a family of 17").
+  photo is a button a screen reader can name ("OKAFOR, a family of 2"; a family of one by the
+  person, or "a guest" while the names are down until the day).
 - **A plain form posts.** The client stopped every form's submit, so a form without
   `data-write` (a sign-in page) could never post; it now stops only a form that writes.
 - **The wedding's welcome, laid out again.** Its forms used the bento's list `.row` (a rule under

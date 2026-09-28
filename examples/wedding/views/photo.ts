@@ -64,6 +64,14 @@ export interface Family {
   chosen?: boolean;
 }
 
+/** A family's figure, named for a screen reader: a family of one by the person (or "a guest", while
+ * the names are down until the day), a bigger one by the code on its chest where the couple see one,
+ * and how many it stands for. */
+function familyName(f: Family): string {
+  if (f.members.length === 1) return f.members[0]!.spec.name ?? "a guest";
+  return `${f.label ? `${f.label}, ` : ""}a family of ${f.members.length}`;
+}
+
 /**
  * The photo at its three levels: everyone, the families (one figure each, the first member's own
  * look, the count at the shoulder), or one family open. A map shows an area with how many sites
@@ -77,8 +85,7 @@ export function familiesPhoto(families: Family[], open: string | null): { entrie
   const entries: PhotoEntry[] = families.map((f) => ({
     key: f.key,
     spec: { ...f.members[0]!.spec, name: f.label },
-    // a button a screen reader can name: the code on its chest where the couple see one, and how many it stands for
-    name: `${f.label ? `${f.label}, ` : ""}a family of ${f.members.length}`,
+    name: familyName(f),
     ghost: f.ghost,
     out: f.out,
     mark: f.mark,
