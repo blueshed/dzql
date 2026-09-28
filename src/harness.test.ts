@@ -165,7 +165,7 @@ describe("stories harness", () => {
     expect(any("household", { op: "replace", path: "/answer", value: "maybe" })).toBe(false); // drawn disabled: the browser sends nothing
     expect(any("household", { op: "replace", path: "/message", value: "hi" })).toBe(false);
     expect(any("room:general", { op: "add", path: "/messages/-", value: "anything" })).toBe(true);
-    expect(any("session", { op: "replace", path: "/page", value: "day" })).toBe(true);
+    expect(any("session", { op: "replace", path: "/page", value: "day" })).toBe(false); // the page's address is the URL bar's and the back button's, not a control on the page
     expect(any("clock", { op: "replace", path: "/tz", value: "Asia/Tokyo" })).toBe(true); // the picker says so
     expect(any("clock", { op: "replace", path: "/face", value: "round" })).toBe(false); // the clock on the document says nothing
     expect(any("household", { op: "replace", path: "/guests/2/minifigure/top", value: "#fff" })).toBe(true);
@@ -189,6 +189,27 @@ describe("stories harness", () => {
     expect((await run(leave, { ...told, stories: first })).failed).toBe(0);
     const wrong = { ...told, stories: first, signIn: (name: string) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@leave.example`, password: "not-it" } }) };
     expect(run(leave, wrong)).rejects.toThrow("ann could not sign in at /login: 303");
+  }, 30000);
+
+  test("a control the browser will not press is none: behind something inert, in a disabled fieldset, or hidden", () => {
+    const b = (value: string) => `<button${write("room", "replace", "/name", value)}>${value}</button>`;
+    const page = [
+      `<div class="ground" inert><section>${b("behind a modal")}<div data-applet="x"${appletWrites(["room", "replace", "/draft"])}></div></section></div>`,
+      b("open"),
+      `<fieldset disabled>${b("in a disabled fieldset")}<input${write("room", "replace", "/topic")}></fieldset>`,
+      `<fieldset>${b("in a fieldset")}</fieldset>`,
+      `<div hidden><p>${b("hidden")}</p></div>`,
+      `<br><input hidden${write("room", "replace", "/hidden")}><img src="x.png"><p>${b("after void tags")}</p>`,
+    ].join("");
+    expect(controlsOn(page).map((c) => c.value ?? c.path)).toEqual(["open", "in a fieldset", "after void tags"]);
+  });
+
+  test("a story from a modal is done in the modal: the page behind it, inert, offers nothing", async () => {
+    const { example: ticker } = await import("../examples/ticker/index");
+    const { stories: told } = await import("../examples/ticker/stories");
+    const desk = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/page", value: page }] });
+    const report = await run(ticker, { ...told, stories: [{ name: "Ann, asked about Alpha, opens Bravo's drawer behind the question", as: "ann", from: "market?confirm=ALPH", does: desk("market?symbol=BRVO"), seen: ["ann"] }] });
+    expect(report.outcomes[0]!.failures).toEqual(["ann has no control on their page for replace /page on desk"]);
   }, 30000);
 
   test("an applet on a document offers only what its mount says it writes: a drawer that lost its picker fails the story, though the clock's face reads the same document", async () => {

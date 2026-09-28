@@ -359,6 +359,11 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
 
 Also:
 
+- The stories count a control only where a person could press it: not drawn `disabled`, and not
+  `inert`, `hidden` or in a disabled fieldset, itself or by what it is in. So a story told from a
+  modal is done in the modal: the page behind it, inert, offers nothing. The page's address
+  (`data-page-write`) is the URL bar's, not a control: a story that goes somewhere needs the
+  button that goes there.
 - When the connection drops, the page stays as it was (what is typed, what applets hold), but
   `inert`, and `#app` is marked `data-offline` (`src/bento.css` dims it and says so) until the
   server, reached again, draws it afresh. A write made while it is down is not sent, nor taken

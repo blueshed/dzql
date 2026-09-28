@@ -123,7 +123,7 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
 /**
  * A control a page offers (src/html.ts `write`): the document, op and path it writes, and the value
  * a button carries (`data-value`, sent as a string). A field or a form writes whatever is typed, so
- * any value; so does the page's address (`data-page-write`). An applet draws its own controls in
+ * any value. An applet draws its own controls in
  * the browser, so it offers only what its mount says it writes (`data-writes`, src/html.ts), where
  * a `*` segment of its path is any one; one that says nothing offers nothing, whatever document it
  * reads (`data-doc`), as the clock's face writes nothing to the clock it shows.
@@ -138,26 +138,40 @@ const isDeclared = (w: unknown): w is { doc: string; op: string; path: string } 
   return typeof doc === "string" && doc !== "" && typeof op === "string" && OPS.includes(op) && typeof path === "string" && (path === "" || path.startsWith("/"));
 };
 
+/** What the browser will not let anyone press, nor anything inside it: `inert` (what is behind an open window or modal), `hidden`, and a disabled fieldset's fields. */
+const UNPRESSABLE = "[inert], [hidden], fieldset[disabled]";
+
 /**
- * Every control on a page, as the server drew it: one drawn `disabled` is none, since the browser
- * sends nothing from it. An applet's declaration that is not `[doc, op, path]` (the form before
- * ops, a hand-written attribute) offers nothing, and is said in `misdeclared`.
+ * Every control on a page, as the server drew it: one the browser sends nothing from is none --
+ * drawn `disabled`, or `inert`, `hidden` or in a disabled fieldset, itself or by what it is in.
+ * The page's address (`data-page-write`) is not on the page: the URL bar and the back button
+ * send it, so it offers nothing. An applet's declaration that is not `[doc, op, path]` (the form
+ * before ops, a hand-written attribute) offers nothing, and is said in `misdeclared`.
  */
 export function controlsOn(page: string, misdeclared: string[] = []): Control[] {
   const found: Control[] = [];
   const spec = (attr: string | null) => (attr === null ? undefined : (JSON.parse(unescape(attr)) as { doc: string; op: string; path: string }));
+  let within = 0; // how many of the elements open here the browser will not let anyone press inside
+  const pressable = (el: HTMLRewriterTypes.Element): boolean => within === 0 && !el.hasAttribute("inert") && !el.hasAttribute("hidden");
   new HTMLRewriter()
+    .on(UNPRESSABLE, {
+      element(el) {
+        if (!el.canHaveContent || el.selfClosing) return; // nothing inside it: its own attributes say it (pressable)
+        within++;
+        el.onEndTag(() => void within--);
+      },
+    })
     .on("[data-write]", {
       element(el) {
-        if (el.hasAttribute("disabled") && ["button", "input", "textarea", "select"].includes(el.tagName)) return; // the browser sends nothing from it
+        if (!pressable(el) || (el.hasAttribute("disabled") && ["button", "input", "textarea", "select"].includes(el.tagName))) return; // the browser sends nothing from it
         const s = spec(el.getAttribute("data-write"))!;
         const value = el.getAttribute("data-value");
         found.push({ ...s, value: value === null ? undefined : unescape(value), free: ["form", "input", "textarea", "select"].includes(el.tagName) });
       },
     })
-    .on("[data-page-write]", { element: (el) => void found.push({ ...spec(el.getAttribute("data-page-write"))!, free: true }) })
     .on("[data-writes]", {
       element(el) {
+        if (!pressable(el)) return;
         const raw = unescape(el.getAttribute("data-writes")!);
         const wrong = (what: string) => misdeclared.push(`applet declaration must be [doc, op, path]: ${el.getAttribute("data-applet") ?? "an applet"} says ${what}`);
         let said: unknown;

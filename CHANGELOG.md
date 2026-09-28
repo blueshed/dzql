@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **A control the browser will not press is none**, whatever is around it. The stories counted a
+  button inside an `inert` box, a `hidden` element or a disabled fieldset as offered, since only
+  the button's own `disabled` was looked at; keyboard and phone put the whole box `inert` behind
+  an open window, and the ground behind a modal. Now `inert`, `hidden` and a disabled fieldset
+  count on the control and on everything it is in, so a story from a modal is done in the
+  modal. And the page's address (`data-page-write`) is no longer a control for any address: the
+  URL bar and the back button send it, not the page, so a story that goes somewhere needs the
+  button that goes there.
 - **An applet offers only what its mount says it writes**, whatever document it reads. An applet
   on a document (`data-doc`) counted as a control for every write to it, so the ticker's clock
   stories passed from the box, where only the clock's face is, and still passed with the city

@@ -160,9 +160,12 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    `data-write` with its document, op and path, and a button's own value; a field or a form sends
    whatever is typed; an applet declares exactly what it writes (`data-writes`: an op and a path
    each, `*` for any one segment), and one that declares nothing offers nothing, whatever
-   document it reads (the ticker's clock face shows the clock and writes none of it); a control
-   drawn `disabled` is none, since the browser sends nothing from it. None is a failure: a story
-   nobody can do from a page is not a story (`offPage` marks a write from a feed or the CLI).
+   document it reads (the ticker's clock face shows the clock and writes none of it). A control
+   the browser sends nothing from is none: drawn `disabled`, or `inert` (behind an open window or
+   modal), `hidden`, or in a disabled fieldset, itself or by what it is in; and the page's address
+   (`data-page-write`) is the URL bar's and the back button's, not a control on the page. None is
+   a failure: a story nobody can do from a page is not a story (`offPage` marks a write from a
+   feed or the CLI).
    Then send the `does` as its session, wait for the wire to go quiet, and it must have landed:
    someone was told of a changed document. A `closesTab` has no control to find: the author's
    socket closes, the server is waited for, and something must land for someone still looking.
