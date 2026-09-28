@@ -366,7 +366,8 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
   reason finds there (someone else's write turning the page into another). A write on its way
   when the socket goes is unanswered: the page drawn afresh hands back what its form sent, as a
   refusal would (it may have landed, which that page then shows: better there twice than lost),
-  and an editing form says its edit again on its next commit.
+  and then each editing form says, once, any edit that page does not show -- one unanswered, or
+  one the closed socket never took; one that landed is drawn, and not said again.
 - A **button or row** writes on click, with its `data-value` if it has one. A click in a field
   never writes.
 - A form with **`data-write-on="blur"`, `"change"` or `"input"`** edits in place: `data-write`
@@ -394,7 +395,7 @@ Also:
 - When the connection drops, the page stays as it was (what is typed, what applets hold), but
   `inert`, and `#app` is marked `data-offline` (`src/bento.css` dims it and says so) until the
   server, reached again, draws it afresh. A write made while it is down is not sent, nor taken
-  for sent: a form keeps what is typed, and an editing form says it as the socket is back.
+  for sent: a form keeps what is typed, and an editing form says it once the page is drawn afresh.
 - `autofocus` means "this field is waiting for the caret": after a render the client focuses it,
   but only when nothing else has the caret.
 - `data-autoscroll` keeps a list at its foot as it grows.

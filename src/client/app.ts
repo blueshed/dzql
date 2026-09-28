@@ -591,6 +591,8 @@ const inputTimers = new WeakMap<HTMLFormElement, ReturnType<typeof setTimeout>>(
 // an already-sent value doesn't repeat it -- keyed by form, not by field, since a commit is
 // every changed field in one message (bento-request.md K3).
 let lastEditSent = new WeakMap<HTMLFormElement, string>();
+/** The socket went: the next page sent whole is drawn afresh, and the editing forms then say what it does not show. */
+let afresh = false;
 
 function commitEdit(form: HTMLFormElement) {
   const change = editingChange(form);
@@ -679,8 +681,6 @@ function connect() {
     reconnectDelay = RECONNECT_DELAY_MS;
     app.inert = false;
     delete app.dataset.offline;
-    // an edit made as the connection went was dropped, and waits in its field: it goes now
-    for (const form of app.querySelectorAll<HTMLFormElement>("form[data-write-on]")) commitEdit(form);
   });
 
   socket.addEventListener("message", (event) => {
@@ -690,6 +690,12 @@ function connect() {
       else if (message.wire === WIRE || !reloadForWire()) {
         if (sending?.unanswered) handBack(); // the page drawn afresh, after its socket went
         render(message.html);
+        if (afresh) {
+          // and each editing form says, once, what the page does not show: an edit dropped as the
+          // socket went, or unanswered; one that landed is drawn, and is not said again
+          afresh = false;
+          for (const form of app.querySelectorAll<HTMLFormElement>("form[data-write-on]")) commitEdit(form);
+        }
       }
     } else if (message.type === "refused") {
       // this page's own write, refused, and why if it says: before the page is handed back, what
@@ -720,11 +726,12 @@ function connect() {
   socket.addEventListener("close", () => {
     // What was on its way is unanswered: no server answers it on another socket. A form's values go
     // back when the page is drawn afresh, as a refusal's would -- it may have landed, which that page
-    // then shows: better there twice than lost -- and an editing form says its edit again, as it
-    // says one the closed socket never took (send, above).
+    // then shows: better there twice than lost -- and then an editing form says, once, any edit that
+    // page does not show: one unanswered, or one the closed socket never took (send, above).
     if (lastSent && !lastSent.echoed && !lastSent.refused) lastSent.unanswered = true;
     if (sending) sending.unanswered = true;
     lastEditSent = new WeakMap();
+    afresh = true;
     app.inert = true;
     app.dataset.offline = "";
     setTimeout(connect, reconnectDelay);

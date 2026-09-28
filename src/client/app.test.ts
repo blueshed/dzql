@@ -857,7 +857,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     }
   });
 
-  test("a write made while the socket is down is not taken for sent: a form keeps what is typed, and an editing form says it once the socket is back", async () => {
+  test("a write made while the socket is down is not taken for sent: a form keeps what is typed, and an editing form says it once the page is drawn afresh", async () => {
     await using view = await open();
     // every socket's send, the next one's too; as a real socket does, one not open drops what it is given (the id kept apart, as stubSend does)
     await view.evaluate(`(() => { window.__sent = []; window.__ids ??= []; const send = function (d) { const { id, ...write } = JSON.parse(d); if (this.readyState === 1) { window.__ids.push(id); window.__sent.push(write); } }; WebSocket.prototype.send = send; window.eta.socket().send = send; })()`);
@@ -874,7 +874,10 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(dropped).toBe("hi all"); // not sent, so not cleared
     await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
     const words = { doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] };
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000); // the words go as the socket is back, the field untouched
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(0); // not before the page is drawn afresh
+    await pushRender(view, `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>
+      <form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>Hello</textarea></form>`); // as the server, reached again, draws it
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000); // the words go, the field untouched
     expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([words]);
     await view.evaluate(`document.getElementById('words').focus()`);
     await view.evaluate(`document.getElementById('words').blur()`); // and leaving it says nothing again
@@ -1219,7 +1222,7 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
     expect(await lastSent()).toMatchObject({ id: undo, echoed: false, refused: true, reason: "Someone has changed that since, so it cannot be undone." });
   });
 
-  test("a write on its way when the socket goes is unanswered: the page drawn afresh hands back what its form sent, and an editing form says its edit again", async () => {
+  test("a write on its way when the socket goes is unanswered: the page drawn afresh hands back what its form sent, and an editing form says its edit again, once", async () => {
     await using view = await open();
     await stubSend(view);
     const words = (text: string) => `<form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>${text}</textarea></form>`;
@@ -1236,13 +1239,37 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
     await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
     expect(await view.evaluate<Record<string, unknown>>(`window.eta.inspect().lastSent`)).toMatchObject({ doc: "room", echoed: false, refused: false, unanswered: true });
     await stubSend(view);
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(0); // nothing said before the page shows what landed
     await pushRender(view, say() + words("Hello")); // the page drawn afresh: neither landed
     expect(await text(view)).toBe("hello");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000); // the edit goes again, the field untouched
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] });
+    expect(typeof (await view.evaluate<unknown>(`window.__ids[0]`))).toBe("number"); // with an id of its own
 
     await view.evaluate(`document.getElementById('words').focus()`);
+    await view.evaluate(`document.getElementById('words').blur()`); // leaving it says it no more
+    await Bun.sleep(50);
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(1);
+  }, 15000);
+
+  test("an edit that landed before its socket went is not said again: the page drawn afresh shows it", async () => {
+    await using view = await open();
+    // every socket's send, the next one's too; one not open drops what it is given
+    await view.evaluate(`(() => { window.__sent = []; window.__ids = []; const send = function (d) { const { id, ...write } = JSON.parse(d); if (this.readyState === 1) { window.__ids.push(id); window.__sent.push(write); } }; WebSocket.prototype.send = send; window.eta.socket().send = send; })()`);
+    const words = (text: string) => `<form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>${text}</textarea></form>`;
+    await pushRender(view, words("Hello"));
+    await waitFor(view, `document.getElementById('words') !== null`, (v) => v === true);
+    await view.click("#words");
+    await view.evaluate(`document.getElementById('words').setSelectionRange(5, 5)`);
+    await view.type(" there");
     await view.evaluate(`document.getElementById('words').blur()`);
     await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] });
+
+    await view.evaluate(`(window.__old = window.eta.socket()).close()`); // gone before its echo came
+    await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
+    await pushRender(view, words("Hello there")); // the page drawn afresh: it landed
+    await Bun.sleep(50);
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(1); // said once, before the socket went
   }, 15000);
 
   test("a page sent whole by a server of another wire loads this one again, and not again at once: a page and its server speak alike", async () => {

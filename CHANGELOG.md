@@ -37,8 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - A throw in a compartment's `afterWrite` is the server's failure (`following a write to …`),
     and the write stands; it was answered refused as well as echoed.
   - A write on its way when the socket goes is unanswered (`lastSent.unanswered`): the page drawn
-    afresh hands back what its form sent, as a refusal would, and an editing form says its edit
-    again on its next commit.
+    afresh hands back what its form sent, as a refusal would, and then each editing form says,
+    once and with an id, any edit that page does not show; one that landed is drawn, not said again.
   - The harness sends every write with an id: a `does` lands when its author is echoed that id, a
     `cannot` must be refused by it, and its `told` must be the reason that refusal gave; a refused
     `does` or premise says why. A refusal's failure reads `refused, but <who> was not answered:
@@ -514,8 +514,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   editing form committed into the closed socket, and the client recorded it as sent: once back,
   leaving the field again said nothing (the same message, not sent twice), and the words, still
   in the field, looked kept. And a form submitted as the socket closed was cleared. A write is now
-  sent only on an open socket, and recorded only then: an editing form says what was dropped as
-  the socket is back, and a form keeps what is typed.
+  sent only on an open socket, and recorded only then: a form keeps what is typed, and an editing
+  form says what was dropped once the page is drawn afresh (the unanswered write's account, above).
 - **A render keeps the reader's place, under a sticky header too** (`src/client/app.ts`, todo
   n85). The client left a reader's place to the browser's scroll anchoring, which can anchor on
   the row hidden under an app's sticky header: a stop moved from Wednesday to Thursday, from
