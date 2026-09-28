@@ -16,7 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/requests`) still passed its story. Now a write the applet does not name is not offered.
   The examples' declarations are exact: leave's calendar writes the draft and a request's starts
   and ends; the wedding's dress each look field, its menu a course's dish or drink, chosen or
-  taken back.
+  taken back, and its picture field the key at its own path, which it declared nowhere before
+  (a story now puts a picture on the welcome). The photo's taps only go somewhere, as the page's
+  address does, and the ticker's city picker is an applet on its document, which offers any
+  write to it.
 - **One word, one meaning: names renamed so they say what they are, and when they run.** No
   behaviour changes; rename and the gate passes. Compartment hooks are named for when they run
   (`permit`, `shape` before a write; `permitUndo` before an undo; `afterWrite`, `afterChange` after).

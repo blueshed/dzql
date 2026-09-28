@@ -95,6 +95,7 @@ export const stories: Stories = {
 
     // ── The couple keep the wedding ──
     story("The couple change their message, and every welcome changes", { as: "couple", from: "?answer", does: board("replace", "/message", "See you in April."), seen: { couple: "?answer", stranger: "" } }),
+    story("The couple put a picture on the welcome, and every welcome shows it", { as: "couple", from: "?answer", does: board("replace", "/picture_key", "seed/mount-without.svg"), seen: { couple: "?answer", stranger: "" } }),
     story("The couple set a deadline, and the households see it", { as: "couple", from: "?answer", does: board("replace", "/deadline", "2027-03-01"), seen: { couple: "", okafors: "", ben: "", benToo: "" } }),
     story("The couple invite the Londons, and they are on the list", { as: "couple", from: "list?new=households", does: board("add", "/households/-", { email: "londons@example.com", plus_ones: 2 }), seen: { couple: "list" } }),
     story("The couple correct Ben's email", { as: "couple", from: "?family=2", does: board("replace", "/households/2/email", "ben@achterberg.example"), seen: { couple: "?family=2" } }),

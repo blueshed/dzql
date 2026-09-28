@@ -10,7 +10,7 @@ import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
 import { over, type SessionDocument } from "../documents/session";
 import { addModal, addTool, choice, collectionPage, confirmModal, findControl, prop, row, rows, drawer, tool } from "./bento";
-import { esc, join, nav, open as openAt, write } from "./html";
+import { appletWrites, esc, join, nav, open as openAt, write } from "./html";
 import { address } from "../../../src/bento";
 import { part } from "../../../src/parts";
 import { icon, type IconName } from "./icons";
@@ -241,9 +241,9 @@ function confirmTakeOff(v: BoardView): string {
 
 // ───────────────────────────── the welcome ─────────────────────────────
 
-/** A picture for the welcome, a gift or a place: the one applet, since choosing a file and sending it is the browser's job. */
+/** A picture for the welcome, a gift or a place: the one applet, since choosing a file and sending it is the browser's job. It writes the kept picture's key at its path. */
 export const pictureField = (path: string, current: string | null): string =>
-  `<div data-applet="picture-field" data-props="${esc(JSON.stringify({ doc: "board", path, current }))}"></div>`;
+  `<div data-applet="picture-field"${appletWrites(["board", "replace", path])} data-props="${esc(JSON.stringify({ doc: "board", path, current }))}"></div>`;
 
 /** The welcome's drawer: every property it carries, each its own path, written on blur. */
 function welcomeSheet(v: BoardView): string {
