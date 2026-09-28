@@ -21,6 +21,67 @@ export type Cast = Record<string, Write[]>;
  */
 export type Seen = string[] | Record<string, string>;
 
+/** A story that writes: `does`. */
+type Does = {
+  /**
+   * The write the author makes. Their page must offer a control that sends it, and it must land.
+   * The harness then undoes and redoes it, and checks each puts every page back.
+   */
+  does: Write;
+  /** The address the author acts from: the drawer or modal that holds the control (`"2026-10?draft"`). Omitted: where `seen` or the cast put them. */
+  from?: string;
+  /** It comes from no page -- a feed, the CLI -- so no control is looked for. */
+  offPage?: true;
+  seen: Seen;
+  /**
+   * Who must not even be sent the document's changes, by the write, its undo or its redo.
+   *
+   * Stronger than being left out of `seen`: everyone not in `seen` is already checked to see no
+   * change on their page. `untold` also checks that nothing was sent. Use it where a page reading
+   * too much would leak (Cy, in the kitchen, is not sent general's messages).
+   */
+  untold?: string[];
+};
+
+/** A story that is refused: `cannot`. */
+type Cannot = {
+  /** A write that must be refused. Nothing may change, and the ledger must not move. */
+  cannot: Write;
+  /** The address the author tries it from, as for a `does`. */
+  from?: string;
+  /** What the refused person is told, beside the control that sent it (`refuse`, src/refusal.ts):
+   * the one change their page may show. Omitted: they are told nothing. */
+  told?: string;
+};
+
+/** A story told by a socket going: `closesTab`. */
+type ClosesTab = {
+  /**
+   * The author closes their tab: no write, the socket going, which the server tells like any
+   * change (who is in a room). No control is looked for and nothing is undone; the author, gone,
+   * sees nothing, so `seen` names only who is still looking.
+   */
+  closesTab: true;
+  seen: Seen;
+  /** Who must not even be sent a change by it, as for a `does`. */
+  untold?: string[];
+};
+
+/**
+ * The keys each kind of story takes, beside `name`, `as` and `premise`. A story is one kind, with
+ * only that kind's keys: the types say so, and the harness refuses any other at run time too,
+ * since a story file is not type-checked when it runs, and a key the harness does not read would
+ * be dropped without a word (`{ does, closesTab }` would close a tab and never write).
+ */
+export const STORY_KEYS = {
+  does: ["does", "from", "offPage", "seen", "untold"],
+  cannot: ["cannot", "from", "told"],
+  closesTab: ["closesTab", "seen", "untold"],
+} as const satisfies { does: readonly (keyof Does)[]; cannot: readonly (keyof Cannot)[]; closesTab: readonly (keyof ClosesTab)[] };
+
+/** One kind of story, and none of another kind's keys. */
+type Only<T> = T & { [K in Exclude<keyof Does | keyof Cannot | keyof ClosesTab, keyof T>]?: never };
+
 /** What a story tells, before it has a name. */
 export type Told = {
   as: string;
@@ -31,48 +92,7 @@ export type Told = {
    * story if the cast made it. Made in the order written; each must land.
    */
   premise?: Cast;
-} & (
-  | {
-      /**
-       * The write the author makes. Their page must offer a control that sends it, and it must land.
-       * The harness then undoes and redoes it, and checks each puts every page back.
-       */
-      does: Write;
-      /** The address the author acts from: the drawer or modal that holds the control (`"2026-10?draft"`). Omitted: where `seen` or the cast put them. */
-      from?: string;
-      /** It comes from no page -- a feed, the CLI -- so no control is looked for. */
-      offPage?: true;
-      seen: Seen;
-      /**
-       * Who must not even be sent the document's changes, by the write, its undo or its redo.
-       *
-       * Stronger than being left out of `seen`: everyone not in `seen` is already checked to see no
-       * change on their page. `untold` also checks that nothing was sent. Use it where a page reading
-       * too much would leak (Cy, in the kitchen, is not sent general's messages).
-       */
-      untold?: string[];
-    }
-  | {
-      /** A write that must be refused. Nothing may change, and the ledger must not move. */
-      cannot: Write;
-      /** The address the author tries it from, as for a `does`. */
-      from?: string;
-      /** What the refused person is told, beside the control that sent it (`refuse`, src/refusal.ts):
-       * the one change their page may show. Omitted: they are told nothing. */
-      told?: string;
-    }
-  | {
-      /**
-       * The author closes their tab: no write, the socket going, which the server tells like any
-       * change (who is in a room). No control is looked for and nothing is undone; the author, gone,
-       * sees nothing, so `seen` names only who is still looking.
-       */
-      closesTab: true;
-      seen: Seen;
-      /** Who must not even be sent a change by it, as for a `does`. */
-      untold?: string[];
-    }
-);
+} & (Only<Does> | Only<Cannot> | Only<ClosesTab>);
 
 export type Story = { name: string } & Told;
 

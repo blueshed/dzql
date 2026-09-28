@@ -118,7 +118,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   socket closes, as a browser's does, and whoever is still looking must see what the server tells
   of it; nobody's control is looked for and there is nothing to undo. Chat tells it: Cy closes
   her tab, and Ada and Bob see her leave general (her premise puts her there). A write made
-  meanwhile, between a story and its undo, still has no key (todo n9-n11).
+  meanwhile, between a story and its undo, still has no key (todo n9-n11). A story is one of
+  `does`, `cannot` or `closesTab`, with only that kind's keys (`STORY_KEYS`, src/stories.ts): the
+  types say so, and the harness refuses, by name and before running it, a story that mixes them
+  or has a key it does not read (an old `unseen`), since a story file is not type-checked when it
+  runs and the key would be dropped without a word.
 - **`first-app.md`: your first app, step by step.** Chat, then leave, with each word explained
   where it is first met, and what each story failure means.
 - **leave, a fourth example: people sign in, and a team's leave is one calendar.** A sign-in page

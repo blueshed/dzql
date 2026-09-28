@@ -2,7 +2,7 @@ import { db } from "./db";
 import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
-import type { Stories, Story, Write } from "./stories";
+import { STORY_KEYS, type Stories, type Story, type Write } from "./stories";
 import { applyPatch, type PatchOp } from "./json-patch";
 import { settled } from "./documents";
 import { onFailure } from "./failed";
@@ -218,6 +218,22 @@ export function hear(page: string, message: Heard): string {
 
 
 
+/**
+ * Why a story is not one kind of story with only that kind's keys (`STORY_KEYS`), if it is not. A
+ * story file runs without being type-checked, and a key the harness does not read would otherwise
+ * be dropped without a word: `{ does, closesTab }` would close a tab and never write.
+ */
+export function misshapen(story: Story): string[] {
+  const given = Object.entries(story).filter(([, value]) => value !== undefined).map(([key]) => key);
+  const kinds = (Object.keys(STORY_KEYS) as (keyof typeof STORY_KEYS)[]).filter((kind) => given.includes(kind));
+  if (kinds.length !== 1) return [`a story is one of does, cannot or closesTab, and this one has ${kinds.length ? kinds.join(" and ") : "none"}`];
+  const kind = kinds[0]!;
+  const takes: readonly string[] = ["name", "as", "premise", ...STORY_KEYS[kind]];
+  const why = given.filter((key) => !takes.includes(key)).map((key) => `a ${kind} story takes no ${key}`);
+  if (kind === "closesTab" && story.closesTab !== true) why.push(`closesTab is true, or left out: this one is ${JSON.stringify(story.closesTab)}`);
+  return why;
+}
+
 export async function run(example: Example, stories: Stories): Promise<Report> {
   const server = createServer(example, 0);
   const { draw, documents } = assemble(example);
@@ -369,6 +385,8 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   }
 
   async function tell(story: Story): Promise<Outcome> {
+    const unshaped = misshapen(story);
+    if (unshaped.length > 0) return { name: story.name, failures: unshaped }; // not a story the harness can tell: nothing is run
     const failures: string[] = [];
     failing = failures;
     db.exec("BEGIN");
@@ -383,7 +401,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       const why = await premise(cast, story);
       if (why.length > 0) return { name: story.name, failures: [...failures, ...why] }; // not the state the story starts from: nothing it finds would be true of it
 
-      if ("cannot" in story) {
+      if (story.cannot !== undefined) {
         if (story.from !== undefined) await put(cast, who, story.from, failures);
         const before = await snapshot(cast);
         const ledgerBefore = ledgerMax();
@@ -415,7 +433,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
         else if (where !== undefined) await put(cast, m, where, failures);
       }
 
-      if ("closesTab" in story) {
+      if (story.closesTab) {
         // No write: the author's socket goes, and whoever is still looking is told what follows
         // (who is in a room). No control is looked for, and there is nothing to undo.
         const looking = cast.filter((m) => m !== who);

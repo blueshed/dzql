@@ -104,6 +104,10 @@ story("Cy closes her tab, and Ada and Bob see her leave general", {
 });
 ```
 
+A story is one of the three -- `does`, `cannot`, `closesTab` -- with only that one's keys. The
+harness refuses one that mixes them, or carries a key it does not read, before it runs: a story
+file is not type-checked when it runs, and a key nobody reads would be dropped without a word.
+
 The sentence at the front is the story's name and its whole value to a customer. It is what you
 scroll through with the groom and ask "is this true?". The object after it is what runs.
 

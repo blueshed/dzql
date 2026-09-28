@@ -49,6 +49,35 @@ describe("stories harness", () => {
     expect(report.outcomes[1]!.failures).toContain('eve did not see it on ""');
   }, 30000);
 
+  test("a story is one kind, with only its own keys: one that mixes them fails by name and is not run, so no half of it is dropped", async () => {
+    const say = { doc: "room", ops: [{ op: "add" as const, path: "/messages/-", value: "hi" }] };
+    const general = { doc: "session", ops: [{ op: "replace" as const, path: "/room", value: "general" }] };
+    const misshapen = (story: object) => story as Story; // what the types refuse, as a story file that is not type-checked says it
+    const report = await run(example, {
+      cast: stories.cast,
+      stories: [
+        misshapen({ name: "Bob says hi and closes his tab", as: "bob", does: say, closesTab: true, seen: ["ada"] }),
+        misshapen({ name: "Eve cannot go into general, and closes her tab", as: "eve", cannot: general, closesTab: true, seen: ["ada"] }),
+        misshapen({ name: "Bob closes his tab from general", as: "bob", closesTab: true, from: "general", seen: ["ada"] }),
+        misshapen({ name: "Bob does not close his tab", as: "bob", closesTab: false, seen: ["ada"] }),
+        misshapen({ name: "Bob is somewhere", as: "bob", seen: ["ada"] }),
+        misshapen({ name: "Eve cannot go into general, and Ada sees nothing", as: "eve", cannot: general, seen: ["ada"], untold: ["ada"] }),
+        misshapen({ name: "Ada says hi, told something, by an old name", as: "ada", does: say, seen: ["ada", "bob"], told: "hi", unseen: ["cy"] }),
+        { name: "Ada says hi, with nothing left undefined counted", as: "ada", does: say, from: undefined, seen: ["ada", "bob"], untold: ["cy"] },
+      ],
+    });
+    expect(report.outcomes.map((o) => o.failures)).toEqual([
+      ["a story is one of does, cannot or closesTab, and this one has does and closesTab"],
+      ["a story is one of does, cannot or closesTab, and this one has cannot and closesTab"],
+      ["a closesTab story takes no from"],
+      ["closesTab is true, or left out: this one is false"],
+      ["a story is one of does, cannot or closesTab, and this one has none"],
+      ["a cannot story takes no seen", "a cannot story takes no untold"],
+      ["a does story takes no told", "a does story takes no unseen"],
+      [],
+    ]);
+  }, 30000);
+
   test("a story names everyone who sees its change: someone left out whose page changes fails it, by name", async () => {
     const report = await run(example, {
       cast: stories.cast,
