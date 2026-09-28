@@ -405,7 +405,7 @@ const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "s
   `/hide/<key>`, `/reading/<key>`).
 - The stylesheet imports `src/bento.css` first, then says its own tokens.
 - `data-moving` names the element that grows (a view transition runs only when its own tag
-  changes). `data-reveal` scrolls the chosen row into the clear.
+  changes). `data-reveal` scrolls the chosen row into the clear; one too tall for it, by its top.
 
 Escalate only as the data forces: in place, then the cell, then a drawer, then a window, then a
 modal. A list of five needs no find.

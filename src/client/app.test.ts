@@ -220,6 +220,32 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(scrolled as number).toBeGreaterThan(0);
   });
 
+  test("a revealed element taller than the view less its margins lands by its top, reached from below as from above", async () => {
+    await using view = await open();
+    const day = (height: number, reveal: boolean) =>
+      `<div class="list" id="list" style="height:200px"><div style="height:600px"></div><div id="day" style="height:${height}px;scroll-margin:24px 0"${reveal ? " data-reveal" : ""}></div><div style="height:600px"></div></div>`;
+    const top = `Math.round(document.getElementById('day').getBoundingClientRect().top - document.getElementById('list').getBoundingClientRect().top)`;
+    const landed: string[] = [];
+    for (const height of [170, 400]) {
+      for (const from of ["below", "above"]) {
+        await pushRender(view, day(height, false));
+        await view.evaluate(`document.getElementById('list').scrollTop = ${from === "below" ? "document.getElementById('list').scrollHeight" : "0"}`);
+        await pushRender(view, day(height, true));
+        landed.push(`${height}px from ${from}: ${await view.evaluate<number>(top)}`);
+      }
+    }
+    expect(landed).toEqual(["170px from below: 24", "170px from above: 24", "400px from below: 24", "400px from above: 24"]); // its top margin under the view's top
+
+    // and in the page itself, as a day is revealed on a phone, under a sticky header the page
+    // declares (`scroll-padding-top`): one that fits the window with its margins, but not below the header
+    const page = (reveal: boolean) =>
+      `<style>html { scroll-padding-top: 40px }</style><header style="position:sticky;top:0;height:40px"></header><div style="height:2000px"></div><div id="day" style="height:calc(100vh - 68px);scroll-margin:24px 0"${reveal ? " data-reveal" : ""}></div><div style="height:2000px"></div>`;
+    await pushRender(view, page(false));
+    await view.evaluate(`window.scrollTo(0, document.documentElement.scrollHeight)`);
+    await pushRender(view, page(true));
+    expect(await view.evaluate<number>(`Math.round(document.getElementById('day').getBoundingClientRect().top)`)).toBe(64); // under the header, and its margin
+  });
+
   test("a field waiting with autofocus gets the caret when a render brings it in, and never takes it from a field someone is in", async () => {
     await using view = await open();
     // the first page's field takes the one autofocus the browser gives a document

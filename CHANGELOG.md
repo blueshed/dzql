@@ -204,6 +204,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with `Date.now()`, which bun:test's `setSystemTime` stops, so a browser test that fixed the
   date to open a page on a given day, then waited for something that never came, hung past its
   own timeout instead of failing with what it waited for. It measures with `performance.now()`.
+- **A revealed element too tall for the view lands by its top** (`src/client/app.ts`, todo n84).
+  `data-reveal` scrolled with `block: "nearest"`, which, when the element and its scroll margins
+  cannot fit in the view, brings it by the edge it is reached by: from below, its foot, so its
+  top landed above the view, under a sticky header (a whole day on a phone). Such an element now
+  comes by its top, below its margin; one that fits still comes by its nearest edge. The view is
+  the nearest scroller's, or the window's, less its `scroll-padding` (a sticky header it declares).
 
 ## [0.49.0] - 2026-09-25
 

@@ -144,10 +144,24 @@ function movingElement(html: string): HTMLElement | undefined {
 // Rule 18 of bento-request.md's K2: after a full render's morph, an element newly carrying
 // `data-reveal` (or carrying it for the first time on a different element than before) scrolls
 // into view -- the window itself never moves, only the reading beside it. `previous` is captured
-// before the morph runs, since the morph is what may add, move, or remove the attribute.
+// before the morph runs, since the morph is what may add, move, or remove the attribute. It comes
+// by its nearest edge, unless it and its margins cannot fit in the view: then by its top, where it
+// is read from, since reached from below its nearest edge is its foot, and its top lands out of sight.
 function revealChanged(previous: Element | null): void {
   const current = app.querySelector<HTMLElement>("[data-reveal]");
-  if (current && current !== previous) current.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (!current || current === previous) return;
+  const { scrollMarginTop, scrollMarginBottom } = getComputedStyle(current);
+  const tall = current.getBoundingClientRect().height + parseFloat(scrollMarginTop) + parseFloat(scrollMarginBottom) > viewHeight(current);
+  current.scrollIntoView({ block: tall ? "start" : "nearest", inline: "nearest" });
+}
+
+/** The height of the view `el` is read in -- its nearest ancestor that scrolls, or the window -- less what its `scroll-padding` says stands over it (a sticky header). */
+function viewHeight(el: Element): number {
+  let port = el.parentElement;
+  while (port && port !== document.body && !(port.scrollHeight > port.clientHeight && /auto|scroll|hidden/.test(getComputedStyle(port).overflowY))) port = port.parentElement;
+  if (!port || port === document.body) port = document.documentElement;
+  const { scrollPaddingTop, scrollPaddingBottom } = getComputedStyle(port);
+  return port.clientHeight - (parseFloat(scrollPaddingTop) || 0) - (parseFloat(scrollPaddingBottom) || 0);
 }
 
 function render(html: string) {
