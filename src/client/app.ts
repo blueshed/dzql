@@ -23,13 +23,13 @@ const docs = new Map<string, { version: number; ops: PatchOp[] }>();
 let lastSent: { id: number; doc: string; ops: PatchOp[]; echoed: boolean; refused: boolean; reason?: string; unanswered?: true } | undefined;
 
 /**
- * What became of a write a script sent (todo n88): echoed, what it changed, with the ledger entry
- * that names the change (undo takes it); refused, and why when the refusal says; unanswered, its
+ * What became of a write a script sent (todo n88): echoed, what it changed, with the handle that
+ * names the change (undo takes it); refused, and why when the refusal says; unanswered, its
  * socket gone first; or unsent, and why -- the socket not open, or an input no control of the page's
  * takes.
  */
 export type Answer =
-  | { id: number; echoed: true; doc: string; version: number; ops: PatchOp[]; entry?: number }
+  | { id: number; echoed: true; doc: string; version: number; ops: PatchOp[]; change?: string }
   | { id: number; refused: true; reason?: string }
   | { id: number; unanswered: true }
   | { unsent: string };
@@ -45,8 +45,8 @@ declare global {
       socket(): WebSocket | undefined;
       inspect(): { docs: Record<string, { version: number; ops: PatchOp[] }>; lastSent: typeof lastSent };
       send(doc: string, ops: PatchOp[]): Promise<Answer>;
-      undo(entry?: number): Promise<Answer>;
-      redo(entry?: number): Promise<Answer>;
+      undo(change?: string): Promise<Answer>;
+      redo(change?: string): Promise<Answer>;
       tools(): { name: string; title: string; description: string; inputSchema: Schema }[];
       use(name: string, input?: Record<string, unknown>): Promise<Answer>;
     };
@@ -86,8 +86,8 @@ window.eta = {
   socket: () => socket,
   inspect: () => ({ docs: Object.fromEntries(docs), lastSent }),
   send: (doc, ops) => ask({ doc, ops }),
-  undo: (entry) => ask(walked("undo", entry)),
-  redo: (entry) => ask(walked("redo", entry)),
+  undo: (change) => ask(walked("undo", change)),
+  redo: (change) => ask(walked("redo", change)),
   tools: () => pageTools(app).map(({ name, title, description, inputSchema }) => ({ name, title, description, inputSchema })),
   use,
 };
@@ -783,8 +783,8 @@ function connect() {
       // this page's own write, echoed ("yours": the id is its own): it landed
       if (lastSent && lastSent.id === message.id) lastSent.echoed = true;
       if (sending && sending.id === message.id) sending = undefined;
-      const { doc, version, ops, entry } = message;
-      heard(message.id, { id: message.id, echoed: true, doc, version, ops, ...(entry !== undefined && { entry }) });
+      const { doc, version, ops, change } = message;
+      heard(message.id, { id: message.id, echoed: true, doc, version, ops, ...(change !== undefined && { change }) });
       if (message.ops.length > 0) lastEditSent = new WeakMap(); // a write landed: what was sent may be said again
     }
   });

@@ -330,13 +330,14 @@ its inverse, its version, who made it, and the cursor Undo moves along, which is
 
 - The kernel's ledger compartment takes `remove /latest` (undo) and `add /latest` (redo), and asks
   delta to undo or redo along the session's cursor.
-- It takes `remove /<entry>` and `add /<entry>` too: one change of the session's, named by an entry
-  of it (the `entry` its write's echo carried, or its undo's), undone or redone whatever came
-  after it. A person and an assistant in one browser are one session, so one cursor; "undo my
-  last" would take whichever was newest, and each undoes its own by name instead. One that is not
-  the session's is refused (`No change of yours is numbered 12.`), and so is one undone already,
-  or not undone. What the guard does not see: undoing a row's making removes the rows put under it
-  since, as delta's undo beside someone else's write always has.
+- It takes `remove /<change>` and `add /<change>` too: one change of the session's, named by the
+  handle its write's echo carried (`change`, or its undo's), undone or redone whatever came after
+  it. A person and an assistant in one browser are one session, so one cursor; "undo my last"
+  would take whichever was newest, and each undoes its own by name instead. A handle is random and
+  the session's own, never delta's entry, a serial that counts everyone's writes; the server keeps
+  the session's (the last 100) while it has a page open. One it did not give the session is
+  refused (`No change of yours is called 3f…`), and so is one undone already, or not undone.
+  Undoing a row's making once someone has put rows under it is a conflict (delta's guard).
 - One Undo reverses one write to one document. If a gesture changes two documents, it takes two
   presses, so keep what changes together in one document (leave keeps a person's draft beside
   their requests for this reason).
@@ -371,11 +372,11 @@ Messages:
   `id` is the sender's own, which the server only hands back: a number JSON can say, or a string
   of at most 64 characters (`LONGEST_ID`). The kernel's client numbers its writes from 1, and the
   harness gives every write it sends one.
-- Server to client: `{type: "patch", doc, version, ops, id?, entry?}`, with `doc` named whole (what
+- Server to client: `{type: "patch", doc, version, ops, id?, change?}`, with `doc` named whole (what
   was applied; kept in `window.eta.docs()` under that name). The echo sent to the writer of the
-  change its write made (an undo's or a redo's too) carries the write's `id`, and the ledger `entry`
-  that names the change (`remove /<entry>` on the ledger undoes it); everyone else's, and the
-  writer's echo of anyone else's change, neither. Then `{type: "render", html, wire}` (the page) or
+  change its write made (an undo's or a redo's too) carries the write's `id`, and `change`, the
+  handle that names it (`remove /<change>` on the ledger undoes it; a fact's names none);
+  everyone else's, and the writer's echo of anyone else's change, neither. Then `{type: "render", html, wire}` (the page) or
   `{type: "render", ops}` (the parts that changed).
 - A write that applies nothing -- refused, not a write at all, nothing to undo, an undo that walks
   nothing, a throw on the way -- is answered `{type: "refused", id, reason?}` when it carries an id (`reason` when `refuse`
@@ -395,10 +396,10 @@ Messages:
   reason?, unanswered?}`: echoed only by its own echo, refused (and why) only by its own refusal,
   unanswered when its socket went first.
 - `window.eta.send(doc, ops)` is a script's write, sent as a control's is, and resolves with what
-  became of it, by its id alone: `{id, echoed: true, doc, version, ops, entry?}`, `{id, refused:
+  became of it, by its id alone: `{id, echoed: true, doc, version, ops, change?}`, `{id, refused:
   true, reason?}`, `{id, unanswered: true}`, or `{unsent}` and why it could not go.
-  `window.eta.undo(entry?)` and `redo(entry?)` walk the session's last change, or the one named, and
-  answer the same.
+  `window.eta.undo(change?)` and `redo(change?)` walk the session's last change, or the one named,
+  and answer the same.
 
 ### Assistants: the page's writes as tools
 

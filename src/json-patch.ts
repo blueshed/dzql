@@ -31,11 +31,11 @@ export const isWriteId = (id: unknown): id is WriteId => (typeof id === "number"
 
 /**
  * The wire echo of a write: sent to every connection that can see `doc`, before any HTML; to the
- * writer's own, with its write's id and the ledger entry that names the change it made, which
- * undoes it by name (`remove /<entry>` on the ledger).
+ * writer's own, with its write's id and the handle of the change it made, which undoes it by name
+ * (`remove /<change>` on the ledger).
  */
-export function patchMessage(doc: string, version: number, ops: PatchOp[], id?: WriteId, entry?: number): string {
-  return JSON.stringify({ type: "patch", doc, version, ops, ...(id !== undefined && { id, ...(entry !== undefined && { entry }) }) });
+export function patchMessage(doc: string, version: number, ops: PatchOp[], id?: WriteId, change?: string): string {
+  return JSON.stringify({ type: "patch", doc, version, ops, ...(id !== undefined && { id, ...(change !== undefined && { change }) }) });
 }
 
 /** The answer to a write that applied nothing, to its writer alone: its id, and why when the refusal says (`refuse`). The page handed back follows. */

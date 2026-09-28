@@ -123,7 +123,10 @@ function makeExample(name: string): Example {
   };
 }
 
-type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[]; id?: WriteId; entry?: number; reason?: string; wire?: number };
+type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[]; id?: WriteId; change?: string; entry?: number; reason?: string; wire?: number };
+
+/** A change's handle, as its writer's echo gives it: opaque, the session's own. */
+const HANDLE = /^[0-9a-f]{16}$/;
 
 /** A render's HTML, whether it came as the whole page or as the parts that changed (src/parts.ts). */
 const htmlOf = (m: WireMessage): string =>
@@ -805,59 +808,83 @@ describe("one socket, any documents: a document is named whole, and seen because
     b.close();
   });
 
-  test("a write's echo to its writer names its ledger entry, which undoes that change by name -- not the session's last -- and redoes it; nobody else is told an entry", async () => {
+  test("a write's echo to its writer names its change by a handle of the session's own -- never the ledger's entry, whose numbers count everyone's writes -- which undoes that change, not the session's last, and redoes it", async () => {
     const { ws: a } = await showingMonths("2026-10");
     const { ws: b } = await showingMonths("2026-10");
     const whats = async () => (await appointments("2026-10")).map((x) => x.what);
 
     write(a, "month:2026-10", [{ op: "add", path: "/appointments/-", value: "dentist" }], 1);
     const dentist = await nextPatch(a);
-    expect({ id: dentist.id, entry: typeof dentist.entry }).toEqual({ id: 1, entry: "number" });
-    expect(await nextPatch(b)).not.toHaveProperty("entry");
+    expect({ id: dentist.id, change: HANDLE.test(dentist.change!), entry: dentist.entry }).toEqual({ id: 1, change: true, entry: undefined });
+    expect(await nextPatch(b)).not.toHaveProperty("change");
     write(a, "month:2026-10", [{ op: "add", path: "/appointments/-", value: "haircut" }], 2);
-    expect((await nextPatch(a)).entry).toBeGreaterThan(dentist.entry!);
+    expect((await nextPatch(a)).change).not.toBe(dentist.change);
     await nextPatch(b);
 
-    write(a, "ledger", [{ op: "remove", path: `/${dentist.entry}` }], 3);
+    write(a, "ledger", [{ op: "remove", path: `/${dentist.change}` }], 3);
     const undone = await nextPatch(a);
     expect(undone).toMatchObject({ doc: "month:2026-10", id: 3, ops: [{ op: "remove" }] });
-    expect(undone.entry).toBeGreaterThan(dentist.entry!);
-    expect(await nextPatch(b)).not.toHaveProperty("entry");
+    expect(HANDLE.test(undone.change!)).toBe(true);
+    expect(await nextPatch(b)).not.toHaveProperty("change");
     expect(await whats()).toEqual(["haircut"]);
 
-    write(a, "ledger", [{ op: "add", path: `/${undone.entry}` }], 4); // named by its undo's entry: the same change
+    write(a, "ledger", [{ op: "add", path: `/${undone.change}` }], 4); // named by its undo's handle: the same change
     expect(await nextPatch(a)).toMatchObject({ id: 4, ops: [{ op: "add", value: { what: "dentist" } }] });
     expect(await whats()).toEqual(["dentist", "haircut"]);
     a.close();
     b.close();
   });
 
-  test("a named undo or redo that is not this session's, or goes nowhere, is refused, and says why; a path that names no entry is refused by the ledger", async () => {
+  test("a named undo or redo by a handle this session was not given -- another's, or a ledger entry's number -- or one that goes nowhere, is refused, and says why", async () => {
     const { ws: a } = await showingMonths("2026-11");
     const { ws: b } = await showingMonths("2026-11");
     const refusal = async (ws: WebSocket) => (await until(ws)).find((m) => m.type === "refused");
 
     write(b, "month:2026-11", [{ op: "add", path: "/appointments/-", value: "b's" }], "b-1");
     const theirs = await nextPatch(b);
-    write(a, "ledger", [{ op: "remove", path: `/${theirs.entry}` }], 1);
-    expect(await refusal(a)).toEqual({ type: "refused", id: 1, reason: `No change of yours is numbered ${theirs.entry}.` });
+    write(a, "ledger", [{ op: "remove", path: `/${theirs.change}` }], 1);
+    expect(await refusal(a)).toEqual({ type: "refused", id: 1, reason: `No change of yours is called ${theirs.change}.` });
 
     write(a, "month:2026-11", [{ op: "add", path: "/appointments/-", value: "a's" }], 2);
     const mine = (await until(a)).find((m) => m.id === 2)!;
-    write(a, "ledger", [{ op: "add", path: `/${mine.entry}` }], 3);
+    write(a, "ledger", [{ op: "add", path: `/${mine.change}` }], 3);
     expect(await refusal(a)).toEqual({ type: "refused", id: 3, reason: "That change has not been undone." });
-    write(a, "ledger", [{ op: "remove", path: `/${mine.entry}` }], 4);
+    write(a, "ledger", [{ op: "remove", path: `/${mine.change}` }], 4);
     expect((await until(a)).find((m) => m.id === 4)).toMatchObject({ type: "patch", ops: [{ op: "remove" }] });
-    write(a, "ledger", [{ op: "remove", path: `/${mine.entry}` }], 5);
+    write(a, "ledger", [{ op: "remove", path: `/${mine.change}` }], 5);
     expect(await refusal(a)).toEqual({ type: "refused", id: 5, reason: "That change is undone already." });
 
-    for (const path of ["/0", "/-1", "/1.5", "/01", "/latest/1", "/x", ""]) {
+    // a ledger entry's number, or anything else that is no handle, is no change: the ledger refuses it
+    for (const path of ["/1", "/2", "/latest/1", "/x", `/${mine.change}0`, ""]) {
       write(a, "ledger", [{ op: "remove", path }], path);
       expect(await refusal(a)).toEqual({ type: "refused", id: path });
     }
     expect((await appointments("2026-11")).map((x) => x.what)).toEqual(["b's"]);
     a.close();
     b.close();
+  });
+
+  test("a session's handles go with its last page: open again, the one it was given is no change of its", async () => {
+    const { ws: first, sessionId } = await showingMonths("2026-12");
+    write(first, "month:2026-12", [{ op: "add", path: "/appointments/-", value: "kept" }], 1);
+    const kept = await nextPatch(first);
+    const again = connect(server, sessionId);
+    await opened(again);
+    await expectMessage(again, "render");
+    write(again, "ledger", [{ op: "remove", path: `/${kept.change}` }], 2); // a second page of the session's: its handles hold
+    expect((await until(again)).find((m) => m.id === 2)).toMatchObject({ type: "patch", ops: [{ op: "remove" }] });
+    write(again, "ledger", [{ op: "add", path: `/${kept.change}` }], 3);
+    expect((await until(again)).find((m) => m.id === 3)).toMatchObject({ type: "patch" });
+    first.close();
+    again.close();
+    await server.idle();
+    await Bun.sleep(20);
+    const later = connect(server, sessionId);
+    await opened(later);
+    await expectMessage(later, "render");
+    write(later, "ledger", [{ op: "remove", path: `/${kept.change}` }], 4);
+    expect((await until(later)).find((m) => m.id === 4)).toEqual({ type: "refused", id: 4, reason: `No change of yours is called ${kept.change}.` });
+    later.close();
   });
 
   test("a bare type is the document of that type the connection is on, seen without being shown", async () => {

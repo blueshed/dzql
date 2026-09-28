@@ -18,19 +18,18 @@ export function createLedgerCompartment(active: (sessionId: string) => boolean):
     },
     // "Remove the latest [undoable entry]" is undo; "add [back] the latest [undone one]" is redo --
     // a real document (this session's ledger) and a real path, not a verb wearing one. Which entry
-    // "/latest" means is delta's to find, so the client never tracks an id. "/<entry>" names one
-    // change of this session's by an entry of it, which its write's echo gave: an assistant and a
-    // person on one page each undo their own.
+    // "/latest" means is delta's to find, so the client never tracks an id. "/<handle>" names one
+    // change of this session's by the handle its write's echo gave (src/server.ts): an assistant
+    // and a person on one page each undo their own.
     permit(ws, op) {
-      if ((op.op !== "remove" && op.op !== "add") || !(op.path === "/latest" || entryOf(op.path) !== undefined)) return false;
+      if ((op.op !== "remove" && op.op !== "add") || !(op.path === "/latest" || handleOf(op.path) !== undefined)) return false;
       return active(ws.data.sessionId);
     },
   };
 }
 
-/** The ledger entry a path names, `/<entry>`: a whole number from 1, as delta numbers them; undefined for any other path. */
-export function entryOf(path: string): number | undefined {
-  if (!/^\/[1-9][0-9]*$/.test(path)) return undefined;
-  const entry = Number(path.slice(1));
-  return Number.isSafeInteger(entry) ? entry : undefined;
-}
+/** The handle of a change a path names, `/<handle>`: sixteen hex digits, as `newHandle` makes them; undefined for any other path. */
+export const handleOf = (path: string): string | undefined => (/^\/[0-9a-f]{16}$/.test(path) ? path.slice(1) : undefined);
+
+/** A change's handle: random, so it says nothing of anyone's writes, and never the same twice. */
+export const newHandle = (): string => [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, "0")).join("");

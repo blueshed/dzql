@@ -10,7 +10,7 @@ import { splitDoc } from "./names";
 import { drawing, shownTo } from "./reading";
 import { diff, type Drawn } from "./parts";
 import { Refusal, refuse, tell } from "./refusal";
-import { entryOf } from "./compartments/ledger";
+import { handleOf, newHandle } from "./compartments/ledger";
 import { refuseOrigin } from "@blueshed/delta/server";
 
 type Socket = Bun.ServerWebSocket<ConnectionData>;
@@ -115,6 +115,24 @@ function claimed<T>(ws: Socket, id: WriteId | undefined, doc: string, writing: P
   return writing;
 }
 
+/**
+ * The changes each session's writes made, by the handle its writer was given for each (todo n99):
+ * the echo names a change by a handle of the session's own, never by delta's entry, a serial whose
+ * gaps count everyone's writes, in documents this person cannot read too. Undo by change takes a
+ * handle and nothing else. Kept while the session has a page open, the last MOST_HANDLES of them.
+ */
+const handles = new Map<string, Map<string, number>>();
+const MOST_HANDLES = 100;
+
+/** A handle for `entry`, a change `sessionId` made. */
+function handleFor(sessionId: string, entry: number): string {
+  const mine = handles.get(sessionId) ?? handles.set(sessionId, new Map()).get(sessionId)!;
+  const handle = newHandle();
+  mine.set(handle, entry);
+  if (mine.size > MOST_HANDLES) mine.delete(mine.keys().next().value!);
+  return handle;
+}
+
 /** The claim a change answers, if any: a write's to that document, at that version, with the entry it made. Taken, so it answers once. */
 async function claimOf(doc: string, v: number | undefined): Promise<{ ws: Socket; id: WriteId; entry?: number } | undefined> {
   for (const claim of [...claims].filter((c) => c.doc === doc)) {
@@ -141,7 +159,8 @@ function tellChanges(documents: Documents): void {
     const wire = wireOps(owner, docId, ops as PatchOp[]);
     const yours = await claimOf(doc, v);
     const echoTo = await settled(documents, () => audienceFor(docType, docId));
-    for (const ws of echoTo) send(ws, ws === yours?.ws ? patchMessage(wireName(docType, docId, ws), v ?? 0, wire, yours.id, yours.entry) : patchMessage(wireName(docType, docId, ws), v ?? 0, wire));
+    const change = yours?.entry === undefined ? undefined : handleFor(yours.ws.data.sessionId, yours.entry);
+    for (const ws of echoTo) send(ws, ws === yours?.ws ? patchMessage(wireName(docType, docId, ws), v ?? 0, wire, yours.id, change) : patchMessage(wireName(docType, docId, ws), v ?? 0, wire));
     for (const ws of new Set([...echoTo, ...readersOf(docType, docId)])) void redraw(ws);
     await owner.afterChange?.(docId, wire);
   });
@@ -220,7 +239,8 @@ export function createServer(example: Example, port: number | string = process.e
     const at = owner.under ?? "";
     const doc = `${owner.docType}:${docId}`;
     const writing = documents.write(doc, shaped.map((op) => ({ ...op, path: at + op.path })) as never, { identity: who(ws), cursor: ws.data.sessionId, undoable: kind !== "fact" });
-    const written = await claimed(ws, id, doc, writing, (w) => ("error" in w || w.ops.length === 0 ? null : { version: w.version, entry: w.entry }));
+    // a fact is never undone: its echo names no change
+    const written = await claimed(ws, id, doc, writing, (w) => ("error" in w || w.ops.length === 0 ? null : { version: w.version, entry: kind === "fact" ? undefined : w.entry }));
     if ("error" in written || written.ops.length === 0) return false;
     const named = owner.perSession ? owner.docType : doc; // a session's own named by type: its id is a credential
     if ((written.entry === undefined) !== (owner.ledger === false)) {
@@ -240,7 +260,7 @@ export function createServer(example: Example, port: number | string = process.e
 
   /**
    * Undo or redo: delta walks the session's cursor -- its next entry (`/latest`), or one change of
-   * the session's named by an entry of it (`/<entry>`) -- and the change is told like any other. The
+   * the session's named by its handle (`/<change>`) -- and the change is told like any other. The
    * walk is looked at first, and the document's owner may refuse it (`permitUndo`). One that meets
    * someone else's later write changes nothing -- delta moves the cursor past it -- and says so; so
    * does a named change that is not the session's, or goes nowhere. One that lands is followed as a
@@ -251,13 +271,15 @@ export function createServer(example: Example, port: number | string = process.e
     const ledger = byDocType.get("ledger")!;
     if (!(await settled(documents, () => ops.every((op) => ledger.permit!(ws, op, ws.data.sessionId))))) return false;
     const way = ops[0]!.op === "add" ? "redo" : "undo";
-    const change = entryOf(ops[0]!.path);
+    const handle = handleOf(ops[0]!.path);
+    const change = handle === undefined ? undefined : handles.get(ws.data.sessionId)?.get(handle);
+    const unknown = () => refuse(`No change of yours is called ${handle}.`);
+    if (handle !== undefined && change === undefined) throw unknown();
     const by = { identity: who(ws), cursor: ws.data.sessionId };
     const plan = await documents.walk(way, by, { dry: true, change });
-    if (plan && "error" in plan && change !== undefined) throw plan.error.code === 404 ? refuse(`No change of yours is numbered ${change}.`) : new Error(plan.error.message);
     if (!plan || "error" in plan) {
       if (change === undefined) return false; // nothing to walk, or no ledger to walk it
-      throw refuse(way === "undo" ? "That change is undone already." : "That change has not been undone.");
+      throw plan ? unknown() : refuse(way === "undo" ? "That change is undone already." : "That change has not been undone.");
     }
     const { docType, docId } = splitDoc(plan.doc);
     const owner = byDocType.get(docType);
@@ -375,6 +397,7 @@ export function createServer(example: Example, port: number | string = process.e
       },
       close(ws) {
         closeConnection(ws);
+        if (![...allOpenSockets()].some((open) => open.data.sessionId === ws.data.sessionId)) handles.delete(ws.data.sessionId);
         enqueue(async () => {
           for (const compartment of compartments) await compartment.onClose?.(ws);
           await quiet(documents);

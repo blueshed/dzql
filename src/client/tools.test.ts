@@ -112,18 +112,18 @@ describe("the page's writes, as tools", () => {
       inputSchema: { type: "object", properties: { path: { type: "string", pattern: "^/requests/(?!-/|-$)[^/]+/starts$" }, value: {} }, required: ["path", "value"] },
     });
     expect(tools[5]!.inputSchema).toEqual({ type: "object", properties: { path: { type: "string", pattern: "^/requests/(?!-/|-$)[^/]+$", description: "/requests/*, each * an id" } }, required: ["path"] });
-    expect(tools[6]).toMatchObject({ title: "Undo", inputSchema: { type: "object", properties: { entry: { type: "integer", minimum: 1 } } } });
+    expect(tools[6]).toMatchObject({ title: "Undo", inputSchema: { type: "object", properties: { change: { type: "string" } } } });
   });
 
-  test("a tool makes its control's write and nothing else, with an id, and answers what came of it: its echo, with the entry that names the change, or its refusal and why", async () => {
+  test("a tool makes its control's write and nothing else, with an id, and answers what came of it: its echo, with the handle that names the change, or its refusal and why", async () => {
     await using view = await open();
     await render(view, PAGE);
 
     await start(view, `window.eta.use("add.room.messages.-", { text: "hi", to: "someone" })`);
     const sent = await lastSent(view);
     expect(sent).toEqual({ id: sent.id, doc: "room", ops: [{ op: "add", path: "/messages/-", value: { text: "hi", to: "all" } }] }); // the hidden field is the page's
-    await push(view, { type: "patch", doc: "room:general", version: 7, ops: [{ op: "add", path: "/messages/13", value: { text: "hi" } }], id: sent.id, entry: 41 });
-    expect(await answer(view)).toEqual({ id: sent.id, echoed: true, doc: "room:general", version: 7, ops: [{ op: "add", path: "/messages/13", value: { text: "hi" } }], entry: 41 });
+    await push(view, { type: "patch", doc: "room:general", version: 7, ops: [{ op: "add", path: "/messages/13", value: { text: "hi" } }], id: sent.id, change: "0a1b2c3d4e5f6a7b" });
+    expect(await answer(view)).toEqual({ id: sent.id, echoed: true, doc: "room:general", version: 7, ops: [{ op: "add", path: "/messages/13", value: { text: "hi" } }], change: "0a1b2c3d4e5f6a7b" });
 
     // several fields in one write, as the form commits them; the others left as they are
     await start(view, `window.eta.use("edit.trip.stops.4", { title: "Nara", kind: "eat", booked: true })`);
@@ -148,7 +148,7 @@ describe("the page's writes, as tools", () => {
     expect((await lastSent(view)).ops).toEqual([{ op: "replace", path: "/requests/9/starts", value: "2026-10-01" }]);
 
     // a write that is not the tool's is not sent, and says why: a field the form needs, an applet's
-    // path, a control the page does not offer now, an entry that is no entry's number. What a
+    // path, a control the page does not offer now. What a
     // control offers is the schema's to say, and the server's to permit, as it is for a person
     const count = await view.evaluate<number>(`window.__sent.length`);
     for (const [name, input, why] of [
@@ -157,7 +157,6 @@ describe("the page's writes, as tools", () => {
       [moved, { path: "/requests/-/starts", value: "x" }, "path is /requests/*/starts, each * an id"],
       [moved, { path: "/requests/9/ends", value: "x" }, "path is /requests/*/starts, each * an id"],
       ["remove.x.behind", {}, "This page offers no remove.x.behind now: ask for its tools again."],
-      ["undo", { entry: 1.5 }, "entry is the number a tool's answer gave"],
     ] as const) {
       await start(view, `window.eta.use(${JSON.stringify(name)}, ${JSON.stringify(input)})`);
       expect({ name, input, answer: await answer(view) }).toEqual({ name, input, answer: { unsent: why } });
@@ -175,21 +174,21 @@ describe("the page's writes, as tools", () => {
     expect((await lastSent(view)).ops).toEqual([{ op: "replace", path: "/room", value: "general" }]);
   });
 
-  test("undo and redo walk the session's last change, or the one an entry names: eta.undo(), eta.undo(41), the undo tool", async () => {
+  test("undo and redo walk the session's last change, or the one a handle names: eta.undo(), eta.undo(handle), the undo tool", async () => {
     await using view = await open();
     await render(view, PAGE);
     const walks: unknown[] = [];
-    for (const call of [`window.eta.undo()`, `window.eta.undo(41)`, `window.eta.redo(41)`, `window.eta.redo()`, `window.eta.use("undo", { entry: 41 })`, `window.eta.use("redo")`]) {
+    for (const call of [`window.eta.undo()`, `window.eta.undo("0a1b2c3d4e5f6a7b")`, `window.eta.redo("0a1b2c3d4e5f6a7b")`, `window.eta.redo()`, `window.eta.use("undo", { change: "0a1b2c3d4e5f6a7b" })`, `window.eta.use("redo")`]) {
       await start(view, call);
       const { doc, ops } = await lastSent(view);
       walks.push({ doc, ops });
     }
     expect(walks).toEqual([
       { doc: "ledger", ops: [{ op: "remove", path: "/latest" }] },
-      { doc: "ledger", ops: [{ op: "remove", path: "/41" }] },
-      { doc: "ledger", ops: [{ op: "add", path: "/41" }] },
+      { doc: "ledger", ops: [{ op: "remove", path: "/0a1b2c3d4e5f6a7b" }] },
+      { doc: "ledger", ops: [{ op: "add", path: "/0a1b2c3d4e5f6a7b" }] },
       { doc: "ledger", ops: [{ op: "add", path: "/latest" }] },
-      { doc: "ledger", ops: [{ op: "remove", path: "/41" }] },
+      { doc: "ledger", ops: [{ op: "remove", path: "/0a1b2c3d4e5f6a7b" }] },
       { doc: "ledger", ops: [{ op: "add", path: "/latest" }] },
     ]);
   });

@@ -32,7 +32,7 @@ const execute = (view: Bun.WebView, name: string, input: unknown) =>
 const MESSAGES = `document.querySelector('.messages')?.textContent ?? ""`;
 
 describe("chat, with an assistant in the page", () => {
-  test("the assistant says something through the page's own form, the person says something by hand, and the assistant undoes its own change by its entry -- the person's stands", async () => {
+  test("the assistant says something through the page's own form, the person says something by hand, and the assistant undoes its own change by its handle -- the person's stands", async () => {
     await using view = new Bun.WebView();
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `window.eta?.socket()?.readyState === 1`, (v) => v === true);
@@ -51,10 +51,10 @@ describe("chat, with an assistant in the page", () => {
     const live = await waitFor(view, LIVE, (v) => (v as string[]).includes("add.room.messages.-"));
     expect((live as string[]).toSorted()).toEqual(["add.room.messages.-", "redo", "remove.session.name", "remove.session.room", "undo"]); // in a room: say, leave it, sign out, undo, redo
 
-    // the assistant: one call, the page's own write, answered with the entry that names it
+    // the assistant: one call, the page's own write, answered with the handle that names it
     const said = await execute(view, "add.room.messages.-", { text: "Booked the 9:40 to Nara" });
     expect(said).toMatchObject({ echoed: true, doc: `room:${room}`, ops: [{ op: "add", value: { text: "Booked the 9:40 to Nara", name: "Ada" } }] });
-    expect(typeof said.entry).toBe("number");
+    expect(said.change).toMatch(/^[0-9a-f]{16}$/);
     await waitFor(view, MESSAGES, (v) => (v as string).includes("Nara"));
 
     // the person, by hand, after it
@@ -63,16 +63,16 @@ describe("chat, with an assistant in the page", () => {
     await view.click("button[type=submit]");
     await waitFor(view, MESSAGES, (v) => (v as string).includes("Thanks!"));
 
-    // the session's last change is the person's; the assistant takes back its own, by its entry
-    const undone = await execute(view, "undo", { entry: said.entry });
+    // the session's last change is the person's; the assistant takes back its own, by its handle
+    const undone = await execute(view, "undo", { change: said.change });
     expect(undone).toMatchObject({ echoed: true, doc: `room:${room}`, ops: [{ op: "remove" }] });
     const text = await waitFor(view, MESSAGES, (v) => !(v as string).includes("Nara"));
     expect(text).toContain("Thanks!");
-    const again = await execute(view, "undo", { entry: said.entry });
+    const again = await execute(view, "undo", { change: said.change });
     expect(again).toEqual({ id: again.id, refused: true, reason: "That change is undone already." });
 
     // and puts it back, as it was
-    expect(await execute(view, "redo", { entry: said.entry })).toMatchObject({ echoed: true, ops: [{ op: "add", value: { text: "Booked the 9:40 to Nara" } }] });
+    expect(await execute(view, "redo", { change: said.change })).toMatchObject({ echoed: true, ops: [{ op: "add", value: { text: "Booked the 9:40 to Nara" } }] });
     expect(await waitFor(view, MESSAGES, (v) => (v as string).includes("Nara"))).toContain("Thanks!");
   });
 });

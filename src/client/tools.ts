@@ -160,18 +160,15 @@ function appletTools(applet: HTMLElement): Tool[] {
   });
 }
 
-/** The ledger write that walks the session's last change, or the one `entry` names (the entry a tool's answer gave). */
-export function walked(way: "undo" | "redo", entry?: unknown): Write | string {
-  if (entry !== undefined && !(Number.isSafeInteger(entry) && (entry as number) > 0)) return "entry is the number a tool's answer gave";
-  return { doc: "ledger", ops: [{ op: way === "undo" ? "remove" : "add", path: `/${entry ?? "latest"}` }] };
-}
+/** The ledger write that walks the session's last change, or the one `change` names (the handle a write's answer gave); the server says which handles are the session's. */
+export const walked = (way: "undo" | "redo", change?: unknown): Write => ({ doc: "ledger", ops: [{ op: way === "undo" ? "remove" : "add", path: `/${change ?? "latest"}` }] });
 
 const walkTool = (way: "undo" | "redo"): Tool => ({
   name: way,
   title: way[0]!.toUpperCase() + way.slice(1),
-  description: `${way === "undo" ? "Undoes" : "Redoes"} the last change made in this browser's session -- yours or the person's -- or, given entry, that change alone: the entry a tool's answer gave.`,
-  inputSchema: { type: "object", properties: { entry: { type: "integer", minimum: 1 } } },
-  write: (input) => walked(way, input.entry),
+  description: `${way === "undo" ? "Undoes" : "Redoes"} the last change made in this browser's session -- yours or the person's -- or, given change, that change alone: the handle a tool's answer gave.`,
+  inputSchema: { type: "object", properties: { change: { type: "string" } } },
+  write: (input) => walked(way, input.change),
 });
 
 /**

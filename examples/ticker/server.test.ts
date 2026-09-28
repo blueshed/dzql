@@ -26,7 +26,7 @@ afterAll(() => {
 });
 
 /** `page`, on a render: the page this connection holds once it is applied, kept as the client keeps it. */
-type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[]; page?: string };
+type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[]; page?: string; id?: unknown; change?: string };
 
 const queues = new WeakMap<WebSocket, WireMessage[]>();
 const waiters = new WeakMap<WebSocket, ((message: WireMessage) => void)[]>();
@@ -138,6 +138,20 @@ describe("the ticker", () => {
     await expectQuiet(b);
     a.close();
     b.close();
+  });
+
+  test("a tick is a fact: its echo to its writer names no change to undo, where a watch's names one", async () => {
+    const a = await open();
+    const before = (await quotes()).ALPH!.price;
+    a.send(JSON.stringify({ id: 1, doc: "ticker", ops: [{ op: "replace", path: "/ALPH/price", value: before + 1 }] }));
+    const tick = await expectMessage(a, "patch");
+    expect({ id: tick.id, change: tick.change }).toEqual({ id: 1, change: undefined });
+    await expectQuiet(a);
+    a.send(JSON.stringify({ id: 2, doc: "watchlist", ops: [{ op: "add", path: "/symbols/-", value: "ALPH" }] }));
+    const watch = await expectMessage(a, "patch");
+    expect({ id: watch.id, change: typeof watch.change }).toEqual({ id: 2, change: "string" });
+    await expectMessage(a, "render");
+    a.close();
   });
 
   test("permit: only a tick on the market; only the watchlist's own two paths", async () => {

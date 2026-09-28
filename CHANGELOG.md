@@ -27,7 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `{ doc, path, reason, said }`: a test that looks for its patches looks for `doc: "told"`.
   - **`said(reason)` is gone from `src/refusal.ts`**: the story harness no longer looks for the
     line's markup, and draws the page without what its author was told to compare the rest.
-- **eta needs `@blueshed/delta` with named undo** (delta's `change: <entry>`, after 0.10.0). On
+- **eta needs `@blueshed/delta` with named undo** (delta's `change: <entry>`, after 0.10.0; on
+  Postgres, its 001g applied again). On
   this branch `package.json` points at a tarball packed from delta's `feat/undo-named`; at
   release it goes back to the npm range that has it.
 
@@ -109,20 +110,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   walk's rows and what they wrote over). Two of its stories say it with `undone` and `redone`: the
   answer, and a plus-one named in a modal the write put away.
 - **A change is undone by name, not only the session's last** (todo n99; delta's named undo). The
-  echo of a write's change to its writer carries the ledger entry that names it (`{type: "patch",
-  …, id, entry}`; nobody else's echo carries one), and the ledger takes `remove /<entry>` (undo that
-  change) and `add /<entry>` (redo it) beside `/latest`. A person and an assistant on one page share
+  echo of a write's change to its writer carries a handle that names it (`{type: "patch", …, id,
+  change}`; nobody else's echo carries one, nor a fact's), and the ledger takes `remove /<change>`
+  (undo that change) and `add /<change>` (redo it) beside `/latest`. A handle is random and the
+  session's own, never delta's entry, a serial whose gaps count everyone's writes, in documents the
+  person cannot read too; the server keeps the session's (the last 100) while it has a page open,
+  and takes no other. A person and an assistant on one page share
   the session's cursor, so "undo my last" took whichever was newest; now each undoes its own. The
-  change is named by any entry of it -- its write's, an undo's, a redo's -- and must be the
-  session's (`No change of yours is numbered 12.`); one undone already, or not undone, is refused
+  change is named by any handle of it -- its write's, an undo's, a redo's -- and must be the
+  session's (`No change of yours is called 3f…`); one undone already, or not undone, is refused
   and says so. `permitUndo` is asked of it as of any undo, and one that meets a later write, the
   session's own included, is refused as ever ("Someone has changed that since…"), and stays to be
   undone.
 - **A script on the page learns what became of its own write** (todo n88). `window.eta.send(doc,
   ops)` sends a write as the page's controls do, with an id, and resolves with its answer, by that
-  id alone: `{id, echoed: true, doc, version, ops, entry?}` (`entry` names the change), `{id,
+  id alone: `{id, echoed: true, doc, version, ops, change?}` (`change` names it), `{id,
   refused: true, reason?}`, `{id, unanswered: true}` when the socket went first, or `{unsent}`, and
-  why, when it could not go. `window.eta.undo(entry?)` and `redo(entry?)` walk the session's last
+  why, when it could not go. `window.eta.undo(change?)` and `redo(change?)` walk the session's last
   change, or the one named, and answer the same. No more `inspect` as a barrier and reading the
   refusal back over HTTP.
 - **A page's writes are tools for an assistant** (todo n99). The client reads the page as it is
