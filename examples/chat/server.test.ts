@@ -19,7 +19,7 @@ async function messagesOf(room: string): Promise<{ id: string; name: string; tex
 /** The session that wrote a room's latest entry: the cursor in delta's ledger, which the wire never carries. */
 const lastWriterOf = (room: string): string => db.query<{ cursor: string }, [string]>("SELECT cursor FROM delta_ledger WHERE doc = ? ORDER BY id DESC LIMIT 1").get(`room:${room}`)!.cursor;
 
-/** The names of who is here, across the head of the conversation (`#people`: a face and a name each, but for your own face, which goes unnamed). */
+/** The names of who is here, across the head of the conversation (`#people`: a face and a name each, but for your own face, which goes unnamed but to a reader). */
 function peopleIn(html: string): string[] {
   const faces = html.match(/<ul [^>]*id="people"[^>]*>(.*?)<\/ul>/)?.[1] ?? "";
   return [...faces.matchAll(/<span class="note">([^<]*)<\/span>/g)].map((m) => m[1]!);
@@ -508,9 +508,10 @@ describe("chat", () => {
     const joined = await heard(a);
     expect(patchFor(joined.messages, `here:${room}`)!.ops).toEqual([{ op: "add", path: "/people/Bob", value: true }]);
     expect(renderIn(joined.messages)!.ops).toMatchObject([{ op: "replace", target: '[data-eta-part="people"]' }]);
-    // Alice sees Bob named; herself, her face in her own colour and no name, since she knows who she is
+    // Alice sees Bob named; herself, her face in her own colour and no name, since she knows who she
+    // is -- and a reader, who cannot see the colour, hears "You" among who is here, as her messages say
     expect(peopleIn(joined.page)).toEqual(["Bob"]);
-    expect(joined.page).toContain('<ul data-eta-part="people" id="people" class="people" aria-label="Here"><li class="who" aria-hidden="true"><span class="face me" aria-hidden="true">A</span></li><li class="who">');
+    expect(joined.page).toContain('<ul data-eta-part="people" id="people" class="people" aria-label="Here"><li class="who"><span class="face me" aria-hidden="true">A</span><span class="sr-only">You</span></li><li class="who">');
 
     b.close();
     expect(peopleIn((await heard(a)).page)).toEqual([]);

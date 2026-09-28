@@ -35,9 +35,13 @@ function renderRooms(name: string, rooms: string[]): string {
   });
 }
 
-/** Who is here, across the head of the conversation: a list, and a part, sent alone when someone arrives or leaves. You are your face in your own colour, not your name. */
+/**
+ * Who is here, across the head of the conversation: a list, and a part, sent alone when someone
+ * arrives or leaves. You are your face in your own colour, not your name; a reader, who cannot see
+ * the colour, hears "You", as your messages say.
+ */
 function renderPeople(people: string[], me: string): string {
-  const who = (p: string) => (p === me ? `<li class="who" aria-hidden="true">${face(p, true)}</li>` : `<li class="who">${face(p, false)}<span class="note">${esc(p)}</span></li>`);
+  const who = (p: string) => (p === me ? `<li class="who">${face(p, true)}<span class="sr-only">You</span></li>` : `<li class="who">${face(p, false)}<span class="note">${esc(p)}</span></li>`);
   return part("people", `<ul id="people" class="people" aria-label="Here">${people.map(who).join("")}</ul>`);
 }
 

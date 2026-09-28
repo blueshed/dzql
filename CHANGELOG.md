@@ -239,8 +239,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   its author's face once, at its start with the name, and the rest keep the face's place; your own
   carry no face, and a screen reader hears "You" at the start of your run, since it cannot see
   which side they sit on. Who is here is a list (`ul`), and you are your face, in your own colour
-  and ringed in the accent, not your name. The message field is named and shows "Message", not "Say" and "Message
-  #general". The messages and the rooms stop their scroll at their edge (rule 6), and the face and
+  and ringed in the accent, not your name; a screen reader, which cannot see the colour, hears
+  "You" there, where your face had been hidden from it and it heard only everyone else. The
+  message field is named and shows "Message", not "Say" and "Message #general". The messages and the rooms stop their scroll at their edge (rule 6), and the face and
   the name's inset are the bento's tokens.
 - **The ticker's applets speak to a screen reader, and its clock keeps still when asked** (todo n69).
   A board row's price and change are text now (n67). The clock was named "the time" and never
