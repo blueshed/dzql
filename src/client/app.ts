@@ -324,7 +324,7 @@ function render(html: string) {
   const moving = movingElement(html);
   const apply = drawing(() => morph(app, html, hooks), moving);
 
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduced = matchMedia("(prefers-reduced-motion:reduce)").matches;
   if (moving && !reduced && "startViewTransition" in document) {
     moving.style.viewTransitionName = "moving";
     // `finished` rejects when the transition is skipped -- another render arrived before it settled,
@@ -348,8 +348,8 @@ function render(html: string) {
 // once per document, so one a later drawing brings, a modal's first, would otherwise wait for a
 // click); the first control of a cell that has just moved (rule 7: the window's way back as it
 // opens, the cell's name as it closes), the one the keyboard was in first. Never from somewhere it is.
-const CONTROL = "a[href], button, input, select, textarea, [tabindex]";
-const DIALOG = "dialog, [role='dialog']";
+const CONTROL = "a[href],button,input,select,textarea,[tabindex]";
+const DIALOG = "dialog,[role=dialog]";
 
 /** What opened each drawer or modal on the page: where the keyboard goes back to when it goes. */
 const openedBy = new Map<Element, HTMLElement>();
@@ -501,7 +501,7 @@ app.addEventListener("click", (event) => {
   const target = (event.target as Element).closest<HTMLElement>("[data-write]");
   // A form writes on submit, and a field's data-write names its path for an editing form (below):
   // neither is a gesture. Putting the caret in find's field must not send a blank replace.
-  if (!target || target.matches("form, input, textarea, select")) return;
+  if (!target || target.matches("form,input,textarea,select")) return;
   event.preventDefault();
   pressed = target;
   write(target.dataset.write!, target.dataset.value);
@@ -644,8 +644,7 @@ function reloadForWire(): boolean {
 }
 
 function connect() {
-  const url = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`;
-  socket = new WebSocket(url);
+  socket = new WebSocket(`${location.origin.replace("http", "ws")}/ws`); // http: goes ws:, https: wss:
 
   // A successful connection means prior turbulence is over: the next drop,
   // whenever it happens, should retry promptly rather than inherit an old backoff.
