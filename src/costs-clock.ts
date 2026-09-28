@@ -3,4 +3,7 @@
 // answers open or closed -- is the same whatever the day the README is measured on.
 import { setSystemTime } from "bun:test";
 
-setSystemTime(new Date("2026-09-01T12:00:00Z"));
+/** The day a measure's clock stands on. */
+export const STILL = new Date("2026-09-01T12:00:00Z");
+
+setSystemTime(STILL);

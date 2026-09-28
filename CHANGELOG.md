@@ -219,6 +219,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   button is a part of its own, so opening a drawer sends its tag alone and no longer the mount's
   props; and the mount stands where it stood, so the line keeps the ticks it has seen as the
   board opens and closes.
+- **The README's measurer is under the coverage gate.** `src/costs.ts` and the clock it preloads
+  ran only in a process of their own, spawned by their test, so the table never saw them, and
+  writing the README, and every way a run goes wrong, had no test. Imported, `costs.ts` now runs
+  nothing; its test takes each piece in hand (the words, the 3% a bundle may drift, the writing,
+  a measure that fails, a bundle that does not build, a number with no mark) and checks the
+  README in its own process, keeping one run as the script, spawned. A bundle that does not
+  build says why. `bunfig.toml` says which files are outside the table, and why each may be.
 - **Chat says a run once, and you are not named to yourself** (todo n71). A run of messages shows
   its author's face once, at its start with the name, and the rest keep the face's place; your own
   carry no face, and a screen reader hears "You" at the start of your run, since it cannot see
