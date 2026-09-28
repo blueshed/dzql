@@ -201,11 +201,17 @@ export function createServer(example: Example, port: number | string = process.e
     const writing = documents.write(doc, shaped.map((op) => ({ ...op, path: at + op.path })) as never, { identity: who(ws), cursor: ws.data.sessionId, undoable: kind !== "fact" });
     const written = await claimed(ws, id, doc, writing, (w) => ("error" in w || w.ops.length === 0 ? null : w.version));
     if ("error" in written || written.ops.length === 0) return false;
+    const named = owner.perSession ? owner.docType : doc; // a session's own named by type: its id is a credential
     if ((written.entry === undefined) !== (owner.ledger === false)) {
       const why = owner.ledger === false ? "its compartment keeps it off the ledger (ledger: false), yet delta recorded the write" : "delta recorded no ledger entry: register it with { ledger: true }, or say its compartment keeps it off the ledger (ledger: false)";
-      failed(`writing ${owner.perSession ? owner.docType : `${owner.docType}:${docId}`}`, new Error(why)); // a session's own named by type: its id is a credential
+      failed(`writing ${named}`, new Error(why));
     }
-    await owner.afterWrite?.(ws, docId, ops);
+    // the write has landed: what fails after it is the server's, not a refusal, and its writer is told it landed
+    try {
+      await owner.afterWrite?.(ws, docId, ops);
+    } catch (err) {
+      failed(`following a write to ${named}`, err);
+    }
     return true;
   }
 

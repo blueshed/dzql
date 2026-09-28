@@ -61,6 +61,9 @@ const noteCompartment: Compartment = {
     if (ops.some((op) => op.value === "")) throw refuse("A note needs words."); // a write refused, and why
     return ops;
   },
+  afterWrite(_ws, _id, ops) {
+    if (ops.some((op) => op.value === "then boom")) throw new Error("then boom"); // a write that lands, then fails what follows
+  },
 };
 
 // Documents whose name is criteria: a month of appointments, `month:2026-09`. Nothing declares
@@ -468,6 +471,26 @@ describe("createServer, generically (no example from the examples directory invo
     write(ws, "note", [{ op: "replace", path: "/text", value: "during the tick" }], 42);
     await tick;
     expect((await until(ws)).filter((m) => m.type === "patch").map((m) => m.id)).toEqual([42]);
+    ws.close();
+  });
+
+  test("what follows a write failing is the server's failure, not a refusal: the write landed, and its writer is told so once", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const failures: string[] = [];
+    const stop = onFailure((what, err) => void failures.push(`${what}: ${(err as Error).message}`));
+    const error = console.error;
+    console.error = () => {};
+    try {
+      write(ws, "note", [{ op: "replace", path: "/text", value: "then boom" }], 9);
+      const answers = (await until(ws)).filter((m) => m.id === 9);
+      expect(answers.map((m) => m.type)).toEqual(["patch"]);
+      expect(failures).toEqual(["following a write to note: then boom"]); // a session's own, named by its type
+    } finally {
+      console.error = error;
+      stop();
+    }
     ws.close();
   });
 
