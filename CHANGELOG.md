@@ -79,6 +79,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for something else in it: the ticker's board, clock, city picker and spark, and the wedding's
   household photo (in its page's part, drawn again as the gift list opens), dress and menu (in the
   guest's drawer, drawn again as their coming changes).
+- **`afterWalk(ws, docId, { way, ops, inverse })`: an undo or redo is followed as a fresh write
+  is, knowing which way it went** (todo n90, n100). It runs once the walk has landed, for the walker
+  alone, with what the walk wrote and what that wrote over (so what it took back), in the wire's
+  paths, each row whole as the ledger keeps them. Say what it did with `tell(ws.data.sessionId, {
+  doc: "ledger", path: "/latest", said })`: the Undo tool's own place, which the kernel draws over
+  the page (`.undo-said`), where it already drew why a walk was refused. A throw in it is the
+  server's failure (`following a walk of …`), and the walk stands. `permitUndo` is told the way too,
+  as a fourth argument. Before, an app had to work out which way a walk went from what each way
+  would have said, in `afterChange`.
 
 ### Changed
 
@@ -97,6 +106,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to every page watching, and so read as a nicety.
 - **The kernel's client is 6.0 KB gzipped (5.6 KB)**: it lays a watched document's patches on its
   applet's props (`applyPatch`).
+
+### Fixed
+
+- **What follows a write can say what it did.** The kernel let go of what a session had been told
+  after a write's `afterWrite`, so a line told there was taken away as it was said. It now lets go
+  of it as the write lands, before `afterWrite` (or `afterWalk`) runs; a write that applies nothing
+  replaces it with why, or with nothing, as before.
 
 ## [0.50.0] - 2026-09-28
 

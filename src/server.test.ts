@@ -5,7 +5,7 @@ import { constants, deflateRawSync, inflateRawSync } from "node:zlib";
 import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
-import type { Compartment } from "./compartments/compartment";
+import type { Compartment, Walk } from "./compartments/compartment";
 import type { Example } from "./example";
 import index from "./server.test.fixture.html";
 import { WIRE, type PatchOp, type WriteId } from "./json-patch";
@@ -44,6 +44,10 @@ function readNote(id: string): string {
   return read<{ notes: { text: string } }>(`note:${id}`).notes.text;
 }
 
+// what each walk of a note was given, and which way each walk the ledger asked about went
+const walks: Walk[] = [];
+const asked: Walk["way"][] = [];
+
 const noteCompartment: Compartment = {
   docType: "note",
   perSession: true,
@@ -62,8 +66,20 @@ const noteCompartment: Compartment = {
     if (ops.some((op) => op.value === "")) throw refuse("A note needs words."); // a write refused, and why
     return ops;
   },
-  afterWrite(_ws, _id, ops) {
+  afterWrite(ws, _id, ops) {
     if (ops.some((op) => op.value === "then boom")) throw new Error("then boom"); // a write that lands, then fails what follows
+    if (ops.some((op) => op.value === "said")) return tell(ws.data.sessionId, { doc: "note", path: "/text", said: "Noted." }); // what it did, beside the control that sent it
+  },
+  permitUndo(_ws, _id, _ops, way) {
+    asked.push(way);
+    return true;
+  },
+  // what a walk of "said" took back, or put back, said over the page, where Undo is
+  afterWalk(ws, _id, walk) {
+    walks.push(walk);
+    const { text } = (walk.way === "undo" ? walk.inverse : walk.ops)[0]!.value as { text: string };
+    if (text === "walks badly") throw new Error("walks badly"); // a walk that lands, then fails what follows
+    if (text === "said") return tell(ws.data.sessionId, { doc: "ledger", path: "/latest", said: `${walk.way === "undo" ? "Undone" : "Redone"}: “${text}”.` });
   },
 };
 
@@ -540,6 +556,26 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
+  test("what a write did is told to its writer beside the control that sent it, and what its undo or redo did over the page, where Undo is; each until the next write", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const pageAfter = async (doc: string, ops: PatchOp[], id: WriteId): Promise<string> => (write(ws, doc, ops, id), htmlOf((await until(ws)).filter((m) => m.type === "render").at(-1)!));
+    walks.length = 0;
+    asked.length = 0;
+    expect(await pageAfter("note", [{ op: "replace", path: "/text", value: "said" }], 1)).toBe('<p class="note">said</p><p class="said" role="status">Noted.</p>');
+    expect(await pageAfter("ledger", [{ op: "remove", path: "/latest" }], 2)).toBe('<p class="note"></p><div class="undo-said"><p class="said" role="status">Undone: “said”.</p></div>');
+    expect(await pageAfter("ledger", [{ op: "add", path: "/latest" }], 3)).toBe('<p class="note">said</p><div class="undo-said"><p class="said" role="status">Redone: “said”.</p></div>');
+    // each walk is asked about knowing which way it goes, then told what it wrote and what that wrote over
+    expect(asked).toEqual(["undo", "redo"]);
+    expect(walks).toEqual([
+      { way: "undo", ops: [{ op: "replace", path: "", value: { text: "" } }], inverse: [{ op: "replace", path: "", value: { text: "said" } }] },
+      { way: "redo", ops: [{ op: "replace", path: "", value: { text: "said" } }], inverse: [{ op: "replace", path: "", value: { text: "" } }] },
+    ]);
+    expect(await pageAfter("note", [{ op: "replace", path: "/text", value: "quiet" }], 4)).toBe('<p class="note">quiet</p>'); // says nothing: what was said goes
+    ws.close();
+  });
+
   test("a change told from outside any event -- a feed's tick, slow to follow -- does not cost a write made meanwhile its id", async () => {
     const ws = connect(server);
     await opened(ws);
@@ -552,7 +588,7 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
-  test("what follows a write failing is the server's failure, not a refusal: the write landed, and its writer is told so once", async () => {
+  test("what follows a write or a walk failing is the server's failure, not a refusal: it landed, and its writer is told so once", async () => {
     const ws = connect(server);
     await opened(ws);
     await expectMessage(ws, "render");
@@ -565,6 +601,11 @@ describe("createServer, generically (no example from the examples directory invo
       const answers = (await until(ws)).filter((m) => m.id === 9);
       expect(answers.map((m) => m.type)).toEqual(["patch"]);
       expect(failures).toEqual(["following a write to note: then boom"]); // a session's own, named by its type
+      write(ws, "note", [{ op: "replace", path: "/text", value: "walks badly" }], 10);
+      await until(ws);
+      write(ws, "ledger", [{ op: "remove", path: "/latest" }], 11);
+      expect((await until(ws)).filter((m) => m.id === 11).map((m) => m.type)).toEqual(["patch"]);
+      expect(failures).toEqual(["following a write to note: then boom", "following a walk of note: walks badly"]);
     } finally {
       console.error = error;
       stop();

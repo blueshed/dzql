@@ -22,7 +22,8 @@ export class Pending extends Error {
 
 export type Change = { doc: string; ops: DeltaOp[]; v?: number };
 export type Written = { ops: DeltaOp[]; inverse: DeltaOp[]; version?: number; entry?: number };
-export type Walked = { doc: string; entry?: number; ops: DeltaOp[]; version?: number; conflict?: string[] };
+/** An undo or a redo: its document and entry, what it writes, and -- once walked, not on a dry walk -- what that wrote over. */
+export type Walked = { doc: string; entry?: number; ops: DeltaOp[]; inverse?: DeltaOp[]; version?: number; conflict?: string[] };
 export type Writer = { identity: unknown; cursor: string; undoable?: boolean };
 
 type Held = { value: any; v?: number };

@@ -54,7 +54,7 @@ export function assemble(example: Example): Assembled {
   copies.set(example, documents);
 
   // Undo and redo are the kernel's own tools (the ledger, bento's page tools), so the kernel draws
-  // what one did, or why it was refused, over whatever page the example draws.
+  // what one did (`afterWalk` says), or why it was refused, over whatever page the example draws.
   const page = (sessionId: string): string => {
     const line = toldAt(sessionId, "ledger", "/latest");
     return example.render(sessionId) + (line && `<div class="undo-said">${line}</div>`);

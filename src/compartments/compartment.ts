@@ -15,11 +15,19 @@ import type { PatchOp } from "../json-patch";
 export type Kind = "written" | "fact" | "live" | "sourced" | "static";
 
 /**
+ * An undo or a redo, as it landed: which way it went, what it wrote, and what that wrote over (its
+ * inverse, which holds what it took back) -- in the wire's paths, each row whole, as the ledger
+ * keeps them.
+ */
+export type Walk = { way: "undo" | "redo"; ops: PatchOp[]; inverse: PatchOp[] };
+
+/**
  * A compartment looks after one type of document: which one a page is on, who may write to it, and
  * what a write becomes. It has no place on the page: the page is the example's `render(sessionId)`.
  *
  * Its hooks, in the order they run: `permit` and `shape` before a write; `permitUndo` before an
- * undo or redo; `afterWrite` after a fresh write, for the writer; `afterChange` after any change.
+ * undo or redo; `afterWrite` after a fresh write, and `afterWalk` after an undo or redo, for the
+ * writer; `afterChange` after any change.
  */
 export type Compartment = {
   /** The document type it looks after, as the wire names it: `"room"` for `room:general`. */
@@ -63,19 +71,34 @@ export type Compartment = {
    */
   shape?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): PatchOp[];
   /**
-   * Before an undo or redo: may it go ahead? Given the ops it would write, in the wire's paths.
+   * Before an undo or redo: may it go ahead? Given the ops it would write, in the wire's paths
+   * (only the fields it sets back), and which way it goes.
    *
    * - For a rule of time or state that holds against Undo too: answers closed at a deadline.
    * - Not `permit`: Undo may do what permit refuses (a message taken back).
    * - Throw `refuse(reason)` to say why. Omitted: always.
    */
-  permitUndo?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): boolean;
+  permitUndo?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[], way: Walk["way"]): boolean;
   /**
    * After a fresh write from this person has landed, with the ops as the page sent them: what
    * follows for the writer alone. Leave closes the drawer once its draft is asked for.
-   * Never after an undo or redo. A throw here is the server's failure, reported; the write stands.
+   *
+   * - Say what it did with `tell(ws.data.sessionId, { doc, path, said })` (src/refusal.ts), beside
+   *   the control that sent it: what the writer was told before has gone by then.
+   * - Never after an undo or redo: that is `afterWalk`'s.
+   * - A throw here is the server's failure, reported; the write stands.
    */
   afterWrite?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): void | Promise<void>;
+  /**
+   * After an undo or redo of this person's has landed: what follows for the walker alone, as
+   * `afterWrite` is for a fresh write.
+   *
+   * - Say what it took back, or put back, with `tell(ws.data.sessionId, { doc: "ledger", path:
+   *   "/latest", said })`: the Undo tool's own place, which the kernel draws over the page. The
+   *   wedding's "Undone: your answer."
+   * - A throw here is the server's failure, reported; the walk stands.
+   */
+  afterWalk?(ws: ServerWebSocket<ConnectionData>, docId: string, walk: Walk): void | Promise<void>;
   /**
    * After any change to one of its documents, from anyone, undo and redo included, once it has been
    * told: keep what follows from it true. Chat's keeps the list of rooms.

@@ -87,10 +87,11 @@ export type Compartment = {
   permit?(ws, op, docId): boolean;         // may they make this change? omitted: nobody may
   shape?(ws, docId, ops): PatchOp[];       // what the page sent, as the document keeps it
   // before an undo or redo
-  permitUndo?(ws, docId, ops): boolean;    // may it go ahead? omitted: always
+  permitUndo?(ws, docId, ops, way): boolean;           // may it go ahead? omitted: always
   // after
-  afterWrite?(ws, docId, ops): void | Promise<void>;  // after a fresh write, for the writer alone
-  afterChange?(docId, ops): void | Promise<void>;     // after any change from anyone, undo included
+  afterWrite?(ws, docId, ops): void | Promise<void>;   // after a fresh write, for the writer alone
+  afterWalk?(ws, docId, walk): void | Promise<void>;   // after an undo or redo, for the walker alone
+  afterChange?(docId, ops): void | Promise<void>;      // after any change from anyone, undo included
   onOpen?(ws): void | Promise<void>;       // a page connected
   onClose?(ws): void | Promise<void>;      // a page closed
 };
@@ -144,8 +145,9 @@ if (ends < starts) throw refuse("The last day is before the first.");
 - The page draws the line with `toldAt(sessionId, doc, path)`, where `doc` and `path` are the
   control's `data-write`. It gives `<p class="refused" role="alert">`, `<p class="said"
   role="status">` for a success, or nothing.
-- A success is told, not thrown: `tell(sessionId, { doc, path, said })`, from a route that answered
-  a form. A line is one kind or the other: `reason` or `said`.
+- A success is told, not thrown: `tell(sessionId, { doc, path, said })`, from `afterWrite` or
+  `afterWalk` (see After a write), or a route that answered a form. A line is one kind or the
+  other: `reason` or `said`.
 - The kernel keeps the line in the session's own `told` document (in memory, off the ledger: being
   told is not something that happened) until the session's next write.
 - The page that sent the write is also answered `{type: "refused", id, reason}`, by the write's
@@ -156,8 +158,9 @@ if (ends < starts) throw refuse("The last day is before the first.");
 
 ### Undo is checked before it runs
 
-The kernel asks delta what an undo or redo would write (in the wire's paths), and asks the
-compartment's `permitUndo(ws, docId, ops)`.
+The kernel asks delta what an undo or redo would write (in the wire's paths, only the fields it
+sets back), and asks the compartment's `permitUndo(ws, docId, ops, way)`, `way` being `"undo"` or
+`"redo"`.
 
 - It is not `permit`: Undo may do what permit refuses (a message taken back).
 - It is for a rule of time or state that holds against Undo too. The wedding refuses an undo that
@@ -165,7 +168,7 @@ compartment's `permitUndo(ws, docId, ops)`.
 - An undo that meets someone else's later write changes nothing, and says so: "Someone has changed
   that since, so it cannot be undone."
 - The kernel draws why an undo or redo was refused over the page (`.undo-said`), since Undo is its
-  own tool.
+  own tool; and there too what one did, when `afterWalk` says.
 
 ### By kind
 
@@ -185,7 +188,15 @@ compartment's `permitUndo(ws, docId, ops)`.
 - **`afterWrite(ws, docId, ops)`** runs after a fresh write from this person, with the ops as the
   page sent them: what follows for the writer alone. Leave closes the draft's drawer once it is
   asked for. The write has landed by then: a throw here is the server's failure, reported
-  (`following a write to …`), never a refusal.
+  (`following a write to …`), never a refusal. What the writer was told before has gone, so it may
+  say what the write did: `tell(ws.data.sessionId, { doc, path, said })`, beside the control that
+  sent it.
+- **`afterWalk(ws, docId, { way, ops, inverse })`** runs after an undo or redo of this person's has
+  landed, as `afterWrite` does after a fresh write: `way` is `"undo"` or `"redo"`, `ops` what the
+  walk wrote and `inverse` what that wrote over, in the wire's paths, each row whole as the ledger
+  keeps it -- so an undo's `inverse` holds what it took back. Say it over the page, where Undo is:
+  `tell(ws.data.sessionId, { doc: "ledger", path: "/latest", said: "Undone: your answer." })`
+  (the wedding's household). A throw here is reported (`following a walk of …`); the walk stands.
 - Never write another compartment's document from `shape`.
 
 ## Telling a change (`src/server.ts`)
@@ -704,6 +715,6 @@ It usually means a seam is missing from what you know, not that the example is s
 - a per-example "may this session write" is `Example.active`;
 - an extra HTTP route is `Example.routes`;
 - a fresh write that differs from its undo is `shape` (undo is never shaped);
-- what follows a write is `afterChange` or `afterWrite`.
+- what follows a write is `afterChange` or `afterWrite`, and what follows an undo or redo `afterWalk`;
 
 Never teach the kernel the name of a specific document, applet or compartment.

@@ -223,7 +223,9 @@ export function createServer(example: Example, port: number | string = process.e
       const why = owner.ledger === false ? "its compartment keeps it off the ledger (ledger: false), yet delta recorded the write" : "delta recorded no ledger entry: register it with { ledger: true }, or say its compartment keeps it off the ledger (ledger: false)";
       failed(`writing ${named}`, new Error(why));
     }
-    // the write has landed: what fails after it is the server's, not a refusal, and its writer is told it landed
+    // the write has landed: what fails after it is the server's, not a refusal, and its writer is
+    // told it landed; what they were told before it goes, so what follows may say what it did
+    await tell(ws.data.sessionId);
     try {
       await owner.afterWrite?.(ws, docId, ops);
     } catch (err) {
@@ -235,7 +237,8 @@ export function createServer(example: Example, port: number | string = process.e
   /**
    * Undo or redo: delta walks the session's cursor; the change is told like any other. The walk is
    * looked at first, and the document's owner may refuse it (`permitUndo`). One that meets someone
-   * else's later write changes nothing -- delta moves the cursor past it -- and says so.
+   * else's later write changes nothing -- delta moves the cursor past it -- and says so. One that
+   * lands is followed as a fresh write is (`afterWalk`), knowing which way it went.
    */
   async function walk(ws: Socket, ops: PatchOp[], id?: WriteId): Promise<boolean> {
     const ledger = byDocType.get("ledger")!;
@@ -246,10 +249,19 @@ export function createServer(example: Example, port: number | string = process.e
     if (!plan) return false; // nothing to walk
     const { docType, docId } = splitDoc(plan.doc);
     const owner = byDocType.get(docType);
-    if (!plan.conflict && owner?.permitUndo && !(await settled(documents, () => owner.permitUndo!(ws, docId, wireOps(owner, docId, plan.ops as PatchOp[]))))) return false;
+    if (!plan.conflict && owner?.permitUndo && !(await settled(documents, () => owner.permitUndo!(ws, docId, wireOps(owner, docId, plan.ops as PatchOp[]), way)))) return false;
     const walked = await claimed(ws, id, plan.doc, documents.walk(way, by, { entry: plan.entry }), (w) => (w && !w.conflict ? w.version : null));
     if (walked?.conflict) throw refuse(`Someone has changed that since, so it cannot be ${way === "undo" ? "undone" : "redone"}.`);
-    return walked !== null;
+    if (walked === null) return false;
+    await tell(ws.data.sessionId); // it landed, as a write does: what the walker was told before goes
+    if (owner?.afterWalk) {
+      try {
+        await owner.afterWalk(ws, docId, { way, ops: wireOps(owner, docId, walked.ops as PatchOp[]), inverse: wireOps(owner, docId, (walked.inverse ?? []) as PatchOp[]) });
+      } catch (err) {
+        failed(`following a walk of ${owner.perSession ? owner.docType : plan.doc}`, err);
+      }
+    }
+    return true;
   }
 
   /**
@@ -273,7 +285,9 @@ export function createServer(example: Example, port: number | string = process.e
     // unknown document, nothing to walk, or a failure on the way -- is answered `refused`, with its
     // id and why when the refusal says, and the page is handed back. A message without an id (a
     // page from before ids, the CLI) is answered by the page alone, as it always was. A refusal
-    // that says why is also kept for the page to draw, until the session's next write (src/refusal.ts).
+    // that says why is also kept for the page to draw, until the session's next write
+    // (src/refusal.ts); a write that applied something has let go of it already, before what
+    // followed it could say what it did.
     const id = idOf(message);
     let wrote = false;
     let refusal: Refusal | undefined;
@@ -284,7 +298,7 @@ export function createServer(example: Example, port: number | string = process.e
       else failed("handling a write", err);
     }
     if (!wrote && id !== undefined) send(ws, refusedMessage(id, refusal?.reason));
-    if (isWrite(message)) await tell(ws.data.sessionId, refusal && { doc: message.doc, path: message.ops[0]!.path, reason: refusal.reason });
+    if (isWrite(message) && !wrote) await tell(ws.data.sessionId, refusal && { doc: message.doc, path: message.ops[0]!.path, reason: refusal.reason });
     if (!wrote) void redraw(ws, true);
     await quiet(documents);
     for (const claim of claims) if (claim.ws === ws) claims.delete(claim); // its change told by now, or never to be
