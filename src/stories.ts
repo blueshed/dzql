@@ -4,7 +4,7 @@ import type { PatchOp } from "./json-patch";
 // it, where. See stories.md at the root. `src/harness.ts` runs stories against a live example;
 // this is the shape it takes as its input.
 
-/** One message, exactly as the browser or the CLI would send it. */
+/** One message, exactly as the browser or the CLI would send it. The harness gives each an id of its own, as a page does, so what answers it -- its echo, or its refusal -- is its own. */
 export type Write = { doc: string; ops: PatchOp[] };
 
 /** The cast: a session per name, and the writes that put it where the stories find it.
