@@ -141,7 +141,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an app that imported it, bento or not. They hold only inside what `layers()` draws, the ground
   and the layers over it; the bento's classes (`.tool`, `.row`, …) still work wherever they are
   put. What an app changes:
-  - **A page drawn outside `layers()` loses them**: put it in the frame (`layers(page, "", "")`,
+  - **A page drawn outside `layers()` loses them**: its buttons and fields fall to the browser's
+    own size and look (a field under 16px, and a phone zooms in on it). Put it in the frame (`layers(page, "", "")`,
     nothing opens over it) to keep the bento's buttons and fields, as chat's pages, leave's
     sign-in and the wedding's welcome now are; or style it as the app's own.
   - **The app's own elements outside the frame say their own box-sizing**: `body`, `#app` (each

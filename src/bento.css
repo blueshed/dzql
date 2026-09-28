@@ -29,20 +29,21 @@
 }
 /* ── the frame: what layers() draws (src/bento.ts), the ground and the layers over it. Its elements --
    every box, button and field in it -- are drawn as the bento's; an element anywhere else on an
-   app's page is left as the app draws it, and takes the bento's look only by a class of it. ── */
-:where(.ground, .layer) {
-  * { box-sizing: border-box; }
-  /* one focus ring for every control, drawn outside it so a pressed (accent) control keeps it; a part
-     that draws its own (a cell, a row) says so below */
-  :where(a, button, summary, [role="button"], [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
-  button:disabled { opacity: 0.45; cursor: default; }
-  input, select, textarea { font: inherit; font-size: 16px; color: var(--ink); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); }
-  input, select { height: var(--touch); padding: 0 var(--space-md); }
-  textarea { width: 100%; padding: var(--space-sm) var(--space-md); resize: vertical; }
-  input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; } /* a field's ring, inside it */
-  [hidden] { display: none !important; }
-}
+   app's page is left as the app draws it, and takes the bento's look only by a class of it. Each
+   rule names the frame, not one block nesting them all, which a browser without CSS nesting
+   (Safari before 16.5, Chrome before 112) drops whole; `:where()` weighs nothing, so each rule
+   weighs what its element alone would. ── */
+:where(.ground, .layer) * { box-sizing: border-box; }
+/* one focus ring for every control, drawn outside it so a pressed (accent) control keeps it; a part
+   that draws its own (a cell, a row) says so below */
+:where(.ground, .layer) :where(a, button, summary, [role="button"], [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:where(.ground, .layer) button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:where(.ground, .layer) button:disabled { opacity: 0.45; cursor: default; }
+:where(.ground, .layer) :is(input, select, textarea) { font: inherit; font-size: 16px; color: var(--ink); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); }
+:where(.ground, .layer) :is(input, select) { height: var(--touch); padding: 0 var(--space-md); }
+:where(.ground, .layer) textarea { width: 100%; padding: var(--space-sm) var(--space-md); resize: vertical; }
+:where(.ground, .layer) :is(input, select, textarea):focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; } /* a field's ring, inside it */
+:where(.ground, .layer) [hidden] { display: none !important; }
 .ground, .layer { display: contents; } /* wrappers that are always there, and lay out nothing */
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .icon { flex: 0 0 auto; }

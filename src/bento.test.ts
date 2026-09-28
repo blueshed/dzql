@@ -267,6 +267,21 @@ describe("patchCollections", () => {
   });
 });
 
+describe("the stylesheet", () => {
+  test("bento.css nests no rule in another: a browser without CSS nesting (Safari before 16.5, Chrome before 112) drops the whole block", async () => {
+    const css = (await Bun.file(new URL("./bento.css", import.meta.url)).text()).replace(/\/\*[\s\S]*?\*\//g, "");
+    const within: string[] = []; // the preludes of the blocks we are in
+    const nested: string[] = [];
+    for (const [, prelude, mark] of css.matchAll(/([^{};]*)([{};])/g)) {
+      if (mark === "{") {
+        if (within.some((p) => !p.startsWith("@"))) nested.push(prelude!.trim());
+        within.push(prelude!.trim());
+      } else if (mark === "}") within.pop();
+    }
+    expect(nested).toEqual([]);
+  });
+});
+
 // The surfaces as a person meets them: drawn in a real browser with the kernel's stylesheet and its
 // client (src/client/app.ts), the socket stubbed as src/client/app.test.ts stubs it -- what the
 // client would send is kept in `window.__sent`, and a render is a message on its own socket.
