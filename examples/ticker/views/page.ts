@@ -128,12 +128,18 @@ function marketRows(v: View): string {
 
 export const reading = (ui: Ui): string => ui.reading?.board ?? "sparkline";
 
+/** The symbols the board lacks: what the plus may offer. */
+const unwatched = (v: View): string[] => Object.keys(v.market).filter((s) => !v.list.symbols.includes(s));
+
+/** The board in the window: its two readings, and the plus while there is something left to watch; once there is not, the note says so in its place. */
 function boardOpen(v: View): OpenOptions {
+  const left = unwatched(v).length > 0;
   return {
     key: "board",
     reading: readingSwitch("board", reading(v.ui), [["sparkline", "board"], ["list", "list"]]),
-    tools: [addTool(go(address("board", "new")), "Watch a symbol")],
+    tools: left ? [addTool(go(address("board", "new")), "Watch a symbol")] : [],
     body: reading(v.ui) === "list" ? boardList(v) : `<div class="reading sparkline">${boardMount(v.list, v.market, v.ui)}</div>`,
+    note: left ? null : "Everything is watched.",
   };
 }
 
@@ -167,16 +173,16 @@ function openDrawer(v: View): string {
 }
 
 /**
- * The modals: which symbol to watch -- chosen from those the board lacks, so the ask offers only what
- * can be; a refusal (another tab watched it first) says why beneath -- and whether to stop watching
+ * The modals: which symbol to watch -- chosen from those the board lacks, so the ask sends only what
+ * can be; a write that cannot be (from the wire, the CLI) is refused, and while the ask is open it
+ * says why beneath its field; with nothing left there is no ask -- and whether to stop watching
  * one. One question each; cancelling goes back to where it was asked from.
  */
 function modals(v: View): string {
   const { path, what, which = "" } = where(v.ui);
   if (what === "new") {
-    const options = Object.entries(v.market).filter(([s]) => !v.list.symbols.includes(s)).map(([s, q]) => ({ value: s, text: `${s} · ${q.name}` }));
-    const said = v.said || (options.length ? "" : `<p class="note">Every symbol the market quotes is on your board.</p>`);
-    return addModal("Watch a symbol", [{ name: "symbol", label: "Which symbol", options }], write("watchlist", "add", "/symbols/-"), go(path), "Watch", said);
+    const options = unwatched(v).map((s) => ({ value: s, text: `${s} · ${v.market[s]!.name}` }));
+    return options.length ? addModal("Watch a symbol", [{ name: "symbol", label: "Which symbol", options }], write("watchlist", "add", "/symbols/-"), go(path), "Watch", v.said) : "";
   }
   const at = what === "confirm" ? v.list.symbols.indexOf(which) : -1;
   if (at < 0) return "";

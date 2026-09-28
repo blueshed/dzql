@@ -369,6 +369,22 @@ describe("the ticker", () => {
     ws.close();
   });
 
+  test("with every symbol watched, the board has no plus and says so; the ask is not drawn", async () => {
+    const ws = await open();
+    for (const symbol of Object.keys(await quotes())) {
+      write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: symbol }]);
+      await heard(ws);
+    }
+    write(ws, "desk", [{ op: "replace", path: "/page", value: "board" }]);
+    let html = await pageNow(ws);
+    expect(html).not.toContain('aria-label="Watch a symbol"');
+    expect(html).toContain('<p class="note">Everything is watched.</p>');
+    write(ws, "desk", [{ op: "replace", path: "/page", value: "board?new" }]);
+    html = await pageNow(ws);
+    expect(html).not.toContain('class="modal"');
+    ws.close();
+  });
+
   test("inspect reports the market, this session's watchlist and its clock", async () => {
     const ws = await open();
     ws.send(JSON.stringify({ type: "inspect" }));

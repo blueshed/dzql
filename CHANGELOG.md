@@ -150,16 +150,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the name's inset are the bento's tokens.
 - **The ticker's applets speak to a screen reader, and its clock keeps still when asked** (todo n69).
   A board row's price and change are text now (n67). The clock was named "the time" and never
-  gave it; the face is an image named by the time, "14:05", said again when the minute changes.
-  Under `prefers-reduced-motion` the seconds hand is put away and the clock turns once a second,
-  not every frame. The city picker's field is a combobox named "City to show the time in": it says
+  gave it; the face is an image named by the time, "14:05", its name kept to the minute, so a
+  reader who comes to the clock hears the time then (it is not announced as it changes). Under
+  `prefers-reduced-motion` the seconds hand is put away and the clock turns once a second, not
+  every frame. The city picker's field is a combobox named "City to show the time in": it says
   whether its list is open, and which suggestion the arrow keys have reached
   (`aria-activedescendant`).
 - **The ticker's Watch modal says why it refuses** (todo n68). It took free text, dropped an unknown
   or already-watched symbol without a word, and stayed open. It is a choice of the symbols the
-  board lacks now, and an add that cannot be (another tab's, or typed on the wire) is refused with
-  `refuse()`: "The market does not quote ZZZZ.", "ALPH is on your board already.", drawn beneath
-  the field. The two `cannot` stories say what Ann is told.
+  board lacks now, so it sends only one that can be watched. An add that cannot be (from the wire
+  or the CLI) is refused with `refuse()`, "The market does not quote ZZZZ." or "ALPH is on your
+  board already.", and the reason is drawn beneath the ask's field when the ask is open. With every
+  symbol watched the board's window has no plus and says "Everything is watched." The two `cannot`
+  stories say what Ann, in the ask, is told.
 - **The ticker's board reads on a phone, and its rows open their drawers** (todo n67). A board row
   was an SVG 640 units wide scaled to the screen, so at 375 its words were about 6px; it is HTML
   now, at the page's own size, and a narrow board (a phone, or the window beside a drawer) keeps
