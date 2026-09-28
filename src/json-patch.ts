@@ -1,5 +1,14 @@
 import { parsePointer } from "./json-pointer";
 
+/**
+ * The wire's version, said on every page sent whole (`renderMessage`): 2 since a write carries an
+ * id, which its echo and its refusal hand back. A page that meets a server of another version loads
+ * itself again (src/client/app.ts), so the two speak alike; a page older than ids never looks, and
+ * a server answers a write without an id as it always did. Here, beside the write's words, since a
+ * page's bundle reads it and must reach nothing of the server's (src/client/imports.test.ts).
+ */
+export const WIRE = 2;
+
 /** A single RFC 6902 JSON Patch operation. `path` is an RFC 6901 JSON Pointer. */
 export type PatchOp = {
   op: "add" | "replace" | "remove";

@@ -1,3 +1,5 @@
+import { WIRE } from "../json-patch";
+
 /**
  * A page brought up to date in HTML's own terms (src/parts.ts works them out). `replace` morphs the
  * target element with `html` (one element); `tag` gives the target the attributes of `html`, an
@@ -7,13 +9,6 @@
  */
 export type HtmlOp = { op: "replace" | "tag" | "after" | "before"; target: string; html: string } | { op: "remove"; target: string };
 
-/**
- * The wire's version, said on every page sent whole: 2 since a write carries an id, which its echo
- * and its refusal hand back. A page that meets a server of another version loads itself again
- * (src/client/app.ts), so the two speak alike; a page older than ids never looks, and a server
- * answers a write without an id as it always did.
- */
-export const WIRE = 2;
-
+/** A page sent whole says the wire it speaks (`WIRE`, src/json-patch.ts). */
 export const renderMessage = (html: string): string => JSON.stringify({ type: "render", html, wire: WIRE });
 export const fragmentsMessage = (ops: HtmlOp[]): string => JSON.stringify({ type: "render", ops });

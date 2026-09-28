@@ -332,7 +332,7 @@ Messages:
   said why), then with the page whole. A throw is reported through `failed()` (`src/failed.ts`),
   which fails the story it happened in. A message whose `id` is neither a number nor a string is
   not a write.
-- `wire` on a page sent whole is the wire's version (`WIRE`, `src/compartments/render.ts`: 2 since
+- `wire` on a page sent whole is the wire's version (`WIRE`, `src/json-patch.ts`: 2 since
   a write carries an id). A page from before ids sends none, and is answered as it always was: its
   writes echoed without one, a refusal by the page whole, and `refused` ignored, so a tab left open
   over a deploy keeps working. A page sent a page whole by a server of another wire (one from

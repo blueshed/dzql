@@ -1,7 +1,7 @@
 import { applets } from "../applets";
-import type { PatchOp } from "../json-patch";
+import { WIRE, type PatchOp } from "../json-patch";
 import { formValue, groupOf, held, type Field } from "./form-value";
-import { WIRE, type HtmlOp } from "../compartments/render";
+import type { HtmlOp } from "../compartments/render";
 import { drawnOption, keepingChoices, morph, morphElement, morphTag, removeNode } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
@@ -625,7 +625,7 @@ app.addEventListener("change", (event) => onEditTrigger(event, "change"));
 app.addEventListener("input", onInput);
 
 // A page from another release than its server's -- a tab open over a deploy, or one rolled back --
-// is loaded again, so page and server speak one wire (src/compartments/render.ts WIRE). Not twice in
+// is loaded again, so page and server speak one wire (src/json-patch.ts WIRE). Not twice in
 // a minute: behind one address, two releases must not keep a tab loading; the page is drawn, and
 // the mismatch said. True when it is loading again.
 function reloadForWire(): boolean {
