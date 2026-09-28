@@ -127,6 +127,10 @@ Everything below is the least that makes it pass.
     await waitFor(view, `document.querySelector('.drawer h2')?.textContent`, (v) => v === "FXTR");
     ```
 
+An assistant in the browser uses the page by its writes: every control is a tool, registered with
+WebMCP where the browser has it (reference.md, "Assistants"). Nothing to add but what a person
+needs too: an `aria-label` on a button that is only an icon.
+
 ## An app of its own
 
 An app need not be an example: it can live in its own repo and install eta. `package.json` says

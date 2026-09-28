@@ -330,6 +330,13 @@ its inverse, its version, who made it, and the cursor Undo moves along, which is
 
 - The kernel's ledger compartment takes `remove /latest` (undo) and `add /latest` (redo), and asks
   delta to undo or redo along the session's cursor.
+- It takes `remove /<entry>` and `add /<entry>` too: one change of the session's, named by an entry
+  of it (the `entry` its write's echo carried, or its undo's), undone or redone whatever came
+  after it. A person and an assistant in one browser are one session, so one cursor; "undo my
+  last" would take whichever was newest, and each undoes its own by name instead. One that is not
+  the session's is refused (`No change of yours is numbered 12.`), and so is one undone already,
+  or not undone. What the guard does not see: undoing a row's making removes the rows put under it
+  since, as delta's undo beside someone else's write always has.
 - One Undo reverses one write to one document. If a gesture changes two documents, it takes two
   presses, so keep what changes together in one document (leave keeps a person's draft beside
   their requests for this reason).
@@ -364,13 +371,14 @@ Messages:
   `id` is the sender's own, which the server only hands back: a number JSON can say, or a string
   of at most 64 characters (`LONGEST_ID`). The kernel's client numbers its writes from 1, and the
   harness gives every write it sends one.
-- Server to client: `{type: "patch", doc, version, ops, id?}`, with `doc` named whole (what was
-  applied; kept in `window.eta.docs()` under that name). The echo sent to the writer of the change
-  its write made (an undo's or a redo's too) carries the write's `id`; everyone else's, and the
-  writer's echo of anyone else's change, none. Then `{type: "render", html, wire}` (the page) or
+- Server to client: `{type: "patch", doc, version, ops, id?, entry?}`, with `doc` named whole (what
+  was applied; kept in `window.eta.docs()` under that name). The echo sent to the writer of the
+  change its write made (an undo's or a redo's too) carries the write's `id`, and the ledger `entry`
+  that names the change (`remove /<entry>` on the ledger undoes it); everyone else's, and the
+  writer's echo of anyone else's change, neither. Then `{type: "render", html, wire}` (the page) or
   `{type: "render", ops}` (the parts that changed).
-- A write that applies nothing -- refused, not a write at all, nothing to undo, a throw on the way
-  -- is answered `{type: "refused", id, reason?}` when it carries an id (`reason` when `refuse`
+- A write that applies nothing -- refused, not a write at all, nothing to undo, an undo that walks
+  nothing, a throw on the way -- is answered `{type: "refused", id, reason?}` when it carries an id (`reason` when `refuse`
   said why), then with the page whole. A throw is reported through `failed()` (`src/failed.ts`),
   which fails the story it happened in. A message whose `id` is not one (a longer string, an
   object) is not a write, and is answered by the page alone: nothing larger than an id goes back.
@@ -386,6 +394,46 @@ Messages:
 - `window.eta.inspect().lastSent` is the page's last write, `{id, doc, ops, echoed, refused,
   reason?, unanswered?}`: echoed only by its own echo, refused (and why) only by its own refusal,
   unanswered when its socket went first.
+- `window.eta.send(doc, ops)` is a script's write, sent as a control's is, and resolves with what
+  became of it, by its id alone: `{id, echoed: true, doc, version, ops, entry?}`, `{id, refused:
+  true, reason?}`, `{id, unanswered: true}`, or `{unsent}` and why it could not go.
+  `window.eta.undo(entry?)` and `redo(entry?)` walk the session's last change, or the one named, and
+  answer the same.
+
+### Assistants: the page's writes as tools
+
+An assistant in the browser (Claude in Chrome, or any agent the browser lets in) uses the page by
+its writes, not its pixels: the client reads the page after each drawing into tools
+(`src/client/tools.ts`), from what it already says. Nothing to declare; a page whose controls say
+what they are is ready.
+
+- **What is a tool**: each control a person could press now, by the stories' rule (not `inert`,
+  `hidden` or disabled, itself or by what it is in), so an open modal's controls are the tools and
+  the ground behind it offers none:
+  - a **form** that creates: its named fields are the input (`required` as the page says; a hidden
+    or readonly field as the page drew it), its value sent as on submit;
+  - an **editing form**: one tool for all its fields, any of them given, set in one write, as the
+    form commits them;
+  - the **buttons and rows** that make one write: one tool, its `value` one of theirs where they
+    send several (the pages a session can go to, by their buttons);
+  - an **applet's** `appletWrites`: a `*` segment is any one member, named in the input's `path`;
+  - **`undo`** and **`redo`**, with an optional `entry`: the session's last change, or that one.
+    The ledger's own buttons are these.
+- **Its name is its write** -- `add.room.messages.-`, `edit.trip.stops.4`, `replace.session.page` --
+  so it stays while the control does; where buttons and a form make one write, the later is told
+  apart by its kind (`replace.session.room.form`). Its title and description are what the page
+  says: an `aria-label`, a legend, a label, a button's text. So say them: an icon-only button
+  with no `aria-label` is a tool called by its write alone.
+- **A tool makes its control's write and nothing more**, and the server permits it as it does a
+  person's: the schema says what the page offers, and nothing in the client is a gate. It answers
+  as `eta.send` does; `entry` names the change, for `undo`.
+- **WebMCP**: where the browser has a model context (`document.modelContext`, the W3C draft;
+  `navigator.modelContext`, Chromium's before it), each tool is registered with it, once while the
+  page offers it as it was, and withdrawn (its signal aborted) when it goes or changes. Where it has
+  none, nothing is registered; `window.eta.tools()` lists them and `window.eta.use(name, input)`
+  runs one, for an assistant that runs script in the page.
+- chat's `client/tools.test.ts` is the proof: an assistant says something through chat's own form,
+  the person says something after it, and the assistant undoes its own, by its entry.
 
 ### Controls
 
