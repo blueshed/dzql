@@ -170,9 +170,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reading, and the window's note names the plus on its rail. The market's head counts its symbols
   and its summary no longer counts them again. The clock's face no longer carries the city, which
   its cell says; its drawer is headed "Time zone" and gives the offset, not the city a fourth time.
-  A symbol's drawer gives what its lit row does not, the move in per cent and a sparkline of the
-  ticks seen while it is open (an applet on the quote's own document, as a board row is), not its
-  name, price or "Watched: no". A watched row in the market carries the board's mark instead of
+  A symbol's drawer gives what its lit row does not, and not "Watched: no" beside the Watch
+  button: from a list's row (the market's, or the board read as a list), which has the name and the
+  price, the move in per cent and a sparkline of the ticks seen while it is open (an applet on the
+  quote's own document); from a board row, which has those and on a narrow board hides the name,
+  the name. A watched row in the market carries the board's mark instead of
   the word "watching". The page's title is the desk, and the board's wells are cut square.
 - **A plain form posts.** The client stopped every form's submit, so a form without
   `data-write` (a sign-in page) could never post; it now stops only a form that writes.

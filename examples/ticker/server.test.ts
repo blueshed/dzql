@@ -304,7 +304,13 @@ describe("the ticker", () => {
     html = chosen.page!;
     expect(html).toContain(`<div data-eta-part="quote-CHRL" id="quote-CHRL" data-applet="board" data-doc="quote:CHRL" data-under="/quote" role="button" tabindex="0" data-write='{"doc":"desk","op":"replace","path":"/page"}' data-value="board?symbol=CHRL" aria-pressed="true" data-reveal data-props=`);
     expect(html).toContain("Stop watching");
+    // the board row has the move and the sparkline, and a narrow board hides its name: its drawer gives the name
+    const fromRow = html.slice(html.indexOf('id="drawer"'));
+    expect(fromRow).toContain('<span class="prop-name cap">Name</span><div class="prop-value"><span>Charlie Metals</span>');
+    for (const said of [">Moved<", ">Lately<"]) expect(fromRow).not.toContain(said);
     html = await page([{ op: "replace", path: "/reading/board", value: "list" }]);
+    // a list row has the name and the price: from it, the drawer gives the move and the sparkline
+    expect(html!.slice(html!.indexOf('id="drawer"'))).toContain('<span class="prop-name cap">Moved</span>');
     expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-pressed="true" data-reveal>/);
     expect(html).toContain("Stop watching");
     // with the drawer open a tick sends the row and the drawer, since the drawer says the move;

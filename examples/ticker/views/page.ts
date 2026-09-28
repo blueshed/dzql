@@ -145,9 +145,11 @@ function marketOpen(v: View): OpenOptions {
 }
 
 /**
- * The drawer: a symbol's move and what it carries -- watch, or drop -- or the clock's time zone. It
- * says what the lit row or the cell beside it does not: the row has the name and the price, the
- * button whether it is watched, the cell and the picker the city.
+ * The drawer: what a symbol's lit row does not say, and what it carries -- watch, or drop -- or the
+ * clock's time zone. A list's row (the market's, the board read as a list) has the name and the
+ * price, so its drawer gives the move in per cent and a sparkline; a board row has those, and on a
+ * narrow board (a phone, or beside this drawer) hides the name, so its drawer gives the name. The
+ * button says whether it is watched; the cell and the picker say the city.
  */
 function openDrawer(v: View): string {
   const { path, what, which = "" } = where(v.ui);
@@ -159,7 +161,8 @@ function openDrawer(v: View): string {
   const carry = watched
     ? tool("Stop watching", { icon: "trash", kind: "danger", write: go(address(path, "confirm", which)) })
     : tool("Watch", { icon: "plus", kind: "add", write: write("watchlist", "add", "/symbols/-", which) });
-  const props = prop("Moved", percentMove(q)) + prop("Lately", sparkMount(which));
+  const fromBoardRow = path === "board" && reading(v.ui) === "sparkline";
+  const props = fromBoardRow ? prop("Name", `<span>${esc(q.name)}</span>`) : prop("Moved", percentMove(q)) + prop("Lately", sparkMount(which));
   return drawer("drawer", which, `<div class="props">${props}</div><div class="drawer-foot">${carry}</div>`, close);
 }
 
