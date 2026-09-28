@@ -49,7 +49,25 @@ async function sendChatMessage(view: Bun.WebView, text: string) {
   await view.click("button[type=submit]");
 }
 
+/** Each field on the page, by its name, with the size of its text; and what the page says of the reader's zoom. */
+const FIELDS = `[...document.querySelectorAll('input, select, textarea')].map((el) => el.name + ' ' + getComputedStyle(el).fontSize)`;
+const VIEWPORT = `document.querySelector('meta[name=viewport]').content`;
+
 describe("app.ts in a real browser", () => {
+  test("on a phone no field is under 16px, so iOS does not zoom into it, and the reader may zoom", async () => {
+    await using view = new Bun.WebView({ width: 375, height: 740 });
+    await view.navigate(urlFor(view, server.url));
+    await waitFor(view, NAME_FORM_VISIBLE, (v) => v === true);
+    expect(await view.evaluate<string>(VIEWPORT)).not.toMatch(/maximum-scale|user-scalable/);
+    expect(await view.evaluate<string[]>(FIELDS)).toEqual(["name 16px"]);
+    await submitName(view, "Iris");
+    await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
+    expect(await view.evaluate<string[]>(FIELDS)).toEqual(["room 16px"]);
+    await joinRoom(view, `phone-${crypto.randomUUID()}`);
+    await waitFor(view, SEND_MESSAGE_FORM_VISIBLE, (v) => v === true);
+    expect(await view.evaluate<string[]>(FIELDS)).toEqual(["text 16px"]);
+  });
+
   test("a fresh session shows the name form, then the user bar after submitting", async () => {
     await using view = new Bun.WebView();
     await view.navigate(urlFor(view, server.url));

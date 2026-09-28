@@ -310,6 +310,42 @@ describe("the surfaces in a browser", () => {
     expect(await reachable(view)).toEqual(["The desk", "Find", "Alpha", "Undo", "Redo", "Leave"]);
   });
 
+  /** Whether a press `off` px from the middle of each element `selector` matches, up or down (and to each side when it is narrower than that), lands on it. */
+  const pressesAround = (view: Bun.WebView, selector: string, off: string) =>
+    view.evaluate<string[]>(`[...document.querySelectorAll(${JSON.stringify(selector)})].flatMap((el) => {
+      const r = el.getBoundingClientRect(), off = parseFloat(${off}) / 2 - 1, x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const at = [[x, y - off], [x, y + off], ...(r.width < 2 * off ? [[x - off, y], [x + off, y]] : [])];
+      return at.filter(([px, py]) => !el.contains(document.elementFromPoint(px, py))).map(([px, py]) => el.textContent.trim() + ' misses ' + Math.round(px - x) + ',' + Math.round(py - y));
+    })`);
+  const touch = `getComputedStyle(document.documentElement).getPropertyValue('--touch')`;
+
+  for (const width of [320, 375, 768]) {
+    test(`on a phone ${width} wide (the phone's rules hold below 820): no field is under 16px, find's field fills its bar, and a way back on the trail is a touch tall where it is pressed`, async () => {
+      const cells = [b.cell({ name: "market", opens: go("market") })];
+      // the box on a ground of its own, its trail three deep: the root, a way back, where you are
+      await using view = await show(b.boxPage([{ label: "Eta" }, { label: "Chat", back: go("") }, { label: "The desk" }], [], cells), width);
+      expect(await pressesAround(view, ".crumbs a", touch)).toEqual([]);
+
+      const find = b.findControl("market", { word: "", shown: 3, total: 3 });
+      const window_ = b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], [], cells, { key: "market", tools: [find.tool], filter: find.filter, body: rows([b.row({ tap: go("?a"), what: "Alpha" })], "none") });
+      const asks = b.addModal("Watch a symbol", [{ name: "symbol", label: "Which" }, { name: "kind", label: "Kind", options: [{ value: "a", text: "a" }] }], go("new"), go(""));
+      const drawer = b.drawer("d", "Notes", `<form data-write-on="blur"><textarea name="n"></textarea></form>`, go(""));
+      await draw(view, layers(window_, drawer, asks));
+      await waitFor(view, `document.querySelectorAll('input, select, textarea').length`, (v) => v === 4);
+      const sizes = await view.evaluate<string[]>(`[...document.querySelectorAll('input, select, textarea')].map((el) => (el.name || el.type) + ' ' + getComputedStyle(el).fontSize)`);
+      expect(sizes).toEqual(["q 16px", "n 16px", "symbol 16px", "kind 16px"]);
+
+      // find's bar is the row under the trail; its field takes what the tally and the eye leave, and the eye keeps its size inside it
+      const bar = await view.evaluate<{ gap: number; eye: number; end: number }>(`(() => {
+        const bar = document.querySelector('.filter').getBoundingClientRect(), field = document.querySelector('.filter input').getBoundingClientRect();
+        const tally = document.querySelector('.filter .tally').getBoundingClientRect(), eye = document.querySelector('.filter .tool').getBoundingClientRect();
+        return { gap: Math.round(tally.left - field.right), eye: Math.round(eye.width), end: Math.round(bar.right - eye.right) };
+      })()`);
+      // the field up to the tally, the bar's gap between; the eye whole, at the bar's end (its padding and border from it)
+      expect(bar).toEqual({ gap: 8, eye: 26, end: 3 });
+    });
+  }
+
   // the page whole, or in parts as the ticker's goes: the site a part, the layers in it (src/parts.ts works out what changed)
   for (const sent_ of ["whole", "in parts"] as const) {
     test(`the keyboard goes with the cell: opening a window puts it on the way back, closing it puts it back on the cell (the page sent ${sent_})`, async () => {

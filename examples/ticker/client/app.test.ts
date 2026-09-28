@@ -21,7 +21,26 @@ afterAll(() => {
 });
 
 
+/** Each field on the page, by its name, with the size of its text. */
+const FIELDS = `[...document.querySelectorAll('input, select, textarea')].map((el) => (el.name || el.type) + ' ' + getComputedStyle(el).fontSize)`;
+
 describe("the ticker in a real browser", () => {
+  test("on a phone no field is under 16px, so iOS does not zoom into it -- the city's, the symbol's -- and the reader may zoom", async () => {
+    await using view = new Bun.WebView({ width: 375, height: 740 });
+    await view.navigate(urlFor(view, server.url));
+    await waitFor(view, `document.querySelector('.cell.thing') !== null`, (v) => v === true);
+    expect(await view.evaluate<string>(`document.querySelector('meta[name=viewport]').content`)).not.toMatch(/maximum-scale|user-scalable/);
+    await view.evaluate(`document.querySelector('.cell.thing').click()`);
+    await waitFor(view, `document.querySelector('#city input') !== null`, (v) => v === true);
+    expect(await view.evaluate<string[]>(FIELDS)).toEqual(["text 16px"]);
+    await view.evaluate(`document.querySelector('.drawer-close').click()`);
+    await view.evaluate(`document.querySelector('.cell[data-key="board"]').click()`);
+    await waitFor(view, `document.querySelector('.cell.open [aria-label="Watch a symbol"]') !== null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('.cell.open [aria-label="Watch a symbol"]').click()`);
+    await waitFor(view, `document.querySelector('input[name=symbol]') !== null`, (v) => v === true);
+    expect(await view.evaluate<string[]>(FIELDS)).toEqual(["symbol 16px"]);
+  });
+
   test("the board applet takes a tick from the patch itself -- no render -- and the clock runs on its own", async () => {
     await using view = new Bun.WebView();
     await view.navigate(urlFor(view, server.url));
