@@ -254,6 +254,31 @@ describe("app.ts in a real browser", () => {
     expect(await viewA.evaluate<boolean>(`${m}.scrollTop + ${m}.clientHeight >= ${m}.scrollHeight - 1`)).toBe(true);
   }, 20000); // fifteen messages typed, one by one
 
+  // Fails until the kernel's client is fixed (todo n70): settle() in src/client/app.ts pins a
+  // [data-autoscroll] list only when its count of children grows, and a full room's stays at fifty.
+  // Remembering the last child instead makes it pass; make this a plain test() when that lands.
+  test.failing("a full room still scrolls to the newest message: the fifty-first takes the oldest out, and lands in view", async () => {
+    await using view = new Bun.WebView();
+    await view.navigate(urlFor(view, server.url));
+    await submitName(view, `Full-${crypto.randomUUID()}`);
+    await joinRoom(view, crypto.randomUUID());
+    await waitFor(view, SEND_MESSAGE_FORM_VISIBLE, (v) => v === true);
+
+    // a room keeps its last fifty (documents/room.ts); fill it, as fast as the socket takes them
+    await view.evaluate(`(() => { for (let i = 0; i < 50; i++) window.eta.socket().send(JSON.stringify({ doc: "room", ops: [{ op: "add", path: "/messages/-", value: "filler " + i }] })); return 1; })()`);
+    await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("filler 49"));
+    const m = `document.querySelector('.messages')`;
+    const atFoot = `${m}.scrollTop + ${m}.clientHeight >= ${m}.scrollHeight - 1`;
+    expect(await view.evaluate<boolean>(`${m}.scrollHeight > ${m}.clientHeight`)).toBe(true);
+    expect(await view.evaluate<boolean>(atFoot)).toBe(true); // the list grew, so it was pinned
+
+    // the fifty-first: one in, the oldest out, the count still fifty -- and it must be in view
+    await sendChatMessage(view, "the fifty-first");
+    await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("the fifty-first"));
+    expect(await view.evaluate<number>(`${m}.children.length`)).toBe(50);
+    expect(await view.evaluate<boolean>(atFoot)).toBe(true);
+  }, 20000);
+
   test("a message sent from one browser appears live in another browser in the same room", async () => {
     await using viewA = new Bun.WebView();
     await using viewB = new Bun.WebView();
