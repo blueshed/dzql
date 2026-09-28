@@ -120,10 +120,9 @@ describe("the page", () => {
     const oct = await go(mo, "2026-10");
     expect(oct).toContain("October 2026");
     expect(oct).toContain("December 2026");
-    // a month at a time, so every month is one a person can get to: this month's address is the page alone
-    const month = (m: string) => (m === today.slice(0, 7) ? "" : m);
-    expect(oct).toMatch(new RegExp(`aria-label="Previous" data-write='[^']*' data-value="${month("2026-09")}"`));
-    expect(oct).toMatch(new RegExp(`aria-label="Next" data-write='[^']*' data-value="${month("2026-11")}"`));
+    // a month at a time, each by its own name whatever today is, so every month is one a person can get to
+    expect(oct).toMatch(/aria-label="Previous" data-write='[^']*' data-value="2026-09"/);
+    expect(oct).toMatch(/aria-label="Next" data-write='[^']*' data-value="2026-11"/);
     expect(oct).toMatch(/aria-label="Today" aria-pressed="false" data-write='[^']*' data-value=""/);
     expect(oct).not.toContain('aria-current="date"');
     expect(await go(mo, "2026-13")).toContain('data-page="2026-10"'); // no such month: he stays where he was

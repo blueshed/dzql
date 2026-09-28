@@ -98,11 +98,9 @@ export function render(sessionId: string): string {
   const from = list || path === "" ? today.slice(0, 7) : path; // the calendar starts at the month its address names, or this one
   const open = what === "request" || what === "confirm" ? which! : null;
 
-  // a month's address: this month's is the page alone
-  const month = (m: string): string => go(m === today.slice(0, 7) ? "" : m);
-  // the reading: the calendar or the list, the same requests (rule 16)
+  // the reading: the calendar or the list, the same requests (rule 16); from the list, the calendar is today's
   const readings: [text: string, mark: "month" | "list", on: boolean, w: string][] = [
-    ["Calendar", "month", !list, month(from)],
+    ["Calendar", "month", !list, go(list ? "" : path)],
     ["List", "list", list, go("list")],
   ];
   const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${readings.map(([text, mark, on, w]) => `<button type="button" class="tool" role="radio" aria-checked="${on}" aria-pressed="${on}" aria-label="${text}"${w}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
@@ -110,10 +108,11 @@ export function render(sessionId: string): string {
   const tools = list
     ? [ask]
     : [
-        // a month at a time, so every month is somewhere a person can get to, whatever today is
-        tool("Previous", { icon: "chevron-left", iconOnly: true, write: month(prevMonth(from)) }),
+        // a month at a time, each by its own name, so every month is somewhere a person can get to,
+        // whatever today is; the page alone is today, wherever that is
+        tool("Previous", { icon: "chevron-left", iconOnly: true, write: go(prevMonth(from)) }),
         tool("Today", { icon: "today", iconOnly: true, pressed: from === today.slice(0, 7), write: go("") }),
-        tool("Next", { icon: "chevron-right", iconOnly: true, write: month(nextMonth(from)) }),
+        tool("Next", { icon: "chevron-right", iconOnly: true, write: go(nextMonth(from)) }),
         ask,
       ];
   const body = list ? listMount({ me: me.id, team: t, open }) : calendarMount({ from, today, me: me.id, team: t, draft, open, place: path });

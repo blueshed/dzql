@@ -89,8 +89,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   person could never get to most months: in September, October and November were only ever on
   the page as this month's, and no control led to `2026-10` or `2026-11`, where the stories stand
   (they name their month so they do not depend on the day). Which months could be reached
-  changed with the day the stories ran. A month at a time, every month is somewhere a person can
-  get to, whatever today is; the calendar still shows three.
+  changed with the day the stories ran. A month at a time, each by its own name (`2026-10`, never
+  the page alone because it is this month), every month is somewhere a person can get to,
+  whatever today is; the page alone is today, wherever that is, and the calendar still shows three.
 - **A dim is find's alone** (rule 17). The wedding faded a guest who was not coming, and a
   ghost, so with find open a faded figure meant either "missed" or "not coming". Now nothing fades
   but what find misses; each guest has the mark at their feet the couple's families had (their own

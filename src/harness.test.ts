@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, setSystemTime, test } from "bun:test";
 import type { PatchOp } from "./json-patch";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
@@ -211,6 +211,18 @@ describe("stories harness", () => {
     const report = await run(ticker, { ...told, stories: [{ name: "Ann, asked about Alpha, opens Bravo's drawer behind the question", as: "ann", from: "market?confirm=ALPH", does: desk("market?symbol=BRVO"), seen: ["ann"] }] });
     expect(report.outcomes[0]!.failures).toEqual(["ann has no control on their page for replace /page on desk"]);
   }, 30000);
+
+  test("a story stands where it stands whatever the day: leave's, under October's clock, where the month they name is this one", async () => {
+    const { example: leave } = await import("../examples/leave/index");
+    const { stories: told } = await import("../examples/leave/stories");
+    setSystemTime(new Date("2026-10-15T12:00:00Z"));
+    try {
+      const report = await run(leave, told);
+      expect(report.outcomes.flatMap((o) => o.failures)).toEqual([]);
+    } finally {
+      setSystemTime();
+    }
+  }, 60000);
 
   test("an applet on a document offers only what its mount says it writes: a drawer that lost its picker fails the story, though the clock's face reads the same document", async () => {
     const { example: ticker } = await import("../examples/ticker/index");
