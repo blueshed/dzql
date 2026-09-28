@@ -20,7 +20,8 @@ if (!(await Bun.file(`${dir}/index.ts`).exists())) {
 const { example } = await import(`${dir}/index.ts`);
 
 // STORY_BY_HAND=1 does by hand too, in a browser the size of a phone (src/by-hand.ts), each write a
-// page sends and each refusal a control of it sends; a story that says its gesture, whenever it is told
+// page sends and each refusal a control of it sends; a story that says its gesture, whenever it is told.
+// STORY_WIRE=1 says under each story what it handed each page, and as it crossed the wire.
 const report = await run(example, stories, undefined, { byHand: !!process.env.STORY_BY_HAND });
-print(report);
+print(report, { wire: !!process.env.STORY_WIRE });
 process.exit(report.failed > 0 ? 1 : 0);

@@ -29,8 +29,16 @@ export type Seen = string[] | Record<string, string>;
  */
 export type Gesture = { press: string } | { drag: [from: string, to: string] };
 
+/**
+ * What a story may cost on the wire: the most bytes its own step -- the write, the refusal or the
+ * tab closing, not the undo and redo the harness adds -- may hand any one member's page, as the
+ * page takes them (before compression). Over it, the story fails, naming the page and the biggest
+ * part of what it was handed. A story's own budget stands in place of the example's.
+ */
+type Budgeted = { budget?: number };
+
 /** A story that writes: `does`. */
-type Does = {
+type Does = Budgeted & {
   /**
    * The write the author makes. Their page must offer a control that sends it, and it must land.
    * The harness then undoes and redoes it, and checks each puts every page back.
@@ -58,7 +66,7 @@ type Does = {
 };
 
 /** A story that is refused: `cannot`. */
-type Cannot = {
+type Cannot = Budgeted & {
   /** A write that must be refused. Nothing may change, and the ledger must not move. */
   cannot: Write;
   /** The address the author tries it from, as for a `does`. */
@@ -69,7 +77,7 @@ type Cannot = {
 };
 
 /** A story told by a socket going: `closesTab`. */
-type ClosesTab = {
+type ClosesTab = Budgeted & {
   /**
    * The author closes their tab: no write, the socket going, which the server tells like any
    * change (who is in a room). No control is looked for and nothing is undone; the author, gone,
@@ -88,9 +96,9 @@ type ClosesTab = {
  * be dropped without a word (`{ does, closesTab }` would close a tab and never write).
  */
 export const STORY_KEYS = {
-  does: ["does", "from", "offPage", "gesture", "seen", "untold"],
-  cannot: ["cannot", "from", "told"],
-  closesTab: ["closesTab", "seen", "untold"],
+  does: ["does", "from", "offPage", "gesture", "seen", "untold", "budget"],
+  cannot: ["cannot", "from", "told", "budget"],
+  closesTab: ["closesTab", "seen", "untold", "budget"],
 } as const satisfies { does: readonly (keyof Does)[]; cannot: readonly (keyof Cannot)[]; closesTab: readonly (keyof ClosesTab)[] };
 
 /** One kind of story, and none of another kind's keys. */
@@ -128,6 +136,8 @@ export type Stories = {
    * - Omit it in an example with one page, where `seen` is a list of names.
    */
   goTo?: (address: string) => Write;
+  /** The most bytes any story may hand any one member's page, as a story's own `budget` says it; a story with its own is held to that instead. */
+  budget?: number;
   stories: Story[];
 };
 

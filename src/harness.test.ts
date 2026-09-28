@@ -1,4 +1,4 @@
-import { describe, expect, setSystemTime, test } from "bun:test";
+import { describe, expect, setSystemTime, spyOn, test } from "bun:test";
 import type { PatchOp } from "./json-patch";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
@@ -10,7 +10,8 @@ import type { Compartment } from "./compartments/compartment";
 import { read } from "./documents";
 import { appletWrites, write } from "./html";
 import type { Example } from "./example";
-import { comparable, controlsOn, goesTo, hear, holding, offers, placeOf, print, retake, run, takersOn, unheld, type Trace } from "./harness";
+import { size } from "./costs";
+import { comparable, controlsOn, goesTo, hear, holding, largest, offers, placeOf, print, retake, run, takersOn, unheld, type Outcome, type Report, type Trace, type Wire } from "./harness";
 import { diff, drawParts, part } from "./parts";
 import type { Story } from "./stories";
 import { refuse } from "./refusal";
@@ -56,6 +57,111 @@ describe("stories harness", () => {
     expect(heard(closed, "bob")).toBeUndefined(); // gone: only who is still looking is heard
     expect(heard(closed, "ada")!.length).toBeGreaterThan(0);
   }, 30000);
+
+  describe("a story's cost on the wire", () => {
+    const pick = (start: string) => stories.stories.find((s) => s.name.startsWith(start))!;
+    const [hello, take, close] = [pick("Ada says hello"), pick("Nobody can take"), pick("Bob closes his tab")];
+
+    test("each member's page is handed what the story's own step sent it, as the page takes it and as it crossed the wire, beside the write's own size, with its biggest part named", async () => {
+      const report = await run(example, { cast: stories.cast, stories: [hello, take, close] });
+      expect(report.failed).toBe(0);
+      const [said, refused, closed] = report.outcomes.map((o) => o.wire!) as [Wire, Wire, Wire];
+      expect(said.write).toBe(Buffer.byteLength(JSON.stringify(hello.does)));
+      expect(said.handed.map((h) => h.member)).toEqual(["ada", "bob"]); // cy, in the kitchen, and dee and eve, in no room, are handed nothing
+      expect(said.handed.map((h) => h.most.part)).toEqual(["messages", "messages"]); // the new message, beside the last: a part of the messages
+      expect(refused.write).toBe(Buffer.byteLength(JSON.stringify(take.cannot)));
+      expect(refused.handed.map((h) => h.member)).toEqual(["ada"]); // told no, and her page handed back
+      expect(refused.handed[0]!.most.part).toBe("the whole page");
+      expect(refused.handed[0]!.sent).toBeLessThan(refused.handed[0]!.bytes / 2); // a page crosses the wire compressed
+      expect(closed.write).toBeUndefined(); // a tab closing writes nothing
+      expect(closed.handed.map((h) => h.member)).toEqual(["ada"]);
+      for (const h of [...said.handed, ...refused.handed, ...closed.handed]) {
+        expect(h.sent).toBeGreaterThan(0);
+        expect(h.most.bytes).toBeGreaterThan(0);
+        expect(h.most.bytes).toBeLessThanOrEqual(h.bytes);
+      }
+    }, 30000);
+
+    test("a budget fails a story that hands any one page more bytes than it, by name and with its biggest part: the story's own budget, or else the example's", async () => {
+      const report = await run(example, {
+        cast: stories.cast,
+        budget: 64, // the example's: less than a message
+        stories: [hello, { ...hello, name: "Ada says hello, within its own budget", budget: 100_000 }, { ...close, budget: 1 }],
+      });
+      const [over, within, closed] = report.outcomes as [Outcome, Outcome, Outcome];
+      const failing = (o: Outcome, whose: string, budget: number) =>
+        o.wire!.handed.filter((h) => h.bytes > budget).map((h) => `${h.member}'s page was handed ${h.bytes.toLocaleString("en")} bytes, more than the ${whose} budget of ${budget.toLocaleString("en")}: the most, ${h.most.part}, ${size(h.most.bytes)}`);
+      expect(over.failures).toEqual(failing(over, "example's", 64));
+      expect(over.failures.map((f) => f.split("'")[0])).toEqual(["ada", "bob"]);
+      expect(within.failures).toEqual([]);
+      expect(closed.failures).toEqual(failing(closed, "story's", 1));
+      expect(closed.failures).toHaveLength(1);
+    }, 30000);
+
+    test("a budget is a whole number of bytes: any other, a story's or the example's, is said, and the story is not run", async () => {
+      const report = await run(example, { cast: stories.cast, stories: [{ ...hello, budget: "2 KB" as unknown as number }, { ...take, budget: 0 }] });
+      expect(report.outcomes.map((o) => o.failures)).toEqual([['a budget is a whole number of bytes: this one is "2 KB"'], ["a budget is a whole number of bytes: this one is 0"]]);
+      expect(report.outcomes.map((o) => o.wire)).toEqual([undefined, undefined]);
+      const byExample = await run(example, { cast: stories.cast, budget: 1.5, stories: [hello, { ...close, budget: 4096 }] });
+      expect(byExample.outcomes.map((o) => o.failures)).toEqual([["the example's budget is a whole number of bytes: this one is 1.5"], []]); // a story's own stands in its place
+    }, 30000);
+
+    test("printed with `wire`, under each story: the write's size once, then each member handed anything, the bytes, as they crossed the wire, and the biggest part; or that nobody was", () => {
+      const lines: string[] = [];
+      const log = spyOn(console, "log").mockImplementation((line: string) => void lines.push(line));
+      const handed = (member: string, bytes: number, sent: number, part: string, most: number) => ({ member, bytes, sent, most: { part, bytes: most } });
+      const report: Report = {
+        outcomes: [
+          { name: "Ann votes", failures: [], wire: { write: 146, handed: [handed("ann", 8001, 1229, "day-2026-11-10", 7373), handed("bo", 812, 400, "votes patch", 300)] } },
+          { name: "Ann closes her tab", failures: ["nothing landed"], wire: { handed: [] } },
+          { name: "a ghost", failures: ["no one in the cast is called ghost"] },
+        ],
+        passed: 1,
+        failed: 2,
+      };
+      try {
+        print(report, { wire: true });
+        print(report);
+      } finally {
+        log.mockRestore();
+      }
+      expect(lines).toEqual([
+        " ok   Ann votes",
+        "        a 146-byte write handed",
+        `          ann 8,001 bytes (${size(1229)} on the wire): day-2026-11-10 ${size(7373)}`,
+        `          bo  812 bytes (${size(400)} on the wire): votes patch ${size(300)}`,
+        "FAIL  Ann closes her tab",
+        "        nothing landed",
+        "        a tab closing handed nothing",
+        "FAIL  a ghost",
+        "        no one in the cast is called ghost",
+        "\n1 passed, 2 failed",
+        // without `wire`, the stories alone
+        " ok   Ann votes",
+        "FAIL  Ann closes her tab",
+        "        nothing landed",
+        "FAIL  a ghost",
+        "        no one in the cast is called ghost",
+        "\n1 passed, 2 failed",
+      ]);
+    });
+
+    test("the biggest part of what a page was handed: a part a render in parts carries, by its key, or a whole page, a document's patch, or a message of another kind", () => {
+      const render = (ops: object[]) => JSON.stringify({ type: "render", ops });
+      const html = '<li data-eta-part="m&quot;2" id="m2">hello there</li>';
+      const [replace, remove] = [{ op: "replace", target: '[data-eta-part="m\\"2"]', html }, { op: "remove", target: '[data-eta-part="messages"] [data-eta-part="m\\"1"]' }];
+      expect(largest([render([replace, remove])])).toEqual({ part: 'm"2', bytes: Buffer.byteLength(JSON.stringify(replace)) });
+      expect(largest([render([remove])])).toEqual({ part: 'm"1', bytes: Buffer.byteLength(JSON.stringify(remove)) });
+      const page = JSON.stringify({ type: "render", html: "<main>…</main>", wire: 1 });
+      const patch = JSON.stringify({ type: "patch", doc: "room:general", ops: [{ op: "add", path: "/messages/-", value: "a long enough message" }] });
+      expect(largest([page, patch])).toEqual({ part: "room:general patch", bytes: Buffer.byteLength(patch) });
+      expect(largest([patch, page])).toEqual({ part: "room:general patch", bytes: Buffer.byteLength(patch) });
+      const whole = JSON.stringify({ type: "render", html: "<main>".padEnd(200, ".") });
+      expect(largest([whole, patch])).toEqual({ part: "the whole page", bytes: Buffer.byteLength(whole) });
+      const refusal = JSON.stringify({ type: "refused", id: 3, reason: "no" });
+      expect(largest([refusal])).toEqual({ part: "refused", bytes: Buffer.byteLength(refusal) });
+    });
+  });
 
   test("a story by nobody in the cast, or seen by nobody who could, is a failure, not a crash", async () => {
     process.env.STORY_DIFF = "1"; // the excerpt under a failure is for the builder; make sure it prints
