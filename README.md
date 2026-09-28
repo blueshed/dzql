@@ -63,8 +63,8 @@ sites whose pages may open a socket) among them.
 - **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** draws an island: an
   applet, the part of a page that keeps state of its own in the browser, written as a railroad
   component (`island()`, `src/island.ts`). The ticker's city picker is one. The kernel's client
-  does not import it; a page with an island carries railroad too (<!-- measured:railroad -->2.6 KB
-  gzipped for `signal` and `mount`, 3.5 KB with `list`<!-- /measured -->).
+  does not import it; a page with an island carries railroad too (<!-- measured:railroad -->3.5 KB
+  gzipped for `signal` and `mount`, 4.4 KB with `list`<!-- /measured -->).
 
 ## Why eta
 

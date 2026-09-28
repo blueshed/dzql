@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **eta needs `@blueshed/delta` ^0.10.0 and `@blueshed/railroad` ^0.15.1.** What an app on eta
+  changes:
+  - **Its own dependencies, to the same**: an app that imports delta or railroad itself must
+    resolve to eta's copy, and railroad 0.15 throws where a signal made by another copy is
+    rendered.
+  - **delta 0.10's breaking changes, where the app uses delta itself** (delta's CHANGELOG says
+    each): a remove or replace of what is not there is a 404, and its whole batch is refused
+    (a server's own writer that diffs from a copy: the next entry); a memory document refuses
+    with 404 for what is not there, where it said 400; a row moved through a document goes only
+    under a parent the document holds; `owns` or `shared` without an auth module throws; the
+    browser client's `doc.data` is a `ReadonlySignal`, and an `onConnect` that calls through DI
+    connects. eta's kernel uses none of the last three.
+  - **railroad 0.15's, where the app uses railroad itself**: each tag's props are typed, so
+    React's casing (`onClick`, `tabIndex`) no longer compiles; `mount()`'s render is untracked;
+    and a `.get()` in a render body (a component, a `when()` branch, a `list()` row) warns in
+    development, since it reads once and never updates. eta's islands needed none of it.
+  - **A test that makes the tables drift from delta's copy with a trigger on the row a write
+    makes no longer does**: delta reads back each row it writes, as it is kept, and tells that.
+    Change another row (the harness's own tests now do).
+  - A page with an island now carries 3.5 KB of railroad gzipped for `signal` and `mount`, 4.4
+    KB with `list` (it was 2.6 and 3.5): its development checks' text stays in a production
+    bundle.
+
 - **A write carries an id, and what answers it is its own** (todo n14; n5 said why, this says
   whose). The wire is `{id?, doc, ops}`: the echo of the change a write made goes to its writer
   with the write's id (`{type: "patch", …, id}`), and a write that applies nothing is answered
