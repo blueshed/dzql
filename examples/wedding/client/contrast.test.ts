@@ -3,6 +3,10 @@
 // says on :root, so changing a token there is checked here. The wedding has one palette, the
 // save-the-date's paper: it says `color-scheme: light` and nothing for a reader who prefers dark,
 // so they read these same pairs. A dark palette would need its own pairs here.
+//
+// A bright fill -- the invitation's gold on Open, maybe's amber -- keeps its colour and carries ink,
+// which is what is read on it. Where a bright fill is a mark that means something on its own (the dot
+// beside maybe, the mark at a guest's feet), its edge is the deeper shade, and the edge is what is checked.
 import { describe, expect, test } from "bun:test";
 
 const css = await Bun.file(`${import.meta.dir}/styles.css`).text();
@@ -55,7 +59,7 @@ const pairs: [fg: string, bg: string, min: number, what: string][] = [
   ["danger", "card", TEXT, "a tool that removes"],
   ["leaf", "card", TEXT, "a gift claimed by us"],
   ["red-deep", "card", TEXT, "a gift another household took"],
-  ["#FFFFFF", "gold-deep", TEXT, "Open, the gold button"],
+  ["ink", "gold", TEXT, "Open: ink on the invitation's gold"],
   ["paper", "navy", TEXT, "a chosen dish; the count on a family's figure"],
   ["gold-deep", "paper", LARGE, "the ampersand between the names"],
   ["gold-deep", "card", LARGE, "the ampersand in the welcome's drawer"],
@@ -63,13 +67,13 @@ const pairs: [fg: string, bg: string, min: number, what: string][] = [
   ["edge", "card", LARGE, "a control's edge: a field, a stack, a pill, a swatch"],
   ["edge", "paper", LARGE, "a pill's edge, inside it"],
   ["leaf", "card", LARGE, "yes: the dot beside the word, the face's disc"],
-  ["amber", "card", LARGE, "maybe: the dot, the face's disc"],
+  ["amber-deep", "card", LARGE, "maybe: the edge of its dot"],
   ["red", "card", LARGE, "no: the dot, the face's disc"],
   ["#FFFFFF", "leaf", LARGE, "the face on yes's disc"],
-  ["#FFFFFF", "amber", LARGE, "the face on maybe's disc"],
+  ["ink", "amber", LARGE, "the face on maybe's disc"],
   ["#FFFFFF", "red", LARGE, "the face on no's disc"],
   ["leaf", "well", LARGE, "yes: the mark at a guest's feet in the photo"],
-  ["amber", "well", LARGE, "maybe: the mark at a guest's feet"],
+  ["amber-deep", "well", LARGE, "maybe: the edge of the mark at a guest's feet"],
   ["red", "well", LARGE, "no: the mark at a guest's feet"],
   ["muted", "well", LARGE, "no answer: the dashed mark at a guest's feet; a ghost's outline"],
 ];

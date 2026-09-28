@@ -14,11 +14,13 @@
 :root {
   --paper: #F3EDE0; --tray: #E4DCC7; --card: #FBF9F4; --card-hover: #FFFFFF; --well: #EFE8D8;
   --ink: #2B2B33; --navy: #1E3F8F; --royal: #2F63BF; --gold-soft: rgba(201, 162, 39, 0.45);
-  /* the gold is the save-the-date's frame, and only frames; what is read or means something is the deep gold */
+  /* the gold is the save-the-date's: its frame, and the Open button's fill, with ink on it; a gold line
+     that is read or means something on the card (the ampersand, the pencil) is the deep gold */
   --gold: #C9A227; --gold-deep: #8F7012;
   --burgundy: #7B2F4B; --muted: #6B6B74;
-  /* the answer's colours: yes green, maybe amber, no red, and the red deeper for words */
-  --leaf: #527D2E; --amber: #A9760A; --red: #B5443B; --red-deep: #953530;
+  /* the answer's colours: yes green, maybe amber, no red. Maybe's amber is bright, with ink on it, and
+     its deeper shade is the edge of a mark; the red is deeper for words */
+  --leaf: #527D2E; --amber: #D9A21B; --amber-deep: #A9760A; --red: #B5443B; --red-deep: #953530;
   --ink-rgb: 30, 63, 143; /* the light: every shadow tints toward the ink */
   --line: rgba(43, 43, 51, 0.14); --edge: rgba(43, 43, 51, 0.55);
   --serif: "Cinzel", "Trajan Pro", "Times New Roman", serif;
@@ -55,7 +57,7 @@ main#app:has(.site.at-welcome) .flowers { opacity: 1; height: min(46vh, 520px); 
    touches, so they stand taller; every other control keeps the bento's heights (a rail's 32, a field's 40) ── */
 .enter-card :is(input, button) { min-height: 44px; }
 button.gold, button.ghost { padding: 0 16px; border-width: 1px; border-style: solid; border-radius: var(--radius-control); white-space: nowrap; }
-button.gold { background: var(--gold-deep); color: #fff; border-color: var(--gold-deep); }
+button.gold { background: var(--gold); color: var(--ink); border-color: var(--gold); }
 button.ghost { background: transparent; color: var(--navy); border-color: var(--navy); }
 button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); }
 .entry { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -139,7 +141,7 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 /* the answer as a word with its colour: yes green, maybe amber, no red, none a dashed ring */
 .answer-word { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .answer-word .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-.answer-word .dot.yes { background: var(--leaf); } .answer-word .dot.maybe { background: var(--amber); } .answer-word .dot.no { background: var(--red); }
+.answer-word .dot.yes { background: var(--leaf); } .answer-word .dot.maybe { background: var(--amber); box-shadow: inset 0 0 0 1.5px var(--amber-deep); } .answer-word .dot.no { background: var(--red); }
 .answer-word .dot.none { border: 1.5px dashed var(--muted); }
 .state-yes { color: var(--leaf); } .state-no { color: var(--red-deep); }
 /* ── the speech bubble: a thing in place above the tray -- what the household says, the couple's welcome ── */
@@ -151,7 +153,7 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 .bubble-words { font-size: 16px; line-height: 1.35; display: flex; flex-direction: column; gap: 2px; }
 .bubble-words.empty { color: var(--muted); }
 .face-mark { border-radius: 50%; display: grid; place-items: center; color: #fff; flex: 0 0 auto; }
-.face-mark.yes { background: var(--leaf); } .face-mark.maybe { background: var(--amber); } .face-mark.no { background: var(--red); }
+.face-mark.yes { background: var(--leaf); } .face-mark.maybe { background: var(--amber); color: var(--ink); } .face-mark.no { background: var(--red); }
 .face-mark.none { border: 2px dashed var(--muted); color: var(--muted); font-size: 20px; }
 .drawer-pic img.pic { display: block; width: 100%; max-height: 40vh; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); }
 .props .pair { padding: var(--space-xs) 0; }
@@ -219,7 +221,7 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 /* rule 13: a chosen figure rings, while its drawer is open */
 svg .ring { fill: none; stroke: var(--navy); stroke-width: 2.5; }
 svg .mark { stroke-width: 1.2; }
-svg .mark-yes { fill: var(--leaf); stroke: var(--leaf); } svg .mark-maybe { fill: var(--amber); stroke: var(--amber); } svg .mark-no { fill: var(--red); stroke: var(--red-deep); }
+svg .mark-yes { fill: var(--leaf); stroke: var(--leaf); } svg .mark-maybe { fill: var(--amber); stroke: var(--amber-deep); } svg .mark-no { fill: var(--red); stroke: var(--red-deep); }
 svg .mark-none { fill: none; stroke: var(--muted); stroke-dasharray: 2 1.5; }
 svg .count circle { fill: var(--navy); stroke: var(--card); stroke-width: 1.5; }
 svg .count text { fill: var(--paper); font-family: var(--sans); font-size: 10px; font-weight: 700; }

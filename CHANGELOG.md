@@ -158,9 +158,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The wedding's colours pass contrast** (todo n62; n54 for the wedding). The green of a claimed
   gift and a pressed Yes, the gold "Open" button, the pencil, the ampersand between the names,
-  maybe's amber and the marks at the guests' feet were 1.9 to 3.3:1. The tokens are darker, with a
-  deep gold beside the frame's gold for whatever is read or means something, and a menu pill and a
-  colour swatch take the controls' edge. `examples/wedding/client/contrast.test.ts` checks each
+  maybe's amber and the marks at the guests' feet were 1.9 to 3.3:1. The green is darker; a gold
+  line on the card (the pencil, the ampersand) is a deep gold; the Open button and maybe's disc
+  keep the invitation's bright gold and amber and carry ink (5.8 and 6.1:1), and a maybe mark is
+  edged in a deeper amber; a menu pill and a colour swatch take the controls' edge. `examples/wedding/client/contrast.test.ts` checks each
   pair against the stylesheet's own tokens: text at 4.5:1, a mark or a control's edge at 3:1. The
   wedding has one palette, light, whatever the reader prefers, and the test holds it to that.
 - **The wedding's rails, stacks and drawers keep the bento's measure** (todo n63). The welcome's
