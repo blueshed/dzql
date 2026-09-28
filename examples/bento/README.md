@@ -92,7 +92,8 @@ Each rule names where the mock-up honours it.
     Tab stops on each, and Enter or Space does what a tap does. Opening a window takes the keyboard
     into it, onto its trail, and closing the window puts it back on the cell. While a window is
     open the box behind it is inert, not to be reached or heard until it closes, as the page is
-    behind a modal (rule 14). Escape puts away the drawer or the modal opened last.
+    behind a modal (rule 14). Escape puts away the drawer or the modal opened last, and the
+    keyboard goes back to what opened it. Nothing leaves the keyboard nowhere.
 
 ## What eta already does with this
 

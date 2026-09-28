@@ -206,6 +206,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `examples/bento/README.md`: what a finger opens, the keyboard opens; the keyboard goes into a
   window and back to its cell; the box behind a window is inert; Escape puts away what was opened
   last. The skill's reference says an example's own opener is a `<button>`.
+- **The keyboard is never left nowhere** (`src/client/app.ts`). Escape in a drawer, or from a modal,
+  left the keyboard on the page itself; in Chrome the + that opens a modal kept the keyboard as it
+  went inert, so the modal's first field never took it; and a window opened by back or forward put
+  the cell with the keyboard behind it. After each drawing, a keyboard on nothing or on something
+  inert goes back to what opened a drawer or modal that has just gone, else to a field waiting for
+  it, else into the cell that has just moved.
 
 ## [0.49.0] - 2026-09-25
 

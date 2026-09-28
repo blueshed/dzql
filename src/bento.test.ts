@@ -279,8 +279,10 @@ describe("the surfaces in a browser", () => {
   afterAll(() => server.stop(true));
 
   /** A phone's view of `html`, drawn as a render the server sent. */
+  // `ETA_BROWSER=chrome bun test src/bento.test.ts` runs these on Chrome, the default elsewhere than macOS
+  const chrome = process.env.ETA_BROWSER === "chrome" || process.platform !== "darwin";
   async function show(html: string, width = 375): Promise<Bun.WebView> {
-    const view = new Bun.WebView({ width, height: 740 });
+    const view = new Bun.WebView({ width, height: 740, ...(chrome ? { backend: "chrome" as const } : {}) });
     await view.navigate(server.url.toString());
     await waitFor(view, `window.eta?.socket()?.readyState === 1`, (v) => v === true);
     await view.evaluate(`(() => { window.__sent = []; window.eta.socket().send = (data) => window.__sent.push(JSON.parse(data)); })()`);
@@ -428,6 +430,55 @@ describe("the surfaces in a browser", () => {
     });
   }
 
+  /** Where the keyboard is: the words of what has it, or nowhere -- the page itself, or something inert. */
+  const keyboard = `(() => { const at = document.activeElement; return !at || at === document.body || at.closest('[inert]') ? 'nowhere' : at.textContent.trim() || at.getAttribute('aria-label') || at.name; })()`;
+  const at = (view: Bun.WebView, where: string) => waitFor(view, keyboard, (v) => v === where, 1000).catch(() => view.evaluate(keyboard));
+
+  test("the keyboard is never left nowhere: Escape puts a drawer away and the keyboard goes back to what opened it", async () => {
+    const page = (open: boolean) => {
+      const list = rows([b.row({ id: "r-a", tap: go(open ? "" : "?a"), chosen: open, what: "Alpha" }), b.row({ id: "r-b", tap: go("?b"), chosen: false, what: "Beta" })], "none");
+      const box = b.collectionPage([{ label: "The desk" }], { key: "market", body: list });
+      return layers(box, open ? b.drawer("a", "Alpha", `<form data-write-on="blur"><input name="note" value="" aria-label="Note"></form>`, go("")) : "", "");
+    };
+    await using view = await show(page(false));
+    await view.evaluate(`document.getElementById('r-a').focus()`);
+    await view.press("Space");
+    await draw(view, page(true));
+    await waitFor(view, `document.querySelector('.drawer') !== null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('.drawer input').focus()`);
+    await view.press("Escape");
+    expect((await sent(view)).at(-1)).toEqual({ doc: "desk", ops: [{ op: "replace", path: "/page", value: "" }] });
+    await draw(view, page(false));
+    await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
+    expect(await at(view, "Alpha")).toBe("Alpha");
+  });
+
+  test("the keyboard is never left nowhere: a modal's field takes it though what opened the modal is inert, and Escape gives it back", async () => {
+    const plus = b.addTool(go("?new"), "Watch a symbol");
+    const page = (asking: boolean) =>
+      layers(b.collectionPage([{ label: "The desk" }], { key: "board", tools: [plus], body: "" }), "", asking ? b.addModal("Watch a symbol", [{ name: "symbol", label: "Which" }], write("watchlist", "add", "/symbols/-"), go("")) : "");
+    await using view = await show(page(false));
+    await view.evaluate(`document.querySelector('[aria-label="Watch a symbol"]').focus()`);
+    await view.press("Space");
+    await draw(view, page(true));
+    await waitFor(view, `document.querySelector('dialog') !== null`, (v) => v === true);
+    expect(await at(view, "symbol")).toBe("symbol");
+    await view.press("Escape");
+    await draw(view, page(false));
+    await waitFor(view, `document.querySelector('dialog') === null`, (v) => v === true);
+    expect(await at(view, "Watch a symbol")).toBe("Watch a symbol");
+  });
+
+  test("the keyboard is never left nowhere: a window opened by back or forward takes it from the cell it put behind", async () => {
+    const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "market", opens: go("market") })];
+    await using view = await show(b.boxPage([{ label: "The desk" }], [], cells));
+    await view.evaluate(`document.querySelector('.cell[data-key="board"] button').focus()`);
+    // the back button: the session goes to the market, and the page comes without a press
+    await draw(view, b.boxPage([{ label: "The desk", back: go("") }, { label: "the market" }], [], cells, { key: "market", body: "" }));
+    await waitFor(view, `document.querySelector('.cell.open') !== null`, (v) => v === true);
+    expect(await at(view, "The desk")).toBe("The desk");
+  });
+
   test("what opens is a button: each cell, thing and row that opens is where a Tab stops, and Space or Enter opens it", async () => {
     const cells = [b.cell({ name: "board", opens: go("board") }), b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } }), b.cell({ name: "quiet" })];
     const list = rows([b.row({ id: "r-a", tap: go("?symbol=A"), what: "Alpha", mark: "pencil" }), b.row({ id: "r-b", what: "Beta" })], "none");
@@ -442,7 +493,7 @@ describe("the surfaces in a browser", () => {
       expect({ selector, sent: await sent(view) }).toEqual({ selector, sent: [{ doc: "desk", ops: [{ op: "replace", path: "/page", value: page }] }] });
       expect(await view.evaluate<string>(`${stop(selector)}.tagName`)).toBe("BUTTON"); // so Enter opens it too: the browser's own
       // WebKit's press("Enter") is an editing command, not a key, so it is Chrome that says so
-      if (process.platform !== "darwin") {
+      if (chrome) {
         await view.press("Enter");
         await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
       }
