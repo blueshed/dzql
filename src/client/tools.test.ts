@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { write, appletWrites } from "../html";
 import { waitFor } from "../webview";
 import { renderMessage } from "../compartments/render";
-import fixture from "./app.test.html";
+import fixture from "./tools.test.html";
+import plain from "./app.test.html";
 
 // The page's writes as tools (src/client/tools.ts), and a script's write answered by its id
 // (todo n88, n99), in a real browser. As in app.test.ts: no eta server, a socket that goes quiet,
@@ -15,6 +16,7 @@ beforeAll(() => {
     port: 0,
     routes: {
       "/": fixture,
+      "/plain": plain,
       "/ws": (req, server) => (server.upgrade(req, { data: {} }) ? undefined : new Response("Upgrade failed", { status: 400 })),
     },
     websocket: { open() {}, message() {}, close() {} },
@@ -25,9 +27,9 @@ afterAll(() => {
   server.stop(true);
 });
 
-async function open(): Promise<Bun.WebView> {
+async function open(path = "/"): Promise<Bun.WebView> {
   const view = new Bun.WebView();
-  await view.navigate(server.url.toString());
+  await view.navigate(new URL(path, server.url).toString());
   await waitFor(view, `window.eta?.socket()?.readyState === 1`, (v) => v === true);
   await view.evaluate(`(() => {
     window.__sent = [];
@@ -77,8 +79,8 @@ describe("the page's writes, as tools", () => {
       "edit.trip.stops.4",
       "replace.session.page",
       "remove.room.messages.12",
-      "replace.leave.requests._.starts-" + tools[4]!.name.split("-").at(-1),
-      "remove.leave.requests._-" + tools[5]!.name.split("-").at(-1),
+      "replace.leave.requests._.starts",
+      "remove.leave.requests._",
       "undo",
       "redo",
     ]);
@@ -103,7 +105,7 @@ describe("the page's writes, as tools", () => {
     });
     expect(tools[2]).toMatchObject({
       title: "replace /page on session",
-      description: 'replace /page on session, as these do: "rooms" Rooms; "?profile" Profile.',
+      description: "replace /page on session: replace /page on session, with the value of the one pressed.",
       inputSchema: { type: "object", properties: { value: { enum: ["rooms", "?profile"] } } },
     });
     expect(tools[3]).toMatchObject({ title: "Take back hi", description: "Take back hi: remove /messages/12 on room.", inputSchema: { type: "object", properties: {} } });
@@ -240,23 +242,29 @@ describe("WebMCP: the page's tools registered with the browser's model context",
     expect((await lastSent(view)).ops).toEqual([{ op: "replace", path: "/page", value: "?profile" }]);
   });
 
-  test("Chromium's before the draft, navigator.modelContext, is used where document has none, its handle unregistered; a registration refused is tried again at the next drawing; with no model context nothing is registered, and nothing fails", async () => {
+  test("a registration refused, by a throw or a rejection, is tried again at the next drawing; with no model context nothing is registered, and nothing fails", async () => {
     await using view = await open();
     await render(view, PAGE); // no model context: the page is drawn, its tools are listed
     expect((await view.evaluate<unknown[]>(`window.eta.tools()`)).length).toBe(8);
 
-    await view.evaluate(`(window.__registered = [], window.__unregistered = [], Object.defineProperty(navigator, "modelContext", { configurable: true, value: {
-      registerTool(tool) {
+    await view.evaluate(`(window.__registered = [], Object.defineProperty(document, "modelContext", { configurable: true, value: {
+      registerTool(tool, { signal }) {
         if (tool.name === "undo" && !window.__refusedOnce) { window.__refusedOnce = true; throw new DOMException("not now", "NotAllowedError"); }
         if (tool.name === "redo" && !window.__rejectedOnce) { window.__rejectedOnce = true; return Promise.reject(new DOMException("not now", "InvalidStateError")); }
-        window.__registered.push({ tool, signal: { aborted: false } });
-        return { unregister: () => window.__unregistered.push(tool.name) };
+        window.__registered.push({ tool, signal });
+        return Promise.resolve();
       },
     } }), 1)`);
     await render(view, PAGE);
     expect((await registered(view)).map((r) => r.name)).not.toContain("undo");
-    await render(view, PAGE.replace(/<li[^]*?<\/li>/, ""));
-    expect(await view.evaluate<string[]>(`window.__unregistered`)).toEqual(["remove.room.messages.12"]);
+    await render(view, PAGE);
     expect((await registered(view)).map((r) => r.name).filter((n) => n === "undo" || n === "redo")).toEqual(["undo", "redo"]); // tried again
+  });
+
+  test("a page whose app does not import the tools offers none: nothing registered, no eta.tools", async () => {
+    await using view = await open("/plain");
+    await view.evaluate(`(window.__registered = [], ${DRAFT}, 1)`);
+    await render(view, PAGE);
+    expect(await view.evaluate<unknown[]>(`[typeof window.eta.tools, typeof window.eta.use, typeof window.eta.send, window.__registered.length]`)).toEqual(["undefined", "undefined", "function", 0]);
   });
 });

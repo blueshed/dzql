@@ -129,21 +129,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   why, when it could not go. `window.eta.undo(change?)` and `redo(change?)` walk the session's last
   change, or the one named, and answer the same. No more `inspect` as a barrier and reading the
   refusal back over HTTP.
-- **A page's writes are tools for an assistant** (todo n99). The client reads the page as it is
-  after each drawing into tools: every control a person could press (not `inert`, `hidden` or
+- **A page's writes are tools for an assistant, for an app that opts in** (todo n99): its
+  `client/main.ts` imports `eta/src/client/tools` after the kernel's client (chat's does). It
+  reads the page as it is after each drawing into tools: every control a person could press (not `inert`, `hidden` or
   disabled, as the stories count them) -- a form (its fields the input), an editing form (one tool
   for all its fields, set in one write), the buttons and rows that make one write (their values a
   choice), an applet's `appletWrites` (a `*` named in the input's path) -- and `undo` and `redo`,
-  which take an `entry`. A tool is named by its write (`add.room.messages.-`), titled and described
+  which take a `change`. A tool is named by its write (`add.room.messages.-`), titled and described
   from what the page says (aria-label, legend, label, text), and makes the write its control would,
   nothing more; the server permits it as it does a person's. Each answers as `eta.send` does.
-  Where the browser has WebMCP (`document.modelContext`, the W3C draft; `navigator.modelContext`,
-  Chromium's before it) each tool is registered with it, once while the page offers it as it was,
-  and withdrawn by its signal when it goes or changes; where it has none, nothing is registered, and
-  `window.eta.tools()` lists them and `window.eta.use(name, input)` runs one. The kernel's client is
-  8.1 KB gzipped (it was 5.6). Proved on chat (`examples/chat/client/tools.test.ts`): the assistant
-  says something through the page's own form, the person says something after it, and the
-  assistant undoes its own by its entry, the person's standing.
+  Where the browser has WebMCP (`document.modelContext`, the W3C draft) each tool is registered
+  with it, once while the page offers it as it was, and withdrawn by its signal when it goes or
+  changes; where it has none, nothing is registered, and `window.eta.tools()` lists them and
+  `window.eta.use(name, input)` runs one. The module is 2.0 KB gzipped, only for an app that
+  imports it; the kernel's client is 6.4 KB (6.1 on main), `eta.send` and the answers by id. Proved
+  on chat (`examples/chat/client/tools.test.ts`): the assistant says something through the page's
+  own form, the person says something after it, and the assistant undoes its own by its handle, the
+  person's standing.
 
 ### Changed
 

@@ -404,9 +404,16 @@ Messages:
 ### Assistants: the page's writes as tools
 
 An assistant in the browser (Claude in Chrome, or any agent the browser lets in) uses the page by
-its writes, not its pixels: the client reads the page after each drawing into tools
-(`src/client/tools.ts`), from what it already says. Nothing to declare; a page whose controls say
-what they are is ready.
+its writes, not its pixels, where the app opts in: its `client/main.ts` imports the tools after the
+kernel's client, one line (2.0 KB gzipped, for that app alone), as chat's does:
+
+```ts
+import "eta/src/client/app";
+import "eta/src/client/tools";
+```
+
+Then the client reads the page after each drawing into tools (`src/client/tools.ts`), from what it
+already says.
 
 - **What is a tool**: each control a person could press now, by the stories' rule (not `inert`,
   `hidden` or disabled, itself or by what it is in), so an open modal's controls are the tools and
@@ -418,7 +425,7 @@ what they are is ready.
   - the **buttons and rows** that make one write: one tool, its `value` one of theirs where they
     send several (the pages a session can go to, by their buttons);
   - an **applet's** `appletWrites`: a `*` segment is any one member, named in the input's `path`;
-  - **`undo`** and **`redo`**, with an optional `entry`: the session's last change, or that one.
+  - **`undo`** and **`redo`**, with an optional `change`: the session's last change, or that one.
     The ledger's own buttons are these.
 - **Its name is its write** -- `add.room.messages.-`, `edit.trip.stops.4`, `replace.session.page` --
   so it stays while the control does; where buttons and a form make one write, the later is told
@@ -427,14 +434,14 @@ what they are is ready.
   with no `aria-label` is a tool called by its write alone.
 - **A tool makes its control's write and nothing more**, and the server permits it as it does a
   person's: the schema says what the page offers, and nothing in the client is a gate. It answers
-  as `eta.send` does; `entry` names the change, for `undo`.
-- **WebMCP**: where the browser has a model context (`document.modelContext`, the W3C draft;
-  `navigator.modelContext`, Chromium's before it), each tool is registered with it, once while the
-  page offers it as it was, and withdrawn (its signal aborted) when it goes or changes. Where it has
+  as `eta.send` does; `change` names the change, for `undo`.
+- **WebMCP**: where the browser has a model context (`document.modelContext`, the W3C draft), each
+  tool is registered with it, once while the page offers it as it was, and withdrawn (its signal
+  aborted) when it goes or changes. Where it has
   none, nothing is registered; `window.eta.tools()` lists them and `window.eta.use(name, input)`
   runs one, for an assistant that runs script in the page.
 - chat's `client/tools.test.ts` is the proof: an assistant says something through chat's own form,
-  the person says something after it, and the assistant undoes its own, by its entry.
+  the person says something after it, and the assistant undoes its own, by its handle.
 
 ### Controls
 

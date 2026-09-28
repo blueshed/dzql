@@ -127,9 +127,9 @@ Everything below is the least that makes it pass.
     await waitFor(view, `document.querySelector('.drawer h2')?.textContent`, (v) => v === "FXTR");
     ```
 
-An assistant in the browser uses the page by its writes: every control is a tool, registered with
-WebMCP where the browser has it (reference.md, "Assistants"). Nothing to add but what a person
-needs too: an `aria-label` on a button that is only an icon.
+An app whose page an assistant in the browser should use by its writes imports
+`eta/src/client/tools` after the kernel's client: every labelled control is then a tool, registered
+with WebMCP where the browser has it (reference.md, "Assistants").
 
 ## An app of its own
 

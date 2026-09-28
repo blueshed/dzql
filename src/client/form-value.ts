@@ -8,6 +8,9 @@ const isField = (el: Element): el is Field => el instanceof HTMLInputElement || 
 /** What a write never carries: a button's value, a file. */
 const NOT_A_VALUE = new Set(["submit", "button", "reset", "image", "file"]);
 
+/** Is it a box, which holds a tick, not its value. */
+export const isBox = (field: Field): field is HTMLInputElement & { type: "checkbox" } => field instanceof HTMLInputElement && field.type === "checkbox";
+
 /** A radio's group: the radios of its name in its form. A radio with no name is a group alone. */
 export const groupOf = (radio: HTMLInputElement): HTMLInputElement[] => (radio.name ? radiosOf(radio.form, radio.name) : [radio]);
 
@@ -17,7 +20,7 @@ export const groupOf = (radio: HTMLInputElement): HTMLInputElement[] => (radio.n
  * field); a select that takes several, its last choice, or null; anything else, its value.
  */
 export function held(field: Field): string | boolean | null {
-  if (field instanceof HTMLInputElement && field.type === "checkbox") return field.checked;
+  if (isBox(field)) return field.checked;
   if (field instanceof HTMLInputElement && field.type === "radio") return groupOf(field).find((r) => r.checked)?.value ?? null;
   if (field instanceof HTMLSelectElement && field.multiple) return [...field.selectedOptions].at(-1)?.value ?? null;
   return field.value;
@@ -47,7 +50,7 @@ export function formValue(form: HTMLFormElement): unknown {
  * anything else, its `value` attribute.
  */
 export function rendered(field: Field): string | boolean | null {
-  if (field instanceof HTMLInputElement && field.type === "checkbox") return field.defaultChecked;
+  if (isBox(field)) return field.defaultChecked;
   if (field instanceof HTMLInputElement && field.type === "radio") return groupOf(field).findLast((r) => r.defaultChecked)?.value ?? null;
   if (field instanceof HTMLSelectElement) return drawnOption(field)?.value ?? "";
   return field instanceof HTMLTextAreaElement ? field.defaultValue : (field.getAttribute("value") ?? "");

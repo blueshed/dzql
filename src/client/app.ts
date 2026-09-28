@@ -1,9 +1,8 @@
 import { applets } from "../applets";
 import { applyPatch, WIRE, type PatchOp } from "../json-patch";
-import { formValue, groupOf, held, rendered, type Field } from "./form-value";
+import { formValue, groupOf, held, isBox, rendered, type Field } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
 import { keepingChoices, morph, morphElement, morphTag, removeNode, type MorphHooks } from "./morph";
-import { modelContext, offerer, pageTools, walked, type Schema, type Write } from "./tools";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -34,6 +33,9 @@ export type Answer =
   | { id: number; unanswered: true }
   | { unsent: string };
 
+/** A write: a document's name and its ops, as a control sends them. */
+export type Write = { doc: string; ops: PatchOp[] };
+
 /** The writes a script is waiting to hear of, by id. */
 const hearing = new Map<number, (answer: Answer) => void>();
 
@@ -47,16 +49,17 @@ declare global {
       send(doc: string, ops: PatchOp[]): Promise<Answer>;
       undo(change?: string): Promise<Answer>;
       redo(change?: string): Promise<Answer>;
-      tools(): { name: string; title: string; description: string; inputSchema: Schema }[];
-      use(name: string, input?: Record<string, unknown>): Promise<Answer>;
+      /** An app that imports src/client/tools.ts: the page's writes as tools, and one used by name. */
+      tools?(): { name: string; title: string; description: string; inputSchema: object }[];
+      use?(name: string, input?: Record<string, unknown>): Promise<Answer>;
     };
   }
 }
 
 const NOT_CONNECTED = "The page is not connected just now: try again in a moment.";
 
-/** Sends a write, as the page's own controls do, and resolves with what became of it. */
-function ask(write: Write | string): Promise<Answer> {
+/** Sends a write, as the page's own controls do, and resolves with what became of it; given why a write is none, answers that. */
+export function ask(write: Write | string): Promise<Answer> {
   if (typeof write === "string") return Promise.resolve({ unsent: write });
   const id = send(write.doc, write.ops);
   if (id === undefined) return Promise.resolve({ unsent: NOT_CONNECTED });
@@ -69,15 +72,12 @@ function heard(id: unknown, answer: Answer): void {
   hearing.delete(id as number);
 }
 
-/** Uses a tool the page offers now, by name, and answers what came of it. */
-function use(name: string, input?: unknown): Promise<Answer> {
-  if (socket?.readyState !== WebSocket.OPEN) return Promise.resolve({ unsent: NOT_CONNECTED });
-  const tool = pageTools(app).find((t) => t.name === name);
-  if (!tool) return Promise.resolve({ unsent: `This page offers no ${name} now: ask for its tools again.` });
-  return ask(tool.write(input && typeof input === "object" ? (input as Record<string, unknown>) : {}));
-}
+/** The ledger write that walks the session's last change, or the one `change` names (the handle a write's answer gave); the server says which handles are the session's. */
+export const walked = (way: "undo" | "redo", change?: unknown): Write => ({ doc: "ledger", ops: [{ op: way === "undo" ? "remove" : "add", path: `/${change ?? "latest"}` }] });
 
-const offer = offerer(use);
+/** What runs after each drawing, the page as it now is: a module an app opts into (src/client/tools.ts). */
+const drawn: (() => void)[] = [];
+export const afterDrawing = (fn: () => void): void => void drawn.push(fn);
 
 let reconnectDelay = RECONNECT_DELAY_MS;
 window.eta = {
@@ -88,8 +88,6 @@ window.eta = {
   send: (doc, ops) => ask({ doc, ops }),
   undo: (change) => ask(walked("undo", change)),
   redo: (change) => ask(walked("redo", change)),
-  tools: () => pageTools(app).map(({ name, title, description, inputSchema }) => ({ name, title, description, inputSchema })),
-  use,
 };
 
 // Each mounted applet: its cleanup, and its props -- as a render gave them, with every patch to the
@@ -416,8 +414,7 @@ function drawing(draw: () => void, moving?: Element): () => void {
     keyboard();
     syncPage();
     revealChanged(previousReveal);
-    const context = modelContext();
-    if (context) offer(context, pageTools(app)); // WebMCP, where the browser has it: the page's tools as they are now
+    for (const fn of drawn) fn();
   };
 }
 
@@ -558,7 +555,6 @@ function write(spec: string, value?: unknown): number | undefined {
 const isField = (el: Element): el is Field =>
   el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el instanceof HTMLSelectElement && !el.multiple);
 
-const isBox = (field: Field): field is HTMLInputElement & { type: "checkbox" } => field instanceof HTMLInputElement && field.type === "checkbox";
 const isRadio = (field: Field): field is HTMLInputElement & { type: "radio" } => field instanceof HTMLInputElement && field.type === "radio";
 
 /** Puts back what a field held: a box's tick, a group's choice (by its value; none for null), or a value. */

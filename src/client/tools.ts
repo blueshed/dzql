@@ -1,18 +1,18 @@
 import type { PatchOp } from "../json-patch";
-import { groupOf, rendered, type Field } from "./form-value";
+import { afterDrawing, ask, walked, type Answer, type Write } from "./app";
+import { groupOf, isBox, rendered, type Field } from "./form-value";
 
-// The page's writes as tools for an assistant (todo n99). Every control a person could press on the
-// page now is a tool, read from what the page already says -- a form's `data-write`, an editing
-// form's fields', a button's or a row's, an applet's `data-writes` -- and undo and redo are two
-// more. A tool makes the write its control would; the server permits it or not, as it does a
-// person's, so nothing here is a gate: an input schema says what the page offers, and a tool sends
-// what it is given. Registered with WebMCP where the browser has it (`offerer`), and listed on
-// `window.eta.tools()` wherever it does not.
+// The page's writes as tools for an assistant (todo n99), for an app that opts in: its client/main.ts
+// imports this after the kernel's client, `import "eta/src/client/tools"`. Every control a person
+// could press on the page now is a tool, read from what the page already says -- a form's
+// `data-write`, an editing form's fields', a button's or a row's, an applet's `data-writes` -- and
+// undo and redo are two more. A tool makes the write its control would; the server permits it or
+// not, as it does a person's. After each drawing they are registered with WebMCP where the browser
+// has it (`document.modelContext`), and `window.eta.tools()` and `use(name, input)` list and run them
+// wherever it does not.
 
 /** A JSON Schema, as much of one as a tool's input needs. */
 export type Schema = { type?: string; enum?: unknown[]; format?: string; pattern?: string; minimum?: number; description?: string; properties?: Record<string, Schema>; required?: string[] };
-
-export type Write = { doc: string; ops: PatchOp[] };
 
 /** A tool: what WebMCP registers, and the write it makes of an input -- or why it makes none. */
 export type Tool = { name: string; title: string; description: string; inputSchema: Schema; write(input: Record<string, unknown>): Write | string };
@@ -34,28 +34,16 @@ const titleOf = (form: HTMLFormElement): string =>
 /** What a field is called: its label, aria-label, placeholder, or name. */
 const called = (field: Field): string => said(field.labels?.[0] ?? null) || words(field.getAttribute("aria-label")) || words(field.getAttribute("placeholder")) || field.name;
 
-/**
- * A tool's name, from the write it makes, so it stays the same while the control does: `add.room.messages.-`
- * for `add /messages/-` on `room`. WebMCP takes letters, digits, `_`, `-` and `.`, at most 128: a
- * name that loses anything to that is told apart by a hash of what it was.
- */
-function nameOf(verb: string, doc: string, path: string): string {
-  const dotted = `${verb}.${doc}${path}`.replace(/[:/]+/g, ".").replace(/\.$/, "");
-  const name = dotted.replace(/[^\w.-]/g, "_");
-  if (name === dotted && name.length <= 128) return name;
-  let h = 5381;
-  for (const c of dotted) h = (Math.imul(h, 33) ^ c.codePointAt(0)!) >>> 0;
-  return `${name.slice(0, 100)}-${h.toString(36)}`;
-}
+/** A tool's name, from the write it makes, so it stays the same while the control does: `add.room.messages.-` for `add /messages/-` on `room`, in what WebMCP takes. */
+const nameOf = (verb: string, doc: string, path: string): string => `${verb}.${doc}${path}`.replace(/[:/]+/g, ".").replace(/\.$/, "").replace(/[^\w.-]/g, "_").slice(0, 128);
 
 const writes = ({ op, path, doc }: Spec): string => `${op} ${path || "/"} on ${doc}`;
 const specOf = (el: HTMLElement): Spec => JSON.parse(el.dataset.write!);
-const box = (field: Field): boolean => field instanceof HTMLInputElement && field.type === "checkbox";
 
 /** A field's input, as it holds one: a box true or false, a choice one of those offered, else text. */
 function schemaOf(field: Field): Schema {
   const description = called(field);
-  if (box(field)) return { type: "boolean", description };
+  if (isBox(field)) return { type: "boolean", description };
   if (field instanceof HTMLSelectElement) return { enum: [...field.options].filter((o) => !o.disabled).map((o) => o.value), description };
   if (field instanceof HTMLInputElement && field.type === "radio") return { enum: groupOf(field).filter(pressable).map((r) => r.value), description };
   const format = field instanceof HTMLInputElement && ({ date: "date", time: "time", email: "email", url: "uri" } as Record<string, string>)[field.type];
@@ -63,7 +51,7 @@ function schemaOf(field: Field): Schema {
 }
 
 /** What a field sends of `given`, as a person's form would: a box a tick, anything else text. */
-const sent = (field: Field, given: unknown): unknown => (box(field) || given == null ? given : String(given));
+const sent = (field: Field, given: unknown): unknown => (isBox(field) || given == null ? given : String(given));
 
 /** A form that creates: sends its one field's value, or a record of its fields, as on submit (form-value.ts); a field the page fills (hidden, readonly) as the page filled it. */
 function formTool(form: HTMLFormElement): Tool {
@@ -130,7 +118,7 @@ function pressTool(presses: HTMLElement[]): Tool {
   return {
     name: nameOf(spec.op, spec.doc, spec.path),
     title,
-    description: choose ? `${writes(spec)}, as these do: ${presses.map((el) => `${JSON.stringify(el.dataset.value ?? null)} ${said(el)}`).join("; ")}.` : `${title}: ${writes(spec)}.`,
+    description: `${title}: ${writes(spec)}${choose ? ", with the value of the one pressed" : ""}.`,
     inputSchema: { type: "object", properties: choose ? { value: { enum: values.filter((v) => v !== undefined) } } : {} },
     write: (input) => ({ doc: spec.doc, ops: [{ op: spec.op, path: spec.path, value: choose ? input.value : values[0] }] }),
   };
@@ -159,9 +147,6 @@ function appletTools(applet: HTMLElement): Tool[] {
     };
   });
 }
-
-/** The ledger write that walks the session's last change, or the one `change` names (the handle a write's answer gave); the server says which handles are the session's. */
-export const walked = (way: "undo" | "redo", change?: unknown): Write => ({ doc: "ledger", ops: [{ op: way === "undo" ? "remove" : "add", path: `/${change ?? "latest"}` }] });
 
 const walkTool = (way: "undo" | "redo"): Tool => ({
   name: way,
@@ -199,14 +184,8 @@ export function pageTools(root: Element): Tool[] {
   return tools;
 }
 
-/** A model context, as the WebMCP draft has it (`document.modelContext`), or as Chromium had it before (`navigator.modelContext`, a handle to unregister). */
-export type ModelContext = { registerTool(tool: object, options: { signal: AbortSignal }): unknown };
-
-/** The browser's model context, if it has one. */
-export function modelContext(): ModelContext | undefined {
-  const context = (document as { modelContext?: ModelContext }).modelContext ?? (navigator as { modelContext?: ModelContext }).modelContext;
-  return typeof context?.registerTool === "function" ? context : undefined;
-}
+/** A model context, as the WebMCP draft has it (`document.modelContext`): enough to register a tool with it. */
+type ModelContext = { registerTool(tool: object, options: { signal: AbortSignal }): Promise<unknown> };
 
 /**
  * Keeps a model context told of the page's tools: each registered once, and withdrawn (its signal
@@ -226,16 +205,25 @@ export function offerer(use: (name: string, input: unknown) => Promise<unknown>)
     for (const { name, title, description, inputSchema } of tools) {
       if (registered.has(name)) continue;
       const stop = new AbortController();
-      const forget = () => registered.get(name)?.[1] === stop && registered.delete(name);
       registered.set(name, [keys.get(name)!, stop]);
-      try {
-        const done = context.registerTool({ name, title, description, inputSchema, execute: (input: unknown) => use(name, input) }, { signal: stop.signal });
-        Promise.resolve(done).catch(forget);
-        const unregister = (done as { unregister?: () => void } | undefined)?.unregister;
-        if (unregister) stop.signal.addEventListener("abort", () => unregister());
-      } catch {
-        forget();
-      }
+      new Promise((done) => done(context.registerTool({ name, title, description, inputSchema, execute: (input: unknown) => use(name, input) }, { signal: stop.signal }))).catch(
+        () => registered.get(name)?.[1] === stop && registered.delete(name),
+      );
     }
   };
 }
+
+const app = document.querySelector<HTMLElement>("#app")!;
+
+/** Uses a tool the page offers now, by name, and answers what came of it. */
+function use(name: string, input?: unknown): Promise<Answer> {
+  const tool = pageTools(app).find((t) => t.name === name);
+  return ask(tool ? tool.write(input && typeof input === "object" ? (input as Record<string, unknown>) : {}) : `This page offers no ${name} now: ask for its tools again.`);
+}
+
+const offer = offerer(use);
+afterDrawing(() => {
+  const context = (document as { modelContext?: ModelContext }).modelContext;
+  if (typeof context?.registerTool === "function") offer(context, pageTools(app));
+});
+Object.assign(window.eta!, { tools: () => pageTools(app).map(({ name, title, description, inputSchema }) => ({ name, title, description, inputSchema })), use });
