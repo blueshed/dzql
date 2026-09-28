@@ -28,6 +28,20 @@ export const plural = (n: number, one: string, many: string): string => `${n} ${
 
 export const firstNameOf = (name: string): string => name.trim().split(/\s+/)[0]!;
 
+/** A family's names as a run (CLAUDE.md, say a thing once): a surname shared with the name before
+ * it -- or with `start`, the household's code the run is under -- is said once, not on every name.
+ * "Ada Okafor", "Femi Okafor" under OKAFOR are "Ada", "Femi"; a plus-one's own surname stays. */
+export function runNames(names: string[], start = ""): string[] {
+  let before = start.trim().toLowerCase();
+  return names.map((name) => {
+    const words = name.trim().split(/\s+/);
+    const surname = words.length > 1 ? words.at(-1)!.toLowerCase() : "";
+    const same = surname !== "" && surname === before;
+    if (surname) before = surname;
+    return same ? words.slice(0, -1).join(" ") : name;
+  });
+}
+
 /** The couple's names, the root's name. */
 export const coupleName = (w: Pick<Wedding, "name1" | "name2">): string => `${w.name1} & ${w.name2}`;
 
@@ -88,25 +102,33 @@ export interface ListOptions {
   chosen?: number;
 }
 
-/** The timetable: a row per event -- when leads the line, then what and where. */
-export function timetableRows(events: Event[], o: ListOptions = {}): string {
+/** A place and its town are one place: "The Mount Without" is where "The Mount Without, Bristol" is. */
+const placeOf = (where: string | null | undefined): string => (where ?? "").split(",")[0]!.trim().toLowerCase();
+
+/** The timetable: a row per event -- when leads the line, then what, and where when it moves: an
+ * event where the one before it was (or, from `at`, where the day is) does not say it again. */
+export function timetableRows(events: Event[], o: ListOptions & { at?: string | null } = {}): string {
+  let here = placeOf(o.at);
   return rows(
-    events.map((e) =>
-      row({
+    events.map((e) => {
+      const moved = e.where_at && placeOf(e.where_at) !== here ? e.where_at : null;
+      if (e.where_at) here = placeOf(e.where_at);
+      return row({
         id: `event-${e.id}`,
         tap: o.open?.(e.id),
         chosen: o.open ? o.chosen === e.id : undefined,
         lead: `<span class="when">${esc(e.when_at ? formatWhen(e.when_at) : "—")}</span>`,
         what: e.name,
-        note: [e.where_at, e.notes].filter(Boolean).join(" · ") || null,
+        note: [moved, e.notes].filter(Boolean).join(" · ") || null,
         mark: o.open ? "pencil" : undefined,
-      }),
-    ),
+      });
+    }),
     "No events yet.",
   );
 }
 
-/** Where to stay: a row per place -- its picture, its name and notes; a link out for a guest, ✎ its drawer for the couple. */
+/** Where to stay: a row per place -- its picture, its name and notes; a link out for a guest, ✎ its drawer for the couple. The picture's
+ * name is the row's, beside it, so it says nothing of its own. */
 export function placeRows(places: Place[], o: ListOptions = {}): string {
   return rows(
     places.map((p) =>
@@ -114,7 +136,7 @@ export function placeRows(places: Place[], o: ListOptions = {}): string {
         id: `place-${p.id}`,
         tap: o.open?.(p.id),
         chosen: o.open ? o.chosen === p.id : undefined,
-        lead: p.picture_key ? picture(p.picture_key, p.name) : undefined,
+        lead: p.picture_key ? picture(p.picture_key, "") : undefined,
         what: p.name,
         note: p.notes,
         state: !o.open && p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener noreferrer">More</a>` : undefined,

@@ -104,6 +104,10 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 .photo-page:has(> .reading.photo) { height: 100%; }
 .photo-page > .reading.photo { flex: 1 1 0; height: auto; min-height: 280px; }
 .photo-page > .rows { margin-top: var(--space-sm); }
+/* the households in runs by their answer: the answer said once, at the head of its run */
+.photo-page > .run-head { margin: var(--space-md) 0 0; }
+.photo-page > .run-head ~ .run-head { margin-top: var(--space-xl); }
+.photo-page > .run-head + .rows { margin-top: var(--space-xs); }
 /* the information a household reads and puts away: the gifts, the day, where to stay */
 .info-drawer .gift { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--space-md); padding: var(--space-md) 0; border-bottom: 1px solid var(--line); }
 .info-drawer .gift:first-child { padding-top: 0; }
@@ -113,6 +117,7 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 .gift-words h3 { font-size: 16px; }
 .gift-words .note { margin: 2px 0 0; }
 .gift-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-sm); font-size: 13px; }
+.gift-foot > .tool { margin-left: auto; } /* the one thing to do with it stays at the right, whether or not a state stands before it */
 .info-drawer .when-where { margin: 0 0 var(--space-md); font-family: var(--serif); color: var(--navy); line-height: 1.5; }
 /* a family's drawer, and the lists the couple keep: a line each -- the words, the state, the one
    control -- and a new one named in place at the foot */

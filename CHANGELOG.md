@@ -97,6 +97,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also mended two things the numbers exposed: removing a dish clears the guests' choices of it,
   and removing a gift takes its claims. leave's browser test waits until the first month shown
   is October, not merely until October is on the page.
+- **The wedding says a thing once** (todo n61). A household's list and a family's drawer say a
+  surname the family shares once ("Ada", "Femi", "Kemi" under OKAFOR); the couple's list of
+  households runs by answer, said at the head of each run rather than on every row; the day says
+  its place at its head, and an event says where only where it moves; a guest's drawer is named
+  for them in its title alone ("The meal", "Touch a part to change it"); a gift's state no longer
+  repeats its control ("open" beside Claim it, "anyone may" beside Give to it); a confirm modal is
+  named for what it takes away and asks once; a place's picture has no alt of its own beside its
+  name.
 
 ### Added
 
