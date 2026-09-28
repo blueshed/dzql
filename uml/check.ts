@@ -16,7 +16,7 @@ export type Types = { interfaces: Map<string, Iface>; unions: Map<string, string
 export type Kind = "classes" | "sequence" | "states" | "use cases" | "document" | "other";
 export type Checked = { name: string; kind: Kind; drift: string[]; uses: Set<string> };
 
-export const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 const ARTICLES = new Set(["a", "an", "the", "another"]);
 /** A name's words: `enterName` -> enter, name; "Enter a room's name" -> enter, room, s, name. */
 const words = (s: string) => s.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w && !ARTICLES.has(w));
@@ -297,37 +297,25 @@ export function check(name: string, puml: string, t: Types): Checked {
   return { name, kind, drift, uses };
 }
 
-/** The write a label names, by its words ("Enter another room's name" names session /room). */
-export function writeNamed(label: string, t: Types): WriteDef | undefined {
-  const hit = named(label, t.writes.map((w) => w.does).filter(Boolean));
-  return t.writes.find((w) => w.does === hit);
-}
-
-/** Each write, and the first sequence that draws it: where a use case links to. */
-export function sequenceOf(all: Checked[]): Map<string, string> {
+/** Each thing a diagram of `kind` uses (`write:…`, `document:…`), and the first such diagram, by name: where a link to it goes. */
+function firstDrawn(all: Checked[], kind: Kind, prefix: string): Map<string, string> {
   const out = new Map<string, string>();
-  for (const c of [...all].sort((a, b) => a.name.localeCompare(b.name))) if (c.kind === "sequence") for (const u of c.uses) if (u.startsWith("write:") && !out.has(u.slice(6))) out.set(u.slice(6), c.name);
+  for (const c of [...all].sort((a, b) => a.name.localeCompare(b.name))) if (c.kind === kind) for (const u of c.uses) if (u.startsWith(prefix) && !out.has(u.slice(prefix.length))) out.set(u.slice(prefix.length), c.name);
   return out;
 }
 
 /** A use case diagram with each use case linked to the sequence of its write -- added as it is drawn, so the source stays as written and a link cannot point anywhere stale. */
-export function linkUseCases(puml: string, t: Types, sequences: Map<string, string>): string {
+function linkUseCases(puml: string, t: Types, sequences: Map<string, string>): string {
+  const doesList = t.writes.map((w) => w.does).filter(Boolean);
   return puml.replace(/^(\s*usecase\s+"([^"]+)"(?:\s+as\s+\w+)?)[ \t]*$/gm, (line, head: string, label: string) => {
-    const w = writeNamed(label.split("\\n")[0]!, t);
-    const seq = w && sequences.get(w.key);
+    const hit = named(label.split("\\n")[0]!, doesList);
+    const seq = sequences.get(t.writes.find((w) => w.does === hit)?.key ?? "");
     return seq ? `${head} [[#${seq}{open its sequence}]]` : line;
   });
 }
 
-/** Each document, and the first diagram drawn as an example of it: where its class links to. */
-export function exampleOf(all: Checked[]): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const c of [...all].sort((a, b) => a.name.localeCompare(b.name))) if (c.kind === "document") for (const u of c.uses) if (u.startsWith("document:") && !out.has(u.slice(9))) out.set(u.slice(9), c.name);
-  return out;
-}
-
 /** A class diagram with each «document» class linked to its example, added as it is drawn. */
-export function linkClasses(puml: string, t: Types, examples: Map<string, string>): string {
+function linkClasses(puml: string, t: Types, examples: Map<string, string>): string {
   return puml.replace(/^(\s*class\s+(?:"[^"]+"\s+as\s+)?(\w+)(?:\s*<<[^>]*>>)?)(\s*\{?)[ \t]*$/gm, (line, head: string, cls: string, brace: string) => {
     const doc = t.documents.find((d) => norm(d.shape) === norm(cls));
     const example = doc && examples.get(doc.key);
@@ -338,8 +326,8 @@ export function linkClasses(puml: string, t: Types, examples: Map<string, string
 /** A diagram as it is drawn: with links to the diagrams it names, and each document part's flavour, worked out from types.ts and all the diagrams as they stand. The source is left as written. */
 export function asDrawn(puml: string, name: string, t: Types, all: Checked[]): string {
   const kind = kindOf(puml);
-  if (kind === "use cases") return linkUseCases(puml, t, sequenceOf(all));
-  if (kind === "classes") return flavourClasses(linkClasses(puml, t, exampleOf(all)), t);
+  if (kind === "use cases") return linkUseCases(puml, t, firstDrawn(all, "sequence", "write:"));
+  if (kind === "classes") return flavourClasses(linkClasses(puml, t, firstDrawn(all, "document", "document:")), t);
   if (kind === "sequence") return flavourPatches(puml, t);
   if (kind === "document") return flavourExample(puml, name, t);
   return puml;

@@ -258,10 +258,9 @@ for (const [machine, places, starts] of LAYOUT) {
       + (refused.get(s) ?? []).map((a, i) => `<g><title>${esc(cite(a.cites))}</title><text x="${p.x}" y="${p.y + H / 2 + 11 + i * 10}" text-anchor="middle" font-size="8.5" fill="#8a8a8a">✗ ${esc(a.role)} ${esc(a.words.replace(/^cannot\s+/, ""))} ${a.cites.join(",")}</text></g>`).join("")
       + `</g>`);
   }
-  for (const [role, p] of Object.entries(starts)) {
+  for (const role of Object.keys(starts)) {
     const d = nodes.get(`${machine}:[*]:${role}`);
-    if (d) over.push(`<circle cx="${d.x}" cy="${d.y}" r="6" fill="#1e2430" stroke="${colour(role) }" stroke-width="2.5"><title>${esc(`${role} makes a ${machine}`)}</title></circle>`);
-    void p;
+    if (d) over.push(`<circle cx="${d.x}" cy="${d.y}" r="6" fill="#1e2430" stroke="${colour(role)}" stroke-width="2.5"><title>${esc(`${role} makes a ${machine}`)}</title></circle>`);
   }
 }
 
