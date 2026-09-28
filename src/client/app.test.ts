@@ -781,6 +781,22 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/paid", value: true }, { op: "replace", path: "/kind", value: "travel" }] });
   });
 
+  test("a creating form sends a box as whether it is ticked, ticked or not, so its value keeps one shape", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, `<form id="add" data-write='{"doc":"trip","op":"add","path":"/events/-"}'><input id="title" name="title"><input type="checkbox" id="booked" name="booked"></form>`);
+    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
+    await view.click("#title");
+    await view.type("Fushimi");
+    await view.press("Enter");
+    await view.click("#booked");
+    await view.click("#title");
+    await view.type("Inari");
+    await view.press("Enter");
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    expect(await view.evaluate<unknown[]>(`window.__sent.map((s) => s.ops[0].value)`)).toEqual([{ title: "Fushimi", booked: false }, { title: "Inari", booked: true }]);
+  });
+
   test("a refused write hands back what was ticked, as it does what was typed, and keeps a choice made while it was on its way", async () => {
     await using view = await open();
     await stubSend(view);
@@ -797,7 +813,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.type("Fushimi");
     await view.press("Enter");
     await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi", booked: "on", kind: "eat" } }] });
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi", booked: true, kind: "eat" } }] });
     const state = `[document.getElementById('title').value, document.getElementById('booked').checked, document.getElementById('kind-eat').checked]`;
     expect(await view.evaluate<unknown[]>(state)).toEqual(["", false, false]); // cleared as it sends
 

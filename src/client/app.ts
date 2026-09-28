@@ -1,8 +1,8 @@
 import { applets } from "../applets";
 import type { PatchOp } from "../json-patch";
-import { formValue } from "./form-value";
+import { formValue, groupOf, held, type Field } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
-import { drawnOption, morph, morphElement, morphTag, radiosOf, removeNode } from "./morph";
+import { drawnOption, morph, morphElement, morphTag, removeNode } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -249,29 +249,25 @@ function send(doc: string, ops: PatchOp[]) {
   socket?.send(JSON.stringify({ doc, ops }));
 }
 
-/** What a form holds a value in: typed, chosen, or ticked. A `multiple` select holds several values where a
- * write carries one, so it is not a field: an editing form never sends it, and a refusal does not hand it back. */
-type Field = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+/** A field (form-value.ts) an editing form sends and a refusal hands back. A `multiple` select holds several values where a
+ * write carries one, so it is not one here: an editing form never sends it, and a refusal does not hand it back. */
 const isField = (el: Element): el is Field =>
   el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el instanceof HTMLSelectElement && !el.multiple);
 
-/** A field that is ticked, not typed or chosen: a box, or a radio. Its value is only what it says when ticked. */
-type Tick = HTMLInputElement & { type: "checkbox" | "radio" };
-const isTick = (field: Field): field is Tick => field instanceof HTMLInputElement && (field.type === "checkbox" || field.type === "radio");
+const isBox = (field: Field): field is HTMLInputElement & { type: "checkbox" } => field instanceof HTMLInputElement && field.type === "checkbox";
+const isRadio = (field: Field): field is HTMLInputElement & { type: "radio" } => field instanceof HTMLInputElement && field.type === "radio";
 
-/** What a field holds now: whether it is ticked, or its value. */
-const held = (field: Field): string | boolean => (isTick(field) ? field.checked : field.value);
-
-/** Puts back what a field held. A group of radios has one tick, so a radio goes back only while none of its group holds a choice not yet drawn. */
-function hold(field: Field, value: string | boolean): void {
-  if (!isTick(field)) field.value = value as string;
-  else if (field.type !== "radio" || !radiosOf(field.form, field.name).some((r) => r.checked && !r.defaultChecked)) field.checked = value as boolean;
+/** Puts back what a field held: a box's tick, a group's choice (by its value; none for null), or a value. */
+function hold(field: Field, value: string | boolean | null): void {
+  if (isBox(field)) field.checked = value as boolean;
+  else if (isRadio(field)) for (const r of groupOf(field)) r.checked = r.value === value;
+  else field.value = value as string;
 }
 
 // A form clears as it sends, and a refused write hands back what was sent: a refusal is answered
 // with the page whole, before any echo of the form's document. So what someone types while the
 // write is on its way is theirs -- no echo, anyone's, clears it -- and a refusal never eats text.
-let sending: { doc: string; sent: [Field, string | boolean][] } | undefined;
+let sending: { doc: string; sent: [Field, string | boolean | null][] } | undefined;
 
 // An element says what it writes via data-write; a form's field is the
 // value (or a record of its fields, if it has more than one), a button/li's
@@ -321,17 +317,18 @@ document.addEventListener("keydown", (event) => {
 // element's text at parse time, which the DOM keeps as `defaultValue` even after typing changes
 // `value`. Same comparison, different property. A <select> has neither: what was rendered is the
 // option it was drawn showing, by the browser's own rule (drawnOption), until someone chooses. A
-// box or a radio holds a tick, not its value: what was rendered is whether it was drawn `checked`
-// (`defaultChecked`). A box says whether it is ticked; a radio newly ticked says its value, and
-// the one it was chosen over says nothing.
+// box holds a tick, not its value: what was rendered is whether it was drawn `checked`
+// (`defaultChecked`). A group of radios is one field, held as the value chosen (form-value.ts):
+// what was rendered is the value of the last drawn `checked`, or null.
 // "input" (bento-request.md K3) is the same commit, debounced to ~150ms after the last keystroke
 // anywhere in the form so a burst of typing becomes one message, not one per key; a `focusout`
 // inside such a form flushes any pending write at once, same as leaving the field would for
 // "blur". Whatever the trigger, a commit identical to the last one *this form* sent is dropped
 // until a write lands -- typing back to a value on its way, or leaving a field twice, says nothing
 // new -- and not after: once an echo or an undo has been drawn, the same value is news again.
-function rendered(field: Field): string | boolean {
-  if (isTick(field)) return field.defaultChecked;
+function rendered(field: Field): string | boolean | null {
+  if (isBox(field)) return field.defaultChecked;
+  if (isRadio(field)) return groupOf(field).findLast((r) => r.defaultChecked)?.value ?? null;
   if (field instanceof HTMLSelectElement) return drawnOption(field)?.value ?? "";
   return field instanceof HTMLTextAreaElement ? field.defaultValue : (field.getAttribute("value") ?? "");
 }
@@ -339,13 +336,15 @@ function rendered(field: Field): string | boolean {
 function editingChange(form: HTMLFormElement): { doc: string; ops: PatchOp[] } | undefined {
   const ops: PatchOp[] = [];
   let doc: string | undefined;
+  const said = new Set<Field>(); // a group of radios is said once
   for (const field of [...form.querySelectorAll("[data-write]")].filter(isField)) {
-    if (held(field) === rendered(field)) continue;
-    const radio = isTick(field) && field.type === "radio";
-    if (radio && !field.checked) continue; // the radio ticked says it
+    if (said.has(field)) continue;
+    if (isRadio(field)) for (const r of groupOf(field)) said.add(r);
+    const value = held(field);
+    if (value === rendered(field)) continue;
     const spec = JSON.parse(field.dataset.write!) as WriteSpec;
     doc = spec.doc;
-    ops.push({ op: spec.op, path: spec.path, value: radio ? field.value : held(field) });
+    ops.push({ op: spec.op, path: spec.path, value });
   }
   return doc && ops.length > 0 ? { doc, ops } : undefined;
 }
@@ -430,8 +429,8 @@ function connect() {
       if (message.ops) applyFragments(message.ops);
       else {
         // the page whole before the echo: the form's write was refused -- what was sent goes back
-        // in each field not typed in, chosen in, or ticked, since; the morph then keeps a choice by
-        // its value, or shows the drawn one if the page no longer offers it (morph.ts)
+        // in each field (a group of radios is one) not typed in, chosen in, or ticked, since; the
+        // morph then keeps a choice by its value, or shows the drawn one if the page no longer offers it (morph.ts)
         for (const [field, value] of sending?.sent ?? []) if (held(field) === rendered(field)) hold(field, value);
         sending = undefined;
         render(message.html);

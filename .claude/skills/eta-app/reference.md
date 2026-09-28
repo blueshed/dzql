@@ -336,8 +336,10 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
 `<form${write("room", "add", "/messages/-")}><input name="text" required>…</form>`
 ```
 
-- A **form** writes on submit: its one field's value, or a record of several. It clears as it
-  sends. A refused write (answered with the page whole, before any echo of the form's document)
+- A **form** writes on submit: its one field's value, or a record of several. A field has one
+  type whatever form it is in: a box is `true` or `false`, a group of radios is one field, the
+  value chosen or `null`, a `multiple` select its last choice or `null`, anything else its text.
+  A record keeps every named field's key, so a value keeps one shape. It clears as it sends. A refused write (answered with the page whole, before any echo of the form's document)
   hands back what was sent, into each field not typed in since. What is typed while a write is on
   its way is kept, whoever's echo comes.
 - A **button or row** writes on click, with its `data-value` if it has one. A click in a field
@@ -348,12 +350,12 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
   sends the same message twice until a write lands; after that (an echo, an undo) it may. A render that changes a field nobody is in shows the new value (an undo's), so it is not
   sent again; a field someone is in keeps what they type. A select was rendered showing the last
   option drawn `selected`, else its first not disabled; it keeps a choice not yet drawn, by its
-  value, however its options move, and otherwise shows what is drawn. A box or a radio was
-  rendered ticked or not (`checked`), and goes only when its tick differs: a box as `true` or
-  `false`, a radio newly ticked as its value. It keeps a tick not yet drawn (a radio's by its
-  value, while its group offers it) and otherwise shows what is drawn. A `multiple` select is not
-  a field (a write carries one value): an editing form never sends it, nor a refusal hands it back,
-  and a form that creates sends only its last choice.
+  value, however its options move, and otherwise shows what is drawn. A box was rendered ticked
+  or not (`checked`), a group of radios with the value drawn `checked`; each goes only when what
+  it holds differs, as it would from a form that creates. It keeps a tick not yet drawn (a
+  radio's by its value, while its group offers it) and otherwise shows what is drawn. A
+  `multiple` select is not a field here (a write carries one value): an editing form never sends
+  it, nor a refusal hands it back.
 
 Also:
 

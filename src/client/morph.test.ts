@@ -199,6 +199,24 @@ describe("formValue", () => {
     expect(result).toEqual({ a: "1", b: "2" });
   });
 
+  test("every named field keeps its key, of one type whatever it holds: a box whether it is ticked, a group of radios the value chosen or null", async () => {
+    const result = await run(`
+      root.innerHTML = '<form><input name="title" value="Fushimi"><input type="checkbox" name="booked"><input type="checkbox" name="paid" value="yes" checked>'
+        + '<input type="radio" name="kind" value="see"><input type="radio" name="kind" value="eat"><select multiple name="tags"><option selected>quiet</option><option selected>late</option></select>'
+        + '<input name="gone" value="x" disabled><button name="go" value="1">Go</button></form>';
+      const form = root.querySelector("form");
+      const record = window.formValue(form);
+      form.querySelector('[value=eat]').checked = true;
+      const chosen = window.formValue(form).kind;
+      root.innerHTML = '<form><input name="title" value="Fushimi"><input type="checkbox" name="booked"></form>';
+      const two = window.formValue(root.querySelector("form"));
+      root.innerHTML = '<form><input type="radio" name="kind" value="see"><input type="radio" name="kind" value="eat" checked></form>';
+      const group = window.formValue(root.querySelector("form"));
+      return { record, chosen, two, group };
+    `);
+    expect(result).toEqual({ record: { title: "Fushimi", booked: false, paid: true, kind: null, tags: "late" }, chosen: "eat", two: { title: "Fushimi", booked: false }, group: "eat" });
+  });
+
   test("a form with no named fields has an undefined value", async () => {
     const result = await run(`
       root.innerHTML = '<form><button type="submit">Go</button></form>';

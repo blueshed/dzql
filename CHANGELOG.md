@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
+  browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
+  when not, as was a group of radios none of which was chosen. So a title and an unticked box
+  sent the title alone, and ticked, a record. Now a field has one type whatever form it is in: a
+  box is `true` or `false`, always there, whatever its value attribute says; a group of radios is
+  one field, the value chosen or `null`; a `multiple` select its last choice or `null`; and a
+  record keeps every named field's key. A `shape` that read "on", or a missing key as unticked,
+  reads `true` and `false` now. No example sends a box (the wedding's `yesNo` takes both).
 - **One word, one meaning: names renamed so they say what they are, and when they run.** No
   behaviour changes; rename and the gate passes. Compartment hooks are named for when they run
   (`permit`, `shape` before a write; `permitUndo` before an undo; `afterWrite`, `afterChange` after).
@@ -186,7 +194,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ticked or not: without a value attribute it went as "on" on every commit, with one it never
   went, and nor did a radio. A refused write handed back no tick. What a box or a radio rendered
   is now whether it was drawn `checked`; it goes only when its tick differs, a box as `true` or
-  `false` and a radio newly ticked as its value; a refusal hands the tick back; and a render keeps
+  `false` and a group of radios as the value chosen; a refusal hands the tick back; and a render keeps
   a tick not yet drawn (a radio's by its value, while its group offers it) and otherwise shows
   what is drawn, with the caret in it or not.
 - **A part inside an `<svg>` comes back as SVG** (`src/client/morph.ts`, todo n77). A render in
@@ -280,6 +288,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
+  browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
+  when not, as was a group of radios none of which was chosen. So a title and an unticked box
+  sent the title alone, and ticked, a record. Now a field has one type whatever form it is in: a
+  box is `true` or `false`, always there, whatever its value attribute says; a group of radios is
+  one field, the value chosen or `null`; a `multiple` select its last choice or `null`; and a
+  record keeps every named field's key. A `shape` that read "on", or a missing key as unticked,
+  reads `true` and `false` now. No example sends a box (the wedding's `yesNo` takes both).
 - **The stories check delivery, not only pages.** A story that passed may now fail, by name:
   - an `unseen` member told of any document -- sent a patch -- by the write, its undo or its redo
     (`cy was told of room:general, and should not have been`);
@@ -394,6 +410,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
+  browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
+  when not, as was a group of radios none of which was chosen. So a title and an unticked box
+  sent the title alone, and ticked, a record. Now a field has one type whatever form it is in: a
+  box is `true` or `false`, always there, whatever its value attribute says; a group of radios is
+  one field, the value chosen or `null`; a `multiple` select its last choice or `null`; and a
+  record keeps every named field's key. A `shape` that read "on", or a missing key as unticked,
+  reads `true` and `false` now. No example sends a box (the wedding's `yesNo` takes both).
 - **eta keeps every document in delta.** `@blueshed/delta` is a dependency, and `Example.delta`
   (the example's backends registered on a `createLocal()`) is required. The kernel keeps a copy of
   each document a page reads, kept current from delta's one stream of changes, and draws
