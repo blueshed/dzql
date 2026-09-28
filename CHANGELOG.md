@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   name, with the step and its biggest part; a story's own stands in place of the example's, and
   one that is not a whole number of bytes is said, and its story not run. Chat's stories hold
   4.5 KB (the most is Dee's attic taken back, 4,339 bytes), and a message 1 KB.
+### Changed
+
+- **The skill says a part is the unit of a message** (todo n95): a change goes as the smallest
+  part that holds it, whole, so what changes alone -- a row, a card, a count -- is a part of its
+  own, shown with chat's messages. It says plainly that a keyed part may move to another parent
+  and goes as that move (n82, fixed in 0.50.0): japan-eta drew its days whole to dodge n82, and a
+  heart on one stop sent its whole day.
 
 ## [0.50.0] - 2026-09-28
 

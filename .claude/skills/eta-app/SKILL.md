@@ -82,8 +82,10 @@ Everything below is the least that makes it pass.
    a nested path turned into rows), nothing when nothing applies. `afterChange` keeps a live document
    true after any change; `afterWrite` does what follows for the writer alone. The kernel tells every
    change itself: echoed to who sees it, every page that read it drawn again, each sent only the
-   parts that changed. Name the page's regions with `part(key, html)` where a change should travel
-   alone; nothing else says what goes.
+   parts that changed. A part is the unit of a message: a change goes as the smallest part that
+   holds it, whole, so make what changes alone -- a row, a card, a count -- a part of its own with
+   `part(key, html)`; nothing else says what goes. A row may be a part and still move to another
+   list (reference.md, "Parts").
 5. **What is live** -- a document the server keeps (who is here, who stands in the photo):
    computed whole from the tables in `afterChange`, written as the difference with `serverWrite`,
    one run at a time (delta refuses a remove of what another run took out).

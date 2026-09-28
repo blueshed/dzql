@@ -205,12 +205,20 @@ answered after everything the events before it set going.
 
 ## Parts: what is sent (`src/parts.ts`)
 
-A part is a region of the page that can be sent alone. Name one with `part(key, html)`, and its
-root element is tagged `data-eta-part="<key>"`:
+A part is a region of the page that can be sent alone, and it is the unit of a message: a change
+goes as the smallest part that holds it, whole, with everything inside it that is not a part of its
+own. So make what changes alone -- a row, a card, a count -- a part of its own. Name one with
+`part(key, html)`, and its root element is tagged `data-eta-part="<key>"`. Chat's room:
 
 ```ts
-part("messages", `<ul class="messages" id="messages">…</ul>`)
+part("people", `<ul id="people">…</ul>`),
+part("messages", `<ul id="messages">${transcript.map((m) => part(`m${m.id}`, `<li id="m${m.id}">…</li>`)).join("")}</ul>`),
 ```
+
+A message said goes as its one `<li>`, put in after the last, and someone arriving as the faces
+in `people`; were the messages not parts, each would send the whole conversation. A keyed part may
+move from one parent to another (a stop to another day) and goes as that move, not as either
+parent (todo n82, fixed in 0.50.0), so a row that moves can be a part too.
 
 The bento's cells, the open window, rows with an id, lists given a key (`rows(items, empty, key)`)
 and drawers are parts already. Name the rest (a strip, a list, a row, an applet's mount) where a
