@@ -7,9 +7,23 @@ export type PatchOp = {
   value?: unknown;
 };
 
-/** The wire echo of a write: sent to every connection that can see `doc`, before any HTML. */
-export function patchMessage(doc: string, version: number, ops: PatchOp[]): string {
-  return JSON.stringify({ type: "patch", doc, version, ops });
+/**
+ * A write's id: the sender's own, a number or a string, which the server only hands back -- on the
+ * echo of the change the write made, to its writer alone, or on its refusal -- so a page knows its
+ * own write from anyone else's.
+ */
+export type WriteId = number | string;
+
+export const isWriteId = (id: unknown): id is WriteId => typeof id === "number" || typeof id === "string";
+
+/** The wire echo of a write: sent to every connection that can see `doc`, before any HTML; to the writer's own, with its write's id. */
+export function patchMessage(doc: string, version: number, ops: PatchOp[], id?: WriteId): string {
+  return JSON.stringify({ type: "patch", doc, version, ops, ...(id !== undefined && { id }) });
+}
+
+/** The answer to a write that applied nothing, to its writer alone: its id, and why when the refusal says (`refuse`). The page handed back follows. */
+export function refusedMessage(id: WriteId, reason?: string): string {
+  return JSON.stringify({ type: "refused", id, ...(reason !== undefined && { reason }) });
 }
 
 /**

@@ -1,5 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { applyPatch } from "./json-patch";
+import { applyPatch, isWriteId, patchMessage, refusedMessage } from "./json-patch";
+
+describe("a write's answers", () => {
+  test("its echo carries its id to its writer, and to nobody else; its refusal carries the id, and why when it says", () => {
+    const ops = [{ op: "replace" as const, path: "/text", value: "hi" }];
+    expect(JSON.parse(patchMessage("note", 3, ops, 7))).toEqual({ type: "patch", doc: "note", version: 3, ops, id: 7 });
+    expect(JSON.parse(patchMessage("note", 3, ops))).toEqual({ type: "patch", doc: "note", version: 3, ops });
+    expect(JSON.parse(refusedMessage("w-1", "A note needs words."))).toEqual({ type: "refused", id: "w-1", reason: "A note needs words." });
+    expect(JSON.parse(refusedMessage(0))).toEqual({ type: "refused", id: 0 });
+  });
+
+  test("an id is a number or a string, the sender's own", () => {
+    expect([0, 7, "w-1", ""].every(isWriteId)).toBe(true);
+    expect([undefined, null, {}, [1], true].some(isWriteId)).toBe(false);
+  });
+});
 
 describe("applyPatch", () => {
   test("adds, replaces and removes members and array items, on a copy", () => {

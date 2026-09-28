@@ -7,5 +7,13 @@
  */
 export type HtmlOp = { op: "replace" | "tag" | "after" | "before"; target: string; html: string } | { op: "remove"; target: string };
 
-export const renderMessage = (html: string): string => JSON.stringify({ type: "render", html });
+/**
+ * The wire's version, said on every page sent whole: 2 since a write carries an id, which its echo
+ * and its refusal hand back. A page that meets a server of another version loads itself again
+ * (src/client/app.ts), so the two speak alike; a page older than ids never looks, and a server
+ * answers a write without an id as it always did.
+ */
+export const WIRE = 2;
+
+export const renderMessage = (html: string): string => JSON.stringify({ type: "render", html, wire: WIRE });
 export const fragmentsMessage = (ops: HtmlOp[]): string => JSON.stringify({ type: "render", ops });
