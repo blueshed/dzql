@@ -118,7 +118,7 @@ export const stories: Stories = {
     story("A household cannot invite anyone", { as: "ben", cannot: board("add", "/households/-", { email: "x@example.com" }) }),
     story("The couple cannot answer for a household", { as: "couple", cannot: household("replace", "/answer", "yes") }),
     story("A stranger cannot answer", { as: "stranger", cannot: household("replace", "/answer", "yes") }),
-    story("Once the deadline has passed, the Okafors cannot change their answer", { as: "okafors", premise: { couple: [board("replace", "/deadline", "2026-01-01")] }, cannot: household("replace", "/answer", "maybe") }),
+    story("Once the deadline has passed, the Okafors cannot change their answer", { as: "okafors", premise: { couple: [board("replace", "/deadline", "2026-01-01")] }, from: "?answer", cannot: household("replace", "/answer", "maybe") }),
     story("A household cannot take another's claim; the casserole is the Okafors'", { as: "ben", cannot: household("remove", "/claims/1") }),
   ],
 };

@@ -123,13 +123,14 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
  */
 export type Control = { doc: string; op?: string; path?: string; value?: string; free: boolean; pattern?: true };
 
-/** Every control on a page, as the server drew it. */
+/** Every control on a page, as the server drew it: one drawn `disabled` is none, since the browser sends nothing from it. */
 export function controlsOn(page: string): Control[] {
   const found: Control[] = [];
   const spec = (attr: string | null) => (attr === null ? undefined : (JSON.parse(unescape(attr)) as { doc: string; op: string; path: string }));
   new HTMLRewriter()
     .on("[data-write]", {
       element(el) {
+        if (el.hasAttribute("disabled") && ["button", "input", "textarea", "select"].includes(el.tagName)) return; // the browser sends nothing from it
         const s = spec(el.getAttribute("data-write"))!;
         const value = el.getAttribute("data-value");
         found.push({ ...s, value: value === null ? undefined : unescape(value), free: ["form", "input", "textarea", "select"].includes(el.tagName) });

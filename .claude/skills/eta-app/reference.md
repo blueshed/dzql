@@ -467,7 +467,9 @@ that is only `*` is any one segment (an id the applet reads from its props):
   and menu; leave's calendar, which writes a draft and moves requests).
 - Name only what the applet sends. A write above, below or beside what it names is not the
   applet's, so a page that lost its own control for one (a drawer's Approve, under the
-  calendar's requests) fails its story.
+  calendar's requests) fails its story. An applet that can send nothing now names nothing (the
+  wedding's menu once answers are closed), as a button that cannot is drawn `disabled`, which
+  the stories count as no control.
 - The applet sends its writes with `ctx.send(doc, ops)`: a drag let go.
 
 ### Islands

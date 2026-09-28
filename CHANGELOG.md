@@ -113,7 +113,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and rolled back with it. The cast's writes are every story's, so a state one story needed (a
   deadline passed, a flight home made a gate) changed what every other story saw. Each premise
   write must land, or the story is not told. The wedding tells two: once the deadline has passed
-  the Okafors cannot change their answer, and Femi, having picked the Rioja, changes his mind.
+  the Okafors cannot change their answer (from its drawer, where the answers are drawn disabled),
+  and Femi, having picked the Rioja, changes his mind.
+- **A control drawn `disabled` is no control** to the stories, since the browser sends nothing
+  from it: a refusal told from beside one passes, and would fail if it were live. The wedding's
+  menu names nothing it writes once answers are closed, its pills being disabled.
 - **A tab closing is a story** (todo n17): `closesTab: true` in place of `does`. The author's
   socket closes, as a browser's does, and whoever is still looking must see what the server tells
   of it; nobody's control is looked for and there is nothing to undo. Chat tells it: Cy closes

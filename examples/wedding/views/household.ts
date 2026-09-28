@@ -219,8 +219,10 @@ export function menuMount(v: HouseholdView, g: Guest): string {
     out: isGuestOut(g, v.h),
     locked: !v.open,
   };
-  const choose = (op: "replace" | "remove", kind: "dish" | "drink") => ["household", op, `/guests/${g.id}/choices/*/${kind}`] as const; // a course's, chosen or taken back
-  return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu"${appletWrites(choose("replace", "dish"), choose("remove", "dish"), choose("replace", "drink"), choose("remove", "drink"))} data-props="${esc(JSON.stringify(menu))}"></div>`);
+  // a course's dish or drink, chosen or taken back; nothing once answers are closed, its pills drawn disabled
+  const choose = (op: "replace" | "remove", kind: "dish" | "drink") => ["household", op, `/guests/${g.id}/choices/*/${kind}`] as const;
+  const writes = menu.locked ? "" : appletWrites(choose("replace", "dish"), choose("remove", "dish"), choose("replace", "drink"), choose("remove", "drink"));
+  return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu"${writes} data-props="${esc(JSON.stringify(menu))}"></div>`);
 }
 
 /** The guest's drawer: the dressing sheet, coming as one choice (rule 13, off the line), the hint, and the menu. */

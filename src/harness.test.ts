@@ -144,6 +144,8 @@ describe("stories harness", () => {
     const page = [
       `<button data-write='{"doc":"room","op":"replace","path":"/name"}' data-value="Tess &amp; Tom">x</button>`,
       `<button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>undo</button>`,
+      `<button data-write='{"doc":"household","op":"replace","path":"/answer"}' data-value="maybe" disabled>maybe</button>`,
+      `<input data-write='{"doc":"household","op":"replace","path":"/message"}' disabled>`,
       `<form data-write='{"doc":"room","op":"add","path":"/messages/-"}'></form>`,
       `<div class="site" data-page="gifts?new=gifts" data-page-write='{"doc":"session","op":"replace","path":"/page"}'></div>`,
       `<div data-applet="clock" data-doc="clock" data-props="{}"></div>`,
@@ -156,6 +158,8 @@ describe("stories harness", () => {
     expect(any("room", { op: "replace", path: "/name", value: "Bo" })).toBe(false);
     expect(any("ledger", { op: "remove", path: "/latest" })).toBe(true);
     expect(any("ledger", { op: "remove", path: "/latest", value: "x" })).toBe(false);
+    expect(any("household", { op: "replace", path: "/answer", value: "maybe" })).toBe(false); // drawn disabled: the browser sends nothing
+    expect(any("household", { op: "replace", path: "/message", value: "hi" })).toBe(false);
     expect(any("room:general", { op: "add", path: "/messages/-", value: "anything" })).toBe(true);
     expect(any("session", { op: "replace", path: "/page", value: "day" })).toBe(true);
     expect(any("clock", { op: "replace", path: "/tz", value: "Asia/Tokyo" })).toBe(true);
@@ -189,6 +193,18 @@ describe("stories harness", () => {
     const lost: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replace(approve, "") };
     const report = await run(lost, { ...told, stories: told.stories.filter((s) => s.name.startsWith("Mo approves")) });
     expect(report.outcomes.flatMap((o) => o.failures)).toContain("mo has no control on their page for replace /requests/1/status on team");
+  }, 30000);
+
+  test("after the deadline the Okafors are offered nothing to answer or choose with: live answer buttons fail the refusal, and a choice the menu cannot make has no control", async () => {
+    const { example: wedding } = await import("../examples/wedding/index");
+    const { stories: told } = await import("../examples/wedding/stories");
+    const closed = told.stories.find((s) => s.name.startsWith("Once the deadline"))!;
+    const maybe = write("household", "replace", "/answer", "maybe");
+    const live: Example = { ...wedding, render: (sessionId) => wedding.render(sessionId).replace(`${maybe} disabled`, maybe) };
+    expect((await run(live, { ...told, stories: [closed] })).outcomes[0]!.failures).toEqual(["okafors's page offers this, and it is refused without a word: a control that always fails"]);
+    const bass = { name: "After the deadline, Femi picks the sea bass", as: "okafors", premise: closed.premise, from: "list?guest=2", does: { doc: "household", ops: [{ op: "replace" as const, path: "/guests/2/choices/2/dish", value: 5 }] }, seen: { okafors: "list" } };
+    const failures = (await run(wedding, { ...told, stories: [bass] })).outcomes[0]!.failures;
+    expect(failures).toContain("okafors has no control on their page for replace /guests/2/choices/2/dish on household");
   }, 30000);
 
   // Delivery, not only pages: chat broken on purpose, three ways its own stories could not see.
