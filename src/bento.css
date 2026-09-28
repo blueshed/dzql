@@ -46,7 +46,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .tool.quiet { border-color: var(--edge); color: var(--ink); font-weight: 500; }
 .tool.add { border-color: var(--add); color: var(--add); }
 .tool.danger { border-color: var(--danger); color: var(--danger); }
-.tool[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--card); }
+.tool[aria-pressed="true"], .tool[role="radio"][aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: var(--card); }
 .pick { display: inline-flex; gap: var(--space-xs); }
 /* why a write was refused, beside the control that sent it (src/refusal.ts) */
 .refused { margin: var(--space-xs) 0 0; color: var(--danger); }
@@ -60,7 +60,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .stack > .tool:last-child { border-bottom: 0; }
 .stack > .tool:focus-visible { outline-offset: -3px; } /* the stack clips what is outside it */
 .stack > .tool:hover { background: rgba(var(--ink-rgb), 0.06); }
-.stack > .tool[aria-pressed="true"] { background: var(--accent); color: var(--card); }
+.stack > .tool[aria-pressed="true"], .stack > .tool[role="radio"][aria-checked="true"] { background: var(--accent); color: var(--card); }
 .stack.across { flex-direction: row; }
 .stack.across > .tool { border-bottom: 0; border-right: 1px solid var(--line); }
 .stack.across > .tool:last-child { border-right: 0; }
@@ -237,6 +237,6 @@ dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
 /* forced colours (Windows High Contrast) take away shadows and backgrounds: what is chosen or
    pressed is drawn with an outline instead */
 @media (forced-colors: active) {
-  .thing[aria-pressed="true"], .row[aria-pressed="true"], .tool[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .thing[aria-pressed="true"], .row[aria-pressed="true"], .tool[aria-pressed="true"], .tool[role="radio"][aria-checked="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
   .cell, .stack, .drawer, dialog.modal, .undo-said { border: 1px solid CanvasText; }
 }

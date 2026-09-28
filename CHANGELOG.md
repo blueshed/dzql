@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **A choice and the reading switch are radios, checked, not pressed** (`src/bento.ts`). `choice()`
+  and `readingSwitch()` drew each option `role="radio"` with both `aria-checked` and
+  `aria-pressed`, which ARIA does not allow on a radio. They carry `aria-checked` alone now, and
+  `src/bento.css` fills a checked radio tool as it does a pressed one. A stylesheet that coloured
+  them by `[aria-pressed="true"]` colours them by `[aria-checked="true"]` (the wedding's yes and no
+  do). The wedding's and leave's own reading switches, drawn by hand, still carry both.
 - **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
   browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
   when not, as was a group of radios none of which was chosen. So a title and an unticked box

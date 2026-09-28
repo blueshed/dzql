@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
-import { bento, type Field } from "../bento";
+import { bento, choice, type Field } from "../bento";
 import { write } from "../html";
 import { diff, drawParts, part } from "../parts";
 import { waitFor } from "../webview";
@@ -1096,6 +1096,23 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.click("#kind-travel"); // chosen again before the answer
     await pushRender(view, add); // refused again
     expect(await view.evaluate<unknown[]>(`[document.getElementById('title').value, document.getElementById('booked').checked, document.querySelector('[name=kind]:checked').value]`)).toEqual(["Fushimi", true, "travel"]);
+  });
+
+  test("a choice and the reading switch are drawn chosen by aria-checked alone, as a pressed tool is", async () => {
+    await using view = await open();
+    const css = await Bun.file(new URL("../bento.css", import.meta.url)).text();
+    const { readingSwitch, tool } = bento({ icon: () => "", session: "session" });
+    await pushRender(view, `<style>${css} :root { --accent: rgb(1, 2, 3); --card: rgb(4, 5, 6); }</style>${choice("Coming?", [{ text: "Yes", on: true, write: "" }, { text: "No", on: false, write: "" }])}${readingSwitch("board", "list", [["spark", "chart"], ["list", "list"]])}<div class="pick">${tool("Find", { pressed: true, write: "" })}</div>`);
+    await waitFor(view, `document.querySelectorAll('[role=radio]').length`, (v) => v === 4);
+    const drawn = await view.evaluate<unknown>(`(() => {
+      const fill = (el) => getComputedStyle(el).backgroundColor;
+      const radios = [...document.querySelectorAll('[role=radio]')];
+      return { pressed: radios.filter((r) => r.hasAttribute('aria-pressed')).length, chosen: radios.filter((r) => r.getAttribute('aria-checked') === 'true').map(fill), not: radios.filter((r) => r.getAttribute('aria-checked') === 'false').map(fill), tool: fill(document.querySelector('.pick [aria-pressed=true]')) };
+    })()`) as { pressed: number; chosen: string[]; not: string[]; tool: string };
+    expect(drawn.pressed).toBe(0);
+    expect(drawn.tool).toBe("rgb(1, 2, 3)"); // the example's accent
+    expect(drawn.chosen).toEqual([drawn.tool, drawn.tool]); // filled as a pressed tool is
+    expect(drawn.not.every((fill) => fill !== drawn.tool)).toBe(true);
   });
 
   test("the bento's add modal asks with a select and a link, and a refused add hands back what was typed and chosen", async () => {

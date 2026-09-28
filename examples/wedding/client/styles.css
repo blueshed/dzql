@@ -85,8 +85,8 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 /* ── the bento's surfaces (src/bento.css), where the wedding's differ: serif heads, the photo, the answer ── */
 .drawer-head h2 { font-family: var(--serif); font-size: 19px; color: var(--navy); }
 dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy); }
-.tool.yes[aria-pressed="true"] { background: var(--leaf); border-color: var(--leaf); }
-.tool.no[aria-pressed="true"] { background: var(--burgundy); border-color: var(--burgundy); }
+.tool.yes[aria-pressed="true"], .tool.yes[aria-checked="true"] { background: var(--leaf); border-color: var(--leaf); }
+.tool.no[aria-pressed="true"], .tool.no[aria-checked="true"] { background: var(--burgundy); border-color: var(--burgundy); }
 .pair { display: flex; align-items: center; gap: var(--space-sm); min-width: 0; }
 .pair .amp { font-family: var(--script); font-size: 28px; color: var(--gold); line-height: 1; }
 .form-foot { display: flex; justify-content: flex-end; margin-top: var(--space-sm); }
