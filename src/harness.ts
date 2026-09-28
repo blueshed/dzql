@@ -52,13 +52,14 @@ export { comparable };
 // and each refusal a control of the page sends (stories.md, the harness, step 6). Its write must
 // be what the page sends, and land, or be refused.
 //
-// Every story's cost on the wire is kept: what its own step (the write, the refusal, the tab
-// closing) handed each member's page, as the page takes it and as it crossed the wire, counted by
-// the costs' tap (src/costs.ts) that the cast's sockets go through. A story, or the example, may
-// say a budget, and a page handed more than it fails the story.
+// Every story's cost on the wire is kept: what its step (the write, the refusal, the tab closing),
+// and the undo and the redo of a write, handed each member's page, as the page takes it and as it
+// crossed the wire, counted by the costs' tap (src/costs.ts) that the cast's sockets go through. A
+// story, or the example, may say a budget, and a page handed more than it by any of them fails the
+// story: a person's undo is a write too, and its bytes go to every page.
 
-/** What a story's own step handed each member's page: the write's own size (none when a tab closes), and each member handed anything. */
-export type Wire = { write?: number; handed: Handed[] };
+/** What a story handed each member's page: the write's own size (none when a tab closes), and each member handed anything by its step, by its undo, and by its redo, when it has them. */
+export type Wire = { write?: number; handed: Handed[]; undo?: Handed[]; redo?: Handed[] };
 /** What one member's page was handed: its bytes as the page takes them, as they crossed the wire (compressed), and the biggest part of them. */
 export type Handed = { member: string; bytes: number; sent: number; most: Part };
 /** A piece of what a page was handed, by what it is (`largest`), and its bytes before compression. */
@@ -444,6 +445,8 @@ const unbudgeted = (budget: unknown, whose: string): string[] =>
   budget === undefined || (Number.isInteger(budget) && (budget as number) > 0) ? [] : [`${whose} budget is a whole number of bytes: this one is ${JSON.stringify(budget)}`];
 
 const count = (bytes: number): string => bytes.toLocaleString("en");
+/** Each step of a story, as a budget's failure names it. */
+const STEP: Record<Trace["phase"], string> = { does: "write", cannot: "refusal", closesTab: "tab closing", undo: "undo", redo: "redo" };
 
 export async function run(example: Example, stories: Stories, observe?: (trace: Trace) => void, options: { byHand?: boolean } = {}): Promise<Report> {
   const server = createServer(example, 0);
@@ -613,23 +616,28 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
   }
 
   /**
-   * What the story's own step handed each of `cast` since `from`, the step's last message the
-   * question `settle` asked: each member handed anything, their bytes as the page takes them and
-   * as they crossed the wire (the tap's count), and the biggest part. Kept on the outcome, beside
-   * the write's own size, and held to the story's budget, or else the example's.
+   * What one step of the story (`phase`) handed each of `cast` since `from`, the step's last
+   * message the question `settle` asked: each member handed anything, their bytes as the page
+   * takes them and as they crossed the wire (the tap's count), and the biggest part. Kept on the
+   * outcome -- the story's own step beside its write's size, an undo and a redo beside it -- and
+   * held to the story's budget, or else the example's.
    */
-  function spent(story: Story, outcome: Outcome, write: Write | undefined, cast: Member[], from: Map<Member, number>): void {
+  function spent(story: Story, outcome: Outcome, phase: Trace["phase"], cast: Member[], from: Map<Member, number>): void {
     const handed = cast.flatMap((m): Handed[] => {
       const raws = m.inbox.slice(from.get(m));
       if (raws.length === 0) return [];
       const heard = tapped.heard(m.sessionId, raws);
       return [{ member: m.name, bytes: heard.reduce((n, h) => n + h.bytes, 0), sent: heard.reduce((n, h) => n + h.sent, 0), most: largest(raws) }];
     });
-    outcome.wire = { ...(write && { write: Buffer.byteLength(JSON.stringify(write)) }), handed };
+    if (phase === "undo" || phase === "redo") outcome.wire![phase] = handed;
+    else {
+      const write = phase === "does" ? story.does : phase === "cannot" ? story.cannot : undefined;
+      outcome.wire = { ...(write && { write: Buffer.byteLength(JSON.stringify(write)) }), handed };
+    }
     const [budget, whose] = story.budget !== undefined ? [story.budget, "story's"] : [stories.budget, "example's"];
     if (budget === undefined) return;
     for (const h of handed) {
-      if (h.bytes > budget) outcome.failures.push(`${h.member}'s page was handed ${count(h.bytes)} bytes, more than the ${whose} budget of ${count(budget)}: the most, ${h.most.part}, ${size(h.most.bytes)}`);
+      if (h.bytes > budget) outcome.failures.push(`${h.member}'s page was handed ${count(h.bytes)} bytes on the ${STEP[phase]}, more than the ${whose} budget of ${count(budget)}: the most, ${h.most.part}, ${size(h.most.bytes)}`);
     }
   }
 
@@ -730,7 +738,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         if (story.cannot.ops.every((op) => own.some((c) => offers(c, story.cannot.doc, op)))) tryable.add(story);
         if (story.told === undefined && story.cannot.ops.every((op) => buttons.some((c) => offers(c, story.cannot.doc, op)))) failures.push(`${who.name}'s page offers this, and it is refused without a word: a control that always fails`);
         const answer = answerTo(who, await told(cast, who, story.cannot, "cannot"), from);
-        spent(story, outcome, story.cannot, cast, from);
+        spent(story, outcome, "cannot", cast, from);
         const handedBack = sentSince(who, from).some((h) => h.type === "render");
         if (answer?.type === "patch") failures.push(`refused, but it landed: ${who.name}'s write was echoed back to them`);
         else if (!answer || !handedBack) failures.push(`refused, but ${who.name} was not answered: ${answer ? "the page was not handed back" : "no refusal carried their write's id"}`);
@@ -769,7 +777,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         await closeTab(who);
         await server.idle(); // the close handled, and what it set going
         await settle(looking);
-        spent(story, outcome, undefined, looking, from);
+        spent(story, outcome, "closesTab", looking, from);
         witness("closesTab", who, undefined, looking, from, entry);
         if (!landedSince(looking, from)) failures.push(`nothing landed: closing ${who.name}'s tab changed nothing`);
         checkUntold(looking, story.untold, from, "after the tab closed", failures);
@@ -789,7 +797,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       const stood = placeOf(who.page);
       let from = mark(cast);
       const answer = answerTo(who, await told(cast, who, story.does, "does"), from);
-      spent(story, outcome, story.does, cast, from);
+      spent(story, outcome, "does", cast, from);
       // Where the write left its author: answering a modal puts it away (off the ledger, a visit),
       // so the undo and the redo are looked at from where each was taken -- where the author stands
       // is theirs, not the write's.
@@ -810,6 +818,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       const facts = entries.every((e) => e.undoable === 0);
       from = mark(cast);
       await told(cast, who, UNDO, "undo");
+      spent(story, outcome, "undo", cast, from);
       if (moved) await send(cast, who, stories.goTo!(stood!));
       const afterUndo = await snapshot(cast);
       await stale(cast, "after undo", failures);
@@ -820,6 +829,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         if (!(await active(who.sessionId))) return outcome; // the undo was their going (a name taken back): no redo is theirs to press
         from = mark(cast);
         await told(cast, who, REDO, "redo");
+        spent(story, outcome, "redo", cast, from);
         if (moved) await send(cast, who, stories.goTo!(landed!));
         compare(after, await snapshot(cast), cast, "redo did not restore", failures);
         await stale(cast, "after redo", failures);
@@ -1111,12 +1121,25 @@ export function print(report: Report, { wire = false }: { wire?: boolean } = {})
   if (h) console.log(`${h.stories} done by hand in a browser the size of a phone: ${h.presses} presses, ${h.applets} sent as an applet declares, in ${(h.ms / 1000).toFixed(1)}s`);
 }
 
-/** A story's cost, in words: its write's size, said once, then each member it handed anything, the bytes, as they crossed the wire, and the biggest part. */
-function cost({ write, handed }: Wire): string[] {
-  const width = Math.max(0, ...handed.map((h) => h.member.length));
+/**
+ * A story's cost, in words: its write's size, said once, then each member it handed anything, the
+ * bytes, as they crossed the wire, and the biggest part; and after it, the bytes its undo and redo
+ * handed them, where it has them.
+ */
+function cost({ write, handed, undo, redo }: Wire): string[] {
+  const members = [...new Set([...handed, ...(undo ?? []), ...(redo ?? [])].map((h) => h.member))];
   const step = write === undefined ? "a tab closing handed" : `a ${count(write)}-byte write handed`;
-  if (handed.length === 0) return [`${step} nothing`];
-  return [step, ...handed.map((h) => `  ${h.member.padEnd(width)} ${count(h.bytes)} bytes (${size(h.sent)} on the wire): ${h.most.part} ${size(h.most.bytes)}`)];
+  if (members.length === 0) return [`${step} nothing`];
+  const width = Math.max(...members.map((m) => m.length));
+  const bytes = (phase: Handed[], member: string): string => count(phase.find((h) => h.member === member)?.bytes ?? 0);
+  return [
+    step,
+    ...members.map((member) => {
+      const h = handed.find((h) => h.member === member);
+      const then = [undo && `undo ${bytes(undo, member)}`, redo && `redo ${bytes(redo, member)}`].filter(Boolean).join(", ");
+      return `  ${member.padEnd(width)} ${h ? `${count(h.bytes)} bytes (${size(h.sent)} on the wire): ${h.most.part} ${size(h.most.bytes)}` : "nothing"}${then && `; ${then}`}`;
+    }),
+  ];
 }
 
 function where(page: string | undefined): string {

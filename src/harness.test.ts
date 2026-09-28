@@ -61,6 +61,11 @@ describe("stories harness", () => {
   describe("a story's cost on the wire", () => {
     const pick = (start: string) => stories.stories.find((s) => s.name.startsWith(start))!;
     const [hello, take, close] = [{ ...pick("Ada says hello"), budget: undefined }, pick("Nobody can take"), pick("Bob closes his tab")]; // hello's own budget aside: each test says its own
+    /** What a budget says of each page handed more than it, on each step of a story: its write (or refusal, or tab closing), then its undo, then its redo. */
+    const failing = (o: Outcome, whose: string, budget: number, step = "write") =>
+      (["handed", "undo", "redo"] as const).flatMap((phase) =>
+        (o.wire![phase] ?? []).filter((h) => h.bytes > budget).map((h) => `${h.member}'s page was handed ${h.bytes.toLocaleString("en")} bytes on the ${phase === "handed" ? step : phase}, more than the ${whose} budget of ${budget.toLocaleString("en")}: the most, ${h.most.part}, ${size(h.most.bytes)}`),
+      );
 
     test("each member's page is handed what the story's own step sent it, as the page takes it and as it crossed the wire, beside the write's own size, with its biggest part named", async () => {
       const report = await run(example, { cast: stories.cast, stories: [hello, take, close] });
@@ -69,33 +74,43 @@ describe("stories harness", () => {
       expect(said.write).toBe(Buffer.byteLength(JSON.stringify(hello.does)));
       expect(said.handed.map((h) => h.member)).toEqual(["ada", "bob"]); // cy, in the kitchen, and dee and eve, in no room, are handed nothing
       expect(said.handed.map((h) => h.most.part)).toEqual(["messages", "messages"]); // the new message, beside the last: a part of the messages
+      expect([said.undo, said.redo].map((phase) => phase!.map((h) => h.member))).toEqual([["ada", "bob"], ["ada", "bob"]]); // an undo and a redo are writes too, to the same pages
       expect(refused.write).toBe(Buffer.byteLength(JSON.stringify(take.cannot)));
       expect(refused.handed.map((h) => h.member)).toEqual(["ada"]); // told no, and her page handed back
       expect(refused.handed[0]!.most.part).toBe("the whole page");
       expect(refused.handed[0]!.sent).toBeLessThan(refused.handed[0]!.bytes / 2); // a page crosses the wire compressed
       expect(closed.write).toBeUndefined(); // a tab closing writes nothing
       expect(closed.handed.map((h) => h.member)).toEqual(["ada"]);
-      for (const h of [...said.handed, ...refused.handed, ...closed.handed]) {
+      expect([refused.undo, refused.redo, closed.undo, closed.redo]).toEqual([undefined, undefined, undefined, undefined]); // nothing to undo
+      for (const h of [...said.handed, ...said.undo!, ...said.redo!, ...refused.handed, ...closed.handed]) {
         expect(h.sent).toBeGreaterThan(0);
         expect(h.most.bytes).toBeGreaterThan(0);
         expect(h.most.bytes).toBeLessThanOrEqual(h.bytes);
       }
     }, 30000);
 
-    test("a budget fails a story that hands any one page more bytes than it, by name and with its biggest part: the story's own budget, or else the example's", async () => {
+    test("a budget fails a story that hands any one page more bytes than it, on its write, its undo or its redo, by name and with its biggest part: the story's own budget, or else the example's", async () => {
       const report = await run(example, {
         cast: stories.cast,
         budget: 64, // the example's: less than a message
         stories: [hello, { ...hello, name: "Ada says hello, within its own budget", budget: 100_000 }, { ...close, budget: 1 }],
       });
       const [over, within, closed] = report.outcomes as [Outcome, Outcome, Outcome];
-      const failing = (o: Outcome, whose: string, budget: number) =>
-        o.wire!.handed.filter((h) => h.bytes > budget).map((h) => `${h.member}'s page was handed ${h.bytes.toLocaleString("en")} bytes, more than the ${whose} budget of ${budget.toLocaleString("en")}: the most, ${h.most.part}, ${size(h.most.bytes)}`);
       expect(over.failures).toEqual(failing(over, "example's", 64));
-      expect(over.failures.map((f) => f.split("'")[0])).toEqual(["ada", "bob"]);
+      expect(over.failures.map((f) => f.replace(/ was handed [\d,]+ bytes/, "").split(",")[0])).toEqual(["write", "write", "undo", "undo", "redo", "redo"].map((step, i) => `${i % 2 ? "bob" : "ada"}'s page on the ${step}`));
       expect(within.failures).toEqual([]);
-      expect(closed.failures).toEqual(failing(closed, "story's", 1));
+      expect(closed.failures).toEqual(failing(closed, "story's", 1, "tab closing"));
       expect(closed.failures).toHaveLength(1);
+    }, 30000);
+
+    test("an undo is held to the budget as the write is: Dee's attic, taken back, hands her more than it did", async () => {
+      const report = await run(example, { cast: stories.cast, budget: 4096, stories: [pick("Dee names a room nobody has made")] });
+      const [attic] = report.outcomes as [Outcome];
+      expect(attic.wire!.handed.every((h) => h.bytes <= 4096)).toBe(true); // the write is within it
+      expect(attic.failures).toEqual(failing(attic, "example's", 4096));
+      expect(attic.failures).toHaveLength(1);
+      expect(attic.failures[0]).toStartWith("dee's page was handed 4,3");
+      expect(attic.failures[0]).toContain(" bytes on the undo, more than the example's budget of 4,096: the most, ");
     }, 30000);
 
     test("a budget is a whole number of bytes: any other, a story's or the example's, is said, and the story is not run", async () => {
@@ -106,17 +121,27 @@ describe("stories harness", () => {
       expect(byExample.outcomes.map((o) => o.failures)).toEqual([["the example's budget is a whole number of bytes: this one is 1.5"], []]); // a story's own stands in its place
     }, 30000);
 
-    test("printed with `wire`, under each story: the write's size once, then each member handed anything, the bytes, as they crossed the wire, and the biggest part; or that nobody was", () => {
+    test("printed with `wire`, under each story: the write's size once, then each member handed anything, the bytes, as they crossed the wire, and the biggest part, and what its undo and redo handed them; or that nobody was", () => {
       const lines: string[] = [];
       const log = spyOn(console, "log").mockImplementation((line: string) => void lines.push(line));
       const handed = (member: string, bytes: number, sent: number, part: string, most: number) => ({ member, bytes, sent, most: { part, bytes: most } });
       const report: Report = {
         outcomes: [
-          { name: "Ann votes", failures: [], wire: { write: 146, handed: [handed("ann", 8001, 1229, "day-2026-11-10", 7373), handed("bo", 812, 400, "votes patch", 300)] } },
+          {
+            name: "Ann votes",
+            failures: [],
+            wire: {
+              write: 146,
+              handed: [handed("ann", 8001, 1229, "day-2026-11-10", 7373), handed("bo", 812, 400, "votes patch", 300)],
+              undo: [handed("ann", 7990, 1220, "day-2026-11-10", 7360), handed("bo", 800, 390, "votes patch", 290), handed("cy", 90, 80, "votes patch", 90)],
+              redo: [handed("ann", 8001, 1229, "day-2026-11-10", 7373), handed("bo", 812, 400, "votes patch", 300)],
+            },
+          },
+          { name: "Bravo ticks", failures: [], wire: { write: 76, handed: [handed("bo", 354, 275, "ticker:market patch", 181)], undo: [] } }, // a fact: its undo hands nothing, and there is no redo
           { name: "Ann closes her tab", failures: ["nothing landed"], wire: { handed: [] } },
           { name: "a ghost", failures: ["no one in the cast is called ghost"] },
         ],
-        passed: 1,
+        passed: 2,
         failed: 2,
       };
       try {
@@ -128,21 +153,26 @@ describe("stories harness", () => {
       expect(lines).toEqual([
         " ok   Ann votes",
         "        a 146-byte write handed",
-        `          ann 8,001 bytes (${size(1229)} on the wire): day-2026-11-10 ${size(7373)}`,
-        `          bo  812 bytes (${size(400)} on the wire): votes patch ${size(300)}`,
+        `          ann 8,001 bytes (${size(1229)} on the wire): day-2026-11-10 ${size(7373)}; undo 7,990, redo 8,001`,
+        `          bo  812 bytes (${size(400)} on the wire): votes patch ${size(300)}; undo 800, redo 812`,
+        "          cy  nothing; undo 90, redo 0",
+        " ok   Bravo ticks",
+        "        a 76-byte write handed",
+        `          bo 354 bytes (${size(275)} on the wire): ticker:market patch ${size(181)}; undo 0`,
         "FAIL  Ann closes her tab",
         "        nothing landed",
         "        a tab closing handed nothing",
         "FAIL  a ghost",
         "        no one in the cast is called ghost",
-        "\n1 passed, 2 failed",
+        "\n2 passed, 2 failed",
         // without `wire`, the stories alone
         " ok   Ann votes",
+        " ok   Bravo ticks",
         "FAIL  Ann closes her tab",
         "        nothing landed",
         "FAIL  a ghost",
         "        no one in the cast is called ghost",
-        "\n1 passed, 2 failed",
+        "\n2 passed, 2 failed",
       ]);
     });
 

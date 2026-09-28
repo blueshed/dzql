@@ -33,12 +33,13 @@ Everything below is the least that makes it pass.
   `bun run stories:all`) does by hand each write a page sends and each refusal a control of the
   page sends, pressing the controls the page draws.
 - A story has a cost on the wire, and `STORY_WIRE=1 bun run stories` says it: what the story's
-  write handed each page, before compression and as sent, and its biggest part (`photo 9.7 KB`).
+  write handed each page, before compression and as sent, and its biggest part (`photo 9.7 KB`),
+  and what its undo and redo handed each.
   A part far bigger than the write is where to look: a `part` cut coarser than what changes, or
   an applet handed its props whole where it could take its document's patches (`data-doc`). Say
   what a story may cost with `budget` (bytes before compression), on the story or on the
-  example's `Stories` for all of them; a page handed more fails the story (stories.md, "What a
-  story costs").
+  example's `Stories` for all of them; a page handed more by the write, the undo or the redo fails
+  the story (stories.md, "What a story costs").
 
 ## Vocabulary, once
 

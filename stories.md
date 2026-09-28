@@ -292,34 +292,37 @@ for more than it checks:
 ## What a story costs
 
 *28 September.* japan-eta ran for a day at 8 KB a vote, for a 146-byte patch, and nothing said
-so. So the harness keeps what each story's own step -- the write, the refusal, the tab closing;
-not the undo and redo it adds -- handed each member's page: the bytes as the page takes them, as
-they crossed the wire (compressed: the cast's sockets go through the tap `bun run costs` uses,
-src/costs.ts), and the biggest part, beside the write's own size. `STORY_WIRE=1 bun run stories`
-says it under each story. The wedding's:
+so. So the harness keeps what each story's step -- the write, the refusal, the tab closing --
+handed each member's page: the bytes as the page takes them, as they crossed the wire
+(compressed: the cast's sockets go through the tap `bun run costs` uses, src/costs.ts), and the
+biggest part, beside the write's own size; and the bytes a write's undo and redo handed each,
+since a person's undo is a write too. `STORY_WIRE=1 bun run stories` says it under each story.
+The wedding's:
 
 ```
  ok   The Okafors say maybe, and the couple's photo and everyone's change
         a 77-byte write handed
-          couple  10,183 bytes (2.1 KB on the wire): photo 9.7 KB
-          okafors 14,339 bytes (2.9 KB on the wire): photo 9.9 KB
-          ben     514 bytes (248 B on the wire): everyone:1 patch 514 B
-          benToo  1,490 bytes (566 B on the wire): everyone-photo 950 B
+          couple  10,183 bytes (2.1 KB on the wire): photo 9.7 KB; undo 10,183, redo 10,183
+          okafors 14,338 bytes (2.9 KB on the wire): photo 9.9 KB; undo 14,376, redo 14,339
+          ben     514 bytes (248 B on the wire): everyone:1 patch 514 B; undo 516, redo 514
+          benToo  1,490 bytes (566 B on the wire): everyone-photo 950 B; undo 1,494, redo 1,490
 ```
 
 A part is named by its key (`part(key, html)`); a page sent whole is "the whole page", and a
 document's ops are its patch. Here the couple are handed their whole photo again for one answer.
 
-A `budget` says what a story may cost: the most bytes its step may hand any one page, before
-compression -- what the page takes and morphs, and a size that does not move with the random ids
-a compressed one does. A page handed more fails the story, by name and with its biggest part. It
-goes beside the story's other expectations, or on the example's stories for every story, and a
-story's own stands in place of the example's. Chat's is 4 KB:
+A `budget` says what a story may cost: the most bytes its step, its undo or its redo may hand any
+one page, before compression -- what the page takes and morphs, and a size that does not move
+with the random ids a compressed one does. A page handed more fails the story, by name, with the
+step and its biggest part: `dee's page was handed 4,339 bytes on the undo, more than the example's
+budget of 4,096: the most, ground, 3.9 KB`. It goes beside the story's other expectations, or on
+the example's stories for every story, and a story's own stands in place of the example's.
+Chat's is 4.5 KB:
 
 ```ts
 export const stories: Stories = {
   cast: { ... },
-  budget: 4096,
+  budget: 4608,
   stories: [
     story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", {
       as: "ada", does: say("hello"), seen: ["ada", "bob"], untold: ["cy", "dee", "eve"], budget: 1024,

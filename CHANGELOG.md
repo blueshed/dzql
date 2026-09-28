@@ -10,17 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **A story's cost on the wire** (todo n93). japan-eta ran for a day at 8 KB a vote, for a
-  146-byte patch, and nothing said so. The harness now keeps what each story's own step (the
-  write, the refusal, the tab closing; not the undo and redo it adds) handed each member's page:
-  the bytes as the page takes them, as they crossed the wire (the cast's sockets go through the
-  costs' `tap`, src/costs.ts), and the biggest part -- a part by its key, the whole page, a
-  document's patch -- beside the write's own size (`Outcome.wire`). `STORY_WIRE=1 bun run
+  146-byte patch, and nothing said so. The harness now keeps what each story's step (the write,
+  the refusal, the tab closing) handed each member's page: the bytes as the page takes them, as
+  they crossed the wire (the cast's sockets go through the costs' `tap`, src/costs.ts), and the
+  biggest part -- a part by its key, the whole page, a document's patch -- beside the write's own
+  size; and what a write's undo and redo handed each (`Outcome.wire`). `STORY_WIRE=1 bun run
   stories` says it under each story (`print(report, { wire: true })`): the wedding's couple are
-  handed "10,183 bytes (2.1 KB on the wire): photo 9.7 KB" for the Okafors' 77-byte maybe.
+  handed "10,183 bytes (2.1 KB on the wire): photo 9.7 KB; undo 10,183, redo 10,183" for the
+  Okafors' 77-byte maybe.
 - **A budget, per story or per example**: `budget`, in bytes before compression, on a story or on
-  `Stories` for every story. A story whose step hands any one page more fails, by name and with
-  its biggest part; a story's own stands in place of the example's, and one that is not a whole
-  number of bytes is said, and its story not run. Chat's stories hold 4 KB, and a message 1 KB.
+  `Stories` for every story. A story whose step, undo or redo hands any one page more fails, by
+  name, with the step and its biggest part; a story's own stands in place of the example's, and
+  one that is not a whole number of bytes is said, and its story not run. Chat's stories hold
+  4.5 KB (the most is Dee's attic taken back, 4,339 bytes), and a message 1 KB.
 
 ## [0.50.0] - 2026-09-28
 

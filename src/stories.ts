@@ -30,10 +30,11 @@ export type Seen = string[] | Record<string, string>;
 export type Gesture = { press: string } | { drag: [from: string, to: string] };
 
 /**
- * What a story may cost on the wire: the most bytes its own step -- the write, the refusal or the
- * tab closing, not the undo and redo the harness adds -- may hand any one member's page, as the
- * page takes them (before compression). Over it, the story fails, naming the page and the biggest
- * part of what it was handed. A story's own budget stands in place of the example's.
+ * What a story may cost on the wire: the most bytes its step -- the write, the refusal or the tab
+ * closing -- and a write's undo and redo, each, may hand any one member's page, as the page takes
+ * them (before compression). A person's undo is a write too, and its bytes go to every page. Over
+ * it, the story fails, naming the page, the step and the biggest part of what it was handed. A
+ * story's own budget stands in place of the example's.
  */
 type Budgeted = { budget?: number };
 
