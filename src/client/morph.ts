@@ -18,17 +18,13 @@ export type MorphHooks = {
   pressed?(el: Element): boolean;
 };
 
-function isElement(node: ChildNode | Element): node is Element {
-  return node.nodeType === Node.ELEMENT_NODE;
-}
-
 function isApplet(node: ChildNode): node is Element {
-  return isElement(node) && node.hasAttribute("data-applet");
+  return node instanceof Element && node.hasAttribute("data-applet");
 }
 
 function sameType(a: ChildNode, b: ChildNode): boolean {
   if (a.nodeType !== b.nodeType) return false;
-  if (!isElement(a) || !isElement(b)) return true;
+  if (!(a instanceof Element) || !(b instanceof Element)) return true;
   if (a.tagName !== b.tagName) return false;
   // An applet's element is only ever reused for the same applet. Matched positionally with a
   // plain element (or another applet), its hand-managed children -- which the morph never
@@ -37,7 +33,7 @@ function sameType(a: ChildNode, b: ChildNode): boolean {
 }
 
 function key(node: ChildNode): string | undefined {
-  return isElement(node) && node.id ? node.id : undefined;
+  return node instanceof Element && node.id ? node.id : undefined;
 }
 
 function morphAttributes(old: Element, next: Element, hooks: MorphHooks): void {
@@ -128,7 +124,7 @@ function morphApplet(old: Element, next: Element, hooks: MorphHooks): void {
 }
 
 function morphNode(old: ChildNode, next: ChildNode, hooks: MorphHooks): void {
-  if (isElement(old) && isElement(next)) {
+  if (old instanceof Element && next instanceof Element) {
     if (old.hasAttribute("data-applet")) {
       morphApplet(old, next, hooks);
       return;
@@ -148,7 +144,7 @@ function morphNode(old: ChildNode, next: ChildNode, hooks: MorphHooks): void {
 
 export function removeNode(node: ChildNode, hooks: MorphHooks): void {
   if (isApplet(node)) hooks.onAppletRemoved?.(node);
-  for (const applet of isElement(node) ? node.querySelectorAll("[data-applet]") : []) {
+  for (const applet of node instanceof Element ? node.querySelectorAll("[data-applet]") : []) {
     hooks.onAppletRemoved?.(applet);
   }
   node.remove();
@@ -191,7 +187,7 @@ function matchInOrder(olds: ChildNode[], nexts: ChildNode[], matched: Map<ChildN
 }
 
 /** The ids inside a node, its own not counted. */
-const idsWithin = (node: ChildNode): string[] => (isElement(node) ? [...node.querySelectorAll("[id]")].map((el) => el.id) : []);
+const idsWithin = (node: ChildNode): string[] => (node instanceof Element ? [...node.querySelectorAll("[id]")].map((el) => el.id) : []);
 
 function morphChildren(old: Element, next: Element, hooks: MorphHooks): void {
   const oldNodes = [...old.childNodes];
