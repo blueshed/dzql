@@ -37,20 +37,22 @@ cast: {
   benToo:  [session("/code", "BEN")], // Ben's household, a second tab
   stranger: [],
 },
-// Where a member must be to notice, in this example's own words: a page, and after " @ " what
-// else the session holds there (a drawer open, a list reading).
-at: (where) => ...one session write...,
+// The write that puts a member at an address, in this example's own words: a page, the one thing
+// open over it, and after " @ " what else the session holds there (find's word).
+goTo: (address) => ...one session write...,
 
 story("Femi's top turns green, and the photo everyone watches changes", {
   as: "okafors",
+  from: "?guest=2", // his drawer, where the dress is
   does: household("replace", "/guests/2/minifigure/top", "#7FAE4E"),
-  seen: { okafors: "", couple: "households", benToo: "everyone" },
+  seen: { okafors: "", couple: "", benToo: "everyone" },
 });
 
 story("The Okafors leave the caterer a note, and only the couple read it", {
   as: "okafors",
+  from: "?answer",
   does: household("replace", "/message", "Ada is vegetarian."),
-  seen: { okafors: "", couple: "households/1" },
+  seen: { okafors: "", couple: "?family=1" },
   untold: ["ben", "benToo"],
 });
 
@@ -66,7 +68,10 @@ and whatever else the example's `goTo` understands, because a person sees only t
 and a story says where its change shows; in an example with one page (chat's is the room; the
 ticker has one), `seen` is just a list of names. Where people sign in, the cast signs in through the example's
 own sign-in page (`signIn`), since a password is never a write. A place a story names must be a
-place the example has: the harness checks the member's page stands where it was put. Everyone else in the cast must notice nothing, where the cast
+place the example has: the harness checks the member's page stands where it was put. And it must
+be a place a person can get to: the harness puts people there by a session write of its own, and
+a story whose `from` no control leads to passes while nobody could do it (japan-eta's add-a-base
+modal, whose story passed while Peter asked twice how to add a base). Everyone else in the cast must notice nothing, where the cast
 left them: a story says everyone who sees its change, counts on a home page included, so one that
 leaves someone out fails by name. `untold` names who must not even be told: sent no document's ops. `cannot` is a refusal: the permit table's
 other half, told as a sentence, whichever layer refuses (the permit, a document that finds nothing
@@ -158,10 +163,17 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
 2. Put the author where the story says they act (`from`: the drawer or modal that holds the
    control), and find on their open page the control that sends the story's write -- a
    `data-write` with its document, op and path, and a button's own value; a field or a form sends
-   whatever is typed; an applet declares exactly what it writes (`data-writes`: an op and a path
-   each, `*` for any one segment); a control drawn `disabled` is none, since the browser sends
-   nothing from it. None is a failure: a story nobody can do from a page is not a story
-   (`offPage` marks a write from a feed or the CLI).
+   whatever is typed, a select each option it can choose and a radio its value; an applet
+   declares exactly what it writes (`data-writes`: an op and a path each, `*` for any one
+   member but `-`, the end of a list, which an append names), and one that declares nothing offers nothing, whatever
+   document it reads (the ticker's clock face shows the clock and writes none of it). A control
+   the browser sends nothing from is none: drawn `disabled`, or `inert` (behind an open window or
+   modal), `hidden`, in a `<template>`, or in a disabled fieldset (but for its first legend),
+   itself or by what it is in, which ends where HTML says it does, end tag or none (a `<li>` with
+   no `</li>` ends at the next); and the page's address
+   (`data-page-write`) is the URL bar's and the back button's, not a control on the page. None is
+   a failure: a story nobody can do from a page is not a story (`offPage` marks a write from a
+   feed or the CLI).
    Then send the `does` as its session, with an id of its own as a page sends one, wait for the
    wire to go quiet, and it must have landed: its author echoed the change with that id, whoever
    else wrote meanwhile. A `closesTab` has no control to find: the author's
@@ -183,10 +195,33 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    Skipped when the write is off the ledger (its compartment says `ledger: false`, and the kernel
    reports a write that disagrees), when the ledger says it is a fact, or when its author
    has gone -- before the undo, or because of it (undoing the write that gave you your name).
-5. Report by story name. A failing story is a sentence, not a stack trace.
+5. After every story, where each could go, judged from where each story starts: the cast as its
+   own writes left it, and the story's premise. In a cast of its own in that state, rolled back
+   after, the harness walks from where it put each member: every page they are drawn there is kept
+   by where it stands (`data-page`), with its controls, and a control leads somewhere when the op
+   of `goTo`'s write that sets the address is exactly what it sends of its own value (a button's
+   `data-value`, a radio's value, each option a select can choose, or a value an applet's mount
+   names); going somewhere may put other things away too. The places their pages lead to, and the places those lead to, are where they can go.
+   Each story's `from`, and each place its `seen` puts someone, that no control leads them to
+   fails the story, by name: `no control leads okafors to "?guest=2", where the story has them
+   act`. After " @ ", what else the place holds (find's word, a reading) must be sent by a control
+   on the page there. The pages of the stories as they are told are not the walk's: a plus that
+   another story's write drew is not one this story starts with. A page that says nowhere it
+   stands (a welcome before a code) has nowhere to go, and is not asked. The URL and the back
+   button are not controls: a place only they reach is one a person must be told about. Where
+   they are told about it -- a link in an email, a shared URL -- the cast says so in its own
+   writes: a member the cast puts at an address arrived there as the link brings them, and their
+   ways start from it.
+6. Report by story name. A failing story is a sentence, not a stack trace.
 
 *What it does not do yet (17 September).* Said plainly, because a builder will otherwise trust it
 for more than it checks:
+
+- **A control hidden by a stylesheet still counts.** Without a browser the harness reads the
+  HTML, not what it looks like: a control under `display: none` by a class, `visibility:
+  hidden`, `aria-hidden`, covered by something drawn over it, of no size, or off a phone's
+  screen, is offered as if a person could press it. Only what HTML itself says is looked at:
+  `disabled`, `inert`, `hidden`, a `<template>`, a disabled fieldset.
 
 - **The morph is not under test.** Canon 2 is run without a browser: every member's open page is
   kept as the client would keep it -- a full render replaces it, a render in parts is applied

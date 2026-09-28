@@ -24,6 +24,9 @@ Everything below is the least that makes it pass.
   state ("opens the drawer", "the modal asks") cannot fail and proves nothing; tell what the
   person wants, and use `seen`'s place for where they must stand to see it.
 - A refusal is a story too (`cannot`): the other half of what a person may do.
+- A story's `from` is where a person does it, so a control must lead there: build the button
+  that opens the drawer or the modal with the drawer or the modal, or the story fails (`no control
+  leads ...`), since the harness can put anyone anywhere and a person cannot.
 
 ## Vocabulary, once
 

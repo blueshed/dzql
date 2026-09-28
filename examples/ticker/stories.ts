@@ -50,9 +50,9 @@ export const stories: Stories = {
     story("A price cannot be taken away, only moved", { as: "feed", cannot: { doc: "ticker", ops: [{ op: "remove", path: "/BRVO/price" }] } }),
 
     // ── A clock is one person's, and nothing crosses the wire but the city ──
-    story("Ann sets her clock to Tokyo, and only her clock's face changes", { as: "ann", does: city("Asia/Tokyo"), seen: ["ann"] }),
-    story("A newcomer's clock shows the default city until they choose", { as: "fresh", does: city("America/Vancouver"), seen: ["fresh"] }),
-    story("Ann cannot set her clock to a city nobody has", { as: "ann", cannot: city("Mars/Olympus") }),
+    story("Ann sets her clock to Tokyo, and only her clock's face changes", { as: "ann", from: "?clock", does: city("Asia/Tokyo"), seen: ["ann"] }),
+    story("A newcomer's clock shows the default city until they choose", { as: "fresh", from: "?clock", does: city("America/Vancouver"), seen: ["fresh"] }),
+    story("Ann cannot set her clock to a city nobody has", { as: "ann", from: "?clock", cannot: city("Mars/Olympus") }),
 
     // ── Where you stand decides what you see ──
     story("Bravo ticks; Ann, reading her board as a list, and Bo, in the market, each see the row move", { as: "feed", offPage: true, does: tick("BRVO", 66.6), seen: { ann: "board @ reading.board=list", bo: "market" } }),

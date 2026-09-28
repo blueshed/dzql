@@ -384,6 +384,11 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
 
 Also:
 
+- The stories count a control only where a person could press it: not drawn `disabled`, and not
+  `inert`, `hidden` or in a disabled fieldset, itself or by what it is in. So a story told from a
+  modal is done in the modal: the page behind it, inert, offers nothing. The page's address
+  (`data-page-write`) is the URL bar's, not a control: a story that goes somewhere needs the
+  button that goes there.
 - When the connection drops, the page stays as it was (what is typed, what applets hold), but
   `inert`, and `#app` is marked `data-offline` (`src/bento.css` dims it and says so) until the
   server, reached again, draws it afresh. A write made while it is down is not sent, nor taken
@@ -405,7 +410,12 @@ is the page, and the one thing open over it: `guests?guest=2`, `gifts?new`, `?an
   element of the page. The client mirrors it into the URL and sends the write on back and
   forward, so the back button closes a drawer and a link opens one. On first load the session
   catches up to the URL.
-- The stories put people at addresses with `Stories.goTo(address)`, and check they got there.
+- The stories put people at addresses with `Stories.goTo(address)`, and check they got there,
+  and that a person could have: a story's `from`, and each place its `seen` names, must be one a
+  control leads to from where the cast stands (a button whose `data-value` is the address, or a
+  tap an applet's mount names). One nothing leads to fails the story: `no control leads okafors
+  to "?guest=2"`. The URL and the back button are not controls: a place a person reaches by a
+  link (an email, a shared URL) is put in the cast's own writes, where their ways start.
 
 ## Pages: the bento (`src/bento.ts`, `src/bento.css`)
 
@@ -511,7 +521,11 @@ would change for symbols nobody on it watches.
 
 An applet's controls are drawn in the browser, so the stories cannot find them in the page. Its
 mount says exactly what they write instead: a document, an op and a path each, where a segment
-that is only `*` is any one segment (an id the applet reads from its props):
+that is only `*` is any one member (an id the applet reads from its props), never `-`: an applet
+that appends to a list names the `-` itself (`["trip", "add", "/events/*/party/-"]`). Reading a document
+(`data-doc`) is not writing it: an applet that says nothing offers nothing (the ticker's clock
+face), and its story fails, by name, until the mount says what it sends (the city picker beside
+it, `appletWrites(["clock", "replace", "/tz"])`):
 
 ```ts
 `<div data-applet="calendar"${appletWrites(["team", "replace", "/draft"], ["team", "replace", "/requests/*/starts"], ["team", "replace", "/requests/*/ends"])} data-props="…">`
@@ -525,6 +539,11 @@ that is only `*` is any one segment (an id the applet reads from its props):
   calendar's requests) fails its story. An applet that can send nothing now names nothing (the
   wedding's menu once answers are closed), as a button that cannot is drawn `disabled`, which
   the stories count as no control.
+- A write the applet sends with only one value, or a few, names them: `[doc, op, path, value]`,
+  one each. That is how an applet says where it goes: the wedding's photo names each figure's tap
+  (`["session", "replace", "/page", "?guest=2"]`), so a story may stand in the drawer it opens,
+  as it may where a button with that `data-value` leads. The mount says each write once, its
+  values together, since every page that shows the applet is sent it.
 - A declaration that is not `[doc, op, path]` (the older `[doc, path]`) fails every story that
   meets it: `applet declaration must be [doc, op, path]`.
 - The applet sends its writes with `ctx.send(doc, ops)`: a drag let go.

@@ -213,7 +213,7 @@ describe("the ticker", () => {
     write(ws, "desk", [{ op: "replace", path: "/page", value: "?clock" }]);
     await expectMessage(ws, "patch");
     const { page: html } = await expectMessage(ws, "render");
-    expect(html).toContain('id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="{&quot;tz&quot;:&quot;Europe/Zurich&quot;}"><datalist>');
+    expect(html).toContain(`id="city" class="city" data-applet="city-picker" data-doc="clock" data-writes='[{"doc":"clock","op":"replace","path":"/tz"}]' data-props="{&quot;tz&quot;:&quot;Europe/Zurich&quot;}"><datalist>`); // the picker says what it writes; the face beside it, nothing
     expect(html).toContain('<option value="Asia/Tokyo">Tokyo (UTC+09:00)</option>');
     expect(html).toContain('<option value="America/Vancouver">Vancouver (UTC-0');
     expect(html).toContain('<option value="America/Argentina/Salta">Salta, Argentina (UTC-03:00)</option>');

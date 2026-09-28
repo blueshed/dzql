@@ -44,6 +44,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `does` or premise says why. A refusal's failure reads `refused, but <who> was not answered:
     …` or `refused, but it landed …`, where it read `a refusal hands the page back`.
 
+- **An applet's `*` is any one member, never `-`**, the end of a list. `["trip", "add",
+  "/events/*/party/*"]` offered an append to every party (`/events/44/party/-`), so japan-eta's
+  "Ann joins Peter's Hiroshima day" passed with the drawer's "I'm in" taken away. An applet that
+  appends names the `-` itself: `["trip", "add", "/events/*/party/-"]`.
+- **A story stands only where a control leads** (todo n87). The harness put a story's author at
+  its `from`, and each member at the place their `seen` names, by a session write of its own, and
+  never asked whether a person could get there: japan-eta's "Daisy adds two nights in Kanazawa"
+  passed from the add-a-base modal while no control anywhere opened it. Now the places the
+  stories name are walked from where each story starts (the cast, then its premise), in a cast of
+  their own: every page a member is drawn there is kept by where it stands, with the places its
+  controls lead to (a button whose value `goTo` makes its write of, or a tap an applet's mount
+  names), and a place a story names that no control leads to fails the story, by name (`no
+  control leads okafors to "?guest=2", where the story has them act`); after " @ ", what the
+  place holds must be sent by a control on the page there. A plus another story's write drew is
+  not one this story starts with. A control leads to an address when it sends the op of `goTo`'s
+  write that sets it: a button's value, a radio's, each option a select can choose (a select
+  now offers only those, and a `multiple` one nothing, which the client never sends), or a value
+  an applet names. It found leave's months (below) and the wedding photo's taps,
+  which nothing declared.
+- **A control the browser will not press is none**, whatever is around it. The stories counted a
+  button inside an `inert` box, a `hidden` element or a disabled fieldset as offered, since only
+  the button's own `disabled` was looked at; keyboard and phone put the whole box `inert` behind
+  an open window, and the ground behind a modal. Now `inert`, `hidden`, a `<template>` and a
+  disabled fieldset (but for its first legend, which the browser leaves enabled) count on the
+  control and on everything it is in, so a story from a modal is done in the modal. What is in
+  an element ends where HTML says: a `<p>`, `<li>`, `<dt>`, `<tr>`, `<td>` or `<option>` whose
+  end tag is left out ends at the start tag that implies it, so a hidden one does not hide what
+  follows. And the page's address (`data-page-write`) is no longer a control for any address: the
+  URL bar and the back button send it, not the page, so a story that goes somewhere needs the
+  button that goes there.
+- **An applet offers only what its mount says it writes**, whatever document it reads. An applet
+  on a document (`data-doc`) counted as a control for every write to it, so the ticker's clock
+  stories passed from the box, where only the clock's face is, and still passed with the city
+  picker taken out of its drawer. Now a mount that says nothing offers nothing: the city picker
+  says `appletWrites(["clock", "replace", "/tz"])`, and the clock stories are told from its
+  drawer (`from: "?clock"`).
 - **An applet's mount says exactly what it writes** (todo n78): `appletWrites([doc, op, path], …)`,
   where a segment that is only `*` is any one segment (`["team", "replace", "/requests/*/starts"]`).
   `appletWrites([doc, path], …)` offered every write under each path, so a page that lost a
@@ -56,8 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and ends; the wedding's dress each look field, its menu a course's dish or drink, chosen or
   taken back, and its picture field the key at its own path, which it declared nowhere before
   (a story now puts a picture on the welcome). The photo's taps only go somewhere, as the page's
-  address does, and the ticker's clock face and city picker are each an applet on the clock's
-  document, which offers any write to it.
+  address does.
 - **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
   browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
   when not, as was a group of radios none of which was chosen. So a title and an unticked box
@@ -96,6 +131,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **leave's Previous and Next move a month, not three.** Three at a time from this month, a
+  person could never get to most months: in September, October and November were only ever on
+  the page as this month's, and no control led to `2026-10` or `2026-11`, where the stories stand
+  (they name their month so they do not depend on the day). Which months could be reached
+  changed with the day the stories ran. A month at a time, each by its own name (`2026-10`, never
+  the page alone because it is this month), every month is somewhere a person can get to,
+  whatever today is; the page alone is today, wherever that is, and the calendar still shows three.
 - **A dim is find's alone** (rule 17). The wedding faded a guest who was not coming, and a
   ghost, so with find open a faded figure meant either "missed" or "not coming". Now nothing fades
   but what find misses; each guest has the mark at their feet the couple's families had (their own
@@ -178,6 +220,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **An applet's mount may name the only values a control of it sends**: `appletWrites([doc, op,
+  path, value], …)`, one for each, said as one write with its `values` on the mount. A story's
+  write counts as offered only with one of them. It is how an applet says where it goes: the
+  wedding's photo now names each figure's tap (`?guest=2`, `?family=1`, `everyone/4`), so the
+  stories can tell a place a tap leads to from one nothing does (n87). What the wedding
+  sends grows by the declaration: the README's costs are measured again.
 - **A story's own premise** (todo n86): `premise: { couple: [write, …] }`, in the cast's shape,
   is made after the cast's writes and before anything else in the story, as each member it names,
   and rolled back with it. The cast's writes are every story's, so a state one story needed (a

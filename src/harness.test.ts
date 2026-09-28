@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, setSystemTime, test } from "bun:test";
 import type { PatchOp } from "./json-patch";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
@@ -10,7 +10,7 @@ import type { Compartment } from "./compartments/compartment";
 import { read } from "./documents";
 import { appletWrites, write } from "./html";
 import type { Example } from "./example";
-import { comparable, controlsOn, hear, holding, offers, placeOf, print, retake, run, takersOn, unheld } from "./harness";
+import { comparable, controlsOn, goesTo, hear, holding, offers, placeOf, print, retake, run, takersOn, unheld } from "./harness";
 import { diff, drawParts, part } from "./parts";
 import type { Story } from "./stories";
 import { refuse } from "./refusal";
@@ -144,7 +144,7 @@ describe("stories harness", () => {
     expect(report.outcomes.map((o) => o.failures)).toEqual([["cy closed their tab: they are not there to see it"], ["nothing landed: closing eve's tab changed nothing"]]);
   }, 30000);
 
-  test("controls: a button sends its own value, a field or a form any, an applet on a document any write to it, one that says what it writes exactly that", () => {
+  test("controls: a button sends its own value, a field or a form any, an applet only what it says it writes", () => {
     const page = [
       `<button data-write='{"doc":"room","op":"replace","path":"/name"}' data-value="Tess &amp; Tom">x</button>`,
       `<button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>undo</button>`,
@@ -152,7 +152,8 @@ describe("stories harness", () => {
       `<input data-write='{"doc":"household","op":"replace","path":"/message"}' disabled>`,
       `<form data-write='{"doc":"room","op":"add","path":"/messages/-"}'></form>`,
       `<div class="site" data-page="gifts?new=gifts" data-page-write='{"doc":"session","op":"replace","path":"/page"}'></div>`,
-      `<div data-applet="clock" data-doc="clock" data-props="{}"></div>`,
+      `<div data-applet="clock" data-doc="clock" data-props="{}"></div>`, // on a document, and saying nothing: it offers nothing
+      `<div data-applet="city-picker" data-doc="clock"${appletWrites(["clock", "replace", "/tz"])} data-props="{}"></div>`,
       `<div data-applet="dress"${appletWrites(["household", "replace", "/guests/2/minifigure/top"])}></div>`,
       `<div data-applet="calendar"${appletWrites(["session", "replace", "/draft"], ["team", "replace", "/requests/*/starts"])}></div>`,
     ].join("");
@@ -165,8 +166,9 @@ describe("stories harness", () => {
     expect(any("household", { op: "replace", path: "/answer", value: "maybe" })).toBe(false); // drawn disabled: the browser sends nothing
     expect(any("household", { op: "replace", path: "/message", value: "hi" })).toBe(false);
     expect(any("room:general", { op: "add", path: "/messages/-", value: "anything" })).toBe(true);
-    expect(any("session", { op: "replace", path: "/page", value: "day" })).toBe(true);
-    expect(any("clock", { op: "replace", path: "/tz", value: "Asia/Tokyo" })).toBe(true);
+    expect(any("session", { op: "replace", path: "/page", value: "day" })).toBe(false); // the page's address is the URL bar's and the back button's, not a control on the page
+    expect(any("clock", { op: "replace", path: "/tz", value: "Asia/Tokyo" })).toBe(true); // the picker says so
+    expect(any("clock", { op: "replace", path: "/face", value: "round" })).toBe(false); // the clock on the document says nothing
     expect(any("household", { op: "replace", path: "/guests/2/minifigure/top", value: "#fff" })).toBe(true);
     expect(any("household", { op: "replace", path: "/guests/3/minifigure/top", value: "#fff" })).toBe(false);
     expect(any("household", { op: "remove", path: "/guests/2/minifigure/top" })).toBe(false); // another op
@@ -188,6 +190,64 @@ describe("stories harness", () => {
     expect((await run(leave, { ...told, stories: first })).failed).toBe(0);
     const wrong = { ...told, stories: first, signIn: (name: string) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@leave.example`, password: "not-it" } }) };
     expect(run(leave, wrong)).rejects.toThrow("ann could not sign in at /login: 303");
+  }, 30000);
+
+  test("a control the browser will not press is none: behind something inert, in a disabled fieldset, or hidden", () => {
+    const b = (value: string) => `<button${write("room", "replace", "/name", value)}>${value}</button>`;
+    const page = [
+      `<div class="ground" inert><section>${b("behind a modal")}<div data-applet="x"${appletWrites(["room", "replace", "/draft"])}></div></section></div>`,
+      b("open"),
+      `<fieldset disabled>${b("in a disabled fieldset")}<input${write("room", "replace", "/topic")}></fieldset>`,
+      `<fieldset>${b("in a fieldset")}</fieldset>`,
+      `<div hidden><p>${b("hidden")}</p></div>`,
+      `<br><input hidden${write("room", "replace", "/hidden")}><img src="x.png"><p>${b("after void tags")}</p>`,
+    ].join("");
+    expect(controlsOn(page).map((c) => c.value ?? c.path)).toEqual(["open", "in a fieldset", "after void tags"]);
+  });
+
+  test("what is hidden ends where HTML says it does, end tag or none; a disabled fieldset's first legend is not disabled; a template is never drawn", () => {
+    const b = (value: string) => `<button${write("room", "replace", "/name", value)}>${value}</button>`;
+    const page = [
+      `<div><p hidden>gone<p>${b("after a hidden p")}<div>${b("after a p a div closes")}</div></div>`,
+      `<ul><li hidden>gone<li>${b("after a hidden li")}<li hidden><ul><li>${b("in a list in a hidden li")}</ul><li>${b("after its list")}</ul>`,
+      `<dl><dt hidden>gone<dd>${b("after a hidden dt")}</dl>`,
+      `<table><tr hidden><td>${b("in a hidden row")}<tr><td>${b("in the next row")}<td hidden>${b("in a hidden cell")}<td>${b("in the next cell")}</table>`,
+      `<table><tbody hidden><tr><td>${b("in a hidden body")}<tbody><tr><td>${b("in the next body")}</table>`,
+      `<select><option hidden>x<option>y</select>`,
+      `<fieldset disabled><legend>${b("in its first legend")}</legend>${b("in the fieldset")}<legend>${b("in a second legend")}</legend><div><legend>${b("in a legend it does not hold")}</legend></div></fieldset>`,
+      `<template>${b("in a template")}</template>`,
+      b("at the end"),
+    ].join("");
+    expect(controlsOn(page).map((c) => c.value ?? c.path)).toEqual(["after a hidden p", "after a p a div closes", "after a hidden li", "after its list", "after a hidden dt", "in the next row", "in the next cell", "in the next body", "in its first legend", "at the end"]);
+  });
+
+  test("a story from a modal is done in the modal: the page behind it, inert, offers nothing", async () => {
+    const { example: ticker } = await import("../examples/ticker/index");
+    const { stories: told } = await import("../examples/ticker/stories");
+    const desk = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/page", value: page }] });
+    const report = await run(ticker, { ...told, stories: [{ name: "Ann, asked about Alpha, opens Bravo's drawer behind the question", as: "ann", from: "market?confirm=ALPH", does: desk("market?symbol=BRVO"), seen: ["ann"] }] });
+    expect(report.outcomes[0]!.failures).toEqual(["ann has no control on their page for replace /page on desk"]);
+  }, 30000);
+
+  test("a story stands where it stands whatever the day: leave's, under October's clock, where the month they name is this one", async () => {
+    const { example: leave } = await import("../examples/leave/index");
+    const { stories: told } = await import("../examples/leave/stories");
+    setSystemTime(new Date("2026-10-15T12:00:00Z"));
+    try {
+      const report = await run(leave, told);
+      expect(report.outcomes.flatMap((o) => o.failures)).toEqual([]);
+    } finally {
+      setSystemTime();
+    }
+  }, 60000);
+
+  test("an applet on a document offers only what its mount says it writes: a drawer that lost its picker fails the story, though the clock's face reads the same document", async () => {
+    const { example: ticker } = await import("../examples/ticker/index");
+    const { stories: told } = await import("../examples/ticker/stories");
+    const tokyo = told.stories.filter((s) => s.name.startsWith("Ann sets her clock to Tokyo"));
+    expect((await run(ticker, { ...told, stories: tokyo })).outcomes[0]!.failures).toEqual([]);
+    const pickerless: Example = { ...ticker, render: (sessionId) => ticker.render(sessionId).replace(/<div id="city"[^]*?<\/datalist><\/div>/, "") };
+    expect((await run(pickerless, { ...told, stories: tokyo })).outcomes[0]!.failures).toEqual(["ann has no control on their page for replace /tz on clock"]);
   }, 30000);
 
   test("an applet offers only what its mount says it writes: a drawer that lost its control fails its story, whatever applet is beside it", async () => {
@@ -347,6 +407,107 @@ describe("stories harness", () => {
     const lying = await failuresOf(withRoom((room) => ({ ...room, ledger: false })), only("Ada says hello"));
     expect(lying).toContain("the server failed writing room:general: its compartment keeps it off the ledger (ledger: false), yet delta recorded the write");
   }, 30000);
+
+  test("an applet may name the only values a control of it sends: a tap that goes somewhere offers only there, and the values of one write go together", () => {
+    const page = `<div data-applet="photo"${appletWrites(["desk", "replace", "/page", "?guest=2"], ["desk", "replace", "/page", "?guest=3"])}></div>`;
+    const tap = (value: string) => controlsOn(page).some((c) => offers(c, "desk", { op: "replace", path: "/page", value }));
+    expect(tap("?guest=2")).toBe(true);
+    expect(tap("?guest=3")).toBe(true);
+    expect(tap("?guest=4")).toBe(false); // only the values it names
+    const wrong: string[] = [];
+    expect(controlsOn(`<div data-applet="x" data-writes='[{"doc":"desk","op":"replace","path":"/page","values":[{"to":1}]}]'></div>`, wrong)).toEqual([]); // a value is a string, a number or a boolean
+    expect(controlsOn(`<div data-applet="x" data-writes='[{"doc":"desk","op":"replace","path":"/page","values":[]}]'></div>`, wrong)).toEqual([]); // and a list of none is no list
+    expect(wrong).toHaveLength(2);
+    // every page that shows the applet is sent its declaration, so it says each write once
+    expect(appletWrites(["desk", "replace", "/page", "?guest=1"], ["desk", "replace", "/page", "?guest=2"], ["desk", "replace", "/page"], ["desk", "add", "/page", 3])).toBe(
+      ` data-writes='[{"doc":"desk","op":"replace","path":"/page","values":["?guest=1","?guest=2"]},{"doc":"desk","op":"replace","path":"/page"},{"doc":"desk","op":"add","path":"/page","values":[3]}]'`,
+    );
+  });
+
+  // Where a person can go (n87): the harness puts people anywhere by a session write of its own, so
+  // a story could stand where no control leads. The ticker, with controls taken off its pages.
+  describe("a story stands only where a control leads", async () => {
+    const { example: ticker } = await import("../examples/ticker/index");
+    const { stories: told } = await import("../examples/ticker/stories");
+    const desk = (page: string) => write("desk", "replace", "/page", page);
+    const without = (...controls: string[]): Example => ({ ...ticker, render: (sessionId) => controls.reduce((html, c) => html.replaceAll(c, ""), ticker.render(sessionId)) });
+    const named = (prefix: string): Story[] => told.stories.filter((s) => s.name.startsWith(prefix));
+
+    test("a story whose from no page offers a way to fails by name, though the harness can put its author there", async () => {
+      const report = await run(without(desk("board?new")), { ...told, stories: named("Ann watches Charlie Metals, and only her board grows") });
+      expect(report.outcomes[0]!.failures).toEqual(['no control leads ann to "board?new", where the story has them act']);
+      expect((await run(ticker, { ...told, stories: named("Ann watches Charlie Metals, and only her board grows") })).failed).toBe(0);
+    }, 30000);
+
+    test("so does a place a seen puts someone, and what a place holds after \" @ \" must be sent from the page there", async () => {
+      const report = await run(without(desk("market?symbol=BRVO"), write("desk", "replace", "/reading/board", "list")), { ...told, stories: named("Bravo ticks") });
+      expect(report.outcomes.map((o) => o.failures)).toEqual([
+        [],
+        ['no control leads ann to "board @ reading.board=list", where the story has them see it: nothing on their page at "board" sends replace /reading/board'],
+        ['no control leads ann to "market?symbol=BRVO", where the story has them see it'],
+      ]);
+    }, 30000);
+
+    test("a way through a place no story stands on is walked, and one a page never offers is not a way at all", async () => {
+      // Ann stands only where the cast put her; the way to Alpha's modal is through the market and Alpha's drawer
+      const drops = named("Ann drops Alpha");
+      expect((await run(ticker, { ...told, stories: drops })).outcomes[0]!.failures).toEqual([]);
+      expect((await run(without(desk("market")), { ...told, stories: drops })).outcomes[0]!.failures).toEqual(['no control leads ann to "market?confirm=ALPH", where the story has them act']);
+    }, 30000);
+  });
+
+  test("where a person can go is judged from where the story starts: a place another story's write opened is not one this story can reach", async () => {
+    const { example: wedding } = await import("../examples/wedding/index");
+    const { stories: told } = await import("../examples/wedding/stories");
+    // Ben has no plus-one, so nothing on his page opens the plus; the couple giving him one draws it there, for that story alone
+    const plus: Story = { name: "Ben, with no plus-one, cannot name one from the plus", as: "ben", from: "?new=guests", cannot: { doc: "household", ops: [{ op: "add", path: "/guests/-", value: "Someone Else" }] } };
+    const letBen = told.stories.find((s) => s.name.startsWith("The couple let Ben bring one more"))!;
+    const unreached = ['no control leads ben to "?new=guests", where the story has them act'];
+    for (const order of [[plus], [letBen, plus], [plus, letBen]]) {
+      const report = await run(wedding, { ...told, stories: order });
+      expect(report.outcomes.find((o) => o.name === plus.name)!.failures).toEqual(unreached);
+    }
+    // and its own premise is where it starts: given the plus-one, Ben can open the plus
+    const given = { ...plus, name: "Ben, given a plus-one, can open the plus", premise: { couple: [{ doc: "board", ops: [{ op: "replace" as const, path: "/households/2/plus_ones", value: 1 }] }] } };
+    expect((await run(wedding, { ...told, stories: [given] })).outcomes[0]!.failures.filter((f) => f.startsWith("no control leads"))).toEqual([]);
+  }, 60000);
+
+  test("a control goes where goTo makes exactly its write: a button's own value, or the one an applet names; nothing that takes any value goes anywhere", () => {
+    const desk = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/page", value: page }] });
+    const page = [
+      `<button${write("desk", "replace", "/page", "market")}>market</button>`,
+      `<button${write("desk", "replace", "/reading/board", "list")}>list</button>`,
+      `<div data-page="" data-page-write='{"doc":"desk","op":"replace","path":"/page"}'></div>`,
+      `<form${write("desk", "replace", "/page")}><input name="to"></form>`,
+      `<div data-applet="photo"${appletWrites(["desk", "replace", "/page", "?guest=2"], ["desk", "replace", "/page"])}></div>`,
+    ].join("");
+    expect(controlsOn(page).map((c) => goesTo(c, desk))).toEqual(["market", undefined, undefined, "?guest=2", undefined]); // the page's own address is none
+  });
+
+  test("an applet's `*` is any one member, never the end of a list: an append is named as one", () => {
+    const party = (path: string) => ({ doc: "trip:1", op: "add", path, free: true, pattern: true as const });
+    const join = { op: "add" as const, path: "/events/44/party/-", value: "ann" };
+    expect(offers(party("/events/*/party/*"), "trip:1", join)).toBe(false); // the drawer's "I'm in", not the applet's
+    expect(offers(party("/events/*/party/*"), "trip:1", { ...join, path: "/events/44/party/7" })).toBe(true);
+    expect(offers(party("/events/*/party/-"), "trip:1", join)).toBe(true);
+  });
+
+  test("a select leads to each option it can choose, a radio to its value, and a goTo of several ops wherever it sets the address", () => {
+    const desk = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/page", value: page }] });
+    const select = `<form data-write-on="change"><select${write("desk", "replace", "/page")}><option value="market">Market</option><option value="attic" disabled>Attic</option><optgroup label="more" disabled><option value="cellar">Cellar</option></optgroup><option> the  clock </option><option>board</select></form>`;
+    expect(controlsOn(select).map((c) => goesTo(c, desk))).toEqual(["market", "the clock", "board"]); // what is disabled chooses nothing
+    const sends = (page: string, value: string) => controlsOn(page).some((c) => offers(c, "desk", { op: "replace", path: "/page", value }));
+    expect(sends(select, "market")).toBe(true);
+    expect(sends(select, "attic")).toBe(false); // a select sends only what it can choose
+    expect(sends(`<select multiple${write("desk", "replace", "/page")}><option value="market"></select>`, "market")).toBe(false); // several at once is no one value: the client never sends it
+    expect(controlsOn(`<select disabled${write("desk", "replace", "/page")}><option value="market"></select>`)).toEqual([]);
+    const radios = `<input type="radio" name="p" value="market"${write("desk", "replace", "/page")}><input type="radio" name="p"${write("desk", "replace", "/page")}>`;
+    expect(controlsOn(radios).map((c) => goesTo(c, desk))).toEqual(["market", "on"]);
+    expect(sends(radios, "board")).toBe(false);
+    // going somewhere also puts find away: a button that sets the address still leads there
+    const clearing = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/page", value: page }, { op: "remove" as const, path: "/filter" }] });
+    expect(controlsOn(`<button${write("desk", "replace", "/page", "market")}>m</button><button${write("desk", "remove", "/filter")}>f</button>`).map((c) => goesTo(c, clearing))).toEqual(["market", undefined]);
+  });
 
   test("an applet that follows its document's patches is compared without its props; any other element keeps them", () => {
     const board = `<div id="board" data-applet="board" data-doc="ticker" data-props="{&quot;price&quot;:1}"></div>`;
