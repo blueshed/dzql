@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { photoSvg, type PhotoEntry } from "./photo";
+import { onlyFadeChanged, photoSvg, type PhotoEntry } from "./photo";
 
 const look = { skin: "#F2C86A", hair: "bob", hair_color: "#2B2B33", top: "#1E3F8F", legs: "#2B2B33", face: "smile", attitude: "nodding" } as const;
 
@@ -13,7 +13,7 @@ describe("photoSvg", () => {
     const svg = photoSvg(entries, "the family");
     expect(svg).toStartWith('<svg class="photo" viewBox="');
     expect(svg).toContain('aria-label="the family"');
-    expect(svg).toContain('role="button" tabindex="0" data-key="1" aria-pressed="false"');
+    expect(svg).toContain('role="button" tabindex="0" data-key="1" aria-expanded="false"');
     expect(svg).toContain('class="fig att-nodding ghost"');
     expect(svg).toContain('class="fig att-nodding out"');
     expect(svg).toContain('class="mark mark-yes"');
@@ -25,14 +25,20 @@ describe("photoSvg", () => {
     expect(svg).not.toContain('class="ring"');
   });
 
-  test("a chosen figure rings, is marked pressed, and scrolls into the clear (K2, rule 13)", () => {
+  test("a figure that stands for a family is a button named for it, since nothing printed on it says what a tap opens", () => {
+    const tap = { doc: "session", op: { op: "replace" as const, path: "/page", value: "everyone/4" } };
+    const svg = photoSvg([{ key: "4", spec: look, count: 5, tap, name: "a family of 5" }], "the photo: the families");
+    expect(svg).toContain('role="button" tabindex="0" data-key="4" aria-label="a family of 5" aria-expanded="false"');
+  });
+
+    test("a chosen figure rings, is marked expanded (its drawer is open), and scrolls into the clear (K2, rule 13)", () => {
     const entries: PhotoEntry[] = [
       { key: "1", spec: { ...look, name: "Ada" }, tap: { doc: "session", op: { op: "replace", path: "/page", value: "guests?guest=1" } }, chosen: true },
       { key: "2", spec: look },
     ];
     const svg = photoSvg(entries, "the family");
-    expect(svg).toContain('role="button" tabindex="0" data-key="1" aria-pressed="true"');
-    expect(svg).toContain(" data-reveal>");
+    expect(svg).toContain('role="button" tabindex="0" data-key="1" aria-expanded="true"');
+    expect(svg).toContain(' data-reveal data-slot="1">');
     expect(svg).toContain('<g class="slot chosen"');
     expect(svg).toContain('<ellipse class="ring" cx="50" cy="72" rx="58" ry="80"/>');
     // the unchosen figure carries neither
@@ -47,6 +53,24 @@ describe("photoSvg", () => {
     const svg = photoSvg(entries, "the family");
     expect(svg).toContain('<g class="slot" transform');
     expect(svg).toContain('<g class="slot hushed" transform');
+    // each figure says whose it is, so the fade can change where it stands
+    expect(svg).toContain(' data-slot="2">');
+  });
+
+  test("a change only in what find fades is told apart from any other, so only it is changed in place", () => {
+    const entries: PhotoEntry[] = [
+      { key: "1", spec: { ...look, name: "Ada" }, mark: "yes" },
+      { key: "2", spec: { ...look, name: "Femi" }, mark: "none" },
+    ];
+    const was = { entries, label: "the family" };
+    const faded = { entries: [entries[0]!, { ...entries[1]!, hushed: true }], label: "the family" };
+    expect(onlyFadeChanged(was, faded)).toBe(true);
+    expect(onlyFadeChanged(faded, was)).toBe(true);
+    // anything else -- a mark, who stands there, the order, the day's names -- is the photo drawn again
+    expect(onlyFadeChanged(was, { ...was, entries: [entries[0]!, { ...entries[1]!, mark: "yes" }] })).toBe(false);
+    expect(onlyFadeChanged(was, { ...was, entries: [entries[0]!] })).toBe(false);
+    expect(onlyFadeChanged(was, { ...was, entries: [entries[1]!, entries[0]!] })).toBe(false);
+    expect(onlyFadeChanged(was, { ...was, reveal: true })).toBe(false);
   });
 
   test("a newcomer walks in from the nearest side; a bomber lunges from beyond the frame; a count of one is no count", () => {

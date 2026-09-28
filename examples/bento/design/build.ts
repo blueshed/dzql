@@ -1,6 +1,6 @@
 // Builds the design canvas from the mock-up itself, so the two cannot drift: each artboard is
 // index.html with styles.css inlined, the lucide marks drawn by the kernel's svg() (the browser
-// would have used createIcons), and one state applied -- a compartment opened, a figure chosen,
+// would have used createIcons), and one state applied -- a cell opened, a figure chosen,
 // the drawer or the modal showing, the filter typed into. Run from the repo root:
 //   bun examples/bento/design/build.ts
 // then seed and save the canvas with the design skill's helper (see the README).
@@ -27,7 +27,7 @@ function body(markup: string): string {
 }
 
 type State = {
-  open?: string; // data-cell of the opened compartment
+  open?: string; // data-cell of the opened cell
   chosen?: string; // data-site of the chosen figure
   drawer?: { title: string; body: string; carry?: string };
   filter?: { word: string; lit: string[] };
@@ -54,7 +54,7 @@ function apply(markup: string, state: State): string {
   }
   if (state.filter && state.open) {
     const { word, lit } = state.filter;
-    // the opened compartment's filter, shown and typed into; what it misses, hushed
+    // the opened cell's filter, shown and typed into; what it misses, hushed
     const start = out.indexOf(`data-cell="${state.open}"`);
     const end = out.indexOf("</section>", start);
     let section = out.slice(start, end);
@@ -108,8 +108,8 @@ ${apply(drawIcons(body(html)), state)}
 const mount = "The Mount Without";
 const boards: Record<string, State> = {
   Main: {},
-  Map: { open: "stay", chosen: mount, drawer: { title: mount, body: `A line or two about ${mount} would go here: whatever the compartment knows about it.` } },
-  Gifts: { open: "gifts", chosen: "Kettle", filter: { word: "ke", lit: ["Kettle"] }, drawer: { title: "Kettle", body: "A line or two about Kettle would go here: whatever the compartment knows about it.", carry: "Claim" } },
+  Map: { open: "stay", chosen: mount, drawer: { title: mount, body: `A line or two about ${mount} would go here: whatever the cell knows about it.` } },
+  Gifts: { open: "gifts", chosen: "Kettle", filter: { word: "ke", lit: ["Kettle"] }, drawer: { title: "Kettle", body: "A line or two about Kettle would go here: whatever the cell knows about it.", carry: "Claim" } },
   Modal: { open: "gifts", modal: "Bread bin" },
   Answer: { chosen: "Our answer", drawer: { title: "Our answer", body: `<label class="modal-field"><span class="note">Answer</span><div class="choice" role="radiogroup"><button type="button" class="carry" aria-pressed="true">Yes</button><button type="button" class="carry" aria-pressed="false">Maybe</button><button type="button" class="carry" aria-pressed="false">No</button></div></label><label class="modal-field"><span class="note">Words for the couple</span><textarea rows="3">Cannot wait. Ada is vegetarian.</textarea></label>` } },
   Phone: {},

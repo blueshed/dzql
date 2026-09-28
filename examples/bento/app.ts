@@ -1,9 +1,9 @@
-// The bento mock-up's behaviour, and all of it. Open a compartment: the same element grows into the
+// The bento mock-up's behaviour, and all of it. Open a cell: the same element grows into the
 // window (a View Transition morphs the shape, so it reads as "that box got bigger", not "we went
 // somewhere"). Its first crumb, the box it came from, is the way back. A figure in the reading (a
 // pin, a face) opens the panel and is marked as chosen; the reading scrolls it into the clear
 // beside the panel, the browser's own idea of scroll-into-view. Escape closes the panel, then the
-// compartment. No server, no documents: a design prototype, not an eta example.
+// cell. No server, no documents: a design prototype, not an eta example.
 import { Bed, Camera, ChevronRight, createIcons, Gift, LayoutGrid, List, LogOut, MapPin, Minus, Pencil, Plus, Redo2, Search, Smile, Undo2, Users, X } from "lucide";
 
 // The marks are lucide's, drawn the way lucide draws them in a browser: every <i data-lucide>
@@ -28,7 +28,7 @@ const modalTitle = document.getElementById("modal-title")!;
 const modalName = document.getElementById("modal-name") as HTMLInputElement;
 const modalCancel = document.getElementById("modal-cancel")!;
 
-/** The one compartment that moves is the one that is named for the transition, and it is drawn on top (styles.css); the others just change. */
+/** The one cell that moves is the one that is named for the transition, and it is drawn on top (styles.css); the others just change. */
 function morph(cell: HTMLElement, change: () => void): void {
   if (!document.startViewTransition) return change();
   cell.style.viewTransitionName = "moving";
@@ -72,7 +72,7 @@ function openPanel(figure: HTMLElement): void {
     // a thing's properties, each by its kind: the answer as a choice, the words as text
     panelBody.innerHTML = `<label class="modal-field"><span class="note">Answer</span><div class="choice" role="radiogroup"><button type="button" class="carry" aria-pressed="true">Yes</button><button type="button" class="carry" aria-pressed="false">Maybe</button><button type="button" class="carry" aria-pressed="false">No</button></div></label><label class="modal-field"><span class="note">Words for the couple</span><textarea rows="3">Cannot wait. Ada is vegetarian.</textarea></label>`;
   } else {
-    panelBody.textContent = `A line or two about ${name} would go here: whatever the compartment knows about it.`;
+    panelBody.textContent = `A line or two about ${name} would go here: whatever the cell knows about it.`;
   }
   // what the figure carries -- claim, give -- is one control in its drawer, not on its line
   panelFoot.replaceChildren();
@@ -176,7 +176,7 @@ bento.addEventListener("click", (event) => {
 
   const figure = target.closest<HTMLElement>("[data-site]");
   if (figure) {
-    openPanel(figure); // a figure in a reading, or a compartment that is a thing: either opens its drawer
+    openPanel(figure); // a figure in a reading, or a cell that is a thing: either opens its drawer
     return;
   }
 
@@ -192,7 +192,7 @@ bento.addEventListener("click", (event) => {
     return;
   }
 
-  if (target.closest(".rail, .cell-foot, .filter")) return; // a tool is not a way to open a compartment
+  if (target.closest(".rail, .cell-foot, .filter")) return; // a tool is not a way to open a cell
 
   const cell = target.closest<HTMLElement>(".cell");
   if (cell && !cell.classList.contains("open")) openCell(cell);

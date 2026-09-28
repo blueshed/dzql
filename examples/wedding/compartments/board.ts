@@ -3,7 +3,7 @@ import * as sessionDoc from "../documents/session";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { serverWrite } from "../../../src/documents";
-import { boardPages } from "../views/board";
+import { boardPage } from "../views/board";
 import { keepEveryone } from "../everyone";
 
 // The couple's document (`board:<wedding>`): the wedding and everything beneath it. Written by the
@@ -33,10 +33,10 @@ const RULES: Rule[] = [
   { path: new RegExp(`^/courses/\\d+/${CHILD}/\\d+/\\w+$`), ops: ["replace", "remove"] },
 ];
 
-/** The couple's pages. The board is always there in practice: read() only reports a kind for a code that exists. */
+/** The couple's page. The board is always there in practice: read() only reports a kind for a code that exists. */
 export function renderBoard(session: sessionDoc.SessionDocument): string | undefined {
   const b = boardDoc.read(session.id!);
-  return b && boardPages({ session, b });
+  return b && boardPage({ session, b });
 }
 
 export const board: Compartment = {
@@ -51,12 +51,12 @@ export const board: Compartment = {
   },
   shape: (_ws, id, ops) => boardDoc.shape(boardDoc.held(id), ops),
   // the modal that asked is put away by the write that answers it
-  async wrote(ws, _id, ops: PatchOp[]) {
+  async afterWrite(ws, _id, ops: PatchOp[]) {
     const put = sessionDoc.answered(sessionDoc.read(ws.data.sessionId), ops);
     if (put.length > 0) await serverWrite(`session:${ws.data.sessionId}`, put);
   },
   // a reply, a guest, a gift taken off: what everyone sees follows
-  changed: () => keepEveryone(),
+  afterChange: () => keepEveryone(),
 };
 
 /** What a household reads of the wedding (`wedding:<id>`): written by the couple, through the board, and by nobody from the wire. */

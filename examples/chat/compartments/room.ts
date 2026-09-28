@@ -6,7 +6,7 @@ import type { Compartment } from "../../../src/compartments/compartment";
 import { part } from "../../../src/parts";
 import { bento, rows } from "../../../src/bento";
 import { esc, join, write } from "../../../src/html";
-import { slug } from "../../../src/tray";
+import { slug } from "../../../src/grid";
 import { icon } from "../icons";
 import { renderNameForm } from "./session";
 import { keepLobby } from "../presence";
@@ -17,7 +17,7 @@ import { keepLobby } from "../presence";
 // with who is here across its head. The trail is the way back, and the page's tools are undo,
 // redo and logging out. Nothing here is kept between taps: what the page shows is the session's
 // name and room, and the room's messages and people.
-const { collectionPage, row } = bento({ icon, tray: "session", leave: { text: "Log out", icon: "log-out", path: "/name" } });
+const { collectionPage, row } = bento({ icon, session: "session", leave: { text: "Log out", icon: "log-out", path: "/name" } });
 
 /** The first letter of a name, as the face it wears. */
 const face = (name: string, me: boolean): string => `<span class="face${me ? " me" : ""}" aria-hidden="true">${esc(name.charAt(0).toUpperCase())}</span>`;
@@ -35,17 +35,27 @@ function renderRooms(name: string, rooms: string[]): string {
   });
 }
 
-/** Who is here, across the head of the conversation: a part, sent alone when someone arrives or leaves. */
+/**
+ * Who is here, across the head of the conversation: a list, and a part, sent alone when someone
+ * arrives or leaves. You are your face in your own colour, not your name; a reader, who cannot see
+ * the colour, hears "You", as your messages say.
+ */
 function renderPeople(people: string[], me: string): string {
-  return part("people", `<div id="people" class="people" aria-label="Here">${people.map((p) => `<span class="who">${face(p, p === me)}<span class="note">${esc(p)}</span></span>`).join("")}</div>`);
+  const who = (p: string) => (p === me ? `<li class="who">${face(p, true)}<span class="sr-only">You</span></li>` : `<li class="who">${face(p, false)}<span class="note">${esc(p)}</span></li>`);
+  return part("people", `<ul id="people" class="people" aria-label="Here">${people.map(who).join("")}</ul>`);
 }
 
-/** A message is a bubble, and a part: yours on the right, everyone else's on the left with a face, the name shown only on the first of a run. */
+/**
+ * A message is a bubble, and a part: yours on the right, everyone else's on the left. A run is
+ * said once, at its start: another's face and name, or, for yours, "You" to a reader, who cannot
+ * see which side it sits on. The rest of another's run keep the face's place, empty.
+ */
 function renderMessage(message: ChatMessage, index: number, messages: ChatMessage[], viewer: string): string {
   const mine = message.name === viewer;
   const firstOfRun = index === 0 || messages[index - 1]!.name !== message.name;
-  const nameLine = !mine && firstOfRun ? `<span class="name">${esc(message.name)}</span>` : "";
-  return part(`m${message.id}`, `<li id="m${message.id}"${mine ? ' class="mine"' : ""}>${face(message.name, mine)}<div class="body">${nameLine}<span class="bubble">${esc(message.text)}</span></div></li>`);
+  const mark = mine ? "" : firstOfRun ? face(message.name, false) : `<span class="face-gap"></span>`;
+  const who = !firstOfRun ? "" : mine ? `<span class="sr-only">You</span>` : `<span class="name">${esc(message.name)}</span>`;
+  return part(`m${message.id}`, `<li id="m${message.id}"${mine ? ' class="mine"' : ""}>${mark}<div class="body">${who}<span class="bubble">${esc(message.text)}</span></div></li>`);
 }
 
 /** Say something: the room's conversation, and the form at its foot. "Chat" in the trail is the way back to the rooms. */
@@ -55,7 +65,7 @@ function renderRoom(name: string, room: string, people: string[], transcript: Ch
     body: join(
       renderPeople(people, name),
       part("messages", `<ul class="messages" id="messages" data-autoscroll>${transcript.map((m, i) => renderMessage(m, i, transcript, name)).join("")}</ul>`),
-      `<form class="say"${write("room", "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message #${esc(room)}" aria-label="Say"><button type="submit" class="tool">Send</button></form>`,
+      `<form class="say"${write("room", "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message" aria-label="Message"><button type="submit" class="tool">Send</button></form>`,
     ),
   });
 }
@@ -88,7 +98,7 @@ export const room: Compartment = {
       .map((text): PatchOp => ({ op: "add", path: `/messages/${Bun.randomUUIDv7()}`, value: { name, text, sent_at: Date.now() } }));
   },
   // the first message in a room puts it on the list, and undoing the last takes it off
-  changed: () => keepLobby(),
+  afterChange: () => keepLobby(),
 };
 
 /** Who is in a room: live, kept by the server (../presence.ts), written by nobody on the wire. */

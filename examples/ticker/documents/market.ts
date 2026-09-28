@@ -2,7 +2,8 @@ import { read as readDoc } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 
-// The market: one document, a quote per symbol, kept in delta (`ticker:market`, ../delta.ts). A
+// The market: one document, a quote per symbol, kept in delta (`ticker:market`, ../delta.ts), and
+// each quote as its own document too (`quote:<SYMBOL>`), for a board that watches it. A
 // tick is `replace /<SYMBOL>/price`, from the feed or from anyone the compartment permits. It is a
 // fact, not the person's doing: on the ledger with its inverse, so the last minute can be read
 // back, and never undone -- nobody's Undo can move the market.
@@ -16,6 +17,11 @@ export const MARKET = "market";
 /** The quotes as delta holds them -- each a row, its id and the market's with it -- so the market's ops land on them as they are. */
 export function read(): MarketDocument {
   return readDoc<{ quotes?: MarketDocument }>(`ticker:${MARKET}`)?.quotes ?? {};
+}
+
+/** One quote, from its own document (`quote:<SYMBOL>`): what a board watching it reads, and is told of. */
+export function quote(symbol: string): Quote {
+  return readDoc<{ quotes: Quote }>(`quote:${symbol}`).quotes;
 }
 
 export function has(symbol: string): boolean {

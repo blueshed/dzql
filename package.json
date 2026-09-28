@@ -1,24 +1,40 @@
 {
   "name": "eta",
-  "version": "0.46.0",
+  "version": "0.49.0",
   "private": true,
   "type": "module",
+  "files": [
+    "src",
+    "!src/**/*.test.*",
+    "!src/**/*.test.entry.*",
+    "!src/server.test.fixture.html",
+    ".claude/skills",
+    "README.md",
+    "CHANGELOG.md",
+    "stories.md",
+    "first-app.md"
+  ],
   "scripts": {
     "dev": "bun --watch src/start.ts",
     "dev:wedding": "ETA_EXAMPLE=wedding PORT=3001 bun --watch src/start.ts",
     "dev:ticker": "ETA_EXAMPLE=ticker PORT=3002 bun --watch src/start.ts",
     "dev:bento": "PORT=3003 bun --watch examples/bento/server.ts",
+    "dev:leave": "ETA_EXAMPLE=leave PORT=3004 bun --watch src/start.ts",
     "start": "NODE_ENV=production nohup bun src/start.ts > ${LOG_FILE:-server.log} 2>&1 & disown",
     "stop": "kill $(lsof -ti tcp:${PORT:-3000} -sTCP:LISTEN)",
     "cli": "bun src/cli.ts",
     "test": "bun test",
-    "stories": "bun --env-file=.env.test src/stories-run.ts"
+    "stories": "bun --env-file=.env.test src/stories-run.ts",
+    "stories:all": "ETA_EXAMPLE=chat bun run stories && ETA_EXAMPLE=ticker bun run stories && ETA_EXAMPLE=wedding bun run stories && ETA_EXAMPLE=leave bun run stories",
+    "check": "bunx tsc --noEmit",
+    "costs": "bun --env-file=.env.test src/costs.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
   },
   "dependencies": {
-    "@blueshed/delta": "file:../blueshed/delta",
+    "@blueshed/delta": "^0.10.0",
+    "@blueshed/railroad": "^0.15.1",
     "lucide": "^1.46.0"
   }
 }

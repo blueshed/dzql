@@ -29,12 +29,15 @@ export type Example = {
   compartments: Compartment[];
   /** The whole page for this session, as HTML. The server is the only renderer, and this is all of it: which screen, in what order, reading whichever documents it must. */
   render(sessionId: string): string;
-  /** May this session write at all right now? */
+  /**
+   * May this session write at all right now? Chat's: once it has a name. Leave's: once it is signed in.
+   * A tab left open after signing out may not write, nor undo what it wrote before.
+   */
   active(sessionId: string): boolean;
   /** The page served at "/", via Bun's HTML import. */
   index: HTMLBundle;
   /**
-   * The example's documents, in delta, in this process (Workshop/docs/eta-on-delta.md): its backends
+   * The example's documents, in delta, in this process (`@blueshed/delta`): its backends
    * registered on a `createLocal()`. The kernel keeps each page's documents from delta's stream of
    * changes, writes through delta, and the ledger is delta's.
    */

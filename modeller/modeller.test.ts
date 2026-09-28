@@ -52,11 +52,12 @@ describe("pages and who notices", () => {
     expect(pageOf("venue/1/deployments @ drawer=site/2")).toBe("venue/:id/deployments");
     expect(pageOf("market")).toBe("market");
   });
-  test("noticing reads a list, a record, and a refusal", () => {
+  test("noticing reads a list, a record, a refusal, and a tab closing", () => {
     const w = { doc: "d", ops: [] };
     expect(noticing(story("a", { as: "x", does: w, seen: ["x", "y"] }))).toEqual([["x", undefined], ["y", undefined]]);
     expect(noticing(story("b", { as: "x", does: w, seen: { x: "", y: "p/1" } }))).toEqual([["x", ""], ["y", "p/1"]]);
     expect(noticing(story("c", { as: "x", cannot: w }))).toEqual([]);
+    expect(noticing(story("d", { as: "x", closesTab: true, seen: ["y"] }))).toEqual([["y", undefined]]);
   });
 });
 
@@ -67,20 +68,21 @@ const w = (doc: string, op: "add" | "replace" | "remove", path: string, value?: 
 });
 const market: Stories = {
   cast: { seller: [], buyer: [], other: [] },
-  at: (where) => ({ doc: "tray", ops: [{ op: "replace", path: "/page", value: where }] }),
+  goTo: (address) => ({ doc: "session", ops: [{ op: "replace", path: "/page", value: address }] }),
   stories: [
     story("the seller lists a stall", { as: "seller", does: w("stall", "add", "/-", { name: "Fish", note: undefined, id: 9 }), seen: { seller: "" } }),
     story("the seller names the stall again", { as: "seller", does: w("stall", "replace", "/1/note", "fresh"), seen: { seller: "stall/1", buyer: "market" } }),
-    story("the seller adds a lot", { as: "seller", does: w("stall", "add", "/1/lots/-", { stall_id: 1, fish_id: 3, bin_id: 2, price: 4 }), seen: ["seller", "ghost"], unseen: ["nobody"] }),
+    story("the seller adds a lot", { as: "seller", does: w("stall", "add", "/1/lots/-", { stall_id: 1, fish_id: 3, bin_id: 2, price: 4 }), seen: ["seller", "ghost"], untold: ["nobody"] }),
     story("the buyer shelves a lot", { as: "buyer", does: w("bin", "add", "/-", { name: "top" }), seen: { buyer: "" } }),
     story("the seller shelves a lot too", { as: "seller", does: w("pantry", "add", "/1/bins/-", { name: "cold" }), seen: { seller: "" } }),
     story("the buyer offers", { as: "buyer", does: w("stall", "replace", "/1/lots/1/status", "offered"), seen: { seller: "stall/1" } }),
     story("the seller accepts", { as: "seller", does: w("stall", "replace", "/1/lots/1/status", "accepted"), seen: { seller: "stall/1", buyer: "market" } }),
     story("the seller reprices", { as: "seller", does: w("stall", "replace", "/1/lots/1/price", 5), seen: { seller: "stall/1" } }),
     story("the seller redates", { as: "seller", does: w("stall", "replace", "/1/lots/1/price", "2027-01-01"), seen: { seller: "stall/1" } }),
-    story("a stranger walks in", { as: "stranger", does: w("tray", "replace", "/page", "market"), seen: { stranger: "market" } }),
+    story("a stranger walks in", { as: "stranger", does: w("session", "replace", "/page", "market"), seen: { stranger: "market" } }),
     story("the buyer cannot rename a stall", { as: "buyer", cannot: w("stall", "replace", "/1/name", "Mine") }),
     story("the buyer changes a sign nobody adds", { as: "buyer", does: w("sign", "replace", "/1/text", "Open"), seen: { other: "" } }),
+    story("the other closes their tab", { as: "other", closesTab: true, seen: ["seller"] }),
   ],
 };
 
@@ -92,9 +94,9 @@ describe("fromStories", () => {
     expect(r.model.actors.map((a) => a.name)).toEqual(["seller", "buyer", "other", "stranger"]);
     expect(kinds("uncast-author").map((n) => n.where)).toEqual(["a stranger walks in"]);
   });
-  test("the tray is found by the example's own `at`, and its stories write nothing to the model", () => {
-    expect(r.tray).toBe("tray");
-    expect(kinds("tray-story").map((n) => n.where)).toEqual(["a stranger walks in"]);
+  test("the session is found by the example's own `goTo`, and its stories write nothing to the model", () => {
+    expect(r.session).toBe("session");
+    expect(kinds("session-story").map((n) => n.where)).toEqual(["a stranger walks in"]);
     expect(r.model.stories.find((s) => s.action === "a stranger walks in")!.writes).toEqual([]);
   });
   test("names nobody cast are noted, in seen and in unseen", () => {
@@ -127,8 +129,8 @@ describe("fromStories", () => {
     expect(lot.fields.find((f) => f.name === "price")!.type).toBe("number");
     expect(r.collections.get("PantryBin")).toBe("pantry/bins");
   });
-  test("an example without `at` has no tray", () => {
-    expect(fromStories({ cast: { a: [] }, stories: [] }).tray).toBeUndefined();
+  test("an example without `goTo` has no session to leave out", () => {
+    expect(fromStories({ cast: { a: [] }, stories: [] }).session).toBeUndefined();
   });
 });
 
@@ -136,7 +138,7 @@ describe("judge and format", () => {
   const { reading, report } = judge(market);
 
   test("counts", () => {
-    expect(report.counts).toEqual({ stories: 12, does: 11, cannot: 1, actors: 4, pages: 7, entities: 5, fields: 15 });
+    expect(report.counts).toEqual({ stories: 13, does: 11, cannot: 1, closesTab: 1, actors: 4, pages: 7, entities: 5, fields: 15 });
   });
   test("hjeli's predicates run unchanged: a row changed that no story adds is a gap", () => {
     expect(report.gaps.map((g) => `${g.predicate}:${g.kind}:${g.refs?.entity ?? g.refs?.actor}`)).toContain("precondition-closure:unestablished-row:Sign");
@@ -160,6 +162,7 @@ describe("judge and format", () => {
     expect(c.onlyOurs).toContain("PantryBin");
     const text = format("market", report, c);
     expect(text).toContain("# market: closure over stories");
+    expect(text).toContain("13 stories (11 does, 1 cannot, 1 closes a tab)");
     expect(text).toContain("unestablished-row · buyer: the buyer changes a sign nobody adds");
     expect(text).toContain("- shared by name (2): Stall, StallLot = Lot");
     expect(format("market", report)).not.toContain("Against the other model");
@@ -173,7 +176,7 @@ describe("judge and format", () => {
 describe("the examples", () => {
   test("chat reads without notes", () => {
     const { report } = judge(chat);
-    expect(report.counts.stories).toBe(10);
+    expect(report.counts.stories).toBe(11);
     expect(report.notes).toEqual([]);
   });
 
@@ -190,9 +193,9 @@ describe("the examples", () => {
     for (const twin of ["Stock", "Campaign", "OccasionPackage", "ProjectSupplyOffer", "EngagementScenario", "ProjectDeployment", "ProjectWindowAssignment"])
       expect(added.has(twin) || twin === "ProjectSupplyOffer").toBe(true);
     expect(added.has("Opportunity")).toBe(true);
-    // The tray is what `at` writes, and it is left out: the page's state, not the model's.
-    expect(reading.tray).toBe("session");
-    expect(londons.at!("venue/1 @ drawer=site/2, reading.map=deployments").ops).toEqual([
+    // The session is what `goTo` writes, and it is left out: the page's state, not the model's.
+    expect(reading.session).toBe("session");
+    expect(londons.goTo!("venue/1 @ drawer=site/2, reading.map=deployments").ops).toEqual([
       { op: "replace", path: "/page", value: "venue/1" },
       { op: "replace", path: "/drawer", value: "site/2" },
       { op: "replace", path: "/reading/map", value: "deployments" },

@@ -46,7 +46,7 @@ for (const m of deltaSrc.matchAll(/defineDoc\("(\w+):", \{ root: "(\w+)", includ
     ? raw.slice(1, -1).split(",").map((s) => s.trim()).filter(Boolean).flatMap((s) => (s.startsWith("...") ? consts.get(s.slice(3)) ?? [] : [s.replace(/"/g, "")]))
     : consts.get(raw) ?? [];
   const isVisit = !!m[4];
-  documents.push({ name: m[1]!, root: m[2]!, include, kind: isVisit ? "written, no ledger" : "written", note: isVisit ? "the tray: where a visit is" : "" });
+  documents.push({ name: m[1]!, root: m[2]!, include, kind: isVisit ? "written, no ledger" : "written", note: isVisit ? "the session: where a visit is" : "" });
 }
 for (const m of deltaSrc.matchAll(/registerMemory\(delta\.server, \{ prefix: "(\w+):"/g)) documents.push({ name: m[1]!, root: null, include: [], kind: "live", note: "kept by the server, in memory" });
 
@@ -81,7 +81,7 @@ function place(doc: string, path: string): { table: string | null; field: string
   }
   return { table, field };
 }
-const tray = stories.at?.("").doc ?? null;
+const session = stories.goTo?.("").doc ?? null;
 const permitted = (doc: string, op: string, path: string) => permits.some((p) => p.doc === doc && p.ops.includes(op) && new RegExp(p.path).test(path));
 
 // Every write the run makes, as the wire carried it: for a sequence drawn from a real run.
@@ -99,18 +99,18 @@ const heardAs = (m: Heard) =>
 const outcome = new Map(report.outcomes.map((o) => [o.name, o.failures]));
 
 const storyRows = stories.stories.map((s: Story, i) => {
-  const w = "does" in s ? s.does : s.cannot;
-  const seen = "does" in s ? (Array.isArray(s.seen) ? Object.fromEntries(s.seen.map((m) => [m, null])) : s.seen) : {};
+  const w = s.does ?? s.cannot; // none when a tab closes
+  const seen = s.seen ?? {};
   return {
     n: i + 1,
     name: s.name,
     as: s.as,
-    kind: "does" in s ? "does" : "cannot",
-    doc: w.doc,
-    tray: w.doc === tray,
-    ops: w.ops.map((op) => ({ op: op.op, path: op.path, ...place(w.doc, op.path), permitted: permitted(w.doc, op.op, op.path) })),
-    seen,
-    unseen: "does" in s ? s.unseen ?? [] : [],
+    kind: s.does ? "does" : s.cannot ? "cannot" : "closesTab",
+    doc: w?.doc ?? null,
+    session: w?.doc === session,
+    ops: (w?.ops ?? []).map((op) => ({ op: op.op, path: op.path, ...place(w!.doc, op.path), permitted: permitted(w!.doc, op.op, op.path) })),
+    seen: Array.isArray(seen) ? Object.fromEntries(seen.map((m) => [m, null])) : seen,
+    untold: s.untold ?? [],
     failures: outcome.get(s.name) ?? ["not run"],
     sequence: (traces.get(s.name) ?? []).map((t) => ({
       phase: t.phase,
@@ -131,5 +131,5 @@ const todo = Bun.file(`${import.meta.dir}/../todo.jsonl`);
 if (await todo.exists()) tasks = (await todo.text()).split("\n").filter(Boolean).map((l) => JSON.parse(l)).map((t) => ({ n: t.n, status: t.status, summary: t.summary, area: t.area }));
 
 // Written to a file, not stdout: an example may log while its stories run.
-await Bun.write(process.argv[3] ?? `${name}.json`, JSON.stringify({ example: name, tray, cast, castSetup, tables, documents, permits, stories: storyRows, harness: { passed: report.passed, failed: report.failed }, tasks }));
+await Bun.write(process.argv[3] ?? `${name}.json`, JSON.stringify({ example: name, session, cast, castSetup, tables, documents, permits, stories: storyRows, harness: { passed: report.passed, failed: report.failed }, tasks }));
 process.exit(0);

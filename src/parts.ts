@@ -19,9 +19,6 @@ export function part(key: string, html: string): string {
 /** A page with the props of every applet that takes its document's patches (`data-doc`) left out: how the stories compare a page, since props follow the patches between renders. */
 export const comparable = (html: string): string => html.replace(/<[^>]*\sdata-doc="[^"]*"[^>]*>/g, (tag) => tag.replace(/\sdata-props="[^"]*"/, ""));
 
-/** `html` with the props left out of the applets that take `doc`'s patches: after a write to `doc`, they have its ops already. */
-const takingPatchesOf = (doc: string | undefined) => (html: string): string =>
-  doc === undefined ? html : html.replace(/<[^>]*\sdata-doc="[^"]*"[^>]*>/g, (tag) => (tag.includes(` data-doc="${doc}"`) ? tag.replace(/\sdata-props="[^"]*"/, "") : tag));
 
 type Node = { key: string | null; html: string; skeleton: string; children: string[] };
 /** A drawn page: its HTML, and its parts as a tree (the page itself is the node keyed `null`). */
@@ -72,15 +69,21 @@ function layout(page: string, recorded: Recorded[]): Drawn {
 
 const target = (key: string): string => `[data-eta-part="${key.replaceAll('"', '\\"')}"]`;
 
+/** A part inside the part `key` (or, for `null`, the page). */
+const within = (key: string | null, inner: string): string => (key === null ? target(inner) : `${target(key)} ${target(inner)}`);
+
 /**
  * What to send to bring a page drawn as `prev` to `next`: HTML ops, `[]` when nothing on it
- * changed, or undefined when the page's own outline changed and it must go whole. `patched`, the
- * document just written as this page names it: an applet that takes its patches has had them, so
- * its props are not compared; any other change to its props (another document's) is sent.
+ * changed, or undefined when the page's own outline changed and it must go whole. An applet that
+ * takes its document's patches (`data-doc`) has props that are that document, whose every change
+ * reaches the page as a patch (the stories check they are, `unheld` in src/harness.ts). So they
+ * are not compared, and a change to them alone sends nothing; they go only with the mount itself,
+ * when a part that holds it is replaced or its own tag changes, as the render drew them. What
+ * follows where a person is belongs off the mount, so its tag does not change with it.
  */
-export function diff(prev: Drawn, next: Drawn, patched?: string): HtmlOp[] | undefined {
+export function diff(prev: Drawn, next: Drawn): HtmlOp[] | undefined {
   const ops: HtmlOp[] = [];
-  return settle(null, prev, next, ops, takingPatchesOf(patched)) ? ops : undefined;
+  return settle(null, prev, next, ops, comparable) ? ops : undefined;
 }
 
 /**
@@ -99,13 +102,14 @@ function settle(key: string | null, prev: Drawn, next: Drawn, ops: HtmlOp[], see
   if (pInside !== nInside) {
     if (!isList(pInside) || !isList(nInside) || pInside.replace(RUN, "") !== nInside.replace(RUN, "")) return false;
     if (tag) ops.push(tag);
-    // A list: the same outline around a run of rows. Rows gone are taken out; rows kept keep their
-    // order and are settled in turn; new rows go in after the row before them, or before the row
-    // after them. A list that was empty has neither, and is replaced.
+    // A list: the same outline around a run of rows. Rows gone are taken out -- a row that moved to
+    // another part, from this one, since a part drawn before this one may hold it already; rows
+    // kept keep their order and are settled in turn; new rows go in after the row before them, or
+    // before the row after them. A list that was empty has neither, and is replaced.
     const kept = n.children.filter((c) => p.children.includes(c));
     if (kept.join("\n") !== p.children.filter((c) => n.children.includes(c)).join("\n")) return false;
     if (kept.length === 0 && n.children.length > 0) return false;
-    for (const gone of p.children.filter((c) => !n.children.includes(c))) ops.push({ op: "remove", target: target(gone) });
+    for (const gone of p.children.filter((c) => !n.children.includes(c))) ops.push({ op: "remove", target: next.nodes.has(gone) ? within(key, gone) : target(gone) });
     n.children.forEach((c, i) => {
       if (p.children.includes(c)) return settleChild(c, prev, next, ops, seen);
       const html = next.nodes.get(c)!.html;

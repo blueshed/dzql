@@ -6,6 +6,8 @@ import { createServer } from "../../src/server";
 import { hear, type Heard } from "../../src/harness";
 import { assemble } from "../../src/compartments";
 import { example } from "./index";
+import { keepPresence } from "./presence";
+import { serverWrite } from "../../src/documents";
 
 /** delta, as a reader of its own -- not eta's copy, whose subscriptions a test must not disturb. */
 const inDelta = example.delta!.as("test");
@@ -19,9 +21,9 @@ async function messagesOf(room: string): Promise<{ id: string; name: string; tex
 /** The session that wrote a room's latest entry: the cursor in delta's ledger, which the wire never carries. */
 const lastWriterOf = (room: string): string => db.query<{ cursor: string }, [string]>("SELECT cursor FROM delta_ledger WHERE doc = ? ORDER BY id DESC LIMIT 1").get(`room:${room}`)!.cursor;
 
-/** The names of who is here, across the head of the conversation (`#people`: a face and a name each). */
+/** The names of who is here, across the head of the conversation (`#people`: a face and a name each, but for your own face, which goes unnamed but to a reader). */
 function peopleIn(html: string): string[] {
-  const faces = html.match(/<div [^>]*id="people"[^>]*>(.*?)<\/div>/)?.[1] ?? "";
+  const faces = html.match(/<ul [^>]*id="people"[^>]*>(.*?)<\/ul>/)?.[1] ?? "";
   return [...faces.matchAll(/<span class="note">([^<]*)<\/span>/g)].map((m) => m[1]!);
 }
 
@@ -158,12 +160,13 @@ describe("websocket write protocol", () => {
     ws.close();
   });
 
-  test("invalid JSON is ignored instead of crashing the connection", async () => {
+  test("invalid JSON is refused like any write that is not one, instead of crashing the connection", async () => {
     const ws = connect();
     await opened(ws);
     await expectMessage(ws, "render"); // initial name form
 
-    ws.send("not-json{{{"); // produces no response; the server must not crash
+    ws.send("not-json{{{"); // not a write: the page handed back, and the server goes on
+    expect(htmlOf(await expectMessage(ws, "render"))).toContain('id="name"');
 
     write(ws, "session", [{ op: "replace", path: "/name", value: "Still here" }]);
     await expectMessage(ws, "patch");
@@ -507,10 +510,13 @@ describe("chat", () => {
     const joined = await heard(a);
     expect(patchFor(joined.messages, `here:${room}`)!.ops).toEqual([{ op: "add", path: "/people/Bob", value: true }]);
     expect(renderIn(joined.messages)!.ops).toMatchObject([{ op: "replace", target: '[data-eta-part="people"]' }]);
-    expect(peopleIn(joined.page)).toEqual(["Alice", "Bob"]);
+    // Alice sees Bob named; herself, her face in her own colour and no name, since she knows who she
+    // is -- and a reader, who cannot see the colour, hears "You" among who is here, as her messages say
+    expect(peopleIn(joined.page)).toEqual(["Bob"]);
+    expect(joined.page).toContain('<ul data-eta-part="people" id="people" class="people" aria-label="Here"><li class="who"><span class="face me" aria-hidden="true">A</span><span class="sr-only">You</span></li><li class="who">');
 
     b.close();
-    expect(peopleIn((await heard(a)).page)).toEqual(["Alice"]);
+    expect(peopleIn((await heard(a)).page)).toEqual([]);
 
     a.close();
   });
@@ -530,18 +536,31 @@ describe("chat", () => {
     const c = connect();
     await login(c, "Carol", room);
     // not "Alice, Alice, Carol": two sockets, one person
-    expect(peopleIn((await heard(a)).page)).toEqual(["Alice", "Carol"]);
-    expect(peopleIn((await heard(b)).page)).toEqual(["Alice", "Carol"]);
+    expect(peopleIn((await heard(a)).page)).toEqual(["Carol"]);
+    expect(peopleIn((await heard(b)).page)).toEqual(["Carol"]);
+    expect(peopleIn((await heard(c)).page)).toEqual(["Alice"]);
 
     // b's tab closing doesn't change who is in the room (a's tab is still Alice's): nothing is sent
     b.close();
     const toA = await heard(a);
     expect(toA.messages).toEqual([]);
     expect((await heard(c)).messages).toEqual([]);
-    expect(peopleIn(toA.page)).toEqual(["Alice", "Carol"]);
+    expect(peopleIn(toA.page)).toEqual(["Carol"]);
 
     a.close();
     c.close();
+  });
+
+  test("who is here is kept one run at a time: two at once write the difference once, and neither is refused", async () => {
+    const room = crypto.randomUUID();
+    const a = connect();
+    await login(a, "Alice", room);
+    await serverWrite(`here:${room}`, [{ op: "add", path: "/people/Ghost", value: true }]); // held, and not here
+    // each run diffs the copy it reads: at once, both would take the ghost out, and delta refuses
+    // the second remove (404), and the rest of its batch with it
+    await Promise.all([keepPresence(), keepPresence()]);
+    expect((await inDelta.call("open", { doc: `here:${room}` })).result.people).toEqual({ Alice: true });
+    a.close();
   });
 
   test("logging out while in a room leaves it, broadcasting presence to the remaining members", async () => {
@@ -556,7 +575,7 @@ describe("chat", () => {
     await heard(b);
     const { messages, page } = await heard(a);
     expect(patchFor(messages, `here:${room}`)!.ops).toEqual([{ op: "remove", path: "/people/Bob" }]);
-    expect(peopleIn(page)).toEqual(["Alice"]);
+    expect(peopleIn(page)).toEqual([]);
 
     a.close();
     b.close();
@@ -589,7 +608,7 @@ describe("chat", () => {
     write(a, "room", [{ op: "add", path: "/messages/-", value: "and again" }]);
     const again = await heard(a);
     const secondId = (await messagesOf(room))[1]!.id;
-    expect(renderIn(again.messages)!.ops).toEqual([{ op: "after", target: `[data-eta-part="m${firstId}"]`, html: `<li data-eta-part="m${secondId}" id="m${secondId}" class="mine"><span class="face me" aria-hidden="true">A</span><div class="body"><span class="bubble">and again</span></div></li>` }]);
+    expect(renderIn(again.messages)!.ops).toEqual([{ op: "after", target: `[data-eta-part="m${firstId}"]`, html: `<li data-eta-part="m${secondId}" id="m${secondId}" class="mine"><div class="body"><span class="bubble">and again</span></div></li>` }]);
     a.close();
     b.close();
   });
@@ -661,7 +680,7 @@ describe("chat", () => {
     b.close();
   });
 
-  test("a thing is said once: a run of messages names its author once, and your own name nobody", async () => {
+  test("a thing is said once: a run of messages shows its author's face and name once, and your own run says only 'You', to a reader", async () => {
     const room = crypto.randomUUID();
     const ada = crypto.randomUUID();
     await inDelta.call("open", { doc: `session:${ada}` });
@@ -673,8 +692,13 @@ describe("chat", () => {
     const page = await assemble(example).draw(ada);
     const messages = page.slice(page.indexOf('id="messages"'));
     expect(messages.match(/<span class="name">Bob<\/span>/g)).toHaveLength(1); // three in a row, named once
+    expect(messages.match(/<span class="face" aria-hidden="true">B<\/span>/g)).toHaveLength(1); // and his face once, at the start of the run
+    expect(messages.match(/<span class="face-gap"><\/span>/g)).toHaveLength(2); // the rest keep its place
     expect(messages).not.toContain('<span class="name">Ada</span>'); // she knows who she is
+    expect(messages).not.toContain('class="face me"'); // her own face is in the strip of who is here, not beside her words
     expect(messages.match(/class="mine"/g)).toHaveLength(2); // hers are told apart by where they sit, not by her name again
+    expect(messages.match(/<span class="sr-only">You<\/span>/g)).toHaveLength(1); // and to a reader, who cannot see where they sit, once
+    expect(page).toContain('<input name="text" autocomplete="off" required autofocus placeholder="Message" aria-label="Message">'); // the field is named what it shows
   });
 
   test("send-message with blank text does not crash and does not stop further messages", async () => {
@@ -715,7 +739,7 @@ describe("chat", () => {
     await heard(a);
 
     b.close();
-    expect(peopleIn((await heard(a)).page)).toEqual(["RoomLeaverA"]);
+    expect(peopleIn((await heard(a)).page)).toEqual([]);
 
     const uniqueText = `still works after b left ${crypto.randomUUID()}`;
     write(a, "room", [{ op: "add", path: "/messages/-", value: uniqueText }]);

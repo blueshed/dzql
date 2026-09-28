@@ -4,8 +4,8 @@
 // `--against` runs hjeli over its own model of the same domain, for the comparison.
 
 import type { Stories } from "../src/stories";
-import { toEngineModel } from "../../blueshed/hjeli/src/core/document-first";
-import { runAll } from "../../blueshed/hjeli/src/core/predicates";
+import { toEngineModel } from "../../hjeli/src/core/document-first";
+import { runAll } from "../../hjeli/src/core/predicates";
 import { compare, format, judge } from "./report";
 
 const [name = "chat", ...rest] = process.argv.slice(2);

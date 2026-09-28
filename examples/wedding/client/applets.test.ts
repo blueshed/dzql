@@ -66,7 +66,8 @@ describe("photo applet's update()", () => {
       const beforeReveal = el.innerHTML.includes("descend");
       window.applets.photo.update(el, { entries, label: "x", reveal: true });
       const firstReveal = el.innerHTML.includes("descend");
-      window.applets.photo.update(el, { entries, label: "x", reveal: true });
+      // the next render that draws the photo again (someone joins), not only a fade
+      window.applets.photo.update(el, { entries: [...entries, { key: "2", spec: ${JSON.stringify(look)} }], label: "x", reveal: true });
       const secondReveal = el.innerHTML.includes("descend");
       return { beforeReveal, firstReveal, secondReveal };
     `);

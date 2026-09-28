@@ -2,39 +2,57 @@ import { db } from "./db";
 import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
-import type { Stories, Story, Write } from "./stories";
-import { applyPatch, type PatchOp } from "./json-patch";
-import { settled } from "./documents";
+import { STORY_KEYS, type Stories, type Story, type Write } from "./stories";
+import { applyPatch, type PatchOp, type WriteId } from "./json-patch";
+import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
+import { onFailure } from "./failed";
 import { comparable, splitTag } from "./parts";
+import { said } from "./refusal";
 
 export { comparable };
 
 // Runs an example's stories against it, over real sockets, and reports by story name. See
-// stories.md ("The harness"). Canon 1 is checked here: for every member of the cast, a fresh
-// render from the tables before and after the story, compared -- so a change that reaches a page
-// through an applet's patch (a tick) counts the same as one that reaches it as HTML. A member a
+// stories.md ("The harness"). Canon 1 is checked here: for every member of the cast, a render
+// from the server's copy of the documents, as a page is drawn (only Canon 2's reads the tables),
+// before and after the story, compared -- so a change that reaches a page through an applet's
+// patch (a tick) counts the same as one that reaches it as HTML. A member a
 // story says sees it on a page is put on that page first (`Stories.page`), since a person sees
 // only the page they are on. Then the story is undone and redone as its author, and the pages
 // must go back and forth with it; a write the ledger calls a fact (undoable = 0) must survive its
 // undo instead, and an author the example no longer counts as active (logged out) gets no undo.
-// A `cannot` must change no page and add nothing to the ledger. Each story runs inside one
-// database transaction that is rolled back afterwards, so every story starts from the cast alone.
+// Every write carries an id, as a page's does, so what answers it is its own: a `does` has landed
+// when its author is echoed the change with the write's id, whoever else writes meanwhile.
+// A `cannot` must change no page, add nothing to the ledger, and be answered: refused, by its own
+// write's id, and the writer's page handed back, showing them why when the story says what they
+// are `told` -- the reason its refusal gave, and nothing else. For a `does`, nobody the story
+// does not say sees it may notice it: a story names everyone
+// whose page changes. Delivery is checked as well as pages: a member the story says is `untold`
+// must be told of no document -- no patch -- by the write, its undo or its redo, and anything the
+// kernel reports failing while a story runs (a message, a drawing, a change being told) fails the
+// story. A tab that closes (`closesTab`) is told by its socket going: whoever is still looking must
+// see it as the story says, and there is nothing to undo. Each story runs inside one database
+// transaction that is rolled back afterwards, so every story starts from the cast and its own
+// premise alone.
 //
 // Canon 2 is checked here too, without a browser: every member's open page is kept as the client
 // would keep it -- a full render replaces it, a fragment render is applied target by target -- and
-// after the story, its undo and its redo, that page must equal a fresh render. So a write that
-// reaches the tables but not someone's open page fails, by name. An applet that takes its
-// document's patches itself (`data-doc`) is compared without its props: they follow the patches,
-// not the renders. What the morph does with the HTML is the browser tests' to check.
+// after the story, its undo and its redo, that page must equal a fresh render from storage: each
+// document the page reads read again from delta's tables, not from the copy the server draws from.
+// So a write that reaches the tables but not someone's open page fails, by name, and so does a
+// copy that drifted from the tables, which a render from the copy would only compare with itself.
+// An applet that takes its document's patches itself (`data-doc`) is compared without its props:
+// they follow the patches, not the renders. What the morph does with the HTML is the browser
+// tests' to check.
 
 export type Outcome = { name: string; failures: string[] };
 
-/** One write in a story's run, as the wire carried it: who sent what, what every member heard, and what the ledger took. For a sequence drawn from a real run. */
+/** One step of a story's run, for `run`'s observer: who wrote what (or closed their tab), what every member was sent, and what the ledger took. For a sequence drawn from a real run. */
 export type Trace = {
   story: string;
-  phase: "does" | "cannot" | "undo" | "redo";
+  phase: "does" | "cannot" | "undo" | "redo" | "closesTab";
   as: string;
-  write: Write;
+  /** None when a tab closes. */
+  write?: Write;
   heard: { member: string; messages: Heard[] }[];
   /** What the ledger took: the ops as written, and their inverse -- which holds what was there before. */
   ledger: { doc: string; undoable: number; ops: PatchOp[]; inverse: PatchOp[] }[];
@@ -58,6 +76,9 @@ function ledgerOf(): { max(): number; since(id: number): LedgerRow[] } {
   const since = db.query<LedgerRow, [number]>("SELECT id, doc, undoable, ops, inverse FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id");
   return { max: () => max.get()?.id ?? 0, since: (id) => since.all(id) };
 }
+
+/** A time after every write: a document opened as it stood then (`open_at`) is its rows as they stand. */
+const AFTER_EVERY_WRITE = "9999-12-31T23:59:59.999Z";
 
 const UNDO: Write = { doc: "ledger", ops: [{ op: "remove", path: "/latest" }] };
 const REDO: Write = { doc: "ledger", ops: [{ op: "add", path: "/latest" }] };
@@ -87,16 +108,16 @@ function applyOp(page: string, op: HtmlOp): string {
     .transform(page);
 }
 
-export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string };
+export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string; id?: WriteId; reason?: string };
 
 // The patch stream, checked. An applet that takes a document's patches (`data-doc`) holds props: the
 // ones the last render gave it, with every patch for that document laid on since, at the place in
-// its props the document sits (`data-at`, the root by default). That is what the client's applet
+// its props the document sits (`data-under`, the root by default). That is what the client's applet
 // holds, and it must be what a fresh render would give it -- or the ops did not say everything the
 // document did, or props that changed for another reason were never sent.
 
 /** An applet that takes a document's patches, as a member's page holds it. */
-type Taken = { applet: string; doc: string; at: string; props: string; ops: PatchOp[] };
+type Taken = { applet: string; doc: string; under: string; props: string; ops: PatchOp[] };
 
 const unescape = (value: string): string => value.replaceAll("&quot;", '"').replaceAll("&#39;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
 
@@ -108,12 +129,196 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
       element(el) {
         const applet = el.getAttribute("data-applet") ?? "";
         const key = el.getAttribute("id") ?? el.getAttribute("data-eta-part") ?? `${applet}#${found.size}`;
-        found.set(key, { applet, doc: el.getAttribute("data-doc")!, at: el.getAttribute("data-at") ?? "", props: unescape(el.getAttribute("data-props") ?? "null") });
+        found.set(key, { applet, doc: el.getAttribute("data-doc")!, under: el.getAttribute("data-under") ?? "", props: unescape(el.getAttribute("data-props") ?? "null") });
       },
     })
     .transform(page);
   return found;
 }
+
+/**
+ * A control a page offers (src/html.ts `write`): the document, op and path it writes, and the value
+ * a button carries (`data-value`, sent as a string). A field or a form writes whatever is typed, so
+ * any value. An applet draws its own controls in
+ * the browser, so it offers only what its mount says it writes (`data-writes`, src/html.ts), where
+ * a `*` segment of its path is any one, with any value or only the ones it names; one that says
+ * nothing offers nothing, whatever document it reads (`data-doc`), as the clock's face writes
+ * nothing to the clock it shows.
+ */
+export type Control = { doc: string; op: string; path: string; value?: string; free: boolean; pattern?: true };
+
+const OPS: readonly string[] = ["add", "replace", "remove"];
+
+/** Is this what `appletWrites` puts on a mount, one write of it: a document, an op and a JSON Pointer path, and the only values it sends, if it names them? */
+const isDeclared = (w: unknown): w is { doc: string; op: string; path: string; values?: (string | number | boolean)[] } => {
+  const { doc, op, path, values } = (typeof w === "object" && w !== null ? w : {}) as Record<string, unknown>;
+  const valued = values === undefined || (Array.isArray(values) && values.length > 0 && values.every((v) => ["string", "number", "boolean"].includes(typeof v)));
+  return typeof doc === "string" && doc !== "" && typeof op === "string" && OPS.includes(op) && typeof path === "string" && (path === "" || path.startsWith("/")) && valued;
+};
+
+// Where a page's elements end. A streaming parser is told of an end tag that is written, and of
+// one a parent's end implies; not of one the next start tag implies, as HTML leaves out `</p>`,
+// `</li>` and `</tr>`. So the elements open here are kept, and closed as HTML's rules close them.
+
+/** An element open where the parser is: its tag, and whether the browser lets anyone press what is in it. */
+type Open = { tag: string; blocks?: "always" | "fieldset"; legends?: number; frees?: boolean; closed?: true; ends?: () => void; disabled?: true };
+
+/** The start tags that close an open `<p>`: HTML's "close a p element" (in button scope). */
+const CLOSES_P = new Set(["address", "article", "aside", "blockquote", "center", "details", "dialog", "dir", "div", "dl", "dd", "dt", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "li", "listing", "main", "menu", "nav", "ol", "p", "pre", "search", "section", "summary", "table", "ul", "xmp"]);
+/** Where looking for an element to close stops: the scopes HTML looks in. */
+const SCOPE = ["html", "table", "td", "th", "caption", "marquee", "object", "applet", "template", "button"];
+/** For each start tag, what open element it closes when that element's end tag was left out, and where looking stops. */
+const IMPLIED: Record<string, { closes: string[]; stops: string[] }> = {
+  li: { closes: ["li"], stops: [...SCOPE, "ul", "ol"] },
+  dt: { closes: ["dt", "dd"], stops: [...SCOPE, "dl"] },
+  dd: { closes: ["dt", "dd"], stops: [...SCOPE, "dl"] },
+  tr: { closes: ["tr"], stops: ["html", "template", "table", "tbody", "thead", "tfoot"] },
+  td: { closes: ["td", "th"], stops: ["html", "template", "table", "tr"] },
+  th: { closes: ["td", "th"], stops: ["html", "template", "table", "tr"] },
+  tbody: { closes: ["tbody", "thead", "tfoot"], stops: ["html", "template", "table"] },
+  thead: { closes: ["tbody", "thead", "tfoot"], stops: ["html", "template", "table"] },
+  tfoot: { closes: ["tbody", "thead", "tfoot"], stops: ["html", "template", "table"] },
+  option: { closes: ["option"], stops: ["select", "datalist", "optgroup", ...SCOPE] },
+  optgroup: { closes: ["option", "optgroup"], stops: ["select", ...SCOPE] },
+};
+
+/**
+ * Every control on a page, as the server drew it: one the browser sends nothing from is none --
+ * drawn `disabled`, or `inert`, `hidden`, in a `<template>` or in a disabled fieldset (but for
+ * its first legend), itself or by what it is in. The page's address (`data-page-write`) is not on
+ * the page: the URL bar and the back button send it, so it offers nothing. An applet's
+ * declaration that is not `[doc, op, path]` (the form before ops, a hand-written attribute)
+ * offers nothing, and is said in `misdeclared`.
+ */
+export function controlsOn(page: string, misdeclared: string[] = []): Control[] {
+  const found: Control[] = [];
+  const spec = (attr: string | null) => (attr === null ? undefined : (JSON.parse(unescape(attr)) as { doc: string; op: string; path: string }));
+  const open: Open[] = [];
+  const closeTo = (at: number) =>
+    open.splice(at).reverse().forEach((e) => {
+      e.closed = true;
+      e.ends?.();
+    });
+  // a select that writes sends only what it can choose: each option not disabled, by its value or its words
+  let choosing: { spec: { doc: string; op: string; path: string }; option?: { text: string } } | undefined;
+  const pressable = (el: HTMLRewriterTypes.Element): boolean =>
+    !el.hasAttribute("inert") && !el.hasAttribute("hidden") && !open.some((e, i) => e.blocks === "always" || (e.blocks === "fieldset" && !open[i + 1]?.frees));
+  new HTMLRewriter()
+    .on("*", {
+      element(el) {
+        const tag = el.tagName;
+        for (const implied of [CLOSES_P.has(tag) && { closes: ["p"], stops: SCOPE }, IMPLIED[tag]]) {
+          if (!implied) continue;
+          for (let i = open.length - 1; i >= 0 && !implied.stops.includes(open[i]!.tag); i--) {
+            if (implied.closes.includes(open[i]!.tag)) {
+              closeTo(i);
+              break;
+            }
+          }
+        }
+        if (!el.canHaveContent || el.selfClosing) return; // nothing inside it: its own attributes say it (pressable)
+        const parent = open.at(-1);
+        const entry: Open = { tag };
+        if (el.hasAttribute("inert") || el.hasAttribute("hidden") || tag === "template") entry.blocks = "always";
+        else if (tag === "fieldset" && el.hasAttribute("disabled")) entry.blocks = "fieldset";
+        if (tag === "legend" && parent?.tag === "fieldset") entry.frees = (parent.legends = (parent.legends ?? 0) + 1) === 1; // its first legend is not disabled
+        if (tag === "option" && choosing && !el.hasAttribute("disabled") && !(parent?.tag === "optgroup" && parent.disabled)) {
+          const value = el.getAttribute("value");
+          const option = { text: "" };
+          const said = choosing;
+          if (value === null) choosing.option = option;
+          entry.ends = () => void found.push({ ...said.spec, value: value === null ? option.text.replace(/\s+/g, " ").trim() : unescape(value), free: false });
+        }
+        if (tag === "optgroup" && el.hasAttribute("disabled")) entry.disabled = true; // its options choose nothing
+        open.push(entry);
+        el.onEndTag(() => {
+          if (!entry.closed) closeTo(open.indexOf(entry));
+        });
+      },
+    })
+    .on("option:not([value])", { text: (t) => void (choosing?.option && (choosing.option.text += t.text)) })
+    .on("[data-write]", {
+      element(el) {
+        if (!pressable(el) || (el.hasAttribute("disabled") && ["button", "input", "textarea", "select"].includes(el.tagName))) return; // the browser sends nothing from it
+        const s = spec(el.getAttribute("data-write"))!;
+        if (el.tagName === "select") {
+          // what it can choose, as each option ends; several at once is no one value, which the client never sends
+          if (el.hasAttribute("multiple")) return;
+          const at = open.at(-1)!;
+          choosing = { spec: s };
+          at.ends = () => void (choosing = undefined);
+          return;
+        }
+        if (el.tagName === "input" && el.getAttribute("type") === "radio") return void found.push({ ...s, value: unescape(el.getAttribute("value") ?? "on"), free: false }); // a radio sends its own value
+        const value = el.getAttribute("data-value");
+        found.push({ ...s, value: value === null ? undefined : unescape(value), free: ["form", "input", "textarea"].includes(el.tagName) });
+      },
+    })
+    .on("[data-writes]", {
+      element(el) {
+        if (!pressable(el)) return;
+        const raw = unescape(el.getAttribute("data-writes")!);
+        const wrong = (what: string) => misdeclared.push(`applet declaration must be [doc, op, path]: ${el.getAttribute("data-applet") ?? "an applet"} says ${what}`);
+        let said: unknown;
+        try {
+          said = JSON.parse(raw);
+        } catch {
+          return void wrong(raw);
+        }
+        if (!Array.isArray(said)) return void wrong(raw);
+        for (const w of said) {
+          if (!isDeclared(w)) wrong(JSON.stringify(w));
+          else if (!w.values) found.push({ doc: w.doc, op: w.op, path: w.path, free: true, pattern: true });
+          else for (const value of w.values) found.push({ doc: w.doc, op: w.op, path: w.path, value: String(value), free: false, pattern: true });
+        }
+      },
+    })
+    .transform(page);
+  return found;
+}
+
+/** Where a page stands: its address, which the kernel's client mirrors in the URL (`data-page`). */
+export const placeOf = (page: string): string | undefined => {
+  const m = /\sdata-page="([^"]*)"/.exec(page);
+  return m ? unescape(m[1]!) : undefined;
+};
+
+/** The same document: named whole on one side and by its type alone on the other (`room`, `room:general`) counts. */
+const sameDoc = (a: string, b: string): boolean => a === b || a.startsWith(`${b}:`) || b.startsWith(`${a}:`);
+
+/** Does a path an applet names (`*` for any one member: an id, never `-`, the end of a list an append names as such) name this one? */
+const fits = (pattern: string, path: string): boolean => {
+  const want = pattern.split("/");
+  const have = path.split("/");
+  return want.length === have.length && want.every((segment, i) => (segment === "*" ? have[i] !== "-" : segment === have[i]));
+};
+
+/** Does `c` send this op to this document? A free control sends any value; a button only its own. */
+export function offers(c: Control, doc: string, op: PatchOp): boolean {
+  if (!sameDoc(c.doc, doc)) return false;
+  if (c.pattern) return c.op === op.op && fits(c.path, op.path) && (c.value === undefined || ("value" in op && String(op.value) === c.value)); // an applet's own: exactly what its mount names
+  if (c.op !== op.op || c.path !== op.path) return false;
+  return c.free || (c.value === undefined ? !("value" in op) || op.value === undefined : "value" in op && String(op.value) === c.value);
+}
+
+/**
+ * Where a control goes, if it goes anywhere: the address `goTo` makes exactly its write of -- a
+ * button's own value (`data-value`), the one write a person sends by pressing it, or one an
+ * applet's mount names for a tap (`appletWrites`, with values). A field, a form and an applet that
+ * names no value take any value, so they lead nowhere in particular; and the URL bar and the back
+ * button are not on the page (`controlsOn`).
+ */
+export function goesTo(c: Control, goTo: (address: string) => Write): string | undefined {
+  if (c.free || c.value === undefined) return undefined;
+  const w = goTo(c.value);
+  return sameDoc(w.doc, c.doc) && w.ops.some((op) => op.op === c.op && op.path === c.path && "value" in op && String(op.value) === c.value) ? c.value : undefined; // the op of it that sets the address: going somewhere may put other things away too
+}
+
+/** One way on: from where a member stood, the control on their page there that took them to `to`. */
+export type Step = { from: string; to: string; control: Control };
+
+/** The most places the harness walks for one member, looking for a way to a place a story names: enough for any page's drawers, not for a calendar's every month. */
+const MOST_PLACES = 400;
 
 /** A member's applets after a render: one whose props the render changed starts again from them; one it left alone keeps the ops it has taken. */
 export function retake(taken: Map<string, Taken>, page: string): void {
@@ -121,7 +326,7 @@ export function retake(taken: Map<string, Taken>, page: string): void {
   for (const key of taken.keys()) if (!now.has(key)) taken.delete(key);
   for (const [key, a] of now) {
     const held = taken.get(key);
-    if (!held || held.props !== a.props || held.doc !== a.doc || held.at !== a.at) taken.set(key, { ...a, ops: [] });
+    if (!held || held.props !== a.props || held.doc !== a.doc || held.under !== a.under) taken.set(key, { ...a, ops: [] });
   }
 }
 
@@ -146,7 +351,7 @@ export function unheld(whose: string, taken: Map<string, Taken>, freshPage: stri
 /** What an applet holds now: its props with the ops it has taken laid on; or why the ops do not land. */
 export function holding(t: Taken): { value: unknown } | { error: string } {
   try {
-    return { value: applyPatch(JSON.parse(t.props), t.ops.map((op) => ({ ...op, path: t.at + op.path }))) };
+    return { value: applyPatch(JSON.parse(t.props), t.ops.map((op) => ({ ...op, path: t.under + op.path }))) };
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -161,22 +366,100 @@ export function hear(page: string, message: Heard): string {
 
 
 
+/**
+ * Why a story is not one kind of story with only that kind's keys (`STORY_KEYS`), if it is not. A
+ * story file runs without being type-checked, and a key the harness does not read would otherwise
+ * be dropped without a word: `{ does, closesTab }` would close a tab and never write.
+ */
+export function misshapen(story: Story): string[] {
+  const given = Object.entries(story).filter(([, value]) => value !== undefined).map(([key]) => key);
+  const kinds = (Object.keys(STORY_KEYS) as (keyof typeof STORY_KEYS)[]).filter((kind) => given.includes(kind));
+  if (kinds.length !== 1) return [`a story is one of does, cannot or closesTab, and this one has ${kinds.length ? kinds.join(" and ") : "none"}`];
+  const kind = kinds[0]!;
+  const takes: readonly string[] = ["name", "as", "premise", ...STORY_KEYS[kind]];
+  const why = given.filter((key) => !takes.includes(key)).map((key) => `a ${kind} story takes no ${key}`);
+  if (kind === "closesTab" && story.closesTab !== true) why.push(`closesTab is true, or left out: this one is ${JSON.stringify(story.closesTab)}`);
+  return why;
+}
+
 export async function run(example: Example, stories: Stories, observe?: (trace: Trace) => void): Promise<Report> {
   const server = createServer(example, 0);
-  const { draw, documents } = assemble(example);
+  const { draw, page, documents } = assemble(example);
   const active = (sessionId: string): Promise<boolean> => settled(documents, () => example.active(sessionId));
   const ledger = ledgerOf();
   const ledgerMax = ledger.max;
   const outcomes: Outcome[] = [];
+  // what the kernel reports failing goes to the story being told
+  let failing: string[] | undefined;
+  const hearFailures = onFailure((what, err) => failing?.push(`the server failed ${what}: ${err instanceof Error ? err.message : String(err)}`));
+
+  // Where a person can go, judged from where each story starts: the cast, as its own writes left
+  // it, and the story's premise. The places a story names are walked in a cast of its own in that
+  // state, from where it put each member: every page a member is drawn there is kept by where it
+  // stands (`data-page`), with its controls, and a place is somewhere they can get to when a
+  // control on a page they can get to leads there (`goesTo`). The pages of the stories as they
+  // are told are not kept: a plus another story's write drew is not one this story starts with.
+  type State = { pages: Map<string, Map<string, Map<string, Control>>>; starts: Map<string, string | undefined> }; // member → place → controls, by what each writes
+  let walked: State | undefined; // the state being walked, whose pages are kept
+  function keep(m: Member): void {
+    const at = placeOf(m.page);
+    if (!walked || at === undefined) return;
+    const byPlace = walked.pages.get(m.name) ?? walked.pages.set(m.name, new Map()).get(m.name)!;
+    const here = byPlace.get(at) ?? byPlace.set(at, new Map()).get(at)!;
+    for (const c of controlsOn(m.page)) here.set(JSON.stringify(c), c);
+  }
+
+  /**
+   * Canon 2's fresh render: the page drawn from storage. Each document it reads is opened again
+   * from delta's tables (`open_at`). One the tables do not hold is nothing, as the kernel holds a
+   * document delta cannot open, so a row they lost fails; only one with no tables at all -- delta's
+   * memory kinds, whose memory is where they are kept -- is the server's copy. The page reads the
+   * active copy, so this one is made active while it draws, and only then: a drawing is synchronous.
+   */
+  async function fresh(sessionId: string): Promise<string> {
+    const stored = new Map<string, unknown>();
+    const copy: Documents = {
+      ...documents,
+      read: <T>(doc: string): T => {
+        if (!stored.has(doc)) throw new Pending(doc);
+        return stored.get(doc) as T;
+      },
+      load: async (doc: string) => {
+        const { result, error } = await example.delta.call("open_at", { doc, at: AFTER_EVERY_WRITE });
+        if (error?.message.startsWith("No handler matched")) stored.set(doc, await settled(documents, () => documents.read(doc)));
+        else if (error && error.code !== 404) throw new Error(`${doc} could not be read from storage: ${error.message}`);
+        else stored.set(doc, result);
+      },
+    };
+    return settled(copy, () => {
+      const serving = activeDocuments();
+      setActiveDocuments(copy);
+      try {
+        return page(sessionId);
+      } finally {
+        setActiveDocuments(serving);
+      }
+    });
+  }
 
   async function snapshot(cast: Member[]): Promise<Snapshot> {
     return new Map(await Promise.all(cast.map(async (m) => [m.name, await draw(m.sessionId)] as const)));
   }
 
+  /** Signs a member in through the example's own route, as a browser posts its form: the session the answer's cookie names, or undefined for a visitor. */
+  async function signIn(name: string): Promise<string | undefined> {
+    const how = stories.signIn?.(name);
+    if (!how) return undefined;
+    const res = await fetch(new URL(how.path, server.url), { method: "POST", body: new URLSearchParams(how.form), redirect: "manual" });
+    const sessionId = /(?:^|;\s*|,\s*)session_id=([^;,\s]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
+    if (!sessionId) throw new Error(`${name} could not sign in at ${how.path}: ${res.status}`);
+    return sessionId;
+  }
+
   async function connect(name: string): Promise<Member> {
     const url = new URL("/ws", server.url);
     url.protocol = "ws:";
-    const sessionId = crypto.randomUUID();
+    const sessionId = (await signIn(name)) ?? crypto.randomUUID();
     // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
     const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } });
     const member: Member = { name, sessionId, ws, inbox: [], page: "", taken: new Map(), answered: [] };
@@ -185,7 +468,10 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       if (message.type === "inspect") return member.answered.shift()?.();
       member.inbox.push(String(event.data));
       member.page = hear(member.page, message);
-      if (message.type === "render") retake(member.taken, member.page);
+      if (message.type === "render") {
+        retake(member.taken, member.page);
+        keep(member);
+      }
       if (message.type === "patch") for (const t of member.taken.values()) if (t.doc === message.doc) t.ops.push(...(message.ops as unknown as PatchOp[]));
     });
     await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
@@ -207,9 +493,68 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     );
   }
 
-  async function send(cast: Member[], who: Member, write: Write): Promise<void> {
-    who.ws.send(JSON.stringify(write));
+  let writes = 0;
+
+  /** Sends a write as `who`, with an id of its own as a page sends it, and waits for the wire to go quiet: the id, to find its answer by. */
+  async function send(cast: Member[], who: Member, write: Write): Promise<number> {
+    const id = ++writes;
+    who.ws.send(JSON.stringify({ id, ...write }));
     await settle(cast);
+    return id;
+  }
+
+  /**
+   * Puts a member where a story says (`Stories.goTo`). Where a page says where it stands
+   * (`data-page`), it must now stand there: a place the example does not have leaves them where
+   * they were, and a story that claims they saw something there has not shown it.
+   */
+  async function put(cast: Member[], m: Member, where: string, failures: string[]): Promise<void> {
+    if (!stories.goTo) return;
+    await send(cast, m, stories.goTo(where));
+    const stands = placeOf(m.page);
+    const asked = where.split(" @ ")[0]!;
+    if (stands !== undefined && stands !== asked) failures.push(`${m.name} could not be put on ${JSON.stringify(where)}: their page is at ${JSON.stringify(stands)}`);
+  }
+
+  /** Where each member's inbox stands now, to ask later what they were sent since. */
+  const mark = (cast: Member[]): Map<Member, number> => new Map(cast.map((m) => [m, m.inbox.length]));
+
+  /** What `m` has been sent since `from`, parsed. */
+  const sentSince = (m: Member, from: Map<Member, number>): Heard[] => m.inbox.slice(from.get(m)).map((raw) => JSON.parse(raw) as Heard);
+
+  /** What answered write `id`, sent by `m` since `from`: its own echo (a patch), its refusal, or nothing. */
+  const answerTo = (m: Member, id: WriteId, from: Map<Member, number>): Heard | undefined => sentSince(m, from).find((h) => h.id === id && (h.type === "patch" || h.type === "refused"));
+
+  /** Did something land since `from`: a document changed, and someone was told (a refusal changes none)? */
+  const landedSince = (cast: Member[], from: Map<Member, number>): boolean => cast.some((m) => sentSince(m, from).some((h) => h.type === "patch" && h.doc !== "refusal"));
+
+  /**
+   * The story's own premise, made after the cast's writes: each write as its member. Why it does
+   * not hold, if it does not: then the story is not told. A write that changes nothing fails it,
+   * whether refused or already so -- the wire answers both `refused` -- since a premise says what
+   * a story starts from, and a write that moved nothing says it wrongly.
+   */
+  async function premise(cast: Member[], story: Story): Promise<string[]> {
+    const why: string[] = [];
+    for (const [name, writes] of Object.entries(story.premise ?? {})) {
+      const m = cast.find((c) => c.name === name);
+      if (!m) why.push(`the premise names ${name}, and no one in the cast is called that`);
+      else for (const write of writes) {
+        const from = mark(cast);
+        const answer = answerTo(m, await send(cast, m, write), from);
+        if (answer?.type !== "patch") why.push(`the premise did not hold: ${name}'s write to ${write.doc} changed nothing${answer?.reason ? `: "${answer.reason}"` : ""}`);
+      }
+    }
+    return why;
+  }
+
+  /** An `untold` member is told of nothing: sent no document's ops. */
+  function checkUntold(cast: Member[], untold: string[] | undefined, from: Map<Member, number>, when: string, failures: string[]): void {
+    for (const m of cast) {
+      if (!untold?.includes(m.name)) continue;
+      const docs = new Set(sentSince(m, from).filter((h) => h.type === "patch").map((h) => h.doc));
+      for (const doc of docs) failures.push(`${when}, ${m.name} was told of ${doc}, and should not have been`);
+    }
   }
 
   function differs(a: Snapshot, b: Snapshot, name: string): boolean {
@@ -220,112 +565,309 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     for (const m of cast) if (differs(a, b, m.name)) failures.push(`${what}: ${m.name}'s page differs${excerpt(a.get(m.name)!, b.get(m.name)!)}`);
   }
 
-  /** Canon 2: what each member's open page holds must be what a fresh render shows. */
-  /** The patch stream: what each member's applets hold must be what a fresh render gives them. */
-  async function held(cast: Member[], when: string, failures: string[]): Promise<void> {
-    for (const m of cast) failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, await draw(m.sessionId)));
+  /** `seen` must notice, and everyone else must not (R3): nobody's page changes unless the story says so. */
+  function noticed(before: Snapshot, after: Snapshot, looking: Member[], seen: Map<string, string | undefined>, failures: string[]): void {
+    for (const m of looking) {
+      if (seen.has(m.name)) {
+        if (!differs(before, after, m.name)) failures.push(`${m.name} did not see it${where(seen.get(m.name))}`);
+      } else if (differs(before, after, m.name)) failures.push(`${m.name} noticed, and should not have${excerpt(before.get(m.name)!, after.get(m.name)!)}`);
+    }
   }
 
+  /** Closes a member's tab, as a browser does: resolved once it is closed. The server has then been told, and what it sets going is `server.idle()`'s to wait for. */
+  function closeTab(m: Member): Promise<unknown> {
+    if (m.ws.readyState === WebSocket.CLOSED) return Promise.resolve();
+    const closed = new Promise((resolve) => m.ws.addEventListener("close", resolve, { once: true }));
+    m.ws.close();
+    return closed;
+  }
+
+  /** The patch stream: what each member's applets hold must be what a fresh render gives them. */
+  async function held(cast: Member[], when: string, failures: string[]): Promise<void> {
+    for (const m of cast) failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, await fresh(m.sessionId)));
+  }
+
+  /** Canon 2: what each member's open page holds must be what a fresh render shows. */
   async function stale(cast: Member[], when: string, failures: string[]): Promise<void> {
     await held(cast, when, failures);
     for (const m of cast) {
-      const fresh = comparable(await draw(m.sessionId));
+      const drawn = comparable(await fresh(m.sessionId));
       const held = comparable(m.page);
-      if (held !== fresh) failures.push(`${when}, ${m.name}'s open page is not what a fresh render shows${excerpt(fresh, held)}`);
+      if (held !== drawn) failures.push(`${when}, ${m.name}'s open page is not what a fresh render shows${excerpt(drawn, held)}`);
     }
   }
 
   async function tell(story: Story): Promise<Outcome> {
+    const unshaped = misshapen(story);
+    if (unshaped.length > 0) return { name: story.name, failures: unshaped }; // not a story the harness can tell: nothing is run
     const failures: string[] = [];
-    /** A send, witnessed for `observe`: what each member heard from it, and the ledger's new entries. */
-    async function told(cast: Member[], who: Member, write: Write, phase: Trace["phase"]): Promise<void> {
-      const marks = cast.map((m) => m.inbox.length);
-      const ledgerBefore = ledgerMax();
-      await send(cast, who, write);
+    failing = failures;
+    /** What a step of the story carried, for `observe`: what each of `cast` was sent since `from`, and the ledger's entries since `entry`. */
+    function witness(phase: Trace["phase"], who: Member, write: Write | undefined, cast: Member[], from: Map<Member, number>, entry: number): void {
       observe?.({
         story: story.name,
         phase,
         as: who.name,
         write,
-        heard: cast.map((m, i) => ({ member: m.name, messages: m.inbox.slice(marks[i]).map((raw) => JSON.parse(raw) as Heard) })),
-        ledger: ledger.since(ledgerBefore).map(({ doc, undoable, ops, inverse }) => ({ doc, undoable, ops: JSON.parse(ops) as PatchOp[], inverse: JSON.parse(inverse) as PatchOp[] })),
+        heard: cast.map((m) => ({ member: m.name, messages: sentSince(m, from) })),
+        ledger: ledger.since(entry).map(({ doc, undoable, ops, inverse }) => ({ doc, undoable, ops: JSON.parse(ops) as PatchOp[], inverse: JSON.parse(inverse) as PatchOp[] })),
       });
+    }
+    /** `send`, witnessed. */
+    async function told(cast: Member[], who: Member, write: Write, phase: Trace["phase"]): Promise<number> {
+      if (!observe) return send(cast, who, write);
+      const from = mark(cast);
+      const entry = ledgerMax();
+      const id = await send(cast, who, write);
+      witness(phase, who, write, cast, from, entry);
+      return id;
     }
     db.exec("BEGIN");
     const cast: Member[] = [];
     try {
-      for (const name of Object.keys(stories.cast)) cast.push(await connect(name));
-      await settle(cast);
-      for (const m of cast) for (const write of stories.cast[m.name]!) await send(cast, m, write);
+      await gather(cast);
 
       const who = cast.find((m) => m.name === story.as);
       if (!who) return { name: story.name, failures: [`no one in the cast is called ${story.as}`] };
+      const why = await premise(cast, story);
+      if (why.length > 0) return { name: story.name, failures: [...failures, ...why] }; // not the state the story starts from: nothing it finds would be true of it
 
-      if ("cannot" in story) {
+      if (story.cannot !== undefined) {
+        if (story.from !== undefined) await put(cast, who, story.from, failures);
         const before = await snapshot(cast);
         const ledgerBefore = ledgerMax();
-        await told(cast, who, story.cannot, "cannot");
-        compare(before, await snapshot(cast), cast, "refused, but", failures);
+        const from = mark(cast);
+        // P3: a button on the author's page that sends exactly this, refused without a word, is a control that always fails
+        const buttons = controlsOn(who.page, failures).filter((c) => !c.free);
+        if (story.told === undefined && story.cannot.ops.every((op) => buttons.some((c) => offers(c, story.cannot.doc, op)))) failures.push(`${who.name}'s page offers this, and it is refused without a word: a control that always fails`);
+        const answer = answerTo(who, await told(cast, who, story.cannot, "cannot"), from);
+        const handedBack = sentSince(who, from).some((h) => h.type === "render");
+        if (answer?.type === "patch") failures.push(`refused, but it landed: ${who.name}'s write was echoed back to them`);
+        else if (!answer || !handedBack) failures.push(`refused, but ${who.name} was not answered: ${answer ? "the page was not handed back" : "no refusal carried their write's id"}`);
+        const after = await snapshot(cast);
+        if (story.told !== undefined) {
+          // told why: by the refusal of their own write, and on their page, the one change it may show
+          const page = after.get(who.name)!;
+          const reason = answer?.type === "refused" ? answer.reason : undefined;
+          if (reason !== story.told) failures.push(`refused, but ${who.name} was not told "${story.told}"${reason === undefined ? "" : `: they were told "${reason}"`}`);
+          else if (!page.includes(said(story.told))) failures.push(`refused and told "${story.told}", but ${who.name}'s page does not show it`);
+          after.set(who.name, page.replace(said(story.told), ""));
+        }
+        compare(before, after, cast, "refused, but", failures);
         await stale(cast, "after the refusal", failures);
         if (ledgerMax() !== ledgerBefore) failures.push("refused, but the ledger moved");
         return { name: story.name, failures };
       }
 
       // Who should notice, and where: a list leaves them where the cast put them; a record puts
-      // each where it says, in the example's own grammar for "where" (`Stories.at`).
+      // each where it says, in the example's own grammar for "where" (`Stories.goTo`).
       const seen = new Map<string, string | undefined>(Array.isArray(story.seen) ? story.seen.map((n) => [n, undefined]) : Object.entries(story.seen));
       for (const [name, where] of seen) {
         const m = cast.find((c) => c.name === name);
         if (!m) failures.push(`no one in the cast is called ${name}`);
-        else if (where !== undefined && stories.at) await send(cast, m, stories.at(where));
+        else if (where !== undefined) await put(cast, m, where, failures);
       }
+
+      if (story.closesTab) {
+        // No write: the author's socket goes, and whoever is still looking is told what follows
+        // (who is in a room). No control is looked for, and there is nothing to undo.
+        const looking = cast.filter((m) => m !== who);
+        if (seen.has(who.name)) failures.push(`${who.name} closed their tab: they are not there to see it`);
+        const before = await snapshot(looking);
+        const from = mark(looking);
+        const entry = ledgerMax();
+        await closeTab(who);
+        await server.idle(); // the close handled, and what it set going
+        await settle(looking);
+        witness("closesTab", who, undefined, looking, from, entry);
+        if (!landedSince(looking, from)) failures.push(`nothing landed: closing ${who.name}'s tab changed nothing`);
+        checkUntold(looking, story.untold, from, "after the tab closed", failures);
+        const after = await snapshot(looking);
+        await stale(looking, "after the tab closed", failures);
+        noticed(before, after, looking, seen, failures);
+        return { name: story.name, failures };
+      }
+
+      if (story.from !== undefined) await put(cast, who, story.from, failures);
+      // P1: the author's page offers a control for it -- unless it comes from no page (`offPage`)
+      const offered = controlsOn(who.page, failures);
+      if (!story.offPage) for (const op of story.does.ops) if (!offered.some((c) => offers(c, story.does.doc, op))) failures.push(`${who.name} has no control on their page for ${op.op} ${op.path} on ${story.does.doc}`);
 
       const before = await snapshot(cast);
       const ledgerBefore = ledgerMax();
-      who.inbox.length = 0;
-      await told(cast, who, story.does, "does");
-      if (process.env.STORY_TRACE) for (const raw of who.inbox) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
+      const stood = placeOf(who.page);
+      let from = mark(cast);
+      const answer = answerTo(who, await told(cast, who, story.does, "does"), from);
+      // Where the write left its author: answering a modal puts it away (off the ledger, a visit),
+      // so the undo and the redo are looked at from where each was taken -- where the author stands
+      // is theirs, not the write's.
+      const landed = placeOf(who.page);
+      const moved = stories.goTo && stood !== undefined && landed !== undefined && stood !== landed;
+      if (answer?.type !== "patch") failures.push(answer ? `nothing landed: ${who.name}'s write was refused${answer.reason ? `: "${answer.reason}"` : ""}` : `${who.name}'s write was not answered: no echo carried its id`);
+      if (process.env.STORY_TRACE) for (const raw of who.inbox.slice(from.get(who))) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
+      checkUntold(cast, story.untold, from, "after the story", failures);
       const after = await snapshot(cast);
       const entries = ledger.since(ledgerBefore);
       await stale(cast, "after the story", failures);
 
-      // Only what the story says is asked: `seen` must notice, `unseen` must not; anyone in
-      // neither is left alone (a home page with counts on it changes for many reasons).
-      for (const m of cast) {
-        if (seen.has(m.name)) {
-          if (!differs(before, after, m.name)) failures.push(`${m.name} did not see it${where(seen.get(m.name))}`);
-        } else if (story.unseen?.includes(m.name) && differs(before, after, m.name)) failures.push(`${m.name} noticed, and should not have`);
-      }
+      noticed(before, after, cast, seen, failures); // an `untold` member is further told of nothing (above)
 
       if (entries.length === 0) return { name: story.name, failures }; // off the ledger: nothing to undo
       if (!(await active(who.sessionId))) return { name: story.name, failures }; // the author has gone (logged out): no undo is theirs to press
 
       const facts = entries.every((e) => e.undoable === 0);
+      from = mark(cast);
       await told(cast, who, UNDO, "undo");
+      if (moved) await send(cast, who, stories.goTo!(stood!));
       const afterUndo = await snapshot(cast);
       await stale(cast, "after undo", failures);
+      checkUntold(cast, story.untold, from, "after undo", failures);
       if (facts) compare(after, afterUndo, cast, "a fact, yet undo changed it", failures);
       else {
         compare(before, afterUndo, cast, "undo did not restore", failures);
         if (!(await active(who.sessionId))) return { name: story.name, failures }; // the undo was their going (a name taken back): no redo is theirs to press
+        from = mark(cast);
         await told(cast, who, REDO, "redo");
+        if (moved) await send(cast, who, stories.goTo!(landed!));
         compare(after, await snapshot(cast), cast, "redo did not restore", failures);
         await stale(cast, "after redo", failures);
+        checkUntold(cast, story.untold, from, "after redo", failures);
       }
       return { name: story.name, failures };
     } finally {
-      for (const m of cast) m.ws.close();
-      await Promise.all(cast.map((m) => new Promise((resolve) => (m.ws.readyState === WebSocket.CLOSED ? resolve(undefined) : m.ws.addEventListener("close", resolve, { once: true })))));
-      await server.idle(); // every close handled, and what it set going
-      db.exec("ROLLBACK");
-      await documents.release(new Set()); // the next story reads from the rolled-back database
+      await disband(cast);
+      failing = undefined;
+    }
+  }
+
+  /** The cast, connected, each member where their own writes put them: where every story starts, inside a transaction. */
+  async function gather(cast: Member[]): Promise<void> {
+    for (const name of Object.keys(stories.cast)) cast.push(await connect(name));
+    await settle(cast);
+    for (const m of cast) for (const write of stories.cast[m.name]!) await send(cast, m, write);
+  }
+
+  /** Every tab closed, and the transaction rolled back: the next story reads from the database as the seed left it. */
+  async function disband(cast: Member[]): Promise<void> {
+    await Promise.all(cast.map(closeTab));
+    await server.idle(); // every close handled, and what it set going
+    db.exec("ROLLBACK");
+    await documents.release(new Set());
+  }
+
+  /**
+   * The ways from `start` to each of `places` for `name`, in `state`, over the controls their pages
+   * there offered: a place's own is its address, before any " @ ". A place on the way that
+   * `name` has not stood on is stood on now (`visit`), so the way through any page is found; and so
+   * is each of `places` reached, so what its own page sends is known (what follows " @ ").
+   */
+  async function waysFor(state: State, name: string, start: string | undefined, places: Set<string>, visit: (place: string) => Promise<void>): Promise<Map<string, Step[]>> {
+    const via = new Map<string, Step | undefined>();
+    if (start !== undefined) via.set(start, undefined);
+    const queue = start === undefined ? [] : [start];
+    const missing = () => [...places].some((p) => !via.has(p));
+    while (queue.length > 0 && missing() && via.size < MOST_PLACES) {
+      const at = queue.shift()!;
+      if (!state.pages.get(name)?.has(at)) await visit(at);
+      // a page's own controls before an applet's: the gestures press what the page draws
+      const here = [...(state.pages.get(name)?.get(at)?.values() ?? [])].sort((a, b) => Number(!!a.pattern) - Number(!!b.pattern));
+      for (const control of here) {
+        const to = goesTo(control, stories.goTo!);
+        if (to === undefined || via.has(to)) continue;
+        via.set(to, { from: at, to, control });
+        queue.push(to);
+      }
+    }
+    const ways = new Map<string, Step[]>();
+    for (const place of places) {
+      if (!via.has(place)) continue;
+      if (!state.pages.get(name)?.has(place)) await visit(place);
+      const steps: Step[] = [];
+      for (let step = via.get(place); step; step = via.get(step.from)) steps.unshift(step);
+      ways.set(place, steps);
+    }
+    return ways;
+  }
+
+  /**
+   * Walks the places `wanted` names from where `story` starts -- the cast, then its premise -- in
+   * a cast of its own, rolled back after: where each member stood, their pages there, and the ways
+   * to each place. Undefined when the premise does not hold: the story says so when it is told.
+   */
+  async function walk(story: Story, wanted: Map<string, Set<string>>): Promise<{ state: State; ways: Map<string, Map<string, Step[]>> } | undefined> {
+    const state: State = { pages: new Map(), starts: new Map() };
+    const walking: Member[] = [];
+    db.exec("BEGIN");
+    try {
+      await gather(walking);
+      if ((await premise(walking, story)).length > 0) return undefined;
+      walked = state;
+      for (const m of walking) {
+        state.starts.set(m.name, placeOf(m.page));
+        keep(m);
+      }
+      const ways = new Map<string, Map<string, Step[]>>();
+      for (const [name, places] of wanted) {
+        const m = walking.find((w) => w.name === name)!;
+        ways.set(name, await waysFor(state, name, state.starts.get(name), places, async (place) => { await send(walking, m, stories.goTo!(place)); }));
+      }
+      return { state, ways };
+    } finally {
+      walked = undefined;
+      await disband(walking);
+    }
+  }
+
+  /**
+   * Can each story's author get to its `from`, and each member it puts somewhere in `seen` get
+   * there, by the controls their pages offer? A place a story names that no control leads to fails
+   * that story, by name: the harness put them there, and a person could not. After " @ ", what
+   * else the place holds (find's word, a reading) must be sent by a control on the page there.
+   * Places on the way that no story stood on are walked in a cast of their own, rolled back after.
+   */
+  async function reach(told: { story: Story; outcome: Outcome }[]): Promise<void> {
+    const named = told.filter(({ story }) => misshapen(story).length === 0 && stories.cast[story.as] !== undefined);
+    const placesOf = (story: Story): [name: string, where: string, why: string][] => [
+      ...(story.from !== undefined ? [[story.as, story.from, "the story has them act"] as [string, string, string]] : []),
+      ...("seen" in story && story.seen && !Array.isArray(story.seen) ? Object.entries(story.seen).filter(([name]) => stories.cast[name]).map(([name, where]) => [name, where, "the story has them see it"] as [string, string, string]) : []),
+    ];
+    // the stories by where they start: the cast alone, or each premise
+    const starting = new Map<string, { story: Story; outcome: Outcome }[]>();
+    for (const t of named) {
+      if (placesOf(t.story).length === 0) continue;
+      const start = JSON.stringify(t.story.premise ?? {});
+      (starting.get(start) ?? starting.set(start, []).get(start)!).push(t);
+    }
+
+    for (const group of starting.values()) {
+      const wanted = new Map<string, Set<string>>();
+      for (const { story } of group) for (const [name, where] of placesOf(story)) (wanted.get(name) ?? wanted.set(name, new Set()).get(name)!).add(where.split(" @ ")[0]!);
+      const found = await walk(group[0]!.story, wanted);
+      if (!found) continue; // its premise does not hold: the story says so
+      const { state, ways } = found;
+      const lead = (name: string, where: string, why: string): string | undefined => {
+        if (state.starts.get(name) === undefined) return undefined; // a page that says nowhere it stands (a welcome): nowhere to go
+        const [place = "", rest] = where.split(" @ ");
+        if (!ways.get(name)?.has(place)) return `no control leads ${name} to ${JSON.stringify(place)}, where ${why}`;
+        if (rest === undefined) return undefined;
+        const going = stories.goTo!(place).ops.map((op) => JSON.stringify(op));
+        const all = stories.goTo!(where);
+        const there = [...(state.pages.get(name)?.get(place)?.values() ?? [])];
+        const unsent = all.ops.filter((op) => !going.includes(JSON.stringify(op)) && !there.some((c) => offers(c, all.doc, op)));
+        return unsent.length === 0 ? undefined : `no control leads ${name} to ${JSON.stringify(where)}, where ${why}: nothing on their page at ${JSON.stringify(place)} sends ${unsent.map((op) => `${op.op} ${op.path}`).join(", ")}`;
+      };
+      for (const { story, outcome } of group) outcome.failures.push(...placesOf(story).map(([name, where, why]) => lead(name, where, why)).filter((f): f is string => f !== undefined));
     }
   }
 
   try {
     const only = process.env.STORY; // run only the stories whose name contains this
-    for (const story of stories.stories) if (!only || story.name.includes(only)) outcomes.push(await tell(story));
+    const told: { story: Story; outcome: Outcome }[] = [];
+    for (const story of stories.stories) if (!only || story.name.includes(only)) told.push({ story, outcome: await tell(story) });
+    if (stories.goTo) await reach(told);
+    outcomes.push(...told.map(({ outcome }) => outcome));
   } finally {
+    hearFailures();
     server.stop(true);
   }
   const failed = outcomes.filter((o) => o.failures.length > 0).length;

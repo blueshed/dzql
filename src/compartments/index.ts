@@ -6,6 +6,7 @@ import { prefixDoc, splitDoc } from "../names";
 import { shownTo } from "../reading";
 import type { Compartment } from "./compartment";
 import { createLedgerCompartment } from "./ledger";
+import { createRefusalCompartment, reasonFor } from "../refusal";
 import { sees, wireName, wireOps } from "./audience";
 import { createDocuments, settled, type Documents } from "../documents";
 
@@ -20,12 +21,12 @@ export type InspectDoc = { doc: string; version: number; entries: InspectEntry[]
 export type Inspection = { docs: InspectDoc[] };
 
 export type Assembled = {
-  /** The example's compartments and the kernel's own ledger, for lifecycle (`onOpen`/`onClose`) and write dispatch. */
+  /** The example's compartments and the kernel's own (the ledger, refusals), for lifecycle (`onOpen`/`onClose`) and write dispatch. */
   compartments: Compartment[];
   /** Every entry above, indexed by the docType it owns -- what server.ts's dispatcher resolves a `{doc, ops}` write against. */
   byDocType: Map<string, Compartment>;
-  /** The page, drawn once: in delta mode it may throw `Pending` for a document not held yet. */
-  renderFor(sessionId: string): string;
+  /** The page for a session: the example's, and why its last undo or redo was refused, if it was. */
+  page(sessionId: string): string;
   /** The page, drawn until every document it reads is held. */
   draw(sessionId: string): Promise<string>;
   inspectFor(ws: ServerWebSocket<ConnectionData>, limit?: number): Promise<Inspection>;
@@ -34,28 +35,37 @@ export type Assembled = {
 };
 
 /**
- * Wires one example's compartments into a running set: appends the kernel's own ledger
- * compartment, and returns the render/inspect/dispatch surface server.ts needs -- without
+ * Wires one example's compartments into a running set: appends the kernel's own ledger and
+ * refusal compartments, and returns the render/inspect/dispatch surface server.ts needs -- without
  * server.ts ever importing a specific example's compartments itself.
  */
 export function assemble(example: Example): Assembled {
-  let byDocType: Map<string, Compartment>;
-  const ledger = createLedgerCompartment(example.active);
+  const kernel = [createLedgerCompartment(example.active), createRefusalCompartment(example.delta)];
 
-  const compartments = [...example.compartments, ledger];
-  byDocType = new Map(compartments.map((compartment) => [compartment.docType, compartment]));
+  const compartments = [...example.compartments, ...kernel];
+  const byDocType = new Map<string, Compartment>();
+  for (const compartment of compartments) {
+    // two owners of one type would leave the first silently unreachable
+    if (byDocType.has(compartment.docType)) throw new Error(`${example.name}: two compartments own "${compartment.docType}"${kernel.includes(compartment) ? " (the kernel's own)" : ""}`);
+    byDocType.set(compartment.docType, compartment);
+  }
 
   const documents = copies.get(example) ?? createDocuments(example.delta);
   copies.set(example, documents);
 
-  const renderFor = (sessionId: string): string => example.render(sessionId);
-  const draw = (sessionId: string): Promise<string> => settled(documents, () => example.render(sessionId));
+  // Undo and redo are the kernel's own tools (the ledger, bento's page tools), so the kernel says
+  // why one was refused, over whatever page the example draws.
+  const page = (sessionId: string): string => {
+    const said = reasonFor(sessionId, "ledger", "/latest");
+    return example.render(sessionId) + (said && `<div class="undo-said">${said}</div>`);
+  };
+  const draw = (sessionId: string): Promise<string> => settled(documents, () => page(sessionId));
 
   // Legibility: every document this connection sees -- the one of each type it is on, then
   // whatever else its page read -- and each one's most recent ledger entries,
   // so a person (or a late-joining `watch`) can answer "what happened" from the wire, without
   // adding a log line. `limit` (default 1, the longstanding "just the head" behavior) is how far
-  // back to look; a watcher catching up before it watches asks for more. The tray's own document
+  // back to look; a watcher catching up before it watches asks for more. The session's own document
   // is included (it can be worth recording to, chat's is); the ledger itself is excluded -- no
   // render() the fallback path needs it for, and no ledger:<id> document to report a version for
   // (real entries live under the owning document's own key).
@@ -79,7 +89,7 @@ export function assemble(example: Example): Assembled {
       const doc = wireName(docType, docId, ws); // as the wire names it: whole, or the bare type for a session's own
       const owner = byDocType.get(docType)!;
       const entries = (await documents.history(name, ws.data.sessionId, limit)).map((e) => ({
-        id: 0,
+        id: e.id, // the ledger entry's own
         doc,
         version: e.version,
         ops: wireOps(owner, docId, e.ops as never),
@@ -92,5 +102,5 @@ export function assemble(example: Example): Assembled {
     return { docs };
   }
 
-  return { compartments, byDocType, renderFor, draw, inspectFor, documents };
+  return { compartments, byDocType, page, draw, inspectFor, documents };
 }

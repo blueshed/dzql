@@ -1,5 +1,14 @@
 import { parsePointer } from "./json-pointer";
 
+/**
+ * The wire's version, said on every page sent whole (`renderMessage`): 2 since a write carries an
+ * id, which its echo and its refusal hand back. A page that meets a server of another version loads
+ * itself again (src/client/app.ts), so the two speak alike; a page older than ids never looks, and
+ * a server answers a write without an id as it always did. Here, beside the write's words, since a
+ * page's bundle reads it and must reach nothing of the server's (src/client/imports.test.ts).
+ */
+export const WIRE = 2;
+
 /** A single RFC 6902 JSON Patch operation. `path` is an RFC 6901 JSON Pointer. */
 export type PatchOp = {
   op: "add" | "replace" | "remove";
@@ -7,9 +16,27 @@ export type PatchOp = {
   value?: unknown;
 };
 
-/** The wire echo of a write: sent to every connection that can see `doc`, before any HTML. */
-export function patchMessage(doc: string, version: number, ops: PatchOp[]): string {
-  return JSON.stringify({ type: "patch", doc, version, ops });
+/**
+ * A write's id: the sender's own, a number or a string, which the server only hands back -- on the
+ * echo of the change the write made, to its writer alone, or on its refusal -- so a page knows its
+ * own write from anyone else's.
+ */
+export type WriteId = number | string;
+
+/** The longest string an id may be: the server never sends back more than a write's own words would say. */
+export const LONGEST_ID = 64;
+
+/** Is this an id: a number JSON can say back (not 1e400, which parses as Infinity), or a string of at most `LONGEST_ID`? */
+export const isWriteId = (id: unknown): id is WriteId => (typeof id === "number" && Number.isFinite(id)) || (typeof id === "string" && id.length <= LONGEST_ID);
+
+/** The wire echo of a write: sent to every connection that can see `doc`, before any HTML; to the writer's own, with its write's id. */
+export function patchMessage(doc: string, version: number, ops: PatchOp[], id?: WriteId): string {
+  return JSON.stringify({ type: "patch", doc, version, ops, ...(id !== undefined && { id }) });
+}
+
+/** The answer to a write that applied nothing, to its writer alone: its id, and why when the refusal says (`refuse`). The page handed back follows. */
+export function refusedMessage(id: WriteId, reason?: string): string {
+  return JSON.stringify({ type: "refused", id, ...(reason !== undefined && { reason }) });
 }
 
 /**

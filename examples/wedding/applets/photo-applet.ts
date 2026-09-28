@@ -1,11 +1,12 @@
-// The photo applet's mounting: redrawn on every render that changes it, a newcomer walking in
+// The photo applet's mounting: redrawn on every render that changes it -- but for find's fade,
+// changed where each figure stands -- a newcomer walking in
 // from the nearest side, the names coming down on the day, once the walk is over the attitude
 // takes over. Imported only by client/main.ts, like chat's room-picker -- not measured by the
 // coverage table, since only a real browser drives it (client/app.test.ts); the drawing above it
 // is (change-request.md item 4).
 
 import { registerApplet } from "../../../src/applets";
-import { photoSvg, type PhotoProps } from "./photo";
+import { onlyFadeChanged, photoSvg, type PhotoProps } from "./photo";
 
 const state = new WeakMap<HTMLElement, { props: PhotoProps; revealed: boolean }>();
 
@@ -42,6 +43,12 @@ registerApplet("photo", {
     const props = next as PhotoProps;
     const prev = state.get(el);
     if (!prev) return;
+    if (onlyFadeChanged(prev.props, props)) {
+      // find looking: each figure fades or lights where it stands, mid-wave, and nobody walks in again
+      for (const entry of props.entries) el.querySelector(`[data-slot="${CSS.escape(entry.key)}"]`)?.classList.toggle("hushed", !!entry.hushed);
+      state.set(el, { ...prev, props });
+      return;
+    }
     const before = new Set(prev.props.entries.map((e) => e.key));
     const arriving = new Set(props.entries.filter((e) => !before.has(e.key)).map((e) => e.key));
     const descend = !!props.reveal && !prev.revealed;

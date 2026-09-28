@@ -1,10 +1,11 @@
 import type { Local } from "@blueshed/delta/local";
 import { applyOps, type DeltaOp } from "@blueshed/delta/core";
+import { failed } from "./failed";
 import { reading } from "./reading";
 import { splitDoc } from "./names";
 import type { PatchOp } from "./json-patch";
 
-// eta's documents are delta's (Workshop/docs/eta-on-delta.md). eta keeps a copy of every document
+// eta's documents are delta's (`@blueshed/delta`). eta keeps a copy of every document
 // an open page reads, kept current from delta's one stream of changes -- this process's writes and,
 // over Postgres, other processes' alike -- so a page is drawn from memory, synchronously, and never
 // reads the database per viewer, per redraw. A read of a document not held yet throws `Pending`:
@@ -21,6 +22,7 @@ export class Pending extends Error {
 
 export type Change = { doc: string; ops: DeltaOp[]; v?: number };
 export type Written = { ops: DeltaOp[]; inverse: DeltaOp[]; version?: number; entry?: number };
+export type Walked = { doc: string; entry?: number; ops: DeltaOp[]; version?: number; conflict?: string[] };
 export type Writer = { identity: unknown; cursor: string; undoable?: boolean };
 
 type Held = { value: any; v?: number };
@@ -43,23 +45,42 @@ export function createDocuments(local: Local) {
     const h = held.get(doc);
     if (h) {
       if (data.v !== undefined && h.v !== undefined && data.v <= h.v) return; // held already
-      if (data.v !== undefined && h.v !== undefined && data.v > h.v + 1) {
-        // a change missed: the copy is not to be trusted -- load it again, and tell as a whole-document change
+      const missed = data.v !== undefined && h.v !== undefined && data.v > h.v + 1;
+      const next = missed ? undefined : applied(h.value, data.ops);
+      if (!next) {
+        // a change missed, or one that does not land on the copy (a remove of what it does not
+        // hold): the copy is not to be trusted -- load it again, tell it as a whole-document
+        // change, and let go of whatever waits for a version it has reached
         held.delete(doc);
-        track(load(doc).then(() => told({ doc, ops: [{ op: "replace", path: "", value: held.get(doc)?.value }], v: held.get(doc)?.v })));
+        track(load(doc).then(() => {
+          const again = held.get(doc)!;
+          reached(doc, again.v ?? Infinity);
+          return told({ doc, ops: [{ op: "replace", path: "", value: again.value }], v: again.v });
+        }));
         return;
       }
-      h.value = h.value === undefined ? h.value : applied(h.value, data.ops);
+      h.value = next.value;
       if (data.v !== undefined) h.v = data.v;
     }
     track(told({ doc, ops: data.ops, v: data.v }));
-    if (data.v !== undefined) for (const w of waiting.get(doc)?.filter((w) => w.v <= data.v) ?? []) w.resolve();
+    if (data.v !== undefined) reached(doc, data.v);
   });
 
-  const applied = (value: any, ops: DeltaOp[]): any => {
+  /** `ops` laid on a copy of `value`; nothing when they do not land on it (RFC 6902: a remove of what is not there). */
+  const applied = (value: any, ops: DeltaOp[]): { value: any } | undefined => {
+    if (value === undefined) return { value };
     const next = structuredClone(value);
-    applyOps(next, ops);
-    return next;
+    try {
+      applyOps(next, ops);
+    } catch {
+      return undefined;
+    }
+    return { value: next };
+  };
+
+  /** Lets go of whatever waits for `doc` to reach `v` or before. */
+  const reached = (doc: string, v: number): void => {
+    for (const w of waiting.get(doc)?.filter((w) => w.v <= v) ?? []) w.resolve();
   };
 
   function track<T>(p: Promise<T>): Promise<T> {
@@ -73,7 +94,7 @@ export function createDocuments(local: Local) {
       try {
         await fn(change);
       } catch (err) {
-        console.error(`eta: telling a change to ${change.doc} failed:`, err);
+        failed(`telling a change to ${change.doc}`, err);
       }
     }
   }
@@ -111,7 +132,6 @@ export function createDocuments(local: Local) {
       if (!h) throw new Pending(doc);
       return h.value as T;
     },
-    held: (doc: string): boolean => held.has(doc),
     load,
 
     /** Writes through delta as `by.identity`, and resolves once the change is back and held. */
@@ -124,17 +144,22 @@ export function createDocuments(local: Local) {
       return written;
     },
 
-    /** Undo or redo along a session's cursor: delta walks it; the change comes back like any other. */
-    async walk(way: "undo" | "redo", by: Writer): Promise<{ doc: string } | null> {
-      const answer = await local.as(by.identity).call(way, { cursor: by.cursor });
-      const result = answer.result as ({ doc: string } & Written) | null | undefined;
+    /**
+     * Undo or redo along a session's cursor: delta walks it; the change comes back like any other.
+     * `dry` answers what the walk would do -- the entry, its ops, a conflict -- and walks nothing;
+     * `entry` walks only if that is still the cursor's next. A walk that meets someone else's later
+     * write changes nothing and says `conflict`, and the cursor moves past it all the same.
+     */
+    async walk(way: "undo" | "redo", by: Writer, o: { dry?: boolean; entry?: number } = {}): Promise<Walked | null> {
+      const answer = await local.as(by.identity).call(way, { cursor: by.cursor, ...o });
+      const result = answer.result as Walked | null | undefined;
       if (!result) return null;
-      await caughtUp(result.doc, result.version);
+      if (!o.dry) await caughtUp(result.doc, result.version);
       return result;
     },
 
     /** A document's recent history, each entry saying whether this cursor wrote it. */
-    async history(doc: string, cursor: string, limit?: number): Promise<{ version: number; ops: DeltaOp[]; inverse: DeltaOp[]; at: number; mine: boolean }[]> {
+    async history(doc: string, cursor: string, limit?: number): Promise<{ id: number; version: number; ops: DeltaOp[]; inverse: DeltaOp[]; at: number; mine: boolean }[]> {
       const answer = await local.call("history", { doc, cursor, limit });
       return (answer.result as never) ?? [];
     },

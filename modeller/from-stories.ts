@@ -15,15 +15,15 @@
 //                 stories noticed there were writing (a page shows what the stories say it shows)
 //   story      -- `as` is the actor, the writes are `does` read as above, `opens` is the author's
 //                 own page when the author notices; a `cannot` has no writes (it is the permit
-//                 table's, step 3)
+//                 table's, step 3), nor does a tab closing
 //
-// No example knowledge: the one document left out is the tray's, found by asking the example's
-// own `at()` where it writes.
+// No example knowledge: the one document left out is the session's, found by asking the example's
+// own `goTo()` where it writes.
 
 import type { Stories, Story, Write } from "../src/stories";
 import type { PatchOp } from "../src/json-patch";
 import { parsePointer } from "../src/json-pointer";
-import type { DocField, DocNode, Document, Entity, Field, Model, Story as ModelStory, StoryWrite } from "../../blueshed/hjeli/src/core/grammar";
+import type { DocField, DocNode, Document, Entity, Field, Model, Story as ModelStory, StoryWrite } from "../../hjeli/src/core/grammar";
 
 /** Something the stories do not say, and so the reading leaves out rather than invents. */
 export type Note = { kind: string; where: string; detail: string };
@@ -37,8 +37,8 @@ export type Reading = {
   pages: Map<string, Page>;
   /** Entity name -> the path it was read from (`venue/areas`). */
   collections: Map<string, string>;
-  /** The document left out as the tray's, if the example has an `at()`. */
-  tray?: string;
+  /** The document left out as the session's, if the example has a `goTo()`. */
+  session?: string;
   notes: Note[];
 };
 
@@ -127,22 +127,20 @@ const docName = (actor: string, page: string): string =>
 
 /** Who notices, and where: a list leaves each where the cast put them. */
 export function noticing(story: Story): [string, string | undefined][] {
-  if (!("does" in story)) return [];
-  const seen = story.seen;
+  const seen = story.seen ?? [];
   return Array.isArray(seen) ? seen.map((m) => [m, undefined]) : Object.entries(seen);
 }
 
 export function fromStories(stories: Stories): Reading {
   const notes: Note[] = [];
-  const tray = stories.at?.("").doc;
+  const session = stories.goTo?.("").doc;
   const collections = new Map<string, string>();
   const fields = new Map<string, Map<string, unknown>>(); // entity -> field -> a value seen
   const pageWrites = new Map<string, { page: Page; writes: StoryWrite[] }>();
   const modelStories: ModelStory[] = [];
 
-  const writesOf = (w: Write): StoryWrite[] => {
-    if (w.doc === tray) return [];
-    return w.ops.map((op) => {
+  const writesOf = (w: Write): StoryWrite[] =>
+    w.ops.map((op) => {
       const { write, fields: fs } = readOp(w.doc, op);
       collections.set(write.entity, locate(w.doc, op.path).chain.join("/"));
       const known = fields.get(write.entity) ?? new Map<string, unknown>();
@@ -150,7 +148,6 @@ export function fromStories(stories: Stories): Reading {
       fields.set(write.entity, known);
       return write;
     });
-  };
 
   const members = new Set(Object.keys(stories.cast));
   for (const s of stories.stories) {
@@ -161,16 +158,16 @@ export function fromStories(stories: Stories): Reading {
   }
 
   for (const s of stories.stories) {
-    if (!("does" in s)) {
+    if (!s.does) {
+      modelStories.push({ actor: s.as, action: s.name, writes: [], opens: [] });
+      continue;
+    }
+    if (s.does.doc === session) {
+      notes.push({ kind: "session-story", where: s.name, detail: `writes only the session (${session}), which is the page's state, not the model's` });
       modelStories.push({ actor: s.as, action: s.name, writes: [], opens: [] });
       continue;
     }
     const writes = writesOf(s.does);
-    if (s.does.doc === tray) {
-      notes.push({ kind: "tray-story", where: s.name, detail: `writes only the tray (${tray}), which is the page's state, not the model's` });
-      modelStories.push({ actor: s.as, action: s.name, writes: [], opens: [] });
-      continue;
-    }
     const opens: string[] = [];
     for (const [member, place] of noticing(s)) {
       if (!members.has(member)) notes.push({ kind: "uncast-member", where: s.name, detail: `"${member}" notices but is not in the cast` });
@@ -181,7 +178,7 @@ export function fromStories(stories: Stories): Reading {
       pageWrites.set(name, entry);
       if (member === s.as) opens.push(name);
     }
-    for (const member of s.unseen ?? []) {
+    for (const member of s.untold ?? []) {
       if (!members.has(member)) notes.push({ kind: "uncast-member", where: s.name, detail: `"${member}" must not notice but is not in the cast` });
     }
     modelStories.push({ actor: s.as, action: s.name, writes, opens });
@@ -236,7 +233,7 @@ export function fromStories(stories: Stories): Reading {
     },
     pages: new Map([...pageWrites.entries()].map(([n, e]) => [n, e.page])),
     collections,
-    tray,
+    session,
     notes,
   };
 }

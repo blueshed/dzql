@@ -355,6 +355,9 @@ desktop width. Fixing this needs the rail's own position to react to whether a d
 which the box's render already knows (`session.ui.focus`/`gift`/`keep`/`answering`) but `boxPage`
 does not thread through to where the rail is built; doing it without plumbing that through felt
 like bending the rule quietly rather than honouring it, so it is written down instead.
+*25 Sep 2026: out of date for the window. `bento.css` now moves the rails and the page tools
+clear of an open drawer (`main#app:has(.sheet)`). What still overlaps is the box's own page tools:
+on the household's box the undo, redo and leave stack sits on the answer drawer's header.*
 
 **Rule 7, the wedding, W3.** "Opening does not go anywhere; the same element grows into the
 window" describes a tray cell growing into its own compartment. It does not, and cannot, describe
@@ -373,3 +376,118 @@ to hold two buttons would honour the letter and not the point.
 controls." No picture in the wedding is: every photo fits its window, so every reading keeps
 clear of the rails, and when the drawer opens the photo reflows narrower beside it rather than
 scrolling. The mock-up's map is the only reading that scrolls, and the wedding has no map.
+
+### From duckdown
+
+duckdown's editor (`Workshop/blueshed/duckdown`, `server/edit/`) was redrawn by these rules on 25 Sep
+2026 (its ledger n134–140, the canvas at claude.ai/artifact/Y1QWMsHCw5X8rHJepmzD3c). It is the
+first page built on them outside eta, and not a page of summaries: a person working on a page
+of markdown, with the words and the page as a reader sees it side by side. These are the places
+where the rules strained.
+
+**Rules 4 and 7–10, duckdown's editor.** "A compartment shows the state it is in … a › because it
+opens" and "the same element grows into the window". The editor's tray is three compartments
+that are all open all the time: where you are (the tree), what you are changing (the page and
+the one slot beneath it), what a reader would see (the preview). Nothing in it is a summary and
+nothing grows into a window, because working means looking at all three at once. The rules
+describe one kind of box, a box of summaries you open one at a time. This is a second kind, a
+box of working compartments, where the tray, the trail, the drawer and the modal hold and the
+window has no part. The rules should say there are two kinds, so a workspace does not read as a
+box that forgot its windows.
+
+**Rule 13, duckdown's editor, n138.** "A drawer … opens its properties in a panel at the right."
+In the editor the right is the preview, which is what shows the change, so a drawer over it
+hides the effect of the edit it holds. A work chosen in the collection pane opens its
+properties from the left, over the tree, the same size and shape as the right-hand drawer (Peter's
+call: properties belong in a panel with room, but not over the preview). So the rule is about
+what the drawer covers, not which side it comes from: it covers what you are not looking at
+while you edit. The right happens to be that side in the wedding.
+
+**Rule 2 and "say a thing once", duckdown's editor, n134 then n139.** The trail says where you
+are, so n134 took the tree's `..` row out as saying the same thing twice. Using it on a real site,
+Peter missed it, and `..` came back as the tree's first row. The trail is at the top of the
+window; `..` is in the list where the eye and the pointer already are. A way up where you are
+working is a control, not a label said twice. It is the case "say a thing once" should allow for.
+
+**Rules 3 and 11, duckdown's editor, n138.** "The drawer and the modal 20, the tray and the window
+28." That holds while the drawer floats at the viewport's edge, as eta's `.sheet` does. duckdown's
+drawer sits inside the tray, a wall in from its edge, and at a fixed 20px against the tray's 22px
+its corners bulged. It is now `calc(var(--radius-tray) - var(--wall))`, the same cut rule 3 gives
+a compartment in a corner. Rule 3's cut applies to anything placed inside the tray, not only to
+compartments. Rule 11's list should say its 20 is for a drawer outside the tray.
+
+**Rule 6, duckdown's editor.** "On a phone the tray is a column … in the box's own order." Below
+768px the preview has no place in the column: a page shown under the words it comes from is a
+page you can't see while you type. It stays mounted and rendering, hidden. The header's Preview
+lays it over the tree and the page at full height (the others go `visibility: hidden`, so the text
+keeps its caret and scroll), and Edit or Escape puts it away. It counts as one of the things laid
+over the page: showing it closes a drawer, and opening a drawer puts it away. So a compartment can
+leave the phone's column and come back as an overlay, when showing it beside its neighbours would
+show nothing.
+
+**Rule 2 extended into time, duckdown's editor, n136.** Earlier versions and Deleted were modals,
+and now they are a place. The versions go where the tree was, since a version is also where you
+are. The trail grows one crumb (`duckie › gallery › index.md › 23 Sep, 16:05`), and the version
+shows read-only with the lines that differ from now marked, rendered in the preview. Any crumb
+before it goes back to now, and Restore is one press that asks nothing, because what it replaces
+is kept. This didn't strain the rules; it stretches rule 2 to cover a moment as well as a place.
+eta's n1 (a document as it stood on a date) will need a page, and this is one that works.
+
+### From reviewing the examples, 25 Sep 2026
+
+On 25 Sep 2026 the wedding, the ticker and chat were read and used against the rules, at desktop,
+375 and 320 (the work to do is in `todo.jsonl` n57-n72). In these places the example is right and
+the rule should bend.
+
+**Rule 1, chat.** Chat is neither kind of box. It is one window to work in, with nothing to open,
+and rules 4, 7 and 13-18 have nothing there to act on. Beside duckdown's box of working
+compartments, that is a third kind. The name form in front of it (`renderNameForm`,
+`compartments/session.ts`) is a fourth: a door that asks one question before any page exists.
+
+**C1-C3, chat.** They are marked done at 0.42.0, but 0.43.0 took the box down again: its drawers,
+modal and find came from stories written after it was built, and the stories won. That is the
+clearest case of "the stories win" so far, and this request should say so under C.
+
+**Rule 14, chat.** A room is named in a form in place, because a modal needs tray state and chat
+has none (CLAUDE.md says so; the Findings did not). The Send form is the stronger case: where
+adding is the work itself, the form stays open at the foot, and a modal for each message would be
+absurd. A modal is for new when making something is occasional.
+
+**Rule 14, the ticker.** Its confirm modal says "Undo brings it back". A delete that Undo can take
+back doesn't need asking about; duckdown's Restore asks nothing for the same reason. A modal is
+for a delete that can't be taken back.
+
+**Rule 14, the wedding.** Dishes and drinks are added and taken off inside the course drawer, with
+no modal, and the story "The couple take the beef off" needs none. A list inside a drawer is a
+property of the thing, not a new thing.
+
+**Rules 1, 11 and 15, the wedding.** The household's answer and the couple's welcome are speech
+bubbles above the tray, not compartments in it. Each is a voice over the whole box, and its tail
+points at the photo. The rules should allow a thing that stands on the ground rather than in the
+tray.
+
+**Rule 17, the wedding.** In a photo a missing figure reads as "not coming", so the photo rightly
+never hides anyone. The eye is for lists.
+
+**Rule 11, the wedding.** "Circles are for faces", but a colour swatch and an answer's status dot
+are circles too, and read rightly as dots.
+
+**Rule 16, the ticker.** The board's figures are a subset of the market's, so read literally the
+two should be one compartment with a reading or a filter. They are rightly two: two documents,
+told to different people (the board only its own quotes). A compartment is a document someone
+reads, not a set of figures.
+
+**Rule 4, the ticker.** "A summary line with the count" should move, but a live summary over a
+shared document is told to every page of the box, and the stories want a tick to reach only
+those watching that symbol. So the market's compartment is blank today, and a summary's liveness
+has to be scoped to who reads it.
+
+**Rule 13, the ticker.** A quote has nothing to edit. Its drawer exists for one control, and its
+properties repeat the lit row beside it. A drawer should hold what the row doesn't say.
+
+**"Say a thing once", all three.** Some repetition is right:
+- ✎ on every row is a control on each tap target, not a label said twice (as with duckdown's `..`).
+- A household's trail ends in its own code, because the trail has to say where you stand.
+- "You are Ada. Which room?" is the one place you see the name others see you by.
+
+"Not said to them at all" should read "not said on their own things".

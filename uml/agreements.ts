@@ -114,7 +114,7 @@ export function checkAgreement(puml: string, stories: Story[]): { marks: Mark[];
 
 /** The stories that move a status and are on no diagram yet. */
 export function uncited(stories: Story[], cited: Set<number>): string[] {
-  return stories.flatMap((s, i) => ((s.does ?? s.cannot)!.ops.some((o) => MOVES.test(o.path)) && !cited.has(i + 1) ? [`(${i + 1}) ${s.as}: ${s.name}`] : []));
+  return stories.flatMap((s, i) => ((s.does ?? s.cannot)?.ops.some((o) => MOVES.test(o.path)) && !cited.has(i + 1) ? [`(${i + 1}) ${s.as}: ${s.name}`] : []));
 }
 
 /** Every story, by the number the diagrams cite it by. */

@@ -1,13 +1,14 @@
 import { db } from "../delta";
 import { read as readDoc } from "../../../src/documents";
-import { parseAddress, patchCollections, type Collections } from "../../../src/bento";
+import { address, parseAddress, patchCollections, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 import { integer } from "./values";
+import { refuse } from "../../../src/refusal";
 
 // A visit, kept in delta (`session:<id>`, ../delta.ts): what one session is doing on the site.
 // `code` is who they are; the page and how its collections are read is where they are; `note` is
-// the one line the welcome says back. Nothing here goes on the ledger: which page a tab is on, or
+// what the welcome says back to a resend. Nothing here goes on the ledger: which page a tab is on, or
 // which drawer it has open, is not the wedding's history, and a household pressing Undo means
 // "take back my last answer", never "go back a page".
 
@@ -15,22 +16,28 @@ export type Kind = "household" | "couple";
 
 export type Ui = {
   /**
-   * Where the visit is: one address (src/bento.ts). The trail below the root -- "" is the
-   * household's box or the couple's home; "asks", "households/3/asks" -- and after a `?` the one
-   * thing open over it: a guest's drawer (`?guest=2`), a gift's (`?gift=1`), a row's keep drawer
-   * (`?keep=courses/2`), the answer (`?answer`), the modal asking a new thing's name
-   * (`?new=guests`), the modal confirming a removal (`?confirm=courses/2`).
+   * Where the visit is: one address (src/bento.ts). The page -- "" is the household's photo or
+   * the couple's, of every family; "list", "everyone" -- and after a `?` the one thing open over
+   * it: a guest's drawer (`?guest=2`), a family's (`?family=2`), one opened by its name alone
+   * (`?gifts`, `?day`, `?stay` for a household; `?courses`, `?gifts`, `?events`, `?places` for
+   * the couple), a row's keep drawer (`?keep=courses/2`), the answer (`?answer`), the modal asking
+   * a new thing's name (`?new=guests`), the modal confirming a removal (`?confirm=courses/2`).
    */
   page?: string;
 } & Collections; // how each collection is read, find's word, the eye: by the collection's name
 
+/** A drawer opened by its name alone: what the couple tell every household, and the lists the couple keep. */
+export type Named = "gifts" | "day" | "stay" | "courses" | "events" | "places";
+const NAMED = new Set<string>(["gifts", "day", "stay", "courses", "events", "places"]);
+
 /** What is open over the page, read out of the address: the path, and at most one of the rest. */
-export type Over = { path: string; focus?: number; gift?: number; keep?: string; answering?: true; new?: string; confirm?: string };
+export type Over = { path: string; focus?: number; family?: number; drawer?: Named; keep?: string; answering?: true; new?: string; confirm?: string };
 
 export function over(ui: Ui): Over {
   const { path, what, which = "" } = parseAddress(ui.page);
   if (what === "guest") return { path, focus: integer(which) };
-  if (what === "gift") return { path, gift: integer(which) };
+  if (what === "family") return { path, family: integer(which) };
+  if (what && NAMED.has(what)) return { path, drawer: what as Named };
   if (what === "answer") return { path, answering: true };
   if (what === "keep" || what === "new" || what === "confirm") return { path, [what]: which };
   return { path };
@@ -83,8 +90,8 @@ function after(before: Visit, ops: PatchOp[]): Visit {
     if (field === "code") {
       const code = removing ? "" : String(op.value ?? "").trim().toUpperCase();
       if (removing) Object.assign(next, { code: null, page: null, reading: null, filter: null, hide: null, note: null });
-      // The one refusal the welcome says out loud: the page would otherwise look exactly as before.
-      else if (!code || !whose(code)) next.note = "That code was not recognised.";
+      // Said beside the code box (src/refusal.ts): the page would otherwise look exactly as before.
+      else if (!code || !whose(code)) throw refuse("That code was not recognised.");
       else Object.assign(next, { code, page: null, reading: null, filter: null, hide: null, note: null });
     } else if (field === "resend") {
       const email = String(op.value ?? "").trim();
@@ -116,9 +123,14 @@ export function shape(id: string, ops: PatchOp[]): PatchOp[] {
     .map((field) => ({ op: "replace", path: `/${field}`, value: next[field] }));
 }
 
-/** A modal asks one question; the write that answers it puts it away (rule 14): an add answers the ask, a removal answers the asking-first. The ops that do it, for the visit, or none. */
+/** A modal asks one question; the write that answers it puts it away (rule 14): an add answers the
+ * ask, a removal answers the asking-first. A removal goes back to the drawer it was asked from --
+ * the family a guest was taken off, the list a row left -- and an add to the page. The ops that do
+ * it, for the visit, or none. */
 export function answered(session: SessionDocument, ops: { op: string; path: string }[]): PatchOp[] {
   const at = over(session.ui);
-  const yes = (at.new !== undefined && ops.some((op) => op.op === "add" && op.path.endsWith("/-"))) || (at.confirm !== undefined && ops.some((op) => op.op === "remove"));
-  return yes ? [{ op: "replace", path: "/visits/page", value: at.path }] : [];
+  if (at.new !== undefined && ops.some((op) => op.op === "add" && op.path.endsWith("/-"))) return [{ op: "replace", path: "/visits/page", value: at.path }];
+  if (at.confirm === undefined || !ops.some((op) => op.op === "remove")) return [];
+  const [list, family] = at.confirm.split("/");
+  return [{ op: "replace", path: "/visits/page", value: list === "households" ? address(at.path, "family", family) : address(at.path, list) }];
 }

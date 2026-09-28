@@ -38,7 +38,7 @@ function draw(el: HTMLElement, props: PictureProps, status = ""): void {
   el.innerHTML =
     `<span class="pic-field">` +
     (props.current ? `<img class="pic" src="/pictures/${esc(props.current)}" alt="">` : "") +
-    `<button class="ghost" type="button">${props.current ? "Change picture" : "Picture"}</button>` +
+    `<button class="tool" type="button">${props.current ? "Change picture" : "Picture"}</button>` +
     `<input type="file" accept="image/*" class="sr-only" aria-label="choose a picture">` +
     (status ? `<span class="note">${esc(status)}</span>` : "") +
     `</span>`;

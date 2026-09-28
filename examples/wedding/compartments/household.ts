@@ -4,8 +4,9 @@ import * as weddingDoc from "../documents/wedding";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { serverWrite } from "../../../src/documents";
-import { householdPages, type HouseholdView } from "../views/household";
+import { householdPage, type HouseholdView } from "../views/household";
 import { keepEveryone } from "../everyone";
+import { refuse } from "../../../src/refusal";
 
 // A household's document (`household:<id>`), written by the household that arrived by its code.
 // Nearly everything it writes changes what others see -- an answer puts figures in the photo every
@@ -29,7 +30,10 @@ const RULES: Rule[] = [
   { path: /^\/claims\/\d+$/, ops: ["remove"] },
 ];
 
-/** Everything a household's pages read, for this session. */
+/** The fields the dated rules write, as the document holds them: `/households` answer, a guest's coming and choices. */
+const DATED = new Set(["answer", "coming", "choices"]);
+
+/** Everything a household's page reads, for this session. */
 function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined {
   const h = householdDoc.read(session.id!);
   if (!h) return undefined;
@@ -48,10 +52,10 @@ function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined
   };
 }
 
-/** A household's pages. `viewFor` is always there in practice: read() only reports a kind for a code that exists. */
+/** A household's page. `viewFor` is always there in practice: read() only reports a kind for a code that exists. */
 export function renderHousehold(session: sessionDoc.SessionDocument): string | undefined {
   const v = viewFor(session);
-  return v && householdPages(v);
+  return v && householdPage(v);
 }
 
 export const household: Compartment = {
@@ -75,15 +79,23 @@ export const household: Compartment = {
     }
     return true;
   },
+  // After the deadline an answer is locked, to Undo too: a walk that would set back an answer, a
+  // guest's coming or their choices is refused, and says why. A walk sets back only the fields its
+  // entry changed, so what else a household did -- a look, a claim -- still walks.
+  permitUndo(_ws, _id, ops) {
+    if (weddingDoc.answersOpen()) return true;
+    if (ops.some((op) => op.op === "replace" && Object.keys((op.value ?? {}) as object).some((f) => DATED.has(f)))) throw refuse("Answers closed at the deadline.");
+    return true;
+  },
   shape(_ws, id, ops) {
     const offer = { courses: weddingDoc.courses(), gifts: weddingDoc.gifts().map(({ id, shared }) => ({ id, shared })) };
     return householdDoc.shape(householdDoc.read(id)!, offer, ops);
   },
   // the modal that asked is put away by the write that answers it
-  async wrote(ws, _id, ops: PatchOp[]) {
+  async afterWrite(ws, _id, ops: PatchOp[]) {
     const put = sessionDoc.answered(sessionDoc.read(ws.data.sessionId), ops);
     if (put.length > 0) await serverWrite(`session:${ws.data.sessionId}`, put);
   },
   // an answer, a look, a coming, a claim: what everyone sees of this household follows
-  changed: () => keepEveryone(),
+  afterChange: () => keepEveryone(),
 };

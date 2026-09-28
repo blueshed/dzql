@@ -1,3 +1,5 @@
+import { WIRE } from "../json-patch";
+
 /**
  * A page brought up to date in HTML's own terms (src/parts.ts works them out). `replace` morphs the
  * target element with `html` (one element); `tag` gives the target the attributes of `html`, an
@@ -7,5 +9,6 @@
  */
 export type HtmlOp = { op: "replace" | "tag" | "after" | "before"; target: string; html: string } | { op: "remove"; target: string };
 
-export const renderMessage = (html: string): string => JSON.stringify({ type: "render", html });
+/** A page sent whole says the wire it speaks (`WIRE`, src/json-patch.ts). */
+export const renderMessage = (html: string): string => JSON.stringify({ type: "render", html, wire: WIRE });
 export const fragmentsMessage = (ops: HtmlOp[]): string => JSON.stringify({ type: "render", ops });

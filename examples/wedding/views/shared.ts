@@ -28,6 +28,20 @@ export const plural = (n: number, one: string, many: string): string => `${n} ${
 
 export const firstNameOf = (name: string): string => name.trim().split(/\s+/)[0]!;
 
+/** A family's names as a run (CLAUDE.md, say a thing once): a surname shared with the name before
+ * it -- or with `start`, the household's code the run is under -- is said once, not on every name.
+ * "Ada Okafor", "Femi Okafor" under OKAFOR are "Ada", "Femi"; a plus-one's own surname stays. */
+export function runNames(names: string[], start = ""): string[] {
+  let before = start.trim().toLowerCase();
+  return names.map((name) => {
+    const words = name.trim().split(/\s+/);
+    const surname = words.length > 1 ? words.at(-1)!.toLowerCase() : "";
+    const same = surname !== "" && surname === before;
+    if (surname) before = surname;
+    return same ? words.slice(0, -1).join(" ") : name;
+  });
+}
+
 /** The couple's names, the root's name. */
 export const coupleName = (w: Pick<Wedding, "name1" | "name2">): string => `${w.name1} & ${w.name2}`;
 
@@ -37,7 +51,7 @@ export function specOf(look: Look, name?: string): Spec {
   return { ...rest, name };
 }
 
-/** Not coming: said so, or not said while the household said no. Faded and still. */
+/** Not coming: said so, or not said while the household said no. Still, and marked no at their feet (guestMark). */
 export function isGuestOut(g: Pick<Guest, "coming">, h: Pick<HouseholdDocument, "answer">): boolean {
   return g.coming === 0 || (g.coming === null && h.answer === "no");
 }
@@ -61,25 +75,12 @@ export type AnswerMark = Answer | "none";
 const ANSWER_WORD: Record<AnswerMark, string> = { yes: "coming", maybe: "maybe", no: "not coming", none: "no answer yet" };
 export const answerOf = (h: Pick<HouseholdDocument, "answer">): AnswerMark => h.answer ?? "none";
 
+/** The mark at one guest's feet: their own coming where it is said, the household's answer where it is not. */
+export const guestMark = (g: Pick<Guest, "coming">, h: Pick<HouseholdDocument, "answer">): AnswerMark =>
+  isGuestOut(g, h) ? "no" : isComing(g) ? "yes" : answerOf(h);
+
 export function answerWord(mark: AnswerMark, word = ANSWER_WORD[mark]): string {
   return `<span class="answer-word ${mark}"><i class="dot ${mark}"></i>${esc(word)}</span>`;
-}
-
-export function eventsSummary(events: Event[]): string {
-  if (!events.length) return "none yet";
-  const first = events[0]!.when_at ? formatWhen(events[0]!.when_at) : null;
-  return `${plural(events.length, "event", "events")}${first ? ` · from ${first}` : ""}`;
-}
-
-export function placesSummary(places: Place[]): string {
-  return places.length ? plural(places.length, "place", "places") : "none yet";
-}
-
-/** What the courses hold, one line: "8 dishes · 8 drinks". */
-export function coursesSummary(courses: Course[]): string {
-  const dishes = courses.reduce((n, c) => n + c.dishes.length, 0);
-  const drinks = courses.reduce((n, c) => n + c.drinks.length, 0);
-  return courses.length ? `${plural(dishes, "dish", "dishes")} · ${plural(drinks, "drink", "drinks")}` : "none yet";
 }
 
 /** A guest's choices as one line: "Soup & Prosecco · Sea bass · —", a dash for a course not chosen in. */
@@ -101,25 +102,36 @@ export interface ListOptions {
   chosen?: number;
 }
 
-/** The timetable: a row per event -- when leads the line, then what and where. */
-export function timetableRows(events: Event[], o: ListOptions = {}): string {
+/** A place and its town are one place: "The Mount Without" is where "The Mount Without, Bristol" is. */
+const placeOf = (where: string | null | undefined): string => (where ?? "").split(",")[0]!.trim().toLowerCase();
+
+/** The timetable: a row per event -- when leads the line, then what, and where when it moves: an
+ * event where the one above it is (or, from `at`, where the day is) does not name it again. To a
+ * guest, reading, it says nothing; to the couple, keeping the list (`open`), it says "same place", so
+ * a place not yet set, which says nothing, is not taken for one said above. */
+export function timetableRows(events: Event[], o: ListOptions & { at?: string | null } = {}): string {
+  let here = placeOf(o.at);
   return rows(
-    events.map((e) =>
-      row({
+    events.map((e) => {
+      const where = e.where_at ? placeOf(e.where_at) : "";
+      const said = !where ? null : where !== here ? e.where_at : o.open ? "same place" : null;
+      here = where; // an event with no place breaks the run: "same place" is only ever the row above's
+      return row({
         id: `event-${e.id}`,
         tap: o.open?.(e.id),
         chosen: o.open ? o.chosen === e.id : undefined,
         lead: `<span class="when">${esc(e.when_at ? formatWhen(e.when_at) : "—")}</span>`,
         what: e.name,
-        note: [e.where_at, e.notes].filter(Boolean).join(" · ") || null,
+        note: [said, e.notes].filter(Boolean).join(" · ") || null,
         mark: o.open ? "pencil" : undefined,
-      }),
-    ),
+      });
+    }),
     "No events yet.",
   );
 }
 
-/** Where to stay: a row per place -- its picture, its name and notes; a link out for a guest, ✎ its drawer for the couple. */
+/** Where to stay: a row per place -- its picture, its name and notes; a link out for a guest, ✎ its drawer for the couple. The picture's
+ * name is the row's, beside it, so it says nothing of its own. */
 export function placeRows(places: Place[], o: ListOptions = {}): string {
   return rows(
     places.map((p) =>
@@ -127,7 +139,7 @@ export function placeRows(places: Place[], o: ListOptions = {}): string {
         id: `place-${p.id}`,
         tap: o.open?.(p.id),
         chosen: o.open ? o.chosen === p.id : undefined,
-        lead: p.picture_key ? picture(p.picture_key, p.name) : undefined,
+        lead: p.picture_key ? picture(p.picture_key, "") : undefined,
         what: p.name,
         note: p.notes,
         state: !o.open && p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener noreferrer">More</a>` : undefined,

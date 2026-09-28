@@ -5,6 +5,880 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Breaking (for example authors)
+
+- **eta needs `@blueshed/delta` ^0.10.0 and `@blueshed/railroad` ^0.15.1.** What an app on eta
+  changes:
+  - **Its own dependencies, to the same**: an app that imports delta or railroad itself must
+    resolve to eta's copy, and railroad 0.15 throws where a signal made by another copy is
+    rendered.
+  - **delta 0.10's breaking changes, where the app uses delta itself** (delta's CHANGELOG says
+    each): a remove or replace of what is not there is a 404, and its whole batch is refused
+    (a server's own writer that diffs from a copy: the next entry); a memory document refuses
+    with 404 for what is not there, where it said 400; a row moved through a document goes only
+    under a parent the document holds, and a list's own row replaced out of the list's scope is a
+    404; a second `registerDocs` of a prefix another registration holds throws; `owns` or
+    `shared` without an auth module throws; the
+    browser client's `doc.data` is a `ReadonlySignal`, and an `onConnect` that calls through DI
+    connects. eta's kernel uses none of the last three.
+  - **railroad 0.15's, where the app uses railroad itself**: each tag's props are typed, so
+    React's casing (`onClick`, `tabIndex`) no longer compiles; `mount()`'s render is untracked;
+    and a `.get()` in a render body (a component, a `when()` branch, a `list()` row) warns in
+    development, since it reads once and never updates. eta's islands needed none of it.
+  - **A test that makes the tables drift from delta's copy with a trigger on the row a write
+    makes no longer does**: delta reads back each row it writes, as it is kept, and tells that.
+    Change another row (the harness's own tests now do).
+  - A page with an island now carries 3.5 KB of railroad gzipped for `signal` and `mount`, 4.4
+    KB with `list` (it was 2.6 and 3.5): its development checks' text stays in a production
+    bundle.
+
+- **A live document kept as a difference from its copy is kept one run at a time.** delta 0.10
+  refuses a remove or replace of what is not there (404), and the rest of its write with it,
+  where before it did nothing. Chat's `keepPresence` and `keepLobby`, and the wedding's
+  `keepEveryone`, each compute their document whole and write the difference from the copy they
+  read, so two runs at once (two tabs opening together) both took out what had gone, and the
+  second's write is now refused, its adds too, and reported as the server's failure. Each run now
+  waits for the one before it, and reads what it wrote. An app with such a writer does the same,
+  or writes a member with `add` (there or not) and, on a 404, reads again and diffs anew.
+
+- **A write carries an id, and what answers it is its own** (todo n14; n5 said why, this says
+  whose). The wire is `{id?, doc, ops}`: the echo of the change a write made goes to its writer
+  with the write's id (`{type: "patch", …, id}`), and a write that applies nothing is answered
+  `{type: "refused", id, reason?}` before the page is handed back. So a form's values go back only
+  on its own write's refusal -- a page sent whole for another reason while it is on its way
+  (someone else's write turning the page into another) no longer puts the sent text back -- its
+  own echo ends the wait, and `eta.inspect().lastSent` (now `{id, doc, ops, echoed, refused,
+  reason?, unanswered?}`) is marked only by its own echo or refusal, never anyone's echo of its
+  document or an earlier write's refusal. A page sent whole says `wire: 2`. What to change:
+  - **An app test that snapshots the writes a page sent must allow or strip the new `id`**:
+    `const { id, ...write } = JSON.parse(data)`, as `src/client/app.test.ts` and
+    `src/bento.test.ts` do (they keep the ids in `window.__ids`).
+  - **An app's own `send()`, or a console check, that marks a write echoed by any patch of its
+    document should use ids**: its own echo carries its write's `id`, and nobody else's does (see
+    `lastSent`).
+  - **A test that draws the page by hand sends `renderMessage(html)`**, which says the wire; a page
+    whole without it makes the page load itself again. **One that refuses a write sends
+    `{type: "refused", id}` first** (`pushRefused` refuses the last): a page whole alone hands
+    nothing back now.
+  - **A deploy needs nothing**: a page from before (a tab left open over it) sends no id and is
+    answered as it always was. **A rollback to a server from before ids reloads each open tab
+    once**, and what is typed in that tab is lost; a second mismatch within a minute is drawn,
+    and said in the console, instead.
+  - An id is a number JSON can say, or a string of at most 64 characters: a write with a longer
+    one is not a write.
+  - A throw in a compartment's `afterWrite` is the server's failure (`following a write to …`),
+    and the write stands; it was answered refused as well as echoed.
+  - A write on its way when the socket goes is unanswered (`lastSent.unanswered`): the page drawn
+    afresh hands back what its form sent, as a refusal would, and then each editing form says,
+    once and with an id, any edit that page does not show; one that landed is drawn, not said again.
+  - The harness sends every write with an id: a `does` lands when its author is echoed that id, a
+    `cannot` must be refused by it, and its `told` must be the reason that refusal gave; a refused
+    `does` or premise says why. A refusal's failure reads `refused, but <who> was not answered:
+    …` or `refused, but it landed …`, where it read `a refusal hands the page back`.
+
+- **An applet's `*` is any one member, never `-`**, the end of a list. `["trip", "add",
+  "/events/*/party/*"]` offered an append to every party (`/events/44/party/-`), so japan-eta's
+  "Ann joins Peter's Hiroshima day" passed with the drawer's "I'm in" taken away. An applet that
+  appends names the `-` itself: `["trip", "add", "/events/*/party/-"]`.
+- **A story stands only where a control leads** (todo n87). The harness put a story's author at
+  its `from`, and each member at the place their `seen` names, by a session write of its own, and
+  never asked whether a person could get there: japan-eta's "Daisy adds two nights in Kanazawa"
+  passed from the add-a-base modal while no control anywhere opened it. Now the places the
+  stories name are walked from where each story starts (the cast, then its premise), in a cast of
+  their own: every page a member is drawn there is kept by where it stands, with the places its
+  controls lead to (a button whose value `goTo` makes its write of, or a tap an applet's mount
+  names), and a place a story names that no control leads to fails the story, by name (`no
+  control leads okafors to "?guest=2", where the story has them act`); after " @ ", what the
+  place holds must be sent by a control on the page there. A plus another story's write drew is
+  not one this story starts with. A control leads to an address when it sends the op of `goTo`'s
+  write that sets it: a button's value, a radio's, each option a select can choose (a select
+  now offers only those, and a `multiple` one nothing, which the client never sends), or a value
+  an applet names. It found leave's months (below) and the wedding photo's taps,
+  which nothing declared. Each place a story names is stood on in the walk, so what its own page
+  sends is asked even where the way ends there: a story told alone (`STORY=`), or one whose
+  place no other story goes past, failed its " @ " on a page the walk had never drawn.
+- **A control the browser will not press is none**, whatever is around it. The stories counted a
+  button inside an `inert` box, a `hidden` element or a disabled fieldset as offered, since only
+  the button's own `disabled` was looked at; keyboard and phone put the whole box `inert` behind
+  an open window, and the ground behind a modal. Now `inert`, `hidden`, a `<template>` and a
+  disabled fieldset (but for its first legend, which the browser leaves enabled) count on the
+  control and on everything it is in, so a story from a modal is done in the modal. What is in
+  an element ends where HTML says: a `<p>`, `<li>`, `<dt>`, `<tr>`, `<td>` or `<option>` whose
+  end tag is left out ends at the start tag that implies it, so a hidden one does not hide what
+  follows. And the page's address (`data-page-write`) is no longer a control for any address: the
+  URL bar and the back button send it, not the page, so a story that goes somewhere needs the
+  button that goes there.
+- **An applet offers only what its mount says it writes**, whatever document it reads. An applet
+  on a document (`data-doc`) counted as a control for every write to it, so the ticker's clock
+  stories passed from the box, where only the clock's face is, and still passed with the city
+  picker taken out of its drawer. Now a mount that says nothing offers nothing: the city picker
+  says `appletWrites(["clock", "replace", "/tz"])`, and the clock stories are told from its
+  drawer (`from: "?clock"`).
+- **An applet's mount says exactly what it writes** (todo n78): `appletWrites([doc, op, path], …)`,
+  where a segment that is only `*` is any one segment (`["team", "replace", "/requests/*/starts"]`).
+  `appletWrites([doc, path], …)` offered every write under each path, so a page that lost a
+  control beside an applet (leave's Approve, in a drawer over the calendar that declared
+  `/requests`) still passed its story. Now a write the applet does not name is not offered, and
+  a declaration in the old form, or anything else that is not `[doc, op, path]`, fails the story
+  that meets it, by name (`applet declaration must be [doc, op, path]: calendar says …`), rather
+  than blaming the page or stopping the run.
+  The examples' declarations are exact: leave's calendar writes the draft and a request's starts
+  and ends; the wedding's dress each look field, its menu a course's dish or drink, chosen or
+  taken back, and its picture field the key at its own path, which it declared nowhere before
+  (a story now puts a picture on the welcome). The photo's taps only go somewhere, as the page's
+  address does.
+- **A choice and the reading switch are radios, checked, not pressed** (`src/bento.ts`). `choice()`
+  and `readingSwitch()` drew each option `role="radio"` with both `aria-checked` and
+  `aria-pressed`, which ARIA does not allow on a radio. They carry `aria-checked` alone now, and
+  `src/bento.css` fills a checked radio tool as it does a pressed one. A stylesheet that coloured
+  them by `[aria-pressed="true"]` colours them by `[aria-checked="true"]` (the wedding's yes and no
+  do). The wedding's and leave's own reading switches, drawn by hand, still carry both.
+- **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
+  browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
+  when not, as was a group of radios none of which was chosen. So a title and an unticked box
+  sent the title alone, and ticked, a record. Now a field has one type whatever form it is in: a
+  box is `true` or `false`, always there, whatever its value attribute says; a group of radios is
+  one field, the value chosen or `null`; a `multiple` select its last choice or `null`; and a
+  record keeps every named field's key. A `shape` that read "on", or a missing key as unticked,
+  reads `true` and `false` now. No example sends a box (the wedding's `yesNo` takes both).
+- **One word, one meaning: names renamed so they say what they are, and when they run.** No
+  behaviour changes; rename and the gate passes. Compartment hooks are named for when they run
+  (`permit`, `shape` before a write; `permitUndo` before an undo; `afterWrite`, `afterChange` after).
+
+  | Was | Now | Where |
+  |---|---|---|
+  | `walkable(ws, docId, ops)` | `permitUndo(ws, docId, ops)` | `Compartment` |
+  | `wrote(ws, docId, ops)` | `afterWrite(ws, docId, ops)` | `Compartment` |
+  | `changed(docId, ops)` | `afterChange(docId, ops)` | `Compartment` |
+  | `own: true` | `perSession: true` | `Compartment` |
+  | `at: "/sessions"` | `under: "/sessions"` | `Compartment` |
+  | `unseen: [...]` | `untold: [...]` | a story |
+  | `outside: true` | `offPage: true` | a story |
+  | `at: (where) => Write` | `goTo: (address) => Write` | `Stories` |
+  | `bento({ icon, tray })` | `bento({ icon, session })` | src/bento.ts |
+  | `sheet(...)` | `drawer(...)` | what `bento()` returns |
+  | `refused(sessionId, doc, path)` | `reasonFor(sessionId, doc, path)` | src/refusal.ts |
+  | `writes(doc, path)` | `appletWrites([doc, op, path], …)`: one for each write the mount sends, exactly (above) | src/html.ts |
+  | `data-at="/quote"` | `data-under="/quote"` | an applet's mount |
+  | `src/tray.ts`: `tray()`, `Compartment`, `Tray` | `src/grid.ts`: `grid()`, `Cell`, `Grid` | the box's layout |
+  | `at(view, url)` | `urlFor(view, url)` | src/webview.ts |
+  | `.sheet`, `.sheet-head`/`-body`/`-foot`/`-close`, `sheet-rise` | `.drawer`, `.drawer-head`/`-body`/`-foot`/`-close`, `drawer-rise` | src/bento.css, and a page's own `*-sheet` classes |
+  | `.walk-said` | `.undo-said` | why an undo was refused, over the page |
+
+  In the docs, the session is "the session" (no longer "the tray"); *tray* is only the bento's
+  box, and a place in it is a *cell*. *Compartment* means only the kernel's. The skill's
+  `reference.md` is rewritten plainly: what each piece is, an example, then the details.
+
+### Changed
+
+- **leave's Previous and Next move a month, not three.** Three at a time from this month, a
+  person could never get to most months: in September, October and November were only ever on
+  the page as this month's, and no control led to `2026-10` or `2026-11`, where the stories stand
+  (they name their month so they do not depend on the day). Which months could be reached
+  changed with the day the stories ran. A month at a time, each by its own name (`2026-10`, never
+  the page alone because it is this month), every month is somewhere a person can get to,
+  whatever today is; the page alone is today, wherever that is, and the calendar still shows three.
+- **A dim is find's alone** (rule 17). The wedding faded a guest who was not coming, and a
+  ghost, so with find open a faded figure meant either "missed" or "not coming". Now nothing fades
+  but what find misses; each guest has the mark at their feet the couple's families had (their own
+  coming where they said it, else the household's answer), in the household's photo and the
+  couple's, and a ghost is dashed paper, not faint.
+- **A drawer docked at the right leaves the page in reach** (todo n58). From 820px the drawer had
+  a transparent scrim over the whole page, so every tap beside it only closed it: the next guest,
+  the next drawer, Undo, each took two. The docked drawer has no scrim now; only the phone's sheet
+  and the modal keep one. It goes by its ×, by what is tapped next, or by **Escape**, which the
+  client now handles: it presses the last `[data-escape]` on the page, and `bento()` marks a
+  drawer's × and a modal's scrim, so what was opened last is put away first. Something that takes
+  Escape for itself (the ticker's city picker, emptying its word) claims it with
+  `preventDefault()`. Rules 14 and 18 say so.
+- **Find's bar on a phone takes the row under the trail** (todo n60, its second point), rather
+  than covering it, and the reading moves down to keep clear; its buttons keep their size whatever
+  an example says of buttons.
+- **The wedding: each page is a photo** -- a household's of its own people, the couple's of every
+  family -- as leave's is its calendar. A household's box of six cells (guests, asks, gifts, the
+  day, where to stay, everyone) was one thing and three pieces of information. Now one page:
+  - the household's guests stand in the photo, their answer the bubble over it; a tap on someone
+    opens their drawer (dress them, coming or not, the meal); someone asked for stands as a ghost,
+    still, where before a tap on them went to an asks page;
+  - the same page read three ways (rule 16): the photo, everyone's photo, or a list, which also
+    says who was asked for and whether the couple said no;
+  - one plus brings someone: it names a plus-one while one is owed, and after that asks the couple;
+  - gifts, the day and where to stay are tools on the rail, each opening a drawer that is read and
+    put away; the gifts drawer holds every gift whole with the one thing to do with it (Claim it,
+    Give to it, Unclaim);
+  - find (rule 17) looks for someone by name in the photo and the list alike: whoever it misses
+    dims, and with the eye steps out of the photo; everyone's photo is nameless until the day, so
+    it has none;
+  - every photo the wedding draws now fits its frame, feet included: the applet's mount takes the
+    frame's height, so the drawing scales to it instead of to the width.
+
+  The couple's home of five cells, and a box of three more for each family, are one page too:
+  - the photo of every family, the answer at their feet, the welcome the bubble over it (their
+    words and the day; their names are the trail's), the caterer's counts beneath; or the same
+    families as a list; find looks for a family by its code or a name, and the eye takes the rest
+    out;
+  - a tap on a family opens its drawer, and its figures ring: what they say, their guests (whether
+    coming, what they chose; a new one named in place; taking one off asks first, then comes back
+    here), whoever they asked for (yes or no on the line), their email and plus-ones, Chase them;
+  - courses, gifts, events and where to stay are tools on the rail, each a drawer of rows with a
+    new one named in place at its foot; a row opens its own drawer, whose × goes back to the list,
+    and removing it asks first, then goes back to the list too;
+  - the plus invites a household; find on the gifts is gone with the gifts' window.
+
+  A household's addresses are `""`, `"list"` and `"everyone"`, with `?gifts`, `?day` and `?stay`
+  over them; the couple's are `""` and `"list"`, with `?family=1`, `?courses`, `?gifts`,
+  `?events`, `?places` and `?keep=courses/1`. The stories moved with them, and the Okafors' ask
+  became Ben's: a household with a plus-one to name is offered that first.
+- **delta 0.9.0: one app on every backend.** A write is now told to every document that holds a
+  row it changed on Postgres too (server or in process), so the reference's "whether this
+  process wrote it or another did over Postgres" holds for every document. Ids are serials, read
+  as numbers; the wedding's `shape` compares ids by value (a path carries them as text), which
+  also mended two things the numbers exposed: removing a dish clears the guests' choices of it,
+  and removing a gift takes its claims. leave's browser test waits until the first month shown
+  is October, not merely until October is on the page.
+- **The harness compares each open page with a render from storage** (todo n33, canon 2). The
+  fresh render read the copy the server draws from, so a copy that drifted from the tables was
+  compared with itself. Now each document it reads is opened again from delta's tables
+  (`open_at`). One they do not hold is drawn as nothing, as the kernel holds a document delta
+  cannot open, so a lost row fails; only a memory kind, which has no tables, comes from the copy.
+- **The wedding says a thing once** (todo n61). A household's list and a family's drawer say a
+  surname the family shares once ("Ada", "Femi", "Kemi" under OKAFOR); the couple's list of
+  households runs by answer, said at the head of each run rather than on every row, each run a
+  group named by its head so a screen reader hears the answer as it enters the run; the day says
+  its place at its head, and an event names where only where it moves (in the couple's list a
+  repeat says "same place", so a place not yet set is not mistaken for one); a guest's drawer is named
+  for them in its title alone ("The meal", "Touch a part to change it"); a gift's state no longer
+  repeats its control ("open" beside Claim it, "anyone may" beside Give to it); a confirm modal is
+  named for what it takes away and asks once; a place's picture has no alt of its own beside its
+  name.
+- **The wedding's housekeeping** (todo n65). A household's words to the couple are written as
+  they are left, as every other drawer's are, with no Save; a guest's Coming choice wraps in the
+  drawer rather than standing past its edge; the meal takes a thumbnail's corners inside the
+  drawer; "Add an event"; and the reading switches say which is chosen with `aria-checked` alone,
+  as a radio does. The stylesheet lost what nothing draws any more (the old boxes' forms and small
+  reading, a margin said twice), and its last spelled-out colours are tokens.
+
+### Added
+
+- **An applet's mount may name the only values a control of it sends**: `appletWrites([doc, op,
+  path, value], …)`, one for each, said as one write with its `values` on the mount. A story's
+  write counts as offered only with one of them. It is how an applet says where it goes: the
+  wedding's photo now names each figure's tap (`?guest=2`, `?family=1`, `everyone/4`), so the
+  stories can tell a place a tap leads to from one nothing does (n87). What the wedding
+  sends grows by the declaration: the README's costs are measured again.
+- **A story's own premise** (todo n86): `premise: { couple: [write, …] }`, in the cast's shape,
+  is made after the cast's writes and before anything else in the story, as each member it names,
+  and rolled back with it. The cast's writes are every story's, so a state one story needed (a
+  deadline passed, a flight home made a gate) changed what every other story saw. Each premise
+  write must change something, or the story is not told ("the premise did not hold: …'s write
+  to … changed nothing", whether it was refused or already so). The wedding tells two: once the deadline has passed
+  the Okafors cannot change their answer (from its drawer, where the answers are drawn disabled),
+  and Femi, having picked the Rioja, changes his mind.
+- **A control drawn `disabled` is no control** to the stories, since the browser sends nothing
+  from it: a refusal told from beside one passes, and would fail if it were live. The wedding's
+  menu names nothing it writes once answers are closed, its pills being disabled.
+- **A tab closing is a story** (todo n17): `closesTab: true` in place of `does`. The author's
+  socket closes, as a browser's does, and whoever is still looking must see what the server tells
+  of it; nobody's control is looked for and there is nothing to undo. Chat tells it: Bob closes
+  his tab, and Ada sees him leave general. A write made meanwhile, between a story and its undo,
+  still has no key (todo n9-n11). A story is one of
+  `does`, `cannot` or `closesTab`, with only that kind's keys (`STORY_KEYS`, src/stories.ts): the
+  types say so, and the harness refuses, by name and before running it, a story that mixes them
+  or has a key it does not read (an old `unseen`), since a story file is not type-checked when it
+  runs and the key would be dropped without a word.
+- **An app of its own can install eta.** `package.json` says what eta ships (`files`: `src`
+  without its tests, the eta-app skill, the docs), so `bun pm pack` makes a 41-file tarball an app
+  adds as a dependency, and the skill says how ("An app of its own"). A tarball, not `file:`: a
+  directory brings eta's own `node_modules`, and with it a second delta and railroad. The first
+  such app is the Japan journey planner (`Workshop/japan-eta`).
+
+- **`first-app.md`: your first app, step by step.** Chat, then leave, with each word explained
+  where it is first met, and what each story failure means.
+- **leave, a fourth example: people sign in, and a team's leave is one calendar.** A sign-in page
+  posts an email and password to the example's own route, never over the socket: a good one
+  starts a fresh session with who it is (never the visit's own id), a wrong one is told on the
+  page. Then one page -- a calendar, or the same requests as a list (drawn as it scrolls) -- and one
+  drawer:
+  - drag across days (or type them in the drawer) for a **draft**, whose drawer says what it would
+    mean before you ask: how many working days, who else is off, the clashes it would make, also
+    marked on the calendar; Ask sends it, Cancel drops it;
+  - drag your own waiting request to move it, or a grip to stretch it; a manager answers from a
+    request's drawer; answered, a request stays as it is;
+  - a manager's own leave is approved at once, by them, and shown to everyone ("approved by Mo"),
+    so the team is warned who will not be around; it stays theirs to move or take back;
+  - the key is the whole team in its colours, yourself as "you";
+  - working days only: a weekend is nobody's leave, and a request of only a weekend is refused;
+  - three months at a time with Previous, Today and Next, today marked; the months are in the
+    address, so the URL and the back button follow them;
+  - each person one colour everywhere (d3's Tableau10, less its red, which is a clash here), a bar
+    waiting a tint and approved filled, and a key; a bar says whose it is, or for yours what it
+    is, and all of it on hover; a tap on any bar opens its drawer, your own included -- a drag
+    only begins once it moves;
+  - a draft rides in the team's document beside the requests, so asking for it is one change and
+    one Undo gives the draft back; a page is sent only its own person's draft.
+- **`sessionCookie(id)`** (src/server.ts): the kernel's session cookie, for a route that starts a
+  session; **`signIn`** on `Stories`: the cast signs in through the example's own route;
+  **`date`** fields in `addModal`, and its **`said`**: why the last try was refused.
+- **`/ws` refuses a socket opened from another site** unless `ETA_ORIGINS` lists it (delta's
+  `refuseOrigin`).
+- **A story's place must exist.** Putting a member where a story says, the harness now checks
+  their page stands there (`data-page`): a place the example does not have used to leave them
+  where they were, silently, and a story could claim they saw something on it.
+- **The add modal asks with a select, or for a link** (`src/bento.ts`). `addModal`'s fields could
+  only be typed text, email, number or date, so an example that asked where on a line, or what kind
+  of stop, copied the modal by hand, and the copy lost `said`. A `Field` given `options` is a select
+  of them (`value` names the one drawn chosen, else the first is), and `type` may be `url`. There
+  is still no bare modal: a modal is new or delete (rule 14). A refused add hands back the option
+  chosen, as it does what was typed.
+- **The README's numbers are measured, and `bun test` fails when they are stale** (todo n7).
+  `bun run costs` (`src/costs.ts`) runs each example's `measure-render-cost.ts --json` in a process
+  of its own (no .env, none of the caller's settings, so not `REVEAL`, and a clock stopped on a day
+  before the wedding: a run says the same on any day), builds and gzips the client and railroad,
+  counts every example's stories, and writes them where the README marks them
+  (`<!-- measured:<name> -->`); `src/costs.test.ts` fails when the README says otherwise: word for
+  word, but for a bundle's size, which stands while it is within 3% of a run's, so a minifier's few
+  bytes do not flip its rounding (railroad's 2,620 B is 9 B from showing as 2.5 KB rather than 2.6).
+  The measure scripts wait by asking the server (`inspect`), not by a clock. What the README said
+  was stale three ways: chat's script averaged a stray arrival from its setup into each member's
+  share, so 1,111 B (a 293 B patch) is 1.2 KB (345 B); a tick has been two patches, the market's and
+  the quote's, since the board was told only what it shows (25 Sep, the day after the README's 186 B
+  was copied), so it is 364 B; and the wedding's figures (1.8 KB and 3.8 KB, 24 Sep) predate each of
+  its pages becoming a photo, so they are 2.2 and 5.2 KB.
+
+### Fixed
+
+- **A change that does not land on eta's copy of a document loads it again.** delta 0.10's
+  `applyOps` refuses a remove or replace of what the copy does not hold, where it did nothing, so
+  such a change (a copy that drifted) threw out of the copy's listener: the copy stayed behind,
+  nobody was told, and a write waiting for that change's version waited for ever. Now it is
+  drift, as a change missed is: the document is loaded again and told whole, and whatever waits
+  for a version the load reached goes on (after a change missed, it waited for the next change).
+
+- **A ticker board row opens from the keyboard** (rule 19). In the window a row was the applet's
+  mount drawn as a `div` with `role="button"`, and the client answers no key but Escape, so Space
+  or Enter on it did nothing and it never said it was expanded. Now a `<button>` lies over the
+  whole line, beside the mount and named by the line it covers: Tab stops on it, Space and Enter
+  open the symbol's drawer as a tap does, and it is `aria-expanded` while that is open, lit again
+  (the stylesheet still lit `aria-pressed`, which nothing drew since rows became expanded). The
+  button is a part of its own, so opening a drawer sends its tag alone and no longer the mount's
+  props; and the mount stands where it stood, so the line keeps the ticks it has seen as the
+  board opens and closes.
+- **The README's measurer is under the coverage gate.** `src/costs.ts` and the clock it preloads
+  ran only in a process of their own, spawned by their test, so the table never saw them, and
+  writing the README, and every way a run goes wrong, had no test. Imported, `costs.ts` now runs
+  nothing; its test takes each piece in hand (the words, the 3% a bundle may drift, the writing,
+  a measure that fails, a bundle that does not build, a number with no mark) and checks the
+  README in its own process, keeping one run as the script, spawned. A bundle that does not
+  build says why. `bunfig.toml` says which files are outside the table, and why each may be.
+- **The docs say what the kernel does.** An applet on a document (`data-doc`) was "never sent its
+  props again" (reference.md, first-app.md, src/parts.ts), but its props go with its mount
+  whenever the mount itself is sent: its tag changed, or a part that holds it replaced. They say
+  so now, and that what follows where a person is belongs beside the mount, as the ticker's
+  board row's button now is; a test in src/parts.test.ts pins it. Canon 1 renders each member
+  from the server's copy, not from the tables; only Canon 2's render reads them (stories.md,
+  src/harness.ts). CLAUDE.md says `src/harness.test.ts` runs a few of leave's, the wedding's and
+  the ticker's stories as well as chat's, and the entry on applets' declarations names the
+  clock's face beside the city picker as an applet on the clock's document.
+- **Chat says a run once, and you are not named to yourself** (todo n71). A run of messages shows
+  its author's face once, at its start with the name, and the rest keep the face's place; your own
+  carry no face, and a screen reader hears "You" at the start of your run, since it cannot see
+  which side they sit on. Who is here is a list (`ul`), and you are your face, in your own colour
+  and ringed in the accent, not your name; a screen reader, which cannot see the colour, hears
+  "You" there, where your face had been hidden from it and it heard only everyone else. The
+  message field is named and shows "Message", not "Say" and "Message #general". The messages and the rooms stop their scroll at their edge (rule 6), and the face and
+  the name's inset are the bento's tokens.
+- **The ticker's applets speak to a screen reader, and its clock keeps still when asked** (todo n69).
+  A board row's price and change are text now (n67). The clock was named "the time" and never
+  gave it; the face is an image named by the time, "14:05", its name kept to the minute, so a
+  reader who comes to the clock hears the time then (it is not announced as it changes). Under
+  `prefers-reduced-motion` the seconds hand is put away and the clock turns once a second, not
+  every frame. The city picker's field is a combobox named "City to show the time in": it says
+  whether its list is open, and which suggestion the arrow keys have reached
+  (`aria-activedescendant`).
+- **The ticker's Watch modal says why it refuses** (todo n68). It took free text, dropped an unknown
+  or already-watched symbol without a word, and stayed open. It is a choice of the symbols the
+  board lacks now, so it sends only one that can be watched. An add that cannot be (from the wire
+  or the CLI) is refused with `refuse()`, "The market does not quote ZZZZ." or "ALPH is on your
+  board already.", and the reason is drawn beneath the ask's field when the ask is open. With every
+  symbol watched the board's window has no plus and says "Everything is watched." The two `cannot`
+  stories say what Ann, in the ask, is told.
+- **The ticker's board reads on a phone, and its rows open their drawers** (todo n67). A board row
+  was an SVG 640 units wide scaled to the screen, so at 375 its words were about 6px; it is HTML
+  now, at the page's own size, and a narrow board (a phone, or the window beside a drawer) keeps
+  the name and the change in money for a screen reader only. In the window a row is a figure, as a
+  list's is: a tap on it opens the symbol's drawer, lit while it is open, so Stop watching no
+  longer needs the list reading.
+- **The ticker says a thing once** (todo n66). An empty board said so three times, and pointed at a
+  plus the box does not have; now its cell's summary says it, with no count of none and no empty
+  reading, and the window's note names the plus on its rail. The market's head counts its symbols
+  and its summary no longer counts them again. The clock's face no longer carries the city, which
+  its cell says; its drawer is headed "Time zone" and gives the offset, not the city a fourth time.
+  A symbol's drawer gives what its lit row does not, and not "Watched: no" beside the Watch
+  button: from a list's row (the market's, or the board read as a list), which has the name and the
+  price, the move in per cent and a sparkline of the ticks seen while it is open (an applet on the
+  quote's own document); from a board row, which has those and on a narrow board hides the name,
+  the name. A watched row in the market carries the board's mark instead of
+  the word "watching". The page's title is the desk, and the board's wells are cut square.
+- **The wedding's colours pass contrast** (todo n62; n54 for the wedding). The green of a claimed
+  gift and a pressed Yes, the gold "Open" button, the pencil, the ampersand between the names,
+  maybe's amber and the marks at the guests' feet were 1.9 to 3.3:1. The green is darker; a gold
+  line on the card (the pencil, the ampersand) is a deep gold; the Open button and maybe's disc
+  keep the invitation's bright gold and amber and carry ink (5.8 and 6.1:1), and a maybe mark is
+  edged in a deeper amber; a menu pill and a colour swatch take the controls' edge. `examples/wedding/client/contrast.test.ts` checks each
+  pair against the stylesheet's own tokens: text at 4.5:1, a mark or a control's edge at 3:1. The
+  wedding has one palette, light, whatever the reader prefers, and the test holds it to that.
+- **The wedding's rails, stacks and drawers keep the bento's measure** (todo n63). The welcome's
+  44px controls had spread to every button and field, so a rail's tools stood 32 by 44 and find's
+  field grew out of its bar; the height is the welcome's alone now. In a drawer a long state
+  ("shared · claimed by OKAFOR, BEN") goes under its row's words and wraps, where it squeezed the
+  words to one a line and ran past the drawer's edge. A figure that stands for a family in the
+  photo is a button a screen reader can name ("OKAFOR, a family of 2"; a family of one by the
+  person, or "a guest" while the names are down until the day).
+- **A plain form posts.** The client stopped every form's submit, so a form without
+  `data-write` (a sign-in page) could never post; it now stops only a form that writes.
+- **The wedding's welcome, laid out again.** Its forms used the bento's list `.row` (a rule under
+  each, bled margins) and its buttons had lost their padding and border to the bento's reset; the
+  forms are `.entry` now, the gold and ghost buttons are padded, and the code's button says
+  "Open", since the card above it already says "Open our household".
+- **Find's field opens beside its own tool.** It was placed at the rail's top, so on a page whose
+  rail starts with the reading switch (the wedding's) it opened beside the camera, two tools above
+  find. The field is anchored to find's tool (`.tool.find`, CSS anchor positioning), and goes with
+  it when a drawer moves the rail; a browser that cannot anchor keeps it at the rail's top.
+- **Find no longer draws the photo again.** Its field came between the rail and the reading, so
+  opening or closing it shifted every later child of the window, and the morph (matching by
+  position) rebuilt the reading and remounted the photo: every figure walked in and every bomber
+  lunged again. The field is the window's last child now. And the photo applet, told only that
+  find's fade changed (`onlyFadeChanged`), fades and lights each figure where it stands rather than
+  drawing the photo again.
+- **A `<select>` is a field** (`src/client/app.ts`). An editing form (`data-write-on`) compared
+  each field with its `value` attribute, which a select does not have, so every commit sent each
+  select in the form too, at what it showed: a `change` form whenever another field changed, a
+  `blur` form on merely tabbing through one. And a refused write handed back what was typed, not
+  what was chosen. What a select rendered is the option the browser shows as drawn -- the last
+  drawn `selected`, else the first not disabled (none in a list, `size` over 1); it is sent only
+  when it differs from that, and a refusal hands it back. A `multiple` select is left out on
+  purpose: it holds several values and a write carries one, so an editing form never sends it, a
+  refusal does not hand it back, and a render leaves what is chosen in it to the browser. A form
+  that creates still sends only its last choice (`formValue`: quiet and late go as `late`).
+- **A select keeps a choice not yet drawn, by its value, and otherwise shows what is drawn**
+  (`src/client/morph.ts`). Chrome no longer moves an option by its `selected` once someone has
+  chosen it, and leaves the caret in a select after a pick, so an undo (or another member's change)
+  back to an option chosen earlier left it showing the old one, and the next commit reverted it. A
+  newly drawn option took away a choice not yet sent, in both browsers. And the morph reuses
+  options by place, so a choice slid to its neighbour's value when an option was added before it,
+  and a refused add whose page dropped the option chosen came back with the next one. Now a render
+  shows the choice someone made and has not seen drawn, by its value while it is still offered,
+  else what is drawn now, whether or not they are in the select.
+- **An editing form says a thing once until a write lands, and may say it again after.** An
+  `input` form dropped a commit identical to the last it sent, for good: choose travel, undo,
+  choose travel again, and the second choice went nowhere. `blur` and `change` forms had no such
+  guard, so leaving a field twice sent it twice before the echo. Every editing form now drops a
+  repeat until a write lands (a patch), and not after.
+- **What opens, opens from the keyboard** (todo n57). A cell, a row and the wedding's bubbles were
+  `div`s with `role="button"`: Tab reached them, and Enter and Space did nothing. A cell's name is
+  its button now (the cell is still tapped anywhere), a row that taps is a `<button>`, the whole
+  line, and so are the bubbles. What opens a window, a drawer or a modal says `aria-expanded`, not
+  `aria-pressed`, which a screen reader called a toggle though a second press left the drawer
+  open: a thing's name, a chosen row, the wedding's bubbles, its drawer tools (`tool()`'s new
+  `expanded`) and its figures, leave's bars and rows. Find, the eye and the radios stay pressed.
+- **Behind an open window the box is inert, and the keyboard goes with the cell** (todo n59). The
+  box's trail, its other cells and what is in place could still be tabbed through and heard behind
+  a window. `boxPage` puts them `inert` while one is open (what is in place in a wrapper that is
+  always there, so opening changes only its tag). And a window opened from the keyboard
+  left it nowhere: now the client gives it to the first control of the cell that moved (the way
+  back as it opens, its name as it closes), whether the page came whole or in parts. The window
+  is a region named by its title, so a screen reader says what opened as the keyboard goes in.
+- **A phone may zoom, and does not have to** (todo n60, the rest). iOS zooms into a field under
+  16px: find's was 14px, the ticker's and chat's 15px; every field is 16px now. The wedding's
+  viewport said `maximum-scale=1`, so the reader could not zoom at all; it no longer does. A way
+  back on the trail was 16px tall where it is pressed; it is `--touch` each way, drawn as it was,
+  and a trail that wraps keeps its lines a touch apart, so one crumb's press never lands on the next.
+  And find's field kept its own width in the bar under the trail, which at 320 pushed the eye out
+  of it; the field now takes what the tally and the eye leave.
+- **Find's eye and the window's way back are pressed over a touch** (todo n48). Both are drawn
+  26px, under the kernel's own `--touch`; each keeps its drawing and is pressed over `--touch` each
+  way, as the trail's crumbs are. The way back's words are in a span of their own, which gives way
+  to a long trail instead of the link.
+- **The bento's rules say what the keyboard does** (todo n56). Rule 19 in
+  `examples/bento/README.md`: what a finger opens, the keyboard opens; the keyboard goes into a
+  window and back to its cell; the box behind a window is inert; Escape puts away what was opened
+  last. The skill's reference says an example's own opener is a `<button>`.
+- **The keyboard is never left nowhere** (`src/client/app.ts`). Escape in a drawer, or from a modal,
+  left the keyboard on the page itself; in Chrome the + that opens a modal kept the keyboard as it
+  went inert, so the modal's first field never took it; and a window opened by back or forward put
+  the cell with the keyboard behind it. After each drawing, a keyboard on nothing or on something
+  inert goes back to what opened a drawer or modal that has just gone, else to a field waiting for
+  it, else into the cell that has just moved.
+- **A box or a radio is a field** (`src/client/app.ts`, todo n76). An editing form compared a
+  field's `value` with what was rendered, and a box's value is its `value` attribute or "on",
+  ticked or not: without a value attribute it went as "on" on every commit, with one it never
+  went, and nor did a radio. A refused write handed back no tick. What a box or a radio rendered
+  is now whether it was drawn `checked`; it goes only when its tick differs, a box as `true` or
+  `false` and a group of radios as the value chosen; a refusal hands the tick back; and a render keeps
+  a tick not yet drawn (a radio's by its value, while its group offers it) and otherwise shows
+  what is drawn, with the caret in it or not. A render drawn while someone is pressing a box (or
+  holding Space on it) leaves its tick be until the click lands: it used to tick it first, so the click unticked it
+  and sent that, undoing whoever had ticked it. A group of radios may span parts: a render in
+  parts keeps its choice across all its ops, a radio put in drawn ticked or a part swapped for
+  another tag included.
+- **The morph leaves be what follows a child put in or taken out** (`src/client/morph.ts`). It
+  matched children without an id by place alone, so an element put in or taken out ahead of its
+  siblings shifted every one after it: each was rebuilt, and a button among them lost the caret
+  to the body (japan-eta's reveal mark, drawn first, did this until it was drawn last). A child
+  without an id is now matched by the ids inside it first (the one holding a row or an applet
+  goes on holding it), then in order by tag (the same head and tail by place, the middle by their
+  longest common run), and what is not reused goes first, so what stays is not moved.
+- **A part inside an `<svg>` comes back as SVG** (`src/client/morph.ts`, todo n77). A render in
+  parts parsed a part's HTML in a `<template>`, as HTML, so a part rooted inside an `<svg>` (a
+  `<g>`, a `<path>`) was replaced by an HTML element of that name, and drew nothing; a `tag` op
+  on a camelCase attribute added a lowercase one beside it (`gradientunits` beside
+  `gradientUnits`) and left the real one stale. The stories could not see it: the harness applies
+  a part as text. A part is now parsed where it stands: in an `<svg>`, as SVG.
+- **A part that moves from one parent part to another goes where it went** (`src/parts.ts`, todo
+  n82). The diff replaced the part it went to, then took it out of the part it left by its key
+  alone, which names the first on the page: when the part it went to came first, the client and
+  the harness took out the copy just put in and left the old one. A part that moved is now taken
+  out of the part it left (`[data-eta-part="b"] [data-eta-part="head"]`).
+- **`waitFor` runs out with the clock fixed** (`src/webview.ts`, todo n83). It measured the wait
+  with `Date.now()`, which bun:test's `setSystemTime` stops, so a browser test that fixed the
+  date to open a page on a given day, then waited for something that never came, hung past its
+  own timeout instead of failing with what it waited for. It measures with `performance.now()`.
+- **A revealed element too tall for the view lands by its top** (`src/client/app.ts`, todo n84).
+  `data-reveal` scrolled with `block: "nearest"`, which, when the element and its scroll margins
+  cannot fit in the view, brings it by the edge it is reached by: from below, its foot, so its
+  top landed above the view, under a sticky header (a whole day on a phone). Such an element now
+  comes by its top, below its margin; one that fits still comes by its nearest edge. The view is
+  the nearest scroller's, or the window's, less its `scroll-padding` (a sticky header it declares;
+  a percentage is of that scroller). Only that scroller moves: a list's tall row no longer
+  scrolls the page around the list too.
+- **Escape and Back say what is typed before the drawer goes** (`src/client/app.ts`). An editing
+  form says a field on leaving it, but a field a render takes out has not been left: Chrome fires
+  `focusout` as it goes, WebKit (every iPhone browser) does not. So words typed in a drawer's
+  editing form were lost on Escape or Back in WebKit, and went after the drawer's own write in
+  Chrome. Both now say the editing form someone is in first.
+- **A write made while the socket is down is not taken for sent** (`src/client/app.ts`). When
+  the connection dropped, the page went inert and the field someone was in lost the caret, so an
+  editing form committed into the closed socket, and the client recorded it as sent: once back,
+  leaving the field again said nothing (the same message, not sent twice), and the words, still
+  in the field, looked kept. And a form submitted as the socket closed was cleared. A write is now
+  sent only on an open socket, and recorded only then: a form keeps what is typed, and an editing
+  form says what was dropped once the page is drawn afresh (the unanswered write's account, above).
+- **A render keeps the reader's place, under a sticky header too** (`src/client/app.ts`, todo
+  n85). The client left a reader's place to the browser's scroll anchoring, which can anchor on
+  the row hidden under an app's sticky header: a stop moved from Wednesday to Thursday, from
+  under the header, slid Thursday 59px up under it (japan-eta). Now, before a render, whole or in
+  parts, the client notes in each scrolled scroller (the page, the bento's window) the first
+  element below where reading starts -- below any bar stuck at its top, position `sticky` or
+  `fixed`, as measured -- and after it puts that element back where it was; not while someone is
+  pressing (a drag, a selection being made), and a right-click or a lost window ends a press. `data-reveal` measures the bar the same way, so a revealed row
+  lands below a header nobody declared. A declared `scroll-padding-top` overrides the measure.
+  What a render takes out of the flow is no place to keep: a cell grown into the window (fixed,
+  or the one that moves) left the page behind it at its top, and there on close. A scroller whose
+  top is scrolled off the window is kept from the window's top, and a scroller's place is put
+  back before the page's, which may be reading inside it.
+
+## [0.49.0] - 2026-09-25
+
+### Added
+
+- **A refused write can say why.** A compartment's `permit` or `shape` throws
+  `refuse(reason)` (`src/refusal.ts`); the kernel keeps the reason in the session's own
+  `refusal` document -- in memory, off the ledger -- until the session's next write, and a page
+  draws it beside the control that sent it with `refused(sessionId, doc, path)`. A plain `false`
+  stays silent. The kernel appends a `refusal` compartment beside its ledger, so an example may
+  not own a type of that name.
+- **Undo is looked at before it walks** (`walkable` on a compartment): the owner of the
+  document may refuse a walk its rules forbid, and say why. The wedding's answers are locked at
+  the deadline to Undo too.
+- **An undo that meets someone else's later write says so** ("Someone has changed that since,
+  so it cannot be undone.") instead of doing nothing silently. The kernel draws why an undo or
+  redo was refused over the page.
+- **A story names everyone who sees its change.** Anyone in the cast not in `seen` must notice
+  nothing -- their page, where the cast left them, the same -- so a story that leaves out someone
+  whose page changes fails by name (`bob noticed, and should not have`). `unseen` now means the
+  stronger claim: told of nothing at all.
+- **A story is done from the page.** Before a `does` is sent, the author's open page must offer a
+  control for it (a `data-write` with its document, op, path and a button's own value), from
+  where the story says they act (`from`, the example's own grammar); `outside: true` marks a
+  write from a feed or the CLI. The write must then land: someone told of a changed document. A
+  `cannot` whose exact write a button on the author's page offers, refused without `told`, fails
+  as a control that always fails. An applet says what its own controls write with `writes()`
+  (`data-writes`). Where the author stands after a write that put a modal away is theirs: undo
+  and redo are looked at from where each was taken.
+- **The wedding can do what its stories say**: a household takes back its answer, and leaves a
+  guest's coming "not sure"; the couple edit a household's email, add a guest to its invitation,
+  and take one off (a drawer, then a modal that asks). The stories found each missing.
+- **`told` on a `cannot` story**: the reason the refused person must be shown. Their page may
+  change by that line and nothing else; a reason shown that no story says fails as a change.
+
+### Changed
+
+- **Takes @blueshed/delta 0.8.0 and @blueshed/railroad 0.14.0.** Nothing in eta changes for
+  them: eta serves its own socket (delta's new Origin check is `createWs`'s), keeps its documents
+  on SQLite in process, and names no global `JSX`.
+
+- **The kernel's CSS, for everyone who reads it** (src/bento.css): one focus ring for every
+  control, drawn outside it (inside a stack, which clips); the find bar shows focus while its
+  field has it; what is chosen or pressed is outlined in forced colours, where shadows and
+  backgrounds are taken away; the window opening and the rails stepping aside are still under
+  reduced motion; `.sr-only` uses `clip-path`. Each example's `--edge` -- a control's border -- is
+  now at least 3:1 against its card (WCAG 1.4.11), so fields and stacks read more firmly.
+
+- **An applet that takes its document's patches is never sent its props again** (src/parts.ts):
+  they are that document, whose every change reaches the page as a patch. Before, a write to any
+  other document sent them again; now nothing does, so an applet's props must be its document
+  alone -- which the stories already checked.
+- **The ticker's board is a row applet per watched symbol**, each on its own `quote:<SYMBOL>`
+  document, so a board is told only the quotes it shows. It held the whole market before, so
+  every page changed on every tick, for symbols nobody on it watched.
+- **The stories name everyone who sees**: chat's, the ticker's and the wedding's stories now say
+  who else notices (Dee's list of rooms losing an empty kitchen; Ben's home page counts).
+
+- **The wedding refuses an unknown code** instead of writing "That code was not recognised."
+  into the visit, so a wrong code is no longer a write, and no longer on the ledger.
+
+## [0.48.0] - 2026-09-25
+
+### Breaking (for example authors)
+
+- **The stories check delivery, not only pages.** A story that passed may now fail, by name:
+  - an `unseen` member told of any document -- sent a patch -- by the write, its undo or its redo
+    (`cy was told of room:general, and should not have been`);
+  - a `cannot` whose writer is not answered with the page (`refused, but ada was not answered`);
+  - anything the kernel reports failing while the story runs (`the server failed handling a
+    write: …`), so a refusal that is really a throw is no longer a refusal.
+
+  To move across: a page is told every change to each document it reads, shown or not, so a page
+  that reads a document it does not show leaks it by patch. Read only what the page shows, or cut
+  the document by who reads it.
+- **`audienceFor(docType, docId)` takes no third argument.** Its `exclude` was passed by nobody.
+  To move across: filter the socket out of what it returns.
+- **A document kept off the ledger says so: `Compartment.ledger: false`.** A write whose ledger
+  entry disagrees with its compartment is reported as a failure: one registered in delta without
+  `{ ledger: true }` whose compartment does not say `ledger: false` (no undo could ever work), and
+  one that says it and is recorded all the same. To move across: add `ledger: false` to the
+  compartment of each document you register without a ledger, as the ticker's desk and the
+  wedding's session now do.
+
+### Added
+
+- **Islands: an applet written as a railroad component** (`island(render, reduce?)`,
+  `src/island.ts`). eta depends on `@blueshed/railroad` `^0.12.0`, and the tsconfig says
+  `jsx: "react-jsx"`, `jsxImportSource: "@blueshed/railroad"`. `render(props, ctx, el)` gets its
+  props as a signal and reads what the server drew inside `el` before it is replaced; `update` sets
+  the props, and `reduce(props, ops)`, when given, is the applet's `patch`. Built on railroad's
+  `signal` and `mount` alone; it draws only inside its element and never binds that element's
+  attributes, which stay the morph's. The kernel's client does not import it: a page with an
+  island carries railroad (about 2 KB gzipped for `signal` and `mount`, 4 KB with `list`).
+- **`failed(what, err)` and `onFailure(fn)`** (`src/failed.ts`): every failure the kernel catches
+  -- a message, a drawing, a change being told -- is logged in one place and heard by whoever
+  listens. The stories harness listens.
+
+### Changed
+
+- **`@blueshed/delta` ^0.7.0 and `@blueshed/railroad` ^0.13.0.** Read delta's Breaking list: an
+  undo that meets someone else's write now answers `{ ops: [], conflict }` where it used to fail.
+
+- **The ticker's city picker is an island** (`examples/ticker/applets/city-picker-applet.tsx`):
+  93 lines of hand-built DOM, listeners and highlight bookkeeping became 61 (49 of code, from 79),
+  its suggestions a keyed `list()` over a computed. It still reads the zones from the server's
+  `<option>`s. The ticker's page grows from 5.3 KB to 9.2 KB gzipped, railroad's `list` most of
+  it. The board (whose flash needs each row drawn afresh), the clock (a frame loop) and the
+  wedding's applets (drawn by pure, tested functions) stay as they are.
+- **The README and the eta-app reference say what undo does on delta 0.6.0**: it puts a row back
+  as the write found it, over what anyone wrote to it since; no compartment is asked again, so a
+  deadline does not hold against it; and an undo whose inverse no longer applies sticks. The
+  wedding's server tests pin all three as `test.failing`, so bun says when delta fixes one.
+- **One set of open sockets.** The server kept its own beside `src/compartments/audience.ts`'s;
+  it reads that one (`allOpenSockets()`). `Assembled.renderFor` and `Documents.held`, which only a
+  test read, are gone.
+
+### Fixed
+
+- **The 100% gate holds on macOS too.** `src/webview.ts` took its Chrome path only on Linux, so on
+  a Mac two lines were never run and `bun test` failed; the platform is now a parameter and a
+  unit test takes both paths.
+
+- **Undo no longer puts a row back over what someone wrote since**, and **an undo that no longer
+  applies no longer sticks** the session's Undo on it: both delta's, taken with 0.7.0. The two
+  wedding tests that pinned them as known failures now pass.
+
+- **A message that is not a write, or a write whose handling throws, is answered.** A write must
+  name its document (a string) and carry one op or more, each `add`, `replace` or `remove` with a
+  JSON Pointer path (`""` or starting `/`); anything else -- not JSON, `ops` not a list, a `null`
+  op, a path without its slash -- is refused like any refusal: the writer's page handed back.
+  Before, each of those threw inside the server, was logged, and the writer heard nothing. A write
+  whose `permit`, `shape` or `wrote` throws is reported (`failed`) and handed back too.
+- **After an undo, a field shows the value undone to** (`src/client/morph.ts`). Once typed in, a
+  field's value no longer follows its `value` attribute (nor a textarea's its text), so it went on
+  showing the undone value, and an editing form (`data-write-on`), comparing it with what was
+  rendered, sent it again on the next blur -- reverting the undo. A render that changes a field
+  nobody is in now sets what it shows; a field someone is in keeps what they type.
+- **A render in parts never reaches inside an applet** (`src/client/app.ts`). Its targets were
+  found anywhere in the page, so a part inside an applet's element was replaced, or had rows put
+  beside it, over what the applet drew. The applet's own element may still be a part.
+- **A dropped connection leaves the page as it was** (`src/client/app.ts`, `src/bento.css`).
+  It was replaced by "Disconnected. Reconnecting…", which threw away what was half typed and
+  unmounted every applet (the ticker's sparkline histories, a half-dressed figure). Now `#app` is
+  made `inert` and marked `data-offline` -- the bento dims it and says "Reconnecting…" -- until
+  the socket is open again and the server draws the page.
+- **A form clears as it sends, and a refused write hands back what was sent** (`src/client/app.ts`).
+  A form waited for the echo of a write to its document to reset. So a refused write left it
+  waiting, and the next echo of anyone's write there cleared what had been typed since; and what
+  a quick typist typed before their own echo came was appended to the sent text, then wiped by
+  the echo (chat's browser test, fifteen messages in a row, lost and merged several). Now the form
+  is cleared on submit; the page whole before the echo -- a refusal's answer -- puts the sent
+  values back into each field not typed in since. No echo, anyone's, clears a field.
+- **A page is drawn even when a compartment's `onOpen` fails.** The failure stopped the event
+  before the first drawing, so the tab sat on "Connecting…"; it is reported, and the page drawn.
+- **`inspect` gives at most 100 entries a document**, however many it asks for: `limit: 1e9` asked
+  delta for a document's whole history, and every event waited on the answer. A limit that is not
+  a whole number is the default (the latest).
+- **`write()` escapes its spec** (`src/html.ts`): the JSON sits in single quotes, and a `'` or `&`
+  in it -- a path built from what someone typed, `/rooms/lobby' onclick='…/topic` -- ended the
+  attribute and began another. Both are escaped now; nothing else in the output changes.
+- **Two compartments owning one document type throw** when the example is assembled, naming the
+  type (the kernel's own `ledger` among them). Before, the last silently won.
+- **The browser tests pass on Chrome** (Linux, the Claude Code sandbox). Every `Bun.WebView` of
+  a process shares one Chrome profile there, and a cookie ignores the port, so each view after a
+  test's first opened already signed in, and waited for ever for the name form: 19 failed. Each
+  view now goes to a host of its own (`view3.localhost`: Chrome takes every `*.localhost` to this
+  machine) through `at(view, server.url, path?)` in `src/webview.ts`; WebKit's views are apart
+  already. The four copies of `waitFor` are that file's one.
+- **`bun run stories` says what to do next for an example with stories and no app.**
+  `ETA_EXAMPLE=londons` failed with `Cannot find module examples/londons/index.ts`; it now
+  says "examples/londons has 149 stories and no app yet (no index.ts): build the least that
+  makes the first one pass", and an example with no `stories.ts` is told it starts there. Both
+  exit 1.
+
+## [0.47.0] - 2026-09-24
+
+### Breaking (for example authors)
+
+- **eta keeps every document in delta.** `@blueshed/delta` is a dependency, and `Example.delta`
+  (the example's backends registered on a `createLocal()`) is required. The kernel keeps a copy of
+  each document a page reads, kept current from delta's one stream of changes, and draws
+  synchronously from it: `read("<docType>:<id>")` (`src/documents.ts`) gives a document as held,
+  and a read of one not held yet throws `Pending` -- the kernel loads it and draws again
+  (`settled()`). A write goes to delta as the person (`Example.who`, optional, default the
+  session), with the session as the cursor undo walks; the ledger is delta's. eta needs
+  `@blueshed/delta` 0.6.0 (from npm): `createLocal`, documents that are `implied`, and the
+  ledger's undo, redo and history are all new there.
+- **Gone from the kernel:** `migrate()` and the kernel's migrations, `src/ledger.ts` (its naming
+  helpers `prefixDoc` and `splitDoc` are in `src/names.ts`), `Compartment.write`, `notify`,
+  `renderRequested` and the event bus (`src/compartments/bus.ts`), and `MIGRATIONS_DIR` (from
+  `.env.example` too). Every change is told from delta's stream, never by hand.
+- **The `Compartment` contract.** `write` is gone; a compartment permits and shapes, and delta
+  writes. New: `own` (its documents are keyed by the session id: seen by that session alone and
+  named by type), `kind` (`written`, the default; `fact`, `live`, `sourced`, `static`), `at` (where
+  eta's paths sit in the document, `/sessions`), `shape(ws, docId, ops)` (the wire's ops as the
+  document takes them, for a fresh write only; shaping to nothing refuses the write), `changed(docId,
+  ops)` (after any change is told: keep a live document true) and `wrote(ws, docId, ops)` (after a
+  fresh write from this connection: what follows for the writer, such as putting a modal away).
+  `permit` is optional (omitted, nobody may write) and is given the document's id.
+- **A document is named whole on the wire**, `<docType>:<docId>` (`room:general`), in every echo, in
+  `inspect` and in `window.eta.docs()`, so one socket holds any documents. A bare type still means
+  the one this connection is on (`resolveDoc`). A session's own documents are marked `own` and go
+  by their type alone, since the id is a credential; a document keyed by a live session's id that
+  is not `own` is refused by name.
+- **A connection sees what its page read.** `Compartment.sees` is gone: while the kernel draws a
+  page it keeps every document the drawing read, and those, with the one of each type it is on,
+  are what the connection is told about and may write. Cut documents by who reads them.
+- **A page is sent in parts.** `Compartment.fragments` is gone. A render names its regions with
+  `part(key, html)` (`src/parts.ts`); the bento's cells, rows, keyed lists and drawers are parts
+  already. After a change the kernel draws each page that read the document again and sends what
+  differs: a part replaced, its tag alone (`tag`), a row put in (`after`, `before`) or taken out,
+  nothing when nothing changed, the page whole only when it is a different page. The render ops'
+  `add` is gone. The bento's `inertWhile` is replaced by `layers(page, drawer, modal)`: opening a
+  drawer or a modal sends its layer, not the page.
+- **Echoes are delta's.** delta tells a change as the rows it leaves: a field replaced goes out as
+  its row, whole (`replace /ALPH {...}`), and a field of a document whose root is one row as the
+  root (`replace "" {tz}`). An applet that takes a document's patches (`data-doc`, named whole)
+  holds the document in its props as delta holds it, rows and all, at `data-at`.
+
+#### Moving an example across
+
+The examples are demos, and their data is not carried over: each example's tables are now named
+`<example>_...` (`chat_messages`, `wedding_guests`), made fresh and seeded. The old tables are
+left in the database as they were, and nothing migrates them. Compare the ticker's port
+(`git diff 63cad94 HEAD -- examples/ticker`) with these steps.
+
+1. Replace `migrations/` and `db.ts` with a `delta.ts`: the schema (`defineSchema`, tables named
+   `<example>_...`), `createTables` against `src/db`'s `db`, a seed run into empty tables, and the
+   documents on a `createLocal()` -- `registerDocs(..., { ledger: true })` for what is written and
+   undone, `registerMemory` for what is live, and a registry with no ledger for a tray whose visits
+   are not history. Export it and set `delta` on the example. Chat's, the ticker's and the
+   wedding's are the pattern; delta's `delta-doc` skill says how to write the schema and documents.
+2. A document module reads through `read("<docType>:<id>")` and adapts delta's rows into what the
+   views want; it keeps its pure rules (`after(state, ops)`) beside it. A page's reads all go this
+   way. Reads that go to the tables directly are the ones no page reads as a document: what a live
+   document is computed from, a credential looked up (a code), a blob (a picture), a rule checked
+   across rows.
+3. Mark every compartment whose documents are keyed by the session id `own: true` (a session, a
+   desk, a watchlist, a clock). Give a compartment `at` where its fields sit under the document's
+   root (`/quotes`, `/watchlists`, `/clocks`), so the wire keeps its short paths. A write that was
+   recorded as not undoable is `kind: "fact"`; a document the server keeps is `kind: "live"`.
+4. A compartment's `write` becomes `shape`: validate, trim, mint an id (`Bun.randomUUIDv7()`),
+   turn a nested wire path into the rows it moves, and return the ops; return nothing to refuse.
+   Undo and redo are delta's inverse, never shaped, so any replay-only branch goes.
+5. What followed a write by hand (`notify`, a render request, a presence broadcast) becomes
+   `changed` (keep a live document true: compute it whole, write the difference with
+   `serverWrite`) or `wrote` (what follows for the writer alone, such as closing the modal that
+   asked). `serverWrite` goes straight to delta, so it takes the document's own paths, not eta's:
+   `/desks/page`, `/quotes${path}`.
+6. Drop `sees` and `fragments`. Name the page's regions with `part()` where a change should travel
+   alone, and name documents whole wherever the page or an applet names one.
+7. Replace `inertWhile(open, page)` with `layers(page, drawer, modal)`, so a drawer or a modal
+   travels as its own layer.
+8. An applet that takes its document's patches: name the document whole in `data-doc`
+   (`ticker:market`), say where its props sit in it with `data-at` (`/quotes`), give it the rows
+   as delta holds them, and have `patch` take delta's row-shaped ops -- a quote replaced whole
+   (`replace /ALPH {price, prev, ...}`), a one-row document replaced at its root
+   (`replace "" {tz}`) -- not a single field. The stories check that the ops land.
+
+### Changed
+
+- **Events are handled one at a time, in order**, each done when what it set going is; **changes
+  are told one at a time, in order**. A failing event, drawing or change listener is logged and
+  the next goes ahead.
+- **Chat, the ticker and the wedding keep their documents in delta**, each with a `delta.ts`
+  (schema, seed, documents) in place of its migrations. Chat's sessions and rooms are written, who
+  is here and the list of rooms are live. The ticker's market is a fact, never undone; a watchlist
+  and a clock are written; the desk is kept with no ledger. The wedding's documents are cut by who
+  reads them -- the couple's `board`, a `household`, the `wedding`'s lists, the `welcome`, and a
+  live `everyone` (who stands in the photo, and how many have claimed each gift) -- so a household
+  is never told another's email or code. The wire and every story sentence are unchanged.
+- **`inspect` lists every document a connection sees**, with delta's history for each.
+- **The stories check the patch stream**: each member's applet props, as last sent with every
+  patch since laid on, must equal what a fresh render gives. It found three faults in the ticker's
+  board and city picker, now fixed.
+- **Every measured cost went up** since 0.46.0 (README, "What a write costs"): a chat message is
+  1,111 B to each other member (was 425 B), a tick 186 B (was 104 B), and a household a change does
+  not concern is sent 302 B (was nothing). Why: delta tells a change as the whole row it leaves,
+  not the field; a row's time-ordered id, 36 characters, is written three times in each list row
+  sent; chat's window of 50 messages slides on every message (the oldest taken out, the
+  new first one redrawn, the new one put in -- nothing is sent twice, and 0.46.0's append-only
+  fragment was wrong); and the wedding's other households now read the public `everyone` document,
+  so they are told its changes (the photo's one changed figure, with no HTML).
+- **The release gate is named**: `bun run check` (`tsc --noEmit`, now clean), `bun test` and
+  `bun run stories:all`, run by the shared `/publish` (`.claude/commands/publish.md`). The eta-app
+  skill carries a `version:` line for it to stamp.
+- **Docs**: the README is for someone deciding whether to use eta; the eta-app skill, its
+  reference and `CLAUDE.md` describe the kernel on delta. The kernel, `CLAUDE.md`, the README and
+  the skill no longer point at notes outside the repository.
+
+### Fixed
+
+- **An earlier example's copy of the documents still told changes**, so a later server over the
+  same delta echoed each twice. Only the active example's copy tells now.
+- **Stopping one server of an example cleared it for the servers still running.** It is cleared
+  when its last server stops.
+- **`inspect` gave every entry the id 0.** It gives the ledger entry's own.
+- **Chat's room grew past its 50 messages** on an open page, since the hand-written fragment only
+  appended; parts take the oldest out.
+
 ## [0.46.0] - 2026-09-17
 
 ### Changed

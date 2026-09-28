@@ -3,8 +3,8 @@
 // prints; this reads and judges.
 
 import type { Stories } from "../src/stories";
-import type { Gap, Model } from "../../blueshed/hjeli/src/core/grammar";
-import { runAll } from "../../blueshed/hjeli/src/core/predicates";
+import type { Gap, Model } from "../../hjeli/src/core/grammar";
+import { runAll } from "../../hjeli/src/core/predicates";
 import { fromStories, locate, entityOf, noticing, type Note, type Reading } from "./from-stories";
 
 /** How much of a predicate's question the stories can answer, as they stand. */
@@ -25,7 +25,7 @@ export const SIGHT: Record<Gap["predicate"], { sight: Sight; why: string }> = {
 export type Finding = { check: string; where: string; detail: string };
 
 export type Report = {
-  counts: { stories: number; does: number; cannot: number; actors: number; pages: number; entities: number; fields: number };
+  counts: { stories: number; does: number; cannot: number; closesTab: number; actors: number; pages: number; entities: number; fields: number };
   gaps: Gap[];
   /** Checks only stories can ask. */
   story: {
@@ -53,14 +53,11 @@ export function judge(stories: Stories): { reading: Reading; report: Report } {
   const refusals = new Map<string, number>();
 
   for (const s of stories.stories) {
-    if (!("does" in s)) {
-      for (const op of s.cannot.ops) {
-        const entity = entityOf(locate(s.cannot.doc, op.path).chain);
-        refusals.set(entity, (refusals.get(entity) ?? 0) + 1);
-      }
-      continue;
+    for (const op of s.cannot?.ops ?? []) {
+      const entity = entityOf(locate(s.cannot!.doc, op.path).chain);
+      refusals.set(entity, (refusals.get(entity) ?? 0) + 1);
     }
-    if (s.does.doc === reading.tray) continue;
+    if (!s.does || s.does.doc === reading.session) continue;
     const who = noticing(s).map(([m]) => m);
     if (!who.includes(s.as)) authorBlind.push({ check: "author-blind", where: s.name, detail: `${s.as} writes and does not notice; noticed by ${who.join(", ") || "nobody"}` });
   }
@@ -84,14 +81,15 @@ export function judge(stories: Stories): { reading: Reading; report: Report } {
     .map(([field, v]) => ({ field, values: [...v].sort(), moves: moves.get(field)! }))
     .sort((a, b) => a.field.localeCompare(b.field));
 
-  const does = stories.stories.filter((s) => "does" in s).length;
+  const count = (kind: "does" | "cannot" | "closesTab") => stories.stories.filter((s) => s[kind] !== undefined).length;
   return {
     reading,
     report: {
       counts: {
         stories: stories.stories.length,
-        does,
-        cannot: stories.stories.length - does,
+        does: count("does"),
+        cannot: count("cannot"),
+        closesTab: count("closesTab"),
         actors: model.actors.length,
         pages: model.documents.length,
         entities: model.entities.length,
@@ -138,7 +136,7 @@ export function format(name: string, report: Report, against?: ReturnType<typeof
   const out = (s = "") => lines.push(s);
   out(`# ${name}: closure over stories`);
   out();
-  out(`${c.stories} stories (${c.does} does, ${c.cannot} cannot) · ${c.actors} actors · ${c.pages} pages · ${c.entities} entities · ${c.fields} fields`);
+  out(`${c.stories} stories (${c.does} does, ${c.cannot} cannot${c.closesTab ? `, ${c.closesTab} closes a tab` : ""}) · ${c.actors} actors · ${c.pages} pages · ${c.entities} entities · ${c.fields} fields`);
   out();
   out(`## hjeli's six predicates`);
   out();

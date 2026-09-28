@@ -6,7 +6,13 @@ const has = (symbol: string) => ["ALPH", "MIKE", "NOVA"].includes(symbol);
 describe("watchlist document", () => {
   test("adds a symbol the market has, upper-cased and once, at the end", () => {
     expect(after([], [{ op: "add", path: "/symbols/-", value: " alph " }, { op: "add", path: "/symbols/-", value: "MIKE" }], has)).toEqual(["ALPH", "MIKE"]);
-    expect(after(["ALPH"], [{ op: "add", path: "/symbols/-", value: "ALPH" }, { op: "add", path: "/symbols/-", value: "NOPE" }, { op: "add", path: "/symbols/-", value: "" }], has)).toEqual(["ALPH"]);
+  });
+
+  test("an add that cannot be is refused, and says why", () => {
+    expect(() => after(["ALPH"], [{ op: "add", path: "/symbols/-", value: "alph" }], has)).toThrow("ALPH is on your board already.");
+    expect(() => after([], [{ op: "add", path: "/symbols/-", value: "nope" }], has)).toThrow("The market does not quote NOPE.");
+    expect(() => after([], [{ op: "add", path: "/symbols/-", value: " " }], has)).toThrow("Choose a symbol to watch.");
+    expect(() => after([], [{ op: "add", path: "/symbols/-", value: "MIKE" }, { op: "add", path: "/symbols/-", value: "MIKE" }], has)).toThrow("MIKE is on your board already.");
   });
 
   test("removes by index; a row it lacks, or anything else, is nothing", () => {

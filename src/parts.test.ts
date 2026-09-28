@@ -95,6 +95,18 @@ describe("diff", () => {
     ]);
   });
 
+  test("a part that moves from one parent part to another is taken out of the one it left, not the first on the page", () => {
+    const view = (at: "a" | "b") => part("root", `<div>${["a", "b"].map((k) => part(k, `<section>${at === k ? part("head", "<header>H</header>") : ""}</section>`)).join("")}</div>`);
+    expect(diff(draw(() => view("b")), draw(() => view("a")))).toEqual([
+      { op: "replace", target: '[data-eta-part="a"]', html: `<section data-eta-part="a"><header data-eta-part="head">H</header></section>` },
+      { op: "remove", target: '[data-eta-part="b"] [data-eta-part="head"]' },
+    ]);
+    expect(diff(draw(() => view("a")), draw(() => view("b")))).toEqual([
+      { op: "remove", target: '[data-eta-part="a"] [data-eta-part="head"]' },
+      { op: "replace", target: '[data-eta-part="b"]', html: `<section data-eta-part="b"><header data-eta-part="head">H</header></section>` },
+    ]);
+  });
+
   test("a key drawn twice the same is one part", () => {
     const view = (t: string) => {
       const drawer = () => part("drawer", `<aside>${t}</aside>`);
@@ -104,13 +116,16 @@ describe("diff", () => {
     expect(diff(draw(() => view("a")), draw(() => view("b")))).toEqual([{ op: "replace", target: '[data-eta-part="drawer"]', html: `<aside data-eta-part="drawer">b</aside>` }]);
   });
 
-  test("after a write to an applet's own document its props are not compared, since it took the ops; after any other write they are", () => {
-    const mount = (p: string) => `<main>${part("board", `<div data-applet="board" data-doc="ticker:market" data-props="${p}"></div>`)}</main>`;
-    expect(diff(draw(() => mount("1")), draw(() => mount("2")), "ticker:market")).toEqual([]);
-    expect(diff(draw(() => mount("1")), draw(() => mount("2")), "watchlist")).toEqual([
-      { op: "tag", target: '[data-eta-part="board"]', html: `<div data-eta-part="board" data-applet="board" data-doc="ticker:market" data-props="2">` },
+  test("an applet that takes its document's patches is not sent its props when they alone change: they are the document, which reaches it as patches; any other applet's are", () => {
+    const mount = (p: string, doc = ` data-doc="quote:ALPH"`, more = "") => `<main>${part("board", `<div data-applet="board"${doc}${more} data-props="${p}"></div>`)}</main>`;
+    expect(diff(draw(() => mount("1")), draw(() => mount("2")))).toEqual([]);
+    expect(diff(draw(() => mount("1", "")), draw(() => mount("2", "")))).toEqual([
+      { op: "tag", target: '[data-eta-part="board"]', html: `<div data-eta-part="board" data-applet="board" data-props="2">` },
     ]);
-    expect(diff(draw(() => mount("1")), draw(() => mount("2")))).toHaveLength(1);
+    // they go with the mount's own tag, when something else on it changes: so what follows where a person is belongs off the mount
+    expect(diff(draw(() => mount("1", undefined, ` aria-expanded="false"`)), draw(() => mount("2", undefined, ` aria-expanded="true"`)))).toEqual([
+      { op: "tag", target: '[data-eta-part="board"]', html: `<div data-eta-part="board" data-applet="board" data-doc="quote:ALPH" aria-expanded="true" data-props="2">` },
+    ]);
     expect(comparable(`<div data-doc="d" data-props="x"></div>`)).toBe(`<div data-doc="d"></div>`);
   });
 });

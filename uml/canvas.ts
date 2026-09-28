@@ -100,22 +100,28 @@ const heardAll = new Map(cast.map((w) => [w, new Set<string>(["session"])]));
 const parts: string[] = [], lines: string[] = [], checks: string[] = [];
 
 stories.stories.forEach((s, i) => {
-  const t = traces.find((x) => x.story === s.name && (x.phase === "does" || x.phase === "cannot"));
+  const t = traces.find((x) => x.story === s.name && x.phase !== "undo" && x.phase !== "redo");
   const x = X(i), ay = Y(s.as);
-  const write = (s.does ?? s.cannot)!;
-  const seen = list(s.seen), unseen = list(s.unseen);
+  const write = s.does ?? s.cannot; // none when a tab closes
+  const doc = write?.doc ?? "", ops = (write?.ops ?? []) as Op[];
+  const seen = list(s.seen), untold = list(s.untold);
   const outcome = report.outcomes.find((o) => o.name === s.name);
   const findings: string[] = [...(outcome?.failures ?? [])];
 
   // the move
-  const before = start.get(s.as)!, now = after(before, write.ops as Op[]);
-  const model = inModel(write.doc, write.ops as Op[]);
+  const before = start.get(s.as)!, now = after(before, ops);
+  const model = write && inModel(doc, ops);
   const refused = !!s.cannot;
+  const move = write ? words(doc, ops) : "closes their tab";
+  const changed = refused ? "refused: nothing changes" : write ? `→ ${state(now)}` : "→ gone";
   const c = colour(s.as);
   // a move: the model's write it is, or none; a refusal: the model's reason, or the model has no such write at all
-  const modelSays = refused
-    ? (model ? `model: refused (${model.refused.join(" / ")})` : "model: no such write")
-    : model ? `model: ${model.does}` : `⚠ not in the model (${write.doc} ${(write.ops as Op[]).map((o) => `${o.op} ${o.path}`).join(", ")})`;
+  // a tab closing: the model's disconnect, if it has one
+  const modelSays = !write
+    ? types.unions.get("ConnectionEvent")?.includes("disconnect") ? "model: disconnect" : "⚠ not in the model (disconnect)"
+    : refused
+      ? (model ? `model: refused (${model.refused.join(" / ")})` : "model: no such write")
+      : model ? `model: ${model.does}` : `⚠ not in the model (${doc} ${ops.map((o) => `${o.op} ${o.path}`).join(", ")})`;
   const heardBy = (who: string) => {
     const msgs = t?.heard.find((h) => h.member === who)?.messages ?? [];
     const docs = [...new Set(msgs.filter((m) => m.doc).map((m) => m.doc!))];
@@ -123,29 +129,29 @@ stories.stories.forEach((s, i) => {
     return { docs, page: msgs.some((m) => m.type === "render") };
   };
   const own = heardBy(s.as);
-  parts.push(`<g><title>${esc(`(${i + 1}) ${s.name}\n${s.as}: ${words(write.doc, write.ops as Op[])} on ${write.doc}\n${refused ? "refused" : `${state(before)} → ${state(now)}`}\nhears: ${own.docs.join(", ") || (own.page ? "the page, redrawn" : "nothing")}`)}</title>`
+  parts.push(`<g><title>${esc(`(${i + 1}) ${s.name}\n${s.as}: ${move}${write ? ` on ${doc}` : ""}\n${state(before)} ${changed}\nhears: ${own.docs.join(", ") || (own.page ? "the page, redrawn" : "nothing")}`)}</title>`
     + `<rect x="${x - NW / 2}" y="${ay - NH / 2}" width="${NW}" height="${NH}" rx="10" fill="${refused ? "#f6f3ec" : "#fff"}" stroke="${refused ? "#9a978f" : c}" stroke-width="${refused ? 1.3 : 2}"${refused ? ` stroke-dasharray="4 2"` : ""}/>`
-    + `<text x="${x}" y="${ay - 6}" text-anchor="middle" font-size="12.5" font-weight="700" fill="${refused ? "#6b6b74" : "#1e2430"}">${esc((refused ? "✗ " : "") + words(write.doc, write.ops as Op[]))}</text>`
-    + `<text x="${x}" y="${ay + 10}" text-anchor="middle" font-size="10" fill="#6b6b74">${esc(refused ? "refused: nothing changes" : `→ ${state(now)}`)}</text>`
-    + `<text x="${x}" y="${ay + NH / 2 + 12}" text-anchor="middle" font-size="9.5" fill="${model || refused ? "#2e7d5b" : "#a86b00"}"><title>${esc(modelSays)}</title>${esc(modelSays.length > 40 ? modelSays.slice(0, 39) + "…" : modelSays)}</text>`
+    + `<text x="${x}" y="${ay - 6}" text-anchor="middle" font-size="12.5" font-weight="700" fill="${refused ? "#6b6b74" : "#1e2430"}">${esc((refused ? "✗ " : "") + move)}</text>`
+    + `<text x="${x}" y="${ay + 10}" text-anchor="middle" font-size="10" fill="#6b6b74">${esc(changed)}</text>`
+    + `<text x="${x}" y="${ay + NH / 2 + 12}" text-anchor="middle" font-size="9.5" fill="${modelSays.startsWith("⚠") ? "#a86b00" : "#2e7d5b"}"><title>${esc(modelSays)}</title>${esc(modelSays.length > 40 ? modelSays.slice(0, 39) + "…" : modelSays)}</text>`
     + `<text x="${x}" y="${ay - NH / 2 - 5}" text-anchor="middle" font-size="9" fill="#9a978f">${esc(own.docs.length ? `hears on ${own.docs.join(" · ")}` : own.page ? "hears: the page, redrawn" : "")}</text>`
     + `</g>`);
-  if (!model && !refused) findings.push(`the model has no ${write.doc} ${(write.ops as Op[]).map((o) => `${o.op} ${o.path}`).join(", ")}`);
+  if (write && !model && !refused) findings.push(`the model has no ${doc} ${ops.map((o) => `${o.op} ${o.path}`).join(", ")}`);
 
   // everyone else: what they heard
   for (const who of cast) {
     if (who === s.as) continue;
     const y = Y(who), h = heardBy(who), heard = h.docs.length > 0 || h.page;
-    const inSeen = seen.includes(who), inUnseen = unseen.includes(who);
+    const inSeen = seen.includes(who), inUntold = untold.includes(who);
     const label = h.docs.length ? h.docs.join(" · ") : "the page";
     let drawn = "";
     if (inSeen && heard) drawn = chip(x, y, `sees it on ${label}`, colour(who), "#fff", "#1e2430");
-    else if (inUnseen && !heard) drawn = chip(x, y, "✗ does not see it", "#c9c5bb", "#f6f3ec", "#8a8a8a", true);
-    else if (heard && !inSeen && !inUnseen) { drawn = chip(x, y, `hears on ${label}`, "#a86b00", "#fdf5e6", "#7a5200"); findings.push(`${who} hears it on ${label}, and the story does not say so`); }
+    else if (inUntold && !heard) drawn = chip(x, y, "✗ does not see it", "#c9c5bb", "#f6f3ec", "#8a8a8a", true);
+    else if (heard && !inSeen && !inUntold) { drawn = chip(x, y, `hears on ${label}`, "#a86b00", "#fdf5e6", "#7a5200"); findings.push(`${who} hears it on ${label}, and the story does not say so`); }
     else if (inSeen && !heard) { drawn = chip(x, y, "⚠ not told", "#c0392b", "#fdeceb", "#c0392b"); }
-    else if (inUnseen && heard) { drawn = chip(x, y, `⚠ hears on ${label}`, "#c0392b", "#fdeceb", "#c0392b"); }
+    else if (inUntold && heard) { drawn = chip(x, y, `⚠ hears on ${label}`, "#c0392b", "#fdeceb", "#c0392b"); }
     if (!drawn) continue;
-    parts.push(`<g><title>${esc(`${who} (${state(start.get(who)!)}): ${inSeen ? "the story says they see it" : inUnseen ? "the story says they must not see it" : "the story does not mention them"}; ${heard ? `the run: heard on ${label}` : "the run: heard nothing"}`)}</title>${drawn}</g>`);
+    parts.push(`<g><title>${esc(`${who} (${state(start.get(who)!)}): ${inSeen ? "the story says they see it" : inUntold ? "the story says they must not see it" : "the story does not mention them"}; ${heard ? `the run: heard on ${label}` : "the run: heard nothing"}`)}</title>${drawn}</g>`);
     if (heard) {
       const down = y > ay, sy = down ? ay + NH / 2 + 16 : ay - NH / 2 - 14, ey = down ? y - 11 : y + 11;
       lines.push(`<path d="M${x},${sy} C${x},${(sy + ey) / 2} ${x},${(sy + ey) / 2} ${x},${ey}" fill="none" stroke="${inSeen ? c : "#a86b00"}" stroke-width="1.4" marker-end="url(#h${cast.indexOf(s.as)})" opacity=".85"/>`);

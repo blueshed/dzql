@@ -3,8 +3,9 @@ import { createLocal } from "@blueshed/delta/local";
 import { db } from "../../src/db";
 import { DEFAULT_TZ } from "./documents/clock";
 
-// The ticker's documents, in delta (Workshop/docs/eta-on-delta.md). The market is a fact: ticked
-// by the feed, or typed by anyone, recorded and never undone. A watchlist and a clock are a
+// The ticker's documents, in delta (`@blueshed/delta`). The market is a fact: ticked
+// by the feed, or typed by anyone, recorded and never undone. A quote is one symbol of it, as its
+// own document, so a board is told only the symbols it watches. A watchlist and a clock are a
 // session's own, written by the person, and undoable. The desk -- where the session is on the
 // page -- is the session's too, but nothing on it is anyone's doing: it is kept, and never on
 // the ledger. The tables are the ticker's own (`ticker_`), beside anything else in the database.
@@ -52,6 +53,8 @@ registerDocs(
   schema,
   [
     defineDoc("ticker:", { root: "markets", include: ["quotes"] }),
+    // one quote, for a board that watches it: a tick on the market is told to it too (delta's fan-out)
+    defineDoc("quote:", { root: "quotes", include: [] }),
     // a watchlist and a clock are there before their first write
     defineDoc("watchlist:", { root: "watchlists", include: [], implied: true }),
     defineDoc("clock:", { root: "clocks", include: [], implied: true }),

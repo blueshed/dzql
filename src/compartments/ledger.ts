@@ -12,7 +12,7 @@ import type { Compartment } from "./compartment";
 export function createLedgerCompartment(active: (sessionId: string) => boolean): Compartment {
   return {
     docType: "ledger",
-    own: true, // a session's own ledger: its undo cursor
+    perSession: true, // a session's own ledger: its undo cursor
     resolveDoc(ws) {
       return ws.data.sessionId; // undo is a cursor into this session's own ledger entries
     },

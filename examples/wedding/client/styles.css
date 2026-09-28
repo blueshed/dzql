@@ -9,18 +9,25 @@
 
 @import "../../../src/bento.css";
 
-/* ── tokens ── */
+/* ── tokens ── (each pair that must be read or seen is checked in contrast.test.ts: text 4.5:1, a mark
+   or an edge 3:1; one palette, light, whatever the reader prefers) */
 :root {
   --paper: #F3EDE0; --tray: #E4DCC7; --card: #FBF9F4; --card-hover: #FFFFFF; --well: #EFE8D8;
-  --ink: #2B2B33; --navy: #1E3F8F; --royal: #2F63BF; --gold: #C9A227; --gold-soft: rgba(201, 162, 39, 0.45);
-  --burgundy: #7B2F4B; --leaf: #6E9A42; --amber: #D9A21B; --muted: #6B6B74;
+  --ink: #2B2B33; --navy: #1E3F8F; --royal: #2F63BF; --gold-soft: rgba(201, 162, 39, 0.45);
+  /* the gold is the save-the-date's: its frame, and the Open button's fill, with ink on it; a gold line
+     that is read or means something on the card (the ampersand, the pencil) is the deep gold */
+  --gold: #C9A227; --gold-deep: #8F7012;
+  --burgundy: #7B2F4B; --muted: #6B6B74;
+  /* the answer's colours: yes green, maybe amber, no red. Maybe's amber is bright, with ink on it, and
+     its deeper shade is the edge of a mark; the red is deeper for words */
+  --leaf: #527D2E; --amber: #D9A21B; --amber-deep: #A9760A; --red: #B5443B; --red-deep: #953530;
   --ink-rgb: 30, 63, 143; /* the light: every shadow tints toward the ink */
-  --line: rgba(43, 43, 51, 0.14); --edge: rgba(43, 43, 51, 0.25);
+  --line: rgba(43, 43, 51, 0.14); --edge: rgba(43, 43, 51, 0.55);
   --serif: "Cinzel", "Trajan Pro", "Times New Roman", serif;
   --sans: "Josefin Sans", "Futura", "Avenir Next", "Helvetica Neue", sans-serif;
   --script: "Pinyon Script", "Snell Roundhand", "Brush Script MT", cursive;
   /* what src/bento.css reads: the accent is the navy, the pencil is gold, making and removing are burgundy */
-  --accent: var(--navy); --mark: var(--gold); --add: var(--burgundy); --danger: var(--burgundy);
+  --accent: var(--navy); --mark: var(--gold-deep); --add: var(--burgundy); --danger: var(--burgundy);
 }
 
 /* ── base ── */
@@ -35,7 +42,7 @@ h3.cap { margin: var(--space-xl) 0 var(--space-sm); }
 .note { color: var(--muted); font-size: 13px; }
 p.note { margin: 0 0 var(--space-md); font-size: 14px; }
 .site { position: relative; z-index: 1; }
-:where(.site > *, .site > .ground > *) { margin: 0 0 var(--space-xl); } /* :where, so a bento surface's own margin still wins */
+:where(.site > *, .site > .ground > *) { margin: 0 0 var(--space-2xl); } /* :where, so a bento surface's own margin still wins */
 
 /* the flowers: the announcement's own, along the foot of every page behind everything, full on the welcome */
 .flowers {
@@ -45,32 +52,22 @@ p.note { margin: 0 0 var(--space-md); font-size: 14px; }
 }
 .site.at-welcome ~ .flowers, .site.at-welcome + .flowers { opacity: 1; }
 main#app:has(.site.at-welcome) .flowers { opacity: 1; height: min(46vh, 520px); }
-.site { position: relative; z-index: 1; }
-:where(.site > *, .site > .ground > *) { margin: 0 0 24px; }
 
-/* ── controls: the welcome's own, over the bento's ── */
-input, select, textarea { min-height: 44px; }
-button { min-height: 44px; border-radius: var(--radius-control); }
-button.gold { background: var(--gold); color: #fff; border-color: var(--gold); }
+/* ── controls: the welcome's own, over the bento's. Its code box and its buttons are the first thing anyone
+   touches, so they stand taller; every other control keeps the bento's heights (a rail's 32, a field's 40) ── */
+.enter-card :is(input, button) { min-height: 44px; }
+button.gold, button.ghost { padding: 0 16px; border-width: 1px; border-style: solid; border-radius: var(--radius-control); white-space: nowrap; }
+button.gold { background: var(--gold); color: var(--ink); border-color: var(--gold); }
 button.ghost { background: transparent; color: var(--navy); border-color: var(--navy); }
-button.ghost.small { min-height: 36px; padding: 0 10px; }
 button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); }
-.field.short { flex: 0 0 5.5rem; }
-.row { flex-wrap: wrap; }
-.tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.message-box { width: 100%; resize: vertical; }
-/* a form that is a tool: one field (or a few) and its verb, on one line */
-.tool-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.tool-form .field { min-width: 8rem; }
-.tool-form input { min-height: 40px; }
-.tool-form label.when { color: var(--navy); font-weight: 600; font-size: 14px; }
+.entry { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 /* ── the welcome ── */
 .hero { border: 2px solid var(--gold); border-radius: var(--radius-panel); padding: 40px 24px 36px; text-align: center; background: var(--paper); }
 .hero .kicker { font-size: 13px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink); margin: 0; }
 .hero .kicker + .kicker { font-size: 20px; letter-spacing: 0.28em; margin-top: 6px; }
 .hero .names { font-family: var(--serif); font-weight: 600; font-size: clamp(34px, 8vw, 56px); letter-spacing: 0.16em; line-height: 1.1; margin: 22px 0 0; background: linear-gradient(180deg, var(--royal) 0%, var(--navy) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.hero .amp { font-family: var(--script); font-size: clamp(56px, 12vw, 96px); line-height: 0.7; color: var(--gold); margin: -8px 0 -14px; display: block; }
+.hero .amp { font-family: var(--script); font-size: clamp(56px, 12vw, 96px); line-height: 0.7; color: var(--gold-deep); margin: -8px 0 -14px; display: block; }
 .hero .when { font-size: 22px; letter-spacing: 0.22em; color: var(--ink); margin: 34px 0 0; }
 .hero .where { font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); margin: 6px 0 0; }
 .hero .message { font-family: var(--serif); font-style: italic; font-size: 17px; color: var(--navy); margin: 18px 0 0; }
@@ -79,49 +76,90 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 .enter-card h2 { margin-top: 0; }
 .resend { margin-top: 14px; }
 .resend summary { cursor: pointer; color: var(--ink); }
-.photo-card .welcome-pic { display: block; width: 100%; height: auto; border-radius: var(--radius-panel); border: 2px solid var(--gold); background: #EFE8D8; }
+.photo-card .welcome-pic { display: block; width: 100%; height: auto; border-radius: var(--radius-panel); border: 2px solid var(--gold); background: var(--well); }
 
 /* ── the bento's surfaces (src/bento.css), where the wedding's differ: serif heads, the photo, the answer ── */
-.sheet-head h2 { font-family: var(--serif); font-size: 19px; color: var(--navy); }
+.drawer-head h2 { font-family: var(--serif); font-size: 19px; color: var(--navy); }
 dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy); }
-.tool.yes[aria-pressed="true"] { background: var(--leaf); border-color: var(--leaf); }
-.tool.no[aria-pressed="true"] { background: var(--burgundy); border-color: var(--burgundy); }
+/* a radio says it is chosen by aria-checked (the reading's, a choice's), not aria-pressed, which is a toggle's */
+.stack > .tool[role="radio"][aria-checked="true"] { background: var(--accent); color: var(--card); }
+.tool.yes[aria-checked="true"] { background: var(--leaf); border-color: var(--leaf); color: var(--card); }
+.tool.no[aria-checked="true"] { background: var(--burgundy); border-color: var(--burgundy); color: var(--card); }
+@media (forced-colors: active) { .tool[role="radio"][aria-checked="true"] { outline: 2px solid Highlight; outline-offset: -2px; } }
+.prop-value > .pick { flex-wrap: wrap; } /* a choice of three wraps in a drawer's width rather than standing past its edge */
 .pair { display: flex; align-items: center; gap: var(--space-sm); min-width: 0; }
-.pair .amp { font-family: var(--script); font-size: 28px; color: var(--gold); line-height: 1; }
-.form-foot { display: flex; justify-content: flex-end; margin-top: var(--space-sm); }
-/* the small reading: the photo, still, cut as its compartment is */
-.mini.photo { height: 100%; min-height: 200px; max-height: 320px; background: var(--well); border-radius: var(--radius-thumb); overflow: hidden; }
-.mini.photo .photo { display: block; width: 100%; height: 100%; }
-.cell.big .mini.photo { height: 36vh; }
+.pair .amp { font-family: var(--script); font-size: 28px; color: var(--gold-deep); line-height: 1; }
 .reading.photo { height: 100%; min-height: 320px; background: var(--well); border-radius: var(--radius-thumb); overflow: hidden; }
 .reading.photo.framed { border: 2px solid var(--gold); }
+.reading.photo > [data-applet] { height: 100%; } /* the mount takes the frame's height, so the whole photo fits in it */
 .reading.photo .photo { display: block; width: 100%; height: 100%; }
 .reading.photo + .note { margin-top: var(--space-md); }
+/* the household's page is its photo: the bubble over it, and the reading taking the rest of the window */
+.photo-page { display: flex; flex-direction: column; min-height: 100%; }
+.photo-page:has(> .reading.photo) { height: 100%; }
+.photo-page > .reading.photo { flex: 1 1 0; height: auto; min-height: 280px; }
+.photo-page > .rows { margin-top: var(--space-sm); }
+/* the households in runs by their answer: the answer said once, at the head of its run */
+.photo-page > .run { margin: var(--space-md) 0 0; }
+.photo-page > .run ~ .run { margin-top: var(--space-xl); }
+.run > .run-head { margin: 0 0 var(--space-xs); }
+/* the information a household reads and puts away: the gifts, the day, where to stay */
+.info-drawer .gift { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--space-md); padding: var(--space-md) 0; border-bottom: 1px solid var(--line); }
+.info-drawer .gift:first-child { padding-top: 0; }
+.info-drawer .gift:last-child { border-bottom: 0; }
+.info-drawer .gift img.pic { width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); display: block; }
+.info-drawer .gift > .gift-words:first-child { grid-column: 1 / -1; }
+.gift-words h3 { font-size: 16px; }
+.gift-words .note { margin: 2px 0 0; }
+.gift-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-sm); font-size: 13px; }
+.gift-foot > .tool { margin-left: auto; } /* the one thing to do with it stays at the right, whether or not a state stands before it */
+.info-drawer .when-where { margin: 0 0 var(--space-md); font-family: var(--serif); color: var(--navy); line-height: 1.5; }
+/* a family's drawer, and the lists the couple keep: a line each -- the words, the state, the one
+   control -- and a new one named in place at the foot */
+.lines { display: flex; flex-direction: column; }
+.line { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: 1px solid var(--line); }
+.line:last-child { border-bottom: 0; }
+.line .words { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.line .what { font-weight: 600; }
+.line .note { font-size: 13px; }
+.line .answer-word { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.add-here { margin: var(--space-md) 0 var(--space-lg); }
+/* in a drawer's narrow width the words keep theirs and the state goes under them, wrapping: a long one
+   ("shared · claimed by OKAFOR, BEN") never squeezes the words or runs past the drawer's edge */
+.drawer .row:has(> .state) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "lead words mark" "lead state mark"; column-gap: var(--space-md); row-gap: 2px; }
+.drawer .row:has(> .state):not(:has(> .lead)) { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "words mark" "state mark"; }
+.drawer .row:has(> .state) > .lead { grid-area: lead; align-self: center; }
+.drawer .row:has(> .state) > .words { grid-area: words; }
+.drawer .row:has(> .state) > .state { grid-area: state; white-space: normal; text-align: left; }
+.drawer .row:has(> .state) > .mark { grid-area: mark; align-self: center; }
+.add-here .field { flex: 1 1 auto; min-width: 0; }
+.family-drawer .bubble { max-width: none; margin: 0 0 var(--space-md); box-shadow: none; border: 1px solid var(--line); }
+.family-drawer .bubble::after { display: none; }
 .row .lead img.pic { width: 56px; height: 56px; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); display: block; }
 .row .lead .when { display: inline-block; min-width: 4rem; color: var(--navy); font-weight: 600; font-size: 14px; }
 .row .state a { color: var(--navy); }
 /* the answer as a word with its colour: yes green, maybe amber, no red, none a dashed ring */
 .answer-word { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .answer-word .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-.answer-word .dot.yes { background: var(--leaf); } .answer-word .dot.maybe { background: var(--amber); } .answer-word .dot.no { background: #B5443B; }
+.answer-word .dot.yes { background: var(--leaf); } .answer-word .dot.maybe { background: var(--amber); box-shadow: inset 0 0 0 1.5px var(--amber-deep); } .answer-word .dot.no { background: var(--red); }
 .answer-word .dot.none { border: 1.5px dashed var(--muted); }
-.state-yes { color: var(--leaf); } .state-no { color: #953530; }
+.state-yes { color: var(--leaf); } .state-no { color: var(--red-deep); }
 /* ── the speech bubble: a thing in place above the tray -- what the household says, the couple's welcome ── */
 .bubble { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-md); max-width: min(88%, 440px); margin: 0 0 var(--space-xl); padding: var(--space-md) var(--space-lg); background: var(--card); border-radius: var(--radius-panel); box-shadow: 0 6px 24px rgba(var(--ink-rgb), 0.16); }
 .bubble::after { content: ""; position: absolute; left: 26px; bottom: -12px; border: 12px solid transparent; border-top-color: var(--card); border-bottom: 0; }
 .bubble.theirs { grid-template-columns: auto minmax(0, 1fr); }
 .bubble.couple { grid-template-columns: minmax(0, 1fr) auto; }
-.bubble.thing { cursor: pointer; }
+.bubble.thing { width: 100%; text-align: start; cursor: pointer; } /* a button: as wide as the words may be, and read from the start */
 .bubble-words { font-size: 16px; line-height: 1.35; display: flex; flex-direction: column; gap: 2px; }
 .bubble-words.empty { color: var(--muted); }
-.welcome-names { font-family: var(--serif); font-weight: 600; font-size: 18px; color: var(--navy); }
 .face-mark { border-radius: 50%; display: grid; place-items: center; color: #fff; flex: 0 0 auto; }
-.face-mark.yes { background: var(--leaf); } .face-mark.maybe { background: var(--amber); } .face-mark.no { background: #B5443B; }
+.face-mark.yes { background: var(--leaf); } .face-mark.maybe { background: var(--amber); color: var(--ink); } .face-mark.no { background: var(--red); }
 .face-mark.none { border: 2px dashed var(--muted); color: var(--muted); font-size: 20px; }
-.sheet-pic img.pic { display: block; width: 100%; max-height: 40vh; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); }
-.sheet .words { margin: var(--space-md) 0 0; line-height: 1.4; }
-.prop .code { font-family: var(--serif); font-weight: 600; letter-spacing: 0.08em; }
+.drawer-pic img.pic { display: block; width: 100%; max-height: 40vh; object-fit: cover; border-radius: var(--radius-thumb); background: var(--well); }
 .props .pair { padding: var(--space-xs) 0; }
+/* a property's field keeps a field's height: in the value's column a field's flex (src/bento.css) would
+   otherwise size it from nothing, to the height of its text */
+.prop-value > .field { flex: none; }
 .hint { margin: var(--space-sm) 0 var(--space-md); font-size: 13px; color: var(--muted); }
 .figure-box { position: sticky; top: 0; z-index: 2; background: var(--card); padding: var(--space-md) 0 4px; }
 /* ── the answer's drawer: every option whole, a face, its colour, its sentence ── */
@@ -145,27 +183,27 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 .dress .lead-dot.on { fill: var(--navy); }
 .dress .hit { fill: transparent; cursor: pointer; outline: none; }
 .dress .hit.on, .dress .hit:focus-visible { stroke: var(--navy); stroke-width: 1.2; stroke-dasharray: 2.5 2; }
-.dress .hit:hover { fill: rgba(30,63,143,0.06); }
+.dress .hit:hover { fill: rgba(var(--ink-rgb), 0.06); }
 .dress .callouts { position: relative; height: calc(140 * var(--unit)); }
 .dress .callout { position: absolute; left: 0; top: calc(var(--y, 0) * var(--unit)); transform: translateY(-50%); min-height: 0; padding: 5px; border: 0; border-radius: 6px; background: transparent; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; color: var(--ink); white-space: nowrap; }
-.dress .callout:hover { background: rgba(30,63,143,0.06); }
+.dress .callout:hover { background: rgba(var(--ink-rgb), 0.06); }
 .dress .callout.on { color: var(--navy); background: var(--card); box-shadow: 0 0 0 1.5px var(--navy); }
 .dress .options { min-width: 0; }
 .pop { position: relative; background: var(--card); border-radius: var(--radius-thumb); padding: 8px; box-shadow: 0 6px 24px rgba(var(--ink-rgb),0.2); display: flex; flex-direction: column; gap: 8px; animation: pop-in 140ms ease-out; }
 @keyframes pop-in { from { transform: translateX(-4px); opacity: 0; } to { transform: none; opacity: 1; } }
 .pop .dots, .pop .icons { display: flex; flex-wrap: wrap; gap: 6px; }
-.pop .dot { width: 32px; height: 32px; min-height: 0; padding: 0; border-radius: 50%; border: 2px solid rgba(43,43,51,0.12); }
+.pop .dot { width: 32px; height: 32px; min-height: 0; padding: 0; border-radius: 50%; border: 1px solid var(--edge); } /* a swatch the colour of the card is still seen */
 .pop .dot.on { border-color: var(--card); box-shadow: 0 0 0 2px var(--navy); }
-.pop .icon { min-height: 0; padding: 1px; border: 2px solid transparent; border-radius: var(--radius-thumb); background: #EFE8D8; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.pop .icon { min-height: 0; padding: 1px; border: 2px solid transparent; border-radius: var(--radius-thumb); background: var(--well); display: flex; flex-direction: column; align-items: center; gap: 1px; }
 .pop .icon.on { border-color: var(--navy); }
 .pop .icon svg { display: block; width: 34px; height: 37px; overflow: hidden; }
 .pop .icon.tall svg { width: 32px; height: 45px; overflow: visible; }
 .pop .icons:not(.attitudes) .fig .body, .pop .icons:not(.attitudes) .fig .head, .pop .icons:not(.attitudes) .fig .swing, .pop .icons:not(.attitudes) .fig .glasses { animation: none !important; }
 .pop .icon-name { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
-.menu { background: var(--card); border-radius: var(--radius-panel); padding: 12px 14px 4px; box-shadow: 0 6px 24px rgba(var(--ink-rgb),0.16); }
+.menu { background: var(--card); border-radius: var(--radius-thumb); padding: 12px 14px 4px; box-shadow: 0 6px 24px rgba(var(--ink-rgb),0.16); }
 .menu .cap { margin: 0 0 2px; }
 .menu .note { margin: 8px 0 12px; }
-.menu-row { border-bottom: 1px solid rgba(201,162,39,0.35); }
+.menu-row { border-bottom: 1px solid var(--gold-soft); }
 .menu-row:last-child { border-bottom: 0; }
 .menu-head { width: 100%; display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: baseline; text-align: left; min-height: 44px; padding: 8px 0; border: 0; border-radius: 0; background: transparent; }
 .menu-head .when { color: var(--navy); font-weight: 600; font-size: 14px; }
@@ -173,7 +211,7 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 .menu-head .unchosen { color: var(--muted); }
 .menu-pills { display: flex; flex-direction: column; gap: 8px; padding: 0 0 12px; }
 .pills { display: flex; flex-wrap: wrap; gap: 8px; }
-.choice { min-height: 40px; padding: 0 14px; border-radius: var(--radius-inner); border: 1px solid var(--gold-soft); background: var(--paper); }
+.choice { min-height: 40px; padding: 0 14px; border-radius: var(--radius-inner); border: 1px solid var(--edge); background: var(--paper); }
 .choice.drink { border-style: dashed; }
 .choice.on { background: var(--navy); color: var(--paper); border-color: var(--navy); border-style: solid; }
 
@@ -183,16 +221,15 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 /* rule 13: a chosen figure rings, while its drawer is open */
 svg .ring { fill: none; stroke: var(--navy); stroke-width: 2.5; }
 svg .mark { stroke-width: 1.2; }
-svg .mark-yes { fill: #7FAE4E; stroke: #6E9A42; } svg .mark-maybe { fill: #D9A21B; stroke: #B8880F; } svg .mark-no { fill: #B5443B; stroke: #953530; }
-svg .mark-none { fill: none; stroke: #6B6B74; stroke-dasharray: 2 1.5; }
+svg .mark-yes { fill: var(--leaf); stroke: var(--leaf); } svg .mark-maybe { fill: var(--amber); stroke: var(--amber-deep); } svg .mark-no { fill: var(--red); stroke: var(--red-deep); }
+svg .mark-none { fill: none; stroke: var(--muted); stroke-dasharray: 2 1.5; }
 svg .count circle { fill: var(--navy); stroke: var(--card); stroke-width: 1.5; }
 svg .count text { fill: var(--paper); font-family: var(--sans); font-size: 10px; font-weight: 700; }
-/* a ghost: a waiting ask in the family, a maybe in the photo. Still and faint, dashed at every edge */
-svg .fig.ghost { opacity: 0.45; }
+/* a fade is find's alone (rule 17): whether someone is coming is the mark at their feet */
+/* a ghost: a waiting ask in the family, a maybe in the photo. Still, dashed at every edge */
 svg .fig.ghost .body, svg .fig.ghost .head, svg .fig.ghost .swing { animation: none !important; }
-svg .fig.ghost .torso, svg .fig.ghost .leg, svg .fig.ghost .head > rect, svg .fig.ghost .swing rect, svg .fig.ghost .swing circle { stroke: #6B6B74; stroke-width: 1.5; stroke-dasharray: 3 3; }
-/* not coming: still and faded */
-.fig.out { opacity: 0.4; }
+svg .fig.ghost .torso, svg .fig.ghost .leg, svg .fig.ghost .head > rect, svg .fig.ghost .swing rect, svg .fig.ghost .swing circle { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; }
+/* not coming: still */
 .fig.out .body, .fig.out .head, .fig.out .swing, .fig.out .glasses, .fig.out .leg { animation: none !important; }
 /* the print is simply there; only the reveal, the day's, once, makes it come down from the top */
 .print { font-family: var(--sans); font-weight: 600; letter-spacing: 0.02em; }

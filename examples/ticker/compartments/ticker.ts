@@ -5,6 +5,7 @@ import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { audienceFor } from "../../../src/compartments/audience";
 import { activeDocuments, serverWrite, settled } from "../../../src/documents";
+import { reasonFor } from "../../../src/refusal";
 import * as deskDoc from "../documents/desk";
 import { page } from "../views/page";
 
@@ -53,14 +54,26 @@ export function stopFeed(): void {
 
 const TICK_PATH = /^\/[A-Z0-9.]+\/price$/;
 
-/** The desk: the whole page, from every document a session has. */
+/**
+ * One symbol of the market, as its own document (`quote:<SYMBOL>`): what a board row reads, so a
+ * board is told only the symbols it watches. Written only through the market, whose ticks delta
+ * tells it; nobody writes one from the wire.
+ */
+export const quote: Compartment = {
+  docType: "quote",
+  kind: "fact",
+  under: "/quotes", // the document is the row: eta's paths start at it
+  resolveDoc: () => undefined,
+};
+
+/** The desk: the whole page, from every document a session has, and why its last watch was refused, if it was. */
 export const render = (sessionId: string): string =>
-  page({ list: watchlistDoc.read(sessionId), market: market.read(), clock: clockDoc.read(sessionId), ui: deskDoc.read(sessionId) });
+  page({ list: watchlistDoc.read(sessionId), market: market.read(), clock: clockDoc.read(sessionId), ui: deskDoc.read(sessionId), said: reasonFor(sessionId, "watchlist", "/symbols/-") });
 
 export const ticker: Compartment = {
   docType: "ticker",
   kind: "fact", // on the ledger, never undone
-  at: "/quotes", // eta's `/ALPH/price` is the document's `/quotes/ALPH/price`
+  under: "/quotes", // eta's `/ALPH/price` is the document's `/quotes/ALPH/price`
   resolveDoc() {
     return market.MARKET; // everyone sees the one market
   },

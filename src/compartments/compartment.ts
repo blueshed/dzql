@@ -3,53 +3,86 @@ import type { ConnectionData } from "../connection";
 import type { PatchOp } from "../json-patch";
 
 /**
- * Where a document's truth lives (Workshop/docs/eta-on-delta.md): `written` by people, stored,
- * undoable; a `fact`, stored and never undone; `live`, held in this process; `sourced`, read from
- * outside; `static`, fixed for the release. Only `written` and `fact` are written from the wire.
+ * Where a document's truth lives (`@blueshed/delta`). Default `written`.
+ *
+ * - `written`: written by people, stored, and undoable (a room's messages).
+ * - `fact`: written and stored, but never undone (a payment taken).
+ * - `live`: kept by the server in memory (who is in a room).
+ * - `sourced`: read from outside. `static`: fixed for the release.
+ *
+ * Only `written` and `fact` are written from the wire.
  */
 export type Kind = "written" | "fact" | "live" | "sourced" | "static";
 
+/**
+ * A compartment looks after one type of document: which one a page is on, who may write to it, and
+ * what a write becomes. It has no place on the page: the page is the example's `render(sessionId)`.
+ *
+ * Its hooks, in the order they run: `permit` and `shape` before a write; `permitUndo` before an
+ * undo or redo; `afterWrite` after a fresh write, for the writer; `afterChange` after any change.
+ */
 export type Compartment = {
-  /** The document type name this compartment owns on the wire (e.g. "session", "room"). */
+  /** The document type it looks after, as the wire names it: `"room"` for `room:general`. */
   docType: string;
   /**
-   * The document of this type this connection is on, or undefined if none: what a write naming the
-   * type alone (`{doc: "room"}`) means, and always seen. A connection sees and may write any number
-   * of others, named whole (`room:kitchen`): whatever its page read.
+   * Which document of this type this person is on, or undefined: chat's is the room the session is
+   * in. A write naming the type alone (`{doc: "room"}`) means this one. A page may also read, and
+   * write, any other document named whole (`room:kitchen`).
    */
   resolveDoc(ws: ServerWebSocket<ConnectionData>): string | undefined;
   /**
-   * Its documents are keyed by the session id: each is seen by its own session alone, and named on
-   * the wire by its type alone, since the id is a person's only credential. A session, a ledger, a
-   * desk. Who sees any other document is derived: the one a connection is on (`resolveDoc`), and
-   * whatever its page read (`reading`, in the document's `read()`).
+   * There is one document per session: the session itself, a ledger, the ticker's desk. Each is seen
+   * by its own session alone, and named on the wire by its type alone, since the session id is a
+   * credential and never crosses the wire.
    */
-  own?: true;
+  perSession?: true;
+  /** What kind of document it is. Default `written`. */
+  kind?: Kind;
   /**
-   * May this connection apply `op` to `docId`? Asked only once the connection sees `docId`, so a
-   * compartment whose documents are all alike to the writer (the room you are in) can ignore it; one
-   * whose name is criteria (this month's appointments, last month's) judges by it. Omitted: nobody
-   * may (a live, sourced or static document, which no one writes from the wire).
+   * Its writes are not history, so Undo skips them: where a tab is, a visit. Delta keeps its
+   * documents off the ledger; saying so here too lets the kernel catch one left off by mistake.
+   */
+  ledger?: false;
+  /** Where the wire's paths sit inside the document: a session's `/name` is at `/sessions/name` when this is `/sessions`. */
+  under?: string;
+  /**
+   * Before a write: may this person make this change? Asked for each op.
+   *
+   * - Return false to refuse without a word: right for a write no page offers.
+   * - Throw `refuse(reason)` (src/refusal.ts) to refuse and say why, beside the control.
+   * - Omitted: nobody may (a live, sourced or static document).
+   * - Asked only for a document the page can see, so a room you are in need not be checked again.
    */
   permit?(ws: ServerWebSocket<ConnectionData>, op: PatchOp, docId: string): boolean;
-  /** What kind of document it is: where its truth lives. Default `written`. */
-  kind?: Kind;
-  /** Where eta's paths sit within the document (a session's fields at `/sessions`). */
-  at?: string;
   /**
-   * For a fresh write only: the ops as the document takes them, from
-   * the ops as the wire said them -- an id minted, the author and the time added, a blank taken out.
-   * An undo or a redo is delta's, and never shaped.
+   * Before a write: what the page sent, as the document keeps it. Chat's turns `add /messages/-`
+   * with the text into a message with a new id, its author and the time.
+   *
+   * - Return nothing to refuse without a word; throw `refuse(reason)` to say why.
+   * - Only for a fresh write: an undo or redo is never shaped.
    */
   shape?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): PatchOp[];
-  /** After a change to it has been told -- to keep what follows from it true (who is here, a list of rooms). */
-  changed?(docId: string, ops: PatchOp[]): void | Promise<void>;
   /**
-   * After a fresh write from this connection has landed (never an
-   * undo or a redo), with the ops as the wire said them -- what follows for the writer alone: the
-   * modal that asked is put away once the write answers it.
+   * Before an undo or redo: may it go ahead? Given the ops it would write, in the wire's paths.
+   *
+   * - For a rule of time or state that holds against Undo too: answers closed at a deadline.
+   * - Not `permit`: Undo may do what permit refuses (a message taken back).
+   * - Throw `refuse(reason)` to say why. Omitted: always.
    */
-  wrote?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): void | Promise<void>;
+  permitUndo?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): boolean;
+  /**
+   * After a fresh write from this person has landed, with the ops as the page sent them: what
+   * follows for the writer alone. Leave closes the drawer once its draft is asked for.
+   * Never after an undo or redo. A throw here is the server's failure, reported; the write stands.
+   */
+  afterWrite?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): void | Promise<void>;
+  /**
+   * After any change to one of its documents, from anyone, undo and redo included, once it has been
+   * told: keep what follows from it true. Chat's keeps the list of rooms.
+   */
+  afterChange?(docId: string, ops: PatchOp[]): void | Promise<void>;
+  /** A page connected: chat's session keeps who is in each room. */
   onOpen?(ws: ServerWebSocket<ConnectionData>): void | Promise<void>;
+  /** A page closed: chat's session keeps who is in each room. */
   onClose?(ws: ServerWebSocket<ConnectionData>): void | Promise<void>;
 };

@@ -7,10 +7,16 @@ What a builder must not break. How the pieces work is in the eta-app skill
 
 - Bun only: never `node`, `npm` or `yarn`.
 - Tests: `bun test`. `.env.test` keeps it off the dev database and `bunfig.toml` fails the run
-  below 100% coverage.
+  below 100% coverage. The browser tests (`Bun.WebView`) need Chrome or Chromium on Linux:
+  `BUN_CHROME_PATH` names it (`/opt/chromium/chrome-shim.sh` in a sandbox that has staged one).
+- The gate, before any commit that should ship: `bun run check` (`tsc --noEmit`), `bun test`,
+  `bun run stories:all` (every example's stories). A release is `/publish`
+  (`.claude/commands/publish.md`), shared with railroad and delta: follow it, don't edit it.
+  Write what lands under `## [Unreleased]` in `CHANGELOG.md` as it lands, breaking changes first.
 - Verify every bug fix by reverting it, watching the new test fail, then restoring it.
-- No new dependencies without asking. The one the examples have is `lucide`, the icon set; the
-  kernel imports no icon set.
+- No new dependencies without asking. eta depends on `@blueshed/delta` (documents) and
+  `@blueshed/railroad` (islands, `src/island.ts`: the one kernel file that imports it, and not
+  the client's); the examples add `lucide`, the icon set; the kernel imports no icon set.
 
 ## Stories first
 
@@ -19,7 +25,7 @@ it, and everything else is derived from it.
 
 - Start a feature by writing the story: a person's intent, in a sentence a customer could call
   true or false. Run `bun run stories`. Then build the least that makes it pass.
-- Build nothing no story needs. A story that describes tray state ("Ada opens the people, and only
+- Build nothing no story needs. A story that describes session state ("Ada opens the people, and only
   her page shows the window") instead of what a person wants is the sign a feature was invented
   first.
 - Chat is the ten-line proof and stays that small: your name, a room, say something.
@@ -27,37 +33,43 @@ it, and everything else is derived from it.
 ## The shape
 
 - `src/` is the kernel. It does not know any example exists and never imports from `examples/`.
-  Its tests may: `src/harness.test.ts` runs the harness against chat's stories.
+  Its tests may: `src/harness.test.ts` runs the harness against chat's stories, and a few of
+  leave's, the wedding's and the ticker's for what only they have (a sign-in, an applet's
+  declaration, a deadline passed, a row the tables lost).
 - `examples/<name>/` is a whole app: its own documents (a `delta.ts`: its schema, seed and
   documents in delta), compartments, applets, client, and an `index.ts` exporting
   `example: Example`. Examples never import from each other; shared
   code is the kernel's or it is not shared.
 - Before adding or extending an example, or touching the `Compartment` contract, an example's
   `delta.ts`, the applet registry or the wire, load the eta-app skill.
-- Documents are delta's (`@blueshed/delta`, Workshop/docs/eta-on-delta.md): eta owns people and
-  pages, delta owns documents, their ledger and their one stream of changes. `package.json` takes
-  it from `../blueshed/delta`, a copy: after changing delta, `bun install --force`.
+- Documents are delta's: eta owns people and pages; delta owns documents, their ledger and their
+  one stream of changes. Its own README and skill (`delta-doc`, in
+  `node_modules/@blueshed/delta/.claude/skills/`) say how it works. To try a change to delta
+  before it is released, point `package.json` at a checkout (`file:../blueshed/delta`, a copy:
+  `bun install --force` after each change) and put it back before committing.
 
-Two words have two meanings each, so say which:
+One word, one meaning. Two used to have two, so they were renamed:
 
-- **Compartment.** The kernel's `Compartment` (`src/compartments/compartment.ts`) owns one
+- **Compartment** is only the kernel's (`src/compartments/compartment.ts`): it owns one
   `docType`: who sees its document, which writes are allowed, what a write becomes. It has no place on
-  the page; the page is the example's one `render(sessionId)`. `src/tray.ts` also exports a
-  `Compartment`: a cell in a box's grid, the bento's word for a place on a page.
-- **Tray.** The session's own document (who you are, where you are) is what the docs call the
-  tray; it is a compartment like any other. `tray()` in `src/tray.ts` lays out a box's grid.
+  the page; the page is the example's one `render(sessionId)`. A place in a box's grid is a
+  **cell** (`Cell`, laid out by `grid()` in `src/grid.ts`).
+- **Tray** is only the bento's: the box that cells are cut into. The visitor's own document (who
+  you are, where you are) is the **session**, a compartment like any other.
 
 ## The wire
 
 - HTML is the only vocabulary. No node or JSON tree on the wire or in the client.
 - A write names a document and a JSON Pointer path, never a function name.
 - A document is named whole on the wire, `<docType>:<docId>`, so one socket holds any documents;
-  only a session's `own` documents go by their type alone, since the id is a credential.
+  only a session's `perSession` documents go by their type alone, since the id is a credential.
 - A connection sees what its page read: a page reads a document through `read("<docType>:<id>")`
   (src/documents.ts), and the kernel keeps what each drawing read. It is told about, and may write,
   only what it sees. So cut documents by who reads them: a page is told every change to one.
-- The server is the only renderer. The client morphs; it never replaces `innerHTML`, and it never
-  descends into a `[data-applet]` element.
+- The server is the only renderer. The client morphs; it never replaces `innerHTML`, and neither
+  it nor a render in parts descends into a `[data-applet]` element. An applet may be an island, a
+  railroad component (`island()`): it draws only inside its element and never binds that
+  element's attributes, which are the page's.
 - A page is sent in parts: after a write, each page that read the document gets only the parts of
   it that changed (`part(key, html)`, src/parts.ts), worked out by comparing, never hand-written; the
   whole page goes only when it is a different page.
@@ -78,4 +90,4 @@ before it (its author, its day, its group) is said at the start of the run, not 
 what is true of the person looking (their own name on their own things) is not said to them at
 all -- show it by place or colour instead. Repeating a label because it was easy is lazy. Where a bento rule and the
 stories disagree, the stories win: rule 14 makes a new thing with a plus and a modal, but a modal
-needs tray state, and chat's stories need none, so chat names a room in a form in place.
+needs session state, and chat's stories need none, so chat names a room in a form in place.

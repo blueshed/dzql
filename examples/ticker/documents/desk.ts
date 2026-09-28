@@ -4,7 +4,7 @@ import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
 
 // The desk, kept in delta (`desk:<id>`, ../delta.ts): where this session is on the page -- one
-// address (src/bento.ts): the compartment grown into the window, and the one thing open over it,
+// address (src/bento.ts): the cell grown into the window, and the one thing open over it,
 // a symbol's drawer or the clock's, or the modal that asks -- and how the board is read and what
 // find says. Nothing here is a fact: it is never on the ledger, and Undo passes over it.
 

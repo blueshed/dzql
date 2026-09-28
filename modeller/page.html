@@ -102,7 +102,7 @@ header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; pa
 .story .n { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; margin-left: auto; }
 .story .name { font-size: 13px; }
 .story.cannot .name::before { content: "cannot · "; color: var(--refuse); font-weight: 600; }
-.story.tray .name { color: var(--muted); }
+.story.session .name { color: var(--muted); }
 .ticks { display: inline-flex; gap: 3px; }
 .tick { font: 600 10px/1 var(--mono); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); }
 .tick.on { color: var(--pass); border-color: var(--pass); }
@@ -217,8 +217,8 @@ svg.edges path.hot.refused { stroke: var(--refuse); }
 .usecases svg text { fill: var(--ink); font: 12px "Helvetica Neue", Helvetica, Arial, sans-serif; }
 .usecases svg .boundary rect { fill: none; stroke: var(--doc); stroke-width: 1.4; }
 .usecases svg .boundary text { fill: var(--doc); font-weight: 700; font-size: 12px; }
-.usecases svg .boundary.tray rect { stroke: var(--muted); stroke-dasharray: 4 4; }
-.usecases svg .boundary.tray text { fill: var(--muted); }
+.usecases svg .boundary.session rect { stroke: var(--muted); stroke-dasharray: 4 4; }
+.usecases svg .boundary.session text { fill: var(--muted); }
 .usecases svg .uc rect { fill: var(--card); stroke: var(--edge); }
 .usecases svg .uc.cannot rect { stroke: var(--refuse); fill: var(--refuse-soft); }
 .usecases svg .uc.cannot text { fill: var(--refuse); }
@@ -332,14 +332,14 @@ const S = DATA.stories;
 const docOf = new Map(DATA.documents.map((d) => [d.name, d]));
 const tablesIn = (d) => (d.root ? [d.root, ...d.include] : []);
 const inAnyDoc = new Set(DATA.documents.flatMap(tablesIn));
-const modelWrites = S.filter((s) => s.kind === "does" && !s.tray);
+const modelWrites = S.filter((s) => s.kind === "does" && !s.session);
 const writtenTables = new Map();
 for (const s of modelWrites) for (const o of s.ops) if (o.table) {
   if (!writtenTables.has(o.table)) writtenTables.set(o.table, new Set());
   writtenTables.get(o.table).add(s.n);
 }
 const ruleUsed = DATA.permits.map((p) => modelWrites.some((s) => s.doc === p.doc && s.ops.some((o) => p.ops.includes(o.op) && new RegExp(p.path).test(o.path))));
-const refusedElsewhere = S.filter((s) => s.kind === "cannot" && !s.tray && s.ops.some((o) => o.permitted));
+const refusedElsewhere = S.filter((s) => s.kind === "cannot" && !s.session && s.ops.some((o) => o.permitted));
 const notPermitted = modelWrites.filter((s) => s.ops.some((o) => !o.permitted));
 const noticers = new Set(S.flatMap((s) => Object.keys(s.seen)));
 const codeReads = (t) => t.code.filter((c) => !c.seed);
@@ -347,7 +347,7 @@ const seedMakes = (t) => t.code.filter((c) => c.seed);
 // A flag is something the stories never explain: it points at where it came from instead.
 const FLAGS = [];
 for (const t of DATA.tables) {
-  if (t.name === (docOf.get(DATA.tray)?.root)) continue;
+  if (t.name === (docOf.get(DATA.session)?.root)) continue;
   const written = writtenTables.has(t.name), inDoc = inAnyDoc.has(t.name);
   if (!written && !inDoc) {
     // A table no story reaches that is named for an actor is what makes someone that actor.
@@ -369,7 +369,7 @@ const flagsOn = (key) => FLAGS.filter((f) => f.on === key);
 
 // ── demo state: agreements and U ticks, in this page only ──
 const agreed = new Set(), tried = new Set();
-let sel = { kind: "story", id: S.find((s) => !s.tray && s.kind === "does").n };
+let sel = { kind: "story", id: S.find((s) => !s.session && s.kind === "does").n };
 let actorFilter = null, checkFilter = null;
 
 let CHECKS = [];
@@ -398,7 +398,7 @@ function renderStories() {
   const list = visibleStories();
   $("#story-count").textContent = `${list.length} of ${S.length}`;
   $("#stories").innerHTML = list.map((s) => `
-    <button class="story ${s.kind} ${s.tray ? "tray" : ""}" data-story="${s.n}" aria-current="${sel.kind === "story" && sel.id === s.n}">
+    <button class="story ${s.kind} ${s.session ? "session" : ""}" data-story="${s.n}" aria-current="${sel.kind === "story" && sel.id === s.n}">
       <div class="head"><span class="chip actor">${esc(s.as)}</span><span class="chip doc">${esc(s.doc)}</span>
         <span class="ticks"><span class="tick agreed ${agreed.has(s.n) ? "on" : ""}" title="agreed (demo)">✓</span><span class="tick ${s.failures.length ? "" : "on"}" title="A: the harness passes it">A</span><span class="tick ${tried.has(s.n) ? "on" : ""}" title="U: tried by a person (demo)">U</span></span>
         <span class="n">${s.n}</span></div>
@@ -432,7 +432,7 @@ function edgeList() {
   const e = [];
   const seenPair = new Set();
   for (const s of S) {
-    if (s.tray) continue;
+    if (s.session) continue;
     const key = `${s.as}|${s.doc}|${s.kind}`;
     if (seenPair.has(key)) continue;
     seenPair.add(key);
@@ -480,7 +480,7 @@ function ruleFor(doc, o) {
   return i < 0 ? null : DATA.permits[i];
 }
 function whyOp(s, o) {
-  if (s.tray) return `<div class="why note">the tray (${esc(DATA.tray)}): where a visit is; its permit is a set of fields, not read here</div>`;
+  if (s.session) return `<div class="why note">the session (${esc(DATA.session)}): where a visit is; its permit is a set of fields, not read here</div>`;
   const r = ruleFor(s.doc, o);
   if (s.kind === "does") return r ? `<div class="why ok">allowed by <span class="mono">${esc(r.path)}</span> ${esc(r.ops.join("/"))}${r.dated ? " · locked after the deadline" : ""}</div>` : `<div class="why refuse">no permit rule allows it</div>`;
   return r ? `<div class="why note">the path rule would allow it (<span class="mono">${esc(r.path)}</span>): refused by who writes, or by the value</div>` : `<div class="why ok">no permit rule allows it: refused by the path</div>`;
@@ -489,10 +489,10 @@ const place = (p) => p === null ? `<span class="muted">where the cast left them<
 
 function inspectStory(s) {
   const states = new Map([[`actor:${s.as}`, "on"]]);
-  if (!s.tray) states.set(`doc:${s.doc}`, s.kind === "cannot" ? "refused" : "on");
-  for (const o of s.ops) if (o.table && !s.tray) states.set(`table:${o.table}`, s.kind === "cannot" ? "refused" : "on");
+  if (!s.session) states.set(`doc:${s.doc}`, s.kind === "cannot" ? "refused" : "on");
+  for (const o of s.ops) if (o.table && !s.session) states.set(`table:${o.table}`, s.kind === "cannot" ? "refused" : "on");
   for (const m of Object.keys(s.seen)) if (m !== s.as) states.set(`actor:${m}`, "sees");
-  hot = new Set(s.tray ? [] : [`${s.as}|${s.doc}|${s.kind}`, ...s.ops.filter((o) => o.table).map((o) => `${s.doc}>${o.table}`)]);
+  hot = new Set(s.session ? [] : [`${s.as}|${s.doc}|${s.kind}`, ...s.ops.filter((o) => o.table).map((o) => `${s.doc}>${o.table}`)]);
   mark(states);
   $("#inspector").innerHTML = `
     <div><div class="kicker" style="color:var(--${s.kind === "cannot" ? "refuse" : "accent"})">story ${s.n} · ${s.kind}</div><h3>${esc(s.name)}</h3></div>
@@ -500,7 +500,7 @@ function inspectStory(s) {
       <dt>as</dt><dd><span class="chip actor">${esc(s.as)}</span></dd>
       <dt>${s.kind}</dt><dd><span class="chip doc">${esc(s.doc)}</span></dd>
       ${s.kind === "does" ? `<dt>seen</dt><dd>${Object.entries(s.seen).map(([m, p]) => `<div><span class="chip actor">${esc(m)}</span> ${place(p)}</div>`).join("") || "—"}</dd>
-      <dt>unseen</dt><dd>${s.unseen.map((m) => `<span class="chip actor">${esc(m)}</span>`).join(" ") || "—"}</dd>` : ""}
+      <dt>untold</dt><dd>${s.untold.map((m) => `<span class="chip actor">${esc(m)}</span>`).join(" ") || "—"}</dd>` : ""}
     </dl></section>
     <section><h4>Writes, and the permit rule that answers</h4><div class="ops">${s.ops.map((o) => `
       <div class="op"><span class="mono">${esc(o.op)} ${esc(o.path)}</span>${o.table ? ` <span class="chip table">${esc(o.table)}${o.field ? "." + esc(o.field) : ""}</span>` : ""}${whyOp(s, o)}</div>`).join("")}</div></section>
@@ -520,8 +520,8 @@ function inspectStory(s) {
 function inspectActor(a) {
   const told = S.filter((s) => s.as === a), noticed = S.filter((s) => a in s.seen && s.as !== a);
   const states = new Map([[`actor:${a}`, "on"]]);
-  for (const s of told) if (!s.tray) states.set(`doc:${s.doc}`, s.kind === "cannot" && !told.some((x) => x.doc === s.doc && x.kind === "does") ? "refused" : "on");
-  hot = new Set(told.filter((s) => !s.tray).map((s) => `${s.as}|${s.doc}|${s.kind}`));
+  for (const s of told) if (!s.session) states.set(`doc:${s.doc}`, s.kind === "cannot" && !told.some((x) => x.doc === s.doc && x.kind === "does") ? "refused" : "on");
+  hot = new Set(told.filter((s) => !s.session).map((s) => `${s.as}|${s.doc}|${s.kind}`));
   mark(states);
   const li = (s) => `<li><button data-story="${s.n}">${s.kind === "cannot" ? "<span class='why refuse'>cannot</span> " : ""}${esc(s.name)}</button></li>`;
   $("#inspector").innerHTML = `
@@ -537,7 +537,7 @@ function docTree(d) {
   const kids = (p) => DATA.tables.filter((t) => t.parent === p && inDoc.has(t.name)).map((t) => t.name);
   const rows = [];
   const walk = (t, depth) => {
-    const ws = S.filter((s) => !s.tray && s.ops.some((o) => o.table === t));
+    const ws = S.filter((s) => !s.session && s.ops.some((o) => o.table === t));
     const changers = [...new Set(ws.filter((s) => s.kind === "does").map((s) => s.as))];
     const refused = [...new Set(ws.filter((s) => s.kind === "cannot").map((s) => s.as))];
     const noticers = [...new Set(ws.filter((s) => s.kind === "does").flatMap((s) => Object.keys(s.seen)))];
@@ -572,7 +572,7 @@ function inspectDoc(name) {
 function inspectTable(name) {
   const t = DATA.tables.find((x) => x.name === name);
   const docs = DATA.documents.filter((d) => tablesIn(d).includes(name));
-  const writers = S.filter((s) => !s.tray && s.ops.some((o) => o.table === name));
+  const writers = S.filter((s) => !s.session && s.ops.some((o) => o.table === name));
   const states = new Map([[`table:${name}`, "on"], ...docs.map((d) => [`doc:${d.name}`, "on"])]);
   for (const s of writers) states.set(`actor:${s.as}`, s.kind === "cannot" ? (states.get(`actor:${s.as}`) ?? "refused") : "on");
   hot = new Set([...docs.map((d) => `${d.name}>${name}`), ...writers.map((s) => `${s.as}|${s.doc}|${s.kind}`)]);
@@ -617,7 +617,7 @@ function sequenceSVG(s) {
     ...members.slice(1).map((m) => ({ id: m, label: m, cls: "actor" }))];
   const heardAny = new Set(s.sequence.flatMap((t) => t.heard.filter((h) => h.messages.length).map((h) => h.member)));
   const W = 150, X0 = 90, x = (id) => X0 + cols.findIndex((c) => c.id === id) * W;
-  const seen = new Set(Object.keys(s.seen)), unseen = new Set(s.unseen);
+  const seen = new Set(Object.keys(s.seen)), untold = new Set(s.untold);
   const rows = [];
   let y = 64;
   const line = (from, to, label, cls, back) => {
@@ -653,7 +653,7 @@ function sequenceSVG(s) {
       line(t.phase === "cannot" ? "doc" : "delta", h.member, heardLabel(h.messages), cls, true);
     }
     const quiet = t.heard.filter((h) => !h.messages.length).map((h) => h.member);
-    const checked = quiet.filter((m) => unseen.has(m));
+    const checked = quiet.filter((m) => untold.has(m));
     if (checked.length) note("delta", `told nothing: ${checked.join(", ")} (the story says so)`, "ok");
     y += 6;
   }
@@ -753,7 +753,7 @@ function renderStates() {
   const touched = new Set(machinesOf(storyN()).map((x) => x.key));
   const chips = (kind) => MACHINES.filter((x) => x.kind === kind).map((x) => `<button class="chip table ${touched.has(x.key) ? "touched" : ""}" data-machine="${esc(x.key)}" aria-pressed="${x.key === machineSel}">${esc(x.key)}</button>`).join("");
   const cur = S.find((x) => x.n === storyN());
-  const story = cur ? (touched.size ? `<div class="sub">Story ${cur.n} moves ${[...touched].map(esc).join(", ")} <span style="color:var(--accent)">●</span></div>` : `<div class="sub">Story ${cur.n} moves no state${cur.tray ? ": it writes only the tray" : ""}.</div>`) : "";
+  const story = cur ? (touched.size ? `<div class="sub">Story ${cur.n} moves ${[...touched].map(esc).join(", ")} <span style="color:var(--accent)">●</span></div>` : `<div class="sub">Story ${cur.n} moves no state${cur.session ? ": it writes only the session" : ""}.</div>`) : "";
   if (!m) { $("#states").innerHTML = `<p class="empty">No story moves a state.</p>`; return; }
   const refusals = S.filter((s) => s.kind === "cannot" && s.ops.some((o) => o.table === m.table && (m.col ? o.field === m.col : !o.field || o.path.endsWith("-") || /\/\d+$/.test(o.path))));
   const dated = m.moves.some((mv) => !!ruleFor(mv.s.doc, mv.s.ops.find((o) => o.table === m.table) ?? { op: "", path: "" })?.dated);
@@ -776,10 +776,10 @@ let classDoc = null;
 function classOps(t) {
   const ops = new Map(); // "replace answer" -> Set(actor)
   const add = (k, a) => ops.set(k, (ops.get(k) ?? new Set()).add(a));
-  for (const s of S) if (s.kind === "does" && !s.tray) for (const o of s.ops) if (o.table === t) add(o.field ? `${o.op} ${o.field}` : o.op, s.as);
+  for (const s of S) if (s.kind === "does" && !s.session) for (const o of s.ops) if (o.table === t) add(o.field ? `${o.op} ${o.field}` : o.op, s.as);
   for (const m of MOVES) if (m.table === t && m.effect && !m.col) add(`${m.to === "exists" ? "add" : "remove"} (with ${m.s.ops[0]?.table ?? m.s.doc})`, m.s.as);
   const refused = new Map();
-  for (const s of S) if (s.kind === "cannot" && !s.tray) for (const o of s.ops) if (o.table === t) refused.set(o.field ? `${o.op} ${o.field}` : o.op, (refused.get(o.field ? `${o.op} ${o.field}` : o.op) ?? new Set()).add(s.as));
+  for (const s of S) if (s.kind === "cannot" && !s.session) for (const o of s.ops) if (o.table === t) refused.set(o.field ? `${o.op} ${o.field}` : o.op, (refused.get(o.field ? `${o.op} ${o.field}` : o.op) ?? new Set()).add(s.as));
   return [
     ...[...ops].map(([k, a]) => ({ text: `${k} · ${[...a].join(", ")}`, refused: false })),
     ...[...refused].map(([k, a]) => ({ text: `✕ ${k} · ${[...a].join(", ")}`, refused: true })),
@@ -787,9 +787,9 @@ function classOps(t) {
 }
 function classSVG() {
   const n = storyN(), cur = S.find((x) => x.n === n);
-  const hotTables = new Set(cur && !cur.tray ? [...cur.ops.map((o) => o.table), ...MOVES.filter((m) => m.s.n === n).map((m) => m.table)] : []);
-  const hotCols = new Set(cur && !cur.tray ? [...cur.ops.filter((o) => o.field).map((o) => `${o.table}.${o.field}`), ...MOVES.filter((m) => m.s.n === n && m.col).map((m) => `${m.table}.${m.col}`)] : []);
-  const written = new Set(S.filter((s) => s.kind === "does" && !s.tray).flatMap((s) => s.ops.filter((o) => o.field).map((o) => `${o.table}.${o.field}`)));
+  const hotTables = new Set(cur && !cur.session ? [...cur.ops.map((o) => o.table), ...MOVES.filter((m) => m.s.n === n).map((m) => m.table)] : []);
+  const hotCols = new Set(cur && !cur.session ? [...cur.ops.filter((o) => o.field).map((o) => `${o.table}.${o.field}`), ...MOVES.filter((m) => m.s.n === n && m.col).map((m) => `${m.table}.${m.col}`)] : []);
+  const written = new Set(S.filter((s) => s.kind === "does" && !s.session).flatMap((s) => s.ops.filter((o) => o.field).map((o) => `${o.table}.${o.field}`)));
   const stateCols = new Set(MACHINES.filter((m) => m.kind === "state").map((m) => m.key));
   const doc = classDoc ? docOf.get(classDoc) : null;
   const inDoc = new Set(doc ? tablesIn(doc) : []);
@@ -856,7 +856,7 @@ function renderClasses() {
   const cur = S.find((x) => x.n === storyN());
   $("#classes").innerHTML = `
     <div class="docs"><span class="lab">documents</span><button class="chip" data-classdoc="" aria-pressed="${!classDoc}">none</button>${DATA.documents.filter((d) => d.root).map((d) => `<button class="chip doc" data-classdoc="${esc(d.name)}" aria-pressed="${classDoc === d.name}">${esc(d.name)}:</button>`).join("")}</div>
-    <div class="sub">The tables of <span class="mono">delta.ts</span> as classes: columns (✎ a story writes it, «state» it moves between states), and below them what the stories do to it and who is refused. ◆ is a table's parent; a dashed arrow is a column that names another table.${cur ? ` Story ${cur.n} is highlighted${cur.tray ? ", but it writes only the tray" : ""}.` : ""}${classDoc ? ` The tables <span class="mono">${esc(classDoc)}:</span> composes are outlined.` : ""}</div>
+    <div class="sub">The tables of <span class="mono">delta.ts</span> as classes: columns (✎ a story writes it, «state» it moves between states), and below them what the stories do to it and who is refused. ◆ is a table's parent; a dashed arrow is a column that names another table.${cur ? ` Story ${cur.n} is highlighted${cur.session ? ", but it writes only the session" : ""}.` : ""}${classDoc ? ` The tables <span class="mono">${esc(classDoc)}:</span> composes are outlined.` : ""}</div>
     ${classSVG()}`;
 }
 
@@ -881,8 +881,8 @@ function spread(items, gap) { // actors at the mean height of their lines, pushe
 function useCaseSVG() {
   const n = storyN();
   const LX = 50, BX = 110, EX = 130, EW = 360, RX = EX + EW + 110, W = RX + 60;
-  const groups = Object.entries(Object.groupBy(S, (s) => (s.tray ? DATA.tray : s.doc)));
-  groups.sort(([a], [b]) => (a === DATA.tray) - (b === DATA.tray) || a.localeCompare(b));
+  const groups = Object.entries(Object.groupBy(S, (s) => (s.session ? DATA.session : s.doc)));
+  groups.sort(([a], [b]) => (a === DATA.session) - (b === DATA.session) || a.localeCompare(b));
   const out = [];
   let y = 10;
   for (const [doc, stories] of groups) {
@@ -900,7 +900,7 @@ function useCaseSVG() {
       y += h + 8;
     }
     const bottom = y + 6;
-    out.push(`<g class="boundary ${doc === DATA.tray ? "tray" : ""}"><rect x="${BX}" y="${top}" width="${EW + 40}" height="${bottom - top}" rx="10"/><text x="${BX + 12}" y="${top + 20}">${doc === DATA.tray ? `${esc(doc)}: the visit (the page's own state)` : `${esc(doc)}:`}</text></g>`, ...ucs);
+    out.push(`<g class="boundary ${doc === DATA.session ? "session" : ""}"><rect x="${BX}" y="${top}" width="${EW + 40}" height="${bottom - top}" rx="10"/><text x="${BX + 12}" y="${top + 20}">${doc === DATA.session ? `${esc(doc)}: the visit (the page's own state)` : `${esc(doc)}:`}</text></g>`, ...ucs);
     // who tells, on the left; who notices, on the right
     const tellers = spread(Object.entries(Object.groupBy(stories, (s) => s.as)).map(([a, ss]) => ({ a, ss, y: ss.reduce((t, s) => t + ys.get(s.n), 0) / ss.length })), 64);
     for (const { a, ss, y: ay } of tellers) {

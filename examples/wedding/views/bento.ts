@@ -1,5 +1,5 @@
 // The surfaces every page is made of are the kernel's (src/bento.ts), bound here to the wedding's
-// icons and to the session, the document its tray's state is written to. Every gesture is a write
+// icons and to the session, the document its page's state is written to. Every gesture is a write
 // to the session -- going to a page, opening a drawer, switching a reading -- so the kernel
 // renders the result.
 
@@ -8,8 +8,8 @@ import { icon } from "./icons";
 
 export { choice, prop, rows, type Crumb, type OpenOptions } from "../../../src/bento";
 
-export const { crumbs, tool, pageTools, readingSwitch, addTool, findControl, cell, boxPage, row, sheet, addModal, confirmModal } = bento({
+export const { crumbs, tool, pageTools, readingSwitch, addTool, findControl, cell, boxPage, collectionPage, row, drawer, addModal, confirmModal } = bento({
   icon,
-  tray: "session",
+  session: "session",
   leave: { text: "Leave", icon: "log-out", path: "/code" },
 });

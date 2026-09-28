@@ -91,14 +91,18 @@ async function open(): Promise<WebSocket> {
 }
 
 describe("the ticker", () => {
-  test("the page carries the clock, the watchlist and the board with the market as props", async () => {
+  test("the page carries the clock, the watchlist and the board, empty until something is watched", async () => {
     const ws = connect();
     await opened(ws);
     const { html } = await expectMessage(ws, "render");
     expect(html).toContain('data-applet="clock"');
-    expect(html).toContain('id="board-count"');
-    expect(html).toContain('data-applet="board" data-doc="ticker:market"');
-    expect(html).toContain("16 symbols, every quote");
+    // an empty board says so once, in its cell's summary: no count of none, no reading of nothing
+    expect(html).toContain('<button type="button" class="cell-name" aria-expanded="false">the board</button>');
+    expect(html!.match(/nothing watched/gi)).toHaveLength(1);
+    expect(html).not.toContain('id="board"');
+    // the market's count is on its head, and not again beneath it
+    expect(html).toContain('<button type="button" class="cell-name" aria-expanded="false">the market · 16</button>');
+    expect(html).toContain('<p class="cell-summary">every quote, live</p>');
     ws.close();
   });
 
@@ -122,7 +126,10 @@ describe("the ticker", () => {
     await expectMessage(a, "patch");
     await expectMessage(a, "render");
     write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 2 }]);
-    await expectMessage(a, "patch");
+    // a watches DLTA now, so its board row is told of the quote too, as the row it leaves
+    const told = [await expectMessage(a, "patch"), await expectMessage(a, "patch")];
+    expect(told.map((m) => m.doc).sort()).toEqual(["quote:DLTA", "ticker:market"]);
+    expect(told.find((m) => m.doc === "quote:DLTA")).toMatchObject({ ops: [{ op: "replace", path: "", value: { price: before + 2 } }] });
     await expectMessage(b, "patch");
     write(a, "ledger", [{ op: "remove", path: "/latest" }]);
     expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: [] } }] });
@@ -144,7 +151,11 @@ describe("the ticker", () => {
     await refused("ticker", [{ op: "remove", path: "/DLTA/price" }]);
     await refused("ticker", [{ op: "add", path: "/NEW/price", value: 1 }]);
     await refused("watchlist", [{ op: "replace", path: "/symbols/0", value: "x" }]);
-    await refused("watchlist", [{ op: "add", path: "/symbols/-", value: "NOPE" }]); // permitted, not applied
+    // permitted, and refused with why: the reason is kept in the session's own refusal document, and the page handed back
+    write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "NOPE" }]);
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "refusal", ops: expect.arrayContaining([{ op: "replace", path: "/reason", value: "The market does not quote NOPE." }]) });
+    await expectMessage(ws, "render");
+    await expectQuiet(ws);
     ws.close();
   });
 
@@ -154,7 +165,7 @@ describe("the ticker", () => {
     write(a, "watchlist", [{ op: "add", path: "/symbols/-", value: "echo" }]);
     expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: ["ECHO"] } }] });
     const page = (await expectMessage(a, "render")).page as string;
-    expect(page).toContain("&quot;symbols&quot;:[&quot;ECHO&quot;]"); // the board's mount, with its new props
+    expect(page).toContain('<div data-eta-part="quote-ECHO" id="quote-ECHO" class="board-row"><div id="line-ECHO" data-applet="board" data-doc="quote:ECHO" data-under="/quote" data-props='); // the board's new row, on the quote's own document; on the box, the cell is the one tap
     expect(page).toContain('<span id="board-count">1</span>'); // the count on its head
     expect(page).toContain('<p class="cell-summary">watched, live</p>'); // and the line that said "nothing watched yet"
     await expectQuiet(b);
@@ -202,17 +213,20 @@ describe("the ticker", () => {
     write(ws, "desk", [{ op: "replace", path: "/page", value: "?clock" }]);
     await expectMessage(ws, "patch");
     const { page: html } = await expectMessage(ws, "render");
-    expect(html).toContain('id="city" class="city" data-applet="city-picker" data-doc="clock" data-props="{&quot;tz&quot;:&quot;Europe/Zurich&quot;}"><datalist>');
+    expect(html).toContain(`id="city" class="city" data-applet="city-picker" data-doc="clock" data-writes='[{"doc":"clock","op":"replace","path":"/tz"}]' data-props="{&quot;tz&quot;:&quot;Europe/Zurich&quot;}"><datalist>`); // the picker says what it writes; the face beside it, nothing
     expect(html).toContain('<option value="Asia/Tokyo">Tokyo (UTC+09:00)</option>');
     expect(html).toContain('<option value="America/Vancouver">Vancouver (UTC-0');
     expect(html).toContain('<option value="America/Argentina/Salta">Salta, Argentina (UTC-03:00)</option>');
     write(ws, "clock", [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }]);
     expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "", value: { tz: "Asia/Tokyo" } }] });
-    // the applet takes the op for the face; the page says the city too, so the page follows
-    expect((await expectMessage(ws, "render")).page).toContain("Tokyo (UTC+09:00)</span>");
+    // the applet takes the op for the face; the page says the city too (the cell's summary) and the
+    // drawer the offset, so the page follows
+    const tokyo = (await expectMessage(ws, "render")).page!;
+    expect(tokyo).toContain('<p class="cell-summary">Tokyo</p>');
+    expect(tokyo).toContain("<span>UTC+09:00</span>");
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "", value: { tz: "Europe/Zurich" } }] });
-    expect((await expectMessage(ws, "render")).page).toContain("Zurich (UTC+0");
+    expect((await expectMessage(ws, "render")).page).toContain('<p class="cell-summary">Zurich</p>');
     write(ws, "ledger", [{ op: "add", path: "/latest" }]);
     expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "", value: { tz: "Asia/Tokyo" } }] });
     await expectMessage(ws, "render");
@@ -224,23 +238,31 @@ describe("the ticker", () => {
     ws.close();
   });
 
-  test("while a symbol's drawer is open, what it says stays true: a tick moves its price, and watching from it turns the offer round", async () => {
+  test("while a symbol's drawer is open, what it says stays true: a tick moves it, and watching from it turns the offer round", async () => {
     const ws = await open();
     const shown = (m: { html?: string; ops?: unknown[] }) => m.html ?? ((m.ops ?? []) as { html?: string }[]).map((o) => o.html ?? "").join("");
     const drawerOf = (html: string) => html.slice(html.indexOf('id="drawer"'));
     write(ws, "desk", [{ op: "replace", path: "/page", value: "market?symbol=DLTA" }]);
     await expectMessage(ws, "patch");
-    expect(drawerOf(shown(await expectMessage(ws, "render")))).toContain("Watched");
+    // what the lit row does not say: the move in per cent, and a sparkline on the quote's own document;
+    // not its name or its price, which the row says, nor whether it is watched, which the button does
+    const opened = drawerOf(shown(await expectMessage(ws, "render")));
+    expect(opened).toContain('<span class="prop-name cap">Moved</span>');
+    expect(opened).toContain('id="spark-DLTA" class="spark" data-applet="spark" data-doc="quote:DLTA" data-under="/quote"');
+    for (const said of [">Name<", ">Price<", ">Watched<"]) expect(opened).not.toContain(said);
 
+    const before = (await quotes()).DLTA!.price;
     write(ws, "ticker", [{ op: "replace", path: "/DLTA/price", value: 240.5 }]);
-    await expectMessage(ws, "patch");
-    expect(drawerOf(shown(await expectMessage(ws, "render")))).toContain("240.50"); // the drawer's own price, not only the row's
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "ticker:market" });
+    expect(drawerOf(shown(await expectMessage(ws, "render")))).toContain(`<span class="move up">+${(((240.5 - before) / before) * 100).toFixed(2)}%</span>`);
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "quote:DLTA", ops: [{ op: "replace", path: "", value: { price: 240.5 } }] }); // the quote's own, which the sparkline takes
 
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "DLTA" }]);
     await expectMessage(ws, "patch");
     const after = shown(await expectMessage(ws, "render"));
     expect(drawerOf(after)).toContain("Stop watching"); // no longer offering to watch what is watched
-    expect(after).toMatch(/id="m-DLTA".*?<span class="note">watching<\/span>/); // and its row in the market says so
+    expect(after).toMatch(/id="m-DLTA".*?<span class="symbol watched">DLTA<svg [^>]*role="img" aria-label="on your board">/); // and its row in the market carries the board's mark
+    expect(after).not.toContain(">watching<"); // not a word: it is the viewer's own
     ws.close();
   });
 
@@ -258,7 +280,7 @@ describe("the ticker", () => {
     expect(html).toContain('class="row tap hushed" id="m-ALPH"');
     expect(html).toContain(">1 of 16</span>");
     html = await page([{ op: "replace", path: "/hide/market", value: true }]);
-    expect(html).toMatch(/id="m-ALPH"[^>]* aria-pressed="false" hidden>/);
+    expect(html).toMatch(/id="m-ALPH"[^>]* aria-expanded="false" hidden>/);
     html = await page([{ op: "remove", path: "/filter/market" }]);
     expect(html).not.toContain("hushed");
     // a tick sends a session reading the market the one row it moved, and nothing to one on the box
@@ -272,20 +294,42 @@ describe("the ticker", () => {
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "CHRL" }]);
     await expectMessage(ws, "patch");
     await expectMessage(ws, "render");
-    html = await page([{ op: "replace", path: "/page", value: "board?symbol=CHRL" }, { op: "replace", path: "/reading/board", value: "list" }]);
-    expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-pressed="true" data-reveal>/);
-    expect(html).toContain("Stop watching");
-    // with the drawer open a tick sends the row and the drawer, since the drawer says the price too;
-    // with it closed, the row alone
-    write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.05 }]);
+    // on the board read as sparklines, a row is a figure as a list's is: a button over its line opens
+    // its drawer and is expanded while it is open. The button is a part, so opening the drawer sends
+    // its tag alone, and never the applet's mount, whose props follow the patches
+    await page([{ op: "replace", path: "/page", value: "board" }]);
+    write(ws, "desk", [{ op: "replace", path: "/page", value: "board?symbol=CHRL" }]);
     await expectMessage(ws, "patch");
-    const tick = await expectMessage(ws, "render");
+    const chosen = await expectMessage(ws, "render");
+    expect((chosen.ops as { op: string; target: string }[]).map((o) => `${o.op} ${/data-eta-part="(.*)"/.exec(o.target)![1]}`)).toEqual(["tag site", "tag tap-CHRL", "replace drawers"]);
+    expect(JSON.stringify(chosen.ops)).not.toContain("data-props");
+    html = chosen.page!;
+    expect(html).toContain(`<div data-eta-part="quote-CHRL" id="quote-CHRL" class="board-row"><div id="line-CHRL" data-applet="board" data-doc="quote:CHRL" data-under="/quote" aria-hidden="true" data-props=`);
+    expect(html).toContain(`<button data-eta-part="tap-CHRL" type="button" class="board-tap" aria-labelledby="line-CHRL" data-write='{"doc":"desk","op":"replace","path":"/page"}' data-value="board?symbol=CHRL" aria-expanded="true" data-reveal></button></div>`);
+    expect(html).toContain("Stop watching");
+    // the board row has the move and the sparkline, and a narrow board hides its name: its drawer gives the name
+    const fromRow = html.slice(html.indexOf('id="drawer"'));
+    expect(fromRow).toContain('<span class="prop-name cap">Name</span><div class="prop-value"><span>Charlie Metals</span>');
+    for (const said of [">Moved<", ">Lately<"]) expect(fromRow).not.toContain(said);
+    html = await page([{ op: "replace", path: "/reading/board", value: "list" }]);
+    // a list row has the name and the price: from it, the drawer gives the move and the sparkline
+    expect(html!.slice(html!.indexOf('id="drawer"'))).toContain('<span class="prop-name cap">Moved</span>');
+    expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-expanded="true" data-reveal>/);
+    expect(html).toContain("Stop watching");
+    // with the drawer open a tick sends the row and the drawer, since the drawer says the move;
+    // with it closed, the row alone. CHRL is watched now, so the tick comes as the market's patch
+    // and, where a board row shows it, the quote's own.
+    const ticked = async (price: number) => {
+      write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: price }]);
+      const renders = (await heard(ws)).filter((m) => m.type === "render");
+      expect(renders).toHaveLength(1);
+      return renders[0]!;
+    };
+    const tick = await ticked(13.05);
     expect(tick.html).toBeUndefined();
     expect(tick.page).toContain("13.05");
     await page([{ op: "replace", path: "/page", value: "board" }]);
-    write(ws, "ticker", [{ op: "replace", path: "/CHRL/price", value: 13.07 }]);
-    await expectMessage(ws, "patch");
-    expect((await expectMessage(ws, "render")).ops).toMatchObject([{ op: "replace", target: '[data-eta-part="b-CHRL"]' }]);
+    expect((await ticked(13.07)).ops).toMatchObject([{ op: "replace", target: '[data-eta-part="b-CHRL"]' }]);
     // dropping asks first, from the drawer: the drawer's layer closes, the modal's opens, the ground
     // goes inert and the site's tag says where -- and none of it is the page
     html = await page([{ op: "replace", path: "/page", value: "board?symbol=CHRL" }]);
@@ -303,18 +347,44 @@ describe("the ticker", () => {
     html = await pageNow(ws); // the list and the desk, which the answer put back on the board
     expect(html).not.toContain('class="modal"');
     expect(html).not.toContain("Stop watching");
-    // watching asks which symbol; the add that answers closes the ask
+    // watching asks which symbol, a choice of those the board lacks; the add that answers closes the ask
     html = await page([{ op: "replace", path: "/page", value: "board?new" }]);
     expect(html).toContain('<dialog open class="modal" aria-label="Watch a symbol">');
+    expect(html).toContain('<select name="symbol" required autofocus><option value="ALPH">ALPH · Alpha Systems</option>');
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "GOLF" }]);
     html = await pageNow(ws);
     expect(html).not.toContain('class="modal"');
     expect(html).toContain('id="b-GOLF"');
-    // a stale confirm renders no modal; a drawer for a symbol the market lacks renders none
-    html = await page([{ op: "replace", path: "/page", value: "board?confirm=ZZZZ" }]);
+    // asked again, GOLF is not offered; sent anyway (from another tab's ask), it is refused, and the
+    // ask says why beneath its field, until the next write
+    html = await page([{ op: "replace", path: "/page", value: "board?new" }]);
+    expect(html).not.toContain('<option value="GOLF">');
+    write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "GOLF" }]);
+    html = await pageNow(ws);
+    expect(html).toContain('<p class="refused" role="alert">GOLF is on your board already.</p><div class="modal-foot">');
+    // a stale confirm renders no modal (and the next write puts the reason away); a drawer for a symbol the market lacks renders none
+    write(ws, "desk", [{ op: "replace", path: "/page", value: "board?confirm=ZZZZ" }]);
+    html = await pageNow(ws);
     expect(html).not.toContain('class="modal"');
+    expect(html).not.toContain('class="refused"');
     html = await page([{ op: "replace", path: "/page", value: "board?symbol=ZZZZ" }]);
-    expect(html).not.toContain('class="sheet"');
+    expect(html).not.toContain('class="drawer"');
+    ws.close();
+  });
+
+  test("with every symbol watched, the board has no plus and says so; the ask is not drawn", async () => {
+    const ws = await open();
+    for (const symbol of Object.keys(await quotes())) {
+      write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: symbol }]);
+      await heard(ws);
+    }
+    write(ws, "desk", [{ op: "replace", path: "/page", value: "board" }]);
+    let html = await pageNow(ws);
+    expect(html).not.toContain('aria-label="Watch a symbol"');
+    expect(html).toContain('<p class="note">Everything is watched.</p>');
+    write(ws, "desk", [{ op: "replace", path: "/page", value: "board?new" }]);
+    html = await pageNow(ws);
+    expect(html).not.toContain('class="modal"');
     ws.close();
   });
 
