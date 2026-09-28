@@ -107,6 +107,35 @@ describe("diff", () => {
     ]);
   });
 
+  // two days of stops, the tea moving between them; and a split before them, which draws what it
+  // holds twice, as columns and as rows, so that there it is no part
+  const days = (tea: "mon" | "tue" | "split") => {
+    const row = (how = "") => part("tea", `<li${how}>tea</li>`);
+    const day = (d: string) => part(d, `<section><ul>${part(`${d}-walk`, `<li>walk</li>`)}${tea === d ? row() : ""}</ul></section>`);
+    return `<main>${part("split", `<div><ul>${tea === "split" ? row(' class="col"') : ""}</ul><ol>${tea === "split" ? row(' class="row"') : ""}</ol></div>`)}${day("mon")}${day("tue")}</main>`;
+  };
+
+  test("a row that moves to another list is taken out of the list it left, named there: the one it went to may hold it already", () => {
+    const tea = `<li data-eta-part="tea">tea</li>`;
+    expect(diff(draw(() => days("tue")), draw(() => days("mon")))).toEqual([
+      { op: "after", target: '[data-eta-part="mon-walk"]', html: tea },
+      { op: "remove", target: '[data-eta-part="tue"] [data-eta-part="tea"]' },
+    ]);
+    expect(diff(draw(() => days("mon")), draw(() => days("tue")))).toEqual([
+      { op: "remove", target: '[data-eta-part="mon"] [data-eta-part="tea"]' },
+      { op: "after", target: '[data-eta-part="tue-walk"]', html: tea },
+    ]);
+  });
+
+  test("so is a row the next page draws twice, and so as no part", () => {
+    const [before, after] = [draw(() => days("mon")), draw(() => days("split"))];
+    expect(after.nodes.has("tea")).toBe(false);
+    expect(diff(before, after)).toEqual([
+      { op: "replace", target: '[data-eta-part="split"]', html: after.nodes.get("split")!.html },
+      { op: "remove", target: '[data-eta-part="mon"] [data-eta-part="tea"]' },
+    ]);
+  });
+
   test("a key drawn twice the same is one part", () => {
     const view = (t: string) => {
       const drawer = () => part("drawer", `<aside>${t}</aside>`);

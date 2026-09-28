@@ -89,21 +89,24 @@ large consumer product.
 ## What a write costs
 
 After a write, each page that read the document is drawn again and sent only the parts that
-changed. Each example measures what one write sends everyone else, with a script
-(`examples/<name>/scripts/measure-render-cost.ts`). `bun run costs` runs each from an empty
-database and writes what it finds here, and every other number this README quotes; `bun test`
-fails when the README says otherwise.
+changed, and the socket compresses each message (permessage-deflate, which every browser offers).
+Each example measures what one write sends everyone else as it crosses the wire, and what it was
+before compression, with a script (`examples/<name>/scripts/measure-render-cost.ts`).
+`bun run costs` runs each from an empty database and writes what it finds here, and every other
+number this README quotes; `bun test` fails when the README says otherwise.
 
 <!-- measured:writes -->
-- **Chat**, one message in a room of 100 messages and 5 members: 1.2 KB to each other member (a
-  345 B patch and 844 B of HTML).
-- **The ticker**, one price tick with 5 viewers watching its symbol: 364 B to each other viewer
-  (patches of 186 B and 178 B, and no HTML). The same tick as a bare JSON feed would be 41 B.
-- **The wedding**, one guest's top changed to green: 2.3 KB to the same household's second tab, on
-  its photo (patches of 357 B and 300 B, and 1.6 KB of HTML); 5.4 KB to the couple, on their photo
-  of families (a 353 B patch and 5.0 KB of HTML); 300 B to another household, on its photo (one
-  patch and no HTML); and 1.9 KB to another household, reading everyone (a 300 B patch and 1.6 KB of
-  HTML).
+- **Chat**, one message in a room of 100 messages and 5 members: 518 B, compressed from 1.2 KB, to
+  each other member (a 207 B patch and 311 B of HTML).
+- **The ticker**, one price tick with 5 viewers watching its symbol: 283 B, compressed from 364 B,
+  to each other viewer (patches of 143 B and 140 B, and no HTML). The same tick as a bare JSON feed
+  would be 41 B.
+- **The wedding**, one guest's top changed to green: 917 B, compressed from 2.3 KB, to the same
+  household's second tab, on its photo (patches of 250 B and 218 B, and 449 B of HTML); 856 B,
+  compressed from 5.4 KB, to the couple, on their photo of families (a 252 B patch and 604 B of
+  HTML); 218 B, compressed from 300 B, to another household, on its photo (one patch and no HTML);
+  and 566 B, compressed from 1.9 KB, to another household, reading everyone (a 218 B patch and 348 B
+  of HTML).
 <!-- /measured -->
 
 ## Commands

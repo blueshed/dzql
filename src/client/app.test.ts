@@ -833,6 +833,23 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     }
   });
 
+  test("a row that moves to another list is where it went, and not where it was, whichever comes first; and so is one drawn twice", async () => {
+    await using view = await open();
+    // two days of stops, the tea moving between them; and a split before them, which draws what it
+    // holds twice, as columns and as rows, so that there it is no part
+    const days = (tea: "mon" | "tue" | "split") => {
+      const row = (how = "") => part("tea", `<li${how}>tea</li>`);
+      const day = (d: string) => part(d, `<section><ul>${part(`${d}-walk`, `<li>walk</li>`)}${tea === d ? row() : ""}</ul></section>`);
+      return `<main>${part("split", `<div><ul>${tea === "split" ? row(' class="col"') : ""}</ul><ol>${tea === "split" ? row(' class="row"') : ""}</ol></div>`)}${day("mon")}${day("tue")}</main>`;
+    };
+    for (const [from, to] of [["tue", "mon"], ["mon", "tue"], ["mon", "split"], ["split", "tue"]] as const) {
+      const [before, after] = [drawParts(() => days(from)), drawParts(() => days(to))];
+      await pushRender(view, before.html);
+      await push(view, { type: "render", ops: diff(before, after) });
+      expect(await view.evaluate<string>(`document.getElementById('app').innerHTML`)).toBe(after.html);
+    }
+  });
+
   test("words in an editing form are said before Escape or Back puts its drawer away, though a field a render takes out says nothing in WebKit", async () => {
     await using view = await open();
     await stubSend(view);

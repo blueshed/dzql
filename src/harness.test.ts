@@ -619,3 +619,122 @@ describe("the patch stream: what an applet that takes a document's patches holds
     expect(holding({ applet: "board", doc: "d", under: "", props: '{"quotes":{}}', ops: [{ op: "replace", path: "/A", value: 3 }] })).toEqual({ error: "replace /A: no such member" });
   });
 });
+
+describe("hear, after a render in parts: the page as a fresh render draws it, wherever a part went", () => {
+  // two days of stops, the tea moving between them; and a split before them, which draws what it
+  // holds twice, as columns and as rows, so that there it is no part
+  const days = (tea: "mon" | "tue" | "split") => {
+    const row = (how = "") => part("tea", `<li${how}>tea</li>`);
+    const day = (d: string) => part(d, `<section><ul>${part(`${d}-walk`, `<li>walk</li>`)}${tea === d ? row() : ""}</ul></section>`);
+    return `<main>${part("split", `<div><ul>${tea === "split" ? row(' class="col"') : ""}</ul><ol>${tea === "split" ? row(' class="row"') : ""}</ol></div>`)}${day("mon")}${day("tue")}</main>`;
+  };
+
+  test("a row that moves to another list is where it went, and not where it was, whichever comes first; and so is one drawn twice", () => {
+    for (const [from, to] of [["tue", "mon"], ["mon", "tue"], ["mon", "split"], ["split", "tue"]] as const) {
+      const [before, after] = [drawParts(() => days(from)), drawParts(() => days(to))];
+      expect(hear(before.html, { type: "render", ops: diff(before, after) })).toBe(after.html);
+    }
+  });
+
+  test("parts moved at random -- between lists, into rows and out of them, to where they are drawn twice -- gone, come and changed: every page as drawn afresh", () => {
+    type Row = { key: string; in: string; at: number; text: string };
+    let seed = 7;
+    const random = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    const any = <T,>(xs: T[]): T => xs[Math.floor(random() * xs.length)]!;
+    // a page of rows that may hold rows: at its head, in a split that draws its own twice, and in two lists
+    const page = (rows: Row[]) => {
+      const inside = (at: string, how = ""): string =>
+        rows.filter((r) => r.in === at).sort((a, b) => a.at - b.at).map((r) => part(r.key, `<li${how}>${r.text}<ul>${inside(r.key)}</ul></li>`)).join("");
+      const list = (key: string) => part(key, `<section><ul>${inside(key)}</ul></section>`);
+      return `<main>${inside("page")}${part("split", `<div><ul>${inside("split", ' class="col"')}</ul><ol>${inside("split", ' class="row"')}</ol></div>`)}${list("a")}${list("b")}</main>`;
+    };
+    /** A row, and every row it holds. */
+    const holds = (rows: Row[], key: string): string[] => [key, ...rows.filter((r) => r.in === key).flatMap((r) => holds(rows, r.key))];
+    /** Where a row may go: anywhere but into itself; into the split only holding nothing, and never into a row there (what it held would be drawn twice too). */
+    const places = (rows: Row[], row?: Row): string[] => {
+      const mine = row ? holds(rows, row.key) : [];
+      return ["page", "a", "b", ...(mine.length > 1 ? [] : ["split"]), ...rows.filter((r) => !mine.includes(r.key) && r.in !== "split").map((r) => r.key)];
+    };
+    let made = 0;
+    let moved = 0;
+    for (let walk = 0; walk < 300; walk++) {
+      let rows: Row[] = [];
+      let before = drawParts(() => page(rows));
+      for (let step = 0; step < 6; step++) {
+        const next = rows.map((r) => ({ ...r }));
+        const row = next.length ? any(next) : undefined;
+        const roll = random();
+        if (!row || roll < 0.2) next.push({ key: `r${made++}`, in: any(places(next)), at: random(), text: "new" });
+        else if (roll < 0.6) Object.assign(row, { in: any(places(next, row)), at: random() });
+        else if (roll < 0.75) row.at = random();
+        else if (roll < 0.9) row.text = `t${Math.floor(random() * 9)}`;
+        else {
+          const gone = holds(next, row.key);
+          next.splice(0, next.length, ...next.filter((r) => !gone.includes(r.key)));
+        }
+        const after = drawParts(() => page(next));
+        const ops = diff(before, after);
+        if (next.some((r) => rows.some((was) => was.key === r.key && was.in !== r.in))) moved++;
+        expect(ops === undefined ? after.html : hear(before.html, { type: "render", ops })).toBe(after.html);
+        [rows, before] = [next, after];
+      }
+    }
+    expect(moved).toBeGreaterThan(300);
+  });
+
+  test("a wider walk: several changes a render, a row's tag alone, moved and changed at once, a twin that draws its rows twice, a list with more than rows, three deep: every page as drawn afresh", () => {
+    type Row = { key: string; in: string; at: number; text: string; cls: string };
+    let removedInside = 0;
+    for (let s = 1; s <= 5; s++) {
+      let seed = s * 7919;
+      const random = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+      const any = <T,>(xs: T[]): T => xs[Math.floor(random() * xs.length)]!;
+      let title = "C";
+      const page = (rows: Row[]) => {
+        const inside = (at: string, how = ""): string =>
+          rows.filter((r) => r.in === at).sort((a, b) => a.at - b.at).map((r) => part(r.key, `<li class="${r.cls}"${how}>${r.text}<ul>${inside(r.key)}</ul></li>`)).join("");
+        const list = (key: string) => part(key, `<section><ul>${inside(key)}</ul></section>`);
+        const split = part("split", `<div><ul>${inside("split", ' data-x="col"')}</ul><ol>${inside("split", ' data-x="row"')}</ol></div>`);
+        const twin = part("twin", `<div><ul>${inside("twin")}</ul><ul>${inside("twin")}</ul></div>`);
+        return `<main>${inside("page")}${split}${twin}${list("a")}${list("b")}${part("c", `<section><h2>${title}</h2><ul>${inside("c")}<li>+</li></ul></section>`)}</main>`;
+      };
+      const holds = (rows: Row[], key: string): string[] => [key, ...rows.filter((r) => r.in === key).flatMap((r) => holds(rows, r.key))];
+      const doubled = (rows: Row[], r: Row | undefined): boolean => !!r && (r.in === "split" || r.in === "twin" || doubled(rows, rows.find((q) => q.key === r.in)));
+      /** Where a row may go: anywhere but into itself; where rows are drawn twice only holding nothing, and never into a row there. */
+      const places = (rows: Row[], row?: Row): string[] => {
+        const mine = row ? holds(rows, row.key) : [];
+        return ["page", "a", "b", "c", ...(mine.length > 1 ? [] : ["split", "twin"]), ...rows.filter((r) => !mine.includes(r.key) && !doubled(rows, r)).map((r) => r.key)];
+      };
+      let made = 0;
+      for (let walk = 0; walk < 60; walk++) {
+        let rows: Row[] = [];
+        title = "C";
+        let before = drawParts(() => page(rows));
+        for (let step = 0; step < 10; step++) {
+          const next = rows.map((r) => ({ ...r }));
+          for (let change = Math.floor(random() * 3); change >= 0; change--) {
+            const row = next.length ? any(next) : undefined;
+            const roll = random();
+            if (!row || roll < 0.2) next.push({ key: `r${made++}`, in: any(places(next)), at: random(), text: "new", cls: "a" });
+            else if (roll < 0.5) Object.assign(row, { in: any(places(next, row)), at: random() });
+            else if (roll < 0.6) Object.assign(row, { in: any(places(next, row)), at: random(), text: `m${Math.floor(random() * 9)}`, cls: any(["a", "b"]) });
+            else if (roll < 0.7) row.at = random();
+            else if (roll < 0.8) row.text = `t${Math.floor(random() * 9)}`;
+            else if (roll < 0.88) row.cls = row.cls === "a" ? "b" : "a";
+            else if (roll < 0.9) title = title === "C" ? "D" : "C";
+            else {
+              const gone = holds(next, row.key);
+              next.splice(0, next.length, ...next.filter((r) => !gone.includes(r.key)));
+            }
+          }
+          const after = drawParts(() => page(next));
+          const ops = diff(before, after);
+          removedInside += (ops ?? []).filter((o) => o.op === "remove" && o.target.includes(" ")).length;
+          expect(ops === undefined ? after.html : hear(before.html, { type: "render", ops })).toBe(after.html);
+          [rows, before] = [next, after];
+        }
+      }
+    }
+    expect(removedInside).toBeGreaterThan(300); // 3000 renders, and rows taken out of where they left, named there
+  });
+});

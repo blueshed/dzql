@@ -9,9 +9,12 @@ import type { HtmlOp } from "./compartments/render";
 type Recorded = { key: string; html: string };
 const recordings: Recorded[][] = [];
 
+/** What a part's root element carries, as its HTML says it: `data-eta-part="<key>"`. */
+const carries = (key: string): string => `data-eta-part="${key.replaceAll('"', "&quot;")}"`;
+
 /** Names a region of the page: its root element is tagged `data-eta-part="<key>"`, and it is sent on its own when it alone changed. A key is unique on its page. */
 export function part(key: string, html: string): string {
-  const tagged = html.replace(/^(\s*<[a-zA-Z][\w-]*)/, `$1 data-eta-part="${key.replaceAll('"', "&quot;")}"`);
+  const tagged = html.replace(/^(\s*<[a-zA-Z][\w-]*)/, `$1 ${carries(key)}`);
   recordings.at(-1)?.push({ key, html: tagged });
   return tagged;
 }
@@ -69,9 +72,6 @@ function layout(page: string, recorded: Recorded[]): Drawn {
 
 const target = (key: string): string => `[data-eta-part="${key.replaceAll('"', '\\"')}"]`;
 
-/** A part inside the part `key` (or, for `null`, the page). */
-const within = (key: string | null, inner: string): string => (key === null ? target(inner) : `${target(key)} ${target(inner)}`);
-
 /**
  * What to send to bring a page drawn as `prev` to `next`: HTML ops, `[]` when nothing on it
  * changed, or undefined when the page's own outline changed and it must go whole. An applet that
@@ -102,14 +102,13 @@ function settle(key: string | null, prev: Drawn, next: Drawn, ops: HtmlOp[], see
   if (pInside !== nInside) {
     if (!isList(pInside) || !isList(nInside) || pInside.replace(RUN, "") !== nInside.replace(RUN, "")) return false;
     if (tag) ops.push(tag);
-    // A list: the same outline around a run of rows. Rows gone are taken out -- a row that moved to
-    // another part, from this one, since a part drawn before this one may hold it already; rows
+    // A list: the same outline around a run of rows. Rows gone are taken out (`goneFrom`); rows
     // kept keep their order and are settled in turn; new rows go in after the row before them, or
     // before the row after them. A list that was empty has neither, and is replaced.
     const kept = n.children.filter((c) => p.children.includes(c));
     if (kept.join("\n") !== p.children.filter((c) => n.children.includes(c)).join("\n")) return false;
     if (kept.length === 0 && n.children.length > 0) return false;
-    for (const gone of p.children.filter((c) => !n.children.includes(c))) ops.push({ op: "remove", target: next.nodes.has(gone) ? within(key, gone) : target(gone) });
+    for (const gone of p.children.filter((c) => !n.children.includes(c))) ops.push({ op: "remove", target: goneFrom(key, gone, next) });
     n.children.forEach((c, i) => {
       if (p.children.includes(c)) return settleChild(c, prev, next, ops, seen);
       const html = next.nodes.get(c)!.html;
@@ -138,6 +137,18 @@ export function splitTag(html: string): [string, string] {
 
 function settleChild(key: string, prev: Drawn, next: Drawn, ops: HtmlOp[], seen: (html: string) => string): void {
   if (!settle(key, prev, next, ops, seen)) ops.push({ op: "replace", target: target(key), html: next.nodes.get(key)!.html });
+}
+
+/**
+ * A row taken out of the list `key`: by its own key when the next page has no element that carries
+ * it, and otherwise as the one inside `key`. A row that moved to another part -- or that the next
+ * page draws twice, and so is no part -- may already have been put in there, in a part drawn before
+ * this one, and its key alone names the first on the page: the copy just put in. Inside `key` it
+ * can only be the row that left, since nothing goes into a list before its rows come out; and the
+ * page's own rows come out before anything goes in, so they are named by their key alone.
+ */
+function goneFrom(key: string | null, row: string, next: Drawn): string {
+  return key !== null && next.html.includes(carries(row)) ? `${target(key)} ${target(row)}` : target(row);
 }
 
 const RUN = /(?:<!--part:[^>]*-->)+/g;

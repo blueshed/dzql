@@ -1,9 +1,10 @@
 // Measures what a room write costs on the wire for every other member: a patch echo and
 // then whatever the render is -- a full page (0.12.0 to 0.23.0) or, since renders in parts,
-// the one appended <li>. Not a test -- a report. Run with
+// the one appended <li> -- each as it is and as it crosses the wire, compressed (a `tap` in front
+// of the server sees it). Not a test -- a report. Run with
 // `DB_PATH=:memory: bun examples/chat/scripts/measure-render-cost.ts`; with `--json`, what the
 // README says (src/costs.ts, `bun run costs`).
-import type { Measured } from "../../../src/costs";
+import { tap, type Measured } from "../../../src/costs";
 import { patchMessage } from "../../../src/json-patch";
 import { createServer } from "../../../src/server";
 import { example } from "../index";
@@ -32,6 +33,8 @@ await example.delta!.call("delta", {
 await example.delta!.call("close", { doc: `room:${room}` });
 
 const server = createServer(example, 0);
+const wire = await tap(server.port!); // what crosses it, as sent: every socket goes through it
+const sessions = new WeakMap<WebSocket, string>();
 
 // A persistent per-socket FIFO queue, not a fresh {once:true} listener per
 // nextMessage() call -- two messages sent back-to-back (a patch echo
@@ -40,11 +43,11 @@ const server = createServer(example, 0);
 const queues = new WeakMap<WebSocket, string[]>();
 const waiters = new WeakMap<WebSocket, ((raw: string) => void)[]>();
 
-function connect(cookie: string): WebSocket {
-  const url = new URL("/ws", server.url);
-  url.protocol = "ws:";
+function connect(): WebSocket {
+  const session = crypto.randomUUID();
   // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-  const ws: WebSocket = new WebSocket(url, { headers: { Cookie: cookie } });
+  const ws: WebSocket = new WebSocket(wire.url, { headers: { Cookie: `session_id=${session}` } });
+  sessions.set(ws, session);
 
   const queue: string[] = [];
   const pending: ((raw: string) => void)[] = [];
@@ -85,7 +88,7 @@ function send(ws: WebSocket, doc: string, ops: unknown[]) {
 
 const members: WebSocket[] = [];
 for (let i = 0; i < MEMBERS; i++) {
-  const ws = connect(`session_id=${crypto.randomUUID()}`);
+  const ws = connect();
   await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
   await nextMessage(ws); // name form
   send(ws, "session", [{ op: "replace", path: "/name", value: `Member${i}` }]);
@@ -105,13 +108,13 @@ const text = "the message actually being measured";
 
 send(sender!, "room", [{ op: "add", path: "/messages/-", value: text }]);
 await heard(sender!); // the sender's own patch echo and render: once answered, every other member has been sent theirs
-const incoming = await Promise.all(others.map(heard));
+const incoming = await Promise.all(others.map(async (ws) => [await heard(ws), ws] as const));
 
-const sizes = (raws: string[]) => raws.map((raw) => ({ type: JSON.parse(raw).type as string, bytes: Buffer.byteLength(raw, "utf8") }));
+const sizes = ([raws, ws]: (typeof incoming)[number]) => wire.heard(sessions.get(ws)!, raws);
 const each = sizes(incoming[0]!);
-if (incoming.some((raws) => JSON.stringify(sizes(raws)) !== JSON.stringify(each))) throw new Error("the other members were not all sent the same");
-const of = (type: string) => each.filter((m) => m.type === type).reduce((n, m) => n + m.bytes, 0);
-const renderKind = incoming[0]!.map((raw) => JSON.parse(raw)).find((m) => m.type === "render")?.ops ? "render in parts" : "full render";
+if (incoming.some((heard) => JSON.stringify(sizes(heard)) !== JSON.stringify(each))) throw new Error("the other members were not all sent the same");
+const of = (type: string, size: "bytes" | "sent" = "bytes") => each.filter((m) => m.type === type).reduce((n, m) => n + m[size], 0);
+const renderKind = incoming[0]![0].map((raw) => JSON.parse(raw)).find((m) => m.type === "render")?.ops ? "render in parts" : "full render";
 
 // Reconstruct what request 2-4's behavior would have cost: the same patch
 // echo, plus a single appended <li> instead of a full render.
@@ -125,10 +128,11 @@ if (process.argv.includes("--json")) console.log(JSON.stringify(measured));
 else {
   console.log(`Room: ${HISTORY} messages, ${MEMBERS} members. Bytes sent to each *other* member per message:`);
   console.log(`  before (request 2-4, patch + append): ${beforeBytes} B`);
-  console.log(`  now    (patch + ${renderKind}): ${of("patch") + of("render")} B`);
-  console.log(`    patch echo:  ${of("patch")} B`);
-  console.log(`    render:      ${of("render")} B (was ${Buffer.byteLength(appendPayload, "utf8")} B as an append)`);
+  console.log(`  now    (patch + ${renderKind}): ${of("patch") + of("render")} B, ${of("patch", "sent") + of("render", "sent")} B on the wire`);
+  console.log(`    patch echo:  ${of("patch")} B, ${of("patch", "sent")} B on the wire`);
+  console.log(`    render:      ${of("render")} B, ${of("render", "sent")} B on the wire (was ${Buffer.byteLength(appendPayload, "utf8")} B as an append)`);
 }
 
 for (const ws of members) ws.close();
 server.stop(true);
+wire.close();

@@ -14,6 +14,16 @@ import { refuseOrigin } from "@blueshed/delta/server";
 
 type Socket = Bun.ServerWebSocket<ConnectionData>;
 
+/**
+ * Sends a message compressed (todo n79): the socket takes permessage-deflate, which every browser
+ * offers, and each message is compressed on its own (no context kept between them, so no memory
+ * per connection). A page goes at a sixth to a quarter of its size, a patch at about two thirds.
+ * It costs CPU for each page a message goes to: about 2 µs a KB up to 20 KB (a patch 5 µs, a
+ * 13 KB page 25 µs), and about 9 µs a KB past 32 KB (a 178 KB page 1.6 ms, where raw is 30 µs). To
+ * a client that did not offer it, a message goes as it is.
+ */
+const send = (ws: Socket, message: string): void => void ws.send(message, true);
+
 /** Other sites whose pages may open a socket here, from `ETA_ORIGINS` (comma-separated); by default only the page's own. */
 const origins = (): string[] | undefined => process.env.ETA_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean);
 
@@ -62,8 +72,8 @@ function redraw(ws: Socket, whole = false): Promise<void> {
     const prev = sent.get(ws);
     sent.set(ws, drawn);
     const ops = prev && !whole ? diff(prev, drawn) : undefined;
-    if (ops === undefined) ws.send(renderMessage(drawn.html));
-    else if (ops.length > 0) ws.send(fragmentsMessage(ops));
+    if (ops === undefined) send(ws, renderMessage(drawn.html));
+    else if (ops.length > 0) send(ws, fragmentsMessage(ops));
   });
   const done = next.catch((err) => failed("drawing a page", err));
   drawingFor.set(ws, done);
@@ -127,7 +137,7 @@ function tellChanges(documents: Documents): void {
     const wire = wireOps(owner, docId, ops as PatchOp[]);
     const yours = await claimOf(doc, v);
     const echoTo = await settled(documents, () => audienceFor(docType, docId));
-    for (const ws of echoTo) ws.send(patchMessage(wireName(docType, docId, ws), v ?? 0, wire, ws === yours?.ws ? yours.id : undefined));
+    for (const ws of echoTo) send(ws, patchMessage(wireName(docType, docId, ws), v ?? 0, wire, ws === yours?.ws ? yours.id : undefined));
     for (const ws of new Set([...echoTo, ...readersOf(docType, docId)])) void redraw(ws);
     await owner.afterChange?.(docId, wire);
   });
@@ -255,7 +265,7 @@ export function createServer(example: Example, port: number | string = process.e
 
   async function handle(ws: Socket, message: unknown): Promise<void> {
     if (isInspect(message)) {
-      ws.send(JSON.stringify({ type: "inspect", ...(await inspectFor(ws, inspected(message.limit))) }));
+      send(ws, JSON.stringify({ type: "inspect", ...(await inspectFor(ws, inspected(message.limit))) }));
       return;
     }
     // A write that applied something is told from its change, the writer's page with the rest, and
@@ -273,7 +283,7 @@ export function createServer(example: Example, port: number | string = process.e
       if (err instanceof Refusal) refusal = err;
       else failed("handling a write", err);
     }
-    if (!wrote && id !== undefined) ws.send(refusedMessage(id, refusal?.reason));
+    if (!wrote && id !== undefined) send(ws, refusedMessage(id, refusal?.reason));
     if (isWrite(message)) await tell(ws.data.sessionId, refusal && { doc: message.doc, path: message.ops[0]!.path, reason: refusal.reason });
     if (!wrote) void redraw(ws, true);
     await quiet(documents);
@@ -311,6 +321,10 @@ export function createServer(example: Example, port: number | string = process.e
       },
     },
     websocket: {
+      perMessageDeflate: true, // "shared", both ways: a message compressed on its own, as `send` says
+      // A message in is at most 1 MiB, inflated: a write is small (a picture goes by HTTP), and past
+      // it the socket is closed. Bun's own 16 MB would let a 15 KB compressed frame be a 15 MB write.
+      maxPayloadLength: 1 << 20,
       open(ws) {
         openConnection(ws);
         enqueue(async () => {

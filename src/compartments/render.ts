@@ -5,7 +5,9 @@ import { WIRE } from "../json-patch";
  * target element with `html` (one element); `tag` gives the target the attributes of `html`, an
  * opening tag, and leaves what is inside it alone; `after` and `before` put `html` beside the
  * target (a row into a list); `remove` takes the target out. The target is a part's selector,
- * `[data-eta-part="<key>"]`.
+ * `[data-eta-part="<key>"]`; a row taken out of a list while the page still carries its key
+ * elsewhere (it moved, or is drawn twice) is named inside the list it left,
+ * `[data-eta-part="<list>"] [data-eta-part="<key>"]`.
  */
 export type HtmlOp = { op: "replace" | "tag" | "after" | "before"; target: string; html: string } | { op: "remove"; target: string };
 

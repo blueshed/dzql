@@ -223,7 +223,9 @@ last sent:
   tag alone (`tag`);
 - a part whose inside changed: replaced (`replace`, morphed in place);
 - a list (a part whose rows are parts, in one run): rows put in (`after`, `before`) and taken out
-  (`remove`). A list that was empty, or whose rows changed order, is replaced;
+  (`remove`). A list that was empty, or whose rows changed order, is replaced. A row may move from
+  one list to another (a stop to another day): it is taken out of the one it left and put in the
+  other;
 - nothing, when nothing changed;
 - the page whole only when its own outline changed: a different page.
 
@@ -318,6 +320,15 @@ The wire carries writes in, and HTML and ops out. There is no JSON tree of app s
   `perSession` is refused by name, loudly.
 - **A session id never goes on the wire.** It is the `session_id` cookie and a person's only
   credential. No echo, render, op value or inspect reply may carry one.
+- **The socket is compressed** (permessage-deflate, which every browser offers; `src/server.ts`),
+  each message on its own, so no memory is kept per connection: a page crosses at a sixth to a
+  quarter of its size, a patch at about two thirds. It costs CPU for each page a message goes to,
+  about 2 µs a KB up to 20 KB and 9 µs a KB past 32 KB (a 178 KB page, 1.6 ms), so a big page sent
+  whole to many at once is the cost to watch. As with BREACH, someone who can put text on a page
+  and watch the encrypted sizes of what it is sent can guess a secret drawn in the same message, so
+  draw no secret (a code, a token) beside what others write.
+- **A message in is at most 1 MiB, inflated** (`maxPayloadLength`): past it the socket is closed, so
+  send a picture or a file by HTTP, never over the socket.
 
 Messages:
 
