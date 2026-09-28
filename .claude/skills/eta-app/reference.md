@@ -380,7 +380,9 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
   it holds differs, as it would from a form that creates. It keeps a tick not yet drawn (a
   radio's by its value, while its group offers it) and otherwise shows what is drawn. A
   `multiple` select is not a field here (a write carries one value): an editing form never sends
-  it, nor a refusal hands it back.
+  it, nor a refusal hands it back. Escape (which presses the last `[data-escape]`) and the back
+  button first say the editing form someone is in, as leaving its field would: a drawer's words
+  are not lost with it, though WebKit fires no `focusout` for a field a render takes out.
 
 Also:
 
@@ -392,7 +394,7 @@ Also:
 - When the connection drops, the page stays as it was (what is typed, what applets hold), but
   `inert`, and `#app` is marked `data-offline` (`src/bento.css` dims it and says so) until the
   server, reached again, draws it afresh. A write made while it is down is not sent, nor taken
-  for sent: a form keeps what is typed, and an editing form says it on its next commit.
+  for sent: a form keeps what is typed, and an editing form says it as the socket is back.
 - `autofocus` means "this field is waiting for the caret": after a render the client focuses it,
   but only when nothing else has the caret.
 - `data-autoscroll` keeps a list at its foot as it grows.
@@ -457,8 +459,8 @@ const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "s
   changes). `data-reveal` scrolls the chosen row into the clear; one too tall for it, by its top.
 - A render keeps the reader's place: in each scroller that is scrolled (the page, the bento's
   window), the first element below where reading starts stays where it was, whatever is taken
-  out or put in above it, or under a sticky header -- but not while someone is pressing or has
-  a range selected. Reading starts below any bar stuck at the scroller's top (position `sticky`
+  out or put in above it, or under a sticky header -- but not while someone is pressing (a drag,
+  a selection being made). Reading starts below any bar stuck at the scroller's top (position `sticky`
   or `fixed`, over the middle of its view), as the client measures it, and `data-reveal` lands
   below it too. A header the client cannot measure there is declared: `scroll-padding-top` on
   the scroller (`html` for the page) overrides the measure.

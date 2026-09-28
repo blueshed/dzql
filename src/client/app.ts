@@ -76,12 +76,15 @@ function onAppletPropsChanged(el: Element, props: unknown) {
 // mounting a newly-appeared one still happens here, same as before.
 // A box someone is pressing is theirs until the click lands (the morph's `pressed`): a render drawn
 // between the press and the click must not tick it first, or the click unticks it, and sends that,
-// undoing whoever ticked it. Pressing its label is pressing it.
+// undoing whoever ticked it. Pressing its label is pressing it, and so is holding Space on it.
 let boxPressed: Element | undefined;
+const aBox = (el: unknown): HTMLInputElement | undefined => (el instanceof HTMLInputElement && el.type === "checkbox" ? el : undefined);
 app.addEventListener("pointerdown", (event) => {
   const at = event.target instanceof Element ? event.target : null;
-  const box = at?.closest("label")?.control ?? at;
-  boxPressed = box instanceof HTMLInputElement && box.type === "checkbox" ? box : undefined;
+  boxPressed = aBox(at?.closest("label")?.control ?? at);
+});
+app.addEventListener("keydown", (event) => {
+  if (event.key === " " && aBox(event.target)) boxPressed = aBox(event.target);
 });
 document.addEventListener("click", () => (boxPressed = undefined), true); // a click lands after its tick
 app.addEventListener("pointercancel", () => (boxPressed = undefined));
@@ -220,7 +223,7 @@ function readingTop(port: Element): number {
   if (declared !== "auto") return top + lengthIn(declared, port.clientHeight);
   let line = top;
   for (let bars = 0; bars < 3; bars++) {
-    const bar = document.elementsFromPoint(middleOf(port), line + 1).find((el) => el !== port && port.contains(el) && /sticky|fixed/.test(getComputedStyle(el).position));
+    const bar = document.elementsFromPoint(middleOf(port), Math.max(line, 0) + 1).find((el) => el !== port && port.contains(el) && /sticky|fixed/.test(getComputedStyle(el).position));
     const below = bar?.getBoundingClientRect().bottom ?? line;
     if (below <= line) break;
     line = below;
@@ -234,17 +237,18 @@ function readingTop(port: Element): number {
 // under the header. So before a render the client notes, in each scroller that is scrolled (the
 // page, and any in it, as the bento's window is), the first element at or below where reading
 // starts (readingTop), and after it puts that element back where it was. Not while someone is
-// pressing (a drag, a scroll by touch, a selection being made) or has a range selected.
-type Place = { port: Element; at: Element; top: number };
+// pressing (a drag, a scroll by touch, a selection being made); a selection left there is no reason.
+type Place = { port: Element; at: Element; top: number; apart: boolean };
 
 let holding = false;
 for (const type of ["pointerdown", "touchstart"]) document.addEventListener(type, () => (holding = true), true);
-for (const type of ["pointerup", "touchend", "touchcancel"]) document.addEventListener(type, () => (holding = false), true);
+for (const type of ["pointerup", "touchend", "touchcancel", "contextmenu"]) document.addEventListener(type, () => (holding = false), true); // a menu takes the press: WebKit sends no pointerup
+window.addEventListener("blur", () => (holding = false)); // nor when the window loses the press
 document.addEventListener("pointercancel", (event) => event.pointerType === "touch" || (holding = false), true); // a touch goes on, as a scroll, until touchend
 
-/** The first element in `port`, in the page's order, whose top is at or below where reading starts. */
+/** The first element in `port`, in the page's order, whose top is at or below where reading starts -- in the window: a scroller's top may be scrolled off it, and a point off it cannot be looked at. */
 function readerIn(port: Element): Element | undefined {
-  const line = readingTop(port);
+  const line = Math.max(readingTop(port), 0);
   let at: Element | null | undefined = document.elementsFromPoint(middleOf(port), line + 1).find((el) => el !== port && port.contains(el));
   while (at) {
     const box: DOMRect = at.getBoundingClientRect();
@@ -261,19 +265,35 @@ function after(el: Element, port: Element): Element | null {
   return null;
 }
 
+/** Whether `el`, or what holds it inside `port`, is placed apart from the flow of the page: fixed, or absolute. */
+function apart(el: Element, port: Element): boolean {
+  for (let at: Element | null = el; at && at !== port; at = at.parentElement) if (/fixed|absolute/.test(getComputedStyle(at).position)) return true;
+  return false;
+}
+
+// The scrollers in the page someone has scrolled, heard as they scroll (a scroll does not bubble, so
+// it is heard on its way down): the only ones with a place to keep, so a render looks at no others.
+const scrollers = new Set<Element>();
+document.addEventListener("scroll", (event) => event.target instanceof Element && scrollers.add(event.target), true);
+
+const depth = (el: Element): number => (el.parentElement ? depth(el.parentElement) + 1 : 0);
+
 function placesNow(): Place[] {
-  if (holding || document.getSelection()?.type === "Range") return [];
-  const scrolled = [...app.querySelectorAll("*")].filter((el) => el.scrollTop > 0 && !(el instanceof HTMLTextAreaElement) && !el.closest("[data-applet]"));
-  const ports = document.documentElement.scrollTop > 0 ? [document.documentElement, ...scrolled] : scrolled;
+  if (holding) return [];
+  for (const el of scrollers) if (!el.isConnected) scrollers.delete(el);
+  const scrolled = [...scrollers].filter((el) => app.contains(el) && el.scrollTop > 0 && !(el instanceof HTMLTextAreaElement) && !el.closest("[data-applet]"));
+  // the innermost first: a scroller's place is put back before that of the one around it, which may be reading inside it
+  const ports = [...scrolled.sort((a, b) => depth(b) - depth(a)), ...(document.documentElement.scrollTop > 0 ? [document.documentElement] : [])];
   return ports.flatMap((port) => {
     const at = readerIn(port);
-    return at ? [{ port, at, top: at.getBoundingClientRect().top - topOf(port) }] : [];
+    return at ? [{ port, at, top: at.getBoundingClientRect().top - topOf(port), apart: apart(at, port) }] : [];
   });
 }
 
-function keepPlaces(places: Place[]): void {
-  for (const { port, at, top } of places) {
-    if (!port.isConnected || !port.contains(at)) continue; // what they read is gone: what follows takes its place
+/** Puts back what each place read, unless it is gone (what follows takes its place), or the render took it out of the page's flow: a cell grown into the window (`moving`, or now fixed) is not what is read behind it. */
+function keepPlaces(places: Place[], moving?: Element): void {
+  for (const { port, at, top, apart: was } of places) {
+    if (!port.isConnected || !port.contains(at) || moving?.contains(at) || (!was && apart(at, port))) continue;
     const moved = at.getBoundingClientRect().top - topOf(port) - top;
     if (Math.abs(moved) >= 1) port.scrollTop += moved;
   }
@@ -288,7 +308,7 @@ function render(html: string) {
     const was = beforeDrawing();
     const places = placesNow();
     morph(app, html, hooks);
-    keepPlaces(places);
+    keepPlaces(places, moving);
     settle(before);
     afterDrawing(was);
     syncPage();
@@ -659,6 +679,8 @@ function connect() {
     reconnectDelay = RECONNECT_DELAY_MS;
     app.inert = false;
     delete app.dataset.offline;
+    // an edit made as the connection went was dropped, and waits in its field: it goes now
+    for (const form of app.querySelectorAll<HTMLFormElement>("form[data-write-on]")) commitEdit(form);
   });
 
   socket.addEventListener("message", (event) => {
