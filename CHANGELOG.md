@@ -262,6 +262,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`run(example, stories, observe?)`: an observer told each step of a story as the wire carried
+  it** (`Trace`, src/harness.ts): the write (or the tab that closed), what every member was sent,
+  and what the ledger took, its ops and their inverse. The run is the same with it or without it.
+- **The modeller and the UML session, as tooling** (`modeller/`, `uml/`: not in `files`, so not
+  shipped).
+  - `bun run modeller <example>`: an example's stories read as a hjeli model, hjeli's six
+    predicates run over them, and what only stories can ask. hjeli is imported from its checkout
+    beside eta's (`../hjeli`).
+  - `bun run modeller:page <example>`: the demo page (model, use cases, sequence, states, classes),
+    drawn from the stories, `delta.ts`, the compartments' rules and a run of the stories through
+    the observer, into `modeller/dist/`.
+  - `bun run uml [londons]`: the live ASCII-UML session: PlantUML in docker on :8089,
+    `uml/src/*.puml` redrawn as they change on :3700 (`PORT` moves it), each diagram checked
+    against `uml/types.ts`, or, for Londons, each agreement's arrows against the stories they
+    cite. `bun run uml:check [londons]` checks once, without PlantUML.
+
 - **An applet's mount may name the only values a control of it sends**: `appletWrites([doc, op,
   path, value], …)`, one for each, said as one write with its `values` on the mount. A story's
   write counts as offered only with one of them. It is how an applet says where it goes: the

@@ -118,6 +118,11 @@ bun run cli <verb>   # a terminal client: inspect, watch, undo, redo, write, and
 bun run costs        # measures every number this README quotes, and writes it in
 ```
 
+Two tools sit beside the kernel and are not shipped: `modeller/` (`bun run modeller <example>`:
+hjeli's predicates over an example's stories; `bun run modeller:page <example>`: its demo page, in
+`modeller/dist/`) and `uml/`, a live ASCII-UML session (`bun run uml`, PlantUML in docker, on
+:3700; `bun run uml:check` checks the diagrams without it).
+
 ## Where to go next
 
 - `first-app.md`: your first app, step by step, with the words met at each step.

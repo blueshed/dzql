@@ -50,8 +50,8 @@
 //                rights coloured by package; cells: packages, the events and moments on
 //                the time tool) · "campaigns" (a collection; a campaign's drawer)
 //   sponsor:     "" (the queue: scenarios awaiting approval, the market, brands,
-//                engagements, stock, profile) · "market" (a collection of the packages and
-//                campaigns on offer, packages with no sold package among them,
+//                engagements, stock, profile) · "market" (a collection of the packages on
+//                offer, and the campaigns on offer with no sold package among them,
 //                each row's rights on the map beneath; buy on the row) · "engagements/1" (a box:
 //                the brief in place, scenarios as a cell with approve/reject on the row) ·
 //                "brands" · "stock"
