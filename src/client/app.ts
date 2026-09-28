@@ -2,7 +2,7 @@ import { applets } from "../applets";
 import { WIRE, type PatchOp } from "../json-patch";
 import { formValue, groupOf, held, type Field } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
-import { drawnOption, keepingChoices, morph, morphElement, morphTag, removeNode } from "./morph";
+import { drawnOption, keepingChoices, morph, morphElement, morphTag, removeNode, type MorphHooks } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -14,13 +14,6 @@ let socket: WebSocket | undefined;
 // What the client has seen of each document's writes: not domain state, just
 // an echo log, so a person at the console can read the session back.
 const docs = new Map<string, { version: number; ops: PatchOp[] }>();
-
-function recordPatch(doc: string, version: number, ops: PatchOp[]) {
-  const state = docs.get(doc) ?? { version: 0, ops: [] };
-  state.version = version;
-  state.ops = [...state.ops, ...ops].slice(-MAX_OPS_KEPT_PER_DOC);
-  docs.set(doc, state);
-}
 
 // The last write this client sent, and what became of it, told by its own id: echoed back to it,
 // or refused, and why when the refusal says -- never anyone else's echo of its document, nor the
@@ -60,15 +53,6 @@ function mountApplets() {
   });
 }
 
-function onAppletRemoved(el: Element) {
-  mounted.get(el as HTMLElement)?.();
-  mounted.delete(el as HTMLElement);
-}
-
-function onAppletPropsChanged(el: Element, props: unknown) {
-  applets[(el as HTMLElement).dataset.applet!]?.update?.(el as HTMLElement, props);
-}
-
 // A render morphs the existing tree instead of replacing it, so an element a
 // person is focused on, typing into, or has scrolled survives a render that
 // doesn't concern it -- see morph.ts. [data-applet] elements are a boundary
@@ -88,7 +72,14 @@ app.addEventListener("keydown", (event) => {
 });
 document.addEventListener("click", () => (boxPressed = undefined), true); // a click lands after its tick
 app.addEventListener("pointercancel", () => (boxPressed = undefined));
-const hooks = { onAppletRemoved, onAppletPropsChanged, pressed: (el: Element) => el === boxPressed };
+const hooks: MorphHooks = {
+  onAppletRemoved(el) {
+    mounted.get(el as HTMLElement)?.();
+    mounted.delete(el as HTMLElement);
+  },
+  onAppletPropsChanged: (el, props) => applets[(el as HTMLElement).dataset.applet!]?.update?.(el as HTMLElement, props),
+  pressed: (el) => el === boxPressed,
+};
 
 // Where a tab is (change-request.md item 3): an example may mark some element within #app with
 // `data-page` (the session's own idea of the page) and `data-page-write` (the write that sets
@@ -98,7 +89,7 @@ const hooks = { onAppletRemoved, onAppletPropsChanged, pressed: (el: Element) =>
 // disagree with the session (a shared link, a reload): then the session is caught up to the URL
 // instead of the other way round, since the URL is what the person actually asked for.
 let knownPage: string | undefined;
-let pageWrite: WriteSpec | undefined;
+let pageWrite: string | undefined;
 
 /** The page the URL names: its path and, after a `?`, the one thing open over it (src/bento.ts's address). */
 const pageInUrl = (): string => decodeURI(location.pathname.slice(1) + location.search);
@@ -107,13 +98,13 @@ function syncPage() {
   const el = app.querySelector<HTMLElement>("[data-page]");
   if (!el) return;
   const page = el.dataset.page!;
-  if (el.dataset.pageWrite) pageWrite = JSON.parse(el.dataset.pageWrite) as WriteSpec;
+  if (el.dataset.pageWrite) pageWrite = el.dataset.pageWrite;
 
   if (knownPage === undefined) {
     const urlPage = pageInUrl();
     if (urlPage !== page && pageWrite) {
       knownPage = urlPage; // the URL already says this; nothing to push once the session catches up
-      send(pageWrite.doc, [{ op: pageWrite.op, path: pageWrite.path, value: urlPage }]);
+      write(pageWrite, urlPage);
     } else {
       knownPage = page;
       history.replaceState({ page }, "", "/" + encodeURI(page));
@@ -130,7 +121,7 @@ window.addEventListener("popstate", () => {
   const page = pageInUrl();
   knownPage = page;
   commitFocused();
-  if (pageWrite) send(pageWrite.doc, [{ op: pageWrite.op, path: pageWrite.path, value: page }]);
+  if (pageWrite) write(pageWrite, page);
 });
 
 // Rule 7 of bento-request.md's K1: a render may mark one element `data-moving="<name>"`. When
@@ -238,7 +229,7 @@ function readingTop(port: Element): number {
 // page, and any in it, as the bento's window is), the first element at or below where reading
 // starts (readingTop), and after it puts that element back where it was. Not while someone is
 // pressing (a drag, a scroll by touch, a selection being made); a selection left there is no reason.
-type Place = { port: Element; at: Element; top: number; apart: boolean };
+type Place = [port: Element, at: Element, top: number, apart: boolean];
 
 let holding = false;
 for (const type of ["pointerdown", "touchstart"]) document.addEventListener(type, () => (holding = true), true);
@@ -286,36 +277,54 @@ function placesNow(): Place[] {
   const ports = [...scrolled.sort((a, b) => depth(b) - depth(a)), ...(document.documentElement.scrollTop > 0 ? [document.documentElement] : [])];
   return ports.flatMap((port) => {
     const at = readerIn(port);
-    return at ? [{ port, at, top: at.getBoundingClientRect().top - topOf(port), apart: apart(at, port) }] : [];
+    return at ? [[port, at, at.getBoundingClientRect().top - topOf(port), apart(at, port)] satisfies Place] : [];
   });
 }
 
 /** Puts back what each place read, unless it is gone (what follows takes its place), or the render took it out of the page's flow: a cell grown into the window (`moving`, or now fixed) is not what is read behind it. */
 function keepPlaces(places: Place[], moving?: Element): void {
-  for (const { port, at, top, apart: was } of places) {
+  for (const [port, at, top, was] of places) {
     if (!port.isConnected || !port.contains(at) || moving?.contains(at) || (!was && apart(at, port))) continue;
     const moved = at.getBoundingClientRect().top - topOf(port) - top;
     if (Math.abs(moved) >= 1) port.scrollTop += moved;
   }
 }
 
-function render(html: string) {
+/**
+ * A drawing of the page, whole or in parts, with the same care either way. What the page shows now
+ * is noted at once -- what may grow, what is revealed -- and the rest as it is drawn: who has the
+ * keyboard, and each reader's place. Then it draws, and puts back each place (but in `moving`, a
+ * cell grown into the window), pins what grew, mounts what appeared, gives the keyboard somewhere
+ * if the drawing left it nowhere, and follows the page in the URL and a reveal.
+ */
+function drawing(draw: () => void, moving?: Element): () => void {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
   const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
-  const moving = movingElement(html);
-
-  const apply = () => {
-    const was = beforeDrawing();
+  return () => {
+    const keyboard = keyboardAfter();
     const places = placesNow();
-    morph(app, html, hooks);
+    draw();
     keepPlaces(places, moving);
-    settle(before);
-    afterDrawing(was);
+    mountApplets();
+    // Pin to the bottom only when this render actually added content here, or
+    // the element itself just appeared (a fresh load, entering a room) -- an
+    // unrelated update (someone else's presence, an undo elsewhere) must not
+    // yank the scroll position out from under someone reading history.
+    for (const el of app.querySelectorAll<HTMLElement>("[data-autoscroll]")) {
+      const had = before.get(el);
+      if (had === undefined || el.childNodes.length > had) el.scrollTop = el.scrollHeight;
+    }
+    keyboard();
     syncPage();
     revealChanged(previousReveal);
   };
+}
 
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function render(html: string) {
+  const moving = movingElement(html);
+  const apply = drawing(() => morph(app, html, hooks), moving);
+
+  const reduced = matchMedia("(prefers-reduced-motion:reduce)").matches;
   if (moving && !reduced && "startViewTransition" in document) {
     moving.style.viewTransitionName = "moving";
     // `finished` rejects when the transition is skipped -- another render arrived before it settled,
@@ -339,28 +348,13 @@ function render(html: string) {
 // once per document, so one a later drawing brings, a modal's first, would otherwise wait for a
 // click); the first control of a cell that has just moved (rule 7: the window's way back as it
 // opens, the cell's name as it closes), the one the keyboard was in first. Never from somewhere it is.
-const CONTROL = "a[href], button, input, select, textarea, [tabindex]";
-const DIALOG = "dialog, [role='dialog']";
+const CONTROL = "a[href],button,input,select,textarea,[tabindex]";
+const DIALOG = "dialog,[role=dialog]";
 
 /** What opened each drawer or modal on the page: where the keyboard goes back to when it goes. */
 const openedBy = new Map<Element, HTMLElement>();
 /** The control last pressed, until the page is next drawn: what opened whatever that drawing brings. */
 let pressed: HTMLElement | undefined;
-
-type Before = { focused: Element | null; cells: Map<string, string>; dialogs: Set<Element> };
-
-function beforeDrawing(): Before {
-  return {
-    focused: document.activeElement,
-    cells: new Map([...app.querySelectorAll<HTMLElement>("[data-moving]")].map((el) => [el.dataset.moving!, ownTag(el)])),
-    dialogs: new Set(app.querySelectorAll(DIALOG)),
-  };
-}
-
-const keyboardLost = (): boolean => {
-  const at = document.activeElement;
-  return !at || at === document.body || !!at.closest("[inert]");
-};
 
 /** Gives the keyboard to the first that takes it: not gone, disabled, inert or undrawn. */
 function giveKeyboard(candidates: Iterable<HTMLElement>): boolean {
@@ -372,32 +366,42 @@ function giveKeyboard(candidates: Iterable<HTMLElement>): boolean {
   return false;
 }
 
-function afterDrawing(was: Before): void {
-  const press = pressed;
-  pressed = undefined;
-  const gone: HTMLElement[] = [];
-  for (const [dialog, by] of openedBy) {
-    if (dialog.isConnected) continue;
-    openedBy.delete(dialog);
-    gone.push(by);
-  }
-  const opener = press ?? (was.focused instanceof HTMLElement && was.focused !== document.body ? was.focused : undefined);
-  for (const dialog of app.querySelectorAll(DIALOG)) {
-    // a new one: what was pressed, or had the keyboard, opened it
-    if (!was.dialogs.has(dialog)) {
-      if (opener) openedBy.set(dialog, opener);
-    } else if (press?.isConnected && !press.closest(DIALOG)) {
-      openedBy.set(dialog, press); // one still open, opened again by a press beside it: the next figure beside a docked drawer
+/**
+ * Notes, before a drawing, who has the keyboard, each cell's own tag and the dialogs open; what it
+ * answers, run after, gives the keyboard somewhere if the drawing left it nowhere.
+ */
+function keyboardAfter(): () => void {
+  const focused = document.activeElement;
+  const cells = new Map([...app.querySelectorAll<HTMLElement>("[data-moving]")].map((el) => [el.dataset.moving!, ownTag(el)]));
+  const dialogs = new Set(app.querySelectorAll(DIALOG));
+  return () => {
+    const press = pressed;
+    pressed = undefined;
+    const gone: HTMLElement[] = [];
+    for (const [dialog, by] of openedBy) {
+      if (dialog.isConnected) continue;
+      openedBy.delete(dialog);
+      gone.push(by);
     }
-  }
+    const opener = press ?? (focused instanceof HTMLElement && focused !== document.body ? focused : undefined);
+    for (const dialog of app.querySelectorAll(DIALOG)) {
+      // a new one: what was pressed, or had the keyboard, opened it
+      if (!dialogs.has(dialog)) {
+        if (opener) openedBy.set(dialog, opener);
+      } else if (press?.isConnected && !press.closest(DIALOG)) {
+        openedBy.set(dialog, press); // one still open, opened again by a press beside it: the next figure beside a docked drawer
+      }
+    }
 
-  if (!keyboardLost()) return;
-  if (giveKeyboard(gone) || giveKeyboard(app.querySelectorAll<HTMLElement>("[autofocus]"))) return;
-  const inside = was.focused?.closest<HTMLElement>("[data-moving]")?.dataset.moving;
-  const moved = [...app.querySelectorAll<HTMLElement>("[data-moving]")]
-    .filter((el) => was.cells.has(el.dataset.moving!) && was.cells.get(el.dataset.moving!) !== ownTag(el))
-    .sort((a, b) => Number(b.dataset.moving === inside) - Number(a.dataset.moving === inside));
-  for (const cell of moved) if (giveKeyboard([...cell.querySelectorAll<HTMLElement>(CONTROL)].filter((el) => el.tabIndex >= 0))) return;
+    const at = document.activeElement;
+    if (at && at !== document.body && !at.closest("[inert]")) return; // it is somewhere
+    if (giveKeyboard(gone) || giveKeyboard(app.querySelectorAll<HTMLElement>("[autofocus]"))) return;
+    const inside = focused?.closest<HTMLElement>("[data-moving]")?.dataset.moving;
+    const moved = [...app.querySelectorAll<HTMLElement>("[data-moving]")]
+      .filter((el) => cells.has(el.dataset.moving!) && cells.get(el.dataset.moving!) !== ownTag(el))
+      .sort((a, b) => Number(b.dataset.moving === inside) - Number(a.dataset.moving === inside));
+    for (const cell of moved) if (giveKeyboard([...cell.querySelectorAll<HTMLElement>(CONTROL)].filter((el) => el.tabIndex >= 0))) return;
+  };
 }
 
 // The page in parts: what changed since the last drawing, in HTML's terms (src/parts.ts). Each op
@@ -405,47 +409,24 @@ function afterDrawing(was: Before): void {
 // right, as it would after a reconnect. The ops keep a choice not yet drawn as one render does,
 // since a group of radios may span parts. Afterwards, the same care as a whole render.
 function applyFragments(ops: HtmlOp[]) {
-  const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
-  const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
-  const was = beforeDrawing();
-  const places = placesNow();
-
-  keepingChoices(() => {
-    for (const op of ops) {
-      const target = app.querySelector(op.target);
-      // what is inside an applet is the applet's, as it is to the morph: its own element may be a part, nothing in it
-      if (!target || target.parentElement?.closest("[data-applet]")) continue;
-      if (op.op === "replace") {
-        morphElement(target, op.html, hooks);
-      } else if (op.op === "tag") {
-        morphTag(target, op.html, hooks);
-      } else if (op.op === "remove") {
-        removeNode(target, hooks);
-      } else {
-        target.insertAdjacentHTML(op.op === "after" ? "afterend" : "beforebegin", op.html);
+  drawing(() =>
+    keepingChoices(() => {
+      for (const op of ops) {
+        const target = app.querySelector(op.target);
+        // what is inside an applet is the applet's, as it is to the morph: its own element may be a part, nothing in it
+        if (!target || target.parentElement?.closest("[data-applet]")) continue;
+        if (op.op === "replace") {
+          morphElement(target, op.html, hooks);
+        } else if (op.op === "tag") {
+          morphTag(target, op.html, hooks);
+        } else if (op.op === "remove") {
+          removeNode(target, hooks);
+        } else {
+          target.insertAdjacentHTML(op.op === "after" ? "afterend" : "beforebegin", op.html);
+        }
       }
-    }
-  });
-  keepPlaces(places);
-  settle(before);
-  afterDrawing(was);
-  syncPage();
-  revealChanged(previousReveal);
-}
-
-// After any render, full or fragment: mount what appeared and pin what grew (and then, afterDrawing,
-// give the keyboard somewhere if the drawing left it nowhere).
-function settle(before: Map<HTMLElement, number>) {
-  mountApplets();
-
-  // Pin to the bottom only when this render actually added content here, or
-  // the element itself just appeared (a fresh load, entering a room) -- an
-  // unrelated update (someone else's presence, an undo elsewhere) must not
-  // yank the scroll position out from under someone reading history.
-  for (const el of app.querySelectorAll<HTMLElement>("[data-autoscroll]")) {
-    const was = before.get(el);
-    if (was === undefined || el.childNodes.length > was) el.scrollTop = el.scrollHeight;
-  }
+    }),
+  )();
 }
 
 type WriteSpec = { doc: string; op: PatchOp["op"]; path: string };
@@ -463,6 +444,12 @@ function send(doc: string, ops: PatchOp[]): number | undefined {
   lastSent = { id, doc, ops, echoed: false, refused: false };
   socket.send(JSON.stringify({ id, doc, ops }));
   return id;
+}
+
+/** Sends the write an element names (`data-write`, `data-page-write`: its document, op and path), with this value if any. */
+function write(spec: string, value?: unknown): number | undefined {
+  const { doc, op, path } = JSON.parse(spec) as WriteSpec;
+  return send(doc, [{ op, path, value }]);
 }
 
 /** A field (form-value.ts) an editing form sends and a refusal hands back. A `multiple` select holds several values where a
@@ -502,10 +489,9 @@ app.addEventListener("submit", (event) => {
   const spec = form.dataset.write;
   if (!spec) return; // not a write: a plain form posts as the browser does (a sign-in)
   event.preventDefault();
-  const { doc, op, path } = JSON.parse(spec) as WriteSpec;
   const fields = [...form.elements].filter(isField);
   const sent: [Field, string | boolean | null][] = fields.map((f) => [f, held(f)]);
-  const id = send(doc, [{ op, path, value: formValue(form) }]);
+  const id = write(spec, formValue(form));
   if (id === undefined) return; // not sent: what is typed stays
   sending = { id, sent };
   form.reset();
@@ -515,12 +501,10 @@ app.addEventListener("click", (event) => {
   const target = (event.target as Element).closest<HTMLElement>("[data-write]");
   // A form writes on submit, and a field's data-write names its path for an editing form (below):
   // neither is a gesture. Putting the caret in find's field must not send a blank replace.
-  if (!target || target.matches("form, input, textarea, select")) return;
+  if (!target || target.matches("form,input,textarea,select")) return;
   event.preventDefault();
   pressed = target;
-  const { doc, op, path } = JSON.parse(target.dataset.write!) as WriteSpec;
-  const value = target.dataset.value;
-  send(doc, value !== undefined ? [{ op, path, value }] : [{ op, path }]);
+  write(target.dataset.write!, target.dataset.value);
 });
 
 // Escape puts away what was opened last: it presses the last `[data-escape]` on the page -- a
@@ -577,12 +561,11 @@ function editingChange(form: HTMLFormElement): { doc: string; ops: PatchOp[] } |
   return doc && ops.length > 0 ? { doc, ops } : undefined;
 }
 
-function onEditTrigger(event: Event, trigger: "blur" | "change") {
+/** The editing form of the field `event` is from, if it commits on `trigger`. */
+function editing(event: Event, trigger: "blur" | "change" | "input"): HTMLFormElement | undefined {
   const field = event.target;
-  if (!(field instanceof HTMLElement) || !field.matches("[data-write]")) return;
-  const form = field.closest("form");
-  if (!form || form.dataset.writeOn !== trigger) return;
-  commitEdit(form);
+  const form = field instanceof HTMLElement && field.matches("[data-write]") ? field.closest("form") : null;
+  return form?.dataset.writeOn === trigger ? form : undefined;
 }
 
 const INPUT_DEBOUNCE_MS = 150;
@@ -609,34 +592,14 @@ function commitEdit(form: HTMLFormElement) {
  */
 function commitFocused() {
   const form = document.activeElement instanceof HTMLElement ? document.activeElement.closest("form") : null;
-  if (!form?.dataset.writeOn || !app.contains(form)) return;
+  if (form?.dataset.writeOn && app.contains(form)) commitNow(form);
+}
+
+/** Commits what a form holds now, in place of the commit its typing was waiting to make. */
+function commitNow(form: HTMLFormElement) {
   clearTimeout(inputTimers.get(form));
   inputTimers.delete(form);
   commitEdit(form);
-}
-
-function flushInputEdit(form: HTMLFormElement) {
-  const timer = inputTimers.get(form);
-  if (timer === undefined) return;
-  clearTimeout(timer);
-  inputTimers.delete(form);
-  commitEdit(form);
-}
-
-function onInput(event: Event) {
-  const field = event.target;
-  if (!(field instanceof HTMLElement) || !field.matches("[data-write]")) return;
-  const form = field.closest("form");
-  if (!form || form.dataset.writeOn !== "input") return;
-  const existing = inputTimers.get(form);
-  if (existing !== undefined) clearTimeout(existing);
-  inputTimers.set(
-    form,
-    setTimeout(() => {
-      inputTimers.delete(form);
-      commitEdit(form);
-    }, INPUT_DEBOUNCE_MS),
-  );
 }
 
 // `focusout` (bubbles), not `blur` (doesn't): the field-losing-focus trigger, for text-like
@@ -645,13 +608,22 @@ function onInput(event: Event) {
 // "input" form also flushes any pending debounced write here, rather than waiting the debounce
 // out once the person has already moved on.
 app.addEventListener("focusout", (event) => {
-  onEditTrigger(event, "blur");
+  const blurred = editing(event, "blur");
+  if (blurred) commitEdit(blurred);
   const field = event.target;
   const form = field instanceof HTMLElement ? field.closest("form") : null;
-  if (form?.dataset.writeOn === "input") flushInputEdit(form);
+  if (form?.dataset.writeOn === "input" && inputTimers.has(form)) commitNow(form);
 });
-app.addEventListener("change", (event) => onEditTrigger(event, "change"));
-app.addEventListener("input", onInput);
+app.addEventListener("change", (event) => {
+  const form = editing(event, "change");
+  if (form) commitEdit(form);
+});
+app.addEventListener("input", (event) => {
+  const form = editing(event, "input");
+  if (!form) return;
+  clearTimeout(inputTimers.get(form));
+  inputTimers.set(form, setTimeout(() => commitNow(form), INPUT_DEBOUNCE_MS));
+});
 
 // A page from another release than its server's -- a tab open over a deploy, or one rolled back --
 // is loaded again, so page and server speak one wire (src/json-patch.ts WIRE). Not twice in
@@ -672,8 +644,7 @@ function reloadForWire(): boolean {
 }
 
 function connect() {
-  const url = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`;
-  socket = new WebSocket(url);
+  socket = new WebSocket(`${location.origin.replace("http", "ws")}/ws`); // http: goes ws:, https: wss:
 
   // A successful connection means prior turbulence is over: the next drop,
   // whenever it happens, should retry promptly rather than inherit an old backoff.
@@ -708,7 +679,8 @@ function connect() {
       }
       if (sending && sending.id === message.id) handBack();
     } else if (message.type === "patch") {
-      recordPatch(message.doc, message.version, message.ops);
+      const heard = docs.get(message.doc)?.ops ?? [];
+      docs.set(message.doc, { version: message.version, ops: [...heard, ...message.ops].slice(-MAX_OPS_KEPT_PER_DOC) });
       // An applet watching this document takes the ops itself (see Applet.patch): the delta is
       // its update, and no render need follow.
       for (const el of mounted.keys()) {
