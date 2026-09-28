@@ -249,8 +249,7 @@ export function read<T = any>(doc: string): T {
  */
 export function watch(doc: string, under?: string): { doc: string; under?: string; v?: number } {
   if (!active) throw new Error("no documents: this example does not keep them in delta");
-  const v = active.version(doc);
-  return { doc, ...(under !== undefined && { under }), ...(v !== undefined && { v }) };
+  return { doc, under, v: active.version(doc) };
 }
 
 /** The active example's documents, when it keeps them in delta. */

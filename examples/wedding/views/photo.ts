@@ -5,7 +5,7 @@
 // it is derived in the applet's own module (`crowd`), on the server and in the browser alike.
 
 import type { PhotoEntry } from "../applets/photo";
-export { EVERYONE_UP_TO, familiesPhoto, type Family } from "../applets/photo";
+export { familiesPhoto, type Family } from "../applets/photo";
 import type { HouseholdDocument } from "../documents/household";
 import type { Spec } from "../applets/figure";
 import { appletProps, appletWrites, esc } from "./html";

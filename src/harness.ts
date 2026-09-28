@@ -11,7 +11,7 @@ import { toldNothing, toldTo, type Line } from "./refusal";
 import { esc } from "./html";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
-import { size, tap } from "./costs";
+import { size, sum, tap } from "./costs";
 
 export { comparable };
 
@@ -729,7 +729,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       const raws = m.inbox.slice(from.get(m));
       if (raws.length === 0) return [];
       const heard = tapped.heard(m.sessionId, raws);
-      return [{ member: m.name, bytes: heard.reduce((n, h) => n + h.bytes, 0), sent: heard.reduce((n, h) => n + h.sent, 0), most: largest(raws) }];
+      return [{ member: m.name, bytes: sum(heard, "bytes"), sent: sum(heard), most: largest(raws) }];
     });
     if (phase === "undo" || phase === "redo") outcome.wire![phase] = handed;
     else {

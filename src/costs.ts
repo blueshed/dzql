@@ -45,7 +45,7 @@ const SIZE = /(\d+(?:\.\d+)?) (K?B)\b/g;
 
 // a size is never broken across a line (a no-break space, until it is written)
 export const size = (bytes: number): string => (bytes < 1024 ? `${bytes}\u00a0B` : `${(bytes / 1024).toFixed(1)}\u00a0KB`);
-const sum = (heard: Heard[], of: "bytes" | "sent" = "sent"): number => heard.reduce((n, h) => n + h[of], 0);
+export const sum = (heard: Heard[], of: "bytes" | "sent" = "sent"): number => heard.reduce((n, h) => n + h[of], 0);
 const and = (items: string[]): string => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join("; ")}; and ${items.at(-1)}`);
 
 /**

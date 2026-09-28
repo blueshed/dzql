@@ -166,9 +166,6 @@ function listReading(v: HouseholdView): string {
   );
 }
 
-/** The photo of everyone's props, for this household: its document, which the mount watches, the family open in it, and whether the names are down. */
-const crowdOf = (v: HouseholdView, family: string | null): CrowdProps => ({ everyone: weddingDoc.everyone(), open: family, reveal: v.names });
-
 /** The photo of everyone's mount: it watches the `everyone` document, so a look changed reaches it as a patch and nothing else; it says where each family's tap goes. */
 function everyonePhoto(props: CrowdProps): string {
   const doc = watch(`everyone:${weddingDoc.WEDDING}`, "/everyone");
@@ -178,7 +175,7 @@ function everyonePhoto(props: CrowdProps): string {
 /** The page read as everyone's photo; beyond EVERYONE_UP_TO, one figure per family, and a tap
  * opens a family in it -- a crumb longer, the way back to everyone before it. */
 function everyoneReading(v: HouseholdView, familyKey: string | null): { body: string; crumbs: Crumb[] } {
-  const props = crowdOf(v, familyKey);
+  const props: CrowdProps = { everyone: weddingDoc.everyone(), open: familyKey, reveal: v.names };
   const { level, shown, total, open } = crowd(props);
   const crumbs: Crumb[] = open ? [{ label: v.h.code, back: nav("") }, { label: "Everyone", back: nav("everyone") }, { label: "One family" }] : [{ label: v.h.code }];
   const note =
