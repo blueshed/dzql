@@ -32,6 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     KB with `list` (it was 2.6 and 3.5): its development checks' text stays in a production
     bundle.
 
+- **A live document kept as a difference from its copy is kept one run at a time.** delta 0.10
+  refuses a remove or replace of what is not there (404), and the rest of its write with it,
+  where before it did nothing. Chat's `keepPresence` and `keepLobby`, and the wedding's
+  `keepEveryone`, each compute their document whole and write the difference from the copy they
+  read, so two runs at once (two tabs opening together) both took out what had gone, and the
+  second's write is now refused, its adds too, and reported as the server's failure. Each run now
+  waits for the one before it, and reads what it wrote. An app with such a writer does the same,
+  or writes a member with `add` (there or not) and, on a 404, reads again and diffs anew.
+
 - **A write carries an id, and what answers it is its own** (todo n14; n5 said why, this says
   whose). The wire is `{id?, doc, ops}`: the echo of the change a write made goes to its writer
   with the write's id (`{type: "patch", …, id}`), and a write that applies nothing is answered

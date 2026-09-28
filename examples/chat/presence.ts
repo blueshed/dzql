@@ -39,24 +39,37 @@ function between(field: string, have: string[], want: Set<string>): PatchOp[] {
   ];
 }
 
-/** Makes every room's people what they are, then the list of rooms. */
-export async function keepPresence(): Promise<void> {
-  if (!activeDocuments()) return;
-  const where = await whoIsWhere();
-  for (const room of new Set([...kept, ...where.keys()])) {
-    const want = where.get(room) ?? new Set<string>();
-    const ops = between("people", await keys(`here:${room}`, "people"), want);
-    if (ops.length > 0) await serverWrite(`here:${room}`, ops);
-    if (want.size > 0) kept.add(room);
-    else kept.delete(room);
-  }
-  await keepLobby(where);
+// One run at a time: each diffs the documents as held, so two at once would both take out what
+// has gone, and delta refuses the second remove (404), with the rest of its write. A run waits for
+// the one before it, and so reads what it wrote.
+let running: Promise<unknown> = Promise.resolve();
+function inTurn(run: () => Promise<void>): Promise<void> {
+  const now = running.then(run);
+  running = Promise.allSettled([now]); // a run that fails holds up none after it
+  return now;
 }
+
+/** Makes every room's people what they are, then the list of rooms. */
+export const keepPresence = (): Promise<void> =>
+  inTurn(async () => {
+    if (!activeDocuments()) return;
+    const where = await whoIsWhere();
+    for (const room of new Set([...kept, ...where.keys()])) {
+      const want = where.get(room) ?? new Set<string>();
+      const ops = between("people", await keys(`here:${room}`, "people"), want);
+      if (ops.length > 0) await serverWrite(`here:${room}`, ops);
+      if (want.size > 0) kept.add(room);
+      else kept.delete(room);
+    }
+    await lobbyNow(where);
+  });
 
 const roomsSpokenIn = db.query<{ room: string }, []>("SELECT DISTINCT rooms_id AS room FROM chat_messages");
 
 /** Makes the list of rooms what it is: where something has been said, and where someone is. */
-export async function keepLobby(where?: Map<string, Set<string>>): Promise<void> {
+export const keepLobby = (): Promise<void> => inTurn(() => lobbyNow());
+
+async function lobbyNow(where?: Map<string, Set<string>>): Promise<void> {
   if (!activeDocuments()) return;
   const rooms = new Set([...roomsSpokenIn.all().map((r) => r.room), ...(where ?? (await whoIsWhere())).keys()]);
   const ops = between("rooms", await keys("lobby:all", "rooms"), rooms);

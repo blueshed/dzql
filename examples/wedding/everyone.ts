@@ -40,8 +40,19 @@ function between(field: string, have: Record<string, unknown>, want: Record<stri
   return ops;
 }
 
+// One run at a time: each diffs the document as held, so two at once would both take out what has
+// gone, and delta refuses the second remove (404), with the rest of its write. A run waits for the
+// one before it, and so reads what it wrote.
+let running: Promise<unknown> = Promise.resolve();
+
 /** Makes `everyone` what it is. */
-export async function keepEveryone(): Promise<void> {
+export function keepEveryone(): Promise<void> {
+  const now = running.then(everyoneKept);
+  running = Promise.allSettled([now]); // a run that fails holds up none after it
+  return now;
+}
+
+async function everyoneKept(): Promise<void> {
   const documents = activeDocuments();
   if (!documents) return;
   const doc = `everyone:${WEDDING}`;

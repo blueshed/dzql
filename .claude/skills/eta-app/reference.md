@@ -175,7 +175,9 @@ compartment's `permitUndo(ws, docId, ops)`.
 - **`afterChange(docId, ops)`** runs after every change to the document, once it has been told:
   a write, an undo, another process's. Use it to keep a live document true (chat's presence and
   list of rooms, the wedding's `everyone`): compute it whole, and write the difference with
-  `serverWrite`.
+  `serverWrite`, one run at a time, each after the last (`examples/chat/presence.ts`). Two runs at
+  once diff the same copy, and delta refuses a remove or replace of what is not there (404), with
+  the rest of the write: the second run's removes, and its adds with them.
 - **`afterWrite(ws, docId, ops)`** runs after a fresh write from this person, with the ops as the
   page sent them: what follows for the writer alone. Leave closes the draft's drawer once it is
   asked for. The write has landed by then: a throw here is the server's failure, reported

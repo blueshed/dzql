@@ -6,6 +6,8 @@ import { createServer } from "../../src/server";
 import { hear, type Heard } from "../../src/harness";
 import { assemble } from "../../src/compartments";
 import { example } from "./index";
+import { keepPresence } from "./presence";
+import { serverWrite } from "../../src/documents";
 
 /** delta, as a reader of its own -- not eta's copy, whose subscriptions a test must not disturb. */
 const inDelta = example.delta!.as("test");
@@ -547,6 +549,18 @@ describe("chat", () => {
 
     a.close();
     c.close();
+  });
+
+  test("who is here is kept one run at a time: two at once write the difference once, and neither is refused", async () => {
+    const room = crypto.randomUUID();
+    const a = connect();
+    await login(a, "Alice", room);
+    await serverWrite(`here:${room}`, [{ op: "add", path: "/people/Ghost", value: true }]); // held, and not here
+    // each run diffs the copy it reads: at once, both would take the ghost out, and delta refuses
+    // the second remove (404), and the rest of its batch with it
+    await Promise.all([keepPresence(), keepPresence()]);
+    expect((await inDelta.call("open", { doc: `here:${room}` })).result.people).toEqual({ Alice: true });
+    a.close();
   });
 
   test("logging out while in a room leaves it, broadcasting presence to the remaining members", async () => {

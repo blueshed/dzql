@@ -5,6 +5,8 @@ import { createServer } from "../../src/server";
 import { hear, type Heard as HeardRender } from "../../src/harness";
 import { asCouple, asHousehold, board, household } from "./setup";
 import { example } from "./index";
+import { keepEveryone } from "./everyone";
+import { serverWrite } from "../../src/documents";
 
 let server: ReturnType<typeof createServer>;
 /** A household of this file's own, so nothing here disturbs the seed another file reads. */
@@ -442,6 +444,17 @@ describe("a household", () => {
     await asHousehold(h.code, [{ op: "replace", path: "/answer", value: "no" }]);
     expect(marks((await heard(ws)).page)).toEqual({ [ann!]: "yes", [bo!]: "no", [cy!]: "no" });
     ws.close();
+  });
+
+  test("everyone is kept one run at a time: two at once write the difference once, and neither is refused", async () => {
+    const doc = "everyone:1";
+    const inDelta = example.delta!.as("test");
+    const { _v, ...before } = (await inDelta.call("open", { doc })).result;
+    await serverWrite(doc, [{ op: "add", path: "/figures/ghost", value: { household: "0", ghost: true, look: {} } }]); // held, and nobody
+    // each run diffs the copy it reads: at once, both would take the ghost out, and delta refuses
+    // the second remove (404), and the rest of its batch with it
+    await Promise.all([keepEveryone(), keepEveryone()]);
+    expect((await inDelta.call("open", { doc })).result).toEqual({ ...before, _v: _v + 2 }); // the ghost in, and out once
   });
 
   test("undo walks back this session's own writes, newest first; nothing left, nothing moves", async () => {

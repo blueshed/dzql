@@ -72,7 +72,8 @@ Everything below is the least that makes it pass.
    parts that changed. Name the page's regions with `part(key, html)` where a change should travel
    alone; nothing else says what goes.
 5. **What is live** -- a document the server keeps (who is here, who stands in the photo):
-   computed whole from the tables in `afterChange`, written as the difference with `serverWrite`.
+   computed whole from the tables in `afterChange`, written as the difference with `serverWrite`,
+   one run at a time (delta refuses a remove of what another run took out).
 6. **`applets/<name>.ts`** -- only if the vocabulary above says so. Split drawing (`<name>.ts`, pure,
    tested directly) from mounting (`<name>-applet.ts`, the DOM, imported only by `client/main.ts`)
    when there is drawing worth testing. An applet that builds and updates its DOM by hand is
