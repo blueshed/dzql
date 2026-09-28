@@ -1,4 +1,4 @@
-<title>Wedding Modeller</title>
+<title>Modeller</title>
 <style>
 :root {
   --paper: #f6f3ec; --card: #ffffff; --card-hover: #fbfaf7; --tray: #e4dfd2; --well: #eef1e8;
@@ -102,6 +102,7 @@ header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; pa
 .story .n { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; margin-left: auto; }
 .story .name { font-size: 13px; }
 .story.cannot .name::before { content: "cannot · "; color: var(--refuse); font-weight: 600; }
+.story.closesTab .name::before { content: "closes a tab · "; color: var(--muted); font-weight: 600; }
 .story.session .name { color: var(--muted); }
 .ticks { display: inline-flex; gap: 3px; }
 .tick { font: 600 10px/1 var(--mono); padding: 2px 4px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); }
@@ -279,7 +280,7 @@ table.grid { width: 100%; border-collapse: collapse; background: var(--card); bo
 
 <div class="app">
   <header>
-    <div class="brand"><h1>Wedding</h1><span class="from">modeller · read from <span class="mono">examples/wedding</span></span></div>
+    <div class="brand"><h1 id="example"></h1><span class="from">modeller · read from <span class="mono" id="from"></span></span></div>
     <div class="tabs" role="tablist">
       <button role="tab" aria-selected="true" data-tab="model">Model</button>
       <button role="tab" aria-selected="false" data-tab="checklist">Checklist</button>
@@ -327,6 +328,9 @@ const DATA = __DATA__;
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const S = DATA.stories;
+document.title = `${DATA.example} · modeller`;
+$("#example").textContent = DATA.example[0].toUpperCase() + DATA.example.slice(1);
+$("#from").textContent = `examples/${DATA.example}`;
 
 // ── facts derived from the files, nothing proposed ──
 const docOf = new Map(DATA.documents.map((d) => [d.name, d]));
@@ -340,7 +344,8 @@ for (const s of modelWrites) for (const o of s.ops) if (o.table) {
 }
 const ruleUsed = DATA.permits.map((p) => modelWrites.some((s) => s.doc === p.doc && s.ops.some((o) => p.ops.includes(o.op) && new RegExp(p.path).test(o.path))));
 const refusedElsewhere = S.filter((s) => s.kind === "cannot" && !s.session && s.ops.some((o) => o.permitted));
-const notPermitted = modelWrites.filter((s) => s.ops.some((o) => !o.permitted));
+const notPermitted = modelWrites.filter((s) => s.ops.some((o) => o.permitted === false));
+const unread = modelWrites.filter((s) => s.ops.some((o) => o.permitted === null)); // a permit that is code, not a list of rules
 const noticers = new Set(S.flatMap((s) => Object.keys(s.seen)));
 const codeReads = (t) => t.code.filter((c) => !c.seed);
 const seedMakes = (t) => t.code.filter((c) => c.seed);
@@ -376,8 +381,8 @@ let CHECKS = [];
 const checksNow = () => [
   ...FLAGS.map((f, i) => ({ id: `f${i}`, cls: f.level === "flag" ? "flag" : "amber", text: f.title, match: () => false, flag: f })),
   { id: "a", cls: "ok", text: `Harness: ${DATA.harness.passed} of ${S.length} stories pass (A)`, match: () => true },
-  { id: "permit", cls: notPermitted.length ? "note" : "ok", text: notPermitted.length ? `${notPermitted.length} writes no permit rule allows` : "Every write a story makes is allowed by a permit rule", match: (s) => notPermitted.includes(s) },
-  { id: "elsewhere", cls: "note", text: `${refusedElsewhere.length} refusals the path rules would allow — refused by who, or by the value`, match: (s) => refusedElsewhere.includes(s) },
+  { id: "permit", cls: notPermitted.length ? "note" : "ok", text: notPermitted.length ? `${notPermitted.length} writes no permit rule allows` : unread.length ? `${unread.length} writes whose permit is code, not read here` : "Every write a story makes is allowed by a permit rule", match: (s) => notPermitted.includes(s) || unread.includes(s) },
+  ...(refusedElsewhere.length ? [{ id: "elsewhere", cls: "note", text: `${refusedElsewhere.length} refusals the path rules would allow — refused by who, or by the value`, match: (s) => refusedElsewhere.includes(s) }] : []),
 ];
 
 function renderChecks() {
@@ -399,7 +404,7 @@ function renderStories() {
   $("#story-count").textContent = `${list.length} of ${S.length}`;
   $("#stories").innerHTML = list.map((s) => `
     <button class="story ${s.kind} ${s.session ? "session" : ""}" data-story="${s.n}" aria-current="${sel.kind === "story" && sel.id === s.n}">
-      <div class="head"><span class="chip actor">${esc(s.as)}</span><span class="chip doc">${esc(s.doc)}</span>
+      <div class="head"><span class="chip actor">${esc(s.as)}</span>${s.doc ? `<span class="chip doc">${esc(s.doc)}</span>` : ""}
         <span class="ticks"><span class="tick agreed ${agreed.has(s.n) ? "on" : ""}" title="agreed (demo)">✓</span><span class="tick ${s.failures.length ? "" : "on"}" title="A: the harness passes it">A</span><span class="tick ${tried.has(s.n) ? "on" : ""}" title="U: tried by a person (demo)">U</span></span>
         <span class="n">${s.n}</span></div>
       <div class="name">${esc(s.name)}</div>
@@ -432,7 +437,7 @@ function edgeList() {
   const e = [];
   const seenPair = new Set();
   for (const s of S) {
-    if (s.session) continue;
+    if (s.session || !s.doc) continue;
     const key = `${s.as}|${s.doc}|${s.kind}`;
     if (seenPair.has(key)) continue;
     seenPair.add(key);
@@ -480,6 +485,7 @@ function ruleFor(doc, o) {
   return i < 0 ? null : DATA.permits[i];
 }
 function whyOp(s, o) {
+  if (o.permitted === null) return `<div class="why note">${esc(s.doc)}'s permit is code, not a list of rules: not read here</div>`;
   if (s.session) return `<div class="why note">the session (${esc(DATA.session)}): where a visit is; its permit is a set of fields, not read here</div>`;
   const r = ruleFor(s.doc, o);
   if (s.kind === "does") return r ? `<div class="why ok">allowed by <span class="mono">${esc(r.path)}</span> ${esc(r.ops.join("/"))}${r.dated ? " · locked after the deadline" : ""}</div>` : `<div class="why refuse">no permit rule allows it</div>`;
@@ -489,24 +495,24 @@ const place = (p) => p === null ? `<span class="muted">where the cast left them<
 
 function inspectStory(s) {
   const states = new Map([[`actor:${s.as}`, "on"]]);
-  if (!s.session) states.set(`doc:${s.doc}`, s.kind === "cannot" ? "refused" : "on");
+  if (!s.session && s.doc) states.set(`doc:${s.doc}`, s.kind === "cannot" ? "refused" : "on");
   for (const o of s.ops) if (o.table && !s.session) states.set(`table:${o.table}`, s.kind === "cannot" ? "refused" : "on");
   for (const m of Object.keys(s.seen)) if (m !== s.as) states.set(`actor:${m}`, "sees");
-  hot = new Set(s.session ? [] : [`${s.as}|${s.doc}|${s.kind}`, ...s.ops.filter((o) => o.table).map((o) => `${s.doc}>${o.table}`)]);
+  hot = new Set(s.session || !s.doc ? [] : [`${s.as}|${s.doc}|${s.kind}`, ...s.ops.filter((o) => o.table).map((o) => `${s.doc}>${o.table}`)]);
   mark(states);
   $("#inspector").innerHTML = `
     <div><div class="kicker" style="color:var(--${s.kind === "cannot" ? "refuse" : "accent"})">story ${s.n} · ${s.kind}</div><h3>${esc(s.name)}</h3></div>
     <section><h4>In the wire's words</h4><dl class="kv">
       <dt>as</dt><dd><span class="chip actor">${esc(s.as)}</span></dd>
-      <dt>${s.kind}</dt><dd><span class="chip doc">${esc(s.doc)}</span></dd>
-      ${s.kind === "does" ? `<dt>seen</dt><dd>${Object.entries(s.seen).map(([m, p]) => `<div><span class="chip actor">${esc(m)}</span> ${place(p)}</div>`).join("") || "—"}</dd>
+      <dt>${s.kind}</dt><dd>${s.doc ? `<span class="chip doc">${esc(s.doc)}</span>` : "true"}</dd>
+      ${s.kind !== "cannot" ? `<dt>seen</dt><dd>${Object.entries(s.seen).map(([m, p]) => `<div><span class="chip actor">${esc(m)}</span> ${place(p)}</div>`).join("") || "—"}</dd>
       <dt>untold</dt><dd>${s.untold.map((m) => `<span class="chip actor">${esc(m)}</span>`).join(" ") || "—"}</dd>` : ""}
     </dl></section>
-    <section><h4>Writes, and the permit rule that answers</h4><div class="ops">${s.ops.map((o) => `
-      <div class="op"><span class="mono">${esc(o.op)} ${esc(o.path)}</span>${o.table ? ` <span class="chip table">${esc(o.table)}${o.field ? "." + esc(o.field) : ""}</span>` : ""}${whyOp(s, o)}</div>`).join("")}</div></section>
+    ${s.ops.length ? `<section><h4>Writes, and the permit rule that answers</h4><div class="ops">${s.ops.map((o) => `
+      <div class="op"><span class="mono">${esc(o.op)} ${esc(o.path)}</span>${o.table ? ` <span class="chip table">${esc(o.table)}${o.field ? "." + esc(o.field) : ""}</span>` : ""}${whyOp(s, o)}</div>`).join("")}</div></section>` : ""}
     <section><button class="chip doc" data-center="sequence">See its sequence, from the run →</button></section>
     <section><h4>Checklist</h4><dl class="kv">
-      <dt>A</dt><dd>${s.failures.length ? `<span class="why refuse">fails: ${esc(s.failures.join("; "))}</span>` : `<span class="why ok">the harness passes it, with its undo and redo</span>`}</dd>
+      <dt>A</dt><dd>${s.failures.length ? `<span class="why refuse">fails: ${esc(s.failures.join("; "))}</span>` : `<span class="why ok">the harness passes it${s.sequence.some((t) => t.phase === "undo") ? ", with its undo and redo" : ""}</span>`}</dd>
       <dt>U</dt><dd>${tried.has(s.n) ? "tried by Peter" : "not yet tried by a person"}</dd>
     </dl></section>
     <section><h4>Agreement <span class="demo">demo</span></h4>
@@ -514,14 +520,14 @@ function inspectStory(s) {
         <button data-agree="${s.n}" aria-pressed="${agreed.has(s.n)}">${agreed.has(s.n) ? "Agreed" : "Agree the story"}</button>
         <button data-tried="${s.n}" aria-pressed="${tried.has(s.n)}">${tried.has(s.n) ? "U: tried" : "Mark tried (U)"}</button>
       </div></section>
-    <div class="facts">Read from <span class="mono">stories.ts</span> (the story), <span class="mono">delta.ts</span> (the tables), <span class="mono">compartments/${esc(s.doc)}.ts</span> (the rule) and a harness run.</div>`;
+    <div class="facts">Read from <span class="mono">stories.ts</span> (the story), <span class="mono">delta.ts</span> (the tables)${s.doc ? `, <span class="mono">compartments/${esc(s.doc)}.ts</span> (the rule)` : ""} and a harness run.</div>`;
 }
 
 function inspectActor(a) {
   const told = S.filter((s) => s.as === a), noticed = S.filter((s) => a in s.seen && s.as !== a);
   const states = new Map([[`actor:${a}`, "on"]]);
-  for (const s of told) if (!s.session) states.set(`doc:${s.doc}`, s.kind === "cannot" && !told.some((x) => x.doc === s.doc && x.kind === "does") ? "refused" : "on");
-  hot = new Set(told.filter((s) => !s.session).map((s) => `${s.as}|${s.doc}|${s.kind}`));
+  for (const s of told) if (!s.session && s.doc) states.set(`doc:${s.doc}`, s.kind === "cannot" && !told.some((x) => x.doc === s.doc && x.kind === "does") ? "refused" : "on");
+  hot = new Set(told.filter((s) => !s.session && s.doc).map((s) => `${s.as}|${s.doc}|${s.kind}`));
   mark(states);
   const li = (s) => `<li><button data-story="${s.n}">${s.kind === "cannot" ? "<span class='why refuse'>cannot</span> " : ""}${esc(s.name)}</button></li>`;
   $("#inspector").innerHTML = `
@@ -613,7 +619,7 @@ function writeLabel(w) {
 }
 function sequenceSVG(s) {
   const members = [s.as, ...DATA.cast.filter((m) => m !== s.as)];
-  const cols = [{ id: s.as, label: s.as, cls: "actor" }, { id: "doc", label: `${s.doc}:`, cls: "doc" }, { id: "delta", label: "delta · ledger", cls: "delta" },
+  const cols = [{ id: s.as, label: s.as, cls: "actor" }, { id: "doc", label: s.doc ? `${s.doc}:` : "the server", cls: "doc" }, { id: "delta", label: "delta · ledger", cls: "delta" },
     ...members.slice(1).map((m) => ({ id: m, label: m, cls: "actor" }))];
   const heardAny = new Set(s.sequence.flatMap((t) => t.heard.filter((h) => h.messages.length).map((h) => h.member)));
   const W = 150, X0 = 90, x = (id) => X0 + cols.findIndex((c) => c.id === id) * W;
@@ -642,9 +648,9 @@ function sequenceSVG(s) {
     y += 26;
   };
   for (const t of s.sequence) {
-    band(t.phase === "does" ? "THE STORY" : t.phase === "cannot" ? "THE STORY · A REFUSAL" : t.phase.toUpperCase());
+    band({ does: "THE STORY", cannot: "THE STORY · A REFUSAL", closesTab: "THE STORY · A TAB CLOSES" }[t.phase] ?? t.phase.toUpperCase());
     if (t.phase === "undo" || t.phase === "redo") line(t.as, "delta", `${t.phase}, as ${t.as}`, "write");
-    else line(t.as, "doc", writeLabel(t.write), t.phase === "cannot" ? "refuse" : "write");
+    else line(t.as, "doc", t.write ? writeLabel(t.write) : "closes their tab", t.phase === "cannot" ? "refuse" : "write");
     if (t.phase === "cannot") note("doc", "refused: nothing written, the ledger does not move", "refuse");
     else if (t.ledger.length) line("doc", "delta", t.ledger.map((l) => `${l.doc}${l.undoable ? "" : " (a fact)"}`).join(", "), "write");
     for (const h of t.heard) {
@@ -697,7 +703,9 @@ for (const [key, ms] of Object.entries(Object.groupBy(MOVES.filter((m) => m.col)
   MACHINES.push({ key, table, col, kind: "state", moves: ms });
 }
 for (const [table, ms] of Object.entries(Object.groupBy(MOVES.filter((m) => !m.col), (m) => m.table))) MACHINES.push({ key: `${table} rows`, table, col: null, kind: "rows", moves: ms });
-const datedRules = DATA.permits.filter((p) => p.dated);
+// A dated rule is told when a refusal starts from a premise past the deadline and asks for what it allows.
+const untoldLock = (r) => r?.dated && !S.some((s) => s.kind === "cannot" && s.premise && s.ops.some((o) => ruleFor(s.doc, o) === r));
+const datedRules = DATA.permits.filter(untoldLock);
 for (const [doc, rs] of Object.entries(Object.groupBy(datedRules, (p) => p.doc))) FLAGS.push({ level: "amber", on: `doc:${doc}`, title: `${doc}: ${rs.length} moves locked after the deadline, and no story is told after it`,
   why: "The permit rules mark these as dated, so they stop at the deadline. Every story runs before any deadline, so the lock is in the code and in no story.",
   code: rs.map((p) => ({ at: `compartments/${p.doc}.ts`, line: `{ path: /${p.path}/, ops: [${p.ops.map((o) => `"${o}"`).join(", ")}], dated: true }` })) });
@@ -756,7 +764,7 @@ function renderStates() {
   const story = cur ? (touched.size ? `<div class="sub">Story ${cur.n} moves ${[...touched].map(esc).join(", ")} <span style="color:var(--accent)">●</span></div>` : `<div class="sub">Story ${cur.n} moves no state${cur.session ? ": it writes only the session" : ""}.</div>`) : "";
   if (!m) { $("#states").innerHTML = `<p class="empty">No story moves a state.</p>`; return; }
   const refusals = S.filter((s) => s.kind === "cannot" && s.ops.some((o) => o.table === m.table && (m.col ? o.field === m.col : !o.field || o.path.endsWith("-") || /\/\d+$/.test(o.path))));
-  const dated = m.moves.some((mv) => !!ruleFor(mv.s.doc, mv.s.ops.find((o) => o.table === m.table) ?? { op: "", path: "" })?.dated);
+  const dated = m.moves.some((mv) => untoldLock(ruleFor(mv.s.doc, mv.s.ops.find((o) => o.table === m.table) ?? { op: "", path: "" })));
   $("#states").innerHTML = `
     <div class="machines"><span class="lab">states</span>${chips("state")}<span class="lab">rows</span>${chips("rows")}</div>${story}
     <div><h4>${esc(m.key)}</h4><div class="sub">${m.kind === "rows" ? "How a row of this table comes and goes" : `Column <span class="mono">${esc(m.col)}</span> (${esc(colType(m.table, m.col))}) of <span class="mono">${esc(m.table)}</span>: a new row starts empty`}. Every move below is from the ledger's before and after, in the harness's run; each was undone and redone by its author.</div></div>
@@ -881,7 +889,7 @@ function spread(items, gap) { // actors at the mean height of their lines, pushe
 function useCaseSVG() {
   const n = storyN();
   const LX = 50, BX = 110, EX = 130, EW = 360, RX = EX + EW + 110, W = RX + 60;
-  const groups = Object.entries(Object.groupBy(S, (s) => (s.session ? DATA.session : s.doc)));
+  const groups = Object.entries(Object.groupBy(S, (s) => (s.session ? DATA.session : s.doc ?? "")));
   groups.sort(([a], [b]) => (a === DATA.session) - (b === DATA.session) || a.localeCompare(b));
   const out = [];
   let y = 10;
@@ -900,7 +908,7 @@ function useCaseSVG() {
       y += h + 8;
     }
     const bottom = y + 6;
-    out.push(`<g class="boundary ${doc === DATA.session ? "session" : ""}"><rect x="${BX}" y="${top}" width="${EW + 40}" height="${bottom - top}" rx="10"/><text x="${BX + 12}" y="${top + 20}">${doc === DATA.session ? `${esc(doc)}: the visit (the page's own state)` : `${esc(doc)}:`}</text></g>`, ...ucs);
+    out.push(`<g class="boundary ${doc === DATA.session ? "session" : ""}"><rect x="${BX}" y="${top}" width="${EW + 40}" height="${bottom - top}" rx="10"/><text x="${BX + 12}" y="${top + 20}">${doc === DATA.session ? `${esc(doc)}: the visit (the page's own state)` : doc ? `${esc(doc)}:` : "no write: a tab closing"}</text></g>`, ...ucs);
     // who tells, on the left; who notices, on the right
     const tellers = spread(Object.entries(Object.groupBy(stories, (s) => s.as)).map(([a, ss]) => ({ a, ss, y: ss.reduce((t, s) => t + ys.get(s.n), 0) / ss.length })), 64);
     for (const { a, ss, y: ay } of tellers) {
@@ -929,7 +937,7 @@ function renderChecklist() {
     const mine = S.filter((s) => s.as === a);
     if (!mine.length) return "";
     return `<tr class="group"><td colspan="5">${esc(a)} · ${mine.filter((s) => s.kind === "does").length} can · ${mine.filter((s) => s.kind === "cannot").length} cannot</td></tr>` +
-      mine.map((s) => `<tr><td>${s.kind === "does" ? "can" : "<span class='why refuse'>cannot</span>"}</td><td>${esc(s.name)}</td>
+      mine.map((s) => `<tr><td>${{ does: "can", cannot: "<span class='why refuse'>cannot</span>", closesTab: "closes a tab" }[s.kind]}</td><td>${esc(s.name)}</td>
         <td class="c">${s.failures.length ? "<span class='why refuse'>✗</span>" : "<span class='why ok'>A</span>"}</td>
         <td class="c"><button class="tick ${tried.has(s.n) ? "on" : ""}" data-tried="${s.n}">U</button></td>
         <td class="c"><button class="tick agreed ${agreed.has(s.n) ? "on" : ""}" data-agree="${s.n}">✓</button></td></tr>`).join("");

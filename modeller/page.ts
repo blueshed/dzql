@@ -1,12 +1,9 @@
-// DB_PATH=:memory: bun modeller/page.ts wedding out.html
-//
-// The modeller demo page for one example: extract.ts's facts, inlined into page.html.
-import { $ } from "bun";
+// bun run modeller:page <example> [out.html]: the modeller's demo page for one example -- its
+// facts (extract.ts), inlined into page.html. By default it is written to modeller/dist/.
+import { extract } from "./extract";
 
-const [name = "wedding", out = `${name}-modeller.html`] = process.argv.slice(2);
-const json = `${out}.json`;
-await $`bun ${import.meta.dir}/extract.ts ${name} ${json}`.quiet();
+const [name = "chat", out = `${import.meta.dir}/dist/${name}.html`] = process.argv.slice(2);
+const data = JSON.stringify(await extract(name)).replaceAll("</", "<\\/");
 const page = await Bun.file(`${import.meta.dir}/page.html`).text();
-const data = (await Bun.file(json).text()).replaceAll("</", "<\\/");
 await Bun.write(out, page.replace("__DATA__", () => data));
 console.log(`${out}: the ${name} modeller page`);

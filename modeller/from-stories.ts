@@ -1,10 +1,10 @@
-// Stories read as a hjeli model: the modeller's first step (Workshop/docs/eta-modeller.md, step 1).
+// Stories read as a hjeli model, so hjeli's six predicates can run over them (Workshop/docs/eta-modeller.md).
 //
 // eta's stories speak the wire: a session, a `{doc, ops}` write, and who then notices it, where.
 // hjeli's predicates speak a model: actors, entities, the documents each actor watches, and the
-// writes each story makes. This reads the first into the second, so hjeli's six predicates can run
-// over a pile of stories unchanged. What the stories cannot say, it does not invent: it leaves
-// the field out and says so in `notes`, so a gap is never an artefact dressed as a finding.
+// writes each story makes. This reads the first into the second, and the predicates run
+// unchanged. What the stories cannot say, it does not invent: it leaves the field out and says so
+// in `notes`, so a gap is never an artefact dressed as a finding.
 //
 // The reading, in one line each:
 //   actor      -- every cast name, and every `as` the cast forgot
@@ -15,7 +15,7 @@
 //                 stories noticed there were writing (a page shows what the stories say it shows)
 //   story      -- `as` is the actor, the writes are `does` read as above, `opens` is the author's
 //                 own page when the author notices; a `cannot` has no writes (it is the permit
-//                 table's, step 3), nor does a tab closing
+//                 table's), nor does a tab closing
 //
 // No example knowledge: the one document left out is the session's, found by asking the example's
 // own `goTo()` where it writes.

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { story, type Stories } from "../src/stories";
 import { entityOf, fromStories, locate, noticing, pageOf, pascal, readOp, singular } from "./from-stories";
 import { compare, format, judge } from "./report";
+import { documentsIn, extract, heardAs, rulesIn } from "./extract";
 import { stories as chat } from "../examples/chat/stories";
 import { stories as londons } from "../examples/londons/stories";
 
@@ -169,7 +170,7 @@ describe("judge and format", () => {
   });
   test("a gap-free predicate reads in the singular and the plural", () => {
     const one = format("x", { ...report, gaps: report.gaps.slice(0, 1) });
-    expect(one).toMatch(/: 1 gap \[/);
+    expect(one).toMatch(/: 1 gap —/);
   });
 });
 
@@ -189,10 +190,8 @@ describe("the examples", () => {
     expect(rowGaps.length).toBe(26);
     expect([...new Set(rowGaps.map((g) => g.refs!.entity))].sort()).toEqual(["Custody", "MarketCampaign", "MarketPackage", "ProjectSupplyOffer", "Scenario", "VenueDeployment", "WorkerAssignment"]);
     expect(report.gaps.filter((g) => g.kind !== "unestablished-row")).toEqual([]);
-    const added = new Set(reading.model.stories.flatMap((s) => s.writes.filter((w) => w.op === "add" && !w.path).map((w) => w.entity)));
-    for (const twin of ["Stock", "Campaign", "OccasionPackage", "ProjectSupplyOffer", "EngagementScenario", "ProjectDeployment", "ProjectWindowAssignment"])
-      expect(added.has(twin) || twin === "ProjectSupplyOffer").toBe(true);
-    expect(added.has("Opportunity")).toBe(true);
+    const added = reading.model.stories.flatMap((s) => s.writes.filter((w) => w.op === "add" && !w.path).map((w) => w.entity));
+    for (const twin of ["Stock", "Campaign", "OccasionPackage", "Opportunity", "EngagementScenario", "ProjectDeployment", "ProjectWindowAssignment"]) expect(added).toContain(twin);
     // The session is what `goTo` writes, and it is left out: the page's state, not the model's.
     expect(reading.session).toBe("session");
     expect(londons.goTo!("venue/1 @ drawer=site/2, reading.map=deployments").ops).toEqual([
@@ -201,4 +200,69 @@ describe("the examples", () => {
       { op: "replace", path: "/reading/map", value: "deployments" },
     ]);
   });
+
+  test("every example's stories read, and hjeli's predicates judge them", async () => {
+    for await (const file of new Bun.Glob("*/stories.ts").scan(`${import.meta.dir}/../examples`)) {
+      const { stories } = (await import(`../examples/${file}`)) as { stories: Stories };
+      expect(judge(stories).report.counts.stories).toBe(stories.stories.length);
+    }
+  });
+});
+
+describe("extract: an example's facts, from its files and a run of its stories", () => {
+  test("a compartment's rules, with the lists they name; none where its permit is code", () => {
+    const rules = rulesIn(['const LIST = "(gifts|places)";', "const RULES: Rule[] = [", '  { path: /^\\/message$/, ops: ["replace"], dated: true },', "  { path: new RegExp(`^/${LIST}/-$`), ops: [\"add\"] },", "];"].join("\n"));
+    expect(rules.map((r) => [r.path.test("/message"), r.path.test("/gifts/-"), r.ops, !!r.dated])).toEqual([[true, false, ["replace"], true], [false, true, ["add"], false]]);
+    expect(rulesIn("permit: (ws, op) => op.path === \"/room\"")).toEqual([]);
+  });
+
+  test("delta.ts's documents: what each includes, which are on the ledger, which the session is, and which are kept in memory", () => {
+    const src = `const LISTS = ["gifts", "places"];
+registerDocs(delta.server, db, schema, [
+  defineDoc("board:", { root: "weddings", include: ["households", ...LISTS] }),
+  defineDoc("wedding:", { root: "weddings", include: LISTS }),
+], [], { ledger: true });
+// a visit, with no ledger
+registerDocs(delta.server, db, schema, [defineDoc("session:", { root: "visits", include: [], implied: true })]);
+registerMemory(delta.server, { prefix: "everyone:", empty: () => ({}) });`;
+    expect(documentsIn(src, "session")).toEqual([
+      { name: "board", root: "weddings", include: ["households", "gifts", "places"], kind: "written", note: "" },
+      { name: "wedding", root: "weddings", include: ["gifts", "places"], kind: "written", note: "" },
+      { name: "session", root: "visits", include: [], kind: "written, no ledger", note: "the session: who you are and where" },
+      { name: "everyone", root: null, include: [], kind: "live", note: "kept by the server, in memory" },
+    ]);
+  });
+
+  test("what a member was sent: a page, its parts, a patch, or anything else, with its size", () => {
+    expect(heardAs({ type: "render", html: "<p>" })).toEqual({ kind: "page", bytes: 30 });
+    expect(heardAs({ type: "render", ops: [{ op: "replace", target: '[data-eta-part="people"]', html: "" }] }).parts).toEqual(["replace people"]);
+    expect(heardAs({ type: "patch", doc: "room:general", ops: [] })).toMatchObject({ kind: "patch", doc: "room:general", ops: 0 });
+    expect(heardAs({ type: "refused", reason: "no" }).kind).toBe("refused");
+  });
+
+  test("chat: every story placed on its tables and run, a tab closing among them; its permits are code", async () => {
+    const facts = await extract("chat");
+    expect(facts.harness.passed + facts.harness.failed).toBe(chat.stories.length);
+    expect(facts.documents.map((d) => `${d.name}: ${d.kind}`)).toEqual(["session: written", "room: written", "here: live", "lobby: live"]);
+    expect(facts.permits).toEqual([]);
+    const say = facts.stories.find((s) => s.name.startsWith("Ada says hello"))!;
+    expect(say.ops).toEqual([{ op: "add", path: "/messages/-", table: "messages", field: null, permitted: null }]);
+    expect(say.sequence.map((t) => t.phase)).toEqual(["does", "undo", "redo"]);
+    const closes = facts.stories.find((s) => s.kind === "closesTab")!;
+    expect(closes).toMatchObject({ doc: null, ops: [], session: false });
+    expect(closes.sequence[0]!.heard.find((h) => h.member === "ada")!.messages.length).toBeGreaterThan(0);
+    expect(facts.tables.find((t) => t.name === "messages")!.parent).toBe("rooms");
+    expect(facts.tasks.length).toBeGreaterThan(0);
+  }, 30000);
+
+  test("the wedding: its rules, dated or not, its session, and the seed that makes a table's rows", async () => {
+    const facts = await extract("wedding");
+    expect(facts.session).toBe("session");
+    expect(facts.documents.find((d) => d.name === "session")).toMatchObject({ kind: "written, no ledger", note: "the session: who you are and where" });
+    expect(facts.permits.some((p) => p.doc === "household" && p.dated)).toBe(true);
+    expect(facts.tables.find((t) => t.name === "couples")!.code.some((c) => c.seed)).toBe(true);
+    const note = facts.stories.find((s) => s.name.startsWith("The Okafors leave the caterer a note"))!;
+    expect(note.ops[0]).toMatchObject({ table: "households", field: "message", permitted: true });
+    expect(facts.stories.find((s) => s.premise && s.kind === "cannot")).toBeDefined();
+  }, 30000);
 });
