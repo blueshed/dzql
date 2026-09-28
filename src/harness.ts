@@ -6,7 +6,7 @@ import { STORY_KEYS, type Gesture, type Stories, type Story, type Write } from "
 import { applyPatch, type PatchOp, type WriteId } from "./json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
-import { comparable, splitTag } from "./parts";
+import { comparable, decoded, splitTag } from "./parts";
 import { said } from "./refusal";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
@@ -143,8 +143,6 @@ export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string;
 /** An applet that takes a document's patches, as a member's page holds it. */
 type Taken = { applet: string; doc: string; under: string; props: string; ops: PatchOp[] };
 
-const unescape = (value: string): string => value.replaceAll("&quot;", '"').replaceAll("&#39;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
-
 /** The applets on a page that take a document's patches, by their id (or part, or place). */
 export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
   const found = new Map<string, Omit<Taken, "ops">>();
@@ -153,7 +151,7 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
       element(el) {
         const applet = el.getAttribute("data-applet") ?? "";
         const key = el.getAttribute("id") ?? el.getAttribute("data-eta-part") ?? `${applet}#${found.size}`;
-        found.set(key, { applet, doc: el.getAttribute("data-doc")!, under: el.getAttribute("data-under") ?? "", props: unescape(el.getAttribute("data-props") ?? "null") });
+        found.set(key, { applet, doc: el.getAttribute("data-doc")!, under: el.getAttribute("data-under") ?? "", props: decoded(el.getAttribute("data-props") ?? "null") });
       },
     })
     .transform(page);
@@ -223,7 +221,7 @@ const IMPLIED: Record<string, { closes: string[]; stops: string[] }> = {
  */
 export function controlsOn(page: string, misdeclared: string[] = []): Control[] {
   const found: Control[] = [];
-  const spec = (attr: string | null) => (attr === null ? undefined : (JSON.parse(unescape(attr)) as { doc: string; op: string; path: string }));
+  const spec = (attr: string | null) => (attr === null ? undefined : (JSON.parse(decoded(attr)) as { doc: string; op: string; path: string }));
   const open: Open[] = [];
   const closeTo = (at: number) =>
     open.splice(at).reverse().forEach((e) => {
@@ -258,7 +256,7 @@ export function controlsOn(page: string, misdeclared: string[] = []): Control[] 
           const option = { text: "" };
           const said = choosing;
           if (value === null) choosing.option = option;
-          entry.ends = () => void found.push({ ...said.spec, value: value === null ? option.text.replace(/\s+/g, " ").trim() : unescape(value), free: false });
+          entry.ends = () => void found.push({ ...said.spec, value: value === null ? option.text.replace(/\s+/g, " ").trim() : decoded(value), free: false });
         }
         if (tag === "optgroup" && el.hasAttribute("disabled")) entry.disabled = true; // its options choose nothing
         open.push(entry);
@@ -280,15 +278,15 @@ export function controlsOn(page: string, misdeclared: string[] = []): Control[] 
           at.ends = () => void (choosing = undefined);
           return;
         }
-        if (el.tagName === "input" && el.getAttribute("type") === "radio") return void found.push({ ...s, value: unescape(el.getAttribute("value") ?? "on"), free: false }); // a radio sends its own value
+        if (el.tagName === "input" && el.getAttribute("type") === "radio") return void found.push({ ...s, value: decoded(el.getAttribute("value") ?? "on"), free: false }); // a radio sends its own value
         const value = el.getAttribute("data-value");
-        found.push({ ...s, value: value === null ? undefined : unescape(value), free: ["form", "input", "textarea"].includes(el.tagName) });
+        found.push({ ...s, value: value === null ? undefined : decoded(value), free: ["form", "input", "textarea"].includes(el.tagName) });
       },
     })
     .on("[data-writes]", {
       element(el) {
         if (!pressable(el)) return;
-        const raw = unescape(el.getAttribute("data-writes")!);
+        const raw = decoded(el.getAttribute("data-writes")!);
         const wrong = (what: string) => misdeclared.push(`applet declaration must be [doc, op, path]: ${el.getAttribute("data-applet") ?? "an applet"} says ${what}`);
         let said: unknown;
         try {
@@ -311,7 +309,7 @@ export function controlsOn(page: string, misdeclared: string[] = []): Control[] 
 /** Where a page stands: its address, which the kernel's client mirrors in the URL (`data-page`). */
 export const placeOf = (page: string): string | undefined => {
   const m = /\sdata-page="([^"]*)"/.exec(page);
-  return m ? unescape(m[1]!) : undefined;
+  return m ? decoded(m[1]!) : undefined;
 };
 
 /** Does a path an applet names (`*` for any one member: an id, never `-`, the end of a list an append names as such) name this one? */

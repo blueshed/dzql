@@ -56,6 +56,23 @@ export function appletWrites(...writes: (readonly [doc: string, op: Op, path: st
   return ` data-writes='${JSON.stringify(said).replaceAll("&", "&amp;").replaceAll("'", "&#39;")}'`;
 }
 
+/**
+ * An applet's props on its mount, quoted once: ` data-props="…"`, JSON whatever it holds.
+ * `appletProps({ open, reveal, everyone }, { doc: "everyone:1", under: "/everyone" })` says, too,
+ * the document the applet watches and where it sits in them (` data-doc="everyone:1"
+ * data-under="/everyone"`; the root when `under` is not given: the props are the document).
+ *
+ * - The document is held whole at `under`, as the page is told it; the rest is small: what to show,
+ *   and for whom. The kernel's client lays each patch to the document on the props there and gives
+ *   the applet them again (`update`), and a page is compared without the document, nor what is
+ *   inside the mount (src/parts.ts): so a change to it sends the mount nothing but the patch.
+ * - Without a document, the applet is sent its props again whenever they change.
+ */
+export function appletProps(props: unknown, watch?: { doc: string; under?: string }): string {
+  const watching = watch ? ` data-doc="${esc(watch.doc)}"${watch.under ? ` data-under="${esc(watch.under)}"` : ""}` : "";
+  return `${watching} data-props="${esc(JSON.stringify(props))}"`;
+}
+
 /** Joins the pieces of a view, dropping anything that is not a string (a `cond && html` that was false). */
 export function join(...parts: (string | false | null | undefined)[]): string {
   return parts.filter((p): p is string => typeof p === "string").join("");

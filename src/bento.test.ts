@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { address, bento, choice, layers, matches, parseAddress, patchCollections, prop, rows, type Collections } from "./bento";
-import { esc, join, write } from "./html";
-import { diff, drawParts, part } from "./parts";
+import { appletProps, esc, join, write } from "./html";
+import { decoded, diff, drawParts, part } from "./parts";
 import { waitFor } from "./webview";
 import { renderMessage } from "./compartments/render";
 import fixture from "./bento.test.html";
@@ -31,6 +31,22 @@ describe("html", () => {
     expect(Object.keys(seen)).toEqual(["data-write"]);
     const decoded = seen["data-write"]!.replaceAll("&#39;", "'").replaceAll("&amp;", "&"); // as a browser reads the attribute
     expect(JSON.parse(decoded)).toEqual({ doc: "session", op: "replace", path: "/rooms/lobby' onclick='alert(1)/topic & more" });
+  });
+
+  test("appletProps quotes an applet's props once, whatever they hold; with a document it watches, names it and where it sits in them", () => {
+    const props = { word: `Tom & 'Jo' "<b>"`, doc: { rows: { "1": { name: "Ada" } } } };
+    const read = (attrs: string): Record<string, string> => {
+      const seen: Record<string, string> = {};
+      new HTMLRewriter().on("div", { element: (el) => void Object.assign(seen, Object.fromEntries([...el.attributes].map(([name, value]) => [name, decoded(value)]))) }).transform(`<div${attrs}></div>`);
+      return seen; // as a browser reads them
+    };
+    expect(appletProps({ n: 1 })).toBe(` data-props="{&quot;n&quot;:1}"`);
+    const alone = read(appletProps(props));
+    expect(Object.keys(alone)).toEqual(["data-props"]);
+    expect(JSON.parse(alone["data-props"]!)).toEqual(props);
+    const watching = read(appletProps(props, { doc: `trip:"1"`, under: "/doc" }));
+    expect(watching).toEqual({ "data-doc": `trip:"1"`, "data-under": "/doc", "data-props": JSON.stringify(props) });
+    expect(appletProps({ tz: "UTC" }, { doc: "clock" })).toBe(` data-doc="clock" data-props="{&quot;tz&quot;:&quot;UTC&quot;}"`); // the props are the document
   });
 
   test("join drops what is not a string", () => {

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { appletProps } from "./html";
 import { comparable, diff, drawParts, part, splitTag } from "./parts";
 
 const draw = (render: () => string) => drawParts(render);
@@ -156,5 +157,51 @@ describe("diff", () => {
       { op: "tag", target: '[data-eta-part="board"]', html: `<div data-eta-part="board" data-applet="board" data-doc="quote:ALPH" aria-expanded="true" data-props="2">` },
     ]);
     expect(comparable(`<div data-doc="d" data-props="x"></div>`)).toBe(`<div data-doc="d"></div>`);
+  });
+
+  // an applet that watches a document: its props hold the document at `data-under`, beside small
+  // props (who looks, what is open), and the server draws its first paint inside it
+  const trip = (stops: Record<string, string>) => ({ legs: { "1": { place: "Kyoto" } }, stops });
+  const watching = (small: { me: string; open?: string }, doc: object, paint: string, cls = "strip") =>
+    `<div class="${cls}" id="strip" data-applet="strip"${appletProps({ ...small, trip: doc }, { doc: "trip:1", under: "/trip" })}><p>${paint}</p><div><i>${paint}</i></div></div>`;
+
+  test("an applet that watches a document is sent nothing when only the document changed: not its props, nor what the server paints inside it", () => {
+    const one = trip({ a: "Temple" });
+    const two = trip({ a: "Temple", b: "Garden" });
+    // the mount a part of its own, and not: inside a part, beside what else that part holds
+    const own = (doc: object, paint: string) => `<main>${part("strip", watching({ me: "ann" }, doc, paint))}</main>`;
+    const held = (doc: object, paint: string) => `<main>${part("day", `<section><h2>Day 1</h2>${watching({ me: "ann" }, doc, paint)}</section>`)}</main>`;
+    expect(diff(draw(() => own(one, "1 stop")), draw(() => own(two, "2 stops")))).toEqual([]);
+    expect(diff(draw(() => held(one, "1 stop")), draw(() => held(two, "2 stops")))).toEqual([]);
+  });
+
+  test("its small props, or anything else on its tag, changed: its tag goes, with the document as drawn now; what is beside it goes as ever", () => {
+    const one = trip({ a: "Temple" });
+    const two = trip({ a: "Temple", b: "Garden" });
+    const own = (me: string, doc: object, cls?: string) => `<main>${part("strip", watching({ me }, doc, "paint", cls))}</main>`;
+    const tag = (me: string, doc: object, cls = "strip") => splitTag(part("strip", watching({ me }, doc, "")))[0].replace(`class="strip"`, `class="${cls}"`);
+    expect(diff(draw(() => own("ann", one)), draw(() => own("bo", two)))).toEqual([{ op: "tag", target: '[data-eta-part="strip"]', html: tag("bo", two) }]);
+    expect(diff(draw(() => own("ann", one)), draw(() => own("ann", two, "strip open")))).toEqual([{ op: "tag", target: '[data-eta-part="strip"]', html: tag("ann", two, "strip open") }]);
+    const held = (h2: string, doc: object) => `<main>${part("day", `<section><h2>${h2}</h2>${watching({ me: "ann" }, doc, "paint")}</section>`)}</main>`;
+    expect(diff(draw(() => held("Day 1", one)), draw(() => held("Day one", two)))).toEqual([{ op: "replace", target: '[data-eta-part="day"]', html: part("day", `<section><h2>Day one</h2>${watching({ me: "ann" }, two, "paint")}</section>`) }]);
+  });
+
+  test("comparable leaves out of a watching mount the document at `data-under` and all it holds; the root leaves out every prop", () => {
+    const small = { me: "ann", open: "b" };
+    expect(comparable(watching(small, trip({ a: "Temple" }), "painted"))).toBe(`<div class="strip" id="strip" data-applet="strip" data-doc="trip:1" data-under="/trip" data-props="{&quot;me&quot;:&quot;ann&quot;,&quot;open&quot;:&quot;b&quot;}"></div>`);
+    expect(comparable(`<p>a</p><div data-applet="clock"${appletProps({ tz: "UTC" }, { doc: "clock" })}><b>12:00</b></div><p>b</p>`)).toBe(`<p>a</p><div data-applet="clock" data-doc="clock"></div><p>b</p>`);
+    // props in single quotes, as an app may write them by hand, read the same
+    expect(comparable(`<div data-doc="trip:1" data-under="/trip" data-props='{"me":"ann","trip":{"x":"it&#39;s"}}'></div>`)).toBe(`<div data-doc="trip:1" data-under="/trip" data-props="{&quot;me&quot;:&quot;ann&quot;}"></div>`);
+    // deeper: only what is there
+    expect(comparable(`<div data-doc="d" data-under="/a/b" data-props="{&quot;a&quot;:{&quot;b&quot;:1,&quot;c&quot;:2}}"></div>`)).toBe(`<div data-doc="d" data-under="/a/b" data-props="{&quot;a&quot;:{&quot;c&quot;:2}}"></div>`);
+    // what it cannot read, or a document not where it says, it leaves as it is
+    for (const tag of [`<div data-doc="d" data-under="/x" data-props="{&quot;y&quot;:1}">`, `<div data-doc="d" data-under="/x" data-props="not json">`, `<div data-doc="d" data-under="/x/y" data-props="{&quot;x&quot;:1}">`, `<div data-doc="d" data-under="/x">`]) expect(comparable(`${tag}</div>`)).toBe(`${tag}</div>`);
+    // only an attribute of its own: another's value that says data-doc, a comment, a tag left open
+    const said = `<div title=' data-doc="x"' data-props="{}"><!-- <div data-doc="y"> --></div>`;
+    expect(comparable(said)).toBe(said);
+    expect(comparable(`<div data-doc="d" data-props="{}"><p>never closed`)).toBe(`<div data-doc="d">`);
+    // inside it, its own kind counted in and out, and a comment or a lone `<` no tag
+    expect(comparable(`<div data-doc="d" data-props="{}"><!-- </div> -->1 <3 2<div title="</div>">x</div></div><p>after</p>`)).toBe(`<div data-doc="d"></div><p>after</p>`);
+    expect(comparable(`<b data-doc="d"`)).toBe(`<b data-doc="d"`);
   });
 });

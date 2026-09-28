@@ -1,4 +1,6 @@
 import type { HtmlOp } from "./compartments/render";
+import { esc } from "./html";
+import { parsePointer } from "./json-pointer";
 
 // A page is drawn whole on the server and sent in parts. A render names the regions of its page
 // with `part(key, html)`; the kernel keeps, per connection, the parts it last sent, and after a
@@ -19,8 +21,133 @@ export function part(key: string, html: string): string {
   return tagged;
 }
 
-/** A page with the props of every applet that takes its document's patches (`data-doc`) left out: how the stories compare a page, since props follow the patches between renders. */
-export const comparable = (html: string): string => html.replace(/<[^>]*\sdata-doc="[^"]*"[^>]*>/g, (tag) => tag.replace(/\sdata-props="[^"]*"/, ""));
+/**
+ * A page as it is compared: every applet that watches a document (`data-doc`) with that document
+ * left out of its props (at `data-under`; all of them when it sits at the root) and nothing inside
+ * it. Its patches keep both: the document, which the client lays on the props, and what the applet
+ * draws from them, which the server painted there only first. So a change to the document alone
+ * changes nothing here. A tag's props it cannot read, or whose document is not where it says, it
+ * leaves as they are.
+ */
+export function comparable(html: string): string {
+  if (!html.includes("data-doc")) return html;
+  let out = "";
+  let copied = 0;
+  for (let at = html.indexOf("<"); at >= 0; at = html.indexOf("<", at)) {
+    if (html.startsWith("<!--", at)) {
+      at = past(html, at);
+      continue;
+    }
+    TAG.lastIndex = at;
+    const name = TAG.exec(html);
+    if (!name || name[1]) {
+      at++;
+      continue;
+    }
+    const end = tagEnd(html, at);
+    const tag = html.slice(at, end);
+    if (!watches(tag)) {
+      at = end;
+      continue;
+    }
+    out += html.slice(copied, at) + watchedTag(tag);
+    copied = at = closing(html, end, name[2]!.toLowerCase());
+  }
+  return out + html.slice(copied);
+}
+
+/** A start tag (`<name`) or an end tag (`</name`), where one begins. */
+const TAG = /<(\/?)([a-zA-Z][\w-]*)/y;
+/** One attribute of a start tag, after its name: its name, and its value however it is quoted. */
+const ATTRIBUTE = /\s+([^\s"'>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/y;
+
+type Attribute = { name: string; value: string; from: number; to: number };
+
+/** A start tag's attributes, each with its value as a browser reads it, and where it stands in the tag. */
+function attributes(tag: string): Attribute[] {
+  const found: Attribute[] = [];
+  ATTRIBUTE.lastIndex = /^<[a-zA-Z][\w-]*/.exec(tag)?.[0].length ?? 0;
+  for (let m = ATTRIBUTE.exec(tag); m; m = ATTRIBUTE.exec(tag)) {
+    found.push({ name: m[1]!.toLowerCase(), value: decoded(m[2] ?? m[3] ?? m[4] ?? ""), from: m.index, to: ATTRIBUTE.lastIndex });
+  }
+  return found;
+}
+
+/** An attribute's value as a browser reads it: the five that `esc` escapes (src/html.ts), unescaped. */
+export const decoded = (value: string): string =>
+  value.replaceAll("&quot;", '"').replaceAll("&#39;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
+
+/** Whether a start tag is an applet's that watches a document: it has `data-doc` of its own. */
+export const watches = (tag: string): boolean => tag.includes("data-doc") && attributes(tag).some((a) => a.name === "data-doc");
+
+/** A watching mount's tag, its props without the document they hold. */
+function watchedTag(tag: string): string {
+  const all = attributes(tag);
+  const props = all.find((a) => a.name === "data-props");
+  if (!props) return tag;
+  const rest = without(props.value, all.find((a) => a.name === "data-under")?.value ?? "");
+  if (rest === undefined) return tag;
+  return tag.slice(0, props.from) + (rest === ROOT ? "" : ` data-props="${esc(JSON.stringify(rest))}"`) + tag.slice(props.to);
+}
+
+const ROOT = Symbol("the document is all the props");
+
+/** Props without what sits at `under`: `ROOT` when that is all of them; undefined when they cannot be read, or nothing is there. */
+function without(json: string, under: string): unknown {
+  if (under === "") return ROOT;
+  try {
+    const props = JSON.parse(json) as unknown;
+    const path = parsePointer(under);
+    const last = path.pop()!;
+    let parent = props;
+    for (const segment of path) parent = (parent as Record<string, unknown> | null)?.[segment];
+    if (parent === null || typeof parent !== "object" || !Object.hasOwn(parent, last)) return undefined;
+    if (Array.isArray(parent)) parent.splice(Number(last), 1);
+    else delete (parent as Record<string, unknown>)[last];
+    return props;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Past the comment that starts at `at`: after its `-->`, or the end of `html`. */
+function past(html: string, at: number): number {
+  const end = html.indexOf("-->", at + 4);
+  return end < 0 ? html.length : end + 3;
+}
+
+/** Where the tag that starts at `at` ends: past its `>`, read with its quoted values respected; the end of `html` if it never does. */
+function tagEnd(html: string, at: number): number {
+  let quote = "";
+  for (let i = at; i < html.length; i++) {
+    const c = html[i]!;
+    if (quote) {
+      if (c === quote) quote = "";
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === ">") return i + 1;
+  }
+  return html.length;
+}
+
+/** Where the element named `name`, whose start tag ends at `from`, ends: where its end tag starts, or the end of `html`. Its own kind inside it is counted in and out; a comment, and what a tag quotes, are passed over. */
+function closing(html: string, from: number, name: string): number {
+  let depth = 1;
+  for (let at = html.indexOf("<", from); at >= 0; at = html.indexOf("<", at)) {
+    if (html.startsWith("<!--", at)) {
+      at = past(html, at);
+      continue;
+    }
+    TAG.lastIndex = at;
+    const m = TAG.exec(html);
+    if (!m) {
+      at++;
+      continue;
+    }
+    if (m[2]!.toLowerCase() === name && (depth += m[1] ? -1 : 1) === 0) return at;
+    at = tagEnd(html, at);
+  }
+  return html.length;
+}
 
 
 type Node = { key: string | null; html: string; skeleton: string; children: string[] };
@@ -75,11 +202,12 @@ const target = (key: string): string => `[data-eta-part="${key.replaceAll('"', '
 /**
  * What to send to bring a page drawn as `prev` to `next`: HTML ops, `[]` when nothing on it
  * changed, or undefined when the page's own outline changed and it must go whole. An applet that
- * takes its document's patches (`data-doc`) has props that are that document, whose every change
- * reaches the page as a patch (the stories check they are, `unheld` in src/harness.ts). So they
- * are not compared, and a change to them alone sends nothing; they go only with the mount itself,
- * when a part that holds it is replaced or its own tag changes, as the render drew them. What
- * follows where a person is belongs off the mount, so its tag does not change with it.
+ * watches a document (`data-doc`) holds it in its props, and every change to it reaches the page
+ * as a patch (the stories check they do, `unheld` in src/harness.ts), which the applet draws from.
+ * So the document, and what is drawn inside the mount, are not compared (`comparable`), and a
+ * change to them alone sends nothing; they go only with the mount itself, when a part that holds
+ * it is replaced or its own tag changes -- its small props, a class -- as the render drew them.
+ * What follows where a person is belongs off the mount where it can, so its tag does not change.
  */
 export function diff(prev: Drawn, next: Drawn): HtmlOp[] | undefined {
   const ops: HtmlOp[] = [];
@@ -98,6 +226,10 @@ function settle(key: string | null, prev: Drawn, next: Drawn, ops: HtmlOp[], see
   const [pTag, pInside] = (key === null ? ["", p.skeleton] : splitTag(p.skeleton)).map(seen) as [string, string];
   const [nTag, nInside] = (key === null ? ["", n.skeleton] : splitTag(n.skeleton)).map(seen) as [string, string];
   const tag: HtmlOp | undefined = pTag !== nTag ? { op: "tag", target: target(key!), html: splitTag(n.html)[0] } : undefined;
+  if (key !== null && watches(splitTag(p.skeleton)[0]) && watches(splitTag(n.skeleton)[0])) {
+    if (tag) ops.push(tag); // a mount that watches a document, drawn again: what is inside it is the applet's
+    return true;
+  }
 
   if (pInside !== nInside) {
     if (!isList(pInside) || !isList(nInside) || pInside.replace(RUN, "") !== nInside.replace(RUN, "")) return false;
@@ -124,15 +256,8 @@ function settle(key: string | null, prev: Drawn, next: Drawn, ops: HtmlOp[], see
 
 /** An element's opening tag, and the rest: read with its quoted attribute values respected. */
 export function splitTag(html: string): [string, string] {
-  let quote = "";
-  for (let i = html.indexOf("<"); i < html.length; i++) {
-    const c = html[i]!;
-    if (quote) {
-      if (c === quote) quote = "";
-    } else if (c === '"' || c === "'") quote = c;
-    else if (c === ">") return [html.slice(0, i + 1), html.slice(i + 1)];
-  }
-  return [html, ""];
+  const end = tagEnd(html, Math.max(html.indexOf("<"), 0));
+  return [html.slice(0, end), html.slice(end)];
 }
 
 function settleChild(key: string, prev: Drawn, next: Drawn, ops: HtmlOp[], seen: (html: string) => string): void {
