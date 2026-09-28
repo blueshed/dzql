@@ -204,6 +204,22 @@ describe("stories harness", () => {
     expect(controlsOn(page).map((c) => c.value ?? c.path)).toEqual(["open", "in a fieldset", "after void tags"]);
   });
 
+  test("what is hidden ends where HTML says it does, end tag or none; a disabled fieldset's first legend is not disabled; a template is never drawn", () => {
+    const b = (value: string) => `<button${write("room", "replace", "/name", value)}>${value}</button>`;
+    const page = [
+      `<div><p hidden>gone<p>${b("after a hidden p")}<div>${b("after a p a div closes")}</div></div>`,
+      `<ul><li hidden>gone<li>${b("after a hidden li")}<li hidden><ul><li>${b("in a list in a hidden li")}</ul><li>${b("after its list")}</ul>`,
+      `<dl><dt hidden>gone<dd>${b("after a hidden dt")}</dl>`,
+      `<table><tr hidden><td>${b("in a hidden row")}<tr><td>${b("in the next row")}<td hidden>${b("in a hidden cell")}<td>${b("in the next cell")}</table>`,
+      `<table><tbody hidden><tr><td>${b("in a hidden body")}<tbody><tr><td>${b("in the next body")}</table>`,
+      `<select><option hidden>x<option>y</select>`,
+      `<fieldset disabled><legend>${b("in its first legend")}</legend>${b("in the fieldset")}<legend>${b("in a second legend")}</legend><div><legend>${b("in a legend it does not hold")}</legend></div></fieldset>`,
+      `<template>${b("in a template")}</template>`,
+      b("at the end"),
+    ].join("");
+    expect(controlsOn(page).map((c) => c.value ?? c.path)).toEqual(["after a hidden p", "after a p a div closes", "after a hidden li", "after its list", "after a hidden dt", "in the next row", "in the next cell", "in the next body", "in its first legend", "at the end"]);
+  });
+
   test("a story from a modal is done in the modal: the page behind it, inert, offers nothing", async () => {
     const { example: ticker } = await import("../examples/ticker/index");
     const { stories: told } = await import("../examples/ticker/stories");

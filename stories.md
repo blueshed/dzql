@@ -165,7 +165,9 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    each, `*` for any one segment), and one that declares nothing offers nothing, whatever
    document it reads (the ticker's clock face shows the clock and writes none of it). A control
    the browser sends nothing from is none: drawn `disabled`, or `inert` (behind an open window or
-   modal), `hidden`, or in a disabled fieldset, itself or by what it is in; and the page's address
+   modal), `hidden`, in a `<template>`, or in a disabled fieldset (but for its first legend),
+   itself or by what it is in, which ends where HTML says it does, end tag or none (a `<li>` with
+   no `</li>` ends at the next); and the page's address
    (`data-page-write`) is the URL bar's and the back button's, not a control on the page. None is
    a failure: a story nobody can do from a page is not a story (`offPage` marks a write from a
    feed or the CLI).

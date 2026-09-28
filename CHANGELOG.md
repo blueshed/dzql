@@ -24,9 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A control the browser will not press is none**, whatever is around it. The stories counted a
   button inside an `inert` box, a `hidden` element or a disabled fieldset as offered, since only
   the button's own `disabled` was looked at; keyboard and phone put the whole box `inert` behind
-  an open window, and the ground behind a modal. Now `inert`, `hidden` and a disabled fieldset
-  count on the control and on everything it is in, so a story from a modal is done in the
-  modal. And the page's address (`data-page-write`) is no longer a control for any address: the
+  an open window, and the ground behind a modal. Now `inert`, `hidden`, a `<template>` and a
+  disabled fieldset (but for its first legend, which the browser leaves enabled) count on the
+  control and on everything it is in, so a story from a modal is done in the modal. What is in
+  an element ends where HTML says: a `<p>`, `<li>`, `<dt>`, `<tr>`, `<td>` or `<option>` whose
+  end tag is left out ends at the start tag that implies it, so a hidden one does not hide what
+  follows. And the page's address (`data-page-write`) is no longer a control for any address: the
   URL bar and the back button send it, not the page, so a story that goes somewhere needs the
   button that goes there.
 - **An applet offers only what its mount says it writes**, whatever document it reads. An applet

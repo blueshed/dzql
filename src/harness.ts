@@ -140,27 +140,70 @@ const isDeclared = (w: unknown): w is { doc: string; op: string; path: string; v
   return typeof doc === "string" && doc !== "" && typeof op === "string" && OPS.includes(op) && typeof path === "string" && (path === "" || path.startsWith("/")) && valued;
 };
 
-/** What the browser will not let anyone press, nor anything inside it: `inert` (what is behind an open window or modal), `hidden`, and a disabled fieldset's fields. */
-const UNPRESSABLE = "[inert], [hidden], fieldset[disabled]";
+// Where a page's elements end. A streaming parser is told of an end tag that is written, and of
+// one a parent's end implies; not of one the next start tag implies, as HTML leaves out `</p>`,
+// `</li>` and `</tr>`. So the elements open here are kept, and closed as HTML's rules close them.
+
+/** An element open where the parser is: its tag, and whether the browser lets anyone press what is in it. */
+type Open = { tag: string; blocks?: "always" | "fieldset"; legends?: number; frees?: boolean; closed?: true };
+
+/** The start tags that close an open `<p>`: HTML's "close a p element" (in button scope). */
+const CLOSES_P = new Set(["address", "article", "aside", "blockquote", "center", "details", "dialog", "dir", "div", "dl", "dd", "dt", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hgroup", "hr", "li", "listing", "main", "menu", "nav", "ol", "p", "pre", "search", "section", "summary", "table", "ul", "xmp"]);
+/** Where looking for an element to close stops: the scopes HTML looks in. */
+const SCOPE = ["html", "table", "td", "th", "caption", "marquee", "object", "applet", "template", "button"];
+/** For each start tag, what open element it closes when that element's end tag was left out, and where looking stops. */
+const IMPLIED: Record<string, { closes: string[]; stops: string[] }> = {
+  li: { closes: ["li"], stops: [...SCOPE, "ul", "ol"] },
+  dt: { closes: ["dt", "dd"], stops: [...SCOPE, "dl"] },
+  dd: { closes: ["dt", "dd"], stops: [...SCOPE, "dl"] },
+  tr: { closes: ["tr"], stops: ["html", "template", "table", "tbody", "thead", "tfoot"] },
+  td: { closes: ["td", "th"], stops: ["html", "template", "table", "tr"] },
+  th: { closes: ["td", "th"], stops: ["html", "template", "table", "tr"] },
+  tbody: { closes: ["tbody", "thead", "tfoot"], stops: ["html", "template", "table"] },
+  thead: { closes: ["tbody", "thead", "tfoot"], stops: ["html", "template", "table"] },
+  tfoot: { closes: ["tbody", "thead", "tfoot"], stops: ["html", "template", "table"] },
+  option: { closes: ["option"], stops: ["select", "datalist", "optgroup", ...SCOPE] },
+  optgroup: { closes: ["option", "optgroup"], stops: ["select", ...SCOPE] },
+};
 
 /**
  * Every control on a page, as the server drew it: one the browser sends nothing from is none --
- * drawn `disabled`, or `inert`, `hidden` or in a disabled fieldset, itself or by what it is in.
- * The page's address (`data-page-write`) is not on the page: the URL bar and the back button
- * send it, so it offers nothing. An applet's declaration that is not `[doc, op, path]` (the form
- * before ops, a hand-written attribute) offers nothing, and is said in `misdeclared`.
+ * drawn `disabled`, or `inert`, `hidden`, in a `<template>` or in a disabled fieldset (but for
+ * its first legend), itself or by what it is in. The page's address (`data-page-write`) is not on
+ * the page: the URL bar and the back button send it, so it offers nothing. An applet's
+ * declaration that is not `[doc, op, path]` (the form before ops, a hand-written attribute)
+ * offers nothing, and is said in `misdeclared`.
  */
 export function controlsOn(page: string, misdeclared: string[] = []): Control[] {
   const found: Control[] = [];
   const spec = (attr: string | null) => (attr === null ? undefined : (JSON.parse(unescape(attr)) as { doc: string; op: string; path: string }));
-  let within = 0; // how many of the elements open here the browser will not let anyone press inside
-  const pressable = (el: HTMLRewriterTypes.Element): boolean => within === 0 && !el.hasAttribute("inert") && !el.hasAttribute("hidden");
+  const open: Open[] = [];
+  const closeTo = (at: number) => open.splice(at).forEach((e) => (e.closed = true));
+  const pressable = (el: HTMLRewriterTypes.Element): boolean =>
+    !el.hasAttribute("inert") && !el.hasAttribute("hidden") && !open.some((e, i) => e.blocks === "always" || (e.blocks === "fieldset" && !open[i + 1]?.frees));
   new HTMLRewriter()
-    .on(UNPRESSABLE, {
+    .on("*", {
       element(el) {
+        const tag = el.tagName;
+        for (const implied of [CLOSES_P.has(tag) && { closes: ["p"], stops: SCOPE }, IMPLIED[tag]]) {
+          if (!implied) continue;
+          for (let i = open.length - 1; i >= 0 && !implied.stops.includes(open[i]!.tag); i--) {
+            if (implied.closes.includes(open[i]!.tag)) {
+              closeTo(i);
+              break;
+            }
+          }
+        }
         if (!el.canHaveContent || el.selfClosing) return; // nothing inside it: its own attributes say it (pressable)
-        within++;
-        el.onEndTag(() => void within--);
+        const parent = open.at(-1);
+        const entry: Open = { tag };
+        if (el.hasAttribute("inert") || el.hasAttribute("hidden") || tag === "template") entry.blocks = "always";
+        else if (tag === "fieldset" && el.hasAttribute("disabled")) entry.blocks = "fieldset";
+        if (tag === "legend" && parent?.tag === "fieldset") entry.frees = (parent.legends = (parent.legends ?? 0) + 1) === 1; // its first legend is not disabled
+        open.push(entry);
+        el.onEndTag(() => {
+          if (!entry.closed) closeTo(open.indexOf(entry));
+        });
       },
     })
     .on("[data-write]", {
