@@ -108,7 +108,7 @@ describe("stories harness", () => {
     expect(first(2)).toContain("dee's page offers this, and it is refused without a word: a control that always fails");
   }, 30000);
 
-  test("a story's premise is its own: made before it, as each member it names, rolled back with it; one that does not hold is not told", async () => {
+  test("a story's premise is its own: made before it, as each member it names, rolled back with it; one whose write changes nothing is not told", async () => {
     const say = { doc: "room", ops: [{ op: "add" as const, path: "/messages/-", value: "hello" }] };
     const general = { doc: "session", ops: [{ op: "replace" as const, path: "/room", value: "general" }] };
     const report = await run(example, {
@@ -118,13 +118,15 @@ describe("stories harness", () => {
         { name: "Cy, in the kitchen again, is told nothing of it", as: "ada", does: say, seen: ["ada", "bob"], untold: ["cy"] },
         { name: "Eve, with no name, is in general first", as: "ada", premise: { eve: [general] }, does: say, seen: ["ada", "bob"] },
         { name: "A ghost is in general first", as: "ada", premise: { ghost: [general] }, does: say, seen: ["ada", "bob"] },
+        { name: "Dee goes into general twice", as: "ada", premise: { dee: [general, general] }, does: say, seen: ["ada", "bob", "dee"] },
       ],
     });
     expect(report.outcomes.map((o) => o.failures)).toEqual([
       [],
       [],
-      ["the premise did not hold: eve's write to session was refused"],
+      ["the premise did not hold: eve's write to session changed nothing"], // refused, as it is: a refusal and a write already so look the same from the wire
       ["the premise names ghost, and no one in the cast is called that"],
+      ["the premise did not hold: dee's write to session changed nothing"], // already so
     ]);
   }, 30000);
 

@@ -79,8 +79,9 @@ leave alone, or the author has since gone (logged out), who has no undo to press
 A story that starts from something the cast does not hold -- the deadline passed, a wine already
 chosen -- says so in its `premise`: writes in the cast's own shape, a member's name and what they
 write, made before anything else in the story and rolled back with it, so no other story starts
-there. Each must land, or the story is not told. What every story needs is the cast's; what the
-app should start with is the seed's.
+there. Each must change something, or the story is not told: a write refused, or one already
+so, says a premise wrongly. What every story needs is the cast's; what the app should start with
+is the seed's.
 
 ```ts
 story("Once the deadline has passed, the Okafors cannot change their answer", {
@@ -152,8 +153,8 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
 (`src/stories-run.ts`; `ETA_EXAMPLE` picks the example). For each story:
 
 1. Connect the cast over real sockets to a real server, apply each member's setup writes, then
-   the story's own `premise` (each write must land), and render every member fresh from the
-   tables.
+   the story's own `premise` (each write must change something), and render every member fresh
+   from the tables.
 2. Put the author where the story says they act (`from`: the drawer or modal that holds the
    control), and find on their open page the control that sends the story's write -- a
    `data-write` with its document, op and path, and a button's own value; a field or a form sends

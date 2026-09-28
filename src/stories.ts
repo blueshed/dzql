@@ -89,7 +89,7 @@ export type Told = {
    * What this story alone starts from: writes each named member of the cast makes, after the
    * cast's and before anything else in the story, rolled back with it -- a state the seed and the
    * cast do not have (the deadline passed, a wine already chosen), which would change every other
-   * story if the cast made it. Made in the order written; each must land.
+   * story if the cast made it. Made in the order written; each must change something.
    */
   premise?: Cast;
 } & (Only<Does> | Only<Cannot> | Only<ClosesTab>);

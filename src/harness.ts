@@ -344,7 +344,12 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   /** Did something land since `from`: a document changed, and someone was told (a refusal changes none)? */
   const landedSince = (cast: Member[], from: Map<Member, number>): boolean => cast.some((m) => sentSince(m, from).some((h) => h.type === "patch" && h.doc !== "refusal"));
 
-  /** The story's own premise, made after the cast's writes: each write as its member. Why it does not hold, if it does not: then the story is not told. */
+  /**
+   * The story's own premise, made after the cast's writes: each write as its member. Why it does
+   * not hold, if it does not: then the story is not told. A write that changes nothing fails it,
+   * whether refused or already so -- the wire hands the page back for both -- since a premise
+   * says what a story starts from, and a write that moved nothing says it wrongly.
+   */
   async function premise(cast: Member[], story: Story): Promise<string[]> {
     const why: string[] = [];
     for (const [name, writes] of Object.entries(story.premise ?? {})) {
@@ -353,7 +358,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       else for (const write of writes) {
         const from = mark(cast);
         await send(cast, m, write);
-        if (!landedSince(cast, from)) why.push(`the premise did not hold: ${name}'s write to ${write.doc} was refused`);
+        if (!landedSince(cast, from)) why.push(`the premise did not hold: ${name}'s write to ${write.doc} changed nothing`);
       }
     }
     return why;

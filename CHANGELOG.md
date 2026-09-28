@@ -118,7 +118,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is made after the cast's writes and before anything else in the story, as each member it names,
   and rolled back with it. The cast's writes are every story's, so a state one story needed (a
   deadline passed, a flight home made a gate) changed what every other story saw. Each premise
-  write must land, or the story is not told. The wedding tells two: once the deadline has passed
+  write must change something, or the story is not told ("the premise did not hold: …'s write
+  to … changed nothing", whether it was refused or already so). The wedding tells two: once the deadline has passed
   the Okafors cannot change their answer (from its drawer, where the answers are drawn disabled),
   and Femi, having picked the Rioja, changes his mind.
 - **A control drawn `disabled` is no control** to the stories, since the browser sends nothing
