@@ -14,6 +14,8 @@ What a builder must not break. How the pieces work is in the eta-app skill
   (`.claude/commands/publish.md`), shared with railroad and delta: follow it, don't edit it.
   Write what lands under `## [Unreleased]` in `CHANGELOG.md` as it lands, breaking changes first.
 - Verify every bug fix by reverting it, watching the new test fail, then restoring it.
+- `todo.jsonl` is the ledger of what is open. An item for a kernel bug that forced a workaround
+  says what the workaround costs (bytes, time, or what the app gave up), so its priority shows.
 - No new dependencies without asking. eta depends on `@blueshed/delta` (documents) and
   `@blueshed/railroad` (islands, `src/island.ts`: the one kernel file that imports it, and not
   the client's); the examples add `lucide`, the icon set; the kernel imports no icon set.

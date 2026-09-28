@@ -35,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   again and told whole on every write to what it watches; or a plain document over just the
   collections it shows, told row by row, every column. A trip's strip is the example, and
   `src/documents.test.ts` holds both. delta's n70 (a document over some columns) would give both.
+- **CLAUDE.md says a todo item for a kernel bug that forced a workaround names its cost** (todo
+  n97): bytes, time, or what the app gave up. n82's said the bug, not japan-eta's 7 KB per vote
+  to every page watching, and so read as a nicety.
 
 ## [0.50.0] - 2026-09-28
 
