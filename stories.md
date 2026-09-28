@@ -81,6 +81,20 @@ harness runs them for free: every `does` is followed by its undo and its redo, a
 must hold in reverse -- unless the ledger says the write is a fact (a tick), which undo must
 leave alone, or the author has since gone (logged out), who has no undo to press.
 
+What the undo takes back may be said to its author, over the page where Undo is (`afterWalk` and
+`tell`, in the eta-app skill), and a `does` with `undone` says what it must say. The wedding's
+household is told, since its Undo may change a photo someone else is watching, or a drawer that
+is shut:
+
+```ts
+story("The Okafors say maybe, and the couple's photo and everyone's change", {
+  as: "okafors",
+  does: household("replace", "/answer", "maybe"),
+  seen: { okafors: "?answer", couple: "", benToo: "everyone" },
+  undone: "Undone: your answer.",
+});
+```
+
 A story that starts from something the cast does not hold -- the deadline passed, a wine already
 chosen -- says so in its `premise`: writes in the cast's own shape, a member's name and what they
 write, made before anything else in the story and rolled back with it, so no other story starts
@@ -346,10 +360,10 @@ export const stories: Stories = {
   schema. The stories are in the app's own repo, in one file, in the wire's words.
 - **Not a story language.** A story is a TypeScript object with a name and a few keys: who,
   the write, the refusal or the tab that closes, who sees it, where the author acts, how (a drag
-  on an applet), what it alone starts from, and what it may cost.
+  on an applet), what it alone starts from, what its undo says, and what it may cost.
   Each key came from a story that needed it (the premise, from a deadline passed for one story
-  only; the gesture, from leave's calendar and japan-eta's drags; the budget, from japan-eta's
-  votes); it will not need a grammar.
+  only; the gesture, from leave's calendar and japan-eta's drags; `undone`, from japan-eta's line
+  that says what Undo took back; the budget, from japan-eta's votes); it will not need a grammar.
 - **Not generated code.** Claude writes the compartments by hand from the stories, and a person
   can read both. When the permit table is the first thing derived rather than written, that is
   one function over the stories, not a code generator.

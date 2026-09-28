@@ -3,10 +3,10 @@ import * as sessionDoc from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
-import { serverWrite } from "../../../src/documents";
+import { activeDocuments, serverWrite, settled } from "../../../src/documents";
 import { householdPage, type HouseholdView } from "../views/household";
 import { keepEveryone } from "../everyone";
-import { refuse } from "../../../src/refusal";
+import { refuse, tell } from "../../../src/refusal";
 
 // A household's document (`household:<id>`), written by the household that arrived by its code.
 // Nearly everything it writes changes what others see -- an answer puts figures in the photo every
@@ -94,6 +94,13 @@ export const household: Compartment = {
   async afterWrite(ws, _id, ops: PatchOp[]) {
     const put = sessionDoc.answered(sessionDoc.read(ws.data.sessionId), ops);
     if (put.length > 0) await serverWrite(`session:${ws.data.sessionId}`, put);
+  },
+  // What an Undo or a Redo did, said over the page, where Undo is: what it changed may be in a
+  // drawer that is shut, or in a photo someone else is watching.
+  async afterWalk(ws, id, { way, ops, inverse }) {
+    const [left, was] = way === "undo" ? [inverse, ops] : [ops, inverse];
+    const words = await settled(activeDocuments(), () => householdDoc.whatItDid(left, was, householdDoc.read(id)!, weddingDoc.gifts()));
+    if (words.length > 0) await tell(ws.data.sessionId, { doc: "ledger", path: "/latest", said: `${way === "undo" ? "Undone" : "Redone"}: ${words.join(", ")}.` });
   },
   // an answer, a look, a coming, a claim: what everyone sees of this household follows
   afterChange: () => keepEveryone(),

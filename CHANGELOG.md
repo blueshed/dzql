@@ -92,6 +92,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Undone: your answer."`: after the undo, the author must have been told exactly that, and their
   page must show it. A story with `undone` whose write has no undo (off the ledger, or its author
   gone) fails, since nothing will say it.
+- **The wedding's household is told what its Undo took back, and what Redo did again**: "Undone:
+  your answer.", "Undone: claiming “Le Creuset casserole”.", "Redone: Femi Okafor's look.", over
+  the page beside Undo, since what an undo changes may be in a drawer that is shut or a photo
+  someone else is watching (`whatItDid` in `examples/wedding/documents/household.ts`, from the
+  walk's rows and what they wrote over). Two of its stories say it with `undone`: the answer, and a
+  plus-one named in a modal the write put away.
 
 ### Changed
 
@@ -122,6 +128,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **What the kernel says over the page about an undo or redo no longer covers Undo and Redo.** It
+  stood a fixed height above the foot of the screen, over the page's tools wherever they were three
+  (Undo, Redo and leaving) or the window's margin moved them: after an undo, neither Undo nor Redo
+  could be pressed until the next write. It now stands beside the tools, level with their foot,
+  and steps aside with them for a docked drawer.
 - **What follows a write can say what it did.** The kernel let go of what a session had been told
   after a write's `afterWrite`, so a line told there was taken away as it was said. It now lets go
   of it as the write lands, before `afterWrite` (or `afterWalk`) runs; a write that applies nothing

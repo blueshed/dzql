@@ -24,6 +24,10 @@ Everything below is the least that makes it pass.
   state ("opens the drawer", "the modal asks") cannot fail and proves nothing; tell what the
   person wants, and use `seen`'s place for where they must stand to see it.
 - A refusal is a story too (`cannot`): the other half of what a person may do.
+- What a write, an Undo or a Redo did may be told to the person who did it (`tell`, in
+  reference.md): a line beside the control, or over the page where Undo is. A story says what its
+  undo must say with `undone: "Undone: your answer."` (the wedding's); the harness compares the
+  author's pages without it, and checks it on its own.
 - A story's `from` is where a person does it, so a control must lead there: build the button
   that opens the drawer or the modal with the drawer or the modal, or the story fails (`no control
   leads ...`), since the harness can put anyone anywhere and a person cannot.
@@ -82,7 +86,8 @@ Everything below is the least that makes it pass.
    keyed by the session id, `kind` if not `written`, `ledger: false` if it is kept off the ledger,
    `under` if its fields sit under the root (`/sessions`), and `shape`: the wire's ops as the document takes them (validated, an id minted,
    a nested path turned into rows), nothing when nothing applies. `afterChange` keeps a live document
-   true after any change; `afterWrite` does what follows for the writer alone. The kernel tells every
+   true after any change; `afterWrite` does what follows for the writer alone, and `afterWalk` what
+   follows an undo or redo (the wedding's household says what it took back). The kernel tells every
    change itself: echoed to who sees it, every page that read it drawn again, each sent only the
    parts that changed. A part is the unit of a message: a change goes as the smallest part that
    holds it, whole, so make what changes alone -- a row, a card, a count -- a part of its own with

@@ -176,6 +176,27 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('.bubble.ours .face-mark')?.classList.contains('maybe')`, (v) => v === false);
   });
 
+  for (const [where, width, height] of [["on a phone", 390, 760], ["at a desk", 1100, 720]] as const) {
+    test(`Undo says what it took back beside the page's tools, ${where}, and over neither of them: Redo and Undo are pressed again`, async () => {
+      await using view = new Bun.WebView({ width, height });
+      await enter(view, code);
+      await view.evaluate(`document.querySelector('.bubble.ours').click()`);
+      await waitFor(view, `document.querySelectorAll('.answer-option').length`, (v) => v === 3);
+      await view.evaluate(`document.querySelector('.answer-option[data-value="no"]').click()`);
+      await waitFor(view, `document.querySelector('.bubble.ours .face-mark')?.classList.contains('no')`, (v) => v === true);
+      await view.evaluate(`document.querySelector('.drawer-close').click()`);
+      await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
+      const said = `document.querySelector('.undo-said')?.textContent ?? null`;
+      // each a press at the middle of the button, as a person's, which waits for nothing to cover it
+      await view.click('button[aria-label="Undo"]');
+      await waitFor(view, said, (v) => v === "Undone: your answer.");
+      await view.click('button[aria-label="Redo"]');
+      await waitFor(view, said, (v) => v === "Redone: your answer.");
+      await view.click('button[aria-label="Undo"]');
+      await waitFor(view, said, (v) => v === "Undone: your answer.");
+    });
+  }
+
   test("the couple's page is the photo of families: a tap on a family opens its drawer, and Escape puts it away", async () => {
     await using view = new Bun.WebView({ width: 1280, height: 800 });
     await view.navigate(urlFor(view, server.url));

@@ -27,7 +27,10 @@ export { comparable };
 // when its author is echoed the change with the write's id, whoever else writes meanwhile.
 // A `cannot` must change no page, add nothing to the ledger, and be answered: refused, by its own
 // write's id, and the writer's page handed back, showing them why when the story says what they
-// are `told` -- the reason its refusal gave, and nothing else. For a `does`, nobody the story
+// are `told` -- the reason its refusal gave, and nothing else. What a write, its undo or its redo
+// tells its author (src/refusal.ts) is of that moment, so their pages are compared without it, and
+// it is checked on its own: on their page, and after the undo what the story's `undone` says,
+// when it says. For a `does`, nobody the story
 // does not say sees it may notice it: a story names everyone
 // whose page changes. Delivery is checked as well as pages: a member the story says is `untold`
 // must be told of no document -- no patch -- by the write, its undo or its redo, and anything the

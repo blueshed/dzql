@@ -66,7 +66,7 @@ export const stories: Stories = {
     story("Leaving the site forgets the code", { as: "okafors", does: session("/code"), seen: ["okafors"] }),
 
     // ── A household answers ──
-    story("The Okafors say maybe, and the couple's photo and everyone's change", { as: "okafors", does: household("replace", "/answer", "maybe"), seen: { okafors: "?answer", couple: "", benToo: "everyone" } }),
+    story("The Okafors say maybe, and the couple's photo and everyone's change", { as: "okafors", does: household("replace", "/answer", "maybe"), seen: { okafors: "?answer", couple: "", benToo: "everyone" }, undone: "Undone: your answer." }),
     story("The Okafors take their answer back", { as: "okafors", does: household("remove", "/answer"), seen: { okafors: "?answer", couple: "", benToo: "everyone" } }),
     story("Femi is not coming after all: the mark at his feet says so, and he leaves everyone's photo", { as: "okafors", from: "?guest=2", does: household("replace", "/guests/2/coming", "0"), seen: { okafors: "", couple: "", benToo: "everyone" } }),
     story("Femi's coming is left undecided, and the list shows it", { as: "okafors", from: "list?guest=2", does: household("remove", "/guests/2/coming"), seen: { okafors: "list", couple: "?family=1" } }),
@@ -74,7 +74,7 @@ export const stories: Stories = {
     story("The Okafors take the note back, emptying it", { as: "okafors", from: "?answer", does: household("replace", "/message", ""), seen: { okafors: "", couple: "?family=1" } }),
 
     // ── Guests, figures, choices ──
-    story("The Okafors bring a plus-one, and the couple see the name", { as: "okafors", from: "?new=guests", does: household("add", "/guests/-", "Tolu Adebayo"), seen: { okafors: "", couple: "?family=1", benToo: "everyone" } }),
+    story("The Okafors bring a plus-one, and the couple see the name", { as: "okafors", from: "?new=guests", does: household("add", "/guests/-", "Tolu Adebayo"), seen: { okafors: "", couple: "?family=1", benToo: "everyone" }, undone: "Undone: bringing Tolu Adebayo." }),
     story("Femi's top turns green, and the photo everyone watches changes", { as: "okafors", from: "?guest=2", does: household("replace", "/guests/2/minifigure/top", "#7FAE4E"), seen: { okafors: "", couple: "", benToo: "everyone" } }),
     story("Femi picks the sea bass, and the couple see it in the Okafors' drawer", { as: "okafors", from: "list?guest=2", does: household("replace", "/guests/2/choices/2/dish", 5), seen: { okafors: "list", couple: "?family=1" } }),
     story("Femi picks the Rioja", { as: "okafors", from: "list?guest=2", does: household("replace", "/guests/2/choices/2/drink", 3), seen: { okafors: "list", couple: "?family=1" } }),

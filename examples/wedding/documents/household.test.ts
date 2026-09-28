@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createDocuments, setActiveDocuments } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
 import { delta } from "../delta";
-import { householdFrom, read, shape, type HouseholdDocument } from "./household";
+import { householdFrom, read, shape, whatItDid, type HouseholdDocument } from "./household";
 import * as weddingDoc from "./wedding";
 
 let offer: Parameters<typeof shape>[1];
@@ -108,5 +108,24 @@ describe("what a household's write becomes", () => {
     ]);
     expect(shaped(okafors(), { op: "add", path: "/claims/-", value: 99 }, { op: "replace", path: "/claims/-", value: 1 }, { op: "remove", path: "/claims/1" }, { op: "remove", path: "/claims/1/x" })).toEqual([]);
     expect(shaped({ ...okafors(), claims: [2] }, { op: "remove", path: "/claims/2" })).toEqual([{ op: "remove", path: "/claims/2-1" }]);
+  });
+});
+
+describe("what a household's write did, for Undo to say it took it back and Redo that it did it again", () => {
+  test("in the household's words, from the rows it left and the rows as they were: an answer, a note, a guest's coming, choices or look, a plus-one, an ask, a claim", () => {
+    const h = okafors();
+    const gifts = [{ id: 1, name: "Le Creuset casserole" }];
+    const row = (path: string, value: object): PatchOp => ({ op: "replace", path, value });
+    const said = (left: PatchOp[], was: PatchOp[] = []) => whatItDid(left, was, h, gifts);
+    const us = { answer: "yes", message: "Cannot wait." };
+    expect(said([row("/households", { ...us, answer: "maybe" })], [row("/households", us)])).toEqual(["your answer"]);
+    expect(said([row("/households", { answer: null, message: "Soon." })], [row("/households", us)])).toEqual(["your answer", "your note"]);
+    const femi = { name: "Femi Okafor", coming: 1, top: "#1E3F8F", choices: null };
+    expect(said([row("/guests/2", { ...femi, coming: 0 })], [row("/guests/2", femi)])).toEqual(["whether Femi Okafor is coming"]);
+    expect(said([row("/guests/2", { ...femi, choices: { "2": { dish: 5, drink: null } } })], [row("/guests/2", femi)])).toEqual(["Femi Okafor's choices"]);
+    expect(said([row("/guests/2", { ...femi, top: "#7FAE4E" })], [row("/guests/2", femi)])).toEqual(["Femi Okafor's look"]);
+    expect(said([{ op: "add", path: "/guests/9", value: { name: "Tolu Adebayo", named_by: "household" } }])).toEqual(["bringing Tolu Adebayo"]);
+    expect(said([{ op: "add", path: "/asks/4", value: { name: "Ngozi Okafor", reply: null } }])).toEqual(["asking for Ngozi Okafor"]);
+    expect(said([{ op: "add", path: "/claims/1-1", value: { gift_id: "1" } }, { op: "remove", path: "/claims/1-1" }])).toEqual(["claiming “Le Creuset casserole”", "giving back “Le Creuset casserole”"]);
   });
 });

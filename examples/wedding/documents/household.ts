@@ -179,3 +179,30 @@ export function shape(h: HouseholdDocument, offer: Offer, ops: PatchOp[], now = 
   // Two writes to one guest's choices in a message are one write of where they end.
   return out.filter((op, i) => !(op.path.endsWith("/choices") && out.slice(i + 1).some((later) => later.path === op.path)));
 }
+
+/** The row an op writes, or none. */
+const rowOf = (op: PatchOp | undefined): Record<string, unknown> => ((op as { value?: Record<string, unknown> } | undefined)?.value ?? {});
+
+/**
+ * What a household's write did, in the household's words: from the rows it left and the rows as
+ * they were before it (`was`), each whole, as the ledger keeps them. Undo says it took this back,
+ * and Redo that it did it again (compartments/household.ts `afterWalk`). A guest the rows only
+ * number is named from `h`, a claimed gift from `gifts`.
+ */
+export function whatItDid(left: PatchOp[], was: PatchOp[], h: HouseholdDocument, gifts: { id: number; name: string }[]): string[] {
+  return left.flatMap((op) => {
+    const [table, id] = parsePointer(op.path);
+    const row = rowOf(op);
+    const before = rowOf(was.find((w) => w.path === op.path));
+    const changed = (field: string) => JSON.stringify(row[field] ?? null) !== JSON.stringify(before[field] ?? null);
+    if (table === "households") return [changed("answer") && "your answer", changed("message") && "your note"].filter((w): w is string => !!w);
+    if (table === "guests" && op.op === "add") return [`bringing ${row.name}`];
+    if (table === "guests") {
+      const name = h.guests.find((g) => String(g.id) === id)!.name;
+      return [changed("coming") ? `whether ${name} is coming` : changed("choices") ? `${name}'s choices` : `${name}'s look`];
+    }
+    if (table === "asks") return [`asking for ${row.name}`];
+    const gift = gifts.find((g) => claimKey(g.id, h.id) === id)!.name; // a claim
+    return [op.op === "add" ? `claiming “${gift}”` : `giving back “${gift}”`];
+  });
+}

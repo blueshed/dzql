@@ -63,8 +63,11 @@
 /* what a write was told, beside the control that sent it (src/refusal.ts): why it was refused, or what it did */
 .refused, .said { margin: var(--space-xs) 0 0; }
 .refused { color: var(--danger); }
-/* what an undo or redo did, or why it was refused: the kernel's, over the page, above the page's tools */
-.undo-said { box-sizing: border-box; position: fixed; z-index: 80; bottom: calc(var(--space-lg) + 2 * var(--control) + var(--space-md)); right: var(--space-lg); max-width: min(320px, calc(100vw - 2 * var(--space-lg))); padding: var(--space-sm) var(--space-md); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
+/* what an undo or redo did, or why it was refused: the kernel's, over the page, beside the page's
+   tools at the foot of the window and clear of them, however many they are, so Undo and Redo can
+   be pressed again */
+.undo-said { box-sizing: border-box; position: fixed; z-index: 80; bottom: calc(var(--space-sm) + var(--space-lg)); right: calc(var(--space-sm) + var(--space-lg) + var(--control) + var(--space-md)); max-width: min(320px, calc(100vw - 2 * var(--space-sm) - 2 * var(--space-lg) - var(--control) - var(--space-md))); padding: var(--space-sm) var(--space-md); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
+@media (min-width: 820px) { .undo-said { bottom: calc(var(--space-2xl) + var(--space-lg)); right: calc(var(--space-2xl) + var(--space-lg) + var(--control) + var(--space-md)); } }
 .undo-said .refused, .undo-said .said { margin: 0; }
 
 /* ── a stack: square buttons with a hairline between, drawn like a Leaflet control ── */
@@ -173,8 +176,9 @@ body:has(.page.windowed) { overflow: hidden; }
 .hushed { opacity: 0.3; }
 /* the rails step aside for the drawer, and the reading reflows to the clear beside it (rule 18) */
 @media (min-width: 820px) {
-  .rail, .cell.open .page-tools, .filter, .full { transition: right 200ms ease, padding-right 200ms ease; }
+  .rail, .cell.open .page-tools, .undo-said, .filter, .full { transition: right 200ms ease, padding-right 200ms ease; }
   main#app:has(.drawer) .rail, main#app:has(.drawer) .cell.open .page-tools { right: calc(var(--panel) + var(--space-2xl) + var(--space-lg)); }
+  main#app:has(.drawer) .undo-said { right: calc(2 * var(--space-2xl) + var(--panel) + var(--space-lg) + var(--control) + var(--space-md)); }
   /* an anchored field goes with its tool; one that cannot anchor steps aside with the rail */
   @supports not (anchor-name: --find) { main#app:has(.drawer) .filter { right: calc(var(--panel) + var(--space-2xl) + var(--space-lg) + var(--control) + var(--space-md)); } }
   main#app:has(.drawer) .full { padding-right: calc(var(--panel) + var(--space-2xl) + var(--clear)); }
@@ -252,7 +256,7 @@ dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
 /* no motion: the window opening, the sheet rising, the modal, and the rails stepping aside for the drawer are still */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*), .drawer, dialog.modal { animation: none; }
-  .rail, .cell.open .page-tools, .filter, .full { transition: none; }
+  .rail, .cell.open .page-tools, .undo-said, .filter, .full { transition: none; }
 }
 /* forced colours (Windows High Contrast) take away shadows and backgrounds: what is chosen or
    pressed is drawn with an outline instead */

@@ -9,6 +9,7 @@ import { asCouple, asHousehold, board, household } from "./setup";
 import { example } from "./index";
 import { keepEveryone } from "./everyone";
 import { serverWrite } from "../../src/documents";
+import { esc } from "../../src/html";
 
 let server: ReturnType<typeof createServer>;
 /** A household of this file's own, so nothing here disturbs the seed another file reads. */
@@ -459,7 +460,7 @@ describe("a household", () => {
     expect((await inDelta.call("open", { doc })).result).toEqual({ ...before, _v: _v + 2 }); // the ghost in, and out once
   });
 
-  test("undo walks back this session's own writes, newest first; nothing left, nothing moves", async () => {
+  test("undo walks back this session's own writes, newest first, saying what each took back; nothing left, nothing moves", async () => {
     const ws = await enter(code);
     const guest = (await household(code)).guests[0]!;
     await send(ws, "household", [{ op: "replace", path: `/guests/${guest.id}/minifigure/top`, value: "#7FAE4E" }]);
@@ -469,13 +470,23 @@ describe("a household", () => {
     let h = await send(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     expect(h.patches[0]).toMatchObject({ doc: householdDoc(), ops: [{ op: "remove", path: `/claims/3-${hid}` }] });
     expect((await household(code)).claims).not.toContain(3);
+    const said = (words: string) => `<div class="undo-said"><p class="said" role="status">${esc(words)}</p></div>`; // over the page, where Undo is
+    expect(h.page).toContain(said("Undone: claiming “A set of good knives”."));
 
     h = await send(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     expect(h.patches[0]).toMatchObject({ doc: householdDoc(), ops: [{ op: "replace", path: `/guests/${guest.id}`, value: { top: guest.minifigure.top, built_at: guest.minifigure.built_at } }] });
     expect((await household(code)).guests[0]!.minifigure).toEqual(guest.minifigure);
+    expect(h.page).toContain(said(`Undone: ${guest.name}'s look.`));
 
-    // nothing of this session's left to undo: the page, nothing told
-    await refused(ws, "ledger", [{ op: "remove", path: "/latest" }]);
+    h = await send(ws, "ledger", [{ op: "add", path: "/latest" }]);
+    expect(h.page).toContain(said(`Redone: ${guest.name}'s look.`));
+    await send(ws, "ledger", [{ op: "remove", path: "/latest" }]);
+
+    // nothing of this session's left to undo: nothing moves, and what the last undo said goes
+    h = await send(ws, "ledger", [{ op: "remove", path: "/latest" }]);
+    expect(h.patches.map((p) => p.doc)).toEqual(["told"]);
+    expect(h.page).not.toContain("undo-said");
+    await refused(ws, "ledger", [{ op: "remove", path: "/latest" }]); // and then, told nothing, the page as it was
     ws.close();
   });
 
