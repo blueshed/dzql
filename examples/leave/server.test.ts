@@ -129,7 +129,8 @@ describe("the page", () => {
     expect(await go(mo, "2026-10?nowhere")).toContain('data-page="2026-10"');
     const list = await go(mo, "list");
     expect(list).toContain('data-applet="leave-list"');
-    expect(list).toContain('role="radio" aria-checked="true" aria-pressed="true" aria-label="List"'); // the reading switch
+    expect(list).toContain('role="radio" aria-checked="true" aria-label="List"'); // the reading switch: a radio, checked, never pressed (a toggle's)
+    expect(list).not.toMatch(/role="radio"[^>]*aria-pressed/);
     expect(list).toContain('data-value="list?request=1"'); // a row opens its request
     mo.ws.close();
   });

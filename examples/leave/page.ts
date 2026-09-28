@@ -103,7 +103,7 @@ export function render(sessionId: string): string {
     ["Calendar", "month", !list, go(list ? "" : path)],
     ["List", "list", list, go("list")],
   ];
-  const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${readings.map(([text, mark, on, w]) => `<button type="button" class="tool" role="radio" aria-checked="${on}" aria-pressed="${on}" aria-label="${text}"${w}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
+  const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${readings.map(([text, mark, on, w]) => `<button type="button" class="tool" role="radio" aria-checked="${on}" aria-label="${text}"${w}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
   const ask = addTool(go(address(path, "draft")), "Ask for leave");
   const tools = list
     ? [ask]

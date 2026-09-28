@@ -81,11 +81,9 @@ button.danger, .danger { color: var(--burgundy); border-color: var(--burgundy); 
 /* ── the bento's surfaces (src/bento.css), where the wedding's differ: serif heads, the photo, the answer ── */
 .drawer-head h2 { font-family: var(--serif); font-size: 19px; color: var(--navy); }
 dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy); }
-/* a radio says it is chosen by aria-checked (the reading's, a choice's), not aria-pressed, which is a toggle's */
-.stack > .tool[role="radio"][aria-checked="true"] { background: var(--accent); color: var(--card); }
+/* a chosen answer in its own colour; the kernel lights any other checked radio in the accent */
 .tool.yes[aria-checked="true"] { background: var(--leaf); border-color: var(--leaf); color: var(--card); }
 .tool.no[aria-checked="true"] { background: var(--burgundy); border-color: var(--burgundy); color: var(--card); }
-@media (forced-colors: active) { .tool[role="radio"][aria-checked="true"] { outline: 2px solid Highlight; outline-offset: -2px; } }
 .prop-value > .pick { flex-wrap: wrap; } /* a choice of three wraps in a drawer's width rather than standing past its edge */
 .pair { display: flex; align-items: center; gap: var(--space-sm); min-width: 0; }
 .pair .amp { font-family: var(--script); font-size: 28px; color: var(--gold-deep); line-height: 1; }
