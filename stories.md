@@ -210,7 +210,8 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    else wrote meanwhile. A `closesTab` has no control to find: the author's
    socket closes, the server is waited for, and something must land for someone still looking.
 3. Canon 1. Render every member again, from the same copy. For each name in `seen`, that
-   member's page must differ from before; for everyone else, nothing of theirs may differ; and
+   member's page must differ from before -- the author's without what they were told (step 4):
+   "Saved." is no change they can see; for everyone else, nothing of theirs may differ; and
    each name in `untold` must have been told of nothing: sent no document's ops, by the write,
    its undo or its redo (a page that reads a document is told every change to it, shown or not);
    after a tab closes, only who is still looking is looked at. For a `cannot`, nothing anywhere

@@ -586,7 +586,7 @@ describe("stories harness", () => {
         return tell(ws.data.sessionId, { ...at, said: `${way === "undo" ? "Undone" : "Redone"}: “${text}”.` });
       },
     })),
-    render: (sessionId) => example.render(sessionId) + toldAt(sessionId, "room", "/messages/-"),
+    render: (sessionId) => example.render(sessionId) + part("told", `<div>${toldAt(sessionId, "room", "/messages/-")}</div>`), // a part of its own, so what it says goes alone
   });
 
   const hello = (name: string, undone?: string): Story => ({ name, as: "ada", does: say("hello"), seen: ["ada", "bob"], untold: ["cy", "dee", "eve"], undone });
@@ -615,6 +615,34 @@ describe("stories harness", () => {
     const logout = { doc: "session", ops: [{ op: "remove" as const, path: "/name" }] };
     expect(await failuresOf(example, [{ name: "Ada logs out, and Undo says so", as: "ada", does: logout, seen: ["ada", "bob"], undone: "Undone: Ada." }])).toEqual(['no undo follows to tell ada "Undone: Ada."']);
   }, 30000);
+
+  // The wedding, broken on purpose, where what its author is told could stand in for what they
+  // should see, or say what it should not.
+  describe("what an author is told stands in for nothing, says its own words, and is of its own moment", async () => {
+    const { example: wedding } = await import("../examples/wedding/index");
+    const { stories: vows } = await import("../examples/wedding/stories");
+    const visit = await import("../examples/wedding/documents/session");
+    const named = (start: string): Story => vows.stories.find((s) => s.name.startsWith(start))!;
+    const failuresIn = async (broken: Example, told: Story[]): Promise<string[]> => (await run(broken, { ...vows, stories: told })).outcomes.flatMap((o) => o.failures);
+    const withHousehold = (f: (household: Compartment) => Partial<Compartment>, from: Example = wedding): Example => ({ ...from, compartments: from.compartments.map((c) => (c.docType === "household" ? { ...c, ...f(c) } : c)) });
+    const maybe = named("The Okafors say maybe");
+
+    test("a line told to the author is no change of theirs: a write their own page does not show fails, whatever it says", async () => {
+      const femi = named("Femi's top turns green");
+      // the Okafors' own page never shows Femi's top green
+      const blind: Example = {
+        ...wedding,
+        render: (sessionId) => {
+          const page = wedding.render(sessionId);
+          return visit.read(sessionId).code === "OKAFOR" ? page.replaceAll("#7FAE4E", "#1E3F8F") : page;
+        },
+      };
+      expect(await failuresIn(blind, [femi])).toContain('okafors did not see it on ""');
+      const saved = withHousehold((h) => ({ afterWrite: async (ws, id, ops) => (await h.afterWrite!(ws, id, ops), tell(ws.data.sessionId, { doc: "ledger", path: "/latest", said: "Saved." })) }), blind);
+      expect(await failuresIn(saved, [femi])).toContain('okafors did not see it on ""');
+    }, 30000);
+
+  });
 
   test("an applet may name the only values a control of it sends: a tap that goes somewhere offers only there, and the values of one write go together", () => {
     const page = `<div data-applet="photo"${appletWrites(["desk", "replace", "/page", "?guest=2"], ["desk", "replace", "/page", "?guest=3"])}></div>`;

@@ -118,9 +118,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   applet's props (`applyPatch`).
 - **The harness compares an author's pages without what they were told, and checks that on its
   own** (todo n89, n100). What a write, its undo or its redo tells its author is of that moment:
-  the page before a write never said "Undone: …". So the author's page before the story, after the
-  undo and after the redo (and before and after a refusal) is drawn with the kernel's `told`
-  document read as empty, and after each of the write, the undo and the redo, where it left them,
+  the page before a write never said "Undone: …". So the author's page before and after the
+  story, after the undo and after the redo (and before and after a refusal) is drawn with the
+  kernel's `told` document read as empty -- a line told to the author is no change the story made
+  for them to see -- and after each of the write, the undo and the redo, where it left them,
   whatever they were told must be on their page: `after undo, ada was told "…", and their page does
   not show it`. Before, every undoable story of an app that said "Undone: …" failed (`undo did not
   restore`), and so did a silent refusal after a write that had said something. Words an app keeps

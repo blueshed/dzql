@@ -926,7 +926,7 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       const entries = ledger.since(ledgerBefore);
       await stale(cast, "after the story", failures);
 
-      noticed(before, after, cast, seen, failures); // an `untold` member is further told of nothing (above)
+      noticed(before, quietAfter, cast, seen, failures); // what the author was told is checked on its own (above); an `untold` member is further told of nothing
 
       // off the ledger, or the author has gone (logged out): no undo is theirs to press
       if (entries.length === 0 || !(await active(who.sessionId))) {
