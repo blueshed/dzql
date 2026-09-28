@@ -2,5 +2,7 @@
 # coverage is always on, and 100% is a gate, not an aim: the run fails below it
 coverage = true
 coverageThreshold = 1.0
-# delta is linked from its checkout: its source is delta's to cover, not eta's
-coveragePathIgnorePatterns = ["**/node_modules/**"]
+# delta is linked from its checkout: its source is delta's to cover, not eta's. An example's
+# stories.ts is a declaration `bun run stories:all` runs whole; a test that imports one to run a
+# story or two would otherwise count the rest as uncovered
+coveragePathIgnorePatterns = ["**/node_modules/**", "examples/*/stories.ts"]
