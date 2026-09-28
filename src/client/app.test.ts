@@ -1,6 +1,7 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
 import { bento, type Field } from "../bento";
 import { write } from "../html";
+import { diff, drawParts, part } from "../parts";
 import { waitFor } from "../webview";
 import fixture from "./app.test.html";
 
@@ -78,6 +79,18 @@ const tripForm = (title: string, kind: string, on = "change") =>
     <input id="title" value="${title}" data-write='{"doc":"trip","op":"replace","path":"/title"}'>
     <select id="kind" data-write='{"doc":"trip","op":"replace","path":"/kind"}'>${["see", "eat", "travel"].map((k) => `<option${k === kind ? " selected" : ""}>${k}</option>`).join("")}</select>
   </form>`;
+
+/** A trip's editing form in ticks: whether it is booked (a box with a value), whether it is paid (one without), and its kind (radios), each as drawn. */
+const ticksForm = (title: string, booked: boolean, paid: boolean, kind: string, on = "change") =>
+  `<form data-write-on="${on}" id="t">
+    <input id="title" value="${title}" data-write='{"doc":"trip","op":"replace","path":"/title"}'>
+    <input type="checkbox" id="booked" value="yes"${booked ? " checked" : ""} data-write='{"doc":"trip","op":"replace","path":"/booked"}'>
+    <input type="checkbox" id="paid"${paid ? " checked" : ""} data-write='{"doc":"trip","op":"replace","path":"/paid"}'>
+    ${["see", "eat", "travel"].map((k) => `<input type="radio" name="kind" id="kind-${k}" value="${k}"${k === kind ? " checked" : ""} data-write='{"doc":"trip","op":"replace","path":"/kind"}'>`).join("")}
+  </form>`;
+
+/** Which of a ticks form's boxes and radios are ticked, in order. */
+const ticked = `["booked", "paid", "kind-see", "kind-eat", "kind-travel"].filter((id) => document.getElementById(id).checked)`;
 
 describe("app.ts in a real browser, with a stubbed socket", () => {
   test("a full render with a matching data-moving element transitions in place and clears its name after", async () => {
@@ -207,6 +220,138 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(scrolled as number).toBeGreaterThan(0);
   });
 
+  test("a revealed element taller than the view less its margins lands by its top, reached from below as from above", async () => {
+    await using view = await open();
+    const day = (height: number, reveal: boolean) =>
+      `<div class="list" id="list" style="height:200px"><div style="height:600px"></div><div id="day" style="height:${height}px;scroll-margin:24px 0"${reveal ? " data-reveal" : ""}></div><div style="height:600px"></div></div>`;
+    const top = `Math.round(document.getElementById('day').getBoundingClientRect().top - document.getElementById('list').getBoundingClientRect().top)`;
+    const landed: string[] = [];
+    for (const height of [170, 400]) {
+      for (const from of ["below", "above"]) {
+        await pushRender(view, day(height, false));
+        await view.evaluate(`document.getElementById('list').scrollTop = ${from === "below" ? "document.getElementById('list').scrollHeight" : "0"}`);
+        await pushRender(view, day(height, true));
+        landed.push(`${height}px from ${from}: ${await view.evaluate<number>(top)}`);
+      }
+    }
+    expect(landed).toEqual(["170px from below: 24", "170px from above: 24", "400px from below: 24", "400px from above: 24"]); // its top margin under the view's top
+
+    // and in the page itself, as a day is revealed on a phone, under a sticky header the page
+    // declares (`scroll-padding-top`): one that fits the window with its margins, but not below the header
+    const page = (reveal: boolean) =>
+      `<style>html { scroll-padding-top: 40px }</style><header style="position:sticky;top:0;height:40px"></header><div style="height:2000px"></div><div id="day" style="height:calc(100vh - 68px);scroll-margin:24px 0"${reveal ? " data-reveal" : ""}></div><div style="height:2000px"></div>`;
+    await pushRender(view, page(false));
+    await view.evaluate(`window.scrollTo(0, document.documentElement.scrollHeight)`);
+    await pushRender(view, page(true));
+    expect(await view.evaluate<number>(`Math.round(document.getElementById('day').getBoundingClientRect().top)`)).toBe(64); // under the header, and its margin
+  });
+
+  test("a tall revealed element moves only the scroller that holds it, under that scroller's own scroll-padding, in percent too", async () => {
+    await using view = await open();
+    const nested = (reveal: boolean) =>
+      `<div style="height:250px"></div><div class="list" id="list" style="height:200px"><div style="height:600px"></div><div id="day" style="height:400px;scroll-margin:24px 0"${reveal ? " data-reveal" : ""}></div><div style="height:600px"></div></div><div style="height:2000px"></div>`;
+    await pushRender(view, nested(false));
+    await view.evaluate(`window.scrollTo(0, 100)`);
+    await pushRender(view, nested(true));
+    expect(await view.evaluate<unknown>(`[scrollY, Math.round(document.getElementById('day').getBoundingClientRect().top - document.getElementById('list').getBoundingClientRect().top)]`)).toEqual([100, 24]); // the page stays where it was
+
+    const page = (reveal: boolean) =>
+      `<style>html { scroll-padding-top: 10% }</style><div style="height:2000px"></div><div id="day" style="height:calc(100vh - 40px);scroll-margin:0"${reveal ? " data-reveal" : ""}></div><div style="height:2000px"></div>`;
+    await pushRender(view, page(false));
+    await view.evaluate(`window.scrollTo(0, document.documentElement.scrollHeight)`);
+    await pushRender(view, page(true));
+    const [top, tenth] = await view.evaluate<number[]>(`[document.getElementById('day').getBoundingClientRect().top, document.documentElement.clientHeight / 10]`);
+    expect(Math.abs(top! - tenth!)).toBeLessThan(1); // under a tenth of the view
+  });
+
+  test("the reader's place is kept under a sticky header: a stop another moves from Wednesday to Thursday, from under the header, leaves Thursday where it was read", async () => {
+    // two people on one trip, through a server that draws it with the kernel's parts: Willem moves
+    // Wednesday's last stop to Thursday, while Ann reads Thursday from just under the header
+    const stop = (k: string) => part(k, `<li style="height:59px;margin:0;border-bottom:1px solid #ccc;box-sizing:border-box">${k}</li>`);
+    const day = (key: string, stops: string[]) => part(key, `<section id="${key}"><h2 style="height:40px;margin:0">${key}</h2><ul style="margin:0;padding:0;list-style:none">${stops.map(stop).join("")}</ul></section>`);
+    for (const whole of [false, true]) {
+      const trip = { wed: ["w0", "w1", "w2", "w3", "w4"], thu: ["t0", "t1", "t2"] };
+      const page = () =>
+        `<style>body { margin: 0 }</style><header style="position:sticky;top:0;height:140px;background:#fff;z-index:1"><button type="button" id="move" data-write='{"doc":"trip","op":"replace","path":"/move"}' data-value="w4">Move</button></header>` +
+        part("trip", `<main><div style="height:300px"></div>${day("wed", trip.wed)}${day("thu", trip.thu)}<div style="height:2000px"></div></main>`);
+      const clients = new Set<Bun.ServerWebSocket<{ drawn?: ReturnType<typeof drawParts> }>>();
+      const relay = Bun.serve<{ drawn?: ReturnType<typeof drawParts> }>({
+        port: 0,
+        routes: { "/": fixture, "/ws": (req: Request, s: Bun.Server<{ drawn?: ReturnType<typeof drawParts> }>) => (s.upgrade(req, { data: {} }) ? undefined : new Response("no", { status: 400 })) },
+        websocket: {
+          open(ws) {
+            clients.add(ws);
+            ws.data.drawn = drawParts(page);
+            ws.send(JSON.stringify({ type: "render", html: ws.data.drawn.html }));
+          },
+          message() {
+            trip.thu.unshift(trip.wed.pop()!); // the stop, moved
+            for (const ws of clients) {
+              const next = drawParts(page);
+              const ops = diff(ws.data.drawn!, next);
+              ws.data.drawn = next;
+              ws.send(JSON.stringify(whole || !ops ? { type: "render", html: next.html } : { type: "render", ops }));
+            }
+          },
+          close(ws) {
+            clients.delete(ws);
+          },
+        },
+      });
+      try {
+        await using ann = new Bun.WebView();
+        await using willem = new Bun.WebView();
+        for (const view of [ann, willem]) {
+          await view.navigate(relay.url.toString());
+          await waitFor(view, `document.getElementById('thu') !== null`, (v) => v === true);
+        }
+        await ann.evaluate(`window.scrollTo(0, scrollY + document.getElementById('thu').getBoundingClientRect().top - 140)`); // Thursday, just under the header; w4 under it
+        const thu = `Math.round(document.getElementById('thu').getBoundingClientRect().top)`;
+        expect(await ann.evaluate<number>(thu)).toBe(140);
+        await willem.click("#move");
+        await waitFor(ann, `document.querySelector('#thu li')?.textContent`, (v) => v === "w4");
+        await Bun.sleep(50);
+        expect(`${whole ? "whole" : "in parts"}: ${await ann.evaluate<number>(thu)}`).toBe(`${whole ? "whole" : "in parts"}: 140`);
+      } finally {
+        relay.stop(true);
+      }
+    }
+  });
+
+  test("the reader's place is kept in a scroller of its own too, as the bento's window is, and not while someone is pressing", async () => {
+    await using view = await open();
+    const rows = (gone: string[]) => Array.from({ length: 30 }, (_, i) => `r${i}`).filter((k) => !gone.includes(k)).map((k) => `<li id="${k}" data-eta-part="${k}" style="height:50px;margin:0">${k}</li>`).join("");
+    const page = (gone: string[] = []) =>
+      `<div style="position:fixed;inset:8px;overflow:hidden"><div id="full" style="position:absolute;inset:0;overflow:auto"><header style="position:sticky;top:0;height:60px;background:#fff;z-index:1">the day</header><ul data-eta-part="list" style="margin:0;padding:0;list-style:none">${rows(gone)}</ul></div></div>`;
+    const r11 = `Math.round(document.getElementById('r11').getBoundingClientRect().top - document.getElementById('full').getBoundingClientRect().top)`;
+    await pushRender(view, page());
+    await view.evaluate(`document.getElementById('full').scrollTop = 550`); // r11 just under the header, r10 under it
+    expect(await view.evaluate<number>(r11)).toBe(60);
+    await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r10"]' }] });
+    expect(await view.evaluate<number>(r11)).toBe(60);
+    await pushRender(view, page(["r10", "r9"])); // whole, one more gone above
+    expect(await view.evaluate<number>(r11)).toBe(60);
+
+    await view.evaluate(`document.getElementById('full').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`); // a drag begins
+    const top = await view.evaluate<number>(`document.getElementById('full').scrollTop`);
+    await pushRender(view, page(["r10", "r9", "r8"]));
+    expect(await view.evaluate<number>(`document.getElementById('full').scrollTop`)).toBe(top); // left to the browser
+  });
+
+  test("a revealed element lands below a sticky header the page does not declare", async () => {
+    await using view = await open();
+    const page = (height: string, reveal: boolean) =>
+      `<header style="position:sticky;top:0;height:40px;background:#fff;z-index:1"></header><div style="height:2000px"></div><div id="day" style="height:${height};scroll-margin:24px 0"${reveal ? " data-reveal" : ""}></div><div style="height:2000px"></div>`;
+    const landed: number[] = [];
+    for (const height of ["100px", "100vh"]) {
+      await pushRender(view, page(height, false));
+      await view.evaluate(`window.scrollTo(0, document.documentElement.scrollHeight)`);
+      await pushRender(view, page(height, true));
+      landed.push(await view.evaluate<number>(`Math.round(document.getElementById('day').getBoundingClientRect().top)`));
+    }
+    expect(landed).toEqual([64, 64]); // under the header, and its margin: one that fits, and one too tall
+  });
+
   test("a field waiting with autofocus gets the caret when a render brings it in, and never takes it from a field someone is in", async () => {
     await using view = await open();
     // the first page's field takes the one autofocus the browser gives a document
@@ -327,6 +472,16 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await using view = await open();
     expect(waitFor(view, `1 + 1`, (v) => v === 3, 60)).rejects.toThrow("Timed out waiting for `1 + 1`; last value: 2");
   });
+
+  test("waitFor runs out with the clock fixed, as a test that opens a page on a given day fixes it", async () => {
+    await using view = await open();
+    setSystemTime(new Date("2026-11-10T09:00:00Z")); // Date.now() stands still from here
+    try {
+      await expect(waitFor(view, `1 + 1`, (v) => v === 3, 60)).rejects.toThrow("Timed out waiting for `1 + 1`; last value: 2");
+    } finally {
+      setSystemTime();
+    }
+  }, 2000);
 
   test("after an undo, a field nobody is in shows the value undone to, and leaving another field sends nothing again", async () => {
     await using view = await open();
@@ -581,6 +736,65 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string>(`document.querySelector('[data-eta-part="a"]').textContent`)).toBe("drawn by the applet");
   });
 
+  test("a part that moves from one parent part to another is where it went, and not where it was", async () => {
+    await using view = await open();
+    const page = (at: "a" | "b") => part("root", `<div>${["a", "b"].map((k) => part(k, `<section>${at === k ? part("head", "<header>H</header>") : ""}</section>`)).join("")}</div>`);
+    for (const [from, to] of [["b", "a"], ["a", "b"]] as const) {
+      const [before, after] = [drawParts(() => page(from)), drawParts(() => page(to))];
+      await pushRender(view, before.html);
+      await push(view, { type: "render", ops: diff(before, after) });
+      expect(await view.evaluate<string>(`document.getElementById('app').innerHTML`)).toBe(after.html);
+    }
+  });
+
+  test("words in an editing form are said before Escape or Back puts its drawer away, though a field a render takes out says nothing in WebKit", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const toPage = `'{"doc":"session","op":"replace","path":"/page"}'`;
+    const page = (open: boolean) =>
+      `<main data-page="${open ? "?answer" : ""}" data-page-write=${toPage}>${open ? `<aside><button type="button" id="x" data-escape data-write=${toPage} data-value="">×</button><form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>Hello</textarea></form></aside>` : ""}</main>`;
+    const words = { doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] };
+    const away = { doc: "session", ops: [{ op: "replace", path: "/page", value: "" }] };
+    await pushRender(view, page(false));
+    for (const how of ["Escape", "Back"]) {
+      await pushRender(view, page(true));
+      await view.click("#words");
+      await view.evaluate(`document.getElementById('words').setSelectionRange(5, 5)`);
+      await view.type(" there");
+      await view.evaluate(`window.__sent = []`);
+      if (how === "Escape") await view.press("Escape");
+      else await view.evaluate(`history.back()`);
+      await waitFor(view, `window.__sent.length`, (v) => (v as number) > 0, 1000);
+      await pushRender(view, page(false)); // the drawer put away, the field with it
+      await Bun.sleep(50);
+      expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([words, away]);
+    }
+  });
+
+  test("a write made while the socket is down is not taken for sent: a form keeps what is typed, and an editing form says it once the socket is back", async () => {
+    await using view = await open();
+    // as a real socket does, the stub drops what is sent while it is not open
+    const stub = `(() => { window.__sent ??= []; window.eta.socket().send = function (d) { if (this.readyState === 1) window.__sent.push(JSON.parse(d)); }; })()`;
+    await view.evaluate(stub);
+    await pushRender(view, `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>
+      <form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>Hello</textarea></form>`);
+    await waitFor(view, `document.getElementById('words') !== null`, (v) => v === true);
+    await view.click("#text");
+    await view.type("hi all");
+    await view.click("#words");
+    await view.evaluate(`document.getElementById('words').setSelectionRange(5, 5)`);
+    await view.type(" there");
+
+    const dropped = await view.evaluate(`(() => { window.__old = window.eta.socket(); window.__old.close(); document.getElementById('say').requestSubmit(); return document.getElementById('text').value; })()`);
+    expect(dropped).toBe("hi all"); // not sent, so not cleared
+    await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
+    await view.evaluate(stub);
+    await view.evaluate(`document.getElementById('words').focus()`);
+    await view.evaluate(`document.getElementById('words').blur()`); // leaving it, now the socket is back
+    await Bun.sleep(50);
+    expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([{ doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] }]);
+  });
+
   test("a connection that drops leaves the page as it was, inert and marked, until it is back", async () => {
     await using view = await open();
     await pushRender(view, `<form><input id="say" name="text"></form>`);
@@ -652,6 +866,157 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
     await pushRender(view, add); // refused: the page, handed back
     expect(await view.evaluate<string[]>(`[document.getElementById('title').value, document.getElementById('kind').value]`)).toEqual(["Fushimi", "travel"]);
+  });
+
+  test("a box or a radio in an editing form goes only when it is ticked or unticked: a box as whether it is ticked, a radio as its value", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, ticksForm("Temple", true, false, "see"));
+    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
+
+    await view.click("#title");
+    await view.type(" gate");
+    await view.evaluate(`document.getElementById('title').blur()`);
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the boxes, left as they were drawn
+    await pushRender(view, ticksForm("Temple gate", true, false, "see"));
+
+    await view.click("#paid");
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[1]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/paid", value: true }] });
+    await pushRender(view, ticksForm("Temple gate", true, true, "see"));
+
+    await view.click("#booked"); // drawn with a value, and ticked
+    await waitFor(view, `window.__sent.length`, (v) => v === 3, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/booked", value: false }] });
+    await pushRender(view, ticksForm("Temple gate", false, true, "see"));
+
+    await view.click("#kind-eat");
+    await waitFor(view, `window.__sent.length`, (v) => v === 4, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[3]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "eat" }] }); // not the radio it was chosen over
+  });
+
+  test("after an undo, a box and a radio show what they are drawn, a box even with the caret still in it, so the next commit does not revert the undo", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, ticksForm("Temple", false, false, "see"));
+    await waitFor(view, `document.getElementById('paid') !== null`, (v) => v === true);
+
+    await view.click("#kind-eat");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    await pushRender(view, ticksForm("Temple", false, false, "eat")); // echoed and drawn
+    await pushRender(view, ticksForm("Temple", false, false, "see")); // then undone
+    await view.click("#paid");
+    await view.evaluate(`document.getElementById('paid').focus()`); // a click leaves the caret in a box in Chrome
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await pushRender(view, ticksForm("Temple", false, true, "see"));
+    await pushRender(view, ticksForm("Temple", false, false, "see")); // undone, with the caret still in it
+    expect(await view.evaluate<string[]>(ticked)).toEqual(["kind-see"]);
+
+    await view.click("#title");
+    await view.type(" gate");
+    await view.evaluate(`document.getElementById('title').blur()`);
+    await waitFor(view, `window.__sent.length`, (v) => v === 3, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the tick or the choice undone
+  });
+
+  test("a render drawn between pressing a box and letting go leaves it be, so the click ticks it as the person meant, and nothing undoes the other's tick", async () => {
+    await using view = await open();
+    await stubSend(view);
+    for (const touched of [false, true]) {
+      await pushRender(view, ticksForm("Temple", false, false, "see"));
+      if (touched) {
+        for (const [paid, version] of [[true, 2], [false, 3]] as const) {
+          await view.click("#paid");
+          await push(view, { type: "patch", doc: "trip:1", version, ops: [{ op: "replace", path: "/paid", value: paid }] });
+          await pushRender(view, ticksForm("Temple", false, paid, "see"));
+        }
+      }
+      await view.evaluate(`window.__sent = []`);
+      await view.evaluate(`document.getElementById('paid').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`);
+      await pushRender(view, ticksForm("Temple", false, true, "see")); // someone else ticked it, drawn while the finger is down
+      await view.evaluate(`document.getElementById('paid').click()`); // let go
+      await Bun.sleep(50);
+      expect(await view.evaluate<unknown[]>(`[document.getElementById('paid').checked, window.__sent]`)).toEqual([true, []]);
+    }
+  });
+
+  test("a tick not yet sent is the person's: a render that draws another choice keeps it, and leaving sends it", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, ticksForm("Temple", false, false, "see", "blur"));
+    await waitFor(view, `document.getElementById('paid') !== null`, (v) => v === true);
+
+    await view.evaluate(`["paid", "kind-travel"].forEach((id) => document.getElementById(id).click())`); // ticked, and not yet left
+    await pushRender(view, ticksForm("Temple", true, false, "eat", "blur")); // another member's change, before these are sent
+    expect(await view.evaluate<string[]>(ticked)).toEqual(["booked", "paid", "kind-travel"]);
+    await view.evaluate(`document.getElementById('title').focus()`);
+    await view.evaluate(`document.getElementById('title').blur()`);
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/paid", value: true }, { op: "replace", path: "/kind", value: "travel" }] });
+  });
+
+  test("a creating form sends a box as whether it is ticked, ticked or not, so its value keeps one shape", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, `<form id="add" data-write='{"doc":"trip","op":"add","path":"/events/-"}'><input id="title" name="title"><input type="checkbox" id="booked" name="booked"></form>`);
+    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
+    await view.click("#title");
+    await view.type("Fushimi");
+    await view.press("Enter");
+    await view.click("#booked");
+    await view.click("#title");
+    await view.type("Inari");
+    await view.press("Enter");
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    expect(await view.evaluate<unknown[]>(`window.__sent.map((s) => s.ops[0].value)`)).toEqual([{ title: "Fushimi", booked: false }, { title: "Inari", booked: true }]);
+  });
+
+  test("a choice not yet sent survives a render in parts around it: a radio put in drawn ticked, or a part of its group swapped for another tag", async () => {
+    await using view = await open();
+    const row = (k: string, drawn: boolean) => `<li data-eta-part="r-${k}"><input type="radio" name="kind" id="kind-${k}" value="${k}"${drawn ? " checked" : ""}></li>`;
+    await pushRender(view, `<form id="f"><ul data-eta-part="list">${row("see", true)}${row("eat", false)}</ul></form>`);
+    await waitFor(view, `document.getElementById('kind-eat') !== null`, (v) => v === true);
+    await view.click("#kind-eat");
+    await push(view, { type: "render", ops: [{ op: "after", target: '[data-eta-part="r-eat"]', html: row("travel", true) }] }); // someone else chose travel, a new one
+    const chosen = `document.querySelector('[name=kind]:checked')?.value`;
+    expect(await view.evaluate<string>(chosen)).toBe("eat");
+
+    const a = (tag: string) => `<${tag} data-eta-part="a">${["see", "eat"].map((k) => `<input type="radio" form="f" name="kind" id="kind-${k}" value="${k}"${k === "see" ? " checked" : ""}>`).join("")}</${tag}>`;
+    await pushRender(view, `<form id="f"></form>${a("div")}<div data-eta-part="b"><input type="radio" form="f" name="kind" id="kind-travel" value="travel"></div>`);
+    await view.click("#kind-travel");
+    await push(view, { type: "render", ops: [{ op: "replace", target: '[data-eta-part="a"]', html: a("fieldset") }] });
+    expect(await view.evaluate<string>(chosen)).toBe("travel");
+  });
+
+  test("a refused write hands back what was ticked, as it does what was typed, and keeps a choice made while it was on its way", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const add = `<form id="add" data-write='{"doc":"trip","op":"add","path":"/events/-"}'>
+      <input id="title" name="title">
+      <input type="checkbox" id="booked" name="booked">
+      ${["see", "eat", "travel"].map((k) => `<input type="radio" name="kind" id="kind-${k}" value="${k}"${k === "see" ? " checked" : ""}>`).join("")}
+    </form>`;
+    await pushRender(view, add);
+    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
+    await view.click("#booked");
+    await view.click("#kind-eat");
+    await view.click("#title");
+    await view.type("Fushimi");
+    await view.press("Enter");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi", booked: true, kind: "eat" } }] });
+    const state = `[document.getElementById('title').value, document.getElementById('booked').checked, document.getElementById('kind-eat').checked]`;
+    expect(await view.evaluate<unknown[]>(state)).toEqual(["", false, false]); // cleared as it sends
+
+    await pushRender(view, add); // refused: the page, handed back
+    expect(await view.evaluate<unknown[]>(state)).toEqual(["Fushimi", true, true]);
+
+    await view.press("Enter");
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await view.click("#kind-travel"); // chosen again before the answer
+    await pushRender(view, add); // refused again
+    expect(await view.evaluate<unknown[]>(`[document.getElementById('title').value, document.getElementById('booked').checked, document.querySelector('[name=kind]:checked').value]`)).toEqual(["Fushimi", true, "travel"]);
   });
 
   test("the bento's add modal asks with a select and a link, and a refused add hands back what was typed and chosen", async () => {

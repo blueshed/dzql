@@ -95,6 +95,18 @@ describe("diff", () => {
     ]);
   });
 
+  test("a part that moves from one parent part to another is taken out of the one it left, not the first on the page", () => {
+    const view = (at: "a" | "b") => part("root", `<div>${["a", "b"].map((k) => part(k, `<section>${at === k ? part("head", "<header>H</header>") : ""}</section>`)).join("")}</div>`);
+    expect(diff(draw(() => view("b")), draw(() => view("a")))).toEqual([
+      { op: "replace", target: '[data-eta-part="a"]', html: `<section data-eta-part="a"><header data-eta-part="head">H</header></section>` },
+      { op: "remove", target: '[data-eta-part="b"] [data-eta-part="head"]' },
+    ]);
+    expect(diff(draw(() => view("a")), draw(() => view("b")))).toEqual([
+      { op: "remove", target: '[data-eta-part="a"] [data-eta-part="head"]' },
+      { op: "replace", target: '[data-eta-part="b"]', html: `<section data-eta-part="b"><header data-eta-part="head">H</header></section>` },
+    ]);
+  });
+
   test("a key drawn twice the same is one part", () => {
     const view = (t: string) => {
       const drawer = () => part("drawer", `<aside>${t}</aside>`);

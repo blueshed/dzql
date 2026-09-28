@@ -19,11 +19,14 @@ export function urlFor(view: Bun.WebView, url: URL | string, path = "", platform
   return address.toString();
 }
 
-/** Evaluates `script` in `view` until `predicate` holds of it, and resolves with that value; throws, with the last value, after `timeout` ms. */
+/**
+ * Evaluates `script` in `view` until `predicate` holds of it, and resolves with that value; throws, with the last value, after `timeout` ms.
+ * The wait is measured by `performance.now()`, not the date, which a test may fix (`setSystemTime`) to open a page on a given day.
+ */
 export async function waitFor(view: Bun.WebView, script: string, predicate: (value: unknown) => boolean, timeout = 5000): Promise<unknown> {
-  const start = Date.now();
+  const start = performance.now();
   let last: unknown;
-  while (Date.now() - start < timeout) {
+  while (performance.now() - start < timeout) {
     last = await view.evaluate(script);
     if (predicate(last)) return last;
     await Bun.sleep(20);

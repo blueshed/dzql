@@ -1,8 +1,8 @@
 import { applets } from "../applets";
 import type { PatchOp } from "../json-patch";
-import { formValue } from "./form-value";
+import { formValue, groupOf, held, type Field } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
-import { drawnOption, morph, morphElement, morphTag, removeNode } from "./morph";
+import { drawnOption, keepingChoices, morph, morphElement, morphTag, removeNode } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -73,7 +73,18 @@ function onAppletPropsChanged(el: Element, props: unknown) {
 // doesn't concern it -- see morph.ts. [data-applet] elements are a boundary
 // the morph never descends into (see onAppletRemoved/onAppletPropsChanged);
 // mounting a newly-appeared one still happens here, same as before.
-const hooks = { onAppletRemoved, onAppletPropsChanged };
+// A box someone is pressing is theirs until the click lands (`pressed`): a render drawn between the
+// press and the click must not tick it first, or the click unticks it, and sends that, undoing
+// whoever ticked it. Pressing its label is pressing it.
+let pressed: Element | undefined;
+app.addEventListener("pointerdown", (event) => {
+  const at = event.target instanceof Element ? event.target : null;
+  const box = at?.closest("label")?.control ?? at;
+  pressed = box instanceof HTMLInputElement && box.type === "checkbox" ? box : undefined;
+});
+document.addEventListener("click", () => (pressed = undefined), true); // a click lands after its tick
+app.addEventListener("pointercancel", () => (pressed = undefined));
+const hooks = { onAppletRemoved, onAppletPropsChanged, pressed: (el: Element) => el === pressed };
 
 // Where a tab is (change-request.md item 3): an example may mark some element within #app with
 // `data-page` (the session's own idea of the page) and `data-page-write` (the write that sets
@@ -114,6 +125,7 @@ function syncPage() {
 window.addEventListener("popstate", () => {
   const page = pageInUrl();
   knownPage = page;
+  commitFocused();
   if (pageWrite) send(pageWrite.doc, [{ op: pageWrite.op, path: pageWrite.path, value: page }]);
 });
 
@@ -152,10 +164,118 @@ function ownTag(el: Element): string {
 // Rule 18 of bento-request.md's K2: after a full render's morph, an element newly carrying
 // `data-reveal` (or carrying it for the first time on a different element than before) scrolls
 // into view -- the window itself never moves, only the reading beside it. `previous` is captured
-// before the morph runs, since the morph is what may add, move, or remove the attribute.
+// before the morph runs, since the morph is what may add, move, or remove the attribute. It comes
+// by its nearest edge, unless it and its margins cannot fit in the view: then by its top, where it
+// is read from, since reached from below its nearest edge is its foot, and its top lands out of
+// sight. Only the scroller that holds it moves then: `scrollIntoView` would move every one around it.
 function revealChanged(previous: Element | null): void {
   const current = app.querySelector<HTMLElement>("[data-reveal]");
-  if (current && current !== previous) current.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (!current || current === previous) return;
+  const port = scrollerOf(current);
+  const reading = readingTop(port);
+  const covered = reading - topOf(port); // what stands over the top of the view: a header, measured or declared
+  const { scrollMarginTop, scrollMarginBottom } = getComputedStyle(current);
+  const marginTop = parseFloat(scrollMarginTop);
+  const view = port.clientHeight - covered - lengthIn(getComputedStyle(port).scrollPaddingBottom, port.clientHeight);
+  const box = current.getBoundingClientRect();
+  if (box.height + marginTop + parseFloat(scrollMarginBottom) > view) return port.scrollBy({ top: box.top - reading - marginTop });
+  // one that fits comes by the browser's nearest edge, told of a header it does not know of for the moment
+  const declared = getComputedStyle(port).scrollPaddingTop !== "auto";
+  const style = port.getAttribute("style");
+  if (!declared && covered > 0) (port as HTMLElement).style.scrollPaddingTop = `${covered}px`;
+  current.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (!declared && covered > 0) {
+    if (style === null) port.removeAttribute("style");
+    else port.setAttribute("style", style);
+  }
+}
+
+/** The scroller `el` is read in: its nearest ancestor that scrolls, or the page. */
+function scrollerOf(el: Element): Element {
+  for (let at = el.parentElement; at && at !== document.body; at = at.parentElement) {
+    if (at.scrollHeight > at.clientHeight && /auto|scroll|hidden/.test(getComputedStyle(at).overflowY)) return at;
+  }
+  return document.documentElement;
+}
+
+/** A computed `scroll-padding` in px: a percentage is of the scroller's own height, and `auto` is none. */
+const lengthIn = (value: string, height: number): number => (value.endsWith("%") ? (parseFloat(value) * height) / 100 : parseFloat(value) || 0);
+
+/** Where `port`'s view starts, in the window: its top edge inside its border, or for the page the window's top. */
+const topOf = (port: Element): number => (port === document.documentElement ? 0 : port.getBoundingClientRect().top + port.clientTop);
+
+/** Across the middle of `port`'s view, where points are looked at. */
+const middleOf = (port: Element): number =>
+  port === document.documentElement ? port.clientWidth / 2 : port.getBoundingClientRect().left + port.clientLeft + port.clientWidth / 2;
+
+/**
+ * Where reading starts in `port`, in the window: below what its `scroll-padding-top` declares, or,
+ * with nothing declared, below any bar stuck at its top (a header: position sticky or fixed, over
+ * the middle of its view), as measured, a bar stuck under a bar included.
+ */
+function readingTop(port: Element): number {
+  const top = topOf(port);
+  const declared = getComputedStyle(port).scrollPaddingTop;
+  if (declared !== "auto") return top + lengthIn(declared, port.clientHeight);
+  let line = top;
+  for (let bars = 0; bars < 3; bars++) {
+    const bar = document.elementsFromPoint(middleOf(port), line + 1).find((el) => el !== port && port.contains(el) && /sticky|fixed/.test(getComputedStyle(el).position));
+    const below = bar?.getBoundingClientRect().bottom ?? line;
+    if (below <= line) break;
+    line = below;
+  }
+  return line;
+}
+
+// The reader's place (todo n85). A render keeps what someone is reading where they read it: a row
+// taken out above them, or under a sticky header, must not move the rest. The browsers' own scroll
+// anchoring can choose the very row hidden under a header, and the rows below it then slide up
+// under the header. So before a render the client notes, in each scroller that is scrolled (the
+// page, and any in it, as the bento's window is), the first element at or below where reading
+// starts (readingTop), and after it puts that element back where it was. Not while someone is
+// pressing (a drag, a scroll by touch, a selection being made) or has a range selected.
+type Place = { port: Element; at: Element; top: number };
+
+let holding = false;
+for (const type of ["pointerdown", "touchstart"]) document.addEventListener(type, () => (holding = true), true);
+for (const type of ["pointerup", "touchend", "touchcancel"]) document.addEventListener(type, () => (holding = false), true);
+document.addEventListener("pointercancel", (event) => event.pointerType === "touch" || (holding = false), true); // a touch goes on, as a scroll, until touchend
+
+/** The first element in `port`, in the page's order, whose top is at or below where reading starts. */
+function readerIn(port: Element): Element | undefined {
+  const line = readingTop(port);
+  let at: Element | null | undefined = document.elementsFromPoint(middleOf(port), line + 1).find((el) => el !== port && port.contains(el));
+  while (at) {
+    const box: DOMRect = at.getBoundingClientRect();
+    const boxless: boolean = box.width === 0 && box.height === 0; // display: contents, or nothing drawn
+    if (!boxless && box.top >= line) return at;
+    at = (boxless || box.bottom > line) && at.firstElementChild ? at.firstElementChild : after(at, port);
+  }
+  return undefined;
+}
+
+/** What follows `el` in `port`, past all it holds. */
+function after(el: Element, port: Element): Element | null {
+  for (let at: Element | null = el; at && at !== port; at = at.parentElement) if (at.nextElementSibling) return at.nextElementSibling;
+  return null;
+}
+
+function placesNow(): Place[] {
+  if (holding || document.getSelection()?.type === "Range") return [];
+  const scrolled = [...app.querySelectorAll("*")].filter((el) => el.scrollTop > 0 && !(el instanceof HTMLTextAreaElement) && !el.closest("[data-applet]"));
+  const ports = document.documentElement.scrollTop > 0 ? [document.documentElement, ...scrolled] : scrolled;
+  return ports.flatMap((port) => {
+    const at = readerIn(port);
+    return at ? [{ port, at, top: at.getBoundingClientRect().top - topOf(port) }] : [];
+  });
+}
+
+function keepPlaces(places: Place[]): void {
+  for (const { port, at, top } of places) {
+    if (!port.isConnected || !port.contains(at)) continue; // what they read is gone: what follows takes its place
+    const moved = at.getBoundingClientRect().top - topOf(port) - top;
+    if (Math.abs(moved) >= 1) port.scrollTop += moved;
+  }
 }
 
 function render(html: string) {
@@ -165,7 +285,9 @@ function render(html: string) {
 
   const apply = () => {
     const was = beforeDrawing();
+    const places = placesNow();
     morph(app, html, hooks);
+    keepPlaces(places);
     settle(before);
     afterDrawing(was);
     syncPage();
@@ -259,26 +381,31 @@ function afterDrawing(was: Before): void {
 
 // The page in parts: what changed since the last drawing, in HTML's terms (src/parts.ts). Each op
 // names a part; a target the page no longer has is skipped -- the next full render puts things
-// right, as it would after a reconnect. Afterwards, the same care as a whole render.
+// right, as it would after a reconnect. The ops keep a choice not yet drawn as one render does,
+// since a group of radios may span parts. Afterwards, the same care as a whole render.
 function applyFragments(ops: HtmlOp[]) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
   const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
   const was = beforeDrawing();
+  const places = placesNow();
 
-  for (const op of ops) {
-    const target = app.querySelector(op.target);
-    // what is inside an applet is the applet's, as it is to the morph: its own element may be a part, nothing in it
-    if (!target || target.parentElement?.closest("[data-applet]")) continue;
-    if (op.op === "replace") {
-      morphElement(target, op.html, hooks);
-    } else if (op.op === "tag") {
-      morphTag(target, op.html, hooks);
-    } else if (op.op === "remove") {
-      removeNode(target, hooks);
-    } else {
-      target.insertAdjacentHTML(op.op === "after" ? "afterend" : "beforebegin", op.html);
+  keepingChoices(() => {
+    for (const op of ops) {
+      const target = app.querySelector(op.target);
+      // what is inside an applet is the applet's, as it is to the morph: its own element may be a part, nothing in it
+      if (!target || target.parentElement?.closest("[data-applet]")) continue;
+      if (op.op === "replace") {
+        morphElement(target, op.html, hooks);
+      } else if (op.op === "tag") {
+        morphTag(target, op.html, hooks);
+      } else if (op.op === "remove") {
+        removeNode(target, hooks);
+      } else {
+        target.insertAdjacentHTML(op.op === "after" ? "afterend" : "beforebegin", op.html);
+      }
     }
-  }
+  });
+  keepPlaces(places);
   settle(before);
   afterDrawing(was);
   syncPage();
@@ -306,21 +433,33 @@ type WriteSpec = { doc: string; op: PatchOp["op"]; path: string };
  * name it so, or by its type alone (`room`), meaning the one of that type this page is on. */
 const isNamed = (named: string, echoed: string): boolean => echoed === named || echoed.startsWith(`${named}:`);
 
-function send(doc: string, ops: PatchOp[]) {
+/** Sends a write, and says whether it went: a socket that is not open drops what it is given, so a write then is not recorded as sent. */
+function send(doc: string, ops: PatchOp[]): boolean {
+  if (socket?.readyState !== WebSocket.OPEN) return false;
   lastSent = { doc, ops, echoed: false };
-  socket?.send(JSON.stringify({ doc, ops }));
+  socket.send(JSON.stringify({ doc, ops }));
+  return true;
 }
 
-/** What a form holds a value in: typed, or chosen. A `multiple` select holds several values where a
- * write carries one, so it is not a field: an editing form never sends it, and a refusal does not hand it back. */
-type Field = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+/** A field (form-value.ts) an editing form sends and a refusal hands back. A `multiple` select holds several values where a
+ * write carries one, so it is not one here: an editing form never sends it, and a refusal does not hand it back. */
 const isField = (el: Element): el is Field =>
   el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el instanceof HTMLSelectElement && !el.multiple);
+
+const isBox = (field: Field): field is HTMLInputElement & { type: "checkbox" } => field instanceof HTMLInputElement && field.type === "checkbox";
+const isRadio = (field: Field): field is HTMLInputElement & { type: "radio" } => field instanceof HTMLInputElement && field.type === "radio";
+
+/** Puts back what a field held: a box's tick, a group's choice (by its value; none for null), or a value. */
+function hold(field: Field, value: string | boolean | null): void {
+  if (isBox(field)) field.checked = value as boolean;
+  else if (isRadio(field)) for (const r of groupOf(field)) r.checked = r.value === value;
+  else field.value = value as string;
+}
 
 // A form clears as it sends, and a refused write hands back what was sent: a refusal is answered
 // with the page whole, before any echo of the form's document. So what someone types while the
 // write is on its way is theirs -- no echo, anyone's, clears it -- and a refusal never eats text.
-let sending: { doc: string; sent: [Field, string][] } | undefined;
+let sending: { doc: string; sent: [Field, string | boolean | null][] } | undefined;
 
 // An element says what it writes via data-write; a form's field is the
 // value (or a record of its fields, if it has more than one), a button/li's
@@ -333,8 +472,9 @@ app.addEventListener("submit", (event) => {
   event.preventDefault();
   const { doc, op, path } = JSON.parse(spec) as WriteSpec;
   const fields = [...form.elements].filter(isField);
-  sending = { doc, sent: fields.map((f) => [f, f.value]) };
-  send(doc, [{ op, path, value: formValue(form) }]);
+  const sent: [Field, string | boolean | null][] = fields.map((f) => [f, held(f)]);
+  if (!send(doc, [{ op, path, value: formValue(form) }])) return; // not sent: what is typed stays
+  sending = { doc, sent };
   form.reset();
 });
 
@@ -352,12 +492,13 @@ app.addEventListener("click", (event) => {
 
 // Escape puts away what was opened last: it presses the last `[data-escape]` on the page -- a
 // modal's scrim is drawn after the drawer it may open over -- as a click would, so it sends that
-// control's own write and nothing the page did not offer.
+// control's own write and nothing the page did not offer. What is typed in it is said first.
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape" || event.defaultPrevented) return;
   const away = [...app.querySelectorAll<HTMLElement>("[data-escape]")].at(-1);
   if (!away) return;
   event.preventDefault();
+  commitFocused();
   away.click();
 });
 
@@ -370,14 +511,19 @@ document.addEventListener("keydown", (event) => {
 // clear. A <textarea>'s rendered content has no `value` attribute to compare against -- it's the
 // element's text at parse time, which the DOM keeps as `defaultValue` even after typing changes
 // `value`. Same comparison, different property. A <select> has neither: what was rendered is the
-// option it was drawn showing, by the browser's own rule (drawnOption), until someone chooses.
+// option it was drawn showing, by the browser's own rule (drawnOption), until someone chooses. A
+// box holds a tick, not its value: what was rendered is whether it was drawn `checked`
+// (`defaultChecked`). A group of radios is one field, held as the value chosen (form-value.ts):
+// what was rendered is the value of the last drawn `checked`, or null.
 // "input" (bento-request.md K3) is the same commit, debounced to ~150ms after the last keystroke
 // anywhere in the form so a burst of typing becomes one message, not one per key; a `focusout`
 // inside such a form flushes any pending write at once, same as leaving the field would for
 // "blur". Whatever the trigger, a commit identical to the last one *this form* sent is dropped
 // until a write lands -- typing back to a value on its way, or leaving a field twice, says nothing
 // new -- and not after: once an echo or an undo has been drawn, the same value is news again.
-function rendered(field: Field): string {
+function rendered(field: Field): string | boolean | null {
+  if (isBox(field)) return field.defaultChecked;
+  if (isRadio(field)) return groupOf(field).findLast((r) => r.defaultChecked)?.value ?? null;
   if (field instanceof HTMLSelectElement) return drawnOption(field)?.value ?? "";
   return field instanceof HTMLTextAreaElement ? field.defaultValue : (field.getAttribute("value") ?? "");
 }
@@ -385,11 +531,15 @@ function rendered(field: Field): string {
 function editingChange(form: HTMLFormElement): { doc: string; ops: PatchOp[] } | undefined {
   const ops: PatchOp[] = [];
   let doc: string | undefined;
+  const said = new Set<Field>(); // a group of radios is said once
   for (const field of [...form.querySelectorAll("[data-write]")].filter(isField)) {
-    if (field.value === rendered(field)) continue;
+    if (said.has(field)) continue;
+    if (isRadio(field)) for (const r of groupOf(field)) said.add(r);
+    const value = held(field);
+    if (value === rendered(field)) continue;
     const spec = JSON.parse(field.dataset.write!) as WriteSpec;
     doc = spec.doc;
-    ops.push({ op: spec.op, path: spec.path, value: field.value });
+    ops.push({ op: spec.op, path: spec.path, value });
   }
   return doc && ops.length > 0 ? { doc, ops } : undefined;
 }
@@ -414,8 +564,20 @@ function commitEdit(form: HTMLFormElement) {
   if (!change) return;
   const key = JSON.stringify(change.ops);
   if (lastEditSent.get(form) === key) return;
-  lastEditSent.set(form, key);
-  send(change.doc, change.ops);
+  if (send(change.doc, change.ops)) lastEditSent.set(form, key); // one that did not go goes on the next commit
+}
+
+/**
+ * Says what the editing form someone is in holds, before a gesture that takes it away (Escape,
+ * Back). Leaving a field says it, but a field a render takes out has not been left: Chrome fires
+ * focusout as it goes, WebKit (every iPhone browser) does not, and the words would go with it.
+ */
+function commitFocused() {
+  const form = document.activeElement instanceof HTMLElement ? document.activeElement.closest("form") : null;
+  if (!form?.dataset.writeOn || !app.contains(form)) return;
+  clearTimeout(inputTimers.get(form));
+  inputTimers.delete(form);
+  commitEdit(form);
 }
 
 function flushInputEdit(form: HTMLFormElement) {
@@ -474,9 +636,9 @@ function connect() {
       if (message.ops) applyFragments(message.ops);
       else {
         // the page whole before the echo: the form's write was refused -- what was sent goes back
-        // in each field not typed in, or chosen in, since; the morph then keeps a choice by its
-        // value, or shows the drawn option if the page no longer offers it (morph.ts)
-        for (const [field, value] of sending?.sent ?? []) if (field.value === rendered(field)) field.value = value;
+        // in each field (a group of radios is one) not typed in, chosen in, or ticked, since; the
+        // morph then keeps a choice by its value, or shows the drawn one if the page no longer offers it (morph.ts)
+        for (const [field, value] of sending?.sent ?? []) if (held(field) === rendered(field)) hold(field, value);
         sending = undefined;
         render(message.html);
       }

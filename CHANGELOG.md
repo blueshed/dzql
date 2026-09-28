@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (a story now puts a picture on the welcome). The photo's taps only go somewhere, as the page's
   address does, and the ticker's city picker is an applet on its document, which offers any
   write to it.
+- **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
+  browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
+  when not, as was a group of radios none of which was chosen. So a title and an unticked box
+  sent the title alone, and ticked, a record. Now a field has one type whatever form it is in: a
+  box is `true` or `false`, always there, whatever its value attribute says; a group of radios is
+  one field, the value chosen or `null`; a `multiple` select its last choice or `null`; and a
+  record keeps every named field's key. A `shape` that read "on", or a missing key as unticked,
+  reads `true` and `false` now. No example sends a box (the wedding's `yesNo` takes both).
 - **One word, one meaning: names renamed so they say what they are, and when they run.** No
   behaviour changes; rename and the gate passes. Compartment hooks are named for when they run
   (`permit`, `shape` before a write; `permitUndo` before an undo; `afterWrite`, `afterChange` after).
@@ -339,6 +347,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the cell with the keyboard behind it. After each drawing, a keyboard on nothing or on something
   inert goes back to what opened a drawer or modal that has just gone, else to a field waiting for
   it, else into the cell that has just moved.
+- **A box or a radio is a field** (`src/client/app.ts`, todo n76). An editing form compared a
+  field's `value` with what was rendered, and a box's value is its `value` attribute or "on",
+  ticked or not: without a value attribute it went as "on" on every commit, with one it never
+  went, and nor did a radio. A refused write handed back no tick. What a box or a radio rendered
+  is now whether it was drawn `checked`; it goes only when its tick differs, a box as `true` or
+  `false` and a group of radios as the value chosen; a refusal hands the tick back; and a render keeps
+  a tick not yet drawn (a radio's by its value, while its group offers it) and otherwise shows
+  what is drawn, with the caret in it or not. A render drawn while someone is pressing a box
+  leaves its tick be until the click lands: it used to tick it first, so the click unticked it
+  and sent that, undoing whoever had ticked it. A group of radios may span parts: a render in
+  parts keeps its choice across all its ops, a radio put in drawn ticked or a part swapped for
+  another tag included.
+- **A part inside an `<svg>` comes back as SVG** (`src/client/morph.ts`, todo n77). A render in
+  parts parsed a part's HTML in a `<template>`, as HTML, so a part rooted inside an `<svg>` (a
+  `<g>`, a `<path>`) was replaced by an HTML element of that name, and drew nothing; a `tag` op
+  on a camelCase attribute added a lowercase one beside it (`gradientunits` beside
+  `gradientUnits`) and left the real one stale. The stories could not see it: the harness applies
+  a part as text. A part is now parsed where it stands: in an `<svg>`, as SVG.
+- **A part that moves from one parent part to another goes where it went** (`src/parts.ts`, todo
+  n82). The diff replaced the part it went to, then took it out of the part it left by its key
+  alone, which names the first on the page: when the part it went to came first, the client and
+  the harness took out the copy just put in and left the old one. A part that moved is now taken
+  out of the part it left (`[data-eta-part="b"] [data-eta-part="head"]`).
+- **`waitFor` runs out with the clock fixed** (`src/webview.ts`, todo n83). It measured the wait
+  with `Date.now()`, which bun:test's `setSystemTime` stops, so a browser test that fixed the
+  date to open a page on a given day, then waited for something that never came, hung past its
+  own timeout instead of failing with what it waited for. It measures with `performance.now()`.
+- **A revealed element too tall for the view lands by its top** (`src/client/app.ts`, todo n84).
+  `data-reveal` scrolled with `block: "nearest"`, which, when the element and its scroll margins
+  cannot fit in the view, brings it by the edge it is reached by: from below, its foot, so its
+  top landed above the view, under a sticky header (a whole day on a phone). Such an element now
+  comes by its top, below its margin; one that fits still comes by its nearest edge. The view is
+  the nearest scroller's, or the window's, less its `scroll-padding` (a sticky header it declares;
+  a percentage is of that scroller). Only that scroller moves: a list's tall row no longer
+  scrolls the page around the list too.
+- **Escape and Back say what is typed before the drawer goes** (`src/client/app.ts`). An editing
+  form says a field on leaving it, but a field a render takes out has not been left: Chrome fires
+  `focusout` as it goes, WebKit (every iPhone browser) does not. So words typed in a drawer's
+  editing form were lost on Escape or Back in WebKit, and went after the drawer's own write in
+  Chrome. Both now say the editing form someone is in first.
+- **A write made while the socket is down is not taken for sent** (`src/client/app.ts`). When
+  the connection dropped, the page went inert and the field someone was in lost the caret, so an
+  editing form committed into the closed socket, and the client recorded it as sent: once back,
+  leaving the field again said nothing (the same message, not sent twice), and the words, still
+  in the field, looked kept. And a form submitted as the socket closed was cleared. A write is now
+  sent only on an open socket, and recorded only then, so the next commit says it, and the form
+  keeps what is typed.
+- **A render keeps the reader's place, under a sticky header too** (`src/client/app.ts`, todo
+  n85). The client left a reader's place to the browser's scroll anchoring, which can anchor on
+  the row hidden under an app's sticky header: a stop moved from Wednesday to Thursday, from
+  under the header, slid Thursday 59px up under it (japan-eta). Now, before a render, whole or in
+  parts, the client notes in each scrolled scroller (the page, the bento's window) the first
+  element below where reading starts -- below any bar stuck at its top, position `sticky` or
+  `fixed`, as measured -- and after it puts that element back where it was; not while someone is
+  pressing or has a range selected. `data-reveal` measures the bar the same way, so a revealed row
+  lands below a header nobody declared. A declared `scroll-padding-top` overrides the measure.
 
 ## [0.49.0] - 2026-09-25
 
@@ -404,6 +468,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
+  browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
+  when not, as was a group of radios none of which was chosen. So a title and an unticked box
+  sent the title alone, and ticked, a record. Now a field has one type whatever form it is in: a
+  box is `true` or `false`, always there, whatever its value attribute says; a group of radios is
+  one field, the value chosen or `null`; a `multiple` select its last choice or `null`; and a
+  record keeps every named field's key. A `shape` that read "on", or a missing key as unticked,
+  reads `true` and `false` now. No example sends a box (the wedding's `yesNo` takes both).
 - **The stories check delivery, not only pages.** A story that passed may now fail, by name:
   - an `unseen` member told of any document -- sent a patch -- by the write, its undo or its redo
     (`cy was told of room:general, and should not have been`);
@@ -518,6 +590,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
+  browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
+  when not, as was a group of radios none of which was chosen. So a title and an unticked box
+  sent the title alone, and ticked, a record. Now a field has one type whatever form it is in: a
+  box is `true` or `false`, always there, whatever its value attribute says; a group of radios is
+  one field, the value chosen or `null`; a `multiple` select its last choice or `null`; and a
+  record keeps every named field's key. A `shape` that read "on", or a missing key as unticked,
+  reads `true` and `false` now. No example sends a box (the wedding's `yesNo` takes both).
 - **eta keeps every document in delta.** `@blueshed/delta` is a dependency, and `Example.delta`
   (the example's backends registered on a `createLocal()`) is required. The kernel keeps a copy of
   each document a page reads, kept current from delta's one stream of changes, and draws
