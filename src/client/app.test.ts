@@ -338,6 +338,28 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<number>(`document.getElementById('full').scrollTop`)).toBe(top); // left to the browser
   });
 
+  test("the reader's place is kept with a selection left somewhere, after a right-click, and after a press the window lost", async () => {
+    await using view = await open();
+    const rows = (gone: string[]) => Array.from({ length: 30 }, (_, i) => `r${i}`).filter((k) => !gone.includes(k)).map((k) => `<li id="${k}" data-eta-part="${k}" style="height:50px;margin:0">${k}</li>`).join("");
+    const page = `<div style="position:fixed;inset:8px;overflow:hidden"><div id="full" style="position:absolute;inset:0;overflow:auto"><header style="position:sticky;top:0;height:60px;background:#fff;z-index:1">the day</header><ul data-eta-part="list" style="margin:0;padding:0;list-style:none">${rows([])}</ul></div></div>`;
+    const r11 = `Math.round(document.getElementById('r11').getBoundingClientRect().top - document.getElementById('full').getBoundingClientRect().top)`;
+    const kept: Record<string, number> = {};
+    for (const [how, before] of [
+      ["a selection left above", `getSelection().selectAllChildren(document.getElementById('r2'))`],
+      ["after a right-click", ""],
+      ["after a press the window lost", `(() => { document.getElementById('r12').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); window.dispatchEvent(new Event("blur")); })()`],
+    ] as const) {
+      await pushRender(view, page);
+      await view.evaluate(`(() => { getSelection().removeAllRanges(); document.getElementById('full').scrollTop = 550; })()`); // r11 just under the header, r10 under it
+      if (before) await view.evaluate(before);
+      else await view.click("#r12", { button: "right" });
+      await view.evaluate(`document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))`); // put away a menu, if one opened
+      await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r10"]' }] });
+      kept[how] = await view.evaluate<number>(r11);
+    }
+    expect(kept).toEqual({ "a selection left above": 60, "after a right-click": 60, "after a press the window lost": 60 });
+  });
+
   test("a cell that grows into a fixed window is no place to keep: the page behind stays where it was, open and closed", async () => {
     await using view = await open();
     const box = (open: boolean) =>

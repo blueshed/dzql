@@ -411,8 +411,8 @@ const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "s
   changes). `data-reveal` scrolls the chosen row into the clear; one too tall for it, by its top.
 - A render keeps the reader's place: in each scroller that is scrolled (the page, the bento's
   window), the first element below where reading starts stays where it was, whatever is taken
-  out or put in above it, or under a sticky header -- but not while someone is pressing or has
-  a range selected. Reading starts below any bar stuck at the scroller's top (position `sticky`
+  out or put in above it, or under a sticky header -- but not while someone is pressing (a drag,
+  a selection being made). Reading starts below any bar stuck at the scroller's top (position `sticky`
   or `fixed`, over the middle of its view), as the client measures it, and `data-reveal` lands
   below it too. A header the client cannot measure there is declared: `scroll-padding-top` on
   the scroller (`html` for the page) overrides the measure.

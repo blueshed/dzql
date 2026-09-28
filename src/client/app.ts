@@ -225,12 +225,13 @@ function readingTop(port: Element): number {
 // under the header. So before a render the client notes, in each scroller that is scrolled (the
 // page, and any in it, as the bento's window is), the first element at or below where reading
 // starts (readingTop), and after it puts that element back where it was. Not while someone is
-// pressing (a drag, a scroll by touch, a selection being made) or has a range selected.
+// pressing (a drag, a scroll by touch, a selection being made); a selection left there is no reason.
 type Place = { port: Element; at: Element; top: number; apart: boolean };
 
 let holding = false;
 for (const type of ["pointerdown", "touchstart"]) document.addEventListener(type, () => (holding = true), true);
-for (const type of ["pointerup", "touchend", "touchcancel"]) document.addEventListener(type, () => (holding = false), true);
+for (const type of ["pointerup", "touchend", "touchcancel", "contextmenu"]) document.addEventListener(type, () => (holding = false), true); // a menu takes the press: WebKit sends no pointerup
+window.addEventListener("blur", () => (holding = false)); // nor when the window loses the press
 document.addEventListener("pointercancel", (event) => event.pointerType === "touch" || (holding = false), true); // a touch goes on, as a scroll, until touchend
 
 /** The first element in `port`, in the page's order, whose top is at or below where reading starts. */
@@ -259,7 +260,7 @@ function apart(el: Element, port: Element): boolean {
 }
 
 function placesNow(): Place[] {
-  if (holding || document.getSelection()?.type === "Range") return [];
+  if (holding) return [];
   const scrolled = [...app.querySelectorAll("*")].filter((el) => el.scrollTop > 0 && !(el instanceof HTMLTextAreaElement) && !el.closest("[data-applet]"));
   const ports = document.documentElement.scrollTop > 0 ? [document.documentElement, ...scrolled] : scrolled;
   return ports.flatMap((port) => {

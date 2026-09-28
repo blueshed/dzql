@@ -243,7 +243,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parts, the client notes in each scrolled scroller (the page, the bento's window) the first
   element below where reading starts -- below any bar stuck at its top, position `sticky` or
   `fixed`, as measured -- and after it puts that element back where it was; not while someone is
-  pressing or has a range selected. `data-reveal` measures the bar the same way, so a revealed row
+  pressing (a drag, a selection being made), and a right-click or a lost window ends a press. `data-reveal` measures the bar the same way, so a revealed row
   lands below a header nobody declared. A declared `scroll-padding-top` overrides the measure.
   What a render takes out of the flow is no place to keep: a cell grown into the window (fixed,
   or the one that moves) left the page behind it at its top, and there on close.
