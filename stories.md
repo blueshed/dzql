@@ -266,6 +266,8 @@ for more than it checks:
   (step 6) each of those fails by name. By hand, a drag's pointer is not captured: its events go
   to what is under it, so an applet must allow `setPointerCapture` to refuse a test's pointer
   (leave's calendar does); and an applet's control no story says the gesture for is not worked.
+  And a page that sends again more than a quarter second after a gesture's write has landed is
+  not seen doing it: the harness waits that long for quiet, and no wait can catch every late send.
 
 - **The morph is not under test.** Canon 2 is run without a browser: every member's open page is
   kept as the client would keep it -- a full render replaces it, a render in parts is applied
