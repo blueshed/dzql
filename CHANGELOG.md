@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.50.0] - 2026-09-28
+
 ### Breaking (for example authors)
 
 - **eta needs `@blueshed/delta` ^0.10.0 and `@blueshed/railroad` ^0.15.1.** What an app on eta
