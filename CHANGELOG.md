@@ -193,7 +193,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a window. `boxPage` puts them `inert` while one is open (what is in place in a wrapper that is
   always there, so opening changes only its tag). And a window opened from the keyboard
   left it nowhere: now the client gives it to the first control of the cell that moved (the way
-  back as it opens, its name as it closes), whether the page came whole or in parts.
+  back as it opens, its name as it closes), whether the page came whole or in parts. The window
+  is a region named by its title, so a screen reader says what opened as the keyboard goes in.
 - **A phone may zoom, and does not have to** (todo n60, the rest). iOS zooms into a field under
   16px: find's was 14px, the ticker's and chat's 15px; every field is 16px now. The wedding's
   viewport said `maximum-scale=1`, so the reader could not zoom at all; it no longer does. A way

@@ -118,7 +118,7 @@ describe("the surfaces", () => {
     const out = b.boxPage([{ label: "The desk", back }, { label: "the market" }], [], cells, { key: "market", reading: "<i>reading</i>", tools: ["<i>find</i>"], filter: "<i>filter</i>", body: "<i>rows</i>", note: "a note" });
     expect(out).toContain('<section class="page box windowed">');
     expect(out).not.toContain("page-tools across"); // the page's tools are in the window instead
-    expect(out).toContain(`<div data-eta-part="market" class="cell open" data-key="market" data-moving="market"><div class="cell-head cap"><a class="cell-back" href="#"${back}><span>The desk</span></a>`);
+    expect(out).toContain(`<div data-eta-part="market" class="cell open" data-key="market" data-moving="market" role="region" aria-label="the market"><div class="cell-head cap"><a class="cell-back" href="#"${back}><span>The desk</span></a>`);
     expect(out).toContain('<span class="cell-name">the market</span></div><div class="rail work"><i>reading</i><div class="stack"><i>find</i></div></div><div class="full"><i>rows</i><p class="note">a note</p></div><div class="stack page-tools"');
     // last, so find opening and closing moves nothing the morph matches by position
     expect(out).toMatch(/<div class="stack page-tools"[^]*<\/div><i>filter<\/i><\/div>/);
@@ -150,7 +150,7 @@ describe("the surfaces", () => {
 
   test("a page that is a collection is the window alone: the trail, the rail, the reading, the page's tools, and no tray behind it", () => {
     const out = b.collectionPage([{ label: "Chat" }], { key: "rooms", tools: ["<i>plus</i>"], body: "<i>rows</i>" });
-    expect(out).toStartWith('<section class="page windowed"><div data-eta-part="rooms" class="cell open" data-key="rooms" data-moving="rooms"><div class="cell-head cap"><span class="cell-name">Chat</span></div>');
+    expect(out).toStartWith('<section class="page windowed"><div data-eta-part="rooms" class="cell open" data-key="rooms" data-moving="rooms" role="region" aria-label="Chat"><div class="cell-head cap"><span class="cell-name">Chat</span></div>');
     expect(out).toContain('<div class="stack"><i>plus</i></div></div><div class="full"><i>rows</i></div><div class="stack page-tools"');
     expect(out).not.toContain('class="cells"');
   });
@@ -423,6 +423,8 @@ describe("the surfaces in a browser", () => {
       await send(view, 1, open);
       await waitFor(view, `document.querySelector('.cell.open') !== null`, (v) => v === true);
       expect(await waitFor(view, focused, (v) => v === "market The desk", 1000).catch(() => view.evaluate(focused))).toBe("market The desk");
+      // what a screen reader says as the keyboard goes in: the window, by its name
+      expect(await view.evaluate<string[]>(`(() => { const w = document.activeElement.closest('.cell.open'); return [w.getAttribute('role'), w.getAttribute('aria-label')]; })()`)).toEqual(["region", "the market"]);
 
       await view.evaluate(`document.activeElement.click()`); // the way back, as Enter on it would
       expect((await sent(view)).at(-1)).toEqual({ doc: "desk", ops: [{ op: "replace", path: "/page", value: "" }] });
