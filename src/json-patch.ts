@@ -14,7 +14,11 @@ export type PatchOp = {
  */
 export type WriteId = number | string;
 
-export const isWriteId = (id: unknown): id is WriteId => typeof id === "number" || typeof id === "string";
+/** The longest string an id may be: the server never sends back more than a write's own words would say. */
+export const LONGEST_ID = 64;
+
+/** Is this an id: a number JSON can say back (not 1e400, which parses as Infinity), or a string of at most `LONGEST_ID`? */
+export const isWriteId = (id: unknown): id is WriteId => (typeof id === "number" && Number.isFinite(id)) || (typeof id === "string" && id.length <= LONGEST_ID);
 
 /** The wire echo of a write: sent to every connection that can see `doc`, before any HTML; to the writer's own, with its write's id. */
 export function patchMessage(doc: string, version: number, ops: PatchOp[], id?: WriteId): string {

@@ -133,7 +133,7 @@ function tellChanges(documents: Documents): void {
   });
 }
 
-type Write = { id?: WriteId; doc: string; ops: PatchOp[] };
+type Write = { id?: unknown; doc: string; ops: PatchOp[] };
 
 /** The most ledger entries `inspect` gives a document: it asks delta's history, and every event waits on it. */
 const MOST_INSPECTED = 100;
@@ -151,11 +151,18 @@ const idOf = (message: unknown): WriteId | undefined => {
   return isWriteId(id) ? id : undefined;
 };
 
-/** A write as the wire says it: a document's name, and one op or more, each a verb and a JSON Pointer; and an id, if any, that is one. */
+/** No id at all: none given, or a number JSON cannot say back (1e400 parses as Infinity). */
+const noId = (id: unknown): boolean => id === undefined || (typeof id === "number" && !Number.isFinite(id));
+
+/**
+ * A write as the wire says it: a document's name, and one op or more, each a verb and a JSON
+ * Pointer; and an id that is one (`isWriteId`), or none. One whose id is anything else -- a string
+ * longer than an id, an object -- is not a write, so nothing is ever sent back larger than an id.
+ */
 function isWrite(message: unknown): message is Write {
   const m = message as { id?: unknown; doc?: unknown; ops?: unknown } | null;
   return (
-    (m?.id === undefined || isWriteId(m.id)) &&
+    (noId(m?.id) || isWriteId(m!.id)) &&
     typeof m?.doc === "string" &&
     Array.isArray(m.ops) &&
     m.ops.length > 0 &&
@@ -240,7 +247,7 @@ export function createServer(example: Example, port: number | string = process.e
    * this connection is on. Whichever, a connection writes only what it sees, and then only what the
    * owner permits. True when something was applied.
    */
-  async function write(ws: Socket, { id, doc, ops }: Write): Promise<boolean> {
+  async function write(ws: Socket, { doc, ops }: Write, id: WriteId | undefined): Promise<boolean> {
     const target = await settled(documents, () => resolveName(byDocType, doc, ws));
     if (!target || !(await settled(documents, () => sees(target.owner, ws, target.docId)))) return false;
     return target.owner.docType === "ledger" ? walk(ws, ops, id) : writeDelta(ws, target.owner, target.docId, ops, id);
@@ -257,15 +264,15 @@ export function createServer(example: Example, port: number | string = process.e
     // id and why when the refusal says, and the page is handed back. A message without an id (a
     // page from before ids, the CLI) is answered by the page alone, as it always was. A refusal
     // that says why is also kept for the page to draw, until the session's next write (src/refusal.ts).
+    const id = idOf(message);
     let wrote = false;
     let refusal: Refusal | undefined;
     try {
-      wrote = isWrite(message) && (await write(ws, message));
+      wrote = isWrite(message) && (await write(ws, message, id));
     } catch (err) {
       if (err instanceof Refusal) refusal = err;
       else failed("handling a write", err);
     }
-    const id = idOf(message);
     if (!wrote && id !== undefined) ws.send(refusedMessage(id, refusal?.reason));
     if (isWrite(message)) await tell(ws.data.sessionId, refusal && { doc: message.doc, path: message.ops[0]!.path, reason: refusal.reason });
     if (!wrote) void redraw(ws, true);

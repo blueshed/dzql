@@ -494,6 +494,26 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
+  test("an id is at most 64 characters, and a number JSON can say: a longer one is not a write, a number it cannot is no id", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const longest = "x".repeat(64);
+    write(ws, "note", [{ op: "replace", path: "/text", value: "a long id" }], longest);
+    expect((await until(ws)).find((m) => m.type === "patch")?.id).toBe(longest);
+
+    write(ws, "note", [{ op: "replace", path: "/text", value: "too long an id" }], "x".repeat(65));
+    const tooLong = await until(ws);
+    expect(tooLong.map((m) => m.type)).toEqual(["render"]); // not a write: the page handed back, and no id sent back to say so
+    expect(htmlOf(tooLong[0]!)).not.toContain("too long an id");
+
+    ws.send(`{"id":1e400,"doc":"note","ops":[{"op":"replace","path":"/text","value":"beyond a number"}]}`); // Infinity, which JSON says back as null
+    const beyond = (await until(ws)).find((m) => m.type === "patch");
+    expect(beyond).toMatchObject({ ops: [{ value: { text: "beyond a number" } }] });
+    expect(beyond).not.toHaveProperty("id");
+    ws.close();
+  });
+
   test("an unpermitted op is rejected without crashing: no patch echo, just a re-render", async () => {
     const ws = connect(server);
     await opened(ws);

@@ -10,9 +10,9 @@ describe("a write's answers", () => {
     expect(JSON.parse(refusedMessage(0))).toEqual({ type: "refused", id: 0 });
   });
 
-  test("an id is a number or a string, the sender's own", () => {
-    expect([0, 7, "w-1", ""].every(isWriteId)).toBe(true);
-    expect([undefined, null, {}, [1], true].some(isWriteId)).toBe(false);
+  test("an id is a number JSON can say, or a string of at most 64: the sender's own, never more to send back than that", () => {
+    expect([0, 7, -1.5, "w-1", "", "x".repeat(64)].every(isWriteId)).toBe(true);
+    expect([undefined, null, {}, [1], true, "x".repeat(65), Infinity, NaN].some(isWriteId)).toBe(false);
   });
 });
 
