@@ -14,6 +14,8 @@ export type MorphHooks = {
   onAppletRemoved?(el: Element): void;
   /** Called when a mounted applet's element survives but its data-props changed. */
   onAppletPropsChanged?(el: Element, props: unknown): void;
+  /** Whether someone is pressing this box: its tick is theirs until the click lands. */
+  pressed?(el: Element): boolean;
 };
 
 function isElement(node: ChildNode | Element): node is Element {
@@ -38,17 +40,21 @@ function key(node: ChildNode): string | undefined {
   return isElement(node) && node.id ? node.id : undefined;
 }
 
-function morphAttributes(old: Element, next: Element): void {
+function morphAttributes(old: Element, next: Element, hooks: MorphHooks): void {
+  // a tick not yet drawn, or a box being pressed, is the person's; its tick is set now, so no
+  // attribute below moves it (a box nobody has touched follows its `checked` attribute)
+  const unsent = old instanceof HTMLInputElement && (old.checked !== old.defaultChecked || hooks.pressed?.(old) === true);
+  if (unsent) old.checked = old.checked;
   for (const { name } of [...old.attributes]) {
     if (!next.hasAttribute(name)) {
       old.removeAttribute(name);
-      showRendered(old, name);
+      showRendered(old, name, unsent);
     }
   }
   for (const { name, value } of [...next.attributes]) {
     if (old.getAttribute(name) !== value) {
       old.setAttribute(name, value);
-      showRendered(old, name);
+      showRendered(old, name, unsent);
     }
   }
 }
@@ -58,11 +64,36 @@ function morphAttributes(old: Element, next: Element): void {
  * longer follows its `value` attribute (nor a textarea's its text), so after an undo it would go
  * on showing the value undone -- and an editing form, comparing it with what was rendered, would
  * send it again. Only when the render changed it, so an unrelated render keeps what is typed.
+ * A box or a radio is a select's kind of field (showChosen): it keeps a tick not yet drawn, and
+ * otherwise shows what is drawn, whether or not someone is in it.
  */
-function showRendered(el: Element, name: string): void {
-  if (el === document.activeElement) return;
-  if (el instanceof HTMLInputElement && name === "value") el.value = el.defaultValue;
-  else if (el instanceof HTMLInputElement && name === "checked") el.checked = el.defaultChecked;
+function showRendered(el: Element, name: string, unsent: boolean): void {
+  if (!(el instanceof HTMLInputElement)) return;
+  if (name === "checked") {
+    if (!unsent) el.checked = el.defaultChecked;
+  } else if (name === "value" && el !== document.activeElement) el.value = el.defaultValue;
+}
+
+/** The radios of one group: those of one name, in one form (or in none). */
+export const radiosOf = (form: HTMLFormElement | null, name: string): HTMLInputElement[] =>
+  [...document.querySelectorAll<HTMLInputElement>("input[type=radio]")].filter((r) => r.name === name && r.form === form);
+
+/**
+ * Runs a render, then shows each group of radios the choice someone made in it and has not yet seen
+ * drawn -- by its value, wherever the radios moved, while the group still offers it -- or else what
+ * the group is drawn showing: a select's rule (showChosen), for a group. Neither browser does this:
+ * the morph reuses a radio by its place, and a radio drawn ticked takes the tick from its group. A
+ * group may span parts, so a render in parts runs whole inside one (app.ts), every op of it.
+ */
+export function keepingChoices(render: () => void): void {
+  const chosen = [...document.querySelectorAll<HTMLInputElement>("input[type=radio]:checked:not([checked])")].filter((r) => r.name !== "");
+  const choices = chosen.map((r) => ({ form: r.form, name: r.name, value: r.value }));
+  render();
+  for (const { form, name, value } of choices) {
+    const group = radiosOf(form, name);
+    const radio = group.find((r) => r.value === value && !r.matches(":disabled")) ?? group.findLast((r) => r.defaultChecked);
+    if (radio && !radio.checked) radio.checked = true;
+  }
 }
 
 /** The option a select was drawn showing, by the browser's own rule: the last rendered `selected`, else its first not disabled -- or, in a list (`size` over 1), none. */
@@ -89,7 +120,7 @@ function showChosen(select: HTMLSelectElement, chosen: string | undefined): void
 // DOM the applet manages by hand would fight it for its own children.
 function morphApplet(old: Element, next: Element, hooks: MorphHooks): void {
   const before = old.getAttribute("data-props");
-  morphAttributes(old, next);
+  morphAttributes(old, next, hooks);
   const after = old.getAttribute("data-props");
   if (hooks.onAppletPropsChanged && after !== before) {
     hooks.onAppletPropsChanged(old, after ? JSON.parse(after) : undefined);
@@ -102,7 +133,7 @@ function morphNode(old: ChildNode, next: ChildNode, hooks: MorphHooks): void {
       morphApplet(old, next, hooks);
       return;
     }
-    morphAttributes(old, next);
+    morphAttributes(old, next, hooks);
     const area = old instanceof HTMLTextAreaElement ? old : undefined;
     const text = area?.defaultValue;
     const select = old instanceof HTMLSelectElement && !old.multiple ? old : undefined; // a multiple select is not a field (app.ts): the browser's alone
@@ -163,7 +194,25 @@ function morphChildren(old: Element, next: Element, hooks: MorphHooks): void {
 export function morph(target: Element, html: string, hooks: MorphHooks = {}): void {
   const next = document.createElement(target.tagName);
   next.innerHTML = html;
-  morphChildren(target, next, hooks);
+  keepingChoices(() => morphChildren(target, next, hooks));
+}
+
+const SVG = "http://www.w3.org/2000/svg";
+
+/**
+ * The first element of `html`, parsed as it would be where `old` stands. A <template> parses as
+ * HTML, so an element in an <svg> is parsed in an <svg> instead: it comes back SVG, and so does
+ * what is in it, its attributes in their own case (`gradientUnits`, not `gradientunits`).
+ */
+function parsedFor(old: Element, html: string): Element | null {
+  if (old.namespaceURI === SVG) {
+    const holder = document.createElementNS(SVG, "svg");
+    holder.innerHTML = html;
+    return holder.firstElementChild;
+  }
+  const holder = document.createElement("template");
+  holder.innerHTML = html;
+  return holder.content.firstElementChild;
 }
 
 /**
@@ -172,12 +221,10 @@ export function morph(target: Element, html: string, hooks: MorphHooks = {}): vo
  * applet's element is told when its props change, as in a morph.
  */
 export function morphTag(old: Element, tag: string, hooks: MorphHooks = {}): void {
-  const holder = document.createElement("template");
-  holder.innerHTML = tag;
-  const next = holder.content.firstElementChild;
+  const next = parsedFor(old, tag);
   if (!next) return;
   if (isApplet(old)) morphApplet(old, next, hooks);
-  else morphAttributes(old, next);
+  else morphAttributes(old, next, hooks);
 }
 
 /**
@@ -186,9 +233,7 @@ export function morphTag(old: Element, tag: string, hooks: MorphHooks = {}): voi
  * for the new element, applets inside the old one cleaned up first.
  */
 export function morphElement(old: Element, html: string, hooks: MorphHooks = {}): void {
-  const holder = document.createElement("template");
-  holder.innerHTML = html;
-  const next = holder.content.firstElementChild;
+  const next = parsedFor(old, html);
   if (!next) {
     removeNode(old, hooks);
     return;

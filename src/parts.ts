@@ -69,6 +69,9 @@ function layout(page: string, recorded: Recorded[]): Drawn {
 
 const target = (key: string): string => `[data-eta-part="${key.replaceAll('"', '\\"')}"]`;
 
+/** A part inside the part `key` (or, for `null`, the page). */
+const within = (key: string | null, inner: string): string => (key === null ? target(inner) : `${target(key)} ${target(inner)}`);
+
 /**
  * What to send to bring a page drawn as `prev` to `next`: HTML ops, `[]` when nothing on it
  * changed, or undefined when the page's own outline changed and it must go whole. An applet that
@@ -99,13 +102,14 @@ function settle(key: string | null, prev: Drawn, next: Drawn, ops: HtmlOp[], see
   if (pInside !== nInside) {
     if (!isList(pInside) || !isList(nInside) || pInside.replace(RUN, "") !== nInside.replace(RUN, "")) return false;
     if (tag) ops.push(tag);
-    // A list: the same outline around a run of rows. Rows gone are taken out; rows kept keep their
-    // order and are settled in turn; new rows go in after the row before them, or before the row
-    // after them. A list that was empty has neither, and is replaced.
+    // A list: the same outline around a run of rows. Rows gone are taken out -- a row that moved to
+    // another part, from this one, since a part drawn before this one may hold it already; rows
+    // kept keep their order and are settled in turn; new rows go in after the row before them, or
+    // before the row after them. A list that was empty has neither, and is replaced.
     const kept = n.children.filter((c) => p.children.includes(c));
     if (kept.join("\n") !== p.children.filter((c) => n.children.includes(c)).join("\n")) return false;
     if (kept.length === 0 && n.children.length > 0) return false;
-    for (const gone of p.children.filter((c) => !n.children.includes(c))) ops.push({ op: "remove", target: target(gone) });
+    for (const gone of p.children.filter((c) => !n.children.includes(c))) ops.push({ op: "remove", target: next.nodes.has(gone) ? within(key, gone) : target(gone) });
     n.children.forEach((c, i) => {
       if (p.children.includes(c)) return settleChild(c, prev, next, ops, seen);
       const html = next.nodes.get(c)!.html;

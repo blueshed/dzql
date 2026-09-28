@@ -336,8 +336,10 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
 `<form${write("room", "add", "/messages/-")}><input name="text" required>…</form>`
 ```
 
-- A **form** writes on submit: its one field's value, or a record of several. It clears as it
-  sends. A refused write (answered with the page whole, before any echo of the form's document)
+- A **form** writes on submit: its one field's value, or a record of several. A field has one
+  type whatever form it is in: a box is `true` or `false`, a group of radios is one field, the
+  value chosen or `null`, a `multiple` select its last choice or `null`, anything else its text.
+  A record keeps every named field's key, so a value keeps one shape. It clears as it sends. A refused write (answered with the page whole, before any echo of the form's document)
   hands back what was sent, into each field not typed in since. What is typed while a write is on
   its way is kept, whoever's echo comes.
 - A **button or row** writes on click, with its `data-value` if it has one. A click in a field
@@ -348,15 +350,19 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
   sends the same message twice until a write lands; after that (an echo, an undo) it may. A render that changes a field nobody is in shows the new value (an undo's), so it is not
   sent again; a field someone is in keeps what they type. A select was rendered showing the last
   option drawn `selected`, else its first not disabled; it keeps a choice not yet drawn, by its
-  value, however its options move, and otherwise shows what is drawn. A `multiple` select is not
-  a field (a write carries one value): an editing form never sends it, nor a refusal hands it back,
-  and a form that creates sends only its last choice.
+  value, however its options move, and otherwise shows what is drawn. A box was rendered ticked
+  or not (`checked`), a group of radios with the value drawn `checked`; each goes only when what
+  it holds differs, as it would from a form that creates. It keeps a tick not yet drawn (a
+  radio's by its value, while its group offers it) and otherwise shows what is drawn. A
+  `multiple` select is not a field here (a write carries one value): an editing form never sends
+  it, nor a refusal hands it back.
 
 Also:
 
 - When the connection drops, the page stays as it was (what is typed, what applets hold), but
   `inert`, and `#app` is marked `data-offline` (`src/bento.css` dims it and says so) until the
-  server, reached again, draws it afresh.
+  server, reached again, draws it afresh. A write made while it is down is not sent, nor taken
+  for sent: a form keeps what is typed, and an editing form says it on its next commit.
 - `autofocus` means "this field is waiting for the caret": after a render the client focuses it,
   but only when nothing else has the caret.
 - `data-autoscroll` keeps a list at its foot as it grows.
@@ -413,6 +419,14 @@ const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "s
   the window).
   While a window is open the box behind it is `inert`, and the client keeps the keyboard with the
   cell as it opens and closes.
+  changes). `data-reveal` scrolls the chosen row into the clear; one too tall for it, by its top.
+- A render keeps the reader's place: in each scroller that is scrolled (the page, the bento's
+  window), the first element below where reading starts stays where it was, whatever is taken
+  out or put in above it, or under a sticky header -- but not while someone is pressing or has
+  a range selected. Reading starts below any bar stuck at the scroller's top (position `sticky`
+  or `fixed`, over the middle of its view), as the client measures it, and `data-reveal` lands
+  below it too. A header the client cannot measure there is declared: `scroll-padding-top` on
+  the scroller (`html` for the page) overrides the measure.
 
 Escalate only as the data forces: in place, then the cell, then a drawer, then a window, then a
 modal. A list of five needs no find.
