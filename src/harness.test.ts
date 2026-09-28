@@ -351,6 +351,22 @@ describe("stories harness", () => {
     expect(lying).toContain("the server failed writing room:general: its compartment keeps it off the ledger (ledger: false), yet delta recorded the write");
   }, 30000);
 
+  test("an applet may name the only values a control of it sends: a tap that goes somewhere offers only there, and the values of one write go together", () => {
+    const page = `<div data-applet="photo"${appletWrites(["desk", "replace", "/page", "?guest=2"], ["desk", "replace", "/page", "?guest=3"])}></div>`;
+    const tap = (value: string) => controlsOn(page).some((c) => offers(c, "desk", { op: "replace", path: "/page", value }));
+    expect(tap("?guest=2")).toBe(true);
+    expect(tap("?guest=3")).toBe(true);
+    expect(tap("?guest=4")).toBe(false); // only the values it names
+    const wrong: string[] = [];
+    expect(controlsOn(`<div data-applet="x" data-writes='[{"doc":"desk","op":"replace","path":"/page","values":[{"to":1}]}]'></div>`, wrong)).toEqual([]); // a value is a string, a number or a boolean
+    expect(controlsOn(`<div data-applet="x" data-writes='[{"doc":"desk","op":"replace","path":"/page","values":[]}]'></div>`, wrong)).toEqual([]); // and a list of none is no list
+    expect(wrong).toHaveLength(2);
+    // every page that shows the applet is sent its declaration, so it says each write once
+    expect(appletWrites(["desk", "replace", "/page", "?guest=1"], ["desk", "replace", "/page", "?guest=2"], ["desk", "replace", "/page"], ["desk", "add", "/page", 3])).toBe(
+      ` data-writes='[{"doc":"desk","op":"replace","path":"/page","values":["?guest=1","?guest=2"]},{"doc":"desk","op":"replace","path":"/page"},{"doc":"desk","op":"add","path":"/page","values":[3]}]'`,
+    );
+  });
+
   test("an applet that follows its document's patches is compared without its props; any other element keeps them", () => {
     const board = `<div id="board" data-applet="board" data-doc="ticker" data-props="{&quot;price&quot;:1}"></div>`;
     const photo = `<div id="photo" data-applet="photo" data-props="{&quot;n&quot;:2}"></div>`;

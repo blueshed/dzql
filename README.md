@@ -99,9 +99,9 @@ fails when the README says otherwise.
   345 B patch and 844 B of HTML).
 - **The ticker**, one price tick with 5 viewers watching its symbol: 364 B to each other viewer
   (patches of 186 B and 178 B, and no HTML). The same tick as a bare JSON feed would be 41 B.
-- **The wedding**, one guest's top changed to green: 2.2 KB to the same household's second tab, on
-  its photo (patches of 357 B and 300 B, and 1.5 KB of HTML); 5.2 KB to the couple, on their photo
-  of families (a 353 B patch and 4.8 KB of HTML); 300 B to another household, on its photo (one
+- **The wedding**, one guest's top changed to green: 2.3 KB to the same household's second tab, on
+  its photo (patches of 357 B and 300 B, and 1.6 KB of HTML); 5.4 KB to the couple, on their photo
+  of families (a 353 B patch and 5.0 KB of HTML); 300 B to another household, on its photo (one
   patch and no HTML); and 1.9 KB to another household, reading everyone (a 300 B patch and 1.6 KB of
   HTML).
 <!-- /measured -->

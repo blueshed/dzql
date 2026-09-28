@@ -156,6 +156,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **An applet's mount may name the only values a control of it sends**: `appletWrites([doc, op,
+  path, value], …)`, one for each, said as one write with its `values` on the mount. A story's
+  write counts as offered only with one of them. It is how an applet says where it goes: the
+  wedding's photo now names each figure's tap (`?guest=2`, `?family=1`, `everyone/4`), so the
+  stories can tell a place a tap leads to from one nothing does (n87). What the wedding
+  sends grows by the declaration: the README's costs are measured again.
 - **A story's own premise** (todo n86): `premise: { couple: [write, …] }`, in the cast's shape,
   is made after the cast's writes and before anything else in the story, as each member it names,
   and rolled back with it. The cast's writes are every story's, so a state one story needed (a

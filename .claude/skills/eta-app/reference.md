@@ -498,6 +498,11 @@ it, `appletWrites(["clock", "replace", "/tz"])`):
   calendar's requests) fails its story. An applet that can send nothing now names nothing (the
   wedding's menu once answers are closed), as a button that cannot is drawn `disabled`, which
   the stories count as no control.
+- A write the applet sends with only one value, or a few, names them: `[doc, op, path, value]`,
+  one each. That is how an applet says where it goes: the wedding's photo names each figure's tap
+  (`["session", "replace", "/page", "?guest=2"]`), so a story may stand in the drawer it opens,
+  as it may where a button with that `data-value` leads. The mount says each write once, its
+  values together, since every page that shows the applet is sent it.
 - A declaration that is not `[doc, op, path]` (the older `[doc, path]`) fails every story that
   meets it: `applet declaration must be [doc, op, path]`.
 - The applet sends its writes with `ctx.send(doc, ops)`: a drag let go.

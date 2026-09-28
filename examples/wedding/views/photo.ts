@@ -5,7 +5,7 @@
 import type { PhotoEntry } from "../applets/photo";
 import type { HouseholdDocument } from "../documents/household";
 import type { Spec } from "../applets/figure";
-import { esc } from "./html";
+import { appletWrites, esc } from "./html";
 import { address } from "../../../src/bento";
 import { part } from "../../../src/parts";
 import { guestMark, isGuestOut, matches, specOf } from "./shared";
@@ -17,9 +17,10 @@ export const ghostSpec = (name: string): Spec => ({
   skin: "#E9E1CD", hair: "none", hair_color: "#E9E1CD", top: "#E9E1CD", legs: "#E9E1CD", face: "smile", attitude: "nodding", name,
 });
 
-/** The photo applet's mount point, keyed by `id` so a fragment render can replace just it. */
+/** The photo applet's mount point, keyed by `id` so a fragment render can replace just it. It says where each tap goes (`appletWrites`, with the value), as a button would. */
 export function photoMount(id: string, entries: PhotoEntry[], label: string, reveal = false): string {
-  return part(id, `<div id="${esc(id)}" data-applet="photo" data-props="${esc(JSON.stringify({ entries, label, reveal }))}"></div>`);
+  const taps = entries.flatMap((e) => (e.tap ? [[e.tap.doc, e.tap.op.op, e.tap.op.path, e.tap.op.value as string] as const] : []));
+  return part(id, `<div id="${esc(id)}" data-applet="photo" data-props="${esc(JSON.stringify({ entries, label, reveal }))}"${taps.length ? appletWrites(...taps) : ""}></div>`);
 }
 
 /** The household's guests as photo entries, each with whether they are coming at their feet -- a

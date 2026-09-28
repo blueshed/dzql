@@ -125,17 +125,19 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
  * a button carries (`data-value`, sent as a string). A field or a form writes whatever is typed, so
  * any value. An applet draws its own controls in
  * the browser, so it offers only what its mount says it writes (`data-writes`, src/html.ts), where
- * a `*` segment of its path is any one; one that says nothing offers nothing, whatever document it
- * reads (`data-doc`), as the clock's face writes nothing to the clock it shows.
+ * a `*` segment of its path is any one, with any value or only the ones it names; one that says
+ * nothing offers nothing, whatever document it reads (`data-doc`), as the clock's face writes
+ * nothing to the clock it shows.
  */
 export type Control = { doc: string; op: string; path: string; value?: string; free: boolean; pattern?: true };
 
 const OPS: readonly string[] = ["add", "replace", "remove"];
 
-/** Is this what `appletWrites` puts on a mount, one write of it: a document, an op and a JSON Pointer path? */
-const isDeclared = (w: unknown): w is { doc: string; op: string; path: string } => {
-  const { doc, op, path } = (typeof w === "object" && w !== null ? w : {}) as Record<string, unknown>;
-  return typeof doc === "string" && doc !== "" && typeof op === "string" && OPS.includes(op) && typeof path === "string" && (path === "" || path.startsWith("/"));
+/** Is this what `appletWrites` puts on a mount, one write of it: a document, an op and a JSON Pointer path, and the only values it sends, if it names them? */
+const isDeclared = (w: unknown): w is { doc: string; op: string; path: string; values?: (string | number | boolean)[] } => {
+  const { doc, op, path, values } = (typeof w === "object" && w !== null ? w : {}) as Record<string, unknown>;
+  const valued = values === undefined || (Array.isArray(values) && values.length > 0 && values.every((v) => ["string", "number", "boolean"].includes(typeof v)));
+  return typeof doc === "string" && doc !== "" && typeof op === "string" && OPS.includes(op) && typeof path === "string" && (path === "" || path.startsWith("/")) && valued;
 };
 
 /** What the browser will not let anyone press, nor anything inside it: `inert` (what is behind an open window or modal), `hidden`, and a disabled fieldset's fields. */
@@ -182,8 +184,9 @@ export function controlsOn(page: string, misdeclared: string[] = []): Control[] 
         }
         if (!Array.isArray(said)) return void wrong(raw);
         for (const w of said) {
-          if (isDeclared(w)) found.push({ doc: w.doc, op: w.op, path: w.path, free: true, pattern: true });
-          else wrong(JSON.stringify(w));
+          if (!isDeclared(w)) wrong(JSON.stringify(w));
+          else if (!w.values) found.push({ doc: w.doc, op: w.op, path: w.path, free: true, pattern: true });
+          else for (const value of w.values) found.push({ doc: w.doc, op: w.op, path: w.path, value: String(value), free: false, pattern: true });
         }
       },
     })
@@ -210,7 +213,7 @@ const fits = (pattern: string, path: string): boolean => {
 /** Does `c` send this op to this document? A free control sends any value; a button only its own. */
 export function offers(c: Control, doc: string, op: PatchOp): boolean {
   if (!sameDoc(c.doc, doc)) return false;
-  if (c.pattern) return c.op === op.op && fits(c.path, op.path); // an applet's own: exactly what its mount names
+  if (c.pattern) return c.op === op.op && fits(c.path, op.path) && (c.value === undefined || ("value" in op && String(op.value) === c.value)); // an applet's own: exactly what its mount names
   if (c.op !== op.op || c.path !== op.path) return false;
   return c.free || (c.value === undefined ? !("value" in op) || op.value === undefined : "value" in op && String(op.value) === c.value);
 }
