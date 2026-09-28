@@ -218,6 +218,26 @@ export function offers(c: Control, doc: string, op: PatchOp): boolean {
   return c.free || (c.value === undefined ? !("value" in op) || op.value === undefined : "value" in op && String(op.value) === c.value);
 }
 
+/**
+ * Where a control goes, if it goes anywhere: the address `goTo` makes exactly its write of -- a
+ * button's own value (`data-value`), the one write a person sends by pressing it, or one an
+ * applet's mount names for a tap (`appletWrites`, with values). A field, a form and an applet that
+ * names no value take any value, so they lead nowhere in particular; and the URL bar and the back
+ * button are not on the page (`controlsOn`).
+ */
+export function goesTo(c: Control, goTo: (address: string) => Write): string | undefined {
+  if (c.free || c.value === undefined) return undefined;
+  const w = goTo(c.value);
+  const [op] = w.ops;
+  return w.ops.length === 1 && sameDoc(w.doc, c.doc) && op!.op === c.op && op!.path === c.path && "value" in op! && String(op.value) === c.value ? c.value : undefined;
+}
+
+/** One way on: from where a member stood, the control on their page there that took them to `to`. */
+export type Step = { from: string; to: string; control: Control };
+
+/** The most places the harness walks for one member, looking for a way to a place a story names: enough for any page's drawers, not for a calendar's every month. */
+const MOST_PLACES = 400;
+
 /** A member's applets after a render: one whose props the render changed starts again from them; one it left alone keeps the ops it has taken. */
 export function retake(taken: Map<string, Taken>, page: string): void {
   const now = takersOn(page);
@@ -291,6 +311,21 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   let failing: string[] | undefined;
   const hearFailures = onFailure((what, err) => failing?.push(`the server failed ${what}: ${err instanceof Error ? err.message : String(err)}`));
 
+  // Where a person can go. Every page a member is drawn during the run is kept by where it stands
+  // (`data-page`): what its controls send, by what they write. A place is somewhere a person can
+  // get to when a control on a page they can get to leads there (`goesTo`), from where the cast
+  // put them; the harness puts people anywhere by a session write of its own, so a story could
+  // otherwise stand where no control leads.
+  const offered = new Map<string, Map<string, Map<string, Control>>>(); // member → place → controls, by what each writes
+  const castPlace = new Map<string, string | undefined>();
+  function keep(m: Member): void {
+    const at = placeOf(m.page);
+    if (!stories.goTo || at === undefined) return;
+    const byPlace = offered.get(m.name) ?? offered.set(m.name, new Map()).get(m.name)!;
+    const here = byPlace.get(at) ?? byPlace.set(at, new Map()).get(at)!;
+    for (const c of controlsOn(m.page)) here.set(JSON.stringify(c), c);
+  }
+
   /**
    * Canon 2's fresh render: the page drawn from storage. Each document it reads is opened again
    * from delta's tables (`open_at`). One the tables do not hold is nothing, as the kernel holds a
@@ -350,7 +385,10 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       if (message.type === "inspect") return member.answered.shift()?.();
       member.inbox.push(String(event.data));
       member.page = hear(member.page, message);
-      if (message.type === "render") retake(member.taken, member.page);
+      if (message.type === "render") {
+        retake(member.taken, member.page);
+        keep(member);
+      }
       if (message.type === "patch") for (const t of member.taken.values()) if (t.doc === message.doc) t.ops.push(...(message.ops as unknown as PatchOp[]));
     });
     await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
@@ -476,9 +514,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     db.exec("BEGIN");
     const cast: Member[] = [];
     try {
-      for (const name of Object.keys(stories.cast)) cast.push(await connect(name));
-      await settle(cast);
-      for (const m of cast) for (const write of stories.cast[m.name]!) await send(cast, m, write);
+      await gather(cast);
 
       const who = cast.find((m) => m.name === story.as);
       if (!who) return { name: story.name, failures: [`no one in the cast is called ${story.as}`] };
@@ -582,17 +618,119 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       }
       return { name: story.name, failures };
     } finally {
-      await Promise.all(cast.map(closeTab));
-      await server.idle(); // every close handled, and what it set going
-      db.exec("ROLLBACK");
-      await documents.release(new Set()); // the next story reads from the rolled-back database
+      await disband(cast);
       failing = undefined;
     }
   }
 
+  /** The cast, connected, each member where their own writes put them: where every story starts, inside a transaction. */
+  async function gather(cast: Member[]): Promise<void> {
+    for (const name of Object.keys(stories.cast)) cast.push(await connect(name));
+    await settle(cast);
+    for (const m of cast) for (const write of stories.cast[m.name]!) await send(cast, m, write);
+    for (const m of cast) if (!castPlace.has(m.name)) castPlace.set(m.name, placeOf(m.page));
+  }
+
+  /** Every tab closed, and the transaction rolled back: the next story reads from the database as the seed left it. */
+  async function disband(cast: Member[]): Promise<void> {
+    await Promise.all(cast.map(closeTab));
+    await server.idle(); // every close handled, and what it set going
+    db.exec("ROLLBACK");
+    await documents.release(new Set());
+  }
+
+  /**
+   * The ways from where the cast put `name` to each of `places`, walked over the controls their
+   * pages offered (`offered`): a place's own is its address, before any " @ ". A place on the way
+   * that `name` never stood on in any story is stood on now (`visit`), so a way through a page
+   * no story names is found too.
+   */
+  async function waysFor(name: string, places: Set<string>, visit: (name: string, place: string) => Promise<void>): Promise<Map<string, Step[]>> {
+    const start = castPlace.get(name);
+    const via = new Map<string, Step | undefined>();
+    if (start !== undefined) via.set(start, undefined);
+    const queue = start === undefined ? [] : [start];
+    const missing = () => [...places].some((p) => !via.has(p));
+    while (queue.length > 0 && missing() && via.size < MOST_PLACES) {
+      const at = queue.shift()!;
+      if (!offered.get(name)?.has(at)) await visit(name, at);
+      // a page's own controls before an applet's: the gestures press what the page draws
+      const here = [...(offered.get(name)?.get(at)?.values() ?? [])].sort((a, b) => Number(!!a.pattern) - Number(!!b.pattern));
+      for (const control of here) {
+        const to = goesTo(control, stories.goTo!);
+        if (to === undefined || via.has(to)) continue;
+        via.set(to, { from: at, to, control });
+        queue.push(to);
+      }
+    }
+    const ways = new Map<string, Step[]>();
+    for (const place of places) {
+      if (!via.has(place)) continue;
+      const steps: Step[] = [];
+      for (let step = via.get(place); step; step = via.get(step.from)) steps.unshift(step);
+      ways.set(place, steps);
+    }
+    return ways;
+  }
+
+  /**
+   * Can each story's author get to its `from`, and each member it puts somewhere in `seen` get
+   * there, by the controls their pages offer? A place a story names that no control leads to fails
+   * that story, by name: the harness put them there, and a person could not. After " @ ", what
+   * else the place holds (find's word, a reading) must be sent by a control on the page there.
+   * Places on the way that no story stood on are walked in a cast of their own, rolled back after.
+   */
+  async function reach(told: { story: Story; outcome: Outcome }[]): Promise<Map<string, Map<string, Step[]>>> {
+    const wanted = new Map<string, Set<string>>();
+    const want = (name: string, where: string) => (wanted.get(name) ?? wanted.set(name, new Set()).get(name)!).add(where.split(" @ ")[0]!);
+    const named = told.filter(({ story }) => misshapen(story).length === 0 && stories.cast[story.as] !== undefined);
+    for (const { story } of named) {
+      if (story.from !== undefined) want(story.as, story.from);
+      if ("seen" in story && story.seen && !Array.isArray(story.seen)) for (const [name, where] of Object.entries(story.seen)) if (stories.cast[name]) want(name, where);
+    }
+
+    let walking: Member[] | undefined; // a cast of its own, gathered only if a place on the way was never stood on
+    const visit = async (name: string, place: string): Promise<void> => {
+      if (!walking) {
+        db.exec("BEGIN");
+        walking = [];
+        await gather(walking);
+      }
+      await send(walking, walking.find((m) => m.name === name)!, stories.goTo!(place));
+    };
+    const ways = new Map<string, Map<string, Step[]>>();
+    try {
+      for (const [name, places] of wanted) ways.set(name, await waysFor(name, places, visit));
+    } finally {
+      if (walking) await disband(walking);
+    }
+
+    const lead = (name: string, where: string, why: string): string | undefined => {
+      if (castPlace.get(name) === undefined) return undefined; // a page that says nowhere it stands (a welcome): nowhere to go
+      const [place = "", rest] = where.split(" @ ");
+      if (!ways.get(name)?.has(place)) return `no control leads ${name} to ${JSON.stringify(place)}, where ${why}`;
+      if (rest === undefined) return undefined;
+      const going = stories.goTo!(place).ops.map((op) => JSON.stringify(op));
+      const all = stories.goTo!(where);
+      const there = [...(offered.get(name)?.get(place)?.values() ?? [])];
+      const unsent = all.ops.filter((op) => !going.includes(JSON.stringify(op)) && !there.some((c) => offers(c, all.doc, op)));
+      return unsent.length === 0 ? undefined : `no control leads ${name} to ${JSON.stringify(where)}, where ${why}: nothing on their page at ${JSON.stringify(place)} sends ${unsent.map((op) => `${op.op} ${op.path}`).join(", ")}`;
+    };
+    for (const { story, outcome } of named) {
+      const missed: (string | undefined)[] = [];
+      if (story.from !== undefined) missed.push(lead(story.as, story.from, "the story has them act"));
+      if ("seen" in story && story.seen && !Array.isArray(story.seen)) for (const [name, where] of Object.entries(story.seen)) if (stories.cast[name]) missed.push(lead(name, where, "the story has them see it"));
+      outcome.failures.push(...missed.filter((f): f is string => f !== undefined));
+    }
+    return ways;
+  }
+
   try {
     const only = process.env.STORY; // run only the stories whose name contains this
-    for (const story of stories.stories) if (!only || story.name.includes(only)) outcomes.push(await tell(story));
+    const told: { story: Story; outcome: Outcome }[] = [];
+    for (const story of stories.stories) if (!only || story.name.includes(only)) told.push({ story, outcome: await tell(story) });
+    if (stories.goTo) await reach(told);
+    outcomes.push(...told.map(({ outcome }) => outcome));
   } finally {
     hearFailures();
     server.stop(true);

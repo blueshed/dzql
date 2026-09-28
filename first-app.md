@@ -191,7 +191,9 @@ Your stories say how to put someone at an address, once: leave's is
 `goTo: (address) => ({ doc: "session", ops: [{ op: "replace", path: "/page", value: address }] })`.
 Then a story says where each person stands, `seen: { mo: "2026-10?request=1" }`, and where the
 author acts, `from: "2026-10?draft"`, which puts them where the control is. The harness checks
-that they really got there, so a place your app does not have is a failure, not a silent pass.
+that they really got there, so a place your app does not have is a failure, not a silent pass;
+and that a person could have, by the buttons on their pages from where the cast put them (Next,
+then the Ask tool), so a drawer or a modal nothing opens is a failure too.
 
 ## 9. Saying no, and why
 

@@ -385,7 +385,11 @@ is the page, and the one thing open over it: `guests?guest=2`, `gifts?new`, `?an
   element of the page. The client mirrors it into the URL and sends the write on back and
   forward, so the back button closes a drawer and a link opens one. On first load the session
   catches up to the URL.
-- The stories put people at addresses with `Stories.goTo(address)`, and check they got there.
+- The stories put people at addresses with `Stories.goTo(address)`, and check they got there,
+  and that a person could have: a story's `from`, and each place its `seen` names, must be one a
+  control leads to from where the cast stands (a button whose `data-value` is the address, or a
+  tap an applet's mount names). One nothing leads to fails the story: `no control leads okafors
+  to "?guest=2"`. The URL and the back button are not controls.
 
 ## Pages: the bento (`src/bento.ts`, `src/bento.css`)
 

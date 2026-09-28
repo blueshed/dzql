@@ -10,7 +10,7 @@ import type { Compartment } from "./compartments/compartment";
 import { read } from "./documents";
 import { appletWrites, write } from "./html";
 import type { Example } from "./example";
-import { comparable, controlsOn, hear, holding, offers, placeOf, print, retake, run, takersOn, unheld } from "./harness";
+import { comparable, controlsOn, goesTo, hear, holding, offers, placeOf, print, retake, run, takersOn, unheld } from "./harness";
 import { diff, drawParts, part } from "./parts";
 import type { Story } from "./stories";
 
@@ -365,6 +365,50 @@ describe("stories harness", () => {
     expect(appletWrites(["desk", "replace", "/page", "?guest=1"], ["desk", "replace", "/page", "?guest=2"], ["desk", "replace", "/page"], ["desk", "add", "/page", 3])).toBe(
       ` data-writes='[{"doc":"desk","op":"replace","path":"/page","values":["?guest=1","?guest=2"]},{"doc":"desk","op":"replace","path":"/page"},{"doc":"desk","op":"add","path":"/page","values":[3]}]'`,
     );
+  });
+
+  // Where a person can go (n87): the harness puts people anywhere by a session write of its own, so
+  // a story could stand where no control leads. The ticker, with controls taken off its pages.
+  describe("a story stands only where a control leads", async () => {
+    const { example: ticker } = await import("../examples/ticker/index");
+    const { stories: told } = await import("../examples/ticker/stories");
+    const desk = (page: string) => write("desk", "replace", "/page", page);
+    const without = (...controls: string[]): Example => ({ ...ticker, render: (sessionId) => controls.reduce((html, c) => html.replaceAll(c, ""), ticker.render(sessionId)) });
+    const named = (prefix: string): Story[] => told.stories.filter((s) => s.name.startsWith(prefix));
+
+    test("a story whose from no page offers a way to fails by name, though the harness can put its author there", async () => {
+      const report = await run(without(desk("board?new")), { ...told, stories: named("Ann watches Charlie Metals, and only her board grows") });
+      expect(report.outcomes[0]!.failures).toEqual(['no control leads ann to "board?new", where the story has them act']);
+      expect((await run(ticker, { ...told, stories: named("Ann watches Charlie Metals, and only her board grows") })).failed).toBe(0);
+    }, 30000);
+
+    test("so does a place a seen puts someone, and what a place holds after \" @ \" must be sent from the page there", async () => {
+      const report = await run(without(desk("market?symbol=BRVO"), write("desk", "replace", "/reading/board", "list")), { ...told, stories: named("Bravo ticks") });
+      expect(report.outcomes.map((o) => o.failures)).toEqual([
+        [],
+        ['no control leads ann to "board @ reading.board=list", where the story has them see it: nothing on their page at "board" sends replace /reading/board'],
+        ['no control leads ann to "market?symbol=BRVO", where the story has them see it'],
+      ]);
+    }, 30000);
+
+    test("a way through a place no story stands on is walked, and one a page never offers is not a way at all", async () => {
+      // Ann stands only where the cast put her; the way to Alpha's modal is through the market and Alpha's drawer
+      const drops = named("Ann drops Alpha");
+      expect((await run(ticker, { ...told, stories: drops })).outcomes[0]!.failures).toEqual([]);
+      expect((await run(without(desk("market")), { ...told, stories: drops })).outcomes[0]!.failures).toEqual(['no control leads ann to "market?confirm=ALPH", where the story has them act']);
+    }, 30000);
+  });
+
+  test("a control goes where goTo makes exactly its write: a button's own value, or the one an applet names; nothing that takes any value goes anywhere", () => {
+    const desk = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/page", value: page }] });
+    const page = [
+      `<button${write("desk", "replace", "/page", "market")}>market</button>`,
+      `<button${write("desk", "replace", "/reading/board", "list")}>list</button>`,
+      `<div data-page="" data-page-write='{"doc":"desk","op":"replace","path":"/page"}'></div>`,
+      `<form${write("desk", "replace", "/page")}><input name="to"></form>`,
+      `<div data-applet="photo"${appletWrites(["desk", "replace", "/page", "?guest=2"], ["desk", "replace", "/page"])}></div>`,
+    ].join("");
+    expect(controlsOn(page).map((c) => goesTo(c, desk))).toEqual(["market", undefined, undefined, "?guest=2", undefined]); // the page's own address is none
   });
 
   test("an applet that follows its document's patches is compared without its props; any other element keeps them", () => {

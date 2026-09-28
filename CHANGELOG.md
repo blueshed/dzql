@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **A story stands only where a control leads** (todo n87). The harness put a story's author at
+  its `from`, and each member at the place their `seen` names, by a session write of its own, and
+  never asked whether a person could get there: japan-eta's "Daisy adds two nights in Kanazawa"
+  passed from the add-a-base modal while no control anywhere opened it. Now every page a member
+  is drawn in the run is kept by where it stands, with the places its controls lead to (a button
+  whose value `goTo` makes its write of, or a tap an applet's mount names), and a place a story
+  names that no control leads to from where the cast put them fails the story, by name (`no
+  control leads okafors to "?guest=2", where the story has them act`); after " @ ", what the
+  place holds must be sent by a control on the page there. Places on the way that no story
+  stood on are walked in a cast of their own. It found leave's months (below) and the wedding
+  photo's taps, which nothing declared.
 - **A control the browser will not press is none**, whatever is around it. The stories counted a
   button inside an `inert` box, a `hidden` element or a disabled fieldset as offered, since only
   the button's own `disabled` was looked at; keyboard and phone put the whole box `inert` behind
