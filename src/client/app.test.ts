@@ -264,6 +264,94 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(Math.abs(top! - tenth!)).toBeLessThan(1); // under a tenth of the view
   });
 
+  test("the reader's place is kept under a sticky header: a stop another moves from Wednesday to Thursday, from under the header, leaves Thursday where it was read", async () => {
+    // two people on one trip, through a server that draws it with the kernel's parts: Willem moves
+    // Wednesday's last stop to Thursday, while Ann reads Thursday from just under the header
+    const stop = (k: string) => part(k, `<li style="height:59px;margin:0;border-bottom:1px solid #ccc;box-sizing:border-box">${k}</li>`);
+    const day = (key: string, stops: string[]) => part(key, `<section id="${key}"><h2 style="height:40px;margin:0">${key}</h2><ul style="margin:0;padding:0;list-style:none">${stops.map(stop).join("")}</ul></section>`);
+    for (const whole of [false, true]) {
+      const trip = { wed: ["w0", "w1", "w2", "w3", "w4"], thu: ["t0", "t1", "t2"] };
+      const page = () =>
+        `<style>body { margin: 0 }</style><header style="position:sticky;top:0;height:140px;background:#fff;z-index:1"><button type="button" id="move" data-write='{"doc":"trip","op":"replace","path":"/move"}' data-value="w4">Move</button></header>` +
+        part("trip", `<main><div style="height:300px"></div>${day("wed", trip.wed)}${day("thu", trip.thu)}<div style="height:2000px"></div></main>`);
+      const clients = new Set<Bun.ServerWebSocket<{ drawn?: ReturnType<typeof drawParts> }>>();
+      const relay = Bun.serve<{ drawn?: ReturnType<typeof drawParts> }>({
+        port: 0,
+        routes: { "/": fixture, "/ws": (req: Request, s: Bun.Server<{ drawn?: ReturnType<typeof drawParts> }>) => (s.upgrade(req, { data: {} }) ? undefined : new Response("no", { status: 400 })) },
+        websocket: {
+          open(ws) {
+            clients.add(ws);
+            ws.data.drawn = drawParts(page);
+            ws.send(JSON.stringify({ type: "render", html: ws.data.drawn.html }));
+          },
+          message() {
+            trip.thu.unshift(trip.wed.pop()!); // the stop, moved
+            for (const ws of clients) {
+              const next = drawParts(page);
+              const ops = diff(ws.data.drawn!, next);
+              ws.data.drawn = next;
+              ws.send(JSON.stringify(whole || !ops ? { type: "render", html: next.html } : { type: "render", ops }));
+            }
+          },
+          close(ws) {
+            clients.delete(ws);
+          },
+        },
+      });
+      try {
+        await using ann = new Bun.WebView();
+        await using willem = new Bun.WebView();
+        for (const view of [ann, willem]) {
+          await view.navigate(relay.url.toString());
+          await waitFor(view, `document.getElementById('thu') !== null`, (v) => v === true);
+        }
+        await ann.evaluate(`window.scrollTo(0, scrollY + document.getElementById('thu').getBoundingClientRect().top - 140)`); // Thursday, just under the header; w4 under it
+        const thu = `Math.round(document.getElementById('thu').getBoundingClientRect().top)`;
+        expect(await ann.evaluate<number>(thu)).toBe(140);
+        await willem.click("#move");
+        await waitFor(ann, `document.querySelector('#thu li')?.textContent`, (v) => v === "w4");
+        await Bun.sleep(50);
+        expect(`${whole ? "whole" : "in parts"}: ${await ann.evaluate<number>(thu)}`).toBe(`${whole ? "whole" : "in parts"}: 140`);
+      } finally {
+        relay.stop(true);
+      }
+    }
+  });
+
+  test("the reader's place is kept in a scroller of its own too, as the bento's window is, and not while someone is pressing", async () => {
+    await using view = await open();
+    const rows = (gone: string[]) => Array.from({ length: 30 }, (_, i) => `r${i}`).filter((k) => !gone.includes(k)).map((k) => `<li id="${k}" data-eta-part="${k}" style="height:50px;margin:0">${k}</li>`).join("");
+    const page = (gone: string[] = []) =>
+      `<div style="position:fixed;inset:8px;overflow:hidden"><div id="full" style="position:absolute;inset:0;overflow:auto"><header style="position:sticky;top:0;height:60px;background:#fff;z-index:1">the day</header><ul data-eta-part="list" style="margin:0;padding:0;list-style:none">${rows(gone)}</ul></div></div>`;
+    const r11 = `Math.round(document.getElementById('r11').getBoundingClientRect().top - document.getElementById('full').getBoundingClientRect().top)`;
+    await pushRender(view, page());
+    await view.evaluate(`document.getElementById('full').scrollTop = 550`); // r11 just under the header, r10 under it
+    expect(await view.evaluate<number>(r11)).toBe(60);
+    await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r10"]' }] });
+    expect(await view.evaluate<number>(r11)).toBe(60);
+    await pushRender(view, page(["r10", "r9"])); // whole, one more gone above
+    expect(await view.evaluate<number>(r11)).toBe(60);
+
+    await view.evaluate(`document.getElementById('full').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`); // a drag begins
+    const top = await view.evaluate<number>(`document.getElementById('full').scrollTop`);
+    await pushRender(view, page(["r10", "r9", "r8"]));
+    expect(await view.evaluate<number>(`document.getElementById('full').scrollTop`)).toBe(top); // left to the browser
+  });
+
+  test("a revealed element lands below a sticky header the page does not declare", async () => {
+    await using view = await open();
+    const page = (height: string, reveal: boolean) =>
+      `<header style="position:sticky;top:0;height:40px;background:#fff;z-index:1"></header><div style="height:2000px"></div><div id="day" style="height:${height};scroll-margin:24px 0"${reveal ? " data-reveal" : ""}></div><div style="height:2000px"></div>`;
+    const landed: number[] = [];
+    for (const height of ["100px", "100vh"]) {
+      await pushRender(view, page(height, false));
+      await view.evaluate(`window.scrollTo(0, document.documentElement.scrollHeight)`);
+      await pushRender(view, page(height, true));
+      landed.push(await view.evaluate<number>(`Math.round(document.getElementById('day').getBoundingClientRect().top)`));
+    }
+    expect(landed).toEqual([64, 64]); // under the header, and its margin: one that fits, and one too tall
+  });
+
   test("a field waiting with autofocus gets the caret when a render brings it in, and never takes it from a field someone is in", async () => {
     await using view = await open();
     // the first page's field takes the one autofocus the browser gives a document

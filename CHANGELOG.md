@@ -236,11 +236,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in the field, looked kept. And a form submitted as the socket closed was cleared. A write is now
   sent only on an open socket, and recorded only then, so the next commit says it, and the form
   keeps what is typed.
-- **A page with a sticky header declares its height** (the eta-app skill, todo n85). A render
-  that took out the row hidden under an app's sticky header slid the rows below it up under the
-  header: the client keeps no reader's place, and the browser's scroll anchoring, in WebKit and
-  Chrome, chose that hidden row to anchor on. A page that says `html { scroll-padding-top:
-  <height> }` is anchored below its header, and `data-reveal` lands below it too. The skill says so.
+- **A render keeps the reader's place, under a sticky header too** (`src/client/app.ts`, todo
+  n85). The client left a reader's place to the browser's scroll anchoring, which can anchor on
+  the row hidden under an app's sticky header: a stop moved from Wednesday to Thursday, from
+  under the header, slid Thursday 59px up under it (japan-eta). Now, before a render, whole or in
+  parts, the client notes in each scrolled scroller (the page, the bento's window) the first
+  element below where reading starts -- below any bar stuck at its top, position `sticky` or
+  `fixed`, as measured -- and after it puts that element back where it was; not while someone is
+  pressing or has a range selected. `data-reveal` measures the bar the same way, so a revealed row
+  lands below a header nobody declared. A declared `scroll-padding-top` overrides the measure.
 
 ## [0.49.0] - 2026-09-25
 

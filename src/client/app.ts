@@ -164,14 +164,22 @@ function revealChanged(previous: Element | null): void {
   const current = app.querySelector<HTMLElement>("[data-reveal]");
   if (!current || current === previous) return;
   const port = scrollerOf(current);
+  const reading = readingTop(port);
+  const covered = reading - topOf(port); // what stands over the top of the view: a header, measured or declared
   const { scrollMarginTop, scrollMarginBottom } = getComputedStyle(current);
-  const { scrollPaddingTop, scrollPaddingBottom } = getComputedStyle(port);
-  const [marginTop, paddingTop] = [parseFloat(scrollMarginTop), lengthIn(scrollPaddingTop, port.clientHeight)];
-  const view = port.clientHeight - paddingTop - lengthIn(scrollPaddingBottom, port.clientHeight);
+  const marginTop = parseFloat(scrollMarginTop);
+  const view = port.clientHeight - covered - lengthIn(getComputedStyle(port).scrollPaddingBottom, port.clientHeight);
   const box = current.getBoundingClientRect();
-  if (box.height + marginTop + parseFloat(scrollMarginBottom) <= view) return current.scrollIntoView({ block: "nearest", inline: "nearest" });
-  const top = port === document.documentElement ? 0 : port.getBoundingClientRect().top + port.clientTop;
-  port.scrollBy({ top: box.top - top - paddingTop - marginTop });
+  if (box.height + marginTop + parseFloat(scrollMarginBottom) > view) return port.scrollBy({ top: box.top - reading - marginTop });
+  // one that fits comes by the browser's nearest edge, told of a header it does not know of for the moment
+  const declared = getComputedStyle(port).scrollPaddingTop !== "auto";
+  const style = port.getAttribute("style");
+  if (!declared && covered > 0) (port as HTMLElement).style.scrollPaddingTop = `${covered}px`;
+  current.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (!declared && covered > 0) {
+    if (style === null) port.removeAttribute("style");
+    else port.setAttribute("style", style);
+  }
 }
 
 /** The scroller `el` is read in: its nearest ancestor that scrolls, or the page. */
@@ -185,13 +193,92 @@ function scrollerOf(el: Element): Element {
 /** A computed `scroll-padding` in px: a percentage is of the scroller's own height, and `auto` is none. */
 const lengthIn = (value: string, height: number): number => (value.endsWith("%") ? (parseFloat(value) * height) / 100 : parseFloat(value) || 0);
 
+/** Where `port`'s view starts, in the window: its top edge inside its border, or for the page the window's top. */
+const topOf = (port: Element): number => (port === document.documentElement ? 0 : port.getBoundingClientRect().top + port.clientTop);
+
+/** Across the middle of `port`'s view, where points are looked at. */
+const middleOf = (port: Element): number =>
+  port === document.documentElement ? port.clientWidth / 2 : port.getBoundingClientRect().left + port.clientLeft + port.clientWidth / 2;
+
+/**
+ * Where reading starts in `port`, in the window: below what its `scroll-padding-top` declares, or,
+ * with nothing declared, below any bar stuck at its top (a header: position sticky or fixed, over
+ * the middle of its view), as measured, a bar stuck under a bar included.
+ */
+function readingTop(port: Element): number {
+  const top = topOf(port);
+  const declared = getComputedStyle(port).scrollPaddingTop;
+  if (declared !== "auto") return top + lengthIn(declared, port.clientHeight);
+  let line = top;
+  for (let bars = 0; bars < 3; bars++) {
+    const bar = document.elementsFromPoint(middleOf(port), line + 1).find((el) => el !== port && port.contains(el) && /sticky|fixed/.test(getComputedStyle(el).position));
+    const below = bar?.getBoundingClientRect().bottom ?? line;
+    if (below <= line) break;
+    line = below;
+  }
+  return line;
+}
+
+// The reader's place (todo n85). A render keeps what someone is reading where they read it: a row
+// taken out above them, or under a sticky header, must not move the rest. The browsers' own scroll
+// anchoring can choose the very row hidden under a header, and the rows below it then slide up
+// under the header. So before a render the client notes, in each scroller that is scrolled (the
+// page, and any in it, as the bento's window is), the first element at or below where reading
+// starts (readingTop), and after it puts that element back where it was. Not while someone is
+// pressing (a drag, a scroll by touch, a selection being made) or has a range selected.
+type Place = { port: Element; at: Element; top: number };
+
+let holding = false;
+for (const type of ["pointerdown", "touchstart"]) document.addEventListener(type, () => (holding = true), true);
+for (const type of ["pointerup", "touchend", "touchcancel"]) document.addEventListener(type, () => (holding = false), true);
+document.addEventListener("pointercancel", (event) => event.pointerType === "touch" || (holding = false), true); // a touch goes on, as a scroll, until touchend
+
+/** The first element in `port`, in the page's order, whose top is at or below where reading starts. */
+function readerIn(port: Element): Element | undefined {
+  const line = readingTop(port);
+  let at: Element | null | undefined = document.elementsFromPoint(middleOf(port), line + 1).find((el) => el !== port && port.contains(el));
+  while (at) {
+    const box: DOMRect = at.getBoundingClientRect();
+    const boxless: boolean = box.width === 0 && box.height === 0; // display: contents, or nothing drawn
+    if (!boxless && box.top >= line) return at;
+    at = (boxless || box.bottom > line) && at.firstElementChild ? at.firstElementChild : after(at, port);
+  }
+  return undefined;
+}
+
+/** What follows `el` in `port`, past all it holds. */
+function after(el: Element, port: Element): Element | null {
+  for (let at: Element | null = el; at && at !== port; at = at.parentElement) if (at.nextElementSibling) return at.nextElementSibling;
+  return null;
+}
+
+function placesNow(): Place[] {
+  if (holding || document.getSelection()?.type === "Range") return [];
+  const scrolled = [...app.querySelectorAll("*")].filter((el) => el.scrollTop > 0 && !(el instanceof HTMLTextAreaElement) && !el.closest("[data-applet]"));
+  const ports = document.documentElement.scrollTop > 0 ? [document.documentElement, ...scrolled] : scrolled;
+  return ports.flatMap((port) => {
+    const at = readerIn(port);
+    return at ? [{ port, at, top: at.getBoundingClientRect().top - topOf(port) }] : [];
+  });
+}
+
+function keepPlaces(places: Place[]): void {
+  for (const { port, at, top } of places) {
+    if (!port.isConnected || !port.contains(at)) continue; // what they read is gone: what follows takes its place
+    const moved = at.getBoundingClientRect().top - topOf(port) - top;
+    if (Math.abs(moved) >= 1) port.scrollTop += moved;
+  }
+}
+
 function render(html: string) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
   const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
   const moving = movingElement(html);
 
   const apply = () => {
+    const places = placesNow();
     morph(app, html, hooks);
+    keepPlaces(places);
     settle(before);
     syncPage();
     revealChanged(previousReveal);
@@ -221,6 +308,7 @@ function render(html: string) {
 function applyFragments(ops: HtmlOp[]) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
   const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
+  const places = placesNow();
 
   keepingChoices(() => {
     for (const op of ops) {
@@ -238,6 +326,7 @@ function applyFragments(ops: HtmlOp[]) {
       }
     }
   });
+  keepPlaces(places);
   settle(before);
   syncPage();
   revealChanged(previousReveal);

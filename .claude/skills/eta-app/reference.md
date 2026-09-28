@@ -409,11 +409,13 @@ const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "s
 - The stylesheet imports `src/bento.css` first, then says its own tokens.
 - `data-moving` names the element that grows (a view transition runs only when its own tag
   changes). `data-reveal` scrolls the chosen row into the clear; one too tall for it, by its top.
-- A page with a sticky header of its own says how tall it is: `html { scroll-padding-top:
-  <height> }`. The client keeps no reader's place across a render; the browser's scroll anchoring
-  does, on an element in the view, and without the padding the row hidden under the header is
-  one. So a render that takes that row out slides the rows below it up under the header. With
-  the padding the browser anchors below it, and `data-reveal` lands below it too.
+- A render keeps the reader's place: in each scroller that is scrolled (the page, the bento's
+  window), the first element below where reading starts stays where it was, whatever is taken
+  out or put in above it, or under a sticky header -- but not while someone is pressing or has
+  a range selected. Reading starts below any bar stuck at the scroller's top (position `sticky`
+  or `fixed`, over the middle of its view), as the client measures it, and `data-reveal` lands
+  below it too. A header the client cannot measure there is declared: `scroll-padding-top` on
+  the scroller (`html` for the page) overrides the measure.
 
 Escalate only as the data forces: in place, then the cell, then a drawer, then a window, then a
 modal. A list of five needs no find.
