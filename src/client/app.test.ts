@@ -847,9 +847,8 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a write made while the socket is down is not taken for sent: a form keeps what is typed, and an editing form says it once the socket is back", async () => {
     await using view = await open();
-    // as a real socket does, the stub drops what is sent while it is not open
-    const stub = `(() => { window.__sent ??= []; window.eta.socket().send = function (d) { if (this.readyState === 1) window.__sent.push(JSON.parse(d)); }; })()`;
-    await view.evaluate(stub);
+    // every socket's send, the next one's too; as a real socket does, one not open drops what it is given
+    await view.evaluate(`(() => { window.__sent = []; WebSocket.prototype.send = function (d) { if (this.readyState === 1) window.__sent.push(JSON.parse(d)); }; })()`);
     await pushRender(view, `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>
       <form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>Hello</textarea></form>`);
     await waitFor(view, `document.getElementById('words') !== null`, (v) => v === true);
@@ -862,11 +861,13 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     const dropped = await view.evaluate(`(() => { window.__old = window.eta.socket(); window.__old.close(); document.getElementById('say').requestSubmit(); return document.getElementById('text').value; })()`);
     expect(dropped).toBe("hi all"); // not sent, so not cleared
     await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
-    await view.evaluate(stub);
+    const words = { doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] };
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000); // the words go as the socket is back, the field untouched
+    expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([words]);
     await view.evaluate(`document.getElementById('words').focus()`);
-    await view.evaluate(`document.getElementById('words').blur()`); // leaving it, now the socket is back
+    await view.evaluate(`document.getElementById('words').blur()`); // and leaving it says nothing again
     await Bun.sleep(50);
-    expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([{ doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] }]);
+    expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([words]);
   });
 
   test("a connection that drops leaves the page as it was, inert and marked, until it is back", async () => {

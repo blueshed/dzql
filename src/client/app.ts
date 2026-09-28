@@ -568,6 +568,8 @@ function connect() {
     reconnectDelay = RECONNECT_DELAY_MS;
     app.inert = false;
     delete app.dataset.offline;
+    // an edit made as the connection went was dropped, and waits in its field: it goes now
+    for (const form of app.querySelectorAll<HTMLFormElement>("form[data-write-on]")) commitEdit(form);
   });
 
   socket.addEventListener("message", (event) => {

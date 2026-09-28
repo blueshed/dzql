@@ -234,8 +234,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   editing form committed into the closed socket, and the client recorded it as sent: once back,
   leaving the field again said nothing (the same message, not sent twice), and the words, still
   in the field, looked kept. And a form submitted as the socket closed was cleared. A write is now
-  sent only on an open socket, and recorded only then, so the next commit says it, and the form
-  keeps what is typed.
+  sent only on an open socket, and recorded only then: an editing form says what was dropped as
+  the socket is back, and a form keeps what is typed.
 - **A render keeps the reader's place, under a sticky header too** (`src/client/app.ts`, todo
   n85). The client left a reader's place to the browser's scroll anchoring, which can anchor on
   the row hidden under an app's sticky header: a stop moved from Wednesday to Thursday, from
