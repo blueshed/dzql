@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.51.0] - 2026-09-28
+
 ### Breaking (for example authors)
 
 - **`reasonFor` is `toldAt`, and what a session is told has a kind: why a write was refused, or
