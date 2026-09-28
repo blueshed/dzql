@@ -201,6 +201,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and sent that, undoing whoever had ticked it. A group of radios may span parts: a render in
   parts keeps its choice across all its ops, a radio put in drawn ticked or a part swapped for
   another tag included.
+- **The morph leaves be what follows a child put in or taken out** (`src/client/morph.ts`). It
+  matched children without an id by place alone, so an element put in or taken out ahead of its
+  siblings shifted every one after it: each was rebuilt, and a button among them lost the caret
+  to the body (japan-eta's reveal mark, drawn first, did this until it was drawn last). Children
+  without an id are now matched in order by tag (the same head and tail by place, the middle by
+  their longest common run), and what is not reused goes first, so what stays is not moved.
 - **A part inside an `<svg>` comes back as SVG** (`src/client/morph.ts`, todo n77). A render in
   parts parsed a part's HTML in a `<template>`, as HTML, so a part rooted inside an `<svg>` (a
   `<g>`, a `<path>`) was replaced by an HTML element of that name, and drew nothing; a `tag` op

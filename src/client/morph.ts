@@ -5,10 +5,10 @@
 //
 // The HTML here is always server-authored (nothing on the client mutates
 // the DOM except applets, fenced off below), so the long tail of general
-// keyed-list reconciliation doesn't apply: same tag in the same place is
-// reused, a different tag is replaced, and children are matched by `id`
-// first, then by position. That's enough for lists that only grow, shrink,
-// or update in place, which is all this app ever renders.
+// keyed-list reconciliation doesn't apply: children are matched by `id`
+// first, then the rest in order by tag (matchInOrder), the same tag reused
+// and a different one replaced. That's enough for lists that only grow,
+// shrink, or update in place, which is all this app ever renders.
 export type MorphHooks = {
   /** Called when a mounted applet's element is about to be removed. */
   onAppletRemoved?(el: Element): void;
@@ -154,6 +154,44 @@ export function removeNode(node: ChildNode, hooks: MorphHooks): void {
   node.remove();
 }
 
+/**
+ * Which of `olds` each of `nexts` reuses, in order: the longest run of the same types the two have in
+ * common. So a child put in or taken out ahead of its siblings leaves them be, where matching by place
+ * alone rebuilt every one after it (and took the caret from a button among them). The same head and
+ * tail are matched by place first, so a long list changed in the middle costs little; a middle too
+ * big to compare is matched by place, as before.
+ */
+function matchInOrder(olds: ChildNode[], nexts: ChildNode[]): Map<ChildNode, ChildNode> {
+  const matched = new Map<ChildNode, ChildNode>();
+  let head = 0;
+  while (head < olds.length && head < nexts.length && sameType(olds[head]!, nexts[head]!)) matched.set(nexts[head]!, olds[head++]!);
+  let tail = 0;
+  while (tail < olds.length - head && tail < nexts.length - head && sameType(olds.at(-1 - tail)!, nexts.at(-1 - tail)!)) {
+    matched.set(nexts.at(-1 - tail)!, olds.at(-1 - tail)!);
+    tail++;
+  }
+  const o = olds.slice(head, olds.length - tail);
+  const n = nexts.slice(head, nexts.length - tail);
+  if (o.length * n.length > 250_000) {
+    n.forEach((node, i) => o[i] && sameType(o[i]!, node) && matched.set(node, o[i]!));
+    return matched;
+  }
+  // longest common subsequence, by type: runs[i][j] is its length over n from i and o from j
+  const width = o.length + 1;
+  const runs = new Uint32Array((n.length + 1) * width);
+  for (let i = n.length - 1; i >= 0; i--) {
+    for (let j = o.length - 1; j >= 0; j--) {
+      runs[i * width + j] = sameType(n[i]!, o[j]!) ? runs[(i + 1) * width + j + 1]! + 1 : Math.max(runs[(i + 1) * width + j]!, runs[i * width + j + 1]!);
+    }
+  }
+  for (let i = 0, j = 0; i < n.length && j < o.length; ) {
+    if (sameType(n[i]!, o[j]!) && runs[i * width + j] === runs[(i + 1) * width + j + 1]! + 1) matched.set(n[i++]!, o[j++]!);
+    else if (runs[(i + 1) * width + j]! >= runs[i * width + j + 1]!) i++;
+    else j++;
+  }
+  return matched;
+}
+
 function morphChildren(old: Element, next: Element, hooks: MorphHooks): void {
   const oldNodes = [...old.childNodes];
   const newNodes = [...next.childNodes];
@@ -164,20 +202,28 @@ function morphChildren(old: Element, next: Element, hooks: MorphHooks): void {
     if (k) oldByKey.set(k, node);
   }
 
-  const used = new Set<ChildNode>();
+  // a child with an id is its own by the id; the rest by type, in order
+  const byKey = new Map<ChildNode, ChildNode>();
+  for (const node of newNodes) {
+    const k = key(node);
+    const match = k ? oldByKey.get(k) : undefined;
+    if (match) byKey.set(node, match);
+  }
+  const inOrder = matchInOrder(
+    oldNodes.filter((node) => !key(node)),
+    newNodes.filter((node) => !byKey.has(node)),
+  );
+  const matchOf = (node: ChildNode): ChildNode | undefined => byKey.get(node) ?? inOrder.get(node);
+  const used = new Set(newNodes.map(matchOf));
+
+  // what is not reused goes first, so what stays need not move past it (a node moved loses the caret)
+  for (const node of oldNodes) {
+    if (!used.has(node) && node.parentNode === old) removeNode(node, hooks);
+  }
 
   newNodes.forEach((newNode, i) => {
-    const k = key(newNode);
-    let match = k ? oldByKey.get(k) : undefined;
-    if (!match) {
-      const positional = oldNodes[i];
-      if (positional && !used.has(positional) && !key(positional) && sameType(positional, newNode)) {
-        match = positional;
-      }
-    }
-
+    const match = matchOf(newNode);
     if (match) {
-      used.add(match);
       const atPosition = old.childNodes[i];
       if (match !== atPosition) old.insertBefore(match, atPosition ?? null);
       morphNode(match, newNode, hooks);
@@ -185,10 +231,6 @@ function morphChildren(old: Element, next: Element, hooks: MorphHooks): void {
       old.insertBefore(newNode.cloneNode(true), old.childNodes[i] ?? null);
     }
   });
-
-  for (const node of oldNodes) {
-    if (!used.has(node) && node.parentNode === old) removeNode(node, hooks);
-  }
 }
 
 export function morph(target: Element, html: string, hooks: MorphHooks = {}): void {
