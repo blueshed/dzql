@@ -157,23 +157,32 @@ function movingElement(html: string): HTMLElement | undefined {
 // into view -- the window itself never moves, only the reading beside it. `previous` is captured
 // before the morph runs, since the morph is what may add, move, or remove the attribute. It comes
 // by its nearest edge, unless it and its margins cannot fit in the view: then by its top, where it
-// is read from, since reached from below its nearest edge is its foot, and its top lands out of sight.
+// is read from, since reached from below its nearest edge is its foot, and its top lands out of
+// sight. Only the scroller that holds it moves then: `scrollIntoView` would move every one around it.
 function revealChanged(previous: Element | null): void {
   const current = app.querySelector<HTMLElement>("[data-reveal]");
   if (!current || current === previous) return;
+  const port = scrollerOf(current);
   const { scrollMarginTop, scrollMarginBottom } = getComputedStyle(current);
-  const tall = current.getBoundingClientRect().height + parseFloat(scrollMarginTop) + parseFloat(scrollMarginBottom) > viewHeight(current);
-  current.scrollIntoView({ block: tall ? "start" : "nearest", inline: "nearest" });
+  const { scrollPaddingTop, scrollPaddingBottom } = getComputedStyle(port);
+  const [marginTop, paddingTop] = [parseFloat(scrollMarginTop), lengthIn(scrollPaddingTop, port.clientHeight)];
+  const view = port.clientHeight - paddingTop - lengthIn(scrollPaddingBottom, port.clientHeight);
+  const box = current.getBoundingClientRect();
+  if (box.height + marginTop + parseFloat(scrollMarginBottom) <= view) return current.scrollIntoView({ block: "nearest", inline: "nearest" });
+  const top = port === document.documentElement ? 0 : port.getBoundingClientRect().top + port.clientTop;
+  port.scrollBy({ top: box.top - top - paddingTop - marginTop });
 }
 
-/** The height of the view `el` is read in -- its nearest ancestor that scrolls, or the window -- less what its `scroll-padding` says stands over it (a sticky header). */
-function viewHeight(el: Element): number {
-  let port = el.parentElement;
-  while (port && port !== document.body && !(port.scrollHeight > port.clientHeight && /auto|scroll|hidden/.test(getComputedStyle(port).overflowY))) port = port.parentElement;
-  if (!port || port === document.body) port = document.documentElement;
-  const { scrollPaddingTop, scrollPaddingBottom } = getComputedStyle(port);
-  return port.clientHeight - (parseFloat(scrollPaddingTop) || 0) - (parseFloat(scrollPaddingBottom) || 0);
+/** The scroller `el` is read in: its nearest ancestor that scrolls, or the page. */
+function scrollerOf(el: Element): Element {
+  for (let at = el.parentElement; at && at !== document.body; at = at.parentElement) {
+    if (at.scrollHeight > at.clientHeight && /auto|scroll|hidden/.test(getComputedStyle(at).overflowY)) return at;
+  }
+  return document.documentElement;
 }
+
+/** A computed `scroll-padding` in px: a percentage is of the scroller's own height, and `auto` is none. */
+const lengthIn = (value: string, height: number): number => (value.endsWith("%") ? (parseFloat(value) * height) / 100 : parseFloat(value) || 0);
 
 function render(html: string) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));

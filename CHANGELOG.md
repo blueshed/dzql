@@ -221,7 +221,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cannot fit in the view, brings it by the edge it is reached by: from below, its foot, so its
   top landed above the view, under a sticky header (a whole day on a phone). Such an element now
   comes by its top, below its margin; one that fits still comes by its nearest edge. The view is
-  the nearest scroller's, or the window's, less its `scroll-padding` (a sticky header it declares).
+  the nearest scroller's, or the window's, less its `scroll-padding` (a sticky header it declares;
+  a percentage is of that scroller). Only that scroller moves: a list's tall row no longer
+  scrolls the page around the list too.
 - **A page with a sticky header declares its height** (the eta-app skill, todo n85). A render
   that took out the row hidden under an app's sticky header slid the rows below it up under the
   header: the client keeps no reader's place, and the browser's scroll anchoring, in WebKit and

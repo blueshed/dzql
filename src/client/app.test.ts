@@ -246,6 +246,24 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<number>(`Math.round(document.getElementById('day').getBoundingClientRect().top)`)).toBe(64); // under the header, and its margin
   });
 
+  test("a tall revealed element moves only the scroller that holds it, under that scroller's own scroll-padding, in percent too", async () => {
+    await using view = await open();
+    const nested = (reveal: boolean) =>
+      `<div style="height:250px"></div><div class="list" id="list" style="height:200px"><div style="height:600px"></div><div id="day" style="height:400px;scroll-margin:24px 0"${reveal ? " data-reveal" : ""}></div><div style="height:600px"></div></div><div style="height:2000px"></div>`;
+    await pushRender(view, nested(false));
+    await view.evaluate(`window.scrollTo(0, 100)`);
+    await pushRender(view, nested(true));
+    expect(await view.evaluate<unknown>(`[scrollY, Math.round(document.getElementById('day').getBoundingClientRect().top - document.getElementById('list').getBoundingClientRect().top)]`)).toEqual([100, 24]); // the page stays where it was
+
+    const page = (reveal: boolean) =>
+      `<style>html { scroll-padding-top: 10% }</style><div style="height:2000px"></div><div id="day" style="height:calc(100vh - 40px);scroll-margin:0"${reveal ? " data-reveal" : ""}></div><div style="height:2000px"></div>`;
+    await pushRender(view, page(false));
+    await view.evaluate(`window.scrollTo(0, document.documentElement.scrollHeight)`);
+    await pushRender(view, page(true));
+    const [top, tenth] = await view.evaluate<number[]>(`[document.getElementById('day').getBoundingClientRect().top, document.documentElement.clientHeight / 10]`);
+    expect(Math.abs(top! - tenth!)).toBeLessThan(1); // under a tenth of the view
+  });
+
   test("a field waiting with autofocus gets the caret when a render brings it in, and never takes it from a field someone is in", async () => {
     await using view = await open();
     // the first page's field takes the one autofocus the browser gives a document
