@@ -23,6 +23,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   name, with the step and its biggest part; a story's own stands in place of the example's, and
   one that is not a whole number of bytes is said, and its story not run. Chat's stories hold
   4.5 KB (the most is Dee's attic taken back, 4,339 bytes), and a message 1 KB.
+- **`press(view, selector)`, a press as a mouse makes one, for browser tests** (`src/webview.ts`,
+  todo n98): scrolled to, pressed and let go at its middle, each pointer and mouse event to what
+  is there as it is sent, then the click where a browser sends it, to what the press and the
+  release share, if that is still on the page. It throws for a control a person could not press:
+  disabled (itself, or by its fieldset), or covered, naming what covers it. Never
+  `element.click()`, which sends no pointerdown or pointerup and reaches a control whatever
+  covers it: japan-eta's strip redrew itself on pointerup, its real click reached nothing, and
+  its test, clicking, passed. The skill shows it; by-hand's drag is the same mouse (`MOUSE`).
+  eta's own browser tests press with it wherever they meant a person's press (chat, leave, the
+  ticker, the wedding, the island, the client's boxes). It caught one: the ticker's test went back
+  from the board's window through the scrim of the drawer open over it, which no person can
+  press; it puts the drawer away first now.
+
 ### Changed
 
 - **The skill says a part is the unit of a message** (todo n95): a change goes as the smallest
@@ -38,21 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLAUDE.md says a todo item for a kernel bug that forced a workaround names its cost** (todo
   n97): bytes, time, or what the app gave up. n82's said the bug, not japan-eta's 7 KB per vote
   to every page watching, and so read as a nicety.
-
-### Added
-
-- **`press(view, selector)`, a press as a mouse makes one, for browser tests** (`src/webview.ts`,
-  todo n98): scrolled to, pressed and let go at its middle, each pointer and mouse event to what
-  is there as it is sent, then the click where a browser sends it, to what the press and the
-  release share, if that is still on the page. It throws for a control a person could not press:
-  disabled (itself, or by its fieldset), or covered, naming what covers it. Never
-  `element.click()`, which sends no pointerdown or pointerup and reaches a control whatever
-  covers it: japan-eta's strip redrew itself on pointerup, its real click reached nothing, and
-  its test, clicking, passed. The skill shows it; by-hand's drag is the same mouse (`MOUSE`).
-  eta's own browser tests press with it wherever they meant a person's press (chat, leave, the
-  ticker, the wedding, the island, the client's boxes). It caught one: the ticker's test went back
-  from the board's window through the scrim of the drawer open over it, which no person can
-  press; it puts the drawer away first now.
 
 ## [0.50.0] - 2026-09-28
 
