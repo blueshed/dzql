@@ -141,6 +141,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The ticker's board reads on a phone, and its rows open their drawers** (todo n67). A board row
+  was an SVG 640 units wide scaled to the screen, so at 375 its words were about 6px; it is HTML
+  now, at the page's own size, and a narrow board (a phone, or the window beside a drawer) keeps
+  the name and the change in money for a screen reader only. In the window a row is a figure, as a
+  list's is: its mount carries the tap that opens the symbol's drawer, lit while it is open, so
+  Stop watching no longer needs the list reading.
 - **The ticker says a thing once** (todo n66). An empty board said so three times, and pointed at a
   plus the box does not have; now its cell's summary says it, with no count of none and no empty
   reading, and the window's note names the plus on its rail. The market's head counts its symbols

@@ -44,20 +44,20 @@ describe("the ticker in a real browser", () => {
     await view.type("fxtr");
     await view.press("Enter");
     const fxtr = (await quotes()).FXTR!.price;
-    await waitFor(view, `document.querySelector('svg.board .row[data-row="FXTR"] .price')?.textContent ?? null`, (v) => v === fxtr.toFixed(2));
+    await waitFor(view, `document.querySelector('.board .quote[data-row="FXTR"] .price')?.textContent ?? null`, (v) => v === fxtr.toFixed(2));
 
     // a tick from the server side (as the feed makes them): the board's row moves, and the only
     // message the client saw was the patch
     await view.evaluate(`(() => { window.__renders = 0; window.eta.socket().addEventListener('message', (e) => { if (JSON.parse(e.data).type === 'render') window.__renders++; }); return 1; })()`);
     const price = Math.round(((await quotes()).FXTR!.price + 2.5) * 100) / 100;
     await tick([{ op: "replace", path: "/FXTR/price", value: price }]);
-    await waitFor(view, `document.querySelector('svg.board .row[data-row="FXTR"] .price')?.textContent`, (v) => v === price.toFixed(2));
-    expect(await view.evaluate<boolean>(`document.querySelector('svg.board .row[data-row="FXTR"]').classList.contains('up')`)).toBe(true);
+    await waitFor(view, `document.querySelector('.board .quote[data-row="FXTR"] .price')?.textContent`, (v) => v === price.toFixed(2));
+    expect(await view.evaluate<boolean>(`document.querySelector('.board .quote[data-row="FXTR"]').classList.contains('up')`)).toBe(true);
     // the tick reached the page as its patch (the quote it leaves), and no render came with it -- other
     // ticks may land meanwhile (a feed another test started), so this tick is looked for by its value
     expect(await view.evaluate<boolean>(`window.eta.docs()['ticker:market'].ops.some((op) => op.path === '/FXTR' && op.value.price === ${price})`)).toBe(true);
     expect(await view.evaluate<number>(`window.__renders`)).toBe(0);
-    expect(await view.evaluate<number>(`document.querySelectorAll('svg.board .row[data-row="FXTR"] polyline').length`)).toBe(1);
+    expect(await view.evaluate<number>(`document.querySelectorAll('.board .quote[data-row="FXTR"] polyline').length`)).toBe(1);
 
     // the clock's seconds hand is turning, with nothing from the server. It sweeps the dial in 58.5
     // seconds and waits at twelve for the rest of the minute, so two looks in that wait both see
@@ -69,6 +69,14 @@ describe("the ticker in a real browser", () => {
     await Bun.sleep(300);
     const b = await view.evaluate(hand);
     expect(a).not.toBe(b);
+
+    // in the window a board row is a figure, as a list's row is: a tap opens its drawer, and it is lit
+    const line = `document.querySelector('#quote-FXTR polyline').getAttribute('points')`;
+    const seen = await view.evaluate<string>(line);
+    await view.evaluate(`document.getElementById('quote-FXTR').click()`);
+    await waitFor(view, `document.querySelector('.drawer h2')?.textContent ?? null`, (v) => v === "FXTR");
+    expect(await view.evaluate<string>(`document.getElementById('quote-FXTR').getAttribute('aria-pressed')`)).toBe("true");
+    expect(await view.evaluate<string>(line)).toBe(seen); // the same applet, the ticks it has seen kept
 
     // the clock is a thing: its drawer holds the city picker. "lon" puts London first, ahead of
     // Blanc-Sablon; Enter takes the first; the clock document's write is taken by the applets --

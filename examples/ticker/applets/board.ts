@@ -21,8 +21,6 @@ export interface RowState {
 }
 
 export const HISTORY = 40;
-const ROW = 28;
-const W = 640;
 
 const esc = (s: string) => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 
@@ -36,25 +34,31 @@ export function sparkline(prices: number[], w = 120, h = 18): string {
   return `<polyline points="${points.join(" ")}" fill="none" stroke="currentColor" stroke-width="1.2"/>`;
 }
 
-/** One row: symbol, name, price, the change since the last tick, the sparkline. `up`/`down` on the row is what the stylesheet flashes. */
-export function rowSvg(symbol: string, quote: Quote, history: number[]): string {
+const signed = (n: number, digits = 2): string => `${n >= 0 ? "+" : ""}${n.toFixed(digits)}`;
+
+/**
+ * One row, in HTML, so its words are the page's own size on any screen and a reader hears them:
+ * symbol, name, price, the change since the last tick in money and in per cent, the sparkline.
+ * `up`/`down` on the row is what the stylesheet flashes; a narrow board keeps the name and the
+ * change in money for a reader only (styles.css).
+ */
+export function rowHtml(symbol: string, quote: Quote, history: number[]): string {
   const change = quote.price - quote.prev;
   const dir = change > 0 ? "up" : change < 0 ? "down" : "flat";
-  const pct = quote.prev ? ((change / quote.prev) * 100).toFixed(2) : "0.00";
+  const pct = quote.prev ? (change / quote.prev) * 100 : 0;
   return (
-    `<svg class="board" viewBox="0 0 ${W} ${ROW}" width="100%" aria-label="${esc(symbol)}">` +
-    `<g class="row ${dir}" data-row="${esc(symbol)}">` +
-    `<text class="symbol" x="0" y="18">${esc(symbol)}</text>` +
-    `<text class="name" x="70" y="18">${esc(quote.name)}</text>` +
-    `<text class="price" x="330" y="18" text-anchor="end">${quote.price.toFixed(2)}</text>` +
-    `<text class="change" x="480" y="18" text-anchor="end">${change >= 0 ? "+" : ""}${change.toFixed(2)} (${pct}%)</text>` +
-    `<g class="spark" transform="translate(510 4)">${sparkline(history)}</g>` +
-    `</g></svg>`
+    `<div class="quote ${dir}" data-row="${esc(symbol)}">` +
+    `<span class="symbol">${esc(symbol)}</span>` +
+    `<span class="name">${esc(quote.name)}</span>` +
+    `<span class="price">${quote.price.toFixed(2)}</span>` +
+    `<span class="change"><span class="abs">${signed(change)}</span> <span class="pct">${signed(pct)}%</span></span>` +
+    `<svg class="spark" viewBox="0 0 120 18" preserveAspectRatio="none" aria-hidden="true">${sparkline(history)}</svg>` +
+    `</div>`
   );
 }
 
 /** The row as its state draws it. */
-export const drawRow = (s: RowState): string => rowSvg(s.props.symbol, s.props.quote, s.history);
+export const drawRow = (s: RowState): string => rowHtml(s.props.symbol, s.props.quote, s.history);
 
 /** The sparkline alone, in a symbol's drawer: coloured by the last move, and said as the range it spans. */
 export function sparkSvg(quote: Quote, history: number[]): string {

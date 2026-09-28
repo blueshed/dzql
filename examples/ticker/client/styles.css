@@ -39,22 +39,38 @@ input { font-size: 15px; }
 .row .state .price small { font-size: 11px; font-weight: 500; }
 .row .state .price.up small { color: var(--up); } .row .state .price.down small { color: var(--down); } .row .state .price.flat small { color: var(--muted); }
 
-/* ── the board: a row applet per watched symbol, its own SVG with a sparkline; a tick flashes its row ── */
+/* ── the board: a row applet per watched symbol, drawn in HTML with a sparkline; a tick flashes its row.
+   Wide, a row is symbol, name, price, the change in money and in per cent, the sparkline; narrow (a
+   phone, the window beside a drawer), the name and the change in money are a reader's only, and the
+   sparkline takes what is left. ── */
 .reading.sparkline { overflow: hidden; }
-.board:has(svg) { background: var(--well); border: 1px solid var(--line); padding: 0.5rem 0; }
-svg.board { display: block; font-size: 14px; }
-svg.board text { fill: var(--ink); }
-svg.board .symbol { font-weight: 700; fill: var(--accent); }
-svg.board .name { fill: var(--muted); font-size: 12px; }
-svg.board .price { font-weight: 700; }
-svg.board .change { font-size: 12px; }
-svg.board .row.up .change, svg.board .row.up .spark { color: var(--up); fill: var(--up); }
-svg.board .row.down .change, svg.board .row.down .spark { color: var(--down); fill: var(--down); }
-svg.board .row.flat .change, svg.board .row.flat .spark { color: var(--muted); fill: var(--muted); }
-svg.board .row.up .price { animation: flash-up 0.9s ease-out; }
-svg.board .row.down .price { animation: flash-down 0.9s ease-out; }
-@keyframes flash-up { from { fill: var(--up); } to { fill: var(--ink); } }
-@keyframes flash-down { from { fill: var(--down); } to { fill: var(--ink); } }
+.board { container-type: inline-size; }
+.board:has(.quote) { background: var(--well); border: 1px solid var(--line); padding: var(--space-xs) 0; }
+.quote { display: grid; grid-template-columns: 4.5em minmax(0, 1fr) 5.5em 8.5em 120px; align-items: center; gap: var(--space-md); position: relative; padding: 3px var(--space-md); font-size: 14px; line-height: 1.3; }
+.quote .symbol { font-weight: 700; color: var(--accent); }
+.quote .name { color: var(--muted); font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quote .price, .quote .change { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.quote .price { font-weight: 700; }
+.quote .change { font-size: 12px; }
+.quote .change .abs { margin-right: var(--space-xs); }
+.quote svg.spark { display: block; width: 100%; height: 18px; overflow: visible; }
+.quote svg.spark polyline { vector-effect: non-scaling-stroke; }
+.quote.up .change, .quote.up .spark { color: var(--up); }
+.quote.down .change, .quote.down .spark { color: var(--down); }
+.quote.flat .change, .quote.flat .spark { color: var(--muted); }
+.quote.up .price { animation: flash-up 0.9s ease-out; }
+.quote.down .price { animation: flash-down 0.9s ease-out; }
+@keyframes flash-up { from { color: var(--up); } to { color: var(--ink); } }
+@keyframes flash-down { from { color: var(--down); } to { color: var(--ink); } }
+@container (max-width: 560px) {
+  .quote { grid-template-columns: 3.5em 5em 4.5em minmax(40px, 1fr); }
+  .quote .name, .quote .change .abs { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+/* in the window a row is a figure: a tap opens its drawer, and the whole line is lit while it is open (rule 13) */
+.board > [role="button"] { display: block; cursor: pointer; }
+.board > [role="button"]:hover { background: rgba(var(--ink-rgb), 0.04); }
+.board > [role="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.board > [aria-pressed="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
 
 /* ── the clock: a station clock, white face, black hands, the red seconds hand ── */
 svg.clock .face { fill: #f4f4f2; stroke: #222; stroke-width: 1.5; }
@@ -73,4 +89,4 @@ svg.sparkline { display: block; } svg.sparkline.up { color: var(--up); } svg.spa
 .city .suggestions:empty { display: none; }
 .city .suggestions li { padding: 0.4rem 0.6rem; font-size: 13px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .city .suggestions li:hover, .city .suggestions li.active { background: var(--well); color: var(--accent); }
-@media (prefers-reduced-motion: reduce) { svg.board .price { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .quote .price { animation: none !important; } }

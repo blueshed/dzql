@@ -31,12 +31,19 @@ const NOTHING_WATCHED = "Nothing watched yet. The plus asks which symbol.";
 /**
  * The board: a row per watched symbol, each an applet on that symbol's own document, so a board is
  * told only the symbols it watches and each row takes its own ticks. Empty, the window says so; the
- * box's cell has said it already.
+ * box's cell has said it already. In the window (`ui`), a row is a figure, as a list's is: a tap
+ * opens its drawer, and it is lit while that is open. The mount's attributes are the page's, so
+ * they carry the write; the applet draws only inside. On the box the cell is the one tap.
  */
-export function boardMount(list: WatchlistDocument, market: MarketDocument): string {
+export function boardMount(list: WatchlistDocument, market: MarketDocument, ui?: Ui): string {
   const symbols = list.symbols.filter((s) => market[s]);
   if (!symbols.length) return `<div id="board" class="board"><p class="note">${NOTHING_WATCHED}</p></div>`;
-  const rowOf = (symbol: string) => `<div id="quote-${esc(symbol)}" data-applet="board" data-doc="quote:${esc(symbol)}" data-under="/quote" data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`;
+  const tap = (symbol: string): string => {
+    if (!ui) return "";
+    const chosen = where(ui).what === "symbol" && where(ui).which === symbol;
+    return ` role="button" tabindex="0"${go(address("board", "symbol", symbol))} aria-pressed="${chosen}"${chosen ? " data-reveal" : ""}`;
+  };
+  const rowOf = (symbol: string) => part(`quote-${symbol}`, `<div id="quote-${esc(symbol)}" data-applet="board" data-doc="quote:${esc(symbol)}" data-under="/quote"${tap(symbol)} data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`);
   return `<div id="board" class="board">${symbols.map(rowOf).join("")}</div>`;
 }
 
@@ -119,7 +126,7 @@ function boardOpen(v: View): OpenOptions {
     key: "board",
     reading: readingSwitch("board", reading(v.ui), [["sparkline", "board"], ["list", "list"]]),
     tools: [addTool(go(address("board", "new")), "Watch a symbol")],
-    body: reading(v.ui) === "list" ? boardList(v) : `<div class="reading sparkline">${boardMount(v.list, v.market)}</div>`,
+    body: reading(v.ui) === "list" ? boardList(v) : `<div class="reading sparkline">${boardMount(v.list, v.market, v.ui)}</div>`,
   };
 }
 

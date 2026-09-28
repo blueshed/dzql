@@ -1,20 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { HISTORY, applyOps, drawRow, drawSpark, rowSvg, sparkSvg, sparkline, type RowState } from "./board";
+import { HISTORY, applyOps, drawRow, drawSpark, rowHtml, sparkSvg, sparkline, type RowState } from "./board";
 
 const state = (): RowState => ({ props: { symbol: "ALPH", quote: { name: "Alpha Systems", price: 189.42, prev: 189.0 } }, history: [189.0, 189.42] });
 
 describe("board", () => {
-  test("a row shows the symbol, the name, the price, the change and its direction, and a sparkline of what it has seen", () => {
-    const row = rowSvg("ALPH", { name: "Alpha Systems", price: 189.42, prev: 189.0 }, [189.0, 189.42]);
-    expect(row).toStartWith('<svg class="board" viewBox="0 0 640 28"');
-    expect(row).toContain('class="row up" data-row="ALPH"');
-    expect(row).toContain(">189.42<");
-    expect(row).toContain(">+0.42 (0.22%)<");
-    expect(row).toContain("<polyline");
-    expect(rowSvg("X", { name: "x", price: 1, prev: 2 }, [2, 1])).toContain('class="row down"');
-    expect(rowSvg("X", { name: "x", price: 1, prev: 1 }, [1])).toContain('class="row flat"');
-    expect(rowSvg("X", { name: "x", price: 1, prev: 0 }, [1])).toContain("(0.00%)");
-    expect(drawRow(state())).toBe(rowSvg("ALPH", state().props.quote, [189.0, 189.42]));
+  test("a row, in HTML, shows the symbol, the name, the price, the change in money and in per cent and its direction, and a sparkline of what it has seen", () => {
+    const row = rowHtml("ALPH", { name: "Alpha Systems", price: 189.42, prev: 189.0 }, [189.0, 189.42]);
+    expect(row).toStartWith('<div class="quote up" data-row="ALPH"><span class="symbol">ALPH</span><span class="name">Alpha Systems</span><span class="price">189.42</span>');
+    expect(row).toContain('<span class="change"><span class="abs">+0.42</span> <span class="pct">+0.22%</span></span>');
+    expect(row).toContain('<svg class="spark" viewBox="0 0 120 18" preserveAspectRatio="none" aria-hidden="true"><polyline');
+    expect(rowHtml("X", { name: "x", price: 1, prev: 2 }, [2, 1])).toContain('class="quote down"');
+    expect(rowHtml("X", { name: "x", price: 1, prev: 2 }, [2, 1])).toContain('<span class="abs">-1.00</span> <span class="pct">-50.00%</span>');
+    expect(rowHtml("X", { name: "x", price: 1, prev: 1 }, [1])).toContain('class="quote flat"');
+    expect(rowHtml("X", { name: "x", price: 1, prev: 0 }, [1])).toContain(">+0.00%<");
+    expect(rowHtml("<b>", { name: "a & b", price: 1, prev: 1 }, [1])).toContain('<span class="symbol">&lt;b></span><span class="name">a &amp; b</span>');
+    expect(drawRow(state())).toBe(rowHtml("ALPH", state().props.quote, [189.0, 189.42]));
   });
 
   test("a sparkline scales to its own range; one price draws nothing", () => {

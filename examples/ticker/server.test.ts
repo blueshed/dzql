@@ -161,7 +161,7 @@ describe("the ticker", () => {
     write(a, "watchlist", [{ op: "add", path: "/symbols/-", value: "echo" }]);
     expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: ["ECHO"] } }] });
     const page = (await expectMessage(a, "render")).page as string;
-    expect(page).toContain('<div id="quote-ECHO" data-applet="board" data-doc="quote:ECHO"'); // the board's new row, on the quote's own document
+    expect(page).toContain('<div data-eta-part="quote-ECHO" id="quote-ECHO" data-applet="board" data-doc="quote:ECHO" data-under="/quote" data-props='); // the board's new row, on the quote's own document; on the box, the cell is the one tap
     expect(page).toContain('<span id="board-count">1</span>'); // the count on its head
     expect(page).toContain('<p class="cell-summary">watched, live</p>'); // and the line that said "nothing watched yet"
     await expectQuiet(b);
@@ -290,7 +290,17 @@ describe("the ticker", () => {
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "CHRL" }]);
     await expectMessage(ws, "patch");
     await expectMessage(ws, "render");
-    html = await page([{ op: "replace", path: "/page", value: "board?symbol=CHRL" }, { op: "replace", path: "/reading/board", value: "list" }]);
+    // on the board read as sparklines, a row is a figure as a list's is: its mount carries the tap
+    // that opens its drawer, lit while it is open, and is a part, so opening it sends its tag alone
+    await page([{ op: "replace", path: "/page", value: "board" }]);
+    write(ws, "desk", [{ op: "replace", path: "/page", value: "board?symbol=CHRL" }]);
+    await expectMessage(ws, "patch");
+    const chosen = await expectMessage(ws, "render");
+    expect((chosen.ops as { op: string; target: string }[]).map((o) => `${o.op} ${/data-eta-part="(.*)"/.exec(o.target)![1]}`)).toEqual(["tag site", "tag quote-CHRL", "replace drawers"]);
+    html = chosen.page!;
+    expect(html).toContain(`<div data-eta-part="quote-CHRL" id="quote-CHRL" data-applet="board" data-doc="quote:CHRL" data-under="/quote" role="button" tabindex="0" data-write='{"doc":"desk","op":"replace","path":"/page"}' data-value="board?symbol=CHRL" aria-pressed="true" data-reveal data-props=`);
+    expect(html).toContain("Stop watching");
+    html = await page([{ op: "replace", path: "/reading/board", value: "list" }]);
     expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-pressed="true" data-reveal>/);
     expect(html).toContain("Stop watching");
     // with the drawer open a tick sends the row and the drawer, since the drawer says the move;
