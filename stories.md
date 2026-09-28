@@ -153,8 +153,8 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
 (`src/stories-run.ts`; `ETA_EXAMPLE` picks the example). For each story:
 
 1. Connect the cast over real sockets to a real server, apply each member's setup writes, then
-   the story's own `premise` (each write must change something), and render every member fresh
-   from the tables.
+   the story's own `premise` (each write must change something), and render every member from
+   the documents the server draws from, its copy, as a page is drawn.
 2. Put the author where the story says they act (`from`: the drawer or modal that holds the
    control), and find on their open page the control that sends the story's write -- a
    `data-write` with its document, op and path, and a button's own value; a field or a form sends
@@ -165,11 +165,11 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    Then send the `does` as its session, wait for the wire to go quiet, and it must have landed:
    someone was told of a changed document. A `closesTab` has no control to find: the author's
    socket closes, the server is waited for, and something must land for someone still looking.
-3. Canon 1. Render every member fresh again. For each name in `seen`, that member's page must
-   differ from before; for everyone else, nothing of theirs may differ; and each name in `untold`
-   must have been told of nothing: sent no document's ops, by the write, its undo or its redo (a
-   page that reads a document is told every change to it, shown or not); after a tab closes, only
-   who is still looking is looked at. For a `cannot`, nothing anywhere
+3. Canon 1. Render every member again, from the same copy. For each name in `seen`, that
+   member's page must differ from before; for everyone else, nothing of theirs may differ; and
+   each name in `untold` must have been told of nothing: sent no document's ops, by the write,
+   its undo or its redo (a page that reads a document is told every change to it, shown or not);
+   after a tab closes, only who is still looking is looked at. For a `cannot`, nothing anywhere
    may differ, the ledger must not have moved, and the writer must be answered: a refusal hands
    the page back. With `told`, the writer's page must show that reason, and nothing else of it
    may differ; without it, a button on the writer's page that sends exactly the refused write is
@@ -188,9 +188,11 @@ for more than it checks:
 
 - **The morph is not under test.** Canon 2 is run without a browser: every member's open page is
   kept as the client would keep it -- a full render replaces it, a render in parts is applied
-  part by part -- and after the story, its undo and its redo it must equal a fresh render. So
-  a write that reaches the tables and not someone's open page fails, by name. An applet that takes
-  its document's patches itself is compared without its props. What the morph then does with the
+  part by part -- and after the story, its undo and its redo it must equal a fresh render from
+  storage, each document read again from delta's tables: the one render here that reads them, so
+  a copy that drifted from the tables fails too. So a write that reaches the tables and not
+  someone's open page fails, by name. An applet that takes its document's patches itself is
+  compared without its props. What the morph then does with the
   HTML, and what an applet draws, are the browser tests' to check.
 - **A permitted write no story tells is not found.** Every control a story uses is on a page, and
   a button offered that is always refused fails; but the other way round -- a write the server

@@ -238,8 +238,10 @@ drag halfway through, a scroll position, a chart's history. That piece is an **a
 - Its mount says exactly what it writes, `appletWrites(["team", "replace", "/requests/*/starts"], …)`
   (`*` is any one segment: the request's id), so the stories can find the control.
 - It is updated in one of two ways, and you must choose:
-  - **On a document** (`data-doc`): its props are that document, kept current by its changes,
-    and never re-sent. Use this when the props are *only* the document (the ticker's rows).
+  - **On a document** (`data-doc`): its props are that document, kept current by its changes;
+    a change reaches it as a patch, and the props go again only with the mount itself (a page
+    sent whole, its tag changed), so what follows where a person is goes on an element beside it.
+    Use this when the props are *only* the document (the ticker's rows).
   - **From props**: re-sent its props on every redraw. Use this when the props mix a document
     with where the person is (leave's calendar: the requests, plus the month and their draft).
 - Test the drawing as a pure function, and the gestures in a real browser (`Bun.WebView`).

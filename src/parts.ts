@@ -72,9 +72,11 @@ const target = (key: string): string => `[data-eta-part="${key.replaceAll('"', '
 /**
  * What to send to bring a page drawn as `prev` to `next`: HTML ops, `[]` when nothing on it
  * changed, or undefined when the page's own outline changed and it must go whole. An applet that
- * takes its document's patches (`data-doc`) is never sent its props again: its props are that
- * document, whose every change reaches the page as a patch (the stories check they are, `unheld`
- * in src/harness.ts). So they are not compared.
+ * takes its document's patches (`data-doc`) has props that are that document, whose every change
+ * reaches the page as a patch (the stories check they are, `unheld` in src/harness.ts). So they
+ * are not compared, and a change to them alone sends nothing; they go only with the mount itself,
+ * when a part that holds it is replaced or its own tag changes, as the render drew them. What
+ * follows where a person is belongs off the mount, so its tag does not change with it.
  */
 export function diff(prev: Drawn, next: Drawn): HtmlOp[] | undefined {
   const ops: HtmlOp[] = [];

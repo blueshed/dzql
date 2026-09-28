@@ -104,11 +104,15 @@ describe("diff", () => {
     expect(diff(draw(() => view("a")), draw(() => view("b")))).toEqual([{ op: "replace", target: '[data-eta-part="drawer"]', html: `<aside data-eta-part="drawer">b</aside>` }]);
   });
 
-  test("an applet that takes its document's patches is never sent its props again: they are the document, which reaches it as patches; any other applet's are", () => {
-    const mount = (p: string, doc = ` data-doc="quote:ALPH"`) => `<main>${part("board", `<div data-applet="board"${doc} data-props="${p}"></div>`)}</main>`;
+  test("an applet that takes its document's patches is not sent its props when they alone change: they are the document, which reaches it as patches; any other applet's are", () => {
+    const mount = (p: string, doc = ` data-doc="quote:ALPH"`, more = "") => `<main>${part("board", `<div data-applet="board"${doc}${more} data-props="${p}"></div>`)}</main>`;
     expect(diff(draw(() => mount("1")), draw(() => mount("2")))).toEqual([]);
     expect(diff(draw(() => mount("1", "")), draw(() => mount("2", "")))).toEqual([
       { op: "tag", target: '[data-eta-part="board"]', html: `<div data-eta-part="board" data-applet="board" data-props="2">` },
+    ]);
+    // they go with the mount's own tag, when something else on it changes: so what follows where a person is belongs off the mount
+    expect(diff(draw(() => mount("1", undefined, ` aria-expanded="false"`)), draw(() => mount("2", undefined, ` aria-expanded="true"`)))).toEqual([
+      { op: "tag", target: '[data-eta-part="board"]', html: `<div data-eta-part="board" data-applet="board" data-doc="quote:ALPH" aria-expanded="true" data-props="2">` },
     ]);
     expect(comparable(`<div data-doc="d" data-props="x"></div>`)).toBe(`<div data-doc="d"></div>`);
   });

@@ -447,11 +447,17 @@ The mount point names it:
 ```
 
 - **On a document** (`data-doc`): its props hold that document, and every change reaches it as a
-  patch (`patch`), so it is never sent its props again. Use this when the props are *only* that
-  document. The document sits in the props at `data-under` (the root when not given), whole, with
-  rows as delta holds them (their id and parent key included). The ops must land on it and say
-  everything the document did: the stories check that each member's props, as last sent with
-  every patch since, equal what a fresh render gives.
+  patch (`patch`). A page is compared without them, so a change to its document sends the mount
+  nothing but the patch; they go again only with the mount itself -- a page sent whole, a part
+  that holds it replaced, or its own tag changed -- as the render drew them, and `update` gets
+  them if they differ from those it was given. So keep what follows where a person is
+  (`aria-expanded`, a class) off the mount, on an element beside it: the ticker's board row puts
+  its button there, and a drawer opening sends that button's tag, not the mount's props. Use this
+  when the props are *only* that document. The document sits in the props at `data-under` (the
+  root when not given), whole, with rows as delta holds them (their id and parent key
+  included). The ops must land on it and say everything the document did: the stories check
+  that each member's props, as last sent with every patch since, equal what a fresh render
+  gives.
 - **From props**: no `data-doc`. It is re-sent its props on every render, and draws from them
   (`update`). Use this when the props mix a document with where the person is: leave's calendar
   holds the requests, plus the month and the person's own draft.

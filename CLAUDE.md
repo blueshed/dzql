@@ -33,7 +33,9 @@ it, and everything else is derived from it.
 ## The shape
 
 - `src/` is the kernel. It does not know any example exists and never imports from `examples/`.
-  Its tests may: `src/harness.test.ts` runs the harness against chat's stories.
+  Its tests may: `src/harness.test.ts` runs the harness against chat's stories, and a few of
+  leave's, the wedding's and the ticker's for what only they have (a sign-in, an applet's
+  declaration, a deadline passed, a row the tables lost).
 - `examples/<name>/` is a whole app: its own documents (a `delta.ts`: its schema, seed and
   documents in delta), compartments, applets, client, and an `index.ts` exporting
   `example: Example`. Examples never import from each other; shared

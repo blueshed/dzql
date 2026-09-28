@@ -12,9 +12,10 @@ import { said } from "./refusal";
 export { comparable };
 
 // Runs an example's stories against it, over real sockets, and reports by story name. See
-// stories.md ("The harness"). Canon 1 is checked here: for every member of the cast, a fresh
-// render from the tables before and after the story, compared -- so a change that reaches a page
-// through an applet's patch (a tick) counts the same as one that reaches it as HTML. A member a
+// stories.md ("The harness"). Canon 1 is checked here: for every member of the cast, a render
+// from the server's copy of the documents, as a page is drawn (only Canon 2's reads the tables),
+// before and after the story, compared -- so a change that reaches a page through an applet's
+// patch (a tick) counts the same as one that reaches it as HTML. A member a
 // story says sees it on a page is put on that page first (`Stories.page`), since a person sees
 // only the page they are on. Then the story is undone and redone as its author, and the pages
 // must go back and forth with it; a write the ledger calls a fact (undoable = 0) must survive its

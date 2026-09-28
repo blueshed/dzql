@@ -21,8 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and ends; the wedding's dress each look field, its menu a course's dish or drink, chosen or
   taken back, and its picture field the key at its own path, which it declared nowhere before
   (a story now puts a picture on the welcome). The photo's taps only go somewhere, as the page's
-  address does, and the ticker's city picker is an applet on its document, which offers any
-  write to it.
+  address does, and the ticker's clock face and city picker are each an applet on the clock's
+  document, which offers any write to it.
 - **One word, one meaning: names renamed so they say what they are, and when they run.** No
   behaviour changes; rename and the gate passes. Compartment hooks are named for when they run
   (`permit`, `shape` before a write; `permitUndo` before an undo; `afterWrite`, `afterChange` after).
@@ -226,6 +226,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a measure that fails, a bundle that does not build, a number with no mark) and checks the
   README in its own process, keeping one run as the script, spawned. A bundle that does not
   build says why. `bunfig.toml` says which files are outside the table, and why each may be.
+- **The docs say what the kernel does.** An applet on a document (`data-doc`) was "never sent its
+  props again" (reference.md, first-app.md, src/parts.ts), but its props go with its mount
+  whenever the mount itself is sent: its tag changed, or a part that holds it replaced. They say
+  so now, and that what follows where a person is belongs beside the mount, as the ticker's
+  board row's button now is; a test in src/parts.test.ts pins it. Canon 1 renders each member
+  from the server's copy, not from the tables; only Canon 2's render reads them (stories.md,
+  src/harness.ts). CLAUDE.md says `src/harness.test.ts` runs a few of leave's, the wedding's and
+  the ticker's stories as well as chat's, and the entry on applets' declarations names the
+  clock's face beside the city picker as an applet on the clock's document.
 - **Chat says a run once, and you are not named to yourself** (todo n71). A run of messages shows
   its author's face once, at its start with the name, and the rest keep the face's place; your own
   carry no face, and a screen reader hears "You" at the start of your run, since it cannot see
