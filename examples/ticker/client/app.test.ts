@@ -20,6 +20,15 @@ afterAll(() => {
   server.stop(true);
 });
 
+/** The page's clock set to `at`, running on from there. */
+function pinClock(view: Bun.WebView, at: number): Promise<unknown> {
+  return view.evaluate(`(() => {
+    const Real = Date, t0 = performance.now(), at = ${at};
+    globalThis.Date = class extends Real { constructor(...a) { a.length ? super(...a) : super(at + performance.now() - t0); } static now() { return at + performance.now() - t0; } };
+    return 1;
+  })()`);
+}
+
 
 describe("the ticker in a real browser", () => {
   test("the board applet takes a tick from the patch itself -- no render -- and the clock runs on its own", async () => {
@@ -50,10 +59,15 @@ describe("the ticker in a real browser", () => {
     expect(await view.evaluate<number>(`window.__renders`)).toBe(0);
     expect(await view.evaluate<number>(`document.querySelectorAll('svg.board .row[data-row="FXTR"] polyline').length`)).toBe(1);
 
-    // the clock's seconds hand is turning, with nothing from the server
-    const a = await view.evaluate(`document.querySelector('svg.clock .hand.second').getAttribute('transform')`);
+    // the clock's seconds hand is turning, with nothing from the server. It sweeps the dial in 58.5
+    // seconds and waits at twelve for the rest of the minute, so two looks in that wait both see
+    // rotate(360.00): the page's clock is set ten seconds into a minute, mid-sweep, whenever this runs
+    await pinClock(view, Date.UTC(2026, 8, 28, 12, 0, 10));
+    const hand = `document.querySelector('svg.clock .hand.second').getAttribute('transform')`;
+    const angle = (v: unknown) => Number(/rotate\(([\d.]+)\)/.exec(String(v))?.[1]);
+    const a = await waitFor(view, hand, (v) => angle(v) >= 61.5 && angle(v) < 300); // ten seconds in: 61.5°, and turning
     await Bun.sleep(300);
-    const b = await view.evaluate(`document.querySelector('svg.clock .hand.second').getAttribute('transform')`);
+    const b = await view.evaluate(hand);
     expect(a).not.toBe(b);
 
     // the clock is a thing: its drawer holds the city picker. "lon" puts London first, ahead of
