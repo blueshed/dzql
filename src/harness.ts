@@ -123,8 +123,20 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
  */
 export type Control = { doc: string; op?: string; path?: string; value?: string; free: boolean; pattern?: true };
 
-/** Every control on a page, as the server drew it: one drawn `disabled` is none, since the browser sends nothing from it. */
-export function controlsOn(page: string): Control[] {
+const OPS: readonly string[] = ["add", "replace", "remove"];
+
+/** Is this what `appletWrites` puts on a mount, one write of it: a document, an op and a JSON Pointer path? */
+const isDeclared = (w: unknown): w is { doc: string; op: string; path: string } => {
+  const { doc, op, path } = (typeof w === "object" && w !== null ? w : {}) as Record<string, unknown>;
+  return typeof doc === "string" && doc !== "" && typeof op === "string" && OPS.includes(op) && typeof path === "string" && (path === "" || path.startsWith("/"));
+};
+
+/**
+ * Every control on a page, as the server drew it: one drawn `disabled` is none, since the browser
+ * sends nothing from it. An applet's declaration that is not `[doc, op, path]` (the form before
+ * ops, a hand-written attribute) offers nothing, and is said in `misdeclared`.
+ */
+export function controlsOn(page: string, misdeclared: string[] = []): Control[] {
   const found: Control[] = [];
   const spec = (attr: string | null) => (attr === null ? undefined : (JSON.parse(unescape(attr)) as { doc: string; op: string; path: string }));
   new HTMLRewriter()
@@ -140,8 +152,19 @@ export function controlsOn(page: string): Control[] {
     .on("[data-applet][data-doc]", { element: (el) => void found.push({ doc: el.getAttribute("data-doc")!, free: true }) })
     .on("[data-writes]", {
       element(el) {
-        const said = JSON.parse(unescape(el.getAttribute("data-writes")!)) as { doc: string; op: string; path: string }[];
-        for (const w of said) found.push({ ...w, free: true, pattern: true });
+        const raw = unescape(el.getAttribute("data-writes")!);
+        const wrong = (what: string) => misdeclared.push(`applet declaration must be [doc, op, path]: ${el.getAttribute("data-applet") ?? "an applet"} says ${what}`);
+        let said: unknown;
+        try {
+          said = JSON.parse(raw);
+        } catch {
+          return void wrong(raw);
+        }
+        if (!Array.isArray(said)) return void wrong(raw);
+        for (const w of said) {
+          if (isDeclared(w)) found.push({ doc: w.doc, op: w.op, path: w.path, free: true, pattern: true });
+          else wrong(JSON.stringify(w));
+        }
       },
     })
     .transform(page);
@@ -408,7 +431,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
         const ledgerBefore = ledgerMax();
         const from = mark(cast);
         // P3: a button on the author's page that sends exactly this, refused without a word, is a control that always fails
-        const buttons = controlsOn(who.page).filter((c) => !c.free && c.op !== undefined);
+        const buttons = controlsOn(who.page, failures).filter((c) => !c.free && c.op !== undefined);
         if (story.told === undefined && story.cannot.ops.every((op) => buttons.some((c) => offers(c, story.cannot.doc, op)))) failures.push(`${who.name}'s page offers this, and it is refused without a word: a control that always fails`);
         await send(cast, who, story.cannot);
         if (!sentSince(who, from).some((h) => h.type === "render")) failures.push(`refused, but ${who.name} was not answered: a refusal hands the page back`);
@@ -454,7 +477,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
 
       if (story.from !== undefined) await put(cast, who, story.from, failures);
       // P1: the author's page offers a control for it -- unless it comes from no page (`offPage`)
-      const offered = controlsOn(who.page);
+      const offered = controlsOn(who.page, failures);
       if (!story.offPage) for (const op of story.does.ops) if (!offered.some((c) => offers(c, story.does.doc, op))) failures.push(`${who.name} has no control on their page for ${op.op} ${op.path} on ${story.does.doc}`);
 
       const before = await snapshot(cast);

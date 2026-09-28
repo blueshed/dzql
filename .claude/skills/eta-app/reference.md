@@ -470,6 +470,8 @@ that is only `*` is any one segment (an id the applet reads from its props):
   calendar's requests) fails its story. An applet that can send nothing now names nothing (the
   wedding's menu once answers are closed), as a button that cannot is drawn `disabled`, which
   the stories count as no control.
+- A declaration that is not `[doc, op, path]` (the older `[doc, path]`) fails every story that
+  meets it: `applet declaration must be [doc, op, path]`.
 - The applet sends its writes with `ctx.send(doc, ops)`: a drag let go.
 
 ### Islands

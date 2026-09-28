@@ -13,7 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where a segment that is only `*` is any one segment (`["team", "replace", "/requests/*/starts"]`).
   `appletWrites([doc, path], …)` offered every write under each path, so a page that lost a
   control beside an applet (leave's Approve, in a drawer over the calendar that declared
-  `/requests`) still passed its story. Now a write the applet does not name is not offered.
+  `/requests`) still passed its story. Now a write the applet does not name is not offered, and
+  a declaration in the old form, or anything else that is not `[doc, op, path]`, fails the story
+  that meets it, by name (`applet declaration must be [doc, op, path]: calendar says …`), rather
+  than blaming the page or stopping the run.
   The examples' declarations are exact: leave's calendar writes the draft and a request's starts
   and ends; the wedding's dress each look field, its menu a course's dish or drink, chosen or
   taken back, and its picture field the key at its own path, which it declared nowhere before

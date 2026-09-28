@@ -207,6 +207,33 @@ describe("stories harness", () => {
     expect(failures).toContain("okafors has no control on their page for replace /guests/2/choices/2/dish on household");
   }, 30000);
 
+  test("an applet declaration that is not [doc, op, path] fails the story that meets it, by name, and the run goes on", async () => {
+    const misdeclared: string[] = [];
+    const page = [
+      `<div data-applet="old"${(appletWrites as (...w: unknown[]) => string)(["team", "/draft"])}></div>`, // the form before ops
+      `<div data-applet="single" data-writes='{"doc":"team","path":"/draft"}'></div>`,
+      `<div data-applet="broken" data-writes='[{"doc":"team",'></div>`,
+      `<div data-applet="relative"${appletWrites(["team", "replace", "draft"])}></div>`,
+      `<div data-applet="good"${appletWrites(["team", "replace", "/draft"])}></div>`,
+    ].join("");
+    expect(controlsOn(page, misdeclared)).toEqual([{ doc: "team", op: "replace", path: "/draft", free: true, pattern: true }]);
+    expect(misdeclared).toEqual([
+      'applet declaration must be [doc, op, path]: old says {"doc":"team","op":"/draft"}',
+      'applet declaration must be [doc, op, path]: single says {"doc":"team","path":"/draft"}',
+      'applet declaration must be [doc, op, path]: broken says [{"doc":"team",',
+      'applet declaration must be [doc, op, path]: relative says {"doc":"team","op":"replace","path":"draft"}',
+    ]);
+
+    const { example: leave } = await import("../examples/leave/index");
+    const { stories: told } = await import("../examples/leave/stories");
+    const stale: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replace(/data-writes='[^']*'/, `data-writes='{"doc":"team","path":"/draft"}'`) };
+    const report = await run(stale, { ...told, stories: told.stories.filter((s) => s.name.startsWith("Ann drags across") || s.name.startsWith("Ann cannot move Bo's week")) });
+    expect(report.outcomes.map((o) => o.failures.filter((f) => f.startsWith("applet declaration")))).toEqual([
+      ['applet declaration must be [doc, op, path]: calendar says {"doc":"team","path":"/draft"}'],
+      ['applet declaration must be [doc, op, path]: calendar says {"doc":"team","path":"/draft"}'],
+    ]);
+  }, 30000);
+
   // Delivery, not only pages: chat broken on purpose, three ways its own stories could not see.
   const only = (prefix: string): Story[] => stories.stories.filter((s) => s.name.startsWith(prefix));
   const withRoom = (f: (room: Compartment) => Compartment): Example => ({ ...example, compartments: example.compartments.map((c) => (c.docType === "room" ? f(c) : c)) });
