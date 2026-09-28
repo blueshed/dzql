@@ -186,6 +186,16 @@ describe("diff", () => {
     expect(diff(draw(() => held("Day 1", one)), draw(() => held("Day one", two)))).toEqual([{ op: "replace", target: '[data-eta-part="day"]', html: part("day", `<section><h2>Day one</h2>${watching({ me: "ann" }, two, "paint")}</section>`) }]);
   });
 
+  test("a watching mount that is a void element holds nothing inside it: what follows it is still compared", () => {
+    for (const mount of [`<input data-applet="pick"${appletProps({ at: 1 }, { doc: "d:1" })}>`, `<img data-applet="pick"${appletProps({ at: 1 }, { doc: "d:1" })} />`]) {
+      const page = (text: string) => `<main>${part("p", `<section>${mount}<p>${text}</p></section>`)}</main>`;
+      expect(diff(draw(() => page("one")), draw(() => page("two")))).toEqual([{ op: "replace", target: '[data-eta-part="p"]', html: part("p", `<section>${mount}<p>two</p></section>`) }]);
+    }
+    expect(comparable(`<p><INPUT data-doc="d" data-props="{}">after</p>`)).toBe(`<p><INPUT data-doc="d">after</p>`);
+    // a mount left open ends where what holds it ends, as a browser ends it: what follows is compared
+    expect(comparable(`<main><div data-doc="d" data-props="{}"><p>paint<br></main><p>after</p>`)).toBe(`<main><div data-doc="d"></main><p>after</p>`);
+  });
+
   test("comparable leaves out of a watching mount the document at `data-under` and all it holds; the root leaves out every prop", () => {
     const small = { me: "ann", open: "b" };
     expect(comparable(watching(small, trip({ a: "Temple" }), "painted"))).toBe(`<div class="strip" id="strip" data-applet="strip" data-doc="trip:1" data-under="/trip" data-props="{&quot;me&quot;:&quot;ann&quot;,&quot;open&quot;:&quot;b&quot;}"></div>`);

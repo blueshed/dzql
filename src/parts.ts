@@ -50,11 +50,15 @@ export function comparable(html: string): string {
       at = end;
       continue;
     }
+    const tagName = name[2]!.toLowerCase();
     out += html.slice(copied, at) + watchedTag(tag);
-    copied = at = closing(html, end, name[2]!.toLowerCase());
+    copied = at = VOID.has(tagName) ? end : closing(html, end, tagName);
   }
   return out + html.slice(copied);
 }
+
+/** The elements that have no inside and no end tag: HTML's void elements. */
+const VOID = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"]);
 
 /** A start tag (`<name`) or an end tag (`</name`), where one begins. */
 const TAG = /<(\/?)([a-zA-Z][\w-]*)/y;
@@ -135,9 +139,14 @@ function tagEnd(html: string, at: number): number {
   return html.length;
 }
 
-/** Where the element named `name`, whose start tag ends at `from`, ends: where its end tag starts, or the end of `html`. Its own kind inside it is counted in and out; a comment, and what a tag quotes, are passed over. */
+/**
+ * Where the element named `name`, whose start tag ends at `from`, ends: where its end tag starts;
+ * or, left open, where the end tag of what holds it starts, as a browser ends it there; or the end
+ * of `html`. What opens inside it is counted in and out, a void element never; a comment, and what
+ * a tag quotes, are passed over.
+ */
 function closing(html: string, from: number, name: string): number {
-  let depth = 1;
+  const open: string[] = [];
   for (let at = html.indexOf("<", from); at >= 0; at = html.indexOf("<", at)) {
     if (html.startsWith("<!--", at)) {
       at = past(html, at);
@@ -149,7 +158,11 @@ function closing(html: string, from: number, name: string): number {
       at++;
       continue;
     }
-    if (m[2]!.toLowerCase() === name && (depth += m[1] ? -1 : 1) === 0) return at;
+    const tag = m[2]!.toLowerCase();
+    if (!m[1]) {
+      if (!VOID.has(tag)) open.push(tag);
+    } else if (open.includes(tag)) open.length = open.lastIndexOf(tag); // it, and what it holds that was left open
+    else return at; // its own end, or the end of what holds it
     at = tagEnd(html, at);
   }
   return html.length;
