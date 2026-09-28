@@ -98,7 +98,7 @@ const hooks = { onAppletRemoved, onAppletPropsChanged, pressed: (el: Element) =>
 // disagree with the session (a shared link, a reload): then the session is caught up to the URL
 // instead of the other way round, since the URL is what the person actually asked for.
 let knownPage: string | undefined;
-let pageWrite: WriteSpec | undefined;
+let pageWrite: string | undefined;
 
 /** The page the URL names: its path and, after a `?`, the one thing open over it (src/bento.ts's address). */
 const pageInUrl = (): string => decodeURI(location.pathname.slice(1) + location.search);
@@ -107,13 +107,13 @@ function syncPage() {
   const el = app.querySelector<HTMLElement>("[data-page]");
   if (!el) return;
   const page = el.dataset.page!;
-  if (el.dataset.pageWrite) pageWrite = JSON.parse(el.dataset.pageWrite) as WriteSpec;
+  if (el.dataset.pageWrite) pageWrite = el.dataset.pageWrite;
 
   if (knownPage === undefined) {
     const urlPage = pageInUrl();
     if (urlPage !== page && pageWrite) {
       knownPage = urlPage; // the URL already says this; nothing to push once the session catches up
-      send(pageWrite.doc, [{ op: pageWrite.op, path: pageWrite.path, value: urlPage }]);
+      write(pageWrite, urlPage);
     } else {
       knownPage = page;
       history.replaceState({ page }, "", "/" + encodeURI(page));
@@ -130,7 +130,7 @@ window.addEventListener("popstate", () => {
   const page = pageInUrl();
   knownPage = page;
   commitFocused();
-  if (pageWrite) send(pageWrite.doc, [{ op: pageWrite.op, path: pageWrite.path, value: page }]);
+  if (pageWrite) write(pageWrite, page);
 });
 
 // Rule 7 of bento-request.md's K1: a render may mark one element `data-moving="<name>"`. When
@@ -459,6 +459,12 @@ function send(doc: string, ops: PatchOp[]): number | undefined {
   return id;
 }
 
+/** Sends the write an element names (`data-write`, `data-page-write`: its document, op and path), with this value if any. */
+function write(spec: string, value?: unknown): number | undefined {
+  const { doc, op, path } = JSON.parse(spec) as WriteSpec;
+  return send(doc, [{ op, path, value }]);
+}
+
 /** A field (form-value.ts) an editing form sends and a refusal hands back. A `multiple` select holds several values where a
  * write carries one, so it is not one here: an editing form never sends it, and a refusal does not hand it back. */
 const isField = (el: Element): el is Field =>
@@ -496,10 +502,9 @@ app.addEventListener("submit", (event) => {
   const spec = form.dataset.write;
   if (!spec) return; // not a write: a plain form posts as the browser does (a sign-in)
   event.preventDefault();
-  const { doc, op, path } = JSON.parse(spec) as WriteSpec;
   const fields = [...form.elements].filter(isField);
   const sent: [Field, string | boolean | null][] = fields.map((f) => [f, held(f)]);
-  const id = send(doc, [{ op, path, value: formValue(form) }]);
+  const id = write(spec, formValue(form));
   if (id === undefined) return; // not sent: what is typed stays
   sending = { id, sent };
   form.reset();
@@ -512,9 +517,7 @@ app.addEventListener("click", (event) => {
   if (!target || target.matches("form, input, textarea, select")) return;
   event.preventDefault();
   pressed = target;
-  const { doc, op, path } = JSON.parse(target.dataset.write!) as WriteSpec;
-  const value = target.dataset.value;
-  send(doc, value !== undefined ? [{ op, path, value }] : [{ op, path }]);
+  write(target.dataset.write!, target.dataset.value);
 });
 
 // Escape puts away what was opened last: it presses the last `[data-escape]` on the page -- a
