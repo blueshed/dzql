@@ -73,18 +73,21 @@ function onAppletPropsChanged(el: Element, props: unknown) {
 // doesn't concern it -- see morph.ts. [data-applet] elements are a boundary
 // the morph never descends into (see onAppletRemoved/onAppletPropsChanged);
 // mounting a newly-appeared one still happens here, same as before.
-// A box someone is pressing is theirs until the click lands (`pressed`): a render drawn between the
-// press and the click must not tick it first, or the click unticks it, and sends that, undoing
-// whoever ticked it. Pressing its label is pressing it.
-let pressed: Element | undefined;
+// A box someone is pressing is theirs until the click lands (the morph's `pressed`): a render drawn
+// between the press and the click must not tick it first, or the click unticks it, and sends that,
+// undoing whoever ticked it. Pressing its label is pressing it, and so is holding Space on it.
+let boxPressed: Element | undefined;
+const aBox = (el: unknown): HTMLInputElement | undefined => (el instanceof HTMLInputElement && el.type === "checkbox" ? el : undefined);
 app.addEventListener("pointerdown", (event) => {
   const at = event.target instanceof Element ? event.target : null;
-  const box = at?.closest("label")?.control ?? at;
-  pressed = box instanceof HTMLInputElement && box.type === "checkbox" ? box : undefined;
+  boxPressed = aBox(at?.closest("label")?.control ?? at);
 });
-document.addEventListener("click", () => (pressed = undefined), true); // a click lands after its tick
-app.addEventListener("pointercancel", () => (pressed = undefined));
-const hooks = { onAppletRemoved, onAppletPropsChanged, pressed: (el: Element) => el === pressed };
+app.addEventListener("keydown", (event) => {
+  if (event.key === " " && aBox(event.target)) boxPressed = aBox(event.target);
+});
+document.addEventListener("click", () => (boxPressed = undefined), true); // a click lands after its tick
+app.addEventListener("pointercancel", () => (boxPressed = undefined));
+const hooks = { onAppletRemoved, onAppletPropsChanged, pressed: (el: Element) => el === boxPressed };
 
 // Where a tab is (change-request.md item 3): an example may mark some element within #app with
 // `data-page` (the session's own idea of the page) and `data-page-write` (the write that sets

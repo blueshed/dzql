@@ -998,7 +998,11 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
   test("a render drawn between pressing a box and letting go leaves it be, so the click ticks it as the person meant, and nothing undoes the other's tick", async () => {
     await using view = await open();
     await stubSend(view);
-    for (const touched of [false, true]) {
+    for (const [touched, press] of [
+      [false, `document.getElementById('paid').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`],
+      [true, `document.getElementById('paid').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`],
+      [false, `(() => { const box = document.getElementById('paid'); box.focus(); box.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true })); })()`], // Space, held
+    ] as const) {
       await pushRender(view, ticksForm("Temple", false, false, "see"));
       if (touched) {
         for (const [paid, version] of [[true, 2], [false, 3]] as const) {
@@ -1008,8 +1012,8 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
         }
       }
       await view.evaluate(`window.__sent = []`);
-      await view.evaluate(`document.getElementById('paid').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`);
-      await pushRender(view, ticksForm("Temple", false, true, "see")); // someone else ticked it, drawn while the finger is down
+      await view.evaluate(press);
+      await pushRender(view, ticksForm("Temple", false, true, "see")); // someone else ticked it, drawn while the finger (or Space) is down
       await view.evaluate(`document.getElementById('paid').click()`); // let go
       await Bun.sleep(50);
       expect(await view.evaluate<unknown[]>(`[document.getElementById('paid').checked, window.__sent]`)).toEqual([true, []]);
