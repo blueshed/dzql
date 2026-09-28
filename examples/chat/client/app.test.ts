@@ -272,8 +272,10 @@ describe("app.ts in a real browser", () => {
     expect(await view.evaluate<boolean>(`${m}.scrollHeight > ${m}.clientHeight`)).toBe(true);
     expect(await view.evaluate<boolean>(atFoot)).toBe(true); // the list grew, so it was pinned
 
-    // the fifty-first: one in, the oldest out, the count still fifty -- and it must be in view
-    await sendChatMessage(view, "the fifty-first");
+    // the fifty-first, and longer than the one it takes out: one in, the oldest out, the count still
+    // fifty -- and it must be in view, whatever the height it brings
+    const long = `the fifty-first, ${"and it goes on for a while ".repeat(12)}`;
+    await sendChatMessage(view, long);
     await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("the fifty-first"));
     expect(await view.evaluate<number>(`${m}.children.length`)).toBe(50);
     expect(await view.evaluate<boolean>(atFoot)).toBe(true);

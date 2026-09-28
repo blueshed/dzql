@@ -35,17 +35,23 @@ function renderRooms(name: string, rooms: string[]): string {
   });
 }
 
-/** Who is here, across the head of the conversation: a part, sent alone when someone arrives or leaves. */
+/** Who is here, across the head of the conversation: a list, and a part, sent alone when someone arrives or leaves. You are your face in your own colour, not your name. */
 function renderPeople(people: string[], me: string): string {
-  return part("people", `<div id="people" class="people" aria-label="Here">${people.map((p) => `<span class="who">${face(p, p === me)}<span class="note">${esc(p)}</span></span>`).join("")}</div>`);
+  const who = (p: string) => (p === me ? `<li class="who" aria-hidden="true">${face(p, true)}</li>` : `<li class="who">${face(p, false)}<span class="note">${esc(p)}</span></li>`);
+  return part("people", `<ul id="people" class="people" aria-label="Here">${people.map(who).join("")}</ul>`);
 }
 
-/** A message is a bubble, and a part: yours on the right, everyone else's on the left with a face, the name shown only on the first of a run. */
+/**
+ * A message is a bubble, and a part: yours on the right, everyone else's on the left. A run is
+ * said once, at its start: another's face and name, or, for yours, "You" to a reader, who cannot
+ * see which side it sits on. The rest of another's run keep the face's place, empty.
+ */
 function renderMessage(message: ChatMessage, index: number, messages: ChatMessage[], viewer: string): string {
   const mine = message.name === viewer;
   const firstOfRun = index === 0 || messages[index - 1]!.name !== message.name;
-  const nameLine = !mine && firstOfRun ? `<span class="name">${esc(message.name)}</span>` : "";
-  return part(`m${message.id}`, `<li id="m${message.id}"${mine ? ' class="mine"' : ""}>${face(message.name, mine)}<div class="body">${nameLine}<span class="bubble">${esc(message.text)}</span></div></li>`);
+  const mark = mine ? "" : firstOfRun ? face(message.name, false) : `<span class="face-gap"></span>`;
+  const who = !firstOfRun ? "" : mine ? `<span class="sr-only">You</span>` : `<span class="name">${esc(message.name)}</span>`;
+  return part(`m${message.id}`, `<li id="m${message.id}"${mine ? ' class="mine"' : ""}>${mark}<div class="body">${who}<span class="bubble">${esc(message.text)}</span></div></li>`);
 }
 
 /** Say something: the room's conversation, and the form at its foot. "Chat" in the trail is the way back to the rooms. */
@@ -55,7 +61,7 @@ function renderRoom(name: string, room: string, people: string[], transcript: Ch
     body: join(
       renderPeople(people, name),
       part("messages", `<ul class="messages" id="messages" data-autoscroll>${transcript.map((m, i) => renderMessage(m, i, transcript, name)).join("")}</ul>`),
-      `<form class="say"${write("room", "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message #${esc(room)}" aria-label="Say"><button type="submit" class="tool">Send</button></form>`,
+      `<form class="say"${write("room", "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message" aria-label="Message"><button type="submit" class="tool">Send</button></form>`,
     ),
   });
 }
