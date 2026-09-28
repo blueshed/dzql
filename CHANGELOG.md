@@ -105,6 +105,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   repeats its control ("open" beside Claim it, "anyone may" beside Give to it); a confirm modal is
   named for what it takes away and asks once; a place's picture has no alt of its own beside its
   name.
+- **The wedding's housekeeping** (todo n65). A household's words to the couple are written as
+  they are left, as every other drawer's are, with no Save; a guest's Coming choice wraps in the
+  drawer rather than standing past its edge; the meal takes a thumbnail's corners inside the
+  drawer; "Add an event"; and the reading switches say which is chosen with `aria-checked` alone,
+  as a radio does. The stylesheet lost what nothing draws any more (the old boxes' forms and small
+  reading, a margin said twice), and its last spelled-out colours are tokens.
 
 ### Added
 

@@ -324,6 +324,28 @@ describe("the wedding in a real browser", () => {
     expect((await board()).message).toBe("so happy for you both");
   });
 
+  test("the answer's words are written as they are left, as every drawer's are; a choice of three stays inside the guest's drawer", async () => {
+    await using view = new Bun.WebView({ width: 1280, height: 800 });
+    await enter(view, code);
+    const guest = (await household(code)).guests[0]!;
+    await view.navigate(urlFor(view, server.url, `?guest=${guest.id}`));
+    await waitFor(view, `document.querySelector('.guest-drawer .pick') !== null`, (v) => v === true);
+    const past = await view.evaluate<number>(`(() => { const edge = document.querySelector('.guest-drawer .drawer-body').getBoundingClientRect().right; return Math.max(...[...document.querySelectorAll('.guest-drawer .pick .tool')].map((b) => b.getBoundingClientRect().right - edge)); })()`);
+    expect(past).toBeLessThanOrEqual(0);
+
+    await view.navigate(urlFor(view, server.url, "?answer"));
+    await waitFor(view, `document.querySelector('.answer-drawer textarea') !== null`, (v) => v === true);
+    expect(await view.evaluate<boolean>(`document.querySelector('.answer-drawer button[type="submit"]') === null`)).toBe(true); // no Save
+    await view.evaluate(`(() => {
+      const box = document.querySelector('.answer-drawer textarea');
+      box.value = 'Ada is vegetarian.';
+      box.dispatchEvent(new Event('focusout', { bubbles: true }));
+    })()`);
+    await waitFor(view, `document.querySelector('.bubble.ours .bubble-words').textContent`, (v) => v === "Ada is vegetarian."); // the bubble, drawn again from the write
+    expect((await household(code)).message).toBe("Ada is vegetarian.");
+    await asHousehold(code, [{ op: "replace", path: "/message", value: "" }]);
+  }, 15000);
+
   test("leaving returns to the welcome, and the session survives a reload", async () => {
     await using view = new Bun.WebView();
     await enter(view, code);

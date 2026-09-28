@@ -74,7 +74,7 @@ export function householdPage(v: HouseholdView): string {
   const everyone = read.as === "everyone" ? everyoneReading(v, read.family) : undefined;
   const trail: Crumb[] = [{ label: coupleName(v.w) }, ...(everyone?.crumbs ?? [{ label: v.h.code }])];
 
-  const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${READINGS.map(([text, as, path, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${read.as === as}" aria-pressed="${read.as === as}" aria-label="${text}"${nav(path)}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
+  const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${READINGS.map(([text, as, path, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${read.as === as}" aria-label="${text}"${nav(path)}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
   const owed = v.h.guests.filter((g) => g.named_by === "household").length < v.h.plus_ones;
   // find, on the people this reading shows: everyone's photo is nameless until the day
   const { word, hide } = findOf(v);
@@ -302,7 +302,8 @@ const DEFAULT_WORDS: Record<"yes" | "maybe" | "no", string> = {
   no: "Sorry, we can't be there.",
 };
 
-/** The answer's drawer: every option whole -- a face, its colour, its sentence -- and the words beneath. */
+/** The answer's drawer: every option whole -- a face, its colour, its sentence -- and the words beneath, written as they are left, as
+ * every other drawer's are. */
 function answerSheet(v: HouseholdView): string {
   if (!over(v.session.ui).answering) return "";
   const { h } = v;
@@ -314,7 +315,7 @@ function answerSheet(v: HouseholdView): string {
     h.answer && v.open && `<div class="drawer-foot">${tool("Take back our answer", { kind: "quiet", write: write("household", "remove", "/answer") })}</div>`,
     `<div class="props">${prop(
       "Our words",
-      `<form class="words-form"${write("household", "replace", "/message")}><textarea name="message" rows="3" placeholder="Say something to the couple" aria-label="Our words">${esc(h.message ?? "")}</textarea><div class="form-foot">${tool("Save our words", { write: "", submit: true })}</div></form>`,
+      `<form data-write-on="blur"><textarea name="message"${write("household", "replace", "/message")} rows="3" placeholder="Say something to the couple" aria-label="Our words">${esc(h.message ?? "")}</textarea></form>`,
     )}</div>`,
   );
   return drawer("answer-drawer", "Our answer", body, close(v), "answer-drawer");

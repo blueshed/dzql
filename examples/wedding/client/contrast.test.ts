@@ -54,6 +54,7 @@ const pairs: [fg: string, bg: string, min: number, what: string][] = [
   ["add", "card", TEXT, "a tool that makes"],
   ["danger", "card", TEXT, "a tool that removes"],
   ["leaf", "card", TEXT, "a gift claimed by us"],
+  ["red-deep", "card", TEXT, "a gift another household took"],
   ["#FFFFFF", "gold-deep", TEXT, "Open, the gold button"],
   ["paper", "navy", TEXT, "a chosen dish; the count on a family's figure"],
   ["gold-deep", "paper", LARGE, "the ampersand between the names"],
@@ -63,10 +64,13 @@ const pairs: [fg: string, bg: string, min: number, what: string][] = [
   ["edge", "paper", LARGE, "a pill's edge, inside it"],
   ["leaf", "card", LARGE, "yes: the dot beside the word, the face's disc"],
   ["amber", "card", LARGE, "maybe: the dot, the face's disc"],
+  ["red", "card", LARGE, "no: the dot, the face's disc"],
   ["#FFFFFF", "leaf", LARGE, "the face on yes's disc"],
   ["#FFFFFF", "amber", LARGE, "the face on maybe's disc"],
+  ["#FFFFFF", "red", LARGE, "the face on no's disc"],
   ["leaf", "well", LARGE, "yes: the mark at a guest's feet in the photo"],
   ["amber", "well", LARGE, "maybe: the mark at a guest's feet"],
+  ["red", "well", LARGE, "no: the mark at a guest's feet"],
   ["muted", "well", LARGE, "no answer: the dashed mark at a guest's feet; a ghost's outline"],
 ];
 

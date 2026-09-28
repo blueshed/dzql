@@ -345,6 +345,10 @@ describe("a household", () => {
     await asHousehold(code, [{ op: "add", path: "/asks/-", value: "Robin Friend" }]);
     const askId = (await household(code)).asks.at(-1)!.id;
     expect(await at(ws, "")).toContain(`{&quot;key&quot;:&quot;ask-${askId}&quot;,&quot;ghost&quot;:true`);
+    // the reading is a radio of three: chosen is aria-checked, never aria-pressed, which is a toggle's
+    const reading = /<div class="stack" role="radiogroup" aria-label="Read as">.*?<\/div>/.exec(await at(ws, "list"))![0];
+    expect(reading).toContain('role="radio" aria-checked="true" aria-label="List"');
+    expect(reading).not.toContain("aria-pressed");
     // the list: the guests' rows, then whoever was asked for and is not a guest; a surname the family shares is said once
     let html = await at(ws, "list");
     expect(html).toContain('class="row tap"');
@@ -548,6 +552,7 @@ describe("the couple", () => {
     // a row's own drawer: its × goes back to its list, whose tool stays pressed
     html = await at(ws, "?keep=courses/1");
     expect(html).toContain("Add a dish");
+    expect(await at(ws, "?events")).toContain("Add an event");
     expect(html).toContain("Remove this course");
     expect(html).toContain(`aria-label="Courses" aria-pressed="true"`);
     expect(html).toContain(`aria-label="Close" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="?courses"`);

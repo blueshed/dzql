@@ -54,7 +54,7 @@ export function boardPage(v: BoardView): string {
     ["Everyone", !list, "", "camera"],
     ["List", list, "list", "list"],
   ];
-  const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${readings.map(([text, on, path, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${on}" aria-pressed="${on}" aria-label="${text}"${nav(path)}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
+  const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${readings.map(([text, on, path, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${on}" aria-label="${text}"${nav(path)}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
   const find = b.households.length ? findControl("households", { word, hide, shown: b.households.filter((h) => hits(h, word)).length, total: b.households.length }) : undefined;
   const kept = keptIn(v)?.table;
   const tools = [
@@ -180,7 +180,7 @@ function field(path: string, name: string, value: string, label: string, placeho
 
 /** A form that adds one thing by its name, in place, at the foot of what it adds to. */
 const addInPlace = (path: string, noun: string): string =>
-  `<form class="pair add-here"${write("board", "add", path)}><input class="field" name="name" placeholder="${esc(`A new ${noun}`)}" aria-label="${esc(`A new ${noun}'s name`)}" autocomplete="off" required>${tool(`Add a ${noun}`, { icon: "plus", kind: "add", write: "", submit: true })}</form>`;
+  `<form class="pair add-here"${write("board", "add", path)}><input class="field" name="name" placeholder="${esc(`A new ${noun}`)}" aria-label="${esc(`A new ${noun}'s name`)}" autocomplete="off" required>${tool(`Add ${/^[aeiou]/i.test(noun) ? "an" : "a"} ${noun}`, { icon: "plus", kind: "add", write: "", submit: true })}</form>`;
 
 const chaseLink = (h: HouseholdDocument): string =>
   `<a class="tool quiet" href="mailto:${esc(h.email)}?subject=${encodeURIComponent("Just checking in")}">${icon("mail")}Chase them</a>`;
