@@ -90,6 +90,20 @@ story("Once the deadline has passed, the Okafors cannot change their answer", {
 });
 ```
 
+A tab closing is a story with no write: `closesTab: true` in place of `does`. The socket goes, as
+a browser's does, and whoever is still looking must see what the server tells of it; the author,
+gone, sees nothing, and there is nothing to undo. Chat's:
+
+```ts
+story("Cy closes her tab, and Ada and Bob see her leave general", {
+  as: "cy",
+  premise: { cy: [room("general")] },
+  closesTab: true,
+  seen: ["ada", "bob"],
+  untold: ["dee", "eve"],
+});
+```
+
 The sentence at the front is the story's name and its whole value to a customer. It is what you
 scroll through with the groom and ask "is this true?". The object after it is what runs.
 
@@ -143,11 +157,13 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    each, `*` for any one segment). None is a failure: a story nobody can do from a page is not a
    story (`offPage` marks a write from a feed or the CLI).
    Then send the `does` as its session, wait for the wire to go quiet, and it must have landed:
-   someone was told of a changed document.
+   someone was told of a changed document. A `closesTab` has no control to find: the author's
+   socket closes, the server is waited for, and something must land for someone still looking.
 3. Canon 1. Render every member fresh again. For each name in `seen`, that member's page must
    differ from before; for everyone else, nothing of theirs may differ; and each name in `untold`
    must have been told of nothing: sent no document's ops, by the write, its undo or its redo (a
-   page that reads a document is told every change to it, shown or not). For a `cannot`, nothing anywhere
+   page that reads a document is told every change to it, shown or not); after a tab closes, only
+   who is still looking is looked at. For a `cannot`, nothing anywhere
    may differ, the ledger must not have moved, and the writer must be answered: a refusal hands
    the page back. With `told`, the writer's page must show that reason, and nothing else of it
    may differ; without it, a button on the writer's page that sends exactly the refused write is
@@ -187,7 +203,8 @@ for more than it checks:
 - **Not a modelling tool.** No `model.db`, no site to browse the entities, no predicates over a
   schema. The stories are in the app's own repo, in one file, in the wire's words.
 - **Not a story language.** A story is a TypeScript object with a name and a few keys: who,
-  the write or the refusal, who sees it, where the author acts, and what it alone starts from.
+  the write, the refusal or the tab that closes, who sees it, where the author acts, and what it
+  alone starts from.
   Each key came from a story that needed it (the premise, from a deadline passed for one story
   only); it will not need a grammar.
 - **Not generated code.** Claude writes the compartments by hand from the stories, and a person
@@ -219,4 +236,6 @@ says whether they were written right.
   exist). The cast's setup writes are where that is made true, and they may grow longer than the
   stories. If they do, the seed is wrong, not the story. What only one story needs is its premise.
 - **Who tells the ticker's stories.** `as: "feed"` is a session that is not a person. Presence
-  has the same shape: a join is a story told by the socket.
+  has the same shape: a join is a story told by the socket, as a tab closing now is (`closesTab`).
+- **Meanwhile.** A story cannot yet put someone else's write between its `does` and its undo
+  ("Ada takes back her note, and Femi's, written after, stays"): the premise comes before.

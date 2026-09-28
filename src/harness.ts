@@ -25,8 +25,10 @@ export { comparable };
 // whose page changes. Delivery is checked as well as pages: a member the story says is `untold`
 // must be told of no document -- no patch -- by the write, its undo or its redo, and anything the
 // kernel reports failing while a story runs (a message, a drawing, a change being told) fails the
-// story. Each story runs inside one database transaction that is rolled back afterwards, so every
-// story starts from the cast and its own premise alone.
+// story. A tab that closes (`closesTab`) is told by its socket going: whoever is still looking must
+// see it as the story says, and there is nothing to undo. Each story runs inside one database
+// transaction that is rolled back afterwards, so every story starts from the cast and its own
+// premise alone.
 //
 // Canon 2 is checked here too, without a browser: every member's open page is kept as the client
 // would keep it -- a full render replaces it, a fragment render is applied target by target -- and
@@ -334,6 +336,23 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     for (const m of cast) if (differs(a, b, m.name)) failures.push(`${what}: ${m.name}'s page differs${excerpt(a.get(m.name)!, b.get(m.name)!)}`);
   }
 
+  /** `seen` must notice, and everyone else must not (R3): nobody's page changes unless the story says so. */
+  function noticed(before: Snapshot, after: Snapshot, looking: Member[], seen: Map<string, string | undefined>, failures: string[]): void {
+    for (const m of looking) {
+      if (seen.has(m.name)) {
+        if (!differs(before, after, m.name)) failures.push(`${m.name} did not see it${where(seen.get(m.name))}`);
+      } else if (differs(before, after, m.name)) failures.push(`${m.name} noticed, and should not have${excerpt(before.get(m.name)!, after.get(m.name)!)}`);
+    }
+  }
+
+  /** Closes a member's tab, as a browser does: resolved once it is closed. The server has then been told, and what it sets going is `server.idle()`'s to wait for. */
+  function closeTab(m: Member): Promise<unknown> {
+    if (m.ws.readyState === WebSocket.CLOSED) return Promise.resolve();
+    const closed = new Promise((resolve) => m.ws.addEventListener("close", resolve, { once: true }));
+    m.ws.close();
+    return closed;
+  }
+
   /** The patch stream: what each member's applets hold must be what a fresh render gives them. */
   async function held(cast: Member[], when: string, failures: string[]): Promise<void> {
     for (const m of cast) failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, await draw(m.sessionId)));
@@ -396,6 +415,23 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
         else if (where !== undefined) await put(cast, m, where, failures);
       }
 
+      if ("closesTab" in story) {
+        // No write: the author's socket goes, and whoever is still looking is told what follows
+        // (who is in a room). No control is looked for, and there is nothing to undo.
+        const looking = cast.filter((m) => m !== who);
+        if (seen.has(who.name)) failures.push(`${who.name} closed their tab: they are not there to see it`);
+        const before = await snapshot(looking);
+        const from = mark(looking);
+        await closeTab(who);
+        await server.idle(); // the close handled, and what it set going
+        await settle(looking);
+        if (!landedSince(looking, from)) failures.push(`nothing landed: closing ${who.name}'s tab changed nothing`);
+        checkUntold(looking, story.untold, from, "after the tab closed", failures);
+        const after = await snapshot(looking);
+        await stale(looking, "after the tab closed", failures);
+        noticed(before, after, looking, seen, failures);
+        return { name: story.name, failures };
+      }
 
       if (story.from !== undefined) await put(cast, who, story.from, failures);
       // P1: the author's page offers a control for it -- unless it comes from no page (`offPage`)
@@ -419,13 +455,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       const entries = ledger.since(ledgerBefore);
       await stale(cast, "after the story", failures);
 
-      // `seen` must notice, and everyone else must not (R3): nobody's page changes unless the story
-      // says so. An `untold` member is further told of nothing (above).
-      for (const m of cast) {
-        if (seen.has(m.name)) {
-          if (!differs(before, after, m.name)) failures.push(`${m.name} did not see it${where(seen.get(m.name))}`);
-        } else if (differs(before, after, m.name)) failures.push(`${m.name} noticed, and should not have${excerpt(before.get(m.name)!, after.get(m.name)!)}`);
-      }
+      noticed(before, after, cast, seen, failures); // an `untold` member is further told of nothing (above)
 
       if (entries.length === 0) return { name: story.name, failures }; // off the ledger: nothing to undo
       if (!(await active(who.sessionId))) return { name: story.name, failures }; // the author has gone (logged out): no undo is theirs to press
@@ -450,8 +480,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       }
       return { name: story.name, failures };
     } finally {
-      for (const m of cast) m.ws.close();
-      await Promise.all(cast.map((m) => new Promise((resolve) => (m.ws.readyState === WebSocket.CLOSED ? resolve(undefined) : m.ws.addEventListener("close", resolve, { once: true })))));
+      await Promise.all(cast.map(closeTab));
       await server.idle(); // every close handled, and what it set going
       db.exec("ROLLBACK");
       await documents.release(new Set()); // the next story reads from the rolled-back database

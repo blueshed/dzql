@@ -114,6 +114,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deadline passed, a flight home made a gate) changed what every other story saw. Each premise
   write must land, or the story is not told. The wedding tells two: once the deadline has passed
   the Okafors cannot change their answer, and Femi, having picked the Rioja, changes his mind.
+- **A tab closing is a story** (todo n17): `closesTab: true` in place of `does`. The author's
+  socket closes, as a browser's does, and whoever is still looking must see what the server tells
+  of it; nobody's control is looked for and there is nothing to undo. Chat tells it: Cy closes
+  her tab, and Ada and Bob see her leave general (her premise puts her there). A write made
+  meanwhile, between a story and its undo, still has no key (todo n9-n11).
 - **`first-app.md`: your first app, step by step.** Chat, then leave, with each word explained
   where it is first met, and what each story failure means.
 - **leave, a fourth example: people sign in, and a team's leave is one calendar.** A sign-in page

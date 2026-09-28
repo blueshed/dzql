@@ -80,7 +80,7 @@ Everything below is the least that makes it pass.
 8. **`index.ts`** -- `export const example: Example = { name, compartments, render, active, index, delta, who?, routes? }`. `render(sessionId)` is the whole page.
 9. **`cli.ts`** (optional) -- an `aliases` table of short verbs that build `{doc, ops}`; no database.
 10. **Tests** -- a test for each document's rules and shapes, a `server.test.ts` that drives writes
-    and undo over a real websocket (for what a story cannot say: a tab closing, two writes racing), a
+    and undo over a real websocket (for what a story cannot say: two writes racing), a
     `client/app.test.ts` for what only a browser can show (`Bun.WebView`: open each view at
     `urlFor(view, server.url)` and wait with `waitFor`, both `src/webview.ts`, so each is a browser of
     its own on Chrome too). The gate, and what the browser tests need, are CLAUDE.md's.

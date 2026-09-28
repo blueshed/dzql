@@ -61,6 +61,17 @@ export type Told = {
        * the one change their page may show. Omitted: they are told nothing. */
       told?: string;
     }
+  | {
+      /**
+       * The author closes their tab: no write, the socket going, which the server tells like any
+       * change (who is in a room). No control is looked for and nothing is undone; the author, gone,
+       * sees nothing, so `seen` names only who is still looking.
+       */
+      closesTab: true;
+      seen: Seen;
+      /** Who must not even be sent a change by it, as for a `does`. */
+      untold?: string[];
+    }
 );
 
 export type Story = { name: string } & Told;

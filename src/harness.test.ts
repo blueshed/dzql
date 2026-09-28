@@ -99,6 +99,18 @@ describe("stories harness", () => {
     ]);
   }, 30000);
 
+  test("a tab closing is a story: who is still looking must see it, the author cannot, and a close that changes nothing is said", async () => {
+    const report = await run(example, {
+      cast: stories.cast,
+      stories: [
+        // the kitchen empties, and leaves Dee's list of rooms; Cy is not there to see it
+        { name: "Cy closes her tab, and sees the kitchen go", as: "cy", closesTab: true, seen: ["cy", "dee"] },
+        { name: "Eve closes her tab before she has a name", as: "eve", closesTab: true, seen: [] },
+      ],
+    });
+    expect(report.outcomes.map((o) => o.failures)).toEqual([["cy closed their tab: they are not there to see it"], ["nothing landed: closing eve's tab changed nothing"]]);
+  }, 30000);
+
   test("controls: a button sends its own value, a field or a form any, an applet on a document any write to it, one that says what it writes exactly that", () => {
     const page = [
       `<button data-write='{"doc":"room","op":"replace","path":"/name"}' data-value="Tess &amp; Tom">x</button>`,
@@ -161,6 +173,12 @@ describe("stories harness", () => {
     expect(failures).toContain("after the story, cy was told of room:general, and should not have been");
     expect(failures).toContain("after undo, eve was told of room:general, and should not have been");
     expect(failures).toContain("after redo, dee was told of room:general, and should not have been");
+  }, 30000);
+
+  test("a tab closing the server does not tell fails its story: nobody still looking sees it", async () => {
+    const deaf: Example = { ...example, compartments: example.compartments.map((c) => ({ ...c, onClose: undefined })) };
+    const failures = await failuresOf(deaf, only("Cy closes her tab"));
+    expect(failures).toEqual(["nothing landed: closing cy's tab changed nothing", "ada did not see it", "bob did not see it"]);
   }, 30000);
 
   test("a refusal that is really the server failing fails the story, and so does one nobody answers", async () => {
