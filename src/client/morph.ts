@@ -290,19 +290,11 @@ export function morphTag(old: Element, tag: string, hooks: MorphHooks = {}): voi
 /**
  * Reconciles one existing element against the HTML of one element -- a fragment render's
  * `replace`. Same tag (and same applet, if any) is morphed in place; anything else is swapped
- * for the new element, applets inside the old one cleaned up first.
+ * for the new element, and the old one removed as a morph removes a child, its applets told.
  */
 export function morphElement(old: Element, html: string, hooks: MorphHooks = {}): void {
   const next = parsedFor(old, html);
-  if (!next) {
-    removeNode(old, hooks);
-    return;
-  }
-  if (sameType(old, next)) {
-    morphNode(old, next, hooks);
-  } else {
-    old.replaceWith(next.cloneNode(true));
-    if (isApplet(old)) hooks.onAppletRemoved?.(old);
-    for (const applet of old.querySelectorAll("[data-applet]")) hooks.onAppletRemoved?.(applet);
-  }
+  if (next && sameType(old, next)) return morphNode(old, next, hooks);
+  if (next) old.after(next.cloneNode(true));
+  removeNode(old, hooks);
 }
