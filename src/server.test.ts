@@ -123,7 +123,7 @@ function makeExample(name: string): Example {
   };
 }
 
-type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[]; id?: WriteId; reason?: string; wire?: number };
+type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[]; id?: WriteId; entry?: number; reason?: string; wire?: number };
 
 /** A render's HTML, whether it came as the whole page or as the parts that changed (src/parts.ts). */
 const htmlOf = (m: WireMessage): string =>
@@ -582,6 +582,18 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
+  test("an undo that changes nothing -- it reaches a write that changed nothing -- lands, and is answered by its id with an echo of nothing, not left unanswered", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    write(ws, "note", [{ op: "replace", path: "/text", value: "same" }], 1);
+    write(ws, "note", [{ op: "replace", path: "/text", value: "same" }], 2);
+    expect((await until(ws)).filter((m) => m.type === "patch").map((m) => m.id)).toEqual([1, 2]);
+    write(ws, "ledger", [{ op: "remove", path: "/latest" }], 3);
+    expect((await until(ws)).find((m) => m.id === 3)).toMatchObject({ type: "patch", doc: "note", ops: [], id: 3 });
+    ws.close();
+  });
+
   test("a change told from outside any event -- a feed's tick, slow to follow -- does not cost a write made meanwhile its id", async () => {
     const ws = connect(server);
     await opened(ws);
@@ -789,6 +801,61 @@ describe("one socket, any documents: a document is named whole, and seen because
     write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "no id" }]);
     expect(await nextPatch(a)).not.toHaveProperty("id");
 
+    a.close();
+    b.close();
+  });
+
+  test("a write's echo to its writer names its ledger entry, which undoes that change by name -- not the session's last -- and redoes it; nobody else is told an entry", async () => {
+    const { ws: a } = await showingMonths("2026-10");
+    const { ws: b } = await showingMonths("2026-10");
+    const whats = async () => (await appointments("2026-10")).map((x) => x.what);
+
+    write(a, "month:2026-10", [{ op: "add", path: "/appointments/-", value: "dentist" }], 1);
+    const dentist = await nextPatch(a);
+    expect({ id: dentist.id, entry: typeof dentist.entry }).toEqual({ id: 1, entry: "number" });
+    expect(await nextPatch(b)).not.toHaveProperty("entry");
+    write(a, "month:2026-10", [{ op: "add", path: "/appointments/-", value: "haircut" }], 2);
+    expect((await nextPatch(a)).entry).toBeGreaterThan(dentist.entry!);
+    await nextPatch(b);
+
+    write(a, "ledger", [{ op: "remove", path: `/${dentist.entry}` }], 3);
+    const undone = await nextPatch(a);
+    expect(undone).toMatchObject({ doc: "month:2026-10", id: 3, ops: [{ op: "remove" }] });
+    expect(undone.entry).toBeGreaterThan(dentist.entry!);
+    expect(await nextPatch(b)).not.toHaveProperty("entry");
+    expect(await whats()).toEqual(["haircut"]);
+
+    write(a, "ledger", [{ op: "add", path: `/${undone.entry}` }], 4); // named by its undo's entry: the same change
+    expect(await nextPatch(a)).toMatchObject({ id: 4, ops: [{ op: "add", value: { what: "dentist" } }] });
+    expect(await whats()).toEqual(["dentist", "haircut"]);
+    a.close();
+    b.close();
+  });
+
+  test("a named undo or redo that is not this session's, or goes nowhere, is refused, and says why; a path that names no entry is refused by the ledger", async () => {
+    const { ws: a } = await showingMonths("2026-11");
+    const { ws: b } = await showingMonths("2026-11");
+    const refusal = async (ws: WebSocket) => (await until(ws)).find((m) => m.type === "refused");
+
+    write(b, "month:2026-11", [{ op: "add", path: "/appointments/-", value: "b's" }], "b-1");
+    const theirs = await nextPatch(b);
+    write(a, "ledger", [{ op: "remove", path: `/${theirs.entry}` }], 1);
+    expect(await refusal(a)).toEqual({ type: "refused", id: 1, reason: `No change of yours is numbered ${theirs.entry}.` });
+
+    write(a, "month:2026-11", [{ op: "add", path: "/appointments/-", value: "a's" }], 2);
+    const mine = (await until(a)).find((m) => m.id === 2)!;
+    write(a, "ledger", [{ op: "add", path: `/${mine.entry}` }], 3);
+    expect(await refusal(a)).toEqual({ type: "refused", id: 3, reason: "That change has not been undone." });
+    write(a, "ledger", [{ op: "remove", path: `/${mine.entry}` }], 4);
+    expect((await until(a)).find((m) => m.id === 4)).toMatchObject({ type: "patch", ops: [{ op: "remove" }] });
+    write(a, "ledger", [{ op: "remove", path: `/${mine.entry}` }], 5);
+    expect(await refusal(a)).toEqual({ type: "refused", id: 5, reason: "That change is undone already." });
+
+    for (const path of ["/0", "/-1", "/1.5", "/01", "/latest/1", "/x", ""]) {
+      write(a, "ledger", [{ op: "remove", path }], path);
+      expect(await refusal(a)).toEqual({ type: "refused", id: path });
+    }
+    expect((await appointments("2026-11")).map((x) => x.what)).toEqual(["b's"]);
     a.close();
     b.close();
   });

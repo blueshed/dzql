@@ -5,7 +5,7 @@
     "": {
       "name": "eta",
       "dependencies": {
-        "@blueshed/delta": "^0.10.0",
+        "@blueshed/delta": "file:/private/tmp/claude-501/-Users-peterb-Workshop/feec2faf-e58a-4e9b-81a7-3ab37c2f5d2e/scratchpad/tarballs/blueshed-delta-0.10.0-undo-named.tgz",
         "@blueshed/railroad": "^0.15.1",
         "lucide": "^1.46.0",
       },
@@ -15,7 +15,7 @@
     },
   },
   "packages": {
-    "@blueshed/delta": ["@blueshed/delta@0.10.0", "", { "peerDependencies": { "@blueshed/railroad": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0", "@electric-sql/pglite": "^0.5.4", "jose": "^6.0.0", "pg": "^8.20.0" }, "optionalPeers": ["@blueshed/railroad", "@electric-sql/pglite", "jose", "pg"], "bin": { "delta": "cli.ts" } }, "sha512-6e4bnnlCbtX8RvDT27JQdsRSXC16vGFyhx93OHvGjwYX+pw/4vH3IUGAh9GJ5yRsv9nG+o7v1Mx+cLkUrKT+Dg=="],
+    "@blueshed/delta": ["@blueshed/delta@/private/tmp/claude-501/-Users-peterb-Workshop/feec2faf-e58a-4e9b-81a7-3ab37c2f5d2e/scratchpad/tarballs/blueshed-delta-0.10.0-undo-named.tgz", { "peerDependencies": { "@blueshed/railroad": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0", "@electric-sql/pglite": "^0.5.4", "jose": "^6.0.0", "pg": "^8.20.0" }, "optionalPeers": ["@blueshed/railroad", "@electric-sql/pglite", "jose", "pg"], "bin": { "delta": "./cli.ts" } }, "sha512-wl0WbrQf+jfqW0FZue/hFjbUdvOVSX4o2w4hx2HT0fPQWoK++DGL7PN6y9zU1nhBx8Kh3L39peFHdYfVR6azbA=="],
 
     "@blueshed/railroad": ["@blueshed/railroad@0.15.1", "", {}, "sha512-ikOCZA/x2qSHW3G7U1O+jmlDHttauxAGErZm64+uLJIGj0p6YotqdoZrlOrSiqDO78F9CRMd1PZ+I8ydadfGEA=="],
 

@@ -37,7 +37,7 @@
     "@types/bun": "latest"
   },
   "dependencies": {
-    "@blueshed/delta": "^0.10.0",
+    "@blueshed/delta": "file:/private/tmp/claude-501/-Users-peterb-Workshop/feec2faf-e58a-4e9b-81a7-3ab37c2f5d2e/scratchpad/tarballs/blueshed-delta-0.10.0-undo-named.tgz",
     "@blueshed/railroad": "^0.15.1",
     "lucide": "^1.46.0"
   }

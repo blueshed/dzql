@@ -10,6 +10,7 @@ import { splitDoc } from "./names";
 import { drawing, shownTo } from "./reading";
 import { diff, type Drawn } from "./parts";
 import { Refusal, refuse, tell } from "./refusal";
+import { entryOf } from "./compartments/ledger";
 import { refuseOrigin } from "@blueshed/delta/server";
 
 type Socket = Bun.ServerWebSocket<ConnectionData>;
@@ -98,25 +99,28 @@ const heard = new WeakSet<Documents>();
 
 /**
  * A write with an id, being made: the change it makes to the document it names is "yours" to its
- * writer, echoed to it with the id. Which change that is, is the one told at the version the write
- * made -- known once delta answers (null: it made none) -- so a change to the same document from
- * elsewhere meanwhile (another process's, over Postgres) is nobody's here.
+ * writer, echoed to it with the id and the ledger entry that names it. Which change that is, is the
+ * one told at the version the write made -- known once delta answers (null: it made none) -- so a
+ * change to the same document from elsewhere meanwhile (another process's, over Postgres) is
+ * nobody's here.
  */
-type Claim = { ws: Socket; id: WriteId; doc: string; version: Promise<number | undefined | null> };
+type Made = { version?: number; entry?: number } | null;
+type Claim = { ws: Socket; id: WriteId; doc: string; made: Promise<Made> };
 const claims = new Set<Claim>();
 
 /** Makes a write for `ws`, claiming its change to `doc` for the write's id, if it has one. */
-function claimed<T>(ws: Socket, id: WriteId | undefined, doc: string, writing: Promise<T>, version: (done: T) => number | undefined | null): Promise<T> {
+function claimed<T>(ws: Socket, id: WriteId | undefined, doc: string, writing: Promise<T>, made: (done: T) => Made): Promise<T> {
   if (id === undefined) return writing;
-  claims.add({ ws, id, doc, version: Promise.allSettled([writing]).then(([done]) => (done!.status === "fulfilled" ? version(done.value) : null)) }); // a write that throws made no change
+  claims.add({ ws, id, doc, made: Promise.allSettled([writing]).then(([done]) => (done!.status === "fulfilled" ? made(done.value) : null)) }); // a write that throws made no change
   return writing;
 }
 
-/** The claim a change answers, if any: a write's to that document, at that version. Taken, so it answers once. */
-async function claimOf(doc: string, v: number | undefined): Promise<Claim | undefined> {
+/** The claim a change answers, if any: a write's to that document, at that version, with the entry it made. Taken, so it answers once. */
+async function claimOf(doc: string, v: number | undefined): Promise<{ ws: Socket; id: WriteId; entry?: number } | undefined> {
   for (const claim of [...claims].filter((c) => c.doc === doc)) {
-    if ((await claim.version) !== v || !claims.delete(claim)) continue;
-    return claim;
+    const made = await claim.made;
+    if (!made || made.version !== v || !claims.delete(claim)) continue;
+    return { ws: claim.ws, id: claim.id, entry: made.entry };
   }
   return undefined;
 }
@@ -137,7 +141,7 @@ function tellChanges(documents: Documents): void {
     const wire = wireOps(owner, docId, ops as PatchOp[]);
     const yours = await claimOf(doc, v);
     const echoTo = await settled(documents, () => audienceFor(docType, docId));
-    for (const ws of echoTo) send(ws, patchMessage(wireName(docType, docId, ws), v ?? 0, wire, ws === yours?.ws ? yours.id : undefined));
+    for (const ws of echoTo) send(ws, ws === yours?.ws ? patchMessage(wireName(docType, docId, ws), v ?? 0, wire, yours.id, yours.entry) : patchMessage(wireName(docType, docId, ws), v ?? 0, wire));
     for (const ws of new Set([...echoTo, ...readersOf(docType, docId)])) void redraw(ws);
     await owner.afterChange?.(docId, wire);
   });
@@ -216,7 +220,7 @@ export function createServer(example: Example, port: number | string = process.e
     const at = owner.under ?? "";
     const doc = `${owner.docType}:${docId}`;
     const writing = documents.write(doc, shaped.map((op) => ({ ...op, path: at + op.path })) as never, { identity: who(ws), cursor: ws.data.sessionId, undoable: kind !== "fact" });
-    const written = await claimed(ws, id, doc, writing, (w) => ("error" in w || w.ops.length === 0 ? null : w.version));
+    const written = await claimed(ws, id, doc, writing, (w) => ("error" in w || w.ops.length === 0 ? null : { version: w.version, entry: w.entry }));
     if ("error" in written || written.ops.length === 0) return false;
     const named = owner.perSession ? owner.docType : doc; // a session's own named by type: its id is a credential
     if ((written.entry === undefined) !== (owner.ledger === false)) {
@@ -235,32 +239,43 @@ export function createServer(example: Example, port: number | string = process.e
   }
 
   /**
-   * Undo or redo: delta walks the session's cursor; the change is told like any other. The walk is
-   * looked at first, and the document's owner may refuse it (`permitUndo`). One that meets someone
-   * else's later write changes nothing -- delta moves the cursor past it -- and says so. One that
-   * lands is followed as a fresh write is (`afterWalk`), knowing which way it went.
+   * Undo or redo: delta walks the session's cursor -- its next entry (`/latest`), or one change of
+   * the session's named by an entry of it (`/<entry>`) -- and the change is told like any other. The
+   * walk is looked at first, and the document's owner may refuse it (`permitUndo`). One that meets
+   * someone else's later write changes nothing -- delta moves the cursor past it -- and says so; so
+   * does a named change that is not the session's, or goes nowhere. One that lands is followed as a
+   * fresh write is (`afterWalk`), knowing which way it went; one that changes nothing lands all the
+   * same, and tells no change, so its walker is answered by an echo of nothing.
    */
   async function walk(ws: Socket, ops: PatchOp[], id?: WriteId): Promise<boolean> {
     const ledger = byDocType.get("ledger")!;
     if (!(await settled(documents, () => ops.every((op) => ledger.permit!(ws, op, ws.data.sessionId))))) return false;
     const way = ops[0]!.op === "add" ? "redo" : "undo";
+    const change = entryOf(ops[0]!.path);
     const by = { identity: who(ws), cursor: ws.data.sessionId };
-    const plan = await documents.walk(way, by, { dry: true });
-    if (!plan) return false; // nothing to walk
+    const plan = await documents.walk(way, by, { dry: true, change });
+    if (plan && "error" in plan && change !== undefined) throw plan.error.code === 404 ? refuse(`No change of yours is numbered ${change}.`) : new Error(plan.error.message);
+    if (!plan || "error" in plan) {
+      if (change === undefined) return false; // nothing to walk, or no ledger to walk it
+      throw refuse(way === "undo" ? "That change is undone already." : "That change has not been undone.");
+    }
     const { docType, docId } = splitDoc(plan.doc);
     const owner = byDocType.get(docType);
     if (!plan.conflict && owner?.permitUndo && !(await settled(documents, () => owner.permitUndo!(ws, docId, wireOps(owner, docId, plan.ops as PatchOp[]))))) return false;
-    const walked = await claimed(ws, id, plan.doc, documents.walk(way, by, { entry: plan.entry }), (w) => (w && !w.conflict ? w.version : null));
-    if (walked?.conflict) throw refuse(`Someone has changed that since, so it cannot be ${way === "undo" ? "undone" : "redone"}.`);
-    if (walked === null) return false;
+    const walking = documents.walk(way, by, { change, entry: plan.entry });
+    const walked = await claimed(ws, id, plan.doc, walking, (w) => (w && !("error" in w) && !w.conflict && w.ops.length > 0 ? { version: w.version, entry: w.entry } : null));
+    const done = walked && !("error" in walked) ? walked : undefined; // none: walked meanwhile, by another process over Postgres
+    if (done?.conflict) throw refuse(`Someone has changed that since, so it cannot be ${way === "undo" ? "undone" : "redone"}.`);
+    if (!done) return false;
     await tell(ws.data.sessionId); // it landed, as a write does: what the walker was told before goes
     if (owner?.afterWalk) {
       try {
-        await owner.afterWalk(ws, docId, { way, ops: wireOps(owner, docId, walked.ops as PatchOp[]), inverse: wireOps(owner, docId, (walked.inverse ?? []) as PatchOp[]) });
+        await owner.afterWalk(ws, docId, { way, ops: wireOps(owner, docId, done.ops as PatchOp[]), inverse: wireOps(owner, docId, (done.inverse ?? []) as PatchOp[]) });
       } catch (err) {
         failed(`following a walk of ${owner.perSession ? owner.docType : plan.doc}`, err);
       }
     }
+    if (id !== undefined && done.ops.length === 0) send(ws, patchMessage(wireName(docType, docId, ws), done.version ?? 0, [], id));
     return true;
   }
 

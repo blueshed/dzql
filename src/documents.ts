@@ -151,9 +151,12 @@ export function createDocuments(local: Local) {
      * `dry` answers what the walk would do -- the entry, its ops, a conflict -- and walks nothing;
      * `entry` walks only if that is still the cursor's next. A walk that meets someone else's later
      * write changes nothing and says `conflict`, and the cursor moves past it all the same.
+     * `change` walks one change of the cursor's, named by an entry of it, in place of its next; one
+     * that is none of the cursor's is delta's error (404).
      */
-    async walk(way: "undo" | "redo", by: Writer, o: { dry?: boolean; entry?: number } = {}): Promise<Walked | null> {
+    async walk(way: "undo" | "redo", by: Writer, o: { dry?: boolean; entry?: number; change?: number } = {}): Promise<Walked | null | { error: { code: number; message: string } }> {
       const answer = await local.as(by.identity).call(way, { cursor: by.cursor, ...o });
+      if (answer.error) return { error: answer.error };
       const result = answer.result as Walked | null | undefined;
       if (!result) return null;
       if (!o.dry) await caughtUp(result.doc, result.version);

@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `{ doc, path, reason, said }`: a test that looks for its patches looks for `doc: "told"`.
   - **`said(reason)` is gone from `src/refusal.ts`**: the story harness no longer looks for the
     line's markup, and draws the page without what its author was told to compare the rest.
+- **eta needs `@blueshed/delta` with named undo** (delta's `change: <entry>`, after 0.10.0). On
+  this branch `package.json` points at a tarball packed from delta's `feat/undo-named`; at
+  release it goes back to the npm range that has it.
 
 ### Added
 
@@ -105,6 +108,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   someone else is watching (`whatItDid` in `examples/wedding/documents/household.ts`, from the
   walk's rows and what they wrote over). Two of its stories say it with `undone` and `redone`: the
   answer, and a plus-one named in a modal the write put away.
+- **A change is undone by name, not only the session's last** (todo n99; delta's named undo). The
+  echo of a write's change to its writer carries the ledger entry that names it (`{type: "patch",
+  …, id, entry}`; nobody else's echo carries one), and the ledger takes `remove /<entry>` (undo that
+  change) and `add /<entry>` (redo it) beside `/latest`. A person and an assistant on one page share
+  the session's cursor, so "undo my last" took whichever was newest; now each undoes its own. The
+  change is named by any entry of it -- its write's, an undo's, a redo's -- and must be the
+  session's (`No change of yours is numbered 12.`); one undone already, or not undone, is refused
+  and says so. `permitUndo` is asked of it as of any undo, and one that meets a later write, the
+  session's own included, is refused as ever ("Someone has changed that since…"), and stays to be
+  undone.
 
 ### Changed
 
@@ -151,6 +164,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   after a write's `afterWrite`, so a line told there was taken away as it was said. It now lets go
   of it as the write lands, before `afterWrite` (or `afterWalk`) runs; a write that applies nothing
   replaces it with why, or with nothing, as before.
+
+### Fixed
+
+- **An undo or redo with an id that changes nothing is answered.** A walk that reached an entry
+  whose change came to nothing (a note set to what it held) lands, and tells no change, so no echo
+  came and no `refused` either, and a script waiting on its id waited for ever. Its walker is
+  answered by an echo of nothing: `{type: "patch", doc, version, ops: [], id}`.
+
 
 ## [0.50.0] - 2026-09-28
 
