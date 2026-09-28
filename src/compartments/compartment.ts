@@ -72,13 +72,13 @@ export type Compartment = {
   shape?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): PatchOp[];
   /**
    * Before an undo or redo: may it go ahead? Given the ops it would write, in the wire's paths
-   * (only the fields it sets back), and which way it goes.
+   * (only the fields it sets back).
    *
    * - For a rule of time or state that holds against Undo too: answers closed at a deadline.
    * - Not `permit`: Undo may do what permit refuses (a message taken back).
    * - Throw `refuse(reason)` to say why. Omitted: always.
    */
-  permitUndo?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[], way: Walk["way"]): boolean;
+  permitUndo?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): boolean;
   /**
    * After a fresh write from this person has landed, with the ops as the page sent them: what
    * follows for the writer alone. Leave closes the drawer once its draft is asked for.
@@ -93,6 +93,8 @@ export type Compartment = {
    * After an undo or redo of this person's has landed: what follows for the walker alone, as
    * `afterWrite` is for a fresh write.
    *
+   * - A walk that changes nothing -- what it would set back is so already -- lands all the same, as
+   *   delta moves the cursor past it, and this runs with `ops: []` and `inverse: []`: say nothing.
    * - Say what it took back, or put back, with `tell(ws.data.sessionId, { doc: "ledger", path:
    *   "/latest", said })`: the Undo tool's own place, which the kernel draws over the page. The
    *   wedding's "Undone: your answer."

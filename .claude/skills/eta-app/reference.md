@@ -87,7 +87,7 @@ export type Compartment = {
   permit?(ws, op, docId): boolean;         // may they make this change? omitted: nobody may
   shape?(ws, docId, ops): PatchOp[];       // what the page sent, as the document keeps it
   // before an undo or redo
-  permitUndo?(ws, docId, ops, way): boolean;           // may it go ahead? omitted: always
+  permitUndo?(ws, docId, ops): boolean;                // may it go ahead? omitted: always
   // after
   afterWrite?(ws, docId, ops): void | Promise<void>;   // after a fresh write, for the writer alone
   afterWalk?(ws, docId, walk): void | Promise<void>;   // after an undo or redo, for the walker alone
@@ -159,8 +159,7 @@ if (ends < starts) throw refuse("The last day is before the first.");
 ### Undo is checked before it runs
 
 The kernel asks delta what an undo or redo would write (in the wire's paths, only the fields it
-sets back), and asks the compartment's `permitUndo(ws, docId, ops, way)`, `way` being `"undo"` or
-`"redo"`.
+sets back), and asks the compartment's `permitUndo(ws, docId, ops)`.
 
 - It is not `permit`: Undo may do what permit refuses (a message taken back).
 - It is for a rule of time or state that holds against Undo too. The wedding refuses an undo that
@@ -196,7 +195,10 @@ sets back), and asks the compartment's `permitUndo(ws, docId, ops, way)`, `way` 
   walk wrote and `inverse` what that wrote over, in the wire's paths, each row whole as the ledger
   keeps it -- so an undo's `inverse` holds what it took back. Say it over the page, where Undo is:
   `tell(ws.data.sessionId, { doc: "ledger", path: "/latest", said: "Undone: your answer." })`
-  (the wedding's household). A throw here is reported (`following a walk of …`); the walk stands.
+  (the wedding's household). A walk that changes nothing (what it would set back is so already)
+  lands all the same, delta moving the cursor past it, and `afterWalk` runs with `ops: []` and
+  `inverse: []`: say nothing then. A throw here is reported (`following a walk of …`); the walk
+  stands.
 - Never write another compartment's document from `shape`.
 
 ## Telling a change (`src/server.ts`)

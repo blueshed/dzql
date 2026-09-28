@@ -44,9 +44,8 @@ function readNote(id: string): string {
   return read<{ notes: { text: string } }>(`note:${id}`).notes.text;
 }
 
-// what each walk of a note was given, and which way each walk the ledger asked about went
+// what each walk of a note was given
 const walks: Walk[] = [];
-const asked: Walk["way"][] = [];
 
 const noteCompartment: Compartment = {
   docType: "note",
@@ -69,10 +68,6 @@ const noteCompartment: Compartment = {
   afterWrite(ws, _id, ops) {
     if (ops.some((op) => op.value === "then boom")) throw new Error("then boom"); // a write that lands, then fails what follows
     if (ops.some((op) => op.value === "said")) return tell(ws.data.sessionId, { doc: "note", path: "/text", said: "Noted." }); // what it did, beside the control that sent it
-  },
-  permitUndo(_ws, _id, _ops, way) {
-    asked.push(way);
-    return true;
   },
   // what a walk of "said" took back, or put back, said over the page, where Undo is
   afterWalk(ws, _id, walk) {
@@ -562,12 +557,10 @@ describe("createServer, generically (no example from the examples directory invo
     await expectMessage(ws, "render");
     const pageAfter = async (doc: string, ops: PatchOp[], id: WriteId): Promise<string> => (write(ws, doc, ops, id), htmlOf((await until(ws)).filter((m) => m.type === "render").at(-1)!));
     walks.length = 0;
-    asked.length = 0;
     expect(await pageAfter("note", [{ op: "replace", path: "/text", value: "said" }], 1)).toBe('<p class="note">said</p><p class="said" role="status">Noted.</p>');
     expect(await pageAfter("ledger", [{ op: "remove", path: "/latest" }], 2)).toBe('<p class="note"></p><div class="undo-said"><p class="said" role="status">Undone: “said”.</p></div>');
     expect(await pageAfter("ledger", [{ op: "add", path: "/latest" }], 3)).toBe('<p class="note">said</p><div class="undo-said"><p class="said" role="status">Redone: “said”.</p></div>');
-    // each walk is asked about knowing which way it goes, then told what it wrote and what that wrote over
-    expect(asked).toEqual(["undo", "redo"]);
+    // each walk is told which way it went, what it wrote and what that wrote over
     expect(walks).toEqual([
       { way: "undo", ops: [{ op: "replace", path: "", value: { text: "" } }], inverse: [{ op: "replace", path: "", value: { text: "said" } }] },
       { way: "redo", ops: [{ op: "replace", path: "", value: { text: "said" } }], inverse: [{ op: "replace", path: "", value: { text: "" } }] },

@@ -249,7 +249,7 @@ export function createServer(example: Example, port: number | string = process.e
     if (!plan) return false; // nothing to walk
     const { docType, docId } = splitDoc(plan.doc);
     const owner = byDocType.get(docType);
-    if (!plan.conflict && owner?.permitUndo && !(await settled(documents, () => owner.permitUndo!(ws, docId, wireOps(owner, docId, plan.ops as PatchOp[]), way)))) return false;
+    if (!plan.conflict && owner?.permitUndo && !(await settled(documents, () => owner.permitUndo!(ws, docId, wireOps(owner, docId, plan.ops as PatchOp[]))))) return false;
     const walked = await claimed(ws, id, plan.doc, documents.walk(way, by, { entry: plan.entry }), (w) => (w && !w.conflict ? w.version : null));
     if (walked?.conflict) throw refuse(`Someone has changed that since, so it cannot be ${way === "undo" ? "undone" : "redone"}.`);
     if (walked === null) return false;

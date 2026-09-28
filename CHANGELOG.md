@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   role="alert">` or `<p class="said" role="status">`. Before, a success could only be told as a
   reason, and was drawn as a refusal. What to change:
   - **Every `reasonFor(` is `toldAt(`**, with the same arguments.
+  - **`tell()`'s argument is a `Line`** (exported from `src/refusal.ts`): `{ doc, path }`, strings,
+    and one of `reason` or `said`. Its type was `{ doc, path, reason }`, each `string | null`; a
+    call that passed nulls to clear passes nothing instead: `tell(sessionId)`.
+  - **`createRefusalCompartment` is `createToldCompartment`**, for whatever assembles the kernel's
+    compartments by hand.
   - **A success told as a reason** (a route's "Your password is changed." at a path of its own,
     restyled) is `said`, and may share its form's path: the kind says which it is.
   - **The kernel's document for it is `told:<session>`, not `refusal:<session>`**, and holds
@@ -85,9 +90,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   paths, each row whole as the ledger keeps them. Say what it did with `tell(ws.data.sessionId, {
   doc: "ledger", path: "/latest", said })`: the Undo tool's own place, which the kernel draws over
   the page (`.undo-said`), where it already drew why a walk was refused. A throw in it is the
-  server's failure (`following a walk of …`), and the walk stands. `permitUndo` is told the way too,
-  as a fourth argument. Before, an app had to work out which way a walk went from what each way
-  would have said, in `afterChange`.
+  server's failure (`following a walk of …`), and the walk stands. A walk that changes nothing
+  (what it would set back is so already) lands all the same, delta moving the cursor past it, and
+  `afterWalk` runs with `ops: []` and `inverse: []`. Before, an app had to work out
+  which way a walk went from what each way would have said, in `afterChange`.
 - **A story says what Undo and Redo tell its author: `undone` and `redone`** (todo n89, n100).
   `does(…), undone: "Undone: your answer.", redone: "Redone: your answer."`: after the undo, the
   author must have been told exactly the one, and after the redo the other, and their page must
