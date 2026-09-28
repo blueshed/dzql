@@ -187,6 +187,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tap` (`src/costs.ts`) that counts each frame as sent. A compressed size moves a byte or two
   with the random ids it carries, so the README's is held within 3% of a run's, as a bundle's is
   (`Run.built` is `Run.near`).
+- **The client is 5.6 KB minified and gzipped, where this round's fixes had taken it to 5.9**
+  (todo n102; 5.3 before them). What it said twice it says once -- a drawing's care, whole or in
+  parts; a write an element names; an editing form's triggers; the morph's matches -- and it does
+  what it did, but for two rare cases: a part redrawn as an element of another tag has its
+  applets let go while it is still on the page, before it loses focus, not after; and in Chrome,
+  a chosen option redrawn that way inside a `<select>` leaves chosen what a fresh draw would. What a page with an island carries of railroad is unchanged (3.5 KB): its
+  development check's text stays in a production bundle until railroad lets a bundler drop it.
 - **leave's Previous and Next move a month, not three.** Three at a time from this month, a
   person could never get to most months: in September, October and November were only ever on
   the page as this month's, and no control led to `2026-10` or `2026-11`, where the stories stand

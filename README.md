@@ -76,7 +76,7 @@ sites whose pages may open a socket) among them.
 - **Stories are the tests.** An example is a list of sentences -- who does what, and who then
   sees it -- and `bun run stories` checks each one over real sockets, with its undo and redo;
   `bun run stories:all` runs every example's (<!-- measured:stories -->11 in chat, 21 in leave, 17 in ticker and 50 in wedding<!-- /measured -->).
-- **A small client.** The kernel's client is <!-- measured:client -->5.7 KB<!-- /measured --> minified
+- **A small client.** The kernel's client is <!-- measured:client -->5.6 KB<!-- /measured --> minified
   and gzipped: a morph, the write gestures and an applet registry. There is no framework to learn.
 - **Nothing else to run.** Bun and SQLite, one process, one file.
 - **A readable wire.** `bun run cli watch` prints every patch as it happens; `bun run cli undo`
