@@ -249,8 +249,8 @@ describe("stories harness", () => {
 
   test("a tab closing the server does not tell fails its story: nobody still looking sees it", async () => {
     const deaf: Example = { ...example, compartments: example.compartments.map((c) => ({ ...c, onClose: undefined })) };
-    const failures = await failuresOf(deaf, only("Cy closes her tab"));
-    expect(failures).toEqual(["nothing landed: closing cy's tab changed nothing", "ada did not see it", "bob did not see it"]);
+    const failures = await failuresOf(deaf, only("Bob closes his tab"));
+    expect(failures).toEqual(["nothing landed: closing bob's tab changed nothing", "ada did not see it"]);
   }, 30000);
 
   test("a refusal that is really the server failing fails the story, and so does one nobody answers", async () => {

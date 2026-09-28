@@ -96,12 +96,11 @@ a browser's does, and whoever is still looking must see what the server tells of
 gone, sees nothing, and there is nothing to undo. Chat's:
 
 ```ts
-story("Cy closes her tab, and Ada and Bob see her leave general", {
-  as: "cy",
-  premise: { cy: [room("general")] },
+story("Bob closes his tab, and Ada sees him leave general", {
+  as: "bob",
   closesTab: true,
-  seen: ["ada", "bob"],
-  untold: ["dee", "eve"],
+  seen: ["ada"],
+  untold: ["cy", "dee", "eve"],
 });
 ```
 
