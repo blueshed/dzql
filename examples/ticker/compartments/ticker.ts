@@ -5,6 +5,7 @@ import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { audienceFor } from "../../../src/compartments/audience";
 import { activeDocuments, serverWrite, settled } from "../../../src/documents";
+import { reasonFor } from "../../../src/refusal";
 import * as deskDoc from "../documents/desk";
 import { page } from "../views/page";
 
@@ -65,9 +66,9 @@ export const quote: Compartment = {
   resolveDoc: () => undefined,
 };
 
-/** The desk: the whole page, from every document a session has. */
+/** The desk: the whole page, from every document a session has, and why its last watch was refused, if it was. */
 export const render = (sessionId: string): string =>
-  page({ list: watchlistDoc.read(sessionId), market: market.read(), clock: clockDoc.read(sessionId), ui: deskDoc.read(sessionId) });
+  page({ list: watchlistDoc.read(sessionId), market: market.read(), clock: clockDoc.read(sessionId), ui: deskDoc.read(sessionId), said: reasonFor(sessionId, "watchlist", "/symbols/-") });
 
 export const ticker: Compartment = {
   docType: "ticker",

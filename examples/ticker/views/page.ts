@@ -21,7 +21,14 @@ const go = (page: string): string => write("desk", "replace", "/page", page);
 /** Where this session is: the window, and the one thing open over it. */
 export const where = (ui: Ui) => parseAddress(ui.page);
 
-export type View = { list: WatchlistDocument; market: MarketDocument; clock: ClockDocument; ui: Ui };
+export type View = {
+  list: WatchlistDocument;
+  market: MarketDocument;
+  clock: ClockDocument;
+  ui: Ui;
+  /** Why the last watch was refused, drawn beside the ask's field (src/refusal.ts `reasonFor`), or "". */
+  said?: string;
+};
 
 // ───────────────────────────── the applets' mounts ─────────────────────────────
 
@@ -156,10 +163,18 @@ function openDrawer(v: View): string {
   return drawer("drawer", which, `<div class="props">${props}</div><div class="drawer-foot">${carry}</div>`, close);
 }
 
-/** The modals: which symbol to watch; whether to stop watching one. One question each; cancelling goes back to where it was asked from. */
+/**
+ * The modals: which symbol to watch -- chosen from those the board lacks, so the ask offers only what
+ * can be; a refusal (another tab watched it first) says why beneath -- and whether to stop watching
+ * one. One question each; cancelling goes back to where it was asked from.
+ */
 function modals(v: View): string {
   const { path, what, which = "" } = where(v.ui);
-  if (what === "new") return addModal("Watch a symbol", [{ name: "symbol", label: "Which symbol", placeholder: "e.g. ALPH" }], write("watchlist", "add", "/symbols/-"), go(path), "Watch");
+  if (what === "new") {
+    const options = Object.entries(v.market).filter(([s]) => !v.list.symbols.includes(s)).map(([s, q]) => ({ value: s, text: `${s} · ${q.name}` }));
+    const said = v.said || (options.length ? "" : `<p class="note">Every symbol the market quotes is on your board.</p>`);
+    return addModal("Watch a symbol", [{ name: "symbol", label: "Which symbol", options }], write("watchlist", "add", "/symbols/-"), go(path), "Watch", said);
+  }
   const at = what === "confirm" ? v.list.symbols.indexOf(which) : -1;
   if (at < 0) return "";
   return confirmModal(`Stop watching ${which}`, "Its row leaves the board. Undo brings it back.", write("watchlist", "remove", `/symbols/${at}`), go(address(path, "symbol", which)), "Stop watching");

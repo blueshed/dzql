@@ -38,8 +38,8 @@ export const stories: Stories = {
     story("Ann watches Charlie Metals, and only her board grows", { as: "ann", from: "board?new", does: watch("CHRL"), seen: ["ann"] }),
     story("Ann, on her board, watches Charlie Metals, and it joins the board in front of her", { as: "ann", from: "board?new", does: watch("CHRL"), seen: { ann: "board" } }),
     story("Ann drops Alpha, and her board loses a row", { as: "ann", from: "market?confirm=ALPH", does: drop(0), seen: ["ann"] }),
-    story("Ann cannot watch a symbol the market does not quote", { as: "ann", cannot: watch("ZZZZ") }),
-    story("Ann cannot watch Alpha twice", { as: "ann", cannot: watch("ALPH") }),
+    story("Ann cannot watch a symbol the market does not quote, and is told so", { as: "ann", from: "board?new", cannot: watch("ZZZZ"), told: "The market does not quote ZZZZ." }),
+    story("Ann cannot watch Alpha twice, and is told it is on her board", { as: "ann", from: "board?new", cannot: watch("ALPH"), told: "ALPH is on your board already." }),
     story("Ann cannot drop a row she does not have", { as: "ann", cannot: drop(5) }),
 
     // ── The market is everyone's, through the applet ──

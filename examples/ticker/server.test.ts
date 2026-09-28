@@ -151,7 +151,11 @@ describe("the ticker", () => {
     await refused("ticker", [{ op: "remove", path: "/DLTA/price" }]);
     await refused("ticker", [{ op: "add", path: "/NEW/price", value: 1 }]);
     await refused("watchlist", [{ op: "replace", path: "/symbols/0", value: "x" }]);
-    await refused("watchlist", [{ op: "add", path: "/symbols/-", value: "NOPE" }]); // permitted, not applied
+    // permitted, and refused with why: the reason is kept in the session's own refusal document, and the page handed back
+    write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "NOPE" }]);
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "refusal", ops: expect.arrayContaining([{ op: "replace", path: "/reason", value: "The market does not quote NOPE." }]) });
+    await expectMessage(ws, "render");
+    await expectQuiet(ws);
     ws.close();
   });
 
@@ -334,16 +338,26 @@ describe("the ticker", () => {
     html = await pageNow(ws); // the list and the desk, which the answer put back on the board
     expect(html).not.toContain('class="modal"');
     expect(html).not.toContain("Stop watching");
-    // watching asks which symbol; the add that answers closes the ask
+    // watching asks which symbol, a choice of those the board lacks; the add that answers closes the ask
     html = await page([{ op: "replace", path: "/page", value: "board?new" }]);
     expect(html).toContain('<dialog open class="modal" aria-label="Watch a symbol">');
+    expect(html).toContain('<select name="symbol" required autofocus><option value="ALPH">ALPH · Alpha Systems</option>');
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "GOLF" }]);
     html = await pageNow(ws);
     expect(html).not.toContain('class="modal"');
     expect(html).toContain('id="b-GOLF"');
-    // a stale confirm renders no modal; a drawer for a symbol the market lacks renders none
-    html = await page([{ op: "replace", path: "/page", value: "board?confirm=ZZZZ" }]);
+    // asked again, GOLF is not offered; sent anyway (from another tab's ask), it is refused, and the
+    // ask says why beneath its field, until the next write
+    html = await page([{ op: "replace", path: "/page", value: "board?new" }]);
+    expect(html).not.toContain('<option value="GOLF">');
+    write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "GOLF" }]);
+    html = await pageNow(ws);
+    expect(html).toContain('<p class="refused" role="alert">GOLF is on your board already.</p><div class="modal-foot">');
+    // a stale confirm renders no modal (and the next write puts the reason away); a drawer for a symbol the market lacks renders none
+    write(ws, "desk", [{ op: "replace", path: "/page", value: "board?confirm=ZZZZ" }]);
+    html = await pageNow(ws);
     expect(html).not.toContain('class="modal"');
+    expect(html).not.toContain('class="refused"');
     html = await page([{ op: "replace", path: "/page", value: "board?symbol=ZZZZ" }]);
     expect(html).not.toContain('class="drawer"');
     ws.close();

@@ -39,10 +39,10 @@ describe("the ticker in a real browser", () => {
     await view.evaluate(`document.querySelector('.cell[data-key="board"]').click()`);
     await waitFor(view, `document.querySelector('.cell.open [aria-label="Watch a symbol"]') !== null`, (v) => v === true);
     await view.evaluate(`document.querySelector('.cell.open [aria-label="Watch a symbol"]').click()`);
-    await waitFor(view, `document.querySelector('input[name=symbol]') !== null`, (v) => v === true);
-    await view.click("input[name=symbol]");
-    await view.type("fxtr");
-    await view.press("Enter");
+    // the ask is a choice of the symbols the board lacks
+    await waitFor(view, `document.querySelector('select[name=symbol]') !== null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('select[name=symbol]').value = 'FXTR'`);
+    await view.click("dialog button[type=submit]");
     const fxtr = (await quotes()).FXTR!.price;
     await waitFor(view, `document.querySelector('.board .quote[data-row="FXTR"] .price')?.textContent ?? null`, (v) => v === fxtr.toFixed(2));
 

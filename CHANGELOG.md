@@ -141,6 +141,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The ticker's Watch modal says why it refuses** (todo n68). It took free text, dropped an unknown
+  or already-watched symbol without a word, and stayed open. It is a choice of the symbols the
+  board lacks now, and an add that cannot be (another tab's, or typed on the wire) is refused with
+  `refuse()`: "The market does not quote ZZZZ.", "ALPH is on your board already.", drawn beneath
+  the field. The two `cannot` stories say what Ann is told.
 - **The ticker's board reads on a phone, and its rows open their drawers** (todo n67). A board row
   was an SVG 640 units wide scaled to the screen, so at 375 its words were about 6px; it is HTML
   now, at the page's own size, and a narrow board (a phone, or the window beside a drawer) keeps
