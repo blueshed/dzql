@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
 import { bento, choice, type Field } from "../bento";
-import { write } from "../html";
+import { appletProps, write } from "../html";
 import { diff, drawParts, part } from "../parts";
 import { press, waitFor } from "../webview";
 import { renderMessage } from "../compartments/render";
@@ -820,6 +820,56 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     });
     await waitFor(view, `document.querySelector('[data-eta-part="a"]').className`, (v) => v === "two");
     expect(await view.evaluate<string>(`document.querySelector('[data-eta-part="a"]').textContent`)).toBe("drawn by the applet");
+  });
+
+  test("an applet that watches a document takes each patch as its props, laid on at data-under: drawn anew, its mount never rendered again", async () => {
+    await using view = await open();
+    const mount = (me: string, rows: Record<string, { n: number }>, paint = "") =>
+      part("t", `<div id="t" data-applet="tally"${appletProps({ me, rows }, { doc: "list:1", under: "/rows" })}>${paint}</div>`);
+    await pushRender(view, `<main>${mount("ann", { a: { n: 1 } }, "the server's first paint")}</main>`);
+    await waitFor(view, `document.getElementById('t').textContent`, (v) => v === "ann: 1");
+    // the mount, watched: the element itself, and any change to its attributes
+    await view.evaluate(`(() => {
+      const el = document.getElementById('t');
+      el._probe = true;
+      window.__attrs = [];
+      new MutationObserver((muts) => muts.forEach((m) => window.__attrs.push(m.attributeName))).observe(el, { attributes: true });
+    })()`);
+    const patch = (version: number, ops: unknown[], doc = "list:1") => push(view, { type: "patch", doc, version, ops });
+    const given = () => view.evaluate<{ mounts: unknown[]; updates: unknown[]; patches: unknown[] }>(`window.__applets.t`);
+
+    await patch(2, [{ op: "add", path: "/b", value: { n: 2 } }]);
+    await waitFor(view, `document.getElementById('t').textContent`, (v) => v === "ann: 3");
+    await patch(3, [{ op: "replace", path: "/n", value: 9 }], "list:2"); // another document's: not this applet's
+    // one that does not land -- what a render drawn after it already holds -- is passed over, and the rest lands
+    await patch(4, [{ op: "remove", path: "/gone" }, { op: "replace", path: "/a/n", value: 5 }]);
+    await waitFor(view, `document.getElementById('t').textContent`, (v) => v === "ann: 7");
+    expect(await given()).toEqual({
+      mounts: [{ me: "ann", rows: { a: { n: 1 } } }],
+      updates: [{ me: "ann", rows: { a: { n: 1 }, b: { n: 2 } } }, { me: "ann", rows: { a: { n: 5 }, b: { n: 2 } } }],
+      patches: [],
+    });
+    expect(await view.evaluate<unknown>(`[document.getElementById('t')._probe, window.__attrs]`)).toEqual([true, []]); // the same element, not a mutation to it
+
+    // its small props changed: its tag comes, with the document as drawn then, and the patches go on from there
+    const next = drawParts(() => `<main>${mount("bo", { a: { n: 5 }, b: { n: 2 } })}</main>`);
+    const ops = diff(drawParts(() => `<main>${mount("ann", { a: { n: 1 } }, "the server's first paint")}</main>`), next)!;
+    expect(ops.map((op) => op.op)).toEqual(["tag"]);
+    await push(view, { type: "render", ops });
+    await waitFor(view, `document.getElementById('t').textContent`, (v) => v === "bo: 7");
+    await patch(5, [{ op: "replace", path: "", value: { z: { n: 10 } } }]); // the document whole, as the server says it when its copy was loaded again
+    await waitFor(view, `document.getElementById('t').textContent`, (v) => v === "bo: 10");
+    expect((await given()).updates.slice(2)).toEqual([{ me: "bo", rows: { a: { n: 5 }, b: { n: 2 } } }, { me: "bo", rows: { z: { n: 10 } } }]);
+    expect(await view.evaluate<boolean>(`document.getElementById('t')._probe`)).toBe(true);
+  });
+
+  test("props that are the document take its patches at the root; an applet with a patch of its own is given the ops instead, as before", async () => {
+    await using view = await open();
+    await pushRender(view, `<div id="root" data-applet="tally"${appletProps({ a: { n: 1 } }, { doc: "list:1" })}></div><div id="own" data-applet="ops"${appletProps({ a: { n: 1 } }, { doc: "list:1" })}></div>`);
+    await waitFor(view, `document.getElementById('root').textContent`, (v) => v === "1");
+    await push(view, { type: "patch", doc: "list:1", version: 2, ops: [{ op: "add", path: "/b", value: { n: 4 } }] });
+    await waitFor(view, `document.getElementById('root').textContent`, (v) => v === "5");
+    expect(await view.evaluate<unknown>(`window.__applets.own`)).toEqual({ mounts: [{ a: { n: 1 } }], updates: [], patches: [[{ op: "add", path: "/b", value: { n: 4 } }]] });
   });
 
   test("a part that moves from one parent part to another is where it went, and not where it was", async () => {
