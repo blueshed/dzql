@@ -142,6 +142,21 @@ describe("stories harness", () => {
     }
   }, 30000);
 
+  test("a row the tables lost fails the story too: a document they do not hold is drawn as nothing", async () => {
+    const { example: ticker } = await import("../examples/ticker/index");
+    const { stories: told } = await import("../examples/ticker/stories");
+    const watches = { ...told, stories: told.stories.filter((s) => s.name.startsWith("Ann, on her board, watches Charlie")) };
+    expect((await run(ticker, watches)).failed).toBe(0);
+    // each desk row is lost as it is made: the copy keeps the desk, off the ledger, the tables do not
+    db.run("CREATE TEMP TRIGGER lost AFTER INSERT ON ticker_desks BEGIN DELETE FROM ticker_desks WHERE id = NEW.id; END");
+    try {
+      const failures = (await run(ticker, watches)).outcomes.flatMap((o) => o.failures);
+      expect(failures).toContain("after the story, ann's open page is not what a fresh render shows");
+    } finally {
+      db.run("DROP TRIGGER lost");
+    }
+  }, 30000);
+
   test("a refusal that is really the server failing fails the story, and so does one nobody answers", async () => {
     const throwing = withRoom((room) => ({ ...room, permit: () => { throw new Error("a permit that throws"); } }));
     expect((await failuresOf(throwing, only("Nobody can take"))).some((f) => f.startsWith("the server failed") && f.endsWith("a permit that throws"))).toBe(true);

@@ -100,7 +100,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The harness compares each open page with a render from storage** (todo n33, canon 2). The
   fresh render read the copy the server draws from, so a copy that drifted from the tables was
   compared with itself. Now each document it reads is opened again from delta's tables
-  (`open_at`); only what they cannot say (a memory kind, a row not made yet) comes from the copy.
+  (`open_at`). One they do not hold is drawn as nothing, as the kernel holds a document delta
+  cannot open, so a lost row fails; only a memory kind, which has no tables, comes from the copy.
 
 ### Added
 

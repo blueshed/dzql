@@ -228,9 +228,10 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
 
   /**
    * Canon 2's fresh render: the page drawn from storage. Each document it reads is opened again
-   * from delta's tables (`open_at`); one they cannot say -- delta's memory kinds, whose memory is
-   * where they are kept, or a row not made yet -- is the server's copy. The page reads the active
-   * copy, so this one is made active while it draws, and only then: a drawing is synchronous.
+   * from delta's tables (`open_at`). One the tables do not hold is nothing, as the kernel holds a
+   * document delta cannot open, so a row they lost fails; only one with no tables at all -- delta's
+   * memory kinds, whose memory is where they are kept -- is the server's copy. The page reads the
+   * active copy, so this one is made active while it draws, and only then: a drawing is synchronous.
    */
   async function fresh(sessionId: string): Promise<string> {
     const stored = new Map<string, unknown>();
@@ -241,8 +242,10 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
         return stored.get(doc) as T;
       },
       load: async (doc: string) => {
-        const { result } = await example.delta.call("open_at", { doc, at: AFTER_EVERY_WRITE });
-        stored.set(doc, result ?? (await settled(documents, () => documents.read(doc))));
+        const { result, error } = await example.delta.call("open_at", { doc, at: AFTER_EVERY_WRITE });
+        if (error?.message.startsWith("No handler matched")) stored.set(doc, await settled(documents, () => documents.read(doc)));
+        else if (error && error.code !== 404) throw new Error(`${doc} could not be read from storage: ${error.message}`);
+        else stored.set(doc, result);
       },
     };
     return settled(copy, () => {
