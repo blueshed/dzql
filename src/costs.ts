@@ -29,19 +29,20 @@ const WIDTH = 100;
 // a size is never broken across a line (a no-break space, until it is written)
 const size = (bytes: number): string => (bytes < 1024 ? `${bytes}\u00a0B` : `${(bytes / 1024).toFixed(1)}\u00a0KB`);
 const sum = (heard: { bytes: number }[]): number => heard.reduce((n, h) => n + h.bytes, 0);
-const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
-const many = (n: number, one: string, more: string): string => `${WORDS[n] ?? n} ${n === 1 ? one : more}`;
 const and = (items: string[]): string => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join("; ")}; and ${items.at(-1)}`);
 
-/** What one page was sent, in words: "<size> to each other member (a <size> patch and <size> of HTML)". */
+/**
+ * What one page was sent, in words: "<size> to each other member (a <size> patch and <size> of
+ * HTML)", or with several patches each one's size: "(patches of <size> and <size>, and no HTML)".
+ */
 function received({ who, heard }: Measured["to"][number]): string {
   const other = heard.find((h) => h.type !== "patch" && h.type !== "render");
   if (other) throw new Error(`${who} was sent a ${other.type}, which the README does not describe`);
-  const patches = heard.filter((h) => h.type === "patch");
+  const each = heard.filter((h) => h.type === "patch").map((h) => size(h.bytes));
   const html = heard.filter((h) => h.type === "render");
-  if (html.length === 0) return `${size(sum(heard))} to ${who} (${many(patches.length, "patch", "patches")} and no HTML)`;
-  const said = patches.length === 1 ? `a ${size(sum(patches))} patch` : `${many(patches.length, "patch", "patches")} of ${size(sum(patches))}`;
-  return `${size(sum(heard))} to ${who} (${said} and ${size(sum(html))} of HTML)`;
+  const patches =
+    each.length === 0 ? "no patch" : each.length === 1 ? (html.length ? `a ${each[0]} patch` : "one patch") : `patches of ${each.slice(0, -1).join(", ")} and ${each.at(-1)},`;
+  return `${size(sum(heard))} to ${who} (${patches} and ${html.length ? `${size(sum(html))} of HTML` : "no HTML"})`;
 }
 
 /** A list item, wrapped as the README is. */

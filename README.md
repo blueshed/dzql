@@ -98,12 +98,12 @@ fails when the README says otherwise.
 <!-- measured:writes -->
 - **Chat**, one message in a room of 100 messages and 5 members: 1.2 KB to each other member (a
   345 B patch and 844 B of HTML).
-- **The ticker**, one price tick with 5 viewers watching its symbol: 364 B to each other viewer (two
-  patches and no HTML). The same tick as a bare JSON feed would be 41 B.
+- **The ticker**, one price tick with 5 viewers watching its symbol: 364 B to each other viewer
+  (patches of 186 B and 178 B, and no HTML). The same tick as a bare JSON feed would be 41 B.
 - **The wedding**, one guest's top changed to green: 2.2 KB to the same household's second tab, on
-  its photo (two patches of 657 B and 1.5 KB of HTML); 5.2 KB to the couple, on their photo of
-  families (a 353 B patch and 4.8 KB of HTML); 300 B to another household, on its photo (one patch
-  and no HTML); and 1.9 KB to another household, reading everyone (a 300 B patch and 1.6 KB of
+  its photo (patches of 357 B and 300 B, and 1.5 KB of HTML); 5.2 KB to the couple, on their photo
+  of families (a 353 B patch and 4.8 KB of HTML); 300 B to another household, on its photo (one
+  patch and no HTML); and 1.9 KB to another household, reading everyone (a 300 B patch and 1.6 KB of
   HTML).
 <!-- /measured -->
 
