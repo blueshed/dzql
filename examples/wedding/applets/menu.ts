@@ -15,7 +15,6 @@ export interface MenuCourse {
 
 export interface MenuProps {
   guestId: number;
-  firstName: string;
   courses: MenuCourse[];
   /** By course id: the dish and the drink chosen. */
   choices: Record<string, { dish: number | null; drink: number | null }>;
@@ -25,9 +24,10 @@ export interface MenuProps {
   locked?: boolean;
 }
 
+/** The meal, in the guest's drawer: the drawer's title already says whose. */
 export function menuHtml(props: MenuProps, open: number | null): string {
-  const cap = `<p class="cap">${esc(props.firstName)}’s choices</p>`;
-  if (props.out) return `<div class="menu">${cap}<p class="note">${esc(props.firstName)} is not coming, so there is no meal to choose.</p></div>`;
+  const cap = `<p class="cap">The meal</p>`;
+  if (props.out) return `<div class="menu">${cap}<p class="note">Not coming, so there is no meal to choose.</p></div>`;
   const rows = props.courses.map((course) => {
     const choice = props.choices[String(course.id)] ?? { dish: null, drink: null };
     const summary = [course.dishes.find((d) => d.id === choice.dish)?.name, course.drinks.find((d) => d.id === choice.drink)?.name].filter(Boolean).join(" · ");

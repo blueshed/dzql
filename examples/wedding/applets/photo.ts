@@ -23,6 +23,8 @@ export interface PhotoEntry {
   count?: number;
   /** What a tap on the figure writes, if anything. */
   tap?: Tap;
+  /** The figure's name for someone who cannot see it, where no name is printed on it that says what a tap opens (a family's figure). */
+  name?: string;
   /** This figure's drawer is open: rings (rule 13), scrolls into the clear beside it (K2). */
   chosen?: boolean;
   /** Find's word missed this one: it fades, never hides (rule 17), and a fade says nothing else. */
@@ -77,7 +79,7 @@ export function photoSvg(entries: PhotoEntry[], label: string, arriving: Set<str
     } else {
       inner = figure(s, { classes, print: chest });
     }
-    const tap = entry.tap ? ` role="button" tabindex="0" data-key="${esc(entry.key)}" aria-pressed="${!!entry.chosen}"` : "";
+    const tap = entry.tap ? ` role="button" tabindex="0" data-key="${esc(entry.key)}"${entry.name ? ` aria-label="${esc(entry.name)}"` : ""} aria-pressed="${!!entry.chosen}"` : "";
     const reveal = entry.chosen ? ` data-reveal` : "";
     const mark = entry.mark ? `<circle class="mark mark-${esc(entry.mark)}" cx="50" cy="147" r="4.5"/>` : "";
     const count = entry.count && entry.count > 1 ? `<g class="count"><circle cx="82" cy="46" r="10"/><text x="82" y="49.5" text-anchor="middle">${entry.count}</text></g>` : "";

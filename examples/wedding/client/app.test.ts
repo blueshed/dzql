@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { urlFor, waitFor } from "../../../src/webview";
 import { createServer } from "../../../src/server";
-import { asCouple, board, household } from "../setup";
+import { asCouple, asHousehold, board, household } from "../setup";
 import { example } from "../index";
 
 let server: ReturnType<typeof createServer>;
@@ -204,6 +204,47 @@ describe("the wedding in a real browser", () => {
     expect(await view.evaluate<boolean>(SAME)).toBe(true);
   }, 15000);
 
+  test("the rail's tools and find's bar keep the bento's heights; in a drawer a long state goes under its words and stays inside (rules 9, 11)", async () => {
+    await using view = new Bun.WebView({ width: 1280, height: 800 });
+    await enter(view, code);
+    await view.click(".rail .tool.find");
+    await waitFor(view, `document.querySelector('.filter') !== null`, (v) => v === true);
+    const heights = await view.evaluate<{ tools: number[]; bar: number; field: number; eye: number }>(`(() => {
+      const h = (el) => Math.round(el.getBoundingClientRect().height);
+      return { tools: [...document.querySelectorAll('.rail .tool')].map(h), bar: h(document.querySelector('.filter')), field: h(document.querySelector('.filter input')), eye: h(document.querySelector('.filter .tool')) };
+    })()`);
+    expect(new Set(heights.tools)).toEqual(new Set([32]));
+    expect(heights).toMatchObject({ bar: 32, field: 24, eye: 26 });
+
+    // two households give to the honeymoon fund: the couple's row says so at length
+    const email = `giver-${Date.now()}@example.com`;
+    await asCouple([{ op: "add", path: "/households/-", value: { email, names: "Gil Giver" } }]);
+    const other = (await board()).households.find((x) => x.email === email)!.code;
+    for (const who of [code, other]) await asHousehold(who, [{ op: "add", path: "/claims/-", value: 2 }]);
+    await using couple = new Bun.WebView({ width: 1280, height: 800 });
+    await couple.navigate(urlFor(couple, server.url, "?gifts"));
+    await waitFor(couple, `document.querySelector('#code') !== null`, (v) => v === true);
+    await couple.evaluate(`(() => { const i = document.querySelector('#code'); i.value = 'DASH'; i.form.requestSubmit(); })()`);
+    await couple.navigate(urlFor(couple, server.url, "?gifts"));
+    await waitFor(couple, `document.querySelector('#gifts-drawer #gift-2 .state')?.textContent ?? ""`, (v) => typeof v === "string" && v.includes(other));
+    const fits = await couple.evaluate<{ words: number; inside: boolean }[]>(`(() => {
+      const edge = document.querySelector('#gifts-drawer .drawer-body').getBoundingClientRect().right;
+      return [...document.querySelectorAll('#gifts-drawer .row')].map((row) => ({ words: Math.round(row.querySelector('.words').getBoundingClientRect().width), inside: [...row.children].every((c) => c.getBoundingClientRect().right <= edge + 0.5) }));
+    })()`);
+    for (const row of fits) {
+      expect(row.inside).toBe(true);
+      expect(row.words).toBeGreaterThan(150);
+    }
+    for (const who of [code, other]) await asHousehold(who, [{ op: "remove", path: "/claims/2" }]); // the gifts as the other tests find them
+
+    // a property's field, and a picture's button, are a field's and a word's 40px, not their text's height
+    await couple.navigate(urlFor(couple, server.url, "?keep=gifts/1"));
+    await waitFor(couple, `document.querySelector('.keep-drawer [data-applet="picture-field"] button') !== null`, (v) => v === true);
+    const props = await couple.evaluate<number[]>(`[...document.querySelectorAll('.keep-drawer .prop-value > .field, .keep-drawer .pic-field button')].map((e) => Math.round(e.getBoundingClientRect().height))`);
+    expect(props.length).toBe(4); // name, words, link, the picture's button
+    expect(new Set(props)).toEqual(new Set([40]));
+  }, 20000);
+
   test("editing a gift's fields in its drawer writes on blur, batches fields changed together, and does not reset", async () => {
     await using view = new Bun.WebView();
     // the couple's own code, not a household's: the keep drawers are theirs to edit
@@ -282,6 +323,28 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('.welcome-drawer textarea').value`, (v) => v === "so happy for you both");
     expect((await board()).message).toBe("so happy for you both");
   });
+
+  test("the answer's words are written as they are left, as every drawer's are; a choice of three stays inside the guest's drawer", async () => {
+    await using view = new Bun.WebView({ width: 1280, height: 800 });
+    await enter(view, code);
+    const guest = (await household(code)).guests[0]!;
+    await view.navigate(urlFor(view, server.url, `?guest=${guest.id}`));
+    await waitFor(view, `document.querySelector('.guest-drawer .pick') !== null`, (v) => v === true);
+    const past = await view.evaluate<number>(`(() => { const edge = document.querySelector('.guest-drawer .drawer-body').getBoundingClientRect().right; return Math.max(...[...document.querySelectorAll('.guest-drawer .pick .tool')].map((b) => b.getBoundingClientRect().right - edge)); })()`);
+    expect(past).toBeLessThanOrEqual(0);
+
+    await view.navigate(urlFor(view, server.url, "?answer"));
+    await waitFor(view, `document.querySelector('.answer-drawer textarea') !== null`, (v) => v === true);
+    expect(await view.evaluate<boolean>(`document.querySelector('.answer-drawer button[type="submit"]') === null`)).toBe(true); // no Save
+    await view.evaluate(`(() => {
+      const box = document.querySelector('.answer-drawer textarea');
+      box.value = 'Ada is vegetarian.';
+      box.dispatchEvent(new Event('focusout', { bubbles: true }));
+    })()`);
+    await waitFor(view, `document.querySelector('.bubble.ours .bubble-words').textContent`, (v) => v === "Ada is vegetarian."); // the bubble, drawn again from the write
+    expect((await household(code)).message).toBe("Ada is vegetarian.");
+    await asHousehold(code, [{ op: "replace", path: "/message", value: "" }]);
+  }, 15000);
 
   test("leaving returns to the welcome, and the session survives a reload", async () => {
     await using view = new Bun.WebView();

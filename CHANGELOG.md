@@ -116,6 +116,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   compared with itself. Now each document it reads is opened again from delta's tables
   (`open_at`). One they do not hold is drawn as nothing, as the kernel holds a document delta
   cannot open, so a lost row fails; only a memory kind, which has no tables, comes from the copy.
+- **The wedding says a thing once** (todo n61). A household's list and a family's drawer say a
+  surname the family shares once ("Ada", "Femi", "Kemi" under OKAFOR); the couple's list of
+  households runs by answer, said at the head of each run rather than on every row, each run a
+  group named by its head so a screen reader hears the answer as it enters the run; the day says
+  its place at its head, and an event names where only where it moves (in the couple's list a
+  repeat says "same place", so a place not yet set is not mistaken for one); a guest's drawer is named
+  for them in its title alone ("The meal", "Touch a part to change it"); a gift's state no longer
+  repeats its control ("open" beside Claim it, "anyone may" beside Give to it); a confirm modal is
+  named for what it takes away and asks once; a place's picture has no alt of its own beside its
+  name.
+- **The wedding's housekeeping** (todo n65). A household's words to the couple are written as
+  they are left, as every other drawer's are, with no Save; a guest's Coming choice wraps in the
+  drawer rather than standing past its edge; the meal takes a thumbnail's corners inside the
+  drawer; "Add an event"; and the reading switches say which is chosen with `aria-checked` alone,
+  as a radio does. The stylesheet lost what nothing draws any more (the old boxes' forms and small
+  reading, a margin said twice), and its last spelled-out colours are tokens.
 
 ### Added
 
@@ -233,6 +249,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   quote's own document); from a board row, which has those and on a narrow board hides the name,
   the name. A watched row in the market carries the board's mark instead of
   the word "watching". The page's title is the desk, and the board's wells are cut square.
+- **The wedding's colours pass contrast** (todo n62; n54 for the wedding). The green of a claimed
+  gift and a pressed Yes, the gold "Open" button, the pencil, the ampersand between the names,
+  maybe's amber and the marks at the guests' feet were 1.9 to 3.3:1. The green is darker; a gold
+  line on the card (the pencil, the ampersand) is a deep gold; the Open button and maybe's disc
+  keep the invitation's bright gold and amber and carry ink (5.8 and 6.1:1), and a maybe mark is
+  edged in a deeper amber; a menu pill and a colour swatch take the controls' edge. `examples/wedding/client/contrast.test.ts` checks each
+  pair against the stylesheet's own tokens: text at 4.5:1, a mark or a control's edge at 3:1. The
+  wedding has one palette, light, whatever the reader prefers, and the test holds it to that.
+- **The wedding's rails, stacks and drawers keep the bento's measure** (todo n63). The welcome's
+  44px controls had spread to every button and field, so a rail's tools stood 32 by 44 and find's
+  field grew out of its bar; the height is the welcome's alone now. In a drawer a long state
+  ("shared · claimed by OKAFOR, BEN") goes under its row's words and wraps, where it squeezed the
+  words to one a line and ran past the drawer's edge. A figure that stands for a family in the
+  photo is a button a screen reader can name ("OKAFOR, a family of 2"; a family of one by the
+  person, or "a guest" while the names are down until the day).
 - **A plain form posts.** The client stopped every form's submit, so a form without
   `data-write` (a sign-in page) could never post; it now stops only a form that writes.
 - **The wedding's welcome, laid out again.** Its forms used the bento's list `.row` (a rule under

@@ -19,7 +19,7 @@ import { esc, join, nav, open, write, appletWrites } from "./html";
 import { part } from "../../../src/parts";
 import { icon, type IconName } from "./icons";
 import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
-import { answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, layers, isComing, isGuestOut, matches, picture, placeRows, plural, specOf, timetableRows } from "./shared";
+import { answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, layers, isComing, isGuestOut, matches, picture, placeRows, plural, runNames, specOf, timetableRows } from "./shared";
 
 /** Opening something over the page this household is on -- a drawer, a modal -- and putting it away: both are going somewhere (views/html.ts). */
 const open_ = (v: HouseholdView, what: string, which: string | number = ""): string => open(over(v.session.ui).path, what, which);
@@ -75,7 +75,7 @@ export function householdPage(v: HouseholdView): string {
   const everyone = read.as === "everyone" ? everyoneReading(v, read.family) : undefined;
   const trail: Crumb[] = [{ label: coupleName(v.w) }, ...(everyone?.crumbs ?? [{ label: v.h.code }])];
 
-  const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${READINGS.map(([text, as, path, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${read.as === as}" aria-pressed="${read.as === as}" aria-label="${text}"${nav(path)}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
+  const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${READINGS.map(([text, as, path, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${read.as === as}" aria-label="${text}"${nav(path)}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
   const owed = v.h.guests.filter((g) => g.named_by === "household").length < v.h.plus_ones;
   // find, on the people this reading shows: everyone's photo is nameless until the day
   const { word, hide } = findOf(v);
@@ -130,8 +130,9 @@ function usReading(v: HouseholdView): string {
   return `<div class="reading photo">${familyPhoto(v)}</div><p class="note">Tap anyone to dress them and choose their meal.</p>`;
 }
 
-/** One guest as a row: the name, their choices, whether they are coming; ✎ the drawer, lit while it is open (rule 13). Find dims it, or with the eye hides it, when the word misses. */
-export function guestRow(v: HouseholdView, g: Guest): string {
+/** One guest as a row: the name (`said`: as the list says it, the family's surname once), their choices, whether they are coming;
+ * ✎ the drawer, lit while it is open (rule 13). Find dims it, or with the eye hides it, when the word misses. */
+function guestRow(v: HouseholdView, g: Guest, said: string): string {
   const { word, hide } = findOf(v);
   const miss = !matches(g.name, word);
   return row({
@@ -140,22 +141,25 @@ export function guestRow(v: HouseholdView, g: Guest): string {
     chosen: over(v.session.ui).focus === g.id,
     hushed: miss,
     hidden: miss && hide,
-    what: g.name,
+    what: said,
     note: choicesLine(g, v.courses),
     state: answerWord(g.coming === null ? "none" : isComing(g) ? "yes" : "no", g.coming === null ? "not said" : isComing(g) ? "coming" : "not coming"),
     mark: "pencil",
   });
 }
 
-/** The same people as a list: the guests, then whoever was asked for and is not a guest -- waiting, or refused. */
+/** The same people as a list: the guests, then whoever was asked for and is not a guest -- waiting, or refused. One family, under
+ * its own name in the trail, so a surname they share is said once. */
 function listReading(v: HouseholdView): string {
   const { word, hide } = findOf(v);
+  const asked = askedFor(v, true);
+  const said = runNames([...v.h.guests, ...asked].map((p) => p.name), v.h.code);
   return rows(
     [
-      ...v.h.guests.map((g) => guestRow(v, g)),
-      ...askedFor(v, true).map((a) => {
+      ...v.h.guests.map((g, i) => guestRow(v, g, said[i]!)),
+      ...asked.map((a, i) => {
         const miss = !matches(a.name, word);
-        return row({ id: `ask-${a.id}`, what: a.name, hushed: miss, hidden: miss && hide, state: a.reply === "no" ? answerWord("no", "the couple said no") : answerWord("none", "asked for") });
+        return row({ id: `ask-${a.id}`, what: said[v.h.guests.length + i]!, hushed: miss, hidden: miss && hide, state: a.reply === "no" ? answerWord("no", "the couple said no") : answerWord("none", "asked for") });
       }),
     ],
     "Nobody is named on your invitation yet.",
@@ -213,7 +217,6 @@ export function dressMount(v: HouseholdView, g: Guest): string {
 export function menuMount(v: HouseholdView, g: Guest): string {
   const menu: MenuProps = {
     guestId: g.id,
-    firstName: firstNameOf(g.name),
     courses: v.courses.map((c) => ({ id: c.id, name: c.name, dishes: c.dishes.map(({ id, name, dietary }) => ({ id, name, dietary })), drinks: c.drinks.map(({ id, name }) => ({ id, name })) })),
     choices: g.choices,
     out: isGuestOut(g, v.h),
@@ -225,7 +228,8 @@ export function menuMount(v: HouseholdView, g: Guest): string {
   return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu"${writes} data-props="${esc(JSON.stringify(menu))}"></div>`);
 }
 
-/** The guest's drawer: the dressing sheet, coming as one choice (rule 13, off the line), the hint, and the menu. */
+/** The guest's drawer, named for them: the dressing sheet, whose callouts name its parts, the hint, coming as one choice (rule 13, off
+ * the line), and the menu. */
 function guestSheet(v: HouseholdView): string {
   const focus = over(v.session.ui).focus;
   const g = focus === undefined ? undefined : v.h.guests.find((x) => x.id === focus);
@@ -241,19 +245,20 @@ function guestSheet(v: HouseholdView): string {
   );
   const body = join(
     `<div class="figure-box">${dressMount(v, g)}</div>`,
-    `<p class="hint">Touch ${esc(firstNameOf(g.name))}’s hair, face, top, arms or legs to change them.</p>`,
+    `<p class="hint">Touch a part to change it.</p>`,
     `<div class="props">${prop("Coming", coming)}</div>`,
     menuMount(v, g),
   );
   return drawer("guest-drawer", g.name, body, close(v), "guest-drawer");
 }
 
-/** What a gift is to this household: claimed by us, taken by another, open, or shared and how many have. */
-function giftState(g: Gift, mine: boolean): { word: string; cls: string } {
+/** What a gift is to this household, where its one control does not say it already: claimed by us, taken by another, or how many
+ * have given to a shared one. That it is open, or that anyone may give, is the control's own word (Claim it, Give to it). */
+function giftState(g: Gift, mine: boolean): { word: string; cls: string } | null {
   if (mine) return { word: "claimed by us", cls: "yes" };
   if (!g.shared && g.taken) return { word: "taken", cls: "no" };
-  if (g.shared) return { word: g.taken ? `${plural(g.taken, "household has", "households have")} given · anyone may` : "open · anyone may", cls: "none" };
-  return { word: "open", cls: "none" };
+  if (g.shared && g.taken) return { word: `${plural(g.taken, "household has", "households have")} given`, cls: "none" };
+  return null;
 }
 
 /** The gifts, read in a drawer and put away: each whole -- its picture, its words, where to find it, what it is to us -- and the one thing this household may do with it. */
@@ -274,7 +279,7 @@ function giftsSheet(v: HouseholdView): string {
         `<div class="gift-words"><h3>${esc(g.name)}</h3>`,
         g.description && `<p class="note">${esc(g.description)}</p>`,
         g.link && `<a href="${esc(g.link)}" target="_blank" rel="noopener noreferrer">${esc(g.link.replace(/^https?:\/\//, ""))}</a>`,
-        `<div class="gift-foot"><span class="state-${st.cls}">${esc(st.word)}</span>${act}</div>`,
+        `<div class="gift-foot">${st ? `<span class="state-${st.cls}">${esc(st.word)}</span>` : ""}${act}</div>`,
         `</div></article>`,
       ),
     );
@@ -282,10 +287,10 @@ function giftsSheet(v: HouseholdView): string {
   return drawer("gifts-drawer", "Gifts", gifts.length ? gifts.join("") : `<p class="note">No gifts on the list yet.</p>`, close(v), "info-drawer");
 }
 
-/** The day, read in a drawer: when and where, then what happens. */
+/** The day, read in a drawer: when and where, then what happens -- and where, only where it moves from the day's own place. */
 function daySheet(v: HouseholdView): string {
   if (over(v.session.ui).drawer !== "day") return "";
-  const body = join(`<p class="when-where">${esc(formatDay(v.w.day))}${v.w.venue ? `<br>${esc(v.w.venue)}` : ""}</p>`, timetableRows(v.events));
+  const body = join(`<p class="when-where">${esc(formatDay(v.w.day))}${v.w.venue ? `<br>${esc(v.w.venue)}` : ""}</p>`, timetableRows(v.events, { at: v.w.venue }));
   return drawer("day-drawer", "The day", body, close(v), "info-drawer");
 }
 
@@ -301,7 +306,8 @@ const DEFAULT_WORDS: Record<"yes" | "maybe" | "no", string> = {
   no: "Sorry, we can't be there.",
 };
 
-/** The answer's drawer: every option whole -- a face, its colour, its sentence -- and the words beneath. */
+/** The answer's drawer: every option whole -- a face, its colour, its sentence -- and the words beneath, written as they are left, as
+ * every other drawer's are. */
 function answerSheet(v: HouseholdView): string {
   if (!over(v.session.ui).answering) return "";
   const { h } = v;
@@ -313,7 +319,7 @@ function answerSheet(v: HouseholdView): string {
     h.answer && v.open && `<div class="drawer-foot">${tool("Take back our answer", { kind: "quiet", write: write("household", "remove", "/answer") })}</div>`,
     `<div class="props">${prop(
       "Our words",
-      `<form class="words-form"${write("household", "replace", "/message")}><textarea name="message" rows="3" placeholder="Say something to the couple" aria-label="Our words">${esc(h.message ?? "")}</textarea><div class="form-foot">${tool("Save our words", { write: "", submit: true })}</div></form>`,
+      `<form data-write-on="blur"><textarea name="message"${write("household", "replace", "/message")} rows="3" placeholder="Say something to the couple" aria-label="Our words">${esc(h.message ?? "")}</textarea></form>`,
     )}</div>`,
   );
   return drawer("answer-drawer", "Our answer", body, close(v), "answer-drawer");

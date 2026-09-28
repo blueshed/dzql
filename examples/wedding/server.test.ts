@@ -310,7 +310,10 @@ describe("a household", () => {
     expect(html).toContain(`aria-label="Gifts" aria-pressed="true" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value=""`);
     expect(html).toContain("Le Creuset casserole");
     expect(html).toContain('data-write=\'{"doc":"household","op":"add","path":"/claims/-"}\' data-value="1"');
-    expect(html).toContain("open · anyone may"); // the honeymoon fund, shared, given to by nobody yet
+    // the honeymoon fund, shared, given to by nobody yet: its control says anyone may give, and nothing says it again
+    expect(html).toContain("Give to it");
+    expect(html).not.toContain("anyone may");
+    expect(html).not.toContain(">open</span>");
     // claimed: it is ours to unclaim; shared, another household's giving is counted, never named
     const email = `giver-${Date.now()}@example.com`;
     await asCouple([{ op: "add", path: "/households/-", value: { email, names: "Gil Giver" } }]);
@@ -319,7 +322,7 @@ describe("a household", () => {
     html = (await send(ws, "household", [{ op: "add", path: "/claims/-", value: 1 }])).page;
     expect(html).toContain('<span class="state-yes">claimed by us</span>');
     expect(html).toContain('data-write=\'{"doc":"household","op":"remove","path":"/claims/1"}\'');
-    expect(html).toContain("1 household has given · anyone may");
+    expect(html).toContain(">1 household has given</span>");
     expect(html).toContain('<span class="state-no">taken</span>'); // the knives, not shared, the other household's
     await send(ws, "household", [{ op: "remove", path: "/claims/1" }]);
     await asHousehold(other.code, [{ op: "remove", path: "/claims/2" }, { op: "remove", path: "/claims/3" }]); // the gifts as the other tests find them
@@ -327,6 +330,9 @@ describe("a household", () => {
     html = await at(ws, "?day");
     expect(html).toContain('aria-label="The day"');
     expect(html).toContain("Ceremony");
+    // the day's own place is said once, at its head: an event there does not say it again
+    expect(html).toContain("<br>The Mount Without, Bristol</p>");
+    expect(html).not.toContain('<span class="note">The Mount Without</span>');
     html = await at(ws, "?stay");
     expect(html).toContain('aria-label="Where to stay"');
     expect(html).toContain("Brooks Guesthouse");
@@ -339,9 +345,15 @@ describe("a household", () => {
     await asHousehold(code, [{ op: "add", path: "/asks/-", value: "Robin Friend" }]);
     const askId = (await household(code)).asks.at(-1)!.id;
     expect(await at(ws, "")).toContain(`{&quot;key&quot;:&quot;ask-${askId}&quot;,&quot;ghost&quot;:true`);
-    // the list: the guests' rows, then whoever was asked for and is not a guest
+    // the reading is a radio of three: chosen is aria-checked, never aria-pressed, which is a toggle's
+    const reading = /<div class="stack" role="radiogroup" aria-label="Read as">.*?<\/div>/.exec(await at(ws, "list"))![0];
+    expect(reading).toContain('role="radio" aria-checked="true" aria-label="List"');
+    expect(reading).not.toContain("aria-pressed");
+    // the list: the guests' rows, then whoever was asked for and is not a guest; a surname the family shares is said once
     let html = await at(ws, "list");
     expect(html).toContain('class="row tap"');
+    expect(html).toContain('<span class="what">Tess Test</span>');
+    expect(html).toContain('<span class="what">Tom</span>');
     expect(html).toContain('<span class="what">Robin Friend</span>');
     expect(html).toContain(">asked for</span>");
     await asCouple([{ op: "replace", path: `/households/${hid}/asks/${askId}/reply`, value: "no" }]);
@@ -540,6 +552,7 @@ describe("the couple", () => {
     // a row's own drawer: its × goes back to its list, whose tool stays pressed
     html = await at(ws, "?keep=courses/1");
     expect(html).toContain("Add a dish");
+    expect(await at(ws, "?events")).toContain("Add an event");
     expect(html).toContain("Remove this course");
     expect(html).toContain(`aria-label="Courses" aria-pressed="true"`);
     expect(html).toContain(`aria-label="Close" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="?courses"`);
@@ -558,7 +571,7 @@ describe("the couple", () => {
 
     // removing asks in a modal -- a modal is new or delete and nothing else (rule 14); answered, back to the list
     html = await at(ws, `?confirm=courses/${pudding.id}`);
-    expect(html).toContain(`Remove &quot;Pudding&quot; from the list?`);
+    expect(html).toContain('<dialog open class="modal" aria-label="Pudding"><h3>Pudding</h3><p class="note">Remove it from the list?</p>'); // named once, then asked
     expect(html).toContain('class="ground" inert>');
     html = (await send(ws, "board", [{ op: "remove", path: `/courses/${pudding.id}` }])).page;
     expect(html).not.toContain('class="modal"');
@@ -635,6 +648,11 @@ describe("the couple", () => {
     expect(html).toMatch(new RegExp(`class="row tap hushed" id="household-${other.id}"[^>]* hidden>`));
     expect(html).toContain(`class="row tap" id="household-${matching.id}"`);
     expect(html).toMatch(/\d+ asks? waiting/);
+    // the rows run by their answer, said once at the head of each run and not on a row: each run a group named by its head, so a
+    // screen reader hears the answer entering it; a run the word misses whole goes with it
+    expect(html).toContain('<div class="run" role="group" aria-labelledby="run-none"><h3 class="cap run-head" id="run-none"><span class="answer-word none">');
+    expect(html).toContain('<div class="run" role="group" aria-labelledby="run-yes" hidden><h3 class="cap run-head hushed" id="run-yes"><span class="answer-word yes">'); // the Okafors', and anyone else who said yes
+    expect(html).not.toContain('class="state"');
 
     // closing find forgets the word and the eye
     html = await go(ws, [{ op: "remove", path: "/filter/households" }]);
@@ -645,6 +663,15 @@ describe("the couple", () => {
 
   test("a family's drawer: whether each guest is coming and what they chose, and whoever they asked for -- waiting, with the couple's yes or no, or refused; their figures ring in the photo", async () => {
     const ws = await enter("DASH");
+    // under the family's code, a surname they share is said once in each list
+    const okafors = await at(ws, `?family=${(await board()).households.find((h) => h.code === "OKAFOR")!.id}`);
+    expect(okafors).toContain('<span class="what">Ada</span>');
+    expect(okafors).toContain('<span class="what">Femi</span>');
+    expect(okafors).toContain('<span class="what">Kemi</span>'); // asked for
+    // the lists they keep: an event names where only where it moves, and a repeat says so (the seed's three are all at the Mount Without)
+    const events = await at(ws, "?events");
+    expect(events.split('<span class="note">The Mount Without</span>').length - 1).toBe(1);
+    expect(events.split('<span class="note">same place</span>').length - 1).toBe(2);
     const guest = (await household(code)).guests[0]!.id;
     await asHousehold(code, [{ op: "replace", path: `/guests/${guest}/coming`, value: 1 }, { op: "add", path: "/asks/-", value: "Answered" }, { op: "add", path: "/asks/-", value: "Waiting" }]);
     const ask = (await household(code)).asks.find((a) => a.name === "Answered")!;
@@ -671,12 +698,15 @@ describe("the couple", () => {
     const families = await at(ws, "everyone");
     expect(families).toContain("Tap a family to see them");
     expect(families).toContain("&quot;count&quot;:17");
+    expect(families).toContain("&quot;name&quot;:&quot;a family of 17&quot;"); // a figure a screen reader can name, and nameless to the eye until the day
     const family = await at(ws, `everyone/${crowd.id}`);
     expect(family).toContain('<span class="cell-name">One family</span>');
     expect(family).toContain("17 of them.");
     ws.close();
     // the couple's photo, at the families level too: the crowd one figure, ringing while its drawer is open
-    expect(await at(couple, `?family=${crowd.id}`)).toMatch(new RegExp(`&quot;count&quot;:17,&quot;tap&quot;:[^}]*}},&quot;hushed&quot;:false,&quot;chosen&quot;:true`));
+    const theirs = await at(couple, `?family=${crowd.id}`);
+    expect(theirs).toMatch(new RegExp(`&quot;count&quot;:17,&quot;tap&quot;:[^}]*}},&quot;hushed&quot;:false,&quot;chosen&quot;:true`));
+    expect(theirs).toContain(`&quot;name&quot;:&quot;${crowd.code}, a family of 17&quot;`);
     await heard(couple);
     await send(couple, "ledger", [{ op: "remove", path: "/latest" }]); // the crowd goes home
     couple.close();
@@ -798,7 +828,7 @@ describe("the couple keep a family's invitation", () => {
     expect(drawer).toContain(`aria-label="Take ${guest.name} off"`);
     expect(drawer).toContain(`data-write='{"doc":"board","op":"replace","path":"/households/${h.id}/email"}'`);
     const asked = await at(ws, `?confirm=households/${h.id}/guests/${guest.id}`);
-    expect(asked).toContain(`Take ${guest.name} off the ${h.code} invitation?`);
+    expect(asked).toContain(`<h3>${guest.name}</h3><p class="note">Take them off the ${h.code} invitation?</p>`);
     expect(asked).toContain(`data-write='{"doc":"board","op":"remove","path":"/households/${h.id}/guests/${guest.id}"}'`);
     const after = (await send(ws, "board", [{ op: "remove", path: `/households/${h.id}/guests/${guest.id}` }])).page;
     expect(after).toContain(`data-page="?family=${h.id}"`);
