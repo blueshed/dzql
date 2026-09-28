@@ -24,9 +24,9 @@ function recordPatch(doc: string, version: number, ops: PatchOp[]) {
 
 // The last write this client sent, and what became of it, told by its own id: echoed back to it,
 // or refused, and why when the refusal says -- never anyone else's echo of its document, nor the
-// refusal of a write sent before it. Not domain state, just enough to answer "did that even go
-// through" from the console.
-let lastSent: { id: number; doc: string; ops: PatchOp[]; echoed: boolean; refused: boolean; reason?: string } | undefined;
+// refusal of a write sent before it -- or unanswered, its socket gone first. Not domain state, just
+// enough to answer "did that even go through" from the console.
+let lastSent: { id: number; doc: string; ops: PatchOp[]; echoed: boolean; refused: boolean; reason?: string; unanswered?: true } | undefined;
 
 declare global {
   interface Window {
@@ -463,8 +463,15 @@ function hold(field: Field, value: string | boolean | null): void {
 // A form clears as it sends, and its write's own refusal hands back what was sent. So what someone
 // types while the write is on its way is theirs -- no echo, anyone's, clears it, nor a page sent
 // whole for another reason (someone else's write turning this page into another) -- and a refusal
-// never eats text. The write's own echo ends the wait: it landed.
-let sending: { id: number; sent: [Field, string | boolean | null][] } | undefined;
+// never eats text. The write's own echo ends the wait: it landed. One whose socket goes first is
+// unanswered, and handed back when the page is drawn afresh (the close, below).
+let sending: { id: number; sent: [Field, string | boolean | null][]; unanswered?: true } | undefined;
+
+/** What the form's write sent goes back in each field (a group of radios is one) not typed in, chosen in, or ticked since. */
+function handBack(): void {
+  for (const [field, value] of sending?.sent ?? []) if (held(field) === rendered(field)) hold(field, value);
+  sending = undefined;
+}
 
 // An element says what it writes via data-write; a form's field is the
 // value (or a record of its fields, if it has more than one), a button/li's
@@ -658,7 +665,10 @@ function connect() {
     const message = JSON.parse(event.data);
     if (message.type === "render") {
       if (message.ops) applyFragments(message.ops);
-      else if (message.wire === WIRE || !reloadForWire()) render(message.html);
+      else if (message.wire === WIRE || !reloadForWire()) {
+        if (sending?.unanswered) handBack(); // the page drawn afresh, after its socket went
+        render(message.html);
+      }
     } else if (message.type === "refused") {
       // this page's own write, refused, and why if it says: before the page is handed back, what
       // its form sent goes back in each field (a group of radios is one) not typed in, chosen in,
@@ -668,10 +678,7 @@ function connect() {
         lastSent.refused = true;
         if (message.reason !== undefined) lastSent.reason = message.reason;
       }
-      if (sending && sending.id === message.id) {
-        for (const [field, value] of sending.sent) if (held(field) === rendered(field)) hold(field, value);
-        sending = undefined;
-      }
+      if (sending && sending.id === message.id) handBack();
     } else if (message.type === "patch") {
       recordPatch(message.doc, message.version, message.ops);
       // An applet watching this document takes the ops itself (see Applet.patch): the delta is
@@ -689,6 +696,13 @@ function connect() {
   // The connection gone, the page stays as it is -- what is typed, what applets hold -- but is not
   // to be used (src/bento.css says so) until the server, reached again, draws it afresh.
   socket.addEventListener("close", () => {
+    // What was on its way is unanswered: no server answers it on another socket. A form's values go
+    // back when the page is drawn afresh, as a refusal's would -- it may have landed, which that page
+    // then shows: better there twice than lost -- and an editing form says its edit again, as it
+    // says one the closed socket never took (send, above).
+    if (lastSent && !lastSent.echoed && !lastSent.refused) lastSent.unanswered = true;
+    if (sending) sending.unanswered = true;
+    lastEditSent = new WeakMap();
     app.inert = true;
     app.dataset.offline = "";
     setTimeout(connect, reconnectDelay);

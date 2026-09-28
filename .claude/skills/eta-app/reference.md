@@ -341,7 +341,8 @@ Messages:
 - `{type: "inspect", limit?}` answers with the documents this page sees and their latest ledger
   entries (delta's history). An entry says `mine: true|false`, never who.
 - `window.eta.inspect().lastSent` is the page's last write, `{id, doc, ops, echoed, refused,
-  reason?}`: echoed only by its own echo, refused (and why) only by its own refusal.
+  reason?, unanswered?}`: echoed only by its own echo, refused (and why) only by its own refusal,
+  unanswered when its socket went first.
 
 ### Controls
 
@@ -359,7 +360,10 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
   write's own refusal (`refused`, by the write's id, before the page handed back) hands back what
   was sent, into each field not typed in since; its own echo ends the wait. What is typed while a
   write is on its way is kept, whoever's echo comes, and so is what a page sent whole for another
-  reason finds there (someone else's write turning the page into another).
+  reason finds there (someone else's write turning the page into another). A write on its way
+  when the socket goes is unanswered: the page drawn afresh hands back what its form sent, as a
+  refusal would (it may have landed, which that page then shows: better there twice than lost),
+  and an editing form says its edit again on its next commit.
 - A **button or row** writes on click, with its `data-value` if it has one. A click in a field
   never writes.
 - A form with **`data-write-on="blur"`, `"change"` or `"input"`** edits in place: `data-write`

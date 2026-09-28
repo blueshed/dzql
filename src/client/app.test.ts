@@ -1123,6 +1123,32 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
     expect(await lastSent()).toMatchObject({ id: undo, echoed: false, refused: true, reason: "Someone has changed that since, so it cannot be undone." });
   });
 
+  test("a write on its way when the socket goes is unanswered: the page drawn afresh hands back what its form sent, and an editing form says its edit again", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const words = (text: string) => `<form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>${text}</textarea></form>`;
+    await pushRender(view, say() + words("Hello"));
+    await waitFor(view, `document.getElementById('words') !== null`, (v) => v === true);
+    await view.click("#words");
+    await view.evaluate(`document.getElementById('words').setSelectionRange(5, 5)`);
+    await view.type(" there");
+    await saying(view, "hello"); // leaving the words for the form commits them, then the form sends
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+
+    // the socket goes before either is answered, and a new one opens: no server will answer either now
+    await view.evaluate(`(window.__old = window.eta.socket()).close()`);
+    await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
+    expect(await view.evaluate<Record<string, unknown>>(`window.eta.inspect().lastSent`)).toMatchObject({ doc: "room", echoed: false, refused: false, unanswered: true });
+    await stubSend(view);
+    await pushRender(view, say() + words("Hello")); // the page drawn afresh: neither landed
+    expect(await text(view)).toBe("hello");
+
+    await view.evaluate(`document.getElementById('words').focus()`);
+    await view.evaluate(`document.getElementById('words').blur()`);
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] });
+  }, 15000);
+
   test("a page sent whole by a server of another wire loads this one again, and not again at once: a page and its server speak alike", async () => {
     await using view = await open();
     await view.evaluate(`(sessionStorage.clear(), window.__here = true)`);
