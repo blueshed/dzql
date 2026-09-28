@@ -107,6 +107,19 @@ Everything below is the least that makes it pass.
     `urlFor(view, server.url)` and wait with `waitFor`, both `src/webview.ts`, so each is a browser of
     its own on Chrome too). The gate, and what the browser tests need, are CLAUDE.md's.
 
+    Press as a mouse does, never with `element.click()`: it sends no pointerdown or pointerup, and
+    reaches a control whatever is drawn over it, so a tap that goes nowhere passes (japan-eta's
+    strip redrew itself on pointerup, and its real click reached nothing). `press` (`src/webview.ts`)
+    scrolls to the control, presses and lets go at its middle, each event to what is there, then
+    sends the click where a browser would, and throws, naming what covers it, when something else
+    is at its middle. (`view.click(selector)` is the browser's own press, for a control already in
+    view.)
+
+    ```ts
+    await press(view, "#quote-FXTR button");
+    await waitFor(view, `document.querySelector('.drawer h2')?.textContent`, (v) => v === "FXTR");
+    ```
+
 ## An app of its own
 
 An app need not be an example: it can live in its own repo and install eta. `package.json` says

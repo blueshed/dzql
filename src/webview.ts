@@ -1,5 +1,5 @@
-// What eta's browser tests share (`Bun.WebView`): a view that is a browser of its own, and a
-// wait on what it shows.
+// What eta's browser tests share (`Bun.WebView`): a view that is a browser of its own, a wait on
+// what it shows, and a press as a mouse makes one.
 
 let views = 0;
 const hosts = new WeakMap<Bun.WebView, string>();
@@ -32,4 +32,53 @@ export async function waitFor(view: Bun.WebView, script: string, predicate: (val
     await Bun.sleep(20);
   }
   throw new Error(`Timed out waiting for \`${script}\`; last value: ${JSON.stringify(last)}`);
+}
+
+/**
+ * A mouse, as the page's own function (its source, for a script run in the page): pressed at the
+ * first of `points`, moved through the rest, let go at the last. Each pointer event goes to what is
+ * under the pointer when it is sent, and a mouse event after it unless the press was cancelled;
+ * then the click goes where a browser sends it, to what the press and the release share, if that
+ * is still on the page. A page that redraws on the press or the release is pressed as a person's.
+ */
+export const MOUSE = `((points) => {
+  let mice = true;
+  const at = (type, [x, y], button, buttons) => {
+    const el = document.elementFromPoint(x, y);
+    const init = { bubbles: true, cancelable: true, composed: true, view: window, clientX: x, clientY: y, button, buttons, pointerId: 1, pointerType: "mouse", isPrimary: true };
+    const sent = el.dispatchEvent(new PointerEvent("pointer" + type, init));
+    if (type === "down") mice = sent;
+    if (mice) el.dispatchEvent(new MouseEvent("mouse" + type, init));
+    return el;
+  };
+  const down = at("down", points[0], 0, 1);
+  for (const p of points.slice(1)) at("move", p, -1, 1);
+  const up = at("up", points.at(-1), 0, 0);
+  let shared = down;
+  while (shared && !shared.contains(up)) shared = shared.parentElement;
+  const [x, y] = points.at(-1);
+  if (shared && shared.isConnected) shared.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, view: window, clientX: x, clientY: y }));
+})`;
+
+/**
+ * Presses what `selector` names as a person does with a mouse: scrolled into view, then pressed
+ * and let go at its middle (MOUSE). Never `element.click()`, which sends no pointerdown or
+ * pointerup and reaches the element whatever is drawn over it. Waits up to `timeout` ms for
+ * nothing else to be at its middle, then throws, saying what is.
+ */
+export async function press(view: Bun.WebView, selector: string, timeout = 2000): Promise<void> {
+  let why: unknown;
+  const pressed = `((selector) => {
+    const el = document.querySelector(selector);
+    if (!el) return "it is not on the page";
+    el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+    const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const top = document.elementFromPoint(x, y);
+    if (!top || !el.contains(top)) return "at its middle is " + (top ? top.tagName.toLowerCase() + (top.id ? "#" + top.id : "") + [...top.classList].map((c) => "." + c).join("") : "nothing");
+    ${MOUSE}([[x, y]]);
+    return "";
+  })(${JSON.stringify(selector)})`;
+  await waitFor(view, pressed, (v) => (why = v) === "", timeout).catch((err: Error) => {
+    throw new Error(`cannot press ${selector}: ${why ?? err.message}`); // why it could not, or the page's own error
+  });
 }

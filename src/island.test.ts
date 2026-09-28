@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import fixture from "./island.test.html";
-import { waitFor } from "./webview";
+import { press, waitFor } from "./webview";
 
 let server: ReturnType<typeof Bun.serve>;
 
@@ -12,22 +12,34 @@ afterAll(() => {
   server.stop(true);
 });
 
-/** Runs `script` in a fresh browser with the fixture's `#root` as `el` and its islands on `window`. */
-async function run(script: string): Promise<unknown> {
-  await using view = new Bun.WebView();
+/** A fresh browser on the fixture, its islands on `window`. */
+async function open(): Promise<Bun.WebView> {
+  const view = new Bun.WebView();
   await view.navigate(server.url.toString());
   await waitFor(view, `typeof window.counter`, (v) => v === "object");
-  return await view.evaluate(`(() => { const el = document.querySelector('#root'); ${script} })()`);
+  return view;
+}
+
+/** Runs `script` in `view` with the fixture's `#root` as `el`. */
+const inRoot = (view: Bun.WebView, script: string): Promise<unknown> => view.evaluate(`(() => { const el = document.querySelector('#root'); ${script} })()`);
+
+/** Runs `script` in a fresh browser, as `inRoot`. */
+async function run(script: string): Promise<unknown> {
+  await using view = await open();
+  return await inRoot(view, script);
 }
 
 describe("an island: a railroad component as an applet", () => {
   test("mounts over what the server drew inside it, having read it; its props, its update and its document's ops redraw it; its cleanup takes it away", async () => {
-    const result = await run(`
-      const sent = [];
-      const cleanup = window.counter.mount(el, { props: { n: 1 }, send: (doc, ops) => sent.push({ doc, ops }) });
+    await using view = await open();
+    await inRoot(view, `
+      window.sent = [];
+      window.cleanup = window.counter.mount(el, { props: { n: 1 }, send: (doc, ops) => sent.push({ doc, ops }) });
+      window.mounted = [el.querySelector('.n').textContent, el.querySelector('i').textContent, el.childNodes.length];
+    `);
+    await press(view, "#root button");
+    const result = await inRoot(view, `
       const text = () => el.querySelector('.n')?.textContent ?? null;
-      const mounted = [text(), el.querySelector('i').textContent, el.childNodes.length];
-      el.querySelector('button').click();
       window.counter.update(el, { n: 5 });
       const updated = text();
       window.counter.patch(el, [{ op: "replace", path: "/n", value: 7 }, { op: "replace", path: "/other", value: 0 }]);

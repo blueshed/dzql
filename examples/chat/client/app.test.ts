@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { urlFor, waitFor } from "../../../src/webview";
+import { press, urlFor, waitFor } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { example } from "../index";
 
@@ -40,7 +40,7 @@ async function joinRoom(view: Bun.WebView, room: string) {
 // the way out of a room is the "Chat" crumb, the root of the trail
 async function leaveRoom(view: Bun.WebView) {
   await waitFor(view, `document.querySelector(\`${LEAVE_ROOM_SELECTOR}\`) !== null`, (v) => v === true);
-  await view.evaluate(`document.querySelector(\`${LEAVE_ROOM_SELECTOR}\`).click()`);
+  await press(view, LEAVE_ROOM_SELECTOR);
 }
 
 async function sendChatMessage(view: Bun.WebView, text: string) {
@@ -151,7 +151,7 @@ describe("app.ts in a real browser", () => {
     await leaveRoom(view);
 
     await waitFor(view, ROOM_FORM_VISIBLE, (v) => v === true);
-    await view.evaluate(`document.getElementById("r-${target}").click()`); // the row may be far down a long list
+    await press(view, `#r-${target}`); // the row may be far down a long list: scrolled to, as a person would
 
     await waitFor(view, `document.querySelector('.cell-name')?.textContent ?? ""`, (v) => typeof v === "string" && v.includes(target));
   });

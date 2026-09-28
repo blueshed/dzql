@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { urlFor, waitFor } from "../../../src/webview";
+import { press, urlFor, waitFor } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { asCouple, asHousehold, board, household } from "../setup";
 import { example } from "../index";
@@ -50,24 +50,24 @@ describe("the wedding in a real browser", () => {
     expect(names).toEqual(["Ada", "Femi"]);
 
     const guest = (await household(code)).guests[1]!;
-    await view.evaluate(`document.querySelector('[data-applet="photo"] .slot[data-key="${guest.id}"]').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
+    await press(view, `[data-applet="photo"] .slot[data-key="${guest.id}"]`);
     await waitFor(view, `document.querySelector('.guest-drawer .dress') !== null`, (v) => v === true);
     expect(await view.evaluate<string>(`document.querySelector('.guest-drawer h2').textContent`)).toBe(guest.name);
     expect(await view.evaluate<boolean>(`document.querySelector('.guest-drawer .menu') !== null`)).toBe(true);
 
     // touch the top: the dots appear (the applet's own state); a dot is a write, and the figure redraws from the render
-    await view.evaluate(`document.querySelector('.callout-top').click()`);
+    await press(view, ".callout-top");
     await waitFor(view, `document.querySelectorAll('.pop-top .dot').length`, (v) => v === 8);
-    await view.evaluate(`document.querySelector('.pop-top .dot[data-value="#7FAE4E"]').click()`);
+    await press(view, '.pop-top .dot[data-value="#7FAE4E"]');
     await waitFor(view, `document.querySelector('.dress .torso')?.getAttribute('fill')`, (v) => v === "#7FAE4E");
     expect((await household(code)).guests[1]!.minifigure.top).toBe("#7FAE4E");
     // the open part survived the redraw
     expect(await view.evaluate<boolean>(`document.querySelector('.pop-top') !== null`)).toBe(true);
 
     // a course opens (the menu's own state); a pill is a write; the head says what was chosen
-    await view.evaluate(`document.querySelector('.menu-head[data-course="2"]').click()`);
+    await press(view, '.menu-head[data-course="2"]');
     await waitFor(view, `document.querySelectorAll('.menu-row.open .choice').length`, (v) => v === 6);
-    await view.evaluate(`document.querySelector('.choice[data-kind="dish"][data-id="5"]').click()`);
+    await press(view, '.choice[data-kind="dish"][data-id="5"]');
     await waitFor(view, `document.querySelector('.menu-row.open .chosen')?.textContent`, (v) => v === "Sea bass");
     expect((await household(code)).guests[1]!.choices["2"]).toEqual({ dish: 5, drink: null });
   });
@@ -77,10 +77,10 @@ describe("the wedding in a real browser", () => {
     await enter(view, code);
     await waitFor(view, `document.querySelector('#family-photo svg') !== null`, (v) => v === true);
     // the reading switch is a stack on the page's rail
-    await view.evaluate(`document.querySelector('.rail [role="radio"][aria-label="List"]').click()`);
+    await press(view, '.rail [role="radio"][aria-label="List"]');
     await waitFor(view, `document.querySelectorAll('.cell.open .row').length`, (v) => v === 2);
     expect(await view.evaluate<boolean>(`document.querySelector('.cell.open svg.photo') === null`)).toBe(true);
-    await view.evaluate(`document.querySelector('.rail [role="radio"][aria-label="Us"]').click()`);
+    await press(view, '.rail [role="radio"][aria-label="Us"]');
     await waitFor(view, `document.querySelector('#family-photo svg') !== null`, (v) => v === true);
   });
 
@@ -90,13 +90,13 @@ describe("the wedding in a real browser", () => {
     expect(await view.evaluate<string>(`location.pathname`)).toBe("/");
 
     // reading the page another way is a session write, as always -- the URL follows it
-    await view.evaluate(`document.querySelector('.rail [role="radio"][aria-label="List"]').click()`);
+    await press(view, '.rail [role="radio"][aria-label="List"]');
     await waitFor(view, `location.pathname`, (v) => v === "/list");
     await waitFor(view, `document.querySelector('.cell.open .rows') !== null`, (v) => v === true);
 
     // a drawer is part of the address: opening the gifts puts them in the URL, the back button puts
     // the drawer away and leaves the reading, and a link with one in opens it
-    await view.evaluate(`document.querySelector('.rail [aria-label="Gifts"]').click()`);
+    await press(view, '.rail [aria-label="Gifts"]');
     await waitFor(view, `location.search`, (v) => v === "?gifts");
     await waitFor(view, `document.querySelector('#gifts-drawer') !== null`, (v) => v === true);
     await view.evaluate(`history.back()`);
@@ -143,13 +143,13 @@ describe("the wedding in a real browser", () => {
   test("the answer: the pencil opens the drawer, an option writes it, the bubble shows it, Undo takes it back", async () => {
     await using view = new Bun.WebView();
     await enter(view, code);
-    await view.evaluate(`document.querySelector('.bubble.ours').click()`);
+    await press(view, ".bubble.ours");
     await waitFor(view, `document.querySelectorAll('.answer-option').length`, (v) => v === 3);
-    await view.evaluate(`document.querySelector('.answer-option[data-value="maybe"]').click()`);
+    await press(view, '.answer-option[data-value="maybe"]');
     await waitFor(view, `document.querySelector('.bubble.ours .face-mark')?.classList.contains('maybe')`, (v) => v === true);
-    await view.evaluate(`document.querySelector('.drawer-close').click()`);
+    await press(view, ".drawer-close");
     await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
-    await view.evaluate(`document.querySelector('[data-write*="ledger"]').click()`);
+    await press(view, '[data-write*="ledger"]');
     await waitFor(view, `document.querySelector('.bubble.ours .face-mark')?.classList.contains('maybe')`, (v) => v === false);
   });
 
@@ -309,7 +309,7 @@ describe("the wedding in a real browser", () => {
     await view.click("button.gold");
     await waitFor(view, `document.querySelector('.bubble.couple') !== null`, (v) => v === true);
     // the welcome is a "thing" (rule 15): its message lives in its own drawer now
-    await view.evaluate(`document.querySelector('.bubble.couple').click()`);
+    await press(view, ".bubble.couple");
     await waitFor(view, `document.querySelector('.welcome-drawer textarea') !== null`, (v) => v === true);
 
     // blurring without changing the textarea must send nothing at all: the comparison has to be
@@ -359,7 +359,7 @@ describe("the wedding in a real browser", () => {
     await enter(view, code);
     await view.reload();
     await waitFor(view, CRUMBS, (v) => typeof v === "string" && v.includes(code));
-    await view.evaluate(`document.querySelector('[data-write*="/code"]').click()`);
+    await press(view, '[data-write*="/code"]');
     await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
   });
 });

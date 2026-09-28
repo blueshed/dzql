@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { urlFor, waitFor } from "../../../src/webview";
+import { press, urlFor, waitFor } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { tick } from "../compartments/ticker";
 import type { MarketDocument } from "../documents/market";
@@ -39,13 +39,13 @@ describe("the ticker in a real browser", () => {
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('.cell.thing') !== null`, (v) => v === true);
     expect(await view.evaluate<string>(`document.querySelector('meta[name=viewport]').content`)).not.toMatch(/maximum-scale|user-scalable/);
-    await view.evaluate(`document.querySelector('.cell.thing').click()`);
+    await press(view, ".cell.thing");
     await waitFor(view, `document.querySelector('#city input') !== null`, (v) => v === true);
     expect(await view.evaluate<string[]>(FIELDS)).toEqual(["text 16px"]);
-    await view.evaluate(`document.querySelector('.drawer-close').click()`);
-    await view.evaluate(`document.querySelector('.cell[data-key="board"]').click()`);
+    await press(view, ".drawer-close");
+    await press(view, '.cell[data-key="board"]');
     await waitFor(view, `document.querySelector('.cell.open [aria-label="Watch a symbol"]') !== null`, (v) => v === true);
-    await view.evaluate(`document.querySelector('.cell.open [aria-label="Watch a symbol"]').click()`);
+    await press(view, '.cell.open [aria-label="Watch a symbol"]');
     // the ask is a choice of the symbols the board lacks (n68): a select, sized as a field is
     await waitFor(view, `document.querySelector('select[name=symbol]') !== null`, (v) => v === true);
     expect(await view.evaluate<string[]>(FIELDS)).toEqual(["symbol 16px"]);
@@ -56,9 +56,9 @@ describe("the ticker in a real browser", () => {
     await view.navigate(urlFor(view, server.url));
     // the board grows into the window; the plus on its rail asks which symbol in a modal
     await waitFor(view, `document.querySelector('.cell[data-key="board"]') !== null`, (v) => v === true);
-    await view.evaluate(`document.querySelector('.cell[data-key="board"]').click()`);
+    await press(view, '.cell[data-key="board"]');
     await waitFor(view, `document.querySelector('.cell.open [aria-label="Watch a symbol"]') !== null`, (v) => v === true);
-    await view.evaluate(`document.querySelector('.cell.open [aria-label="Watch a symbol"]').click()`);
+    await press(view, '.cell.open [aria-label="Watch a symbol"]');
     // the ask is a choice of the symbols the board lacks
     await waitFor(view, `document.querySelector('select[name=symbol]') !== null`, (v) => v === true);
     await view.evaluate(`document.querySelector('select[name=symbol]').value = 'FXTR'`);
@@ -114,10 +114,13 @@ describe("the ticker in a real browser", () => {
 
     // the clock is a thing: its drawer holds the city picker. "lon" puts London first, ahead of
     // Blanc-Sablon; Enter takes the first; the clock document's write is taken by the applets --
-    // the hands turn to London's time, and the picker says London
-    await view.evaluate(`document.querySelector('.cell.open .cell-back').click()`);
+    // the hands turn to London's time, and the picker says London. The drawer's scrim covers the
+    // window's way back, so the drawer is put away first, as a person must
+    await press(view, ".drawer-close");
+    await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
+    await press(view, ".cell.open .cell-back");
     await waitFor(view, `document.querySelector('.cell.thing') !== null && document.querySelector('.cell.open') === null`, (v) => v === true);
-    await view.evaluate(`document.querySelector('.cell.thing').click()`);
+    await press(view, ".cell.thing");
     await waitFor(view, `document.querySelector('#city input') !== null`, (v) => v === true);
     await view.click("#city input");
     await view.type("lon");
@@ -163,9 +166,9 @@ describe("the ticker in a real browser", () => {
     await using view = new Bun.WebView(chrome ? { backend: "chrome" } : {});
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('.cell[data-key="board"]') !== null`, (v) => v === true);
-    await view.evaluate(`document.querySelector('.cell[data-key="board"]').click()`);
+    await press(view, '.cell[data-key="board"]');
     await waitFor(view, `document.querySelector('.cell.open [aria-label="Watch a symbol"]') !== null`, (v) => v === true);
-    await view.evaluate(`document.querySelector('.cell.open [aria-label="Watch a symbol"]').click()`);
+    await press(view, '.cell.open [aria-label="Watch a symbol"]');
     await waitFor(view, `document.querySelector('select[name=symbol]') !== null`, (v) => v === true);
     await view.evaluate(`document.querySelector('select[name=symbol]').value = 'FXTR'`);
     await view.click("dialog button[type=submit]");
@@ -195,7 +198,7 @@ describe("the ticker in a real browser", () => {
     // the button is beside the applet, not around it: the line is the same applet on the box as in
     // the window, so closing the window keeps the ticks it has seen, and on the box it is no stop
     await view.evaluate(`(document.getElementById('line-FXTR').kept = true)`);
-    await view.evaluate(`document.querySelector('.cell.open .cell-back').click()`);
+    await press(view, ".cell.open .cell-back");
     await waitFor(view, `document.querySelector('.cell.open') === null`, (v) => v === true);
     expect(await view.evaluate<unknown[]>(`[document.getElementById('line-FXTR').kept, document.querySelector('#quote-FXTR button')]`)).toEqual([true, null]);
   }, 15000);

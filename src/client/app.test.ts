@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:
 import { bento, choice, type Field } from "../bento";
 import { write } from "../html";
 import { diff, drawParts, part } from "../parts";
-import { waitFor } from "../webview";
+import { press, waitFor } from "../webview";
 import { renderMessage } from "../compartments/render";
 import fixture from "./app.test.html";
 
@@ -1058,7 +1058,8 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await pushRender(view, ticksForm("Temple", false, false, "see", "blur"));
     await waitFor(view, `document.getElementById('paid') !== null`, (v) => v === true);
 
-    await view.evaluate(`["paid", "kind-travel"].forEach((id) => document.getElementById(id).click())`); // ticked, and not yet left
+    await press(view, "#paid");
+    await press(view, "#kind-travel"); // ticked, and not yet left
     await pushRender(view, ticksForm("Temple", true, false, "eat", "blur")); // another member's change, before these are sent
     expect(await view.evaluate<string[]>(ticked)).toEqual(["booked", "paid", "kind-travel"]);
     await view.evaluate(`document.getElementById('title').focus()`);

@@ -11,7 +11,7 @@
 
 import type { PatchOp } from "./json-patch";
 import type { Gesture, Write } from "./stories";
-import { urlFor, waitFor } from "./webview";
+import { MOUSE, urlFor, waitFor } from "./webview";
 
 /** A phone, held upright: the stories are pressed at the size most people hold them. */
 export const PHONE = { width: 390, height: 844 };
@@ -133,9 +133,8 @@ const PAGE = `(() => {
     send(JSON.stringify({ type: "inspect" }));
   });
   const stands = () => document.querySelector("#app [data-page]")?.dataset.page;
-  // a drag, as a mouse makes one: pressed at the middle of one element, moved to the middle of
-  // another, let go; each pointer event sent to what is under it (a mouse event after it, unless
-  // the press was cancelled), then the click, to what the press and the release share
+  // a drag, as a mouse makes one (src/webview.ts): pressed at the middle of one element, moved in
+  // four steps to the middle of another, let go
   function drag(from, to) {
     const a = document.querySelector(from), b = document.querySelector(to);
     const blocked = a ? why(a) : "not on the page";
@@ -144,21 +143,7 @@ const PAGE = `(() => {
     const r = a.getBoundingClientRect(), s = b.getBoundingClientRect();
     const [x0, y0, x1, y1] = [r.left + r.width / 2, r.top + r.height / 2, s.left + s.width / 2, s.top + s.height / 2];
     if (x1 < 0 || y1 < 0 || x1 > innerWidth || y1 > innerHeight) return "where it is dragged to is off the screen";
-    let mice = true;
-    const at = (type, x, y, button, buttons) => {
-      const el = document.elementFromPoint(x, y);
-      const init = { bubbles: true, cancelable: true, composed: true, view: window, clientX: x, clientY: y, button, buttons, pointerId: 1, pointerType: "mouse", isPrimary: true };
-      const sent = el.dispatchEvent(new PointerEvent("pointer" + type, init));
-      if (type === "down") mice = sent;
-      if (mice) el.dispatchEvent(new MouseEvent("mouse" + type, init));
-      return el;
-    };
-    const down = at("down", x0, y0, 0, 1);
-    for (let i = 1; i <= 4; i++) at("move", x0 + ((x1 - x0) * i) / 4, y0 + ((y1 - y0) * i) / 4, -1, 1);
-    const up = at("up", x1, y1, 0, 0);
-    let shared = down;
-    while (shared && !shared.contains(up)) shared = shared.parentElement;
-    if (shared && shared.isConnected) shared.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, composed: true, view: window, clientX: x1, clientY: y1 }));
+    ${MOUSE}([0, 1, 2, 3, 4].map((i) => [x0 + ((x1 - x0) * i) / 4, y0 + ((y1 - y0) * i) / 4]));
     return "";
   }
 
