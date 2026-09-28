@@ -19,6 +19,7 @@ if (!(await Bun.file(`${dir}/index.ts`).exists())) {
 }
 const { example } = await import(`${dir}/index.ts`);
 
-const report = await run(example, stories);
+// STORY_GESTURES=1 does each story by hand too, in a browser the size of a phone (src/gestures.ts)
+const report = await run(example, stories, undefined, { gestures: !!process.env.STORY_GESTURES });
 print(report);
 process.exit(report.failed > 0 ? 1 : 0);
