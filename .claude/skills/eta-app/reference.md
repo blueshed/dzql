@@ -327,6 +327,8 @@ The wire carries writes in, and HTML and ops out. There is no JSON tree of app s
   whole to many at once is the cost to watch. As with BREACH, someone who can put text on a page
   and watch the encrypted sizes of what it is sent can guess a secret drawn in the same message, so
   draw no secret (a code, a token) beside what others write.
+- **A message in is at most 1 MiB, inflated** (`maxPayloadLength`): past it the socket is closed, so
+  send a picture or a file by HTTP, never over the socket.
 
 Messages:
 

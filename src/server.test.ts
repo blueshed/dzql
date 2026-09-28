@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { connect as tcp } from "node:net";
-import { inflateRawSync } from "node:zlib";
+import { constants, deflateRawSync, inflateRawSync } from "node:zlib";
 import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
@@ -240,6 +240,42 @@ describe("createServer, generically (no example from the examples directory invo
     const page = { type: "render", html: '<p class="note"></p>', wire: WIRE };
     expect(await opening(true)).toEqual({ extension: "permessage-deflate; client_no_context_takeover; server_no_context_takeover", compressed: true, message: page });
     expect(await opening(false)).toEqual({ extension: undefined, compressed: false, message: page });
+  });
+
+  test("a message is at most 1 MiB, inflated: a compressed frame that inflates past it is refused and its socket closed, as Bun does; one under it is written", async () => {
+    /** A socket opened by hand for `sessionId`, offering permessage-deflate, that sends one write compressed: whether the server closed it, or answered. */
+    async function writing(sessionId: string, text: string): Promise<"closed" | "answered"> {
+      const socket = tcp(Number(server.port), "127.0.0.1");
+      socket.write(
+        "GET /ws HTTP/1.1\r\nHost: 127.0.0.1\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n" +
+          `Sec-WebSocket-Extensions: permessage-deflate\r\nCookie: session_id=${sessionId}\r\n\r\n`,
+      );
+      const closed = new Promise<"closed">((done) => socket.on("close", () => done("closed")));
+      let heard = (): void => {};
+      socket.on("data", () => heard());
+      await new Promise<void>((paged) => (heard = paged)); // the answer, and the page
+      await Bun.sleep(20);
+      const answered = new Promise<"answered">((done) => (heard = () => done("answered")));
+      // a client's frame is masked; compressed, it ends without deflate's last four bytes (RFC 7692)
+      const body = deflateRawSync(JSON.stringify({ doc: "note", ops: [{ op: "replace", path: "/text", value: text }] }), { finishFlush: constants.Z_SYNC_FLUSH }).subarray(0, -4);
+      const mask = Buffer.from([1, 2, 3, 4]);
+      expect(body.length).toBeLessThan(65536);
+      socket.write(Buffer.concat([Buffer.from([0xc1, 0x80 | 126, body.length >> 8, body.length & 255]), mask, body.map((b, i) => b ^ mask[i % 4]!)]));
+      const outcome = await Promise.race([closed, answered]);
+      socket.destroy();
+      return outcome;
+    }
+    const [under, over] = [crypto.randomUUID(), crypto.randomUUID()];
+    expect(await writing(under, "x".repeat(1 << 19))).toBe("answered"); // 512 KiB, in a frame of about 500 B
+    expect(await writing(over, "x".repeat(1 << 20))).toBe("closed"); // past 1 MiB with the write around it, in a frame of about 1 KB
+
+    // what was written, as each session's next page says it
+    for (const [sessionId, length] of [[under, 1 << 19], [over, 0]] as const) {
+      const ws = connect(server, sessionId);
+      await opened(ws);
+      expect((await expectMessage(ws, "render")).html).toBe(`<p class="note">${"x".repeat(length)}</p>`);
+      ws.close();
+    }
   });
 
   test("a write over the websocket is permitted, applied, echoed, and rendered -- then undo walks it back", async () => {

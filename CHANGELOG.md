@@ -181,10 +181,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   write sends each other page at a sixth to four fifths of what it was, a lone patch gaining least
   (chat's 1.2 KB to 518 B). It costs CPU for each page a message goes to: about 2 µs a KB up to
   20 KB (a patch 5 µs, a 13 KB page 25 µs), and about 9 µs a KB past 32 KB (a 178 KB page 1.6 ms,
-  where raw is 30 µs). The README's costs are now what crosses the wire, with what it was before
-  compression: a measure goes through a `tap` (`src/costs.ts`) that counts each frame as sent. A
-  compressed size moves a byte or two with the random ids it carries, so the README's is held
-  within 3% of a run's, as a bundle's is (`Run.built` is `Run.near`).
+  where raw is 30 µs). A message in is at most 1 MiB once inflated, and past it the socket is
+  closed: Bun's own 16 MB would let a 15 KB compressed frame be a 15 MB write. The README's costs
+  are now what crosses the wire, with what it was before compression: a measure goes through a
+  `tap` (`src/costs.ts`) that counts each frame as sent. A compressed size moves a byte or two
+  with the random ids it carries, so the README's is held within 3% of a run's, as a bundle's is
+  (`Run.built` is `Run.near`).
 - **leave's Previous and Next move a month, not three.** Three at a time from this month, a
   person could never get to most months: in September, October and November were only ever on
   the page as this month's, and no control led to `2026-10` or `2026-11`, where the stories stand

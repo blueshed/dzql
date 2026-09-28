@@ -322,6 +322,9 @@ export function createServer(example: Example, port: number | string = process.e
     },
     websocket: {
       perMessageDeflate: true, // "shared", both ways: a message compressed on its own, as `send` says
+      // A message in is at most 1 MiB, inflated: a write is small (a picture goes by HTTP), and past
+      // it the socket is closed. Bun's own 16 MB would let a 15 KB compressed frame be a 15 MB write.
+      maxPayloadLength: 1 << 20,
       open(ws) {
         openConnection(ws);
         enqueue(async () => {
