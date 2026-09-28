@@ -2,7 +2,7 @@ import { applets } from "../applets";
 import { WIRE, type PatchOp } from "../json-patch";
 import { formValue, groupOf, held, type Field } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
-import { drawnOption, keepingChoices, morph, morphElement, morphTag, removeNode } from "./morph";
+import { drawnOption, keepingChoices, morph, morphElement, morphTag, removeNode, type MorphHooks } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -14,13 +14,6 @@ let socket: WebSocket | undefined;
 // What the client has seen of each document's writes: not domain state, just
 // an echo log, so a person at the console can read the session back.
 const docs = new Map<string, { version: number; ops: PatchOp[] }>();
-
-function recordPatch(doc: string, version: number, ops: PatchOp[]) {
-  const state = docs.get(doc) ?? { version: 0, ops: [] };
-  state.version = version;
-  state.ops = [...state.ops, ...ops].slice(-MAX_OPS_KEPT_PER_DOC);
-  docs.set(doc, state);
-}
 
 // The last write this client sent, and what became of it, told by its own id: echoed back to it,
 // or refused, and why when the refusal says -- never anyone else's echo of its document, nor the
@@ -60,15 +53,6 @@ function mountApplets() {
   });
 }
 
-function onAppletRemoved(el: Element) {
-  mounted.get(el as HTMLElement)?.();
-  mounted.delete(el as HTMLElement);
-}
-
-function onAppletPropsChanged(el: Element, props: unknown) {
-  applets[(el as HTMLElement).dataset.applet!]?.update?.(el as HTMLElement, props);
-}
-
 // A render morphs the existing tree instead of replacing it, so an element a
 // person is focused on, typing into, or has scrolled survives a render that
 // doesn't concern it -- see morph.ts. [data-applet] elements are a boundary
@@ -88,7 +72,14 @@ app.addEventListener("keydown", (event) => {
 });
 document.addEventListener("click", () => (boxPressed = undefined), true); // a click lands after its tick
 app.addEventListener("pointercancel", () => (boxPressed = undefined));
-const hooks = { onAppletRemoved, onAppletPropsChanged, pressed: (el: Element) => el === boxPressed };
+const hooks: MorphHooks = {
+  onAppletRemoved(el) {
+    mounted.get(el as HTMLElement)?.();
+    mounted.delete(el as HTMLElement);
+  },
+  onAppletPropsChanged: (el, props) => applets[(el as HTMLElement).dataset.applet!]?.update?.(el as HTMLElement, props),
+  pressed: (el) => el === boxPressed,
+};
 
 // Where a tab is (change-request.md item 3): an example may mark some element within #app with
 // `data-page` (the session's own idea of the page) and `data-page-write` (the write that sets
@@ -365,11 +356,6 @@ const openedBy = new Map<Element, HTMLElement>();
 /** The control last pressed, until the page is next drawn: what opened whatever that drawing brings. */
 let pressed: HTMLElement | undefined;
 
-const keyboardLost = (): boolean => {
-  const at = document.activeElement;
-  return !at || at === document.body || !!at.closest("[inert]");
-};
-
 /** Gives the keyboard to the first that takes it: not gone, disabled, inert or undrawn. */
 function giveKeyboard(candidates: Iterable<HTMLElement>): boolean {
   for (const el of candidates) {
@@ -407,7 +393,8 @@ function keyboardAfter(): () => void {
       }
     }
 
-    if (!keyboardLost()) return;
+    const at = document.activeElement;
+    if (at && at !== document.body && !at.closest("[inert]")) return; // it is somewhere
     if (giveKeyboard(gone) || giveKeyboard(app.querySelectorAll<HTMLElement>("[autofocus]"))) return;
     const inside = focused?.closest<HTMLElement>("[data-moving]")?.dataset.moving;
     const moved = [...app.querySelectorAll<HTMLElement>("[data-moving]")]
@@ -693,7 +680,8 @@ function connect() {
       }
       if (sending && sending.id === message.id) handBack();
     } else if (message.type === "patch") {
-      recordPatch(message.doc, message.version, message.ops);
+      const heard = docs.get(message.doc)?.ops ?? [];
+      docs.set(message.doc, { version: message.version, ops: [...heard, ...message.ops].slice(-MAX_OPS_KEPT_PER_DOC) });
       // An applet watching this document takes the ops itself (see Applet.patch): the delta is
       // its update, and no render need follow.
       for (const el of mounted.keys()) {
