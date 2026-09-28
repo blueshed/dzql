@@ -70,7 +70,7 @@ function formTool(form: HTMLFormElement): Tool {
   const spec = specOf(form);
   const fields = new Map<string, Field>();
   for (const el of form.elements as unknown as Iterable<Field>) {
-    if (el.name && !el.matches(":disabled,button,[type=submit],[type=button],[type=reset],[type=image],[type=file]") && !fields.has(el.name)) fields.set(el.name, el);
+    if (el.name && el.matches("input,select,textarea") && !el.matches(":disabled,[type=submit],[type=button],[type=reset],[type=image],[type=file]") && !fields.has(el.name)) fields.set(el.name, el);
   }
   const asked = [...fields].filter(([, f]) => !(f as HTMLInputElement).readOnly && f.type !== "hidden");
   const title = titleOf(form) || writes(spec);
@@ -169,7 +169,7 @@ export function walked(way: "undo" | "redo", entry?: unknown): Write | string {
 const walkTool = (way: "undo" | "redo"): Tool => ({
   name: way,
   title: way[0]!.toUpperCase() + way.slice(1),
-  description: `${way === "undo" ? "Undoes" : "Redoes"} the last change made on this page -- by you or the person -- or, given entry, that change alone: the entry a tool's answer gave.`,
+  description: `${way === "undo" ? "Undoes" : "Redoes"} the last change made in this browser's session -- yours or the person's -- or, given entry, that change alone: the entry a tool's answer gave.`,
   inputSchema: { type: "object", properties: { entry: { type: "integer", minimum: 1 } } },
   write: (input) => walked(way, input.entry),
 });

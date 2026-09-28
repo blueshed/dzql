@@ -50,7 +50,7 @@ const lastSent = (view: Bun.WebView) => view.evaluate<{ id: number; doc: string;
 
 const say = write("room", "add", "/messages/-");
 const PAGE = [
-  `<form${say} aria-label="Say something"><input name="text" required placeholder="Message"><input type="hidden" name="to" value="all"><button>Send</button></form>`,
+  `<form${say} aria-label="Say something"><fieldset name="words"><input name="text" required placeholder="Message"></fieldset><input type="hidden" name="to" value="all"><output name="count">0</output><button name="go">Send</button></form>`,
   `<form data-write-on="change"><legend>The trip</legend>`,
   `<input name="title" value="Kyoto" aria-label="Title"${write("trip", "replace", "/stops/4/title")}>`,
   `<label>Day <input name="day" type="date" value=""${write("trip", "replace", "/stops/4/day")}></label>`,
