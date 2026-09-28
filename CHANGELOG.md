@@ -195,6 +195,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on a camelCase attribute added a lowercase one beside it (`gradientunits` beside
   `gradientUnits`) and left the real one stale. The stories could not see it: the harness applies
   a part as text. A part is now parsed where it stands: in an `<svg>`, as SVG.
+- **A part that moves from one parent part to another goes where it went** (`src/parts.ts`, todo
+  n82). The diff replaced the part it went to, then took it out of the part it left by its key
+  alone, which names the first on the page: when the part it went to came first, the client and
+  the harness took out the copy just put in and left the old one. A part that moved is now taken
+  out of the part it left (`[data-eta-part="b"] [data-eta-part="head"]`).
 
 ## [0.49.0] - 2026-09-25
 

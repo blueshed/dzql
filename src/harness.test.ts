@@ -10,6 +10,7 @@ import type { Compartment } from "./compartments/compartment";
 import { read } from "./documents";
 import type { Example } from "./example";
 import { comparable, controlsOn, hear, holding, offers, placeOf, print, retake, run, takersOn, unheld } from "./harness";
+import { diff, drawParts, part } from "./parts";
 import type { Story } from "./stories";
 
 // The harness against chat's own stories: one outcome per story, named as the story is, and the
@@ -183,6 +184,14 @@ describe("hear: a member's page, kept as the client keeps it", () => {
     expect(hear(two, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r1"]' }] })).not.toContain("one");
     expect(hear(page, { type: "render", ops: [{ op: "tag", target: '[data-eta-part="gone"]', html: "<div>" }] })).toBe(page);
     expect(hear(page, { type: "patch" })).toBe(page);
+  });
+
+  test("a part that moves from one parent part to another is where it went, and not where it was", () => {
+    const view = (at: "a" | "b") => part("root", `<div>${["a", "b"].map((k) => part(k, `<section>${at === k ? part("head", "<header>H</header>") : ""}</section>`)).join("")}</div>`);
+    for (const [from, to] of [["b", "a"], ["a", "b"]] as const) {
+      const [before, after] = [drawParts(() => view(from)), drawParts(() => view(to))];
+      expect(hear(before.html, { type: "render", ops: diff(before, after) })).toBe(after.html);
+    }
   });
 });
 

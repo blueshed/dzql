@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { bento, type Field } from "../bento";
 import { write } from "../html";
+import { diff, drawParts, part } from "../parts";
 import { waitFor } from "../webview";
 import fixture from "./app.test.html";
 
@@ -591,6 +592,17 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     });
     await waitFor(view, `document.querySelector('[data-eta-part="a"]').className`, (v) => v === "two");
     expect(await view.evaluate<string>(`document.querySelector('[data-eta-part="a"]').textContent`)).toBe("drawn by the applet");
+  });
+
+  test("a part that moves from one parent part to another is where it went, and not where it was", async () => {
+    await using view = await open();
+    const page = (at: "a" | "b") => part("root", `<div>${["a", "b"].map((k) => part(k, `<section>${at === k ? part("head", "<header>H</header>") : ""}</section>`)).join("")}</div>`);
+    for (const [from, to] of [["b", "a"], ["a", "b"]] as const) {
+      const [before, after] = [drawParts(() => page(from)), drawParts(() => page(to))];
+      await pushRender(view, before.html);
+      await push(view, { type: "render", ops: diff(before, after) });
+      expect(await view.evaluate<string>(`document.getElementById('app').innerHTML`)).toBe(after.html);
+    }
   });
 
   test("a connection that drops leaves the page as it was, inert and marked, until it is back", async () => {
