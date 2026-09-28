@@ -125,6 +125,7 @@ function syncPage() {
 window.addEventListener("popstate", () => {
   const page = pageInUrl();
   knownPage = page;
+  commitFocused();
   if (pageWrite) send(pageWrite.doc, [{ op: pageWrite.op, path: pageWrite.path, value: page }]);
 });
 
@@ -321,12 +322,13 @@ app.addEventListener("click", (event) => {
 
 // Escape puts away what was opened last: it presses the last `[data-escape]` on the page -- a
 // modal's scrim is drawn after the drawer it may open over -- as a click would, so it sends that
-// control's own write and nothing the page did not offer.
+// control's own write and nothing the page did not offer. What is typed in it is said first.
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape" || event.defaultPrevented) return;
   const away = [...app.querySelectorAll<HTMLElement>("[data-escape]")].at(-1);
   if (!away) return;
   event.preventDefault();
+  commitFocused();
   away.click();
 });
 
@@ -394,6 +396,19 @@ function commitEdit(form: HTMLFormElement) {
   if (lastEditSent.get(form) === key) return;
   lastEditSent.set(form, key);
   send(change.doc, change.ops);
+}
+
+/**
+ * Says what the editing form someone is in holds, before a gesture that takes it away (Escape,
+ * Back). Leaving a field says it, but a field a render takes out has not been left: Chrome fires
+ * focusout as it goes, WebKit (every iPhone browser) does not, and the words would go with it.
+ */
+function commitFocused() {
+  const form = document.activeElement instanceof HTMLElement ? document.activeElement.closest("form") : null;
+  if (!form?.dataset.writeOn || !app.contains(form)) return;
+  clearTimeout(inputTimers.get(form));
+  inputTimers.delete(form);
+  commitEdit(form);
 }
 
 function flushInputEdit(form: HTMLFormElement) {

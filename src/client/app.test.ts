@@ -659,6 +659,30 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     }
   });
 
+  test("words in an editing form are said before Escape or Back puts its drawer away, though a field a render takes out says nothing in WebKit", async () => {
+    await using view = await open();
+    await stubSend(view);
+    const toPage = `'{"doc":"session","op":"replace","path":"/page"}'`;
+    const page = (open: boolean) =>
+      `<main data-page="${open ? "?answer" : ""}" data-page-write=${toPage}>${open ? `<aside><button type="button" id="x" data-escape data-write=${toPage} data-value="">×</button><form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>Hello</textarea></form></aside>` : ""}</main>`;
+    const words = { doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] };
+    const away = { doc: "session", ops: [{ op: "replace", path: "/page", value: "" }] };
+    await pushRender(view, page(false));
+    for (const how of ["Escape", "Back"]) {
+      await pushRender(view, page(true));
+      await view.click("#words");
+      await view.evaluate(`document.getElementById('words').setSelectionRange(5, 5)`);
+      await view.type(" there");
+      await view.evaluate(`window.__sent = []`);
+      if (how === "Escape") await view.press("Escape");
+      else await view.evaluate(`history.back()`);
+      await waitFor(view, `window.__sent.length`, (v) => (v as number) > 0, 1000);
+      await pushRender(view, page(false)); // the drawer put away, the field with it
+      await Bun.sleep(50);
+      expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([words, away]);
+    }
+  });
+
   test("a connection that drops leaves the page as it was, inert and marked, until it is back", async () => {
     await using view = await open();
     await pushRender(view, `<form><input id="say" name="text"></form>`);

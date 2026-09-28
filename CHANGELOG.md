@@ -224,6 +224,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the nearest scroller's, or the window's, less its `scroll-padding` (a sticky header it declares;
   a percentage is of that scroller). Only that scroller moves: a list's tall row no longer
   scrolls the page around the list too.
+- **Escape and Back say what is typed before the drawer goes** (`src/client/app.ts`). An editing
+  form says a field on leaving it, but a field a render takes out has not been left: Chrome fires
+  `focusout` as it goes, WebKit (every iPhone browser) does not. So words typed in a drawer's
+  editing form were lost on Escape or Back in WebKit, and went after the drawer's own write in
+  Chrome. Both now say the editing form someone is in first.
 - **A page with a sticky header declares its height** (the eta-app skill, todo n85). A render
   that took out the row hidden under an app's sticky header slid the rows below it up under the
   header: the client keeps no reader's place, and the browser's scroll anchoring, in WebKit and
