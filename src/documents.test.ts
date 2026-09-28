@@ -72,6 +72,18 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     local.server.publish("other:1", { doc: "else", ops: [] }); // not a change to its own channel: ignored
   });
 
+  test("a change that does not land on the copy loads the document again and tells it whole, and the write waiting for it resolves", async () => {
+    const { local, flush } = laggingDelta();
+    const documents = createDocuments(local);
+    const told: unknown[] = [];
+    documents.onChange((c) => void told.push(c));
+    await documents.load("slow:1");
+    // delta took it, and the copy holds no /m to take out: RFC 6902 refuses it, where it was a no-op
+    await Promise.all([documents.write("slow:1", [{ op: "remove", path: "/m" }], { identity: "a", cursor: "s" }), Promise.resolve().then(flush)]);
+    await documents.quiet();
+    expect(told).toEqual([{ doc: "slow:1", ops: [{ op: "replace", path: "", value: { n: undefined } }], v: 1 }]); // loaded again: what delta has
+  });
+
   test("changes are told one at a time, in order; a listener that fails is logged, and the rest are told all the same", async () => {
     const { local, flush } = laggingDelta();
     const documents = createDocuments(local);

@@ -333,6 +333,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A change that does not land on eta's copy of a document loads it again.** delta 0.10's
+  `applyOps` refuses a remove or replace of what the copy does not hold, where it did nothing, so
+  such a change (a copy that drifted) threw out of the copy's listener: the copy stayed behind,
+  nobody was told, and a write waiting for that change's version waited for ever. Now it is
+  drift, as a change missed is: the document is loaded again and told whole, and whatever waits
+  for a version the load reached goes on (after a change missed, it waited for the next change).
+
 - **A ticker board row opens from the keyboard** (rule 19). In the window a row was the applet's
   mount drawn as a `div` with `role="button"`, and the client answers no key but Escape, so Space
   or Enter on it did nothing and it never said it was expanded. Now a `<button>` lies over the

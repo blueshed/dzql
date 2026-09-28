@@ -45,23 +45,42 @@ export function createDocuments(local: Local) {
     const h = held.get(doc);
     if (h) {
       if (data.v !== undefined && h.v !== undefined && data.v <= h.v) return; // held already
-      if (data.v !== undefined && h.v !== undefined && data.v > h.v + 1) {
-        // a change missed: the copy is not to be trusted -- load it again, and tell as a whole-document change
+      const missed = data.v !== undefined && h.v !== undefined && data.v > h.v + 1;
+      const next = missed ? undefined : applied(h.value, data.ops);
+      if (!next) {
+        // a change missed, or one that does not land on the copy (a remove of what it does not
+        // hold): the copy is not to be trusted -- load it again, tell it as a whole-document
+        // change, and let go of whatever waits for a version it has reached
         held.delete(doc);
-        track(load(doc).then(() => told({ doc, ops: [{ op: "replace", path: "", value: held.get(doc)?.value }], v: held.get(doc)?.v })));
+        track(load(doc).then(() => {
+          const again = held.get(doc)!;
+          reached(doc, again.v ?? Infinity);
+          return told({ doc, ops: [{ op: "replace", path: "", value: again.value }], v: again.v });
+        }));
         return;
       }
-      h.value = h.value === undefined ? h.value : applied(h.value, data.ops);
+      h.value = next.value;
       if (data.v !== undefined) h.v = data.v;
     }
     track(told({ doc, ops: data.ops, v: data.v }));
-    if (data.v !== undefined) for (const w of waiting.get(doc)?.filter((w) => w.v <= data.v) ?? []) w.resolve();
+    if (data.v !== undefined) reached(doc, data.v);
   });
 
-  const applied = (value: any, ops: DeltaOp[]): any => {
+  /** `ops` laid on a copy of `value`; nothing when they do not land on it (RFC 6902: a remove of what is not there). */
+  const applied = (value: any, ops: DeltaOp[]): { value: any } | undefined => {
+    if (value === undefined) return { value };
     const next = structuredClone(value);
-    applyOps(next, ops);
-    return next;
+    try {
+      applyOps(next, ops);
+    } catch {
+      return undefined;
+    }
+    return { value: next };
+  };
+
+  /** Lets go of whatever waits for `doc` to reach `v` or before. */
+  const reached = (doc: string, v: number): void => {
+    for (const w of waiting.get(doc)?.filter((w) => w.v <= v) ?? []) w.resolve();
   };
 
   function track<T>(p: Promise<T>): Promise<T> {
