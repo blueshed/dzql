@@ -149,6 +149,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The wedding's colours pass contrast** (todo n62; n54 for the wedding). The green of a claimed
+  gift and a pressed Yes, the gold "Open" button, the pencil, the ampersand between the names,
+  maybe's amber and the marks at the guests' feet were 1.9 to 3.3:1. The tokens are darker, with a
+  deep gold beside the frame's gold for whatever is read or means something, and a menu pill and a
+  colour swatch take the controls' edge. `examples/wedding/client/contrast.test.ts` checks each
+  pair against the stylesheet's own tokens: text at 4.5:1, a mark or a control's edge at 3:1. The
+  wedding has one palette, light, whatever the reader prefers, and the test holds it to that.
 - **A plain form posts.** The client stopped every form's submit, so a form without
   `data-write` (a sign-in page) could never post; it now stops only a form that writes.
 - **The wedding's welcome, laid out again.** Its forms used the bento's list `.row` (a rule under
