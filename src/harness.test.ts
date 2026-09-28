@@ -592,3 +592,66 @@ describe("the patch stream: what an applet that takes a document's patches holds
     expect(holding({ applet: "board", doc: "d", under: "", props: '{"quotes":{}}', ops: [{ op: "replace", path: "/A", value: 3 }] })).toEqual({ error: "replace /A: no such member" });
   });
 });
+
+describe("hear, after a render in parts: the page as a fresh render draws it, wherever a part went", () => {
+  // two days of stops, the tea moving between them; and a split before them, which draws what it
+  // holds twice, as columns and as rows, so that there it is no part
+  const days = (tea: "mon" | "tue" | "split") => {
+    const row = (how = "") => part("tea", `<li${how}>tea</li>`);
+    const day = (d: string) => part(d, `<section><ul>${part(`${d}-walk`, `<li>walk</li>`)}${tea === d ? row() : ""}</ul></section>`);
+    return `<main>${part("split", `<div><ul>${tea === "split" ? row(' class="col"') : ""}</ul><ol>${tea === "split" ? row(' class="row"') : ""}</ol></div>`)}${day("mon")}${day("tue")}</main>`;
+  };
+
+  test("a row that moves to another list is where it went, and not where it was, whichever comes first; and so is one drawn twice", () => {
+    for (const [from, to] of [["tue", "mon"], ["mon", "tue"], ["mon", "split"], ["split", "tue"]] as const) {
+      const [before, after] = [drawParts(() => days(from)), drawParts(() => days(to))];
+      expect(hear(before.html, { type: "render", ops: diff(before, after) })).toBe(after.html);
+    }
+  });
+
+  test("parts moved at random -- between lists, into rows and out of them, to where they are drawn twice -- gone, come and changed: every page as drawn afresh", () => {
+    type Row = { key: string; in: string; at: number; text: string };
+    let seed = 7;
+    const random = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    const any = <T,>(xs: T[]): T => xs[Math.floor(random() * xs.length)]!;
+    // a page of rows that may hold rows: at its head, in a split that draws its own twice, and in two lists
+    const page = (rows: Row[]) => {
+      const inside = (at: string, how = ""): string =>
+        rows.filter((r) => r.in === at).sort((a, b) => a.at - b.at).map((r) => part(r.key, `<li${how}>${r.text}<ul>${inside(r.key)}</ul></li>`)).join("");
+      const list = (key: string) => part(key, `<section><ul>${inside(key)}</ul></section>`);
+      return `<main>${inside("page")}${part("split", `<div><ul>${inside("split", ' class="col"')}</ul><ol>${inside("split", ' class="row"')}</ol></div>`)}${list("a")}${list("b")}</main>`;
+    };
+    /** A row, and every row it holds. */
+    const holds = (rows: Row[], key: string): string[] => [key, ...rows.filter((r) => r.in === key).flatMap((r) => holds(rows, r.key))];
+    /** Where a row may go: anywhere but into itself; into the split only holding nothing, and never into a row there (what it held would be drawn twice too). */
+    const places = (rows: Row[], row?: Row): string[] => {
+      const mine = row ? holds(rows, row.key) : [];
+      return ["page", "a", "b", ...(mine.length > 1 ? [] : ["split"]), ...rows.filter((r) => !mine.includes(r.key) && r.in !== "split").map((r) => r.key)];
+    };
+    let made = 0;
+    let moved = 0;
+    for (let walk = 0; walk < 300; walk++) {
+      let rows: Row[] = [];
+      let before = drawParts(() => page(rows));
+      for (let step = 0; step < 6; step++) {
+        const next = rows.map((r) => ({ ...r }));
+        const row = next.length ? any(next) : undefined;
+        const roll = random();
+        if (!row || roll < 0.2) next.push({ key: `r${made++}`, in: any(places(next)), at: random(), text: "new" });
+        else if (roll < 0.6) Object.assign(row, { in: any(places(next, row)), at: random() });
+        else if (roll < 0.75) row.at = random();
+        else if (roll < 0.9) row.text = `t${Math.floor(random() * 9)}`;
+        else {
+          const gone = holds(next, row.key);
+          next.splice(0, next.length, ...next.filter((r) => !gone.includes(r.key)));
+        }
+        const after = drawParts(() => page(next));
+        const ops = diff(before, after);
+        if (next.some((r) => rows.some((was) => was.key === r.key && was.in !== r.in))) moved++;
+        expect(ops === undefined ? after.html : hear(before.html, { type: "render", ops })).toBe(after.html);
+        [rows, before] = [next, after];
+      }
+    }
+    expect(moved).toBeGreaterThan(300);
+  });
+});

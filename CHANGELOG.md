@@ -549,10 +549,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `gradientUnits`) and left the real one stale. The stories could not see it: the harness applies
   a part as text. A part is now parsed where it stands: in an `<svg>`, as SVG.
 - **A part that moves from one parent part to another goes where it went** (`src/parts.ts`, todo
-  n82). The diff replaced the part it went to, then took it out of the part it left by its key
-  alone, which names the first on the page: when the part it went to came first, the client and
-  the harness took out the copy just put in and left the old one. A part that moved is now taken
-  out of the part it left (`[data-eta-part="b"] [data-eta-part="head"]`).
+  n82, n106). The diff put it in the part it went to, then took it out of the part it left by its
+  key alone, which names the first on the page: when the part it went to came first, the client
+  and the harness took out the copy just put in and left the old one (japan-eta met it trading a
+  night, which moves a base's plate to another day). A row taken out of a list is now named inside
+  the list it left (`[data-eta-part="b"] [data-eta-part="head"]`) whenever the next page still
+  carries its key: it moved, or the next page draws it twice (a split drawn as columns and as
+  rows), and so it is no part. A row simply gone is named by its key alone, as before. A seeded
+  walk of 1800 renders, rows moving between lists, into rows and out, and into a split, checks
+  every page the harness hears against a fresh render.
 - **`waitFor` runs out with the clock fixed** (`src/webview.ts`, todo n83). It measured the wait
   with `Date.now()`, which bun:test's `setSystemTime` stops, so a browser test that fixed the
   date to open a page on a given day, then waited for something that never came, hung past its

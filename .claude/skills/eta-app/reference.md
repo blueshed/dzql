@@ -223,7 +223,9 @@ last sent:
   tag alone (`tag`);
 - a part whose inside changed: replaced (`replace`, morphed in place);
 - a list (a part whose rows are parts, in one run): rows put in (`after`, `before`) and taken out
-  (`remove`). A list that was empty, or whose rows changed order, is replaced;
+  (`remove`). A list that was empty, or whose rows changed order, is replaced. A row may move from
+  one list to another (a stop to another day): it is taken out of the one it left and put in the
+  other;
 - nothing, when nothing changed;
 - the page whole only when its own outline changed: a different page.
 
