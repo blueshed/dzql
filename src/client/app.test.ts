@@ -766,6 +766,27 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the tick or the choice undone
   });
 
+  test("a render drawn between pressing a box and letting go leaves it be, so the click ticks it as the person meant, and nothing undoes the other's tick", async () => {
+    await using view = await open();
+    await stubSend(view);
+    for (const touched of [false, true]) {
+      await pushRender(view, ticksForm("Temple", false, false, "see"));
+      if (touched) {
+        for (const [paid, version] of [[true, 2], [false, 3]] as const) {
+          await view.click("#paid");
+          await push(view, { type: "patch", doc: "trip:1", version, ops: [{ op: "replace", path: "/paid", value: paid }] });
+          await pushRender(view, ticksForm("Temple", false, paid, "see"));
+        }
+      }
+      await view.evaluate(`window.__sent = []`);
+      await view.evaluate(`document.getElementById('paid').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`);
+      await pushRender(view, ticksForm("Temple", false, true, "see")); // someone else ticked it, drawn while the finger is down
+      await view.evaluate(`document.getElementById('paid').click()`); // let go
+      await Bun.sleep(50);
+      expect(await view.evaluate<unknown[]>(`[document.getElementById('paid').checked, window.__sent]`)).toEqual([true, []]);
+    }
+  });
+
   test("a tick not yet sent is the person's: a render that draws another choice keeps it, and leaving sends it", async () => {
     await using view = await open();
     await stubSend(view);

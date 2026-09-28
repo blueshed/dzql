@@ -196,7 +196,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is now whether it was drawn `checked`; it goes only when its tick differs, a box as `true` or
   `false` and a group of radios as the value chosen; a refusal hands the tick back; and a render keeps
   a tick not yet drawn (a radio's by its value, while its group offers it) and otherwise shows
-  what is drawn, with the caret in it or not.
+  what is drawn, with the caret in it or not. A render drawn while someone is pressing a box
+  leaves its tick be until the click lands: it used to tick it first, so the click unticked it
+  and sent that, undoing whoever had ticked it.
 - **A part inside an `<svg>` comes back as SVG** (`src/client/morph.ts`, todo n77). A render in
   parts parsed a part's HTML in a `<template>`, as HTML, so a part rooted inside an `<svg>` (a
   `<g>`, a `<path>`) was replaced by an HTML element of that name, and drew nothing; a `tag` op

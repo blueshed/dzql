@@ -14,6 +14,8 @@ export type MorphHooks = {
   onAppletRemoved?(el: Element): void;
   /** Called when a mounted applet's element survives but its data-props changed. */
   onAppletPropsChanged?(el: Element, props: unknown): void;
+  /** Whether someone is pressing this box: its tick is theirs until the click lands. */
+  pressed?(el: Element): boolean;
 };
 
 function isElement(node: ChildNode | Element): node is Element {
@@ -38,8 +40,11 @@ function key(node: ChildNode): string | undefined {
   return isElement(node) && node.id ? node.id : undefined;
 }
 
-function morphAttributes(old: Element, next: Element): void {
-  const unsent = old instanceof HTMLInputElement && old.checked !== old.defaultChecked; // a tick not yet drawn
+function morphAttributes(old: Element, next: Element, hooks: MorphHooks): void {
+  // a tick not yet drawn, or a box being pressed, is the person's; its tick is set now, so no
+  // attribute below moves it (a box nobody has touched follows its `checked` attribute)
+  const unsent = old instanceof HTMLInputElement && (old.checked !== old.defaultChecked || hooks.pressed?.(old) === true);
+  if (unsent) old.checked = old.checked;
   for (const { name } of [...old.attributes]) {
     if (!next.hasAttribute(name)) {
       old.removeAttribute(name);
@@ -114,7 +119,7 @@ function showChosen(select: HTMLSelectElement, chosen: string | undefined): void
 // DOM the applet manages by hand would fight it for its own children.
 function morphApplet(old: Element, next: Element, hooks: MorphHooks): void {
   const before = old.getAttribute("data-props");
-  morphAttributes(old, next);
+  morphAttributes(old, next, hooks);
   const after = old.getAttribute("data-props");
   if (hooks.onAppletPropsChanged && after !== before) {
     hooks.onAppletPropsChanged(old, after ? JSON.parse(after) : undefined);
@@ -127,7 +132,7 @@ function morphNode(old: ChildNode, next: ChildNode, hooks: MorphHooks): void {
       morphApplet(old, next, hooks);
       return;
     }
-    morphAttributes(old, next);
+    morphAttributes(old, next, hooks);
     const area = old instanceof HTMLTextAreaElement ? old : undefined;
     const text = area?.defaultValue;
     const select = old instanceof HTMLSelectElement && !old.multiple ? old : undefined; // a multiple select is not a field (app.ts): the browser's alone
@@ -218,7 +223,7 @@ export function morphTag(old: Element, tag: string, hooks: MorphHooks = {}): voi
   const next = parsedFor(old, tag);
   if (!next) return;
   if (isApplet(old)) morphApplet(old, next, hooks);
-  else keepingChoices(() => morphAttributes(old, next));
+  else keepingChoices(() => morphAttributes(old, next, hooks));
 }
 
 /**
