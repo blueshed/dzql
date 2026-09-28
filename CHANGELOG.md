@@ -199,14 +199,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   after a write's `afterWrite`, so a line told there was taken away as it was said. It now lets go
   of it as the write lands, before `afterWrite` (or `afterWalk`) runs; a write that applies nothing
   replaces it with why, or with nothing, as before.
-
-### Fixed
-
 - **An undo or redo with an id that changes nothing is answered.** A walk that reached an entry
   whose change came to nothing (a note set to what it held) lands, and tells no change, so no echo
   came and no `refused` either, and a script waiting on its id waited for ever. Its walker is
   answered by an echo of nothing: `{type: "patch", doc, version, ops: [], id}`.
-
 
 ## [0.50.0] - 2026-09-28
 
