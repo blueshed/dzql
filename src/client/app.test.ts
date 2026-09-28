@@ -3,11 +3,12 @@ import { bento, type Field } from "../bento";
 import { write } from "../html";
 import { diff, drawParts, part } from "../parts";
 import { waitFor } from "../webview";
+import { renderMessage } from "../compartments/render";
 import fixture from "./app.test.html";
 
 let server: ReturnType<typeof Bun.serve>;
 
-/** A write the client sent, as `stubSend` keeps it in `window.__sent`. */
+/** A write the client sent, as `stubSend` keeps it in `window.__sent` (its id apart, in `window.__ids`). */
 type Sent = { doc: string; ops: { op: string; path: string; value?: unknown }[] };
 
 beforeAll(() => {
@@ -39,18 +40,20 @@ async function open(): Promise<Bun.WebView> {
 }
 
 /** Replaces the live socket's `send` with one that records to `window.__sent` instead of
- * putting anything on the wire -- the fixture's `/ws` route has nothing to say back anyway. */
+ * putting anything on the wire -- the fixture's `/ws` route has nothing to say back anyway. Each
+ * write's id, which the server would hand back, is kept apart in `window.__ids`. */
 async function stubSend(view: Bun.WebView): Promise<void> {
   await view.evaluate(`(() => {
     window.__sent = [];
-    window.eta.socket().send = (data) => { window.__sent.push(JSON.parse(data)); };
+    window.__ids = [];
+    window.eta.socket().send = (data) => { const { id, ...write } = JSON.parse(data); window.__ids.push(id); window.__sent.push(write); };
   })()`);
 }
 
-/** Simulates the server pushing a full render, the way `src/compartments/render.ts`'s
- * `renderMessage` does -- a real "message" event on app.ts's own socket. */
+/** Simulates the server pushing a full render, `src/compartments/render.ts`'s `renderMessage` --
+ * a real "message" event on app.ts's own socket. */
 async function pushRender(view: Bun.WebView, html: string): Promise<void> {
-  const payload = JSON.stringify({ type: "render", html });
+  const payload = renderMessage(html);
   await view.evaluate(
     `window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(payload)} }))`,
   );
@@ -61,6 +64,15 @@ async function push(view: Bun.WebView, message: unknown): Promise<void> {
   const payload = JSON.stringify(message);
   await view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(payload)} }))`);
 }
+
+/** The server refusing this page's last write, and why if `reason`, then handing the page back whole, as src/server.ts does. */
+async function pushRefused(view: Bun.WebView, html: string, reason?: string): Promise<void> {
+  await view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: JSON.stringify({ type: "refused", id: window.__ids.at(-1), reason: ${JSON.stringify(reason)} }) }))`);
+  await pushRender(view, html);
+}
+
+/** The id of the last write this page sent, which its echo or its refusal hands back. */
+const lastId = (view: Bun.WebView): Promise<number> => view.evaluate<number>(`window.__ids.at(-1)`);
 
 /** Chooses `value` in the select at `selector` as a person would: the WebView cannot open its menu,
  * so the choice is made as the browser makes it, the value set, then `input` and `change`. */
@@ -282,7 +294,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
           open(ws) {
             clients.add(ws);
             ws.data.drawn = drawParts(page);
-            ws.send(JSON.stringify({ type: "render", html: ws.data.drawn.html }));
+            ws.send(renderMessage(ws.data.drawn.html));
           },
           message() {
             trip.thu.unshift(trip.wed.pop()!); // the stop, moved
@@ -290,7 +302,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
               const next = drawParts(page);
               const ops = diff(ws.data.drawn!, next);
               ws.data.drawn = next;
-              ws.send(JSON.stringify(whole || !ops ? { type: "render", html: next.html } : { type: "render", ops }));
+              ws.send(whole || !ops ? renderMessage(next.html) : JSON.stringify({ type: "render", ops }));
             }
           },
           close(ws) {
@@ -683,14 +695,14 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await choose(view, "#slot", "10:00");
     await view.press("Enter");
     await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    await pushRender(view, book(["9:00", "10:30"])); // refused: 10:00 was taken meanwhile, and is gone
+    await pushRefused(view, book(["9:00", "10:30"])); // refused: 10:00 was taken meanwhile, and is gone
     expect(await view.evaluate<string[]>(`[document.getElementById('who').value, document.getElementById('slot').value]`)).toEqual(["Ada", "9:00"]);
 
     await choose(view, "#slot", "10:30");
     await view.click("#who");
     await view.press("Enter");
     await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
-    await pushRender(view, book(["9:00", "10:30"], "10:30")); // refused: 10:30 is shown, but not to be had
+    await pushRefused(view, book(["9:00", "10:30"], "10:30")); // refused: 10:30 is shown, but not to be had
     expect(await view.evaluate<string[]>(`[document.getElementById('who').value, document.getElementById('slot').value]`)).toEqual(["Ada", "9:00"]);
   });
 
@@ -774,7 +786,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
   test("a write made while the socket is down is not taken for sent: a form keeps what is typed, and an editing form says it once the socket is back", async () => {
     await using view = await open();
     // as a real socket does, the stub drops what is sent while it is not open
-    const stub = `(() => { window.__sent ??= []; window.eta.socket().send = function (d) { if (this.readyState === 1) window.__sent.push(JSON.parse(d)); }; })()`;
+    const stub = `(() => { window.__sent ??= []; window.eta.socket().send = function (d) { const { id, ...write } = JSON.parse(d); if (this.readyState === 1) window.__sent.push(write); }; })()`;
     await view.evaluate(stub);
     await pushRender(view, `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>
       <form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>Hello</textarea></form>`);
@@ -830,7 +842,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string>(`document.getElementById('text').value`)).toBe("second");
   });
 
-  test("a refused write keeps what is typed after it: the page handed back ends the wait, so nobody's echo clears the field", async () => {
+  test("a refused write keeps what is typed after it: its refusal ends the wait, so nobody's echo clears the field", async () => {
     await using view = await open();
     await stubSend(view);
     const room = `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>`;
@@ -840,7 +852,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.type("  ");
     await view.press("Enter");
     await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    await pushRender(view, room); // refused: the page, handed back
+    await pushRefused(view, room); // refused: the page, handed back
 
     await view.type("hello, I was just say");
     await push(view, { type: "patch", doc: "room:general", version: 9, ops: [{ op: "add", path: "/messages/b1", value: { name: "Bob", text: "hi all" } }] });
@@ -864,7 +876,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi", kind: "travel" } }] });
     expect(await view.evaluate<string[]>(`[document.getElementById('title').value, document.getElementById('kind').value]`)).toEqual(["", "eat"]); // cleared as it sends
 
-    await pushRender(view, add); // refused: the page, handed back
+    await pushRefused(view, add); // refused: the page, handed back
     expect(await view.evaluate<string[]>(`[document.getElementById('title').value, document.getElementById('kind').value]`)).toEqual(["Fushimi", "travel"]);
   });
 
@@ -1009,13 +1021,13 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     const state = `[document.getElementById('title').value, document.getElementById('booked').checked, document.getElementById('kind-eat').checked]`;
     expect(await view.evaluate<unknown[]>(state)).toEqual(["", false, false]); // cleared as it sends
 
-    await pushRender(view, add); // refused: the page, handed back
+    await pushRefused(view, add); // refused: the page, handed back
     expect(await view.evaluate<unknown[]>(state)).toEqual(["Fushimi", true, true]);
 
     await view.press("Enter");
     await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
     await view.click("#kind-travel"); // chosen again before the answer
-    await pushRender(view, add); // refused again
+    await pushRefused(view, add); // refused again
     expect(await view.evaluate<unknown[]>(`[document.getElementById('title').value, document.getElementById('booked').checked, document.querySelector('[name=kind]:checked').value]`)).toEqual(["Fushimi", true, "travel"]);
   });
 
@@ -1040,8 +1052,96 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
     expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi Inari", kind: "travel", url: "https://inari.jp" } }] });
 
-    await pushRender(view, ask(`<p class="refused" role="alert">Kyoto has that stop already.</p>`)); // refused: the page, handed back, saying why
+    await pushRefused(view, ask(`<p class="refused" role="alert">Kyoto has that stop already.</p>`), "Kyoto has that stop already."); // refused: the page, handed back, saying why
     await waitFor(view, `document.querySelector('.refused') !== null`, (v) => v === true);
     expect(await view.evaluate<string[]>(`["title", "kind", "url"].map((n) => document.querySelector('[name=' + n + ']').value)`)).toEqual(["Fushimi Inari", "travel", "https://inari.jp"]);
   });
+});
+
+describe("a write's own answer: its echo or its refusal, by its id (n14)", () => {
+  const form = `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>`;
+  const say = (title = "general") => `<h1>${title}</h1>${form}`;
+  const text = (view: Bun.WebView) => view.evaluate<string>(`document.getElementById('text').value`);
+
+  /** Says `words` in the room's form, as a person does: typed, then Enter. */
+  async function saying(view: Bun.WebView, words: string): Promise<void> {
+    await view.click("#text");
+    await view.type(words);
+    await view.press("Enter");
+    await waitFor(view, `document.getElementById('text').value`, (v) => v === "", 1000); // cleared as it sends
+  }
+
+  test("a page sent whole for another reason while a write is on its way hands nothing back: someone else's write turned this page into another", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, say());
+    await waitFor(view, `document.getElementById('text') !== null`, (v) => v === true);
+    await saying(view, "first");
+
+    await pushRender(view, say("the attic")); // the room renamed by someone else, before this write's echo
+    expect(await text(view)).toBe("");
+    await push(view, { type: "patch", doc: "room:general", version: 4, ops: [{ op: "add", path: "/messages/a1", value: { text: "first" } }], id: await lastId(view) });
+    await pushRender(view, say("the attic"));
+    expect(await text(view)).toBe(""); // landed: nothing to hand back, now or later
+  });
+
+  test("a write's own refusal hands back what it sent, though another write's echo of the same document came first", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, say());
+    await waitFor(view, `document.getElementById('text') !== null`, (v) => v === true);
+    await saying(view, "hello");
+
+    await push(view, { type: "patch", doc: "room:general", version: 9, ops: [{ op: "add", path: "/messages/b1", value: { name: "Bob", text: "hi all" } }] }); // Bob's, not this page's
+    await push(view, { type: "render", ops: [{ op: "replace", target: "#say", html: form }] });
+    expect(await text(view)).toBe("");
+    await pushRefused(view, say());
+    expect(await text(view)).toBe("hello");
+  });
+
+  test("eta.inspect()'s last write is told by its own id: another's echo of its document marks nothing, and a refusal says why against the write it refused, not the last one sent", async () => {
+    await using view = await open();
+    await stubSend(view);
+    await pushRender(view, `<button id="hi" data-write='{"doc":"room","op":"add","path":"/messages/-"}' data-value="hi">hi</button><button id="undo" data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>Undo</button>`);
+    await waitFor(view, `document.getElementById('undo') !== null`, (v) => v === true);
+    const lastSent = () => view.evaluate<Record<string, unknown>>(`window.eta.inspect().lastSent`);
+
+    await view.click("#hi");
+    const hi = await lastId(view);
+    await push(view, { type: "patch", doc: "room:general", version: 2, ops: [{ op: "add", path: "/messages/b1", value: { text: "Bob's" } }] });
+    expect(await lastSent()).toMatchObject({ id: hi, doc: "room", echoed: false, refused: false });
+    await push(view, { type: "patch", doc: "room:general", version: 3, ops: [{ op: "add", path: "/messages/a1", value: { text: "hi" } }], id: hi });
+    expect(await lastSent()).toMatchObject({ id: hi, echoed: true });
+
+    await view.click("#hi");
+    await view.click("#undo");
+    const [again, undo] = await view.evaluate<number[]>(`window.__ids.slice(-2)`);
+    await push(view, { type: "refused", id: again, reason: "Not so fast." });
+    expect(await lastSent()).toMatchObject({ id: undo, doc: "ledger", echoed: false, refused: false });
+    expect(await lastSent()).not.toHaveProperty("reason");
+    await push(view, { type: "refused", id: undo, reason: "Someone has changed that since, so it cannot be undone." });
+    expect(await lastSent()).toMatchObject({ id: undo, echoed: false, refused: true, reason: "Someone has changed that since, so it cannot be undone." });
+  });
+
+  test("a page sent whole by a server of another wire loads this one again, and not again at once: a page and its server speak alike", async () => {
+    await using view = await open();
+    await view.evaluate(`(sessionStorage.clear(), window.__here = true)`);
+    const reloaded = async (): Promise<boolean> => {
+      for (let i = 0; i < 100; i++) {
+        const now = await view.evaluate<boolean>(`window.__here === undefined && window.eta?.socket()?.readyState === 1`).catch(() => false); // mid-load, nothing answers
+        if (now) return true;
+        await Bun.sleep(20);
+      }
+      return false;
+    };
+
+    await push(view, { type: "render", html: `<p id="old">a server from before ids</p>` }); // no wire: from before ids
+    expect(await reloaded()).toBe(true);
+
+    // a second in a minute is drawn, and said, rather than loading the page over and over between two releases
+    await view.evaluate(`window.__here = true`);
+    await push(view, { type: "render", html: `<p id="old">still before ids</p>`, wire: 1 });
+    await waitFor(view, `document.getElementById('old')?.textContent`, (v) => v === "still before ids");
+    expect(await view.evaluate<boolean>(`window.__here`)).toBe(true);
+  }, 15000);
 });

@@ -3,6 +3,7 @@ import { address, bento, choice, layers, matches, parseAddress, patchCollections
 import { esc, join, write } from "./html";
 import { diff, drawParts, part } from "./parts";
 import { waitFor } from "./webview";
+import { renderMessage } from "./compartments/render";
 import fixture from "./bento.test.html";
 
 // an example's icons, as the bento sees them: a name and a size in, markup out
@@ -287,14 +288,14 @@ describe("the surfaces in a browser", () => {
     const view = new Bun.WebView({ width, height: 740, ...(chrome ? { backend: "chrome" as const } : {}) });
     await view.navigate(server.url.toString());
     await waitFor(view, `window.eta?.socket()?.readyState === 1`, (v) => v === true);
-    await view.evaluate(`(() => { window.__sent = []; window.eta.socket().send = (data) => window.__sent.push(JSON.parse(data)); })()`);
+    await view.evaluate(`(() => { window.__sent = []; window.eta.socket().send = (data) => { const { id, ...write } = JSON.parse(data); window.__sent.push(write); }; })()`);
     await draw(view, html);
     return view;
   }
 
   /** The server drawing the page again. */
   async function draw(view: Bun.WebView, html: string): Promise<void> {
-    const payload = JSON.stringify({ type: "render", html });
+    const payload = renderMessage(html);
     await view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(payload)} }))`);
     await waitFor(view, `document.getElementById('app').innerHTML.length > 0`, (v) => v === true);
   }
