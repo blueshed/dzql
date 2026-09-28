@@ -210,10 +210,13 @@ refuses without a word; that is right for a write no page offers.
 
 ## 10. Undo
 
-Undo and redo are free: every write is recorded with its opposite. Two things to know:
+Undo and redo are free: every write is recorded with its opposite. Three things to know:
 
 - If Undo must obey a rule of time or state (answers close at a deadline), add `permitUndo` to the
   compartment. It is asked before an undo, and may refuse with a reason.
+- Where what Undo changed may be out of sight (a drawer that is shut), say what it took back:
+  `afterWalk` runs after an undo or redo, knowing which way it went, and `tell`s the line the kernel
+  draws beside Undo. The story then says `undone: "Undone: your answer."` (the wedding's).
 - **One Undo reverses one write to one document.** If a gesture changes two documents, Undo takes
   two presses. So keep what changes together in one document; leave keeps a person's draft beside
   their requests for exactly this reason.
