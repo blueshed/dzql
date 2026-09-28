@@ -11,7 +11,7 @@
 // red on the canvas, so the layout cannot quietly fall behind the diagrams.
 
 import { readdirSync, readFileSync } from "node:fs";
-import { arrows, checkAgreement, ends, told, values, type Arrow, type Story } from "../agreements";
+import { add, checkAgreement, ends, told, values, type Arrow, type Story } from "../agreements";
 import { stories as all } from "./stories";
 
 const stories = all.stories as Story[];
@@ -93,8 +93,6 @@ const WAITS: [from: string, to: string, words: string, story: string, via?: [num
   ["deployment:accepted", "task:[*]:contractor", "on an accepted deployment", "opens a task on an accepted deployment"],
 ];
 
-const ORDER = ["stories", ...LAYOUT.map(([m]) => m)];
-
 // ── geometry ──
 const LEFT = 220, STEP = 120, TOP = 118, W = 108, H = 42;
 const laneTop = HEIGHT.map((_, i) => TOP + HEIGHT.slice(0, i).reduce((a, b) => a + b, 0));
@@ -174,7 +172,7 @@ function channel(a: Pt, b: Pt, vy: number): Route {
 }
 
 function pill(x: number, y: number, text: string, stroke: string, fill = "#fff", colourText = stroke): string {
-  const w = text.length * 5.5 + 12;
+  const w = pw(text);
   return `<g><rect x="${x - w / 2}" y="${y - 8}" width="${w}" height="16" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="1"/><text x="${x}" y="${y + 3.5}" text-anchor="middle" font-size="10" fill="${colourText}">${esc(text)}</text></g>`;
 }
 
@@ -194,18 +192,15 @@ const moveOf = new Map<number, string[]>(); // a story's targets across agreemen
 for (const [machine, places, starts] of LAYOUT) {
   const m = machines.get(machine);
   if (!m) { warnings.push(`${machine} is placed, but src/${machine}.puml is gone`); continue; }
-  const drawn = arrows(m.puml), value = values(m.puml), ended = ends(m.puml);
-  const problems = new Map(checkAgreement(m.puml, stories).marks.map((k) => [k.arrow, k.problems]));
+  const { marks, movers } = checkAgreement(m.puml, stories);
+  const drawn = marks.map((k) => k.arrow), problems = new Map(marks.map((k) => [k.arrow, k.problems]));
+  const value = values(m.puml), ended = ends(m.puml);
   const states = new Set(drawn.flatMap((a) => [a.from, a.to]).filter((s) => s !== "[*]"));
   for (const s of states) if (!places[s]) warnings.push(`${machine}: ${s} has no place`);
-  const movers = new Map<string, Set<string>>(), refused = new Map<string, Arrow[]>(), pages = new Map<string, Set<string>>();
+  const refused = new Map<string, Arrow[]>(), pages = new Map<string, Set<string>>();
   for (const a of drawn) {
     if (a.refusal) { const k = a.from === "[*]" ? a.to : a.from; refused.set(k, [...(refused.get(k) ?? []), a]); continue; }
-    (movers.get(a.from) ?? movers.set(a.from, new Set()).get(a.from)!).add(a.role);
-    for (const n of a.cites) for (const [r, p] of told(stories[n - 1] ?? { name: "", as: "" })) {
-      const k = `${a.to}|${r}`;
-      (pages.get(k) ?? pages.set(k, new Set()).get(k)!).add(p);
-    }
+    for (const n of a.cites) for (const [r, p] of told(stories[n - 1] ?? { name: "", as: "" })) add(pages, `${a.to}|${r}`, p);
   }
   for (const [s, p] of Object.entries(places)) if (states.has(s)) nodes.set(`${machine}:${s}`, at(p));
   // starts: a dot in the lane of whoever makes the thing
@@ -242,7 +237,7 @@ for (const [machine, places, starts] of LAYOUT) {
     const p = nodes.get(`${machine}:${s}`);
     if (!p) continue;
     const who = [...(movers.get(s) ?? [])];
-    const lane = LANES[LAYOUT.find(([n]) => n === machine)![1][s]![0]]![0];
+    const lane = LANES[places[s]![0]]![0];
     const end = !who.length;
     const main = who.includes(lane) ? lane : who[0];
     const seenOn = main ? [...(pages.get(`${s}|${main}`) ?? [])].join(" · ") : "";
@@ -290,7 +285,7 @@ for (const [from, to, words, story, via] of WAITS) {
 
 // the documents each role has open, from the stories' seen
 const docs = new Map<string, Set<string>>();
-for (const s of stories) for (const [r, p] of told(s)) (docs.get(r) ?? docs.set(r, new Set()).get(r)!).add(p.replace(/\/\d+/g, "/n"));
+for (const s of stories) for (const [r, p] of told(s)) add(docs, r, p.replace(/\/\d+/g, "/n"));
 
 const lanes = LANES.map(([role, who, c], i) => {
   const y = laneTop[i]!, h = HEIGHT[i]!;
@@ -329,4 +324,4 @@ ${under.join("")}${waits.join("")}${ties.join("")}${lines.join("")}${over.join("
 </svg>`;
 
 await Bun.write(`${dir}/dist/stories.svg`, svg);
-console.log(JSON.stringify({ ok: true, warnings, order: [...new Set(ORDER)] }));
+console.log(JSON.stringify({ ok: true, warnings, order: ["stories", ...LAYOUT.map(([m]) => m)] }));

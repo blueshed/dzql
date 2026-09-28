@@ -60,13 +60,15 @@ export function told(s: Story): Map<string, string> {
   return new Map(entries.map(([r, page]) => [r, page.split(" @ ")[0] || "home"]));
 }
 
+/** Adds `value` to the set kept under `key`. */
+export const add = <T>(m: Map<string, Set<T>>, key: string, value: T) => (m.get(key) ?? m.set(key, new Set()).get(key)!).add(value);
+
 type Turns = { movers: Map<string, Set<string>>; arrivers: Map<string, Set<string>>; present: (role: string, state: string) => boolean };
 
 /** Who has a move out of each state, whose moves put the thing in it, and where each party is on it. */
 function turns(all: Arrow[], stories: Story[]): Turns {
   const moves = all.filter((a) => !a.refusal);
   const movers = new Map<string, Set<string>>(), arrivers = new Map<string, Set<string>>();
-  const add = (m: Map<string, Set<string>>, k: string, r: string) => (m.get(k) ?? m.set(k, new Set()).get(k)!).add(r);
   for (const a of moves) { add(movers, a.from, a.role); add(arrivers, a.to, a.role); }
   const heard = (a: Arrow) => a.cites.flatMap((n) => [...told(stories[n - 1] ?? { name: "", as: "" }).keys()]);
   const founders = new Set(moves.filter((a) => a.from === "[*]").flatMap((a) => [a.role, ...heard(a)]));
@@ -82,7 +84,8 @@ function turns(all: Arrow[], stories: Story[]): Turns {
   return { movers, arrivers, present };
 }
 
-export function checkAgreement(puml: string, stories: Story[]): { marks: Mark[]; drift: string[]; cited: Set<number> } {
+/** Each arrow with its problems, whose move each state is, what drifts, and the stories cited: one reading, for whoever draws it. */
+export function checkAgreement(puml: string, stories: Story[]): { marks: Mark[]; movers: Map<string, Set<string>>; drift: string[]; cited: Set<number> } {
   const all = arrows(puml);
   const { movers, arrivers, present } = turns(all, stories);
   const value = values(puml);
@@ -109,7 +112,7 @@ export function checkAgreement(puml: string, stories: Story[]): { marks: Mark[];
   for (const m of marks) for (const p of m.problems) drift.push(`${m.arrow.from} → ${m.arrow.to}: ${p}`);
   const ended = ends(puml);
   for (const st of new Set(all.filter((a) => !a.refusal).map((a) => a.to))) if (st !== "[*]" && !movers.has(st) && !ended.has(st)) drift.push(`${st}: no move out of it, and it is not drawn as an end`);
-  return { marks, drift, cited };
+  return { marks, movers, drift, cited };
 }
 
 /** The stories that move a status and are on no diagram yet. */
@@ -126,16 +129,15 @@ const esc = (s: string) => s.replace(/[{}\]\[]/g, " ");
 
 /** The diagram with its marks: each arrow says who is told and where, red where a check fails, and each state says whose move it is. Hovering an arrow shows its stories. */
 export function markAgreement(puml: string, name: string, stories: Story[]): string {
-  const { marks } = checkAgreement(puml, stories);
+  const { marks, movers } = checkAgreement(puml, stories);
   const all = marks.map((m) => m.arrow);
-  const { movers } = turns(all, stories);
   const ended = ends(puml);
   const lines = puml.split("\n");
   for (const { arrow: a, problems } of marks) {
     const s = a.cites.map((n) => stories[n - 1]).filter(Boolean) as Story[];
     const style = problems.length ? "-[#c0392b,bold]->" : a.refusal ? "-[#999999,dotted]->" : a.style;
     const pages = new Map<string, Set<string>>();
-    if (!a.refusal) for (const x of s) for (const [r, p] of told(x)) if (r !== a.role) (pages.get(r) ?? pages.set(r, new Set()).get(r)!).add(p);
+    if (!a.refusal) for (const x of s) for (const [r, p] of told(x)) if (r !== a.role) add(pages, r, p);
     const heard = [...pages].map(([r, p]) => `${r} @ ${[...p].join(" / ")}`).join(", ");
     const tip = esc(s.map((x) => x.name).join(" / "));
     let label = `[[#${name}{${tip}} ${a.role} ${a.words} (${a.cites.join(", ")})]]`;

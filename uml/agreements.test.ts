@@ -49,6 +49,14 @@ describe("checkAgreement", () => {
     ]);
   });
 
+  test("one reading for whoever draws it: each mark carries the arrow its problems belong to, and whose move each state is", () => {
+    // The Londons canvas drew its own arrows and looked their problems up among these: it found none, ever.
+    const r = checkAgreement(hosting("[*] --> invited : authority invites (5)", "invited --> accepted : venueOwner accepts (2)", "accepted --> [*]"), stories);
+    const problems = new Map(r.marks.map((k) => [k.arrow, k.problems]));
+    expect(problems.get(r.marks[0]!.arrow)).toEqual(["venueOwner is not told, and it is their move (5)"]);
+    expect([...r.movers]).toEqual([["[*]", new Set(["authority"])], ["invited", new Set(["venueOwner"])]]);
+  });
+
   test("an alias stands for its value", () => {
     const r = checkAgreement(hosting('state "accepted" as yes', "[*] --> invited : authority invites (1)", "invited --> yes : venueOwner accepts (2)", "yes --> [*]"), stories);
     expect(r.drift).toEqual([]);
