@@ -1,4 +1,4 @@
-import { radiosOf } from "./morph";
+import { drawnOption, radiosOf } from "./morph";
 
 /** What a form holds a value in: typed, chosen, or ticked. */
 export type Field = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
@@ -38,4 +38,17 @@ export function formValue(form: HTMLFormElement): unknown {
   if (fields.size === 0) return undefined;
   if (fields.size === 1) return [...fields.values()][0];
   return Object.fromEntries(fields);
+}
+
+/**
+ * What a field was drawn holding, which a person has not changed until it differs: a box, whether it
+ * was drawn `checked`; a group of radios, the value of the last drawn `checked`, or null; a select,
+ * the option it was drawn showing (drawnOption); a textarea, its text as parsed (`defaultValue`);
+ * anything else, its `value` attribute.
+ */
+export function rendered(field: Field): string | boolean | null {
+  if (field instanceof HTMLInputElement && field.type === "checkbox") return field.defaultChecked;
+  if (field instanceof HTMLInputElement && field.type === "radio") return groupOf(field).findLast((r) => r.defaultChecked)?.value ?? null;
+  if (field instanceof HTMLSelectElement) return drawnOption(field)?.value ?? "";
+  return field instanceof HTMLTextAreaElement ? field.defaultValue : (field.getAttribute("value") ?? "");
 }

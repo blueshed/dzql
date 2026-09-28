@@ -1,8 +1,9 @@
 import { applets } from "../applets";
 import { applyPatch, WIRE, type PatchOp } from "../json-patch";
-import { formValue, groupOf, held, type Field } from "./form-value";
+import { formValue, groupOf, held, rendered, type Field } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
-import { drawnOption, keepingChoices, morph, morphElement, morphTag, removeNode, type MorphHooks } from "./morph";
+import { keepingChoices, morph, morphElement, morphTag, removeNode, type MorphHooks } from "./morph";
+import { modelContext, offerer, pageTools, walked, type Schema, type Write } from "./tools";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -21,6 +22,21 @@ const docs = new Map<string, { version: number; ops: PatchOp[] }>();
 // enough to answer "did that even go through" from the console.
 let lastSent: { id: number; doc: string; ops: PatchOp[]; echoed: boolean; refused: boolean; reason?: string; unanswered?: true } | undefined;
 
+/**
+ * What became of a write a script sent (todo n88): echoed, what it changed, with the ledger entry
+ * that names the change (undo takes it); refused, and why when the refusal says; unanswered, its
+ * socket gone first; or unsent, and why -- the socket not open, or an input no control of the page's
+ * takes.
+ */
+export type Answer =
+  | { id: number; echoed: true; doc: string; version: number; ops: PatchOp[]; entry?: number }
+  | { id: number; refused: true; reason?: string }
+  | { id: number; unanswered: true }
+  | { unsent: string };
+
+/** The writes a script is waiting to hear of, by id. */
+const hearing = new Map<number, (answer: Answer) => void>();
+
 declare global {
   interface Window {
     eta?: {
@@ -28,9 +44,40 @@ declare global {
       reconnectDelay(): number;
       socket(): WebSocket | undefined;
       inspect(): { docs: Record<string, { version: number; ops: PatchOp[] }>; lastSent: typeof lastSent };
+      send(doc: string, ops: PatchOp[]): Promise<Answer>;
+      undo(entry?: number): Promise<Answer>;
+      redo(entry?: number): Promise<Answer>;
+      tools(): { name: string; title: string; description: string; inputSchema: Schema }[];
+      use(name: string, input?: Record<string, unknown>): Promise<Answer>;
     };
   }
 }
+
+const NOT_CONNECTED = "The page is not connected just now: try again in a moment.";
+
+/** Sends a write, as the page's own controls do, and resolves with what became of it. */
+function ask(write: Write | string): Promise<Answer> {
+  if (typeof write === "string") return Promise.resolve({ unsent: write });
+  const id = send(write.doc, write.ops);
+  if (id === undefined) return Promise.resolve({ unsent: NOT_CONNECTED });
+  return new Promise((resolve) => hearing.set(id, resolve));
+}
+
+/** Tells the script waiting on write `id` what became of it, once. */
+function heard(id: unknown, answer: Answer): void {
+  hearing.get(id as number)?.(answer);
+  hearing.delete(id as number);
+}
+
+/** Uses a tool the page offers now, by name, and answers what came of it. */
+function use(name: string, input?: unknown): Promise<Answer> {
+  if (socket?.readyState !== WebSocket.OPEN) return Promise.resolve({ unsent: NOT_CONNECTED });
+  const tool = pageTools(app).find((t) => t.name === name);
+  if (!tool) return Promise.resolve({ unsent: `This page offers no ${name} now: ask for its tools again.` });
+  return ask(tool.write(input && typeof input === "object" ? (input as Record<string, unknown>) : {}));
+}
+
+const offer = offerer(use);
 
 let reconnectDelay = RECONNECT_DELAY_MS;
 window.eta = {
@@ -38,6 +85,11 @@ window.eta = {
   reconnectDelay: () => reconnectDelay,
   socket: () => socket,
   inspect: () => ({ docs: Object.fromEntries(docs), lastSent }),
+  send: (doc, ops) => ask({ doc, ops }),
+  undo: (entry) => ask(walked("undo", entry)),
+  redo: (entry) => ask(walked("redo", entry)),
+  tools: () => pageTools(app).map(({ name, title, description, inputSchema }) => ({ name, title, description, inputSchema })),
+  use,
 };
 
 // Each mounted applet: its cleanup, and its props -- as a render gave them, with every patch to the
@@ -364,6 +416,8 @@ function drawing(draw: () => void, moving?: Element): () => void {
     keyboard();
     syncPage();
     revealChanged(previousReveal);
+    const context = modelContext();
+    if (context) offer(context, pageTools(app)); // WebMCP, where the browser has it: the page's tools as they are now
   };
 }
 
@@ -578,20 +632,13 @@ document.addEventListener("keydown", (event) => {
 // option it was drawn showing, by the browser's own rule (drawnOption), until someone chooses. A
 // box holds a tick, not its value: what was rendered is whether it was drawn `checked`
 // (`defaultChecked`). A group of radios is one field, held as the value chosen (form-value.ts):
-// what was rendered is the value of the last drawn `checked`, or null.
+// what was rendered is the value of the last drawn `checked`, or null (`rendered`, form-value.ts).
 // "input" (bento-request.md K3) is the same commit, debounced to ~150ms after the last keystroke
 // anywhere in the form so a burst of typing becomes one message, not one per key; a `focusout`
 // inside such a form flushes any pending write at once, same as leaving the field would for
 // "blur". Whatever the trigger, a commit identical to the last one *this form* sent is dropped
 // until a write lands -- typing back to a value on its way, or leaving a field twice, says nothing
 // new -- and not after: once an echo or an undo has been drawn, the same value is news again.
-function rendered(field: Field): string | boolean | null {
-  if (isBox(field)) return field.defaultChecked;
-  if (isRadio(field)) return groupOf(field).findLast((r) => r.defaultChecked)?.value ?? null;
-  if (field instanceof HTMLSelectElement) return drawnOption(field)?.value ?? "";
-  return field instanceof HTMLTextAreaElement ? field.defaultValue : (field.getAttribute("value") ?? "");
-}
-
 function editingChange(form: HTMLFormElement): { doc: string; ops: PatchOp[] } | undefined {
   const ops: PatchOp[] = [];
   let doc: string | undefined;
@@ -726,15 +773,18 @@ function connect() {
         if (message.reason !== undefined) lastSent.reason = message.reason;
       }
       if (sending && sending.id === message.id) handBack();
+      heard(message.id, { id: message.id, refused: true, ...(message.reason !== undefined && { reason: message.reason }) });
     } else if (message.type === "patch") {
-      const heard = docs.get(message.doc)?.ops ?? [];
-      docs.set(message.doc, { version: message.version, ops: [...heard, ...message.ops].slice(-MAX_OPS_KEPT_PER_DOC) });
+      const kept = docs.get(message.doc)?.ops ?? [];
+      docs.set(message.doc, { version: message.version, ops: [...kept, ...message.ops].slice(-MAX_OPS_KEPT_PER_DOC) });
       // An applet watching this document takes the ops as its props (or the ops, see Applet.patch):
       // the delta is its update, and no render follows for it.
       for (const [el, held] of mounted) if (el.dataset.doc === message.doc && message.ops.length > 0) watched(el, held, message.version, message.ops);
       // this page's own write, echoed ("yours": the id is its own): it landed
       if (lastSent && lastSent.id === message.id) lastSent.echoed = true;
       if (sending && sending.id === message.id) sending = undefined;
+      const { doc, version, ops, entry } = message;
+      heard(message.id, { id: message.id, echoed: true, doc, version, ops, ...(entry !== undefined && { entry }) });
       if (message.ops.length > 0) lastEditSent = new WeakMap(); // a write landed: what was sent may be said again
     }
   });
@@ -748,6 +798,7 @@ function connect() {
     // page does not show: one unanswered, or one the closed socket never took (send, above).
     if (lastSent && !lastSent.echoed && !lastSent.refused) lastSent.unanswered = true;
     if (sending) sending.unanswered = true;
+    for (const id of [...hearing.keys()]) heard(id, { id, unanswered: true });
     lastEditSent = new WeakMap();
     afresh = true;
     app.inert = true;

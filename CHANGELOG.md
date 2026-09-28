@@ -118,6 +118,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and says so. `permitUndo` is asked of it as of any undo, and one that meets a later write, the
   session's own included, is refused as ever ("Someone has changed that since…"), and stays to be
   undone.
+- **A script on the page learns what became of its own write** (todo n88). `window.eta.send(doc,
+  ops)` sends a write as the page's controls do, with an id, and resolves with its answer, by that
+  id alone: `{id, echoed: true, doc, version, ops, entry?}` (`entry` names the change), `{id,
+  refused: true, reason?}`, `{id, unanswered: true}` when the socket went first, or `{unsent}`, and
+  why, when it could not go. `window.eta.undo(entry?)` and `redo(entry?)` walk the session's last
+  change, or the one named, and answer the same. No more `inspect` as a barrier and reading the
+  refusal back over HTTP.
+- **A page's writes are tools for an assistant** (todo n99). The client reads the page as it is
+  after each drawing into tools: every control a person could press (not `inert`, `hidden` or
+  disabled, as the stories count them) -- a form (its fields the input), an editing form (one tool
+  for all its fields, set in one write), the buttons and rows that make one write (their values a
+  choice), an applet's `appletWrites` (a `*` named in the input's path) -- and `undo` and `redo`,
+  which take an `entry`. A tool is named by its write (`add.room.messages.-`), titled and described
+  from what the page says (aria-label, legend, label, text), and makes the write its control would,
+  nothing more; the server permits it as it does a person's. Each answers as `eta.send` does.
+  Where the browser has WebMCP (`document.modelContext`, the W3C draft; `navigator.modelContext`,
+  Chromium's before it) each tool is registered with it, once while the page offers it as it was,
+  and withdrawn by its signal when it goes or changes; where it has none, nothing is registered, and
+  `window.eta.tools()` lists them and `window.eta.use(name, input)` runs one. The kernel's client is
+  8.1 KB gzipped (it was 5.6). Proved on chat (`examples/chat/client/tools.test.ts`): the assistant
+  says something through the page's own form, the person says something after it, and the
+  assistant undoes its own by its entry, the person's standing.
 
 ### Changed
 
