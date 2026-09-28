@@ -38,9 +38,13 @@ const NOTHING_WATCHED = "Nothing watched yet. The plus asks which symbol.";
 /**
  * The board: a row per watched symbol, each an applet on that symbol's own document, so a board is
  * told only the symbols it watches and each row takes its own ticks. Empty, the window says so; the
- * box's cell has said it already. In the window (`ui`), a row is a figure, as a list's is: a tap
- * opens its drawer, and it is lit while that is open. The mount's attributes are the page's, so
- * they carry the write; the applet draws only inside. On the box the cell is the one tap.
+ * box's cell has said it already. On the box the cell is the one tap. In the window (`ui`), a row is
+ * a figure, as a list's is (rule 13): a button over the whole line opens its drawer, from a finger
+ * or the keyboard (rule 19), and says it is expanded while that is open. The button is named by the
+ * line it lies over, which a reader then hears once, as the button. It is beside the applet's
+ * mount, not around it, so the mount stands in the same place on the box and in the window and
+ * keeps the ticks it has seen as the cell opens; and it is a part, so opening a drawer sends its
+ * tag alone, never the mount's, whose props follow the patches (src/parts.ts).
  */
 export function boardMount(list: WatchlistDocument, market: MarketDocument, ui?: Ui): string {
   const symbols = list.symbols.filter((s) => market[s]);
@@ -48,9 +52,11 @@ export function boardMount(list: WatchlistDocument, market: MarketDocument, ui?:
   const tap = (symbol: string): string => {
     if (!ui) return "";
     const chosen = where(ui).what === "symbol" && where(ui).which === symbol;
-    return ` role="button" tabindex="0"${go(address("board", "symbol", symbol))} aria-expanded="${chosen}"${chosen ? " data-reveal" : ""}`;
+    return part(`tap-${symbol}`, `<button type="button" class="board-tap" aria-labelledby="line-${esc(symbol)}"${go(address("board", "symbol", symbol))} aria-expanded="${chosen}"${chosen ? " data-reveal" : ""}></button>`);
   };
-  const rowOf = (symbol: string) => part(`quote-${symbol}`, `<div id="quote-${esc(symbol)}" data-applet="board" data-doc="quote:${esc(symbol)}" data-under="/quote"${tap(symbol)} data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`);
+  const line = (symbol: string): string =>
+    `<div id="line-${esc(symbol)}" data-applet="board" data-doc="quote:${esc(symbol)}" data-under="/quote"${ui ? ' aria-hidden="true"' : ""} data-props="${esc(JSON.stringify({ symbol, quote: quote(symbol) }))}"></div>`;
+  const rowOf = (symbol: string) => part(`quote-${symbol}`, `<div id="quote-${esc(symbol)}" class="board-row">${line(symbol)}${tap(symbol)}</div>`);
   return `<div id="board" class="board">${symbols.map(rowOf).join("")}</div>`;
 }
 

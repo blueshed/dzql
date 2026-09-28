@@ -65,13 +65,15 @@ p.note { margin: 0 0 var(--space-md); }
   .quote { grid-template-columns: 3.5em 5em 4.5em minmax(40px, 1fr); }
   .quote .name, .quote .change .abs { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
-/* in the window a row is a figure: a tap opens its drawer, and the whole line is lit while it is open (rule 13) */
-.board > [role="button"] { display: block; cursor: pointer; }
-.board > [role="button"]:hover { background: rgba(var(--ink-rgb), 0.04); }
-.board > [role="button"]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.board > [aria-pressed="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+/* in the window a row is a figure: a button over the whole line opens its drawer, from a finger or the
+   keyboard, and the line is lit while it is open (rules 13 and 19) */
+.board-row { position: relative; }
+.board-tap { position: absolute; inset: 0; z-index: 1; }
+.board-tap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.board-row:has(> .board-tap:hover) { background: rgba(var(--ink-rgb), 0.04); }
+.board-row:has(> .board-tap[aria-expanded="true"]) { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
 /* forced colours take the background and the shadow away: the chosen row is outlined, as the kernel's rows are (src/bento.css) */
-@media (forced-colors: active) { .board > [aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; } }
+@media (forced-colors: active) { .board-tap[aria-expanded="true"] { outline: 2px solid Highlight; outline-offset: -2px; } }
 
 /* ── the clock: a station clock, white face, black hands, the red seconds hand ── */
 svg.clock .face { fill: #f4f4f2; stroke: #222; stroke-width: 1.5; }

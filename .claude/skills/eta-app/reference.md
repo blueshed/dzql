@@ -407,6 +407,10 @@ const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "s
   `<button>`, so Enter and Space open them. An opener of the example's own is a `<button>` too
   (the wedding's bubbles), never a `div` with `role="button"`, which nothing opens from the
   keyboard; a figure in an applet's SVG says `role="button"` and answers Enter and Space itself.
+  A row an applet draws is opened by a `<button>` of the page's over it, beside the mount and
+  named by it (`aria-labelledby`), not around it: the mount then stands where it stood before
+  the row could be opened, and keeps what it has drawn (the ticker's board, on the box and in
+  the window).
   While a window is open the box behind it is `inert`, and the client keeps the keyboard with the
   cell as it opens and closes.
 

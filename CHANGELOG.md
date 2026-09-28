@@ -210,6 +210,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A ticker board row opens from the keyboard** (rule 19). In the window a row was the applet's
+  mount drawn as a `div` with `role="button"`, and the client answers no key but Escape, so Space
+  or Enter on it did nothing and it never said it was expanded. Now a `<button>` lies over the
+  whole line, beside the mount and named by the line it covers: Tab stops on it, Space and Enter
+  open the symbol's drawer as a tap does, and it is `aria-expanded` while that is open, lit again
+  (the stylesheet still lit `aria-pressed`, which nothing drew since rows became expanded). The
+  button is a part of its own, so opening a drawer sends its tag alone and no longer the mount's
+  props; and the mount stands where it stood, so the line keeps the ticks it has seen as the
+  board opens and closes.
 - **Chat says a run once, and you are not named to yourself** (todo n71). A run of messages shows
   its author's face once, at its start with the name, and the rest keep the face's place; your own
   carry no face, and a screen reader hears "You" at the start of your run, since it cannot see
@@ -236,8 +245,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   was an SVG 640 units wide scaled to the screen, so at 375 its words were about 6px; it is HTML
   now, at the page's own size, and a narrow board (a phone, or the window beside a drawer) keeps
   the name and the change in money for a screen reader only. In the window a row is a figure, as a
-  list's is: its mount carries the tap that opens the symbol's drawer, lit while it is open, so
-  Stop watching no longer needs the list reading.
+  list's is: a tap on it opens the symbol's drawer, lit while it is open, so Stop watching no
+  longer needs the list reading.
 - **The ticker says a thing once** (todo n66). An empty board said so three times, and pointed at a
   plus the box does not have; now its cell's summary says it, with no count of none and no empty
   reading, and the window's note names the plus on its rail. The market's head counts its symbols

@@ -101,12 +101,15 @@ describe("the ticker in a real browser", () => {
     expect(await view.evaluate<string>(face)).toBe("14:00");
     await view.evaluate(`(window.matchMedia = window.__matchMedia, 1)`);
 
-    // in the window a board row is a figure, as a list's row is: a tap opens its drawer, and it is lit
+    // in the window a board row is a figure, as a list's row is: a tap anywhere on it opens its drawer, and it is lit
     const line = `document.querySelector('#quote-FXTR polyline').getAttribute('points')`;
     const seen = await view.evaluate<string>(line);
-    await view.evaluate(`document.getElementById('quote-FXTR').click()`);
+    // (what a finger meets at the price, or the sparkline, is the row's button)
+    const hit = (what: string) => `(() => { const r = document.querySelector('#quote-FXTR ${what}').getBoundingClientRect(); return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === document.querySelector('#quote-FXTR button'); })()`;
+    expect(await view.evaluate<boolean[]>(`[${hit(".price")}, ${hit("svg.spark")}]`)).toEqual([true, true]);
+    await view.click("#quote-FXTR button");
     await waitFor(view, `document.querySelector('.drawer h2')?.textContent ?? null`, (v) => v === "FXTR");
-    expect(await view.evaluate<string>(`document.getElementById('quote-FXTR').getAttribute('aria-expanded')`)).toBe("true");
+    expect(await view.evaluate<string>(`document.querySelector('#quote-FXTR button').getAttribute('aria-expanded')`)).toBe("true");
     expect(await view.evaluate<string>(line)).toBe(seen); // the same applet, the ticks it has seen kept
 
     // the clock is a thing: its drawer holds the city picker. "lon" puts London first, ahead of
@@ -151,5 +154,49 @@ describe("the ticker in a real browser", () => {
     expect(await view.evaluate<boolean>(`document.querySelector('.drawer') !== null`)).toBe(true);
     await arrow("Escape");
     await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
+  }, 15000);
+
+  // `ETA_BROWSER=chrome` runs this on Chrome, the default elsewhere than macOS, where Enter is a key and not an editing command
+  const chrome = process.env.ETA_BROWSER === "chrome" || process.platform !== "darwin";
+
+  test("the keyboard opens a board row as a finger does (rule 19): Space opens its drawer, Enter too, and the row says it is expanded", async () => {
+    await using view = new Bun.WebView(chrome ? { backend: "chrome" } : {});
+    await view.navigate(urlFor(view, server.url));
+    await waitFor(view, `document.querySelector('.cell[data-key="board"]') !== null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('.cell[data-key="board"]').click()`);
+    await waitFor(view, `document.querySelector('.cell.open [aria-label="Watch a symbol"]') !== null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('.cell.open [aria-label="Watch a symbol"]').click()`);
+    await waitFor(view, `document.querySelector('select[name=symbol]') !== null`, (v) => v === true);
+    await view.evaluate(`document.querySelector('select[name=symbol]').value = 'FXTR'`);
+    await view.click("dialog button[type=submit]");
+    await waitFor(view, `document.querySelector('#quote-FXTR polyline') !== null && document.querySelector('dialog') === null`, (v) => v === true);
+
+    // where a Tab stops on the row: the row itself, or what in it takes the keyboard
+    const stop = `(() => { const el = document.getElementById('quote-FXTR'); return el.matches('button, a[href], [tabindex]') ? el : el.querySelector('button, a[href], [tabindex]'); })()`;
+    const drawer = `document.querySelector('.drawer h2')?.textContent ?? null`;
+    const line = `document.querySelector('#quote-FXTR polyline').getAttribute('points')`;
+    const seen = await view.evaluate<string>(line);
+    await view.evaluate(`${stop}.focus()`);
+    await view.press("Space");
+    expect(await waitFor(view, drawer, (v) => v === "FXTR", 2000).catch(() => view.evaluate(drawer))).toBe("FXTR");
+    expect(await view.evaluate<string[]>(`[${stop}.tagName, ${stop}.getAttribute('aria-expanded')]`)).toEqual(["BUTTON", "true"]);
+    expect(await view.evaluate<string>(line)).toBe(seen); // the same applet, the ticks it has seen kept
+
+    // Escape puts the drawer away, and the keyboard goes back to the row: not expanded now
+    await view.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))`);
+    await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
+    expect(await view.evaluate<unknown[]>(`[document.activeElement === ${stop}, ${stop}.getAttribute('aria-expanded')]`)).toEqual([true, "false"]);
+    if (chrome) {
+      await view.press("Enter");
+      await waitFor(view, drawer, (v) => v === "FXTR");
+      expect(await view.evaluate<string>(`${stop}.getAttribute('aria-expanded')`)).toBe("true");
+    }
+
+    // the button is beside the applet, not around it: the line is the same applet on the box as in
+    // the window, so closing the window keeps the ticks it has seen, and on the box it is no stop
+    await view.evaluate(`(document.getElementById('line-FXTR').kept = true)`);
+    await view.evaluate(`document.querySelector('.cell.open .cell-back').click()`);
+    await waitFor(view, `document.querySelector('.cell.open') === null`, (v) => v === true);
+    expect(await view.evaluate<unknown[]>(`[document.getElementById('line-FXTR').kept, document.querySelector('#quote-FXTR button')]`)).toEqual([true, null]);
   }, 15000);
 });
