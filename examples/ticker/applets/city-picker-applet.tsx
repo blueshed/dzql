@@ -44,17 +44,21 @@ const picker = island<ClockProps>((props, ctx, el) => {
       query.set("");
     }
   };
+  // A combobox, so a reader hears the list open and the arrow keys move through it: the field says
+  // whether its list is showing and which suggestion is highlighted, by the option's id.
+  const showing = () => shown.get().length > 0;
+  const option = (i: number) => `city-option-${i}`;
   return (
     <>
       <form onsubmit={submit}>
-        <input type="text" placeholder={props.map((p) => cityOf(p.tz))} aria-label="Show the time in" autocomplete="off" value={query} oninput={typed} onkeydown={keys} onfocus={() => open.set(true)} onblur={() => open.set(false)} />
+        <input type="text" role="combobox" aria-autocomplete="list" aria-controls="city-suggestions" aria-expanded={() => String(showing())} aria-activedescendant={() => (showing() ? option(active.get()) : null)} placeholder={props.map((p) => cityOf(p.tz))} aria-label="Show the time in" autocomplete="off" value={query} oninput={typed} onkeydown={keys} onfocus={() => open.set(true)} onblur={() => open.set(false)} />
       </form>
-      <ul class="suggestions" role="listbox">
+      <ul id="city-suggestions" class="suggestions" role="listbox" aria-label="Cities">
         {list(shown, (z) => z.tz, (z$, i$) => {
           const on = () => i$.get() === active.get();
           // mousedown, not click: the input keeps its focus, and so the list
           const take = (e: Event) => (e.preventDefault(), choose(z$.peek().tz));
-          return <li role="option" data-tz={z$.peek().tz} class={() => (on() ? "active" : null)} aria-selected={() => String(on())} onmousedown={take}>{z$.map((z) => z.label)}</li>;
+          return <li id={() => option(i$.get())} role="option" data-tz={z$.peek().tz} class={() => (on() ? "active" : null)} aria-selected={() => String(on())} onmousedown={take}>{z$.map((z) => z.label)}</li>;
         })}
       </ul>
     </>

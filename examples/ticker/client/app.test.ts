@@ -69,6 +69,17 @@ describe("the ticker in a real browser", () => {
     await Bun.sleep(300);
     const b = await view.evaluate(hand);
     expect(a).not.toBe(b);
+    // its hands say nothing to a reader, so the face is named by the time: two in the afternoon in Zurich
+    const face = `document.querySelector('svg.clock').getAttribute('aria-label')`;
+    expect(await view.evaluate<string>(face)).toBe("14:00");
+    // asked for no motion, the seconds hand holds still and the clock turns once a second, still saying the time
+    await view.evaluate(`(() => { const real = window.matchMedia.bind(window); window.__matchMedia = real; window.matchMedia = (q) => (q.includes("reduced-motion") ? { matches: true, media: q, addEventListener() {}, removeEventListener() {} } : real(q)); return 1; })()`);
+    await Bun.sleep(100); // the frame in flight turns it once more
+    const held = await view.evaluate<string>(hand);
+    await Bun.sleep(1200);
+    expect(await view.evaluate<string>(hand)).toBe(held);
+    expect(await view.evaluate<string>(face)).toBe("14:00");
+    await view.evaluate(`(window.matchMedia = window.__matchMedia, 1)`);
 
     // in the window a board row is a figure, as a list's row is: a tap opens its drawer, and it is lit
     const line = `document.querySelector('#quote-FXTR polyline').getAttribute('points')`;
@@ -91,16 +102,22 @@ describe("the ticker in a real browser", () => {
     expect((suggested as string[])[0]).toBe("Europe/London");
     expect((suggested as string[])[1]).toBe("Arctic/Longyearbyen");
     expect(suggested as string[]).toContain("America/Blanc-Sablon");
+    // the field is a combobox: a reader hears its list open, and which suggestion is highlighted
+    const said = `(() => { const i = document.querySelector('#city input'); return [i.getAttribute('role'), i.getAttribute('aria-expanded'), document.getElementById(i.getAttribute('aria-activedescendant'))?.dataset.tz]; })()`;
+    expect(await view.evaluate<string[]>(said)).toEqual(["combobox", "true", "Europe/London"]);
     // the arrow keys move the highlight; Enter takes the highlighted one. (The WebView's press() does
     // not deliver a keydown, so the keys are dispatched as the browser would.)
     const arrow = (key: string) => view.evaluate(`document.querySelector('#city input').dispatchEvent(new KeyboardEvent('keydown', { key: '${key}', bubbles: true, cancelable: true }))`);
     await arrow("ArrowDown");
     expect(await view.evaluate<string>(`document.querySelector('#city .suggestions li.active').dataset.tz`)).toBe("Arctic/Longyearbyen");
+    expect((await view.evaluate<string[]>(said))[2]).toBe("Arctic/Longyearbyen");
     await arrow("ArrowUp");
     expect(await view.evaluate<string>(`document.querySelector('#city .suggestions li.active').dataset.tz`)).toBe("Europe/London");
     await view.press("Enter");
     // at 12:00 UTC it is two in the afternoon in Zurich and one in London: the hour hand goes back an hour
     await waitFor(view, `document.querySelector('svg.clock .hand.hour').getAttribute('transform')`, (v) => v === "rotate(30.00)");
+    expect(await view.evaluate<string>(face)).toBe("13:00");
+    expect(await view.evaluate<string>(`document.querySelector('#city input').getAttribute('aria-expanded')`)).toBe("false"); // chosen, the list is put away
     expect(await view.evaluate<string>(`document.querySelector('#city input').placeholder`)).toBe("London");
     expect(await view.evaluate<number>(`window.eta.docs().clock.ops.length`)).toBe(1);
 

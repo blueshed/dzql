@@ -141,6 +141,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The ticker's applets speak to a screen reader, and its clock keeps still when asked** (todo n69).
+  A board row's price and change are text now (n67). The clock was named "the time" and never
+  gave it; the face is an image named by the time, "14:05", said again when the minute changes.
+  Under `prefers-reduced-motion` the seconds hand is put away and the clock turns once a second,
+  not every frame. The city picker's field is a combobox: it says whether its list is open, and
+  which suggestion the arrow keys have reached (`aria-activedescendant`).
 - **The ticker's Watch modal says why it refuses** (todo n68). It took free text, dropped an unknown
   or already-watched symbol without a word, and stayed open. It is a choice of the symbols the
   board lacks now, and an add that cannot be (another tab's, or typed on the wire) is refused with

@@ -89,4 +89,5 @@ svg.sparkline { display: block; } svg.sparkline.up { color: var(--up); } svg.spa
 .city .suggestions:empty { display: none; }
 .city .suggestions li { padding: 0.4rem 0.6rem; font-size: 13px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .city .suggestions li:hover, .city .suggestions li.active { background: var(--well); color: var(--accent); }
-@media (prefers-reduced-motion: reduce) { .quote .price { animation: none !important; } }
+/* no motion: a tick does not flash, and the clock's seconds hand is put away (clock-applet.ts turns the rest once a second) */
+@media (prefers-reduced-motion: reduce) { .quote .price { animation: none !important; } svg.clock .hand.second { display: none; } }

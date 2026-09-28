@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { SWEEP_S, cityOf, clockSvg, handsAt, partsIn, tzAfter } from "./clock";
+import { SWEEP_S, cityOf, clockSvg, handsAt, partsIn, timeSaid, tzAfter } from "./clock";
 
 describe("clock", () => {
   test("the hands: the hour hand between hours, the minute hand on the minute, the seconds hand sweeping the dial in SWEEP_S and waiting at the top", () => {
@@ -16,6 +16,12 @@ describe("clock", () => {
     expect((svg.match(/height="12"/g) ?? []).length).toBe(12);
     expect(svg).toContain('class="hand second"');
     expect(svg).not.toContain("<text");
+    expect(svg).toContain('role="img" aria-label="the time"'); // until the applet says it
+  });
+
+  test("the time as a reader hears it, on a twenty-four-hour clock", () => {
+    expect(timeSaid(14, 5)).toBe("14:05");
+    expect(timeSaid(0, 0)).toBe("00:00");
   });
 
   test("the city is the zone's last segment, spoken; the zone after the clock's ops is its last replace", () => {
