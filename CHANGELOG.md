@@ -189,6 +189,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `false` and a radio newly ticked as its value; a refusal hands the tick back; and a render keeps
   a tick not yet drawn (a radio's by its value, while its group offers it) and otherwise shows
   what is drawn, with the caret in it or not.
+- **A part inside an `<svg>` comes back as SVG** (`src/client/morph.ts`, todo n77). A render in
+  parts parsed a part's HTML in a `<template>`, as HTML, so a part rooted inside an `<svg>` (a
+  `<g>`, a `<path>`) was replaced by an HTML element of that name, and drew nothing; a `tag` op
+  on a camelCase attribute added a lowercase one beside it (`gradientunits` beside
+  `gradientUnits`) and left the real one stale. The stories could not see it: the harness applies
+  a part as text. A part is now parsed where it stands: in an `<svg>`, as SVG.
 
 ## [0.49.0] - 2026-09-25
 

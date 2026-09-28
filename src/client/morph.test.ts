@@ -140,6 +140,23 @@ describe("morph", () => {
     expect(result).toEqual({ same: true, swapped: "DIV", removed: ["x"], applet: "B", left: '<ul id="list"></ul><p>keep</p>' });
   });
 
+  test("a part inside an <svg> comes back as SVG, what is in it too, and its tag keeps an attribute's case", async () => {
+    const result = await run(`
+      root.innerHTML = '<svg viewBox="0 0 100 10"><defs><linearGradient data-eta-part="grad" gradientUnits="userSpaceOnUse"></linearGradient></defs><g data-eta-part="stop-1" transform="translate(10 0)"><circle cx="0" cy="5" r="3"/></g><path data-eta-part="line" d="M0 5 L10 5"/></svg>';
+      const part = (key) => root.querySelector('[data-eta-part="' + key + '"]');
+      window.morphElement(part("stop-1"), '<g data-eta-part="stop-1" transform="translate(20 0)"><circle cx="0" cy="5" r="4"/></g>');
+      window.morphElement(part("line"), '<path data-eta-part="line" d="M0 5 L90 5"/>');
+      window.morphTag(part("grad"), '<linearGradient data-eta-part="grad" gradientUnits="objectBoundingBox">');
+      const [g, line, grad] = [part("stop-1"), part("line"), part("grad")];
+      return {
+        g: [g instanceof SVGGElement, g.firstElementChild instanceof SVGCircleElement, g.getAttribute("transform"), g instanceof SVGGElement ? g.getBBox().width : null],
+        line: [line instanceof SVGPathElement, line.getAttribute("d")],
+        grad: [grad.getAttributeNames(), grad.gradientUnits.baseVal === SVGUnitTypes.SVG_UNIT_TYPE_OBJECTBOUNDINGBOX],
+      };
+    `);
+    expect(result).toEqual({ g: [true, true, "translate(20 0)", 8], line: [true, "M0 5 L90 5"], grad: [["data-eta-part", "gradientUnits"], true] });
+  });
+
   test("an applet in the same position as a plain element (or another applet) is replaced, never reused", async () => {
     const result = await run(`
       root.innerHTML = '<div data-applet="x"><svg class="managed"></svg></div>';

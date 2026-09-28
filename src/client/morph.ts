@@ -191,15 +191,31 @@ export function morph(target: Element, html: string, hooks: MorphHooks = {}): vo
   keepingChoices(() => morphChildren(target, next, hooks));
 }
 
+const SVG = "http://www.w3.org/2000/svg";
+
+/**
+ * The first element of `html`, parsed as it would be where `old` stands. A <template> parses as
+ * HTML, so an element in an <svg> is parsed in an <svg> instead: it comes back SVG, and so does
+ * what is in it, its attributes in their own case (`gradientUnits`, not `gradientunits`).
+ */
+function parsedFor(old: Element, html: string): Element | null {
+  if (old.namespaceURI === SVG) {
+    const holder = document.createElementNS(SVG, "svg");
+    holder.innerHTML = html;
+    return holder.firstElementChild;
+  }
+  const holder = document.createElement("template");
+  holder.innerHTML = html;
+  return holder.content.firstElementChild;
+}
+
 /**
  * Gives an existing element the attributes of `tag`, an opening tag, and leaves what is inside it
  * alone -- a render in parts' `tag`, for a part whose own attributes changed and nothing else. An
  * applet's element is told when its props change, as in a morph.
  */
 export function morphTag(old: Element, tag: string, hooks: MorphHooks = {}): void {
-  const holder = document.createElement("template");
-  holder.innerHTML = tag;
-  const next = holder.content.firstElementChild;
+  const next = parsedFor(old, tag);
   if (!next) return;
   if (isApplet(old)) morphApplet(old, next, hooks);
   else keepingChoices(() => morphAttributes(old, next));
@@ -211,9 +227,7 @@ export function morphTag(old: Element, tag: string, hooks: MorphHooks = {}): voi
  * for the new element, applets inside the old one cleaned up first.
  */
 export function morphElement(old: Element, html: string, hooks: MorphHooks = {}): void {
-  const holder = document.createElement("template");
-  holder.innerHTML = html;
-  const next = holder.content.firstElementChild;
+  const next = parsedFor(old, html);
   if (!next) {
     removeNode(old, hooks);
     return;
