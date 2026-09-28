@@ -79,6 +79,26 @@ describe("stories harness", () => {
     expect(first(2)).toContain("dee's page offers this, and it is refused without a word: a control that always fails");
   }, 30000);
 
+  test("a story's premise is its own: made before it, as each member it names, rolled back with it; one that does not hold is not told", async () => {
+    const say = { doc: "room", ops: [{ op: "add" as const, path: "/messages/-", value: "hello" }] };
+    const general = { doc: "session", ops: [{ op: "replace" as const, path: "/room", value: "general" }] };
+    const report = await run(example, {
+      cast: stories.cast,
+      stories: [
+        { name: "Cy, back in general, sees Ada say hello", as: "ada", premise: { cy: [general] }, does: say, seen: ["ada", "bob", "cy"], untold: ["dee", "eve"] },
+        { name: "Cy, in the kitchen again, is told nothing of it", as: "ada", does: say, seen: ["ada", "bob"], untold: ["cy"] },
+        { name: "Eve, with no name, is in general first", as: "ada", premise: { eve: [general] }, does: say, seen: ["ada", "bob"] },
+        { name: "A ghost is in general first", as: "ada", premise: { ghost: [general] }, does: say, seen: ["ada", "bob"] },
+      ],
+    });
+    expect(report.outcomes.map((o) => o.failures)).toEqual([
+      [],
+      [],
+      ["the premise did not hold: eve's write to session was refused"],
+      ["the premise names ghost, and no one in the cast is called that"],
+    ]);
+  }, 30000);
+
   test("controls: a button sends its own value, a field or a form any, an applet on a document any write to it, one that says what it writes exactly that", () => {
     const page = [
       `<button data-write='{"doc":"room","op":"replace","path":"/name"}' data-value="Tess &amp; Tom">x</button>`,

@@ -76,6 +76,20 @@ harness runs them for free: every `does` is followed by its undo and its redo, a
 must hold in reverse -- unless the ledger says the write is a fact (a tick), which undo must
 leave alone, or the author has since gone (logged out), who has no undo to press.
 
+A story that starts from something the cast does not hold -- the deadline passed, a wine already
+chosen -- says so in its `premise`: writes in the cast's own shape, a member's name and what they
+write, made before anything else in the story and rolled back with it, so no other story starts
+there. Each must land, or the story is not told. What every story needs is the cast's; what the
+app should start with is the seed's.
+
+```ts
+story("Once the deadline has passed, the Okafors cannot change their answer", {
+  as: "okafors",
+  premise: { couple: [board("replace", "/deadline", "2026-01-01")] },
+  cannot: household("replace", "/answer", "maybe"),
+});
+```
+
 The sentence at the front is the story's name and its whole value to a customer. It is what you
 scroll through with the groom and ask "is this true?". The object after it is what runs.
 
@@ -119,8 +133,9 @@ legible enough to read aloud. Neither the code nor a model is the product. The s
 One kernel function, `run(example, stories)` in `src/harness.ts`, and one script, `bun run stories`
 (`src/stories-run.ts`; `ETA_EXAMPLE` picks the example). For each story:
 
-1. Connect the cast over real sockets to a real server, apply each member's setup writes, and
-   render every member fresh from the tables.
+1. Connect the cast over real sockets to a real server, apply each member's setup writes, then
+   the story's own `premise` (each write must land), and render every member fresh from the
+   tables.
 2. Put the author where the story says they act (`from`: the drawer or modal that holds the
    control), and find on their open page the control that sends the story's write -- a
    `data-write` with its document, op and path, and a button's own value; a field or a form sends
@@ -172,8 +187,9 @@ for more than it checks:
 - **Not a modelling tool.** No `model.db`, no site to browse the entities, no predicates over a
   schema. The stories are in the app's own repo, in one file, in the wire's words.
 - **Not a story language.** A story is a TypeScript object with a name and a few keys: who,
-  the write or the refusal, who sees it, and where the author acts. Each key came from a story
-  that needed it; it will not need a grammar.
+  the write or the refusal, who sees it, where the author acts, and what it alone starts from.
+  Each key came from a story that needed it (the premise, from a deadline passed for one story
+  only); it will not need a grammar.
 - **Not generated code.** Claude writes the compartments by hand from the stories, and a person
   can read both. When the permit table is the first thing derived rather than written, that is
   one function over the stories, not a code generator.
@@ -197,9 +213,10 @@ says whether they were written right.
 ## Open
 
 - **Time.** The wedding's deadline locks answers. A story told after the deadline is a `cannot`
-  that was a `does` the day before. The cast may need a clock, or the story a `when`.
+  that was a `does` the day before, and its premise moves the deadline into the past. The day
+  itself coming (the names in the photo) is a clock no write moves: that may still need a `when`.
 - **Values.** A story writes a value; the harness needs it to be a real one (guest index 1 must
   exist). The cast's setup writes are where that is made true, and they may grow longer than the
-  stories. If they do, the seed is wrong, not the story.
+  stories. If they do, the seed is wrong, not the story. What only one story needs is its premise.
 - **Who tells the ticker's stories.** `as: "feed"` is a session that is not a person. Presence
   has the same shape: a join is a story told by the socket.

@@ -26,7 +26,7 @@ export { comparable };
 // must be told of no document -- no patch -- by the write, its undo or its redo, and anything the
 // kernel reports failing while a story runs (a message, a drawing, a change being told) fails the
 // story. Each story runs inside one database transaction that is rolled back afterwards, so every
-// story starts from the cast alone.
+// story starts from the cast and its own premise alone.
 //
 // Canon 2 is checked here too, without a browser: every member's open page is kept as the client
 // would keep it -- a full render replaces it, a fragment render is applied target by target -- and
@@ -299,6 +299,24 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   /** What `m` has been sent since `from`, parsed. */
   const sentSince = (m: Member, from: Map<Member, number>): Heard[] => m.inbox.slice(from.get(m)).map((raw) => JSON.parse(raw) as Heard);
 
+  /** Did something land since `from`: a document changed, and someone was told (a refusal changes none)? */
+  const landedSince = (cast: Member[], from: Map<Member, number>): boolean => cast.some((m) => sentSince(m, from).some((h) => h.type === "patch" && h.doc !== "refusal"));
+
+  /** The story's own premise, made after the cast's writes: each write as its member. Why it does not hold, if it does not: then the story is not told. */
+  async function premise(cast: Member[], story: Story): Promise<string[]> {
+    const why: string[] = [];
+    for (const [name, writes] of Object.entries(story.premise ?? {})) {
+      const m = cast.find((c) => c.name === name);
+      if (!m) why.push(`the premise names ${name}, and no one in the cast is called that`);
+      else for (const write of writes) {
+        const from = mark(cast);
+        await send(cast, m, write);
+        if (!landedSince(cast, from)) why.push(`the premise did not hold: ${name}'s write to ${write.doc} was refused`);
+      }
+    }
+    return why;
+  }
+
   /** An `untold` member is told of nothing: sent no document's ops. */
   function checkUntold(cast: Member[], untold: string[] | undefined, from: Map<Member, number>, when: string, failures: string[]): void {
     for (const m of cast) {
@@ -343,6 +361,8 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
 
       const who = cast.find((m) => m.name === story.as);
       if (!who) return { name: story.name, failures: [`no one in the cast is called ${story.as}`] };
+      const why = await premise(cast, story);
+      if (why.length > 0) return { name: story.name, failures: [...failures, ...why] }; // not the state the story starts from: nothing it finds would be true of it
 
       if ("cannot" in story) {
         if (story.from !== undefined) await put(cast, who, story.from, failures);
@@ -392,8 +412,7 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       // is theirs, not the write's.
       const landed = placeOf(who.page);
       const moved = stories.goTo && stood !== undefined && landed !== undefined && stood !== landed;
-      // it landed: a document changed, and someone was told (a refusal changes none)
-      if (!cast.some((m) => sentSince(m, from).some((h) => h.type === "patch" && h.doc !== "refusal"))) failures.push(`nothing landed: ${who.name}'s write was refused`);
+      if (!landedSince(cast, from)) failures.push(`nothing landed: ${who.name}'s write was refused`);
       if (process.env.STORY_TRACE) for (const raw of who.inbox.slice(from.get(who))) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
       checkUntold(cast, story.untold, from, "after the story", failures);
       const after = await snapshot(cast);

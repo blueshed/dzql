@@ -8,7 +8,8 @@ import type { PatchOp } from "./json-patch";
 export type Write = { doc: string; ops: PatchOp[] };
 
 /** The cast: a session per name, and the writes that put it where the stories find it.
- * Every story starts from here: the cast is set up afresh per story, so no story depends on another. */
+ * Every story starts from here: the cast is set up afresh per story, then the story's own premise
+ * (the same shape), so no story depends on another. */
 export type Cast = Record<string, Write[]>;
 
 /**
@@ -21,7 +22,16 @@ export type Cast = Record<string, Write[]>;
 export type Seen = string[] | Record<string, string>;
 
 /** What a story tells, before it has a name. */
-export type Told = { as: string } & (
+export type Told = {
+  as: string;
+  /**
+   * What this story alone starts from: writes each named member of the cast makes, after the
+   * cast's and before anything else in the story, rolled back with it -- a state the seed and the
+   * cast do not have (the deadline passed, a wine already chosen), which would change every other
+   * story if the cast made it. Made in the order written; each must land.
+   */
+  premise?: Cast;
+} & (
   | {
       /**
        * The write the author makes. Their page must offer a control that sends it, and it must land.

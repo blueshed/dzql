@@ -79,6 +79,7 @@ export const stories: Stories = {
     story("Femi picks the sea bass, and the couple see it in the Okafors' drawer", { as: "okafors", from: "list?guest=2", does: household("replace", "/guests/2/choices/2/dish", 5), seen: { okafors: "list", couple: "?family=1" } }),
     story("Femi picks the Rioja", { as: "okafors", from: "list?guest=2", does: household("replace", "/guests/2/choices/2/drink", 3), seen: { okafors: "list", couple: "?family=1" } }),
     story("Femi cannot change his mind about a wine he has not chosen", { as: "okafors", cannot: household("remove", "/guests/2/choices/2/drink") }),
+    story("Femi, having picked the Rioja, changes his mind, and the couple see it gone", { as: "okafors", premise: { okafors: [household("replace", "/guests/2/choices/2/drink", 3)] }, from: "list?guest=2", does: household("remove", "/guests/2/choices/2/drink"), seen: { okafors: "list", couple: "?family=1" } }),
     story("A household cannot uninvite one of its own guests; only Undo can", { as: "okafors", cannot: household("remove", "/guests/1") }),
 
     // ── Asks ──
@@ -117,6 +118,7 @@ export const stories: Stories = {
     story("A household cannot invite anyone", { as: "ben", cannot: board("add", "/households/-", { email: "x@example.com" }) }),
     story("The couple cannot answer for a household", { as: "couple", cannot: household("replace", "/answer", "yes") }),
     story("A stranger cannot answer", { as: "stranger", cannot: household("replace", "/answer", "yes") }),
+    story("Once the deadline has passed, the Okafors cannot change their answer", { as: "okafors", premise: { couple: [board("replace", "/deadline", "2026-01-01")] }, cannot: household("replace", "/answer", "maybe") }),
     story("A household cannot take another's claim; the casserole is the Okafors'", { as: "ben", cannot: household("remove", "/claims/1") }),
   ],
 };

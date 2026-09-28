@@ -108,6 +108,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A story's own premise** (todo n86): `premise: { couple: [write, …] }`, in the cast's shape,
+  is made after the cast's writes and before anything else in the story, as each member it names,
+  and rolled back with it. The cast's writes are every story's, so a state one story needed (a
+  deadline passed, a flight home made a gate) changed what every other story saw. Each premise
+  write must land, or the story is not told. The wedding tells two: once the deadline has passed
+  the Okafors cannot change their answer, and Femi, having picked the Rioja, changes his mind.
 - **`first-app.md`: your first app, step by step.** Chat, then leave, with each word explained
   where it is first met, and what each story failure means.
 - **leave, a fourth example: people sign in, and a team's leave is one calendar.** A sign-in page
