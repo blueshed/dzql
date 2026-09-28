@@ -37,20 +37,22 @@ cast: {
   benToo:  [session("/code", "BEN")], // Ben's household, a second tab
   stranger: [],
 },
-// Where a member must be to notice, in this example's own words: a page, and after " @ " what
-// else the session holds there (a drawer open, a list reading).
-at: (where) => ...one session write...,
+// The write that puts a member at an address, in this example's own words: a page, the one thing
+// open over it, and after " @ " what else the session holds there (find's word).
+goTo: (address) => ...one session write...,
 
 story("Femi's top turns green, and the photo everyone watches changes", {
   as: "okafors",
+  from: "?guest=2", // his drawer, where the dress is
   does: household("replace", "/guests/2/minifigure/top", "#7FAE4E"),
-  seen: { okafors: "", couple: "households", benToo: "everyone" },
+  seen: { okafors: "", couple: "", benToo: "everyone" },
 });
 
 story("The Okafors leave the caterer a note, and only the couple read it", {
   as: "okafors",
+  from: "?answer",
   does: household("replace", "/message", "Ada is vegetarian."),
-  seen: { okafors: "", couple: "households/1" },
+  seen: { okafors: "", couple: "?family=1" },
   untold: ["ben", "benToo"],
 });
 
@@ -204,11 +206,20 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    on the page there. The pages of the stories as they are told are not the walk's: a plus that
    another story's write drew is not one this story starts with. A page that says nowhere it
    stands (a welcome before a code) has nowhere to go, and is not asked. The URL and the back
-   button are not controls: a place only they reach is one a person must be told about.
+   button are not controls: a place only they reach is one a person must be told about. Where
+   they are told about it -- a link in an email, a shared URL -- the cast says so in its own
+   writes: a member the cast puts at an address arrived there as the link brings them, and their
+   ways start from it.
 6. Report by story name. A failing story is a sentence, not a stack trace.
 
 *What it does not do yet (17 September).* Said plainly, because a builder will otherwise trust it
 for more than it checks:
+
+- **A control hidden by a stylesheet still counts.** Without a browser the harness reads the
+  HTML, not what it looks like: a control under `display: none` by a class, `visibility:
+  hidden`, `aria-hidden`, covered by something drawn over it, of no size, or off a phone's
+  screen, is offered as if a person could press it. Only what HTML itself says is looked at:
+  `disabled`, `inert`, `hidden`, a `<template>`, a disabled fieldset.
 
 - **The morph is not under test.** Canon 2 is run without a browser: every member's open page is
   kept as the client would keep it -- a full render replaces it, a render in parts is applied

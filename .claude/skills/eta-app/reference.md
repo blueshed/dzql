@@ -389,7 +389,8 @@ is the page, and the one thing open over it: `guests?guest=2`, `gifts?new`, `?an
   and that a person could have: a story's `from`, and each place its `seen` names, must be one a
   control leads to from where the cast stands (a button whose `data-value` is the address, or a
   tap an applet's mount names). One nothing leads to fails the story: `no control leads okafors
-  to "?guest=2"`. The URL and the back button are not controls.
+  to "?guest=2"`. The URL and the back button are not controls: a place a person reaches by a
+  link (an email, a shared URL) is put in the cast's own writes, where their ways start.
 
 ## Pages: the bento (`src/bento.ts`, `src/bento.css`)
 
