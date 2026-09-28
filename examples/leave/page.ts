@@ -125,7 +125,7 @@ export function render(sessionId: string): string {
 
 /** The calendar applet's mount: drawn here first, so the page reads before a script runs, then kept by the applet, which adds the drags. It writes your draft, and moves your requests. */
 const calendarMount = (p: CalendarProps): string =>
-  part("calendar", `<div id="calendar" class="calendar-view" data-applet="calendar"${appletWrites(["team", "/draft"], ["team", "/requests"])} data-props="${esc(JSON.stringify(p))}">${calendarHtml(p)}</div>`);
+  part("calendar", `<div id="calendar" class="calendar-view" data-applet="calendar"${appletWrites(["team", "replace", "/draft"], ["team", "replace", "/requests/*/starts"], ["team", "replace", "/requests/*/ends"])} data-props="${esc(JSON.stringify(p))}">${calendarHtml(p)}</div>`);
 
 /** The list applet's mount: every request, drawn as it scrolls into view. */
 const listMount = (p: ListProps): string => {

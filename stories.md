@@ -76,6 +76,39 @@ harness runs them for free: every `does` is followed by its undo and its redo, a
 must hold in reverse -- unless the ledger says the write is a fact (a tick), which undo must
 leave alone, or the author has since gone (logged out), who has no undo to press.
 
+A story that starts from something the cast does not hold -- the deadline passed, a wine already
+chosen -- says so in its `premise`: writes in the cast's own shape, a member's name and what they
+write, made before anything else in the story and rolled back with it, so no other story starts
+there. Each must change something, or the story is not told: a write refused, or one already
+so, says a premise wrongly. What every story needs is the cast's; what the app should start with
+is the seed's.
+
+```ts
+story("Once the deadline has passed, the Okafors cannot change their answer", {
+  as: "okafors",
+  premise: { couple: [board("replace", "/deadline", "2026-01-01")] },
+  from: "?answer", // where the answers are, drawn disabled now: a live one would fail the story
+  cannot: household("replace", "/answer", "maybe"),
+});
+```
+
+A tab closing is a story with no write: `closesTab: true` in place of `does`. The socket goes, as
+a browser's does, and whoever is still looking must see what the server tells of it; the author,
+gone, sees nothing, and there is nothing to undo. Chat's:
+
+```ts
+story("Bob closes his tab, and Ada sees him leave general", {
+  as: "bob",
+  closesTab: true,
+  seen: ["ada"],
+  untold: ["cy", "dee", "eve"],
+});
+```
+
+A story is one of the three -- `does`, `cannot`, `closesTab` -- with only that one's keys. The
+harness refuses one that mixes them, or carries a key it does not read, before it runs: a story
+file is not type-checked when it runs, and a key nobody reads would be dropped without a word.
+
 The sentence at the front is the story's name and its whole value to a customer. It is what you
 scroll through with the groom and ask "is this true?". The object after it is what runs.
 
@@ -119,19 +152,24 @@ legible enough to read aloud. Neither the code nor a model is the product. The s
 One kernel function, `run(example, stories)` in `src/harness.ts`, and one script, `bun run stories`
 (`src/stories-run.ts`; `ETA_EXAMPLE` picks the example). For each story:
 
-1. Connect the cast over real sockets to a real server, apply each member's setup writes, and
-   render every member fresh from the tables.
+1. Connect the cast over real sockets to a real server, apply each member's setup writes, then
+   the story's own `premise` (each write must change something), and render every member fresh
+   from the tables.
 2. Put the author where the story says they act (`from`: the drawer or modal that holds the
    control), and find on their open page the control that sends the story's write -- a
    `data-write` with its document, op and path, and a button's own value; a field or a form sends
-   whatever is typed; an applet declares what it writes (`data-writes`). None is a failure: a
-   story nobody can do from a page is not a story (`offPage` marks a write from a feed or the CLI).
+   whatever is typed; an applet declares exactly what it writes (`data-writes`: an op and a path
+   each, `*` for any one segment); a control drawn `disabled` is none, since the browser sends
+   nothing from it. None is a failure: a story nobody can do from a page is not a story
+   (`offPage` marks a write from a feed or the CLI).
    Then send the `does` as its session, wait for the wire to go quiet, and it must have landed:
-   someone was told of a changed document.
+   someone was told of a changed document. A `closesTab` has no control to find: the author's
+   socket closes, the server is waited for, and something must land for someone still looking.
 3. Canon 1. Render every member fresh again. For each name in `seen`, that member's page must
    differ from before; for everyone else, nothing of theirs may differ; and each name in `untold`
    must have been told of nothing: sent no document's ops, by the write, its undo or its redo (a
-   page that reads a document is told every change to it, shown or not). For a `cannot`, nothing anywhere
+   page that reads a document is told every change to it, shown or not); after a tab closes, only
+   who is still looking is looked at. For a `cannot`, nothing anywhere
    may differ, the ledger must not have moved, and the writer must be answered: a refusal hands
    the page back. With `told`, the writer's page must show that reason, and nothing else of it
    may differ; without it, a button on the writer's page that sends exactly the refused write is
@@ -171,8 +209,10 @@ for more than it checks:
 - **Not a modelling tool.** No `model.db`, no site to browse the entities, no predicates over a
   schema. The stories are in the app's own repo, in one file, in the wire's words.
 - **Not a story language.** A story is a TypeScript object with a name and a few keys: who,
-  the write or the refusal, who sees it, and where the author acts. Each key came from a story
-  that needed it; it will not need a grammar.
+  the write, the refusal or the tab that closes, who sees it, where the author acts, and what it
+  alone starts from.
+  Each key came from a story that needed it (the premise, from a deadline passed for one story
+  only); it will not need a grammar.
 - **Not generated code.** Claude writes the compartments by hand from the stories, and a person
   can read both. When the permit table is the first thing derived rather than written, that is
   one function over the stories, not a code generator.
@@ -196,9 +236,12 @@ says whether they were written right.
 ## Open
 
 - **Time.** The wedding's deadline locks answers. A story told after the deadline is a `cannot`
-  that was a `does` the day before. The cast may need a clock, or the story a `when`.
+  that was a `does` the day before, and its premise moves the deadline into the past. The day
+  itself coming (the names in the photo) is a clock no write moves: that may still need a `when`.
 - **Values.** A story writes a value; the harness needs it to be a real one (guest index 1 must
   exist). The cast's setup writes are where that is made true, and they may grow longer than the
-  stories. If they do, the seed is wrong, not the story.
+  stories. If they do, the seed is wrong, not the story. What only one story needs is its premise.
 - **Who tells the ticker's stories.** `as: "feed"` is a session that is not a person. Presence
-  has the same shape: a join is a story told by the socket.
+  has the same shape: a join is a story told by the socket, as a tab closing now is (`closesTab`).
+- **Meanwhile.** A story cannot yet put someone else's write between its `does` and its undo
+  ("Ada takes back her note, and Femi's, written after, stays"): the premise comes before.

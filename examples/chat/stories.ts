@@ -30,5 +30,6 @@ export const stories: Stories = {
 
     // ── and going ──
     story("Ada logs out, and the room shows her gone", { as: "ada", does: logout, seen: ["ada", "bob"] }),
+    story("Bob closes his tab, and Ada sees him leave general", { as: "bob", closesTab: true, seen: ["ada"], untold: ["cy", "dee", "eve"] }),
   ],
 };

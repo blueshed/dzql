@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **An applet's mount says exactly what it writes** (todo n78): `appletWrites([doc, op, path], …)`,
+  where a segment that is only `*` is any one segment (`["team", "replace", "/requests/*/starts"]`).
+  `appletWrites([doc, path], …)` offered every write under each path, so a page that lost a
+  control beside an applet (leave's Approve, in a drawer over the calendar that declared
+  `/requests`) still passed its story. Now a write the applet does not name is not offered, and
+  a declaration in the old form, or anything else that is not `[doc, op, path]`, fails the story
+  that meets it, by name (`applet declaration must be [doc, op, path]: calendar says …`), rather
+  than blaming the page or stopping the run.
+  The examples' declarations are exact: leave's calendar writes the draft and a request's starts
+  and ends; the wedding's dress each look field, its menu a course's dish or drink, chosen or
+  taken back, and its picture field the key at its own path, which it declared nowhere before
+  (a story now puts a picture on the welcome). The photo's taps only go somewhere, as the page's
+  address does, and the ticker's city picker is an applet on its document, which offers any
+  write to it.
 - **One word, one meaning: names renamed so they say what they are, and when they run.** No
   behaviour changes; rename and the gate passes. Compartment hooks are named for when they run
   (`permit`, `shape` before a write; `permitUndo` before an undo; `afterWrite`, `afterChange` after).
@@ -26,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   | `bento({ icon, tray })` | `bento({ icon, session })` | src/bento.ts |
   | `sheet(...)` | `drawer(...)` | what `bento()` returns |
   | `refused(sessionId, doc, path)` | `reasonFor(sessionId, doc, path)` | src/refusal.ts |
-  | `writes(doc, path)` | `appletWrites([doc, path], …)`: pairs, since a mount may write under several paths | src/html.ts |
+  | `writes(doc, path)` | `appletWrites([doc, op, path], …)`: one for each write the mount sends, exactly (above) | src/html.ts |
   | `data-at="/quote"` | `data-under="/quote"` | an applet's mount |
   | `src/tray.ts`: `tray()`, `Compartment`, `Tray` | `src/grid.ts`: `grid()`, `Cell`, `Grid` | the box's layout |
   | `at(view, url)` | `urlFor(view, url)` | src/webview.ts |
@@ -100,6 +114,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A story's own premise** (todo n86): `premise: { couple: [write, …] }`, in the cast's shape,
+  is made after the cast's writes and before anything else in the story, as each member it names,
+  and rolled back with it. The cast's writes are every story's, so a state one story needed (a
+  deadline passed, a flight home made a gate) changed what every other story saw. Each premise
+  write must change something, or the story is not told ("the premise did not hold: …'s write
+  to … changed nothing", whether it was refused or already so). The wedding tells two: once the deadline has passed
+  the Okafors cannot change their answer (from its drawer, where the answers are drawn disabled),
+  and Femi, having picked the Rioja, changes his mind.
+- **A control drawn `disabled` is no control** to the stories, since the browser sends nothing
+  from it: a refusal told from beside one passes, and would fail if it were live. The wedding's
+  menu names nothing it writes once answers are closed, its pills being disabled.
+- **A tab closing is a story** (todo n17): `closesTab: true` in place of `does`. The author's
+  socket closes, as a browser's does, and whoever is still looking must see what the server tells
+  of it; nobody's control is looked for and there is nothing to undo. Chat tells it: Bob closes
+  his tab, and Ada sees him leave general. A write made meanwhile, between a story and its undo,
+  still has no key (todo n9-n11). A story is one of
+  `does`, `cannot` or `closesTab`, with only that kind's keys (`STORY_KEYS`, src/stories.ts): the
+  types say so, and the harness refuses, by name and before running it, a story that mixes them
+  or has a key it does not read (an old `unseen`), since a story file is not type-checked when it
+  runs and the key would be dropped without a word.
 - **`first-app.md`: your first app, step by step.** Chat, then leave, with each word explained
   where it is first met, and what each story failure means.
 - **leave, a fourth example: people sign in, and a team's leave is one calendar.** A sign-in page

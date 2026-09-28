@@ -8,6 +8,7 @@ import { db, schema } from "../examples/chat/delta";
 import { stories } from "../examples/chat/stories";
 import type { Compartment } from "./compartments/compartment";
 import { read } from "./documents";
+import { appletWrites, write } from "./html";
 import type { Example } from "./example";
 import { comparable, controlsOn, hear, holding, offers, placeOf, print, retake, run, takersOn, unheld } from "./harness";
 import type { Story } from "./stories";
@@ -48,6 +49,35 @@ describe("stories harness", () => {
     expect(report.outcomes[1]!.failures).toContain('eve did not see it on ""');
   }, 30000);
 
+  test("a story is one kind, with only its own keys: one that mixes them fails by name and is not run, so no half of it is dropped", async () => {
+    const say = { doc: "room", ops: [{ op: "add" as const, path: "/messages/-", value: "hi" }] };
+    const general = { doc: "session", ops: [{ op: "replace" as const, path: "/room", value: "general" }] };
+    const misshapen = (story: object) => story as Story; // what the types refuse, as a story file that is not type-checked says it
+    const report = await run(example, {
+      cast: stories.cast,
+      stories: [
+        misshapen({ name: "Bob says hi and closes his tab", as: "bob", does: say, closesTab: true, seen: ["ada"] }),
+        misshapen({ name: "Eve cannot go into general, and closes her tab", as: "eve", cannot: general, closesTab: true, seen: ["ada"] }),
+        misshapen({ name: "Bob closes his tab from general", as: "bob", closesTab: true, from: "general", seen: ["ada"] }),
+        misshapen({ name: "Bob does not close his tab", as: "bob", closesTab: false, seen: ["ada"] }),
+        misshapen({ name: "Bob is somewhere", as: "bob", seen: ["ada"] }),
+        misshapen({ name: "Eve cannot go into general, and Ada sees nothing", as: "eve", cannot: general, seen: ["ada"], untold: ["ada"] }),
+        misshapen({ name: "Ada says hi, told something, by an old name", as: "ada", does: say, seen: ["ada", "bob"], told: "hi", unseen: ["cy"] }),
+        { name: "Ada says hi, with nothing left undefined counted", as: "ada", does: say, from: undefined, seen: ["ada", "bob"], untold: ["cy"] },
+      ],
+    });
+    expect(report.outcomes.map((o) => o.failures)).toEqual([
+      ["a story is one of does, cannot or closesTab, and this one has does and closesTab"],
+      ["a story is one of does, cannot or closesTab, and this one has cannot and closesTab"],
+      ["a closesTab story takes no from"],
+      ["closesTab is true, or left out: this one is false"],
+      ["a story is one of does, cannot or closesTab, and this one has none"],
+      ["a cannot story takes no seen", "a cannot story takes no untold"],
+      ["a does story takes no told", "a does story takes no unseen"],
+      [],
+    ]);
+  }, 30000);
+
   test("a story names everyone who sees its change: someone left out whose page changes fails it, by name", async () => {
     const report = await run(example, {
       cast: stories.cast,
@@ -78,15 +108,51 @@ describe("stories harness", () => {
     expect(first(2)).toContain("dee's page offers this, and it is refused without a word: a control that always fails");
   }, 30000);
 
-  test("controls: a button sends its own value, a field or a form any, an applet on a document any write to it, one that says what it writes any under that path", () => {
+  test("a story's premise is its own: made before it, as each member it names, rolled back with it; one whose write changes nothing is not told", async () => {
+    const say = { doc: "room", ops: [{ op: "add" as const, path: "/messages/-", value: "hello" }] };
+    const general = { doc: "session", ops: [{ op: "replace" as const, path: "/room", value: "general" }] };
+    const report = await run(example, {
+      cast: stories.cast,
+      stories: [
+        { name: "Cy, back in general, sees Ada say hello", as: "ada", premise: { cy: [general] }, does: say, seen: ["ada", "bob", "cy"], untold: ["dee", "eve"] },
+        { name: "Cy, in the kitchen again, is told nothing of it", as: "ada", does: say, seen: ["ada", "bob"], untold: ["cy"] },
+        { name: "Eve, with no name, is in general first", as: "ada", premise: { eve: [general] }, does: say, seen: ["ada", "bob"] },
+        { name: "A ghost is in general first", as: "ada", premise: { ghost: [general] }, does: say, seen: ["ada", "bob"] },
+        { name: "Dee goes into general twice", as: "ada", premise: { dee: [general, general] }, does: say, seen: ["ada", "bob", "dee"] },
+      ],
+    });
+    expect(report.outcomes.map((o) => o.failures)).toEqual([
+      [],
+      [],
+      ["the premise did not hold: eve's write to session changed nothing"], // refused, as it is: a refusal and a write already so look the same from the wire
+      ["the premise names ghost, and no one in the cast is called that"],
+      ["the premise did not hold: dee's write to session changed nothing"], // already so
+    ]);
+  }, 30000);
+
+  test("a tab closing is a story: who is still looking must see it, the author cannot, and a close that changes nothing is said", async () => {
+    const report = await run(example, {
+      cast: stories.cast,
+      stories: [
+        // the kitchen empties, and leaves Dee's list of rooms; Cy is not there to see it
+        { name: "Cy closes her tab, and sees the kitchen go", as: "cy", closesTab: true, seen: ["cy", "dee"] },
+        { name: "Eve closes her tab before she has a name", as: "eve", closesTab: true, seen: [] },
+      ],
+    });
+    expect(report.outcomes.map((o) => o.failures)).toEqual([["cy closed their tab: they are not there to see it"], ["nothing landed: closing eve's tab changed nothing"]]);
+  }, 30000);
+
+  test("controls: a button sends its own value, a field or a form any, an applet on a document any write to it, one that says what it writes exactly that", () => {
     const page = [
       `<button data-write='{"doc":"room","op":"replace","path":"/name"}' data-value="Tess &amp; Tom">x</button>`,
       `<button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>undo</button>`,
+      `<button data-write='{"doc":"household","op":"replace","path":"/answer"}' data-value="maybe" disabled>maybe</button>`,
+      `<input data-write='{"doc":"household","op":"replace","path":"/message"}' disabled>`,
       `<form data-write='{"doc":"room","op":"add","path":"/messages/-"}'></form>`,
       `<div class="site" data-page="gifts?new=gifts" data-page-write='{"doc":"session","op":"replace","path":"/page"}'></div>`,
       `<div data-applet="clock" data-doc="clock" data-props="{}"></div>`,
-      `<div data-applet="dress" data-writes='{"doc":"household","path":"/guests/2/minifigure"}'></div>`,
-      `<div data-applet="calendar" data-writes='[{"doc":"session","path":"/draft"},{"doc":"team","path":"/requests"}]'></div>`,
+      `<div data-applet="dress"${appletWrites(["household", "replace", "/guests/2/minifigure/top"])}></div>`,
+      `<div data-applet="calendar"${appletWrites(["session", "replace", "/draft"], ["team", "replace", "/requests/*/starts"])}></div>`,
     ].join("");
     const cs = controlsOn(page);
     const any = (doc: string, op: PatchOp) => cs.some((c) => offers(c, doc, op));
@@ -94,13 +160,20 @@ describe("stories harness", () => {
     expect(any("room", { op: "replace", path: "/name", value: "Bo" })).toBe(false);
     expect(any("ledger", { op: "remove", path: "/latest" })).toBe(true);
     expect(any("ledger", { op: "remove", path: "/latest", value: "x" })).toBe(false);
+    expect(any("household", { op: "replace", path: "/answer", value: "maybe" })).toBe(false); // drawn disabled: the browser sends nothing
+    expect(any("household", { op: "replace", path: "/message", value: "hi" })).toBe(false);
     expect(any("room:general", { op: "add", path: "/messages/-", value: "anything" })).toBe(true);
     expect(any("session", { op: "replace", path: "/page", value: "day" })).toBe(true);
     expect(any("clock", { op: "replace", path: "/tz", value: "Asia/Tokyo" })).toBe(true);
     expect(any("household", { op: "replace", path: "/guests/2/minifigure/top", value: "#fff" })).toBe(true);
     expect(any("household", { op: "replace", path: "/guests/3/minifigure/top", value: "#fff" })).toBe(false);
+    expect(any("household", { op: "remove", path: "/guests/2/minifigure/top" })).toBe(false); // another op
+    expect(any("household", { op: "replace", path: "/guests/2/minifigure", value: {} })).toBe(false); // above what it names
+    expect(any("household", { op: "replace", path: "/guests/2/minifigure/top/shade", value: "#fff" })).toBe(false); // below it
     expect(any("session", { op: "replace", path: "/draft", value: {} })).toBe(true); // one of several it says it writes
-    expect(any("team", { op: "replace", path: "/requests/2/starts", value: "2026-11-20" })).toBe(true);
+    expect(any("team", { op: "replace", path: "/requests/2/starts", value: "2026-11-20" })).toBe(true); // `*`: any one segment
+    expect(any("team", { op: "replace", path: "/requests/2/status", value: "approved" })).toBe(false); // not the applet's: its drawer's
+    expect(any("team", { op: "remove", path: "/requests/2" })).toBe(false);
     expect(any("watchlist", { op: "add", path: "/symbols/-", value: "X" })).toBe(false);
     expect(placeOf(page)).toBe("gifts?new=gifts");
     expect(placeOf("<p>no address</p>")).toBeUndefined();
@@ -115,6 +188,54 @@ describe("stories harness", () => {
     expect(run(leave, wrong)).rejects.toThrow("ann could not sign in at /login: 303");
   }, 30000);
 
+  test("an applet offers only what its mount says it writes: a drawer that lost its control fails its story, whatever applet is beside it", async () => {
+    const { example: leave } = await import("../examples/leave/index");
+    const { stories: told } = await import("../examples/leave/stories");
+    const approve = write("team", "replace", "/requests/1/status", "approved");
+    const lost: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replace(approve, "") };
+    const report = await run(lost, { ...told, stories: told.stories.filter((s) => s.name.startsWith("Mo approves")) });
+    expect(report.outcomes.flatMap((o) => o.failures)).toContain("mo has no control on their page for replace /requests/1/status on team");
+  }, 30000);
+
+  test("after the deadline the Okafors are offered nothing to answer or choose with: live answer buttons fail the refusal, and a choice the menu cannot make has no control", async () => {
+    const { example: wedding } = await import("../examples/wedding/index");
+    const { stories: told } = await import("../examples/wedding/stories");
+    const closed = told.stories.find((s) => s.name.startsWith("Once the deadline"))!;
+    const maybe = write("household", "replace", "/answer", "maybe");
+    const live: Example = { ...wedding, render: (sessionId) => wedding.render(sessionId).replace(`${maybe} disabled`, maybe) };
+    expect((await run(live, { ...told, stories: [closed] })).outcomes[0]!.failures).toEqual(["okafors's page offers this, and it is refused without a word: a control that always fails"]);
+    const bass = { name: "After the deadline, Femi picks the sea bass", as: "okafors", premise: closed.premise, from: "list?guest=2", does: { doc: "household", ops: [{ op: "replace" as const, path: "/guests/2/choices/2/dish", value: 5 }] }, seen: { okafors: "list" } };
+    const failures = (await run(wedding, { ...told, stories: [bass] })).outcomes[0]!.failures;
+    expect(failures).toContain("okafors has no control on their page for replace /guests/2/choices/2/dish on household");
+  }, 30000);
+
+  test("an applet declaration that is not [doc, op, path] fails the story that meets it, by name, and the run goes on", async () => {
+    const misdeclared: string[] = [];
+    const page = [
+      `<div data-applet="old"${(appletWrites as (...w: unknown[]) => string)(["team", "/draft"])}></div>`, // the form before ops
+      `<div data-applet="single" data-writes='{"doc":"team","path":"/draft"}'></div>`,
+      `<div data-applet="broken" data-writes='[{"doc":"team",'></div>`,
+      `<div data-applet="relative"${appletWrites(["team", "replace", "draft"])}></div>`,
+      `<div data-applet="good"${appletWrites(["team", "replace", "/draft"])}></div>`,
+    ].join("");
+    expect(controlsOn(page, misdeclared)).toEqual([{ doc: "team", op: "replace", path: "/draft", free: true, pattern: true }]);
+    expect(misdeclared).toEqual([
+      'applet declaration must be [doc, op, path]: old says {"doc":"team","op":"/draft"}',
+      'applet declaration must be [doc, op, path]: single says {"doc":"team","path":"/draft"}',
+      'applet declaration must be [doc, op, path]: broken says [{"doc":"team",',
+      'applet declaration must be [doc, op, path]: relative says {"doc":"team","op":"replace","path":"draft"}',
+    ]);
+
+    const { example: leave } = await import("../examples/leave/index");
+    const { stories: told } = await import("../examples/leave/stories");
+    const stale: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replace(/data-writes='[^']*'/, `data-writes='{"doc":"team","path":"/draft"}'`) };
+    const report = await run(stale, { ...told, stories: told.stories.filter((s) => s.name.startsWith("Ann drags across") || s.name.startsWith("Ann cannot move Bo's week")) });
+    expect(report.outcomes.map((o) => o.failures.filter((f) => f.startsWith("applet declaration")))).toEqual([
+      ['applet declaration must be [doc, op, path]: calendar says {"doc":"team","path":"/draft"}'],
+      ['applet declaration must be [doc, op, path]: calendar says {"doc":"team","path":"/draft"}'],
+    ]);
+  }, 30000);
+
   // Delivery, not only pages: chat broken on purpose, three ways its own stories could not see.
   const only = (prefix: string): Story[] => stories.stories.filter((s) => s.name.startsWith(prefix));
   const withRoom = (f: (room: Compartment) => Compartment): Example => ({ ...example, compartments: example.compartments.map((c) => (c.docType === "room" ? f(c) : c)) });
@@ -126,6 +247,12 @@ describe("stories harness", () => {
     expect(failures).toContain("after the story, cy was told of room:general, and should not have been");
     expect(failures).toContain("after undo, eve was told of room:general, and should not have been");
     expect(failures).toContain("after redo, dee was told of room:general, and should not have been");
+  }, 30000);
+
+  test("a tab closing the server does not tell fails its story: nobody still looking sees it", async () => {
+    const deaf: Example = { ...example, compartments: example.compartments.map((c) => ({ ...c, onClose: undefined })) };
+    const failures = await failuresOf(deaf, only("Bob closes his tab"));
+    expect(failures).toEqual(["nothing landed: closing bob's tab changed nothing", "ada did not see it"]);
   }, 30000);
 
   test("a refusal that is really the server failing fails the story, and so does one nobody answers", async () => {
