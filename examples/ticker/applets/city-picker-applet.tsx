@@ -51,7 +51,7 @@ const picker = island<ClockProps>((props, ctx, el) => {
   return (
     <>
       <form onsubmit={submit}>
-        <input type="text" role="combobox" aria-autocomplete="list" aria-controls="city-suggestions" aria-expanded={() => String(showing())} aria-activedescendant={() => (showing() ? option(active.get()) : null)} placeholder={props.map((p) => cityOf(p.tz))} aria-label="Show the time in" autocomplete="off" value={query} oninput={typed} onkeydown={keys} onfocus={() => open.set(true)} onblur={() => open.set(false)} />
+        <input type="text" role="combobox" aria-autocomplete="list" aria-controls="city-suggestions" aria-expanded={() => String(showing())} aria-activedescendant={() => (showing() ? option(active.get()) : null)} placeholder={props.map((p) => cityOf(p.tz))} aria-label="City to show the time in" autocomplete="off" value={query} oninput={typed} onkeydown={keys} onfocus={() => open.set(true)} onblur={() => open.set(false)} />
       </form>
       <ul id="city-suggestions" class="suggestions" role="listbox" aria-label="Cities">
         {list(shown, (z) => z.tz, (z$, i$) => {

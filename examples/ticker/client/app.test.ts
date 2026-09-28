@@ -105,6 +105,7 @@ describe("the ticker in a real browser", () => {
     // the field is a combobox: a reader hears its list open, and which suggestion is highlighted
     const said = `(() => { const i = document.querySelector('#city input'); return [i.getAttribute('role'), i.getAttribute('aria-expanded'), document.getElementById(i.getAttribute('aria-activedescendant'))?.dataset.tz]; })()`;
     expect(await view.evaluate<string[]>(said)).toEqual(["combobox", "true", "Europe/London"]);
+    expect(await view.evaluate<string>(`document.querySelector('#city input').getAttribute('aria-label')`)).toStartWith("City"); // its name holds the label it is shown under
     // the arrow keys move the highlight; Enter takes the highlighted one. (The WebView's press() does
     // not deliver a keydown, so the keys are dispatched as the browser would.)
     const arrow = (key: string) => view.evaluate(`document.querySelector('#city input').dispatchEvent(new KeyboardEvent('keydown', { key: '${key}', bubbles: true, cancelable: true }))`);
