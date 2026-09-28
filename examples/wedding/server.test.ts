@@ -648,9 +648,10 @@ describe("the couple", () => {
     expect(html).toMatch(new RegExp(`class="row tap hushed" id="household-${other.id}"[^>]* hidden>`));
     expect(html).toContain(`class="row tap" id="household-${matching.id}"`);
     expect(html).toMatch(/\d+ asks? waiting/);
-    // the rows run by their answer, said once at the head of each run and not on a row; a run the word misses whole goes with it
-    expect(html).toContain('<h3 class="cap run-head"><span class="answer-word none">');
-    expect(html).toContain('<h3 class="cap run-head hushed" hidden><span class="answer-word yes">'); // the Okafors', and anyone else who said yes
+    // the rows run by their answer, said once at the head of each run and not on a row: each run a group named by its head, so a
+    // screen reader hears the answer entering it; a run the word misses whole goes with it
+    expect(html).toContain('<div class="run" role="group" aria-labelledby="run-none"><h3 class="cap run-head" id="run-none"><span class="answer-word none">');
+    expect(html).toContain('<div class="run" role="group" aria-labelledby="run-yes" hidden><h3 class="cap run-head hushed" id="run-yes"><span class="answer-word yes">'); // the Okafors', and anyone else who said yes
     expect(html).not.toContain('class="state"');
 
     // closing find forgets the word and the eye

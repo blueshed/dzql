@@ -140,7 +140,8 @@ function photoReading(v: BoardView): string {
 }
 
 /** The page read as a list: a household a row, ✎ its drawer, in runs by their answer -- those still to answer first -- each answer
- * said once, at the head of its run, not on every row. A run whose every row find hides goes with them; one it misses dims. */
+ * said once, at the head of its run, not on every row. Each run is a group named by its head, so a screen reader moving through
+ * the rows hears the answer as it enters the run. A run whose every row find hides goes with them; one it misses dims. */
 function householdsList(v: BoardView): string {
   const { word, hide } = findOf(v);
   const family = over(v.session.ui).family;
@@ -150,8 +151,8 @@ function householdsList(v: BoardView): string {
     .map((mark) => {
       const run = v.b.households.filter((h) => answerOf(h) === mark).sort((x, y) => x.code.localeCompare(y.code));
       if (!run.length) return "";
-      const missed = run.filter((h) => !hits(h, word)).length;
-      const head = `<h3 class="cap run-head${missed === run.length ? " hushed" : ""}"${missed === run.length && hide ? " hidden" : ""}>${answerWord(mark)}</h3>`;
+      const missed = run.filter((h) => !hits(h, word)).length === run.length;
+      const head = `<h3 class="cap run-head${missed ? " hushed" : ""}" id="run-${mark}">${answerWord(mark)}</h3>`;
       const items = run.map((h) => {
         const names = h.guests.map((g) => firstNameOf(g.name) + (g.coming === null || isComing(g) ? "" : " (not coming)")).join(", ");
         const waiting = h.asks.filter((a) => a.reply === null).length;
@@ -166,7 +167,7 @@ function householdsList(v: BoardView): string {
           mark: "pencil",
         });
       });
-      return head + rows(items, "");
+      return `<div class="run" role="group" aria-labelledby="run-${mark}"${missed && hide ? " hidden" : ""}>${head}${rows(items, "")}</div>`;
     })
     .join("");
 }

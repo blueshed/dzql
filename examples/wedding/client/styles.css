@@ -98,9 +98,9 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 .photo-page > .reading.photo { flex: 1 1 0; height: auto; min-height: 280px; }
 .photo-page > .rows { margin-top: var(--space-sm); }
 /* the households in runs by their answer: the answer said once, at the head of its run */
-.photo-page > .run-head { margin: var(--space-md) 0 0; }
-.photo-page > .run-head ~ .run-head { margin-top: var(--space-xl); }
-.photo-page > .run-head + .rows { margin-top: var(--space-xs); }
+.photo-page > .run { margin: var(--space-md) 0 0; }
+.photo-page > .run ~ .run { margin-top: var(--space-xl); }
+.run > .run-head { margin: 0 0 var(--space-xs); }
 /* the information a household reads and puts away: the gifts, the day, where to stay */
 .info-drawer .gift { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--space-md); padding: var(--space-md) 0; border-bottom: 1px solid var(--line); }
 .info-drawer .gift:first-child { padding-top: 0; }
