@@ -111,7 +111,7 @@ function renderList() {
 }
 async function show() {
   if (current === "types.ts") {
-    const t = await (await fetch("/types")).json();
+    const t = vocab;
     $("#title").textContent = t.label; $("#at").textContent = t.about;
     $("#error").hidden = !t.findings.length; $("#agrees").hidden = true;
     $("#error").innerHTML = `<b>${t.label} contradicts itself</b><ul>${t.findings.map((u) => `<li>${u}</li>`).join("")}</ul>`;

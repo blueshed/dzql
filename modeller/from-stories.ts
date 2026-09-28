@@ -144,7 +144,7 @@ export function fromStories(stories: Stories): Reading {
       const { write, fields: fs } = readOp(w.doc, op);
       collections.set(write.entity, locate(w.doc, op.path).chain.join("/"));
       const known = fields.get(write.entity) ?? new Map<string, unknown>();
-      for (const [name, value] of fs) if (!known.has(name) || known.get(name) === undefined) known.set(name, value);
+      for (const [name, value] of fs) if (known.get(name) === undefined) known.set(name, value);
       fields.set(write.entity, known);
       return write;
     });

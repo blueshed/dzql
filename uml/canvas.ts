@@ -15,13 +15,13 @@ process.env.LOG_LEVEL ??= "warn";
 
 import { readFileSync } from "node:fs";
 import { readTypes, type WriteDef } from "./check";
+import type { Trace } from "../src/harness";
 
 const dir = import.meta.dir;
 const STORIES = `${dir}/../examples/chat/stories.ts`;
 const { run } = await import("../src/harness");
 const { example } = await import("../examples/chat");
 const { stories } = await import("../examples/chat/stories");
-type Trace = import("../src/harness").Trace;
 type Op = { op: string; path: string; value?: unknown };
 
 const traces: Trace[] = [];
@@ -166,9 +166,9 @@ stories.stories.forEach((s, i) => {
 
 // ── the frame: story heads, sections, lanes ──
 const heads = stories.stories.map((s, i) => {
-  const x = X(i);
+  const x = X(i), name = wrap(s.name, 34);
   return `<g><title>${esc(s.name)}</title><text x="${x - COL / 2 + 10}" y="${TOP - 42}" font-size="10" font-weight="700" fill="#9a978f">${i + 1}</text>`
-    + wrap(s.name, 34).slice(0, 3).map((l, j) => `<text x="${x - COL / 2 + 26}" y="${TOP - 42 + j * 12}" font-size="10" fill="#1e2430">${esc(l)}${j === 2 && wrap(s.name, 34).length > 3 ? "…" : ""}</text>`).join("")
+    + name.slice(0, 3).map((l, j) => `<text x="${x - COL / 2 + 26}" y="${TOP - 42 + j * 12}" font-size="10" fill="#1e2430">${esc(l)}${j === 2 && name.length > 3 ? "…" : ""}</text>`).join("")
     + `<line x1="${x - COL / 2}" y1="${TOP - 56}" x2="${x - COL / 2}" y2="${height - 24}" stroke="#e4e1d8" stroke-dasharray="3 5"/></g>`;
 }).join("");
 const secs = sections.map((sec, k) => `<rect x="${LEFT + sec.from * COL}" y="${TOP - 90}" width="${(sec.to - sec.from) * COL}" height="28" fill="${k % 2 ? "#efece4" : "#f6f3ec"}"/><text x="${LEFT + sec.from * COL + 10}" y="${TOP - 71}" font-size="12.5" font-weight="700" fill="#1e2430">${esc(sec.title)}</text>`).join("");

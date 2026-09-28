@@ -30,6 +30,18 @@ function loadStories() {
 }
 if (await Bun.file(STORIES).exists()) loadStories();
 
+const isSource = (f: string) => /\.(puml|plantuml|pu|uml)$/.test(f);
+const nameOf = (f: string) => f.replace(/\.[^.]+$/, "");
+const sources = async () => (await readdir(SRC)).filter(isSource);
+
+// Editors save in bursts (write, rename, touch): wait for things to settle before acting on them.
+const pending = new Map<string, Timer>();
+function later(key: string, ms: number, act: () => unknown) {
+  clearTimeout(pending.get(key));
+  pending.set(key, setTimeout(() => (pending.delete(key), act()), ms));
+}
+const soon = (file: string) => later(file, 120, () => render(file));
+
 // A model with a canvas.ts draws itself end to end on one canvas (dist/stories.svg): Londons from
 // its agreements, chat from a real run of its stories. It is drawn again whenever a diagram, the
 // vocabulary, the canvas, or a file the canvas says it is drawn from changes; it also gives the
@@ -37,11 +49,9 @@ if (await Bun.file(STORIES).exists()) loadStories();
 const CANVAS = `${dir}/canvas.ts`;
 let order: string[] = [];
 const rank = (name: string) => (order.includes(name) ? order.indexOf(name) : order.length);
-let canvasTimer: Timer | undefined;
 const watching = new Set<string>(); // what else the canvas is drawn from, as it says
 function canvasSoon() {
-  clearTimeout(canvasTimer);
-  canvasTimer = setTimeout(async () => {
+  later("canvas", 250, async () => {
     if (!(await Bun.file(CANVAS).exists())) return;
     const drew = Bun.spawnSync(["bun", CANVAS]);
     // the canvas's report is its last line: a run it makes may log before it
@@ -49,18 +59,18 @@ function canvasSoon() {
     const out = drew.exitCode === 0 && last.startsWith("{") ? JSON.parse(last) : { ok: false, warnings: [], error: drew.stderr.toString().trim().split("\n").slice(-3).join(" ") };
     order = out.order ?? order;
     for (const f of out.watch ?? []) if (!watching.has(f)) { watching.add(f); watch(f, () => canvasSoon()); }
-    const d: Diagram = { name: "stories", ok: out.ok, at: Date.now(), kind: "canvas" as Kind, drift: out.warnings, ...(out.error ? { error: out.error } : {}) };
+    const d: Diagram = { name: "stories", ok: out.ok, at: Date.now(), kind: "canvas", drift: out.warnings, ...(out.error ? { error: out.error } : {}) };
     diagrams.set("stories", d);
     console.log(`${d.ok ? "✓" : "✗"} stories.svg (the canvas)${d.error ? ` — ${d.error}` : ""}${d.drift?.length ? ` — ${d.drift.join("; ")}` : ""}`);
     tell({ type: "changed", diagram: d });
-  }, 250);
+  });
 }
 const cited = new Map<string, Set<number>>();
 const PLANTUML = process.env.PLANTUML_URL ?? `http://localhost:${process.env.PLANTUML_PORT ?? 8089}`;
 const PORT = Number(process.env.PORT ?? 3700);
 const against = stories ? "the stories" : "types.ts";
 
-type Diagram = { name: string; ok: boolean; at: number; error?: string; kind?: Kind; drift?: string[] };
+type Diagram = { name: string; ok: boolean; at: number; error?: string; kind?: Kind | "canvas"; drift?: string[] };
 const diagrams = new Map<string, Diagram>();
 
 // types.ts: every name the diagrams use. Each diagram is checked against it; a change to it
@@ -88,22 +98,25 @@ async function checkOne(name: string, file: string) {
 }
 async function everyChecked() {
   const all = [];
-  for (const f of await readdir(SRC)) if (isSource(f)) all.push(check(nameOf(f), await Bun.file(`${SRC}/${f}`).text(), types));
+  for (const f of await sources()) all.push(check(nameOf(f), await Bun.file(`${SRC}/${f}`).text(), types));
   return all;
 }
 /** Draw again every diagram that links to others. */
 async function redrawLinking() {
-  for (const f of await readdir(SRC)) if (isSource(f) && links(kindOf(await Bun.file(`${SRC}/${f}`).text()))) soon(f);
+  for (const f of await sources()) if (links(kindOf(await Bun.file(`${SRC}/${f}`).text()))) soon(f);
 }
 async function checkAll() {
-  for (const f of await readdir(SRC)) if (isSource(f)) await checkOne(nameOf(f), f);
+  for (const f of await sources()) await checkOne(nameOf(f), f);
   const drifting = [...diagrams.values()].filter((c) => c.drift?.length);
   console.log(drifting.length ? `≠ ${against}: ${drifting.map((c) => `${c.name} (${c.drift!.length})`).join(", ")}` : `= ${against}: every diagram agrees`);
   tell({ type: "checked" });
 }
-
-const isSource = (f: string) => /\.(puml|plantuml|pu|uml)$/.test(f);
-const nameOf = (f: string) => f.replace(/\.[^.]+$/, "");
+/** Everything again: each diagram checked, the canvas, and each drawn again (flavours and links follow the vocabulary). */
+async function recheck() {
+  await checkAll();
+  canvasSoon();
+  for (const f of await sources()) soon(f);
+}
 
 async function render(file: string): Promise<void> {
   const name = nameOf(file);
@@ -140,13 +153,6 @@ async function render(file: string): Promise<void> {
   }
 }
 
-// Editors save in bursts (write, rename, touch): wait for the file to settle before rendering.
-const pending = new Map<string, Timer>();
-function soon(file: string) {
-  clearTimeout(pending.get(file));
-  pending.set(file, setTimeout(() => (pending.delete(file), render(file)), 120));
-}
-
 const server = Bun.serve({
   port: PORT,
   routes: {
@@ -158,8 +164,8 @@ const server = Bun.serve({
     },
     "/src/:name": async (req) => {
       if (req.params.name === "stories" && (await Bun.file(CANVAS).exists())) return new Response(Bun.file(CANVAS), { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
-      const files = (await readdir(SRC)).filter((f) => isSource(f) && nameOf(f) === req.params.name);
-      return files[0] ? new Response(Bun.file(`${SRC}/${files[0]}`), { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } }) : new Response("no such source", { status: 404 });
+      const file = (await sources()).find((f) => nameOf(f) === req.params.name);
+      return file ? new Response(Bun.file(`${SRC}/${file}`), { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } }) : new Response("no such source", { status: 404 });
     },
     "/types": async () => {
       if (stories) {
@@ -179,38 +185,20 @@ const server = Bun.serve({
 function tell(message: object) { server.publish("uml", JSON.stringify(message)); }
 
 await loadTypes();
-for (const f of await readdir(SRC)) if (isSource(f)) await render(f);
+for (const f of await sources()) await render(f);
 await checkAll();
-watch(SRC, (_event, file) => { if (file && isSource(file)) soon(file); });
-let typesTimer: Timer | undefined;
-watch(dir, (_event, file) => {
-  if (file !== "types.ts") return;
-  clearTimeout(typesTimer);
-  typesTimer = setTimeout(async () => {
-    await loadTypes();
-    await checkAll();
-    canvasSoon();
-    for (const f of await readdir(SRC)) if (isSource(f)) soon(f); // flavours and links follow types.ts
-  }, 120);
-});
-
 canvasSoon();
-watch(dir, (_event, file) => { if (file === "canvas.ts") canvasSoon(); });
+watch(SRC, (_event, file) => { if (file && isSource(file)) soon(file); });
+watch(dir, (_event, file) => {
+  if (file === "types.ts") later("types.ts", 120, async () => { await loadTypes(); await recheck(); });
+  if (file === "canvas.ts") canvasSoon();
+});
 
 // stories.ts re-exports the example's stories: watch the file they are told in.
 if (stories) {
   const told = (await Bun.file(STORIES).text()).match(/from\s+"([^"]+)"/)?.[1];
   const file = told ? resolve(dir, told.endsWith(".ts") ? told : `${told}.ts`) : STORIES;
-  let storiesTimer: Timer | undefined;
-  watch(file, () => {
-    clearTimeout(storiesTimer);
-    storiesTimer = setTimeout(async () => {
-      loadStories();
-      await checkAll();
-      canvasSoon();
-      for (const f of await readdir(SRC)) if (isSource(f)) soon(f);
-    }, 120);
-  });
+  watch(file, () => later("stories.ts", 120, () => { loadStories(); return recheck(); }));
 }
 
 console.log(`UML session on ${server.url} — watching ${SRC}, PlantUML at ${PLANTUML}`);

@@ -49,6 +49,19 @@ function members(body: string): string[] {
   return out;
 }
 
+/** An interface's body read as its fields, each with its type: `name: string`, or `"room:<name>": {…}`. */
+function ifaceOf(body: string): Iface {
+  const iface: Iface = { fields: [], types: new Map() };
+  for (const mem of members(body)) {
+    const f = mem.match(/^(?:"([^"]+)"|(\w+))\??\s*:\s*([\s\S]*)$/);
+    if (!f) continue;
+    const key = f[1] ?? f[2]!;
+    iface.fields.push(key);
+    iface.types.set(key, f[3]!.trim());
+  }
+  return iface;
+}
+
 export function readTypes(src: string): Types {
   const text = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   const unions = new Map<string, string[]>();
@@ -65,15 +78,7 @@ export function readTypes(src: string): Types {
       else if (text[i] === "}") depth--;
       i++;
     }
-    const iface: Iface = { fields: [], types: new Map() };
-    for (const mem of members(text.slice(start, i - 1))) {
-      const f = mem.match(/^(?:"([^"]+)"|(\w+))\??\s*:\s*([\s\S]*)$/);
-      if (!f) continue;
-      const key = f[1] ?? f[2]!;
-      iface.fields.push(key);
-      iface.types.set(key, f[3]!.trim());
-    }
-    interfaces.set(m[1]!, iface);
+    interfaces.set(m[1]!, ifaceOf(text.slice(start, i - 1)));
   }
   const documents: Doc[] = [...(interfaces.get("Documents")?.types ?? [])].map(([key, type]) => ({
     key,
@@ -93,14 +98,7 @@ export function readTypes(src: string): Types {
     };
   });
   // each table in Tables is a class too: its columns are the fields of its inline shape
-  for (const [table, type] of interfaces.get("Tables")?.types ?? []) {
-    const cols: Iface = { fields: [], types: new Map() };
-    for (const mem of members(type.replace(/^\{|\}$/g, ""))) {
-      const f = mem.match(/^(\w+)\??\s*:\s*([\s\S]*)$/);
-      if (f) { cols.fields.push(f[1]!); cols.types.set(f[1]!, f[2]!.trim()); }
-    }
-    interfaces.set(table, cols);
-  }
+  for (const [table, type] of interfaces.get("Tables")?.types ?? []) interfaces.set(table, ifaceOf(type.replace(/^\{|\}$/g, "")));
   const reads: ReadDef[] = [...(interfaces.get("Reads")?.types ?? [])].map(([doc, type]) => ({
     doc,
     opens: type.match(/opens:\s*"([^"]+)"/)?.[1] ?? "",
@@ -146,6 +144,7 @@ export function check(name: string, puml: string, t: Types): Checked {
   const uses = new Set<string>(); // what in types.ts this diagram draws, for "not drawn yet"
   const docFor = (docName: string) => t.documents.find((d) => d.match.test(docName));
   const doesList = t.writes.map((w) => w.does).filter(Boolean);
+  const connectionEvents = [...t.unions].filter(([k]) => k.endsWith("Event")).flatMap(([, v]) => v);
 
   /** Is `path` a path in `doc`'s shape? A field, then (through a list of an interface) its element's field. */
   const inShape = (doc: Doc, path: string): string | null => {
@@ -213,7 +212,7 @@ export function check(name: string, puml: string, t: Types): Checked {
       const from = unquote(m[1]!), to = unquote(m[3]!), label = m[4]!.trim();
       const reply = m[2]!.startsWith("--");
       const open = label.match(/^(?:open|close)\s+(\S+)/);
-      const event = actors.has(from) && !reply ? named(label, [...t.unions].filter(([k]) => k.endsWith("Event")).flatMap(([, v]) => v)) : undefined;
+      const event = actors.has(from) && !reply ? named(label, connectionEvents) : undefined;
       const patch = label.match(/^patch\s+(\S+)\s+(add|replace|remove)\s+(\/\S*)/);
       const wrote = label.match(/^(add|replace|remove)\s+(\S+)(?:\s+(\/\S*))?/);
       if (open) {
@@ -267,7 +266,7 @@ export function check(name: string, puml: string, t: Types): Checked {
       const drawn = new Set([...states].map(norm));
       for (const s of union[1]) if (!drawn.has(norm(s))) drift.push(`${union[0]} has "${s}", not drawn`);
     }
-    const eventNames = [...doesList, ...[...t.unions].filter(([k]) => k.endsWith("Event")).flatMap(([, v]) => v)];
+    const eventNames = [...doesList, ...connectionEvents];
     for (const e of events) {
       const hit = named(e, eventNames);
       if (!hit) drift.push(`event "${e}" is not a write in Writes or in a union ending in "Event"`);
