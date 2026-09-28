@@ -97,11 +97,11 @@ describe("the ticker", () => {
     const { html } = await expectMessage(ws, "render");
     expect(html).toContain('data-applet="clock"');
     // an empty board says so once, in its cell's summary: no count of none, no reading of nothing
-    expect(html).toContain('<span class="cell-name">the board</span>');
+    expect(html).toContain('<button type="button" class="cell-name" aria-expanded="false">the board</button>');
     expect(html!.match(/nothing watched/gi)).toHaveLength(1);
     expect(html).not.toContain('id="board"');
     // the market's count is on its head, and not again beneath it
-    expect(html).toContain('<span class="cell-name">the market · 16</span>');
+    expect(html).toContain('<button type="button" class="cell-name" aria-expanded="false">the market · 16</button>');
     expect(html).toContain('<p class="cell-summary">every quote, live</p>');
     ws.close();
   });

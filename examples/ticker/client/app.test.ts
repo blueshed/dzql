@@ -46,7 +46,8 @@ describe("the ticker in a real browser", () => {
     await view.evaluate(`document.querySelector('.cell[data-key="board"]').click()`);
     await waitFor(view, `document.querySelector('.cell.open [aria-label="Watch a symbol"]') !== null`, (v) => v === true);
     await view.evaluate(`document.querySelector('.cell.open [aria-label="Watch a symbol"]').click()`);
-    await waitFor(view, `document.querySelector('input[name=symbol]') !== null`, (v) => v === true);
+    // the ask is a choice of the symbols the board lacks (n68): a select, sized as a field is
+    await waitFor(view, `document.querySelector('select[name=symbol]') !== null`, (v) => v === true);
     expect(await view.evaluate<string[]>(FIELDS)).toEqual(["symbol 16px"]);
   });
 
@@ -105,7 +106,7 @@ describe("the ticker in a real browser", () => {
     const seen = await view.evaluate<string>(line);
     await view.evaluate(`document.getElementById('quote-FXTR').click()`);
     await waitFor(view, `document.querySelector('.drawer h2')?.textContent ?? null`, (v) => v === "FXTR");
-    expect(await view.evaluate<string>(`document.getElementById('quote-FXTR').getAttribute('aria-pressed')`)).toBe("true");
+    expect(await view.evaluate<string>(`document.getElementById('quote-FXTR').getAttribute('aria-expanded')`)).toBe("true");
     expect(await view.evaluate<string>(line)).toBe(seen); // the same applet, the ticks it has seen kept
 
     // the clock is a thing: its drawer holds the city picker. "lon" puts London first, ahead of
