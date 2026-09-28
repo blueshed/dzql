@@ -2,7 +2,7 @@ import { afterAll, expect, setSystemTime, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { costs, differing, gzipped, item, measure, received, rewritten, said, size, type Run } from "./costs";
+import { costs, differing, gzipped, item, measure, received, rewritten, said, size, tap, type Heard, type Run } from "./costs";
 
 // Every number the README quotes is a run's (src/costs.ts): what one write sends everyone else,
 // the client's size, the stories. A change that moves one fails here until `bun run costs` writes
@@ -36,14 +36,71 @@ test("run as the script, a run says the same whatever is set: REVEAL, which name
   expect(await check({ REVEAL: "1" })).toEqual({ said: "", code: 0 });
 }, 60_000);
 
-test("what one page was sent, in words: its sizes, the patches and the HTML; a message of another kind is not described but refused", () => {
+test("what one page was sent, in words, as it crossed the wire: its sizes, the patches and the HTML, and what they were before compression; a message of another kind is not described but refused", () => {
   expect([size(1023), size(1024), size(1280)]).toEqual(["1023\u00a0B", "1.0\u00a0KB", "1.3\u00a0KB"]);
-  const words = (heard: { type: string; bytes: number }[]) => received({ who: "each viewer", heard }).replaceAll("\u00a0", " ");
-  expect(words([{ type: "patch", bytes: 345 }, { type: "render", bytes: 844 }])).toBe("1.2 KB to each viewer (a 345 B patch and 844 B of HTML)");
-  expect(words([{ type: "patch", bytes: 200 }])).toBe("200 B to each viewer (one patch and no HTML)");
-  expect(words([{ type: "patch", bytes: 200 }, { type: "patch", bytes: 100 }, { type: "patch", bytes: 64 }])).toBe("364 B to each viewer (patches of 200 B, 100 B and 64 B, and no HTML)");
-  expect(words([{ type: "render", bytes: 900 }])).toBe("900 B to each viewer (no patch and 900 B of HTML)");
-  expect(() => words([{ type: "patch", bytes: 1 }, { type: "welcome", bytes: 9 }])).toThrow("each viewer was sent a welcome, which the README does not describe");
+  const words = (heard: Heard[]) => received({ who: "each viewer", heard }).replaceAll("\u00a0", " ");
+  expect(words([{ type: "patch", bytes: 345, sent: 210 }, { type: "render", bytes: 844, sent: 308 }])).toBe("518 B, compressed from 1.2 KB, to each viewer (a 210 B patch and 308 B of HTML)");
+  expect(words([{ type: "patch", bytes: 300, sent: 218 }])).toBe("218 B, compressed from 300 B, to each viewer (one patch and no HTML)");
+  expect(words([{ type: "patch", bytes: 200, sent: 150 }, { type: "patch", bytes: 100, sent: 80 }, { type: "patch", bytes: 64, sent: 60 }])).toBe("290 B, compressed from 364 B, to each viewer (patches of 150 B, 80 B and 60 B, and no HTML)");
+  expect(words([{ type: "render", bytes: 900, sent: 300 }])).toBe("300 B, compressed from 900 B, to each viewer (no patch and 300 B of HTML)");
+  expect(() => words([{ type: "patch", bytes: 1, sent: 1 }, { type: "welcome", bytes: 9, sent: 9 }])).toThrow("each viewer was sent a welcome, which the README does not describe");
+});
+
+test("each size the words say is said through `say`, in the order they say them: a run keeps them, to hold the README's within 3%", () => {
+  for (const heard of [
+    [{ type: "patch", bytes: 345, sent: 210 }, { type: "render", bytes: 844, sent: 308 }],
+    [{ type: "patch", bytes: 300, sent: 218 }],
+    [{ type: "patch", bytes: 200, sent: 150 }, { type: "patch", bytes: 100, sent: 80 }, { type: "render", bytes: 2000, sent: 400 }],
+    [{ type: "render", bytes: 900, sent: 300 }],
+  ]) {
+    const kept: number[] = [];
+    const words = received({ who: "each viewer", heard }, (bytes) => (kept.push(bytes), size(bytes))).replaceAll("\u00a0", " ");
+    expect([...words.matchAll(/(\d+(?:\.\d+)?) (K?B)\b/g)].map((m) => m[0])).toEqual(kept.map((bytes) => size(bytes).replaceAll("\u00a0", " ")));
+  }
+});
+
+test("a tap sees what crosses the wire: each text frame a session is sent, as sent -- compressed or not, whatever form its length takes, however the reads fall -- and nothing else", async () => {
+  const hex = (n: number) => Buffer.from(crypto.getRandomValues(new Uint8Array(n / 2))).toString("hex"); // does not compress
+  const small = JSON.stringify({ type: "small", text: "x".repeat(5000) }); // compressed to a few bytes: a length in the one byte
+  const medium = JSON.stringify({ type: "medium", text: hex(1000) }); // as it is: a length in two bytes
+  const large = JSON.stringify({ type: "large", text: hex(70_000) }); // as it is: a length in eight bytes, over several reads
+  const server = Bun.serve({
+    port: 0,
+    fetch: (req, server) => (server.upgrade(req) ? undefined : new Response("no", { status: 400 })),
+    websocket: {
+      perMessageDeflate: true,
+      open(ws) {
+        ws.send(small, true);
+        ws.send(medium, false);
+        ws.send(new Uint8Array([1, 2, 3])); // not text: not counted
+        ws.send(large, false);
+        ws.send(JSON.stringify({ type: "answer" }), true);
+      },
+      message() {},
+    },
+  });
+  const wire = await tap(Number(server.port));
+  try {
+    // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
+    const ws: WebSocket = new WebSocket(wire.url, { headers: { Cookie: "theme=dark; session_id=s1" } });
+    const raws: string[] = [];
+    await new Promise<void>((answered) =>
+      ws.addEventListener("message", ({ data }) => {
+        if (typeof data !== "string") return;
+        if (JSON.parse(data).type === "answer") answered();
+        else raws.push(data);
+      }),
+    );
+    ws.close();
+    const heard = wire.heard("s1", raws);
+    expect(heard.map((h) => [h.type, h.bytes])).toEqual([small, medium, large].map((m) => [JSON.parse(m).type, m.length]));
+    expect(heard[0]!.sent).toBeLessThan(126);
+    expect(heard.slice(1).map((h) => h.sent)).toEqual([medium.length, large.length]);
+    expect(() => wire.heard("nobody", ['{"type":"small"}'])).toThrow("the wire carried 0 messages to nobody before its last, not 1");
+  } finally {
+    wire.close();
+    server.stop(true);
+  }
 });
 
 test("a list item is wrapped as the README is: a line is at most 100 wide, and the next goes on under the first word", () => {
@@ -56,19 +113,22 @@ test("a list item is wrapped as the README is: a line is at most 100 wide, and t
   expect(lines.join(" ").replace(/^- /, "").replace(/\s+/g, " ")).toBe(text);
 });
 
-test("the README says what a run does word for word, however its lines fall; a built bundle's size stands within 3%", () => {
-  const now: Run = { found: new Map([["client", "3.5 KB"], ["stories", "11 in chat and 50 in wedding"], ["writes", "- **Chat**: 1.2 KB"]]), built: new Map([["client", [3584]]]) };
+test("the README says what a run does word for word, however its lines fall; a size that moves from run to run, a bundle's or a compressed message's, stands within 3%", () => {
+  const now: Run = { found: new Map([["client", "3.5 KB"], ["stories", "11 in chat and 50 in wedding"], ["writes", "- **Chat**: 1.2 KB"]]), near: new Map([["client", [3584]]]) };
   const says = (client: string, extra: [string, string][] = []) => new Map([["client", client], ["stories", "11 in chat\n  and 50 in wedding"], ["writes", "- **Chat**: 1.2 KB"], ...extra]);
   expect(differing(says("3.5 KB"), now)).toEqual([]);
   expect(differing(says("3.6 KB"), now)).toEqual([]); // 3686 B, within 3% of 3584
   expect(differing(says("3.7 KB"), now)).toEqual(["client"]); // 3789 B is not
+  const small: Run = { found: new Map([["writes", "518 B, compressed from 1.2 KB"]]), near: new Map([["writes", [518, 1189]]]) };
+  expect(differing(new Map([["writes", "517 B, compressed from 1.2 KB"]]), small)).toEqual([]); // 1.2 KB says 1229 B, 3.4% from 1189 B: within 3% once its rounding is allowed for
+  expect(differing(new Map([["writes", "517 B, compressed from 1.3 KB"]]), small)).toEqual(["writes"]);
   expect(differing(says("about 3.5 KB"), now)).toEqual(["client"]); // the words around a size are held to the word
   expect(differing(says("3.5 KB", [["gone", "1"]]), now)).toEqual(["gone"]); // a mark no run measures
   expect(differing(new Map([["client", "3.5 KB"], ["stories", "11 in chat"]]), now)).toEqual(["stories", "writes"]); // a mismeasured story count is held to the word; a number with no mark differs too
 });
 
 test("writing: each mark that differs is written as the run found it, and nothing else; a number with no mark to go in is an error", () => {
-  const now: Run = { found: new Map([["client", "3.5 KB"], ["stories", "11 in chat"]]), built: new Map() };
+  const now: Run = { found: new Map([["client", "3.5 KB"], ["stories", "11 in chat"]]), near: new Map() };
   const readme = "The client is <!-- measured:client -->3.0 KB<!-- /measured -->; the stories <!-- measured:stories -->11 in chat<!-- /measured -->.";
   expect([...said(readme)]).toEqual([["client", "3.0 KB"], ["stories", "11 in chat"]]);
   expect(rewritten(readme, now, ["client"])).toBe("The client is <!-- measured:client -->3.5 KB<!-- /measured -->; the stories <!-- measured:stories -->11 in chat<!-- /measured -->.");
@@ -78,7 +138,7 @@ test("writing: each mark that differs is written as the run found it, and nothin
 
 test("`bun run costs` writes what a run finds into the README, and says so; `--check` writes nothing, says each difference, and fails", async () => {
   const readme = join(dir, "README.md");
-  const now = async (): Promise<Run> => ({ found: new Map([["client", "3.5 KB"], ["stories", "11 in chat"]]), built: new Map([["client", [3584]]]) });
+  const now = async (): Promise<Run> => ({ found: new Map([["client", "3.5 KB"], ["stories", "11 in chat"]]), near: new Map([["client", [3584]]]) });
   const stale = "The client is <!-- measured:client -->3.0 KB<!-- /measured -->; the stories <!-- measured:stories -->11 in chat<!-- /measured -->.";
   await Bun.write(readme, stale);
 

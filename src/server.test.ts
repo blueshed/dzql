@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
+import { connect as tcp } from "node:net";
+import { inflateRawSync } from "node:zlib";
 import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
@@ -210,6 +212,34 @@ describe("createServer, generically (no example from the examples directory invo
   test("a non-upgrade request to /ws is rejected", async () => {
     const res = await fetch(new URL("/ws", server.url));
     expect(res.status).toBe(400);
+  });
+
+  test("a page crosses the wire compressed to a socket that offers it, as every browser does, each message on its own; as it is to one that does not", async () => {
+    /** A socket opened by hand, offering permessage-deflate or not: the extension the answer names, and the first frame, a page. */
+    async function opening(offer: boolean): Promise<{ extension: string | undefined; compressed: boolean; message: unknown }> {
+      const socket = tcp(Number(server.port), "127.0.0.1");
+      socket.write(
+        "GET /ws HTTP/1.1\r\nHost: 127.0.0.1\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n" +
+          (offer ? "Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits\r\n" : "") + "\r\n",
+      );
+      let got = Buffer.alloc(0);
+      let end = -1;
+      for await (const chunk of socket) {
+        got = Buffer.concat([got, chunk as Buffer]);
+        end = got.indexOf("\r\n\r\n");
+        if (end >= 0 && got.length >= end + 6 && got.length >= end + 6 + (got[end + 5]! & 0x7f)) break;
+      }
+      socket.destroy();
+      const [answer, frame] = [got.subarray(0, end).toString("latin1"), got.subarray(end + 4)];
+      expect(frame[1]! & 0x7f).toBeLessThan(126); // a short page, its length in the one byte
+      const payload = frame.subarray(2, 2 + (frame[1]! & 0x7f));
+      const compressed = (frame[0]! & 0x40) !== 0; // RSV1: this message is compressed
+      const text = compressed ? inflateRawSync(Buffer.concat([payload, Buffer.from([0, 0, 0xff, 0xff])])) : payload;
+      return { extension: /^sec-websocket-extensions: (.*)$/im.exec(answer)?.[1], compressed, message: JSON.parse(text.toString("utf8")) };
+    }
+    const page = { type: "render", html: '<p class="note"></p>', wire: WIRE };
+    expect(await opening(true)).toEqual({ extension: "permessage-deflate; client_no_context_takeover; server_no_context_takeover", compressed: true, message: page });
+    expect(await opening(false)).toEqual({ extension: undefined, compressed: false, message: page });
   });
 
   test("a write over the websocket is permitted, applied, echoed, and rendered -- then undo walks it back", async () => {

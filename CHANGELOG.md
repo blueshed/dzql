@@ -173,6 +173,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The socket is compressed** (`src/server.ts`, todo n79). The server takes permessage-deflate,
+  which every browser offers, and compresses each message on its own (Bun's shared compressor, so
+  no memory is kept per connection); the client needed nothing. A first page crosses at a sixth to
+  a quarter of its size (chat's room 12.9 KB to 2.0 KB, the couple's photo 12.7 KB to 2.1 KB, the
+  ticker's board 5.1 KB to 1.2 KB; japan-eta's 178 KB trip page gzips to about 19 KB), and what a
+  write sends each other page at a sixth to four fifths of what it was, a lone patch gaining least
+  (chat's 1.2 KB to 518 B). It costs CPU for each page a message goes to: about 2 µs a KB up to
+  20 KB (a patch 5 µs, a 13 KB page 25 µs), and about 9 µs a KB past 32 KB (a 178 KB page 1.6 ms,
+  where raw is 30 µs). The README's costs are now what crosses the wire, with what it was before
+  compression: a measure goes through a `tap` (`src/costs.ts`) that counts each frame as sent. A
+  compressed size moves a byte or two with the random ids it carries, so the README's is held
+  within 3% of a run's, as a bundle's is (`Run.built` is `Run.near`).
 - **leave's Previous and Next move a month, not three.** Three at a time from this month, a
   person could never get to most months: in September, October and November were only ever on
   the page as this month's, and no control led to `2026-10` or `2026-11`, where the stories stand

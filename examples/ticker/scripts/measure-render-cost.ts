@@ -1,23 +1,26 @@
-// Measures what one tick costs on the wire for each connected viewer, against the same tick as
-// a bare data feed. Not a test -- a report. Run with
+// Measures what one tick costs on the wire for each connected viewer, as it is and as it crosses
+// the wire, compressed (a `tap` in front of the server sees it), against the same tick as a bare
+// data feed. Not a test -- a report. Run with
 // `DB_PATH=:memory: TICK_MS=0 bun examples/ticker/scripts/measure-render-cost.ts`
 // (TICK_MS=0 keeps the feed quiet so only the measured tick is counted); with `--json`, what the
 // README says (src/costs.ts, `bun run costs`).
-import type { Measured } from "../../../src/costs";
+import { tap, type Measured } from "../../../src/costs";
 import { createServer } from "../../../src/server";
 import { example } from "../index";
 
 const VIEWERS = 5;
 const server = createServer(example, 0);
+const wire = await tap(server.port!); // what crosses it, as sent: every socket goes through it
+const sessions = new WeakMap<WebSocket, string>();
 
 const queues = new WeakMap<WebSocket, string[]>();
 const waiters = new WeakMap<WebSocket, ((raw: string) => void)[]>();
 
 function connect(): WebSocket {
-  const url = new URL("/ws", server.url);
-  url.protocol = "ws:";
+  const session = crypto.randomUUID();
   // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-  const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${crypto.randomUUID()}` } });
+  const ws: WebSocket = new WebSocket(wire.url, { headers: { Cookie: `session_id=${session}` } });
+  sessions.set(ws, session);
   const queue: string[] = [];
   const pending: ((raw: string) => void)[] = [];
   queues.set(ws, queue);
@@ -63,15 +66,15 @@ for (const ws of viewers) await heard(ws); // what one viewer's watching sent th
 const [sender, ...others] = viewers;
 sender!.send(JSON.stringify({ doc: "ticker", ops: [{ op: "replace", path: "/ALPH/price", value: 190.11 }] }));
 const own = await heard(sender!); // once the sender is answered, every other viewer has been sent theirs
-const incoming = await Promise.all(others.map(heard));
+const incoming = await Promise.all(others.map(async (ws) => [await heard(ws), ws] as const));
 
 const bytes = (raws: string[]) => raws.reduce((n, raw) => n + Buffer.byteLength(raw, "utf8"), 0);
 const kinds = (raws: string[]) => raws.map((raw) => JSON.parse(raw).type).join(" + ") || "nothing";
-const sizes = (raws: string[]) => raws.map((raw) => ({ type: JSON.parse(raw).type as string, bytes: Buffer.byteLength(raw, "utf8") }));
 const feed = JSON.stringify({ s: "ALPH", p: 190.11, t: Date.now() });
 
+const sizes = ([raws, ws]: (typeof incoming)[number]) => wire.heard(sessions.get(ws)!, raws);
 const each = sizes(incoming[0]!);
-if (incoming.some((raws) => JSON.stringify(sizes(raws)) !== JSON.stringify(each))) throw new Error("the other viewers were not all sent the same");
+if (incoming.some((heard) => JSON.stringify(sizes(heard)) !== JSON.stringify(each))) throw new Error("the other viewers were not all sent the same");
 const measured: Measured = {
   name: "The ticker",
   what: `one price tick with ${VIEWERS} viewers watching its symbol`,
@@ -81,10 +84,12 @@ const measured: Measured = {
 if (process.argv.includes("--json")) console.log(JSON.stringify(measured));
 else {
   console.log(`One tick, ${VIEWERS} viewers watching the symbol. Bytes sent to:`);
-  console.log(`  the sender:            ${String(bytes(own)).padStart(5)} B  ${kinds(own)}`);
-  for (const raws of incoming) console.log(`  another viewer:        ${String(bytes(raws)).padStart(5)} B  ${kinds(raws)}`);
+  const onWire = (heard: (typeof incoming)[number]) => `${sizes(heard).reduce((n, m) => n + m.sent, 0)} B on the wire`;
+  console.log(`  the sender:            ${String(bytes(own)).padStart(5)} B  ${kinds(own)}, ${onWire([own, sender!])}`);
+  for (const heard of incoming) console.log(`  another viewer:        ${String(bytes(heard[0])).padStart(5)} B  ${kinds(heard[0])}, ${onWire(heard)}`);
   console.log(`  (the same tick as a bare JSON feed: ${Buffer.byteLength(feed, "utf8")} B)`);
 }
 
 for (const ws of viewers) ws.close();
 server.stop(true);
+wire.close();
