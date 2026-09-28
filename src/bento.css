@@ -73,7 +73,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 
 /* ── where am I: the trail, and the page's tools beside it on the box ── */
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); margin: 0 var(--space-lg) var(--space-lg); min-height: var(--control); }
-.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; row-gap: calc(var(--touch) - 1lh); } /* a trail that wraps keeps its lines a touch apart, so no crumb's press area lies over another's */
 .crumbs .crumb { display: inline-flex; align-items: center; }
 .crumbs .sep { display: inline-flex; align-items: center; justify-content: center; width: 22px; color: var(--muted); }
 .crumbs a { position: relative; color: var(--accent); text-decoration: none; }

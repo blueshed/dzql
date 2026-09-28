@@ -194,7 +194,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A phone may zoom, and does not have to** (todo n60, the rest). iOS zooms into a field under
   16px: find's was 14px, the ticker's and chat's 15px; every field is 16px now. The wedding's
   viewport said `maximum-scale=1`, so the reader could not zoom at all; it no longer does. A way
-  back on the trail was 16px tall where it is pressed; it is `--touch` each way, drawn as it was.
+  back on the trail was 16px tall where it is pressed; it is `--touch` each way, drawn as it was,
+  and a trail that wraps keeps its lines a touch apart, so one crumb's press never lands on the next.
   And find's field kept its own width in the bar under the trail, which at 320 pushed the eye out
   of it; the field now takes what the tally and the eye leave.
 - **Find's eye and the window's way back are pressed over a touch** (todo n48). Both are drawn

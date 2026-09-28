@@ -347,6 +347,28 @@ describe("the surfaces in a browser", () => {
     });
   }
 
+  /** Presses over each element's press area (--touch each way, or itself where it is bigger) that land on another control. */
+  const pressesElsewhere = (view: Bun.WebView, selector: string) =>
+    view.evaluate<string[]>(`[...document.querySelectorAll(${JSON.stringify(selector)})].flatMap((el) => {
+      const r = el.getBoundingClientRect(), touch = parseFloat(${touch}), x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const hw = Math.max(r.width, touch) / 2 - 1, hh = Math.max(r.height, touch) / 2 - 1, out = [];
+      for (const dx of [-hw, -hw / 2, 0, hw / 2, hw]) for (const dy of [-hh, -hh / 2, 0, hh / 2, hh]) {
+        const hit = document.elementFromPoint(x + dx, y + dy)?.closest('a, button, input');
+        if (hit && hit !== el && !el.contains(hit)) out.push(el.textContent.trim() + ' at ' + Math.round(dx) + ',' + Math.round(dy) + ' is ' + hit.textContent.trim());
+      }
+      return out;
+    })`);
+
+  for (const width of [320, 375]) {
+    test(`${width} wide, a trail that wraps: each way back is pressed over a touch, and a press on one never lands on another`, async () => {
+      const trail = [{ label: "Rowena & Dashiell", back: go("a") }, { label: "The Okafors", back: go("b") }, { label: "Where to stay", back: go("c") }, { label: "the market" }];
+      await using view = await show(b.boxPage(trail, [], [b.cell({ name: "market", opens: go("market") })]), width);
+      expect(await view.evaluate<number>(`new Set([...document.querySelectorAll('.crumbs a, .crumbs b')].map((e) => Math.round(e.getBoundingClientRect().top))).size`)).toBeGreaterThan(1); // it wraps
+      expect(await pressesElsewhere(view, ".crumbs a")).toEqual([]);
+      expect(await pressesAround(view, ".crumbs a", touch)).toEqual([]);
+    });
+  }
+
   for (const width of [375, 1280]) {
     test(`${width} wide: find's eye and a way back in the window are drawn 26px, and pressed over a touch`, async () => {
       const cells = [b.cell({ name: "market", opens: go("market") })];
