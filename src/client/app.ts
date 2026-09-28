@@ -574,12 +574,11 @@ function editingChange(form: HTMLFormElement): { doc: string; ops: PatchOp[] } |
   return doc && ops.length > 0 ? { doc, ops } : undefined;
 }
 
-function onEditTrigger(event: Event, trigger: "blur" | "change") {
+/** The editing form of the field `event` is from, if it commits on `trigger`. */
+function editing(event: Event, trigger: "blur" | "change" | "input"): HTMLFormElement | undefined {
   const field = event.target;
-  if (!(field instanceof HTMLElement) || !field.matches("[data-write]")) return;
-  const form = field.closest("form");
-  if (!form || form.dataset.writeOn !== trigger) return;
-  commitEdit(form);
+  const form = field instanceof HTMLElement && field.matches("[data-write]") ? field.closest("form") : null;
+  return form?.dataset.writeOn === trigger ? form : undefined;
 }
 
 const INPUT_DEBOUNCE_MS = 150;
@@ -606,34 +605,14 @@ function commitEdit(form: HTMLFormElement) {
  */
 function commitFocused() {
   const form = document.activeElement instanceof HTMLElement ? document.activeElement.closest("form") : null;
-  if (!form?.dataset.writeOn || !app.contains(form)) return;
+  if (form?.dataset.writeOn && app.contains(form)) commitNow(form);
+}
+
+/** Commits what a form holds now, in place of the commit its typing was waiting to make. */
+function commitNow(form: HTMLFormElement) {
   clearTimeout(inputTimers.get(form));
   inputTimers.delete(form);
   commitEdit(form);
-}
-
-function flushInputEdit(form: HTMLFormElement) {
-  const timer = inputTimers.get(form);
-  if (timer === undefined) return;
-  clearTimeout(timer);
-  inputTimers.delete(form);
-  commitEdit(form);
-}
-
-function onInput(event: Event) {
-  const field = event.target;
-  if (!(field instanceof HTMLElement) || !field.matches("[data-write]")) return;
-  const form = field.closest("form");
-  if (!form || form.dataset.writeOn !== "input") return;
-  const existing = inputTimers.get(form);
-  if (existing !== undefined) clearTimeout(existing);
-  inputTimers.set(
-    form,
-    setTimeout(() => {
-      inputTimers.delete(form);
-      commitEdit(form);
-    }, INPUT_DEBOUNCE_MS),
-  );
 }
 
 // `focusout` (bubbles), not `blur` (doesn't): the field-losing-focus trigger, for text-like
@@ -642,13 +621,22 @@ function onInput(event: Event) {
 // "input" form also flushes any pending debounced write here, rather than waiting the debounce
 // out once the person has already moved on.
 app.addEventListener("focusout", (event) => {
-  onEditTrigger(event, "blur");
+  const blurred = editing(event, "blur");
+  if (blurred) commitEdit(blurred);
   const field = event.target;
   const form = field instanceof HTMLElement ? field.closest("form") : null;
-  if (form?.dataset.writeOn === "input") flushInputEdit(form);
+  if (form?.dataset.writeOn === "input" && inputTimers.has(form)) commitNow(form);
 });
-app.addEventListener("change", (event) => onEditTrigger(event, "change"));
-app.addEventListener("input", onInput);
+app.addEventListener("change", (event) => {
+  const form = editing(event, "change");
+  if (form) commitEdit(form);
+});
+app.addEventListener("input", (event) => {
+  const form = editing(event, "input");
+  if (!form) return;
+  clearTimeout(inputTimers.get(form));
+  inputTimers.set(form, setTimeout(() => commitNow(form), INPUT_DEBOUNCE_MS));
+});
 
 // A page from another release than its server's -- a tab open over a deploy, or one rolled back --
 // is loaded again, so page and server speak one wire (src/json-patch.ts WIRE). Not twice in
