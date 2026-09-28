@@ -80,7 +80,8 @@ One word, one meaning. Two used to have two, so they were renamed:
 - A page is sent in parts: after a write, each page that read the document gets only the parts of
   it that changed (`part(key, html)`, src/parts.ts), worked out by comparing, never hand-written; the
   whole page goes only when it is a different page.
-- No client-side domain state beyond the small op-log in `window.eta.docs()`.
+- No client-side domain state beyond the small op-log in `window.eta.docs()`, and the document a
+  watching applet holds (`appletProps(props, { doc, under })`), patched as delta sends it.
 - A write from the wire is permitted, then shaped (the compartment's `shape`: the wire's ops as
   the document takes them), then written through delta as the person, with the session as the
   cursor undo walks. Delta applies it and its ledger entry in one transaction; every change is
