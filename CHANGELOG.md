@@ -198,7 +198,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a tick not yet drawn (a radio's by its value, while its group offers it) and otherwise shows
   what is drawn, with the caret in it or not. A render drawn while someone is pressing a box
   leaves its tick be until the click lands: it used to tick it first, so the click unticked it
-  and sent that, undoing whoever had ticked it.
+  and sent that, undoing whoever had ticked it. A group of radios may span parts: a render in
+  parts keeps its choice across all its ops, a radio put in drawn ticked or a part swapped for
+  another tag included.
 - **A part inside an `<svg>` comes back as SVG** (`src/client/morph.ts`, todo n77). A render in
   parts parsed a part's HTML in a `<template>`, as HTML, so a part rooted inside an `<svg>` (a
   `<g>`, a `<path>`) was replaced by an HTML element of that name, and drew nothing; a `tag` op

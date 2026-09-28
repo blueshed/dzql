@@ -818,6 +818,23 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<unknown[]>(`window.__sent.map((s) => s.ops[0].value)`)).toEqual([{ title: "Fushimi", booked: false }, { title: "Inari", booked: true }]);
   });
 
+  test("a choice not yet sent survives a render in parts around it: a radio put in drawn ticked, or a part of its group swapped for another tag", async () => {
+    await using view = await open();
+    const row = (k: string, drawn: boolean) => `<li data-eta-part="r-${k}"><input type="radio" name="kind" id="kind-${k}" value="${k}"${drawn ? " checked" : ""}></li>`;
+    await pushRender(view, `<form id="f"><ul data-eta-part="list">${row("see", true)}${row("eat", false)}</ul></form>`);
+    await waitFor(view, `document.getElementById('kind-eat') !== null`, (v) => v === true);
+    await view.click("#kind-eat");
+    await push(view, { type: "render", ops: [{ op: "after", target: '[data-eta-part="r-eat"]', html: row("travel", true) }] }); // someone else chose travel, a new one
+    const chosen = `document.querySelector('[name=kind]:checked')?.value`;
+    expect(await view.evaluate<string>(chosen)).toBe("eat");
+
+    const a = (tag: string) => `<${tag} data-eta-part="a">${["see", "eat"].map((k) => `<input type="radio" form="f" name="kind" id="kind-${k}" value="${k}"${k === "see" ? " checked" : ""}>`).join("")}</${tag}>`;
+    await pushRender(view, `<form id="f"></form>${a("div")}<div data-eta-part="b"><input type="radio" form="f" name="kind" id="kind-travel" value="travel"></div>`);
+    await view.click("#kind-travel");
+    await push(view, { type: "render", ops: [{ op: "replace", target: '[data-eta-part="a"]', html: a("fieldset") }] });
+    expect(await view.evaluate<string>(chosen)).toBe("travel");
+  });
+
   test("a refused write hands back what was ticked, as it does what was typed, and keeps a choice made while it was on its way", async () => {
     await using view = await open();
     await stubSend(view);

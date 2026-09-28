@@ -2,7 +2,7 @@ import { applets } from "../applets";
 import type { PatchOp } from "../json-patch";
 import { formValue, groupOf, held, type Field } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
-import { drawnOption, morph, morphElement, morphTag, removeNode } from "./morph";
+import { drawnOption, keepingChoices, morph, morphElement, morphTag, removeNode } from "./morph";
 
 const RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 10_000;
@@ -206,25 +206,28 @@ function render(html: string) {
 
 // The page in parts: what changed since the last drawing, in HTML's terms (src/parts.ts). Each op
 // names a part; a target the page no longer has is skipped -- the next full render puts things
-// right, as it would after a reconnect. Afterwards, the same care as a whole render.
+// right, as it would after a reconnect. The ops keep a choice not yet drawn as one render does,
+// since a group of radios may span parts. Afterwards, the same care as a whole render.
 function applyFragments(ops: HtmlOp[]) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
   const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
 
-  for (const op of ops) {
-    const target = app.querySelector(op.target);
-    // what is inside an applet is the applet's, as it is to the morph: its own element may be a part, nothing in it
-    if (!target || target.parentElement?.closest("[data-applet]")) continue;
-    if (op.op === "replace") {
-      morphElement(target, op.html, hooks);
-    } else if (op.op === "tag") {
-      morphTag(target, op.html, hooks);
-    } else if (op.op === "remove") {
-      removeNode(target, hooks);
-    } else {
-      target.insertAdjacentHTML(op.op === "after" ? "afterend" : "beforebegin", op.html);
+  keepingChoices(() => {
+    for (const op of ops) {
+      const target = app.querySelector(op.target);
+      // what is inside an applet is the applet's, as it is to the morph: its own element may be a part, nothing in it
+      if (!target || target.parentElement?.closest("[data-applet]")) continue;
+      if (op.op === "replace") {
+        morphElement(target, op.html, hooks);
+      } else if (op.op === "tag") {
+        morphTag(target, op.html, hooks);
+      } else if (op.op === "remove") {
+        removeNode(target, hooks);
+      } else {
+        target.insertAdjacentHTML(op.op === "after" ? "afterend" : "beforebegin", op.html);
+      }
     }
-  }
+  });
   settle(before);
   syncPage();
   revealChanged(previousReveal);

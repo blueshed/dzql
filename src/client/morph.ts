@@ -82,9 +82,10 @@ export const radiosOf = (form: HTMLFormElement | null, name: string): HTMLInputE
  * Runs a render, then shows each group of radios the choice someone made in it and has not yet seen
  * drawn -- by its value, wherever the radios moved, while the group still offers it -- or else what
  * the group is drawn showing: a select's rule (showChosen), for a group. Neither browser does this:
- * the morph reuses a radio by its place, and a radio drawn ticked takes the tick from its group.
+ * the morph reuses a radio by its place, and a radio drawn ticked takes the tick from its group. A
+ * group may span parts, so a render in parts runs whole inside one (app.ts), every op of it.
  */
-function keepingChoices(render: () => void): void {
+export function keepingChoices(render: () => void): void {
   const chosen = [...document.querySelectorAll<HTMLInputElement>("input[type=radio]:checked:not([checked])")].filter((r) => r.name !== "");
   const choices = chosen.map((r) => ({ form: r.form, name: r.name, value: r.value }));
   render();
@@ -223,7 +224,7 @@ export function morphTag(old: Element, tag: string, hooks: MorphHooks = {}): voi
   const next = parsedFor(old, tag);
   if (!next) return;
   if (isApplet(old)) morphApplet(old, next, hooks);
-  else keepingChoices(() => morphAttributes(old, next, hooks));
+  else morphAttributes(old, next, hooks);
 }
 
 /**
@@ -238,7 +239,7 @@ export function morphElement(old: Element, html: string, hooks: MorphHooks = {})
     return;
   }
   if (sameType(old, next)) {
-    keepingChoices(() => morphNode(old, next, hooks));
+    morphNode(old, next, hooks);
   } else {
     old.replaceWith(next.cloneNode(true));
     if (isApplet(old)) hooks.onAppletRemoved?.(old);
