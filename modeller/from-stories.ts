@@ -23,7 +23,7 @@
 import type { Stories, Story, Write } from "../src/stories";
 import type { PatchOp } from "../src/json-patch";
 import { parsePointer } from "../src/json-pointer";
-import type { DocField, DocNode, Document, Entity, Field, Model, Story as ModelStory, StoryWrite } from "../../hjeli/src/core/grammar";
+import type { DocField, DocNode, Document, Entity, Field, Model, Story as ModelStory, StoryWrite } from "./model/grammar";
 
 /** Something the stories do not say, and so the reading leaves out rather than invents. */
 export type Note = { kind: string; where: string; detail: string };

@@ -3,8 +3,8 @@
 // prints; this reads and judges.
 
 import type { Stories } from "../src/stories";
-import type { Gap, Model } from "../../hjeli/src/core/grammar";
-import { runAll } from "../../hjeli/src/core/predicates";
+import type { Gap, Model } from "./model/grammar";
+import { runAll } from "./model/predicates";
 import { fromStories, locate, entityOf, noticing, type Note, type Reading } from "./from-stories";
 
 /** What the stories give each predicate to read. Where they do not say what it asks, it passes. */

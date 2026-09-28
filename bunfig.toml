@@ -15,8 +15,8 @@
 # src/costs.ts, a script, is taken in hand by its own
 coverage = true
 coverageThreshold = 1.0
-# delta is linked from its checkout: its source is delta's to cover, not eta's. So is hjeli's,
-# whose predicates the modeller imports from its checkout beside eta's. An example's
-# stories.ts is a declaration `bun run stories:all` runs whole; a test that imports one to run a
-# story or two would otherwise count the rest as uncovered
-coveragePathIgnorePatterns = ["**/node_modules/**", "../hjeli/**", "examples/*/stories.ts"]
+# delta is linked from its checkout: its source is delta's to cover, not eta's. modeller/model/ is
+# a copy of hjeli's model and predicates, covered by hjeli's own tests (modeller/model/README.md).
+# An example's stories.ts is a declaration `bun run stories:all` runs whole; a test that imports
+# one to run a story or two would otherwise count the rest as uncovered
+coveragePathIgnorePatterns = ["**/node_modules/**", "modeller/model/**", "examples/*/stories.ts"]

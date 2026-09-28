@@ -352,8 +352,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The modeller and the UML session, as tooling** (`modeller/`, `uml/`: not in `files`, so not
   shipped).
   - `bun run modeller <example>`: an example's stories read as a hjeli model, hjeli's six
-    predicates run over them, and what only stories can ask. hjeli is imported from its checkout
-    beside eta's (`../hjeli`).
+    predicates run over them, and what only stories can ask. The model and predicates are a
+    copy of hjeli's in `modeller/model/`, so eta needs nothing beside it.
   - `bun run modeller:page <example>`: the demo page (model, use cases, sequence, states, classes),
     drawn from the stories, `delta.ts`, the compartments' rules and a run of the stories through
     the observer, into `modeller/dist/`.
