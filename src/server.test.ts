@@ -2,13 +2,14 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
+import { registerMemory } from "@blueshed/delta/kinds";
 import type { Compartment } from "./compartments/compartment";
 import type { Example } from "./example";
 import index from "./server.test.fixture.html";
 import type { PatchOp, WriteId } from "./json-patch";
 import { WIRE } from "./compartments/render";
 import { closeConnection, openConnection, wireName } from "./compartments/audience";
-import { read } from "./documents";
+import { read, serverWrite } from "./documents";
 import { part } from "./parts";
 import { createServer } from "./server";
 import { assemble, type Inspection } from "./compartments";
@@ -34,6 +35,9 @@ registerDocs(
   [],
   { ledger: true },
 );
+// a live document the server writes from outside any event, as a feed's tick is, and slow to follow
+registerMemory(delta.server, { prefix: "tick:", empty: () => ({ n: 0 }) });
+const tickCompartment: Compartment = { docType: "tick", kind: "live", resolveDoc: () => undefined, afterChange: () => Bun.sleep(60) };
 
 function readNote(id: string): string {
   return read<{ notes: { text: string } }>(`note:${id}`).notes.text;
@@ -92,7 +96,7 @@ const monthCompartment: Compartment = {
 function makeExample(name: string): Example {
   return {
     name,
-    compartments: [noteCompartment, monthCompartment],
+    compartments: [noteCompartment, monthCompartment, tickCompartment],
     render: (sessionId) => {
       if (readNote(sessionId) === "undrawable") throw new Error("undrawable"); // a page whose drawing fails
       return `<p class="note">${readNote(sessionId)}</p>` + reasonFor(sessionId, "note", "/text") +
@@ -452,6 +456,18 @@ describe("createServer, generically (no example from the examples directory invo
     await expectMessage(ws, "render");
     write(ws, "ledger", [{ op: "add", path: "/latest" }], 4); // nothing left to redo
     expect(await nextMessage(ws)).toEqual({ type: "refused", id: 4 });
+    ws.close();
+  });
+
+  test("a change told from outside any event -- a feed's tick, slow to follow -- does not cost a write made meanwhile its id", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const tick = serverWrite("tick:1", [{ op: "replace", path: "/n", value: 1 }]);
+    await Bun.sleep(10); // told, and still being followed (afterChange)
+    write(ws, "note", [{ op: "replace", path: "/text", value: "during the tick" }], 42);
+    await tick;
+    expect((await until(ws)).filter((m) => m.type === "patch").map((m) => m.id)).toEqual([42]);
     ws.close();
   });
 

@@ -71,12 +71,16 @@ function redraw(ws: Socket, whole = false): Promise<void> {
   return done;
 }
 
-/** Resolves when everything set going so far -- redraws, and the documents' changes -- is done. */
+/**
+ * Resolves when everything set going so far -- redraws, and the documents' changes -- is done. The
+ * changes are waited for even when no redraw is: one told from outside any event (a feed's tick)
+ * may hold the telling, with a write's change still to be told behind it.
+ */
 async function quiet(documents: Documents): Promise<void> {
-  while (pending.size > 0) {
+  do {
     await Promise.allSettled([...pending]);
     await documents.quiet();
-  }
+  } while (pending.size > 0);
 }
 
 // Every document copy is told its changes once, whichever server is serving it.
