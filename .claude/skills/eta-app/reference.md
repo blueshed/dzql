@@ -485,7 +485,8 @@ would change for symbols nobody on it watches.
 
 An applet's controls are drawn in the browser, so the stories cannot find them in the page. Its
 mount says exactly what they write instead: a document, an op and a path each, where a segment
-that is only `*` is any one segment (an id the applet reads from its props). Reading a document
+that is only `*` is any one member (an id the applet reads from its props), never `-`: an applet
+that appends to a list names the `-` itself (`["trip", "add", "/events/*/party/-"]`). Reading a document
 (`data-doc`) is not writing it: an applet that says nothing offers nothing (the ticker's clock
 face), and its story fails, by name, until the mount says what it sends (the city picker beside
 it, `appletWrites(["clock", "replace", "/tz"])`):

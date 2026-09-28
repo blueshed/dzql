@@ -270,11 +270,11 @@ export const placeOf = (page: string): string | undefined => {
 /** The same document: named whole on one side and by its type alone on the other (`room`, `room:general`) counts. */
 const sameDoc = (a: string, b: string): boolean => a === b || a.startsWith(`${b}:`) || b.startsWith(`${a}:`);
 
-/** Does a path an applet names (`*` for any one segment) name this one? */
+/** Does a path an applet names (`*` for any one member: an id, never `-`, the end of a list an append names as such) name this one? */
 const fits = (pattern: string, path: string): boolean => {
   const want = pattern.split("/");
   const have = path.split("/");
-  return want.length === have.length && want.every((segment, i) => segment === "*" || segment === have[i]);
+  return want.length === have.length && want.every((segment, i) => (segment === "*" ? have[i] !== "-" : segment === have[i]));
 };
 
 /** Does `c` send this op to this document? A free control sends any value; a button only its own. */

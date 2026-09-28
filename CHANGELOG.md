@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **An applet's `*` is any one member, never `-`**, the end of a list. `["trip", "add",
+  "/events/*/party/*"]` offered an append to every party (`/events/44/party/-`), so japan-eta's
+  "Ann joins Peter's Hiroshima day" passed with the drawer's "I'm in" taken away. An applet that
+  appends names the `-` itself: `["trip", "add", "/events/*/party/-"]`.
 - **A story stands only where a control leads** (todo n87). The harness put a story's author at
   its `from`, and each member at the place their `seen` names, by a session write of its own, and
   never asked whether a person could get there: japan-eta's "Daisy adds two nights in Kanazawa"

@@ -30,8 +30,9 @@ export function write(doc: string, op: Op, path: string, value?: unknown): strin
 /**
  * Says exactly what an applet's controls write, on its mount: each a document, an op and a path,
  * `appletWrites(["team", "replace", "/draft"], …)`, and a value where the control sends only that
- * one. A path segment that is only `*` is any one segment: an id the applet reads from its props
- * (leave's calendar moves any request's starts).
+ * one. A path segment that is only `*` is any one member: an id the applet reads from its props
+ * (leave's calendar moves any request's starts), never `-`, the end of a list, which an applet
+ * that appends names as such: `["trip", "add", "/party/-"]`, under any day's `*` as well.
  *
  * - An applet's controls are drawn in the browser, so the stories cannot find them in the page;
  *   a story's write that one of these names counts as offered instead, with any value, or with

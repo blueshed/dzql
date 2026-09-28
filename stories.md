@@ -163,7 +163,7 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    `data-write` with its document, op and path, and a button's own value; a field or a form sends
    whatever is typed, a select each option it can choose and a radio its value; an applet
    declares exactly what it writes (`data-writes`: an op and a path each, `*` for any one
-   segment), and one that declares nothing offers nothing, whatever
+   member but `-`, the end of a list, which an append names), and one that declares nothing offers nothing, whatever
    document it reads (the ticker's clock face shows the clock and writes none of it). A control
    the browser sends nothing from is none: drawn `disabled`, or `inert` (behind an open window or
    modal), `hidden`, in a `<template>`, or in a disabled fieldset (but for its first legend),

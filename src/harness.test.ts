@@ -455,6 +455,14 @@ describe("stories harness", () => {
     expect(controlsOn(page).map((c) => goesTo(c, desk))).toEqual(["market", undefined, undefined, "?guest=2", undefined]); // the page's own address is none
   });
 
+  test("an applet's `*` is any one member, never the end of a list: an append is named as one", () => {
+    const party = (path: string) => ({ doc: "trip:1", op: "add", path, free: true, pattern: true as const });
+    const join = { op: "add" as const, path: "/events/44/party/-", value: "ann" };
+    expect(offers(party("/events/*/party/*"), "trip:1", join)).toBe(false); // the drawer's "I'm in", not the applet's
+    expect(offers(party("/events/*/party/*"), "trip:1", { ...join, path: "/events/44/party/7" })).toBe(true);
+    expect(offers(party("/events/*/party/-"), "trip:1", join)).toBe(true);
+  });
+
   test("a select leads to each option it can choose, a radio to its value, and a goTo of several ops wherever it sets the address", () => {
     const desk = (page: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/page", value: page }] });
     const select = `<form data-write-on="change"><select${write("desk", "replace", "/page")}><option value="market">Market</option><option value="attic" disabled>Attic</option><optgroup label="more" disabled><option value="cellar">Cellar</option></optgroup><option> the  clock </option><option>board</select></form>`;
