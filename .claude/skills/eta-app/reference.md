@@ -553,6 +553,8 @@ const props: CrowdProps = { everyone: everyone(), open: family, reveal: v.names 
 - **A watched document is sent whole**, with the mount and in every patch, so watch one cut for the
   page's audience, holding no secret: the wedding's `everyone` (what households may see of each
   other), not the board, whose rows carry every household's code.
+- **Each watching mount carries its own copy of the document**, paid once as it opens; only
+  patches follow.
 - **From props alone** (no `data-doc`) an applet is re-sent its props whenever they change, and
   draws from them (`update`). Keep that for props that are small, or that no document holds.
 
