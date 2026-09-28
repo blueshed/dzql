@@ -15,17 +15,18 @@ import { addModal, addTool, choice, collectionPage, findControl, prop, row, rows
 import type { DressProps } from "../applets/dress";
 import { LOOK_FIELDS } from "../looks";
 import type { MenuProps } from "../applets/menu";
-import { esc, join, nav, open, write, appletWrites } from "./html";
+import { esc, join, nav, open, write, appletProps, appletWrites } from "./html";
 import { part } from "../../../src/parts";
 import { icon, type IconName } from "./icons";
-import { familiesPhoto, familyEntries, photoMount, type Family, type PhotoEntry } from "./photo";
+import { familyEntries, photoMount, tapsOf } from "./photo";
+import { crowd, type CrowdProps } from "../applets/photo";
 import { answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, layers, isComing, isGuestOut, matches, picture, placeRows, plural, runNames, specOf, timetableRows } from "./shared";
 
 /** Opening something over the page this household is on -- a drawer, a modal -- and putting it away: both are going somewhere (views/html.ts). */
 const open_ = (v: HouseholdView, what: string, which: string | number = ""): string => open(over(v.session.ui).path, what, which);
 const close = (v: HouseholdView): string => nav(over(v.session.ui).path);
 
-/** Everything a household's page reads: their own document, the wedding, the lists, and the photo. */
+/** Everything a household's page reads: their own document, the wedding, and the lists. */
 export type HouseholdView = {
   session: SessionDocument;
   h: HouseholdDocument;
@@ -34,7 +35,6 @@ export type HouseholdView = {
   gifts: Gift[];
   events: weddingDoc.Event[];
   places: weddingDoc.Place[];
-  photo: weddingDoc.PhotoRow[];
   /** May the household still answer and choose? */
   open: boolean;
   /** Does the photo carry names? */
@@ -165,43 +165,26 @@ function listReading(v: HouseholdView): string {
   );
 }
 
-/** Everyone in the photo, as families: the wedding's guests whose households said yes, a maybe as a ghost, grouped by household. */
-function everyoneFamilies(v: HouseholdView): Map<string, Family> {
-  const byFamily = new Map<string, Family>();
-  for (const r of v.photo) {
-    const state = weddingDoc.inPhoto(r);
-    if (!state) continue;
-    const key = String(r.household_id);
-    const entry: PhotoEntry = { key: String(r.guest_id), ghost: state === "ghost", spec: specOf(r.look, v.names ? r.name : undefined) };
-    const f = byFamily.get(key) ?? { key, members: [], ghost: state === "ghost", tap: { doc: "session", op: { op: "replace", path: "/page", value: `everyone/${key}` } } };
-    f.members.push(entry);
-    byFamily.set(key, f);
-  }
-  return byFamily;
-}
+/** The photo of everyone's props, for this household: its document, which the mount watches, the family open in it, and whether the names are down. */
+const crowdOf = (v: HouseholdView, family: string | null): CrowdProps => ({ everyone: weddingDoc.everyone(), open: family, reveal: v.names });
 
-/** The everyone photo's mount, at whichever level the crowd and the open family put it. Replaced alone when a look changes. */
-export function everyonePhoto(v: HouseholdView, familyKey: string | null): string {
-  const byFamily = everyoneFamilies(v);
-  const open = familyKey && byFamily.has(familyKey) ? familyKey : null;
-  const { entries, label } = familiesPhoto([...byFamily.values()], open);
-  return photoMount("everyone-photo", entries, label, v.names);
+/** The photo of everyone's mount: it watches the `everyone` document, so a look changed reaches it as a patch and nothing else; it says where each family's tap goes. */
+function everyonePhoto(props: CrowdProps): string {
+  const doc = { doc: `everyone:${weddingDoc.WEDDING}`, under: "/everyone" };
+  return part("everyone-photo", `<div id="everyone-photo" data-applet="crowd"${appletProps(props, doc)}${tapsOf(crowd(props).photo.entries)}></div>`);
 }
 
 /** The page read as everyone's photo; beyond EVERYONE_UP_TO, one figure per family, and a tap
  * opens a family in it -- a crumb longer, the way back to everyone before it. */
 function everyoneReading(v: HouseholdView, familyKey: string | null): { body: string; crumbs: Crumb[] } {
-  const byFamily = everyoneFamilies(v);
-  const families = [...byFamily.values()];
-  const total = families.reduce((n, f) => n + f.members.length, 0);
-  const open = familyKey && byFamily.has(familyKey) ? familyKey : null;
-  const { level, shown } = familiesPhoto(families, open);
+  const props = crowdOf(v, familyKey);
+  const { level, shown, total, open } = crowd(props);
   const crumbs: Crumb[] = open ? [{ label: v.h.code, back: nav("") }, { label: "Everyone", back: nav("everyone") }, { label: "One family" }] : [{ label: v.h.code }];
   const note =
     level === "families" ? `${total} in the photo, in ${shown} families. Tap a family to see them. Nobody knows whose is whose until the day.`
     : level === "family" ? `${shown} of them.`
     : `${total} in the photo: everyone whose household has said yes; a maybe stands as a ghost. ${v.names ? "It is the day: the names have come down." : "Nobody knows whose is whose until the day."}`;
-  return { body: total ? `<div class="reading photo framed">${everyonePhoto(v, familyKey)}</div><p class="note">${esc(note)}</p>` : `<p class="note">Nobody yet.</p>`, crumbs };
+  return { body: total ? `<div class="reading photo framed">${everyonePhoto(props)}</div><p class="note">${esc(note)}</p>` : `<p class="note">Nobody yet.</p>`, crumbs };
 }
 
 // ───────────────────────────── the drawers ─────────────────────────────

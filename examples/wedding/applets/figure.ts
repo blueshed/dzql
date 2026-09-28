@@ -7,6 +7,12 @@ import { esc } from "../views/html";
 
 /** What the drawing takes: a look, and the name to print on the chest when the caller may show one. */
 export type Spec = Omit<Look, "built_at"> & { name?: string };
+/** A guest's look as the drawing takes it, the name beside it. */
+export function specOf(look: Look, name?: string): Spec {
+  const { built_at, ...rest } = look;
+  return { ...rest, name };
+}
+
 /** Which edge a photo-bomber lunges in from, or from below. */
 export type Side = "left" | "right" | "below";
 

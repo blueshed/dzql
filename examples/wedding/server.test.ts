@@ -3,6 +3,8 @@ import type { PatchOp } from "../../src/json-patch";
 import type { HtmlOp } from "../../src/compartments/render";
 import { createServer } from "../../src/server";
 import { hear, type Heard as HeardRender } from "../../src/harness";
+import { decoded } from "../../src/parts";
+import { crowd } from "./applets/photo";
 import { asCouple, asHousehold, board, household } from "./setup";
 import { example } from "./index";
 import { keepEveryone } from "./everyone";
@@ -497,14 +499,15 @@ describe("a household", () => {
     await at(family, `?family=${hid}`);
 
     // an applet's mount has nothing inside it, so a look goes as its tag alone -- the new props.
-    // a look: the family photo and the open drawer's dress for the household, the photo of
-    // everyone, the couple's photo of families (under a family's drawer too)
+    // a look: the family photo and the open drawer's dress for the household, the couple's photo
+    // of families (under a family's drawer too); the photo of everyone, which watches its document,
+    // nothing but the patch
     const look = await send(mine, "household", [{ op: "replace", path: `/guests/${guest.id}/minifigure/hair`, value: "curls" }]);
     expect(look.targets).toEqual(["tag family-photo", `tag dress-${guest.id}`]);
     expect((await heard(list)).targets).toEqual([]); // the list reading shows no looks
     const e = await heard(everyone);
     expect(e.patches.map((p) => p.doc)).toEqual(["everyone:1"]); // what everyone may see, and no more
-    expect(e.targets).toEqual(["tag everyone-photo"]); // they are coming, so in it
+    expect(e.targets).toEqual([]); // they are coming, so in it: the photo watches everyone, and takes the patch alone
     expect((await heard(elsewhere)).renders).toEqual([]); // told, but nothing on its page shows it
     expect((await heard(couple)).targets).toEqual(["tag board-photo"]);
     expect((await heard(family)).targets).toEqual(["tag board-photo"]);
@@ -705,21 +708,24 @@ describe("the couple", () => {
     const email = `crowd-${Date.now()}@example.com`;
     const names = Array.from({ length: 17 }, (_, i) => `Guest${i}`).join(",");
     await send(couple, "board", [{ op: "add", path: "/households/-", value: { email, names } }]);
-    const crowd = (await board()).households.find((h) => h.email === email)!;
-    await asHousehold(crowd.code, [{ op: "replace", path: "/answer", value: "yes" }]);
-    const ws = await enter(crowd.code);
+    const big = (await board()).households.find((h) => h.email === email)!;
+    await asHousehold(big.code, [{ op: "replace", path: "/answer", value: "yes" }]);
+    const ws = await enter(big.code);
     const families = await at(ws, "everyone");
     expect(families).toContain("Tap a family to see them");
-    expect(families).toContain("&quot;count&quot;:17");
-    expect(families).toContain("&quot;name&quot;:&quot;a family of 17&quot;"); // a figure a screen reader can name, and nameless to the eye until the day
-    const family = await at(ws, `everyone/${crowd.id}`);
+    // the photo watches everyone, and draws what `crowd` derives from its props: a figure a screen
+    // reader can name, and nameless to the eye until the day, whose tap the mount says
+    const props = JSON.parse(decoded(/id="everyone-photo" data-applet="crowd" data-doc="everyone:1" data-under="\/everyone" data-props="([^"]*)"/.exec(families)![1]!));
+    expect(crowd(props).photo.entries.find((e) => e.key === String(big.id))).toMatchObject({ count: 17, name: "a family of 17" });
+    expect(families).toContain(`everyone/${big.id}`);
+    const family = await at(ws, `everyone/${big.id}`);
     expect(family).toContain('<span class="cell-name">One family</span>');
     expect(family).toContain("17 of them.");
     ws.close();
     // the couple's photo, at the families level too: the crowd one figure, ringing while its drawer is open
-    const theirs = await at(couple, `?family=${crowd.id}`);
+    const theirs = await at(couple, `?family=${big.id}`);
     expect(theirs).toMatch(new RegExp(`&quot;count&quot;:17,&quot;tap&quot;:[^}]*}},&quot;hushed&quot;:false,&quot;chosen&quot;:true`));
-    expect(theirs).toContain(`&quot;name&quot;:&quot;${crowd.code}, a family of 17&quot;`);
+    expect(theirs).toContain(`&quot;name&quot;:&quot;${big.code}, a family of 17&quot;`);
     await heard(couple);
     await send(couple, "ledger", [{ op: "remove", path: "/latest" }]); // the crowd goes home
     couple.close();

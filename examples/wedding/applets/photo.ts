@@ -5,8 +5,9 @@
 // touches the DOM is photo-applet.ts, imported only by client/main.ts (change-request.md item 4).
 
 import type { PatchOp } from "../../../src/json-patch";
+import type { Figure } from "../documents/wedding";
 import { esc } from "../views/html";
-import { arrange, figure, print, type Spec } from "./figure";
+import { arrange, figure, print, specOf, type Spec } from "./figure";
 
 export type Tap = { doc: string; op: PatchOp };
 
@@ -89,4 +90,92 @@ export function photoSvg(entries: PhotoEntry[], label: string, arriving: Set<str
     return `<g class="slot${entry.chosen ? " chosen" : ""}${hush}" transform="translate(${n(slot.x)} ${n(slot.y)}) scale(${slot.s.toFixed(3)})"${tap}${reveal} data-slot="${esc(entry.key)}">${ring}${mark}${count}${inner}</g>`;
   });
   return `<svg class="photo" viewBox="${viewBox}" aria-label="${esc(label)}">${figures.join("")}</svg>`;
+}
+
+// ───────────────────────────── the families ─────────────────────────────
+
+/** Up to this many guests, everyone stands in the photo; beyond it, the families do. */
+export const EVERYONE_UP_TO = 16;
+
+export interface Family {
+  key: string;
+  members: PhotoEntry[];
+  /** On the chest of the family figure (the board: the household's code). */
+  label?: string;
+  mark?: string;
+  ghost?: boolean;
+  out?: boolean;
+  /** What a tap on the family figure writes. */
+  tap?: PhotoEntry["tap"];
+  /** Find's word missed this whole family (rule 17). */
+  hushed?: boolean;
+  /** Its drawer is open: the family figure rings (rule 13). */
+  chosen?: boolean;
+}
+
+/** A family's figure, named for a screen reader: a family of one by the person (or "a guest", while
+ * the names are down until the day), a bigger one by the code on its chest where the couple see one,
+ * and how many it stands for. */
+function familyName(f: Family): string {
+  if (f.members.length === 1) return f.members[0]!.spec.name ?? "a guest";
+  return `${f.label ? `${f.label}, ` : ""}a family of ${f.members.length}`;
+}
+
+/**
+ * The photo at its three levels: everyone, the families (one figure each, the first member's own
+ * look, the count at the shoulder), or one family open. A map shows an area with how many sites
+ * are within; the photo shows a family with how many are in it.
+ */
+export function familiesPhoto(families: Family[], open: string | null): { entries: PhotoEntry[]; label: string; level: "everyone" | "families" | "family"; shown: number } {
+  const total = families.reduce((n, f) => n + f.members.length, 0);
+  const family = open ? families.find((f) => f.key === open) : undefined;
+  if (family) return { entries: family.members, label: "one family, as minifigures", level: "family", shown: family.members.length };
+  if (total <= EVERYONE_UP_TO) return { entries: families.flatMap((f) => f.members), label: "the photo: everyone who has joined", level: "everyone", shown: total };
+  const entries: PhotoEntry[] = families.map((f) => ({
+    key: f.key,
+    spec: { ...f.members[0]!.spec, name: f.label },
+    name: familyName(f),
+    ghost: f.ghost,
+    out: f.out,
+    mark: f.mark,
+    count: f.members.length,
+    tap: f.tap,
+    hushed: f.hushed,
+    chosen: f.chosen,
+  }));
+  return { entries, label: "the photo: the families", level: "families", shown: entries.length };
+}
+
+// ───────────────────────────── the photo of everyone ─────────────────────────────
+
+/**
+ * The photo of everyone's props: its document as delta holds it (`everyone:<wedding>`: who stands
+ * in it, by guest id, and how many have claimed each gift, which it does not show), the family open
+ * in it, and whether the names are down. The mount watches the document, so a look changed reaches
+ * it as a patch, and what it shows is derived from these by `crowd`.
+ */
+export type CrowdProps = { everyone: { figures: Record<string, Figure> }; open: string | null; reveal: boolean };
+
+/** Everyone in the photo, family by family in the order they joined, a maybe as a ghost, each family's tap opening it; the names only once they are down. */
+function crowdFamilies({ everyone, reveal }: CrowdProps): Family[] {
+  const byFamily = new Map<string, Family>();
+  const figures = Object.entries(everyone.figures).sort(([a, x], [b, y]) => Number(x.household) - Number(y.household) || Number(a) - Number(b));
+  for (const [id, f] of figures) {
+    const key = String(f.household);
+    const family = byFamily.get(key) ?? byFamily.set(key, { key, members: [], ghost: f.ghost, tap: { doc: "session", op: { op: "replace", path: "/page", value: `everyone/${key}` } } }).get(key)!;
+    family.members.push({ key: id, ghost: f.ghost, spec: specOf(f.look, reveal ? (f.name ?? "") : undefined) });
+  }
+  return [...byFamily.values()];
+}
+
+/**
+ * The photo of everyone, derived from its props: at whichever level the crowd and the open family
+ * put it (`familiesPhoto`), and how many stand in it. Pure: the server runs it for the taps its
+ * mount declares and the words beside it, and the applet (photo-applet.ts) again on each patch.
+ */
+export function crowd(p: CrowdProps): { photo: PhotoProps; level: "everyone" | "families" | "family"; shown: number; total: number; open: string | null } {
+  const families = crowdFamilies(p);
+  const open = p.open !== null && families.some((f) => f.key === p.open) ? p.open : null;
+  const { entries, label, level, shown } = familiesPhoto(families, open);
+  return { photo: { entries, label, reveal: p.reveal }, level, shown, total: families.reduce((n, f) => n + f.members.length, 0), open };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { onlyFadeChanged, photoSvg, type PhotoEntry } from "./photo";
+import { crowd, onlyFadeChanged, photoSvg, type CrowdProps, type PhotoEntry } from "./photo";
 
 const look = { skin: "#F2C86A", hair: "bob", hair_color: "#2B2B33", top: "#1E3F8F", legs: "#2B2B33", face: "smile", attitude: "nodding" } as const;
 
@@ -99,5 +99,34 @@ describe("photoSvg", () => {
     expect(svg).toContain('class="print descend" style="--drop: ');
     expect(svg).toContain("--i: 0");
     expect(svg).toContain("--i: 1");
+  });
+});
+
+describe("crowd: the photo of everyone, derived from its document", () => {
+  const look = { skin: "#F2C86A", hair: "none", hair_color: "#2B2B33", top: "#1E3F8F", legs: "#2B2B33", face: "smile", attitude: "nodding", built_at: null } as const;
+  const figure = (household: string, name: string, ghost = false) => ({ household, ghost, look, name });
+  // as delta holds it: figures by guest id, in no order, and the gifts claimed, which the photo does not show
+  const everyone = { figures: { "12": figure("3", "Cy"), "4": figure("10", "Ann", true), "5": figure("3", "Bo") }, taken: { "1": 2 } };
+  const props = (p: Partial<CrowdProps> = {}): CrowdProps => ({ everyone, open: null, reveal: false, ...p });
+  const tap = (key: string) => ({ doc: "session", op: { op: "replace" as const, path: "/page", value: `everyone/${key}` } });
+
+  test("everyone, family by family in the order they joined, each tap opening a family; a maybe a ghost; nameless until the day", () => {
+    const { photo, level, shown, total, open } = crowd(props());
+    expect({ level, shown, total, open, label: photo.label, reveal: photo.reveal }).toEqual({ level: "everyone", shown: 3, total: 3, open: null, label: "the photo: everyone who has joined", reveal: false });
+    expect(photo.entries.map((e) => [e.key, e.ghost, e.spec.name])).toEqual([["5", false, undefined], ["12", false, undefined], ["4", true, undefined]]);
+    expect(crowd(props({ reveal: true })).photo.entries.map((e) => e.spec.name)).toEqual(["Bo", "Cy", "Ann"]);
+    expect(crowd(props({ reveal: true })).photo.reveal).toBe(true);
+    expect(photo.entries.every((e) => e.tap === undefined)).toBe(true); // up to sixteen, a figure is a guest: nothing to open
+    // beyond sixteen, a figure a family, which a tap opens
+    const many = { figures: Object.fromEntries(Array.from({ length: 17 }, (_, i) => [String(i + 1), figure(i < 9 ? "3" : "10", `G${i}`)])) };
+    const families = crowd(props({ everyone: many }));
+    expect([families.level, families.shown, families.total]).toEqual(["families", 2, 17]);
+    expect(families.photo.entries.map((e) => [e.key, e.count, e.tap])).toEqual([["3", 9, tap("3")], ["10", 8, tap("10")]]);
+  });
+
+  test("the family open is the one its props name, while it is in the photo; one no longer there opens nothing", () => {
+    expect(crowd(props({ open: "10" }))).toMatchObject({ level: "family", shown: 1, open: "10" });
+    expect(crowd(props({ open: "99" }))).toMatchObject({ level: "everyone", open: null });
+    expect(crowd(props({ everyone: { figures: {} } }))).toMatchObject({ total: 0, photo: { entries: [] } });
   });
 });

@@ -46,7 +46,6 @@ function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined
     gifts: weddingDoc.gifts(),
     events: weddingDoc.events(),
     places: weddingDoc.places(),
-    photo: weddingDoc.photo(),
     open: weddingDoc.answersOpen(),
     names: weddingDoc.namesRevealed(w.day),
   };

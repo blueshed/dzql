@@ -3,6 +3,7 @@ import { press, urlFor, waitFor } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { asCouple, asHousehold, board, household } from "../setup";
 import { example } from "../index";
+import { crowd } from "../applets/photo";
 
 let server: ReturnType<typeof createServer>;
 let code: string;
@@ -121,6 +122,28 @@ describe("the wedding in a real browser", () => {
     await view.navigate(urlFor(view, server.url, "list?stay"));
     await waitFor(view, `document.querySelector('#stay-drawer') !== null`, (v) => v === true);
   }, 20000);
+
+  test("the photo of everyone watches its document: a look changed in another tab reaches it as a patch, drawn anew, its mount never rendered again", async () => {
+    const email = `everyone-${Date.now()}@example.com`;
+    await asCouple([{ op: "add", path: "/households/-", value: { email, names: "Gus Look" } }]);
+    const theirs = (await board()).households.find((x) => x.email === email)!;
+    await asHousehold(theirs.code, [{ op: "replace", path: "/answer", value: "yes" }]);
+    const guest = (await household(theirs.code)).guests[0]!;
+    await using view = new Bun.WebView();
+    await enter(view, theirs.code.toLowerCase());
+    await view.navigate(urlFor(view, server.url, "everyone"));
+    await waitFor(view, `document.querySelector('#everyone-photo svg') !== null`, (v) => v === true);
+    // where they stand: as a guest, or in their family's figure, as what the mount holds derives it
+    const { photo } = crowd(JSON.parse(await view.evaluate<string>(`document.getElementById('everyone-photo').dataset.props`)));
+    const slot = photo.entries.some((e) => e.key === String(guest.id)) ? guest.id : theirs.id;
+    const top = `document.querySelector('#everyone-photo [data-slot="${slot}"] .torso')?.getAttribute('fill') ?? null`;
+    expect(await view.evaluate<string>(top)).toBe(guest.minifigure.top);
+    await view.evaluate(`(() => { const el = document.getElementById('everyone-photo'); el._probe = true; window.__props = el.dataset.props; })()`);
+
+    await asHousehold(theirs.code, [{ op: "replace", path: `/guests/${guest.id}/minifigure/top`, value: "#7FAE4E" }]); // as their other tab would
+    await waitFor(view, top, (v) => v === "#7FAE4E");
+    expect(await view.evaluate<unknown>(`(() => { const el = document.getElementById('everyone-photo'); return [el._probe, el.dataset.props === window.__props]; })()`)).toEqual([true, true]);
+  });
 
   test("beside a docked drawer the page is in reach: one tap goes from the gifts to the day, one to a guest; Escape puts the drawer away", async () => {
     await using view = new Bun.WebView({ width: 1280, height: 800 }); // wide enough that the drawer docks

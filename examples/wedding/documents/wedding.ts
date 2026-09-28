@@ -148,27 +148,10 @@ export type Everyone = { figures: Record<string, Figure>; taken: Record<string, 
 
 export const everyone = (): Everyone => readDoc<Everyone>(`everyone:${WEDDING}`);
 
-/** One minifigure as the photo sees it: its look, and what decides whether it stands in the photo. */
-export type PhotoRow = {
-  guest_id: number;
-  name: string;
-  coming: number | null;
-  household_id: number;
-  answer: "yes" | "maybe" | "no" | null;
-  look: Look;
-};
-
 /** Whether a minifigure stands in the photo: "in" (its household said yes and it is coming), "ghost" (a maybe), or not at all. */
-export function inPhoto(row: Pick<PhotoRow, "coming" | "answer">): "in" | "ghost" | null {
+export function inPhoto(row: { coming: number | null; answer: "yes" | "maybe" | "no" | null }): "in" | "ghost" | null {
   if (row.coming === 0) return null;
   return row.answer === "yes" ? "in" : row.answer === "maybe" ? "ghost" : null;
-}
-
-/** Everyone in the photo, family by family, as a household may see them. */
-export function photo(): PhotoRow[] {
-  return Object.entries(everyone().figures)
-    .map(([id, f]): PhotoRow => ({ guest_id: Number(id), name: f.name ?? "", coming: 1, household_id: Number(f.household), answer: f.ghost ? "maybe" : "yes", look: f.look }))
-    .sort((a, b) => a.household_id - b.household_id || a.guest_id - b.guest_id);
 }
 
 export type Picture = { type: string; bytes: Uint8Array };

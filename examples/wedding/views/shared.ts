@@ -3,8 +3,6 @@
 
 import type { Answer, Guest, HouseholdDocument } from "../documents/household";
 import type { Course, Event, Place, Wedding } from "../documents/wedding";
-import type { Look } from "../looks";
-import type { Spec } from "../applets/figure";
 import { row } from "./bento";
 import { rows } from "../../../src/bento";
 
@@ -45,11 +43,7 @@ export function runNames(names: string[], start = ""): string[] {
 /** The couple's names, the root's name. */
 export const coupleName = (w: Pick<Wedding, "name1" | "name2">): string => `${w.name1} & ${w.name2}`;
 
-/** A guest's look as the drawing takes it, the name beside it. */
-export function specOf(look: Look, name?: string): Spec {
-  const { built_at, ...rest } = look;
-  return { ...rest, name };
-}
+export { specOf } from "../applets/figure";
 
 /** Not coming: said so, or not said while the household said no. Still, and marked no at their feet (guestMark). */
 export function isGuestOut(g: Pick<Guest, "coming">, h: Pick<HouseholdDocument, "answer">): boolean {
