@@ -144,6 +144,8 @@ if (ends < starts) throw refuse("The last day is before the first.");
   control's `data-write`. It gives `<p class="refused" role="alert">`, or nothing.
 - The kernel keeps the reason in the session's own `refusal` document (in memory, off the ledger:
   a refusal is not something that happened) until the session's next write.
+- The page that sent the write is also answered `{type: "refused", id, reason}`, by the write's
+  own id (see The wire): the refusal is that write's, whatever else was sent since.
 - A plain `false` refuses without a word. That is right for a write no control offers: there is
   nowhere to say why.
 - Where the browser can refuse it first (`required`, `pattern`), let it.
@@ -176,7 +178,8 @@ compartment's `permitUndo(ws, docId, ops)`.
   `serverWrite`.
 - **`afterWrite(ws, docId, ops)`** runs after a fresh write from this person, with the ops as the
   page sent them: what follows for the writer alone. Leave closes the draft's drawer once it is
-  asked for.
+  asked for. The write has landed by then: a throw here is the server's failure, reported
+  (`following a write to …`), never a refusal.
 - Never write another compartment's document from `shape`.
 
 ## Telling a change (`src/server.ts`)
@@ -316,16 +319,33 @@ The wire carries writes in, and HTML and ops out. There is no JSON tree of app s
 
 Messages:
 
-- Client to server: `{doc, ops: [{op, path, value?}]}`. `doc` is a whole name, or a bare type for
-  the one of that type the page is on (`resolveDoc`). `path` is a JSON Pointer, never a verb.
-- Anything that is not such a write, and a write whose handling throws, is answered as a refusal
-  is: with the page whole. A throw is reported through `failed()` (`src/failed.ts`), which fails
-  the story it happened in.
-- Server to client: `{type: "patch", doc, version, ops}`, with `doc` named whole (what was applied;
-  kept in `window.eta.docs()` under that name), then `{type: "render", html}` (the page) or
+- Client to server: `{id?, doc, ops: [{op, path, value?}]}`. `doc` is a whole name, or a bare type
+  for the one of that type the page is on (`resolveDoc`). `path` is a JSON Pointer, never a verb.
+  `id` is the sender's own, which the server only hands back: a number JSON can say, or a string
+  of at most 64 characters (`LONGEST_ID`). The kernel's client numbers its writes from 1, and the
+  harness gives every write it sends one.
+- Server to client: `{type: "patch", doc, version, ops, id?}`, with `doc` named whole (what was
+  applied; kept in `window.eta.docs()` under that name). The echo sent to the writer of the change
+  its write made (an undo's or a redo's too) carries the write's `id`; everyone else's, and the
+  writer's echo of anyone else's change, none. Then `{type: "render", html, wire}` (the page) or
   `{type: "render", ops}` (the parts that changed).
+- A write that applies nothing -- refused, not a write at all, nothing to undo, a throw on the way
+  -- is answered `{type: "refused", id, reason?}` when it carries an id (`reason` when `refuse`
+  said why), then with the page whole. A throw is reported through `failed()` (`src/failed.ts`),
+  which fails the story it happened in. A message whose `id` is not one (a longer string, an
+  object) is not a write, and is answered by the page alone: nothing larger than an id goes back.
+  A number JSON cannot say back (`1e400`, Infinity) is no id.
+- `wire` on a page sent whole is the wire's version (`WIRE`, `src/json-patch.ts`: 2 since
+  a write carries an id). A page from before ids sends none, and is answered as it always was: its
+  writes echoed without one, a refusal by the page whole, and `refused` ignored, so a tab left open
+  over a deploy keeps working. A page sent a page whole by a server of another wire (one from
+  before ids, after a rollback) loads itself again, so page and server speak alike; not twice in a
+  minute, when it draws the page and says so in the console.
 - `{type: "inspect", limit?}` answers with the documents this page sees and their latest ledger
   entries (delta's history). An entry says `mine: true|false`, never who.
+- `window.eta.inspect().lastSent` is the page's last write, `{id, doc, ops, echoed, refused,
+  reason?, unanswered?}`: echoed only by its own echo, refused (and why) only by its own refusal,
+  unanswered when its socket went first.
 
 ### Controls
 
@@ -339,9 +359,14 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
 - A **form** writes on submit: its one field's value, or a record of several. A field has one
   type whatever form it is in: a box is `true` or `false`, a group of radios is one field, the
   value chosen or `null`, a `multiple` select its last choice or `null`, anything else its text.
-  A record keeps every named field's key, so a value keeps one shape. It clears as it sends. A refused write (answered with the page whole, before any echo of the form's document)
-  hands back what was sent, into each field not typed in since. What is typed while a write is on
-  its way is kept, whoever's echo comes.
+  A record keeps every named field's key, so a value keeps one shape. It clears as it sends. Its
+  write's own refusal (`refused`, by the write's id, before the page handed back) hands back what
+  was sent, into each field not typed in since; its own echo ends the wait. What is typed while a
+  write is on its way is kept, whoever's echo comes, and so is what a page sent whole for another
+  reason finds there (someone else's write turning the page into another). A write on its way
+  when the socket goes is unanswered: the page drawn afresh hands back what its form sent, as a
+  refusal would (it may have landed, which that page then shows: better there twice than lost),
+  and an editing form says its edit again on its next commit.
 - A **button or row** writes on click, with its `data-value` if it has one. A click in a field
   never writes.
 - A form with **`data-write-on="blur"`, `"change"` or `"input"`** edits in place: `data-write`

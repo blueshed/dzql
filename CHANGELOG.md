@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **A write carries an id, and what answers it is its own** (todo n14; n5 said why, this says
+  whose). The wire is `{id?, doc, ops}`: the echo of the change a write made goes to its writer
+  with the write's id (`{type: "patch", …, id}`), and a write that applies nothing is answered
+  `{type: "refused", id, reason?}` before the page is handed back. So a form's values go back only
+  on its own write's refusal -- a page sent whole for another reason while it is on its way
+  (someone else's write turning the page into another) no longer puts the sent text back -- its
+  own echo ends the wait, and `eta.inspect().lastSent` (now `{id, doc, ops, echoed, refused,
+  reason?, unanswered?}`) is marked only by its own echo or refusal, never anyone's echo of its
+  document or an earlier write's refusal. A page sent whole says `wire: 2`. What to change:
+  - **An app test that snapshots the writes a page sent must allow or strip the new `id`**:
+    `const { id, ...write } = JSON.parse(data)`, as `src/client/app.test.ts` and
+    `src/bento.test.ts` do (they keep the ids in `window.__ids`).
+  - **An app's own `send()`, or a console check, that marks a write echoed by any patch of its
+    document should use ids**: its own echo carries its write's `id`, and nobody else's does (see
+    `lastSent`).
+  - **A test that draws the page by hand sends `renderMessage(html)`**, which says the wire; a page
+    whole without it makes the page load itself again. **One that refuses a write sends
+    `{type: "refused", id}` first** (`pushRefused` refuses the last): a page whole alone hands
+    nothing back now.
+  - **A deploy needs nothing**: a page from before (a tab left open over it) sends no id and is
+    answered as it always was. **A rollback to a server from before ids reloads each open tab
+    once**, and what is typed in that tab is lost; a second mismatch within a minute is drawn,
+    and said in the console, instead.
+  - An id is a number JSON can say, or a string of at most 64 characters: a write with a longer
+    one is not a write.
+  - A throw in a compartment's `afterWrite` is the server's failure (`following a write to …`),
+    and the write stands; it was answered refused as well as echoed.
+  - A write on its way when the socket goes is unanswered (`lastSent.unanswered`): the page drawn
+    afresh hands back what its form sent, as a refusal would, and an editing form says its edit
+    again on its next commit.
+  - The harness sends every write with an id: a `does` lands when its author is echoed that id, a
+    `cannot` must be refused by it, and its `told` must be the reason that refusal gave; a refused
+    `does` or premise says why. A refusal's failure reads `refused, but <who> was not answered:
+    …` or `refused, but it landed …`, where it read `a refusal hands the page back`.
+
 - **An applet's mount says exactly what it writes** (todo n78): `appletWrites([doc, op, path], …)`,
   where a segment that is only `*` is any one segment (`["team", "replace", "/requests/*/starts"]`).
   `appletWrites([doc, path], …)` offered every write under each path, so a page that lost a

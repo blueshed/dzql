@@ -73,7 +73,7 @@ export type Compartment = {
   /**
    * After a fresh write from this person has landed, with the ops as the page sent them: what
    * follows for the writer alone. Leave closes the drawer once its draft is asked for.
-   * Never after an undo or redo.
+   * Never after an undo or redo. A throw here is the server's failure, reported; the write stands.
    */
   afterWrite?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): void | Promise<void>;
   /**

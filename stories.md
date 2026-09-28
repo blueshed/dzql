@@ -162,17 +162,19 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    each, `*` for any one segment); a control drawn `disabled` is none, since the browser sends
    nothing from it. None is a failure: a story nobody can do from a page is not a story
    (`offPage` marks a write from a feed or the CLI).
-   Then send the `does` as its session, wait for the wire to go quiet, and it must have landed:
-   someone was told of a changed document. A `closesTab` has no control to find: the author's
+   Then send the `does` as its session, with an id of its own as a page sends one, wait for the
+   wire to go quiet, and it must have landed: its author echoed the change with that id, whoever
+   else wrote meanwhile. A `closesTab` has no control to find: the author's
    socket closes, the server is waited for, and something must land for someone still looking.
 3. Canon 1. Render every member again, from the same copy. For each name in `seen`, that
    member's page must differ from before; for everyone else, nothing of theirs may differ; and
    each name in `untold` must have been told of nothing: sent no document's ops, by the write,
    its undo or its redo (a page that reads a document is told every change to it, shown or not);
    after a tab closes, only who is still looking is looked at. For a `cannot`, nothing anywhere
-   may differ, the ledger must not have moved, and the writer must be answered: a refusal hands
-   the page back. With `told`, the writer's page must show that reason, and nothing else of it
-   may differ; without it, a button on the writer's page that sends exactly the refused write is
+   may differ, the ledger must not have moved, and the writer must be answered: refused, by their
+   own write's id, and the page handed back. With `told`, that refusal must give that reason, and
+   the writer's page must show it, and nothing else of it may differ; without it, a button on the
+   writer's page that sends exactly the refused write is
    a control that always fails. Whatever the kernel reports failing while a story runs fails it, so a refusal
    that is really a crash is not a refusal.
 4. Undo, and every page must be as it was before; redo, and every page must be as it was after.

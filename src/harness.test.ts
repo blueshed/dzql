@@ -13,6 +13,7 @@ import type { Example } from "./example";
 import { comparable, controlsOn, hear, holding, offers, placeOf, print, retake, run, takersOn, unheld } from "./harness";
 import { diff, drawParts, part } from "./parts";
 import type { Story } from "./stories";
+import { refuse } from "./refusal";
 
 // The harness against chat's own stories: one outcome per story, named as the story is, and the
 // cast's setup shared by all. What each story finds is the example's business (a failing story is
@@ -301,8 +302,36 @@ describe("stories harness", () => {
       },
     };
     const failures = await failuresOf(unanswered, only("Nobody can take"));
-    expect(failures).toContain("refused, but ada was not answered: a refusal hands the page back");
+    expect(failures).toContain("refused, but ada was not answered: the page was not handed back");
     expect(failures).toContain("the server failed drawing a page: the page cannot be drawn");
+  }, 30000);
+
+  test("a story's write is answered as its own: a refused write says why, a refusal that says another reason is caught, and one that lands is no refusal", async () => {
+    const say = { doc: "room", ops: [{ op: "add" as const, path: "/messages/-", value: "hi" }] };
+    const takeBack = { doc: "room", ops: [{ op: "remove" as const, path: "/messages/any" }] };
+    // chat's room, saying why it refuses -- where its page draws no reason at all
+    const saying = withRoom((room) => ({
+      ...room,
+      permit: (ws, op, id) => {
+        if (op.op === "remove") throw refuse("Messages are kept.");
+        if (op.value === "hi") throw refuse("Not now.");
+        return room.permit!(ws, op, id);
+      },
+    }));
+    const report = await run(saying, {
+      ...stories,
+      stories: [
+        { name: "Ada says hi", as: "ada", does: say, seen: ["ada", "bob"] },
+        { name: "Ada cannot take a message back, told one thing", as: "ada", cannot: takeBack, told: "Nobody takes a message back." },
+        { name: "Ada cannot take a message back, told why, where her page does not say it", as: "ada", cannot: takeBack, told: "Messages are kept." },
+        { name: "Ada cannot say hello", as: "ada", cannot: { ...say, ops: [{ ...say.ops[0]!, value: "hello" }] } },
+      ],
+    });
+    const first = (i: number) => report.outcomes[i]!.failures.map((f) => f.split("\n")[0]);
+    expect(first(0)).toContain('nothing landed: ada\'s write was refused: "Not now."');
+    expect(first(1)).toEqual(['refused, but ada was not told "Nobody takes a message back.": they were told "Messages are kept."']);
+    expect(first(2)).toEqual(['refused and told "Messages are kept.", but ada\'s page does not show it']);
+    expect(first(3)).toContain("refused, but it landed: ada's write was echoed back to them");
   }, 30000);
 
   test("a write that is not on the ledger fails, unless its compartment keeps it off; a compartment that says so and is on it fails too", async () => {

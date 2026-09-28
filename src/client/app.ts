@@ -1,5 +1,5 @@
 import { applets } from "../applets";
-import type { PatchOp } from "../json-patch";
+import { WIRE, type PatchOp } from "../json-patch";
 import { formValue, groupOf, held, type Field } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
 import { drawnOption, keepingChoices, morph, morphElement, morphTag, removeNode } from "./morph";
@@ -22,10 +22,11 @@ function recordPatch(doc: string, version: number, ops: PatchOp[]) {
   docs.set(doc, state);
 }
 
-// The last write this client sent and whether the server echoed it back --
-// not domain state, just enough to answer "did that even go through" from
-// the console.
-let lastSent: { doc: string; ops: PatchOp[]; echoed: boolean } | undefined;
+// The last write this client sent, and what became of it, told by its own id: echoed back to it,
+// or refused, and why when the refusal says -- never anyone else's echo of its document, nor the
+// refusal of a write sent before it -- or unanswered, its socket gone first. Not domain state, just
+// enough to answer "did that even go through" from the console.
+let lastSent: { id: number; doc: string; ops: PatchOp[]; echoed: boolean; refused: boolean; reason?: string; unanswered?: true } | undefined;
 
 declare global {
   interface Window {
@@ -429,16 +430,19 @@ function settle(before: Map<HTMLElement, number>) {
 
 type WriteSpec = { doc: string; op: PatchOp["op"]; path: string };
 
-/** Is `echoed` the document a write named? The echo names it whole (`room:general`); a write may
- * name it so, or by its type alone (`room`), meaning the one of that type this page is on. */
-const isNamed = (named: string, echoed: string): boolean => echoed === named || echoed.startsWith(`${named}:`);
+let writes = 0;
 
-/** Sends a write, and says whether it went: a socket that is not open drops what it is given, so a write then is not recorded as sent. */
-function send(doc: string, ops: PatchOp[]): boolean {
-  if (socket?.readyState !== WebSocket.OPEN) return false;
-  lastSent = { doc, ops, echoed: false };
-  socket.send(JSON.stringify({ doc, ops }));
-  return true;
+/**
+ * Sends a write with an id of its own, from 1, which the server hands back on its echo or its
+ * refusal: the id -- or undefined when it did not go: a socket that is not open drops what it is
+ * given, so a write then is not recorded as sent.
+ */
+function send(doc: string, ops: PatchOp[]): number | undefined {
+  if (socket?.readyState !== WebSocket.OPEN) return undefined;
+  const id = ++writes;
+  lastSent = { id, doc, ops, echoed: false, refused: false };
+  socket.send(JSON.stringify({ id, doc, ops }));
+  return id;
 }
 
 /** A field (form-value.ts) an editing form sends and a refusal hands back. A `multiple` select holds several values where a
@@ -456,10 +460,18 @@ function hold(field: Field, value: string | boolean | null): void {
   else field.value = value as string;
 }
 
-// A form clears as it sends, and a refused write hands back what was sent: a refusal is answered
-// with the page whole, before any echo of the form's document. So what someone types while the
-// write is on its way is theirs -- no echo, anyone's, clears it -- and a refusal never eats text.
-let sending: { doc: string; sent: [Field, string | boolean | null][] } | undefined;
+// A form clears as it sends, and its write's own refusal hands back what was sent. So what someone
+// types while the write is on its way is theirs -- no echo, anyone's, clears it, nor a page sent
+// whole for another reason (someone else's write turning this page into another) -- and a refusal
+// never eats text. The write's own echo ends the wait: it landed. One whose socket goes first is
+// unanswered, and handed back when the page is drawn afresh (the close, below).
+let sending: { id: number; sent: [Field, string | boolean | null][]; unanswered?: true } | undefined;
+
+/** What the form's write sent goes back in each field (a group of radios is one) not typed in, chosen in, or ticked since. */
+function handBack(): void {
+  for (const [field, value] of sending?.sent ?? []) if (held(field) === rendered(field)) hold(field, value);
+  sending = undefined;
+}
 
 // An element says what it writes via data-write; a form's field is the
 // value (or a record of its fields, if it has more than one), a button/li's
@@ -473,8 +485,9 @@ app.addEventListener("submit", (event) => {
   const { doc, op, path } = JSON.parse(spec) as WriteSpec;
   const fields = [...form.elements].filter(isField);
   const sent: [Field, string | boolean | null][] = fields.map((f) => [f, held(f)]);
-  if (!send(doc, [{ op, path, value: formValue(form) }])) return; // not sent: what is typed stays
-  sending = { doc, sent };
+  const id = send(doc, [{ op, path, value: formValue(form) }]);
+  if (id === undefined) return; // not sent: what is typed stays
+  sending = { id, sent };
   form.reset();
 });
 
@@ -618,6 +631,24 @@ app.addEventListener("focusout", (event) => {
 app.addEventListener("change", (event) => onEditTrigger(event, "change"));
 app.addEventListener("input", onInput);
 
+// A page from another release than its server's -- a tab open over a deploy, or one rolled back --
+// is loaded again, so page and server speak one wire (src/json-patch.ts WIRE). Not twice in
+// a minute: behind one address, two releases must not keep a tab loading; the page is drawn, and
+// the mismatch said. True when it is loading again.
+function reloadForWire(): boolean {
+  try {
+    if (Date.now() - Number(sessionStorage.getItem("eta:reloaded")) > 60_000) {
+      sessionStorage.setItem("eta:reloaded", String(Date.now()));
+      location.reload();
+      return true;
+    }
+  } catch {
+    // no storage to remember it by: never loaded again, rather than perhaps for ever
+  }
+  console.error("eta: this page and its server speak different wires: load it again");
+  return false;
+}
+
 function connect() {
   const url = `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`;
   socket = new WebSocket(url);
@@ -634,14 +665,20 @@ function connect() {
     const message = JSON.parse(event.data);
     if (message.type === "render") {
       if (message.ops) applyFragments(message.ops);
-      else {
-        // the page whole before the echo: the form's write was refused -- what was sent goes back
-        // in each field (a group of radios is one) not typed in, chosen in, or ticked, since; the
-        // morph then keeps a choice by its value, or shows the drawn one if the page no longer offers it (morph.ts)
-        for (const [field, value] of sending?.sent ?? []) if (held(field) === rendered(field)) hold(field, value);
-        sending = undefined;
+      else if (message.wire === WIRE || !reloadForWire()) {
+        if (sending?.unanswered) handBack(); // the page drawn afresh, after its socket went
         render(message.html);
       }
+    } else if (message.type === "refused") {
+      // this page's own write, refused, and why if it says: before the page is handed back, what
+      // its form sent goes back in each field (a group of radios is one) not typed in, chosen in,
+      // or ticked, since; the morph then keeps a choice by its value, or shows the drawn one if
+      // the page no longer offers it (morph.ts)
+      if (lastSent && lastSent.id === message.id) {
+        lastSent.refused = true;
+        if (message.reason !== undefined) lastSent.reason = message.reason;
+      }
+      if (sending && sending.id === message.id) handBack();
     } else if (message.type === "patch") {
       recordPatch(message.doc, message.version, message.ops);
       // An applet watching this document takes the ops itself (see Applet.patch): the delta is
@@ -649,8 +686,9 @@ function connect() {
       for (const el of mounted.keys()) {
         if (el.dataset.doc === message.doc) applets[el.dataset.applet!]?.patch?.(el, message.ops);
       }
-      if (lastSent && isNamed(lastSent.doc, message.doc) && message.ops.length > 0) lastSent.echoed = true;
-      if (sending && isNamed(sending.doc, message.doc) && message.ops.length > 0) sending = undefined; // it landed
+      // this page's own write, echoed ("yours": the id is its own): it landed
+      if (lastSent && lastSent.id === message.id) lastSent.echoed = true;
+      if (sending && sending.id === message.id) sending = undefined;
       if (message.ops.length > 0) lastEditSent = new WeakMap(); // a write landed: what was sent may be said again
     }
   });
@@ -658,6 +696,13 @@ function connect() {
   // The connection gone, the page stays as it is -- what is typed, what applets hold -- but is not
   // to be used (src/bento.css says so) until the server, reached again, draws it afresh.
   socket.addEventListener("close", () => {
+    // What was on its way is unanswered: no server answers it on another socket. A form's values go
+    // back when the page is drawn afresh, as a refusal's would -- it may have landed, which that page
+    // then shows: better there twice than lost -- and an editing form says its edit again, as it
+    // says one the closed socket never took (send, above).
+    if (lastSent && !lastSent.echoed && !lastSent.refused) lastSent.unanswered = true;
+    if (sending) sending.unanswered = true;
+    lastEditSent = new WeakMap();
     app.inert = true;
     app.dataset.offline = "";
     setTimeout(connect, reconnectDelay);

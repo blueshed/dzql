@@ -3,7 +3,7 @@ import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
 import { STORY_KEYS, type Stories, type Story, type Write } from "./stories";
-import { applyPatch, type PatchOp } from "./json-patch";
+import { applyPatch, type PatchOp, type WriteId } from "./json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
 import { comparable, splitTag } from "./parts";
@@ -20,9 +20,12 @@ export { comparable };
 // only the page they are on. Then the story is undone and redone as its author, and the pages
 // must go back and forth with it; a write the ledger calls a fact (undoable = 0) must survive its
 // undo instead, and an author the example no longer counts as active (logged out) gets no undo.
-// A `cannot` must change no page, add nothing to the ledger, and be answered: a refusal hands the
-// writer's page back, and shows them why when the story says what they are `told`, and nothing
-// else. For a `does`, nobody the story does not say sees it may notice it: a story names everyone
+// Every write carries an id, as a page's does, so what answers it is its own: a `does` has landed
+// when its author is echoed the change with the write's id, whoever else writes meanwhile.
+// A `cannot` must change no page, add nothing to the ledger, and be answered: refused, by its own
+// write's id, and the writer's page handed back, showing them why when the story says what they
+// are `told` -- the reason its refusal gave, and nothing else. For a `does`, nobody the story
+// does not say sees it may notice it: a story names everyone
 // whose page changes. Delivery is checked as well as pages: a member the story says is `untold`
 // must be told of no document -- no patch -- by the write, its undo or its redo, and anything the
 // kernel reports failing while a story runs (a message, a drawing, a change being told) fails the
@@ -93,7 +96,7 @@ function applyOp(page: string, op: HtmlOp): string {
     .transform(page);
 }
 
-export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string };
+export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string; id?: WriteId; reason?: string };
 
 // The patch stream, checked. An applet that takes a document's patches (`data-doc`) holds props: the
 // ones the last render gave it, with every patch for that document laid on since, at the place in
@@ -357,9 +360,14 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
     );
   }
 
-  async function send(cast: Member[], who: Member, write: Write): Promise<void> {
-    who.ws.send(JSON.stringify(write));
+  let writes = 0;
+
+  /** Sends a write as `who`, with an id of its own as a page sends it, and waits for the wire to go quiet: the id, to find its answer by. */
+  async function send(cast: Member[], who: Member, write: Write): Promise<number> {
+    const id = ++writes;
+    who.ws.send(JSON.stringify({ id, ...write }));
     await settle(cast);
+    return id;
   }
 
   /**
@@ -381,14 +389,17 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
   /** What `m` has been sent since `from`, parsed. */
   const sentSince = (m: Member, from: Map<Member, number>): Heard[] => m.inbox.slice(from.get(m)).map((raw) => JSON.parse(raw) as Heard);
 
+  /** What answered write `id`, sent by `m` since `from`: its own echo (a patch), its refusal, or nothing. */
+  const answerTo = (m: Member, id: WriteId, from: Map<Member, number>): Heard | undefined => sentSince(m, from).find((h) => h.id === id && (h.type === "patch" || h.type === "refused"));
+
   /** Did something land since `from`: a document changed, and someone was told (a refusal changes none)? */
   const landedSince = (cast: Member[], from: Map<Member, number>): boolean => cast.some((m) => sentSince(m, from).some((h) => h.type === "patch" && h.doc !== "refusal"));
 
   /**
    * The story's own premise, made after the cast's writes: each write as its member. Why it does
    * not hold, if it does not: then the story is not told. A write that changes nothing fails it,
-   * whether refused or already so -- the wire hands the page back for both -- since a premise
-   * says what a story starts from, and a write that moved nothing says it wrongly.
+   * whether refused or already so -- the wire answers both `refused` -- since a premise says what
+   * a story starts from, and a write that moved nothing says it wrongly.
    */
   async function premise(cast: Member[], story: Story): Promise<string[]> {
     const why: string[] = [];
@@ -397,8 +408,8 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       if (!m) why.push(`the premise names ${name}, and no one in the cast is called that`);
       else for (const write of writes) {
         const from = mark(cast);
-        await send(cast, m, write);
-        if (!landedSince(cast, from)) why.push(`the premise did not hold: ${name}'s write to ${write.doc} changed nothing`);
+        const answer = answerTo(m, await send(cast, m, write), from);
+        if (answer?.type !== "patch") why.push(`the premise did not hold: ${name}'s write to ${write.doc} changed nothing${answer?.reason ? `: "${answer.reason}"` : ""}`);
       }
     }
     return why;
@@ -478,13 +489,17 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
         // P3: a button on the author's page that sends exactly this, refused without a word, is a control that always fails
         const buttons = controlsOn(who.page, failures).filter((c) => !c.free && c.op !== undefined);
         if (story.told === undefined && story.cannot.ops.every((op) => buttons.some((c) => offers(c, story.cannot.doc, op)))) failures.push(`${who.name}'s page offers this, and it is refused without a word: a control that always fails`);
-        await send(cast, who, story.cannot);
-        if (!sentSince(who, from).some((h) => h.type === "render")) failures.push(`refused, but ${who.name} was not answered: a refusal hands the page back`);
+        const answer = answerTo(who, await send(cast, who, story.cannot), from);
+        const handedBack = sentSince(who, from).some((h) => h.type === "render");
+        if (answer?.type === "patch") failures.push(`refused, but it landed: ${who.name}'s write was echoed back to them`);
+        else if (!answer || !handedBack) failures.push(`refused, but ${who.name} was not answered: ${answer ? "the page was not handed back" : "no refusal carried their write's id"}`);
         const after = await snapshot(cast);
         if (story.told !== undefined) {
-          // told why: the one change the writer's page may show
+          // told why: by the refusal of their own write, and on their page, the one change it may show
           const page = after.get(who.name)!;
-          if (!page.includes(said(story.told))) failures.push(`refused, but ${who.name} was not told "${story.told}"`);
+          const reason = answer?.type === "refused" ? answer.reason : undefined;
+          if (reason !== story.told) failures.push(`refused, but ${who.name} was not told "${story.told}"${reason === undefined ? "" : `: they were told "${reason}"`}`);
+          else if (!page.includes(said(story.told))) failures.push(`refused and told "${story.told}", but ${who.name}'s page does not show it`);
           after.set(who.name, page.replace(said(story.told), ""));
         }
         compare(before, after, cast, "refused, but", failures);
@@ -529,13 +544,13 @@ export async function run(example: Example, stories: Stories): Promise<Report> {
       const ledgerBefore = ledgerMax();
       const stood = placeOf(who.page);
       let from = mark(cast);
-      await send(cast, who, story.does);
+      const answer = answerTo(who, await send(cast, who, story.does), from);
       // Where the write left its author: answering a modal puts it away (off the ledger, a visit),
       // so the undo and the redo are looked at from where each was taken -- where the author stands
       // is theirs, not the write's.
       const landed = placeOf(who.page);
       const moved = stories.goTo && stood !== undefined && landed !== undefined && stood !== landed;
-      if (!landedSince(cast, from)) failures.push(`nothing landed: ${who.name}'s write was refused`);
+      if (answer?.type !== "patch") failures.push(answer ? `nothing landed: ${who.name}'s write was refused${answer.reason ? `: "${answer.reason}"` : ""}` : `${who.name}'s write was not answered: no echo carried its id`);
       if (process.env.STORY_TRACE) for (const raw of who.inbox.slice(from.get(who))) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
       checkUntold(cast, story.untold, from, "after the story", failures);
       const after = await snapshot(cast);

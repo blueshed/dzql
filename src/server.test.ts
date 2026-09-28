@@ -2,12 +2,13 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
+import { registerMemory } from "@blueshed/delta/kinds";
 import type { Compartment } from "./compartments/compartment";
 import type { Example } from "./example";
 import index from "./server.test.fixture.html";
-import type { PatchOp } from "./json-patch";
+import { WIRE, type PatchOp, type WriteId } from "./json-patch";
 import { closeConnection, openConnection, wireName } from "./compartments/audience";
-import { read } from "./documents";
+import { read, serverWrite } from "./documents";
 import { part } from "./parts";
 import { createServer } from "./server";
 import { assemble, type Inspection } from "./compartments";
@@ -33,6 +34,9 @@ registerDocs(
   [],
   { ledger: true },
 );
+// a live document the server writes from outside any event, as a feed's tick is, and slow to follow
+registerMemory(delta.server, { prefix: "tick:", empty: () => ({ n: 0 }) });
+const tickCompartment: Compartment = { docType: "tick", kind: "live", resolveDoc: () => undefined, afterChange: () => Bun.sleep(60) };
 
 function readNote(id: string): string {
   return read<{ notes: { text: string } }>(`note:${id}`).notes.text;
@@ -55,6 +59,9 @@ const noteCompartment: Compartment = {
     if (ops.some((op) => op.value === "boom")) throw new Error("boom"); // a write whose handling fails
     if (ops.some((op) => op.value === "")) throw refuse("A note needs words."); // a write refused, and why
     return ops;
+  },
+  afterWrite(_ws, _id, ops) {
+    if (ops.some((op) => op.value === "then boom")) throw new Error("then boom"); // a write that lands, then fails what follows
   },
 };
 
@@ -91,7 +98,7 @@ const monthCompartment: Compartment = {
 function makeExample(name: string): Example {
   return {
     name,
-    compartments: [noteCompartment, monthCompartment],
+    compartments: [noteCompartment, monthCompartment, tickCompartment],
     render: (sessionId) => {
       if (readNote(sessionId) === "undrawable") throw new Error("undrawable"); // a page whose drawing fails
       return `<p class="note">${readNote(sessionId)}</p>` + reasonFor(sessionId, "note", "/text") +
@@ -103,7 +110,7 @@ function makeExample(name: string): Example {
   };
 }
 
-type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[] };
+type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[]; id?: WriteId; reason?: string; wire?: number };
 
 /** A render's HTML, whether it came as the whole page or as the parts that changed (src/parts.ts). */
 const htmlOf = (m: WireMessage): string =>
@@ -149,8 +156,17 @@ async function expectMessage(ws: WebSocket, type: string): Promise<WireMessage> 
   return message;
 }
 
-function write(ws: WebSocket, doc: string, ops: PatchOp[]) {
-  ws.send(JSON.stringify({ doc, ops }));
+/** A write, as a page sends it: with an id of its own, or -- a page from before ids, the CLI -- without. */
+function write(ws: WebSocket, doc: string, ops: PatchOp[], id?: WriteId) {
+  ws.send(JSON.stringify({ id, doc, ops }));
+}
+
+/** Everything a socket is sent, up to the answer to an inspect sent now: events are handled in order, so all a write before it caused comes first. */
+async function until(ws: WebSocket): Promise<WireMessage[]> {
+  ws.send(JSON.stringify({ type: "inspect" }));
+  const messages: WireMessage[] = [];
+  for (let m = await nextMessage(ws); m.type !== "inspect"; m = await nextMessage(ws)) messages.push(m);
+  return messages;
 }
 
 describe("createServer, generically (no example from the examples directory involved)", () => {
@@ -209,6 +225,7 @@ describe("createServer, generically (no example from the examples directory invo
     const rendered = await expectMessage(ws, "render");
     expect(rendered.ops).toBeUndefined();
     expect(rendered.html).toBe('<p class="note">hello kernel</p>');
+    expect(rendered.wire).toBe(WIRE); // a page sent whole says which wire its server speaks
 
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const undonePatch = await expectMessage(ws, "patch");
@@ -396,6 +413,106 @@ describe("createServer, generically (no example from the examples directory invo
     other.close();
   });
 
+  test("a refused write is answered `refused` with its own id, and why when it says, before the page is handed back", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const answered = async (sent: () => void): Promise<WireMessage[]> => (sent(), until(ws));
+
+    const told = await answered(() => write(ws, "note", [{ op: "replace", path: "/text", value: "" }], 3));
+    expect(told[0]).toEqual({ type: "refused", id: 3, reason: "A note needs words." });
+    expect(told.at(-1)).toMatchObject({ type: "render", wire: WIRE }); // then the page, handed back whole
+    expect(htmlOf(told.at(-1)!)).toContain('<p class="refused" role="alert">A note needs words.</p>');
+
+    const silent = await answered(() => write(ws, "note", [{ op: "remove", path: "/text" }], "four")); // permit says no, without a word
+    expect(silent[0]).toEqual({ type: "refused", id: "four" });
+
+    const notAWrite = await answered(() => ws.send(JSON.stringify({ id: 5, doc: "note", ops: [] })));
+    expect(notAWrite[0]).toEqual({ type: "refused", id: 5 }); // whatever else is wrong with it, its id is answered
+
+    // an id that is not one: not a write, and nothing to answer it by but the page
+    const badId = await answered(() => ws.send(JSON.stringify({ id: { not: "an id" }, doc: "note", ops: [{ op: "replace", path: "/text", value: "sneaked" }] })));
+    expect(badId.map((m) => m.type)).not.toContain("refused");
+    expect(badId.at(-1)).toMatchObject({ type: "render" });
+    expect(htmlOf(badId.at(-1)!)).not.toContain("sneaked");
+
+    // a write without an id -- a page from before ids, the CLI -- is refused as it always was: the page alone
+    const bare = await answered(() => write(ws, "note", [{ op: "replace", path: "/text", value: "" }]));
+    expect(bare.map((m) => m.type)).not.toContain("refused");
+    expect(htmlOf(bare.at(-1)!)).toContain("A note needs words.");
+    ws.close();
+  });
+
+  test("an undo or redo with an id is answered as a write is: the change it walked echoed with the id, and nothing to walk refused with it", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    write(ws, "note", [{ op: "replace", path: "/text", value: "walked" }], 1);
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "note", id: 1 });
+    await expectMessage(ws, "render");
+    write(ws, "ledger", [{ op: "remove", path: "/latest" }], 2);
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "note", id: 2, ops: [{ value: { text: "" } }] });
+    await expectMessage(ws, "render");
+    write(ws, "ledger", [{ op: "add", path: "/latest" }], 3);
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "note", id: 3, ops: [{ value: { text: "walked" } }] });
+    await expectMessage(ws, "render");
+    write(ws, "ledger", [{ op: "add", path: "/latest" }], 4); // nothing left to redo
+    expect(await nextMessage(ws)).toEqual({ type: "refused", id: 4 });
+    ws.close();
+  });
+
+  test("a change told from outside any event -- a feed's tick, slow to follow -- does not cost a write made meanwhile its id", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const tick = serverWrite("tick:1", [{ op: "replace", path: "/n", value: 1 }]);
+    await Bun.sleep(10); // told, and still being followed (afterChange)
+    write(ws, "note", [{ op: "replace", path: "/text", value: "during the tick" }], 42);
+    await tick;
+    expect((await until(ws)).filter((m) => m.type === "patch").map((m) => m.id)).toEqual([42]);
+    ws.close();
+  });
+
+  test("what follows a write failing is the server's failure, not a refusal: the write landed, and its writer is told so once", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const failures: string[] = [];
+    const stop = onFailure((what, err) => void failures.push(`${what}: ${(err as Error).message}`));
+    const error = console.error;
+    console.error = () => {};
+    try {
+      write(ws, "note", [{ op: "replace", path: "/text", value: "then boom" }], 9);
+      const answers = (await until(ws)).filter((m) => m.id === 9);
+      expect(answers.map((m) => m.type)).toEqual(["patch"]);
+      expect(failures).toEqual(["following a write to note: then boom"]); // a session's own, named by its type
+    } finally {
+      console.error = error;
+      stop();
+    }
+    ws.close();
+  });
+
+  test("an id is at most 64 characters, and a number JSON can say: a longer one is not a write, a number it cannot is no id", async () => {
+    const ws = connect(server);
+    await opened(ws);
+    await expectMessage(ws, "render");
+    const longest = "x".repeat(64);
+    write(ws, "note", [{ op: "replace", path: "/text", value: "a long id" }], longest);
+    expect((await until(ws)).find((m) => m.type === "patch")?.id).toBe(longest);
+
+    write(ws, "note", [{ op: "replace", path: "/text", value: "too long an id" }], "x".repeat(65));
+    const tooLong = await until(ws);
+    expect(tooLong.map((m) => m.type)).toEqual(["render"]); // not a write: the page handed back, and no id sent back to say so
+    expect(htmlOf(tooLong[0]!)).not.toContain("too long an id");
+
+    ws.send(`{"id":1e400,"doc":"note","ops":[{"op":"replace","path":"/text","value":"beyond a number"}]}`); // Infinity, which JSON says back as null
+    const beyond = (await until(ws)).find((m) => m.type === "patch");
+    expect(beyond).toMatchObject({ ops: [{ value: { text: "beyond a number" } }] });
+    expect(beyond).not.toHaveProperty("id");
+    ws.close();
+  });
+
   test("an unpermitted op is rejected without crashing: no patch echo, just a re-render", async () => {
     const ws = connect(server);
     await opened(ws);
@@ -494,6 +611,7 @@ describe("one socket, any documents: a document is named whole, and seen because
     await nextPatch(a);
     const sentToA = await expectMessage(a, "render");
     expect(sentToA.html).toBeUndefined();
+    expect(sentToA.wire).toBeUndefined(); // only a page sent whole says the wire
     const physio = (await appointments("2026-08")).at(-1)!;
     expect(sentToA.ops).toEqual([{ op: "after", target: `[data-eta-part="a-${before.id}"]`, html: `<li data-eta-part="a-${physio.id}">physio</li>` }]);
     await nextPatch(b);
@@ -516,6 +634,34 @@ describe("one socket, any documents: a document is named whole, and seen because
     write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "not mine now" }]);
     expect((await nextMessage(a)).type).toBe("render"); // no patch about August came first, and the write was refused
     expect((await appointments("2026-08")).map((a) => a.what)).not.toContain("not mine now");
+
+    a.close();
+    b.close();
+  });
+
+  test("a write's id comes back to its writer alone, on the echo of the change it made: another's echo of the same document is not theirs", async () => {
+    const { ws: a } = await showingMonths("2026-08");
+    const { ws: b } = await showingMonths("2026-08");
+
+    write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "a's" }], 7);
+    expect(await nextPatch(a)).toMatchObject({ doc: "month:2026-08", id: 7, ops: [{ value: { what: "a's" } }] });
+    expect(await nextPatch(b)).not.toHaveProperty("id"); // b sees the change, and it is not b's
+
+    write(b, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "b's" }], "b-1");
+    expect(await nextPatch(a)).not.toHaveProperty("id");
+    expect(await nextPatch(b)).toMatchObject({ id: "b-1", ops: [{ value: { what: "b's" } }] });
+
+    // a's refusal between them is a's: b is told nothing of it
+    write(a, "month:2026-07", [{ op: "add", path: "/appointments/-", value: "too late" }], 8);
+    write(b, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "b's again" }], "b-2");
+    const toA = await until(a);
+    expect(toA.filter((m) => m.type === "refused")).toEqual([{ type: "refused", id: 8 }]);
+    expect(toA.filter((m) => m.type === "patch").map((m) => m.id)).toEqual([undefined]); // b's write, echoed to a: not a's
+    expect((await until(b)).filter((m) => m.type === "refused" || m.id !== undefined)).toMatchObject([{ type: "patch", id: "b-2" }]);
+
+    // a write without an id -- a page from before ids, the CLI -- is echoed as it always was
+    write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "no id" }]);
+    expect(await nextPatch(a)).not.toHaveProperty("id");
 
     a.close();
     b.close();
