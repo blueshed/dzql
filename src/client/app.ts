@@ -135,10 +135,18 @@ function movingElement(html: string): HTMLElement | undefined {
     const stillThere = holder.content.querySelector(`[data-moving="${CSS.escape(current.dataset.moving!)}"]`);
     // A move is the element itself changing -- a cell opening into the window, or closing --
     // which shows in its own tag. What is inside it changing (a row more, a message) is not one,
-    // and a transition then would swallow the keys of someone typing in it.
-    if (stillThere && (stillThere.cloneNode(false) as Element).outerHTML !== (current.cloneNode(false) as Element).outerHTML) return current;
+    // and a transition then would swallow the keys of someone typing in it. Nor is being put
+    // `inert`: the cells behind an open window are, and hold still.
+    if (stillThere && ownTag(stillThere) !== ownTag(current)) return current;
   }
   return undefined;
+}
+
+/** An element's own tag, less `inert`. */
+function ownTag(el: Element): string {
+  const tag = el.cloneNode(false) as Element;
+  tag.removeAttribute("inert");
+  return tag.outerHTML;
 }
 
 // Rule 18 of bento-request.md's K2: after a full render's morph, an element newly carrying
@@ -156,8 +164,10 @@ function render(html: string) {
   const moving = movingElement(html);
 
   const apply = () => {
+    const was = focusedCell();
     morph(app, html, hooks);
     settle(before);
+    keepFocusIn(was);
     syncPage();
     revealChanged(previousReveal);
   };
@@ -179,12 +189,37 @@ function render(html: string) {
   }
 }
 
+// Rule 7 again: the keyboard goes with the element that moves. A cell opening into the window, or
+// the window closing, redraws what is inside it, so the control that had the keyboard -- the cell's
+// name, the window's way back -- goes with the old shape. The first control of the new shape takes
+// it, unless a field waiting for the caret already has (settle): opening a window puts the keyboard
+// in it, and closing it puts the keyboard back on the cell. Whether the page came whole or in parts.
+const CONTROL = "a[href], button, input, select, textarea, [tabindex]";
+
+/** The `data-moving` element the keyboard is in, by its name, and its own tag as it stands. */
+function focusedCell(): { name: string; tag: string } | undefined {
+  const cell = document.activeElement?.closest<HTMLElement>("[data-moving]");
+  return cell ? { name: cell.dataset.moving!, tag: ownTag(cell) } : undefined;
+}
+
+function keepFocusIn(was: { name: string; tag: string } | undefined): void {
+  if (!was || document.activeElement !== document.body) return;
+  const cell = app.querySelector<HTMLElement>(`[data-moving="${CSS.escape(was.name)}"]`);
+  if (!cell || ownTag(cell) === was.tag) return; // it did not move: what had the keyboard was only taken away
+  for (const el of cell.querySelectorAll<HTMLElement>(CONTROL)) {
+    if (el.tabIndex < 0) continue;
+    el.focus();
+    if (document.activeElement === el) return; // not one that cannot take it: disabled, inert, not drawn
+  }
+}
+
 // The page in parts: what changed since the last drawing, in HTML's terms (src/parts.ts). Each op
 // names a part; a target the page no longer has is skipped -- the next full render puts things
 // right, as it would after a reconnect. Afterwards, the same care as a whole render.
 function applyFragments(ops: HtmlOp[]) {
   const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
   const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
+  const was = focusedCell();
 
   for (const op of ops) {
     const target = app.querySelector(op.target);
@@ -201,6 +236,7 @@ function applyFragments(ops: HtmlOp[]) {
     }
   }
   settle(before);
+  keepFocusIn(was);
   syncPage();
   revealChanged(previousReveal);
 }

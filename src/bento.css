@@ -117,6 +117,8 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 @media (min-width: 820px) { .cell.open { inset: var(--space-2xl); } }
 .cell.open:hover { background: var(--card); }
 body:has(.page.windowed) { overflow: hidden; }
+/* what is in place on the box, put inert behind an open window: a wrapper that lays out nothing */
+.in-place { display: contents; }
 /* the trail floats top-left, a control: the box it came from is the way back */
 .cell.open .cell-head { position: absolute; top: var(--space-lg); left: var(--space-lg); z-index: 3; gap: 2px; height: var(--control); max-width: calc(100% - 2 * var(--space-lg) - var(--control) - var(--space-md)); padding: 0 var(--space-md) 0 2px; background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
 .cell.open .cell-back { display: inline-flex; align-items: center; height: 26px; padding: 0 var(--space-sm); border-radius: var(--radius-inner); color: var(--accent); text-decoration: none; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -298,21 +298,24 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
    * (rule 7: the same element, `data-moving`, bigger), with its trail floating top-left, its rail
    * at the right and the page's tools at the bottom right (rule 9). The tray is computed
    * (src/grid.ts): each cell lands in its area, first-fit in the box's own order, and learns
-   * which of the tray's corners it sits in, for three columns and for one.
+   * which of the tray's corners it sits in, for three columns and for one. While a window is open,
+   * what is behind it -- the trail, the other cells, what is in place -- is `inert`: not to be
+   * reached or heard until it closes.
    */
   function boxPage(trail: Crumb[], inPlace: string[], cells: Placeable[], open?: OpenOptions): string {
     const wide = grid(cells, COLUMNS);
     const narrow = grid(cells, 1);
     const cornersOf = (t: Grid, key: string): string => t.cells.find((c) => c.key === key)!.corners.join(" ");
+    const behind = open ? " inert" : "";
     const placed = cells.map((c) => {
       if (open && c.key === open.key) return windowOf(trail, open);
-      return part(c.key, c.html.replace(`data-key="${c.key}"`, `data-key="${c.key}" data-corners="${cornersOf(wide, c.key)}" data-corners-phone="${cornersOf(narrow, c.key)}" style="grid-area: ${c.key}"`));
+      return part(c.key, c.html.replace(`data-key="${c.key}"`, `data-key="${c.key}" data-corners="${cornersOf(wide, c.key)}" data-corners-phone="${cornersOf(narrow, c.key)}" style="grid-area: ${c.key}"${behind}`));
     });
     const areas = (t: Grid): string => t.areas.replace(/\n/g, " ");
     return join(
-      `<header class="page-head">${crumbs(trail)}${open ? "" : pageTools("across")}</header>`,
+      `<header class="page-head"${behind}>${crumbs(trail)}${open ? "" : pageTools("across")}</header>`,
       `<section class="page box${open ? " windowed" : ""}">`,
-      ...inPlace,
+      ...(open && inPlace.length ? [`<div class="in-place" inert>`, ...inPlace, "</div>"] : inPlace),
       `<div class="cells" style='--tray-areas: ${areas(wide)}; --tray-areas-phone: ${areas(narrow)}'>${placed.join("")}</div>`,
       "</section>",
     );

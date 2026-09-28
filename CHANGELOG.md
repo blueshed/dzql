@@ -185,6 +185,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `div`s with `role="button"`: Tab reached them, and Enter and Space did nothing. A cell's name is
   its button now (the cell is still tapped anywhere; a thing's name carries `aria-pressed`), a row
   that taps is a `<button>`, the whole line, and so are the bubbles.
+- **Behind an open window the box is inert, and the keyboard goes with the cell** (todo n59). The
+  box's trail, its other cells and what is in place could still be tabbed through and heard behind
+  a window. `boxPage` puts them `inert` while one is open. And a window opened from the keyboard
+  left it nowhere: now the client gives it to the first control of the cell that moved (the way
+  back as it opens, its name as it closes), whether the page came whole or in parts.
 
 ## [0.49.0] - 2026-09-25
 
