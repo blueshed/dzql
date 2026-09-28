@@ -154,7 +154,7 @@ export const prop = (name: string, value: string): string => `<div class="prop">
 /** One choice among a few: every option shown, the current one filled. `locked` after a deadline. */
 export function choice(label: string, options: Option[], locked = false): string {
   return `<div class="pick" role="radiogroup" aria-label="${esc(label)}">${options
-    .map((o) => `<button type="button" class="tool${o.kind ? ` ${o.kind}` : ""}" role="radio" aria-checked="${o.on}" aria-pressed="${o.on}"${o.write}${locked ? " disabled" : ""}>${esc(o.text)}</button>`)
+    .map((o) => `<button type="button" class="tool${o.kind ? ` ${o.kind}` : ""}" role="radio" aria-checked="${o.on}"${o.write}${locked ? " disabled" : ""}>${esc(o.text)}</button>`)
     .join("")}</div>`;
 }
 
@@ -208,10 +208,10 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     );
   }
 
-  /** The reading switch (rule 16): the same figures drawn another way, each with its mark, the current one pressed. A stack of its own. */
+  /** The reading switch (rule 16): the same figures drawn another way, each with its mark, the current one checked (a radio: `aria-checked`, never `aria-pressed`). A stack of its own. */
   function readingSwitch(key: string, current: string, options: [value: string, mark: I | BentoIcon][]): string {
     return `<div class="stack" role="radiogroup" aria-label="Read as">${options
-      .map(([value, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${current === value}" aria-pressed="${current === value}" aria-label="${esc(value)}"${write(trayDoc, "replace", `/reading/${key}`, value)}>${icon(mark)}<span class="sr-only">${esc(value)}</span></button>`)
+      .map(([value, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${current === value}" aria-label="${esc(value)}"${write(trayDoc, "replace", `/reading/${key}`, value)}>${icon(mark)}<span class="sr-only">${esc(value)}</span></button>`)
       .join("")}</div>`;
   }
 

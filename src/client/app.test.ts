@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
-import { bento, type Field } from "../bento";
+import { bento, choice, type Field } from "../bento";
 import { write } from "../html";
 import { diff, drawParts, part } from "../parts";
 import { waitFor } from "../webview";
@@ -73,6 +73,9 @@ async function pushRefused(view: Bun.WebView, html: string, reason?: string): Pr
 
 /** The id of the last write this page sent, which its echo or its refusal hands back. */
 const lastId = (view: Bun.WebView): Promise<number> => view.evaluate<number>(`window.__ids.at(-1)`);
+
+/** Waits for the page to have drawn a frame: a scroll made by script is heard (its `scroll` event) at the next one, as a person's is long before any render comes. */
+const aFrame = (view: Bun.WebView) => view.evaluate(`new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))`);
 
 /** Chooses `value` in the select at `selector` as a person would: the WebView cannot open its menu,
  * so the choice is made as the browser makes it, the value set, then `input` and `change`. */
@@ -338,6 +341,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     const r11 = `Math.round(document.getElementById('r11').getBoundingClientRect().top - document.getElementById('full').getBoundingClientRect().top)`;
     await pushRender(view, page());
     await view.evaluate(`document.getElementById('full').scrollTop = 550`); // r11 just under the header, r10 under it
+    await aFrame(view);
     expect(await view.evaluate<number>(r11)).toBe(60);
     await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r10"]' }] });
     expect(await view.evaluate<number>(r11)).toBe(60);
@@ -348,6 +352,76 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     const top = await view.evaluate<number>(`document.getElementById('full').scrollTop`);
     await pushRender(view, page(["r10", "r9", "r8"]));
     expect(await view.evaluate<number>(`document.getElementById('full').scrollTop`)).toBe(top); // left to the browser
+  });
+
+  test("the reader's place is kept with a selection left somewhere, after a right-click, and after a press the window lost", async () => {
+    await using view = await open();
+    const rows = (gone: string[]) => Array.from({ length: 30 }, (_, i) => `r${i}`).filter((k) => !gone.includes(k)).map((k) => `<li id="${k}" data-eta-part="${k}" style="height:50px;margin:0">${k}</li>`).join("");
+    const page = `<div style="position:fixed;inset:8px;overflow:hidden"><div id="full" style="position:absolute;inset:0;overflow:auto"><header style="position:sticky;top:0;height:60px;background:#fff;z-index:1">the day</header><ul data-eta-part="list" style="margin:0;padding:0;list-style:none">${rows([])}</ul></div></div>`;
+    const r11 = `Math.round(document.getElementById('r11').getBoundingClientRect().top - document.getElementById('full').getBoundingClientRect().top)`;
+    const kept: Record<string, number> = {};
+    for (const [how, before] of [
+      ["a selection left above", `getSelection().selectAllChildren(document.getElementById('r2'))`],
+      ["after a right-click", ""],
+      ["after a press the window lost", `(() => { document.getElementById('r12').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); window.dispatchEvent(new Event("blur")); })()`],
+    ] as const) {
+      await pushRender(view, page);
+      await view.evaluate(`(() => { getSelection().removeAllRanges(); document.getElementById('full').scrollTop = 550; })()`); // r11 just under the header, r10 under it
+      await aFrame(view);
+      if (before) await view.evaluate(before);
+      else await view.click("#r12", { button: "right" });
+      await view.evaluate(`document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))`); // put away a menu, if one opened
+      await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r10"]' }] });
+      kept[how] = await view.evaluate<number>(r11);
+    }
+    expect(kept).toEqual({ "a selection left above": 60, "after a right-click": 60, "after a press the window lost": 60 });
+  });
+
+  test("the reader's place is kept in a scroller whose top is scrolled off the page, and the page stays where it is", async () => {
+    await using view = await open();
+    const rows = (gone: string[]) => Array.from({ length: 40 }, (_, i) => `r${i}`).filter((k) => !gone.includes(k)).map((k) => `<li id="${k}" data-eta-part="${k}" style="height:50px;margin:0">${k}</li>`).join("");
+    await pushRender(view, `<style>body { margin: 0 }</style><div style="height:400px"></div><div id="list" style="height:300px;overflow:auto"><header style="position:sticky;top:0;height:60px;background:#fff;z-index:1">the day</header><ul style="margin:0;padding:0;list-style:none">${rows([])}</ul></div><div style="height:2000px"></div>`);
+    await view.evaluate(`(() => { document.getElementById('list').scrollTop = 550; window.scrollTo(0, 500); })()`); // the list's top 100px above the window; r12 at its top
+    await aFrame(view);
+    const where = `[scrollY, Math.round(document.getElementById('r12').getBoundingClientRect().top - document.getElementById('list').getBoundingClientRect().top)]`;
+    expect(await view.evaluate<number[]>(where)).toEqual([500, 110]);
+    await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r10"]' }] }); // under the list's header, out of sight
+    expect(await view.evaluate<number[]>(where)).toEqual([500, 110]);
+  });
+
+  test("keeping the place looks only at the scrollers someone has scrolled, not at every element on a long page", async () => {
+    await using view = await open();
+    const row = (i: number) => `<li id="r${i}" data-eta-part="r${i}" style="height:40px"><span>Row ${i}</span><span>value</span><span><b>x</b></span></li>`;
+    await pushRender(view, `<ul style="margin:0;padding:0;list-style:none">${Array.from({ length: 1000 }, (_, i) => row(i)).join("")}</ul>`);
+    await waitFor(view, `document.getElementById('app').querySelectorAll('*').length`, (v) => (v as number) >= 5000);
+    await view.evaluate(`window.scrollTo(0, 20000)`);
+    await aFrame(view);
+    const r500 = `Math.round(document.getElementById('r500').getBoundingClientRect().top)`;
+    const read = await view.evaluate<number>(r500);
+    await view.evaluate(`(() => {
+      window.__reads = 0;
+      const scrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop");
+      Object.defineProperty(Element.prototype, "scrollTop", { configurable: true, get() { window.__reads++; return scrollTop.get.call(this); }, set(v) { scrollTop.set.call(this, v); } });
+    })()`);
+    await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r10"]' }] });
+    expect(await view.evaluate<number>(`window.__reads`)).toBeLessThan(10);
+    expect(await view.evaluate<number>(r500)).toBe(read); // and the place is still kept
+  });
+
+  test("a cell that grows into a fixed window is no place to keep: the page behind stays where it was, open and closed", async () => {
+    await using view = await open();
+    const box = (open: boolean) =>
+      `<style>body { margin: 0 }</style><div style="height:100px">the trail</div>` +
+      ["asks", "market", "clock"].map((k) => `<div id="${k}" data-moving="${k}" style="height:300px${open && k === "market" ? ";position:fixed;inset:8px;overflow:auto" : ""}">${k}</div>`).join("") +
+      `<div style="height:200px"></div>`;
+    await pushRender(view, box(false));
+    await view.evaluate(`window.scrollTo(0, scrollY + document.getElementById('market').getBoundingClientRect().top - 100)`); // the market cell 100px down
+    const seen = [await view.evaluate<number>(`scrollY`)];
+    await pushRender(view, box(true)); // it grows into the window
+    seen.push(await view.evaluate<number>(`scrollY`));
+    await pushRender(view, box(false)); // and back
+    seen.push(await view.evaluate<number>(`scrollY`));
+    expect(seen).toEqual([300, 300, 300]); // the browser alone ends at 100 (WebKit) or 187 (Chrome)
   });
 
   test("a revealed element lands below a sticky header the page does not declare", async () => {
@@ -783,11 +857,10 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     }
   });
 
-  test("a write made while the socket is down is not taken for sent: a form keeps what is typed, and an editing form says it once the socket is back", async () => {
+  test("a write made while the socket is down is not taken for sent: a form keeps what is typed, and an editing form says it once the page is drawn afresh", async () => {
     await using view = await open();
-    // as a real socket does, the stub drops what is sent while it is not open
-    const stub = `(() => { window.__sent ??= []; window.eta.socket().send = function (d) { const { id, ...write } = JSON.parse(d); if (this.readyState === 1) window.__sent.push(write); }; })()`;
-    await view.evaluate(stub);
+    // every socket's send, the next one's too; as a real socket does, one not open drops what it is given (the id kept apart, as stubSend does)
+    await view.evaluate(`(() => { window.__sent = []; window.__ids ??= []; const send = function (d) { const { id, ...write } = JSON.parse(d); if (this.readyState === 1) { window.__ids.push(id); window.__sent.push(write); } }; WebSocket.prototype.send = send; window.eta.socket().send = send; })()`);
     await pushRender(view, `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>
       <form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>Hello</textarea></form>`);
     await waitFor(view, `document.getElementById('words') !== null`, (v) => v === true);
@@ -800,11 +873,16 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     const dropped = await view.evaluate(`(() => { window.__old = window.eta.socket(); window.__old.close(); document.getElementById('say').requestSubmit(); return document.getElementById('text').value; })()`);
     expect(dropped).toBe("hi all"); // not sent, so not cleared
     await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
-    await view.evaluate(stub);
+    const words = { doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] };
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(0); // not before the page is drawn afresh
+    await pushRender(view, `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>
+      <form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>Hello</textarea></form>`); // as the server, reached again, draws it
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000); // the words go, the field untouched
+    expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([words]);
     await view.evaluate(`document.getElementById('words').focus()`);
-    await view.evaluate(`document.getElementById('words').blur()`); // leaving it, now the socket is back
+    await view.evaluate(`document.getElementById('words').blur()`); // and leaving it says nothing again
     await Bun.sleep(50);
-    expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([{ doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] }]);
+    expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([words]);
   });
 
   test("a connection that drops leaves the page as it was, inert and marked, until it is back", async () => {
@@ -935,7 +1013,11 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
   test("a render drawn between pressing a box and letting go leaves it be, so the click ticks it as the person meant, and nothing undoes the other's tick", async () => {
     await using view = await open();
     await stubSend(view);
-    for (const touched of [false, true]) {
+    for (const [touched, press] of [
+      [false, `document.getElementById('paid').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`],
+      [true, `document.getElementById('paid').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`],
+      [false, `(() => { const box = document.getElementById('paid'); box.focus(); box.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true })); })()`], // Space, held
+    ] as const) {
       await pushRender(view, ticksForm("Temple", false, false, "see"));
       if (touched) {
         for (const [paid, version] of [[true, 2], [false, 3]] as const) {
@@ -945,8 +1027,8 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
         }
       }
       await view.evaluate(`window.__sent = []`);
-      await view.evaluate(`document.getElementById('paid').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`);
-      await pushRender(view, ticksForm("Temple", false, true, "see")); // someone else ticked it, drawn while the finger is down
+      await view.evaluate(press);
+      await pushRender(view, ticksForm("Temple", false, true, "see")); // someone else ticked it, drawn while the finger (or Space) is down
       await view.evaluate(`document.getElementById('paid').click()`); // let go
       await Bun.sleep(50);
       expect(await view.evaluate<unknown[]>(`[document.getElementById('paid').checked, window.__sent]`)).toEqual([true, []]);
@@ -1029,6 +1111,23 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.click("#kind-travel"); // chosen again before the answer
     await pushRefused(view, add); // refused again
     expect(await view.evaluate<unknown[]>(`[document.getElementById('title').value, document.getElementById('booked').checked, document.querySelector('[name=kind]:checked').value]`)).toEqual(["Fushimi", true, "travel"]);
+  });
+
+  test("a choice and the reading switch are drawn chosen by aria-checked alone, as a pressed tool is", async () => {
+    await using view = await open();
+    const css = await Bun.file(new URL("../bento.css", import.meta.url)).text();
+    const { readingSwitch, tool } = bento({ icon: () => "", session: "session" });
+    await pushRender(view, `<style>${css} :root { --accent: rgb(1, 2, 3); --card: rgb(4, 5, 6); }</style>${choice("Coming?", [{ text: "Yes", on: true, write: "" }, { text: "No", on: false, write: "" }])}${readingSwitch("board", "list", [["spark", "chart"], ["list", "list"]])}<div class="pick">${tool("Find", { pressed: true, write: "" })}</div>`);
+    await waitFor(view, `document.querySelectorAll('[role=radio]').length`, (v) => v === 4);
+    const drawn = await view.evaluate<unknown>(`(() => {
+      const fill = (el) => getComputedStyle(el).backgroundColor;
+      const radios = [...document.querySelectorAll('[role=radio]')];
+      return { pressed: radios.filter((r) => r.hasAttribute('aria-pressed')).length, chosen: radios.filter((r) => r.getAttribute('aria-checked') === 'true').map(fill), not: radios.filter((r) => r.getAttribute('aria-checked') === 'false').map(fill), tool: fill(document.querySelector('.pick [aria-pressed=true]')) };
+    })()`) as { pressed: number; chosen: string[]; not: string[]; tool: string };
+    expect(drawn.pressed).toBe(0);
+    expect(drawn.tool).toBe("rgb(1, 2, 3)"); // the example's accent
+    expect(drawn.chosen).toEqual([drawn.tool, drawn.tool]); // filled as a pressed tool is
+    expect(drawn.not.every((fill) => fill !== drawn.tool)).toBe(true);
   });
 
   test("the bento's add modal asks with a select and a link, and a refused add hands back what was typed and chosen", async () => {
@@ -1123,7 +1222,7 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
     expect(await lastSent()).toMatchObject({ id: undo, echoed: false, refused: true, reason: "Someone has changed that since, so it cannot be undone." });
   });
 
-  test("a write on its way when the socket goes is unanswered: the page drawn afresh hands back what its form sent, and an editing form says its edit again", async () => {
+  test("a write on its way when the socket goes is unanswered: the page drawn afresh hands back what its form sent, and an editing form says its edit again, once", async () => {
     await using view = await open();
     await stubSend(view);
     const words = (text: string) => `<form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>${text}</textarea></form>`;
@@ -1140,13 +1239,37 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
     await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
     expect(await view.evaluate<Record<string, unknown>>(`window.eta.inspect().lastSent`)).toMatchObject({ doc: "room", echoed: false, refused: false, unanswered: true });
     await stubSend(view);
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(0); // nothing said before the page shows what landed
     await pushRender(view, say() + words("Hello")); // the page drawn afresh: neither landed
     expect(await text(view)).toBe("hello");
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000); // the edit goes again, the field untouched
+    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] });
+    expect(typeof (await view.evaluate<unknown>(`window.__ids[0]`))).toBe("number"); // with an id of its own
 
     await view.evaluate(`document.getElementById('words').focus()`);
+    await view.evaluate(`document.getElementById('words').blur()`); // leaving it says it no more
+    await Bun.sleep(50);
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(1);
+  }, 15000);
+
+  test("an edit that landed before its socket went is not said again: the page drawn afresh shows it", async () => {
+    await using view = await open();
+    // every socket's send, the next one's too; one not open drops what it is given
+    await view.evaluate(`(() => { window.__sent = []; window.__ids = []; const send = function (d) { const { id, ...write } = JSON.parse(d); if (this.readyState === 1) { window.__ids.push(id); window.__sent.push(write); } }; WebSocket.prototype.send = send; window.eta.socket().send = send; })()`);
+    const words = (text: string) => `<form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>${text}</textarea></form>`;
+    await pushRender(view, words("Hello"));
+    await waitFor(view, `document.getElementById('words') !== null`, (v) => v === true);
+    await view.click("#words");
+    await view.evaluate(`document.getElementById('words').setSelectionRange(5, 5)`);
+    await view.type(" there");
     await view.evaluate(`document.getElementById('words').blur()`);
     await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] });
+
+    await view.evaluate(`(window.__old = window.eta.socket()).close()`); // gone before its echo came
+    await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
+    await pushRender(view, words("Hello there")); // the page drawn afresh: it landed
+    await Bun.sleep(50);
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(1); // said once, before the socket went
   }, 15000);
 
   test("a page sent whole by a server of another wire loads this one again, and not again at once: a page and its server speak alike", async () => {

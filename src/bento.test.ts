@@ -68,10 +68,10 @@ describe("the surfaces", () => {
     expect(plain).not.toContain("quiet");
   });
 
-  test("the reading switch writes the session's /reading/<key>, the current one pressed; the plus writes /new", () => {
+  test("the reading switch writes the session's /reading/<key>, the current one checked (a radio is checked, not pressed); the plus writes /new", () => {
     const out = b.readingSwitch("board", "list", [["spark", "chart"], ["list", "list"]]);
-    expect(out).toContain(`aria-checked="false" aria-pressed="false" aria-label="spark" data-write='{"doc":"desk","op":"replace","path":"/reading/board"}' data-value="spark"><i data-icon="chart"`);
-    expect(out).toContain('aria-checked="true" aria-pressed="true" aria-label="list"');
+    expect(out).toContain(`role="radio" aria-checked="false" aria-label="spark" data-write='{"doc":"desk","op":"replace","path":"/reading/board"}' data-value="spark"><i data-icon="chart"`);
+    expect(out).toContain('role="radio" aria-checked="true" aria-label="list"');
     expect(b.addTool(open, "Watch")).toContain(`aria-label="Watch"${open}>`);
   });
 
@@ -175,8 +175,8 @@ describe("the surfaces", () => {
     expect(out).toContain('<div class="prop"><span class="prop-name cap">Name</span><div class="prop-value"><span>Alpha</span></div></div>');
     expect(b.drawer("d", "t", "", close)).toContain('class="drawer" role');
     const pick = choice("Coming?", [{ text: "Yes", on: true, write: open, kind: "yes" }, { text: "No", on: false, write: open }], true);
-    expect(pick).toContain(`<button type="button" class="tool yes" role="radio" aria-checked="true" aria-pressed="true"${open} disabled>Yes</button>`);
-    expect(choice("x", [{ text: "No", on: false, write: open }])).toContain(`class="tool" role="radio" aria-checked="false" aria-pressed="false"${open}>No`);
+    expect(pick).toContain(`<button type="button" class="tool yes" role="radio" aria-checked="true"${open} disabled>Yes</button>`); // a radio is checked, not pressed
+    expect(choice("x", [{ text: "No", on: false, write: open }])).toContain(`class="tool" role="radio" aria-checked="false"${open}>No`);
   });
 
   test("the modals: adding asks for the fields it needs, removing asks one question; cancelling writes the session", () => {

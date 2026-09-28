@@ -69,8 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - A throw in a compartment's `afterWrite` is the server's failure (`following a write to …`),
     and the write stands; it was answered refused as well as echoed.
   - A write on its way when the socket goes is unanswered (`lastSent.unanswered`): the page drawn
-    afresh hands back what its form sent, as a refusal would, and an editing form says its edit
-    again on its next commit.
+    afresh hands back what its form sent, as a refusal would, and then each editing form says,
+    once and with an id, any edit that page does not show; one that landed is drawn, not said again.
   - The harness sends every write with an id: a `does` lands when its author is echoed that id, a
     `cannot` must be refused by it, and its `told` must be the reason that refusal gave; a refused
     `does` or premise says why. A refusal's failure reads `refused, but <who> was not answered:
@@ -125,6 +125,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   taken back, and its picture field the key at its own path, which it declared nowhere before
   (a story now puts a picture on the welcome). The photo's taps only go somewhere, as the page's
   address does.
+- **A choice and the reading switch are radios, checked, not pressed** (`src/bento.ts`). `choice()`
+  and `readingSwitch()` drew each option `role="radio"` with both `aria-checked` and
+  `aria-pressed`, which ARIA does not allow on a radio. They carry `aria-checked` alone now, and
+  `src/bento.css` fills a checked radio tool as it does a pressed one. A stylesheet that coloured
+  them by `[aria-pressed="true"]` colours them by `[aria-checked="true"]` (the wedding's yes and no
+  do). The wedding's and leave's own reading switches, drawn by hand, still carry both.
 - **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
   browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
   when not, as was a group of radios none of which was chosen. So a title and an unticked box
@@ -502,11 +508,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is now whether it was drawn `checked`; it goes only when its tick differs, a box as `true` or
   `false` and a group of radios as the value chosen; a refusal hands the tick back; and a render keeps
   a tick not yet drawn (a radio's by its value, while its group offers it) and otherwise shows
-  what is drawn, with the caret in it or not. A render drawn while someone is pressing a box
-  leaves its tick be until the click lands: it used to tick it first, so the click unticked it
+  what is drawn, with the caret in it or not. A render drawn while someone is pressing a box (or
+  holding Space on it) leaves its tick be until the click lands: it used to tick it first, so the click unticked it
   and sent that, undoing whoever had ticked it. A group of radios may span parts: a render in
   parts keeps its choice across all its ops, a radio put in drawn ticked or a part swapped for
   another tag included.
+- **The morph leaves be what follows a child put in or taken out** (`src/client/morph.ts`). It
+  matched children without an id by place alone, so an element put in or taken out ahead of its
+  siblings shifted every one after it: each was rebuilt, and a button among them lost the caret
+  to the body (japan-eta's reveal mark, drawn first, did this until it was drawn last). A child
+  without an id is now matched by the ids inside it first (the one holding a row or an applet
+  goes on holding it), then in order by tag (the same head and tail by place, the middle by their
+  longest common run), and what is not reused goes first, so what stays is not moved.
 - **A part inside an `<svg>` comes back as SVG** (`src/client/morph.ts`, todo n77). A render in
   parts parsed a part's HTML in a `<template>`, as HTML, so a part rooted inside an `<svg>` (a
   `<g>`, a `<path>`) was replaced by an HTML element of that name, and drew nothing; a `tag` op
@@ -540,8 +553,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   editing form committed into the closed socket, and the client recorded it as sent: once back,
   leaving the field again said nothing (the same message, not sent twice), and the words, still
   in the field, looked kept. And a form submitted as the socket closed was cleared. A write is now
-  sent only on an open socket, and recorded only then, so the next commit says it, and the form
-  keeps what is typed.
+  sent only on an open socket, and recorded only then: a form keeps what is typed, and an editing
+  form says what was dropped once the page is drawn afresh (the unanswered write's account, above).
 - **A render keeps the reader's place, under a sticky header too** (`src/client/app.ts`, todo
   n85). The client left a reader's place to the browser's scroll anchoring, which can anchor on
   the row hidden under an app's sticky header: a stop moved from Wednesday to Thursday, from
@@ -549,8 +562,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   parts, the client notes in each scrolled scroller (the page, the bento's window) the first
   element below where reading starts -- below any bar stuck at its top, position `sticky` or
   `fixed`, as measured -- and after it puts that element back where it was; not while someone is
-  pressing or has a range selected. `data-reveal` measures the bar the same way, so a revealed row
+  pressing (a drag, a selection being made), and a right-click or a lost window ends a press. `data-reveal` measures the bar the same way, so a revealed row
   lands below a header nobody declared. A declared `scroll-padding-top` overrides the measure.
+  What a render takes out of the flow is no place to keep: a cell grown into the window (fixed,
+  or the one that moves) left the page behind it at its top, and there on close. A scroller whose
+  top is scrolled off the window is kept from the window's top, and a scroller's place is put
+  back before the page's, which may be reading inside it.
 
 ## [0.49.0] - 2026-09-25
 
@@ -616,14 +633,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
-- **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
-  browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
-  when not, as was a group of radios none of which was chosen. So a title and an unticked box
-  sent the title alone, and ticked, a record. Now a field has one type whatever form it is in: a
-  box is `true` or `false`, always there, whatever its value attribute says; a group of radios is
-  one field, the value chosen or `null`; a `multiple` select its last choice or `null`; and a
-  record keeps every named field's key. A `shape` that read "on", or a missing key as unticked,
-  reads `true` and `false` now. No example sends a box (the wedding's `yesNo` takes both).
 - **The stories check delivery, not only pages.** A story that passed may now fail, by name:
   - an `unseen` member told of any document -- sent a patch -- by the write, its undo or its redo
     (`cy was told of room:general, and should not have been`);
@@ -738,14 +747,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
-- **A form's value keeps one shape** (`src/client/form-value.ts`). A form that creates sent the
-  browser's form data: a box went as "on" (or its value attribute) when ticked and was left out
-  when not, as was a group of radios none of which was chosen. So a title and an unticked box
-  sent the title alone, and ticked, a record. Now a field has one type whatever form it is in: a
-  box is `true` or `false`, always there, whatever its value attribute says; a group of radios is
-  one field, the value chosen or `null`; a `multiple` select its last choice or `null`; and a
-  record keeps every named field's key. A `shape` that read "on", or a missing key as unticked,
-  reads `true` and `false` now. No example sends a box (the wedding's `yesNo` takes both).
 - **eta keeps every document in delta.** `@blueshed/delta` is a dependency, and `Example.delta`
   (the example's backends registered on a `createLocal()`) is required. The kernel keeps a copy of
   each document a page reads, kept current from delta's one stream of changes, and draws

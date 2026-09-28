@@ -60,6 +60,33 @@ describe("morph", () => {
     expect(result).toEqual(["b:b:B2", "a:a:A2"]);
   });
 
+  test("a child taken out or put in ahead of its siblings leaves them be: the button with the caret keeps it", async () => {
+    const result = await run(`
+      const day = (lead) => '<section>' + lead + '<h2>Day</h2><p>a stop</p><div><button>Go</button></div></section>';
+      root.innerHTML = day('<span class="mark"></span>');
+      const kept = () => [...root.querySelectorAll('h2, p, div, button')];
+      const before = kept();
+      root.querySelector('button').focus();
+      window.morph(root, day(''));
+      const out = [kept().every((el, i) => el === before[i]), document.activeElement === before[3]];
+      window.morph(root, day('<em>new</em>'));
+      out.push(kept().every((el, i) => el === before[i]), document.activeElement === before[3], root.firstChild.firstChild.tagName);
+      return out;
+    `);
+    expect(result).toEqual([true, true, true, true, "EM"]);
+  });
+
+  test("a child without an id goes on holding the ids inside it: a window closing keeps its applet, whatever stands around it", async () => {
+    const result = await run(`
+      const board = '<div id="board"><div id="line-FXTR" data-applet="board"></div></div>';
+      root.innerHTML = '<div class="cell open"><div class="cell-head">Board</div><div class="rail"></div><div class="full">' + board + '</div><div class="stack"></div></div>';
+      root.querySelector('#line-FXTR')._kept = true;
+      window.morph(root, '<div class="cell"><div class="cell-head">Board</div><p class="cell-summary">3 watched</p><div class="cell-body">' + board + '</div></div>');
+      return [root.querySelector('#line-FXTR')._kept === true, [...root.firstChild.children].map((el) => el.className)];
+    `);
+    expect(result).toEqual([true, ["cell-head", "cell-summary", "cell-body"]]);
+  });
+
   test("removes leftover children when the new list is shorter", async () => {
     const result = await run(`
       root.innerHTML = '<li>1</li><li>2</li><li>3</li>';
