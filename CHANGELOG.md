@@ -140,12 +140,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (an `aria-label`, a form's legend, a field's label), at most 80 characters, never what the
   control shows, which may be anyone's words and which an assistant would read as an instruction;
   so a tool stays as it is while the page's content changes, and is registered once. It makes the
-  write its control would, nothing more; the server permits it as it does a person's. Each answers
-  as `eta.send` does. Chat labels its two forms.
+  write its control would, and sends only what its control could: a select's or radios' own
+  choices, a person could choose now, a box's tick, one of its own buttons; and a form is no tool
+  while its submit or a fieldset of it is disabled. The server permits it as it does a person's.
+  Each answers as `eta.send` does, which stays raw: it sends what a script gives it, as the socket
+  already takes. Chat labels its two forms.
   Where the browser has WebMCP (`document.modelContext`, the W3C draft) each tool is registered
   with it, once while the page offers it as it was, and withdrawn by its signal when it goes or
   changes; where it has none, nothing is registered, and `window.eta.tools()` lists them and
-  `window.eta.use(name, input)` runs one. The module is 2.0 KB gzipped, only for an app that
+  `window.eta.use(name, input)` runs one. The module is 2.1 KB gzipped, only for an app that
   imports it; the kernel's client is 6.4 KB (6.1 on main), `eta.send` and the answers by id. Proved
   on chat (`examples/chat/client/tools.test.ts`): the assistant says something through the page's
   own form, the person says something after it, and the assistant undoes its own by its handle, the

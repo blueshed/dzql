@@ -405,7 +405,7 @@ Messages:
 
 An assistant in the browser (Claude in Chrome, or any agent the browser lets in) uses the page by
 its writes, not its pixels, where the app opts in: its `client/main.ts` imports the tools after the
-kernel's client, one line (2.0 KB gzipped, for that app alone), as chat's does:
+kernel's client, one line (2.1 KB gzipped, for that app alone), as chat's does:
 
 ```ts
 import "eta/src/client/app";
@@ -437,9 +437,14 @@ already says.
   by its kind (`go_in.form`). So a tool stays as it is while the page's content changes, and is
   registered once. Label what an assistant should use, in words of your own: chat's forms say
   "Say something" and "Go into a new room".
-- **A tool makes its control's write and nothing more**, and the server permits it as it does a
-  person's: the schema says what the page offers, and nothing in the client is a gate. It answers
-  as `eta.send` does; `change` names the change, for `undo`.
+- **A tool makes its control's write, and sends only what its control could**: a select's or a
+  group of radios' own choices, a person could choose now; a box's tick, true or false; the one of
+  its buttons it names. A form is no tool while its submit or a fieldset of it is disabled. The
+  server then permits it as it does a person's. It answers as `eta.send` does; `change` names the
+  change, for `undo`.
+- **`window.eta.send` is not a tool**: it sends what a script gives it, as the socket already
+  takes from any script on the page. What stops a write that no control offers is the server's
+  `permit`, for a script as for a tool.
 - **WebMCP**: where the browser has a model context (`document.modelContext`, the W3C draft), each
   tool is registered with it, once while the page offers it as it was, and withdrawn (its signal
   aborted) when it goes or changes. Where it has none, nothing is registered; `window.eta.tools()`

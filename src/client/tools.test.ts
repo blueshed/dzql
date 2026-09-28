@@ -175,6 +175,40 @@ describe("the page's writes, as tools", () => {
     expect(await view.evaluate<number>(`window.__sent.length`)).toBe(count);
   });
 
+  test("a tool sends only what its control could: a select's or a group of radios' own choices, a person could choose now; a box's tick", async () => {
+    await using view = await open();
+    const seats = `<form aria-label="Choose a seat"${write("trip", "replace", "/seat")}>${["a", "b", "c"].map((v) => `<input type="radio" name="seat" value="${v}"${v === "c" ? " disabled" : ""}>`).join("")}<button>Choose</button></form>`;
+    await render(view, PAGE + seats);
+    const count = await view.evaluate<number>(`window.__sent.length`);
+    for (const [name, input, why] of [
+      ["the_trip", { kind: "gone" }, "kind is none of the page's choices."], // an option drawn disabled
+      ["the_trip", { kind: "boil" }, "kind is none of the page's choices."],
+      ["choose_a_seat", { seat: "c" }, "seat is none of the page's choices."], // a radio drawn disabled
+      ["choose_a_seat", { seat: "z" }, "seat is none of the page's choices."],
+      ["the_trip", { booked: "yes" }, "booked is true or false."],
+    ] as const) {
+      await start(view, `window.eta.use(${JSON.stringify(name)}, ${JSON.stringify(input)})`);
+      expect({ name, input, answer: await answer(view) }).toEqual({ name, input, answer: { unsent: why } });
+    }
+    expect(await view.evaluate<number>(`window.__sent.length`)).toBe(count);
+    await start(view, `window.eta.use("the_trip", { kind: "eat" })`);
+    expect((await lastSent(view)).ops).toEqual([{ op: "replace", path: "/stops/4/kind", value: "eat" }]);
+    await start(view, `window.eta.use("choose_a_seat", { seat: "b" })`);
+    expect((await lastSent(view)).ops).toEqual([{ op: "replace", path: "/seat", value: "b" }]);
+  });
+
+  test("a form is no tool while its submit or its fieldset is disabled, as a person could not send it", async () => {
+    await using view = await open();
+    const form = (label: string, inner: string) => `<form aria-label="${label}"${write("trip", "add", "/stops/-")}>${inner}</form>`;
+    await render(view, [
+      form("Book it", `<input name="title"><button disabled>Book</button>`),
+      form("Pay", `<fieldset disabled><input name="card"></fieldset><button>Pay</button>`),
+      `<fieldset disabled>${form("Fenced in", `<input name="x"><button>Go</button>`)}</fieldset>`,
+      form("Open", `<input name="title"><button>Go</button>`),
+    ].join(""));
+    expect((await toolsOf(view)).map((t) => t.name)).toEqual(["open", "undo", "redo"]);
+  });
+
   test("where a form and buttons take one label, the later is told apart by its kind", async () => {
     await using view = await open();
     await render(view, `<button aria-label="Go in"${write("session", "replace", "/room", "general")}>#general</button><form aria-label="Go in"${write("session", "replace", "/room")}><input name="room" required><button>Go in</button></form>`);

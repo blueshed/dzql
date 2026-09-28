@@ -1,12 +1,14 @@
 import type { PatchOp } from "../json-patch";
 import { afterDrawing, ask, walked, type Answer, type Write } from "./app";
-import { isBox, rendered, type Field } from "./form-value";
+import { groupOf, isBox, rendered, type Field } from "./form-value";
 
 // The page's writes as tools for an assistant (todo n99), for an app that opts in: its client/main.ts
 // imports this after the kernel's client, `import "eta/src/client/tools"`. Every control a person
 // could press on the page now, that the app has labelled, is a tool -- a form, an editing form, the
 // buttons and rows of one label, an applet's `data-writes` -- and undo and redo are two more. A
-// tool makes the write its control would; the server permits it or not, as it does a person's.
+// tool makes the write its control would, and sends only what its control could: a choice among
+// the control's own, a form a person could send now. The server permits it or not, as it does a
+// person's.
 //
 // A tool is named and described only in the app's own words: the label it gave the control (an
 // aria-label, a form's legend, a field's label), never what the control shows, which may be anyone's
@@ -50,11 +52,24 @@ function schemaOf(field: Field): Schema {
   return { type: "string", description, ...(format && { format }) };
 }
 
-/** What a field sends of `given`, as a person's form would: a box a tick, anything else text. */
-const sent = (field: Field, given: unknown): unknown => (isBox(field) || given == null ? given : String(given));
+/** What a field sends of `given`, as a person could make it: a box a tick, a choice one it offers now, anything else text -- or why it cannot. */
+function sent(field: Field, key: string, given: unknown): { value: unknown } | string {
+  if (isBox(field)) return typeof given === "boolean" ? { value: given } : `${key} is true or false.`;
+  const value = given == null ? given : String(given);
+  const offered =
+    field instanceof HTMLSelectElement ? [...field.options].filter((o) => !o.disabled).map((o) => o.value)
+    : field.type === "radio" ? groupOf(field as HTMLInputElement).filter(pressable).map((r) => r.value)
+    : undefined;
+  return offered && !offered.includes(value as string) ? `${key} is none of the page's choices.` : { value };
+}
 
-/** A form that creates: sends its one field's value, or a record of its fields, as on submit (form-value.ts); a field the page fills (hidden, readonly) as the page filled it. */
-function formTool(form: HTMLFormElement, label: string): Tool {
+/**
+ * A form that creates: sends its one field's value, or a record of its fields, as on submit
+ * (form-value.ts); a field the page fills (hidden, readonly) as the page filled it. None while a
+ * person could not send it: its submit disabled, or a fieldset of it, or around it.
+ */
+function formTool(form: HTMLFormElement, label: string): Tool | undefined {
+  if (form.closest("fieldset:disabled") || form.querySelector("fieldset:disabled, :is(button:not([type=button],[type=reset]), input[type=submit]):disabled")) return undefined;
   const spec = specOf(form);
   const fields = new Map<string, Field>();
   for (const el of form.elements as unknown as Iterable<Field>) {
@@ -70,7 +85,12 @@ function formTool(form: HTMLFormElement, label: string): Tool {
     write(input) {
       const missing = required.filter((name) => input[name] == null);
       if (missing.length) return `Give ${missing.join(", ")}.`;
-      const value = Object.fromEntries([...fields].map(([name, f]) => [name, asked.some(([n]) => n === name) && name in input ? sent(f, input[name]) : rendered(f)]));
+      const value: Record<string, unknown> = {};
+      for (const [name, f] of fields) {
+        const given = asked.some(([n]) => n === name) && name in input ? sent(f, name, input[name]) : { value: rendered(f) };
+        if (typeof given === "string") return given;
+        value[name] = given.value;
+      }
       return { doc: spec.doc, ops: [{ op: spec.op, path: spec.path, value: fields.size > 1 ? value : Object.values(value)[0] }] };
     },
   };
@@ -94,7 +114,13 @@ function editTool(form: HTMLFormElement, label: string): Tool | undefined {
     write(input) {
       const given = fields.filter(([key]) => key in input);
       if (!given.length) return `Give one or more of ${keys}.`;
-      return { doc: given[0]![2].doc, ops: given.map(([key, f, spec]) => ({ op: spec.op, path: spec.path, value: sent(f, input[key]) })) };
+      const ops: PatchOp[] = [];
+      for (const [key, f, spec] of given) {
+        const v = sent(f, key, input[key]);
+        if (typeof v === "string") return v;
+        ops.push({ op: spec.op, path: spec.path, value: v.value });
+      }
+      return { doc: given[0]![2].doc, ops };
     },
   };
 }
