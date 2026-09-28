@@ -77,7 +77,7 @@ export function photoSvg(entries: PhotoEntry[], label: string, arriving: Set<str
     } else {
       inner = figure(s, { classes, print: chest });
     }
-    const tap = entry.tap ? ` role="button" tabindex="0" data-key="${esc(entry.key)}" aria-pressed="${!!entry.chosen}"` : "";
+    const tap = entry.tap ? ` role="button" tabindex="0" data-key="${esc(entry.key)}" aria-expanded="${!!entry.chosen}"` : "";
     const reveal = entry.chosen ? ` data-reveal` : "";
     const mark = entry.mark ? `<circle class="mark mark-${esc(entry.mark)}" cx="50" cy="147" r="4.5"/>` : "";
     const count = entry.count && entry.count > 1 ? `<g class="count"><circle cx="82" cy="46" r="10"/><text x="82" y="49.5" text-anchor="middle">${entry.count}</text></g>` : "";

@@ -82,7 +82,7 @@ export function householdPage(v: HouseholdView): string {
   const find = read.as !== "everyone" && people.length ? findControl("guests", { word, hide, shown: people.filter((n) => matches(n, word)).length, total: people.length }) : undefined;
   const tools = [
     find?.tool ?? "",
-    ...INFO.map(([text, what, mark]) => tool(text, { icon: mark, iconOnly: true, pressed: at.drawer === what, write: at.drawer === what ? close(v) : open_(v, what) })),
+    ...INFO.map(([text, what, mark]) => tool(text, { icon: mark, iconOnly: true, expanded: at.drawer === what, write: at.drawer === what ? close(v) : open_(v, what) })),
     addTool(open_(v, "new", owed ? "guests" : "asks"), owed ? "Name our plus-one" : "Ask to bring someone"),
   ].filter(Boolean);
   const said = v.open && v.w.deadline ? `<p class="note">Answers by ${esc(formatDay(v.w.deadline))}.</p>` : "";
@@ -111,7 +111,7 @@ export function householdPage(v: HouseholdView): string {
 function speechBubble(h: HouseholdDocument, open: boolean, answer: string): string {
   const words = h.message ?? "";
   return join(
-    `<button type="button" class="bubble ours thing${h.answer ? " answered" : ""}" aria-pressed="${open}"${answer}>`,
+    `<button type="button" class="bubble ours thing${h.answer ? " answered" : ""}" aria-expanded="${open}"${answer}>`,
     faceMark(h.answer),
     `<span class="bubble-words${words ? "" : " empty"}">${esc(words || (h.answer ? `${answerSays(h.answer)}.` : "Are you coming?"))}</span>`,
     `<span class="pencil" aria-hidden="true">${icon("pencil", 16)}</span>`,

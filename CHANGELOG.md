@@ -183,8 +183,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   repeat until a write lands (a patch), and not after.
 - **What opens, opens from the keyboard** (todo n57). A cell, a row and the wedding's bubbles were
   `div`s with `role="button"`: Tab reached them, and Enter and Space did nothing. A cell's name is
-  its button now (the cell is still tapped anywhere; a thing's name carries `aria-pressed`), a row
-  that taps is a `<button>`, the whole line, and so are the bubbles.
+  its button now (the cell is still tapped anywhere), a row that taps is a `<button>`, the whole
+  line, and so are the bubbles. What opens a window, a drawer or a modal says `aria-expanded`, not
+  `aria-pressed`, which a screen reader called a toggle though a second press left the drawer
+  open: a thing's name, a chosen row, the wedding's bubbles, its drawer tools (`tool()`'s new
+  `expanded`) and its figures, leave's bars and rows. Find, the eye and the radios stay pressed.
 - **Behind an open window the box is inert, and the keyboard goes with the cell** (todo n59). The
   box's trail, its other cells and what is in place could still be tabbed through and heard behind
   a window. `boxPage` puts them `inert` while one is open (what is in place in a wrapper that is

@@ -415,7 +415,7 @@ describe("time, on its own (./calendar.ts)", () => {
     expect(moving.match(/class="date clash"/g)).toBeNull(); // and what that would mean
     const selecting = calendarHtml(props(), { id: null, starts: "2026-10-06", ends: "2026-10-06" });
     expect(selecting).toContain("your draft, Tue 6 Oct");
-    expect(calendarHtml(props({ open: "1" }))).toContain('aria-pressed="true"');
+    expect(calendarHtml(props({ open: "1" }))).toContain('aria-expanded="true"'); // a bar whose drawer is open
     const quiet = calendarHtml(props({ from: "2027-03" }));
     expect(quiet).toContain("Nobody is off in these months.");
     expect(quiet).toContain('<li><span class="swatch who-1" aria-hidden="true"></span>Bo</li>'); // the key is the whole team, off or not
@@ -424,7 +424,7 @@ describe("time, on its own (./calendar.ts)", () => {
   test("the list: every request by its first day, yours by colour, a row that opens its drawer, saying where it stands", () => {
     const rows = listRows({ me: "1", team: props().team, open: "2" });
     expect(rows.map((r) => [r.id, r.who, r.state])).toEqual([["1", "Bo", "waiting"], ["2", "", "waiting"], ["3", "Bo", "declined"]]);
-    expect(rowHtml(rows[1]!, "2", 2, 3)).toContain('aria-posinset="2" aria-setsize="3" aria-pressed="true"');
+    expect(rowHtml(rows[1]!, "2", 2, 3)).toContain('aria-posinset="2" aria-setsize="3" aria-expanded="true"');
     expect(rowHtml(rows[1]!, "2")).toContain('<span class="sr-only">yours</span>');
     expect(rowHtml(rows[0]!, null)).toContain('data-value="list?request=1"');
   });

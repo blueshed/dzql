@@ -293,7 +293,7 @@ describe("a household", () => {
     ws.close();
   });
 
-  test("the drawers: a guest's (the dress and menu applets), the answer's, and the gifts, the day and where to stay -- each a tool, pressed while its drawer is open", async () => {
+  test("the drawers: a guest's (the dress and menu applets), the answer's, and the gifts, the day and where to stay -- each a tool, expanded while its drawer is open", async () => {
     const ws = await enter(code);
     const guest = (await household(code)).guests[0]!;
     let html = await at(ws, `?guest=${guest.id}`);
@@ -307,7 +307,7 @@ describe("a household", () => {
     // the gifts: each whole, and what this household may do with it; the tool, pressed, puts the drawer away
     html = await at(ws, "?gifts");
     expect(html).not.toContain('data-applet="dress"');
-    expect(html).toContain(`aria-label="Gifts" aria-pressed="true" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value=""`);
+    expect(html).toContain(`aria-label="Gifts" aria-expanded="true" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value=""`);
     expect(html).toContain("Le Creuset casserole");
     expect(html).toContain('data-write=\'{"doc":"household","op":"add","path":"/claims/-"}\' data-value="1"');
     expect(html).toContain("open · anyone may"); // the honeymoon fund, shared, given to by nobody yet
@@ -531,17 +531,17 @@ describe("the couple", () => {
     expect(await at(ws, "?family=999999")).not.toContain('class="drawer');
     expect(await at(ws, "list?new=households")).toContain('<dialog open class="modal" aria-label="Invite a household">');
 
-    // the four lists: a tool each, pressed while its drawer is open, and a new one named at the foot
+    // the four lists: a tool each, expanded while its drawer is open, and a new one named at the foot
     for (const table of ["courses", "gifts", "events", "places"]) {
       html = await at(ws, `?${table}`);
       expect(html).toContain(`id="${table}-drawer"`);
       expect(html).toContain(`data-write='{"doc":"board","op":"add","path":"/${table}/-"}'`);
     }
-    // a row's own drawer: its × goes back to its list, whose tool stays pressed
+    // a row's own drawer: its × goes back to its list, whose tool stays expanded
     html = await at(ws, "?keep=courses/1");
     expect(html).toContain("Add a dish");
     expect(html).toContain("Remove this course");
-    expect(html).toContain(`aria-label="Courses" aria-pressed="true"`);
+    expect(html).toContain(`aria-label="Courses" aria-expanded="true"`);
     expect(html).toContain(`aria-label="Close" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="?courses"`);
     expect(await at(ws, "?keep=gifts/2")).toContain('aria-label="Shared: any number may claim it"');
     expect(await at(ws, "?keep=events/1")).toContain("2027-04-02T13:00");

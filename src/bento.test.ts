@@ -52,6 +52,8 @@ describe("the surfaces", () => {
     expect(square).toContain('class="tool quiet" aria-label="Find" aria-pressed="true" disabled>');
     expect(square).toContain('<span class="sr-only">Find</span>');
     expect(b.tool("Go", { submit: true, label: "Go now", write: "" })).toContain('type="submit" class="tool" aria-label="Go now"');
+    // a toggle is pressed; what opens a drawer is expanded while the drawer is open
+    expect(b.tool("Gifts", { icon: "search", iconOnly: true, expanded: true, write: "" })).toContain('class="tool" aria-label="Gifts" aria-expanded="true">');
   });
 
   test("the page's tools are undo, redo and leaving; without a leave there are only the two", () => {
@@ -85,15 +87,15 @@ describe("the surfaces", () => {
     expect(hid.filter).toContain(`aria-label="Show what misses" aria-pressed="true" data-write='{"doc":"desk","op":"remove","path":"/hide/market"}'><i data-icon="eye-off"`);
   });
 
-  test("a cell: › and data-moving when it opens, ✎ and pressed when it is a thing, neither when it is only read; its name is its button when it opens", () => {
+  test("a cell: › and data-moving when it opens, ✎ and expanded while its drawer is open when it is a thing, neither when it is only read; its name is its button when it opens", () => {
     const opens = b.cell({ name: "The board", mark: "chart", count: 2, big: true, opens: open, summary: "live", body: "<svg/>" });
     expect(opens).toMatchObject({ key: "the-board", span: 3, rows: 1 });
     expect(opens.html).toContain(`<div class="cell big" data-key="the-board" data-moving="the-board"${open}>`);
-    expect(opens.html).toContain('<button type="button" class="cell-name">The board · 2</button><span class="chev"><i data-icon="chevron-right"');
+    expect(opens.html).toContain('<button type="button" class="cell-name" aria-expanded="false">The board · 2</button><span class="chev"><i data-icon="chevron-right"'); // it opens the window, and is gone while it is open
     expect(opens.html).toContain('<p class="cell-summary">live</p><div class="cell-body"><svg/></div>');
     const thing = b.cell({ name: "clock", key: "c", span: 2, thing: { open, chosen: true } });
     expect(thing).toMatchObject({ key: "c", span: 2 });
-    expect(thing.html).toContain(`<div class="cell thing" data-key="c"${open}><div class="cell-head cap"><button type="button" class="cell-name" aria-pressed="true">clock</button>`);
+    expect(thing.html).toContain(`<div class="cell thing" data-key="c"${open}><div class="cell-head cap"><button type="button" class="cell-name" aria-expanded="true">clock</button>`);
     expect(thing.html).toContain('<span class="chev pencil">');
     const read = b.cell({ name: "quiet" });
     expect(read.span).toBe(1);
@@ -155,7 +157,7 @@ describe("the surfaces", () => {
 
   test("a row: a lead, the words, the state, the mark; tapped (a button, the whole line), chosen, hushed or hidden as it is told", () => {
     const out = b.row({ id: "r-1", tap: open, chosen: true, hushed: true, hidden: true, lead: "<img>", what: "Ada & co", note: "two", state: "<b>here</b>", mark: "pencil" });
-    expect(out).toStartWith(`<button data-eta-part="r-1" type="button" class="row tap hushed" id="r-1"${open} aria-pressed="true" data-reveal hidden>`);
+    expect(out).toStartWith(`<button data-eta-part="r-1" type="button" class="row tap hushed" id="r-1"${open} aria-expanded="true" data-reveal hidden>`); // its drawer is open
     expect(out).toEndWith("</button>");
     expect(out).toContain('<span class="lead"><img></span><span class="words"><span class="what">Ada &amp; co</span><span class="note">two</span></span><span class="state"><b>here</b></span><span class="mark"><i data-icon="pencil"');
     expect(b.row({ what: "plain", mark: "chevron" })).toBe('<div class="row"><span class="words"><span class="what">plain</span></span><span class="mark"><i data-icon="chevron-right" data-size="18"></i></span></div>');

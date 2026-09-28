@@ -261,7 +261,7 @@ describe("the ticker", () => {
     expect(html).toContain('class="row tap hushed" id="m-ALPH"');
     expect(html).toContain(">1 of 16</span>");
     html = await page([{ op: "replace", path: "/hide/market", value: true }]);
-    expect(html).toMatch(/id="m-ALPH"[^>]* aria-pressed="false" hidden>/);
+    expect(html).toMatch(/id="m-ALPH"[^>]* aria-expanded="false" hidden>/);
     html = await page([{ op: "remove", path: "/filter/market" }]);
     expect(html).not.toContain("hushed");
     // a tick sends a session reading the market the one row it moved, and nothing to one on the box
@@ -276,7 +276,7 @@ describe("the ticker", () => {
     await expectMessage(ws, "patch");
     await expectMessage(ws, "render");
     html = await page([{ op: "replace", path: "/page", value: "board?symbol=CHRL" }, { op: "replace", path: "/reading/board", value: "list" }]);
-    expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-pressed="true" data-reveal>/);
+    expect(html).toMatch(/class="row tap" id="b-CHRL"[^>]* aria-expanded="true" data-reveal>/);
     expect(html).toContain("Stop watching");
     // with the drawer open a tick sends the row and the drawer, since the drawer says the price too;
     // with it closed, the row alone. CHRL is watched now, so the tick comes as the market's patch

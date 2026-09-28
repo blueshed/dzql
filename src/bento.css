@@ -49,7 +49,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .tool.quiet { border-color: var(--edge); color: var(--ink); font-weight: 500; }
 .tool.add { border-color: var(--add); color: var(--add); }
 .tool.danger { border-color: var(--danger); color: var(--danger); }
-.tool[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--card); }
+.tool:is([aria-pressed="true"], [aria-expanded="true"]) { background: var(--accent); border-color: var(--accent); color: var(--card); } /* on, or its drawer open */
 .pick { display: inline-flex; gap: var(--space-xs); }
 /* why a write was refused, beside the control that sent it (src/refusal.ts) */
 .refused { margin: var(--space-xs) 0 0; color: var(--danger); }
@@ -63,7 +63,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .stack > .tool:last-child { border-bottom: 0; }
 .stack > .tool:focus-visible { outline-offset: -3px; } /* the stack clips what is outside it */
 .stack > .tool:hover { background: rgba(var(--ink-rgb), 0.06); }
-.stack > .tool[aria-pressed="true"] { background: var(--accent); color: var(--card); }
+.stack > .tool:is([aria-pressed="true"], [aria-expanded="true"]) { background: var(--accent); color: var(--card); }
 .stack.across { flex-direction: row; }
 .stack.across > .tool { border-bottom: 0; border-right: 1px solid var(--line); }
 .stack.across > .tool:last-child { border-right: 0; }
@@ -99,7 +99,7 @@ input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); 
 .cell-summary { margin: -4px 0 0; font-size: 14px; color: var(--muted); }
 .cell-body { position: relative; flex: 1; min-height: 0; }
 /* a cell that is a thing: ✎, a tap opens its drawer, lit while it is open (rule 15) */
-.thing[aria-pressed="true"], .thing:has(> .cell-head > [aria-pressed="true"]) { box-shadow: inset 0 0 0 2px var(--accent); }
+.thing[aria-expanded="true"], .thing:has(> .cell-head > [aria-expanded="true"]) { box-shadow: inset 0 0 0 2px var(--accent); }
 @media (max-width: 819px) {
   .cell[data-corners-phone~="tl"] { border-top-left-radius: var(--radius-corner); }
   .cell[data-corners-phone~="tr"] { border-top-right-radius: var(--radius-corner); }
@@ -189,7 +189,7 @@ body:has(.page.windowed) { overflow: hidden; }
 .row.tap { width: calc(100% + 2 * var(--space-md)); text-align: start; cursor: pointer; } /* a button, the whole line */
 .row.tap:hover { background: rgba(var(--ink-rgb), 0.04); }
 .row.tap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.row[aria-pressed="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
+.row[aria-expanded="true"] { background: rgba(var(--ink-rgb), 0.08); box-shadow: inset 3px 0 0 var(--accent); }
 
 
 /* ── the drawer: a figure's properties -- a panel at the right from 820px, a sheet from the foot below ── */
@@ -249,6 +249,6 @@ dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
 /* forced colours (Windows High Contrast) take away shadows and backgrounds: what is chosen or
    pressed is drawn with an outline instead */
 @media (forced-colors: active) {
-  .thing[aria-pressed="true"], .thing:has(> .cell-head > [aria-pressed="true"]), .row[aria-pressed="true"], .tool[aria-pressed="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+  .thing[aria-expanded="true"], .thing:has(> .cell-head > [aria-expanded="true"]), .row[aria-expanded="true"], .tool:is([aria-pressed="true"], [aria-expanded="true"]) { outline: 2px solid Highlight; outline-offset: -2px; }
   .cell, .stack, .drawer, dialog.modal, .undo-said { border: 1px solid CanvasText; }
 }
