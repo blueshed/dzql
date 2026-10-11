@@ -10,7 +10,7 @@
 - Beyond: eta (step 4)
 - Build for production (optional)
 
-Each section was run on Bun 1.4.2 with railroad 0.15.1; the delta section with delta 0.11.0, and the S3 section against MinIO and against the stand-in bucket.
+Each section was run on Bun 1.4.3 with railroad 0.16.0; the delta section with delta 0.12.0, and the S3 section against the stand-in bucket (and against MinIO, on Bun 1.4.2).
 
 ## Add a resource
 
@@ -274,9 +274,9 @@ test("a file that is not there is a 404", async () => {
 
 ## Make it a delta document
 
-Step 3. [@blueshed/delta](https://github.com/blueshed/delta) keeps the document, applies a write as JSON-Patch ops, and tells every open window. It rides one WebSocket, its browser side is a railroad signal, and it reconnects by itself. This turns `message` into a document. Its HTTP routes go, and so do the app's own `/ws` and `websocket`, since delta owns `/ws`; another resource that still publishes there moves to a document too.
+Step 3. [@blueshed/delta](https://github.com/blueshed/delta) keeps the document, applies a write as JSON-Patch ops, and tells every open window. It rides one WebSocket, its browser side is a read-only railroad signal, and it reconnects by itself. This turns `message` into a document. Its HTTP routes go, and so do the app's own `/ws` and `websocket`, since delta owns `/ws`; another resource that still publishes there moves to a document too.
 
-1. `bun add @blueshed/delta`, then `bunx @blueshed/delta install-skills`. Read the `delta-doc` skill: one op vocabulary, and never update locally after a send, because the op comes back and renders itself.
+1. `bun add @blueshed/delta`, then `bunx @blueshed/delta install-skills`, then `rm -r .claude/skills/bun-route`: it is railroad's, and runs `bun init` and suggests Playwright, which this app does not use, so the app was made without it. Read the `delta-doc` skill: one op vocabulary, and a document changes only by a send, whose op comes back and renders itself.
 
 2. `message-api.ts` keeps only the type:
 
@@ -315,11 +315,11 @@ return server;
 import { connectWs, openDoc } from "@blueshed/delta/client";
 import type { Message } from "./message-api";
 
-/** The "message" document. `message.data` is a railroad signal, null until it arrives. */
+/** The "message" document. `message.data` is a read-only signal, null until it arrives: change it with `message.send`. */
 export const message = openDoc<Message>("message", connectWs("/ws"));
 ```
 
-5. `message-view.tsx`: the same following effect, reading `message.data`. Saving is a send, which resolves once the server has applied the write and told it back. There is no load to fail, so `failed` goes.
+5. `message-view.tsx`: the same following effect, reading `message.data`. Saving is a send, which resolves once the server has applied the write and told it back. There is no load to fail, so `failed` goes, with its `when()`.
 
 ```tsx
 const text = signal(message.data.peek()?.message ?? "");

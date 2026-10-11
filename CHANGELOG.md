@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `tsc --noEmit`: the same errors, from one command Bun already has. It needs Bun 1.4.3, so
   `packageManager` (which CI reads) is `bun@1.4.3` and `engines.bun` is `>=1.4.3`. The script
   keeps its name: one called `check` would hide Bun's built-in `bun check`.
+- **The `evolve` skill's delta step is run again, on Bun 1.4.3 with railroad 0.16.0 and delta
+  0.12.0** (16 tests at 100%; the SQLite and S3 sections too, 26). Its code still works as
+  written; its words are corrected. `message.data` is a read-only signal, which only
+  `message.send` changes (delta 0.12.0 types it so). `install-skills` also brings railroad's
+  `bun-route` skill, which the app was made without (it runs `bun init` and suggests
+  Playwright), so the step removes it again. Dropping `failed` drops its `when()` too.
 - `/release` checks first that there is a remote to push to, and says how to add one if not. An
   app made by `bun create` has none until someone adds it (limakilo had none), and the release
   would otherwise fail at the push, after the commit and the tag.
