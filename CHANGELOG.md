@@ -21,7 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Each resource's tests are in a file of their own.** `tests/message.test.ts` has the message's
   routes and view; `tests/site.test.ts` keeps the status, the page's shell and the entry point,
   with the Bun.WebView rules at its top. The page helpers (`open`, `waitFor`, `replaceText`,
-  `failFetch`, `withOtherWindow`) are in `tests/browser.ts`, one WebView per file.
+  `failFetch`, `withOtherWindow`) are in `tests/browser.ts`, one WebView per file. The `evolve`
+  skill's references point there, and its eta step says it is not run or tested in this app.
 
 ### Fixed
 

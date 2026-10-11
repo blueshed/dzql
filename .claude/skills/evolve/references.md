@@ -76,7 +76,7 @@ export async function load() {
 
 `<name>-view.tsx`, following `status-view.tsx`: `load()` in the component body, a `failed` signal, and `when(signal, (s$) => ...)` to draw once there is data. Then put the view in a route in `src/app.tsx`.
 
-Tests, in `tests/site.test.ts` (its helpers: `api`, `open`, `waitFor`, `replaceText`, `failFetch`):
+Tests, in a file of the resource's own, as `tests/message.test.ts` has them. The page helpers (`open`, `waitFor`, `replaceText`, `failFetch`, `withOtherWindow`) are in `tests/browser.ts`, and the Bun.WebView rules at the top of `tests/site.test.ts`:
 
 ```ts
 test("PUT /api/message refuses a body that is not a message, and keeps the old one", async () => {
@@ -151,7 +151,7 @@ effect(() => {
 });
 ```
 
-Tests in `site.test.ts` cover each case, and a new resource needs the same ones: `/ws` answers 426 over plain HTTP and a socket is told of a write; another window sees a save, and the first window then sees that window's save; typing that has not been saved is not overwritten; after a server restart the page loads what changed and follows again. `withOtherWindow` opens a second window and closes it in a `finally`.
+Tests in `tests/message.test.ts` cover each case, and a new resource needs the same ones: `/ws` answers 426 over plain HTTP and a socket is told of a write; another window sees a save, and the first window then sees that window's save; typing that has not been saved is not overwritten; after a server restart the page loads what changed and follows again. `withOtherWindow` opens a second window and closes it in a `finally`.
 
 Keep one replica on Railway: open sockets live in one process.
 
@@ -344,10 +344,10 @@ async function onsave() {
 
 Tests: there is no HTTP for the message any more, so a test writes it the way a person does, in a window.
 
-- The server is awaited: `let server: Awaited<ReturnType<typeof startServer>>;`, `beforeAll(async () => { server = await startServer(...); ... })`, and the same in the restart test.
-- These go: `putMessage`; the three `/api/message` route tests; the `/ws` test; "the saved message is in the box"; "a save the server did not take says Not saved" (a save no longer uses `fetch`).
-- "survives a reload" waits for `"Hello"` first and drops its `GET` check. The load-failure test is about the status alone.
-- The two-window test starts from what the reload test left (`"typed in the browser"`), with no `putMessage`. The unsaved-typing test drops its `GET` check.
+- The tests already await `startServer`, so `tests/site.test.ts` does not change; only `tests/message.test.ts` does.
+- These go: `putMessage` and `failFetch`; the three `/api/message` route tests; the `BunFile` test; the `/ws` test; "the saved message is in the box"; "a save the server did not take says Not saved" (a save no longer uses `fetch`); "a message that cannot be loaded" (there is no load).
+- "survives a reload" waits for `"Hello"` first and drops its `GET` check. The Cmd+Enter test checks with a reload instead of a `GET`.
+- The two-window test starts from what the test before it left, with no `putMessage`. The unsaved-typing test drops its `GET` check.
 - The restart test checks that the page follows again with a save from a second window:
 
 ```ts
@@ -367,7 +367,7 @@ A refused write rejects `send`, and the view says "Not saved": test your own ref
 
 ## Beyond: eta
 
-Step 4. eta draws the document on the server and states who may write what as stories. Start from eta's own `first-app.md` and its `eta-app` skill; a resource's type and view are what you bring to it.
+Step 4. eta draws the document on the server and states who may write what as stories. It is its own project, so nothing in this app runs or tests this step. Start from eta's own `first-app.md` and its `eta-app` skill; a resource's type and view are what you bring to it.
 
 ## Build for production
 
