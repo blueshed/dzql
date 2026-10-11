@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Two reasons in the docs were wrong, and are now what is true.** A `Bun.file(path)` keeps the
+  size it first saw (Bun 1.4.3): after `Bun.write` changes the file, `exists()` turns true but
+  `.json()` reads only that many bytes, so one that found no file reads nothing and throws (a
+  test pins it). And the delta step removes railroad's `bun-route` skill because it scaffolds a
+  bare project and keeps hot reload on, where this app turns it off in production; it no longer
+  mentions Playwright.
+
 ## [0.6.0] - 2026-10-11
 
 ### Added

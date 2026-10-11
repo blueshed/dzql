@@ -12,7 +12,7 @@ export type Message = { message: string };
 const empty: Message = { message: "Hello" };
 
 export function messageApi(dataDir: string) {
-  // A new BunFile per call: one that found no file keeps saying so, even after it is written
+  // A new BunFile per call: one keeps the size it first saw, so after a write it reads too little (nothing, if there was no file)
   const file = () => Bun.file(`${dataDir}/message.json`);
 
   return {

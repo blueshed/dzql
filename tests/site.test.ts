@@ -119,6 +119,16 @@ test("PUT /api/message refuses a body that is not a message, and keeps the old o
   expect(await (await api("/api/message")).json()).toEqual({ message: "saved" });
 });
 
+test("a BunFile keeps the size it first saw, which is why message-api makes a new one per read", async () => {
+  const path = `${dataDir}/stale.json`;
+  const stale = Bun.file(path);
+  expect(await stale.exists()).toBe(false);
+  await Bun.write(path, JSON.stringify({ message: "written" }));
+  expect(await stale.exists()).toBe(true);
+  expect(await stale.text()).toBe(""); // the size it saw: none
+  expect(await Bun.file(path).json()).toEqual({ message: "written" });
+});
+
 test("GET /api/status answers what the server knows, but not where its data is", async () => {
   const status = await (await api("/api/status")).json();
   expect(status).toEqual({ persistent: false, uptime: expect.any(Number), bun: Bun.version });

@@ -18,7 +18,7 @@ Rules for handlers:
 
 - A handler is a plain function that returns a `Response`. Validate what a client sends, and answer 400 with `{ error }`.
 - The client imports the type with `import type`, so no server code reaches the browser.
-- A `Bun.file(path)` that found no file keeps saying so after `Bun.write` creates it: make a new one for each read.
+- A `Bun.file(path)` keeps the size it first saw (`exists()` and `size` look): after `Bun.write` changes the file, `exists()` says true but `.json()` reads only that many bytes, so one that found no file reads nothing and throws. Make a new one for each read.
 - The view says "Saved" only once the server has said so, and says so when a load or a save fails.
 - A collection that changes length is drawn with `list()`, never `.map()`.
 - Icons are lucide, through `src/resources/icon.tsx`: `import { Trash2 } from "lucide"`, then `<Icon icon={Trash2} />` beside a label, or `<Icon icon={Trash2} label="Delete" />` alone, which is then read out. A test can find it as `svg.icon`.
@@ -276,7 +276,7 @@ test("a file that is not there is a 404", async () => {
 
 Step 3. [@blueshed/delta](https://github.com/blueshed/delta) keeps the document, applies a write as JSON-Patch ops, and tells every open window. It rides one WebSocket, its browser side is a read-only railroad signal, and it reconnects by itself. This turns `message` into a document. Its HTTP routes go, and so do the app's own `/ws` and `websocket`, since delta owns `/ws`; another resource that still publishes there moves to a document too.
 
-1. `bun add @blueshed/delta`, then `bunx @blueshed/delta install-skills`, then `rm -r .claude/skills/bun-route`: it is railroad's, and runs `bun init` and suggests Playwright, which this app does not use, so the app was made without it. Read the `delta-doc` skill: one op vocabulary, and a document changes only by a send, whose op comes back and renders itself.
+1. `bun add @blueshed/delta`, then `bunx @blueshed/delta install-skills`, then `rm -r .claude/skills/bun-route`: it is railroad's, and it scaffolds a bare project and tells a session to leave `development` (hot reload) on, where this app turns it off when `NODE_ENV` is `production`; the app was made without it. Read the `delta-doc` skill: one op vocabulary, and a document changes only by a send, whose op comes back and renders itself.
 
 2. `message-api.ts` keeps only the type:
 
