@@ -12,7 +12,7 @@ the table below differing. The bump level is `$ARGUMENTS` (`patch`, `minor` or `
 |---|---|
 | Package | `eta` |
 | Published | no -- private: tagged and pushed only |
-| Gate | `bun run check && bun test && bun run stories:all` |
+| Gate | `bun check && bun test && bun run stories:all` |
 | Skills stamped with the version | `.claude/skills/eta-app/SKILL.md` |
 
 Run the steps in order. Stop at the first failure without changing anything further. Running this

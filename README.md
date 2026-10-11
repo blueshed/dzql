@@ -116,7 +116,7 @@ number this README quotes; `bun test` fails when the README says otherwise.
 bun run dev          # chat, watching for changes (dev:wedding, dev:ticker too)
 bun run start        # detached, in production mode; bun run stop stops it
 bun test             # the tests
-bun run check        # the type check
+bun check            # the type check (Bun 1.4.3 or later)
 bun run stories      # one example's stories; stories:all runs every example's, and by hand
 bun run cli <verb>   # a terminal client: inspect, watch, undo, redo, write, and the example's own
 bun run costs        # measures every number this README quotes, and writes it in

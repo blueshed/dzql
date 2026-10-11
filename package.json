@@ -1,6 +1,10 @@
 {
   "name": "eta",
   "version": "0.51.0",
+  "packageManager": "bun@1.4.3",
+  "engines": {
+    "bun": ">=1.4.3"
+  },
   "private": true,
   "type": "module",
   "files": [
@@ -26,7 +30,6 @@
     "test": "bun test",
     "stories": "bun --env-file=.env.test src/stories-run.ts",
     "stories:all": "STORY_BY_HAND=1 ETA_EXAMPLE=chat bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=ticker bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=wedding bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=leave bun run stories",
-    "check": "bunx tsc --noEmit",
     "costs": "bun --env-file=.env.test src/costs.ts",
     "modeller": "bun modeller/closure.ts",
     "modeller:page": "LOG_LEVEL=warn bun --env-file=.env.test modeller/page.ts",
@@ -34,7 +37,7 @@
     "uml:check": "bun uml/drift.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "^1.4.2"
   },
   "dependencies": {
     "@blueshed/delta": "^0.11.0",

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Type checks run with `bun check` (TypeScript 7) in place of `tsc`; the `check` script is gone, so
+  `bun check` is Bun's own. eta requires Bun 1.4.3 or later (`engines`, `packageManager`).
+
 ## [0.51.0] - 2026-09-28
 
 ### Breaking (for example authors)
