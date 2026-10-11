@@ -98,7 +98,7 @@ export async function setup(root: string) {
   bun dev            # http://localhost:3000, hot reload
   bun run stop       # stop a server started in the background
   bun test           # tests, held at 100% coverage
-  bun run typecheck  # tsc
+  bun run typecheck  # bun check: TypeScript 7, built into Bun
 
   Read CLAUDE.md first: it says what is here. The evolve skill adds or changes a resource.
 `);

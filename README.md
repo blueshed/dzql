@@ -4,7 +4,7 @@
 
 A hello world for [Bun](https://bun.sh) as a server of **routes and resources**. Bun is the runtime, the bundler, the test runner and the server, and it has a WebSocket, SQLite and S3 built in, so a website needs very little else. Paintbrush shows how little, then gives you a way on: [railroad](https://github.com/blueshed/railroad) for the page, [Railway](https://railway.com) for the deploy, and a resource that can grow into a [delta](https://github.com/blueshed/delta) document and beyond.
 
-Requires Bun 1.4 or later.
+Requires Bun 1.4.3 or later.
 
 ```sh
 bun create blueshed/paintbrush myapp   # or, from npm: bunx create-blueshed myapp

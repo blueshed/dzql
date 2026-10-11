@@ -16,6 +16,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **`bun run typecheck` is `bun check`**, Bun's own type check (TypeScript 7), in place of
+  `tsc --noEmit`: the same errors, from one command Bun already has. It needs Bun 1.4.3, so
+  `packageManager` (which CI reads) is `bun@1.4.3` and `engines.bun` is `>=1.4.3`. The script
+  keeps its name: one called `check` would hide Bun's built-in `bun check`.
 - `/release` checks first that there is a remote to push to, and says how to add one if not. An
   app made by `bun create` has none until someone adds it (limakilo had none), and the release
   would otherwise fail at the push, after the commit and the tag.
