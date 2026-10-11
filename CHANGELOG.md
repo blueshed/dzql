@@ -25,6 +25,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- No `typescript` dependency: `bun check` type checks with Bun's built-in TypeScript 7, so tsc
+  isn't needed. Bun 1.4.3 or later, as before.
+
 - **The message is a delta document from the start**, because it is shared communication. The
   server registers it with delta's `registerDoc` (still `message.json` in the data folder, now
   `{ "text": ... }`) on the app's one WebSocket; the page opens it with `openDoc` and changes it
