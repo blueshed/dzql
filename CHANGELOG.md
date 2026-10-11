@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   test pins it). And the delta step removes railroad's `bun-route` skill because it scaffolds a
   bare project and keeps hot reload on, where this app turns it off in production; it no longer
   mentions Playwright.
+- **The README promises only what is here.** It no longer names eta and shinko as what comes
+  next (the `evolve` skill keeps them, marked as outside this app). It says what is proven of the
+  web sandbox hook: a test shows it does nothing outside the sandbox; the install there is not
+  tested. `CLAUDE.md` says the same.
 
 ## [0.6.0] - 2026-10-11
 

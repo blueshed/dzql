@@ -43,7 +43,7 @@ Every route and handler is visible in the code. An AI, or a person, can read `se
 
 ## A resource evolves
 
-It starts as HTTP routes, and a WebSocket tells every page what changed. When several people edit the same thing at once, it becomes a document in delta. delta keeps it in a JSON file, then SQLite, then Postgres, and the browser code does not change. Beyond that is eta, and shinko, a realtime shared tree with formulas, is on its way to being a resource too. The client route and the view keep their names; what is under them changes. The `evolve` skill has each step, with its tests.
+It starts as HTTP routes, and a WebSocket tells every page what changed. When several people edit the same thing at once, it becomes a document in delta. delta keeps it in a JSON file, then SQLite, then Postgres, and the browser code does not change. The client route and the view keep their names; what is under them changes. The `evolve` skill has each step, with its tests.
 
 ## What's in the box
 
@@ -62,7 +62,7 @@ tests/               routes with fetch, the page in a real browser (Bun.WebView)
 
 ## Made to be worked on with Claude
 
-`CLAUDE.md` says what is here and the rules. The `evolve` skill (`.claude/skills/evolve/`) is how to add or change a resource, and its `references.md` has each step with code and tests. `CHANGELOG.md` and `todo.jsonl` are a pair, the project's memory between sessions: the changelog is where it has been, the ledger what is open now. They move together: when work lands it gets a changelog entry, and the item it settles is marked fixed. `/release` (`.claude/commands/release.md`) checks, tests, turns `[Unreleased]` into a version, takes the settled items out of the ledger, bumps, commits, tags and pushes. The Claude Code web sandbox has an older Bun and no browser, so a SessionStart hook installs both there; CI does the same on GitHub.
+`CLAUDE.md` says what is here and the rules. The `evolve` skill (`.claude/skills/evolve/`) is how to add or change a resource, and its `references.md` has each step with code and tests. `CHANGELOG.md` and `todo.jsonl` are a pair, the project's memory between sessions: the changelog is where it has been, the ledger what is open now. They move together: when work lands it gets a changelog entry, and the item it settles is marked fixed. `/release` (`.claude/commands/release.md`) checks, tests, turns `[Unreleased]` into a version, takes the settled items out of the ledger, bumps, commits, tags and pushes. The Claude Code web sandbox has an older Bun and no browser, so a SessionStart hook is there to install both; a test proves it does nothing anywhere else, but its install in the sandbox is not tested. CI installs Chrome on GitHub, and every push runs the tests with it.
 
 ## Starting from it
 
