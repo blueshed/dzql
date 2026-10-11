@@ -9,7 +9,7 @@
 - [Serve what isn't communication](#serve-what-isnt-communication): HTTP routes, and files in S3
 - [Build for production](#build-for-production): optional; the app runs from source
 
-A code block whose first line names a file is applied as it says: `// src/x.ts` is the whole file; `// src/x.ts: after <text>` or `// src/x.ts: before <text>` are lines to put after, or before, the first line holding that text, at its indent. `tests/evolve.ts` in the template proves every section that way: it makes a new app, applies the section's blocks and its `bun add` lines (and those of the sections it builds on), and runs `bun run typecheck` and `bun test` at 100%.
+Each code block names its file on its first line, and is applied as it says: `// src/x.ts` is the whole file; `// src/x.ts: after <text>` or `// src/x.ts: before <text>` are lines to put after, or before, the first line holding that text, at its indent. `tests/evolve.ts` in the template proves every section that way: it makes a new app, applies the section's blocks and its `bun add` lines (and those of the sections it builds on), and runs `bun run typecheck` and `bun test` at 100%.
 
 ## A new document
 

@@ -51,7 +51,7 @@ async function apply(app: string, name: string) {
       continue;
     }
     const where = lines[0]!.match(/^\/\/ ([\w./-]+)(?:: (after|before) (.+))?$/);
-    if (!where) continue; // a block that names no file is prose
+    if (!where) throw new Error(`${name}: a block's first line names no file: ${lines[0]}`); // every code block is applied
     const [, path, how, anchor] = where;
     const body = lines.slice(1);
     const file = join(app, path!);
