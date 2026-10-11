@@ -1,16 +1,20 @@
+import { createWs } from "@blueshed/delta/server";
 import homepage from "./index.html";
-import { messageApi } from "./resources/message/message-api";
+import { messageDoc } from "./resources/message/message-api";
 import { statusApi } from "./resources/status/status-api";
 
-export function startServer({
+export async function startServer({
   port = Number(process.env.PORT ?? 3000),
   dev = process.env.NODE_ENV !== "production",
   dataDir = process.env.DATA_PATH ?? `${import.meta.dir}/../data`,
 } = {}) {
-  const message = messageApi(dataDir);
   const status = statusApi();
 
-  return Bun.serve({
+  // The documents, on one WebSocket: a page that opens one is subscribed to every change
+  const ws = createWs();
+  await messageDoc(ws, dataDir);
+
+  const server = Bun.serve({
     port,
 
     development: dev && {
@@ -21,29 +25,23 @@ export function startServer({
     routes: {
       "/": homepage,
 
-      // One route per resource (see src/resources/)
-      "/api/message": { GET: message.get, PUT: message.put },
+      // What isn't communication is an HTTP route (see src/resources/)
       "/api/status": { GET: status.get },
 
-      // One WebSocket: the server pushes on it, the page listens (see websocket below)
-      "/ws": (req, server) =>
-        server.upgrade(req) ? undefined : new Response("Upgrade required", { status: 426 }),
+      // Every document rides this socket
+      [ws.path]: ws.upgrade,
 
       // Railway healthcheck
       "/health": new Response("ok"),
     },
 
-    // Every socket subscribes to each resource's topic; a handler publishes with server.publish
-    websocket: {
-      open(ws) {
-        ws.subscribe("message");
-      },
-      message() {}, // the page only listens
-    },
+    websocket: ws.websocket,
 
     // Anything not matched by a route
     fetch() {
       return new Response("Not found", { status: 404 });
     },
   });
+  ws.setServer(server); // so a change reaches every page holding the document
+  return server;
 }

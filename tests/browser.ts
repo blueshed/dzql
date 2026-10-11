@@ -37,6 +37,17 @@ export function browser(url: () => URL) {
     // Make every fetch the page makes from now on answer 500, to see what a person sees when the server says no
     failFetch: () => view.evaluate(`window.fetch = async () => new Response(null, { status: 500 })`),
 
+    // Make every change the page sends to a document from now on one the server refuses (a path that is no path)
+    refuseWrites: () =>
+      view.evaluate(`(() => {
+        const send = WebSocket.prototype.send;
+        WebSocket.prototype.send = function (data) {
+          const msg = JSON.parse(data);
+          if (msg.action === "delta") msg.ops = [{ op: "replace", path: "no path", value: null }];
+          return send.call(this, JSON.stringify(msg));
+        };
+      })()`),
+
     // A second window, for the tests that need two: opened at the page, closed in a finally
     async withOtherWindow(run: (other: Bun.WebView, waitForOther: (expr: string) => Promise<void>) => Promise<void>) {
       const other = newView();

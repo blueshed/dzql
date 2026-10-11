@@ -20,6 +20,7 @@ test("setup turns the template into an app", async () => {
     "logo.png": "the template's logo",
     "create/setup.ts": "// this script",
     "tests/setup.test.ts": "// this script's test",
+    "tests/evolve.ts": "// the evolve skill's test",
     "evals/evolve.json": "[]",
     "src/index.html": "<title>Paintbrush</title>",
     "package.json": '{\n  "name": "my-app",\n  "version": "0.5.0",\n  "private": true\n}\n',
@@ -28,6 +29,7 @@ test("setup turns the template into an app", async () => {
     ".railway/railway.ts": 'project("paintbrush", {})',
     "node_modules/@blueshed/railroad/.claude/skills/railroad/SKILL.md": "the railroad skill",
     "node_modules/@blueshed/railroad/.claude/skills/bun-route/SKILL.md": "the bun-route skill",
+    "node_modules/@blueshed/delta/.claude/skills/delta-doc/SKILL.md": "the delta-doc skill",
   });
   try {
     await setup(root);
@@ -36,8 +38,8 @@ test("setup turns the template into an app", async () => {
     expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain("## [Unreleased]");
     // the template's version, so the app knows which of the template's changes it has
     expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain("- Started from [paintbrush](https://github.com/blueshed/paintbrush) 0.5.0. To bring this app up to date,");
-    // what is about the template goes: its logo, this script and its test, the skill's evals
-    for (const path of ["logo.png", "create/setup.ts", "tests/setup.test.ts", "evals/evolve.json"]) {
+    // what is about the template goes: its logo, this script and its test, the skill's test and evals
+    for (const path of ["logo.png", "create/setup.ts", "tests/setup.test.ts", "tests/evolve.ts", "evals/evolve.json"]) {
       expect(await Bun.file(join(root, path)).exists()).toBe(false);
     }
     expect(await Bun.file(join(root, "README.md")).text()).toContain("# my-app");
@@ -48,6 +50,7 @@ test("setup turns the template into an app", async () => {
     expect(await Bun.file(join(root, ".railway/railway.ts")).text()).toBe('project("my-app", {})');
     expect(await Bun.file(join(root, "CLAUDE.md")).text()).toBe("# my-app\nAbout the app.\n");
     expect(await Bun.file(join(root, ".claude/skills/railroad/SKILL.md")).text()).toBe("the railroad skill");
+    expect(await Bun.file(join(root, ".claude/skills/delta-doc/SKILL.md")).text()).toBe("the delta-doc skill");
     expect(existsSync(join(root, ".claude/skills/bun-route"))).toBe(false); // it contradicts CLAUDE.md
   } finally {
     done();
@@ -90,14 +93,15 @@ test("setup refuses to run in a clone of the template, and touches nothing", asy
   }
 });
 
-test("setup says so when railroad's skill is not installed, and skips files that are not there", async () => {
+test("setup says so when a skill is not installed, and skips files that are not there", async () => {
   const { root, done } = await scratchTemplate({});
   const warnings: string[] = [];
   const warn = console.warn;
   console.warn = (...args) => void warnings.push(args.join(" "));
   try {
     await setup(root);
-    expect(warnings.join("\n")).toContain("railroad's skill not found");
+    expect(warnings.join("\n")).toContain("@blueshed/railroad's railroad skill not found");
+    expect(warnings.join("\n")).toContain("@blueshed/delta's delta-doc skill not found");
     expect(existsSync(join(root, ".claude/skills"))).toBe(false);
   } finally {
     console.warn = warn;

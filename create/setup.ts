@@ -4,9 +4,10 @@
 // template's postinstall, after `bun install` and before the first commit.
 //
 // It turns the template into an app. What is about developing the template goes
-// (its ledger, its changelog, its logo, this script and its test); the app starts
-// with fresh ones; its name replaces "Paintbrush"; and railroad's skill is copied
-// into .claude/skills, so a session starts knowing how railroad's JSX behaves.
+// (its ledger, its changelog, its logo, this script and the template's own tests); the
+// app starts with fresh ones; its name replaces "Paintbrush"; and railroad's and delta's
+// skills are copied into .claude/skills, so a session starts knowing how railroad's JSX
+// behaves and how a document is kept and changed.
 
 import { cpSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -21,6 +22,12 @@ export const NAMED = [
   ".railway/railway.ts",
   "bun.lock", // the root package's name
 ];
+
+// The skills a new app starts with, from the packages that ship them
+const SKILLS = [
+  ["@blueshed/railroad", "railroad"],
+  ["@blueshed/delta", "delta-doc"],
+] as const;
 
 // The template's own clone is the one place this must never run: it deletes things
 function isTemplateClone(root: string) {
@@ -56,7 +63,7 @@ export async function setup(root: string) {
   const name = root.split("/").pop() || "my-app";
   console.log(`Setting up ${name}...`);
 
-  for (const path of ["todo.jsonl", "CHANGELOG.md", "logo.png", "create", "tests/setup.test.ts", "evals"]) {
+  for (const path of ["todo.jsonl", "CHANGELOG.md", "logo.png", "create", "tests/setup.test.ts", "tests/evolve.ts", "evals"]) {
     rmSync(join(root, path), { recursive: true, force: true });
   }
   // The template's version goes in the changelog, so the app knows which of the template's changes
@@ -80,14 +87,16 @@ export async function setup(root: string) {
     await Bun.write(file, text);
   }
 
-  // railroad's own skill. Its bun-route skill is not copied: it scaffolds a bare project with
-  // `bun init`, and this app grows through its own evolve skill instead.
-  const skill = join(root, "node_modules/@blueshed/railroad/.claude/skills/railroad");
-  if (existsSync(skill)) {
-    cpSync(skill, join(root, ".claude/skills/railroad"), { recursive: true });
-    console.log("  copied railroad's skill into .claude/skills");
-  } else {
-    console.warn("  railroad's skill not found: after `bun install`, copy node_modules/@blueshed/railroad/.claude/skills/railroad into .claude/skills");
+  // railroad's skill and delta's. railroad's bun-route skill is not copied: it scaffolds a bare
+  // project with `bun init`, and this app grows through its own evolve skill instead.
+  for (const [pkg, name] of SKILLS) {
+    const skill = join(root, `node_modules/${pkg}/.claude/skills/${name}`);
+    if (existsSync(skill)) {
+      cpSync(skill, join(root, ".claude/skills", name), { recursive: true });
+      console.log(`  copied ${pkg}'s ${name} skill into .claude/skills`);
+    } else {
+      console.warn(`  ${pkg}'s ${name} skill not found: after \`bun install\`, copy node_modules/${pkg}/.claude/skills/${name} into .claude/skills`);
+    }
   }
 
   await commitEverything(root);
@@ -100,7 +109,7 @@ export async function setup(root: string) {
   bun test           # tests, held at 100% coverage
   bun run typecheck  # bun check: TypeScript 7, built into Bun
 
-  Read CLAUDE.md first: it says what is here. The evolve skill adds or changes a resource.
+  Read CLAUDE.md first: it says what is here. The evolve skill is how the app grows.
 `);
 }
 
@@ -117,8 +126,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 const readme = (name: string) => `# ${name}
 
-A Bun website of routes and resources, with railroad for the page and Railway for
-the deploy, started from [paintbrush](https://github.com/blueshed/paintbrush).
+A Bun website where people share documents: open one and every change anyone makes
+reaches you as it happens. railroad draws the page, delta keeps the documents, and
+Railway deploys it. Started from [paintbrush](https://github.com/blueshed/paintbrush).
 
 Open it in two windows: a save in one shows in the other.
 
@@ -129,8 +139,9 @@ bun test           # tests, held at 100% coverage
 bun run typecheck
 \`\`\`
 
-\`CLAUDE.md\` says what is here and the rules. The \`evolve\` skill adds or changes a
-resource: a route, a live push, SQLite, S3, a delta document.
+\`CLAUDE.md\` says what is here and the rules. The \`evolve\` skill is how the app grows:
+a new document, two on one page, SQLite and Postgres when they earn their place, and
+HTTP routes for what isn't communication.
 
 \`CHANGELOG.md\` and \`todo.jsonl\` are a pair, the project's memory between sessions:
 the changelog is where it has been, the ledger what is open now. When work lands it

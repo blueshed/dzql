@@ -17,6 +17,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The message is a delta document from the start**, because it is shared communication. The
+  server registers it with delta's `registerDoc` (still `message.json` in the data folder, now
+  `{ "text": ... }`) on the app's one WebSocket; the page opens it with `openDoc` and changes it
+  with `message.send([{ op: "replace", path: "/text", value }])`, never locally, so every open
+  window follows and the page reconnects and reopens it by itself. `GET` and `PUT /api/message`
+  and the app's own `/ws` handler are gone, `startServer` is `async`, and a change that is not a
+  replace of `/text` with a string is refused with delta's 400. `status` stays an HTTP route: it
+  is not communication. `@blueshed/delta` ^0.12.0 is a dependency, and setup copies its
+  `delta-doc` skill into a new app beside railroad's.
 - **Ctrl+Enter saves the message too**, as Cmd+Enter does: Linux and Windows have no Cmd key.
 - **Each resource's tests are in a file of their own.** `tests/message.test.ts` has the message's
   routes and view; `tests/site.test.ts` keeps the status, the page's shell and the entry point,

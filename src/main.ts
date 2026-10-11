@@ -25,7 +25,7 @@ if (await pidFile.exists()) {
   }
 }
 
-const server = startServer();
+const server = await startServer();
 await Bun.write(PID_FILE, String(process.pid));
 
 // Signal handlers are registered once; each hot reload swaps in a fresh

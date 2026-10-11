@@ -1,35 +1,24 @@
 /**
- * Message — a singleton resource, stored as one JSON file in the data folder.
- * A save is published to the "message" topic, so every open page sees it.
+ * Message — a shared document. Every window that opens it is subscribed: a change anyone
+ * makes reaches them all. delta keeps it as message.json in the data folder.
  *
  * The type is shared: the client imports it as a type only (`import type`), so none
  * of the server code below reaches the browser bundle.
  */
-import type { Server } from "bun";
+import { registerDoc, type WsServer } from "@blueshed/delta/server";
+import type { DeltaOp } from "@blueshed/delta/core";
 
-export type Message = { message: string };
+export type Message = { text: string };
 
-const empty: Message = { message: "Hello" };
+// The message changes one way: a replace of its text with a string
+const isText = (op: DeltaOp) => op.op === "replace" && op.path === "/text" && typeof op.value === "string";
 
-export function messageApi(dataDir: string) {
-  // A new BunFile per call: one keeps the size it first saw, so after a write it reads too little (nothing, if there was no file)
-  const file = () => Bun.file(`${dataDir}/message.json`);
-
-  return {
-    get: async () => {
-      const stored = file();
-      return Response.json(((await stored.exists()) ? await stored.json() : empty) satisfies Message);
-    },
-
-    put: async (req: Request, server: Server<undefined>) => {
-      const body = await req.json().catch(() => null);
-      if (typeof body?.message !== "string") {
-        return Response.json({ error: "message must be a string" }, { status: 400 });
-      }
-      const message: Message = { message: body.message };
-      await Bun.write(file(), JSON.stringify(message)); // creates the data folder if it is missing
-      server.publish("message", JSON.stringify(message)); // to every socket, the saver's included
-      return Response.json(message);
-    },
-  };
+export function messageDoc(ws: WsServer, dataDir: string) {
+  // Asked before delta applies a write: a throw with a code is delta's answer, and nothing changes
+  ws.on("delta", (msg) => {
+    if (msg.doc === "message" && !(Array.isArray(msg.ops) && msg.ops.every(isText))) {
+      throw Object.assign(new Error("a message is a replace of /text with a string"), { code: 400 });
+    }
+  });
+  return registerDoc<Message>(ws, "message", { file: `${dataDir}/message.json`, empty: { text: "Hello" } });
 }

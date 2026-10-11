@@ -1,29 +1,26 @@
-import { effect, signal, when } from "@blueshed/railroad";
+import { effect, signal } from "@blueshed/railroad";
 import { Save } from "lucide";
 import { Icon } from "../icon";
 import { toast } from "../toast";
-import { load, message, save } from "./message";
+import { message } from "./message";
 
 export function MessageView() {
-  const text = signal(message.peek()?.message ?? "");
-  const failed = signal(false);
-  let shown = text.peek(); // what the box last took from the server
+  const text = signal(message.data.peek()?.text ?? "");
+  let shown = text.peek(); // what the box last took from the document
 
-  load().catch(() => failed.set(true));
-
-  // Follow the server, unless the box holds typing that has not been saved
+  // Follow the document, unless the box holds typing that has not been saved
   effect(() => {
-    const m = message.get();
-    if (m && (text.peek() === shown || text.peek() === m.message)) {
-      shown = m.message;
-      text.set(m.message);
+    const doc = message.data.get();
+    if (doc && (text.peek() === shown || text.peek() === doc.text)) {
+      shown = doc.text;
+      text.set(doc.text);
     }
   });
 
-  // Say "Saved" only once the server has said so
+  // Say "Saved" only once the server has applied the change and sent it back
   async function onsave() {
     try {
-      await save(text.peek());
+      await message.send([{ op: "replace", path: "/text", value: text.peek() }]);
       toast("Saved");
     } catch {
       toast("Not saved", "alert");
@@ -33,7 +30,6 @@ export function MessageView() {
   return (
     <>
       <h1>Message</h1>
-      {when(failed, () => <p class="help">The message could not be loaded.</p>)}
       <textarea
         value={text}
         oninput={(e: Event) => text.set((e.currentTarget as HTMLTextAreaElement).value)}
