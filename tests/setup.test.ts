@@ -20,6 +20,7 @@ test("setup turns the template into an app", async () => {
     "logo.png": "the template's logo",
     "create/setup.ts": "// this script",
     "tests/setup.test.ts": "// this script's test",
+    "evals/evolve.json": "[]",
     "src/index.html": "<title>Paintbrush</title>",
     "package.json": '{\n  "name": "my-app",\n  "version": "0.5.0",\n  "private": true\n}\n',
     "CLAUDE.md": "# Paintbrush\n<!-- template -->\nNotes on developing the template.\n<!-- /template -->\nAbout the app.\n",
@@ -35,8 +36,8 @@ test("setup turns the template into an app", async () => {
     expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain("## [Unreleased]");
     // the template's version, so the app knows which of the template's changes it has
     expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain("- Started from [paintbrush](https://github.com/blueshed/paintbrush) 0.5.0. To bring this app up to date,");
-    // what is about the template goes: its logo, this script and its test
-    for (const path of ["logo.png", "create/setup.ts", "tests/setup.test.ts"]) {
+    // what is about the template goes: its logo, this script and its test, the skill's evals
+    for (const path of ["logo.png", "create/setup.ts", "tests/setup.test.ts", "evals/evolve.json"]) {
       expect(await Bun.file(join(root, path)).exists()).toBe(false);
     }
     expect(await Bun.file(join(root, "README.md")).text()).toContain("# my-app");

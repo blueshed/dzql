@@ -56,7 +56,7 @@ export async function setup(root: string) {
   const name = root.split("/").pop() || "my-app";
   console.log(`Setting up ${name}...`);
 
-  for (const path of ["todo.jsonl", "CHANGELOG.md", "logo.png", "create", "tests/setup.test.ts"]) {
+  for (const path of ["todo.jsonl", "CHANGELOG.md", "logo.png", "create", "tests/setup.test.ts", "evals"]) {
     rmSync(join(root, path), { recursive: true, force: true });
   }
   // The template's version goes in the changelog, so the app knows which of the template's changes
@@ -80,8 +80,8 @@ export async function setup(root: string) {
     await Bun.write(file, text);
   }
 
-  // railroad's own skill. Its bun-route skill is not copied: it tells a session to run `bun init`
-  // and to use Playwright, and this app's CLAUDE.md says not to.
+  // railroad's own skill. Its bun-route skill is not copied: it scaffolds a bare project with
+  // `bun init`, and this app grows through its own evolve skill instead.
   const skill = join(root, "node_modules/@blueshed/railroad/.claude/skills/railroad");
   if (existsSync(skill)) {
     cpSync(skill, join(root, ".claude/skills/railroad"), { recursive: true });

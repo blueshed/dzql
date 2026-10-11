@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The evolve skill has three evaluations in `evals/` (a page, a live push, a shared document),
+  which setup deletes from a new app with the rest of what is about the template. Its references'
+  contents list links each section. Setup's reason for leaving out railroad's `bun-route` is the
+  real one: it scaffolds a bare project with `bun init`, and an app grows through evolve.
+
 - **`bun run typecheck` is `bun check`**, Bun's own type check (TypeScript 7), in place of
   `tsc --noEmit`: the same errors, from one command Bun already has. It needs Bun 1.4.3, so
   `packageManager` (which CI reads) is `bun@1.4.3` and `engines.bun` is `>=1.4.3`. The script

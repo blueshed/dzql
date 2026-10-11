@@ -2,13 +2,13 @@
 
 ## Contents
 
-- Add a resource: HTTP routes, a store, a view, and their tests
-- Push changes over the WebSocket (step 2)
-- Store in SQLite (`bun:sqlite`)
-- Store in S3 (`Bun.s3`), with a stand-in bucket for tests
-- Make it a delta document (step 3)
-- Beyond: eta (step 4)
-- Build for production (optional)
+- [Add a resource](#add-a-resource): HTTP routes, a store, a view, and their tests (step 1)
+- [Push changes over the WebSocket](#push-changes-over-the-websocket) (step 2)
+- [Store in SQLite](#store-in-sqlite) (`bun:sqlite`)
+- [Store in S3](#store-in-s3) (`Bun.s3`), with a stand-in bucket for tests
+- [Make it a delta document](#make-it-a-delta-document) (step 3)
+- [Beyond: eta](#beyond-eta) (step 4)
+- [Build for production](#build-for-production) (optional)
 
 Each section was run on Bun 1.4.3 with railroad 0.16.0; the delta section with delta 0.12.0, and the S3 section against the stand-in bucket (and against MinIO, on Bun 1.4.2).
 

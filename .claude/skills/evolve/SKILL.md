@@ -30,7 +30,7 @@ Storage is a separate choice, made at any step: a JSON file (`message`), a table
 
 ## References
 
-[references.md](references.md) has one section per task, each with code and tests:
+[references.md](references.md) has one section per task, each with code and tests; read the one the step needs:
 
 - **Add a resource**: HTTP routes, a store and a view, and the rules for handlers
 - **Push changes over the WebSocket**: step 2
