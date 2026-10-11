@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Tests for what a person sees and clicks that had none:** the status line with `DATA_PATH`
+  set ("mounted volume"), an `<Icon label>` read out as an image (on a small page in `tests/`,
+  since the app has no icon on its own yet), Cmd+Enter in the message box, and the "home" link
+  on a page that is not found. And a test that `bun dev` serves with hot reload: it starts
+  `bun --hot src/main.ts`, saves a source file, and checks that `main.ts` ran again in the same
+  process without taking its own pid file for another server.
+
+### Changed
+
+- **Ctrl+Enter saves the message too**, as Cmd+Enter does: Linux and Windows have no Cmd key.
+- **Each resource's tests are in a file of their own.** `tests/message.test.ts` has the message's
+  routes and view; `tests/site.test.ts` keeps the status, the page's shell and the entry point,
+  with the Bun.WebView rules at its top. The page helpers (`open`, `waitFor`, `replaceText`,
+  `failFetch`, `withOtherWindow`) are in `tests/browser.ts`, one WebView per file.
+
 ### Fixed
 
 - **Two reasons in the docs were wrong, and are now what is true.** A `Bun.file(path)` keeps the

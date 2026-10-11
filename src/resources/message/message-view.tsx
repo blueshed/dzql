@@ -38,7 +38,7 @@ export function MessageView() {
         value={text}
         oninput={(e: Event) => text.set((e.currentTarget as HTMLTextAreaElement).value)}
         onkeydown={(e: KeyboardEvent) => {
-          if (e.key === "Enter" && e.metaKey) void onsave();
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void onsave(); // Cmd+Enter, or Ctrl+Enter
         }}
       ></textarea>
       <div class="toolbar">

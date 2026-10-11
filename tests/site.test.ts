@@ -1,76 +1,63 @@
-import { test, expect, beforeAll, afterAll, setDefaultTimeout } from "bun:test";
+import { test, expect, afterAll, setDefaultTimeout } from "bun:test";
 import { $ } from "bun";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/server";
+import { browser } from "./browser";
+import iconPage from "./icon-page.html";
 
 // Routes are tested with fetch, the page in a real browser with Bun.WebView, entry points by
-// spawning them. Every route and everything a person sees or clicks has a test.
+// spawning them. Every route and everything a person sees or clicks has a test: the app's shell
+// and status here, each resource in its own file (message.test.ts).
 //
 // Bun.WebView (experimental; follow these exactly):
 // - evaluate() takes a string expression, not a function: view.evaluate("document.title").
 //   Wrap statements in an IIFE string. Results come back as JSON; give them a type: evaluate<string>(...).
 // - await every call. A view takes one navigate, evaluate, screenshot or input at a time, or throws ERR_INVALID_STATE.
 // - click(selector) waits until the element is visible, stable and not covered. It does not scroll.
-// - type() appends. To replace a field's text, use replaceText below.
+// - type() appends. To replace a field's text, use replaceText (browser.ts).
 // - view.title is empty after the first navigate on macOS WebKit: read document.title with evaluate.
-// - One WebView per file. A test that needs a second window opens its own and closes it in a finally.
+// - One WebView per file: browser() in browser.ts. A test that needs a second window uses withOtherWindow.
 // - macOS uses the system WebKit. Linux needs Chrome, found through BUN_CHROME_PATH: CI and, in the
 //   Claude Code web sandbox, .claude/hooks/session-start.sh set that up (see CLAUDE.md).
 
 setDefaultTimeout(30_000); // first browser start can be slow
 
 // The data folder is a scratch one, never the project's real data/
-const dataDir = mkdtempSync(`${tmpdir()}/paintbrush-`);
+const dataDir = mkdtempSync(`${tmpdir()}/site-`);
 // Spawned servers use this pid file, away from a running dev server's
 const pidFile = `${import.meta.dir}/out/.server.pid`;
 // The real `stop` script from package.json, run where that pid file lives
 const pkg = await Bun.file(`${import.meta.dir}/../package.json`).json();
 const stop = () => $`${{ raw: pkg.scripts.stop }}`.cwd(`${import.meta.dir}/out`).text();
 
-let server: ReturnType<typeof startServer>;
-let view: Bun.WebView;
-
-beforeAll(() => {
-  server = startServer({ port: 0, dev: false, dataDir }); // random free port, no HMR
-  view = new Bun.WebView({ width: 1280, height: 800, console: globalThis.console });
-});
+const server = await startServer({ port: 0, dev: false, dataDir }); // random free port, no HMR
+const { view, open, waitFor, failFetch, close } = browser(() => server.url);
 
 afterAll(async () => {
-  view?.close();
-  await server?.stop(true);
+  close();
+  await server.stop(true);
   rmSync(dataDir, { recursive: true, force: true });
 });
 
-// --- Helpers ---
-
 const api = (path: string, init?: RequestInit) => fetch(new URL(path, server.url), init);
-const putMessage = (body: string) => api("/api/message", { method: "PUT", body });
 
-// Load the page afresh. Navigating to the URL the view is already at does not reload it,
-// so each visit gets a query of its own (the route ignores it).
-let visits = 0;
-const open = () => view.navigate(`${server.url.href}?visit=${++visits}`);
-
-// Poll a page-side expression until it is truthy
-async function waitFor(expr: string, timeout = 5_000) {
-  const end = Date.now() + timeout;
-  while (Date.now() < end) {
-    if (await view.evaluate(`Boolean(${expr})`)) return;
-    await Bun.sleep(50);
+// Read a spawned server's output until a line matches
+async function readUntil(proc: Bun.Subprocess<"ignore", "pipe">, pattern: RegExp) {
+  const reader = proc.stdout.getReader();
+  let out = "";
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) throw new Error(`Server exited before saying ${pattern}:\n${out}`);
+      out += new TextDecoder().decode(value);
+      const match = out.match(pattern);
+      if (match) return match;
+    }
+  } finally {
+    reader.releaseLock();
   }
-  throw new Error(`Timed out waiting for: ${expr}`);
 }
-
-// Replace what is in a field the way typing would: clear it (and tell the page), then type
-async function replaceText(selector: string, text: string) {
-  await view.evaluate(`(() => { const el = document.querySelector("${selector}"); el.value = ""; el.dispatchEvent(new Event("input")); })()`);
-  await view.click(selector);
-  await view.type(text);
-}
-
-// Make every fetch the page makes from now on answer 500, to see what a person sees when the server says no
-const failFetch = () => view.evaluate(`window.fetch = async () => new Response(null, { status: 500 })`);
 
 // Run a server process on a random port; resolve once it prints its URL
 async function spawnServer(cmd: string[], env: Record<string, string> = {}) {
@@ -79,55 +66,11 @@ async function spawnServer(cmd: string[], env: Record<string, string> = {}) {
     env: { ...process.env, PORT: "0", PID_FILE: pidFile, DATA_PATH: dataDir, ...env },
     stdout: "pipe",
   });
-  const reader = proc.stdout.getReader();
-  let out = "";
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) throw new Error(`Server exited without listening:\n${out}`);
-    out += new TextDecoder().decode(value);
-    const url = out.match(/Listening on (\S+)/)?.[1];
-    if (url) {
-      reader.releaseLock();
-      return { proc, url };
-    }
-  }
+  const url = (await readUntil(proc, /Listening on (\S+)/))[1]!;
+  return { proc, url };
 }
 
-// --- The routes ---
-// Tests run in file order: the first one needs a data folder nothing has been saved to.
-
-test("GET /api/message answers the default before anything is saved", async () => {
-  const res = await api("/api/message");
-  expect(res.status).toBe(200);
-  expect(await res.json()).toEqual({ message: "Hello" });
-});
-
-test("PUT /api/message stores the message and GET answers it", async () => {
-  const put = await putMessage(JSON.stringify({ message: "saved" }));
-  expect(put.status).toBe(200);
-  expect(await put.json()).toEqual({ message: "saved" });
-  expect(await (await api("/api/message")).json()).toEqual({ message: "saved" });
-  expect(await Bun.file(`${dataDir}/message.json`).json()).toEqual({ message: "saved" });
-});
-
-test("PUT /api/message refuses a body that is not a message, and keeps the old one", async () => {
-  for (const body of ["not json", "{}", JSON.stringify({ message: 1 })]) {
-    const res = await putMessage(body);
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "message must be a string" });
-  }
-  expect(await (await api("/api/message")).json()).toEqual({ message: "saved" });
-});
-
-test("a BunFile keeps the size it first saw, which is why message-api makes a new one per read", async () => {
-  const path = `${dataDir}/stale.json`;
-  const stale = Bun.file(path);
-  expect(await stale.exists()).toBe(false);
-  await Bun.write(path, JSON.stringify({ message: "written" }));
-  expect(await stale.exists()).toBe(true);
-  expect(await stale.text()).toBe(""); // the size it saw: none
-  expect(await Bun.file(path).json()).toEqual({ message: "written" });
-});
+// --- The routes (each resource's are in its own test file) ---
 
 test("GET /api/status answers what the server knows, but not where its data is", async () => {
   const status = await (await api("/api/status")).json();
@@ -149,18 +92,6 @@ test("unknown paths return 404", async () => {
   expect((await api("/nope")).status).toBe(404);
 });
 
-test("/ws upgrades, and a socket is told every saved message", async () => {
-  expect((await api("/ws")).status).toBe(426); // plain HTTP
-
-  const ws = new WebSocket(new URL("/ws", server.url.href.replace("http", "ws")));
-  await new Promise((open) => (ws.onopen = open));
-  ws.send("ignored"); // the page only listens; the server takes no notice
-  const told = new Promise<string>((done) => (ws.onmessage = (e) => done(String(e.data))));
-  await putMessage(JSON.stringify({ message: "pushed" }));
-  expect(JSON.parse(await told)).toEqual({ message: "pushed" });
-  ws.close();
-});
-
 // --- The page, in a real browser ---
 
 test("home page loads", async () => {
@@ -176,30 +107,22 @@ test("the Save button has its lucide icon, hidden from screen readers", async ()
   expect(await view.evaluate<string>(`document.querySelector("button.primary").textContent.trim()`)).toBe("Save");
 });
 
-test("the saved message is in the box", async () => {
-  await putMessage(JSON.stringify({ message: "in the box" }));
-  await open();
-  await waitFor(`document.querySelector("textarea")?.value === "in the box"`);
-});
-
-test("saving says Saved once the server has it, and the message survives a reload", async () => {
-  await open();
-  await waitFor(`document.querySelector("textarea")?.value === "in the box"`);
-  await replaceText("textarea", "typed in the browser");
-  await view.click("button.primary");
-  await waitFor(`document.querySelector(".toast.show.notify")?.textContent === "Saved"`);
-
-  expect(await (await api("/api/message")).json()).toEqual({ message: "typed in the browser" });
-  await open();
-  await waitFor(`document.querySelector("textarea")?.value === "typed in the browser"`);
-});
-
-test("a save the server did not take says Not saved", async () => {
-  await open();
-  await waitFor(`document.querySelector("textarea")?.value === "typed in the browser"`);
-  await failFetch();
-  await view.click("button.primary");
-  await waitFor(`document.querySelector(".toast.show.alert")?.textContent === "Not saved"`);
+test("an Icon with a label is read out as an image, and one without is hidden", async () => {
+  const fixture = Bun.serve({ port: 0, development: false, routes: { "/": iconPage } });
+  try {
+    await view.navigate(fixture.url.href);
+    await waitFor(`document.querySelector("#alone svg.icon")`);
+    const alone = await view.evaluate<[string | null, string | null, string | null]>(
+      `(() => { const svg = document.querySelector("#alone svg"); return [svg.getAttribute("role"), svg.getAttribute("aria-label"), svg.getAttribute("aria-hidden")]; })()`,
+    );
+    expect(alone).toEqual(["img", "Close", null]);
+    const beside = await view.evaluate<[string | null, string | null]>(
+      `(() => { const svg = document.querySelector("#beside svg"); return [svg.getAttribute("role"), svg.getAttribute("aria-hidden")]; })()`,
+    );
+    expect(beside).toEqual([null, "true"]);
+  } finally {
+    await fixture.stop(true);
+  }
 });
 
 test("the status line is shown", async () => {
@@ -208,83 +131,33 @@ test("the status line is shown", async () => {
   expect(await view.evaluate<string>(`document.querySelector("#status .help").textContent`)).toContain("ephemeral");
 });
 
-test("a message and a status that cannot be loaded say so", async () => {
+test("with DATA_PATH set, the status line says the data is on a mounted volume", async () => {
+  process.env.DATA_PATH = dataDir; // what a Railway volume sets
+  try {
+    await open();
+    await waitFor(`document.querySelector("#status .help")?.textContent.includes("mounted volume")`);
+  } finally {
+    delete process.env.DATA_PATH;
+  }
+});
+
+test("a status that cannot be loaded says so", async () => {
   await open();
-  await waitFor(`document.querySelector("textarea")`);
+  await waitFor(`document.querySelector("#status .meta")`);
   await failFetch();
-  // leave the page and come back: both views load again, into a failing fetch
+  // leave the page and come back: the view loads again, into a failing fetch
   await view.evaluate(`location.hash = "#/elsewhere"`);
   await waitFor(`document.body.textContent.includes("Page not found!")`);
   await view.evaluate(`location.hash = "#/"`);
-  await waitFor(`document.body.textContent.includes("The message could not be loaded.")`);
   await waitFor(`document.body.textContent.includes("The status could not be loaded.")`);
 });
 
-// A second window, for the tests that need two: opened at the page, closed in a finally
-async function withOtherWindow(run: (other: Bun.WebView, waitForOther: (expr: string) => Promise<void>) => Promise<void>) {
-  const other = new Bun.WebView({ width: 1280, height: 800, console: globalThis.console });
-  const waitForOther = async (expr: string, timeout = 5_000) => {
-    const end = Date.now() + timeout;
-    while (Date.now() < end) {
-      if (await other.evaluate(`Boolean(${expr})`)) return;
-      await Bun.sleep(50);
-    }
-    throw new Error(`Timed out waiting in the other window for: ${expr}`);
-  };
-  try {
-    await other.navigate(`${server.url.href}?other=${++visits}`);
-    await run(other, waitForOther);
-  } finally {
-    other.close();
-  }
-}
-
-test("a save shows in another window, and so does that window's save afterwards", async () => {
-  await putMessage(JSON.stringify({ message: "two windows" }));
+test("a page that is not found links home", async () => {
   await open();
-  await waitFor(`document.querySelector("textarea")?.value === "two windows"`);
-  await withOtherWindow(async (other, waitForOther) => {
-    await waitForOther(`document.querySelector("textarea")?.value === "two windows"`);
-
-    await replaceText("textarea", "from the first");
-    await view.click("button.primary");
-    await waitForOther(`document.querySelector("textarea")?.value === "from the first"`);
-
-    await other.click("textarea");
-    await other.type("!");
-    await other.click("button.primary");
-    await waitFor(`document.querySelector("textarea")?.value === "from the first!"`);
-  });
-});
-
-test("typing that is not saved is not overwritten by another window's save", async () => {
-  await open();
-  await waitFor(`document.querySelector("textarea")?.value === "from the first!"`);
-  await replaceText("textarea", "half-typed");
-  await withOtherWindow(async (other, waitForOther) => {
-    await waitForOther(`document.querySelector("textarea")?.value === "from the first!"`);
-    await other.click("textarea");
-    await other.type("?");
-    await other.click("button.primary");
-    await waitForOther(`document.querySelector(".toast.show.notify")?.textContent === "Saved"`);
-  });
-  expect(await (await api("/api/message")).json()).toEqual({ message: "from the first!?" });
-  await Bun.sleep(300); // time for the push to arrive, had it been taken
-  expect(await view.evaluate<string>(`document.querySelector("textarea").value`)).toBe("half-typed");
-});
-
-test("after the server restarts, the page loads what changed meanwhile and follows again", async () => {
-  await open();
-  await waitFor(`document.querySelector("textarea")?.value === "from the first!?"`);
-
-  const port = server.port;
-  await server.stop(true); // closes the page's socket
-  await Bun.write(`${dataDir}/message.json`, JSON.stringify({ message: "changed while down" }));
-  server = startServer({ port, dev: false, dataDir });
-  await waitFor(`document.querySelector("textarea")?.value === "changed while down"`);
-
-  await putMessage(JSON.stringify({ message: "after the restart" }));
-  await waitFor(`document.querySelector("textarea")?.value === "after the restart"`);
+  await view.evaluate(`location.hash = "#/nowhere"`);
+  await waitFor(`document.body.textContent.includes("Page not found!")`);
+  await view.click("#app a");
+  await waitFor(`document.querySelector("h1")?.textContent === "Message"`);
 });
 
 // --- The entry point and the sandbox hook ---
@@ -345,6 +218,25 @@ test("in production the page is served from source, without HMR", async () => {
     const html = await (await fetch(url)).text();
     expect(html).toContain("<title>Paintbrush</title>");
     expect(html).not.toContain("data-bun-dev-server-script");
+  } finally {
+    proc.kill();
+    await proc.exited;
+  }
+});
+
+test("bun dev serves with hot reload, and a reload does not take its own pid file for another server", async () => {
+  const { proc, url } = await spawnServer([process.execPath, "--hot", "src/main.ts"]);
+  try {
+    expect(await (await fetch(url)).text()).toContain("data-bun-dev-server-script"); // hot reload in the page
+    expect(Number(await Bun.file(pidFile).text())).toBe(proc.pid);
+
+    // A save: the same text written again (a touch, which changes only the time, is not one to --hot)
+    const source = Bun.file(`${import.meta.dir}/../src/server.ts`);
+    await Bun.write(source, await source.text());
+    expect((await readUntil(proc, /Listening on (\S+)/))[1]).toBe(url); // main.ts ran again, in the same process
+
+    expect((await fetch(url)).status).toBe(200);
+    expect(Number(await Bun.file(pidFile).text())).toBe(proc.pid);
   } finally {
     proc.kill();
     await proc.exited;
