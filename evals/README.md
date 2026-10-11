@@ -1,6 +1,6 @@
 # Skill evaluations
 
-Three scenarios for the `evolve` skill, in the shape Anthropic's skill guidance uses:
+Three scenarios for the `evolve` skill (a new document; two documents, the kitchen and undo; files over HTTP), in the shape Anthropic's skill guidance uses:
 a `query` to give a fresh session, and `expected_behavior` to check in what it writes.
 
 To run one by hand: make an app from this template (the README says how),

@@ -1,41 +1,38 @@
 [
   {
-    "skills": ["evolve", "railroad"],
+    "skills": ["evolve", "railroad", "delta-doc"],
     "query": "Add a notes page: I type a note, press Add, and it appears in a list under the box.",
     "files": [],
     "expected_behavior": [
-      "Picks step 1 (HTTP routes): no WebSocket push, no delta, no new package",
-      "Makes src/resources/notes/ with notes-api.ts (type and handlers), notes.ts (client store) and notes-view.tsx (view), following status/message",
-      "Writes each route out in src/server.ts and puts the view in a route in src/app.tsx",
-      "Refuses a body that is not a note with a 400, and a test sends one",
+      "Makes the notes a shared document from the start (registerDoc in notes-api.ts, openDoc in notes.ts), not HTTP routes and not a 'live' feature added later",
+      "Makes src/resources/notes/ with notes-api.ts, notes.ts and notes-view.tsx, registers the document in startServer and puts the view in a route in src/app.tsx",
+      "Adds with add /notes/- and removes by id; never sets notes.data or adds the note locally: the change that comes back draws it",
       "Renders the list with list() keyed by id, and binds signals ({x}, x$.map) rather than calling .get() in JSX",
-      "Tests every route and method and what a person sees and clicks, a failed save included; bun test passes at 100% coverage and bun run typecheck is clean",
+      "Tests what a person sees: a second window sees a note added, a refused change says Not saved; bun test passes at 100% coverage and bun run typecheck is clean",
       "Adds a CHANGELOG.md entry under [Unreleased]"
     ]
   },
   {
-    "skills": ["evolve", "railroad"],
-    "query": "When I add a note in one tab, my other open tabs should show it straight away without a reload.",
+    "skills": ["evolve", "railroad", "delta-doc"],
+    "query": "Customers pick from our menu and build an order. The kitchen should see every order as it comes in, and a customer should be able to undo their last change.",
     "files": [],
     "expected_behavior": [
-      "Picks step 2 (a WebSocket push), not delta: one value changes and every page follows",
-      "Publishes each successful write on the existing /ws socket from the handler, as message does",
-      "The client store sets its signal from the pushed value; no polling",
-      "A browser test opens a second window, writes in one and sees it in the other, closing the second window in a finally",
+      "Designs from the action: the order page holds two documents (the menu and the customer's order), and the kitchen is a document over every order",
+      "Keeps them in SQLite with delta's backend, because the kitchen and every order share rows; the schema follows from the documents",
+      "Turns on the ledger ({ ledger: true }) for undo rather than keeping an undo stack of its own",
+      "A test shows a line added to an order reaching the kitchen's document, and an undo taking it back from both",
       "bun test passes at 100% coverage and bun run typecheck is clean"
     ]
   },
   {
     "skills": ["evolve", "railroad"],
-    "query": "Two of us will edit the same shopping list at the same time. We must not overwrite each other's items.",
+    "query": "Let people upload a photo and get a link to it.",
     "files": [],
     "expected_behavior": [
-      "Picks step 3 (a delta document): several people write parts of the same data",
-      "Runs bun add @blueshed/delta and bunx @blueshed/delta install-skills, then removes .claude/skills/bun-route as the step says",
-      "Registers the document on the server and opens it in the client with openDoc; writes go through doc.send with add/replace/remove ops on item paths",
-      "Never sets doc.data locally: the page changes when the op comes back",
-      "Renders the items with list() over doc.data, keyed by id",
-      "A browser test shows a second window seeing an item the first adds; bun test passes at 100% coverage and bun run typecheck is clean"
+      "Serves files over HTTP routes with Bun.s3, not as a document: a file is not communication",
+      "Installs no AWS SDK; startServer takes the S3 client as an option so tests pass their own",
+      "Tests against a stand-in bucket: a put, a GET that redirects to the file, and a 404 for one that is not there",
+      "bun test passes at 100% coverage and bun run typecheck is clean"
     ]
   }
 ]

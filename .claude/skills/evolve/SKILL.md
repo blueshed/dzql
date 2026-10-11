@@ -1,43 +1,41 @@
 ---
 name: evolve
-description: "Adds a resource to this app or changes one: HTTP routes, a WebSocket push so every page follows, a table in SQLite, files in S3, then a delta document several people edit live, and beyond to eta. Use when the user asks for a new resource or route, for live updates, for sharing data between people, or for storage beyond a JSON file."
+description: "Grows this app: a new shared document, two documents on one page, keeping documents in SQLite (rows shared between documents, undo and history) or Postgres, HTTP routes for what isn't communication (health, status, files in S3), and a production build. Use when the user asks for something people share, see or act on, for storage beyond a JSON file, for undo or history, for files, or for a build."
 ---
 
-# Evolving a resource
+# Growing the app
 
-A resource is a folder `src/resources/<name>/` of three files: `<name>-api.ts` (the type and the server handlers), `<name>.ts` (the client store) and `<name>-view.tsx` (the view). Its routes are written out in `src/server.ts`, and its view goes in a route in `src/app.tsx`. As it evolves, the client route and the view keep their names; only what is under them changes.
+**Documents are how people communicate.** A document is what you need in front of you to take an action. To place an order you need the catalogue and your order: two documents on one page. The kitchen needs every open order, another document over the same rows.
 
-| Step | A resource is | Use it when | In this app |
-|---|---|---|---|
-| 1. HTTP routes | handlers and a fetching store | one person, or changes need not be seen live | `status` |
-| 2. A WebSocket push | step 1, with each write published to every page | pages must follow the server, and a write is one whole value | `message` |
-| 3. A delta document | a document every window holds and every write patches | several people write parts of the same data | — |
-| 4. eta | a document drawn on the server, with who may write what stated as stories | several people at once, and who sees what matters | — |
+A document is never a poster on the wall. It's a conversation. Open it and you're subscribed: every change anyone makes reaches you as it happens. Change it yourself with add, replace or remove on a path, and everyone holding it sees it at once.
 
-A realtime shared tree with formulas (shinko) is meant to become a resource the same way, perhaps as a flavour of delta. It is work in progress and not yet a step.
+**Think in documents, not entities.** Ask "what does someone need in front of them to do this?" rather than "what are the tables?" The tables follow from the documents.
 
-Storage is a separate choice, made at any step: a JSON file (`message`), a table in SQLite, or files in an S3 bucket. A delta document has its own storage, which goes JSON file → SQLite → Postgres with no change to the browser code.
+**What grows is where they're kept.** A shared JSON document does a lot on its own. SQLite earns its place when documents share the same rows, or when you want undo and history. Postgres comes in when servers share the data, or people should see only their own. The page and its documents stay the same as the storage grows.
+
+Anything people share is a document from the start, as `message` is. HTTP routes serve what isn't communication: the health check, files, the server's status (`status`).
+
+A resource is a folder `src/resources/<name>/` of three files: `<name>-api.ts` (the server side, and the type both sides share), `<name>.ts` (the client: the document it opens, or what it fetches) and `<name>-view.tsx` (the view). The server side is wired in `src/server.ts`, and the view goes in a route in `src/app.tsx`.
 
 ## Workflow
 
 ```
-- [ ] Pick the lowest step that does what the user asked
-- [ ] Copy the closest example from references.md, or from status/message
-- [ ] Add a test for every route and method (400s included) and for what a person sees and clicks, a failure included
+- [ ] Ask what someone needs in front of them to do what the user asked: those are the documents
+- [ ] Copy the closest section of references.md, or message / status
+- [ ] Test what a person sees and clicks (a refused change included), and every route and method
 - [ ] bun test (100% coverage) and bun run typecheck
 - [ ] A CHANGELOG.md entry under [Unreleased], and in todo.jsonl the item it settles marked fixed (or a new one for what is left open)
 ```
 
 ## References
 
-[references.md](references.md) has one section per task, each with code and tests; read the one the step needs:
+[references.md](references.md) has a section per task, each with its code and its tests:
 
-- **Add a resource**: HTTP routes, a store and a view, and the rules for handlers
-- **Push changes over the WebSocket**: step 2
-- **Store in SQLite**: `bun:sqlite`
-- **Store in S3**: `Bun.s3`, with a stand-in bucket for tests
-- **Make it a delta document**: step 3
-- **Beyond: eta**: step 4
-- **Build for production**: optional; the app runs from source
+- [A new document](references.md#a-new-document): a shared JSON document, made the way `message` is
+- [Two documents on one page](references.md#two-documents-on-one-page): the catalogue and an order
+- [Store documents in SQLite](references.md#store-documents-in-sqlite): rows shared between documents, and undo
+- [Store in Postgres](references.md#store-in-postgres): PGlite in this process, then a Postgres server
+- [Serve what isn't communication](references.md#serve-what-isnt-communication): HTTP routes, and files in S3
+- [Build for production](references.md#build-for-production): optional
 
-Step 4 starts from eta's own `first-app.md` and its `eta-app` skill.
+The `delta-doc` skill is delta's own manual, and `railroad` is the page's.

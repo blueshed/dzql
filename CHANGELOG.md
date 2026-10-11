@@ -26,6 +26,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   replace of `/text` with a string is refused with delta's 400. `status` stays an HTTP route: it
   is not communication. `@blueshed/delta` ^0.12.0 is a dependency, and setup copies its
   `delta-doc` skill into a new app beside railroad's.
+- **The evolve skill is the storage ladder, and opens with what a document is.** It starts from
+  the concept in the owner's words (documents are how people communicate; think in documents,
+  not entities; what grows is where they're kept), and its references have a section per task,
+  each with code and tests: a new document (notes, made the way `message` is), two documents on
+  one page (a catalogue and an order), storing documents in SQLite (the kitchen, a document over
+  every order's rows, and undo with `{ ledger: true }`), Postgres (PGlite in this process, then a
+  server, pointing at delta-doc's reference), HTTP routes for what isn't communication (health,
+  status, files in S3), and a production build. The http, WebSocket push, document ladder and
+  its table are gone, and so is pushing changes over the WebSocket as a step: a document already
+  does it. eta is one line, marked as private and not run here. The skill's evaluations in
+  `evals/` follow it.
 - **Ctrl+Enter saves the message too**, as Cmd+Enter does: Linux and Windows have no Cmd key.
 - **Each resource's tests are in a file of their own.** `tests/message.test.ts` has the message's
   routes and view; `tests/site.test.ts` keeps the status, the page's shell and the entry point,
