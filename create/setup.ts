@@ -71,8 +71,10 @@ export async function setup(root: string) {
   const pkg = Bun.file(join(root, "package.json"));
   const pkgText = (await pkg.exists()) ? await pkg.text() : "";
   const from = pkgText.match(/"version": "([^"]*)"/)?.[1];
-  // The evolve skill's test goes with its script (CI runs it only where the file is)
+  // The evolve skill's test goes with its script and its CI step
   if (pkgText) await Bun.write(pkg, pkgText.replace(/"version": "[^"]*"/, '"version": "0.0.0"').replace(/\n *"test:evolve": .*/, ""));
+  const ci = Bun.file(join(root, ".github/workflows/ci.yml"));
+  if (await ci.exists()) await Bun.write(ci, (await ci.text()).replace(/\n\n *# The evolve skill's sections[\s\S]*?run: bun run test:evolve\n/, "\n"));
 
   await Bun.write(join(root, "todo.jsonl"), "");
   await Bun.write(join(root, "CHANGELOG.md"), changelog(from));

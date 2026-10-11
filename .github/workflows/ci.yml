@@ -34,6 +34,5 @@ jobs:
       - run: bun test
 
       # The evolve skill's sections, each applied to a new app and run. Only in the template:
-      # setup deletes tests/evolve.ts from a new app.
-      - if: hashFiles('tests/evolve.ts') != ''
-        run: bun run test:evolve
+      # setup deletes this step from a new app, with tests/evolve.ts and its script.
+      - run: bun run test:evolve

@@ -12,8 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `bun test`). For each section of the skill's references it makes a new app from the template,
   applies the section's code blocks (each names its file on its first line) and its `bun add`
   lines, after those of the sections it builds on, and runs `bun run typecheck` and `bun test` at
-  100%. It is about the template, so setup deletes `tests/evolve.ts` and its script from a new
-  app, and CI runs it only where the file is. Its first run found that `[ws.path]` as a route key
+  100%. It is about the template, so setup deletes `tests/evolve.ts`, its script and its CI
+  step from a new app. Its first run found that `[ws.path]` as a route key
   widened every route's params to `string`, which broke a typed route such as
   `/api/files/:name`: the socket's route is the literal `"/ws"`.
 - **Tests for what a person sees and clicks that had none:** the status line with `DATA_PATH`
