@@ -35,16 +35,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   nothing is written). `status` stays an HTTP route: it
   is not communication. `@blueshed/delta` ^0.12.0 is a dependency, and setup copies its
   `delta-doc` skill into a new app beside railroad's.
-- **The evolve skill is the storage ladder, and opens with what a document is.** It starts from
+- **The evolve skill grows the app by its documents and where they're kept.** It starts from
   the concept in the owner's words (documents are how people communicate; think in documents,
   not entities; what grows is where they're kept), and its references have a section per task,
   each with code and tests: a new document (notes, made the way `message` is), two documents on
   one page (a catalogue and an order), storing documents in SQLite (the kitchen, a document over
   every order's rows, and undo with `{ ledger: true }`), Postgres (PGlite in this process, then a
   server, pointing at delta-doc's reference), HTTP routes for what isn't communication (health,
-  status, files in S3), and a production build. The http, WebSocket push, document ladder and
-  its table are gone, and so is pushing changes over the WebSocket as a step: a document already
-  does it. eta is one line, marked as private and not run here. The skill's evaluations in
+  status, files in S3), and a production build. The old steps (HTTP routes, then a WebSocket
+  push, then a delta document) and their table are gone, and so is pushing changes over the
+  WebSocket: a document already does it. eta is one line, marked as private and not run here. The skill's evaluations in
   `evals/` follow it.
 - **README.md and CLAUDE.md open with what the app is:** documents are how people communicate,
   and what grows is where they're kept. CLAUDE.md's "Start small" framing gives way to how the
@@ -52,11 +52,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   lists the files as they are now, `tests/message.test.ts` and `tests/browser.ts` among them, and
   a new app's README says the same in short.
 - **Ctrl+Enter saves the message too**, as Cmd+Enter does: Linux and Windows have no Cmd key.
-- **Each resource's tests are in a file of their own.** `tests/message.test.ts` has the message's
-  routes and view; `tests/site.test.ts` keeps the status, the page's shell and the entry point,
-  with the Bun.WebView rules at its top. The page helpers (`open`, `waitFor`, `replaceText`,
-  `failFetch`, `withOtherWindow`) are in `tests/browser.ts`, one WebView per file. The `evolve`
-  skill's references point there, and its eta step says it is not run or tested in this app.
+- **Each resource's tests are in a file of their own.** `tests/message.test.ts` has the message
+  document and its view; `tests/site.test.ts` keeps the status, the page's shell and the entry
+  point, with the Bun.WebView rules at its top. The page helpers (`open`, `waitFor`,
+  `replaceText`, `failFetch`, `refuseWrites`, `withOtherWindow`) are in `tests/browser.ts`, one
+  WebView per file. The `evolve` skill's references point there, and eta is one line there,
+  marked as private and not run or tested here.
 
 ### Fixed
 

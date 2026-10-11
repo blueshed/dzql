@@ -7,7 +7,7 @@ description: "Grows this app: a new shared document, two documents on one page, 
 
 **Documents are how people communicate.** A document is what you need in front of you to take an action. To place an order you need the catalogue and your order: two documents on one page. The kitchen needs every open order, another document over the same rows.
 
-A document is never a poster on the wall. It's a conversation. Open it and you're subscribed: every change anyone makes reaches you as it happens. Change it yourself with add, replace or remove on a path, and everyone holding it sees it at once.
+A document is never a poster on the wall. It's a conversation. Open it and you're subscribed: every change anyone makes reaches you as it happens, with nothing to poll, fetch or refresh. Change it yourself with add, replace or remove on a path, and everyone holding it sees it at once. The verbs exist because documents change, and everyone holding a document always shares the same state.
 
 **Think in documents, not entities.** Ask "what does someone need in front of them to do this?" rather than "what are the tables?" The tables follow from the documents.
 

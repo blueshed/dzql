@@ -4,7 +4,7 @@
 
 A Bun website where people share documents. **Documents are how people communicate**: a document is what you need in front of you to take an action. Open one and you're subscribed, so every change anyone makes reaches you as it happens. Change it, and everyone holding it sees it at once.
 
-[Bun](https://bun.sh) is the runtime, the bundler, the test runner and the server. [delta](https://github.com/blueshed/delta) keeps the documents, [railroad](https://github.com/blueshed/railroad) draws the page, and [Railway](https://railway.com) deploys it. What grows is where the documents are kept: a JSON file, then SQLite, then Postgres, and the page stays the same.
+[Bun](https://bun.sh) is the runtime, the bundler, the test runner and the server. [delta](https://github.com/blueshed/delta) keeps the documents, [railroad](https://github.com/blueshed/railroad) draws the page, and [Railway](https://railway.com) deploys it. What grows is where the documents are kept. A shared JSON document does a lot on its own; SQLite earns its place when documents share the same rows, or when you want undo and history; Postgres comes in when servers share the data, or people should see only their own. The page and its documents stay the same as the storage grows.
 
 Requires Bun 1.4.3 or later.
 
@@ -39,7 +39,7 @@ Every route and document is visible in the code. An AI, or a person, can read `s
 
 ## How it grows
 
-Think in documents, not entities: ask what someone needs in front of them to do something, and the tables follow. To place an order you need the catalogue and your order, two documents on one page; the kitchen needs every open order, another document over the same rows. A shared JSON document does a lot on its own. SQLite earns its place when documents share rows, or for undo and history, and Postgres when servers share the data or people should see only their own. The `evolve` skill has each step, with its code and its tests, and a test applies every step to a new app and runs it.
+Think in documents, not entities: ask what someone needs in front of them to do something, and the tables follow. To place an order you need the catalogue and your order, two documents on one page; the kitchen needs every open order, another document over the same rows. The `evolve` skill shows each, and where to keep them as the app grows, with code and tests; a test applies each of its sections to a new app and runs it.
 
 ## What's in the box
 
