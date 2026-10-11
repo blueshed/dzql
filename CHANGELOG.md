@@ -44,6 +44,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   its table are gone, and so is pushing changes over the WebSocket as a step: a document already
   does it. eta is one line, marked as private and not run here. The skill's evaluations in
   `evals/` follow it.
+- **README.md and CLAUDE.md open with what the app is:** documents are how people communicate,
+  and what grows is where they're kept. CLAUDE.md's "Start small" framing gives way to how the
+  app grows; its record-keeping and rules stay, with one for delta's documents. "What is here"
+  lists the files as they are now, `tests/message.test.ts` and `tests/browser.ts` among them, and
+  a new app's README says the same in short.
 - **Ctrl+Enter saves the message too**, as Cmd+Enter does: Linux and Windows have no Cmd key.
 - **Each resource's tests are in a file of their own.** `tests/message.test.ts` has the message's
   routes and view; `tests/site.test.ts` keeps the status, the page's shell and the entry point,
@@ -53,6 +58,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **What CI does for the browser tests is said right:** it gets Bun from setup-bun and sets up
+  the runner's Chrome; it is the web sandbox's hook that installs both.
 - **Two reasons in the docs were wrong, and are now what is true.** A `Bun.file(path)` keeps the
   size it first saw (Bun 1.4.3): after `Bun.write` changes the file, `exists()` turns true but
   `.json()` reads only that many bytes, so one that found no file reads nothing and throws (a

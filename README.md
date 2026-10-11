@@ -2,7 +2,9 @@
 
 # Paintbrush
 
-A hello world for [Bun](https://bun.sh) as a server of **routes and resources**. Bun is the runtime, the bundler, the test runner and the server, and it has a WebSocket, SQLite and S3 built in, so a website needs very little else. Paintbrush shows how little, then gives you a way on: [railroad](https://github.com/blueshed/railroad) for the page, [Railway](https://railway.com) for the deploy, and a resource that can grow into a [delta](https://github.com/blueshed/delta) document and beyond.
+A Bun website where people share documents. **Documents are how people communicate**: a document is what you need in front of you to take an action. Open one and you're subscribed, so every change anyone makes reaches you as it happens. Change it, and everyone holding it sees it at once.
+
+[Bun](https://bun.sh) is the runtime, the bundler, the test runner and the server. [delta](https://github.com/blueshed/delta) keeps the documents, [railroad](https://github.com/blueshed/railroad) draws the page, and [Railway](https://railway.com) deploys it. What grows is where the documents are kept: a JSON file, then SQLite, then Postgres, and the page stays the same.
 
 Requires Bun 1.4.3 or later.
 
@@ -12,49 +14,43 @@ cd myapp
 bun dev
 ```
 
-Open `http://localhost:3000` in two windows. You get a message you can edit, and a save in one window shows in the other. There's a line saying whether your data survives a deploy, and tests for all of it.
+Open `http://localhost:3000` in two windows. You get a message, a shared document: a save in one window shows in the other. There's a line saying whether your data survives a deploy, and tests for all of it.
 
 ## Bun does the work
 
-- **Routes** are `Bun.serve()` routes, all written out in `src/server.ts`: the page, `GET` and `PUT /api/message`, `GET /api/status`, `/ws` and `/health`.
+- **Routes** are `Bun.serve()` routes, all written out in `src/server.ts`: the page, `GET /api/status`, `/ws` and `/health`.
 - **The page** is an imported `index.html`. Bun bundles the TypeScript, JSX and CSS it references, so there is no build step in development.
-- **A WebSocket** is a route and a handler. Each save goes out with Bun's built-in pub/sub (`server.publish`), so every open page follows.
-- **Files** are `Bun.file` and `Bun.write`: the message is a JSON file in the data folder.
-- **Tests** are `bun test`. Routes are tested with `fetch`, and the page in a real browser with `Bun.WebView`. The run fails below 100% coverage.
+- **Documents** ride one WebSocket, a route like any other. delta keeps each one (the message is a JSON file in the data folder) and tells every page holding it of every change.
+- **Tests** are `bun test`. Routes are tested with `fetch`, a document with a client in the test, and the page in a real browser with `Bun.WebView`. The run fails below 100% coverage.
 
-When a resource needs more than a JSON file, Bun has that too. The `evolve` skill's `references.md` shows how, with the tests:
+## Routes, resources and documents
 
-- **SQLite** with `bun:sqlite`: a database in one file on the data volume.
-- **S3** with `Bun.s3`: files in a bucket (AWS, R2, a Railway bucket, MinIO). A `GET` answers a redirect to a presigned URL, so the bytes never pass through your server.
-
-## Routes and resources
-
-- **Server routes** are in `src/server.ts`. A route serves a resource.
+- **Server routes** are in `src/server.ts`. HTTP routes serve what isn't communication: the health check, files, the server's status. Everything people share is a document on `/ws`.
 - **Client routes** are railroad's hash router, in `src/app.tsx`. A route draws a resource's view.
 - **A resource** is a folder with three files:
 
 | File | Role |
 |------|------|
-| `<name>-api.ts` | Server handlers: plain functions that return a `Response`, and the type both sides share |
-| `<name>.ts` | The client store: signals, fetch wrappers, and the socket it listens on |
+| `<name>-api.ts` | The server side: the document it registers, or the handlers that return a `Response`; and the type both sides share |
+| `<name>.ts` | The client: the document it opens, or what it fetches |
 | `<name>-view.tsx` | The view: a function component, reactive through signals |
 
-Every route and handler is visible in the code. An AI, or a person, can read `server.ts` and `app.tsx` and know exactly what the app does.
+Every route and document is visible in the code. An AI, or a person, can read `server.ts` and `app.tsx` and know exactly what the app does.
 
-## A resource evolves
+## How it grows
 
-It starts as HTTP routes, and a WebSocket tells every page what changed. When several people edit the same thing at once, it becomes a document in delta. delta keeps it in a JSON file, then SQLite, then Postgres, and the browser code does not change. The client route and the view keep their names; what is under them changes. The `evolve` skill has each step, with its tests.
+Think in documents, not entities: ask what someone needs in front of them to do something, and the tables follow. To place an order you need the catalogue and your order, two documents on one page; the kitchen needs every open order, another document over the same rows. A shared JSON document does a lot on its own. SQLite earns its place when documents share rows, or for undo and history, and Postgres when servers share the data or people should see only their own. The `evolve` skill has each step, with its code and its tests, and a test applies every step to a new app and runs it.
 
 ## What's in the box
 
 ```
-src/server.ts        Bun.serve(): the routes and the WebSocket
+src/server.ts        Bun.serve(): the routes, and the documents on one WebSocket
 src/main.ts          the entry point: a pid file, so a server started in the background can be stopped
-src/app.tsx          railroad's routes
+src/app.tsx          the socket every document rides, and railroad's routes
 src/index.html       the page; Bun bundles the TypeScript and CSS it references
 src/styles.css       the design, with its rules at the top
 src/resources/       message/ and status/, three files each, a toast, and an Icon for lucide icons
-tests/               routes with fetch, the page in a real browser (Bun.WebView), the entry point
+tests/               routes with fetch, documents with a client, the page in a real browser (Bun.WebView), the entry point
 .railway/            the deploy, as code, with a volume for the data
 ```
 
@@ -62,10 +58,10 @@ tests/               routes with fetch, the page in a real browser (Bun.WebView)
 
 ## Made to be worked on with Claude
 
-`CLAUDE.md` says what is here and the rules. The `evolve` skill (`.claude/skills/evolve/`) is how to add or change a resource, and its `references.md` has each step with code and tests. `CHANGELOG.md` and `todo.jsonl` are a pair, the project's memory between sessions: the changelog is where it has been, the ledger what is open now. They move together: when work lands it gets a changelog entry, and the item it settles is marked fixed. `/release` (`.claude/commands/release.md`) checks, tests, turns `[Unreleased]` into a version, takes the settled items out of the ledger, bumps, commits, tags and pushes. The Claude Code web sandbox has an older Bun and no browser, so a SessionStart hook is there to install both; a test proves it does nothing anywhere else, but its install in the sandbox is not tested. CI installs Chrome on GitHub, and every push runs the tests with it.
+`CLAUDE.md` says what is here and the rules. The `evolve` skill (`.claude/skills/evolve/`) is how the app grows, and its `references.md` has each step with code and tests. `CHANGELOG.md` and `todo.jsonl` are a pair, the project's memory between sessions: the changelog is where it has been, the ledger what is open now. They move together: when work lands it gets a changelog entry, and the item it settles is marked fixed. `/release` (`.claude/commands/release.md`) checks, tests, turns `[Unreleased]` into a version, takes the settled items out of the ledger, bumps, commits, tags and pushes. The Claude Code web sandbox has an older Bun and no browser, so a SessionStart hook is there to install both; a test proves it does nothing anywhere else, but its install in the sandbox is not tested. On GitHub, CI gets Bun from setup-bun and sets up the runner's Chrome, and every push runs the tests with it.
 
 ## Starting from it
 
-`bun create` runs `create/setup.ts` after installing. Your app gets its own name, a fresh ledger and changelog, railroad's skill, and a first commit. The template's logo, the script and its test are not copied across. The app's changelog starts by naming the paintbrush version it came from: to bring an app up to date, read this changelog from that version on, and carry across what applies.
+`bun create` runs `create/setup.ts` after installing. Your app gets its own name, a fresh ledger and changelog, railroad's and delta's skills, and a first commit. The template's logo, the script and the template's own tests are not copied across. The app's changelog starts by naming the paintbrush version it came from: to bring an app up to date, read this changelog from that version on, and carry across what applies.
 
 MIT
