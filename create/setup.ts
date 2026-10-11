@@ -71,7 +71,8 @@ export async function setup(root: string) {
   const pkg = Bun.file(join(root, "package.json"));
   const pkgText = (await pkg.exists()) ? await pkg.text() : "";
   const from = pkgText.match(/"version": "([^"]*)"/)?.[1];
-  if (pkgText) await Bun.write(pkg, pkgText.replace(/"version": "[^"]*"/, '"version": "0.0.0"'));
+  // The evolve skill's test goes with its script (CI runs it only where the file is)
+  if (pkgText) await Bun.write(pkg, pkgText.replace(/"version": "[^"]*"/, '"version": "0.0.0"').replace(/\n *"test:evolve": .*/, ""));
 
   await Bun.write(join(root, "todo.jsonl"), "");
   await Bun.write(join(root, "CHANGELOG.md"), changelog(from));
