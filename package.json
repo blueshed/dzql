@@ -15,6 +15,7 @@
     "stop": "bun -e \"const f = Bun.file('.server.pid'); if (!(await f.exists())) console.log('not running'); else { const pid = Number(await f.text()); try { if (!(pid > 0)) throw 0; process.kill(pid, 'SIGTERM'); console.log('stopped ' + pid); } catch { await f.delete(); console.log('removed stale pid file'); } }\"",
     "typecheck": "bun check",
     "test": "bun test",
+    "test:evolve": "bun test ./tests/evolve.ts",
     "start": "NODE_ENV=production bun src/main.ts"
   },
   "dependencies": {

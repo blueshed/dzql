@@ -28,8 +28,8 @@ export async function startServer({
       // What isn't communication is an HTTP route (see src/resources/)
       "/api/status": { GET: status.get },
 
-      // Every document rides this socket
-      [ws.path]: ws.upgrade,
+      // Every document rides this socket (a literal key, so routes keep their typed params)
+      "/ws": ws.upgrade,
 
       // Railway healthcheck
       "/health": new Response("ok"),

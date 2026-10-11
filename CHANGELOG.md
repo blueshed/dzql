@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **A test that proves the evolve skill** (`bun run test:evolve`, and a CI step; not part of
+  `bun test`). For each section of the skill's references it makes a new app from the template,
+  applies the section's code blocks (each names its file on its first line) and its `bun add`
+  lines, after those of the sections it builds on, and runs `bun run typecheck` and `bun test` at
+  100%. It is about the template, so setup deletes `tests/evolve.ts` from a new app. Its first run
+  found that `[ws.path]` as a route key widened every route's params to `string`, which broke a
+  typed route such as `/api/files/:name`: the socket's route is the literal `"/ws"`.
 - **Tests for what a person sees and clicks that had none:** the status line with `DATA_PATH`
   set ("mounted volume"), an `<Icon label>` read out as an image (on a small page in `tests/`,
   since the app has no icon on its own yet), Cmd+Enter in the message box, and the "home" link

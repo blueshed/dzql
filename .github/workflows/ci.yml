@@ -32,3 +32,6 @@ jobs:
           echo "BUN_CHROME_PATH=/usr/local/bin/chrome-no-sandbox" >> "$GITHUB_ENV"
 
       - run: bun test
+
+      # The evolve skill's sections, each applied to a new app and run (tests/evolve.ts)
+      - run: bun run test:evolve
