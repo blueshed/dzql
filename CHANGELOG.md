@@ -16,6 +16,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **railroad 0.16.0.** It drops only the deprecated async route handler that resolves to a
+  bare `Promise<Node>` (none here), fixes several disposal cases, and ships a leaner skill, which
+  setup copies into a new app.
+
 - The evolve skill has three evaluations in `evals/` (a page, a live push, a shared document),
   which setup deletes from a new app with the rest of what is about the template. Its references'
   contents list links each section. Setup's reason for leaving out railroad's `bun-route` is the

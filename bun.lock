@@ -5,7 +5,7 @@
     "": {
       "name": "paintbrush",
       "dependencies": {
-        "@blueshed/railroad": "^0.15.1",
+        "@blueshed/railroad": "^0.16.0",
         "lucide": "^1.51.0",
       },
       "devDependencies": {
@@ -16,7 +16,7 @@
     },
   },
   "packages": {
-    "@blueshed/railroad": ["@blueshed/railroad@0.15.1", "", {}, "sha512-ikOCZA/x2qSHW3G7U1O+jmlDHttauxAGErZm64+uLJIGj0p6YotqdoZrlOrSiqDO78F9CRMd1PZ+I8ydadfGEA=="],
+    "@blueshed/railroad": ["@blueshed/railroad@0.16.0", "", {}, "sha512-e2309sO62+R9xI4sRcJvJdXXBOyqRVjwZndFaeU8Zrmmo926SmG/nZlPMY2LjrK0Dumhrfk9Ppn15OhIefmZ5Q=="],
 
     "@esbuild/aix-ppc64": ["@esbuild/aix-ppc64@0.28.2", "", { "os": "aix", "cpu": "ppc64" }, "sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ=="],
 
