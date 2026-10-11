@@ -44,12 +44,21 @@ test("the message is Hello until someone changes it, and a change that is not a 
       [{ op: "replace", path: "/text", value: 1 }],
       [{ op: "remove", path: "/text" }],
       [{ op: "add", path: "/other", value: "x" }],
+      [null],
       "not ops",
     ];
     for (const ops of refused) {
       await expect(doc.send(ops as DeltaOp[])).rejects.toMatchObject({ code: 400, message: "a message is a replace of /text with a string" });
     }
     expect(doc.data.peek()).toEqual({ text: "Hello" });
+  });
+});
+
+test("an empty change is taken, and nothing is written", async () => {
+  await holding(async (doc) => {
+    expect(await doc.send([])).toEqual({ ack: true });
+    await Bun.sleep(100); // time for a write, had there been one
+    expect(await Bun.file(`${dataDir}/message.json`).exists()).toBe(false);
   });
 });
 

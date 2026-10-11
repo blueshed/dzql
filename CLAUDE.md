@@ -36,7 +36,7 @@ tests/
 .railway/railway.ts    the deploy; its rules are at its top
 ```
 
-- `message` is a document: delta keeps it as `message.json` in the data folder (`DATA_PATH`, else `data/`, git-ignored). The page opens it and changes it with `send`, so every open page follows; a change that is not a replace of `/text` with a string is refused (400).
+- `message` is a document: delta keeps it as `message.json` in the data folder (`DATA_PATH`, else `data/`, git-ignored). The page opens it and changes it with `send`, so every open page follows; a change that is not a replace of `/text` with a string is refused (400), and an empty one writes nothing.
 - `status` is an HTTP route, since it isn't communication: whether `DATA_PATH` is set, never where the folder is.
 
 ## Rules

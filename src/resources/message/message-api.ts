@@ -6,19 +6,20 @@
  * of the server code below reaches the browser bundle.
  */
 import { registerDoc, type WsServer } from "@blueshed/delta/server";
-import type { DeltaOp } from "@blueshed/delta/core";
 
 export type Message = { text: string };
 
 // The message changes one way: a replace of its text with a string
-const isText = (op: DeltaOp) => op.op === "replace" && op.path === "/text" && typeof op.value === "string";
+const isText = (op: any) => op?.op === "replace" && op.path === "/text" && typeof op.value === "string";
 
 export function messageDoc(ws: WsServer, dataDir: string) {
   // Asked before delta applies a write: a throw with a code is delta's answer, and nothing changes
-  ws.on("delta", (msg) => {
-    if (msg.doc === "message" && !(Array.isArray(msg.ops) && msg.ops.every(isText))) {
+  ws.on("delta", (msg, _client, respond) => {
+    if (msg.doc !== "message") return;
+    if (!(Array.isArray(msg.ops) && msg.ops.every(isText))) {
       throw Object.assign(new Error("a message is a replace of /text with a string"), { code: 400 });
     }
+    if (msg.ops.length === 0) respond({ result: { ack: true } }); // nothing to change, so nothing is written
   });
   return registerDoc<Message>(ws, "message", { file: `${dataDir}/message.json`, empty: { text: "Hello" } });
 }

@@ -31,7 +31,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   with `message.send([{ op: "replace", path: "/text", value }])`, never locally, so every open
   window follows and the page reconnects and reopens it by itself. `GET` and `PUT /api/message`
   and the app's own `/ws` handler are gone, `startServer` is `async`, and a change that is not a
-  replace of `/text` with a string is refused with delta's 400. `status` stays an HTTP route: it
+  replace of `/text` with a string is refused with delta's 400 (an empty one is taken, and
+  nothing is written). `status` stays an HTTP route: it
   is not communication. `@blueshed/delta` ^0.12.0 is a dependency, and setup copies its
   `delta-doc` skill into a new app beside railroad's.
 - **The evolve skill is the storage ladder, and opens with what a document is.** It starts from
