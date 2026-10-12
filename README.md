@@ -98,16 +98,16 @@ before compression, with a script (`examples/<name>/scripts/measure-render-cost.
 number this README quotes; `bun test` fails when the README says otherwise.
 
 <!-- measured:writes -->
-- **Chat**, one message in a room of 100 messages and 5 members: 518 B, compressed from 1.2 KB, to
-  each other member (a 208 B patch and 310 B of HTML).
+- **Chat**, one message in a room of 100 messages and 5 members: 517 B, compressed from 1.2 KB, to
+  each other member (a 206 B patch and 311 B of HTML).
 - **The ticker**, one price tick with 5 viewers watching its symbol: 194 B, compressed from 214 B,
   to each other viewer (patches of 100 B and 94 B, and no HTML). The same tick as a bare JSON feed
   would be 41 B.
-- **The wedding**, one guest's top changed to green: 806 B, compressed from 2.1 KB, to the same
-  household's second tab, on its photo (patches of 139 B and 218 B, and 449 B of HTML); 740 B,
-  compressed from 5.2 KB, to the couple, on their photo of families (a 136 B patch and 604 B of
-  HTML); 218 B, compressed from 300 B, to another household, on its photo (one patch and no HTML);
-  and 218 B, compressed from 300 B, to another household, reading everyone (one patch and no HTML).
+- **The wedding**, one guest's top changed to green: 823 B, compressed from 2.1 KB, to the same
+  household's second tab, on its photo (patches of 147 B and 227 B, and 449 B of HTML); 751 B,
+  compressed from 5.3 KB, to the couple, on their photo of families (a 136 B patch and 615 B of
+  HTML); 227 B, compressed from 315 B, to another household, on its photo (one patch and no HTML);
+  and 227 B, compressed from 315 B, to another household, reading everyone (one patch and no HTML).
 <!-- /measured -->
 
 ## Commands

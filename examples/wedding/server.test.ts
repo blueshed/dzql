@@ -772,7 +772,7 @@ describe("the couple", () => {
     await send(ws, "board", [{ op: "add", path: "/households/-", value: { email, names: "Wire Test", plus_ones: "0" } }]);
     const invited = (await board()).households.find((h) => h.email === email)!;
     expect(invited.guests.map((g) => g.name)).toEqual(["Wire Test"]);
-    expect(invited.code).toBe(`WIRE-1${invited.id}`); // the email before the @, six letters at most, then the id
+    expect(invited.code).toBe("WIRE-11"); // the email before the @, six letters at most, then the least number no code has
     await refused(ws, "board", [{ op: "add", path: "/households/-", value: { email: "no-at-sign" } }]);
     await send(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     expect((await board()).households.find((h) => h.email === email)).toBeUndefined();

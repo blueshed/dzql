@@ -1,7 +1,8 @@
 import { read as readDoc } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
 import { parsePointer } from "../../../src/json-pointer";
-import { householdFrom, minter, type HouseholdDocument } from "./household";
+import { db } from "../delta";
+import { householdFrom, newId, type HouseholdDocument } from "./household";
 import { coursesOf, eventsOf, giftsOf, placesOf, weddingOf, WEDDING, type Course, type Event, type Gift, type Place, type Rows, type Wedding } from "./wedding";
 import { integer, text, yesNo } from "./values";
 
@@ -125,31 +126,38 @@ const isEmail = (value: unknown): value is string => typeof value === "string" &
 /** Two ids the same: the store keeps a serial as a number, a path carries it as text. */
 const same = (a: unknown, b: unknown): boolean => a != null && b != null && String(a) === String(b);
 
+const codeTaken = db.query<{ 1: number }, [string]>("SELECT 1 FROM wedding_households WHERE code = ?");
+
 export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()): PatchOp[] {
   // a working copy: each op sees the ones before it in the message
   const d = structuredClone(doc) as Required<Doc>;
   for (const key of ["households", "guests", "asks", "claims", "courses", "dishes", "drinks", "gifts", "events", "places"] as const) d[key] ??= {};
   const out: PatchOp[] = [];
-  const mint: Record<string, () => string> = {};
-  const next = (coll: string) => (mint[coll] ??= minter(coll))();
+  let made = 0; // a row added at `-` has no id until delta names it: the copy keeps it by a key of its own
   const emit = (op: PatchOp) => {
     out.push(op);
-    const [coll, id, field] = parsePointer(op.path);
+    const [coll, at, field] = parsePointer(op.path);
+    const id = at === "-" ? `-${++made}` : at!;
     const rows = d[coll as keyof Doc] as Rows;
-    if (coll === "weddings") (d.weddings as Record<string, unknown>)[id!] = op.value;
-    else if (op.op === "remove") delete rows[id!];
-    else if (field) rows[id!]![field] = op.value;
-    else rows[id!] = { id: id!, ...(op.value as object) };
+    if (coll === "weddings") (d.weddings as Record<string, unknown>)[id] = op.value;
+    else if (op.op === "remove") delete rows[id];
+    else if (field) rows[id]![field] = op.value;
+    else rows[id] = { id, ...(op.value as object) };
+  };
+  /** A household's code: its email's name and the least number no household's code has yet, short enough to type. */
+  const codeFor = (email: string): string => {
+    const name = email.split("@")[0]!.slice(0, 6).toUpperCase();
+    for (let n = 1; ; n++) {
+      const code = `${name}${n}`;
+      if (!codeTaken.get(code) && !Object.values(d.households).some((h) => h.code === code)) return code;
+    }
   };
   const removeGuest = (gid: string) => {
     for (const a of Object.values(d.asks)) if (same(a.guest_id, gid)) emit({ op: "replace", path: `/asks/${a.id}/guest_id`, value: null });
     emit({ op: "remove", path: `/guests/${gid}` });
   };
-  const addGuest = (hid: string, value: Record<string, unknown>): string => {
-    const gid = next("guests");
-    emit({ op: "add", path: `/guests/${gid}`, value: { households_id: hid, ...value } });
-    return gid;
-  };
+  /** A guest added to a household, at `-`, or as `gid` where the write refers to them. */
+  const addGuest = (hid: string, value: Record<string, unknown>, gid = "-"): void => emit({ op: "add", path: `/guests/${gid}`, value: { households_id: hid, ...value } });
 
   for (const op of ops) {
     const [head, ...rest] = parsePointer(op.path);
@@ -169,9 +177,8 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
         const v = (typeof op.value === "string" ? { email: op.value } : (op.value ?? {})) as { email?: unknown; names?: unknown; plus_ones?: unknown };
         const email = text(v.email);
         if (op.op !== "add" || field !== undefined || !isEmail(email)) continue;
-        const hid = next("households");
-        const code = `${email.split("@")[0]!.slice(0, 6).toUpperCase()}${hid}`;
-        emit({ op: "add", path: `/households/${hid}`, value: { code, email, plus_ones: Math.max(0, integer(v.plus_ones) ?? 0), answer: null, message: null } });
+        const hid = newId(); // its guests name it
+        emit({ op: "add", path: `/households/${hid}`, value: { code: codeFor(email), email, plus_ones: Math.max(0, integer(v.plus_ones) ?? 0), answer: null, message: null } });
         for (const name of String(v.names ?? "").split(/[,\n]/).map((n) => n.trim()).filter(Boolean)) addGuest(hid, { name, named_by: "couple" });
         continue;
       }
@@ -201,7 +208,8 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
         emit({ op: "replace", path: `/asks/${ask.id}/reply`, value });
         if (value === "yes" && ask.guest_id == null) {
           // A yes makes a guest (brief.md), remembered on the ask so a change of mind takes them out again.
-          const gid = addGuest(h.id, { name: ask.name, named_by: "ask", coming: 1 });
+          const gid = newId(); // the ask names them
+          addGuest(h.id, { name: ask.name, named_by: "ask", coming: 1 }, gid);
           emit({ op: "replace", path: `/asks/${ask.id}/guest_id`, value: gid });
         } else if (value !== "yes" && ask.guest_id != null && d.guests[String(ask.guest_id)]) {
           removeGuest(String(ask.guest_id));
@@ -233,7 +241,7 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
       if (spec.columns.shared === "bool") value.shared ??= 0;
       value.seq = siblings().length + 1;
       if (spec.parent) value[`${spec.parent}_id`] = parentId;
-      emit({ op: "add", path: `/${table}/${next(table)}`, value });
+      emit({ op: "add", path: `/${table}/-`, value });
       return;
     }
 

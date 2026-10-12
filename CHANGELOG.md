@@ -22,8 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **An add names a new id, as delta 0.13 says: one its serial has handed out is taken (409), even
   once its row is gone.** leave's draft is a row of its own (`add /drafts/-`, with `person_id`),
   so a draft asked for and drawn again is a new row, and two days set in one message make one
-  draft; the wedding mints its rows' ids past delta's serial. A database from before needs its
-  `leave_drafts` table dropped: it gains `person_id`.
+  draft. The wedding adds its rows at `-` and reads their ids from what delta answers; a row the
+  same write refers to (a new household, which its guests name; the guest a yes makes) is named
+  by the clock in microseconds, past any id the serial has handed out, until delta lets a write
+  refer to a row it makes. So a household's code is no longer its id: it is its email's name and
+  the least number no code has (`GRACE1`). A database from before needs its `leave_drafts` table
+  dropped: it gains `person_id`.
 
 ### Added
 

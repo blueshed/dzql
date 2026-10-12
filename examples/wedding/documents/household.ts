@@ -76,16 +76,17 @@ export function read(id: string): HouseholdDocument | undefined {
   return doc?.households ? householdFrom(doc.households, doc) : undefined;
 }
 
+let minted = 0;
+
 /**
- * The next id for a collection: rows are numbered, as they were, so a path names one by a number.
- * An add may name only an id past every one delta's serial has handed out (`_delta_sequences`),
- * taken off since or not, so the next is past those and every row's.
+ * An id for a row the same write refers to (a new household, which its guests name; the guest a
+ * yes makes, which its ask names): a row added at `-` is named by delta only as the write lands.
+ * An add may name only an id past every one delta's serial has handed out, which nothing here
+ * reads, so this one is past any it could have reached -- the clock in microseconds, climbing, as
+ * delta's docs say -- and the serial moves on past it. A stopgap until delta lets a write refer
+ * to a row it makes at `-`.
  */
-export function minter(coll: string): () => string {
-  const last = db.query<{ n: number }, [string]>(`SELECT MAX(COALESCE((SELECT last FROM _delta_sequences WHERE collection = ?), 0), COALESCE(MAX(CAST(id AS INTEGER)), 0)) AS n FROM wedding_${coll}`).get(coll)!;
-  let next = last.n + 1;
-  return () => String(next++);
-}
+export const newId = (): string => String((minted = Math.max(Date.now() * 1000, minted + 1)));
 
 /** A claim's own key: the gift and the household, so the one gift may be claimed by many (when shared). */
 export const claimKey = (giftId: number, householdId: number): string => `${giftId}-${householdId}`;
@@ -111,8 +112,6 @@ export function shape(h: HouseholdDocument, offer: Offer, ops: PatchOp[], now = 
   let message = h.message;
   let owed = h.plus_ones - h.guests.filter((g) => g.named_by === "household").length;
   const claims = new Set(h.claims);
-  const guestId = minter("guests");
-  const askId = minter("asks");
   const nameOf = (value: unknown) => text(typeof value === "string" ? value : (value as { name?: unknown } | null)?.name);
 
   for (const op of ops) {
@@ -132,7 +131,7 @@ export function shape(h: HouseholdDocument, offer: Offer, ops: PatchOp[], now = 
     } else if (head === "guests" && second === "-") {
       const name = op.op === "add" ? nameOf(op.value) : null;
       if (!name || owed-- <= 0) continue;
-      out.push({ op: "add", path: `/guests/${guestId()}`, value: { name, named_by: "household" } });
+      out.push({ op: "add", path: "/guests/-", value: { name, named_by: "household" } });
     } else if (head === "guests") {
       const guest = guests.get(integer(second) ?? -1);
       if (!guest) continue;
@@ -168,7 +167,7 @@ export function shape(h: HouseholdDocument, offer: Offer, ops: PatchOp[], now = 
     } else if (head === "asks" && second === "-") {
       const name = op.op === "add" ? nameOf(op.value) : null;
       if (!name) continue;
-      out.push({ op: "add", path: `/asks/${askId()}`, value: { name, asked_at: now, reply: null, guest_id: null } });
+      out.push({ op: "add", path: "/asks/-", value: { name, asked_at: now, reply: null, guest_id: null } });
     } else if (head === "claims" && second === "-") {
       const gift = offer.gifts.find((g) => g.id === (op.op === "add" ? integer(op.value) : undefined));
       if (!gift || claims.has(gift.id) || (!gift.shared && claimedStmt.get(String(gift.id))!.n > 0)) continue;

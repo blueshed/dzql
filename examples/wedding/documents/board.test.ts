@@ -67,12 +67,16 @@ describe("what a couple's write becomes", () => {
   test("an invitation: a household with a code from its email, and the guests named on it", () => {
     const [household, ...guests] = shaped({ op: "add", path: "/households/-", value: { email: "grace@example.com", names: "Grace Hopper,\n Ada ", plus_ones: 2 } });
     const hid = household!.path.split("/")[2]!;
-    expect(household).toEqual({ op: "add", path: `/households/${hid}`, value: { code: `GRACE${hid}`, email: "grace@example.com", plus_ones: 2, answer: null, message: null } });
+    expect(household).toEqual({ op: "add", path: `/households/${hid}`, value: { code: "GRACE1", email: "grace@example.com", plus_ones: 2, answer: null, message: null } });
+    expect(Number(hid)).toBeGreaterThan(Date.now()); // past any id delta's serial has handed out: its guests name it
+    expect(guests.map((g) => g.path)).toEqual(["/guests/-", "/guests/-"]);
     expect(guests.map((g) => g.value)).toEqual([
       { households_id: hid, name: "Grace Hopper", named_by: "couple" },
       { households_id: hid, name: "Ada", named_by: "couple" },
     ]);
     expect(shaped({ op: "add", path: "/households/-", value: "solo@example.com" })[0]!.value).toMatchObject({ email: "solo@example.com", plus_ones: 0 });
+    const several = shaped({ op: "add", path: "/households/-", value: "grace@example.com" }, { op: "add", path: "/households/-", value: "grace@elsewhere.example" }, { op: "add", path: "/households/-", value: "grace@third.example" });
+    expect(several.map((op) => (op.value as { code: string }).code)).toEqual(["GRACE1", "GRACE2", "GRACE3"]); // several in one message: a code each
     expect(shaped({ op: "add", path: "/households/-", value: { email: "no at sign" } }, { op: "replace", path: "/households/-", value: "x@y" }, { op: "add", path: "/households/-/guests", value: "x@y" })).toEqual([]);
   });
 
@@ -120,17 +124,20 @@ describe("what a couple's write becomes", () => {
       { op: "replace", path: "/asks/1/guest_id", value: gid },
     ]);
     // the same message, the yes and then the no: the guest made, then taken out, and the ask let go of them
-    expect(shaped({ op: "replace", path: "/households/1/asks/1/reply", value: "yes" }, { op: "replace", path: "/households/1/asks/1/reply", value: "no" }).slice(3)).toEqual([
+    const [, made, , ...no] = shaped({ op: "replace", path: "/households/1/asks/1/reply", value: "yes" }, { op: "replace", path: "/households/1/asks/1/reply", value: "no" });
+    expect(no).toEqual([
       { op: "replace", path: "/asks/1/reply", value: "no" },
       { op: "replace", path: "/asks/1/guest_id", value: null },
-      { op: "remove", path: `/guests/${gid}` },
+      { op: "remove", path: made!.path },
     ]);
+    expect(made!.path).not.toBe(`/guests/${gid}`); // each yes its own guest, its id climbing
     expect(shaped({ op: "remove", path: "/households/1/asks/1/reply" }, { op: "replace", path: "/households/1/asks/1/reply", value: "perhaps" }, { op: "replace", path: "/households/2/asks/1/reply", value: "yes" })).toEqual([]);
   });
 
   test("the lists: added with the next place, a field of its kind, moved and renumbered, taken off with what hangs on them", () => {
     const [course] = shaped({ op: "add", path: "/courses/-", value: "Cheese" });
-    expect(course!.value).toEqual({ name: "Cheese", seq: 5 });
+    expect(course).toEqual({ op: "add", path: "/courses/-", value: { name: "Cheese", seq: 5 } }); // delta names it
+    expect(shaped({ op: "add", path: "/courses/-", value: "Cheese" }, { op: "add", path: "/courses/-", value: "Fruit" }, { op: "add", path: "/courses/-", value: "Nuts" }).map((op) => (op.value as { seq: number }).seq)).toEqual([5, 6, 7]); // each counted
     const [dish] = shaped({ op: "add", path: "/courses/2/dishes/-", value: { name: "Tagine", dietary: "vg", seq: 1, nope: 1 } });
     expect(dish!.value).toEqual({ name: "Tagine", dietary: "vg", seq: 4, courses_id: 2 });
     const next = read()!.gifts.length + 1; // the seed's three, and any another test file has added
