@@ -113,6 +113,12 @@ export const stories: Stories = {
     story("The couple add a gift, and it is on every list", { as: "couple", from: "?gifts", does: board("add", "/gifts/-", { name: "A tree for the garden", description: "A crab apple." }), seen: { couple: "?gifts", okafors: "?gifts", ben: "?gifts" } }),
     story("The couple add an event to the day", { as: "couple", from: "?events", does: board("add", "/events/-", { name: "Fireworks", when_at: "2027-04-02T22:00" }), seen: { couple: "?events", okafors: "?day", ben: "?day" } }),
     story("The couple add somewhere to stay", { as: "couple", from: "?places", does: board("add", "/places/-", { name: "The Bristol Hotel", notes: "Ask for the wedding rate." }), seen: { couple: "?places", okafors: "?stay", ben: "?stay" } }),
+    story("The couple say the casserole is cast iron, and every household's gift list says so", { as: "couple", from: "?keep=gifts/1", does: board("replace", "/gifts/1/description", "Cast iron, the big red one."), seen: { couple: "?keep=gifts/1", okafors: "?gifts", ben: "?gifts" } }),
+    story("The couple take the knives off the gift list", { as: "couple", from: "?confirm=gifts/3", does: board("remove", "/gifts/3"), seen: { couple: "?gifts", okafors: "?gifts", ben: "?gifts" } }),
+    story("The couple move the evening party to the barn, and every household's day says so", { as: "couple", from: "?keep=events/3", does: board("replace", "/events/3/where_at", "The Barn"), seen: { couple: "?keep=events/3", okafors: "?day", ben: "?day" } }),
+    story("The couple drop the evening party from the day", { as: "couple", from: "?confirm=events/3", does: board("remove", "/events/3"), seen: { couple: "?events", okafors: "?day", ben: "?day" } }),
+    story("The couple say the guesthouse is a short taxi ride away, and every household reads it", { as: "couple", from: "?keep=places/2", does: board("replace", "/places/2/notes", "A short taxi ride."), seen: { couple: "?keep=places/2", okafors: "?stay", ben: "?stay" } }),
+    story("The couple take the guesthouse off where to stay", { as: "couple", from: "?confirm=places/2", does: board("remove", "/places/2"), seen: { couple: "?places", okafors: "?stay", ben: "?stay" } }),
 
     // ── Refusals ──
     story("A household cannot change the couple's welcome", { as: "ben", cannot: board("replace", "/message", "Hi") }),

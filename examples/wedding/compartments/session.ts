@@ -12,7 +12,15 @@ import { keepEveryone } from "../everyone";
 
 /** Where you are only means something once you are in: everything but the code and a resend needs one. */
 const BEFORE_CODE = new Set(["code", "resend"]);
-const WRITABLE = new Set(["code", "resend", "page", "reading", "filter", "hide"]);
+
+/** What a visit's page writes: a code entered or forgotten, a resend, a page gone to, and how a
+ * collection is read, find's word and its eye, each by the collection's name (src/bento.ts). */
+const RULES: { path: RegExp; ops: PatchOp["op"][] }[] = [
+  { path: /^\/code$/, ops: ["replace", "remove"] },
+  { path: /^\/(resend|page)$/, ops: ["replace"] },
+  { path: /^\/reading\/[^/]+$/, ops: ["replace"] },
+  { path: /^\/(filter|hide)\/[^/]+$/, ops: ["replace", "remove"] },
+];
 
 export const session: Compartment = {
   docType: "session",
@@ -23,9 +31,8 @@ export const session: Compartment = {
     return ws.data.sessionId; // every connection always sees its own visit
   },
   permit(ws, op: PatchOp) {
-    const [field] = parsePointer(op.path);
-    if (!field || !WRITABLE.has(field)) return false;
-    return BEFORE_CODE.has(field) || sessionDoc.read(ws.data.sessionId).code !== null;
+    if (!RULES.some((r) => r.path.test(op.path) && r.ops.includes(op.op))) return false;
+    return BEFORE_CODE.has(parsePointer(op.path)[0]!) || sessionDoc.read(ws.data.sessionId).code !== null;
   },
   // A visit is nobody else's to see, and never on the ledger (../delta.ts): a code entered, a page
   // gone to, a reading switched, each field it moves replaced whole.

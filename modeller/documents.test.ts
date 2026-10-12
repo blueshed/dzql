@@ -115,18 +115,12 @@ describe("from a run", () => {
     expect(text).toContain("2. cannot · Without a name");
   }, 30000);
 
-  test("the wedding: its RULES let the couple remove what no story or page does, and the households read what they never write", async () => {
+  test("the wedding: its permits allow only what a story does or a page offers, and the households read what they never write", async () => {
     const r = await documentsOf("wedding");
     expect(r.noDocument).toEqual([]);
     expect(r.unneeded).toEqual([]);
     expect(r.readOnly).toEqual(["wedding", "welcome", "everyone"]);
-    expect(allows(r, "board", "/message")).toEqual(["remove"]); // a story replaces it
-    expect(allows(r, "household", "/message")).toEqual(["remove"]);
-    expect(allows(r, "board", "/courses/*/dishes/*/name")).toEqual(["remove"]); // no story replaces it; a field on the couple's page offers it
-    expect(allows(r, "session", "/hide")).toEqual(["replace", "remove"]); // its add is that replace
-    expect(allows(r, "session", "/code")).toBeUndefined(); // a story replaces it, and an add is that replace
-    expect(r.permitAllows.find((a) => a.doc === "board")!.who).toEqual(["couple"]);
-    expect(format("wedding", r)).toContain("- permit allows household /message: remove — to okafors, ben, benToo");
+    expect(r.permitAllows).toEqual([]);
     expect(cell(r, "couple", "household").refused).toBe(1);
     // the couple's message reaches every welcome; the households hold the wedding, and are sent it unseen
     const message = r.stories.find((s) => s.name.startsWith("The couple change their message"))!;
@@ -134,6 +128,22 @@ describe("from a run", () => {
     expect(message.changes.find((c) => c.doc === "wedding:1")!.told.map((t) => t.seen)).toEqual([false, false, false]);
     expect(format("wedding", r)).toContain("(not in seen)");
   }, 60000);
+
+  test("what permit allows that no story does and no page offers: by path, with its verbs and who; an add on a field it lets be replaced is that replace", () => {
+    const lets = (op: string, path: string, who: string[]) => [`room ${op} ${path}`, { doc: "room", op, path, who }] as const;
+    const allowed = new Map([
+      lets("add", "/messages/-", ["ada"]), // a story says hello
+      lets("remove", "/messages/*", ["ada"]), // a control the run drew offers it
+      lets("replace", "/messages/*/text", ["ada"]),
+      lets("add", "/messages/*/text", ["bob"]), // that replace
+      lets("remove", "/messages/*/text", ["bob"]),
+    ]);
+    const r = read(chatStories, chat, { traces: [], controls: new Set(["room remove /messages/*"]), allowed });
+    expect(r.permitAllows).toEqual([{ doc: "room", path: "/messages/*/text", ops: ["replace", "remove"], who: ["ada", "bob"] }]);
+    expect(allows(r, "room", "/messages/-")).toBeUndefined();
+    expect(format("chat", r)).toContain("## Writes the server accepts that no page offers (1 path)");
+    expect(format("chat", r)).toContain("- permit allows room /messages/*/text: replace, remove — to ada, bob");
+  });
 
   test("a document delta.ts defines that no compartment owns, and no story uses, is one nobody needs", async () => {
     const src = (await Bun.file(`${import.meta.dir}/../examples/chat/delta.ts`).text()) + '\nregisterDocs(delta.server, db, schema, [defineDoc("archive:", { root: "rooms", include: [] })]);\n';

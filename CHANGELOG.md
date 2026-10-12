@@ -33,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   counts lose `pages`.
 - Type checks run with `bun check` (TypeScript 7) in place of `tsc`; the `check` script is gone, so
   `bun check` is Bun's own. eta requires Bun 1.4.3 or later (`engines`, `packageManager`).
+- **The wedding's permits allow what its pages offer, and nothing more** (`bun run modeller
+  wedding`: 45 paths to 0). A field is emptied by replacing it with nothing, never removed; a
+  list row's parent (`*_id`) and a dish's or a drink's order are the server's; a reply to an ask is
+  changed, never taken back; a visit's `/reading`, `/filter` and `/hide` are written by the
+  collection's name, and its page is gone to, never removed. Six stories tell what the couple's
+  page already offered: a gift, an event and a place to stay edited, and each taken off.
 
 ## [0.51.0] - 2026-09-28
 

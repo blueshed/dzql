@@ -7,6 +7,7 @@ import { decoded } from "../../src/parts";
 import { crowd } from "./applets/photo";
 import { asCouple, asHousehold, board, household } from "./setup";
 import { example } from "./index";
+import type { Compartment } from "../../src/compartments/compartment";
 import { keepEveryone } from "./everyone";
 import { serverWrite } from "../../src/documents";
 import { esc } from "../../src/html";
@@ -624,7 +625,7 @@ describe("the couple", () => {
     // a gift is shared or not, however a form spells it; a name may not be blanked; a date must be one
     await send(ws, "board", [{ op: "replace", path: "/gifts/3/shared", value: "on" }]);
     expect((await board()).gifts.find((g) => g.id === 3)!.shared).toBe(true);
-    await send(ws, "board", [{ op: "remove", path: "/gifts/3/shared" }]);
+    await send(ws, "board", [{ op: "replace", path: "/gifts/3/shared", value: "off" }]);
     await refused(ws, "board", [{ op: "replace", path: "/gifts/3/name", value: "  " }]);
     await refused(ws, "board", [{ op: "replace", path: "/day", value: "someday" }]);
 
@@ -864,6 +865,66 @@ describe("the couple keep a family's invitation", () => {
     const after = (await send(ws, "board", [{ op: "remove", path: `/households/${h.id}/guests/${guest.id}` }])).page;
     expect(after).toContain(`data-page="?family=${h.id}"`);
     expect(after).not.toContain(`aria-label="Take ${guest.name} off"`);
+    ws.close();
+  });
+});
+
+// Each compartment permits what its pages offer and nothing more (`bun run modeller wedding`):
+// a field is emptied by replacing it with nothing, never removed; a row's parent and its number
+// in the order are the server's; a page is gone to, and how a collection is read is by its name.
+describe("a permit allows what a page offers, and nothing more", () => {
+  const permits = (docType: string, sessionId: string) => {
+    const c = example.compartments.find((x) => x.docType === docType) as Compartment;
+    return (op: PatchOp["op"], path: string) => c.permit!({ data: { sessionId } } as never, op === "remove" ? { op, path } : { op, path, value: "x" }, "1");
+  };
+
+  test("the couple's board", async () => {
+    const sessionId = crypto.randomUUID();
+    const ws = await enter("DASH", `session_id=${sessionId}`);
+    const may = permits("board", sessionId);
+    for (const path of ["/message", "/day", "/picture_key", "/courses/1/name", "/courses/1/dishes/3/dietary", "/gifts/1/description", "/events/1/notes", "/places/1/link"]) {
+      expect(may("replace", path)).toBe(true);
+      expect(may("remove", path)).toBe(false);
+    }
+    for (const path of ["/courses/1/weddings_id", "/courses/1/dishes/3/courses_id", "/courses/1/dishes/3/seq", "/courses/1/drinks/1/seq", "/gifts/1/weddings_id", "/events/1/weddings_id", "/places/1/weddings_id", "/gifts/1/nope"]) {
+      expect(may("replace", path)).toBe(false);
+      expect(may("remove", path)).toBe(false);
+    }
+    expect(may("replace", "/gifts/1/seq")).toBe(true);
+    expect(may("remove", "/gifts/1/seq")).toBe(false);
+    expect(may("replace", "/households/1/asks/1/reply")).toBe(true);
+    expect(may("remove", "/households/1/asks/1/reply")).toBe(false); // a reply is changed, never taken back
+    ws.close();
+  });
+
+  test("a household's own", async () => {
+    const sessionId = crypto.randomUUID();
+    const ws = await enter(code, `session_id=${sessionId}`);
+    const may = permits("household", sessionId);
+    expect(may("replace", "/message")).toBe(true);
+    expect(may("remove", "/message")).toBe(false);
+    ws.close();
+  });
+
+  test("a visit", async () => {
+    const sessionId = crypto.randomUUID();
+    const ws = await enter(code, `session_id=${sessionId}`);
+    const may = permits("session", sessionId);
+    expect(may("replace", "/page")).toBe(true);
+    expect(may("remove", "/page")).toBe(false);
+    expect(may("replace", "/reading/guests")).toBe(true);
+    expect(may("remove", "/reading/guests")).toBe(false);
+    for (const key of ["/filter/guests", "/hide/guests"]) {
+      expect(may("replace", key)).toBe(true);
+      expect(may("remove", key)).toBe(true);
+    }
+    for (const field of ["/reading", "/filter", "/hide"]) {
+      expect(may("replace", field)).toBe(false);
+      expect(may("remove", field)).toBe(false);
+    }
+    expect(may("replace", "/resend")).toBe(true);
+    expect(may("remove", "/resend")).toBe(false);
+    expect(may("remove", "/code")).toBe(true);
     ws.close();
   });
 });

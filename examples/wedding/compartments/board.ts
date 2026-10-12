@@ -17,20 +17,26 @@ type Rule = { path: RegExp; ops: PatchOp["op"][] };
 const LIST = "(courses|gifts|events|places)";
 const CHILD = "(dishes|drinks)";
 
-/** The couple's writable surface: which paths, with which ops. Whether the value is valid is documents/board.ts's call. */
+/** The couple's writable surface: what their page offers, which paths with which ops. A field is
+ * emptied by replacing it with nothing, never removed; a row's parent and its order's number are
+ * the server's. Whether the value is valid is documents/board.ts's call. */
 const RULES: Rule[] = [
-  { path: /^\/(name1|name2|day|deadline|venue|message|picture_key)$/, ops: ["replace", "remove"] },
+  { path: /^\/(name1|name2|day|deadline|venue|message|picture_key)$/, ops: ["replace"] },
   { path: /^\/households\/-$/, ops: ["add"] },
   { path: /^\/households\/\d+\/(email|plus_ones)$/, ops: ["replace"] },
-  { path: /^\/households\/\d+\/asks\/\d+\/reply$/, ops: ["replace", "remove"] },
+  { path: /^\/households\/\d+\/asks\/\d+\/reply$/, ops: ["replace"] },
   { path: /^\/households\/\d+\/guests\/-$/, ops: ["add"] },
   { path: /^\/households\/\d+\/guests\/\d+$/, ops: ["remove"] },
   { path: new RegExp(`^/${LIST}/-$`), ops: ["add"] },
   { path: new RegExp(`^/${LIST}/\\d+$`), ops: ["remove"] },
-  { path: new RegExp(`^/${LIST}/\\d+/\\w+$`), ops: ["replace", "remove"] },
+  { path: /^\/courses\/\d+\/(name|seq)$/, ops: ["replace"] },
+  { path: /^\/gifts\/\d+\/(name|description|link|picture_key|shared|seq)$/, ops: ["replace"] },
+  { path: /^\/events\/\d+\/(name|when_at|where_at|notes|seq)$/, ops: ["replace"] },
+  { path: /^\/places\/\d+\/(name|notes|link|picture_key|seq)$/, ops: ["replace"] },
   { path: new RegExp(`^/courses/\\d+/${CHILD}/-$`), ops: ["add"] },
   { path: new RegExp(`^/courses/\\d+/${CHILD}/\\d+$`), ops: ["remove"] },
-  { path: new RegExp(`^/courses/\\d+/${CHILD}/\\d+/\\w+$`), ops: ["replace", "remove"] },
+  { path: /^\/courses\/\d+\/dishes\/\d+\/(name|dietary)$/, ops: ["replace"] },
+  { path: /^\/courses\/\d+\/drinks\/\d+\/name$/, ops: ["replace"] },
 ];
 
 /** The couple's page. The board is always there in practice: read() only reports a kind for a code that exists. */

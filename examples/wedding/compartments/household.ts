@@ -20,7 +20,7 @@ type Rule = { path: RegExp; ops: PatchOp["op"][]; /** Locked after the deadline.
 /** The household's writable surface: which paths, with which ops. Whether the value is valid is documents/household.ts's call. */
 const RULES: Rule[] = [
   { path: /^\/answer$/, ops: ["replace", "remove"], dated: true },
-  { path: /^\/message$/, ops: ["replace", "remove"] },
+  { path: /^\/message$/, ops: ["replace"] }, // emptied by replacing it with nothing
   { path: /^\/guests\/-$/, ops: ["add"] },
   { path: /^\/guests\/\d+\/coming$/, ops: ["replace", "remove"], dated: true },
   { path: /^\/guests\/\d+\/minifigure\/(skin|hair|hair_color|top|legs|face|attitude)$/, ops: ["replace"] },
