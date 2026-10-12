@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
 import { createServer } from "../../src/server";
 import { hear, type Heard } from "../../src/harness";
@@ -109,7 +109,10 @@ const withMo = async () => open((await signIn("mo@leave.example", "mo-password")
 const undo = (tab: Tab) => send(tab, "ledger", [{ op: "remove", path: "/latest" }]);
 
 describe("the page", () => {
+  afterEach(() => void setSystemTime()); // a test that pins the clock gives it back, pass or fail
   test("one calendar: three months from the one it names, today marked, Previous, Today and Next a month at a time; the list is the same requests", async () => {
+    // today is a month the test names no other way: on a day in October 2026, "2026-10" would be today's
+    setSystemTime(new Date("2026-09-15T12:00:00Z"));
     const mo = await withMo();
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
