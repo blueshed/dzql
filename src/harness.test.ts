@@ -56,6 +56,13 @@ describe("stories harness", () => {
     expect(closed.write).toBeUndefined();
     expect(heard(closed, "bob")).toBeUndefined(); // gone: only who is still looking is heard
     expect(heard(closed, "ada")!.length).toBeGreaterThan(0);
+    // what each page read as the step was taken: the documents in front of them
+    const holds = (t: Trace, who: string) => t.holds.find((h) => h.member === who)?.docs;
+    expect(holds(does, "bob")).toEqual(expect.arrayContaining(["room:general", "here:general"]));
+    expect(holds(does, "cy")).toContain("room:kitchen");
+    expect(holds(does, "cy")).not.toContain("room:general");
+    expect(holds(closed, "bob")).toBeUndefined(); // closing: only who is still looking
+    expect(holds(closed, "ada")).toContain("room:general");
   }, 30000);
 
   describe("a story's cost on the wire", () => {

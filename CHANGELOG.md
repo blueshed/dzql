@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A run's observer is told what was in front of each member** (`Trace.holds`, src/harness.ts):
+  at each step, each member's documents as their page last read them (`shownTo`), so the modeller
+  can say who held what when a story was told.
+
 ### Changed
 
 - Type checks run with `bun check` (TypeScript 7) in place of `tsc`; the `check` script is gone, so

@@ -11,6 +11,7 @@ import { toldNothing, toldTo, type Line } from "./refusal";
 import { esc } from "./html";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
+import { shownTo } from "./reading";
 import { size, sum, tap } from "./costs";
 
 export { comparable };
@@ -79,6 +80,8 @@ export type Trace = {
   /** None when a tab closes. */
   write?: Write;
   heard: { member: string; messages: Heard[] }[];
+  /** What each member's page read as the step was taken: the documents in front of them, as `<docType>:<docId>` (src/reading.ts). */
+  holds: { member: string; docs: string[] }[];
   /** What the ledger took: the ops as written, and their inverse -- which holds what was there before. */
   ledger: { doc: string; undoable: number; ops: PatchOp[]; inverse: PatchOp[] }[];
 };
@@ -685,6 +688,10 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     if (stands !== undefined && stands !== asked) failures.push(`${m.name} could not be put on ${JSON.stringify(where)}: their page is at ${JSON.stringify(stands)}`);
   }
 
+  /** The documents in front of each member: what the page last drawn for their socket read. */
+  const inFront = (cast: Member[]): Trace["holds"] =>
+    cast.map((m) => ({ member: m.name, docs: allOpenSockets().filter((ws) => ws.data.sessionId === m.sessionId).flatMap(shownTo) }));
+
   /** Where each member's inbox stands now, to ask later what they were sent since. */
   const mark = (cast: Member[]): Map<Member, number> => new Map(cast.map((m) => [m, m.inbox.length]));
 
@@ -819,13 +826,14 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     failing = failures;
     telling = story.name;
     /** What a step of the story carried, for `observe`: what each of `cast` was sent since `from`, and the ledger's entries since `entry`. */
-    function witness(phase: Trace["phase"], who: Member, write: Write | undefined, cast: Member[], from: Map<Member, number>, entry: number): void {
+    function witness(phase: Trace["phase"], who: Member, write: Write | undefined, cast: Member[], from: Map<Member, number>, entry: number, holds: Trace["holds"]): void {
       observe?.({
         story: story.name,
         phase,
         as: who.name,
         write,
         heard: cast.map((m) => ({ member: m.name, messages: sentSince(m, from) })),
+        holds,
         ledger: ledger.since(entry).map(({ doc, undoable, ops, inverse }) => ({ doc, undoable, ops: JSON.parse(ops) as PatchOp[], inverse: JSON.parse(inverse) as PatchOp[] })),
       });
     }
@@ -834,8 +842,9 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
       if (!observe) return send(cast, who, write);
       const from = mark(cast);
       const entry = ledgerMax();
+      const holds = inFront(cast);
       const id = await send(cast, who, write);
-      witness(phase, who, write, cast, from, entry);
+      witness(phase, who, write, cast, from, entry, holds);
       return id;
     }
     db.exec("BEGIN");
@@ -896,11 +905,12 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
         const before = await snapshot(looking);
         const from = mark(looking);
         const entry = ledgerMax();
+        const holds = inFront(looking);
         await closeTab(who);
         await server.idle(); // the close handled, and what it set going
         await settle(looking);
         spent(story, outcome, "closesTab", looking, from);
-        witness("closesTab", who, undefined, looking, from, entry);
+        witness("closesTab", who, undefined, looking, from, entry, holds);
         if (!landedSince(looking, from)) failures.push(`nothing landed: closing ${who.name}'s tab changed nothing`);
         checkUntold(looking, story.untold, from, "after the tab closed", failures);
         const after = await snapshot(looking);
