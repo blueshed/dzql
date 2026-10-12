@@ -12,6 +12,7 @@
 //   reaches       a document reaches its root and includes (`defineDoc`). One kept in memory
 //                 reaches the tables its keeper reads -- the one file that writes it -- by SQL; when
 //                 no one file keeps it alone it is "computed", and reaches nothing we can show.
+//                 One delta works out (`defineCustomDoc`) reaches the tables it `watch`es.
 //   told, not     a document a story's run told to a member its `seen` does not name (and its
 //   asked for     `untold` does not expect): `Told.seen` false in documents.ts's `changes()`.
 //   holders²      a document whose telling grows with the square of its holders: in the run, a
@@ -20,6 +21,11 @@
 //                 one person (the same cast) are one holder; a write from no page (`offPage`, a
 //                 feed's) is nobody's who holds it.
 //   red           an entity (a table in delta.ts's schema) no document reaches.
+//
+// A project with no app yet is read from its stories alone (`ran` false): a story is born into its
+// own document (all `read(stories)` says), touches what its own write's paths name -- not its
+// premise's, which only set the stage -- and who was told, so told-not-asked and holders², are
+// not said at all: they need a run.
 
 import type { PatchOp } from "../src/json-patch";
 import type { Trace } from "../src/harness";
@@ -27,7 +33,7 @@ import { typeOf, type StoryRow, type Told } from "./documents";
 import { singular } from "./from-stories";
 
 /** A document as delta.ts defines it (`documentsIn`). */
-export type Doc = { name: string; root: string | null; include: string[] };
+export type Doc = { name: string; root: string | null; include: string[]; watch?: string[] };
 /** A table as the page draws it: its parent link, its columns, and where code outside delta.ts names it. */
 export type Table = { name: string; parent: string | null; columns: { name: string; type: string }[]; code: { at: string; seed: boolean; line: string }[] };
 type File = { path: string; lines: string[] };
@@ -122,6 +128,8 @@ type StoryFacts = { n: number; name: string; as: string; kind: string; offPage: 
  */
 export function heartOf(f: {
   example: string;
+  /** Whether the stories were run; if not, nothing is said of who was told. */
+  ran: boolean;
   session: string | null;
   perSession: string[];
   stories: StoryFacts[];
@@ -136,7 +144,7 @@ export function heartOf(f: {
   const person = (m: string) => (f.cast[m]?.length ? JSON.stringify(f.cast[m]) : m);
   const parentOf = (t: string) => f.tables.find((x) => x.name === t)?.parent ?? null;
   // a write from no page (a feed's tick) is nobody's who holds the document: it says nothing of holders²
-  const n2 = squared(f.rows.filter((r) => !f.stories[r.n - 1]!.offPage), person);
+  const n2 = f.ran ? squared(f.rows.filter((r) => !f.stories[r.n - 1]!.offPage), person) : new Map<string, never>();
 
   const stories = f.stories.map((s) => {
     const row = f.rows[s.n - 1]!;
@@ -151,27 +159,27 @@ export function heartOf(f: {
       seen: Object.keys(s.seen),
       born: bornInto(row, f.session),
       touches: touches(s.ops, step?.ledger ?? [], f.documents),
-      unasked: toldNotAsked(row, s.untold, f.session).map((c) => ({ doc: typeOf(c.doc), told: c.told.map((t) => ({ ...t, patch: sent(c.doc, t.member) })) })),
+      unasked: (f.ran ? toldNotAsked(row, s.untold, f.session) : []).map((c) => ({ doc: typeOf(c.doc), told: c.told.map((t) => ({ ...t, patch: sent(c.doc, t.member) })) })),
     };
   });
 
   const documents = f.documents.map((d) => {
-    const kept = d.root ? null : keeper(d.name, f.documents.map((x) => x.name), f.files, f.tables);
+    const kept = d.root || d.watch ? null : keeper(d.name, f.documents.map((x) => x.name), f.files, f.tables);
     const head = f.perSession.includes(d.name) ? d.name : `${d.name}:<${d.root ? singular(d.root) : "id"}>`;
     const holding = Object.keys(f.held).filter((m) => (f.held[m]![d.name]?.held ?? 0) > 0);
     const holders = holding.filter((m, i) => holding.findIndex((o) => person(o) === person(m)) === i); // one name for each person
     const told = f.rows.flatMap((r) => (r.kind === "cannot" ? [] : r.changes.filter((c) => typeOf(c.doc) === d.name).flatMap((c) => c.told)));
     const grows = n2.get(d.name);
+    const reads = d.watch ?? kept?.reads ?? [];
+    const how = d.watch ? "computed by delta.ts, watching" : kept ? `computed by ${kept.file}, reading` : "computed";
     return {
       name: d.name,
-      for: holders.join(", ") || "nobody, in the run",
-      reach: d.root ? [d.root, ...d.include] : kept?.reads ?? [],
-      computed: d.root ? null : { by: kept?.file ?? null },
-      shape: d.root
-        ? shape(head, d.root, d.include, parentOf)
-        : [{ text: head, pad: 0 }, { text: kept ? `computed by ${kept.file}, reading` : "computed", pad: 14 }, ...(kept?.reads ?? []).map((t) => ({ text: t, pad: 28 }))],
+      for: holders.join(", ") || (f.ran ? "nobody, in the run" : "nobody, in the stories"),
+      reach: d.root ? [d.root, ...d.include] : reads,
+      computed: d.root ? null : { by: d.watch ? "delta.ts" : kept?.file ?? null },
+      shape: d.root ? shape(head, d.root, d.include, parentOf) : [{ text: head, pad: 0 }, { text: how, pad: 14 }, ...reads.map((t) => ({ text: t, pad: 28 }))],
       held: holders.length,
-      told: { count: told.length, bytes: told.reduce((a, t) => a + t.bytes, 0) },
+      told: f.ran ? { count: told.length, bytes: told.reduce((a, t) => a + t.bytes, 0) } : null,
       squared: grows ? { ...grows, doc: typeOf(grows.doc) } : null,
     };
   });
@@ -183,7 +191,7 @@ export function heartOf(f: {
     return file ? readBy(file, Number(line) - 1) : null;
   };
   const entities = f.tables.map((t) => ({ name: t.name, parent: t.parent, columns: t.columns.map((c) => c.name), code: t.code.map((c) => ({ ...c, by: c.seed ? null : by(c.at) })), red: red.has(t.name) }));
-  return { example: f.example, stories, documents, entities };
+  return { example: f.example, ran: f.ran, stories, documents, entities };
 }
 
 export type Heart = ReturnType<typeof heartOf>;

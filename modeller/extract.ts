@@ -1,13 +1,14 @@
 // The facts a modeller page shows, read from an example as it stands: its stories, its delta.ts
 // (tables, and documents as root + include), its compartments' permit rules, what the harness
 // says when it runs the stories, and its documents as that run read them (documents.ts). Nothing
-// here is proposed; everything is read.
+// here is proposed; everything is read. A project with no app yet (no index.ts) is read from its
+// stories alone: no run, so nothing of who was told.
 
 import type { Stories, Story } from "../src/stories";
 import type { Example } from "../src/example";
 import { parsePointer } from "../src/json-pointer";
 import { run } from "../src/harness";
-import { documentsIn, heardAs, privateEntry, read, watch, exampleAt } from "./documents";
+import { documentsIn, heardAs, privateEntry, read, typeOf, watch, exampleAt } from "./documents";
 import { heartOf } from "./heart";
 
 type Column = { type: string; nullable?: boolean };
@@ -30,10 +31,11 @@ export async function extract(at: string) {
   // ── tables: delta.ts's schema ──
   // Where each table is touched outside delta.ts and the documents delta composes: the seed that
   // makes its rows, and any code that reads or writes it with its own SQL. A table the stories never
-  // reach but code does is how a concept arrives without a story.
+  // reach but code does is how a concept arrives without a story. The stories are not code: a
+  // table's name in one is a path or a word, never a read.
   const files: { path: string; lines: string[] }[] = [];
   for await (const f of new Bun.Glob("**/*.{ts,sql}").scan(dir)) {
-    if (f.includes(".test.") || f === "delta.ts") continue;
+    if (f.includes(".test.") || f === "delta.ts" || f === "stories.ts" || f.startsWith("node_modules/")) continue;
     files.push({ path: f, lines: (await Bun.file(`${dir}/${f}`).text()).split("\n") });
   }
   const touches = (sqlName: string) =>
@@ -64,7 +66,7 @@ export async function extract(at: string) {
   // ── stories, with each write placed on its document's tables ──
   const docByName = new Map(documents.map((d) => [d.name, d]));
   function place(doc: string, path: string): { table: string | null; field: string | null } {
-    const d = docByName.get(doc);
+    const d = docByName.get(typeOf(doc));
     if (!d?.root) return { table: null, field: parsePointer(path)[0] ?? null };
     const known = new Set([d.root, ...d.include]);
     let table = d.root;
@@ -76,13 +78,16 @@ export async function extract(at: string) {
     return { table, field: null };
   }
 
-  // Every write the run makes, as the wire carried it: for a sequence drawn from a real run.
-  const { example } = (await import(`${dir}/index.ts`)) as { example: Example };
-  const watched = watch(example);
-  const report = await run(example, stories, watched.observe, { everywhere: watched.everywhere });
-  const traces = Map.groupBy(watched.traces, (t) => t.story);
-  const shown = privateEntry(example); // a session's id is a credential: it never reaches the page
-  const outcome = new Map(report.outcomes.map((o) => [o.name, o.failures]));
+  // Every write the run makes, as the wire carried it: for a sequence drawn from a real run. None
+  // where there is no app to run.
+  const app = await Bun.file(`${dir}/index.ts`).exists();
+  const example = app ? ((await import(`${dir}/index.ts`)) as { example: Example }).example : undefined;
+  const watched = example && watch(example);
+  const report = example && (await run(example, stories, watched!.observe, { everywhere: watched!.everywhere }));
+  const traces = Map.groupBy(watched?.traces ?? [], (t) => t.story);
+  // a session's id is a credential: it never reaches the page (a trace is a run's, and a run has an example)
+  const shown = example && privateEntry(example);
+  const outcome = new Map(report ? report.outcomes.map((o) => [o.name, o.failures]) : []);
 
   const storyRows = stories.stories.map((s: Story, i) => {
     const w = s.does ?? s.cannot;
@@ -100,7 +105,7 @@ export async function extract(at: string) {
       premise: s.premise !== undefined,
       offPage: !!s.offPage,
       failures: outcome.get(s.name) ?? ["not run"],
-      sequence: (traces.get(s.name) ?? []).map((t) => ({ phase: t.phase, as: t.as, write: t.write, ledger: t.ledger.map(shown), heard: t.heard.map((h) => ({ member: h.member, messages: h.messages.map(heardAs) })) })),
+      sequence: (traces.get(s.name) ?? []).map((t) => ({ phase: t.phase, as: t.as, write: t.write, ledger: t.ledger.map(shown!), heard: t.heard.map((h) => ({ member: h.member, messages: h.messages.map(heardAs) })) })),
     };
   });
 
@@ -111,9 +116,9 @@ export async function extract(at: string) {
   const todo = (await Bun.file(`${import.meta.dir}/../todo.jsonl`).text()).split("\n").filter(Boolean).map((l) => JSON.parse(l));
   const tasks = todo.map((t: { n: number; status: string; summary: string; area: string }) => ({ n: t.n, status: t.status, summary: t.summary, area: t.area }));
 
-  const reading = read(stories, example, watched, documents.map((d) => d.name));
-  const perSession = example.compartments.filter((c) => c.perSession).map((c) => c.docType);
-  const heart = heartOf({ example: name, session, perSession, stories: storyRows, rows: reading.stories, traces: watched.traces, documents, tables: schema, files, cast: castSetup, held: reading.grid });
+  const reading = example ? read(stories, example, watched, documents.map((d) => d.name)) : read(stories);
+  const perSession = example?.compartments.filter((c) => c.perSession).map((c) => c.docType) ?? [];
+  const heart = heartOf({ example: name, ran: reading.ran, session, perSession, stories: storyRows, rows: reading.stories, traces: watched?.traces ?? [], documents, tables: schema, files, cast: castSetup, held: reading.grid });
 
-  return { example: name, session, cast, castSetup, tables, documents, permits, stories: storyRows, harness: { passed: report.passed, failed: report.failed }, tasks, read: reading, heart };
+  return { example: name, session, cast, castSetup, tables, documents, permits, stories: storyRows, harness: report ? { passed: report.passed, failed: report.failed } : null, tasks, read: reading, heart };
 }

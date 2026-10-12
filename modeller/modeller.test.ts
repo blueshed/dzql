@@ -227,7 +227,7 @@ registerMemory(delta.server, { prefix: "everyone:", empty: () => ({}) });`;
 
   test("chat: every story placed on its tables and run, a tab closing among them; its permits are code", async () => {
     const facts = await extract("chat");
-    expect(facts.harness.passed + facts.harness.failed).toBe(chat.stories.length);
+    expect(facts.harness!.passed + facts.harness!.failed).toBe(chat.stories.length);
     expect(facts.documents.map((d) => `${d.name}: ${d.kind}`)).toEqual(["session: written", "room: written", "here: live", "lobby: live"]);
     expect(facts.permits).toEqual([]);
     const say = facts.stories.find((s) => s.name.startsWith("Ada says hello"))!;

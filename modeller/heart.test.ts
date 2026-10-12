@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import type { StoryRow, Told } from "./documents";
 import { bornInto, keeper, readBy, shape, squared, toldNotAsked, touches, unreached } from "./heart";
 import { BOX, layout } from "./layout";
 import { extract } from "./extract";
+import { documentsIn } from "./documents";
 
 const told = (member: string, seen: boolean): Told => ({ member, how: "patch 1 op", bytes: 100, seen });
 const row = (over: Partial<StoryRow>): StoryRow => ({ n: 1, name: "a story", as: "ada", kind: "does", doc: "board", changes: [], ...over });
@@ -121,6 +124,8 @@ describe("an entity: red, who reads it, where it sits", () => {
 describe("the heart, from a run", () => {
   test("the wedding: couples red and read by whose(); everyone grows as households², reaches what everyone.ts reads; who was told unasked, with the patch", async () => {
     const { heart: h } = await extract("wedding");
+    expect(h.ran).toBe(true);
+    expect(h.documents.every((d) => d.told !== null)).toBe(true);
     expect(h.entities.filter((e) => e.red).map((e) => e.name)).toEqual(["couples"]);
     expect(h.entities.find((e) => e.name === "couples")!.code.filter((c) => !c.seed).map((c) => `${c.by} ${c.at}`)).toEqual(["whose documents/session.ts:52"]);
     expect(h.documents.filter((d) => d.squared).map((d) => d.name)).toEqual(["everyone"]);
@@ -146,4 +151,67 @@ describe("the heart, from a run", () => {
     expect(h.stories.find((s) => s.name.startsWith("Bravo ticks, and every board"))!.unasked[0]!.doc).toBe("ticker");
     expect(h.entities.filter((e) => e.red)).toEqual([]);
   }, 30000);
+});
+
+describe("the heart, from the stories alone", () => {
+  test("delta.ts's documents defined before any registerDocs, and one delta works out from the tables it watches", () => {
+    const src = `export const team = defineDoc("team:", { root: "teams", include: ["people"] });
+export const mine = defineCustomDoc<number>("mine:", {
+  watch: ["asks", "answers"],
+  recompute: (db, me) => ({}),
+});
+registerDocs(server, db, schema, [team], [mine], { ledger: true });`;
+    expect(documentsIn(src, null)).toEqual([
+      { name: "team", root: "teams", include: ["people"], kind: "defined", note: "" },
+      { name: "mine", root: null, include: [], kind: "custom", note: "worked out by the server from the tables it watches", watch: ["asks", "answers"] },
+    ]);
+  });
+
+  test("a project with no app: born into its own document, touching its own write's tables (not its premise's), and nothing said of who was told", async () => {
+    // a project of its own, outside eta, with stories and a delta.ts and no index.ts
+    const dir = await mkdtemp(`${tmpdir()}/alone-`);
+    const sqlite = Bun.resolveSync("@blueshed/delta/sqlite", import.meta.dir);
+    await Bun.write(
+      `${dir}/delta.ts`,
+      `import { defineCustomDoc, defineDoc, defineSchema } from ${JSON.stringify(sqlite)};
+export const schema = defineSchema({
+  teams: { columns: {} },
+  people: { parent: "teams", columns: { name: "text" } },
+  notes: { parent: "teams", columns: { text: "text" } },
+  asks: { parent: "teams", columns: { words: "text" } },
+});
+export const team = defineDoc("team:", { root: "teams", include: ["people"] });
+export const mine = defineCustomDoc<number>("mine:", { watch: ["asks"], parse: Number, recompute: Object });
+`,
+    );
+    const premise = { ann: [{ doc: "team:1", ops: [{ op: "add", path: "/people/-", value: { name: "Cy" } }] }] };
+    await Bun.write(
+      `${dir}/stories.ts`,
+      `export const stories = ${JSON.stringify({
+        cast: { ann: [], bo: [] },
+        stories: [
+          { name: "Ann asks Bo in, and they both see him", as: "ann", does: { doc: "team:1", ops: [{ op: "add", path: "/people/-", value: { name: "Bo" } }] }, seen: ["ann", "bo"] },
+          { name: "Bo renames Cy", as: "bo", premise, does: { doc: "team:1", ops: [{ op: "replace", path: "/people/3/name", value: "Kai" }] }, seen: ["ann", "bo"] },
+          { name: "Bo cannot write what is worked out", as: "bo", cannot: { doc: "mine:2", ops: [{ op: "remove", path: "/asks/1" }] } },
+        ],
+      })};\n`,
+    );
+    const facts = await extract(dir);
+    const h = facts.heart;
+    expect(facts.harness).toBeNull();
+    expect(h.ran).toBe(false);
+    expect(h.example).toBe(dir.split("/").at(-1)!);
+    expect(h.stories.map((s) => [s.born, s.touches, s.unasked])).toEqual([
+      [["team"], ["people"], []],
+      [["team"], ["people"], []], // its premise wrote people too, but that only set the stage
+      [["mine"], [], []], // a document with no root places no path on a table
+    ]);
+    expect(h.documents.map((d) => [d.name, d.reach, d.for, d.told, d.squared])).toEqual([
+      ["team", ["teams", "people"], "ann, bo", null, null], // ann and bo both write and see it: no run, so no holders²
+      ["mine", ["asks"], "nobody, in the stories", null, null],
+    ]);
+    expect(h.documents[1]!.shape.map((l) => l.text)).toEqual(["mine:<id>", "computed by delta.ts, watching", "asks"]);
+    expect(h.entities.filter((e) => e.red).map((e) => e.name)).toEqual(["notes"]);
+    await rm(dir, { recursive: true });
+  });
 });

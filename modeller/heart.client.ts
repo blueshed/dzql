@@ -151,6 +151,7 @@ function docCard(d: Doc, r: ReturnType<typeof related>) {
 
 function costLine(d: Doc) {
   if (d.squared) return "a holder's write tells every holder: grows as holders²";
+  if (!d.told) return `held by ${d.held}`;
   return `held by ${d.held} · told ${plural(d.told.count, "time")} in the run, ${bytes(d.told.bytes)}`;
 }
 
@@ -328,4 +329,5 @@ addEventListener("resize", renderPop);
 
 document.title = `${title(H.example)} · the modeller`;
 document.getElementById("title")!.textContent = title(H.example);
+document.getElementById("alone")!.hidden = H.ran;
 render();

@@ -35,6 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `bun run modeller:page <path>` take a path (one with a `/`), named by its last part; a bare name is still
   `examples/<name>`.
 
+- **The modeller's page reads a project with no app yet, from its stories alone** (`bun run
+  modeller:page ~/Workshop/canyou-eta`): the same page, with what the stories can say -- a story
+  born into its own document, touching the tables its own write names (not its premise's), each
+  document's reach and the red from delta.ts -- and a line in its header that who is told needs a
+  run, so nothing is marked told-not-asked or holders². delta.ts's documents are read where they
+  are defined, before `registerDocs` too, and a `defineCustomDoc` reaches the tables it `watch`es.
+
 - **A run's observer is told what was in front of each member** (`Trace.holds`, src/harness.ts):
   at each step, each member's documents as their page last read them (`shownTo`), so the modeller
   can say who held what when a story was told.

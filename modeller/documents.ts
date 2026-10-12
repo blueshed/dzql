@@ -81,22 +81,27 @@ export function heardAs(m: Heard) {
 }
 const partKey = (target: string) => target.match(/data-eta-part="([^"]+)"/)?.[1] ?? target;
 
-/** delta.ts's documents: each `defineDoc` (on the ledger when its `registerDocs` says so) and each `registerMemory`. */
-export function documentsIn(src: string, session: string | null): { name: string; root: string | null; include: string[]; kind: string; note: string }[] {
+/**
+ * delta.ts's documents: each `defineDoc` (on the ledger when the `registerDocs` it is written in
+ * says so; one defined before any, and registered by name, is "defined"), each `registerMemory`,
+ * and each `defineCustomDoc`, worked out by the server from the tables it `watch`es.
+ */
+export function documentsIn(src: string, session: string | null): { name: string; root: string | null; include: string[]; kind: string; note: string; watch?: string[] }[] {
   const lists = new Map<string, string[]>();
   for (const m of src.matchAll(/const (\w+) = \[([^\]]*)\]/g)) lists.set(m[1]!, [...m[2]!.matchAll(/"(\w+)"/g)].map((x) => x[1]!));
-  const documents = [];
-  for (const call of src.split(/registerDocs\(/).slice(1)) {
-    const ledger = /ledger: true/.test(call.split("registerMemory(")[0]!);
-    for (const m of call.matchAll(/defineDoc\("(\w+):", \{ root: "(\w+)", include: (\[[^\]]*\]|\w+)/g)) {
-      const raw = m[3]!;
-      const include = raw.startsWith("[")
-        ? raw.slice(1, -1).split(",").map((s) => s.trim()).filter(Boolean).flatMap((s) => (s.startsWith("...") ? lists.get(s.slice(3)) ?? [] : [s.replace(/"/g, "")]))
-        : lists.get(raw) ?? [];
-      documents.push({ name: m[1]!, root: m[2]!, include, kind: ledger ? "written" : "written, no ledger", note: m[1] === session ? "the session: who you are and where" : "" });
-    }
-  }
+  const names = (raw: string) =>
+    raw.startsWith("[")
+      ? raw.slice(1, -1).split(",").map((s) => s.trim()).filter(Boolean).flatMap((s) => (s.startsWith("...") ? lists.get(s.slice(3)) ?? [] : [s.replace(/"/g, "")]))
+      : lists.get(raw) ?? [];
+  const documents: ReturnType<typeof documentsIn> = [];
+  src.split(/registerDocs\(/).forEach((call, i) => {
+    const kind = i === 0 ? "defined" : /ledger: true/.test(call.split("registerMemory(")[0]!) ? "written" : "written, no ledger";
+    for (const m of call.matchAll(/defineDoc\("(\w+):", \{ root: "(\w+)", include: (\[[^\]]*\]|\w+)/g))
+      documents.push({ name: m[1]!, root: m[2]!, include: names(m[3]!), kind, note: m[1] === session ? "the session: who you are and where" : "" });
+  });
   for (const m of src.matchAll(/registerMemory\(delta\.server, \{ prefix: "(\w+):"/g)) documents.push({ name: m[1]!, root: null, include: [], kind: "live", note: "kept by the server, in memory" });
+  for (const m of src.matchAll(/defineCustomDoc(?:<[^>]*>)?\("(\w+):", \{\s*watch: (\[[^\]]*\]|\w+)/g))
+    documents.push({ name: m[1]!, root: null, include: [], kind: "custom", note: "worked out by the server from the tables it watches", watch: names(m[2]!) });
   return documents;
 }
 
