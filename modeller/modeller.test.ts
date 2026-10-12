@@ -119,6 +119,20 @@ describe("fromStories", () => {
     expect(lot.fields.find((f) => f.name === "price")!.type).toBe("number");
     expect(r.collections.get("PantryBin")).toBe("pantry/bins");
   });
+  test("two documents of one type (Japan, ask:1, and the picnic, ask:2) are one entity, named by the type", () => {
+    const plans: Stories = {
+      cast: { peter: [] },
+      stories: [
+        story("Peter asks for yen in Japan", { as: "peter", does: w("ask:1", "add", "/asks/-", { words: "Get yen" }), seen: ["peter"] }),
+        story("Peter asks for a blanket at the picnic", { as: "peter", does: w("ask:2", "add", "/asks/-", { words: "Bring a blanket" }), seen: ["peter"] }),
+        story("Peter renames the picnic", { as: "peter", does: w("ask:2", "replace", "/words", "A picnic"), seen: ["peter"] }),
+      ],
+    };
+    const { model, collections } = fromStories(plans);
+    expect(model.entities.map((e) => e.name)).toEqual(["AskAsk", "Ask"]);
+    expect(collections.get("AskAsk")).toBe("ask/asks");
+    expect(locate("ask:1", "/asks/2/answers/-")).toEqual({ chain: ["ask", "asks", "answers"], row: true });
+  });
   test("an example without `goTo` has no session to leave out", () => {
     expect(fromStories({ cast: { a: [] }, stories: [] }).session).toBeUndefined();
   });

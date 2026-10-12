@@ -23,6 +23,7 @@
 import type { Stories, Story, Write } from "../src/stories";
 import type { PatchOp } from "../src/json-patch";
 import { parsePointer } from "../src/json-pointer";
+import { typeOf as docType } from "./documents";
 import type { Entity, Field, Model, Story as ModelStory, StoryWrite } from "./model/grammar";
 
 /** Something the stories do not say, and so the reading leaves out rather than invents. */
@@ -61,7 +62,7 @@ export type Located = { chain: string[]; field?: string; row: boolean };
 /** Walk a pointer: a row segment selects a row; a name followed by a row is a child collection; any other name is the field (the rest is inside it). */
 export function locate(doc: string, path: string): Located {
   const segs = parsePointer(path);
-  const chain = [doc];
+  const chain = [docType(doc)]; // by its type: Japan (ask:1) and the picnic (ask:2) are one entity
   let row = false;
   for (let i = 0; i < segs.length; i++) {
     const seg = segs[i]!;

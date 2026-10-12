@@ -110,6 +110,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a visit's moves telling no other tab, and the rest, are the server tests they always were; the
   harness's own tests tell the two stories they used inline.
 
+### Fixed
+
+- **The modeller reads a document named with its id as its type** (`modeller/from-stories.ts`):
+  Japan (`ask:1`) and the picnic (`ask:2`) are one entity, `Ask`, not `Ask:1` and `Ask:2`.
+
 ## [0.51.0] - 2026-09-28
 
 ### Breaking (for example authors)
