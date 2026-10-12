@@ -1,14 +1,20 @@
 ---
 name: eta-app
-version: 0.51.0
-description: Use this skill before writing any code under examples/<name>/ — adding a new eta example app, or adding a document/compartment/applet/CLI verb to an existing one. Also use it before touching the Compartment contract, an example's delta.ts, the applet registry, or the {doc,ops} wire protocol, since those are the seam a new example has to fit through. Reference.md has the full contracts and code excerpts.
+description: Use before building an eta app -- an example under examples/<name>/ or an app in a repo of its own -- or adding a document, compartment, applet, route or CLI verb to one; and before touching the Compartment contract, an app's delta.ts, the applet registry or the {doc, ops} wire. reference.md has the contracts, one section a piece, with a contents table.
+metadata:
+  version: 0.51.0
 ---
 
-# Building an example on eta
+# Building an app on eta
 
-eta is a kernel (`src/`) plus examples (`examples/<name>/`). The kernel never imports anything
-under `examples/`; an example is everything needed to turn the kernel into a running app. This file
-is the order to work in. `reference.md` beside it is how each piece works, one section per piece;
+An eta app is its documents. A document is what a person needs in front of them to act, and it is
+alive: open it and you are told every change; write to it and everyone holding it is told. eta
+draws each person's page on the server from the documents they hold (`render`), and sends only
+what changed. Think in documents, not tables: what grows is where they are kept (delta's skill).
+
+eta is a kernel (`src/`) plus apps: its examples (`examples/<name>/`) and apps in repos of their own
+(below). The kernel never imports an app. This file is the order to work in, and the answers to the
+first questions an app asks. `reference.md` beside it is how each piece works, one section per piece;
 the types in `src/` are the contract itself. New to eta? `first-app.md` at the root walks chat,
 then leave, in the order you meet the words.
 
@@ -66,7 +72,21 @@ Everything below is the least that makes it pass.
   and `src/bento.css`): a page is a box or a collection. It is a way of seeing, not a list of
   features to have.
 
-## Adding or extending an example
+## The first questions an app asks
+
+| To | Do |
+|---|---|
+| Show a document and let people change it | A compartment (`permit`, `shape`) and plain `data-write` controls: steps 2-4 below. |
+| Make a new document (a new plan, a room) | Add its root row through the document that lists it -- a team's document includes its plans' roots, so `add /roots/-` -- and open the id the answer names. When the reader names it (a session, chat's room), `implied: true` in `defineDoc`: its first write makes it. Never a refusal standing in for it. |
+| Act before holding any document (sign in, join by a link, a password) | A route on `Example.routes` answering a plain form: it writes the session with `serverWrite` and redirects (reference.md, "Signing people in"). Nobody should have to hold a document to join it. |
+| Keep a document the server works out (my home, who is here) | `registerMemory`, computed whole from the tables in `afterChange`, written as the difference (step 5). Nobody writes it. |
+| Refuse a write, saying why | `permit` or `shape`, with the story's words (reference.md, "Saying why a write was refused"). |
+| Let a person undo | Register the documents with `{ ledger: true }`: the kernel's Undo and Redo walk it (reference.md, "The ledger"). |
+
+When a story seems to need something not here, look in `reference.md` before inventing a rule: a
+constraint made up while building is not a requirement, and a refusal is not a feature.
+
+## Adding to an app
 
 1. **`stories.ts`** -- step 0, above.
 2. **`delta.ts`** -- the schema (`defineSchema`, tables named `<name>_...`), `createTables` against
@@ -115,8 +135,8 @@ Everything below is the least that makes it pass.
     its own on Chrome too). The gate, and what the browser tests need, are CLAUDE.md's.
 
     Press as a mouse does, never with `element.click()`: it sends no pointerdown or pointerup, and
-    reaches a control whatever is drawn over it, so a tap that goes nowhere passes (japan-eta's
-    strip redrew itself on pointerup, and its real click reached nothing). `press` (`src/webview.ts`)
+    reaches a control whatever is drawn over it, so a tap that goes nowhere passes (a strip that
+    redrew itself on pointerup passed, while a real click reached nothing). `press` (`src/webview.ts`)
     scrolls to the control, presses and lets go at its middle, each event to what is there, then
     sends the click where a browser would; it throws for a control that is disabled, or covered,
     naming what covers it. (`view.click(selector)` is the browser's own press, for a control already in
@@ -153,8 +173,8 @@ as `eta/src/...` (the stylesheet too: `@import "eta/src/bento.css"`), and has th
 where an example leans on eta's scripts: `server.ts` (`createServer(example)`, src/server.ts), a
 stories runner (`print(await run(example, stories, undefined, { byHand: !!process.env.STORY_BY_HAND }), { wire: !!process.env.STORY_WIRE })`,
 src/harness.ts), and eta's `tsconfig.json`,
-`bunfig.toml` (the 100% gate) and `.env.test`. The steps above are the same. `Workshop/japan-eta`
-is one.
+`bunfig.toml` (the 100% gate) and `.env.test`. The steps above are the same. `Workshop/canyou-eta`
+is one, linked for the modeller.
 
 None of this needs a file under `src/` edited. When it seems to, read `reference.md`'s "When it
 looks like you need to touch `src/`" first: a missing seam is rare, and a workaround is never it.

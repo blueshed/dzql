@@ -62,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The eta-app skill opens with what an app is and the first questions it asks**: documents first; making a new document (its root row added through the document that lists it, or `implied`), acting before holding one (a route), a document the server works out, a refusal with a reason, undo. Its version moves under `metadata` (the Agent Skills spec), it speaks of apps of their own as well as examples, and `reference.md` gains a contents table. Gone: the section on a retired app (japan-eta's strip), and "an id is text, a UUID on SQLite": a new row's id is a serial on every backend.
 - **An app may link eta to be read by the modeller** (eta-app skill, "An app of its own"): a
   deployed app still depends on a released eta (the packed tarball); one the modeller reads links
   eta's checkout (`"eta": "link:eta"`), so its stories run on eta's own kernel.

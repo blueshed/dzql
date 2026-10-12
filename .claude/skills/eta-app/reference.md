@@ -5,6 +5,35 @@ use it, then gives an example, then the details. `SKILL.md` is the order to work
 `first-app.md` at the root is the way in for someone new. The types in `src/` are the contract:
 where this file and the code disagree, the code is right.
 
+## Contents
+
+- [The page](#the-page)
+- [`Example` (`src/example.ts`)](#example-srcexamplets)
+  - [Signing people in](#signing-people-in)
+- [`Compartment` (`src/compartments/compartment.ts`)](#compartment-srccompartmentscompartmentts)
+  - [Who sees what](#who-sees-what)
+  - [`perSession`](#persession)
+  - [A write: seen, `permit`, `shape`, then delta](#a-write-seen-permit-shape-then-delta)
+  - [Saying why a write was refused, or what one did](#saying-why-a-write-was-refused-or-what-one-did)
+  - [Undo is checked before it runs](#undo-is-checked-before-it-runs)
+  - [By kind](#by-kind)
+  - [After a write](#after-a-write)
+- [Telling a change (`src/server.ts`)](#telling-a-change-srcserverts)
+- [Parts: what is sent (`src/parts.ts`)](#parts-what-is-sent-srcpartsts)
+- [Documents (`delta.ts`, `documents/<thing>.ts`)](#documents-deltats-documentsthingts)
+  - [The ledger](#the-ledger)
+- [The wire](#the-wire)
+  - [Assistants: the page's writes as tools](#assistants-the-pages-writes-as-tools)
+  - [Controls](#controls)
+- [Where you are: the address (`src/bento.ts`)](#where-you-are-the-address-srcbentots)
+- [Pages: the bento (`src/bento.ts`, `src/bento.css`)](#pages-the-bento-srcbentots-srcbentocss)
+- [Applets (`src/applets.ts`)](#applets-srcappletsts)
+  - [How an applet gets its data: the document it watches](#how-an-applet-gets-its-data-the-document-it-watches)
+  - [An applet's controls](#an-applets-controls)
+  - [Islands](#islands)
+- [CLI](#cli)
+- [When it looks like you need to touch `src/`](#when-it-looks-like-you-need-to-touch-src)
+
 ## The page
 
 The page is one function: `Example.render(sessionId)` returns the whole page for one person, as
@@ -61,8 +90,8 @@ Then:
 - Who you are is the session's. The session's `permit` refuses changing it over the wire, but
   allows removing it: signing out, which every tab of the session hears.
 - `who` gives delta the person, and `active` says whether anyone is signed in.
-- An id is text, whatever the backend names a new row (a UUID on SQLite, a serial on Postgres).
-  Never `Number()` one.
+- A new row's id is a serial number the server names, the same on every backend (delta's skill, Rules,
+  "The id rule"). In a path and on the wire it is text (`/asks/3`): compare ids as text.
 - `/ws` refuses a socket opened from another site. Allowed: no `Origin`, the page's own, or one
   listed in `ETA_ORIGINS` (comma-separated).
 - In the stories, `signIn(name)` gives the route and form for a member of the cast. The harness
@@ -691,34 +720,6 @@ stories` prints each once, under the first story that sent it):
   it watch its document, whose inside is not compared); or in a part drawn again around it for
   something else in it (make what changed there a part of its own, as the wedding's photo of
   everyone keeps its words in `everyone-note`).
-
-#### What japan-eta's strip would change to take it
-
-The strip (`views/strip.ts`, `applets/strip.ts`, `applets/strip-applet.ts`) sends `stripProps(t, me,
-everyone)` -- the legs, the stops, who travels and their names -- as 5.2 KB of props, again with
-every stop moved; the map (7.5 KB of pins) and the gestures do the same from the same trip. To
-watch the trip instead:
-
-1. `tripOf(doc)` (`documents/trip.ts`) moves where the browser can import it, a pure module of its
-   own: `trip()` and the rules a write follows stay behind, with `read` and `refuse`.
-2. `stripProps` moves beside `stripHtml` in `applets/strip.ts` (it needs only `lineColour` and
-   `travellers`, both pure) as `stripOf({ me, people, trip })`: what the strip draws, derived from
-   its small props -- `me`, and `people`, the travellers' names -- and the `trip:<id>` document as
-   `read` gives it.
-3. The mount says it, ``appletProps({ me, people, trip: doc }, watch(`trip:${t.id}`, "/trip"))``,
-   in place of `data-props='${attr(...)}'`; `attr` goes (so do the map's and the gestures'
-   `quoted`, n105). `stripHtml(stripOf(props))` stays its first paint, and its `appletWrites` stay:
-   the server derives them from the same props.
-4. `strip-applet.ts` derives on mount and on each update, `stripOf(ctx.props)`, and keeps what a
-   drag holds as now; it needs no `patch`.
-5. Then a stop moved, a day dragged or nights traded sends the strip nothing but the trip's patch,
-   which the page is sent anyway. Its tag goes when `me` or a name changes, or a base comes or goes
-   (its declared writes), carrying the trip as it stands. The map and the gestures take it the same
-   way, on the same document.
-6. The trip document is drawn whole into the page, so before it does, it must hold nothing a page
-   must not carry beside what others write (an invitation's code); or the strip watches a document
-   cut from the trip for it (`strip:<id>`, above), which holds only what it shows, and is told of
-   every write to it: `under: "/strip"`, and `stripOf` reads that.
 
 ### An applet's controls
 
