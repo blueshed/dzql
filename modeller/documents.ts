@@ -12,6 +12,7 @@
 //
 // The checks are advice: they flag, they never fail a run.
 
+import { basename, resolve } from "node:path";
 import type { Example } from "../src/example";
 import type { Compartment } from "../src/compartments/compartment";
 import type { Stories, Story } from "../src/stories";
@@ -304,9 +305,16 @@ function changes(step: Trace, named: (doc: string) => string | undefined, own: s
   return [...byDoc].map(([doc, who]) => ({ doc, told: [...who].map(([member, t]) => ({ member, how: t.how.join(" + "), bytes: t.bytes, seen: seen.has(member) })) }));
 }
 
-/** The documents of `examples/<name>`: from a run of its stories when it has an app, else from the stories alone. */
-export async function documentsOf(name: string): Promise<Reading> {
-  const dir = `${import.meta.dir}/../examples/${name}`;
+/** Where an example is, and its name: `wedding` is `examples/wedding`; a path (it has a `/`) is a project of its own, named by its last part. */
+export function exampleAt(arg: string): { dir: string; name: string } {
+  if (!arg.includes("/")) return { dir: `${import.meta.dir}/../examples/${arg}`, name: arg };
+  const dir = resolve(arg);
+  return { dir, name: basename(dir) };
+}
+
+/** The documents of an example (`exampleAt`): from a run of its stories when it has an app, else from the stories alone. */
+export async function documentsOf(at: string): Promise<Reading> {
+  const { dir } = exampleAt(at);
   const { stories } = (await import(`${dir}/stories.ts`)) as { stories: Stories };
   if (!(await Bun.file(`${dir}/index.ts`).exists())) return read(stories);
   const { example } = (await import(`${dir}/index.ts`)) as { example: Example };

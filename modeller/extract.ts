@@ -7,7 +7,7 @@ import type { Stories, Story } from "../src/stories";
 import type { Example } from "../src/example";
 import { parsePointer } from "../src/json-pointer";
 import { run } from "../src/harness";
-import { documentsIn, heardAs, privateEntry, read, watch } from "./documents";
+import { documentsIn, heardAs, privateEntry, read, watch, exampleAt } from "./documents";
 import { heartOf } from "./heart";
 
 type Column = { type: string; nullable?: boolean };
@@ -21,8 +21,8 @@ export function rulesIn(src: string): { path: RegExp; ops: string[]; dated?: boo
   return new Function(`${pre}\nreturn ${body};`)();
 }
 
-export async function extract(name: string) {
-  const dir = `${import.meta.dir}/../examples/${name}`;
+export async function extract(at: string) {
+  const { dir, name } = exampleAt(at);
   const { stories } = (await import(`${dir}/stories.ts`)) as { stories: Stories };
   const deltaMod = await import(`${dir}/delta.ts`);
   const session = stories.goTo?.("").doc ?? null;

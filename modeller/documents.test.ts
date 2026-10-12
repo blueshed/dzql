@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { story, type Stories } from "../src/stories";
 import { controlsOn, type Heard, type Trace } from "../src/harness";
-import { attempt, documentsIn, documentsOf, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "./documents";
+import { attempt, documentsIn, documentsOf, exampleAt, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "./documents";
 import { example as chat } from "../examples/chat/index";
 import { stories as chatStories } from "../examples/chat/stories";
 import { stories as londons } from "../examples/londons/stories";
@@ -200,5 +200,13 @@ describe("from a run", () => {
     const text = format("x", r);
     expect(text).toContain("- cellar: defined, never written, never held in the run");
     expect(text).toContain("## Writes that tell nobody (1)\n- Ada says something nobody sees — ada writes room, and the story says nobody sees it");
+  });
+});
+
+describe("exampleAt", () => {
+  test("a name is one of eta's examples; a path is a project of its own, named by its last part", () => {
+    expect(exampleAt("wedding")).toEqual({ dir: `${import.meta.dir}/../examples/wedding`, name: "wedding" });
+    expect(exampleAt("/work/canyou-eta")).toEqual({ dir: "/work/canyou-eta", name: "canyou-eta" });
+    expect(exampleAt("../canyou-eta/").name).toBe("canyou-eta");
   });
 });

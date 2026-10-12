@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The modeller reads a project outside eta** (`exampleAt`, modeller/documents.ts): `bun run modeller <path>` and
+  `bun run modeller:page <path>` take a path (one with a `/`), named by its last part; a bare name is still
+  `examples/<name>`.
+
 - **A run's observer is told what was in front of each member** (`Trace.holds`, src/harness.ts):
   at each step, each member's documents as their page last read them (`shownTo`), so the modeller
   can say who held what when a story was told.
