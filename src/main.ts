@@ -25,20 +25,27 @@ if (await pidFile.exists()) {
   }
 }
 
-const server = await startServer();
-await Bun.write(PID_FILE, String(process.pid));
-
 // Signal handlers are registered once; each hot reload swaps in a fresh
 // shutdown function that closes over the current server.
 declare global {
   var __shutdown: (() => Promise<void>) | undefined;
+  var __close: (() => Promise<void>) | undefined;
 }
 const firstRun = !globalThis.__shutdown;
+
+// Under `bun --hot` this module runs again and Bun.serve gives the same server
+// the new routes; what the last run's resources opened (a database) is closed
+// first, so this run can open it again.
+await globalThis.__close?.();
+const server = await startServer();
+globalThis.__close = server.close;
+await Bun.write(PID_FILE, String(process.pid));
 
 globalThis.__shutdown = async () => {
   // Graceful stop waits for in-flight requests; open websockets (including
   // the HMR socket in dev) could hold it forever, so cap the wait.
   await Promise.race([server.stop(), Bun.sleep(5_000)]);
+  await server.close(); // what stop had not got to, if the wait ran out
   process.exit(0);
 };
 

@@ -32,6 +32,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   in the data folder, and the order's page tests and the kitchen's, undo included, run on it as
   they did on SQLite. The separate in-memory `createLocal()` test is gone. `tests/evolve.ts`
   takes `DELTA_SPEC` (`@blueshed/delta@<tarball>`) to try a delta that is not on npm yet.
+- **`startServer()` answers `{ url, port, stop, close }`, not Bun's server.** `stop(force?)`
+  stops serving, then closes what a resource opened: one that opens a database pushes its close
+  onto `closing` in `server.ts`. `main.ts` stops on SIGTERM and SIGINT, and closes before `bun
+  --hot` runs it again. In the evolve skill's Postgres step `orderDocs` answers its close (the
+  listener, then the PGlite pool), so a server stopped and started again on the same folder
+  carries on: without it Postgres recovered the folder as after a crash and the next id was 34,
+  not 2 (`tests/order-pg.test.ts` there). The skill's code blocks can say `in place of <text>`.
 - No `typescript` dependency: `bun check` type checks with Bun's built-in TypeScript 7, so tsc
   isn't needed. Bun 1.4.3 or later, as before.
 

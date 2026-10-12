@@ -50,7 +50,7 @@ async function apply(app: string, name: string) {
       for (const line of lines.filter((l) => l.startsWith("bun add "))) run(app, line.split(/\s+/));
       continue;
     }
-    const where = lines[0]!.match(/^\/\/ ([\w./-]+)(?:: (after|before) (.+))?$/);
+    const where = lines[0]!.match(/^\/\/ ([\w./-]+)(?:: (after|before|in place of) (.+))?$/);
     if (!where) throw new Error(`${name}: a block's first line names no file: ${lines[0]}`); // every code block is applied
     const [, path, how, anchor] = where;
     const body = lines.slice(1);
@@ -63,7 +63,7 @@ async function apply(app: string, name: string) {
     const at = text.findIndex((l) => l.includes(anchor!));
     if (at < 0) throw new Error(`${name}: no line in ${path} holds ${anchor}`);
     const indent = text[at]!.match(/^\s*/)![0];
-    text.splice(how === "after" ? at + 1 : at, 0, ...body.map((l) => (l ? indent + l : l)));
+    text.splice(how === "after" ? at + 1 : at, how === "in place of" ? 1 : 0, ...body.map((l) => (l ? indent + l : l)));
     await Bun.write(file, text.join("\n"));
   }
 }

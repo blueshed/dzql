@@ -10,6 +10,9 @@ export async function startServer({
 } = {}) {
   const status = statusApi();
 
+  // What a resource opens that must be closed (a database), closed once the server stops
+  const closing: (() => Promise<void>)[] = [];
+
   // The documents, on one WebSocket: a page that opens one is subscribed to every change
   const ws = createWs();
   await messageDoc(ws, dataDir);
@@ -43,5 +46,19 @@ export async function startServer({
     },
   });
   ws.setServer(server); // so a change reaches every page holding the document
-  return server;
+
+  // Close what the resources opened; once only (bun --hot runs startServer again on the same server)
+  const close = async () => {
+    for (const done of closing.splice(0)) await done();
+  };
+  return {
+    url: server.url,
+    port: server.port,
+    close,
+    /** Stop serving (`force` drops open connections, as Bun's `stop` does), then close what the resources opened. */
+    async stop(force?: boolean) {
+      await server.stop(force);
+      await close();
+    },
+  };
 }

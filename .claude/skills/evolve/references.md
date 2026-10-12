@@ -9,7 +9,7 @@
 - [Serve what isn't communication](#serve-what-isnt-communication): HTTP routes, and files in S3
 - [Build for production](#build-for-production): optional; the app runs from source
 
-Each code block names its file on its first line, and is applied as it says: `// src/x.ts` is the whole file; `// src/x.ts: after <text>` or `// src/x.ts: before <text>` are lines to put after, or before, the first line holding that text, at its indent. `tests/evolve.ts` in the template proves every section that way: it makes a new app, applies the section's blocks and its `bun add` lines (and those of the sections it builds on), and runs `bun run typecheck` and `bun test` at 100%.
+Each code block names its file on its first line, and is applied as it says: `// src/x.ts` is the whole file; `// src/x.ts: after <text>`, `before <text>` or `in place of <text>` are lines to put after, before, or in place of the first line holding that text, at its indent. `tests/evolve.ts` in the template proves every section that way: it makes a new app, applies the section's blocks and its `bun add` lines (and those of the sections it builds on), and runs `bun run typecheck` and `bun test` at 100%.
 
 ## A new document
 
@@ -461,7 +461,7 @@ bun add -d @types/pg
 
 `@types/pg` is for the typecheck only: delta ships TypeScript source, and its Postgres code names `pg`'s types.
 
-The page and its documents stay the same, and so do their tests: only `orderDocs` changes, and where it imports from. PGlite keeps the rows in `pg/` in the data folder, and the documents are the listener's own (`types`), so every server has its own: a test's server keeps them in the test's data folder.
+The page and its documents stay the same, and so do their tests: only `orderDocs` changes, and where it imports from. PGlite keeps the rows in `pg/` in the data folder, and the documents are the listener's own (`types`), so every server has its own: a test's server keeps them in the test's data folder. One process owns the folder, so `orderDocs` answers what closes it, and `startServer` closes it when the server stops (and `bun --hot` before it starts again).
 
 ```ts
 // src/resources/order/order-api.ts
@@ -493,17 +493,60 @@ export const docs = [
 
 export const catalogue = { tables: { items: [{ id: 1, name: "Tea", price: 2.5 }, { id: 2, name: "Cake", price: 3 }] } };
 
+/** Registers the documents, and answers what closes them: the server calls it when it stops. */
 export async function orderDocs(ws: WsServer, dataDir: string) {
   const pool = await openPglite(`${dataDir}/pg`); // one process owns the folder
   await applyFramework(pool); // delta's tables and stored functions
   await applySql(pool, generateSql(schema, docs)); // the app's tables
   if (!(await pool.query("SELECT 1 FROM items")).rowCount) await importTables(pool, schema, catalogue);
   // last: it answers 404 for a name it does not own
-  return createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)), ledger: true });
+  const listener = await createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)), ledger: true });
+  return async () => {
+    await listener.destroy();
+    await pool.end(); // closed cleanly, the next start opens the folder as it was left
+  };
 }
 ```
 
-The rows come across with `exportTables` from SQLite and `importTables` here. The order's page tests and the kitchen's now run on Postgres, undo included, as they are.
+```ts
+// src/server.ts: in place of await orderDocs(ws, dataDir);
+closing.push(await orderDocs(ws, dataDir));
+```
+
+The rows come across with `exportTables` from SQLite and `importTables` here. The order's page tests and the kitchen's now run on Postgres, undo included, as they are. One more proves the close: a server stopped and started again on the same folder carries on where it was. Without it, Postgres recovers the folder as after a crash, and the second line is 34, not 2: it sets ids aside 32 at a time, and a recovery skips them.
+
+```ts
+// tests/order-pg.test.ts
+import { test, expect, afterAll } from "bun:test";
+import { connectWs, openDoc } from "@blueshed/delta/client";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { startServer } from "../src/server";
+import type { Order } from "../src/resources/order/order-api";
+
+const dataDir = mkdtempSync(`${tmpdir()}/order-pg-`);
+afterAll(() => rmSync(dataDir, { recursive: true, force: true }));
+
+// A server on the data folder, a line added to order 1, and the server stopped: the ids of its lines
+async function addLine(item: number) {
+  const server = await startServer({ port: 0, dev: false, dataDir });
+  const client = connectWs(new URL("/ws", server.url).href);
+  try {
+    const order = openDoc<Order>("order:1", client);
+    await order.ready;
+    await order.send([{ op: "add", path: "/lines/-", value: { item } }]);
+    return Object.values(order.data.peek()!.lines).map((l) => l.id);
+  } finally {
+    client.close();
+    await server.stop(true);
+  }
+}
+
+test("stopped and started again on the same folder, the order carries on where it was", async () => {
+  expect(await addLine(1)).toEqual([1]);
+  expect(await addLine(2)).toEqual([1, 2]);
+});
+```
 
 A Postgres server is the same with `new Pool({ connectionString })` from `pg` (`bun add pg`) in place of `openPglite`; its documents are told of every process's writes, so it is the step to more than one replica. Who may open what (`auth`, `owns`, row-level security) is in delta-doc's reference: *Quick start (Postgres backend)*, *Per-user list isolation* and *RLS*.
 
