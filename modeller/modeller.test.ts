@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { story, type Stories } from "../src/stories";
-import { entityOf, fromStories, locate, noticing, pageOf, pascal, readOp, singular } from "./from-stories";
+import { entityOf, fromStories, locate, noticing, pascal, readOp, singular } from "./from-stories";
 import { compare, format, judge } from "./report";
 import { documentsIn, extract, rulesIn } from "./extract";
 import { stories as chat } from "../examples/chat/stories";
@@ -46,13 +46,7 @@ describe("readOp", () => {
   });
 });
 
-describe("pages and who notices", () => {
-  test("pageOf normalises ids and drops the tray", () => {
-    expect(pageOf(undefined)).toBe("(where the cast left them)");
-    expect(pageOf("")).toBe("home");
-    expect(pageOf("venue/1/deployments @ drawer=site/2")).toBe("venue/:id/deployments");
-    expect(pageOf("market")).toBe("market");
-  });
+describe("who notices", () => {
   test("noticing reads a list, a record, a refusal, and a tab closing", () => {
     const w = { doc: "d", ops: [] };
     expect(noticing(story("a", { as: "x", does: w, seen: ["x", "y"] }))).toEqual([["x", undefined], ["y", undefined]]);
@@ -103,15 +97,9 @@ describe("fromStories", () => {
   test("names nobody cast are noted, in seen and in unseen", () => {
     expect(kinds("uncast-member").map((n) => n.detail)).toEqual(['"ghost" notices but is not in the cast', '"nobody" must not notice but is not in the cast']);
   });
-  test("one page document per actor per page, holding what was noticed there; the author's own page is what it opens", () => {
-    expect(r.pages.get("buyer__market")).toEqual({ actor: "buyer", page: "market" });
-    const [name] = [...r.pages].find(([, p]) => p.actor === "seller" && p.page === "stall/:id")!;
-    const stall = r.model.documents.find((d) => d.name === name)!;
-    expect(stall.node.from).toBe("Stall");
-    expect(stall.node.fields.some((f) => f.kind === "array" && f.node.from === "StallLot")).toBe(true);
-    expect(r.model.stories.find((s) => s.action === "the buyer offers")!.opens).toEqual([]);
-    expect(r.model.stories.find((s) => s.action === "the seller accepts")!.opens).toEqual([stall.name]);
-    expect([...r.pages.values()]).toContainEqual({ actor: "seller", page: "(where the cast left them)" });
+  test("no documents are invented: who holds what is documents.ts's, from the stories, the compartments and a run", () => {
+    expect(r.model.documents).toEqual([]);
+    expect(r.model.stories.every((s) => s.opens!.length === 0)).toBe(true);
   });
   test("a reference resolves by the collection's own name, or is noted as ambiguous or unresolved", () => {
     const lot = r.model.entities.find((e) => e.name === "StallLot")!;
@@ -139,7 +127,7 @@ describe("judge and format", () => {
   const { reading, report } = judge(market);
 
   test("counts", () => {
-    expect(report.counts).toEqual({ stories: 13, does: 11, cannot: 1, closesTab: 1, actors: 4, pages: 7, entities: 5, fields: 15 });
+    expect(report.counts).toEqual({ stories: 13, does: 11, cannot: 1, closesTab: 1, actors: 4, entities: 5, fields: 15 });
   });
   test("hjeli's predicates run unchanged: a row changed that no story adds is a gap", () => {
     expect(report.gaps.map((g) => `${g.predicate}:${g.kind}:${g.refs?.entity ?? g.refs?.actor}`)).toContain("precondition-closure:unestablished-row:Sign");

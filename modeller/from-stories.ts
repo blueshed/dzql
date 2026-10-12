@@ -1,9 +1,8 @@
 // Stories read as a hjeli model, so hjeli's six predicates can run over them (Workshop/docs/eta-modeller.md).
 //
 // eta's stories speak the wire: a session, a `{doc, ops}` write, and who then notices it, where.
-// hjeli's predicates speak a model: actors, entities, the documents each actor watches, and the
-// writes each story makes. This reads the first into the second, and the predicates run
-// unchanged. What the stories cannot say, it does not invent: it leaves the field out and says so
+// hjeli's predicates speak a model: actors, entities, and the writes each story makes. This reads
+// the first into the second, and the predicates run unchanged. What the stories cannot say, it does not invent: it leaves the field out and says so
 // in `notes`, so a gap is never an artefact dressed as a finding.
 //
 // The reading, in one line each:
@@ -11,11 +10,12 @@
 //   entity     -- a collection a write lands in: the document, or a child collection on its path
 //                 (named by its whole chain, `VenueArea`, so two documents' "venues" never merge)
 //   field      -- a path's first name after its row, and the keys of a row that is added
-//   document   -- one per actor per page: where a story says that actor notices, and what the
-//                 stories noticed there were writing (a page shows what the stories say it shows)
-//   story      -- `as` is the actor, the writes are `does` read as above, `opens` is the author's
-//                 own page when the author notices; a `cannot` has no writes (it is the permit
-//                 table's), nor does a tab closing
+//   story      -- `as` is the actor, the writes are `does` read as above; a `cannot` has no writes
+//                 (it is the permit table's), nor does a tab closing
+//
+// Documents are not read here: who holds which, and who is told, is documents.ts's, from the
+// stories, the example's compartments and a run. So the model has none, and the predicates that
+// ask what a document watches are not run over it (report.ts).
 //
 // No example knowledge: the one document left out is the session's, found by asking the example's
 // own `goTo()` where it writes.
@@ -23,18 +23,13 @@
 import type { Stories, Story, Write } from "../src/stories";
 import type { PatchOp } from "../src/json-patch";
 import { parsePointer } from "../src/json-pointer";
-import type { DocField, DocNode, Document, Entity, Field, Model, Story as ModelStory, StoryWrite } from "./model/grammar";
+import type { Entity, Field, Model, Story as ModelStory, StoryWrite } from "./model/grammar";
 
 /** Something the stories do not say, and so the reading leaves out rather than invents. */
 export type Note = { kind: string; where: string; detail: string };
 
-/** A page document's origin, for reading a gap's `where` back in the stories' own words. */
-export type Page = { actor: string; page: string };
-
 export type Reading = {
   model: Model;
-  /** Document name -> the actor and page it stands for. */
-  pages: Map<string, Page>;
   /** Entity name -> the path it was read from (`venue/areas`). */
   collections: Map<string, string>;
   /** The document left out as the session's, if the example has a `goTo()`. */
@@ -111,20 +106,6 @@ export function readOp(doc: string, op: PatchOp): { write: StoryWrite; fields: [
   return { write, fields: [[field, value]] };
 }
 
-/** "venue/1/deployments @ drawer=site/2" -> "venue/:id/deployments"; "" -> "home"; no place -> "(where the cast left them)". */
-export function pageOf(place: string | undefined): string {
-  if (place === undefined) return "(where the cast left them)";
-  const page = place.split(" @ ")[0]!.trim();
-  if (page === "") return "home";
-  return page
-    .split("/")
-    .map((s) => (isRow(s) ? ":id" : s))
-    .join("/");
-}
-
-const docName = (actor: string, page: string): string =>
-  `${actor}__${page}`.replace(/[^A-Za-z0-9_-]+/g, "_").replace(/_+$/, "");
-
 /** Who notices, and where: a list leaves each where the cast put them. */
 export function noticing(story: Story): [string, string | undefined][] {
   const seen = story.seen ?? [];
@@ -136,7 +117,6 @@ export function fromStories(stories: Stories): Reading {
   const session = stories.goTo?.("").doc;
   const collections = new Map<string, string>();
   const fields = new Map<string, Map<string, unknown>>(); // entity -> field -> a value seen
-  const pageWrites = new Map<string, { page: Page; writes: StoryWrite[] }>();
   const modelStories: ModelStory[] = [];
 
   const writesOf = (w: Write): StoryWrite[] =>
@@ -167,21 +147,13 @@ export function fromStories(stories: Stories): Reading {
       modelStories.push({ actor: s.as, action: s.name, writes: [], opens: [] });
       continue;
     }
-    const writes = writesOf(s.does);
-    const opens: string[] = [];
-    for (const [member, place] of noticing(s)) {
+    for (const [member] of noticing(s)) {
       if (!members.has(member)) notes.push({ kind: "uncast-member", where: s.name, detail: `"${member}" notices but is not in the cast` });
-      const page = pageOf(place);
-      const name = docName(member, page);
-      const entry = pageWrites.get(name) ?? { page: { actor: member, page }, writes: [] };
-      entry.writes.push(...writes);
-      pageWrites.set(name, entry);
-      if (member === s.as) opens.push(name);
     }
     for (const member of s.untold ?? []) {
       if (!members.has(member)) notes.push({ kind: "uncast-member", where: s.name, detail: `"${member}" must not notice but is not in the cast` });
     }
-    modelStories.push({ actor: s.as, action: s.name, writes, opens });
+    modelStories.push({ actor: s.as, action: s.name, writes: writesOf(s.does), opens: [] });
   }
 
   // Entities, with an id and every field a write showed. A `_id` field is a reference when it
@@ -217,42 +189,15 @@ export function fromStories(stories: Stories): Reading {
     return { name, fields: fs };
   });
 
-  const documents: Document[] = [...pageWrites.entries()].map(([name, { page, writes }]) => ({
-    name,
-    actor: page.actor,
-    params: [],
-    node: nodeFor(writes),
-  }));
-
   return {
     model: {
       actors: [...members].map((name) => ({ name, auth_claim: "session" })),
       entities,
-      documents,
+      documents: [],
       stories: modelStories,
     },
-    pages: new Map([...pageWrites.entries()].map(([n, e]) => [n, e.page])),
     collections,
     session,
     notes,
-  };
-}
-
-/** A page's node: every entity the stories noticed there, each with the fields they wrote. The nesting carries no meaning; the predicates ask only what is watched. */
-function nodeFor(writes: StoryWrite[]): DocNode {
-  const byEntity = new Map<string, Set<string>>();
-  for (const w of writes) {
-    const set = byEntity.get(w.entity) ?? new Set(["id"]);
-    if (w.path) set.add(w.path);
-    byEntity.set(w.entity, set);
-  }
-  const nodes = [...byEntity.entries()].map(([from, fs]) => ({
-    from,
-    fields: [...fs].map((f): DocField => ({ kind: "scalar", name: f, source: f })),
-  }));
-  const [first, ...rest] = nodes;
-  return {
-    from: first!.from,
-    fields: [...first!.fields, ...rest.map((n): DocField => ({ kind: "array", name: n.from, node: n }))],
   };
 }

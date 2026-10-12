@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The modeller no longer invents a document per actor per page** (`modeller/from-stories.ts`):
+  documents are read by `modeller/documents.ts` instead. hjeli's reachability and subscription
+  closure, which asked what those invented documents watched and so passed by construction, are no
+  longer run, nor actor closure's dead actor, which read them; the report's counts lose `pages`.
 - Type checks run with `bun check` (TypeScript 7) in place of `tsc`; the `check` script is gone, so
   `bun check` is Bun's own. eta requires Bun 1.4.3 or later (`engines`, `packageManager`).
 

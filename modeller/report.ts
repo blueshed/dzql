@@ -1,17 +1,21 @@
-// The closure report: hjeli's six predicates over a pile of stories, what the stories give each
-// one to read, and the checks that only stories can ask. Pure: the CLI (closure.ts) loads and
-// prints; this reads and judges.
+// The closure report: hjeli's predicates over a pile of stories, what the stories give each one to
+// read, and the checks that only stories can ask. Pure: the CLI (closure.ts) loads and prints;
+// this reads and judges.
+//
+// Two of the six are not run: reachability and subscription closure ask what a document watches,
+// and documents are documents.ts's now, read from the stories, the compartments and a run -- not
+// invented one per actor per page, which made both pass by construction. Nor is actor closure's
+// dead actor, which read those pages: an actor with nothing in front of them and nothing written
+// is a row of dots in the documents' grid.
 
 import type { Stories } from "../src/stories";
 import type { Gap, Model } from "./model/grammar";
-import { runAll } from "./model/predicates";
+import { actorClosure, authorizationClosure, preconditionClosure, referentialClosure } from "./model/predicates";
 import { fromStories, locate, entityOf, noticing, type Note, type Reading } from "./from-stories";
 
 /** What the stories give each predicate to read. Where they do not say what it asks, it passes. */
-export const READS: Record<Gap["predicate"], string> = {
-  reachability: "what a page watches is what the stories noticed on it: an entity is unwatched only if nobody notices a write to it",
-  "subscription-closure": "the same reading: a write is silent only if nobody notices it",
-  "actor-closure": "the cast, who tells, and who notices where",
+export const READS: Partial<Record<Gap["predicate"], string>> = {
+  "actor-closure": "the cast, and who tells (a dead actor is the documents' grid's, not asked here)",
   "precondition-closure": "the row tier (a row is added before it is changed); stories have no `requires`, so the state tier passes",
   "referential-closure": "names are the stories' own: documents, paths, keys",
   "authorization-closure": "stories do not say who owns a row, so it passes; `does` and `cannot` are the permit table instead",
@@ -20,7 +24,7 @@ export const READS: Record<Gap["predicate"], string> = {
 export type Finding = { check: string; where: string; detail: string };
 
 export type Report = {
-  counts: { stories: number; does: number; cannot: number; closesTab: number; actors: number; pages: number; entities: number; fields: number };
+  counts: { stories: number; does: number; cannot: number; closesTab: number; actors: number; entities: number; fields: number };
   gaps: Gap[];
   /** Checks only stories can ask. */
   story: {
@@ -39,7 +43,7 @@ export type Report = {
 export function judge(stories: Stories): { reading: Reading; report: Report } {
   const reading = fromStories(stories);
   const { model } = reading;
-  const gaps = runAll(model);
+  const gaps = [...actorClosure(model).filter((g) => g.kind !== "dead-actor"), ...preconditionClosure(model), ...referentialClosure(model), ...authorizationClosure(model)];
 
   const authorBlind: Finding[] = [];
   const writers = new Map<string, Set<string>>();
@@ -86,7 +90,6 @@ export function judge(stories: Stories): { reading: Reading; report: Report } {
         cannot: count("cannot"),
         closesTab: count("closesTab"),
         actors: model.actors.length,
-        pages: model.documents.length,
         entities: model.entities.length,
         fields: model.entities.reduce((n, e) => n + e.fields.length, 0),
       },
@@ -131,9 +134,9 @@ export function format(name: string, report: Report, against?: ReturnType<typeof
   const out = (s = "") => lines.push(s);
   out(`# ${name}: closure over stories`);
   out();
-  out(`${c.stories} stories (${c.does} does, ${c.cannot} cannot${c.closesTab ? `, ${c.closesTab} closes a tab` : ""}) · ${c.actors} actors · ${c.pages} pages · ${c.entities} entities · ${c.fields} fields`);
+  out(`${c.stories} stories (${c.does} does, ${c.cannot} cannot${c.closesTab ? `, ${c.closesTab} closes a tab` : ""}) · ${c.actors} actors · ${c.entities} entities · ${c.fields} fields`);
   out();
-  out(`## hjeli's six predicates`);
+  out(`## hjeli's predicates`);
   out();
   for (const [predicate, reads] of Object.entries(READS)) {
     const gs = report.gaps.filter((g) => g.predicate === predicate);
