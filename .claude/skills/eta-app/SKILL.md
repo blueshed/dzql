@@ -133,14 +133,19 @@ with WebMCP where the browser has it (reference.md, "Assistants").
 
 ## An app of its own
 
-An app need not be an example: it can live in its own repo and install eta. `package.json` says
-what eta ships (`src` without its tests, these skills, the docs), so pack it and add the tarball,
-never `file:` or `bun link`: a linked checkout brings its own `node_modules`, and two copies of
-delta or railroad go inert (delta's skill, "Local development across repos").
+An app need not be an example: it can live in its own repo and install eta. A deployed app depends
+on a released eta: `package.json` says what eta ships (`src` without its tests, these skills, the
+docs), so pack it and add the tarball, never `file:`.
 
 ```sh
 cd ../blueshed/eta && bun pm pack && cd - && bun add ../blueshed/eta/eta-<version>.tgz
 ```
+
+To be read by eta's modeller (`bun run modeller:page <path>`), an app links eta from its checkout
+instead (`bun link` in eta, then `"eta": "link:eta"`): the modeller runs the app's stories on eta's
+own kernel, and there must be one. A linked eta's `src` imports eta's `node_modules`, the app its
+own, so keep the app's delta and railroad at eta's versions (delta's skill, "Local development
+across repos", says why two copies matter).
 
 After a change to eta, pack again, then `bun remove eta && bun add` the tarball: the lockfile
 keeps a tarball's first contents, through `bun add` again and `bun install --force` alike (Bun 1.4). The app then imports the kernel

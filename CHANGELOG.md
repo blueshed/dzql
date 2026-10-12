@@ -62,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **An app may link eta to be read by the modeller** (eta-app skill, "An app of its own"): a
+  deployed app still depends on a released eta (the packed tarball); one the modeller reads links
+  eta's checkout (`"eta": "link:eta"`), so its stories run on eta's own kernel.
+
 - **`@blueshed/delta` ^0.13.1**, which quotes table and column names in SQLite and the JSON file,
   so a table may be named with one of SQL's words. An app that links eta (`link:eta`) loads the
   same delta as eta's kernel.
