@@ -5,6 +5,7 @@ import { hear, type Heard } from "../../src/harness";
 import { may, placed, shape, shapeSession, type Person, type Team } from "./documents";
 import { alsoOff, calendarHtml, clashes, colourOf, days, daysOf, isWorkingDay, listRows, mondayOf, nextDay, nextMonth, offOn, prevMonth, rowHtml, workingDaysOf, type CalendarProps } from "./calendar";
 import { example } from "./index";
+import { session } from "./compartments";
 
 let server: ReturnType<typeof createServer>;
 
@@ -58,6 +59,17 @@ async function send(tab: Tab, doc: string, ops: PatchOp[]): Promise<string> {
 const go = (tab: Tab, page: string) => send(tab, "session", [{ op: "replace", path: "/page", value: page }]);
 
 describe("signing in", () => {
+  test("signed in, a session may go to a page and sign out; never remove its page, nor say who it is", async () => {
+    const { sessionId } = await signIn("ann@leave.example", "ann-password");
+    const tab = await open(sessionId!);
+    const may = (op: PatchOp) => session.permit!({ data: { sessionId } } as never, op, sessionId!);
+    expect(may({ op: "replace", path: "/page", value: "list" })).toBe(true);
+    expect(may({ op: "remove", path: "/page" })).toBe(false);
+    expect(may({ op: "remove", path: "/person_id" })).toBe(true);
+    expect(may({ op: "replace", path: "/person_id", value: "3" })).toBe(false);
+    tab.ws.close();
+  });
+
   test("a good email and password start a fresh session, named by a new cookie, never the visit's own", async () => {
     const { res, sessionId } = await signIn("ann@leave.example", "ann-password", { Cookie: "session_id=a-visit-someone-planted" });
     expect(res.status).toBe(303);

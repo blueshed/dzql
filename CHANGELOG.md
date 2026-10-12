@@ -39,6 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   changed, never taken back; a visit's `/reading`, `/filter` and `/hide` are written by the
   collection's name, and its page is gone to, never removed. Six stories tell what the couple's
   page already offered: a gift, an event and a place to stay edited, and each taken off.
+- **The ticker's desk and leave's session permit what their pages write, and nothing more**
+  (`bun run modeller`: ticker 4 paths to 0, leave 1 to 0): a page is gone to, never removed, and
+  the desk's `/reading`, `/filter` and `/hide` are written by the collection's name.
 
 ## [0.51.0] - 2026-09-28
 

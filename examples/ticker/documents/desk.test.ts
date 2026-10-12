@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { after, between, type Ui } from "./desk";
+import { desk } from "../compartments/desk";
+import type { PatchOp } from "../../../src/json-patch";
 
 describe("the desk (the ticker's session)", () => {
   test("the desk keeps one address: a window it has, and over it a symbol, the clock, the ask or the asking-first; anywhere else is nowhere", () => {
@@ -28,5 +30,15 @@ describe("the desk (the ticker's session)", () => {
       { op: "replace", path: "/filter", value: null },
     ]);
     expect(between({ page: "board" }, { page: "board" })).toEqual([]);
+  });
+
+  test("the desk permits what its page writes: a page gone to, and a collection's reading, find's word and its eye by the collection's name; nothing whole, no page removed", () => {
+    const may = (op: PatchOp["op"], path: string) => desk.permit!({} as never, op === "remove" ? { op, path } : { op, path, value: "x" }, "x");
+    expect(may("replace", "/page")).toBe(true);
+    expect(may("remove", "/page")).toBe(false);
+    expect(may("replace", "/reading/board")).toBe(true);
+    expect(may("remove", "/reading/board")).toBe(false);
+    for (const path of ["/filter/market", "/hide/market"]) expect([may("replace", path), may("remove", path)]).toEqual([true, true]);
+    for (const path of ["/reading", "/filter", "/hide", "/filter/market/x", "/attic"]) expect([may("replace", path), may("remove", path)]).toEqual([false, false]);
   });
 });

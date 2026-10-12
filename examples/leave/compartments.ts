@@ -17,7 +17,7 @@ export const session: Compartment = {
   permit(ws, op) {
     if (sessionOf(ws.data.sessionId).person === null) return false;
     if (op.path === "/person_id") return op.op === "remove";
-    return op.path === "/page";
+    return op.path === "/page" && op.op === "replace";
   },
   shape: (_ws, id, ops) => shapeSession(sessionOf(id), ops),
 };

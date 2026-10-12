@@ -1,5 +1,5 @@
 import * as deskDoc from "../documents/desk";
-import { parsePointer } from "../../../src/json-pointer";
+import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
 
 // The desk is the ticker's session (change-request.md item 10): the ground the ticker's cells sit on,
@@ -7,7 +7,12 @@ import type { Compartment } from "../../../src/compartments/compartment";
 // a drawer or a modal, switch a reading or say what find says, each field it moves replaced whole:
 // a visit is nobody else's to see, and nothing here is on the ledger (../delta.ts).
 
-const WRITABLE = new Set(["page", "reading", "filter", "hide"]);
+/** What the desk's page writes: a page gone to, and how a collection is read, find's word and its eye, each by the collection's name (src/bento.ts). */
+const RULES: { path: RegExp; ops: PatchOp["op"][] }[] = [
+  { path: /^\/page$/, ops: ["replace"] },
+  { path: /^\/reading\/[^/]+$/, ops: ["replace"] },
+  { path: /^\/(filter|hide)\/[^/]+$/, ops: ["replace", "remove"] },
+];
 
 export const desk: Compartment = {
   docType: "desk",
@@ -17,10 +22,7 @@ export const desk: Compartment = {
   resolveDoc(ws) {
     return ws.data.sessionId;
   },
-  permit(_ws, op) {
-    const [field] = parsePointer(op.path);
-    return !!field && WRITABLE.has(field);
-  },
+  permit: (_ws, op) => RULES.some((r) => r.path.test(op.path) && r.ops.includes(op.op)),
   shape(_ws, sessionId, ops) {
     const ui = deskDoc.read(sessionId);
     return deskDoc.between(ui, deskDoc.after(ui, ops));
