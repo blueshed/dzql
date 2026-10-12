@@ -461,53 +461,49 @@ bun add -d @types/pg
 
 `@types/pg` is for the typecheck only: delta ships TypeScript source, and its Postgres code names `pg`'s types.
 
+The page and its documents stay the same, and so do their tests: only `orderDocs` changes, and where it imports from. PGlite keeps the rows in `pg/` in the data folder, and the documents are the listener's own (`types`), so every server has its own: a test's server keeps them in the test's data folder.
+
 ```ts
-// src/resources/order/order-pg.ts
+// src/resources/order/order-api.ts
 /**
- * The order's documents kept by Postgres in this process (PGlite): in a directory on the data
- * volume, or in memory with none. The schema and the documents are the ones SQLite keeps.
+ * Order — the catalogue, each order, and the kitchen's view of every order, kept by Postgres
+ * in this process (PGlite), in pg/ in the data folder. The schema and the documents are the
+ * ones SQLite kept.
  */
 import type { WsServer } from "@blueshed/delta/server";
 import { openPglite } from "@blueshed/delta/pglite";
-import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql, importTables, registerDocType } from "@blueshed/delta/postgres";
-import { catalogue, docs, schema } from "./order-api";
+import { applyFramework, applySql, createDocListener, defineDoc, defineSchema, docTypeFromDef, generateSql, importTables } from "@blueshed/delta/postgres";
 
-export async function orderDocsPg(ws: WsServer, dir?: string) {
-  const pool = await openPglite(dir);
+export type Item = { id: number; name: string; price: number };
+export type Line = { id: number; item: number };
+export type Catalogue = { items: Record<string, Item> };
+export type Order = { lines: Record<string, Line> };
+
+export const schema = defineSchema({
+  items: { columns: { name: "text", price: "real" } },
+  orders: { columns: {} },
+  lines: { parent: "orders", columns: { item: "integer" } },
+});
+
+export const docs = [
+  defineDoc("catalogue:", { root: "items", include: [] }), // every item
+  defineDoc("order:", { root: "orders", include: ["lines"], implied: true }), // order:1 is order 1 and its lines
+  defineDoc("kitchen:", { root: "orders", include: ["lines"] }), // every order, and every line
+];
+
+export const catalogue = { tables: { items: [{ id: 1, name: "Tea", price: 2.5 }, { id: 2, name: "Cake", price: 3 }] } };
+
+export async function orderDocs(ws: WsServer, dataDir: string) {
+  const pool = await openPglite(`${dataDir}/pg`); // one process owns the folder
   await applyFramework(pool); // delta's tables and stored functions
   await applySql(pool, generateSql(schema, docs)); // the app's tables
   if (!(await pool.query("SELECT 1 FROM items")).rowCount) await importTables(pool, schema, catalogue);
-  for (const def of docs) registerDocType(docTypeFromDef(def, pool));
-  return createDocListener(ws, pool, { ledger: true }); // last: it answers 404 for a name it does not own
+  // last: it answers 404 for a name it does not own
+  return createDocListener(ws, pool, { types: docs.map((def) => docTypeFromDef(def, pool)), ledger: true });
 }
 ```
 
-To move, ``await orderDocsPg(ws, `${dataDir}/pg`)`` takes the place of `orderDocs(ws, dataDir)` in `startServer`, and the rows come across with `exportTables` from SQLite and `importTables` here. One process owns the directory, and delta's document types are registered once per process, so the test runs it in memory through `createLocal()`, delta in this process with no socket:
-
-```ts
-// tests/order-pg.test.ts
-import { test, expect, afterAll } from "bun:test";
-import { createLocal } from "@blueshed/delta/local";
-import { orderDocsPg } from "../src/resources/order/order-pg";
-
-const local = createLocal();
-const listener = await orderDocsPg(local.server); // in memory
-afterAll(() => listener.destroy());
-
-const open = async (doc: string) => (await local.call("open", { doc })).result;
-
-test("on Postgres the documents are the same: the catalogue, an order, and the kitchen over every order", async () => {
-  expect(Object.values((await open("catalogue:")).items).map((i: any) => i.name)).toEqual(["Tea", "Cake"]);
-  await local.call("delta", { doc: "order:1", ops: [{ op: "add", path: "/lines/-", value: { item: 1 } }], cursor: "me" });
-  expect(Object.values((await open("order:1")).lines)).toEqual([{ id: 1, orders_id: 1, item: 1 }]);
-  expect(Object.values((await open("kitchen:")).lines)).toEqual([{ id: 1, orders_id: 1, item: 1 }]);
-});
-
-test("undo takes back the change", async () => {
-  await local.call("undo", { cursor: "me" });
-  expect((await open("order:1")).lines).toEqual({});
-});
-```
+The rows come across with `exportTables` from SQLite and `importTables` here. The order's page tests and the kitchen's now run on Postgres, undo included, as they are.
 
 A Postgres server is the same with `new Pool({ connectionString })` from `pg` (`bun add pg`) in place of `openPglite`; its documents are told of every process's writes, so it is the step to more than one replica. Who may open what (`auth`, `owns`, row-level security) is in delta-doc's reference: *Quick start (Postgres backend)*, *Per-user list isolation* and *RLS*.
 

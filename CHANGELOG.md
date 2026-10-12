@@ -25,6 +25,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **delta 0.13.0.** The template's documents and tests are unchanged on it (the message box
+  still keeps typing that is not saved). The evolve skill's Postgres step gives the listener its
+  document types (`createDocListener(ws, pool, { types })`; `registerDocType` is gone), so it
+  now runs inside the app: `orderDocs` keeps the same schema and documents in PGlite, in `pg/`
+  in the data folder, and the order's page tests and the kitchen's, undo included, run on it as
+  they did on SQLite. The separate in-memory `createLocal()` test is gone. `tests/evolve.ts`
+  takes `DELTA_SPEC` (`@blueshed/delta@<tarball>`) to try a delta that is not on npm yet.
 - No `typescript` dependency: `bun check` type checks with Bun's built-in TypeScript 7, so tsc
   isn't needed. Bun 1.4.3 or later, as before.
 

@@ -75,7 +75,9 @@ function newApp(name: string) {
   for (const path of listed.split("\n").filter(Boolean)) {
     if (existsSync(join(root, path))) cpSync(join(root, path), join(app, path));
   }
-  run(app, ["bun", "install", "--frozen-lockfile"]);
+  // DELTA_SPEC installs another delta in place of the locked one: @blueshed/delta@<a candidate's tarball>
+  const delta = process.env.DELTA_SPEC;
+  run(app, delta ? ["bun", "add", delta] : ["bun", "install", "--frozen-lockfile"]);
   run(app, ["bun", "create/setup.ts"]);
   return app;
 }
