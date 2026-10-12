@@ -9,8 +9,8 @@
 # with the canvases it draws), whose logic is in the files their tests load.
 # Code that only runs in a browser: src/client/, src/applets.ts, src/island.ts,
 # each example's client/main.ts and its applets' mountings (`*-applet.ts*`, the wedding's
-# picture-field.ts), which the WebView tests drive where coverage cannot see, and the mock-up's
-# app.ts. And a file of types alone (src/example.ts, src/connection.ts,
+# picture-field.ts), which the WebView tests drive where coverage cannot see, the mock-up's
+# app.ts, and the modeller page's script (modeller/heart.client.ts; its layout is tested). And a file of types alone (src/example.ts, src/connection.ts,
 # src/compartments/compartment.ts), with nothing to run. Anything else is loaded by a test: even
 # src/costs.ts, a script, is taken in hand by its own
 coverage = true

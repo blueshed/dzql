@@ -125,7 +125,8 @@ bun run costs        # measures every number this README quotes, and writes it i
 Two tools sit beside the kernel and are not shipped: `modeller/` (`bun run modeller <example>`:
 an example's documents -- who holds each, who writes it, who is told of a change, and what permit
 lets through that no page offers -- then hjeli's predicates over its stories; `bun run modeller:page
-<example>`: its demo page, in `modeller/dist/`) and `uml/`, a live ASCII-UML session (`bun run uml`, PlantUML in docker, on
+<example>`: its page, in `modeller/dist/` -- its stories, documents and entities, and what goes with
+what) and `uml/`, a live ASCII-UML session (`bun run uml`, PlantUML in docker, on
 :3700; `bun run uml:check` checks the diagrams without it).
 
 ## Where to go next

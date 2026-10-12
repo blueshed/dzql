@@ -8,6 +8,7 @@ import type { Example } from "../src/example";
 import { parsePointer } from "../src/json-pointer";
 import { run } from "../src/harness";
 import { documentsIn, heardAs, privateEntry, read, watch } from "./documents";
+import { heartOf } from "./heart";
 
 type Column = { type: string; nullable?: boolean };
 type Permit = { doc: string; path: string; ops: string[]; dated: boolean };
@@ -39,12 +40,14 @@ export async function extract(name: string) {
     files.flatMap(({ path, lines }) =>
       lines.flatMap((line, i) => (new RegExp(`\\b${sqlName}\\b`).test(line) ? [{ at: `${path}:${i + 1}`, seed: path.endsWith(".sql"), line: line.trim().slice(0, 140) }] : [])),
     );
-  const tables = Object.entries(deltaMod.schema.tables as Record<string, { name: string; parent?: { collection: string }; columns: Record<string, Column> }>).map(([key, t]) => ({
+  const schema = Object.entries(deltaMod.schema.tables as Record<string, { name: string; parent?: { collection: string }; columns: Record<string, Column> }>).map(([key, t]) => ({
     name: key,
     parent: t.parent?.collection ?? null,
     columns: Object.entries(t.columns).map(([c, def]) => ({ name: c, type: def.type + (def.nullable ? "?" : "") })),
     code: touches(t.name),
+    sql: t.name,
   }));
+  const tables = schema.map(({ sql: _, ...t }) => t);
 
   const documents = documentsIn(await Bun.file(`${dir}/delta.ts`).text(), session);
 
@@ -95,6 +98,7 @@ export async function extract(name: string) {
       seen: Array.isArray(seen) ? Object.fromEntries(seen.map((m) => [m, null])) : seen,
       untold: s.untold ?? [],
       premise: s.premise !== undefined,
+      offPage: !!s.offPage,
       failures: outcome.get(s.name) ?? ["not run"],
       sequence: (traces.get(s.name) ?? []).map((t) => ({ phase: t.phase, as: t.as, write: t.write, ledger: t.ledger.map(shown), heard: t.heard.map((h) => ({ member: h.member, messages: h.messages.map(heardAs) })) })),
     };
@@ -107,5 +111,9 @@ export async function extract(name: string) {
   const todo = (await Bun.file(`${import.meta.dir}/../todo.jsonl`).text()).split("\n").filter(Boolean).map((l) => JSON.parse(l));
   const tasks = todo.map((t: { n: number; status: string; summary: string; area: string }) => ({ n: t.n, status: t.status, summary: t.summary, area: t.area }));
 
-  return { example: name, session, cast, castSetup, tables, documents, permits, stories: storyRows, harness: { passed: report.passed, failed: report.failed }, tasks, read: read(stories, example, watched, documents.map((d) => d.name)) };
+  const reading = read(stories, example, watched, documents.map((d) => d.name));
+  const perSession = example.compartments.filter((c) => c.perSession).map((c) => c.docType);
+  const heart = heartOf({ example: name, session, perSession, stories: storyRows, rows: reading.stories, traces: watched.traces, documents, tables: schema, files, cast: castSetup, held: reading.grid });
+
+  return { example: name, session, cast, castSetup, tables, documents, permits, stories: storyRows, harness: { passed: report.passed, failed: report.failed }, tasks, read: reading, heart };
 }

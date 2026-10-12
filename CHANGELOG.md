@@ -51,6 +51,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The modeller's page is the heart: stories, documents and entities, one example, three
+  columns** (`bun run modeller:page <example>`, `modeller/heart.html`). Click any one and what goes
+  with it lights in the other two: a document's stories (born into it) and the entities it
+  reaches; an entity's documents and the stories that touch it; a story's documents and entities.
+  An eye on the stories and the entities hides the rest, and the entities re-lay as the subject's
+  own tree. Its marks are read from the code and a run of the stories (`modeller/heart.ts`): red,
+  an entity no document reaches, with the code that reads it (the wedding's `couples`, by `whose()`);
+  told, not asked for, a document the run told someone a story's `seen` does not name, with the
+  patch and its bytes; amber, a document whose telling grows as its holders² (the wedding's
+  everyone, chat's rooms). Each mark's ⓘ says why, and grows into the evidence. The page before it
+  (`modeller/page.html`) is no longer written.
+
 - **The modeller no longer invents a document per actor per page** (`modeller/from-stories.ts`):
   documents are read by `modeller/documents.ts` instead. hjeli's reachability and subscription
   closure, which asked what those invented documents watched, are no longer run, nor actor
