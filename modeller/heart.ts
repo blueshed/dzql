@@ -82,6 +82,19 @@ export function squared(rows: StoryRow[], person: (member: string) => string): M
   return out;
 }
 
+/**
+ * Whether a line of code names `table` as SQL does: after FROM, JOIN, INTO, UPDATE or TABLE, or in
+ * a string handed to a query (`.query(`, `.prepare(`, `.run(`). A property (`Object.keys`), a word
+ * in the code, a comment: none of them is the table.
+ */
+export function inSql(line: string, table: string): boolean {
+  if (/^\s*(\/\/|\/\*|\*|--)/.test(line)) return false;
+  const name = `["'\`]?(?<![.\\w])${table}\\b`;
+  if (new RegExp(`\\b(?:FROM|JOIN|INTO|UPDATE|TABLE(?:\\s+IF(?:\\s+NOT)?\\s+EXISTS)?)\\s+${name}`, "i").test(line)) return true;
+  if (!/\.(?:query|prepare|run)\s*(?:<[^(]*>)?\(/.test(line)) return false;
+  return [...line.matchAll(/(["'`])((?:(?!\1).)*)\1/g)].some((m) => new RegExp(name).test(m[2]!));
+}
+
 /** What a document kept in memory reads: the tables (by SQL name) named in the code of the one file that writes it -- `serverWrite`, naming `"<doc>:` -- or null when no one file keeps it alone. Comments don't count. */
 export function keeper(doc: string, docs: string[], files: File[], tables: { name: string; sql: string }[]): { file: string; reads: string[] } | null {
   const code = (f: File) => f.lines.filter((l) => !/^\s*(\/\/|\/\*|\*)/.test(l));
@@ -89,7 +102,7 @@ export function keeper(doc: string, docs: string[], files: File[], tables: { nam
   const writers = files.filter((f) => code(f).some((l) => l.includes("serverWrite(")) && names(f, doc));
   const file = writers.length === 1 ? writers[0]! : null;
   if (!file || docs.some((d) => d !== doc && names(file, d))) return null;
-  return { file: file.path, reads: tables.filter((t) => code(file).some((l) => new RegExp(`\\b${t.sql}\\b`).test(l))).map((t) => t.name) };
+  return { file: file.path, reads: tables.filter((t) => file.lines.some((l) => inSql(l, t.sql))).map((t) => t.name) };
 }
 
 /** The function a line of code reads through: where the line names a query (`const q = db.query(...)`), the function that first runs it; else the line's own. Null at the top level. */

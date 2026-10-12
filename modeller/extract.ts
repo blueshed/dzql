@@ -9,7 +9,7 @@ import type { Example } from "../src/example";
 import { parsePointer } from "../src/json-pointer";
 import { run } from "../src/harness";
 import { documentsIn, heardAs, privateEntry, read, typeOf, watch, exampleAt } from "./documents";
-import { heartOf } from "./heart";
+import { heartOf, inSql } from "./heart";
 
 type Column = { type: string; nullable?: boolean };
 type Permit = { doc: string; path: string; ops: string[]; dated: boolean };
@@ -40,7 +40,7 @@ export async function extract(at: string) {
   }
   const touches = (sqlName: string) =>
     files.flatMap(({ path, lines }) =>
-      lines.flatMap((line, i) => (new RegExp(`\\b${sqlName}\\b`).test(line) ? [{ at: `${path}:${i + 1}`, seed: path.endsWith(".sql"), line: line.trim().slice(0, 140) }] : [])),
+      lines.flatMap((line, i) => (inSql(line, sqlName) ? [{ at: `${path}:${i + 1}`, seed: path.endsWith(".sql"), line: line.trim().slice(0, 140) }] : [])),
     );
   const schema = Object.entries(deltaMod.schema.tables as Record<string, { name: string; parent?: { collection: string }; columns: Record<string, Column> }>).map(([key, t]) => ({
     name: key,

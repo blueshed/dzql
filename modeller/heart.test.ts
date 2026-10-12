@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import type { StoryRow, Told } from "./documents";
-import { bornInto, keeper, readBy, shape, squared, toldNotAsked, touches, unreached } from "./heart";
+import { bornInto, inSql, keeper, readBy, shape, squared, toldNotAsked, touches, unreached } from "./heart";
 import { BOX, layout } from "./layout";
 import { extract } from "./extract";
 import { documentsIn } from "./documents";
@@ -75,6 +75,20 @@ describe("a document: its telling, its reach, its shape", () => {
 });
 
 describe("an entity: red, who reads it, where it sits", () => {
+  test("a table is named where SQL names it: after FROM, JOIN, INTO, UPDATE or TABLE, or in a string a query is handed; never a property or a comment", () => {
+    expect(inSql("const ks = Object.keys(x);", "keys")).toBe(false);
+    expect(inSql("for (const k of keys) {}", "keys")).toBe(false);
+    expect(inSql('db.query("SELECT * FROM keys");', "keys")).toBe(true);
+    expect(inSql("  SELECT g.*, h.answer FROM guests g JOIN keys h ON h.id = g.keys_id", "keys")).toBe(true);
+    expect(inSql('INSERT INTO "keys" (id) VALUES (1);', "keys")).toBe(true);
+    expect(inSql("db.run(`update keys set hash = ?`, [h]);", "keys")).toBe(true);
+    expect(inSql("CREATE TABLE IF NOT EXISTS keys (id TEXT)", "keys")).toBe(true);
+    expect(inSql('db.prepare<{ n: number }, []>("SELECT keys.id, n FROM sums")', "keys")).toBe(true); // in the query's string
+    expect(inSql('db.query("SELECT Object.keys(x)")', "keys")).toBe(false);
+    expect(inSql("// read FROM keys", "keys")).toBe(false);
+    expect(inSql("-- INSERT INTO keys", "keys")).toBe(false);
+  });
+
   test("red: a table no document reaches", () => {
     expect(unreached(["weddings", "couples", "visits"], [["weddings"], ["visits"], []])).toEqual(["couples"]);
   });

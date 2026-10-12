@@ -114,6 +114,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The modeller reads a document named with its id as its type** (`modeller/from-stories.ts`):
   Japan (`ask:1`) and the picnic (`ask:2`) are one entity, `Ask`, not `Ask:1` and `Ask:2`.
+- **The modeller finds a table's code only where SQL names it** (`inSql`, modeller/heart.ts):
+  after FROM, JOIN, INTO, UPDATE or TABLE, or in a string handed to a query, never in a comment or
+  as a property, so a table called `keys` is not read by every `Object.keys`.
 
 ## [0.51.0] - 2026-09-28
 
