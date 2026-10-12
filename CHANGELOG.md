@@ -37,8 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wedding`: 45 paths to 0). A field is emptied by replacing it with nothing, never removed; a
   list row's parent (`*_id`) and a dish's or a drink's order are the server's; a reply to an ask is
   changed, never taken back; a visit's `/reading`, `/filter` and `/hide` are written by the
-  collection's name, and its page is gone to, never removed. Six stories tell what the couple's
-  page already offered: a gift, an event and a place to stay edited, and each taken off.
+  collection's name, and its page is gone to, never removed. Eight stories tell what the pages
+  already offered: a gift, an event and a place to stay edited, and each taken off; a drink
+  renamed; a claim given back.
 - **The ticker's desk and leave's session permit what their pages write, and nothing more**
   (`bun run modeller`: ticker 4 paths to 0, leave 1 to 0): a page is gone to, never removed, and
   the desk's `/reading`, `/filter` and `/hide` are written by the collection's name.

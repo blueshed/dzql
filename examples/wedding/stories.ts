@@ -91,6 +91,7 @@ export const stories: Stories = {
     // ── Gifts ──
     story("The Okafors claim the casserole, and it leaves Ben's list", { as: "okafors", from: "?gifts", does: household("add", "/claims/-", 1), seen: { okafors: "?gifts", couple: "?gifts", ben: "?gifts" } }),
     story("The Okafors give to the honeymoon, and Ben still can", { as: "okafors", from: "?gifts", does: household("add", "/claims/-", 2), seen: { okafors: "?gifts", couple: "?gifts", ben: "?gifts" } }),
+    story("The Okafors give the casserole back, and Ben may claim it", { as: "okafors", premise: { okafors: [household("add", "/claims/-", 1)] }, from: "?gifts", does: household("remove", "/claims/1"), seen: { okafors: "?gifts", couple: "?gifts", ben: "?gifts" } }),
     story("Ben claims the knives", { as: "ben", from: "?gifts", does: household("add", "/claims/-", 3), seen: { ben: "?gifts", benToo: "?gifts", couple: "?gifts", okafors: "?gifts" } }),
 
     // ── The couple keep the wedding ──
@@ -109,6 +110,7 @@ export const stories: Stories = {
     story("The couple rename the main", { as: "couple", from: "?keep=courses/2", does: board("replace", "/courses/2/name", "Mains"), seen: { couple: "?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
     story("The couple offer a vegan main", { as: "couple", from: "?keep=courses/2", does: board("add", "/courses/2/dishes/-", { name: "Aubergine tagine", dietary: "vg, gf" }), seen: { couple: "?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
     story("The couple take the beef off", { as: "couple", from: "?keep=courses/2", does: board("remove", "/courses/2/dishes/4"), seen: { couple: "?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
+    story("The couple call the Rioja by its estate, and a guest choosing a drink sees the new name", { as: "couple", from: "?keep=courses/2", does: board("replace", "/courses/2/drinks/3/name", "Rioja, Muga"), seen: { couple: "?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
     story("The couple mark the crab as gluten free", { as: "couple", from: "?keep=courses/1", does: board("replace", "/courses/1/dishes/3/dietary", "gf"), seen: { couple: "?keep=courses/1", okafors: "?guest=2", ben: "?guest=3" } }),
     story("The couple add a gift, and it is on every list", { as: "couple", from: "?gifts", does: board("add", "/gifts/-", { name: "A tree for the garden", description: "A crab apple." }), seen: { couple: "?gifts", okafors: "?gifts", ben: "?gifts" } }),
     story("The couple add an event to the day", { as: "couple", from: "?events", does: board("add", "/events/-", { name: "Fireworks", when_at: "2027-04-02T22:00" }), seen: { couple: "?events", okafors: "?day", ben: "?day" } }),
