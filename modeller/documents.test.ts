@@ -109,7 +109,7 @@ describe("from a run", () => {
     expect(refused.changes[0]!.told[0]!.how).toStartWith("refused");
     const text = format("chat", r);
     expect(text).toContain("permit allows session add /name — to ada, bob, cy, dee, eve");
-    expect(text).toContain("Read-only (held, written by no story): here, lobby");
+    expect(text).toContain("Read-only (held, written by nobody): here, lobby");
     expect(text).toContain("11. closes a tab · Bob closes his tab");
     expect(text).toContain("2. cannot · Without a name");
   }, 30000);
@@ -165,6 +165,6 @@ describe("from a run", () => {
     // a kernel's document (what a session is told) is no change of the example's; the render after a patch is that change reaching the page
     expect(r.stories[0]!.changes).toEqual([{ doc: "room:general", told: [{ member: "ada", how: "patch 1 op + page", bytes: expect.any(Number), seen: true }] }]);
     expect(r.stories[3]!.changes).toEqual([]);
-    expect(format("x", r)).toContain("- cellar: defined, never written by a story, never held in the run");
+    expect(format("x", r)).toContain("- cellar: defined, never written, never held in the run");
   });
 });

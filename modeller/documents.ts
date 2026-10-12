@@ -39,9 +39,9 @@ export type Reading = {
   stories: StoryRow[];
   /** An action whose document the example does not have, or whose author did not hold it as they acted. */
   noDocument: Finding[];
-  /** A document defined, never written by a story, and never held in the run. */
+  /** A document defined, never written by a person (a story, the cast, going somewhere), and never held in the run. */
   unneeded: string[];
-  /** Held, and written by no story: read by people, kept by someone else (a catalogue, who is here). */
+  /** Held, and written by no person: read by people, kept by someone else (a catalogue, who is here). */
   readOnly: string[];
   /** What permit allows that no story does and no control the run saw offers. It over-reports: a shape may refuse it, and a value is never tried. */
   permitAllows: Allowed[];
@@ -208,7 +208,9 @@ export function read(stories: Stories, example?: Example, watched?: Watched): Re
     }
   }
 
-  const written = new Set(stories.stories.flatMap((s) => (s.does ? [typeOf(s.does.doc)] : [])));
+  // written by a story, by the cast as it sets up, or by going somewhere (`goTo`): people's writes all
+  const going = stories.goTo ? [stories.goTo("")] : [];
+  const written = new Set([...stories.stories.flatMap((s) => (s.does ? [s.does] : [])), ...Object.values(stories.cast).flat(), ...going].map((w) => typeOf(w.doc)));
   const held = (doc: string) => actors.some((a) => grid[a]![doc]!.held > 0);
   const unneeded = watched ? types.filter((t) => !written.has(t.name) && !held(t.name)).map((t) => t.name) : [];
   const readOnly = types.filter((t) => !written.has(t.name) && held(t.name)).map((t) => t.name);
@@ -281,10 +283,10 @@ export function format(name: string, r: Reading): string {
   out();
   if (r.ran) {
     out(`## Documents no story needs (${r.unneeded.length})`);
-    for (const d of r.unneeded) out(`- ${d}: defined, never written by a story, never held in the run`);
+    for (const d of r.unneeded) out(`- ${d}: defined, never written, never held in the run`);
     out();
   }
-  out(`Read-only (held, written by no story): ${r.readOnly.join(", ") || "none"}`);
+  out(`Read-only (held, written by nobody): ${r.readOnly.join(", ") || "none"}`);
   out();
   if (r.ran) {
     out(`## Writes the server accepts that no page offers (${r.permitAllows.length})`);
