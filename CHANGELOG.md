@@ -15,9 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The modeller reads documents** (`modeller/documents.ts`, tooling, not shipped): `bun run modeller
   <example>` starts with a grid of who holds, writes, is refused and is told of each document, from
   a run of the stories (or from the stories alone, for one with no app yet), and flags, without
-  failing anything, an action with no document in front of its author, a document no story needs,
-  and a write permit allows that no story does and no page offers ("permit allows", eta #32: it
-  over-reports). Its page (`bun run modeller:page <example>`) opens on the picture: a grid of
+  failing anything, an action with no document in front of its author, a write that tells nobody,
+  a document no story needs (a delta.ts document no compartment owns among them), and what permit
+  allows that no story does and no page offers, by path with its verbs ("permit allows", eta #32:
+  it over-reports). A session's id never reaches the page: its documents go by their type alone,
+  and its ledger entries without their values. Its page (`bun run modeller:page <example>`) opens on the picture: a grid of
   actors by documents (held, wrote, refused, told), and for the chosen story one row per document
   it changed, saying who was told and how (a patch, the parts that followed, the bytes).
 
@@ -25,8 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The modeller no longer invents a document per actor per page** (`modeller/from-stories.ts`):
   documents are read by `modeller/documents.ts` instead. hjeli's reachability and subscription
-  closure, which asked what those invented documents watched and so passed by construction, are no
-  longer run, nor actor closure's dead actor, which read them; the report's counts lose `pages`.
+  closure, which asked what those invented documents watched, are no longer run, nor actor
+  closure's dead actor, which read them; the one thing they could find, a write nobody notices (an
+  empty `seen`), is flagged by the documents reading as a write that tells nobody. The report's
+  counts lose `pages`.
 - Type checks run with `bun check` (TypeScript 7) in place of `tsc`; the `check` script is gone, so
   `bun check` is Bun's own. eta requires Bun 1.4.3 or later (`engines`, `packageManager`).
 

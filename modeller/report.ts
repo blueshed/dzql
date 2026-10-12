@@ -4,9 +4,10 @@
 //
 // Two of the six are not run: reachability and subscription closure ask what a document watches,
 // and documents are documents.ts's now, read from the stories, the compartments and a run -- not
-// invented one per actor per page, which made both pass by construction. Nor is actor closure's
-// dead actor, which read those pages: an actor with nothing in front of them and nothing written
-// is a row of dots in the documents' grid.
+// invented one per actor per page, over which the one thing either could find was a write nobody
+// notices (an empty `seen`): documents.ts flags that as a write that tells nobody. Nor is actor
+// closure's dead actor, which read those pages: an actor with nothing in front of them and nothing
+// written is a row of dots in the documents' grid.
 
 import type { Stories } from "../src/stories";
 import type { Gap, Model } from "./model/grammar";

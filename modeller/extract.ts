@@ -7,7 +7,7 @@ import type { Stories, Story } from "../src/stories";
 import type { Example } from "../src/example";
 import { parsePointer } from "../src/json-pointer";
 import { run } from "../src/harness";
-import { heardAs, read, watch } from "./documents";
+import { documentsIn, heardAs, privateEntry, read, watch } from "./documents";
 
 type Column = { type: string; nullable?: boolean };
 type Permit = { doc: string; path: string; ops: string[]; dated: boolean };
@@ -18,25 +18,6 @@ export function rulesIn(src: string): { path: RegExp; ops: string[]; dated?: boo
   if (!body) return [];
   const pre = [...src.matchAll(/^const (LIST|CHILD) = "[^"]*";$/gm)].map((m) => m[0]).join("\n");
   return new Function(`${pre}\nreturn ${body};`)();
-}
-
-/** delta.ts's documents: each `defineDoc` (on the ledger when its `registerDocs` says so) and each `registerMemory`. */
-export function documentsIn(src: string, session: string | null): { name: string; root: string | null; include: string[]; kind: string; note: string }[] {
-  const lists = new Map<string, string[]>();
-  for (const m of src.matchAll(/const (\w+) = \[([^\]]*)\]/g)) lists.set(m[1]!, [...m[2]!.matchAll(/"(\w+)"/g)].map((x) => x[1]!));
-  const documents = [];
-  for (const call of src.split(/registerDocs\(/).slice(1)) {
-    const ledger = /ledger: true/.test(call.split("registerMemory(")[0]!);
-    for (const m of call.matchAll(/defineDoc\("(\w+):", \{ root: "(\w+)", include: (\[[^\]]*\]|\w+)/g)) {
-      const raw = m[3]!;
-      const include = raw.startsWith("[")
-        ? raw.slice(1, -1).split(",").map((s) => s.trim()).filter(Boolean).flatMap((s) => (s.startsWith("...") ? lists.get(s.slice(3)) ?? [] : [s.replace(/"/g, "")]))
-        : lists.get(raw) ?? [];
-      documents.push({ name: m[1]!, root: m[2]!, include, kind: ledger ? "written" : "written, no ledger", note: m[1] === session ? "the session: who you are and where" : "" });
-    }
-  }
-  for (const m of src.matchAll(/registerMemory\(delta\.server, \{ prefix: "(\w+):"/g)) documents.push({ name: m[1]!, root: null, include: [], kind: "live", note: "kept by the server, in memory" });
-  return documents;
 }
 
 export async function extract(name: string) {
@@ -97,6 +78,7 @@ export async function extract(name: string) {
   const watched = watch(example);
   const report = await run(example, stories, watched.observe);
   const traces = Map.groupBy(watched.traces, (t) => t.story);
+  const shown = privateEntry(example); // a session's id is a credential: it never reaches the page
   const outcome = new Map(report.outcomes.map((o) => [o.name, o.failures]));
 
   const storyRows = stories.stories.map((s: Story, i) => {
@@ -114,7 +96,7 @@ export async function extract(name: string) {
       untold: s.untold ?? [],
       premise: s.premise !== undefined,
       failures: outcome.get(s.name) ?? ["not run"],
-      sequence: (traces.get(s.name) ?? []).map((t) => ({ phase: t.phase, as: t.as, write: t.write, ledger: t.ledger, heard: t.heard.map((h) => ({ member: h.member, messages: h.messages.map(heardAs) })) })),
+      sequence: (traces.get(s.name) ?? []).map((t) => ({ phase: t.phase, as: t.as, write: t.write, ledger: t.ledger.map(shown), heard: t.heard.map((h) => ({ member: h.member, messages: h.messages.map(heardAs) })) })),
     };
   });
 
@@ -125,5 +107,5 @@ export async function extract(name: string) {
   const todo = (await Bun.file(`${import.meta.dir}/../todo.jsonl`).text()).split("\n").filter(Boolean).map((l) => JSON.parse(l));
   const tasks = todo.map((t: { n: number; status: string; summary: string; area: string }) => ({ n: t.n, status: t.status, summary: t.summary, area: t.area }));
 
-  return { example: name, session, cast, castSetup, tables, documents, permits, stories: storyRows, harness: { passed: report.passed, failed: report.failed }, tasks, read: read(stories, example, watched) };
+  return { example: name, session, cast, castSetup, tables, documents, permits, stories: storyRows, harness: { passed: report.passed, failed: report.failed }, tasks, read: read(stories, example, watched, documents.map((d) => d.name)) };
 }

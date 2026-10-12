@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { story, type Stories } from "../src/stories";
 import type { Heard, Trace } from "../src/harness";
-import { attempt, documentsOf, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "./documents";
+import { attempt, documentsIn, documentsOf, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "./documents";
 import { example as chat } from "../examples/chat/index";
 import { stories as chatStories } from "../examples/chat/stories";
 import { stories as londons } from "../examples/londons/stories";
 
 const cell = (r: Reading, actor: string, doc: string) => r.grid[actor]![doc]!;
-const allows = (r: Reading) => r.permitAllows.map((a) => `${a.doc} ${a.op} ${a.path}`);
+const allows = (r: Reading, doc: string, path: string) => r.permitAllows.find((a) => a.doc === doc && a.path === path)?.ops;
 
 describe("words", () => {
   test("a document's type, a path's shape, and what throws is undefined", () => {
@@ -96,8 +96,9 @@ describe("from a run", () => {
     expect(r.noDocument).toEqual([]);
     expect(r.unneeded).toEqual([]);
     expect(r.readOnly).toEqual(["here", "lobby"]);
-    expect(allows(r)).toEqual(["session add /name", "session add /room"]);
-    expect(r.permitAllows[0]!.who).toEqual(["ada", "bob", "cy", "dee", "eve"]);
+    // its session's permit lets any op on /name and /room, but an add on a field is the replace a story does
+    expect(r.permitAllows).toEqual([]);
+    expect(r.tellsNobody).toEqual([]);
     // Ada says hello: the room tells Ada and Bob, in parts; Cy, in the kitchen, holds another room
     const hello = r.stories.find((s) => s.name.startsWith("Ada says hello"))!;
     expect(hello.changes.map((c) => c.doc)).toEqual(["room:general"]);
@@ -108,7 +109,7 @@ describe("from a run", () => {
     const refused = r.stories.find((s) => s.kind === "cannot")!;
     expect(refused.changes[0]!.told[0]!.how).toStartWith("refused");
     const text = format("chat", r);
-    expect(text).toContain("permit allows session add /name — to ada, bob, cy, dee, eve");
+    expect(text).toContain("## Writes the server accepts that no page offers (0 paths)");
     expect(text).toContain("Read-only (held, written by nobody): here, lobby");
     expect(text).toContain("11. closes a tab · Bob closes his tab");
     expect(text).toContain("2. cannot · Without a name");
@@ -119,11 +120,13 @@ describe("from a run", () => {
     expect(r.noDocument).toEqual([]);
     expect(r.unneeded).toEqual([]);
     expect(r.readOnly).toEqual(["wedding", "welcome", "everyone"]);
-    expect(allows(r)).toContain("board remove /message");
-    expect(allows(r)).toContain("household remove /message");
-    expect(allows(r)).not.toContain("board replace /message"); // a story does it
-    expect(allows(r)).not.toContain("board replace /courses/*/dishes/*/name"); // no story does it; a field on the couple's page offers it
+    expect(allows(r, "board", "/message")).toEqual(["remove"]); // a story replaces it
+    expect(allows(r, "household", "/message")).toEqual(["remove"]);
+    expect(allows(r, "board", "/courses/*/dishes/*/name")).toEqual(["remove"]); // no story replaces it; a field on the couple's page offers it
+    expect(allows(r, "session", "/hide")).toEqual(["replace", "remove"]); // its add is that replace
+    expect(allows(r, "session", "/code")).toBeUndefined(); // a story replaces it, and an add is that replace
     expect(r.permitAllows.find((a) => a.doc === "board")!.who).toEqual(["couple"]);
+    expect(format("wedding", r)).toContain("- permit allows household /message: remove — to okafors, ben, benToo");
     expect(cell(r, "couple", "household").refused).toBe(1);
     // the couple's message reaches every welcome; the households hold the wedding, and are sent it unseen
     const message = r.stories.find((s) => s.name.startsWith("The couple change their message"))!;
@@ -132,7 +135,16 @@ describe("from a run", () => {
     expect(format("wedding", r)).toContain("(not in seen)");
   }, 60000);
 
-  test("what the run cannot say from the stories: a document nobody needs, a write with nothing in front of its author, a document the example lacks", async () => {
+  test("a document delta.ts defines that no compartment owns, and no story uses, is one nobody needs", async () => {
+    const src = (await Bun.file(`${import.meta.dir}/../examples/chat/delta.ts`).text()) + '\nregisterDocs(delta.server, db, schema, [defineDoc("archive:", { root: "rooms", include: [] })]);\n';
+    const defined = documentsIn(src, null).map((d) => d.name);
+    expect(defined).toEqual(["session", "room", "archive", "here", "lobby"]);
+    const r = read(chatStories, chat, { traces: [], controls: new Set(), allowed: new Map() }, defined);
+    expect(r.docs).toContainEqual({ name: "archive", kind: "no compartment" });
+    expect(r.unneeded).toContain("archive");
+  });
+
+  test("what the run cannot say from the stories: a document nobody needs, a write with nothing in front of its author, a document the example lacks, a write that tells nobody", async () => {
     const stories: Stories = {
       cast: chatStories.cast,
       stories: [
@@ -140,6 +152,8 @@ describe("from a run", () => {
         story("Ada writes to a document nobody keeps", { as: "ada", cannot: { doc: "attic", ops: [{ op: "add", path: "/-", value: 1 }] } }),
         story("The feed writes from no page", { as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "tick" }] }, offPage: true, seen: ["ada"] }),
         story("A story the run never told", { as: "ada", does: { doc: "room", ops: [] }, seen: ["ada"] }),
+        story("Ada files a room away", { as: "ada", cannot: { doc: "archive", ops: [{ op: "add", path: "/-", value: 1 }] } }),
+        story("Ada says something nobody sees", { as: "ada", does: { doc: "room", ops: [{ op: "add", path: "/messages/-", value: "shh" }] }, seen: [] }),
       ],
     };
     const step = (name: string, heard: Trace["heard"]): Trace => ({ story: name, phase: "does", as: "ada", heard, holds: [{ member: "ada", docs: ["told:x", "session:x"] }], ledger: [] });
@@ -155,16 +169,20 @@ describe("from a run", () => {
     w.observe(step(stories.stories[2]!.name, []));
     expect(w.controls).toEqual(new Set(["room add /messages/-"]));
     expect(w.allowed.size).toBe(0);
-    const r = read(stories, { ...chat, compartments: [...chat.compartments, { docType: "cellar", resolveDoc: () => undefined }] }, w);
+    const r = read(stories, { ...chat, compartments: [...chat.compartments, { docType: "cellar", resolveDoc: () => undefined }] }, w, ["archive"]);
     expect(r.noDocument).toEqual([
       { story: "Ada writes to a document nobody keeps", detail: "ada writes attic, a document the example does not have" },
+      { story: "Ada files a room away", detail: "ada writes archive, a document no compartment owns" },
       { story: "Ada says something with no room in front of her", detail: "ada writes room with no room in front of them" },
     ]);
-    expect(r.unneeded).toEqual(["here", "lobby", "cellar", "attic"]);
-    expect(r.docs.at(-1)).toEqual({ name: "attic", kind: "no compartment" });
+    expect(r.tellsNobody).toEqual([{ story: "Ada says something nobody sees", detail: "ada writes room, and the story says nobody sees it" }]);
+    expect(r.unneeded).toEqual(["here", "lobby", "cellar", "archive", "attic"]);
+    expect(r.docs.at(-1)).toEqual({ name: "attic", kind: "not defined" });
     // a kernel's document (what a session is told) is no change of the example's; the render after a patch is that change reaching the page
     expect(r.stories[0]!.changes).toEqual([{ doc: "room:general", told: [{ member: "ada", how: "patch 1 op + page", bytes: expect.any(Number), seen: true }] }]);
     expect(r.stories[3]!.changes).toEqual([]);
-    expect(format("x", r)).toContain("- cellar: defined, never written, never held in the run");
+    const text = format("x", r);
+    expect(text).toContain("- cellar: defined, never written, never held in the run");
+    expect(text).toContain("## Writes that tell nobody (1)\n- Ada says something nobody sees — ada writes room, and the story says nobody sees it");
   });
 });

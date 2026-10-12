@@ -731,10 +731,11 @@ for (const [doc, rs] of Object.entries(Object.groupBy(datedRules, (p) => p.doc))
 // ── documents: who holds what, read from the run (documents.ts) ──
 const R = DATA.read;
 for (const f of R.noDocument) FLAGS.push({ level: "flag", on: `story:${S.find((s) => s.name === f.story).n}`, title: `an action with no document: ${f.detail}`, why: f.story });
+for (const f of R.tellsNobody) FLAGS.push({ level: "flag", on: `story:${S.find((s) => s.name === f.story).n}`, title: `a write that tells nobody: ${f.detail}`, why: f.story });
 for (const d of R.unneeded) FLAGS.push({ level: "flag", on: `doc:${d}`, title: `${d}: no story needs it`, why: "Defined, never written by anyone, and never in front of anyone in the run." });
-for (const [doc, as] of Object.entries(Object.groupBy(R.permitAllows, (a) => a.doc))) FLAGS.push({ level: "amber", on: `doc:${doc}`, title: `${doc}: permit allows ${as.length} writes no page offers`,
+for (const [doc, as] of Object.entries(Object.groupBy(R.permitAllows, (a) => a.doc))) FLAGS.push({ level: "amber", on: `doc:${doc}`, title: `${doc}: permit allows writes no page offers, at ${as.length} ${as.length === 1 ? "path" : "paths"}`,
   why: "Each path in what a member held, per verb, put to the compartment's permit: these it lets through, and no story does them and no control the run drew offers them. It over-reports: a shape may still refuse one, and a value is never tried.",
-  code: as.map((a) => ({ at: `${a.op} ${a.path}`, line: a.who.join(", ") })) });
+  code: as.map((a) => ({ at: `${a.path}: ${a.ops.join(", ")}`, line: a.who.join(", ") })) });
 
 const MARK = [["held", "h", "held", "their page read it"], ["written", "w", "wrote", "they wrote it"], ["refused", "r", "refused", "they were refused"], ["told", "t", "told", "they were told of a change"]];
 function holdsGrid(hotActor, hotDoc) {
@@ -757,8 +758,9 @@ function findings() {
   const box = (cls, title, items, open) => `<details class="${items.length ? cls : ""}" ${open && items.length ? "open" : ""}><summary>${esc(title)} (${items.length})</summary>${items.length ? `<ul>${items.join("")}</ul>` : ""}</details>`;
   return `<div class="findings">
     ${box("flag", "Actions with no document", R.noDocument.map((f) => `<li>${esc(f.story)} — ${esc(f.detail)}</li>`), true)}
+    ${box("flag", "Writes that tell nobody", R.tellsNobody.map((f) => `<li>${esc(f.story)} — ${esc(f.detail)}</li>`), true)}
     ${box("flag", "Documents no story needs", R.unneeded.map((d) => `<li>${esc(d)}: defined, never written, never held in the run</li>`), true)}
-    ${box("amber", "Writes the server accepts that no page offers — permit allows, and over-reports", R.permitAllows.map((a) => `<li><span class="mono">${esc(a.doc)} ${esc(a.op)} ${esc(a.path)}</span> — to ${esc(a.who.join(", "))}</li>`), false)}
+    ${box("amber", "Writes the server accepts that no page offers — permit allows, and over-reports; paths", R.permitAllows.map((a) => `<li><span class="mono">${esc(a.doc)} ${esc(a.path)}</span>: ${esc(a.ops.join(", "))} — to ${esc(a.who.join(", "))}</li>`), false)}
     <div class="sub">Read-only (held, written by nobody): ${esc(R.readOnly.join(", ") || "none")}</div></div>`;
 }
 function renderDocuments() {

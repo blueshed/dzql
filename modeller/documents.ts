@@ -13,6 +13,7 @@
 // The checks are advice: they flag, they never fail a run.
 
 import type { Example } from "../src/example";
+import type { Compartment } from "../src/compartments/compartment";
 import type { Stories, Story } from "../src/stories";
 import type { PatchOp } from "../src/json-patch";
 import { controlsOn, run, type Heard, type Trace } from "../src/harness";
@@ -25,8 +26,10 @@ export type Cell = { held: number; written: number; refused: number; told: numbe
 export type Told = { member: string; how: string; bytes: number; seen: boolean };
 /** One story, and for each document it changed, who was told and how. */
 export type StoryRow = { n: number; name: string; as: string; kind: "does" | "cannot" | "closesTab"; doc?: string; changes: { doc: string; told: Told[] }[] };
-/** A write the server's permit lets through: a document, an op and a path's shape (a row's id as `*`), and who it lets. */
-export type Allowed = { doc: string; op: string; path: string; who: string[] };
+/** One op the server's permit lets through: a document, the op and a path's shape (a row's id as `*`), and who it lets. */
+export type Let = { doc: string; op: string; path: string; who: string[] };
+/** What permit lets through at one path of a document, with the verbs: an `add` on a field it also lets be replaced acts as that replace, and is not said apart from it. */
+export type Allowed = { doc: string; path: string; ops: string[]; who: string[] };
 export type Finding = { story: string; detail: string };
 
 export type Reading = {
@@ -39,6 +42,8 @@ export type Reading = {
   stories: StoryRow[];
   /** An action whose document the example does not have, or whose author did not hold it as they acted. */
   noDocument: Finding[];
+  /** A write the story says nobody sees: an empty `seen`. */
+  tellsNobody: Finding[];
   /** A document defined, never written by a person (a story, the cast, going somewhere), and never held in the run. */
   unneeded: string[];
   /** Held, and written by no person: read by people, kept by someone else (a catalogue, who is here). */
@@ -74,6 +79,25 @@ export function heardAs(m: Heard) {
   return { kind: m.type, bytes };
 }
 const partKey = (target: string) => target.match(/data-eta-part="([^"]+)"/)?.[1] ?? target;
+
+/** delta.ts's documents: each `defineDoc` (on the ledger when its `registerDocs` says so) and each `registerMemory`. */
+export function documentsIn(src: string, session: string | null): { name: string; root: string | null; include: string[]; kind: string; note: string }[] {
+  const lists = new Map<string, string[]>();
+  for (const m of src.matchAll(/const (\w+) = \[([^\]]*)\]/g)) lists.set(m[1]!, [...m[2]!.matchAll(/"(\w+)"/g)].map((x) => x[1]!));
+  const documents = [];
+  for (const call of src.split(/registerDocs\(/).slice(1)) {
+    const ledger = /ledger: true/.test(call.split("registerMemory(")[0]!);
+    for (const m of call.matchAll(/defineDoc\("(\w+):", \{ root: "(\w+)", include: (\[[^\]]*\]|\w+)/g)) {
+      const raw = m[3]!;
+      const include = raw.startsWith("[")
+        ? raw.slice(1, -1).split(",").map((s) => s.trim()).filter(Boolean).flatMap((s) => (s.startsWith("...") ? lists.get(s.slice(3)) ?? [] : [s.replace(/"/g, "")]))
+        : lists.get(raw) ?? [];
+      documents.push({ name: m[1]!, root: m[2]!, include, kind: ledger ? "written" : "written, no ledger", note: m[1] === session ? "the session: who you are and where" : "" });
+    }
+  }
+  for (const m of src.matchAll(/registerMemory\(delta\.server, \{ prefix: "(\w+):"/g)) documents.push({ name: m[1]!, root: null, include: [], kind: "live", note: "kept by the server, in memory" });
+  return documents;
+}
 
 type Row = Record<string, unknown>;
 const isRow = (v: unknown): v is Row => typeof v === "object" && v !== null && "id" in v && typeof (v as Row).id !== "object";
@@ -119,7 +143,7 @@ export function probes(value: unknown, under?: string): { op: PatchOp; shape: st
 }
 
 /** What a run says, read as it goes: every trace, the controls its pages drew, and what permit lets each member write to what is in front of them. */
-export type Watched = { traces: Trace[]; controls: Set<string>; allowed: Map<string, Allowed> };
+export type Watched = { traces: Trace[]; controls: Set<string>; allowed: Map<string, Let> };
 
 /**
  * An observer for `run`: keeps each trace, and at each story's step -- while its state stands --
@@ -162,30 +186,52 @@ const blank = (): Cell => ({ held: 0, written: 0, refused: 0, told: 0 });
 const kindOf = (s: Story): StoryRow["kind"] => (s.does ? "does" : s.cannot ? "cannot" : "closesTab");
 const seenBy = (s: Story): string[] => (Array.isArray(s.seen) ? s.seen : Object.keys(s.seen ?? {}));
 
-/** The documents of an example: from its stories, and -- given the example and a run of them -- from its compartments and what the run saw. */
-export function read(stories: Stories, example?: Example, watched?: Watched): Reading {
+/** A document as a page about it may name it: a session's own (`perSession`) by its type alone, since its id is a credential. */
+export function privately(compartments: Compartment[]): (doc: string) => string {
+  const perSession = new Set(compartments.filter((c) => c.perSession).map((c) => c.docType));
+  return (doc) => (perSession.has(typeOf(doc)) ? typeOf(doc) : doc);
+}
+
+/** A ledger entry as a page about it may show it: its document named `privately`, and a session's own entry without its values, whose rows carry the session's id. */
+export function privateEntry(example: Example): (entry: Trace["ledger"][number]) => Trace["ledger"][number] {
+  const name = privately(example.compartments);
+  const bare = (ops: PatchOp[]) => ops.map(({ op, path }) => ({ op, path }) as PatchOp);
+  return (e) => (name(e.doc) === e.doc ? e : { ...e, doc: name(e.doc), ops: bare(e.ops), inverse: bare(e.inverse) });
+}
+
+/**
+ * The documents of an example: from its stories, and -- given the example and a run of them -- from
+ * its compartments and what the run saw. `defined` names the documents its delta.ts defines
+ * (`documentsIn`): one no compartment owns is a document too, and nobody can be shown it.
+ */
+export function read(stories: Stories, example?: Example, watched?: Watched, defined: string[] = []): Reading {
   const write = (s: Story) => s.does ?? s.cannot;
   const types: Reading["docs"] = example ? example.compartments.map((c) => ({ name: c.docType, kind: c.kind ?? "written" })) : [];
+  for (const name of defined) if (!types.some((t) => t.name === name)) types.push({ name, kind: "no compartment" });
   for (const s of stories.stories) {
     const w = write(s);
-    if (w && !types.some((t) => t.name === typeOf(w.doc))) types.push({ name: typeOf(w.doc), kind: example ? "no compartment" : "from the stories" });
+    if (w && !types.some((t) => t.name === typeOf(w.doc))) types.push({ name: typeOf(w.doc), kind: example ? "not defined" : "from the stories" });
   }
   const actors = [...new Set([...Object.keys(stories.cast), ...stories.stories.map((s) => s.as)])];
   const grid: Reading["grid"] = Object.fromEntries(actors.map((a) => [a, Object.fromEntries(types.map((t) => [t.name, blank()]))]));
   const cell = (actor: string, doc: string) => (grid[actor] ??= {})[doc] ??= blank();
-  const perSession = new Set(example?.compartments.filter((c) => c.perSession).map((c) => c.docType));
   const own = new Set(types.map((t) => t.name));
-  /** A document as the picture names it: a session's by its type alone, since its id is a credential; a kernel's (the ledger, what a session is told) not at all. */
-  const named = (doc: string): string | undefined => (!own.has(typeOf(doc)) ? undefined : perSession.has(typeOf(doc)) ? typeOf(doc) : doc);
+  const name = privately(example?.compartments ?? []);
+  /** A document as the picture names it (`privately`); a kernel's (the ledger, what a session is told) not at all. */
+  const named = (doc: string): string | undefined => (own.has(typeOf(doc)) ? name(doc) : undefined);
 
   const noDocument: Finding[] = [];
+  const tellsNobody: Finding[] = [];
   const rows: StoryRow[] = stories.stories.map((s, i) => {
     const w = write(s);
     const doc = w && typeOf(w.doc);
     const row: StoryRow = { n: i + 1, name: s.name, as: s.as, kind: kindOf(s), ...(doc && { doc }), changes: [] };
     if (doc && s.does) cell(s.as, doc).written++;
     if (doc && s.cannot) cell(s.as, doc).refused++;
-    if (doc && example && types.find((t) => t.name === doc)!.kind === "no compartment") noDocument.push({ story: s.name, detail: `${s.as} writes ${doc}, a document the example does not have` });
+    const kind = doc && example && types.find((t) => t.name === doc)!.kind;
+    if (kind === "not defined") noDocument.push({ story: s.name, detail: `${s.as} writes ${doc}, a document the example does not have` });
+    if (kind === "no compartment") noDocument.push({ story: s.name, detail: `${s.as} writes ${doc}, a document no compartment owns` });
+    if (doc && s.does && seenBy(s).length === 0) tellsNobody.push({ story: s.name, detail: `${s.as} writes ${doc}, and the story says nobody sees it` });
     if (watched || !doc || !s.does) return row;
     // the stories alone: the author needs the document in front of them, and whoever sees it must hold it
     const seen = seenBy(s);
@@ -215,14 +261,21 @@ export function read(stories: Stories, example?: Example, watched?: Watched): Re
   const unneeded = watched ? types.filter((t) => !written.has(t.name) && !held(t.name)).map((t) => t.name) : [];
   const readOnly = types.filter((t) => !written.has(t.name) && held(t.name)).map((t) => t.name);
 
-  // what permit allows that no story does and no control the run saw offers
+  // what permit allows that no story does and no control the run saw offers, by document and path:
+  // an add on a field that permit also lets be replaced is that replace, and goes with it
   const done = new Set(stories.stories.flatMap((s) => (s.does ? s.does.ops.map((op) => `${typeOf(s.does!.doc)} ${op.op} ${shapeOf(op.path)}`) : [])));
-  const permitAllows = [...(watched?.allowed.values() ?? [])].filter((a) => {
-    const key = `${a.doc} ${a.op} ${a.path}`;
-    return !done.has(key) && !watched!.controls.has(key);
-  });
+  const lets = [...(watched?.allowed.values() ?? [])];
+  const replaced = new Set(lets.filter((a) => a.op === "replace").map((a) => `${a.doc} ${a.path}`));
+  const byPath = new Map<string, Allowed>();
+  for (const a of lets) {
+    if ((a.op === "add" && replaced.has(`${a.doc} ${a.path}`)) || done.has(`${a.doc} ${a.op} ${a.path}`) || watched!.controls.has(`${a.doc} ${a.op} ${a.path}`)) continue;
+    const at = byPath.get(`${a.doc} ${a.path}`) ?? byPath.set(`${a.doc} ${a.path}`, { doc: a.doc, path: a.path, ops: [], who: [] }).get(`${a.doc} ${a.path}`)!;
+    at.ops.push(a.op);
+    for (const m of a.who) if (!at.who.includes(m)) at.who.push(m);
+  }
+  const permitAllows = [...byPath.values()];
 
-  return { ran: !!watched, docs: types, actors, grid, stories: rows, noDocument, unneeded, readOnly, permitAllows };
+  return { ran: !!watched, docs: types, actors, grid, stories: rows, noDocument, tellsNobody, unneeded, readOnly, permitAllows };
 }
 
 /**
@@ -256,7 +309,7 @@ export async function documentsOf(name: string): Promise<Reading> {
   const { example } = (await import(`${dir}/index.ts`)) as { example: Example };
   const watched = watch(example);
   await run(example, stories, watched.observe);
-  return read(stories, example, watched);
+  return read(stories, example, watched, documentsIn(await Bun.file(`${dir}/delta.ts`).text(), null).map((d) => d.name));
 }
 
 const MARKS: [keyof Cell, string][] = [["held", "H"], ["written", "W"], ["refused", "R"], ["told", "T"]];
@@ -281,6 +334,9 @@ export function format(name: string, r: Reading): string {
   out(`## Actions with no document (${r.noDocument.length})`);
   for (const f of r.noDocument) out(`- ${f.story} — ${f.detail}`);
   out();
+  out(`## Writes that tell nobody (${r.tellsNobody.length})`);
+  for (const f of r.tellsNobody) out(`- ${f.story} — ${f.detail}`);
+  out();
   if (r.ran) {
     out(`## Documents no story needs (${r.unneeded.length})`);
     for (const d of r.unneeded) out(`- ${d}: defined, never written, never held in the run`);
@@ -289,10 +345,10 @@ export function format(name: string, r: Reading): string {
   out(`Read-only (held, written by nobody): ${r.readOnly.join(", ") || "none"}`);
   out();
   if (r.ran) {
-    out(`## Writes the server accepts that no page offers (${r.permitAllows.length})`);
+    out(`## Writes the server accepts that no page offers (${r.permitAllows.length} ${r.permitAllows.length === 1 ? "path" : "paths"})`);
     out();
     out(`permit allows: each path in what a member holds, per verb, put to its compartment's permit, where no story does it and no control the run drew offers it. It over-reports: a shape may refuse what permit lets by, and a value is never tried.`);
-    for (const a of r.permitAllows) out(`- permit allows ${a.doc} ${a.op} ${a.path} — to ${a.who.join(", ")}`);
+    for (const a of r.permitAllows) out(`- permit allows ${a.doc} ${a.path}: ${a.ops.join(", ")} — to ${a.who.join(", ")}`);
     out();
   }
   out(`## Each story's changes, and who was told`);

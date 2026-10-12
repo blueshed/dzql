@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { story, type Stories } from "../src/stories";
 import { entityOf, fromStories, locate, noticing, pascal, readOp, singular } from "./from-stories";
 import { compare, format, judge } from "./report";
-import { documentsIn, extract, rulesIn } from "./extract";
+import { extract, rulesIn } from "./extract";
+import { documentsIn } from "./documents";
 import { stories as chat } from "../examples/chat/stories";
 import { stories as londons } from "../examples/londons/stories";
 
@@ -197,6 +198,9 @@ describe("the examples", () => {
   });
 });
 
+/** A session's id, as a page about the run must never show one: a version-4 UUID (a message's own id is a version 7). */
+const SESSION_ID = /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/;
+
 describe("extract: an example's facts, from its files and a run of its stories", () => {
   test("a compartment's rules, with the lists they name; none where its permit is code", () => {
     const rules = rulesIn(['const LIST = "(gifts|places)";', "const RULES: Rule[] = [", '  { path: /^\\/message$/, ops: ["replace"], dated: true },', "  { path: new RegExp(`^/${LIST}/-$`), ops: [\"add\"] },", "];"].join("\n"));
@@ -237,6 +241,16 @@ registerMemory(delta.server, { prefix: "everyone:", empty: () => ({}) });`;
     // the documents, as the same run read them: the picture's grid and each story's changes
     expect(facts.read.ran).toBe(true);
     expect(facts.read.stories.find((s) => s.name === say.name)!.changes.map((c) => c.doc)).toEqual(["room:general"]);
+    // a session's id is a credential: none reaches the page, in a document's name or a ledger's values
+    expect(JSON.stringify(facts)).not.toMatch(SESSION_ID);
+    expect(facts.stories[0]!.sequence[0]!.ledger[0]).toEqual({ doc: "session", undoable: 1, ops: [expect.objectContaining({ op: "replace" })], inverse: [expect.objectContaining({ op: "replace" })] });
+    expect(facts.stories[0]!.sequence[0]!.ledger[0]!.ops[0]).not.toHaveProperty("value");
+  }, 30000);
+
+  test("the ticker: its watchlist, a session's own document, reaches the page by its type alone", async () => {
+    const facts = await extract("ticker");
+    expect(JSON.stringify(facts)).not.toMatch(SESSION_ID);
+    expect(facts.stories.flatMap((s) => s.sequence.flatMap((t) => t.ledger.map((l) => l.doc)))).toContain("watchlist");
   }, 30000);
 
   test("the wedding: its rules, dated or not, its session, and the seed that makes a table's rows", async () => {
