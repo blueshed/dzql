@@ -117,6 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **holders² is a warning only where a document also tells someone no story asked.** Every holder told of every write is what a shared document is for -- a plan everyone in it follows, a chat room -- so where the stories ask for it the card says the cost (`every holder told of every write, as the stories ask: holders²`) without the amber mark. The wedding's everyone stays marked: it tells ben what no story asked.
 - **The modeller page's columns scroll on their own**, their heads kept in view: going down the stories no longer takes the documents and the entities off the screen. The page itself stays the height of the window (on a narrow screen the columns stack and the page scrolls); a popover follows its mark as a column scrolls.
 - **The modeller page fits a deep tree in its pane**: columns narrow to the room there is (never narrower than a box and its connector), laid out again as the window is resized; canyou-eta's four-deep teams → roots → asks → answers ran past the edge.
 - **The modeller reads a document named with its id as its type** (`modeller/from-stories.ts`):

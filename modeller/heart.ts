@@ -193,7 +193,8 @@ export function heartOf(f: {
       shape: d.root ? shape(head, d.root, d.include, parentOf) : [{ text: head, pad: 0 }, { text: how, pad: 14 }, ...reads.map((t) => ({ text: t, pad: 28 }))],
       held: holders.length,
       told: f.ran ? { count: told.length, bytes: told.reduce((a, t) => a + t.bytes, 0) } : null,
-      squared: grows ? { ...grows, doc: typeOf(grows.doc) } : null,
+      // holders² is what sharing costs; it is a warning only where the document also tells someone no story asked
+      squared: grows ? { ...grows, doc: typeOf(grows.doc), asked: !stories.some((s) => s.unasked.some((u) => u.doc === d.name)) } : null,
     };
   });
 

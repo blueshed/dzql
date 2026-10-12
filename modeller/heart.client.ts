@@ -137,20 +137,22 @@ function docCard(d: Doc, r: ReturnType<typeof related>) {
   const me = isSel("doc", d.name);
   const on = r.docs.has(d.name);
   const unasked = r.unaskedDocs.has(d.name);
-  const cls = ["doc", on && !me && "on", me && "me", unasked && "unasked", d.squared && "warn", sel.k !== "doc" && !on && !unasked && "dim"].filter(Boolean).join(" ");
-  const cost = d.squared ? infoButton({ kind: "cost", doc: d.name }, `Why is ${title(d.name)}'s cost marked?`) : "";
+  const warn = d.squared && !d.squared.asked; // sharing, as the stories ask, is no warning
+  const cls = ["doc", on && !me && "on", me && "me", unasked && "unasked", warn && "warn", sel.k !== "doc" && !on && !unasked && "dim"].filter(Boolean).join(" ");
+  const cost = warn ? infoButton({ kind: "cost", doc: d.name }, `Why is ${title(d.name)}'s cost marked?`) : "";
   const u = sel.k === "story" && unasked ? unaskedOf(story(sel.id), d.name)! : null;
   const told = u
     ? `<div class="doc-unasked"><span>told, not asked for · ${esc(list(u.told.map((t) => t.member)))}</span>${infoButton({ kind: "unasked", story: (sel as { id: number }).id, doc: d.name }, `Why is ${title(d.name)} marked?`)}</div>`
     : "";
   const more = me
-    ? `<div class="doc-more"><div class="shape">${d.shape.map((l) => `<div style="padding-left:${l.pad}px">${esc(l.text)}</div>`).join("")}</div><div class="cost${d.squared ? " warn" : ""}">${esc(costLine(d))}</div></div>`
+    ? `<div class="doc-more"><div class="shape">${d.shape.map((l) => `<div style="padding-left:${l.pad}px">${esc(l.text)}</div>`).join("")}</div><div class="cost${warn ? " warn" : ""}">${esc(costLine(d))}</div></div>`
     : "";
   return `<div class="${cls}"><div class="doc-top"><button class="doc-pick" data-pick="doc:${esc(d.name)}" data-key="doc:${esc(d.name)}" aria-pressed="${me}"><span class="doc-name">${esc(title(d.name))}</span><span class="doc-for">${esc(d.for)}</span></button>${cost}</div>${told}${more}</div>`;
 }
 
 function costLine(d: Doc) {
-  if (d.squared) return "a holder's write tells every holder: grows as holders²";
+  if (d.squared?.asked) return `held by ${d.held} · every holder told of every write, as the stories ask: holders²`;
+  if (d.squared) return "a holder's write tells every holder, some unasked: grows as holders²";
   if (!d.told) return `held by ${d.held}`;
   return `held by ${d.held} · told ${plural(d.told.count, "time")} in the run, ${bytes(d.told.bytes)}`;
 }

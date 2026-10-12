@@ -161,7 +161,7 @@ describe("the heart, from a run", () => {
     expect(h.entities.find((e) => e.name === "couples")!.code.filter((c) => !c.seed).map((c) => `${c.by} ${c.at}`)).toEqual(["whose documents/session.ts:52"]);
     expect(h.documents.filter((d) => d.squared).map((d) => d.name)).toEqual(["everyone"]);
     const everyone = h.documents.find((d) => d.name === "everyone")!;
-    expect(everyone).toMatchObject({ reach: ["weddings", "households", "guests", "claims"], computed: { by: "everyone.ts" }, for: "okafors, ben", squared: { story: 6, author: "okafors" } });
+    expect(everyone).toMatchObject({ reach: ["weddings", "households", "guests", "claims"], computed: { by: "everyone.ts" }, for: "okafors, ben", squared: { story: 6, author: "okafors", asked: false } }); // it also tells ben what no story asked: a warning
     const board = h.documents.find((d) => d.name === "board")!;
     expect(board.shape.slice(0, 4).map((l) => `${l.pad} ${l.text}`)).toEqual(["0 board:<wedding>", "14 weddings", "28 households", "42 guests"]);
     expect(h.documents.find((d) => d.name === "session")!.shape[0]!.text).toBe("session"); // a session's own: by its type alone
