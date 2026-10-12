@@ -16,13 +16,13 @@ registerApplet("calendar", {
     // late-<ms>: it hears no pointer, and writes the story's draft by itself, that long after it is mounted
     if (wrong.startsWith("late-")) {
       for (const type of ["pointerdown", "pointermove", "pointerup", "click"]) el.addEventListener(type, (e) => e.stopImmediatePropagation(), true);
-      setTimeout(() => send("team", [draft]), Number(wrong.slice(5)));
+      setTimeout(() => send("session", [draft]), Number(wrong.slice(5)));
     }
     // unasked: another draft written by itself, as soon as the page is taken in hand (src/by-hand.ts)
     if (wrong === "unasked") {
       let hand: unknown;
       const other: PatchOp = { op: "replace", path: "/draft", value: { starts: "2026-10-13", ends: "2026-10-14" } };
-      Object.defineProperty(window, "__hand", { configurable: true, get: () => hand, set: (v) => void ((hand = v), send("team", [other])) });
+      Object.defineProperty(window, "__hand", { configurable: true, get: () => hand, set: (v) => void ((hand = v), send("session", [other])) });
     }
     // twice: each write sent again, 100 ms after; half: each write's value a half day too
     const again = (doc: string, ops: PatchOp[]) => (send(doc, ops), void setTimeout(() => send(doc, ops), 100));

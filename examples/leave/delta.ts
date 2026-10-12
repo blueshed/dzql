@@ -2,9 +2,10 @@ import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/d
 import { createLocal } from "@blueshed/delta/local";
 import { db } from "../../src/db";
 
-// leave's documents, in delta (`@blueshed/delta`). A team -- its people, their requests for days
-// off, and each person's draft -- is one document, written by people and on the ledger. A session is who you are and
-// where you are: signed in by the sign-in page (./signin.ts), never over the wire, and never on the
+// leave's documents, in delta (`@blueshed/delta`). A team -- its people and their requests for days
+// off -- is one document, written by people and on the ledger. A session is who you are, where you
+// are, and your draft -- the days you have dragged across and not yet asked for: yours alone until
+// you ask, so nobody is told of it. It is signed in by the sign-in page (./signin.ts), never over the wire, and never on the
 // ledger. How someone signs in -- an email and a password's hash -- is a table of its own that no
 // document includes, so no hash can ever cross the wire. The tables are leave's own (`leave_`).
 
@@ -12,10 +13,7 @@ export const schema = defineSchema({
   teams: { table: "leave_teams", columns: { name: "text" }, temporal: false },
   people: { table: "leave_people", parent: "teams", columns: { name: "text", role: "text" }, temporal: false },
   requests: { table: "leave_requests", parent: "teams", columns: { person_id: "text", starts: "text", ends: "text", status: "text", answered_by: "text?" }, temporal: false },
-  // a person's draft: the days they have dragged across and not yet asked for, a row of its own
-  // (delta names it): a draft asked for and drawn again is a new row, as an id is never named twice
-  drafts: { table: "leave_drafts", parent: "teams", columns: { person_id: "text", starts: "text", ends: "text" }, temporal: false },
-  sessions: { table: "leave_sessions", columns: { person_id: "text?", page: "text?" }, temporal: false },
+  sessions: { table: "leave_sessions", columns: { person_id: "text?", page: "text?", draft: "json?" }, temporal: false },
   logins: { table: "leave_logins", columns: { person_id: "text", hash: "text" }, temporal: false },
 });
 
@@ -41,11 +39,9 @@ if (!db.query("SELECT 1 FROM leave_teams").get()) {
 
 export const delta = createLocal();
 
-// A draft rides in the team's document beside the requests, so asking for it -- the request made, the
-// draft gone -- is one change, and one Undo gives the draft back. Only its owner's page shows it.
-registerDocs(delta.server, db, schema, [defineDoc("team:", { root: "teams", include: ["people", "requests", "drafts"] })], [], { ledger: true });
+registerDocs(delta.server, db, schema, [defineDoc("team:", { root: "teams", include: ["people", "requests"] })], [], { ledger: true });
 
-// A session, with no ledger: signing in and moving about are not the team's history.
+// A session, with no ledger: signing in, moving about and drafting are not the team's history.
 registerDocs(delta.server, db, schema, [defineDoc("session:", { root: "sessions", include: [], implied: true })]);
 
 export { db };

@@ -135,9 +135,9 @@ describe("the stories by hand", () => {
     const dragged = (from: string, to: string) => ({ ...drags[0]!, gesture: { drag: [from, to] } }) as Story;
     const [astray, nowhere, offscreen] = [dragged(tuesday, thursday), dragged(".nowhere", thursday), dragged(tuesday, '.week[data-month="2026-12"][data-monday="2026-12-28"] > .date:nth-child(4)')];
     expect((await run(leave, { ...told, stories: [astray, nowhere, offscreen] })).outcomes.map((o) => o.failures)).toEqual([
-      ['by hand, ann could not replace /draft on team: the page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-08"} on team'],
-      ["by hand, ann could not replace /draft on team: what it is dragged from is not on the page"],
-      ["by hand, ann could not replace /draft on team: where it is dragged to is off the screen"],
+      ['by hand, ann could not replace /draft on session: the page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-08"} on session'],
+      ["by hand, ann could not replace /draft on session: what it is dragged from is not on the page"],
+      ["by hand, ann could not replace /draft on session: where it is dragged to is off the screen"],
     ]);
   }, 60000);
 
@@ -151,8 +151,8 @@ describe("the stories by hand", () => {
       expect(failed).toHaveLength(1);
       expect(failed[0]).toStartWith("by hand, ann could not");
     }
-    expect(await failures("twice")).toEqual([`by hand, ann's page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-07"} on team by itself, unasked`]);
-    expect(await failures("unasked")).toEqual([`by hand, ann's page sent replace /draft {"starts":"2026-10-13","ends":"2026-10-14"} on team by itself, unasked`]);
+    expect(await failures("twice")).toEqual([`by hand, ann's page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-07"} on session by itself, unasked`]);
+    expect(await failures("unasked")).toEqual([`by hand, ann's page sent replace /draft {"starts":"2026-10-13","ends":"2026-10-14"} on session by itself, unasked`]);
   }, 60000);
 
   test("a gesture may be a press, a tap where it says; it is a press or a drag, on a story that writes from a page", async () => {
@@ -189,7 +189,7 @@ describe("the stories by hand", () => {
     const hidden: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replaceAll('<form class="days"', '<form class="days" style="display: none"') };
     const report = await run(hidden, told, undefined, { byHand: true });
     expect(report.outcomes.filter((o) => o.failures.length > 0).map((o) => [o.name, o.failures])).toEqual([
-      ["Ann sets her draft's last day before its first, and is told so", ["by hand, ann could not replace /draft/ends on team: the control for it is not to be seen"]],
+      ["Ann sets her draft's last day before its first, and is told so", ["by hand, ann could not replace /draft/ends on session: the control for it is not to be seen"]],
     ]);
 
     // a symbol the Watch modal's select does not offer is one nobody can send from the page: its refusal is the wire's
@@ -206,7 +206,7 @@ describe("the stories by hand", () => {
     const { stories: told } = await import("../examples/leave/stories");
     const across = told.stories.filter((s) => s.name.startsWith("Ann drags across"));
     expect((await run(await leaveWith("half"), { ...told, stories: across })).outcomes[0]!.failures).toEqual([
-      'by hand, ann could not replace /draft on team: the page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-07","half":true} on team',
+      'by hand, ann could not replace /draft on session: the page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-07","half":true} on session',
     ]);
   }, 60000);
 

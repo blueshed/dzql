@@ -76,22 +76,19 @@ function requestSheet(t: Team, me: Person, r: Request, path: string, sessionId: 
 function draftSheet(t: Team, me: Person, draft: Span | null, path: string, sessionId: string): string {
   const clashing = draft ? clashes(offOn([...t.requests, { id: "draft", person_id: me.id, ...draft, status: "asked", answered_by: null }])).filter((d) => workingDaysOf(draft).includes(d)).length : 0;
   const body = join(
-    dayFields("team", "/draft", draft ?? {}, sessionId),
+    dayFields("session", "/draft", draft ?? {}, sessionId),
     draft && `<div class="props">${prop("Days", `<span>${esc(days(draft))} · ${worked(draft)}</span>`)}${me.role === "manager" ? prop("Asked for", `<span>approved at once, by you: you manage the team</span>`) : ""}${also(t, me, draft, me.id)}${prop("Clashes", `<span class="${clashing ? "state-declined" : ""}">${clashing ? `${clashing} ${clashing === 1 ? "day" : "days"} with someone else off` : "none"}</span>`)}</div>`,
     toldAt(sessionId, "team", "/requests/-"),
-    `<div class="drawer-foot">${tool("Ask", { icon: "plus", kind: "add", write: write("team", "add", "/requests/-"), disabled: !draft })}${tool("Cancel", { kind: "quiet", write: draft ? write("team", "remove", "/draft") : go(path) })}</div>`,
+    `<div class="drawer-foot">${tool("Ask", { icon: "plus", kind: "add", write: write("team", "add", "/requests/-"), disabled: !draft })}${tool("Cancel", { kind: "quiet", write: draft ? write("session", "remove", "/draft") : go(path) })}</div>`,
   );
   return drawer("draft", draft ? "Your draft" : "Ask for leave", body, go(path), "draft-drawer");
 }
 
 /** The page for a session. */
 export function render(sessionId: string): string {
-  const { person: me, page } = sessionOf(sessionId);
+  const { person: me, page, draft } = sessionOf(sessionId);
   if (!me) return layers(signInPage(sessionId), "", ""); // the bento's frame, so the door is drawn with its controls
-  const whole = teamOf();
-  const draft = whole.drafts[me.id] ?? null;
-  // a page carries its own person's draft and no one else's: nobody sees another's draft, nor is sent it
-  const t: Team = { ...whole, drafts: draft ? { [me.id]: draft } : {} };
+  const t = teamOf();
   const { path, what, which } = parseAddress(page);
   const today = new Date().toISOString().slice(0, 10);
   const list = path === "list";
@@ -127,7 +124,7 @@ export function render(sessionId: string): string {
 
 /** The calendar applet's mount: drawn here first, so the page reads before a script runs, then kept by the applet, which adds the drags. It writes your draft, and moves your requests. */
 const calendarMount = (p: CalendarProps): string =>
-  part("calendar", `<div id="calendar" class="calendar-view" data-applet="calendar"${appletWrites(["team", "replace", "/draft"], ["team", "replace", "/requests/*/starts"], ["team", "replace", "/requests/*/ends"])} data-props="${esc(JSON.stringify(p))}">${calendarHtml(p)}</div>`);
+  part("calendar", `<div id="calendar" class="calendar-view" data-applet="calendar"${appletWrites(["session", "replace", "/draft"], ["team", "replace", "/requests/*/starts"], ["team", "replace", "/requests/*/ends"])} data-props="${esc(JSON.stringify(p))}">${calendarHtml(p)}</div>`);
 
 /** The list applet's mount: every request, drawn as it scrolls into view. */
 const listMount = (p: ListProps): string => {

@@ -268,7 +268,7 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
      take, covered on a phone, is left for another way), then the write is done as a person does
      it -- a button pressed, a form typed into and sent, a select or a date chosen, or the
      story's gesture. What the page sent must be the story's write, and it must land: `by hand,
-     ann could not replace /draft on team: the page sent replace /draft {…} on team`.
+     ann could not replace /draft on session: the page sent replace /draft {…} on session`.
    - a refusal whose write a control of the page's own sent when it was told: walked to, then
      tried so, and it must not land. Where the control cannot make it (a select without that
      choice), nobody can send it from the page, as the story says.

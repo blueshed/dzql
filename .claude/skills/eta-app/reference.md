@@ -369,8 +369,9 @@ its inverse, its version, who made it, and the cursor Undo moves along, which is
   refused (`No change of yours is called 3f…`), and so is one undone already, or not undone.
   Undoing a row's making once someone has put rows under it is a conflict (delta's guard).
 - One Undo reverses one write to one document. If a gesture changes two documents, it takes two
-  presses, so keep what changes together in one document (leave keeps a person's draft beside
-  their requests for this reason).
+  presses, so keep what changes together in one document; where it cannot be, the hooks say what
+  follows (leave's draft is in its asker's session until they ask: asking drops it, in
+  `afterWrite`, and its Undo gives it back, in `afterWalk`).
 - Before it runs, `permitUndo` is asked, and an undo that meets a later write by someone else is
   refused with a reason (see Compartment).
 
@@ -732,7 +733,7 @@ face), and its story fails, by name, until the mount says what it sends (the cit
 it, `appletWrites(["clock", "replace", "/tz"])`):
 
 ```ts
-`<div data-applet="calendar"${appletWrites(["team", "replace", "/draft"], ["team", "replace", "/requests/*/starts"], ["team", "replace", "/requests/*/ends"])} data-props="…">`
+`<div data-applet="calendar"${appletWrites(["session", "replace", "/draft"], ["team", "replace", "/requests/*/starts"], ["team", "replace", "/requests/*/ends"])} data-props="…">`
 ```
 
 - `appletWrites([doc, op, path], …)` (`src/html.ts`) puts `data-writes` on the mount, and a

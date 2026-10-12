@@ -20,14 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a ticker tick to each viewer 283 B to 194 B, the wedding's look change to the couple 856 B to
   740 B (README).
 - **An add names a new id, as delta 0.13 says: one its serial has handed out is taken (409), even
-  once its row is gone.** leave's draft is a row of its own (`add /drafts/-`, with `person_id`),
-  so a draft asked for and drawn again is a new row, and two days set in one message make one
-  draft. The wedding adds its rows at `-` and reads their ids from what delta answers; a row the
+  once its row is gone.** The wedding adds its rows at `-` and reads their ids from what delta answers; a row the
   same write refers to (a new household, which its guests name; the guest a yes makes) is named
   by the clock in microseconds, past any id the serial has handed out, until delta lets a write
   refer to a row it makes. So a household's code is no longer its id: it is its email's name and
-  the least number no code has (`GRACE1`). A database from before needs its `leave_drafts` table
-  dropped: it gains `person_id`.
+  the least number no code has (`GRACE1`). A database from before needs its `leave_sessions` table
+  dropped: it gains `draft` (Fixed, below).
 
 ### Added
 
@@ -117,6 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **leave's draft is its asker's alone until they ask**: it is kept in their session (`replace /draft` on `session`, no longer `team`), so dragging across days tells Bo and Mo nothing; asking is the write that tells the team, it drops the draft, and its Undo gives it back (`afterWalk`).
 - **A table code looks up but no document holds is "looked up, never held"**, dashed, not red: a credential read at sign-in (canyou-eta's passkeys, the wedding's couples, leave's logins) belongs in no document. Red is left for a table nothing reaches and no code reads.
 - **holders² is a warning only where a document also tells someone no story asked.** Every holder told of every write is what a shared document is for -- a plan everyone in it follows, a chat room -- so where the stories ask for it the card says the cost (`every holder told of every write, as the stories ask: holders²`) without the amber mark. The wedding's everyone stays marked: it tells ben what no story asked.
 - **The modeller page's columns scroll on their own**, their heads kept in view: going down the stories no longer takes the documents and the entities off the screen. The page itself stays the height of the window (on a narrow screen the columns stack and the page scrolls); a popover follows its mark as a column scrolls.

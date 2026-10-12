@@ -60,8 +60,10 @@ describe("leave in a real browser", () => {
       return 1;
     })()`);
     await waitFor(view, `[...document.querySelectorAll('.calendar-view .bar .sr-only')].map((s) => s.textContent).join('|')`, (v) => String(v).includes("you, waiting, Wed 14 – Thu 15 Oct"));
-    // as it was, for the other tests: the move, the ask, the draft
-    for (let i = 0; i < 3; i++) await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "ledger", ops: [{ op: "remove", path: "/latest" }] }))`);
+    // as it was, for the other tests: the move and the ask undone, which gives the draft back, then the draft cancelled
+    for (let i = 0; i < 2; i++) await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "ledger", ops: [{ op: "remove", path: "/latest" }] }))`);
+    await waitFor(view, `[...document.querySelectorAll('.calendar-view .bar .sr-only')].some((s) => s.textContent === 'your draft, Wed 7 – Thu 8 Oct')`, (v) => v === true);
+    await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "remove", path: "/draft" }] }))`);
     await waitFor(view, `[...document.querySelectorAll('.calendar-view .bar .sr-only')].some((s) => s.textContent.includes('Wed 7'))`, (v) => v === false);
   }, 20000);
 });

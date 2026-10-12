@@ -219,8 +219,9 @@ Undo and redo are free: every write is recorded with its opposite. Three things 
   draws beside Undo. The story then says `undone: "Undone: your answer."`, and `redone` for the
   redo (the wedding's).
 - **One Undo reverses one write to one document.** If a gesture changes two documents, Undo takes
-  two presses. So keep what changes together in one document; leave keeps a person's draft beside
-  their requests for exactly this reason.
+  two presses. So keep what changes together in one document. Where it cannot be, say what follows
+  in the hooks: leave's draft is its asker's alone, in their session, until they ask; asking drops
+  it (`afterWrite`), and its Undo gives it back (`afterWalk`).
 
 ## 11. Signing people in
 

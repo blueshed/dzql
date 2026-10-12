@@ -16,7 +16,7 @@ import { mondayOf } from "./calendar";
 // Ann has a draft in October, not yet asked for; Bo's draft is only a weekend; Mo's is in November.
 
 const session = (...ops: PatchOp[]): Write => ({ doc: "session", ops });
-const draft = (starts: string, ends: string): Write => ({ doc: "team", ops: [{ op: "replace", path: "/draft", value: { starts, ends } }] });
+const draft = (starts: string, ends: string): Write => session({ op: "replace", path: "/draft", value: { starts, ends } }); // yours alone until you ask
 const askDraft: Write = { doc: "team", ops: [{ op: "add", path: "/requests/-" }] };
 const move = (id: number, starts: string, ends: string): Write => ({ doc: "team", ops: [{ op: "replace", path: `/requests/${id}/starts`, value: starts }, { op: "replace", path: `/requests/${id}/ends`, value: ends }] });
 const answer = (id: number, status: "approved" | "declined"): Write => ({ doc: "team", ops: [{ op: "replace", path: `/requests/${id}/status`, value: status }] });
@@ -35,7 +35,7 @@ export const stories: Stories = {
     // ── asking: a draft first, to see what it would mean ──
     story("Ann drags across two days in Bo's week, and sees the clash before she asks", { as: "ann", from: "2026-10", does: draft("2026-10-06", "2026-10-07"), gesture: { drag: [day("2026-10-06"), day("2026-10-07")] }, seen: { ann: "2026-10" } }),
     story("Ann asks for her draft, and Mo and Bo see it waiting on the calendar", { as: "ann", from: "2026-10?draft", does: askDraft, seen: { ann: "2026-10", mo: "2026-10", bo: "2026-10" } }),
-    story("Ann sets her draft's last day before its first, and is told so", { as: "ann", from: "2026-10?draft", cannot: { doc: "team", ops: [{ op: "replace", path: "/draft/ends", value: "2026-10-01" }] }, told: "The last day is before the first." }),
+    story("Ann sets her draft's last day before its first, and is told so", { as: "ann", from: "2026-10?draft", cannot: session({ op: "replace", path: "/draft/ends", value: "2026-10-01" }), told: "The last day is before the first." }),
     story("Bo asks for a draft that is only a weekend, and is told it has no working days", { as: "bo", from: "2026-10?draft", cannot: askDraft, told: "There are no working days in those." }),
 
     // ── moving what is still waiting ──

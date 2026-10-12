@@ -96,7 +96,7 @@ registerApplet("calendar", {
       s.drag = undefined;
       s.preview = null;
       if (!d || !p) return;
-      if (d.kind === "select") ctx.send("team", [{ op: "replace", path: "/draft", value: { starts: p.starts, ends: p.ends } }]);
+      if (d.kind === "select") ctx.send("session", [{ op: "replace", path: "/draft", value: { starts: p.starts, ends: p.ends } }]);
       else if (s.moved) ctx.send("team", [{ op: "replace", path: `/requests/${d.id}/starts`, value: p.starts }, { op: "replace", path: `/requests/${d.id}/ends`, value: p.ends }]);
       draw(el); // as it was, until the server draws it as it now is
     });

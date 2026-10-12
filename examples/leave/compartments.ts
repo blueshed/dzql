@@ -1,11 +1,11 @@
 import type { Compartment } from "../../src/compartments/compartment";
 import { serverWrite } from "../../src/documents";
-import { address, parseAddress } from "../../src/bento";
-import { may, session as sessionOf, shape, shapeSession, team as teamOf, TEAM } from "./documents";
+import { parseAddress } from "../../src/bento";
+import { may, session as sessionOf, shape, shapeSession, team as teamOf, TEAM, type Request } from "./documents";
 
-// leave's two compartments. The session: where you are, and who -- but who is written
-// only by the sign-in page (./signin.ts); over the wire a session may move about, and sign out. The team is everyone's, and what a person may write to it is who they are
-// (./documents.ts).
+// leave's two compartments. The session: where you are, your draft, and who -- but who is written
+// only by the sign-in page (./signin.ts); over the wire a session may move about, draft, and sign
+// out. The team is everyone's, and what a person may write to it is who they are (./documents.ts).
 
 export const session: Compartment = {
   docType: "session",
@@ -13,11 +13,12 @@ export const session: Compartment = {
   ledger: false, // signing in, moving about and a draft are not the team's history (./delta.ts)
   under: "/sessions",
   resolveDoc: (ws) => ws.data.sessionId,
-  // Signed in: somewhere to stand, and signing out. Never who you are.
+  // Signed in: somewhere to stand, your draft to set, change and drop, and signing out. Never who you are.
   permit(ws, op) {
     if (sessionOf(ws.data.sessionId).person === null) return false;
     if (op.path === "/person_id") return op.op === "remove";
-    return op.path === "/page" && op.op === "replace";
+    if (op.path === "/draft") return op.op === "replace" || op.op === "remove";
+    return op.op === "replace" && (op.path === "/page" || op.path === "/draft/starts" || op.path === "/draft/ends");
   },
   shape: (_ws, id, ops) => shapeSession(sessionOf(id), ops),
 };
@@ -29,14 +30,25 @@ export const team: Compartment = {
     const me = sessionOf(ws.data.sessionId).person;
     return !!me && may(me, op, teamOf());
   },
-  shape: (ws, _id, ops) => shape(sessionOf(ws.data.sessionId).person!, ops, teamOf()),
-  // Where the write leaves its writer: a draft set opens its drawer; a draft asked for, or dropped,
-  // closes it; the modal that asked to take a request back closes.
+  shape(ws, _id, ops) {
+    const { person, draft } = sessionOf(ws.data.sessionId);
+    return shape(person!, ops, teamOf(), draft);
+  },
+  // Where the write leaves its writer: asked for, a draft is gone and its drawer closes; the modal
+  // that asked to take a request back closes.
   async afterWrite(ws, _id, ops) {
     const { path, what } = parseAddress(sessionOf(ws.data.sessionId).page);
-    const drafted = ops.some((op) => op.path.startsWith("/draft") && op.op !== "remove");
-    const closed = ops.some((op) => op.op === "add" || op.path === "/draft") || (what === "confirm" && ops.some((op) => op.op === "remove"));
-    const page = drafted ? address(path, "draft") : closed ? path : undefined;
-    if (page !== undefined) await serverWrite(`session:${ws.data.sessionId}`, [{ op: "replace", path: "/sessions/page", value: page }]);
+    const asked = ops.some((op) => op.op === "add" && op.value === undefined); // the draft, asked for
+    const closed = ops.some((op) => op.op === "add") || (what === "confirm" && ops.some((op) => op.op === "remove"));
+    if (closed) await serverWrite(`session:${ws.data.sessionId}`, [{ op: "replace", path: "/sessions/page", value: path }, ...(asked ? [{ op: "replace" as const, path: "/sessions/draft", value: null }] : [])]);
+  },
+  // An ask undone gives its draft back, as it was; asked again by Redo, that draft goes again.
+  async afterWalk(ws, _id, { way, ops, inverse }) {
+    const { person, draft } = sessionOf(ws.data.sessionId);
+    const asks = ops.some((op) => op.op === (way === "undo" ? "remove" : "add")); // an ask, not a take-back
+    const ask = (way === "undo" ? inverse : ops).find((op) => op.op === "add")?.value as Request | undefined;
+    if (!asks || !ask || String(ask.person_id) !== person!.id) return;
+    const back = way === "undo" ? { starts: ask.starts, ends: ask.ends } : null;
+    if (back || (draft?.starts === ask.starts && draft.ends === ask.ends)) await serverWrite(`session:${ws.data.sessionId}`, [{ op: "replace", path: "/sessions/draft", value: back }]);
   },
 };

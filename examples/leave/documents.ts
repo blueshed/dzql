@@ -8,29 +8,28 @@ import { stillMine, workingDaysOf, type Person, type Request, type Span, type Te
 export type { Person, Request, Role, Span, Status, Team } from "./calendar";
 
 // leave's two documents as its pages read them, and the rules a write to each follows. The team
-// (`team:1`): its people, every request, and each person's draft -- the days they have dragged
-// across and not yet asked for. A session (`session:<id>`): who is signed in, if anyone, and where
-// they are -- one address, `path?what=which` (src/bento.ts).
+// (`team:1`): its people and every request. A session (`session:<id>`): who is signed in, if anyone,
+// where they are -- one address, `path?what=which` (src/bento.ts) -- and their draft: the days
+// they have dragged across and not yet asked for, theirs alone until they ask.
 
 /** The one team. */
 export const TEAM = "1";
 
 export function team(): Team {
-  const doc = readDoc<{ teams: { name: string }; people: Record<string, Person>; requests: Record<string, Request>; drafts?: Record<string, Span & { id: string; person_id: string }> }>(`team:${TEAM}`);
+  const doc = readDoc<{ teams: { name: string }; people: Record<string, Person>; requests: Record<string, Request> }>(`team:${TEAM}`);
   // an id is text, as the wire says it: a backend names a new row as it likes (a UUID, a serial)
   const people = Object.values(doc.people).map((p) => ({ ...p, id: String(p.id) }));
   const requests = Object.values(doc.requests).map((r) => ({ ...r, id: String(r.id), person_id: String(r.person_id), answered_by: r.answered_by == null ? null : String(r.answered_by) }));
-  const drafts = Object.fromEntries(Object.values(doc.drafts ?? {}).map((d) => [String(d.person_id), { id: String(d.id), starts: d.starts, ends: d.ends }]));
-  return { name: doc.teams.name, people, requests: requests.sort((a, b) => a.starts.localeCompare(b.starts) || a.id.localeCompare(b.id)), drafts };
+  return { name: doc.teams.name, people, requests: requests.sort((a, b) => a.starts.localeCompare(b.starts) || a.id.localeCompare(b.id)) };
 }
 
-export type Session = { person: Person | null; page: string };
+export type Session = { person: Person | null; page: string; draft: Span | null };
 
-/** Who a session is, if anyone, and where. A person no longer on the team is nobody. */
+/** Who a session is, if anyone, where, and their draft. A person no longer on the team is nobody. */
 export function session(sessionId: string): Session {
-  const row = readDoc<{ sessions?: { person_id?: string | null; page?: string | null } }>(`session:${sessionId}`)?.sessions ?? {};
+  const row = readDoc<{ sessions?: { person_id?: string | null; page?: string | null; draft?: Span | null } }>(`session:${sessionId}`)?.sessions ?? {};
   const person = row.person_id == null ? null : (team().people.find((p) => p.id === String(row.person_id)) ?? null);
-  return person ? { person, page: row.page ?? "" } : { person: null, page: "" };
+  return person ? { person, page: row.page ?? "", draft: row.draft ?? null } : { person: null, page: "", draft: null };
 }
 
 // ───────────────────────────── where you are ─────────────────────────────
@@ -55,26 +54,48 @@ export function placed(value: unknown): string | undefined {
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
-/** A session's write as it takes it: moving about, or signing out, which forgets where you were. */
+/**
+ * A session's write as it takes it: moving about; signing out, which forgets where you were; or your
+ * draft, set whole (a drag) or a day at a time (the drawer's fields), refused when it ends before it
+ * begins, and dropped when you cancel it. Setting it opens its drawer; dropping it closes it.
+ */
 export function shapeSession(before: Session, ops: PatchOp[]): PatchOp[] {
-  return ops.flatMap((op): PatchOp[] => {
-    if (op.path === "/person_id") return [{ op: "replace", path: "/person_id", value: null }, { op: "replace", path: "/page", value: null }];
-    const page = op.op === "remove" ? "" : placed(op.value);
-    return page === undefined || page === before.page ? [] : [{ op: "replace", path: "/page", value: page }];
-  });
+  let { page, draft } = before;
+  for (const op of ops) {
+    const [field, day] = parsePointer(op.path);
+    if (field === "person_id") return [{ op: "replace", path: "/person_id", value: null }, { op: "replace", path: "/page", value: null }];
+    if (field === "page") {
+      page = (op.op === "remove" ? "" : placed(op.value)) ?? page;
+      continue;
+    }
+    const { path } = parseAddress(page);
+    if (op.op === "remove") {
+      if (draft) [draft, page] = [null, path];
+      continue;
+    }
+    const next: Partial<Span> = day === undefined ? ((op.value as Partial<Span> | null) ?? {}) : { ...draft, [day]: op.value };
+    const starts = next.starts ?? next.ends;
+    const ends = next.ends ?? next.starts;
+    if (typeof starts !== "string" || typeof ends !== "string" || !DAY.test(starts) || !DAY.test(ends)) continue;
+    if (ends < starts) throw refuse("The last day is before the first.");
+    [draft, page] = [{ starts, ends }, address(path, "draft")];
+  }
+  return [
+    ...(draft !== before.draft ? [{ op: "replace" as const, path: "/draft", value: draft }] : []),
+    ...(page !== before.page ? [{ op: "replace" as const, path: "/page", value: page }] : []),
+  ];
 }
 
 // ───────────────────────────── the team's rules ─────────────────────────────
 
 /**
- * May `me` write `op` to the team, as it stands? Your own draft is yours to set, change and drop;
- * asking is anyone's; moving a request, or taking it back, is its asker's while it waits (and a
- * manager's own, which they approved themselves); answering is a manager's, for someone else,
- * while it waits.
+ * May `me` write `op` to the team, as it stands? Asking is anyone's; moving a request, or taking it
+ * back, is its asker's while it waits (and a manager's own, which they approved themselves);
+ * answering is a manager's, for someone else, while it waits. A draft is not the team's: it is the
+ * session's.
  */
 export function may(me: Person, op: PatchOp, t: Team): boolean {
   const [coll, id, field] = parsePointer(op.path);
-  if (coll === "draft") return op.op === "remove" ? id === undefined : id === undefined || ((id === "starts" || id === "ends") && field === undefined);
   if (coll !== "requests") return false;
   if (op.op === "add") return id === "-" && field === undefined;
   const r = t.requests.find((x) => x.id === id);
@@ -92,40 +113,21 @@ function checked(s: Span): Span {
 }
 
 /**
- * The ops as the team takes them. Your draft (`/draft`, the wire's word for it) is your row of the
- * drafts, set whole (a drag) or a day at a time (the drawer's fields), refused when it ends before
- * it begins, dropped when you cancel it. An ask -- your draft, or days said on the wire -- is made
- * whole (who, waiting; a manager's own approved at once, by them) and its days checked, and asking for your draft drops it in the same change,
- * so one Undo gives it back. A move is checked as the days it leaves; an answer is signed by who
- * gave it.
+ * The ops as the team takes them. An ask -- your draft (`draft`, from your session), or days said on
+ * the wire -- is made whole (who, waiting; a manager's own approved at once, by them) and its days
+ * checked. A move is checked as the days it leaves; an answer is signed by who gave it.
  */
-export function shape(me: Person, ops: PatchOp[], t: Team): PatchOp[] {
-  const draft = t.drafts[me.id] ?? null;
-  const mine = `/drafts/${draft?.id}`; // your draft's row, when there is one
-  let made: PatchOp | undefined; // the add that makes your draft in this message: a day set after it changes it
+export function shape(me: Person, ops: PatchOp[], t: Team, draft: Span | null): PatchOp[] {
   const moved = new Map<string, Span>();
   const out = ops.flatMap((op): PatchOp[] => {
-    const [coll, id, field] = parsePointer(op.path);
-    if (coll === "draft") {
-      if (op.op === "remove") return draft ? [{ op: "remove", path: mine }] : [];
-      const next: Partial<Span> = id === undefined ? ((op.value as Partial<Span> | null) ?? {}) : { ...((made?.value as Span | undefined) ?? draft ?? {}), [id]: op.value };
-      const starts = next.starts ?? next.ends;
-      const ends = next.ends ?? next.starts;
-      if (typeof starts !== "string" || typeof ends !== "string" || !DAY.test(starts) || !DAY.test(ends)) return [];
-      if (ends < starts) throw refuse("The last day is before the first.");
-      const value = { person_id: me.id, starts, ends };
-      if (draft) return [{ op: "replace", path: mine, value }];
-      if (made) return ((made.value = value), []);
-      return [(made = { op: "add", path: "/drafts/-", value })];
-    }
+    const [, id, field] = parsePointer(op.path);
     if (op.op === "add") {
       const said = (op.value ?? draft) as Partial<Span> | null;
       if (!said || typeof said.starts !== "string" || typeof said.ends !== "string" || !DAY.test(said.starts) || !DAY.test(said.ends)) return [];
       const { starts, ends } = checked({ starts: said.starts, ends: said.ends });
       // a manager's own leave: nobody else answers it, so it is approved at once, by them, for all to see
       const manager = me.role === "manager";
-      const asked: PatchOp = { op: "add", path: "/requests/-", value: { person_id: me.id, starts, ends, status: manager ? "approved" : "asked", answered_by: manager ? me.id : null } };
-      return op.value === undefined ? [asked, { op: "remove", path: mine }] : [asked];
+      return [{ op: "add", path: "/requests/-", value: { person_id: me.id, starts, ends, status: manager ? "approved" : "asked", answered_by: manager ? me.id : null } }];
     }
     if (field === "starts" || field === "ends") {
       const r = t.requests.find((x) => x.id === id)!;
