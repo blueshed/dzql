@@ -830,20 +830,49 @@ describe("undo beside someone else", () => {
     }
   });
 
-  test("after the deadline an answer is locked, to Undo too", async () => {
+  test("after the deadline an answer is locked, to Undo too: the household's answer, a guest's coming, their choices", async () => {
     const ws = await enter(code);
-    const answer = (await household(code)).answer;
-    await send(ws, "household", [{ op: "replace", path: "/answer", value: answer === "maybe" ? "yes" : "maybe" }]);
-    const answered = (await household(code)).answer;
-    await asCouple([{ op: "replace", path: "/deadline", value: "2020-01-01" }]);
-    await heard(ws); // the household's page shows the deadline
+    const before = await household(code);
+    const guest = before.guests[0]!;
+    const course = (await board()).courses.find((c) => c.dishes.length > 1)!;
+    const chosen = guest.choices[String(course.id)]?.dish ?? null;
+    const dish = course.dishes.find((d) => d.id !== chosen)!;
+    const closed = async (fn: () => Promise<unknown>) => {
+      await asCouple([{ op: "replace", path: "/deadline", value: "2020-01-01" }]);
+      await heard(ws); // the household's page shows the deadline
+      try {
+        await fn();
+      } finally {
+        await asCouple([{ op: "remove", path: "/deadline" }]);
+        await heard(ws);
+      }
+    };
+    const lockedUndo = async () => expect((await undo(ws)).page).toContain("Answers closed at the deadline.");
     try {
-      await refused(ws, "household", [{ op: "replace", path: "/answer", value: "no" }]);
-      expect((await undo(ws)).page).toContain("Answers closed at the deadline.");
-      expect((await household(code)).answer).toBe(answered);
+      await send(ws, "household", [{ op: "replace", path: "/answer", value: before.answer === "maybe" ? "yes" : "maybe" }]);
+      const answered = (await household(code)).answer;
+      await closed(async () => {
+        await refused(ws, "household", [{ op: "replace", path: "/answer", value: "no" }]);
+        await lockedUndo();
+        expect((await household(code)).answer).toBe(answered);
+      });
+      await send(ws, "household", [{ op: "replace", path: `/guests/${guest.id}/coming`, value: guest.coming === 1 ? "no" : "yes" }]);
+      const coming = (await household(code)).guests[0]!.coming;
+      await closed(async () => {
+        await lockedUndo();
+        expect((await household(code)).guests[0]!.coming).toBe(coming);
+      });
+      await send(ws, "household", [{ op: "replace", path: `/guests/${guest.id}/choices/${course.id}/dish`, value: dish.id }]);
+      await closed(async () => {
+        await lockedUndo();
+        expect((await household(code)).guests[0]!.choices[String(course.id)]?.dish).toBe(dish.id);
+      });
     } finally {
-      await asCouple([{ op: "remove", path: "/deadline" }]);
-      await asHousehold(code, [answer === null ? { op: "remove", path: "/answer" } : { op: "replace", path: "/answer", value: answer }]);
+      await asHousehold(code, [
+        before.answer === null ? { op: "remove", path: "/answer" } : { op: "replace", path: "/answer", value: before.answer },
+        guest.coming === null ? { op: "remove", path: `/guests/${guest.id}/coming` } : { op: "replace", path: `/guests/${guest.id}/coming`, value: guest.coming },
+        chosen === null ? { op: "remove", path: `/guests/${guest.id}/choices/${course.id}/dish` } : { op: "replace", path: `/guests/${guest.id}/choices/${course.id}/dish`, value: chosen },
+      ]);
       ws.close();
     }
   });

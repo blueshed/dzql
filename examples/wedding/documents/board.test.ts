@@ -161,6 +161,7 @@ describe("what a couple's write becomes", () => {
     const b = held();
     const doc = structuredClone(b);
     doc.claims = { "1-1": { id: "1-1", households_id: "1", gift_id: "1" }, "3-2": { id: "3-2", households_id: "2", gift_id: "3" } };
+    for (const g of Object.values(doc.guests!)) g.choices = {}; // what other tests chose is not this one's
     doc.guests!["1"]!.choices = { "1": { dish: 2, drink: 1 }, "2": { dish: 5, drink: null } };
     const now = "2026-09-24T12:00:00Z";
     expect(shape(doc, [{ op: "remove", path: "/gifts/1" }], now)).toEqual([{ op: "remove", path: "/claims/1-1" }, { op: "remove", path: "/gifts/1" }]);
