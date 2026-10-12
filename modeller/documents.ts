@@ -83,8 +83,9 @@ const partKey = (target: string) => target.match(/data-eta-part="([^"]+)"/)?.[1]
 
 /**
  * delta.ts's documents: each `defineDoc` (on the ledger when the `registerDocs` it is written in
- * says so; one defined before any, and registered by name, is "defined"), each `registerMemory`,
- * and each `defineCustomDoc`, worked out by the server from the tables it `watch`es.
+ * says so; one defined before any, and registered by name, is "defined"), each `registerMemory`
+ * (on whatever server), and each `defineCustomDoc`, worked out by the server from the tables it
+ * `watch`es.
  */
 export function documentsIn(src: string, session: string | null): { name: string; root: string | null; include: string[]; kind: string; note: string; watch?: string[] }[] {
   const lists = new Map<string, string[]>();
@@ -99,7 +100,7 @@ export function documentsIn(src: string, session: string | null): { name: string
     for (const m of call.matchAll(/defineDoc\("(\w+):", \{ root: "(\w+)", include: (\[[^\]]*\]|\w+)/g))
       documents.push({ name: m[1]!, root: m[2]!, include: names(m[3]!), kind, note: m[1] === session ? "the session: who you are and where" : "" });
   });
-  for (const m of src.matchAll(/registerMemory\(delta\.server, \{ prefix: "(\w+):"/g)) documents.push({ name: m[1]!, root: null, include: [], kind: "live", note: "kept by the server, in memory" });
+  for (const m of src.matchAll(/registerMemory\([^,]*,\s*\{\s*prefix: "(\w+):"/g)) documents.push({ name: m[1]!, root: null, include: [], kind: "live", note: "kept by the server, in memory" });
   for (const m of src.matchAll(/defineCustomDoc(?:<[^>]*>)?\("(\w+):", \{\s*watch: (\[[^\]]*\]|\w+)/g))
     documents.push({ name: m[1]!, root: null, include: [], kind: "custom", note: "worked out by the server from the tables it watches", watch: names(m[2]!) });
   return documents;

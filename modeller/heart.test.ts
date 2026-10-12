@@ -181,6 +181,13 @@ registerDocs(server, db, schema, [team], [mine], { ledger: true });`;
     ]);
   });
 
+  test("a document kept in memory, whatever the server is called", () => {
+    const src = `registerMemory(server, { prefix: "here:", empty: () => ({}) });
+registerMemory(local.server,
+  { prefix: "lobby:", empty: () => ({}) });`;
+    expect(documentsIn(src, null).map((d) => [d.name, d.kind])).toEqual([["here", "live"], ["lobby", "live"]]);
+  });
+
   test("a project with no app: born into its own document, touching its own write's tables (not its premise's), and nothing said of who was told", async () => {
     // a project of its own, outside eta, with stories and a delta.ts and no index.ts
     const dir = await mkdtemp(`${tmpdir()}/alone-`);

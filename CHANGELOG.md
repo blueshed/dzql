@@ -117,6 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The modeller finds a table's code only where SQL names it** (`inSql`, modeller/heart.ts):
   after FROM, JOIN, INTO, UPDATE or TABLE, or in a string handed to a query, never in a comment or
   as a property, so a table called `keys` is not read by every `Object.keys`.
+- **The modeller finds a document kept in memory on any server** (`documentsIn`):
+  `registerMemory(server, { prefix: "mine:", ... })`, not only `registerMemory(delta.server, ...)`.
 
 ## [0.51.0] - 2026-09-28
 
