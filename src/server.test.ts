@@ -300,7 +300,7 @@ describe("createServer, generically (no example from the examples directory invo
     write(ws, "note", [{ op: "replace", path: "/text", value: "hello kernel" }]);
     const patch = await expectMessage(ws, "patch");
     expect(patch.doc).toBe("note");
-    expect(patch.ops).toEqual([{ op: "replace", path: "", value: { text: "hello kernel" } }]); // the note as it is now, told whole, its id (the session) left out
+    expect(patch.ops).toEqual([{ op: "replace", path: "/text", value: "hello kernel" }]); // what changed of the note, at eta's paths
     // the note's page has no parts: a change to it sends it whole
     const rendered = await expectMessage(ws, "render");
     expect(rendered.ops).toBeUndefined();
@@ -310,14 +310,14 @@ describe("createServer, generically (no example from the examples directory invo
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const undonePatch = await expectMessage(ws, "patch");
     expect(undonePatch.doc).toBe("note");
-    expect(undonePatch.ops).toEqual([{ op: "replace", path: "", value: { text: "" } }]);
+    expect(undonePatch.ops).toEqual([{ op: "replace", path: "/text", value: "" }]);
     const undoneRender = await expectMessage(ws, "render");
     expect(htmlOf(undoneRender)).not.toContain("hello kernel");
 
     // redo: the undo walked forward again
     write(ws, "ledger", [{ op: "add", path: "/latest" }]);
     const redonePatch = await expectMessage(ws, "patch");
-    expect(redonePatch.ops).toEqual([{ op: "replace", path: "", value: { text: "hello kernel" } }]);
+    expect(redonePatch.ops).toEqual([{ op: "replace", path: "/text", value: "hello kernel" }]);
     expect(htmlOf(await expectMessage(ws, "render"))).toContain("hello kernel");
     // nothing left to redo: a render, no patch
     write(ws, "ledger", [{ op: "add", path: "/latest" }]);
@@ -337,7 +337,7 @@ describe("createServer, generically (no example from the examples directory invo
       write(ws, "note", [{ op: "replace", path: "/text", value: "boom" }]);
       write(ws, "note", [{ op: "replace", path: "/text", value: "after the boom" }]);
       expect(htmlOf(await expectMessage(ws, "render"))).not.toContain("boom"); // the page, handed back as it was
-      expect((await expectMessage(ws, "patch")).ops).toEqual([{ op: "replace", path: "", value: { text: "after the boom" } }]);
+      expect((await expectMessage(ws, "patch")).ops).toEqual([{ op: "replace", path: "/text", value: "after the boom" }]);
       expect(logged).toHaveLength(1);
       expect(String((logged[0] as unknown[])[1])).toContain("boom");
     } finally {
@@ -544,10 +544,10 @@ describe("createServer, generically (no example from the examples directory invo
     expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "note", id: 1 });
     await expectMessage(ws, "render");
     write(ws, "ledger", [{ op: "remove", path: "/latest" }], 2);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "note", id: 2, ops: [{ value: { text: "" } }] });
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "note", id: 2, ops: [{ path: "/text", value: "" }] });
     await expectMessage(ws, "render");
     write(ws, "ledger", [{ op: "add", path: "/latest" }], 3);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "note", id: 3, ops: [{ value: { text: "walked" } }] });
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "note", id: 3, ops: [{ path: "/text", value: "walked" }] });
     await expectMessage(ws, "render");
     write(ws, "ledger", [{ op: "add", path: "/latest" }], 4); // nothing left to redo
     expect(await nextMessage(ws)).toEqual({ type: "refused", id: 4 });
@@ -649,7 +649,7 @@ describe("createServer, generically (no example from the examples directory invo
 
     ws.send(`{"id":1e400,"doc":"note","ops":[{"op":"replace","path":"/text","value":"beyond a number"}]}`); // Infinity, which JSON says back as null
     const beyond = (await until(ws)).find((m) => m.type === "patch");
-    expect(beyond).toMatchObject({ ops: [{ value: { text: "beyond a number" } }] });
+    expect(beyond).toMatchObject({ ops: [{ path: "/text", value: "beyond a number" }] });
     expect(beyond).not.toHaveProperty("id");
     ws.close();
   });

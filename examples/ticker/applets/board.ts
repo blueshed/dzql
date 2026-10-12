@@ -71,18 +71,18 @@ export function sparkSvg(quote: Quote, history: number[]): string {
 export const drawSpark = (s: RowState): string => sparkSvg(s.props.quote, s.history);
 
 /**
- * Applies the quote's own patch to the state: a tick is the row it leaves, whole (`replace ""`,
- * `{price, prev, ...}`), which moves the quote and extends its history. True when it moved.
+ * Applies the quote's own patch to the state: a tick is told as the fields it changed (`replace
+ * /prev`, `replace /price`), which move the quote; a new price extends its history. True when it moved.
  */
 export function applyOps(s: RowState, ops: PatchOp[]): boolean {
   let moved = false;
   for (const op of ops) {
-    const value = op.value as { price?: unknown; prev?: unknown } | undefined;
-    if (op.path !== "" || op.op !== "replace" || typeof value?.price !== "number") continue;
-    const quote = s.props.quote;
-    quote.prev = Number(value.prev ?? quote.price);
-    quote.price = value.price;
-    s.history = [...s.history, quote.price].slice(-HISTORY);
+    if (op.op !== "replace" || typeof op.value !== "number") continue;
+    if (op.path === "/prev") s.props.quote.prev = op.value;
+    else if (op.path === "/price") {
+      s.props.quote.price = op.value;
+      s.history = [...s.history, op.value].slice(-HISTORY);
+    } else continue;
     moved = true;
   }
   return moved;

@@ -70,7 +70,7 @@ describe("chat's cli against a real server", () => {
 
     const session = afterSend.docs.find((d) => d.doc === "session");
     const room = afterSend.docs.find((d) => d.doc === "room:lobby");
-    // a session's change is its whole row, at eta's paths, its id -- the session id -- taken out
+    // a session's ledger entry is its whole row, at eta's paths, its id -- the session id -- taken out
     expect(session?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "", value: { name: "Ada", room: "lobby" } }]);
     expect(room?.version).toBeGreaterThan(0);
     expect(room?.entries?.[0]?.ops).toMatchObject([{ op: "add", value: { name: "Ada", text: "hello" } }]);
@@ -111,7 +111,7 @@ describe("chat's cli against a real server", () => {
 
     await runCommand(ws, parseCommand(["name", "Watcher"], aliases)!);
 
-    expect(lines).toEqual(['session v1  replace  {"name":"Watcher","room":null}']);
+    expect(lines).toEqual(['session v1  replace /name "Watcher"']);
 
     ws.close();
   });

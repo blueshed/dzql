@@ -13,12 +13,9 @@ export interface ClockProps {
 /** The city, as people say it: the zone's last segment, "New_York" as "New York". */
 export const cityOf = (tz: string): string => (tz.split("/").pop() ?? tz).replaceAll("_", " ");
 
-/** The zone after the clock document's ops: the last one a replace of the clock leaves (`replace "" {tz}`), if any. */
+/** The zone after the clock document's ops: the last one a replace of it says (`replace /tz`), if any. */
 export function tzAfter(tz: string, ops: PatchOp[]): string {
-  for (const op of ops) {
-    const value = op.value as { tz?: unknown } | undefined;
-    if (op.op === "replace" && op.path === "" && typeof value?.tz === "string") tz = value.tz;
-  }
+  for (const op of ops) if (op.op === "replace" && op.path === "/tz" && typeof op.value === "string") tz = op.value;
   return tz;
 }
 

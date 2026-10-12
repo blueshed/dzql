@@ -12,6 +12,8 @@ import { esc } from "./html";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
 import { shownTo } from "./reading";
+import type { Kind } from "./compartments/compartment";
+import { splitDoc } from "./names";
 import { size, sum, tap } from "./costs";
 
 export { comparable };
@@ -110,6 +112,8 @@ function ledgerOf(): { max(): number; since(id: number): LedgerRow[] } {
   return { max: () => max.get()?.id ?? 0, since: (id) => since.all(id) };
 }
 
+/** The kinds of document delta keeps in its tables, which `open_at` reads. */
+const STORED = new Set<Kind>(["written", "fact"]);
 /** A time after every write: a document opened as it stood then (`open_at`) is its rows as they stand. */
 const AFTER_EVERY_WRITE = "9999-12-31T23:59:59.999Z";
 
@@ -546,7 +550,7 @@ export async function run(
 ): Promise<Report> {
   const server = createServer(example, 0);
   const tapped = await tap(server.port!); // the cast's sockets go through it, so what each page is handed is counted as it crossed the wire
-  const { draw, page, documents } = assemble(example);
+  const { draw, page, documents, byDocType } = assemble(example);
   const active = (sessionId: string): Promise<boolean> => settled(documents, () => example.active(sessionId));
   const ledger = ledgerOf();
   const ledgerMax = ledger.max;
@@ -583,8 +587,8 @@ export async function run(
   /**
    * Canon 2's fresh render: the page drawn from storage. Each document it reads is opened again
    * from delta's tables (`open_at`). One the tables do not hold is nothing, as the kernel holds a
-   * document delta cannot open, so a row they lost fails; only one with no tables at all -- delta's
-   * memory kinds, whose memory is where they are kept -- is the server's copy. The page reads the
+   * document delta cannot open, so a row they lost fails; only one with no tables at all -- a
+   * compartment's `live`, `sourced` or `static` kind, kept where delta keeps it -- is the server's copy. The page reads the
    * active copy, so this one is made active while it draws, and only then: a drawing is synchronous.
    */
   async function fresh(sessionId: string): Promise<string> {
@@ -598,9 +602,9 @@ export async function run(
       // the version a watching mount holds is not compared (`comparable`): the page read from storage says none
       version: (doc: string): undefined => void copy.read(doc),
       load: async (doc: string) => {
+        if (!STORED.has(byDocType.get(splitDoc(doc).docType)?.kind ?? "written")) return void stored.set(doc, await settled(documents, () => documents.read(doc)));
         const { result, error } = await example.delta.call("open_at", { doc, at: AFTER_EVERY_WRITE });
-        if (error?.message.startsWith("No handler matched")) stored.set(doc, await settled(documents, () => documents.read(doc)));
-        else if (error && error.code !== 404) throw new Error(`${doc} could not be read from storage: ${error.message}`);
+        if (error && error.code !== 404) throw new Error(`${doc} could not be read from storage: ${error.message}`);
         else stored.set(doc, result);
       },
     };

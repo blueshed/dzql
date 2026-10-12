@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking (for example authors)
+
+- **eta runs on `@blueshed/delta` 0.13, which tells a change as the fields it changed, not the
+  row.** A patch on the wire, in `window.eta.docs()` and in `bun run cli watch` is `replace
+  /<coll>/<id>/<field>` (a session's own: `replace /name`); a row that arrives or leaves is still
+  an `add` or `remove` of the row. A write's answer, the ledger (`inspect`) and `afterWalk`'s
+  `ops` and `inverse` keep rows whole. What to change: an applet that takes the ops itself
+  (`patch`) reads a field's op -- the ticker's board takes `replace /price` and `/prev`, its
+  clock `replace /tz`; a `permitUndo` finds each field it would set back by the op's path
+  (`replace /answer`), not the keys of a row, as the wedding's deadline now does. Patches shrink:
+  a ticker tick to each viewer 283 B to 194 B, the wedding's look change to the couple 856 B to
+  740 B (README).
+
 ### Added
 
 - **A run's observer is told what was in front of each member** (`Trace.holds`, src/harness.ts):
@@ -35,6 +48,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   closure's dead actor, which read them; the one thing they could find, a write nobody notices (an
   empty `seen`), is flagged by the documents reading as a write that tells nobody. The report's
   counts lose `pages`.
+
+- **`@blueshed/railroad` 0.16.2**, whose production build drops its development warnings: an
+  island's railroad is 2.9 KB gzipped for `signal` and `mount` (was 3.5 KB), 3.7 KB with `list`
+  (was 4.4 KB).
+- The stories' read from storage (`fresh`, src/harness.ts) asks `open_at` only of a document kept
+  in tables (its compartment's kind `written` or `fact`); a `live`, `sourced` or `static` one is
+  the server's copy, known by its kind rather than by delta's "No handler matched", which
+  delta 0.13's `createLocal` answers as "Unknown action" where no handler is registered.
 - Type checks run with `bun check` (TypeScript 7) in place of `tsc`; the `check` script is gone, so
   `bun check` is Bun's own. eta requires Bun 1.4.3 or later (`engines`, `packageManager`).
 - **The wedding's permits allow what its pages offer, and nothing more** (`bun run modeller

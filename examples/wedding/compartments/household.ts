@@ -83,7 +83,7 @@ export const household: Compartment = {
   // entry changed, so what else a household did -- a look, a claim -- still walks.
   permitUndo(_ws, _id, ops) {
     if (weddingDoc.answersOpen()) return true;
-    if (ops.some((op) => op.op === "replace" && Object.keys((op.value ?? {}) as object).some((f) => DATED.has(f)))) throw refuse("Answers closed at the deadline.");
+    if (ops.some((op) => op.op === "replace" && DATED.has(op.path.split("/").at(-1)!))) throw refuse("Answers closed at the deadline."); // each field it sets back, by its path
     return true;
   },
   shape(_ws, id, ops) {

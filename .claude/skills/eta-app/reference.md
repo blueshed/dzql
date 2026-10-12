@@ -158,8 +158,8 @@ if (ends < starts) throw refuse("The last day is before the first.");
 
 ### Undo is checked before it runs
 
-The kernel asks delta what an undo or redo would write (in the wire's paths, only the fields it
-sets back), and asks the compartment's `permitUndo(ws, docId, ops)`.
+The kernel asks delta what an undo or redo would write (in the wire's paths, each field it sets
+back its own replace: `replace /answer`), and asks the compartment's `permitUndo(ws, docId, ops)`.
 
 - It is not `permit`: Undo may do what permit refuses (a message taken back).
 - It is for a rule of time or state that holds against Undo too. The wedding refuses an undo that
@@ -217,8 +217,9 @@ answered after everything the events before it set going.
 
 - `audienceFor(docType, docId)`: every open connection that sees the document.
 - `readersOf`: every one whose page read it. `allOpenSockets()`: all of them (chat's presence).
-- delta tells a change as the rows it leaves. A field replaced goes out as its row, whole
-  (`replace /quotes/DLTA {...}`); a root field as the root (`replace ""` on a session's own).
+- delta tells a change as the fields it changed (`replace /DLTA/price`, `replace /name` on a
+  session's own); a row that arrives or leaves as the row, whole. A write's answer, the ledger and
+  a walk's `ops` and `inverse` keep rows whole.
 
 ## Parts: what is sent (`src/parts.ts`)
 
@@ -671,11 +672,11 @@ registerDocs(delta.server, db, schema, [defineDoc("trip:", { root: "trips", incl
 - A recompute document (`defineCustomDoc`, delta's skill, "Custom read docs") holds only what it
   selects, but delta reads it again on every write to a collection it watches and it is told
   whole, as `replace ""`: a note edited sends the strip, unchanged. Keep it small.
-- Where the applet shows whole rows, a plain document over just their collections is told row by
-  row: `defineDoc("strip:", { root: "trips", include: ["bases", "stops"] })`. It includes every
-  column, so a note goes to it as its stop's row, and a heart, in rows of its own, not at all.
-  delta's n70, a document over some of a row's columns, would give both: only what it shows, row
-  by row.
+- Where the applet shows whole rows, a plain document over just their collections is told field
+  by field: `defineDoc("strip:", { root: "trips", include: ["bases", "stops"] })`. It includes
+  every column, so a note goes to it as its stop's note, and a heart, in rows of its own, not at
+  all. Name its columns (`columns: { stops: ["day", "title"] }`, delta's) and it is told only what
+  it shows.
 - Either is read as any document is (`read("strip:1")`, `data-doc="strip:1"`), and has a
   compartment of its own that permits nothing: it is written through the trip.
   `src/documents.test.ts` holds both.

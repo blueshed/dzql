@@ -267,7 +267,7 @@ describe("websocket write protocol", () => {
     ws.close();
   });
 
-  test("the patch echo for a session write carries the bare doc type, version, and the session as it now is -- never its id", async () => {
+  test("the patch echo for a session write carries the bare doc type, version, and what changed of the session -- never its id", async () => {
     const sessionId = crypto.randomUUID();
     const ws = connect(`session_id=${sessionId}`);
     await opened(ws);
@@ -278,9 +278,9 @@ describe("websocket write protocol", () => {
     const patch = patchFor(messages, "session")!;
 
     expect(patch.version).toBe(1);
-    // delta says a session's change as its whole row, at eta's paths -- the row's id, the session
-    // id, is a credential and is taken out
-    expect(patch.ops).toEqual([{ op: "replace", path: "", value: { name: "Ada", room: null } }]);
+    // delta says a session's change as the fields it changed, at eta's paths -- never the row's id,
+    // the session id, a credential
+    expect(patch.ops).toEqual([{ op: "replace", path: "/name", value: "Ada" }]);
     expect(JSON.stringify(messages)).not.toContain(sessionId);
     ws.close();
   });
@@ -351,7 +351,7 @@ describe("websocket write protocol", () => {
     write(ws, "session", [{ op: "remove", path: "/room" }]);
     const { messages, page } = await heard(ws);
 
-    expect(patchFor(messages, "session")!.ops).toEqual([{ op: "replace", path: "", value: { name: "Ada", room: null } }]);
+    expect(patchFor(messages, "session")!.ops).toEqual([{ op: "replace", path: "/room", value: null }]);
     expect(page).toContain('class="cell open" data-key="rooms"');
     ws.close();
   });
@@ -410,7 +410,7 @@ describe("websocket write protocol", () => {
 
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const { messages, page } = await heard(ws);
-    expect(patchFor(messages, "session")!.ops).toEqual([{ op: "replace", path: "", value: { name: null, room: null } }]);
+    expect(patchFor(messages, "session")!.ops).toEqual([{ op: "replace", path: "/name", value: null }]);
     expect(page).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // logged out again
 
     ws.close();
@@ -428,11 +428,11 @@ describe("websocket write protocol", () => {
 
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const first = await heard(ws);
-    expect(patchFor(first.messages, "session")!.ops).toEqual([{ op: "replace", path: "", value: { name: "Ada", room: null } }]); // back to the room selector
+    expect(patchFor(first.messages, "session")!.ops).toEqual([{ op: "replace", path: "/room", value: null }]); // back to the room selector
 
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
     const second = await heard(ws);
-    expect(patchFor(second.messages, "session")!.ops).toEqual([{ op: "replace", path: "", value: { name: null, room: null } }]); // not a redo of the room join
+    expect(patchFor(second.messages, "session")!.ops).toEqual([{ op: "replace", path: "/name", value: null }]); // not a redo of the room join
     expect(second.page).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
 
     // nothing left to undo: a third press changes nothing, and hands the page back

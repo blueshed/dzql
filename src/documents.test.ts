@@ -134,7 +134,7 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     const documents = createDocuments(local);
     const refused = await documents.write("here:x", [{ op: "replace", path: "/nobody/x", value: 1 }], { identity: undefined, cursor: "" });
     expect("error" in refused && refused.error.code).toBe(404); // not there: 404 on every backend since delta 0.10
-    expect(await documents.walk("undo", { identity: "a", cursor: "s1" })).toEqual({ error: { code: 404, message: "No handler matched: undo" } });
+    expect(await documents.walk("undo", { identity: "a", cursor: "s1" })).toEqual({ error: { code: 400, message: "Unknown action: undo" } });
     expect(await documents.history("here:x", "s1")).toEqual([]);
   });
 

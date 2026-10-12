@@ -315,7 +315,7 @@ describe("cli against a real server", () => {
 
     await runCommand(ws, parseCommand(["write", "widget", "replace", "/color", "red"])!);
 
-    expect(lines).toEqual(['widget v1  replace  {"color":"red"}']); // the widget whole, at the root: an empty path
+    expect(lines).toEqual(['widget v1  replace /color "red"']); // what changed of the widget, at its path
 
     ws.close();
   });

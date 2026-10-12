@@ -109,11 +109,12 @@ describe("the ticker", () => {
   test("a tick echoes to every connection and renders nothing: the board takes the ops itself", async () => {
     const a = await open();
     const b = await open();
-    const before = (await quotes()).DLTA!.price;
+    const { price: before, prev } = (await quotes()).DLTA!;
     write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
     const patch = await expectMessage(a, "patch");
-    // a tick is said as the quote it leaves: the last price become prev, and the new price
-    expect(patch).toMatchObject({ doc: "ticker:market", ops: [{ op: "replace", path: "/DLTA", value: { prev: before, price: before + 1 } }] });
+    // a tick is said as the fields it moves: the last price become prev (unless it was already), and the new price
+    const moved = [...(prev === before ? [] : [{ op: "replace", path: "/DLTA/prev", value: before }]), { op: "replace", path: "/DLTA/price", value: before + 1 }];
+    expect(patch).toMatchObject({ doc: "ticker:market", ops: moved });
     await expectQuiet(a);
     expect(await expectMessage(b, "patch")).toMatchObject({ doc: "ticker:market" });
     await expectQuiet(b);
@@ -129,10 +130,10 @@ describe("the ticker", () => {
     // a watches DLTA now, so its board row is told of the quote too, as the row it leaves
     const told = [await expectMessage(a, "patch"), await expectMessage(a, "patch")];
     expect(told.map((m) => m.doc).sort()).toEqual(["quote:DLTA", "ticker:market"]);
-    expect(told.find((m) => m.doc === "quote:DLTA")).toMatchObject({ ops: [{ op: "replace", path: "", value: { price: before + 2 } }] });
+    expect(told.find((m) => m.doc === "quote:DLTA")).toMatchObject({ ops: [{ op: "replace", path: "/prev", value: before + 1 }, { op: "replace", path: "/price", value: before + 2 }] });
     await expectMessage(b, "patch");
     write(a, "ledger", [{ op: "remove", path: "/latest" }]);
-    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: [] } }] });
+    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "/symbols", value: [] }] });
     await expectMessage(a, "render");
     expect((await quotes()).DLTA!.price).toBe(before + 2);
     await expectQuiet(b);
@@ -177,7 +178,7 @@ describe("the ticker", () => {
     const a = await open();
     const b = await open();
     write(a, "watchlist", [{ op: "add", path: "/symbols/-", value: "echo" }]);
-    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: ["ECHO"] } }] });
+    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "/symbols", value: ["ECHO"] }] });
     const page = (await expectMessage(a, "render")).page as string;
     expect(page).toContain('<div data-eta-part="quote-ECHO" id="quote-ECHO" class="board-row"><div id="line-ECHO" data-applet="board" data-doc="quote:ECHO" data-under="/quote" data-props='); // the board's new row, on the quote's own document; on the box, the cell is the one tap
     expect(page).toContain('<span id="board-count">1</span>'); // the count on its head
@@ -185,10 +186,10 @@ describe("the ticker", () => {
     await expectQuiet(b);
 
     write(a, "ledger", [{ op: "remove", path: "/latest" }]);
-    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: [] } }] });
+    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "/symbols", value: [] }] });
     await expectMessage(a, "render");
     write(a, "ledger", [{ op: "add", path: "/latest" }]);
-    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "", value: { symbols: ["ECHO"] } }] });
+    expect(await expectMessage(a, "patch")).toMatchObject({ doc: "watchlist", ops: [{ op: "replace", path: "/symbols", value: ["ECHO"] }] });
     await expectMessage(a, "render");
     a.close();
     b.close();
@@ -206,7 +207,7 @@ describe("the ticker", () => {
     startFeed(5);
     startFeed(5); // already running: no second interval
     const first = await expectMessage(ws, "patch");
-    expect(first).toMatchObject({ doc: "ticker:market", ops: [{ op: "replace", value: { price: expect.any(Number), prev: expect.any(Number) } }] });
+    expect(first).toMatchObject({ doc: "ticker:market", ops: expect.arrayContaining([{ op: "replace", path: expect.stringMatching(/^\/[A-Z]{4}\/price$/), value: expect.any(Number) }]) });
     await expectMessage(ws, "patch");
     stopFeed();
     stopFeed(); // already stopped
@@ -232,17 +233,17 @@ describe("the ticker", () => {
     expect(html).toContain('<option value="America/Vancouver">Vancouver (UTC-0');
     expect(html).toContain('<option value="America/Argentina/Salta">Salta, Argentina (UTC-03:00)</option>');
     write(ws, "clock", [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }]);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "", value: { tz: "Asia/Tokyo" } }] });
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }] });
     // the applet takes the op for the face; the page says the city too (the cell's summary) and the
     // drawer the offset, so the page follows
     const tokyo = (await expectMessage(ws, "render")).page!;
     expect(tokyo).toContain('<p class="cell-summary">Tokyo</p>');
     expect(tokyo).toContain("<span>UTC+09:00</span>");
     write(ws, "ledger", [{ op: "remove", path: "/latest" }]);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "", value: { tz: "Europe/Zurich" } }] });
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Europe/Zurich" }] });
     expect((await expectMessage(ws, "render")).page).toContain('<p class="cell-summary">Zurich</p>');
     write(ws, "ledger", [{ op: "add", path: "/latest" }]);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "", value: { tz: "Asia/Tokyo" } }] });
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }] });
     await expectMessage(ws, "render");
     await expectQuiet(ws);
     write(ws, "clock", [{ op: "replace", path: "/tz", value: "Mars/Base" }]);
@@ -269,7 +270,7 @@ describe("the ticker", () => {
     write(ws, "ticker", [{ op: "replace", path: "/DLTA/price", value: 240.5 }]);
     expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "ticker:market" });
     expect(drawerOf(shown(await expectMessage(ws, "render")))).toContain(`<span class="move up">+${(((240.5 - before) / before) * 100).toFixed(2)}%</span>`);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "quote:DLTA", ops: [{ op: "replace", path: "", value: { price: 240.5 } }] }); // the quote's own, which the sparkline takes
+    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "quote:DLTA", ops: expect.arrayContaining([{ op: "replace", path: "/price", value: 240.5 }]) }); // the quote's own, which the sparkline takes
 
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "DLTA" }]);
     await expectMessage(ws, "patch");

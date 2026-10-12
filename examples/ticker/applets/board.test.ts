@@ -32,14 +32,14 @@ describe("board", () => {
 
   test("the quote's own patch moves it and extends its history, capped; other ops are ignored", () => {
     const s = state();
-    const quote = (price: number, prev: number) => ({ id: "ALPH", name: "x", price, prev });
-    expect(applyOps(s, [{ op: "remove", path: "" }, { op: "replace", path: "/name", value: "x" }, { op: "replace", path: "", value: { name: "x" } }])).toBe(false);
-    expect(applyOps(s, [{ op: "replace", path: "", value: quote(190, 189.42) }])).toBe(true);
+    const tick = (price: number, prev: number) => [{ op: "replace" as const, path: "/prev", value: prev }, { op: "replace" as const, path: "/price", value: price }];
+    expect(applyOps(s, [{ op: "remove", path: "/price" }, { op: "replace", path: "/name", value: "x" }, { op: "replace", path: "/price", value: "1" }, { op: "replace", path: "", value: { price: 1 } }])).toBe(false);
+    expect(applyOps(s, tick(190, 189.42))).toBe(true);
     expect(s.props.quote).toEqual({ name: "Alpha Systems", price: 190, prev: 189.42 });
     expect(s.history).toEqual([189.0, 189.42, 190]);
-    applyOps(s, [{ op: "replace", path: "", value: { price: 191 } }]); // no prev said: the last price
-    expect(s.props.quote.prev).toBe(190);
-    for (let i = 0; i < HISTORY + 5; i++) applyOps(s, [{ op: "replace", path: "", value: quote(400 + i, 399 + i) }]);
+    expect(applyOps(s, [{ op: "replace", path: "/price", value: 191 }])).toBe(true); // prev unchanged, so not told
+    expect(s.props.quote).toEqual({ name: "Alpha Systems", price: 191, prev: 189.42 });
+    for (let i = 0; i < HISTORY + 5; i++) applyOps(s, tick(400 + i, 399 + i));
     expect(s.history).toHaveLength(HISTORY);
   });
 });

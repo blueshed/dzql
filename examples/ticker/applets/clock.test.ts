@@ -27,7 +27,7 @@ describe("clock", () => {
   test("the city is the zone's last segment, spoken; the zone after the clock's ops is its last replace", () => {
     expect(cityOf("America/New_York")).toBe("New York");
     expect(cityOf("UTC")).toBe("UTC");
-    expect(tzAfter("Europe/Zurich", [{ op: "replace", path: "", value: { tz: "Asia/Tokyo" } }, { op: "replace", path: "/tz", value: "Asia/Seoul" }, { op: "replace", path: "", value: {} }, { op: "remove", path: "" }])).toBe("Asia/Tokyo");
+    expect(tzAfter("Europe/Zurich", [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }, { op: "replace", path: "", value: { tz: "Asia/Seoul" } }, { op: "replace", path: "/tz", value: 9 }, { op: "remove", path: "/tz" }])).toBe("Asia/Tokyo");
     expect(tzAfter("Europe/Zurich", [])).toBe("Europe/Zurich");
   });
 

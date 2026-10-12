@@ -116,7 +116,7 @@ describe("stories harness", () => {
       expect(attic.wire!.handed.every((h) => h.bytes <= 4096)).toBe(true); // the write is within it
       expect(attic.failures).toEqual(failing(attic, "example's", 4096));
       expect(attic.failures).toHaveLength(1);
-      expect(attic.failures[0]).toStartWith("dee's page was handed 4,4");
+      expect(attic.failures[0]).toStartWith("dee's page was handed 4,3");
       expect(attic.failures[0]).toContain(" bytes on the undo, more than the example's budget of 4,096: the most, ");
     }, 30000);
 

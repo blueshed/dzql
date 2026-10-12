@@ -71,8 +71,8 @@ export type Compartment = {
    */
   shape?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): PatchOp[];
   /**
-   * Before an undo or redo: may it go ahead? Given the ops it would write, in the wire's paths
-   * (only the fields it sets back).
+   * Before an undo or redo: may it go ahead? Given the ops it would write, in the wire's paths:
+   * each field it sets back its own replace (`replace /answer`).
    *
    * - For a rule of time or state that holds against Undo too: answers closed at a deadline.
    * - Not `permit`: Undo may do what permit refuses (a message taken back).

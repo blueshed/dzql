@@ -327,7 +327,7 @@ describe("the wedding in a real browser", () => {
 
     await waitFor(
       view,
-      `window.eta.docs()['board:1']?.ops.some((op) => op.path === '/gifts/${giftId}' && op.value?.description === 'a good one') ?? false`,
+      `window.eta.docs()['board:1']?.ops.some((op) => op.path === '/gifts/${giftId}/description' && op.value === 'a good one') ?? false`,
       (v) => v === true,
     );
     const g = (await board()).gifts.find((x) => x.id === giftId)!;

@@ -227,7 +227,7 @@ describe("a household", () => {
     await at(stranger, "everyone"); // another household sees this one only in the photo of everyone
 
     const h = await send(mine, "household", [{ op: "replace", path: "/answer", value: "maybe" }]);
-    expect(h.patches[0]).toMatchObject({ doc: householdDoc(), ops: [{ op: "replace", path: "/households", value: { answer: "maybe" } }] });
+    expect(h.patches[0]).toMatchObject({ doc: householdDoc(), ops: [{ op: "replace", path: "/households/answer", value: "maybe" }] });
     expect(h.page).toContain("face-mark maybe");
     expect((await heard(other)).patches.map((p) => p.doc)).toContain(householdDoc());
     const c = await heard(couple);
@@ -476,7 +476,7 @@ describe("a household", () => {
     expect(h.renders.map((r) => r.html)).toEqual([undefined]); // what it says goes as a part of its own: the page is not sent whole for it
 
     h = await send(ws, "ledger", [{ op: "remove", path: "/latest" }]);
-    expect(h.patches[0]).toMatchObject({ doc: householdDoc(), ops: [{ op: "replace", path: `/guests/${guest.id}`, value: { top: guest.minifigure.top, built_at: guest.minifigure.built_at } }] });
+    expect(h.patches[0]).toMatchObject({ doc: householdDoc(), ops: [{ op: "replace", path: `/guests/${guest.id}/built_at`, value: guest.minifigure.built_at }, { op: "replace", path: `/guests/${guest.id}/top`, value: guest.minifigure.top }] });
     expect((await household(code)).guests[0]!.minifigure).toEqual(guest.minifigure);
     expect(h.page).toContain(said(`Undone: ${guest.name}'s look.`));
 
