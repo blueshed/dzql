@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { story, type Stories } from "../src/stories";
 import { entityOf, fromStories, locate, noticing, pageOf, pascal, readOp, singular } from "./from-stories";
 import { compare, format, judge } from "./report";
-import { documentsIn, extract, heardAs, rulesIn } from "./extract";
+import { documentsIn, extract, rulesIn } from "./extract";
 import { stories as chat } from "../examples/chat/stories";
 import { stories as londons } from "../examples/londons/stories";
 
@@ -231,13 +231,6 @@ registerMemory(delta.server, { prefix: "everyone:", empty: () => ({}) });`;
       { name: "session", root: "visits", include: [], kind: "written, no ledger", note: "the session: who you are and where" },
       { name: "everyone", root: null, include: [], kind: "live", note: "kept by the server, in memory" },
     ]);
-  });
-
-  test("what a member was sent: a page, its parts, a patch, or anything else, with its size", () => {
-    expect(heardAs({ type: "render", html: "<p>" })).toEqual({ kind: "page", bytes: 30 });
-    expect(heardAs({ type: "render", ops: [{ op: "replace", target: '[data-eta-part="people"]', html: "" }] }).parts).toEqual(["replace people"]);
-    expect(heardAs({ type: "patch", doc: "room:general", ops: [] })).toMatchObject({ kind: "patch", doc: "room:general", ops: 0 });
-    expect(heardAs({ type: "refused", reason: "no" }).kind).toBe("refused");
   });
 
   test("chat: every story placed on its tables and run, a tab closing among them; its permits are code", async () => {

@@ -4,7 +4,8 @@
 
 import type { Stories, Story } from "../src/stories";
 import { parsePointer } from "../src/json-pointer";
-import { run, type Heard, type Trace } from "../src/harness";
+import { run, type Trace } from "../src/harness";
+import { heardAs } from "./documents";
 
 type Column = { type: string; nullable?: boolean };
 type Permit = { doc: string; path: string; ops: string[]; dated: boolean };
@@ -34,16 +35,6 @@ export function documentsIn(src: string, session: string | null): { name: string
   }
   for (const m of src.matchAll(/registerMemory\(delta\.server, \{ prefix: "(\w+):"/g)) documents.push({ name: m[1]!, root: null, include: [], kind: "live", note: "kept by the server, in memory" });
   return documents;
-}
-
-const partKey = (target: string) => target.match(/data-eta-part="([^"]+)"/)?.[1] ?? target;
-
-/** What a member was sent, and its size: a whole page, the parts of one, a document's patch, or a message of another kind. */
-export function heardAs(m: Heard) {
-  const bytes = JSON.stringify(m).length;
-  if (m.type === "render") return m.html !== undefined ? { kind: "page", bytes } : { kind: "parts", parts: (m.ops ?? []).map((o) => `${o.op} ${partKey(o.target)}`), bytes };
-  if (m.type === "patch") return { kind: "patch", doc: m.doc, ops: (m.ops ?? []).length, bytes };
-  return { kind: m.type, bytes };
 }
 
 export async function extract(name: string) {

@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A run's observer is told what was in front of each member** (`Trace.holds`, src/harness.ts):
   at each step, each member's documents as their page last read them (`shownTo`), so the modeller
   can say who held what when a story was told.
+- **The modeller reads documents** (`modeller/documents.ts`, tooling, not shipped): `bun run modeller
+  <example>` starts with a grid of who holds, writes, is refused and is told of each document, from
+  a run of the stories (or from the stories alone, for one with no app yet), and flags, without
+  failing anything, an action with no document in front of its author, a document no story needs,
+  and a write permit allows that no story does and no page offers ("permit allows", eta #32: it
+  over-reports).
 
 ### Changed
 

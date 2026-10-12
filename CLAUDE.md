@@ -39,7 +39,8 @@ it, and everything else is derived from it.
   leave's, the wedding's and the ticker's for what only they have (a sign-in, an applet's
   declaration, a deadline passed, a row the tables lost).
 - `modeller/` and `uml/` are tooling, never shipped (not in `files`): the modeller reads an
-  example's stories as a hjeli model (`bun run modeller <example>`, `bun run modeller:page
+  example's documents (from its stories, its compartments and a run of them) and its stories as a
+  hjeli model (`bun run modeller <example>`, `bun run modeller:page
   <example>`), and `uml/` is the live ASCII-UML session (`bun run uml [londons]`, `bun run
   uml:check`). Nothing imports them; they read the kernel and the examples. The model
   and its predicates are a copy of hjeli's, in `modeller/model/`: eta depends on nothing outside itself.
