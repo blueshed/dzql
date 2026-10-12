@@ -106,8 +106,8 @@ function render() {
   const nodes = Object.entries(pos)
     .map(([name, p]) => {
       const e = ent(name);
-      const cls = ["ent", r.ents.has(name) && "on", e.red && "red", isSel("ent", name) && "me"].filter(Boolean).join(" ");
-      const why = e.red ? infoButton({ kind: "red", ent: name }, `Why is ${name} marked?`, true) : "";
+      const cls = ["ent", r.ents.has(name) && "on", e.red && "red", e.looked && "looked", isSel("ent", name) && "me"].filter(Boolean).join(" ");
+      const why = e.red || e.looked ? infoButton({ kind: "red", ent: name }, e.red ? `Why is ${name} marked?` : `Who looks ${name} up?`, e.red) : "";
       return `<div class="node" style="left:${p.x}px;top:${p.y}px"><button class="${cls}" data-pick="ent:${esc(name)}" data-key="ent:${esc(name)}" aria-pressed="${isSel("ent", name)}" title="${esc(e.columns.join(" · "))}"><span class="name">${esc(name)}</span><span class="sub">${esc(e.columns.join(" · "))}</span></button>${why}</div>`;
     })
     .join("");
@@ -122,6 +122,7 @@ function render() {
       <span><i style="background:var(--go-bg);border:2px solid var(--ink)"></i>what you clicked</span>
       <span><i style="background:var(--go-bg);border:2px solid var(--go)"></i>goes with it</span>
       <span><i style="background:var(--red-bg);border:1px solid var(--red-line)"></i>reached by no document</span>
+      <span><i style="background:var(--card);border:1px dashed var(--go)"></i>looked up, never held</span>
       <span><i style="background:var(--card);border:2px dashed var(--amber)"></i>told, not asked for</span>
       <span><i style="background:var(--amber-bg);border:2px solid var(--amber)"></i>a cost to look at</span>
     </div>`;
@@ -165,10 +166,10 @@ function reason(m: Mark): { title: string; one: string; two: string; red: boolea
     const readers = e.code.filter((c) => !c.seed).map((c) => (c.by ? `${c.by}() in ${c.at.split(":")[0]}` : c.at));
     const touching = H.stories.filter((s) => s.touches.includes(e.name)).length;
     return {
-      title: `${e.name} · reached by no document`,
+      title: `${e.name} · ${e.red ? "reached by no document" : "looked up, never held"}`,
       one: readers.length ? `Read by ${list(readers)}; no document holds it.` : "No code but the seed names it, and no document holds it.",
       two: touching ? `${plural(touching, "story touches", "stories touch")} it.` : "No story touches it.",
-      red: true,
+      red: e.red,
     };
   }
   if (m.kind === "cost") {

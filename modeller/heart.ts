@@ -20,7 +20,9 @@
 //                 every holder can write it, and each write is told to every holder. Two tabs of
 //                 one person (the same cast) are one holder; a write from no page (`offPage`, a
 //                 feed's) is nobody's who holds it.
-//   red           an entity (a table in delta.ts's schema) no document reaches.
+//   red           an entity (a table in delta.ts's schema) no document reaches and no code reads.
+//   looked up     one no document reaches that code reads (a credential at sign-in): never held, as
+//                 it should be -- no warning.
 //
 // A project with no app yet is read from its stories alone (`ran` false): a story is born into its
 // own document (all `read(stories)` says), touches what its own write's paths name -- not its
@@ -204,7 +206,10 @@ export function heartOf(f: {
     const file = f.files.find((x) => x.path === path);
     return file ? readBy(file, Number(line) - 1) : null;
   };
-  const entities = f.tables.map((t) => ({ name: t.name, parent: t.parent, columns: t.columns.map((c) => c.name), code: t.code.map((c) => ({ ...c, by: c.seed ? null : by(c.at) })), red: red.has(t.name) }));
+  const entities = f.tables.map((t) => {
+    const read = t.code.some((c) => !c.seed);
+    return { name: t.name, parent: t.parent, columns: t.columns.map((c) => c.name), code: t.code.map((c) => ({ ...c, by: c.seed ? null : by(c.at) })), red: red.has(t.name) && !read, looked: red.has(t.name) && read };
+  });
   return { example: f.example, ran: f.ran, stories, documents, entities };
 }
 
