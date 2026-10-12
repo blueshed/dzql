@@ -234,6 +234,9 @@ registerMemory(delta.server, { prefix: "everyone:", empty: () => ({}) });`;
     expect(closes.sequence[0]!.heard.find((h) => h.member === "ada")!.messages.length).toBeGreaterThan(0);
     expect(facts.tables.find((t) => t.name === "messages")!.parent).toBe("rooms");
     expect(facts.tasks.length).toBeGreaterThan(0);
+    // the documents, as the same run read them: the picture's grid and each story's changes
+    expect(facts.read.ran).toBe(true);
+    expect(facts.read.stories.find((s) => s.name === say.name)!.changes.map((c) => c.doc)).toEqual(["room:general"]);
   }, 30000);
 
   test("the wedding: its rules, dated or not, its session, and the seed that makes a table's rows", async () => {

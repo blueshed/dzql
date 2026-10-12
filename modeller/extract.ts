@@ -1,11 +1,13 @@
 // The facts a modeller page shows, read from an example as it stands: its stories, its delta.ts
-// (tables, and documents as root + include), its compartments' permit rules, and what the harness
-// says when it runs the stories. Nothing here is proposed; everything is read.
+// (tables, and documents as root + include), its compartments' permit rules, what the harness
+// says when it runs the stories, and its documents as that run read them (documents.ts). Nothing
+// here is proposed; everything is read.
 
 import type { Stories, Story } from "../src/stories";
+import type { Example } from "../src/example";
 import { parsePointer } from "../src/json-pointer";
-import { run, type Trace } from "../src/harness";
-import { heardAs } from "./documents";
+import { run } from "../src/harness";
+import { heardAs, read, watch } from "./documents";
 
 type Column = { type: string; nullable?: boolean };
 type Permit = { doc: string; path: string; ops: string[]; dated: boolean };
@@ -91,8 +93,10 @@ export async function extract(name: string) {
   }
 
   // Every write the run makes, as the wire carried it: for a sequence drawn from a real run.
-  const traces = new Map<string, Trace[]>();
-  const report = await run((await import(`${dir}/index.ts`)).example, stories, (t) => traces.set(t.story, [...(traces.get(t.story) ?? []), t]));
+  const { example } = (await import(`${dir}/index.ts`)) as { example: Example };
+  const watched = watch(example);
+  const report = await run(example, stories, watched.observe);
+  const traces = Map.groupBy(watched.traces, (t) => t.story);
   const outcome = new Map(report.outcomes.map((o) => [o.name, o.failures]));
 
   const storyRows = stories.stories.map((s: Story, i) => {
@@ -121,5 +125,5 @@ export async function extract(name: string) {
   const todo = (await Bun.file(`${import.meta.dir}/../todo.jsonl`).text()).split("\n").filter(Boolean).map((l) => JSON.parse(l));
   const tasks = todo.map((t: { n: number; status: string; summary: string; area: string }) => ({ n: t.n, status: t.status, summary: t.summary, area: t.area }));
 
-  return { example: name, session, cast, castSetup, tables, documents, permits, stories: storyRows, harness: { passed: report.passed, failed: report.failed }, tasks };
+  return { example: name, session, cast, castSetup, tables, documents, permits, stories: storyRows, harness: { passed: report.passed, failed: report.failed }, tasks, read: read(stories, example, watched) };
 }

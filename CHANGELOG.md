@@ -17,7 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a run of the stories (or from the stories alone, for one with no app yet), and flags, without
   failing anything, an action with no document in front of its author, a document no story needs,
   and a write permit allows that no story does and no page offers ("permit allows", eta #32: it
-  over-reports).
+  over-reports). Its page (`bun run modeller:page <example>`) opens on the picture: a grid of
+  actors by documents (held, wrote, refused, told), and for the chosen story one row per document
+  it changed, saying who was told and how (a patch, the parts that followed, the bytes).
 
 ### Changed
 
