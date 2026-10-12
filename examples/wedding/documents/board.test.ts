@@ -100,6 +100,17 @@ describe("what a couple's write becomes", () => {
     expect(shaped({ op: "remove", path: "/households/2/guests/3" })).toEqual([{ op: "remove", path: "/guests/3" }]);
   });
 
+  test("a new row's id is past every id delta has handed out, so one taken off is never named again", async () => {
+    const by = { identity: "test", cursor: "board-test" };
+    const pathOf = (written: Awaited<ReturnType<typeof documents.write>>): string => ("error" in written ? written.error.message : written.ops[0]!.path);
+    const gone = pathOf(await documents.write("board:1", [{ op: "add", path: "/guests/-", value: { households_id: 2, name: "Lou" } }], by)); // delta's serial names it
+    await documents.write("board:1", [{ op: "remove", path: gone }], by);
+    const named = pathOf(await documents.write("board:1", shaped({ op: "add", path: "/households/2/guests/-", value: "Mara" }) as never, by));
+    expect(named).toStartWith("/guests/");
+    expect(named).not.toBe(gone);
+    await documents.write("board:1", [{ op: "remove", path: named }], by);
+  });
+
   test("a yes to an ask makes its guest, remembered on the ask; a no takes them back out; a reply not given cannot be withdrawn", () => {
     const yes = shaped({ op: "replace", path: "/households/1/asks/1/reply", value: "yes" });
     const gid = yes[1]!.path.split("/")[2]!;

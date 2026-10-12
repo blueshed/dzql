@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`replace /answer`), not the keys of a row, as the wedding's deadline now does. Patches shrink:
   a ticker tick to each viewer 283 B to 194 B, the wedding's look change to the couple 856 B to
   740 B (README).
+- **An add names a new id, as delta 0.13 says: one its serial has handed out is taken (409), even
+  once its row is gone.** leave's draft is a row of its own (`add /drafts/-`, with `person_id`),
+  so a draft asked for and drawn again is a new row, and two days set in one message make one
+  draft; the wedding mints its rows' ids past delta's serial. A database from before needs its
+  `leave_drafts` table dropped: it gains `person_id`.
 
 ### Added
 

@@ -131,7 +131,7 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
   for (const key of ["households", "guests", "asks", "claims", "courses", "dishes", "drinks", "gifts", "events", "places"] as const) d[key] ??= {};
   const out: PatchOp[] = [];
   const mint: Record<string, () => string> = {};
-  const next = (table: string) => (mint[table] ??= minter(`wedding_${table}`))();
+  const next = (coll: string) => (mint[coll] ??= minter(coll))();
   const emit = (op: PatchOp) => {
     out.push(op);
     const [coll, id, field] = parsePointer(op.path);

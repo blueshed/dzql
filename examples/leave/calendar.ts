@@ -7,9 +7,11 @@ export type Person = { id: string; name: string; role: Role };
 export type Status = "asked" | "approved" | "declined";
 export type Request = { id: string; person_id: string; starts: string; ends: string; status: Status; answered_by: string | null };
 /** The team: its people, their requests, and each person's draft, by who they are. */
-export type Team = { name: string; people: Person[]; requests: Request[]; drafts: Record<string, Span> };
+export type Team = { name: string; people: Person[]; requests: Request[]; drafts: Record<string, Draft> };
 /** A range of days, first and last (YYYY-MM-DD). */
 export type Span = { starts: string; ends: string };
+/** A person's draft: its days, and its row's id. */
+export type Draft = Span & { id: string };
 
 // ───────────────────────────── days ─────────────────────────────
 

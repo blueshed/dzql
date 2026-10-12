@@ -76,9 +76,14 @@ export function read(id: string): HouseholdDocument | undefined {
   return doc?.households ? householdFrom(doc.households, doc) : undefined;
 }
 
-/** The next id for a table: rows are numbered, as they were, so a path names one by a number. */
-export function minter(table: string): () => string {
-  let next = (db.query<{ n: number | null }, []>(`SELECT MAX(CAST(id AS INTEGER)) AS n FROM ${table}`).get()?.n ?? 0) + 1;
+/**
+ * The next id for a collection: rows are numbered, as they were, so a path names one by a number.
+ * An add may name only an id past every one delta's serial has handed out (`_delta_sequences`),
+ * taken off since or not, so the next is past those and every row's.
+ */
+export function minter(coll: string): () => string {
+  const last = db.query<{ n: number }, [string]>(`SELECT MAX(COALESCE((SELECT last FROM _delta_sequences WHERE collection = ?), 0), COALESCE(MAX(CAST(id AS INTEGER)), 0)) AS n FROM wedding_${coll}`).get(coll)!;
+  let next = last.n + 1;
   return () => String(next++);
 }
 
@@ -106,8 +111,8 @@ export function shape(h: HouseholdDocument, offer: Offer, ops: PatchOp[], now = 
   let message = h.message;
   let owed = h.plus_ones - h.guests.filter((g) => g.named_by === "household").length;
   const claims = new Set(h.claims);
-  const guestId = minter("wedding_guests");
-  const askId = minter("wedding_asks");
+  const guestId = minter("guests");
+  const askId = minter("asks");
   const nameOf = (value: unknown) => text(typeof value === "string" ? value : (value as { name?: unknown } | null)?.name);
 
   for (const op of ops) {

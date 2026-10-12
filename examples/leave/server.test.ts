@@ -185,6 +185,19 @@ describe("the page", () => {
     }
   });
 
+  test("a draft dropped can be drawn again: a new draft is a row of its own", async () => {
+    const ann = await withAnn();
+    try {
+      await send(ann, "team", [{ op: "replace", path: "/draft", value: { starts: "2026-10-07", ends: "2026-10-08" } }]);
+      await send(ann, "team", [{ op: "remove", path: "/draft" }]); // Cancel
+      await send(ann, "team", [{ op: "replace", path: "/draft", value: { starts: "2026-10-14", ends: "2026-10-15" } }]);
+      expect(await go(ann, "2026-10")).toContain('<span class="sr-only">your draft, Wed 14 – Thu 15 Oct</span>');
+    } finally {
+      for (let i = 0; i < 3; i++) await undo(ann);
+      ann.ws.close();
+    }
+  });
+
   test("your own waiting request: its dates to change, taking it back; answered, it stays as it is; a manager answers others'", async () => {
     const ann = await withAnn();
     const mo = await withMo();
@@ -327,17 +340,20 @@ describe("the rules, on their own", () => {
   });
 
   test("a draft is your row, set, changed a day at a time, dropped; asking for it drops it in the same change; a move and an answer as the team takes them", () => {
-    expect(shape(ann, [{ op: "replace", path: "/draft", value: { starts: "2026-12-01", ends: "2026-12-04" } }], t)).toEqual([{ op: "add", path: "/drafts/1", value: { starts: "2026-12-01", ends: "2026-12-04" } }]);
-    const drafted: Team = { ...t, drafts: { "1": { starts: "2026-12-01", ends: "2026-12-04" } } };
-    expect(shape(ann, [{ op: "replace", path: "/draft/ends", value: "2026-12-02" }], drafted)).toEqual([{ op: "replace", path: "/drafts/1", value: { starts: "2026-12-01", ends: "2026-12-02" } }]);
+    expect(shape(ann, [{ op: "replace", path: "/draft", value: { starts: "2026-12-01", ends: "2026-12-04" } }], t)).toEqual([{ op: "add", path: "/drafts/-", value: { person_id: "1", starts: "2026-12-01", ends: "2026-12-04" } }]);
+    expect(shape(ann, [{ op: "replace", path: "/draft/starts", value: "2026-12-01" }, { op: "replace", path: "/draft/ends", value: "2026-12-03" }], t)).toEqual([
+      { op: "add", path: "/drafts/-", value: { person_id: "1", starts: "2026-12-01", ends: "2026-12-03" } }, // two days set together: one draft made
+    ]);
+    const drafted: Team = { ...t, drafts: { "1": { id: "7", starts: "2026-12-01", ends: "2026-12-04" } } };
+    expect(shape(ann, [{ op: "replace", path: "/draft/ends", value: "2026-12-02" }], drafted)).toEqual([{ op: "replace", path: "/drafts/7", value: { person_id: "1", starts: "2026-12-01", ends: "2026-12-02" } }]);
     expect(shape(ann, [{ op: "replace", path: "/draft/starts", value: "soon" }], drafted)).toEqual([]);
     expect(shape(ann, [{ op: "replace", path: "/draft" }], t)).toEqual([]);
     expect(() => shape(ann, [{ op: "replace", path: "/draft/ends", value: "2026-11-30" }], drafted)).toThrow("The last day is before the first.");
-    expect(shape(ann, [{ op: "remove", path: "/draft" }], drafted)).toEqual([{ op: "remove", path: "/drafts/1" }]);
+    expect(shape(ann, [{ op: "remove", path: "/draft" }], drafted)).toEqual([{ op: "remove", path: "/drafts/7" }]);
     expect(shape(ann, [{ op: "remove", path: "/draft" }], t)).toEqual([]); // nothing to drop
     expect(shape(ann, [{ op: "add", path: "/requests/-" }], drafted)).toEqual([
       { op: "add", path: "/requests/-", value: { person_id: "1", starts: "2026-12-01", ends: "2026-12-04", status: "asked", answered_by: null } },
-      { op: "remove", path: "/drafts/1" },
+      { op: "remove", path: "/drafts/7" },
     ]);
     expect(shape(ann, [{ op: "add", path: "/requests/-" }], t)).toEqual([]); // no draft: nothing to ask for
     expect(shape(ann, [{ op: "add", path: "/requests/-", value: { starts: "2026-12-07", ends: "2026-12-07" } }], drafted)).toEqual([

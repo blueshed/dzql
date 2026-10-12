@@ -16,11 +16,11 @@ export type { Person, Request, Role, Span, Status, Team } from "./calendar";
 export const TEAM = "1";
 
 export function team(): Team {
-  const doc = readDoc<{ teams: { name: string }; people: Record<string, Person>; requests: Record<string, Request>; drafts?: Record<string, Span & { id: string }> }>(`team:${TEAM}`);
+  const doc = readDoc<{ teams: { name: string }; people: Record<string, Person>; requests: Record<string, Request>; drafts?: Record<string, Span & { id: string; person_id: string }> }>(`team:${TEAM}`);
   // an id is text, as the wire says it: a backend names a new row as it likes (a UUID, a serial)
   const people = Object.values(doc.people).map((p) => ({ ...p, id: String(p.id) }));
   const requests = Object.values(doc.requests).map((r) => ({ ...r, id: String(r.id), person_id: String(r.person_id), answered_by: r.answered_by == null ? null : String(r.answered_by) }));
-  const drafts = Object.fromEntries(Object.values(doc.drafts ?? {}).map((d) => [String(d.id), { starts: d.starts, ends: d.ends }]));
+  const drafts = Object.fromEntries(Object.values(doc.drafts ?? {}).map((d) => [String(d.person_id), { id: String(d.id), starts: d.starts, ends: d.ends }]));
   return { name: doc.teams.name, people, requests: requests.sort((a, b) => a.starts.localeCompare(b.starts) || a.id.localeCompare(b.id)), drafts };
 }
 
@@ -84,9 +84,6 @@ export function may(me: Person, op: PatchOp, t: Team): boolean {
   return field === "status" && r.status === "asked" && me.role === "manager" && r.person_id !== me.id && (op.value === "approved" || op.value === "declined");
 }
 
-/** Where a person's draft is in the team's document. */
-const joinDraft = (personId: string): string => `/drafts/${personId}`;
-
 /** A span's days, checked: it ends on or after it begins, and takes a working day. */
 function checked(s: Span): Span {
   if (s.ends < s.starts) throw refuse("The last day is before the first.");
@@ -104,18 +101,22 @@ function checked(s: Span): Span {
  */
 export function shape(me: Person, ops: PatchOp[], t: Team): PatchOp[] {
   const draft = t.drafts[me.id] ?? null;
-  const mine = joinDraft(me.id);
+  const mine = `/drafts/${draft?.id}`; // your draft's row, when there is one
+  let made: PatchOp | undefined; // the add that makes your draft in this message: a day set after it changes it
   const moved = new Map<string, Span>();
   const out = ops.flatMap((op): PatchOp[] => {
     const [coll, id, field] = parsePointer(op.path);
     if (coll === "draft") {
       if (op.op === "remove") return draft ? [{ op: "remove", path: mine }] : [];
-      const next: Partial<Span> = id === undefined ? ((op.value as Partial<Span> | null) ?? {}) : { ...(draft ?? {}), [id]: op.value };
+      const next: Partial<Span> = id === undefined ? ((op.value as Partial<Span> | null) ?? {}) : { ...((made?.value as Span | undefined) ?? draft ?? {}), [id]: op.value };
       const starts = next.starts ?? next.ends;
       const ends = next.ends ?? next.starts;
       if (typeof starts !== "string" || typeof ends !== "string" || !DAY.test(starts) || !DAY.test(ends)) return [];
       if (ends < starts) throw refuse("The last day is before the first.");
-      return [{ op: draft ? "replace" : "add", path: mine, value: { starts, ends } }];
+      const value = { person_id: me.id, starts, ends };
+      if (draft) return [{ op: "replace", path: mine, value }];
+      if (made) return ((made.value = value), []);
+      return [(made = { op: "add", path: "/drafts/-", value })];
     }
     if (op.op === "add") {
       const said = (op.value ?? draft) as Partial<Span> | null;

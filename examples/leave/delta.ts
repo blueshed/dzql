@@ -12,8 +12,9 @@ export const schema = defineSchema({
   teams: { table: "leave_teams", columns: { name: "text" }, temporal: false },
   people: { table: "leave_people", parent: "teams", columns: { name: "text", role: "text" }, temporal: false },
   requests: { table: "leave_requests", parent: "teams", columns: { person_id: "text", starts: "text", ends: "text", status: "text", answered_by: "text?" }, temporal: false },
-  // a person's draft: the days they have dragged across and not yet asked for, keyed by who they are
-  drafts: { table: "leave_drafts", parent: "teams", columns: { starts: "text", ends: "text" }, temporal: false },
+  // a person's draft: the days they have dragged across and not yet asked for, a row of its own
+  // (delta names it): a draft asked for and drawn again is a new row, as an id is never named twice
+  drafts: { table: "leave_drafts", parent: "teams", columns: { person_id: "text", starts: "text", ends: "text" }, temporal: false },
   sessions: { table: "leave_sessions", columns: { person_id: "text?", page: "text?" }, temporal: false },
   logins: { table: "leave_logins", columns: { person_id: "text", hash: "text" }, temporal: false },
 });
