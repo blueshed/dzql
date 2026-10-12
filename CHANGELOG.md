@@ -62,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`@blueshed/delta` ^0.13.1**, which quotes table and column names in SQLite and the JSON file,
+  so a table may be named with one of SQL's words. An app that links eta (`link:eta`) loads the
+  same delta as eta's kernel.
+
 - **The modeller's page is the heart: stories, documents and entities, one example, three
   columns** (`bun run modeller:page <example>`, `modeller/heart.html`). Click any one and what goes
   with it lights in the other two: a document's stories (born into it) and the entities it
