@@ -534,7 +534,16 @@ const count = (bytes: number): string => bytes.toLocaleString("en");
 /** Each step of a story, as a budget's failure names it. */
 const STEP: Record<Trace["phase"], string> = { does: "write", cannot: "refusal", closesTab: "tab closing", undo: "undo", redo: "redo" };
 
-export async function run(example: Example, stories: Stories, observe?: (trace: Trace) => void, options: { byHand?: boolean } = {}): Promise<Report> {
+export async function run(
+  example: Example,
+  stories: Stories,
+  observe?: (trace: Trace) => void,
+  options: {
+    byHand?: boolean;
+    /** Told, after the stories, every place each of the cast can get to from where the cast starts, by the controls their pages offer, and the controls each page there offers. */
+    everywhere?: (member: string, place: string, controls: Control[]) => void;
+  } = {},
+): Promise<Report> {
   const server = createServer(example, 0);
   const tapped = await tap(server.port!); // the cast's sockets go through it, so what each page is handed is counted as it crossed the wire
   const { draw, page, documents } = assemble(example);
@@ -1229,6 +1238,12 @@ export async function run(example: Example, stories: Stories, observe?: (trace: 
     // by hand: with `byHand` each story that has something to do there, and without it each that says its gesture
     const byHandToo = (story: Story): boolean => (options.byHand || story.gesture !== undefined) && misshapen(story).length === 0;
     const startsFrom = stories.goTo ? await reach(told, byHandToo) : new Map<Story, State>();
+    if (options.everywhere && stories.goTo) {
+      // a place nobody can get to, so each member's walk goes everywhere it can
+      const nowhere = new Map(Object.keys(stories.cast).map((name) => [name, new Set(["\u0000"])]));
+      const { state } = (await walk({} as Story, nowhere, false))!; // from where the cast starts: no premise to fail
+      for (const [member, places] of state.pages) for (const [place, controls] of places) options.everywhere(member, place, [...controls.values()]);
+    }
     outcomes.push(...told.map(({ outcome }) => outcome));
     const handed = told.filter(({ story }) => byHandToo(story));
     if (handed.length > 0) {

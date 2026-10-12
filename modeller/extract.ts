@@ -76,7 +76,7 @@ export async function extract(name: string) {
   // Every write the run makes, as the wire carried it: for a sequence drawn from a real run.
   const { example } = (await import(`${dir}/index.ts`)) as { example: Example };
   const watched = watch(example);
-  const report = await run(example, stories, watched.observe);
+  const report = await run(example, stories, watched.observe, { everywhere: watched.everywhere });
   const traces = Map.groupBy(watched.traces, (t) => t.story);
   const shown = privateEntry(example); // a session's id is a credential: it never reaches the page
   const outcome = new Map(report.outcomes.map((o) => [o.name, o.failures]));

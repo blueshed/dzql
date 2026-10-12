@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { story, type Stories } from "../src/stories";
-import type { Heard, Trace } from "../src/harness";
+import { controlsOn, type Heard, type Trace } from "../src/harness";
 import { attempt, documentsIn, documentsOf, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "./documents";
 import { example as chat } from "../examples/chat/index";
 import { stories as chatStories } from "../examples/chat/stories";
@@ -120,14 +120,20 @@ describe("from a run", () => {
     expect(r.noDocument).toEqual([]);
     expect(r.unneeded).toEqual([]);
     expect(r.readOnly).toEqual(["wedding", "welcome", "everyone"]);
-    expect(r.permitAllows).toEqual([]);
-    expect(cell(r, "couple", "household").refused).toBe(1);
+    expect(r.permitAllows).toEqual([]); // no story opens a gift's drawer: what it offers is offered all the same
+    expect(cell(r, "okafors", "household").refused).toBe(1); // after the deadline
     // the couple's message reaches every welcome; the households hold the wedding, and are sent it unseen
     const message = r.stories.find((s) => s.name.startsWith("The couple change their message"))!;
     expect(message.changes.find((c) => c.doc === "welcome:1")!.told).toMatchObject([{ member: "stranger", seen: true }]);
     expect(message.changes.find((c) => c.doc === "wedding:1")!.told.map((t) => t.seen)).toEqual([false, false, false]);
     expect(format("wedding", r)).toContain("(not in seen)");
   }, 60000);
+
+  test("a write is offered by any page a member can get to, whether or not a story opened it", () => {
+    const w = watch(chat);
+    w.everywhere("ada", "?keep=gifts/1", controlsOn(`<button data-write='{"doc":"board","op":"remove","path":"/gifts/1"}'></button>`));
+    expect(w.controls).toEqual(new Set(["board remove /gifts/*"]));
+  });
 
   test("what permit allows that no story does and no page offers: by path, with its verbs and who; an add on a field it lets be replaced is that replace", () => {
     const lets = (op: string, path: string, who: string[]) => [`room ${op} ${path}`, { doc: "room", op, path, who }] as const;

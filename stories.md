@@ -41,10 +41,10 @@ cast: {
 // open over it, and after " @ " what else the session holds there (find's word).
 goTo: (address) => ...one session write...,
 
-story("Femi's top turns green, and the photo everyone watches changes", {
+story("Femi is not coming after all: the mark at his feet says so, and he leaves everyone's photo", {
   as: "okafors",
-  from: "?guest=2", // his drawer, where the dress is
-  does: household("replace", "/guests/2/minifigure/top", "#7FAE4E"),
+  from: "?guest=2", // his drawer
+  does: household("replace", "/guests/2/coming", "0"),
   seen: { okafors: "", couple: "", benToo: "everyone" },
 });
 
@@ -56,9 +56,10 @@ story("The Okafors leave the caterer a note, and only the couple read it", {
   untold: ["ben", "benToo"],
 });
 
-story("A household cannot change the couple's welcome", {
-  as: "ben",
-  cannot: board("replace", "/message", "Hi"),
+story("A stranger types a code nobody has, and is told it was not recognised", {
+  as: "stranger",
+  cannot: session("/code", "NOPE"),
+  told: "That code was not recognised.",
 });
 ```
 

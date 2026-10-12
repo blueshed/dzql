@@ -397,8 +397,9 @@ for (const t of DATA.tables) {
   else if (!written) FLAGS.push({ level: "amber", on: `table:${t.name}`, title: `${t.name}: no story writes it`,
     why: `It is in ${DATA.documents.filter((d) => tablesIn(d).includes(t.name)).map((d) => d.name + ":").join(", ")}, but its rows come only from the seed. No story says how one is made.`, code: t.code });
 }
-DATA.permits.forEach((p, i) => { if (!ruleUsed[i]) FLAGS.push({ level: "flag", on: `doc:${p.doc}`, title: `${p.doc}: a permitted write no story tells`,
-  why: `The rule allows ${p.ops.join("/")} ${p.path}, and no story does it.`, code: [{ at: `compartments/${p.doc}.ts`, line: `{ path: /${p.path}/, ops: [${p.ops.map((o) => `"${o}"`).join(", ")}] }` }] }); });
+// the rules no story uses, one flag for each document's
+for (const [doc, untold] of Map.groupBy(DATA.permits.filter((_, i) => !ruleUsed[i]), (p) => p.doc)) FLAGS.push({ level: "amber", on: `doc:${doc}`, title: `${doc}: ${untold.length === 1 ? "a permit rule" : `${untold.length} permit rules`} no story tells`,
+  why: `No story does what ${untold.length === 1 ? "this rule allows" : "these rules allow"}. For each, add a permit test that it lets the right person do it and nobody else, or remove the permit.`, code: untold.map((p) => ({ at: `compartments/${doc}.ts`, line: `{ path: /${p.path}/, ops: [${p.ops.map((o) => `"${o}"`).join(", ")}] }` })) });
 const flagsOn = (key) => FLAGS.filter((f) => f.on === key);
 
 // ── demo state: agreements and U ticks, in this page only ──
@@ -734,7 +735,7 @@ for (const f of R.noDocument) FLAGS.push({ level: "flag", on: `story:${S.find((s
 for (const f of R.tellsNobody) FLAGS.push({ level: "flag", on: `story:${S.find((s) => s.name === f.story).n}`, title: `a write that tells nobody: ${f.detail}`, why: f.story });
 for (const d of R.unneeded) FLAGS.push({ level: "flag", on: `doc:${d}`, title: `${d}: no story needs it`, why: "Defined, never written by anyone, and never in front of anyone in the run." });
 for (const [doc, as] of Object.entries(Object.groupBy(R.permitAllows, (a) => a.doc))) FLAGS.push({ level: "amber", on: `doc:${doc}`, title: `${doc}: permit allows writes no page offers, at ${as.length} ${as.length === 1 ? "path" : "paths"}`,
-  why: "Each path in what a member held, per verb, put to the compartment's permit: these it lets through, and no story does them and no control the run drew offers them. It over-reports: a shape may still refuse one, and a value is never tried.",
+  why: "Each path in what a member held, per verb, put to the compartment's permit: these it lets through, and no story does them and no page a member can get to offers them. It over-reports: a shape may still refuse one, and a value is never tried.",
   code: as.map((a) => ({ at: `${a.path}: ${a.ops.join(", ")}`, line: a.who.join(", ") })) });
 
 const MARK = [["held", "h", "held", "their page read it"], ["written", "w", "wrote", "they wrote it"], ["refused", "r", "refused", "they were refused"], ["told", "t", "told", "they were told of a change"]];

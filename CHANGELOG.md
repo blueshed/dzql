@@ -17,8 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a run of the stories (or from the stories alone, for one with no app yet), and flags, without
   failing anything, an action with no document in front of its author, a write that tells nobody,
   a document no story needs (a delta.ts document no compartment owns among them), and what permit
-  allows that no story does and no page offers, by path with its verbs ("permit allows", eta #32:
-  it over-reports). A session's id never reaches the page: its documents go by their type alone,
+  allows that no story does and no page a member can get to offers, by path with its verbs
+  ("permit allows", eta #32: it over-reports). Every such page is walked after the stories, so a
+  write is offered whether or not a story opened its drawer (`run(..., { everywhere })`,
+  src/harness.ts: every place each of the cast can get to from where it starts, and what each page
+  there offers). A permit rule no story uses is advice on its page: add a permit test, or remove
+  the permit. A session's id never reaches the page: its documents go by their type alone,
   and its ledger entries without their values. Its page (`bun run modeller:page <example>`) opens on the picture: a grid of
   actors by documents (held, wrote, refused, told), and for the chosen story one row per document
   it changed, saying who was told and how (a patch, the parts that followed, the bytes).
@@ -37,12 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wedding`: 45 paths to 0). A field is emptied by replacing it with nothing, never removed; a
   list row's parent (`*_id`) and a dish's or a drink's order are the server's; a reply to an ask is
   changed, never taken back; a visit's `/reading`, `/filter` and `/hide` are written by the
-  collection's name, and its page is gone to, never removed. Eight stories tell what the pages
-  already offered: a gift, an event and a place to stay edited, and each taken off; a drink
-  renamed; a claim given back.
+  collection's name, and its page is gone to, never removed.
 - **The ticker's desk and leave's session permit what their pages write, and nothing more**
   (`bun run modeller`: ticker 4 paths to 0, leave 1 to 0): a page is gone to, never removed, and
   the desk's `/reading`, `/filter` and `/hide` are written by the collection's name.
+- **The wedding says what it is for in 18 stories** (from 50): coming in, the couple keeping the
+  wedding, a household answering and asking, the meal and the gifts, the day and where to stay.
+  What the others proved moved to permit and kernel tests: each write a page offers is put to its
+  compartment's permit, allowed for whom it is offered and refused for everyone else
+  (`examples/wedding/server.test.ts`); the refusals a document makes go through the wire there;
+  a visit's moves telling no other tab, and the rest, are the server tests they always were; the
+  harness's own tests tell the two stories they used inline.
 
 ## [0.51.0] - 2026-09-28
 

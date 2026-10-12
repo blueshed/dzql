@@ -635,7 +635,7 @@ describe("stories harness", () => {
     const maybe = named("The Okafors say maybe");
 
     test("a line told to the author is no change of theirs: a write their own page does not show fails, whatever it says", async () => {
-      const femi = named("Femi's top turns green");
+      const femi: Story = { name: "Femi's top turns green, and the photo everyone watches changes", as: "okafors", from: "?guest=2", does: { doc: "household", ops: [{ op: "replace", path: "/guests/2/minifigure/top", value: "#7FAE4E" }] }, seen: { okafors: "", couple: "", benToo: "everyone" } };
       // the Okafors' own page never shows Femi's top green
       const blind: Example = {
         ...wedding,
@@ -707,6 +707,17 @@ describe("stories harness", () => {
     const without = (...controls: string[]): Example => ({ ...ticker, render: (sessionId) => controls.reduce((html, c) => html.replaceAll(c, ""), ticker.render(sessionId)) });
     const named = (prefix: string): Story[] => told.stories.filter((s) => s.name.startsWith(prefix));
 
+    test("everywhere: after the stories, every place each of the cast can get to from where it starts, with what each page there offers", async () => {
+      const offered = new Map<string, string[]>();
+      await run(ticker, { ...told, stories: [] }, undefined, { everywhere: (member, place, controls) => member === "ann" && offered.set(place, controls.map((c) => `${c.op} ${c.path}`)) });
+      expect(offered.get("board?new")).toContain("add /symbols/-"); // no story stood there: a control leads there, and what it offers is known
+      // a place no control leads to is not walked
+      const walked: string[] = [];
+      await run(without(desk("board?new")), { ...told, stories: [] }, undefined, { everywhere: (member, place) => member === "ann" && walked.push(place) });
+      expect(walked).not.toContain("board?new");
+      expect(walked.length).toBeGreaterThan(0);
+    }, 30000);
+
     test("a story whose from no page offers a way to fails by name, though the harness can put its author there", async () => {
       const report = await run(without(desk("board?new")), { ...told, stories: named("Ann watches Charlie Metals, and only her board grows") });
       expect(report.outcomes[0]!.failures).toEqual(['no control leads ann to "board?new", where the story has them act']);
@@ -744,7 +755,7 @@ describe("stories harness", () => {
     const { stories: told } = await import("../examples/wedding/stories");
     // Ben has no plus-one, so nothing on his page opens the plus; the couple giving him one draws it there, for that story alone
     const plus: Story = { name: "Ben, with no plus-one, cannot name one from the plus", as: "ben", from: "?new=guests", cannot: { doc: "household", ops: [{ op: "add", path: "/guests/-", value: "Someone Else" }] } };
-    const letBen = told.stories.find((s) => s.name.startsWith("The couple let Ben bring one more"))!;
+    const letBen: Story = { name: "The couple let Ben bring one more, and he may name them himself", as: "couple", from: "?family=2", does: { doc: "board", ops: [{ op: "replace", path: "/households/2/plus_ones", value: 1 }] }, seen: { couple: "?family=2", ben: "", benToo: "" } };
     const unreached = ['no control leads ben to "?new=guests", where the story has them act'];
     for (const order of [[plus], [letBen, plus], [plus, letBen]]) {
       const report = await run(wedding, { ...told, stories: order });

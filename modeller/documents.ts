@@ -16,7 +16,7 @@ import type { Example } from "../src/example";
 import type { Compartment } from "../src/compartments/compartment";
 import type { Stories, Story } from "../src/stories";
 import type { PatchOp } from "../src/json-patch";
-import { controlsOn, run, type Heard, type Trace } from "../src/harness";
+import { controlsOn, run, type Control, type Heard, type Trace } from "../src/harness";
 import { allOpenSockets } from "../src/compartments/audience";
 import { activeDocuments } from "../src/documents";
 
@@ -48,7 +48,7 @@ export type Reading = {
   unneeded: string[];
   /** Held, and written by no person: read by people, kept by someone else (a catalogue, who is here). */
   readOnly: string[];
-  /** What permit allows that no story does and no control the run saw offers. It over-reports: a shape may refuse it, and a value is never tried. */
+  /** What permit allows that no story does and no page a member can get to offers. It over-reports: a shape may refuse it, and a value is never tried. */
   permitAllows: Allowed[];
 };
 
@@ -142,16 +142,18 @@ export function probes(value: unknown, under?: string): { op: PatchOp; shape: st
   return out;
 }
 
-/** What a run says, read as it goes: every trace, the controls its pages drew, and what permit lets each member write to what is in front of them. */
+/** What a run says, read as it goes: every trace, the controls its pages drew and every page a member can get to offers, and what permit lets each member write to what is in front of them. */
 export type Watched = { traces: Trace[]; controls: Set<string>; allowed: Map<string, Let> };
 
 /**
  * An observer for `run`: keeps each trace, and at each story's step -- while its state stands --
  * puts every document each member holds to its compartment's permit, path by path, and keeps the
  * controls each member's page draws there. A member's socket is the one whose session their page
- * read (its own documents are named by it).
+ * read (its own documents are named by it). `everywhere` keeps what every page a member can get to
+ * offers (`run`'s walk, after the stories), so a write is offered whether or not a story opened
+ * the drawer it is in.
  */
-export function watch(example: Example): Watched & { observe: (t: Trace) => void } {
+export function watch(example: Example): Watched & { observe: (t: Trace) => void; everywhere: (member: string, place: string, controls: Control[]) => void } {
   const watched: Watched = { traces: [], controls: new Set(), allowed: new Map() };
   const byType = new Map(example.compartments.map((c) => [c.docType, c]));
   const control = (doc: string, op: string, path: string) => `${typeOf(doc)} ${op} ${shapeOf(path)}`;
@@ -179,7 +181,8 @@ export function watch(example: Example): Watched & { observe: (t: Trace) => void
       }
     }
   };
-  return { ...watched, observe };
+  const everywhere = (_member: string, _place: string, controls: Control[]) => controls.forEach((c) => watched.controls.add(control(c.doc, c.op, c.path)));
+  return { ...watched, observe, everywhere };
 }
 
 const blank = (): Cell => ({ held: 0, written: 0, refused: 0, told: 0 });
@@ -261,7 +264,7 @@ export function read(stories: Stories, example?: Example, watched?: Watched, def
   const unneeded = watched ? types.filter((t) => !written.has(t.name) && !held(t.name)).map((t) => t.name) : [];
   const readOnly = types.filter((t) => !written.has(t.name) && held(t.name)).map((t) => t.name);
 
-  // what permit allows that no story does and no control the run saw offers, by document and path:
+  // what permit allows that no story does and no page a member can get to offers, by document and path:
   // an add on a field that permit also lets be replaced is that replace, and goes with it
   const done = new Set(stories.stories.flatMap((s) => (s.does ? s.does.ops.map((op) => `${typeOf(s.does!.doc)} ${op.op} ${shapeOf(op.path)}`) : [])));
   const lets = [...(watched?.allowed.values() ?? [])];
@@ -308,7 +311,7 @@ export async function documentsOf(name: string): Promise<Reading> {
   if (!(await Bun.file(`${dir}/index.ts`).exists())) return read(stories);
   const { example } = (await import(`${dir}/index.ts`)) as { example: Example };
   const watched = watch(example);
-  await run(example, stories, watched.observe);
+  await run(example, stories, watched.observe, { everywhere: watched.everywhere });
   return read(stories, example, watched, documentsIn(await Bun.file(`${dir}/delta.ts`).text(), null).map((d) => d.name));
 }
 
@@ -347,7 +350,7 @@ export function format(name: string, r: Reading): string {
   if (r.ran) {
     out(`## Writes the server accepts that no page offers (${r.permitAllows.length} ${r.permitAllows.length === 1 ? "path" : "paths"})`);
     out();
-    out(`permit allows: each path in what a member holds, per verb, put to its compartment's permit, where no story does it and no control the run drew offers it. It over-reports: a shape may refuse what permit lets by, and a value is never tried.`);
+    out(`permit allows: each path in what a member holds, per verb, put to its compartment's permit, where no story does it and no page a member can get to offers it. It over-reports: a shape may refuse what permit lets by, and a value is never tried.`);
     for (const a of r.permitAllows) out(`- permit allows ${a.doc} ${a.path}: ${a.ops.join(", ")} — to ${a.who.join(", ")}`);
     out();
   }

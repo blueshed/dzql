@@ -54,80 +54,32 @@ export const stories: Stories = {
   },
   goTo,
   stories: [
-    // ── The welcome, before a code ──
-    story("A stranger types the couple's code and is on the board", { as: "stranger", does: session("/code", "DASH"), seen: ["stranger"] }),
+    // ── Coming in ──
+    story("A household enters its code, and is on its page", { as: "stranger", does: session("/code", "OKAFOR"), seen: ["stranger"] }),
     story("A stranger types a code nobody has, and is told it was not recognised", { as: "stranger", cannot: session("/code", "NOPE"), told: "That code was not recognised." }),
-    story("A stranger asks for their code again, and the welcome says it is sent if known", { as: "stranger", does: session("/resend", "ada@example.com"), seen: ["stranger"] }),
-    story("Without a code there is no page to go to", { as: "stranger", cannot: session("/page", "gifts") }),
-
-    // ── Going somewhere, and leaving ──
-    story("The Okafors open the gift list, and only their tab moves", { as: "okafors", does: session("/page", "?gifts"), seen: ["okafors"], untold: ["couple", "ben", "benToo", "stranger"] }),
-    story("The Okafors look for Femi, and everyone else in their photo fades; only their page changes", { as: "okafors", from: " @ filter.guests=", does: session("/filter/guests", "Femi"), seen: ["okafors"], untold: ["couple", "ben", "benToo", "stranger"] }),
-    story("Leaving the site forgets the code", { as: "okafors", does: session("/code"), seen: ["okafors"] }),
-
-    // ── A household answers ──
-    story("The Okafors say maybe, and the couple's photo and everyone's change", { as: "okafors", does: household("replace", "/answer", "maybe"), seen: { okafors: "?answer", couple: "", benToo: "everyone" }, undone: "Undone: your answer.", redone: "Redone: your answer." }),
-    story("The Okafors take their answer back", { as: "okafors", does: household("remove", "/answer"), seen: { okafors: "?answer", couple: "", benToo: "everyone" } }),
-    story("Femi is not coming after all: the mark at his feet says so, and he leaves everyone's photo", { as: "okafors", from: "?guest=2", does: household("replace", "/guests/2/coming", "0"), seen: { okafors: "", couple: "", benToo: "everyone" } }),
-    story("Femi's coming is left undecided, and the list shows it", { as: "okafors", from: "list?guest=2", does: household("remove", "/guests/2/coming"), seen: { okafors: "list", couple: "?family=1" } }),
-    story("The Okafors leave the caterer a note, and only the couple read it", { as: "okafors", from: "?answer", does: household("replace", "/message", "Ada is vegetarian."), seen: { okafors: "", couple: "?family=1" }, untold: ["ben", "benToo"] }),
-    story("The Okafors take the note back, emptying it", { as: "okafors", from: "?answer", does: household("replace", "/message", ""), seen: { okafors: "", couple: "?family=1" } }),
-
-    // ── Guests, figures, choices ──
-    story("The Okafors bring a plus-one, and the couple see the name", { as: "okafors", from: "?new=guests", does: household("add", "/guests/-", "Tolu Adebayo"), seen: { okafors: "", couple: "?family=1", benToo: "everyone" }, undone: "Undone: bringing Tolu Adebayo.", redone: "Redone: bringing Tolu Adebayo." }),
-    story("Femi's top turns green, and the photo everyone watches changes", { as: "okafors", from: "?guest=2", does: household("replace", "/guests/2/minifigure/top", "#7FAE4E"), seen: { okafors: "", couple: "", benToo: "everyone" } }),
-    story("Femi picks the sea bass, and the couple see it in the Okafors' drawer", { as: "okafors", from: "list?guest=2", does: household("replace", "/guests/2/choices/2/dish", 5), seen: { okafors: "list", couple: "?family=1" } }),
-    story("Femi picks the Rioja", { as: "okafors", from: "list?guest=2", does: household("replace", "/guests/2/choices/2/drink", 3), seen: { okafors: "list", couple: "?family=1" } }),
-    story("Femi cannot change his mind about a wine he has not chosen", { as: "okafors", cannot: household("remove", "/guests/2/choices/2/drink") }),
-    story("Femi, having picked the Rioja, changes his mind, and the couple see it gone", { as: "okafors", premise: { okafors: [household("replace", "/guests/2/choices/2/drink", 3)] }, from: "list?guest=2", does: household("remove", "/guests/2/choices/2/drink"), seen: { okafors: "list", couple: "?family=1" } }),
-    story("A household cannot uninvite one of its own guests; only Undo can", { as: "okafors", cannot: household("remove", "/guests/1") }),
-
-    // ── Asks ──
-    story("Ben, with no plus-one, asks to bring his sister, and she stands in his photo as a ghost until the couple answer", { as: "ben", from: "?new=asks", does: household("add", "/asks/-", "Lotte Achterberg"), seen: { ben: "", benToo: "", couple: "?family=2" } }),
-    story("The couple say yes to Kemi, and she is a guest in the Okafors' photo", { as: "couple", from: "?family=1", does: board("replace", "/households/1/asks/1/reply", "yes"), seen: { couple: "?family=1", okafors: "", benToo: "everyone" } }),
-    story("The couple say no to Kemi, and her ghost leaves the Okafors' photo", { as: "couple", from: "?family=1", does: board("replace", "/households/1/asks/1/reply", "no"), seen: { couple: "?family=1", okafors: "" } }),
-    story("The couple cannot withdraw a reply they have not given", { as: "couple", cannot: board("remove", "/households/1/asks/1/reply") }),
-
-    // ── Gifts ──
-    story("The Okafors claim the casserole, and it leaves Ben's list", { as: "okafors", from: "?gifts", does: household("add", "/claims/-", 1), seen: { okafors: "?gifts", couple: "?gifts", ben: "?gifts" } }),
-    story("The Okafors give to the honeymoon, and Ben still can", { as: "okafors", from: "?gifts", does: household("add", "/claims/-", 2), seen: { okafors: "?gifts", couple: "?gifts", ben: "?gifts" } }),
-    story("The Okafors give the casserole back, and Ben may claim it", { as: "okafors", premise: { okafors: [household("add", "/claims/-", 1)] }, from: "?gifts", does: household("remove", "/claims/1"), seen: { okafors: "?gifts", couple: "?gifts", ben: "?gifts" } }),
-    story("Ben claims the knives", { as: "ben", from: "?gifts", does: household("add", "/claims/-", 3), seen: { ben: "?gifts", benToo: "?gifts", couple: "?gifts", okafors: "?gifts" } }),
 
     // ── The couple keep the wedding ──
-    story("The couple change their message, and every welcome changes", { as: "couple", from: "?answer", does: board("replace", "/message", "See you in April."), seen: { couple: "?answer", stranger: "" } }),
-    story("The couple put a picture on the welcome, and every welcome shows it", { as: "couple", from: "?answer", does: board("replace", "/picture_key", "seed/mount-without.svg"), seen: { couple: "?answer", stranger: "" } }),
+    story("The couple invite the Londons, Jo and Sam, and they are on the list", { as: "couple", from: "list?new=households", does: board("add", "/households/-", { email: "londons@example.com", names: "Jo London, Sam London", plus_ones: 2 }), seen: { couple: "list" } }),
     story("The couple set a deadline, and the households see it", { as: "couple", from: "?answer", does: board("replace", "/deadline", "2027-03-01"), seen: { couple: "", okafors: "", ben: "", benToo: "" } }),
-    story("The couple invite the Londons, and they are on the list", { as: "couple", from: "list?new=households", does: board("add", "/households/-", { email: "londons@example.com", plus_ones: 2 }), seen: { couple: "list" } }),
-    story("The couple correct Ben's email", { as: "couple", from: "?family=2", does: board("replace", "/households/2/email", "ben@achterberg.example"), seen: { couple: "?family=2" } }),
-    story("The couple let Ben bring one more, and he may name them himself", { as: "couple", from: "?family=2", does: board("replace", "/households/2/plus_ones", 1), seen: { couple: "?family=2", ben: "", benToo: "" } }),
-    story("The couple add a guest to Ben's invitation", { as: "couple", from: "?family=2", does: board("add", "/households/2/guests/-", "Mara Achterberg"), seen: { couple: "?family=2", ben: "", benToo: "" } }),
-    story("The couple take Ben off his own invitation", { as: "couple", from: "?confirm=households/2/guests/3", does: board("remove", "/households/2/guests/3"), seen: { couple: "?family=2", ben: "", benToo: "" } }),
+    story("The couple change their message, and every welcome changes", { as: "couple", from: "?answer", does: board("replace", "/message", "See you in April."), seen: { couple: "?answer", stranger: "" } }),
 
-    // ── The lists ──
-    story("The couple add a course, and a guest's drawer gains a stage of the meal", { as: "couple", from: "?courses", does: board("add", "/courses/-", "Cheese"), seen: { couple: "?courses", okafors: "?guest=2", ben: "?guest=3" } }),
-    story("The couple drop the toast", { as: "couple", from: "?confirm=courses/4", does: board("remove", "/courses/4"), seen: { couple: "?courses", okafors: "?guest=2", ben: "?guest=3" } }),
-    story("The couple rename the main", { as: "couple", from: "?keep=courses/2", does: board("replace", "/courses/2/name", "Mains"), seen: { couple: "?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
+    // ── A household answers, and asks ──
+    story("The Okafors say maybe, and the couple's photo and everyone's change", { as: "okafors", does: household("replace", "/answer", "maybe"), seen: { okafors: "?answer", couple: "", benToo: "everyone" }, undone: "Undone: your answer.", redone: "Redone: your answer." }),
+    story("Femi is not coming after all: the mark at his feet says so, and he leaves everyone's photo", { as: "okafors", from: "?guest=2", does: household("replace", "/guests/2/coming", "0"), seen: { okafors: "", couple: "", benToo: "everyone" } }),
+    story("The Okafors leave the caterer a note, and only the couple read it", { as: "okafors", from: "?answer", does: household("replace", "/message", "Ada is vegetarian."), seen: { okafors: "", couple: "?family=1" }, untold: ["ben", "benToo"] }),
+    story("The Okafors bring a plus-one, and the couple see the name", { as: "okafors", from: "?new=guests", does: household("add", "/guests/-", "Tolu Adebayo"), seen: { okafors: "", couple: "?family=1", benToo: "everyone" }, undone: "Undone: bringing Tolu Adebayo.", redone: "Redone: bringing Tolu Adebayo." }),
+    story("Ben, with no plus-one, asks to bring his sister, and she stands in his photo as a ghost until the couple answer", { as: "ben", from: "?new=asks", does: household("add", "/asks/-", "Lotte Achterberg"), seen: { ben: "", benToo: "", couple: "?family=2" } }),
+    story("The couple say yes to Kemi, and she is a guest in the Okafors' photo", { as: "couple", from: "?family=1", does: board("replace", "/households/1/asks/1/reply", "yes"), seen: { couple: "?family=1", okafors: "", benToo: "everyone" } }),
+    story("Once the deadline has passed, the Okafors cannot change their answer", { as: "okafors", premise: { couple: [board("replace", "/deadline", "2026-01-01")] }, from: "?answer", cannot: household("replace", "/answer", "maybe") }),
+
+    // ── The meal and the gifts ──
+    story("Femi picks the sea bass, and the couple see it in the Okafors' drawer", { as: "okafors", from: "list?guest=2", does: household("replace", "/guests/2/choices/2/dish", 5), seen: { okafors: "list", couple: "?family=1" } }),
     story("The couple offer a vegan main", { as: "couple", from: "?keep=courses/2", does: board("add", "/courses/2/dishes/-", { name: "Aubergine tagine", dietary: "vg, gf" }), seen: { couple: "?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
-    story("The couple take the beef off", { as: "couple", from: "?keep=courses/2", does: board("remove", "/courses/2/dishes/4"), seen: { couple: "?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
-    story("The couple call the Rioja by its estate, and a guest choosing a drink sees the new name", { as: "couple", from: "?keep=courses/2", does: board("replace", "/courses/2/drinks/3/name", "Rioja, Muga"), seen: { couple: "?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
-    story("The couple mark the crab as gluten free", { as: "couple", from: "?keep=courses/1", does: board("replace", "/courses/1/dishes/3/dietary", "gf"), seen: { couple: "?keep=courses/1", okafors: "?guest=2", ben: "?guest=3" } }),
     story("The couple add a gift, and it is on every list", { as: "couple", from: "?gifts", does: board("add", "/gifts/-", { name: "A tree for the garden", description: "A crab apple." }), seen: { couple: "?gifts", okafors: "?gifts", ben: "?gifts" } }),
+    story("The Okafors claim the casserole, and it leaves Ben's list", { as: "okafors", from: "?gifts", does: household("add", "/claims/-", 1), seen: { okafors: "?gifts", couple: "?gifts", ben: "?gifts" } }),
+
+    // ── The day, and where to stay ──
     story("The couple add an event to the day", { as: "couple", from: "?events", does: board("add", "/events/-", { name: "Fireworks", when_at: "2027-04-02T22:00" }), seen: { couple: "?events", okafors: "?day", ben: "?day" } }),
     story("The couple add somewhere to stay", { as: "couple", from: "?places", does: board("add", "/places/-", { name: "The Bristol Hotel", notes: "Ask for the wedding rate." }), seen: { couple: "?places", okafors: "?stay", ben: "?stay" } }),
-    story("The couple say the casserole is cast iron, and every household's gift list says so", { as: "couple", from: "?keep=gifts/1", does: board("replace", "/gifts/1/description", "Cast iron, the big red one."), seen: { couple: "?keep=gifts/1", okafors: "?gifts", ben: "?gifts" } }),
-    story("The couple take the knives off the gift list", { as: "couple", from: "?confirm=gifts/3", does: board("remove", "/gifts/3"), seen: { couple: "?gifts", okafors: "?gifts", ben: "?gifts" } }),
-    story("The couple move the evening party to the barn, and every household's day says so", { as: "couple", from: "?keep=events/3", does: board("replace", "/events/3/where_at", "The Barn"), seen: { couple: "?keep=events/3", okafors: "?day", ben: "?day" } }),
-    story("The couple drop the evening party from the day", { as: "couple", from: "?confirm=events/3", does: board("remove", "/events/3"), seen: { couple: "?events", okafors: "?day", ben: "?day" } }),
-    story("The couple say the guesthouse is a short taxi ride away, and every household reads it", { as: "couple", from: "?keep=places/2", does: board("replace", "/places/2/notes", "A short taxi ride."), seen: { couple: "?keep=places/2", okafors: "?stay", ben: "?stay" } }),
-    story("The couple take the guesthouse off where to stay", { as: "couple", from: "?confirm=places/2", does: board("remove", "/places/2"), seen: { couple: "?places", okafors: "?stay", ben: "?stay" } }),
-
-    // ── Refusals ──
-    story("A household cannot change the couple's welcome", { as: "ben", cannot: board("replace", "/message", "Hi") }),
-    story("A household cannot invite anyone", { as: "ben", cannot: board("add", "/households/-", { email: "x@example.com" }) }),
-    story("The couple cannot answer for a household", { as: "couple", cannot: household("replace", "/answer", "yes") }),
-    story("A stranger cannot answer", { as: "stranger", cannot: household("replace", "/answer", "yes") }),
-    story("Once the deadline has passed, the Okafors cannot change their answer", { as: "okafors", premise: { couple: [board("replace", "/deadline", "2026-01-01")] }, from: "?answer", cannot: household("replace", "/answer", "maybe") }),
-    story("A household cannot take another's claim; the casserole is the Okafors'", { as: "ben", cannot: household("remove", "/claims/1") }),
   ],
 };

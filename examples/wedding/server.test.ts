@@ -869,62 +869,110 @@ describe("the couple keep a family's invitation", () => {
   });
 });
 
-// Each compartment permits what its pages offer and nothing more (`bun run modeller wedding`):
-// a field is emptied by replacing it with nothing, never removed; a row's parent and its number
-// in the order are the server's; a page is gone to, and how a collection is read is by its name.
+// Each compartment permits what its pages offer, to whom they offer it, and nothing more (`bun
+// run modeller wedding`): a field is emptied by replacing it with nothing, never removed; a row's
+// parent and a dish's or a drink's order are the server's; a reply is changed, never taken back.
+// What the wedding's stories no longer tell one by one is here, each write put to its permit.
 describe("a permit allows what a page offers, and nothing more", () => {
-  const permits = (docType: string, sessionId: string) => {
-    const c = example.compartments.find((x) => x.docType === docType) as Compartment;
-    return (op: PatchOp["op"], path: string) => c.permit!({ data: { sessionId } } as never, op === "remove" ? { op, path } : { op, path, value: "x" }, "1");
-  };
-
-  test("the couple's board", async () => {
+  type W = [PatchOp["op"], string];
+  /** A session that has entered `who`'s code, and what a compartment permits it. */
+  async function as(who: string) {
     const sessionId = crypto.randomUUID();
-    const ws = await enter("DASH", `session_id=${sessionId}`);
-    const may = permits("board", sessionId);
-    for (const path of ["/message", "/day", "/picture_key", "/courses/1/name", "/courses/1/dishes/3/dietary", "/gifts/1/description", "/events/1/notes", "/places/1/link"]) {
-      expect(may("replace", path)).toBe(true);
-      expect(may("remove", path)).toBe(false);
+    const ws = await enter(who, `session_id=${sessionId}`);
+    const may = (docType: string, [op, path]: W) => {
+      const c = example.compartments.find((x) => x.docType === docType) as Compartment;
+      return c.permit!({ data: { sessionId } } as never, op === "remove" ? { op, path } : { op, path, value: "x" }, "1");
+    };
+    return { ws, may };
+  }
+  const each = (op: PatchOp["op"], ...paths: string[]): W[] => paths.map((path) => [op, path]);
+
+  // the couple's page: the welcome, an invitation, the four lists, and each row's drawer
+  const COUPLE: W[] = [
+    ...each("replace", "/name1", "/name2", "/day", "/deadline", "/venue", "/message", "/picture_key"),
+    ...each("add", "/households/-", "/households/1/guests/-", "/courses/-", "/gifts/-", "/events/-", "/places/-", "/courses/1/dishes/-", "/courses/1/drinks/-"),
+    ...each("replace", "/households/1/email", "/households/1/plus_ones", "/households/1/asks/1/reply"),
+    ...each("remove", "/households/1/guests/1", "/courses/1", "/gifts/1", "/events/1", "/places/1", "/courses/1/dishes/1", "/courses/1/drinks/1"),
+    ...each("replace", "/courses/1/name", "/courses/1/seq", "/courses/1/dishes/1/name", "/courses/1/dishes/1/dietary", "/courses/1/drinks/1/name"),
+    ...each("replace", "/gifts/1/name", "/gifts/1/description", "/gifts/1/link", "/gifts/1/picture_key", "/gifts/1/shared", "/gifts/1/seq"),
+    ...each("replace", "/events/1/name", "/events/1/when_at", "/events/1/where_at", "/events/1/notes", "/events/1/seq"),
+    ...each("replace", "/places/1/name", "/places/1/notes", "/places/1/link", "/places/1/picture_key", "/places/1/seq"),
+  ];
+  // a household's page: its answer and note, each guest's coming, look and choices, an ask, a claim
+  const HOUSEHOLD: W[] = [
+    ...each("replace", "/answer", "/message", "/guests/1/coming", "/guests/1/choices/2/dish", "/guests/1/choices/2/drink"),
+    ...each("remove", "/answer", "/guests/1/coming", "/guests/1/choices/2/dish", "/guests/1/choices/2/drink", "/claims/1"), // each taken back
+    ...each("replace", ...["skin", "hair", "hair_color", "top", "legs", "face", "attitude"].map((f) => `/guests/1/minifigure/${f}`)),
+    ...each("add", "/asks/-", "/claims/-"),
+  ];
+
+  test("the couple may write what their page offers, and a household none of it", async () => {
+    const couple = await as("DASH");
+    const ben = await as(code);
+    for (const w of COUPLE) expect([w, couple.may("board", w)]).toEqual([w, true]);
+    for (const w of COUPLE) expect([w, ben.may("board", w)]).toEqual([w, false]);
+    couple.ws.close();
+    ben.ws.close();
+  });
+
+  test("a household may write what its page offers, and the couple none of it", async () => {
+    const household = await as(code);
+    const couple = await as("DASH");
+    for (const w of HOUSEHOLD) expect([w, household.may("household", w)]).toEqual([w, true]);
+    for (const w of HOUSEHOLD) expect([w, couple.may("household", w)]).toEqual([w, false]);
+    household.ws.close();
+    couple.ws.close();
+  });
+
+  test("nobody may remove a field, a row's parent or a dish's order, take back a reply, or uninvite their own guest", async () => {
+    const couple = await as("DASH");
+    const household = await as(code);
+    const fields = COUPLE.filter(([op, path]) => op === "replace" && !path.endsWith("/seq")).map(([, path]): W => ["remove", path]);
+    for (const w of [...fields, ...each("replace", "/courses/1/weddings_id", "/gifts/1/weddings_id", "/events/1/weddings_id", "/places/1/weddings_id", "/courses/1/dishes/1/courses_id", "/courses/1/dishes/1/seq", "/courses/1/drinks/1/seq", "/gifts/1/nope")]) {
+      expect([w, couple.may("board", w)]).toEqual([w, false]);
     }
-    for (const path of ["/courses/1/weddings_id", "/courses/1/dishes/3/courses_id", "/courses/1/dishes/3/seq", "/courses/1/drinks/1/seq", "/gifts/1/weddings_id", "/events/1/weddings_id", "/places/1/weddings_id", "/gifts/1/nope"]) {
-      expect(may("replace", path)).toBe(false);
-      expect(may("remove", path)).toBe(false);
-    }
-    expect(may("replace", "/gifts/1/seq")).toBe(true);
-    expect(may("remove", "/gifts/1/seq")).toBe(false);
-    expect(may("replace", "/households/1/asks/1/reply")).toBe(true);
-    expect(may("remove", "/households/1/asks/1/reply")).toBe(false); // a reply is changed, never taken back
+    expect(couple.may("board", ["remove", "/gifts/1/seq"])).toBe(false);
+    for (const w of [...each("remove", "/message", "/guests/1"), ...each("add", "/answer")]) expect([w, household.may("household", w)]).toEqual([w, false]);
+    couple.ws.close();
+    household.ws.close();
+  });
+
+  test("what the document refuses, the wire refuses: a drink not chosen cannot be unchosen, nor another household's claim given back", async () => {
+    const email = `other-${Date.now()}@example.com`;
+    await asCouple([{ op: "add", path: "/households/-", value: { email, names: "Oda Other" } }]);
+    const other = (await board()).households.find((x) => x.email === email)!.code;
+    await asHousehold(other, [{ op: "add", path: "/claims/-", value: 2 }]);
+    const ws = await enter(code);
+    const guest = (await household(code)).guests[0]!;
+    expect(guest.choices["2"]?.drink ?? null).toBeNull();
+    await refused(ws, "household", [{ op: "remove", path: `/guests/${guest.id}/choices/2/drink` }]);
+    await refused(ws, "household", [{ op: "remove", path: "/claims/2" }]);
+    expect((await household(other)).claims).toContain(2);
+    await asHousehold(other, [{ op: "remove", path: "/claims/2" }]);
     ws.close();
   });
 
-  test("a household's own", async () => {
-    const sessionId = crypto.randomUUID();
-    const ws = await enter(code, `session_id=${sessionId}`);
-    const may = permits("household", sessionId);
-    expect(may("replace", "/message")).toBe(true);
-    expect(may("remove", "/message")).toBe(false);
+  test("a visit's own: a page gone to, and a collection's reading, find's word and its eye by the collection's name", async () => {
+    const { ws, may } = await as(code);
+    expect(may("session", ["replace", "/page"])).toBe(true);
+    expect(may("session", ["remove", "/page"])).toBe(false);
+    expect(may("session", ["replace", "/reading/guests"])).toBe(true);
+    expect(may("session", ["remove", "/reading/guests"])).toBe(false);
+    for (const w of each("replace", "/filter/guests", "/hide/guests").flatMap(([, p]): W[] => [["replace", p], ["remove", p]])) expect([w, may("session", w)]).toEqual([w, true]);
+    for (const w of each("replace", "/reading", "/filter", "/hide").flatMap(([, p]): W[] => [["replace", p], ["remove", p]])) expect([w, may("session", w)]).toEqual([w, false]);
+    expect(may("session", ["replace", "/resend"])).toBe(true);
+    expect(may("session", ["remove", "/resend"])).toBe(false);
+    expect(may("session", ["remove", "/code"])).toBe(true);
     ws.close();
   });
 
-  test("a visit", async () => {
-    const sessionId = crypto.randomUUID();
-    const ws = await enter(code, `session_id=${sessionId}`);
-    const may = permits("session", sessionId);
-    expect(may("replace", "/page")).toBe(true);
-    expect(may("remove", "/page")).toBe(false);
-    expect(may("replace", "/reading/guests")).toBe(true);
-    expect(may("remove", "/reading/guests")).toBe(false);
-    for (const key of ["/filter/guests", "/hide/guests"]) {
-      expect(may("replace", key)).toBe(true);
-      expect(may("remove", key)).toBe(true);
-    }
-    for (const field of ["/reading", "/filter", "/hide"]) {
-      expect(may("replace", field)).toBe(false);
-      expect(may("remove", field)).toBe(false);
-    }
-    expect(may("replace", "/resend")).toBe(true);
-    expect(may("remove", "/resend")).toBe(false);
-    expect(may("remove", "/code")).toBe(true);
-    ws.close();
+  test("a visit's moves are its own: going somewhere and finding someone tell no other tab, the household's own or anyone's", async () => {
+    const mine = await enter(code);
+    const theirs = await enter(code);
+    const couple = await enter("DASH");
+    await go(mine, [{ op: "replace", path: "/page", value: "?gifts" }]);
+    await go(mine, [{ op: "replace", path: "/filter/guests", value: "Tess" }]);
+    for (const ws of [theirs, couple]) expect(await heard(ws)).toMatchObject({ patches: [], renders: [] });
+    for (const ws of [mine, theirs, couple]) ws.close();
   });
 });
