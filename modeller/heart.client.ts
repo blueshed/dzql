@@ -198,8 +198,8 @@ function renderPop() {
   }
   const why = reason(pop);
   const at = anchor.getBoundingClientRect();
-  const left = Math.max(8, Math.min(at.right + scrollX - 340, document.documentElement.clientWidth - 348));
-  host.innerHTML = `<div class="pop${why.red ? " red" : ""}" role="dialog" aria-labelledby="pop-title" style="left:${left}px;top:${at.bottom + scrollY + 6}px">
+  const left = Math.max(8, Math.min(at.right - 340, document.documentElement.clientWidth - 348));
+  host.innerHTML = `<div class="pop${why.red ? " red" : ""}" role="dialog" aria-labelledby="pop-title" style="left:${left}px;top:${at.bottom + 6}px">
     <h3 id="pop-title">${esc(why.title)}</h3><p>${esc(why.one)}</p><p class="second">${esc(why.two)}</p>
     <div class="acts"><button class="icon" data-act="grow" data-key="grow" aria-label="Grow" title="Grow">${GROW}</button><button class="icon" data-act="close" data-key="close" aria-label="Close" title="Close">${CLOSE}</button></div>
   </div>`;
@@ -325,6 +325,8 @@ document.addEventListener("keydown", (e) => {
   focusKey(keyOf(from));
 });
 
+// the popover is placed by its mark: it follows a column's scroll, and the page's
+document.addEventListener("scroll", () => pop && renderPop(), { capture: true, passive: true });
 addEventListener("resize", () => {
   render();
   renderPop();
