@@ -2,15 +2,24 @@
 // which lays it out again when the eye hides what doesn't go with the subject. It imports nothing.
 
 export const BOX = { W: 176, H: 46, COL: 236, ROW: 56 };
+/** The narrowest a column may be: a box and room for its connector's spine. */
+export const MIN_COL = BOX.W + 24;
 
 /**
  * The entities as a tree from their parent links: depth left to right, each leaf on a row of its
  * own, a parent level with the middle of its children, each root's tree a little apart from the
  * next. `visible` keeps some: one whose parent is hidden is a root. The connectors run from a
- * parent's right edge to a spine half a column on, and from it to each child.
+ * parent's right edge to a spine half a column on, and from it to each child. `fit` is the width it
+ * has: a tree deeper than fits at `BOX.COL` takes narrower columns (not below `MIN_COL`).
  */
-export function layout(tables: { name: string; parent: string | null }[], visible?: Set<string>) {
-  const { W, H, COL, ROW } = BOX;
+export function layout(tables: { name: string; parent: string | null }[], visible?: Set<string>, fit = Infinity) {
+  const { W, H, ROW } = BOX;
+  const depthOf = (n: string, seen = 0): number => {
+    const p = tables.find((t) => t.name === n)?.parent;
+    return p && (!visible || visible.has(p)) && seen < tables.length ? 1 + depthOf(p, seen + 1) : 0;
+  };
+  const deepest = Math.max(0, ...tables.filter((t) => !visible || visible.has(t.name)).map((t) => depthOf(t.name)));
+  const COL = deepest && W + deepest * BOX.COL > fit ? Math.max(MIN_COL, Math.floor((fit - W) / deepest)) : BOX.COL;
   const shown = tables.filter((t) => !visible || visible.has(t.name));
   const on = new Set(shown.map((t) => t.name));
   const kidsOf = (n: string) => shown.filter((t) => t.parent === n).map((t) => t.name);

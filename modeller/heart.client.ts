@@ -100,7 +100,7 @@ function render() {
 
   // ── Entities ──
   const visible = hideEnts ? new Set(H.entities.filter((e) => r.ents.has(e.name)).map((e) => e.name)) : undefined;
-  const { pos, segs, width, height } = layout(H.entities, visible);
+  const { pos, segs, width, height } = layout(H.entities, visible, document.getElementById("entities")!.clientWidth);
   const reached = H.entities.filter((e) => r.ents.has(e.name)).length;
   const entsHead = sel.k === "doc" ? `${reached} of ${H.entities.length} reached` : sel.k === "ent" ? subject : `${reached} it touches`;
   const nodes = Object.entries(pos)
@@ -325,7 +325,10 @@ document.addEventListener("keydown", (e) => {
   focusKey(keyOf(from));
 });
 
-addEventListener("resize", renderPop);
+addEventListener("resize", () => {
+  render();
+  renderPop();
+});
 
 document.title = `${title(H.example)} · the modeller`;
 document.getElementById("title")!.textContent = title(H.example);

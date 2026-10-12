@@ -116,6 +116,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The modeller page fits a deep tree in its pane**: columns narrow to the room there is (never narrower than a box and its connector), laid out again as the window is resized; canyou-eta's four-deep teams → roots → asks → answers ran past the edge.
 - **The modeller reads a document named with its id as its type** (`modeller/from-stories.ts`):
   Japan (`ask:1`) and the picnic (`ask:2`) are one entity, `Ask`, not `Ask:1` and `Ask:2`.
 - **The modeller finds a table's code only where SQL names it** (`inSql`, modeller/heart.ts):

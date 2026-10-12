@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import type { StoryRow, Told } from "./documents";
 import { bornInto, inSql, keeper, readBy, shape, squared, toldNotAsked, touches, unreached } from "./heart";
-import { BOX, layout } from "./layout";
+import { BOX, MIN_COL, layout } from "./layout";
 import { extract } from "./extract";
 import { documentsIn } from "./documents";
 
@@ -132,6 +132,23 @@ describe("an entity: red, who reads it, where it sits", () => {
     expect(some.pos).toEqual({ guests: { x: 0, y: 0 }, asks: { x: 0, y: 1.4 * ROW }, visits: { x: 0, y: 2.8 * ROW } });
     expect(some.segs).toEqual([]);
     expect(layout(tables, new Set())).toEqual({ pos: {}, segs: [], width: 0, height: 0 });
+  });
+
+  test("a tree deeper than its width takes narrower columns, never narrower than a box and its spine", () => {
+    // canyou-eta's: teams, roots, asks, answers -- four deep
+    const chain = [
+      { name: "teams", parent: null },
+      { name: "roots", parent: "teams" },
+      { name: "asks", parent: "roots" },
+      { name: "answers", parent: "asks" },
+    ];
+    expect(layout(chain).width).toBe(BOX.W + 3 * BOX.COL); // room enough: columns as they are
+    expect(layout(chain, undefined, 2000).width).toBe(BOX.W + 3 * BOX.COL);
+    const fitted = layout(chain, undefined, 800);
+    expect(fitted.width).toBeLessThanOrEqual(800);
+    expect(fitted.pos.answers!.x).toBe(3 * Math.floor((800 - BOX.W) / 3));
+    expect(layout(chain, undefined, 300).pos.answers!.x).toBe(3 * MIN_COL); // too narrow: the floor, and the pane scrolls
+    expect(layout(chain, new Set(["asks", "answers"]), 1000).width).toBe(BOX.W + BOX.COL); // only what is shown is measured: two deep fits
   });
 });
 
