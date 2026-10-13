@@ -263,3 +263,11 @@ dialog.modal h3 { font-size: 17px; margin: 0 0 var(--space-lg); }
   .thing[aria-expanded="true"], .thing:has(> .cell-head > [aria-expanded="true"]), .row[aria-expanded="true"], .tool:is([aria-pressed="true"], [aria-expanded="true"], [role="radio"][aria-checked="true"]) { outline: 2px solid Highlight; outline-offset: -2px; }
   .cell, .stack, .drawer, dialog.modal, .undo-said { border: 1px solid CanvasText; }
 }
+
+/* ── words, and the door: a label in small capitals, a note, and the one thing to do before
+   anything else (a name, signing in) ── */
+.cap { font-size: 11.5px; line-height: 16px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: var(--ink); }
+.note { color: var(--muted); font-size: 13px; }
+.door { max-width: 24rem; margin: 10vh auto 0; padding: var(--space-2xl); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-panel); box-shadow: var(--shadow-tray); }
+.door h1 { margin: 0 0 var(--space-lg); }
+.door form { display: flex; flex-direction: column; gap: var(--space-sm); }

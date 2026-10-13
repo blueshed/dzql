@@ -37,9 +37,8 @@ main#app { box-sizing: border-box; position: relative; z-index: 1; max-width: 10
 a { color: var(--navy); }
 h2, h3 { margin: 0; font-size: 15px; font-weight: 600; }
 /* three sizes of type: the cap, the word, the note */
-.cap { font-size: 11.5px; line-height: 16px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; color: var(--ink); }
+.cap { font-weight: 600; }
 h3.cap { margin: var(--space-xl) 0 var(--space-sm); }
-.note { color: var(--muted); font-size: 13px; }
 p.note { margin: 0 0 var(--space-md); font-size: 14px; }
 .site { position: relative; z-index: 1; }
 :where(.site > *, .site > .ground > *) { margin: 0 0 var(--space-2xl); } /* :where, so a bento surface's own margin still wins */

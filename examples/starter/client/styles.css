@@ -20,6 +20,4 @@
 
 body { margin: 0; background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.45; }
 main#app { box-sizing: border-box; position: relative; max-width: 1000px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg) 96px; }
-.cap { font-size: 11.5px; line-height: 16px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; }
-.door { max-width: 28rem; margin: 10vh auto 0; padding: var(--space-2xl); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-panel); }
-.door h1 { margin: 0 0 var(--space-lg); }
+.door { max-width: 28rem; box-shadow: none; }
