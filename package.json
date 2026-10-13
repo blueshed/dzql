@@ -18,8 +18,8 @@
     ".claude/skills",
     "README.md",
     "CHANGELOG.md",
-    "stories.md",
-    "first-app.md"
+    "docs/stories.md",
+    "docs/first-app.md"
   ],
   "scripts": {
     "dev": "bun --watch src/start.ts",

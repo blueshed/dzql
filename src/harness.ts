@@ -19,7 +19,7 @@ import { size, sum, tap } from "./costs";
 export { comparable };
 
 // Runs an example's stories against it, over real sockets, and reports by story name. See
-// stories.md ("The harness"). Canon 1 is checked here: for every member of the cast, a render
+// docs/stories.md ("The harness"). Canon 1 is checked here: for every member of the cast, a render
 // from the server's copy of the documents, as a page is drawn (only Canon 2's reads the tables),
 // before and after the story, compared -- so a change that reaches a page through an applet's
 // patch (a tick) counts the same as one that reaches it as HTML. A member a
@@ -57,7 +57,7 @@ export { comparable };
 //
 // By hand, a story is done again in a browser the size of a phone, as a person does it
 // (src/by-hand.ts): each story that says its `gesture`, and with `byHand` each write a page sends
-// and each refusal a control of the page sends (stories.md, the harness, step 6). Its write must
+// and each refusal a control of the page sends (docs/stories.md, the harness, step 6). Its write must
 // be what the page sends, and land, or be refused.
 //
 // Every story's cost on the wire is kept: what its step (the write, the refusal, the tab closing),

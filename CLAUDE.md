@@ -23,7 +23,7 @@ What a builder must not break. How the pieces work is in the eta-app skill
 
 ## Stories first
 
-`stories.md` is what eta is for. An example's `stories.ts` says who does what and who then sees
+`docs/stories.md` is what eta is for. An example's `stories.ts` says who does what and who then sees
 it, and everything else is derived from it.
 
 - Start a feature by writing the story: a person's intent, in a sentence a customer could call

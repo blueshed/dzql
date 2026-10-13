@@ -4,7 +4,7 @@ import type { Compartment } from "./compartments/compartment";
 import { activeDocuments, read, serverWrite, settled, type Documents } from "./documents";
 import { esc } from "./html";
 
-// What a session is told of its last write: why it was refused, or what it did (stories.md; the
+// What a session is told of its last write: why it was refused, or what it did (docs/stories.md; the
 // page rule "a refused write says why, next to the control that sent it"). A compartment's `permit`
 // or `shape` throws `refuse(reason)`, and the kernel keeps the reason; what follows a write that
 // lands (`afterWrite`, `afterWalk` for an undo or redo), or a route that answers a form, `tell`s

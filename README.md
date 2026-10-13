@@ -151,8 +151,8 @@ what). The same page, kept live while two people talk, is the modeling example.
 
 ## Where to go next
 
-- `first-app.md`: your first app, step by step, with the words met at each step.
-- `stories.md`: what eta is for, and how stories drive it.
+- `docs/first-app.md`: your first app, step by step, with the words met at each step.
+- `docs/stories.md`: what eta is for, and how stories drive it.
 - `.claude/skills/eta-app/`: how to build or extend an example, step by step, with the contracts
   in `reference.md`.
 - `CLAUDE.md`: the rules a change must not break.

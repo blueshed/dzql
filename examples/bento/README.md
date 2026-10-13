@@ -106,7 +106,7 @@ eta by `src/grid.ts`: a box declares its cells and their spans, and the grid's a
 each cell's corner cuts come out, once for three columns and once for one. The grid in this
 mock-up's stylesheet is the same result written by hand, so it can be looked at without a server.
 Where the wedding and this mock-up part company -- an ask's yes or no on its row, a photo that
-reflows rather than scrolls -- `history/bento-request.md`'s Findings say why.
+reflows rather than scrolls -- `docs/bento-request.md`'s Findings say why.
 
 ## Where it shows the shape and not the function
 

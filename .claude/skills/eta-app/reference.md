@@ -2,7 +2,7 @@
 
 How each piece works, one section a piece. Each section starts with what the piece is and when you
 use it, then gives an example, then the details. `SKILL.md` is the order to work in, and
-`first-app.md` at the root is the way in for someone new. The types in `src/` are the contract:
+`docs/first-app.md` at the root is the way in for someone new. The types in `src/` are the contract:
 where this file and the code disagree, the code is right.
 
 ## Contents
@@ -63,7 +63,7 @@ where this file and the code disagree, the code is right.
 ## Stories (`stories.ts`)
 
 A story is who does what, and who then sees it, as a sentence a customer could call true or false.
-`stories.md` at the root says why; `src/stories.ts` is the shape. Write it before anything else, run
+`docs/stories.md` at the root says why; `src/stories.ts` is the shape. Write it before anything else, run
 `bun run stories`, and watch it fail.
 
 - Build nothing no story needs. Do not write a story to justify something already built: one that

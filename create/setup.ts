@@ -10,7 +10,7 @@
 //            while its stories are told
 //   app/     the app, as the starter begins it (eta's examples/starter): built from the model
 //
-// What is about developing eta goes: its other examples, the modeller, its history, its ledger,
+// What is about developing eta goes: its other examples, the modeller, its docs but stories.md, its ledger,
 // changelog and release command, the kernel's own tests, and this script. The project starts with
 // a fresh ledger and changelog (naming the eta it started from), a `.env` that names its model and
 // the password the two who keep it share, and delta's and railroad's skills beside eta's.
@@ -25,7 +25,10 @@ const SKILLS = [
 ] as const;
 
 /** What only developing eta needs. */
-const ETA_ONLY = ["examples", "modeller", "history", "create", "first-app.md", "todo.jsonl", "CHANGELOG.md", ".claude/commands/publish.md", ".env.example"];
+const ETA_ONLY = ["examples", "modeller", "create", "todo.jsonl", "CHANGELOG.md", ".claude/commands/publish.md", ".env.example"];
+
+/** Of eta's docs, what a project keeps: what stories are for. The rest is eta's own record. */
+const DOCS_KEPT = ["stories.md"];
 
 /** eta's own clone is the one place this must never run: it deletes things. */
 function isTemplateClone(root: string): boolean {
@@ -97,6 +100,7 @@ export async function setup(root: string): Promise<void> {
   rmSync(join(root, "model/server.test.ts")); // eta's test of it: the model page is eta's, tested there
   for (const path of ["app/index.ts", "app/page.ts", "app/client/index.html", "app/client/styles.css"]) await rewrite(join(root, path), (t) => t.replaceAll("Starter", Name).replaceAll("starter", name));
   for (const path of ETA_ONLY) rmSync(join(root, path), { recursive: true, force: true });
+  for (const doc of readdirSync(join(root, "docs")).filter((d) => !DOCS_KEPT.includes(d))) rmSync(join(root, "docs", doc));
   for (const path of filesIn(join(root, "src")).filter((f) => /\.test\.|\.test-|test\.fixture/.test(f))) rmSync(path); // the kernel's tests are eta's
 
   await Bun.write(

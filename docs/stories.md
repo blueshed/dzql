@@ -1,6 +1,6 @@
 # Stories: what eta is for
 
-*15 September 2026. Written after `history/change-request.md`, which is done as a list: what the wedding
+*15 September 2026. Written after `docs/change-request.md`, which is done as a list: what the wedding
 asked of the kernel, item by item. This is not a list. It says what the three examples, the
 kernel and the change request were reaching for, so that the next thing built is built towards
 it. It comes out of a longer history: seven projects that each tried to keep what a person sees
