@@ -1,19 +1,11 @@
 // The README's numbers, measured (todo n7): a number in a README goes stale, and a run does not.
-// The README marks each number it quotes (`<!-- measured:<name> -->…<!-- /measured -->`), and this
-// measures them all: what one write sends everyone else as it crosses the wire, compressed (a
-// `tap` in front of the server sees it), by each example's own script
-// (`examples/<name>/scripts/measure-render-cost.ts --json`, each in a process of its own, from an
-// empty database, with no settings but its own, no .env, and a clock that stands still
-// (src/costs-clock.ts): a process serves one example, and a run says the same whatever the day or
-// the settings); the kernel's client and railroad, built and gzipped as a browser is sent them in
-// production; and each example's stories, counted. `bun run costs` writes
-// what it finds into the README; `--check` (src/costs.test.ts, so `bun test`) says where the
-// README differs, and fails. Two kinds of size are not held to the byte: a bundle's, which a
-// minifier moves a few bytes at a time, and a compressed message's, which moves a byte or two with
-// the random ids it carries (a room's, a message's). The README's figure for one stands while it
-// is within 3% of a run's (`WITHIN`), beyond what its rounding hides, so it does not flip back and
-// forth. Run as a script, it is `costs()`; imported, nothing runs, so its test takes each piece in
-// hand in the test's own process, where coverage sees it, and runs the whole as a script besides.
+// The README marks each number it quotes (`<!-- measured:<name> -->…<!-- /measured -->`), and a run
+// measures them all: what one write sends everyone else, compressed, by each example's own script
+// (`examples/<name>/scripts/measure-render-cost.ts --json`, in a process of its own whose clock
+// stands still, src/costs-clock.ts); the client and railroad, built and gzipped; and the stories,
+// counted. `bun run costs` writes them into the README, and `--check` (src/costs.test.ts) fails where
+// it differs; a size that moves a little from run to run stands within 3% (`WITHIN`). Imported,
+// nothing runs.
 
 import { connect, createServer, type AddressInfo } from "node:net";
 
@@ -46,7 +38,8 @@ const SIZE = /(\d+(?:\.\d+)?) (K?B)\b/g;
 // a size is never broken across a line (a no-break space, until it is written)
 export const size = (bytes: number): string => (bytes < 1024 ? `${bytes}\u00a0B` : `${(bytes / 1024).toFixed(1)}\u00a0KB`);
 export const sum = (heard: Heard[], of: "bytes" | "sent" = "sent"): number => heard.reduce((n, h) => n + h[of], 0);
-const and = (items: string[]): string => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join("; ")}; and ${items.at(-1)}`);
+/** Items in a sentence: "a; b; and c", or with other words between them and before the last. */
+const and = (items: string[], between = "; ", last = "; and "): string => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join(between)}${last}${items.at(-1)}`);
 
 /**
  * What one page was sent, in words, as it crossed the wire: "<size>, compressed from <size>, to
@@ -184,7 +177,7 @@ export async function measured(): Promise<Run> {
     const { stories } = (await import(`${root}/${dir}/stories.ts`)) as { stories: { stories: unknown[] } };
     if (stories.stories.length > 0) counts.push(`${stories.stories.length} in ${dir.slice("examples/".length)}`);
   }
-  found.set("stories", counts.length < 2 ? counts.join("") : `${counts.slice(0, -1).join(", ")} and ${counts.at(-1)}`);
+  found.set("stories", and(counts, ", ", " and "));
   return { found: new Map([...found].map(([name, text]) => [name, text.replaceAll("\u00a0", " ")])), near };
 }
 
