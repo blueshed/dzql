@@ -16,12 +16,8 @@ import { refuseOrigin } from "@blueshed/delta/server";
 type Socket = Bun.ServerWebSocket<ConnectionData>;
 
 /**
- * Sends a message compressed (todo n79): the socket takes permessage-deflate, which every browser
- * offers, and each message is compressed on its own (no context kept between them, so no memory
- * per connection). A page goes at a sixth to a quarter of its size, a patch at about two thirds.
- * It costs CPU for each page a message goes to: about 2 µs a KB up to 20 KB (a patch 5 µs, a
- * 13 KB page 25 µs), and about 9 µs a KB past 32 KB (a 178 KB page 1.6 ms, where raw is 30 µs). To
- * a client that did not offer it, a message goes as it is.
+ * Sends a message compressed (permessage-deflate, todo n79), each on its own so a connection keeps
+ * no context; as it is to a client that did not offer it. The costs measured are in CHANGELOG.md.
  */
 const send = (ws: Socket, message: string): void => void ws.send(message, true);
 
@@ -317,16 +313,10 @@ export function createServer(example: Example, port: number | string = process.e
       send(ws, JSON.stringify({ type: "inspect", ...(await inspectFor(ws, inspected(message.limit))) }));
       return;
     }
-    // A write that applied something is told from its change, the writer's page with the rest, and
-    // its echo carries its id to its writer. Nothing applied -- refused, not a write at all, an
-    // unknown document, nothing to walk, or a failure on the way -- is answered `refused`, with its
-    // id and why when the refusal says, and the page is handed back as what differs from the one
-    // its writer holds (todo n103): the line saying why, or nothing -- never the page whole, which
-    // they have. A message that is no write at all is answered by the page whole: it is how a page
-    // asks for itself afresh. A message without an id (the CLI) is answered by that alone. A refusal
-    // that says why is also kept for the page to draw, until the session's next write
-    // (src/refusal.ts); a write that applied something has let go of it already, before what
-    // followed it could say what it did.
+    // A write that applied something is told from its change, its echo carrying its id. Nothing
+    // applied is answered `refused` (by its id, if it has one, and why when the refusal says, kept
+    // for the page until the session's next write: src/refusal.ts), then the page as what differs
+    // (todo n103). A message that is no write at all asks for the page whole.
     const id = idOf(message);
     const asWrite = isWrite(message) ? message : undefined;
     let wrote = false;

@@ -27,10 +27,7 @@ export function closeConnection(ws: ServerWebSocket<ConnectionData>): void {
   openSockets.delete(ws);
 }
 
-/** Every open connection, regardless of what it sees -- for the rare write whose effect is
- * genuinely everyone's concern (a shared total, a crowd photo drawn from every household), not
- * just this document's own audience. Named plainly so it stays the exception: reach for
- * `audienceFor` first. */
+/** Every open connection, whatever it sees: the exception, for what is everyone's concern; reach for `audienceFor` first. */
 export function allOpenSockets(): ServerWebSocket<ConnectionData>[] {
   return [...openSockets];
 }

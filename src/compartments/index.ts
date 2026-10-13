@@ -63,14 +63,9 @@ export function assemble(example: Example): Assembled {
   };
   const draw = (sessionId: string): Promise<string> => settled(documents, () => page(sessionId));
 
-  // Legibility: every document this connection sees -- the one of each type it is on, then
-  // whatever else its page read -- and each one's most recent ledger entries,
-  // so a person (or a late-joining `watch`) can answer "what happened" from the wire, without
-  // adding a log line. `limit` (default 1, the longstanding "just the head" behavior) is how far
-  // back to look; a watcher catching up before it watches asks for more. The session's own document
-  // is included (it can be worth recording to, chat's is); the ledger itself is excluded -- no
-  // render() the fallback path needs it for, and no ledger:<id> document to report a version for
-  // (real entries live under the owning document's own key).
+  // Every document this connection sees -- the one of each type it is on, then whatever else its
+  // page read -- with its latest `limit` ledger entries (default 1), so "what happened" is answered
+  // from the wire. The ledger is left out: its entries are under the documents they changed.
   async function inspectFor(ws: ServerWebSocket<ConnectionData>, limit = 1): Promise<Inspection> {
     const seen = await settled(documents, () => {
       const names: string[] = [];
