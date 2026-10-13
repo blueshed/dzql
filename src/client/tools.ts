@@ -18,10 +18,10 @@ import { groupOf, isBox, isField, isRadio, namedFields, rendered, type Field } f
 // and `window.eta.tools()` and `use(name, input)` list and run them wherever it does not.
 
 /** A JSON Schema, as much of one as a tool's input needs. */
-export type Schema = { type?: string; enum?: unknown[]; format?: string; pattern?: string; description?: string; properties?: Record<string, Schema>; required?: string[] };
+type Schema = { type?: string; enum?: unknown[]; format?: string; pattern?: string; description?: string; properties?: Record<string, Schema>; required?: string[] };
 
 /** A tool: what WebMCP registers, and the write it makes of an input -- or why it makes none. */
-export type Tool = { name: string; title: string; description: string; inputSchema: Schema; write(input: Record<string, unknown>): Write | string };
+type Tool = { name: string; title: string; description: string; inputSchema: Schema; write(input: Record<string, unknown>): Write | string };
 
 type Spec = { doc: string; op: PatchOp["op"]; path: string; values?: unknown[] };
 
@@ -173,7 +173,7 @@ const walkTool = (way: "undo" | "redo"): Tool => ({
  * person could press. Where two kinds of control take one label -- the form that names a new room,
  * the buttons into the rooms there are -- the later is told apart by its kind (`go_in.form`).
  */
-export function pageTools(root: Element): Tool[] {
+function pageTools(root: Element): Tool[] {
   const found: [kind: string, made: Tool | [string, HTMLElement[]]][] = []; // a tool, or the presses of one label, in the page's order
   const presses = new Map<string, HTMLElement[]>();
   for (const el of root.querySelectorAll<HTMLElement>("[data-write],form[data-write-on],[data-applet][data-writes]")) {
@@ -207,7 +207,7 @@ type ModelContext = { registerTool(tool: object, options: { signal: AbortSignal 
  * `execute` runs `use`, by name, against the page as it is then. A registration refused (a document
  * the browser will not let register) is tried again at the next drawing.
  */
-export function offerer(use: (name: string, input: unknown) => Promise<unknown>) {
+function offerer(use: (name: string, input: unknown) => Promise<unknown>) {
   const registered = new Map<string, [key: string, stop: AbortController]>();
   return (context: ModelContext, tools: Tool[]): void => {
     const keys = new Map(tools.map(({ name, title, description, inputSchema }) => [name, JSON.stringify([title, description, inputSchema])]));

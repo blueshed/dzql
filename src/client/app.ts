@@ -196,7 +196,7 @@ const hooks: MorphHooks = {
   pressed: (el) => el === boxPressed,
 };
 
-// Where a tab is (change-request.md item 3): an example may mark some element within #app with
+// Where a tab is (docs/change-request.md item 3): an example may mark some element within #app with
 // `data-page` (the session's own idea of the page) and `data-page-write` (the write that sets
 // it) -- the kernel knows nothing about what a "page" means, only that this pair, when present,
 // should be mirrored into the URL so the back button and a shared link work. `knownPage` is
@@ -239,7 +239,7 @@ window.addEventListener("popstate", () => {
   if (pageWrite) write(pageWrite, page);
 });
 
-// Rule 7 of bento-request.md's K1: a render may mark one element `data-moving="<name>"`. When
+// Rule 7 of docs/bento-request.md's K1: a render may mark one element `data-moving="<name>"`. When
 // the page as it is and the page as rendered both carry an element with the same value, that
 // element -- and only that one -- grows into the window instead of the page going anywhere.
 // `movingElement` parses the incoming HTML (a `<template>`, same technique `applyFragments` uses
@@ -271,7 +271,7 @@ function ownTag(el: Element): string {
   return tag.outerHTML;
 }
 
-// Rule 18 of bento-request.md's K2: after a full render's morph, an element newly carrying
+// Rule 18 of docs/bento-request.md's K2: after a full render's morph, an element newly carrying
 // `data-reveal` (or carrying it for the first time on a different element than before) scrolls
 // into view -- the window itself never moves, only the reading beside it. `previous` is captured
 // before the morph runs, since the morph is what may add, move, or remove the attribute. It comes
@@ -649,18 +649,11 @@ document.addEventListener("keydown", (event) => {
 
 // A `data-write-on="blur"|"change"|"input"` form is an editing one, not a creating one:
 // `data-write` lives on its *fields*, each naming its own path, and the form commits on that
-// trigger instead of a submit -- one op per field whose live value has diverged from what the
-// last render put in its `value` attribute (not a dirty flag; the morph keeps that attribute
-// current, so a field an unrelated render touched doesn't look changed just because it exists).
-// No reset follows: an editing field's value is the document's own, not something to hand back or
-// clear. A <textarea>'s rendered content has no `value` attribute to compare against -- it's the
-// element's text at parse time, which the DOM keeps as `defaultValue` even after typing changes
-// `value`. Same comparison, different property. A <select> has neither: what was rendered is the
-// option it was drawn showing, by the browser's own rule (drawnOption), until someone chooses. A
-// box holds a tick, not its value: what was rendered is whether it was drawn `checked`
-// (`defaultChecked`). A group of radios is one field, held as the value chosen (form-value.ts):
-// what was rendered is the value of the last drawn `checked`, or null (`rendered`, form-value.ts).
-// "input" (bento-request.md K3) is the same commit, debounced to ~150ms after the last keystroke
+// trigger instead of a submit -- one op per field (a group of radios is one) that no longer holds
+// what was rendered into it (`held` and `rendered`, form-value.ts): not a dirty flag, so a field an
+// unrelated render touched doesn't look changed just because it exists. No reset follows: an
+// editing field's value is the document's own, not something to hand back or clear. "input"
+// (docs/bento-request.md K3) is the same commit, debounced to ~150ms after the last keystroke
 // anywhere in the form so a burst of typing becomes one message, not one per key; a `focusout`
 // inside such a form flushes any pending write at once, same as leaving the field would for
 // "blur". Whatever the trigger, a commit identical to the last one *this form* sent is dropped
@@ -693,7 +686,7 @@ const INPUT_DEBOUNCE_MS = 150;
 const inputTimers = new WeakMap<HTMLFormElement, ReturnType<typeof setTimeout>>();
 // The ops of the last message *this form* actually sent, until a write lands, so retyping back to
 // an already-sent value doesn't repeat it -- keyed by form, not by field, since a commit is
-// every changed field in one message (bento-request.md K3).
+// every changed field in one message (docs/bento-request.md K3).
 let lastEditSent = new WeakMap<HTMLFormElement, string>();
 /** The socket went: the next page sent whole is drawn afresh, and the editing forms then say what it does not show. */
 let afresh = false;
@@ -791,10 +784,8 @@ function connect() {
         }
       }
     } else if (message.type === "refused") {
-      // this page's own write, refused, and why if it says: before the page is handed back, what
-      // its form sent goes back in each field (a group of radios is one) not typed in, chosen in,
-      // or ticked, since; the morph then keeps a choice by its value, or shows the drawn one if
-      // the page no longer offers it (morph.ts)
+      // this page's own write, refused, and why if it says: its form's values are back before the page
+      // that follows is drawn, which keeps a choice the page still offers (keepingChoices, morph.ts)
       answered({ id: message.id, refused: true, ...(message.reason !== undefined && { reason: message.reason }) });
     } else if (message.type === "patch") {
       const kept = docs.get(message.doc)?.ops ?? [];
@@ -812,10 +803,8 @@ function connect() {
   // The connection gone, the page stays as it is -- what is typed, what applets hold -- but is not
   // to be used (src/bento.css says so) until the server, reached again, draws it afresh.
   socket.addEventListener("close", () => {
-    // What was on its way is unanswered: no server answers it on another socket. A form's values go
-    // back when the page is drawn afresh, as a refusal's would -- it may have landed, which that page
-    // then shows: better there twice than lost -- and then an editing form says, once, any edit that
-    // page does not show: one unanswered, or one the closed socket never took (send, above).
+    // What was on its way is unanswered: no server answers it on another socket. Its form's values go
+    // back when the page is drawn afresh (`sending`) -- it may have landed: better there twice than lost.
     if (lastSent && !lastSent.echoed && !lastSent.refused) lastSent.unanswered = true;
     if (sending) sending.unanswered = true;
     for (const id of [...hearing.keys()]) heard(id, { id, unanswered: true });
