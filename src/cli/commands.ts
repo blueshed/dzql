@@ -53,41 +53,28 @@ export function parseCommand(argv: string[], aliases: Aliases = {}): Command | u
 export const DEFAULT_SESSION_FILE = ".eta-session";
 
 /**
- * Pulls a `--session <file>` (or `--session=<file>`) flag out of argv,
- * wherever it appears, so separate invocations can act as separate people --
- * e.g. `watch` as one identity in one terminal, commands as another elsewhere.
+ * Pulls a `--<name> <value>` (or `--<name>=<value>`) flag out of argv, wherever it appears: its
+ * last value, and the argv without it. `--session <file>` lets separate invocations act as separate
+ * people; `--limit <n>` is how many ledger entries per doc `inspect` reports, or `watch` catches up on.
  */
-export function extractSessionFile(argv: string[]): { sessionFile: string; rest: string[] } {
+export function extractFlag(argv: string[], flag: string): { value: string | undefined; rest: string[] } {
   const rest: string[] = [];
-  let sessionFile = DEFAULT_SESSION_FILE;
+  let value: string | undefined;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
-    if (arg === "--session") sessionFile = argv[++i] ?? sessionFile;
-    else if (arg.startsWith("--session=")) sessionFile = arg.slice("--session=".length);
+    if (arg === flag) value = argv[++i] ?? value;
+    else if (arg.startsWith(`${flag}=`)) value = arg.slice(flag.length + 1);
     else rest.push(arg);
   }
 
-  return { sessionFile, rest };
+  return { value, rest };
 }
 
-/**
- * Pulls a `--limit <n>` (or `--limit=<n>`) flag out of argv, wherever it appears -- how many
- * ledger entries per doc `inspect` reports, or `watch` prints to catch up before it follows live
- * patches. Default (undefined here, 1 on the wire) is today's longstanding "just the latest".
- */
-export function extractLimit(argv: string[]): { limit: number | undefined; rest: string[] } {
-  const rest: string[] = [];
-  let limit: number | undefined;
-
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i]!;
-    if (arg === "--limit") limit = Number(argv[++i]) || limit;
-    else if (arg.startsWith("--limit=")) limit = Number(arg.slice("--limit=".length)) || limit;
-    else rest.push(arg);
-  }
-
-  return { limit, rest };
+/** `--session <file>`, defaulting to the shared session file. */
+export function extractSessionFile(argv: string[]): { sessionFile: string; rest: string[] } {
+  const { value, rest } = extractFlag(argv, "--session");
+  return { sessionFile: value ?? DEFAULT_SESSION_FILE, rest };
 }
 
 function opText(op: PatchOp): string {

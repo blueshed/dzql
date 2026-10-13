@@ -14,7 +14,7 @@ import { refuse } from "../refusal";
 import {
   connectCli,
   DEFAULT_SESSION_FILE,
-  extractLimit,
+  extractFlag,
   extractSessionFile,
   formatHistory,
   formatInspection,
@@ -87,37 +87,21 @@ describe("parseCommand", () => {
   });
 });
 
-describe("extractSessionFile", () => {
-  test("defaults to the default session file when no flag is present", () => {
-    expect(extractSessionFile(["undo"])).toEqual({
-      sessionFile: DEFAULT_SESSION_FILE,
-      rest: ["undo"],
-    });
+describe("extractFlag", () => {
+  test("pulls a `--flag <value>` out, wherever it appears, or `--flag=<value>`", () => {
+    expect(extractFlag(["--session", "alice.session", "write", "widget"], "--session")).toEqual({ value: "alice.session", rest: ["write", "widget"] });
+    expect(extractFlag(["watch", "--limit", "5"], "--limit")).toEqual({ value: "5", rest: ["watch"] });
+    expect(extractFlag(["inspect", "--limit=10"], "--limit")).toEqual({ value: "10", rest: ["inspect"] });
   });
 
-  test("pulls a `--session <file>` flag out, wherever it appears", () => {
-    expect(extractSessionFile(["--session", "alice.session", "write", "widget"])).toEqual({
-      sessionFile: "alice.session",
-      rest: ["write", "widget"],
-    });
-    expect(extractSessionFile(["write", "widget", "--session", "alice.session"])).toEqual({
-      sessionFile: "alice.session",
-      rest: ["write", "widget"],
-    });
+  test("no flag, or one with nothing after it, has no value", () => {
+    expect(extractFlag(["watch"], "--limit")).toEqual({ value: undefined, rest: ["watch"] });
+    expect(extractFlag(["undo", "--session"], "--session")).toEqual({ value: undefined, rest: ["undo"] });
   });
 
-  test("accepts `--session=<file>` too", () => {
-    expect(extractSessionFile(["watch", "--session=bob.session"])).toEqual({
-      sessionFile: "bob.session",
-      rest: ["watch"],
-    });
-  });
-
-  test("a `--session` with nothing after it falls back to the default", () => {
-    expect(extractSessionFile(["undo", "--session"])).toEqual({
-      sessionFile: DEFAULT_SESSION_FILE,
-      rest: ["undo"],
-    });
+  test("extractSessionFile falls back to the default session file", () => {
+    expect(extractSessionFile(["undo"])).toEqual({ sessionFile: DEFAULT_SESSION_FILE, rest: ["undo"] });
+    expect(extractSessionFile(["watch", "--session=bob.session"])).toEqual({ sessionFile: "bob.session", rest: ["watch"] });
   });
 });
 
@@ -163,26 +147,6 @@ describe("formatHistory", () => {
 
   test("no entries formats as no lines", () => {
     expect(formatHistory({ doc: "widget" })).toEqual([]);
-  });
-});
-
-describe("extractLimit", () => {
-  test("no flag leaves limit undefined", () => {
-    expect(extractLimit(["watch"])).toEqual({ limit: undefined, rest: ["watch"] });
-  });
-
-  test("pulls a `--limit <n>` flag out, wherever it appears", () => {
-    expect(extractLimit(["--limit", "5", "watch"])).toEqual({ limit: 5, rest: ["watch"] });
-    expect(extractLimit(["watch", "--limit", "5"])).toEqual({ limit: 5, rest: ["watch"] });
-  });
-
-  test("accepts `--limit=<n>` too", () => {
-    expect(extractLimit(["inspect", "--limit=10"])).toEqual({ limit: 10, rest: ["inspect"] });
-  });
-
-  test("a non-numeric or missing value leaves limit undefined", () => {
-    expect(extractLimit(["--limit", "nonsense", "watch"])).toEqual({ limit: undefined, rest: ["watch"] });
-    expect(extractLimit(["--limit"])).toEqual({ limit: undefined, rest: [] });
   });
 });
 

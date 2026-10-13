@@ -1,7 +1,7 @@
 import { existsSync, writeFileSync } from "node:fs";
 import {
   connectCli,
-  extractLimit,
+  extractFlag,
   extractSessionFile,
   formatHistory,
   formatInspection,
@@ -22,7 +22,8 @@ const aliasFile = `${appDir(process.env.ETA_EXAMPLE)}/cli.ts`;
 const aliases: Aliases = existsSync(aliasFile) ? (await import(aliasFile)).aliases : {};
 
 const { sessionFile, rest: afterSession } = extractSessionFile(process.argv.slice(2));
-const { limit, rest } = extractLimit(afterSession);
+const { value: limitFlag, rest } = extractFlag(afterSession, "--limit");
+const limit = Number(limitFlag) || undefined;
 const url = `${(process.env.ETA_URL ?? "ws://localhost:3000").replace(/\/+$/, "")}/ws`;
 
 // `login <email> <password>`: signs in by the app's own form, and keeps the session it is given
