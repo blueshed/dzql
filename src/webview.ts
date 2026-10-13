@@ -34,6 +34,16 @@ export async function waitFor(view: Bun.WebView, script: string, predicate: (val
   throw new Error(`Timed out waiting for \`${script}\`; last value: ${JSON.stringify(last)}`);
 }
 
+/** What an element is, as the page's own function: its tag, its id and its classes (`div#veil.scrim`). */
+export const NAMED = `((el) => el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + [...el.classList].map((c) => "." + c).join(""))`;
+
+/** An element scrolled to the middle of the view, as the page's own function: its box, and the middle of it, where a press goes. */
+export const CENTRED = `((el) => {
+  el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+  const r = el.getBoundingClientRect();
+  return { r, x: r.left + r.width / 2, y: r.top + r.height / 2 };
+})`;
+
 /**
  * A mouse, as the page's own function (its source, for a script run in the page): pressed at the
  * first of `points`, moved through the rest, let go at the last. Each pointer event goes to what is
@@ -72,10 +82,9 @@ export async function press(view: Bun.WebView, selector: string, timeout = 2000)
     const el = document.querySelector(selector);
     if (!el) return "it is not on the page";
     if (el.closest(":disabled:not(fieldset)")) return "it is disabled"; // a control, or in one, disabled itself or by its fieldset
-    el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
-    const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const { x, y } = ${CENTRED}(el);
     const top = document.elementFromPoint(x, y);
-    if (!top || !el.contains(top)) return "at its middle is " + (top ? top.tagName.toLowerCase() + (top.id ? "#" + top.id : "") + [...top.classList].map((c) => "." + c).join("") : "nothing");
+    if (!top || !el.contains(top)) return "at its middle is " + (top ? ${NAMED}(top) : "nothing");
     ${MOUSE}([[x, y]]);
     return "";
   })(${JSON.stringify(selector)})`;

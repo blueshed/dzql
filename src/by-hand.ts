@@ -11,7 +11,7 @@
 
 import type { PatchOp } from "./json-patch";
 import type { Gesture, Post, Write } from "./stories";
-import { MOUSE, urlFor, waitFor } from "./webview";
+import { CENTRED, MOUSE, NAMED, urlFor, waitFor } from "./webview";
 
 /** A phone, held upright: the stories are pressed at the size most people hold them. */
 export const PHONE = { width: 390, height: 844 };
@@ -36,7 +36,7 @@ export const sameDoc = (a: string, b: string): boolean => a === b || a.startsWit
 const PAGE = `(() => {
   const same = ${sameDoc};
   const specOf = (el) => { try { return JSON.parse(el.dataset.write); } catch { return undefined; } };
-  const named = (el) => el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + [...el.classList].map((c) => "." + c).join("");
+  const named = ${NAMED};
   let marks = 0;
   const mark = (el) => { const id = String(++marks); el.setAttribute("data-hand", id); return '[data-hand="' + id + '"]'; };
   const text = (v) => (v === undefined || v === null ? "" : String(v));
@@ -46,11 +46,9 @@ const PAGE = `(() => {
     if (el.closest("[inert]")) return "inert, behind what is open over it";
     if (el.closest("[hidden]")) return "hidden";
     if (el.matches(":disabled")) return "disabled"; // itself, or in a disabled fieldset but for its first legend
-    el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
-    const r = el.getBoundingClientRect();
+    const { r, x, y } = ${CENTRED}(el);
     if (el.checkVisibility && !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return "not to be seen";
     if (r.width < 1 || r.height < 1) return "of no size";
-    const x = r.left + r.width / 2, y = r.top + r.height / 2;
     if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return "off the screen";
     const top = document.elementFromPoint(x, y);
     if (!top || (top !== el && !el.contains(top) && !(el.labels && [...el.labels].some((l) => l.contains(top))))) return "covered by " + (top ? named(top) : "nothing");
@@ -76,6 +74,16 @@ const PAGE = `(() => {
     const kind = el.matches("select, [type=date], [type=time], [type=datetime-local], [type=month], [type=week], [type=color]") ? "choose" : el.matches("[type=checkbox], [type=radio]") ? "tick" : "type";
     const none = el.matches("select") && ![...el.options].some((o) => !o.disabled && o.value === text(value)); // a choice it does not offer
     return { at: mark(el), kind, text: text(value), none };
+  }
+
+  // how to send a form, its fields typed into and its button pressed, or why nobody can: each field
+  // checked, and its button if it has one, must be pressable; why not is said of whose form it is
+  function submitOf(form, checked, fields, whose) {
+    const blocked = checked.map(why).find(Boolean);
+    if (blocked) return { failure: "a field of " + whose + " is " + blocked };
+    const button = form.querySelector("button[type=submit], button:not([type]), input[type=submit]");
+    if (button && why(button)) return { failure: "the button of " + whose + " is " + why(button) };
+    return { how: "submit", control: mark(form), fields, submit: button ? mark(button) : undefined };
   }
 
   // how to send this write from the page, or why nobody can: one control for every op of it
@@ -110,11 +118,9 @@ const PAGE = `(() => {
       // a form that creates: its value is its one field's, or a record by name of its several
       const inputs = [...c.el.elements].filter((f) => f.matches("input:not([type=submit]):not([type=button]), textarea, select"));
       const fields = inputs.length === 1 ? [field(inputs[0], op.value)] : inputs.filter((f) => op.value && typeof op.value === "object" && f.name in op.value).map((f) => field(f, op.value[f.name]));
-      const blockedField = inputs.map(why).find(Boolean);
-      if (blockedField) { first = first || "a field of the form for it is " + blockedField; continue; }
-      const button = c.el.querySelector("button[type=submit], button:not([type]), input[type=submit]");
-      if (button && why(button)) { first = first || "the button of the form for it is " + why(button); continue; }
-      return { how: "submit", control: mark(c.el), fields, submit: button ? mark(button) : undefined };
+      const sent = submitOf(c.el, inputs, fields, "the form for it");
+      if (sent.failure) { first = first || sent.failure; continue; }
+      return sent;
     }
     return { failure: first };
   }
@@ -129,11 +135,9 @@ const PAGE = `(() => {
       const missing = names.find((n) => !(f.elements.namedItem(n) instanceof Element));
       if (missing) { first = first || "its form has no field " + missing; continue; }
       const fields = names.map((n) => f.elements.namedItem(n));
-      const blocked = fields.map(why).find(Boolean);
-      if (blocked) { first = first || "a field of its form is " + blocked; continue; }
-      const button = f.querySelector("button[type=submit], button:not([type]), input[type=submit]");
-      if (button && why(button)) { first = first || "the button of its form is " + why(button); continue; }
-      return { how: "submit", control: mark(f), fields: fields.map((el, i) => field(el, form[names[i]])), submit: button ? mark(button) : undefined };
+      const sent = submitOf(f, fields, fields.map((el, i) => field(el, form[names[i]])), "its form");
+      if (sent.failure) { first = first || sent.failure; continue; }
+      return sent;
     }
     return { failure: first };
   }
