@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
-import { press, urlFor } from "./webview";
+import { describe, expect, setSystemTime, test } from "bun:test";
+import { press, urlFor, waitFor } from "./webview";
 
 // Both platforms' paths, on whichever this runs: a browser test only ever takes its own.
 describe("at: a view's own address", () => {
@@ -17,6 +17,29 @@ describe("at: a view's own address", () => {
     expect(urlFor(a, url, "/other", "linux")).toBe(first.replace("/room", "/other")); // the same host again
     expect(new URL(urlFor(b, url, "", "linux")).hostname).not.toBe(new URL(first).hostname);
   });
+});
+
+describe("waitFor: a wait on what a view shows", () => {
+  const blank = async (): Promise<Bun.WebView> => {
+    const view = new Bun.WebView();
+    await view.navigate("about:blank");
+    return view;
+  };
+
+  test("it says what it waited for, and the last value it saw, when the wait runs out", async () => {
+    await using view = await blank();
+    await expect(waitFor(view, `1 + 1`, (v) => v === 3, 60)).rejects.toThrow("Timed out waiting for `1 + 1`; last value: 2");
+  });
+
+  test("it runs out with the clock fixed, as a test that opens a page on a given day fixes it", async () => {
+    await using view = await blank();
+    setSystemTime(new Date("2026-11-10T09:00:00Z")); // Date.now() stands still from here
+    try {
+      await expect(waitFor(view, `1 + 1`, (v) => v === 3, 60)).rejects.toThrow("Timed out waiting for `1 + 1`; last value: 2");
+    } finally {
+      setSystemTime();
+    }
+  }, 2000);
 });
 
 describe("press: as a mouse does, never element.click()", () => {

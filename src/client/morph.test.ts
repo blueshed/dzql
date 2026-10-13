@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { waitFor } from "../webview";
 import fixture from "./morph.test.html";
 
 let server: ReturnType<typeof Bun.serve>;
@@ -15,13 +16,7 @@ afterAll(() => {
 async function run(script: string): Promise<unknown> {
   await using view = new Bun.WebView();
   await view.navigate(server.url.toString());
-
-  // The module script still needs a moment to execute after navigate() resolves.
-  const start = Date.now();
-  while ((await view.evaluate(`typeof window.morph`)) !== "function") {
-    if (Date.now() - start > 5000) throw new Error("timed out waiting for window.morph");
-    await Bun.sleep(10);
-  }
+  await waitFor(view, `typeof window.morph`, (v) => v === "function"); // the module script runs a moment after navigate() resolves
 
   // `return await`, not `return`: `await using`'s disposal runs as this function
   // returns, and would close the view out from under a still-pending evaluate().
@@ -87,22 +82,15 @@ describe("morph", () => {
     expect(result).toEqual([true, ["cell-head", "cell-summary", "cell-body"]]);
   });
 
-  test("removes leftover children when the new list is shorter", async () => {
+  test("removes leftover children when the new list is shorter, and appends new ones when it is longer", async () => {
     const result = await run(`
       root.innerHTML = '<li>1</li><li>2</li><li>3</li>';
       window.morph(root, '<li>1</li>');
-      return [...root.children].map((el) => el.textContent);
-    `);
-    expect(result).toEqual(["1"]);
-  });
-
-  test("appends new children when the new list is longer", async () => {
-    const result = await run(`
-      root.innerHTML = '<li>1</li>';
+      const shorter = [...root.children].map((el) => el.textContent);
       window.morph(root, '<li>1</li><li>2</li>');
-      return [...root.children].map((el) => el.textContent);
+      return [shorter, [...root.children].map((el) => el.textContent)];
     `);
-    expect(result).toEqual(["1", "2"]);
+    expect(result).toEqual([["1"], ["1", "2"]]);
   });
 
   test("updates a text node's content in place, keyed by position", async () => {
@@ -124,29 +112,17 @@ describe("morph", () => {
     expect(result).toBe("A");
   });
 
-  test("a surviving applet with changed data-props fires onAppletPropsChanged, not a remount", async () => {
+  test("a surviving applet fires onAppletPropsChanged, not a remount, when its data-props change, and not when they do not", async () => {
     const result = await run(`
       root.innerHTML = '<div data-applet="x" data-props="{&quot;a&quot;:1}"></div>';
       const before = root.firstChild;
-      let seen;
-      window.morph(root, '<div data-applet="x" data-props="{&quot;a&quot;:2}"></div>', {
-        onAppletPropsChanged: (el, props) => { seen = { same: el === before, props }; },
-      });
+      const seen = [];
+      const hooks = { onAppletPropsChanged: (el, props) => seen.push({ same: el === before, props }) };
+      window.morph(root, '<div data-applet="x" data-props="{&quot;a&quot;:1}"></div>', hooks);
+      window.morph(root, '<div data-applet="x" data-props="{&quot;a&quot;:2}"></div>', hooks);
       return seen;
     `);
-    expect(result).toEqual({ same: true, props: { a: 2 } });
-  });
-
-  test("an applet with unchanged data-props does not fire onAppletPropsChanged", async () => {
-    const result = await run(`
-      root.innerHTML = '<div data-applet="x" data-props="{&quot;a&quot;:1}"></div>';
-      let fired = false;
-      window.morph(root, '<div data-applet="x" data-props="{&quot;a&quot;:1}"></div>', {
-        onAppletPropsChanged: () => { fired = true; },
-      });
-      return fired;
-    `);
-    expect(result).toBe(false);
+    expect(result).toEqual([{ same: true, props: { a: 2 } }]);
   });
 
   test("morphElement reconciles one element against one element's HTML: in place for the same tag, swapped otherwise, gone for none", async () => {
@@ -210,23 +186,7 @@ describe("morph", () => {
 });
 
 describe("formValue", () => {
-  test("a single-field form's value is that field's raw value, unchanged", async () => {
-    const result = await run(`
-      root.innerHTML = '<form><input name="text" value="hello"></form>';
-      return window.formValue(root.querySelector("form"));
-    `);
-    expect(result).toBe("hello");
-  });
-
-  test("a multi-field form's value is a record of its named fields", async () => {
-    const result = await run(`
-      root.innerHTML = '<form><input name="a" value="1"><input name="b" value="2"></form>';
-      return window.formValue(root.querySelector("form"));
-    `);
-    expect(result).toEqual({ a: "1", b: "2" });
-  });
-
-  test("every named field keeps its key, of one type whatever it holds: a box whether it is ticked, a group of radios the value chosen or null", async () => {
+  test("every named field keeps its key, of one type whatever it holds: a box whether it is ticked, a group of radios the value chosen or null; a form of one field, its value alone", async () => {
     const result = await run(`
       root.innerHTML = '<form><input name="title" value="Fushimi"><input type="checkbox" name="booked"><input type="checkbox" name="paid" value="yes" checked>'
         + '<input type="radio" name="kind" value="see"><input type="radio" name="kind" value="eat"><select multiple name="tags"><option selected>quiet</option><option selected>late</option></select>'
