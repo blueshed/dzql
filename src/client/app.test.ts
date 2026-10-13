@@ -74,6 +74,12 @@ async function pushRefused(view: Bun.WebView, html: string, reason?: string): Pr
 /** The id of the last write this page sent, which its echo or its refusal hands back. */
 const lastId = (view: Bun.WebView): Promise<number> => view.evaluate<number>(`window.__ids.at(-1)`);
 
+/** Waits for the page to have sent `n` writes, and gives the nth. */
+async function sentAt(view: Bun.WebView, n: number, timeout = 1000): Promise<Sent> {
+  await waitFor(view, `window.__sent.length`, (v) => v === n, timeout);
+  return view.evaluate<Sent>(`window.__sent[${n - 1}]`);
+}
+
 /** Waits for the page to have drawn a frame: a scroll made by script is heard (its `scroll` event) at the next one, as a person's is long before any render comes. */
 const aFrame = (view: Bun.WebView) => view.evaluate(`new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(true))))`);
 
@@ -146,7 +152,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await using view = await open();
     await stubSend(view);
     await pushRender(view, `<div id="win" data-moving="rooms" class="open"><p>one room</p><input id="new"></div>`);
-    await waitFor(view, `document.getElementById('new') !== null`, (v) => v === true);
     await view.evaluate(`(() => {
       window.__named = [];
       const el = document.querySelector('#win');
@@ -444,7 +449,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await pushRender(view, `<form><input id="name" name="name" autofocus></form>`);
     await waitFor(view, `document.activeElement?.id`, (v) => v === "name", 1000);
     await pushRender(view, `<div class="row" id="r" tabindex="0">general</div>`);
-    await waitFor(view, `document.getElementById('r') !== null`, (v) => v === true);
     await view.click("#r"); // a row was tapped: the caret is on it, and the render that answers takes it away
 
     await pushRender(view, `<form><input id="say" name="text" autofocus></form>`);
@@ -452,10 +456,8 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
     // someone typing in find is left alone when a render arrives with another field waiting
     await pushRender(view, `<form><input id="q" name="q"></form><form><input id="say" name="text" autofocus></form>`);
-    await waitFor(view, `document.getElementById('q') !== null`, (v) => v === true);
     await view.click("#q");
     await pushRender(view, `<form><input id="q" name="q"></form><form><input id="say" name="text" autofocus></form><p id="more">more</p>`);
-    await waitFor(view, `document.getElementById('more') !== null`, (v) => v === true);
     expect(await view.evaluate<string>(`document.activeElement?.id`)).toBe("q");
   });
 
@@ -470,15 +472,13 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
       </form>
       <button id="b" data-write='{"doc":"session","op":"remove","path":"/filter/rooms"}'>Close</button>`,
     );
-    await waitFor(view, `document.getElementById('q') !== null`, (v) => v === true);
 
     await view.click("#q"); // a real click, as a person putting the caret back in find's field
     await Bun.sleep(300); // well past the input debounce: nothing was typed, so nothing is owed
     expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([]); // not a blank replace that would empty the word on the server
 
     await view.click("#b"); // a button's data-write is still a gesture
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "session", ops: [{ op: "remove", path: "/filter/rooms" }] });
+    expect(await sentAt(view, 1)).toEqual({ doc: "session", ops: [{ op: "remove", path: "/filter/rooms" }] });
   });
 
   test("Escape presses what was opened last -- the last [data-escape] on the page -- and nothing when nothing is open, or something took the key first", async () => {
@@ -488,7 +488,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     const key = (name: string, on = "document") => view.evaluate(`${on}.dispatchEvent(new KeyboardEvent('keydown', { key: '${name}', bubbles: true, cancelable: true }))`);
 
     await pushRender(view, `<p id="page">nothing open</p>`);
-    await waitFor(view, `document.getElementById('page') !== null`, (v) => v === true);
     await key("Escape");
     expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([]);
 
@@ -498,7 +497,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
       `<aside><button id="x" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="">×</button><input id="own"></aside>` +
         `<div id="scrim" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="?drawer"></div>`,
     );
-    await waitFor(view, `document.getElementById('scrim') !== null`, (v) => v === true);
     await key("Enter"); // another key is nobody's
     // a field (or an applet) that takes Escape for itself says so, and the page leaves it be
     await view.evaluate(`document.getElementById('own').addEventListener('keydown', (e) => e.preventDefault())`);
@@ -506,8 +504,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([]);
 
     await key("Escape");
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "session", ops: [{ op: "replace", path: "/page", value: "?drawer" }] });
+    expect(await sentAt(view, 1)).toEqual({ doc: "session", ops: [{ op: "replace", path: "/page", value: "?drawer" }] });
   });
 
   test("a data-write-on=\"input\" form sends once after several keystrokes, debounced, and never repeats an unchanged value", async () => {
@@ -520,14 +517,13 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
         <input name="q" id="q" value="" data-write='{"doc":"session","op":"replace","path":"/filter/guests"}'>
       </form>`,
     );
-    await waitFor(view, `document.getElementById('q') !== null`, (v) => v === true);
 
     await view.click("#q"); // as a person would: a click in the field writes nothing of its own
     await view.type("abc");
 
     // one message for the whole burst of keystrokes, not one per key -- debounced, so it may not
     // have landed the instant typing stops, but it never grows past the one commit
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    await sentAt(view, 1);
     await Bun.sleep(300); // settle well past the debounce window; still just the one message
     expect(await view.evaluate<number>(`window.__sent.length`)).toBe(1);
     expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({
@@ -548,8 +544,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.evaluate(`document.getElementById('q').focus()`);
     await view.type("xyz");
     await view.evaluate(`document.getElementById('q').blur()`);
-    await waitFor(view, `window.__sent.length`, (v) => v === 2, 300);
-    expect(await view.evaluate<Sent>(`window.__sent[1]`)).toEqual({
+    expect(await sentAt(view, 2, 300)).toEqual({
       doc: "session",
       ops: [{ op: "replace", path: "/filter/guests", value: "xyz" }],
     });
@@ -579,14 +574,13 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
         <input id="other" value="x" data-write='{"doc":"household","op":"replace","path":"/other"}'>
       </form><button id="elsewhere">elsewhere</button>`;
     await pushRender(view, form("Hello", "Soon"));
-    await waitFor(view, `document.getElementById('msg') !== null`, (v) => v === true);
 
     await view.click("#msg");
     await view.type("Hi");
     await view.click("#note");
     await view.type("er");
     await view.click("#other"); // leaving each field sends it
-    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await sentAt(view, 2);
     await pushRender(view, form("HelloHi", "Sooner")); // the writes, echoed and drawn
     await pushRender(view, form("Hello", "Soon")); // then undone, and drawn again
 
@@ -607,18 +601,15 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await using view = await open();
     await stubSend(view);
     await pushRender(view, tripForm("Temple", "eat"));
-    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
 
     await view.click("#title");
     await view.type(" gate");
     await view.evaluate(`document.getElementById('title').blur()`);
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the select, left as it was drawn
+    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the select, left as it was drawn
     await pushRender(view, tripForm("Temple gate", "eat"));
 
     await choose(view, "#kind", "travel");
-    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[1]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "travel" }] });
+    expect(await sentAt(view, 2)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "travel" }] });
     await pushRender(view, tripForm("Temple gate", "travel")); // echoed and drawn
     await pushRender(view, tripForm("Temple gate", "eat")); // then undone, and drawn again
     expect(await view.evaluate<string>(`document.getElementById('kind').value`)).toBe("eat");
@@ -626,22 +617,20 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.click("#title");
     await view.type("s");
     await view.evaluate(`document.getElementById('title').blur()`);
-    await waitFor(view, `window.__sent.length`, (v) => v === 3, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gates" }] }); // the undone choice is not sent again
+    expect(await sentAt(view, 3)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gates" }] }); // the undone choice is not sent again
   });
 
   test("after an undo, a select shows its drawn option, even one chosen by hand before and with someone still in it, so the next commit does not revert the undo", async () => {
     await using view = await open();
     await stubSend(view);
     await pushRender(view, tripForm("Temple", "see"));
-    await waitFor(view, `document.getElementById('kind') !== null`, (v) => v === true);
 
     await view.evaluate(`document.getElementById('kind').focus()`); // a pick from its menu leaves the caret in it
     await choose(view, "#kind", "eat");
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    await sentAt(view, 1);
     await pushRender(view, tripForm("Temple", "eat")); // echoed and drawn
     await choose(view, "#kind", "travel");
-    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await sentAt(view, 2);
     await pushRender(view, tripForm("Temple", "travel"));
     // undone, back to an option chosen by hand. Only Chrome shows this one: it no longer moves an
     // option by its `selected` once someone has chosen it, where WebKit moves it whatever was chosen
@@ -651,8 +640,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.click("#title");
     await view.type(" gate");
     await view.evaluate(`document.getElementById('title').blur()`);
-    await waitFor(view, `window.__sent.length`, (v) => v === 3, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not travel, which would revert the undo
+    expect(await sentAt(view, 3)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not travel, which would revert the undo
   });
 
   test("what a select was drawn showing is the browser's own: the last option drawn `selected`, else the first not disabled, and in a list none", async () => {
@@ -665,7 +653,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
         <select id="list" size="3" data-write='{"doc":"trip","op":"replace","path":"/pace"}'><option>slow</option><option>fast</option></select>
       </form><button id="elsewhere">elsewhere</button>`;
     await pushRender(view, form());
-    await waitFor(view, `document.getElementById('pick') !== null`, (v) => v === true);
     expect(await view.evaluate<string[]>(`["pick", "both", "list"].map((id) => document.getElementById(id).value)`)).toEqual(["see", "keen", ""]);
 
     for (const id of ["pick", "both", "list", "elsewhere"]) await view.evaluate(`document.getElementById('${id}').focus()`); // tabbing through all three
@@ -686,12 +673,10 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
         <select multiple id="tags" data-write='{"doc":"trip","op":"replace","path":"/tags"}'><option>quiet</option><option>busy</option></select>
       </form>`;
     await pushRender(view, form("Temple"));
-    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
     await view.click("#title");
     await view.type(" gate");
     await view.evaluate(`document.getElementById('title').blur()`);
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] });
+    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] });
 
     await pushRender(view, form("Temple gate")); // echoed
     expect(await view.evaluate<number>(`document.getElementById('tags').selectedOptions.length`)).toBe(0);
@@ -725,8 +710,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
       await view.evaluate(`document.getElementById('kind').focus()`);
       await choose(view, "#kind", "travel"); // the same choice, news again
       await view.evaluate(`document.getElementById('title').focus()`);
-      await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
-      expect(await view.evaluate<Sent>(`window.__sent[1]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "travel" }] });
+      expect(await sentAt(view, 2)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "travel" }] });
     }
   });
 
@@ -734,15 +718,13 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await using view = await open();
     await stubSend(view);
     await pushRender(view, tripForm("Temple", "eat", "blur"));
-    await waitFor(view, `document.getElementById('kind') !== null`, (v) => v === true);
 
     await view.evaluate(`document.getElementById('kind').focus()`);
     await choose(view, "#kind", "travel");
     await pushRender(view, tripForm("Temple", "see", "blur")); // another member's change, before this one is sent
     expect(await view.evaluate<string>(`document.getElementById('kind').value`)).toBe("travel");
     await view.evaluate(`document.getElementById('title').focus()`);
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "travel" }] });
+    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "travel" }] });
   });
 
   test("a choice goes with its value, not its place: an option added before it leaves it chosen", async () => {
@@ -751,7 +733,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     const add = (days: string[]) =>
       `<form id="add" data-write='{"doc":"trip","op":"add","path":"/stops/-"}'><input id="what" name="what"><select id="day" name="day">${days.map((d) => `<option>${d}</option>`).join("")}</select></form>`;
     await pushRender(view, add(["D1", "D2", "D3"]));
-    await waitFor(view, `document.getElementById('day') !== null`, (v) => v === true);
     await choose(view, "#day", "D3");
     await pushRender(view, add(["D0", "D1", "D2", "D3"])); // someone added a day before the first
     expect(await view.evaluate<string>(`document.getElementById('day').value`)).toBe("D3");
@@ -763,19 +744,18 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     const book = (slots: string[], taken = "") =>
       `<form id="book" data-write='{"doc":"diary","op":"add","path":"/bookings/-"}'><input id="who" name="who"><select id="slot" name="slot">${slots.map((s) => `<option${s === taken ? " disabled" : ""}>${s}</option>`).join("")}</select></form>`;
     await pushRender(view, book(["9:00", "10:00", "10:30"]));
-    await waitFor(view, `document.getElementById('who') !== null`, (v) => v === true);
     await view.click("#who");
     await view.type("Ada");
     await choose(view, "#slot", "10:00");
     await view.press("Enter");
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    await sentAt(view, 1);
     await pushRefused(view, book(["9:00", "10:30"])); // refused: 10:00 was taken meanwhile, and is gone
     expect(await view.evaluate<string[]>(`[document.getElementById('who').value, document.getElementById('slot').value]`)).toEqual(["Ada", "9:00"]);
 
     await choose(view, "#slot", "10:30");
     await view.click("#who");
     await view.press("Enter");
-    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await sentAt(view, 2);
     await pushRefused(view, book(["9:00", "10:30"], "10:30")); // refused: 10:30 is shown, but not to be had
     expect(await view.evaluate<string[]>(`[document.getElementById('who').value, document.getElementById('slot').value]`)).toEqual(["Ada", "9:00"]);
   });
@@ -791,7 +771,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
         <select id="kind" data-write='{"doc":"trip","op":"replace","path":"/kind"}'><option>see</option><option>eat</option></select>
       </form><button id="elsewhere">elsewhere</button>`,
     );
-    await waitFor(view, `document.getElementById('kind') !== null`, (v) => v === true);
 
     // (the WebView's press("Tab") does not move the caret, so it is moved as a Tab moves it)
     await view.evaluate(`document.getElementById('kind').focus()`);
@@ -802,14 +781,12 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.evaluate(`document.getElementById('kind').focus()`);
     await choose(view, "#kind", "eat");
     await view.evaluate(`document.getElementById('elsewhere').focus()`);
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "eat" }] });
+    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "eat" }] });
   });
 
   test("a render in parts never reaches inside an applet; the applet's own element may still be a part", async () => {
     await using view = await open();
     await pushRender(view, `<div data-applet="unregistered" data-eta-part="a" class="one"><ul data-eta-part="inside"><li>drawn by the applet</li></ul></div>`);
-    await waitFor(view, `document.querySelector('[data-eta-part="a"]') !== null`, (v) => v === true);
     await push(view, {
       type: "render",
       ops: [
@@ -965,7 +942,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.evaluate(`(() => { window.__sent = []; window.__ids ??= []; const send = function (d) { const { id, ...write } = JSON.parse(d); if (this.readyState === 1) { window.__ids.push(id); window.__sent.push(write); } }; WebSocket.prototype.send = send; window.eta.socket().send = send; })()`);
     await pushRender(view, `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>
       <form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>Hello</textarea></form>`);
-    await waitFor(view, `document.getElementById('words') !== null`, (v) => v === true);
     await view.click("#text");
     await view.type("hi all");
     await view.click("#words");
@@ -979,7 +955,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<number>(`window.__sent.length`)).toBe(0); // not before the page is drawn afresh
     await pushRender(view, `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>
       <form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>Hello</textarea></form>`); // as the server, reached again, draws it
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000); // the words go, the field untouched
+    await sentAt(view, 1); // the words go, the field untouched
     expect(await view.evaluate<Sent[]>(`window.__sent`)).toEqual([words]);
     await view.evaluate(`document.getElementById('words').focus()`);
     await view.evaluate(`document.getElementById('words').blur()`); // and leaving it says nothing again
@@ -990,7 +966,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
   test("a connection that drops leaves the page as it was, inert and marked, until it is back", async () => {
     await using view = await open();
     await pushRender(view, `<form><input id="say" name="text"></form>`);
-    await waitFor(view, `document.getElementById('say') !== null`, (v) => v === true);
     await view.click("#say");
     await view.type("half typ");
 
@@ -1009,11 +984,10 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await stubSend(view);
     const room = `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>`;
     await pushRender(view, room);
-    await waitFor(view, `document.getElementById('text') !== null`, (v) => v === true);
     await view.click("#text");
     await view.type("first");
     await view.press("Enter");
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    await sentAt(view, 1);
     expect(await view.evaluate<string>(`document.getElementById('text').value`)).toBe("");
 
     await view.type("second"); // before the first is echoed
@@ -1027,11 +1001,10 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await stubSend(view);
     const room = `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>`;
     await pushRender(view, room);
-    await waitFor(view, `document.getElementById('text') !== null`, (v) => v === true);
     await view.click("#text");
     await view.type("  ");
     await view.press("Enter");
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    await sentAt(view, 1);
     await pushRefused(view, room); // refused: the page, handed back
 
     await view.type("hello, I was just say");
@@ -1047,13 +1020,11 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
       <select id="kind" name="kind"><option>see</option><option selected>eat</option><option>travel</option></select>
     </form>`;
     await pushRender(view, add);
-    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
     await view.click("#title");
     await view.type("Fushimi");
     await choose(view, "#kind", "travel");
     await view.press("Enter");
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi", kind: "travel" } }] });
+    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi", kind: "travel" } }] });
     expect(await view.evaluate<string[]>(`[document.getElementById('title').value, document.getElementById('kind').value]`)).toEqual(["", "eat"]); // cleared as it sends
 
     await pushRefused(view, add); // refused: the page, handed back
@@ -1064,43 +1035,37 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await using view = await open();
     await stubSend(view);
     await pushRender(view, ticksForm("Temple", true, false, "see"));
-    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
 
     await view.click("#title");
     await view.type(" gate");
     await view.evaluate(`document.getElementById('title').blur()`);
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the boxes, left as they were drawn
+    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the boxes, left as they were drawn
     await pushRender(view, ticksForm("Temple gate", true, false, "see"));
 
     await view.click("#paid");
-    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[1]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/paid", value: true }] });
+    expect(await sentAt(view, 2)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/paid", value: true }] });
     await pushRender(view, ticksForm("Temple gate", true, true, "see"));
 
     await view.click("#booked"); // drawn with a value, and ticked
-    await waitFor(view, `window.__sent.length`, (v) => v === 3, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/booked", value: false }] });
+    expect(await sentAt(view, 3)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/booked", value: false }] });
     await pushRender(view, ticksForm("Temple gate", false, true, "see"));
 
     await view.click("#kind-eat");
-    await waitFor(view, `window.__sent.length`, (v) => v === 4, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[3]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "eat" }] }); // not the radio it was chosen over
+    expect(await sentAt(view, 4)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/kind", value: "eat" }] }); // not the radio it was chosen over
   });
 
   test("after an undo, a box and a radio show what they are drawn, a box even with the caret still in it, so the next commit does not revert the undo", async () => {
     await using view = await open();
     await stubSend(view);
     await pushRender(view, ticksForm("Temple", false, false, "see"));
-    await waitFor(view, `document.getElementById('paid') !== null`, (v) => v === true);
 
     await view.click("#kind-eat");
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    await sentAt(view, 1);
     await pushRender(view, ticksForm("Temple", false, false, "eat")); // echoed and drawn
     await pushRender(view, ticksForm("Temple", false, false, "see")); // then undone
     await view.click("#paid");
     await view.evaluate(`document.getElementById('paid').focus()`); // a click leaves the caret in a box in Chrome
-    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await sentAt(view, 2);
     await pushRender(view, ticksForm("Temple", false, true, "see"));
     await pushRender(view, ticksForm("Temple", false, false, "see")); // undone, with the caret still in it
     expect(await view.evaluate<string[]>(ticked)).toEqual(["kind-see"]);
@@ -1108,8 +1073,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.click("#title");
     await view.type(" gate");
     await view.evaluate(`document.getElementById('title').blur()`);
-    await waitFor(view, `window.__sent.length`, (v) => v === 3, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[2]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the tick or the choice undone
+    expect(await sentAt(view, 3)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the tick or the choice undone
   });
 
   test("a render drawn between pressing a box and letting go leaves it be, so the click ticks it as the person meant, and nothing undoes the other's tick", async () => {
@@ -1141,7 +1105,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await using view = await open();
     await stubSend(view);
     await pushRender(view, ticksForm("Temple", false, false, "see", "blur"));
-    await waitFor(view, `document.getElementById('paid') !== null`, (v) => v === true);
 
     await press(view, "#paid");
     await press(view, "#kind-travel"); // ticked, and not yet left
@@ -1149,15 +1112,13 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string[]>(ticked)).toEqual(["booked", "paid", "kind-travel"]);
     await view.evaluate(`document.getElementById('title').focus()`);
     await view.evaluate(`document.getElementById('title').blur()`);
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/paid", value: true }, { op: "replace", path: "/kind", value: "travel" }] });
+    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/paid", value: true }, { op: "replace", path: "/kind", value: "travel" }] });
   });
 
   test("a creating form sends a box as whether it is ticked, ticked or not, so its value keeps one shape", async () => {
     await using view = await open();
     await stubSend(view);
     await pushRender(view, `<form id="add" data-write='{"doc":"trip","op":"add","path":"/events/-"}'><input id="title" name="title"><input type="checkbox" id="booked" name="booked"></form>`);
-    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
     await view.click("#title");
     await view.type("Fushimi");
     await view.press("Enter");
@@ -1165,7 +1126,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.click("#title");
     await view.type("Inari");
     await view.press("Enter");
-    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await sentAt(view, 2);
     expect(await view.evaluate<unknown[]>(`window.__sent.map((s) => s.ops[0].value)`)).toEqual([{ title: "Fushimi", booked: false }, { title: "Inari", booked: true }]);
   });
 
@@ -1173,7 +1134,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await using view = await open();
     const row = (k: string, drawn: boolean) => `<li data-eta-part="r-${k}"><input type="radio" name="kind" id="kind-${k}" value="${k}"${drawn ? " checked" : ""}></li>`;
     await pushRender(view, `<form id="f"><ul data-eta-part="list">${row("see", true)}${row("eat", false)}</ul></form>`);
-    await waitFor(view, `document.getElementById('kind-eat') !== null`, (v) => v === true);
     await view.click("#kind-eat");
     await push(view, { type: "render", ops: [{ op: "after", target: '[data-eta-part="r-eat"]', html: row("travel", true) }] }); // someone else chose travel, a new one
     const chosen = `document.querySelector('[name=kind]:checked')?.value`;
@@ -1195,14 +1155,12 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
       ${["see", "eat", "travel"].map((k) => `<input type="radio" name="kind" id="kind-${k}" value="${k}"${k === "see" ? " checked" : ""}>`).join("")}
     </form>`;
     await pushRender(view, add);
-    await waitFor(view, `document.getElementById('title') !== null`, (v) => v === true);
     await view.click("#booked");
     await view.click("#kind-eat");
     await view.click("#title");
     await view.type("Fushimi");
     await view.press("Enter");
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi", booked: true, kind: "eat" } }] });
+    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi", booked: true, kind: "eat" } }] });
     const state = `[document.getElementById('title').value, document.getElementById('booked').checked, document.getElementById('kind-eat').checked]`;
     expect(await view.evaluate<unknown[]>(state)).toEqual(["", false, false]); // cleared as it sends
 
@@ -1210,7 +1168,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<unknown[]>(state)).toEqual(["Fushimi", true, true]);
 
     await view.press("Enter");
-    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await sentAt(view, 2);
     await view.click("#kind-travel"); // chosen again before the answer
     await pushRefused(view, add); // refused again
     expect(await view.evaluate<unknown[]>(`[document.getElementById('title').value, document.getElementById('booked').checked, document.querySelector('[name=kind]:checked').value]`)).toEqual(["Fushimi", true, "travel"]);
@@ -1251,11 +1209,9 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.click("[name=url]");
     await view.type("https://inari.jp");
     await view.press("Enter");
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi Inari", kind: "travel", url: "https://inari.jp" } }] });
+    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: [{ op: "add", path: "/events/-", value: { title: "Fushimi Inari", kind: "travel", url: "https://inari.jp" } }] });
 
     await pushRefused(view, ask(`<p class="refused" role="alert">Kyoto has that stop already.</p>`), "Kyoto has that stop already."); // refused: the page, handed back, saying why
-    await waitFor(view, `document.querySelector('.refused') !== null`, (v) => v === true);
     expect(await view.evaluate<string[]>(`["title", "kind", "url"].map((n) => document.querySelector('[name=' + n + ']').value)`)).toEqual(["Fushimi Inari", "travel", "https://inari.jp"]);
   });
 });
@@ -1277,7 +1233,6 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
     await using view = await open();
     await stubSend(view);
     await pushRender(view, say());
-    await waitFor(view, `document.getElementById('text') !== null`, (v) => v === true);
     await saying(view, "first");
 
     await pushRender(view, say("the attic")); // the room renamed by someone else, before this write's echo
@@ -1291,7 +1246,6 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
     await using view = await open();
     await stubSend(view);
     await pushRender(view, say());
-    await waitFor(view, `document.getElementById('text') !== null`, (v) => v === true);
     await saying(view, "hello");
 
     await push(view, { type: "patch", doc: "room:general", version: 9, ops: [{ op: "add", path: "/messages/b1", value: { name: "Bob", text: "hi all" } }] }); // Bob's, not this page's
@@ -1305,7 +1259,6 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
     await using view = await open();
     await stubSend(view);
     await pushRender(view, `<button id="hi" data-write='{"doc":"room","op":"add","path":"/messages/-"}' data-value="hi">hi</button><button id="undo" data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>Undo</button>`);
-    await waitFor(view, `document.getElementById('undo') !== null`, (v) => v === true);
     const lastSent = () => view.evaluate<Record<string, unknown>>(`window.eta.inspect().lastSent`);
 
     await view.click("#hi");
@@ -1330,12 +1283,11 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
     await stubSend(view);
     const words = (text: string) => `<form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>${text}</textarea></form>`;
     await pushRender(view, say() + words("Hello"));
-    await waitFor(view, `document.getElementById('words') !== null`, (v) => v === true);
     await view.click("#words");
     await view.evaluate(`document.getElementById('words').setSelectionRange(5, 5)`);
     await view.type(" there");
     await saying(view, "hello"); // leaving the words for the form commits them, then the form sends
-    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    await sentAt(view, 2);
 
     // the socket goes before either is answered, and a new one opens: no server will answer either now
     await view.evaluate(`(window.__old = window.eta.socket()).close()`);
@@ -1345,8 +1297,7 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
     expect(await view.evaluate<number>(`window.__sent.length`)).toBe(0); // nothing said before the page shows what landed
     await pushRender(view, say() + words("Hello")); // the page drawn afresh: neither landed
     expect(await text(view)).toBe("hello");
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000); // the edit goes again, the field untouched
-    expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({ doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] });
+    expect(await sentAt(view, 1)).toEqual({ doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] }); // the edit goes again, the field untouched
     expect(typeof (await view.evaluate<unknown>(`window.__ids[0]`))).toBe("number"); // with an id of its own
 
     await view.evaluate(`document.getElementById('words').focus()`);
@@ -1361,12 +1312,11 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
     await view.evaluate(`(() => { window.__sent = []; window.__ids = []; const send = function (d) { const { id, ...write } = JSON.parse(d); if (this.readyState === 1) { window.__ids.push(id); window.__sent.push(write); } }; WebSocket.prototype.send = send; window.eta.socket().send = send; })()`);
     const words = (text: string) => `<form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>${text}</textarea></form>`;
     await pushRender(view, words("Hello"));
-    await waitFor(view, `document.getElementById('words') !== null`, (v) => v === true);
     await view.click("#words");
     await view.evaluate(`document.getElementById('words').setSelectionRange(5, 5)`);
     await view.type(" there");
     await view.evaluate(`document.getElementById('words').blur()`);
-    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    await sentAt(view, 1);
 
     await view.evaluate(`(window.__old = window.eta.socket()).close()`); // gone before its echo came
     await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
