@@ -41,7 +41,8 @@ describe("bun create blueshed/eta garden", () => {
     expect(await Bun.file(join(root, "app/page.ts")).text()).toContain('<h1 class="cap">Garden</h1>');
     expect((await Bun.file(join(root, "package.json")).json()).name).toBe("garden");
     const version = (await Bun.file(join(eta, "package.json")).json()).version;
-    expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain(`Started from [eta](https://github.com/blueshed/eta) ${version}.`);
+    const moved = /## \[Unreleased\]\s*\n\s*[-#]/.test(await Bun.file(join(eta, "CHANGELOG.md")).text()); // eta's main, ahead of its last release
+    expect(await Bun.file(join(root, "CHANGELOG.md")).text()).toContain(`Started from [eta](https://github.com/blueshed/eta) ${version}${moved ? ", with what its changelog had under Unreleased then" : ""}.`);
     expect(await Bun.file(join(root, ".env")).text()).toMatch(/MODEL_NAME=Garden\nMODEL_PEOPLE=Ada,Claude\nMODEL_PASSWORD=[\w-]{36}\n/);
     expect(run(["git", "log", "--format=%s"]).out.trim()).toBe("Initial commit (via bun create)");
     expect(run(["git", "status", "--porcelain"]).out).toBe("");

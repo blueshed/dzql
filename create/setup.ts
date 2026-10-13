@@ -88,6 +88,8 @@ export async function setup(root: string): Promise<void> {
   const name = (root.split("/").pop() || "my-app").toLowerCase();
   const Name = title(name);
   console.log(`Setting up ${name}...`);
+  // the eta it starts from: the version, and whether main had moved on from it (what is under its changelog's [Unreleased])
+  const unreleased = /## \[Unreleased\]\s*\n([\s\S]*?)\n## \[/.exec(await Bun.file(join(root, "CHANGELOG.md")).text())?.[1]?.trim() ?? "";
   const eta = (await Bun.file(join(root, "package.json")).json()) as { version: string; dependencies: Record<string, string>; devDependencies: Record<string, string>; packageManager: string; engines: Record<string, string> };
 
   await lift(root, "examples/starter", "app");
@@ -131,7 +133,7 @@ export async function setup(root: string): Promise<void> {
   await Bun.write(join(root, ".env"), `# ${name}'s model (bun run model): its name, who keeps it, and the password they share -- each signs in\n# as <their name, in lower case>@modeling.example. Not committed.\nMODEL_NAME=${Name}\nMODEL_PEOPLE=${teller(root)},Claude\nMODEL_PASSWORD=${crypto.randomUUID()}\n`);
   await Bun.write(join(root, ".claude/launch.json"), LAUNCH(name));
   await Bun.write(join(root, "todo.jsonl"), "");
-  await Bun.write(join(root, "CHANGELOG.md"), changelog(eta.version));
+  await Bun.write(join(root, "CHANGELOG.md"), changelog(eta.version, unreleased !== ""));
   await Bun.write(join(root, "README.md"), readme(Name));
   await rewrite(join(root, "CLAUDE.md"), () => claude(Name));
 
@@ -172,7 +174,7 @@ const LAUNCH = (name: string) => `{
 }
 `;
 
-const changelog = (from: string) => `# Changelog
+const changelog = (from: string, moved: boolean) => `# Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -180,7 +182,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-- Started from [eta](https://github.com/blueshed/eta) ${from}. To bring the kernel (\`src/\`) and the model's page (\`model/\`) up to date, read [eta's changelog](https://github.com/blueshed/eta/blob/main/CHANGELOG.md) from that version on: replace both folders with the later eta's, and carry across what its "What to change" says for the app.
+- Started from [eta](https://github.com/blueshed/eta) ${from}${moved ? ", with what its changelog had under Unreleased then" : ""}. To bring the kernel (\`src/\`) and the model's page (\`model/\`) up to date, read [eta's changelog](https://github.com/blueshed/eta/blob/main/CHANGELOG.md) from that version on: replace both folders with the later eta's, and carry across what its "What to change" says for the app.
 `;
 
 const readme = (Name: string) => `# ${Name}

@@ -5,79 +5,73 @@ argument-hint: "patch | minor | major"
 
 # /publish
 
-The release procedure shared by railroad, delta and eta: the same steps in all three, with only
-the table below differing. The bump level is `$ARGUMENTS` (`patch`, `minor` or `major`).
+Releases eta: the gate, the version, the changelog, a tag. The bump level is `$ARGUMENTS`.
 
-| | |
-|---|---|
-| Package | `eta` |
-| Published | no -- private: tagged and pushed only |
-| Gate | `bun check && bun test && bun run stories:all` |
-| Skills stamped with the version | `.claude/skills/eta-app/SKILL.md` |
+eta is not on npm. A release is a tag on GitHub, and what it is for is the projects made from eta:
+`bun create blueshed/eta` takes `main` as it stands, and a project's changelog names the eta it
+started from. A project moves to a later eta by reading eta's changelog from its version on and
+carrying across what each breaking change says to do. So a release must leave three things true:
+`main` passes the gate, the changelog says what shipped, and every breaking change says what an app
+must change.
 
-Run the steps in order. Stop at the first failure without changing anything further. Running this
-command is the authorisation to release -- carry it through to the end, the push included, without
-asking again. Bun only: never `npm` or `npx`, and never `npm publish` from here (CI does it).
+Running this command is the authorisation to release: carry it through to the push without asking
+again. Stop at the first failure, changing nothing further. Bun only.
 
-## 1. Arguments
+## 1. The bump
 
-`$ARGUMENTS` must be exactly `patch`, `minor` or `major`; otherwise stop and print
-`Usage: /publish patch|minor|major`.
+`$ARGUMENTS` is exactly `patch`, `minor` or `major`; otherwise stop with
+`Usage: /publish patch|minor|major`. A release with a breaking change is at least `minor` (eta is
+0.x).
 
-## 2. Preflight
+## 2. Before anything is changed
 
-1. The branch is `main`: `git rev-parse --abbrev-ref HEAD`.
-2. The working tree is clean: `git status --porcelain` prints nothing.
-3. Not behind origin: `git fetch --quiet origin main`, then `git rev-list --count HEAD..origin/main`
-   is `0`. Commits ahead of origin are fine -- they go out with the release in step 7.
-4. `CHANGELOG.md` has a `## [Unreleased]` section with something under it. It is the record of
-   what is shipping, written as the work landed; if it is missing or empty, stop and say so.
+1. On `main`, with nothing uncommitted (`git status --porcelain` prints nothing).
+2. Not behind origin: `git fetch --quiet origin main`, then `git rev-list --count HEAD..origin/main`
+   is `0`.
+3. `CHANGELOG.md`'s `## [Unreleased]` has something under it, written as the work landed. Empty or
+   missing: stop and say so.
+4. Each entry under its `### Breaking` heading, if it has one, says what an app must change ("What
+   to change: ..."). One that does not: stop and name it -- a project cannot carry it across.
+5. `todo.jsonl` holds only what is open: an item the release settles was taken out when it landed.
 
-## 3. Gate
+## 3. The gate
 
-Run the gate command in the table. If it fails, stop -- no file has been edited yet.
-
-## 4. Bump
-
-Parse `.version` in `package.json` as strict `x.y.z` (refuse anything else) and compute the next:
-`patch` → `x.y.(z+1)`, `minor` → `x.(y+1).0`, `major` → `(x+1).0.0`. Write it back, keeping the
-2-space indent and the trailing newline.
-
-## 5. Stamp
-
-In each skill listed in the table, set the version under the frontmatter's `metadata:` map
-(`metadata:` then `  version: x.y.z`) to the new version, inserting both lines after `name:` if
-missing. A top-level `version:` line moves under `metadata:`: the Agent Skills spec allows only
-`name`, `description`, `license`, `compatibility`, `metadata` and `allowed-tools` at the top, and
-claude.ai and the Skills API refuse a skill with any other key. Change nothing else in the skill.
-
-## 6. Promote the changelog
-
-Replace the line `## [Unreleased]` with `## [<new version>] - <today, YYYY-MM-DD>`, and put a fresh,
-empty `## [Unreleased]` above it.
-
-## 7. Commit, tag, push
-
+```sh
+bun check && bun test && bun run stories:all
 ```
-git add package.json CHANGELOG.md .claude/skills/eta-app/SKILL.md
-git commit -m "Release v<new version>"
-git tag -a v<new version> -m "Release v<new version>"
+
+`bun test` includes `create/setup.test.ts`, which makes a project from a copy of eta and runs that
+project's own gate: a release that would give `bun create` a broken project fails here. If the gate
+fails, stop: nothing has been edited.
+
+## 4. The version
+
+1. `package.json`'s `version` is strict `x.y.z`; compute the next (`patch` x.y.z+1, `minor`
+   x.y+1.0, `major` x+1.0.0) and write it back, keeping the 2-space indent and the trailing newline.
+2. Set `metadata.version` to it in `.claude/skills/eta-app/SKILL.md` and
+   `.claude/skills/modelling/SKILL.md`, changing nothing else. (A skill's frontmatter allows only
+   `name`, `description`, `license`, `compatibility`, `metadata` and `allowed-tools` at the top.)
+3. In `CHANGELOG.md`, `## [Unreleased]` becomes `## [<version>] - <today, YYYY-MM-DD>`, with a
+   fresh, empty `## [Unreleased]` above it.
+
+## 5. Commit, tag, push
+
+```sh
+git add package.json CHANGELOG.md .claude/skills/eta-app/SKILL.md .claude/skills/modelling/SKILL.md
+git commit -m "Release v<version>"
+git tag -a v<version> -m "Release v<version>"
 git push origin main --follow-tags
 ```
 
-If the push is refused (not a fast-forward, auth, a hook), report the exact error and stop. Never
-retry with `--force`, `--no-verify` or any other bypass: the commit and tag stay local for the
-person to decide.
+A refused push (not a fast-forward, auth, a hook): report the error exactly and stop. Never
+`--force` or `--no-verify`: the commit and tag stay local for the person to decide.
 
-eta is private: there is no GitHub release and nothing goes to npm. The tag on origin is the
-release.
-
-## 8. Report
+## 6. Report
 
 ```
-Released eta@<new version>.
+Released eta v<version>.
 
   commit   <short sha>
-  tag      v<new version>
+  tag      v<version>
   pushed   origin/main
 ```

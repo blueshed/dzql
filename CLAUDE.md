@@ -11,7 +11,8 @@ What a builder must not break. How the pieces work is in the eta-app skill
   `BUN_CHROME_PATH` names it (`/opt/chromium/chrome-shim.sh` in a sandbox that has staged one).
 - The gate, before any commit that should ship: `bun check` (Bun's type check, TypeScript 7; Bun 1.4.3 or later), `bun test`,
   `bun run stories:all` (every example's stories). A release is `/publish`
-  (`.claude/commands/publish.md`), shared with railroad and delta: follow it, don't edit it.
+  (`.claude/commands/publish.md`): eta's own, since a release is what `bun create` projects
+  start from and carry across.
   Write what lands under `## [Unreleased]` in `CHANGELOG.md` as it lands, breaking changes first.
 - Verify every bug fix by reverting it, watching the new test fail, then restoring it.
 - `todo.jsonl` is the ledger of what is open. An item for a kernel bug that forced a workaround

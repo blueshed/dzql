@@ -7,6 +7,9 @@ where this file and the code disagree, the code is right.
 
 ## Contents
 
+- [Words](#words)
+- [Stories (`stories.ts`)](#stories-storiests)
+- [The first questions an app asks](#the-first-questions-an-app-asks)
 - [The page](#the-page)
 - [`Example` (`src/example.ts`)](#example-srcexamplets)
   - [Signing people in](#signing-people-in)
@@ -32,7 +35,67 @@ where this file and the code disagree, the code is right.
   - [An applet's controls](#an-applets-controls)
   - [Islands](#islands)
 - [CLI](#cli)
+- [Tests](#tests)
+- [Where an app lives](#where-an-app-lives)
+  - [A project made with `bun create blueshed/eta`](#a-project-made-with-bun-create-blueshedeta)
+  - [Moving a project to a later eta](#moving-a-project-to-a-later-eta)
+  - [An app that installs eta](#an-app-that-installs-eta)
 - [When it looks like you need to touch `src/`](#when-it-looks-like-you-need-to-touch-src)
+
+## Words
+
+- A **Compartment** (`src/compartments/compartment.ts`) looks after one type of document: which
+  one a page is on, who may write to it, and what a write becomes. Its documents are delta's. It
+  has no place on the page.
+- The **page** is the app's one `render(sessionId)`: which screen, in what order, reading whichever
+  documents it must. An app with a lot of HTML keeps the functions that build it in files of their
+  own (the wedding's and the ticker's `views/`).
+- The **session** is each visitor's own document -- who you are, where you are -- and a
+  compartment like any other; list it first. Keep as little in it as the stories need: a page and
+  its open drawer are one address, not six fields.
+- An **applet** is only for a piece of the page whose state in the browser a redraw would destroy
+  (a drag halfway through, a sparkline's history). It is not "the view for X": plain `data-write`
+  HTML is the default.
+- A **cell** is a place in a bento box, and the **tray** is the box the cells are cut into: how a
+  page looks. The **bento** (`examples/bento/README.md`, built in `src/bento.ts`, `src/bento.css`)
+  is how a page looks and moves: a box or a collection. A way of seeing, not features to have.
+
+## Stories (`stories.ts`)
+
+A story is who does what, and who then sees it, as a sentence a customer could call true or false.
+`stories.md` at the root says why; `src/stories.ts` is the shape. Write it before anything else, run
+`bun run stories`, and watch it fail.
+
+- Build nothing no story needs. Do not write a story to justify something already built: one that
+  describes the session's state ("opens the drawer") cannot fail and proves nothing. Tell what the
+  person wants, and use `seen`'s place for where they must stand to see it.
+- A refusal is a story too (`cannot`), and `told` is what its person is told.
+- What a write, an Undo or a Redo did may be told to its author (`tell`, *Saying why a write was
+  refused*). A story says what its undo must say with `undone: "Undone: your answer."` and its redo
+  with `redone`; the harness compares the author's pages without the line, and checks it alone.
+- `from` is where a person does it, so a control must lead there: build the button that opens the
+  drawer or the modal with it, or the story fails (`no control leads ...`).
+- A drag or a tap on an applet is the story's `gesture`: `{ drag: [from, to] }` or `{ press }`, CSS
+  selectors on the page. `STORY_BY_HAND=1 bun run stories` does by hand, in a browser the size of a
+  phone, each write a page sends and each refusal a control sends.
+- A write before anyone holds a document (signing in) is `post(path, form)` (*Signing people in*);
+  one from no page (a feed, the CLI) is `offPage: true`; what one story alone starts from is its
+  `premise`.
+- A story has a cost on the wire: `STORY_WIRE=1 bun run stories` says what its write, undo and redo
+  handed each page, and its biggest part. A part far bigger than the write is a part cut coarser
+  than what changes, or an applet handed its props whole where it could take patches (`data-doc`).
+  `budget` (bytes before compression), on a story or on `Stories`, fails a page handed more.
+
+## The first questions an app asks
+
+| To | Do |
+|---|---|
+| Show a document and let people change it | A compartment (`permit`, `shape`) and plain `data-write` controls. |
+| Make a new document (a new plan, a room) | Ask who must be told it was made. Its maker alone (a plan of my own): a plain form posting to a route on `Example.routes` that writes its root as the server (`serverWrite`) and redirects there -- a story says it with `post(path, form)`. Everyone holding a list of them (a room in a lobby all read): add its root row through that document and open the id the answer names. Named by its reader (a session, chat's room): `implied: true` in `defineDoc`, made by its first write. Never through a document that tells people nobody asked. |
+| Act before holding any document (sign in, join by a link) | A route on `Example.routes` answering a plain form: it writes the session with `serverWrite` and redirects (*Signing people in*). The story posts the form, and its `seen` says who is told what the route wrote. |
+| Keep a document the server works out (my home, who is here) | `registerMemory`, computed whole from the tables in `afterChange`, written as the difference with `serverWrite`, one run at a time (*By kind*). Nobody writes it. |
+| Refuse a write, saying why | `permit` or `shape`, with the story's words (*Saying why a write was refused*). |
+| Let a person undo | Register the documents with `{ ledger: true }`: the kernel's Undo and Redo walk it (*The ledger*). |
 
 ## The page
 
@@ -785,8 +848,75 @@ An island is an applet written as a railroad component (`@blueshed/railroad`):
 
 The CLI talks to a running server over the same socket a browser does, with no database import.
 
-- `src/cli.ts` knows `inspect`, `watch`, `undo`, `redo` and `write <doc> <op> <path> [value]`.
-- An example's `cli.ts` may export `aliases`: short verbs that build `{doc, ops}`.
+- `src/cli.ts` knows `login <email> <password>` (signs in by the app's own `/login` form, and keeps
+  the session in `.eta-session`, or `--session <file>`), `inspect`, `watch`, `undo`, `redo` and
+  `write <doc> <op> <path> [value]`. A refused write prints `refused: <why>` and exits 1.
+- An app's `cli.ts` may export `aliases`: short verbs that build `{doc, ops}`, with no database.
+- `ETA_EXAMPLE` says which app (`./app`, or an example's name), `ETA_URL` which server.
+
+## Tests
+
+The stories are most of the tests. Beside them, for what a story cannot say:
+
+- a test for each document's rules and shapes, called directly;
+- a `server.test.ts` that drives writes and undo over a real websocket (two writes racing);
+- a `client/app.test.ts` for what only a browser can show (`Bun.WebView`: open each view at
+  `urlFor(view, server.url)` and wait with `waitFor`, both `src/webview.ts`).
+
+Press as a mouse does, never with `element.click()`: it sends no pointerdown or pointerup and
+reaches a control whatever is drawn over it, so a tap that goes nowhere passes. `press`
+(`src/webview.ts`) scrolls to the control, presses and lets go at its middle, then clicks where a
+browser would; it throws for a control that is disabled or covered, naming what covers it.
+
+```ts
+await press(view, "#quote-FXTR button");
+await waitFor(view, `document.querySelector('.drawer h2')?.textContent`, (v) => v === "FXTR");
+```
+
+The gate is `bun check`, `bun test` (100% coverage) and the stories; the project's CLAUDE.md says
+what the browser tests need.
+
+## Where an app lives
+
+The kernel finds an app by `ETA_EXAMPLE`: one of eta's examples by name (`chat`), or an app's own
+folder (`./app`). `start`, `stories` and `cli` all take it. Whichever it is, the steps are the same,
+and none of them edits `src/`.
+
+### A project made with `bun create blueshed/eta`
+
+The usual way to start. `bun create blueshed/eta my-app` makes three folders: `app/`, the app,
+begun with a page and no stories (eta's `examples/starter`); `model/`, the model's page, where the
+stories are modelled before they are built (the modelling skill); and `src/`, eta's kernel, which
+the app imports (`../src/...`) and never edits. `bun dev`, `bun test`, `bun run stories` and
+`bun run cli` work on `app/`; `bun run model` and `bun run cli:model` on `model/`. `.env` holds the
+model's name, who keeps it, and the password they share.
+
+### Moving a project to a later eta
+
+The project's `CHANGELOG.md` names the eta it started from. To move to a later eta: replace `src/`
+and `model/` whole with that eta's, from its repo at its tag; read eta's `CHANGELOG.md` from the
+project's version on, and carry across what each "What to change" says for the app -- they are
+written for this; run the gate, the stories passing is the proof; and say in the project's
+changelog which eta it is on now. Never patch `src/` in a project: a change the kernel needs is
+eta's, made there and released.
+
+### An app that installs eta
+
+An app in a repo of its own can depend on a packed eta (`package.json`'s `files`: `src` without its
+tests, these skills, the docs) -- a tarball, never `file:`:
+
+```sh
+cd ../blueshed/eta && bun pm pack && cd - && bun add ../blueshed/eta/eta-<version>.tgz
+```
+
+After a change to eta, pack again, then `bun remove eta && bun add` the tarball: the lockfile keeps a
+tarball's first contents (Bun 1.4). The app imports the kernel as `eta/src/...` (the stylesheet:
+`@import "eta/src/bento.css"`) and has three small files where a project leans on eta's scripts: a
+`server.ts` (`createServer(example)`), a stories runner (`print(await run(example, stories,
+undefined, { byHand: !!process.env.STORY_BY_HAND }), { wire: !!process.env.STORY_WIRE })`), and
+eta's `tsconfig.json`, `bunfig.toml` and `.env.test`. To be read by eta's modeller (`bun run
+modeller:page <path>`), it links eta from its checkout instead (`bun link`, then `"eta":
+"link:eta"`), keeping its delta and railroad at eta's versions. `Workshop/canyou-eta` is one.
 
 ## When it looks like you need to touch `src/`
 
