@@ -914,8 +914,8 @@ tarball's first contents (Bun 1.4). The app imports the kernel as `eta/src/...` 
 `@import "eta/src/bento.css"`) and has three small files where a project leans on eta's scripts: a
 `server.ts` (`createServer(example)`), a stories runner (`print(await run(example, stories,
 undefined, { byHand: !!process.env.STORY_BY_HAND }), { wire: !!process.env.STORY_WIRE })`), and
-eta's `tsconfig.json`, `bunfig.toml` and `.env.test`. To be read by eta's modeller (`bun run
-modeller <path>`), it links eta from its checkout instead (`bun link`, then `"eta":
+eta's `tsconfig.json`, `bunfig.toml` and `.env.test`. To be read by eta's loader (`bun run
+model:check <path>`), it links eta from its checkout instead (`bun link`, then `"eta":
 "link:eta"`), keeping its delta and railroad at eta's versions. `Workshop/canyou-eta` is one.
 
 ## When it looks like you need to touch `src/`

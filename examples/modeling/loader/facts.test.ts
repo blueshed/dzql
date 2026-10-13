@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import type { StoryRow, Told } from "./documents";
-import { bornInto, inSql, keeper, readBy, shape, squared, toldNotAsked, touches, unreached } from "./heart";
+import { bornInto, inSql, keeper, readBy, shape, squared, toldNotAsked, touches, unreached } from "./facts";
 import { extract } from "./extract";
 import { documentsIn } from "./documents";
 

@@ -20,8 +20,8 @@
 // No example knowledge: the one document left out is the session's, found by asking the example's
 // own `goTo()` where it writes.
 
-import { writeOf, type Stories, type Story, type Write } from "../src/stories";
-import type { PatchOp } from "../src/json-patch";
+import { writeOf, type Stories, type Story, type Write } from "../../../src/stories";
+import type { PatchOp } from "../../../src/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import { typeOf as docType } from "./documents";
 import type { Entity, Field, Model, Story as ModelStory, StoryWrite } from "./model/grammar";
@@ -41,7 +41,7 @@ export type Reading = {
 const isRow = (seg: string): boolean => seg === "-" || /^\d+$/.test(seg);
 
 /** "areas" -> "Area", "series" -> "Series", "work_windows" -> "WorkWindow", "venueOwner" -> "VenueOwner". */
-import { singular } from "../examples/modeling/heart";
+import { singular } from "../heart";
 export { singular }; // one rule for a word's one: the modeling page's
 
 export function pascal(word: string): string {

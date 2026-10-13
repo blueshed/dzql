@@ -141,10 +141,10 @@ bun run cli <verb>   # a terminal client: inspect, watch, undo, redo, write, and
 bun run costs        # measures every number this README quotes, and writes it in
 ```
 
-One tool sits beside the kernel and is not shipped: `modeller/` (`bun run modeller <example>`:
-an example's documents -- who holds each, who writes it, who is told of a change, and what permit
-lets through that no page offers -- then hjeli's predicates over its stories). The page of a model,
-its stories, documents and entities, is the modeling example.
+The modeling example reads an app that exists, too (`examples/modeling/loader/`): `bun run
+model:check <example>` says its documents -- who holds each, who writes it, who is told of a
+change, and what permit lets through that no page offers -- then runs hjeli's predicates over its
+stories; `bun run model:load <example>` loads it into the model on the page.
 
 ## Where to go next
 

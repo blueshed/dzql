@@ -1,5 +1,5 @@
 // The heart of a model: its stories, its documents and its entities, and what goes with what --
-// the page the modeller once drew from a run of an app's code (modeller/heart.ts), drawn from the model document as it is
+// drawn from the model document as it is
 // kept, not from a run of an app's code. Pure: the server draws the first paint with it, and the
 // heart applet (applets/heart-applet.ts) draws every one after, as the model's patches come.
 //
@@ -106,7 +106,7 @@ export const BOX = { W: 176, H: 46, COL: 236, ROW: 56 };
 export const MIN_COL = BOX.W + 24;
 
 /**
- * The entities as a tree from their parent links, as the modeller lays it out (modeller/layout.ts):
+ * The entities as a tree from their parent links:
  * depth left to right, each leaf on a row of its own, a parent level with the middle of its
  * children, each root's tree a little apart from the next. `visible` keeps some: one whose parent is
  * hidden is a root. `fit` is the width it has: a tree deeper than fits takes narrower columns.

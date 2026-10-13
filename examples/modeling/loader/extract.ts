@@ -1,15 +1,15 @@
-// The facts a modeller page shows, read from an example as it stands: its stories, its delta.ts
+// The facts of an app, read from it as it stands: its stories, its delta.ts
 // (tables, and documents as root + include), its compartments' permit rules, what the harness
 // says when it runs the stories, and its documents as that run read them (documents.ts). Nothing
 // here is proposed; everything is read. A project with no app yet (no index.ts) is read from its
 // stories alone: no run, so nothing of who was told.
 
-import { isPost, writeOf, type Stories, type Story } from "../src/stories";
-import type { Example } from "../src/example";
+import { isPost, writeOf, type Stories, type Story } from "../../../src/stories";
+import type { Example } from "../../../src/example";
 import { splitPath } from "@blueshed/delta/core";
-import { run } from "../src/harness";
+import { run } from "../../../src/harness";
 import { documentsIn, heardAs, privateEntry, read, typeOf, watch, exampleAt } from "./documents";
-import { heartOf, inSql } from "./heart";
+import { heartOf, inSql } from "./facts";
 
 type Column = { type: string; nullable?: boolean };
 type Permit = { doc: string; path: string; ops: string[]; dated: boolean };
@@ -115,12 +115,9 @@ export async function extract(at: string) {
   const castSetup = Object.fromEntries(cast.map((m) => [m, stories.cast[m]!.flatMap((w) => w.ops.map((o) => `${w.doc} ${o.path} = ${"value" in o ? JSON.stringify(o.value) : ""}`))]));
   for (const s of storyRows) if (!cast.includes(s.as)) cast.push(s.as);
 
-  const todo = (await Bun.file(`${import.meta.dir}/../todo.jsonl`).text()).split("\n").filter(Boolean).map((l) => JSON.parse(l));
-  const tasks = todo.map((t: { n: number; status: string; summary: string; area: string }) => ({ n: t.n, status: t.status, summary: t.summary, area: t.area }));
-
   const reading = example ? read(stories, example, watched, documents.map((d) => d.name)) : read(stories);
   const perSession = example?.compartments.filter((c) => c.perSession).map((c) => c.docType) ?? [];
   const heart = heartOf({ example: name, ran: reading.ran, session, perSession, stories: storyRows, rows: reading.stories, traces: watched?.traces ?? [], documents, tables: schema, files, cast: castSetup, held: reading.grid });
 
-  return { example: name, session, cast, castSetup, tables, documents, permits, stories: storyRows, harness: report ? { passed: report.passed, failed: report.failed } : null, tasks, read: reading, heart };
+  return { example: name, session, cast, castSetup, tables, documents, permits, stories: storyRows, harness: report ? { passed: report.passed, failed: report.failed } : null, read: reading, heart };
 }

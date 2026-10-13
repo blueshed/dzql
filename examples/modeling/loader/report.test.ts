@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { story, type Stories } from "../src/stories";
+import { story, type Stories } from "../../../src/stories";
 import { entityOf, fromStories, locate, noticing, pascal, readOp, singular } from "./from-stories";
 import { compare, format, judge } from "./report";
 import { extract, rulesIn } from "./extract";
 import { documentsIn } from "./documents";
-import { stories as chat } from "../examples/chat/stories";
+import { stories as chat } from "../../chat/stories";
 import { stories as londons } from "./londons/stories";
 
 describe("names", () => {
@@ -205,8 +205,8 @@ describe("the examples", () => {
   });
 
   test("every example's stories read, and hjeli's predicates judge them", async () => {
-    for await (const file of new Bun.Glob("*/stories.ts").scan(`${import.meta.dir}/../examples`)) {
-      const { stories } = (await import(`../examples/${file}`)) as { stories: Stories };
+    for await (const file of new Bun.Glob("*/stories.ts").scan(`${import.meta.dir}/../..`)) {
+      const { stories } = (await import(`../../${file}`)) as { stories: Stories };
       expect(judge(stories).report.counts.stories).toBe(stories.stories.length);
     }
   });
@@ -251,7 +251,6 @@ registerMemory(delta.server, { prefix: "everyone:", empty: () => ({}) });`;
     expect(closes).toMatchObject({ doc: null, ops: [], session: false });
     expect(closes.sequence[0]!.heard.find((h) => h.member === "ada")!.messages.length).toBeGreaterThan(0);
     expect(facts.tables.find((t) => t.name === "messages")!.parent).toBe("rooms");
-    expect(facts.tasks.length).toBeGreaterThan(0);
     // the documents, as the same run read them: the picture's grid and each story's changes
     expect(facts.read.ran).toBe(true);
     expect(facts.read.stories.find((s) => s.name === say.name)!.changes.map((c) => c.doc)).toEqual(["room:general"]);

@@ -9,7 +9,7 @@
 // closure's dead actor, which read those pages: an actor with nothing in front of them and nothing
 // written is a row of dots in the documents' grid.
 
-import { writeOf, type Stories } from "../src/stories";
+import { writeOf, type Stories } from "../../../src/stories";
 import type { Gap, Model } from "./model/grammar";
 import { actorClosure, authorizationClosure, preconditionClosure, referentialClosure } from "./model/predicates";
 import { fromStories, locate, entityOf, noticing, type Note, type Reading } from "./from-stories";

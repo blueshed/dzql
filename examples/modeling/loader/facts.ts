@@ -29,8 +29,8 @@
 // premise's, which only set the stage -- and who was told, so told-not-asked and holders², are
 // not said at all: they need a run.
 
-import type { PatchOp } from "../src/json-patch";
-import type { Trace } from "../src/harness";
+import type { PatchOp } from "../../../src/json-patch";
+import type { Trace } from "../../../src/harness";
 import { typeOf, type StoryRow, type Told } from "./documents";
 import { singular } from "./from-stories";
 

@@ -4,7 +4,7 @@
 //
 //   the stories  -- each action (who, the document, the verb, the path) puts its document in
 //                   front of its author, and each `seen` names who must hold it. Nothing else is
-//                   needed, so a pile of stories with no app yet (modeller/londons) reads too.
+//                   needed, so a pile of stories with no app yet (loader/londons) reads too.
 //   the example  -- the documents its compartments own (`example.compartments`, each a docType).
 //   a run        -- the harness tells the stories over real sockets, and says at each step what
 //                   each member's page read (`Trace.holds`) and what each was sent; while a step's
@@ -13,13 +13,13 @@
 // The checks are advice: they flag, they never fail a run.
 
 import { basename, resolve } from "node:path";
-import type { Example } from "../src/example";
-import type { Compartment } from "../src/compartments/compartment";
-import { writeOf, type Stories, type Story } from "../src/stories";
-import type { PatchOp } from "../src/json-patch";
-import { controlsOn, run, type Control, type Heard, type Trace } from "../src/harness";
-import { allOpenSockets } from "../src/compartments/audience";
-import { activeDocuments } from "../src/documents";
+import type { Example } from "../../../src/example";
+import type { Compartment } from "../../../src/compartments/compartment";
+import { writeOf, type Stories, type Story } from "../../../src/stories";
+import type { PatchOp } from "../../../src/json-patch";
+import { controlsOn, run, type Control, type Heard, type Trace } from "../../../src/harness";
+import { allOpenSockets } from "../../../src/compartments/audience";
+import { activeDocuments } from "../../../src/documents";
 
 /** One actor's dealings with one document, counted in stories: held (in front of them), written, refused, told of a change. */
 export type Cell = { held: number; written: number; refused: number; told: number };
@@ -313,7 +313,7 @@ function changes(step: Trace, named: (doc: string) => string | undefined, own: s
 
 /** Where an example is, and its name: `wedding` is `examples/wedding`; a path (it has a `/`) is a project of its own, named by its last part. */
 export function exampleAt(arg: string): { dir: string; name: string } {
-  if (!arg.includes("/")) return { dir: `${import.meta.dir}/../examples/${arg}`, name: arg };
+  if (!arg.includes("/")) return { dir: `${import.meta.dir}/../../${arg}`, name: arg };
   const dir = resolve(arg);
   return { dir, name: basename(dir) };
 }

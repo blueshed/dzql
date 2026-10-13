@@ -82,6 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The modeller is the modeling example's loader** (`examples/modeling/loader/`, from `modeller/`, which goes): the code that reads an app that exists -- its documents from a run of its stories, its facts, hjeli's predicates over them -- lives with the model it feeds. `bun run modeller` is `bun run model:check`. A `bun create` project gets it in `model/loader/`, without eta's tests of it. The ledger's task list, which only the retired page showed, is no longer read.
 - **`.cap`, `.note` and `.door` are the kernel's** (`src/bento.css`): the kernel's own markup uses the first two, and four examples drew the door. Six stylesheets restated them; each now says only where it differs (the wedding's lighter capitals, starter's wider door, modeling's flat one).
 - **The Londons stories are the modeller's, not an example** (`modeller/londons/stories.ts`, from `examples/londons/`): 149 stories with no app, read only by the modeller's tests as a project of stories alone.
 - **The modeller lays out its entities, and says a word's one, with the modeling page's code** (`layout`, `singular` from `examples/modeling/heart.ts`): `modeller/layout.ts` goes. The copies had drifted: the modeller's left out an entity that is its own parent, and now draws it; and "people" is now "person".

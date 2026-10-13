@@ -2,7 +2,7 @@
 // root and, for the page, apples.md ("The page": a page is a bento box; a ground drawn as itself).
 // These are the 133 stories of the hjeli model in
 // `the original hjeli model`, retold in eta's words as the whole
-// specification of an app that does not exist: the modeller's tests read it as a project of stories alone.
+// specification of an app that does not exist: the loader's tests read it as a project of stories alone.
 //
 // THE MARKETPLACE. An authority plans a series of occasions and invites venues, or venues propose
 // themselves; a venue owner has areas and sites with a performance baseline; a promoter packages
@@ -89,7 +89,7 @@
 // window 1 (14 March, area 1) with assignment 1 (Sam, assigned, deployment 2) and assignment 2
 // (done, deployment 3); trip 1; tasks 1 (todo), 2 (done) and 3 (skipped) on deployment 2; supply
 // line 1 (open, requirement 1) with offer 1 (Northgate Signs, offered) and supply line 2 (accepted).
-import { goTo as goToOn, story, type Stories, type Write } from "../../src/stories";
+import { goTo as goToOn, story, type Stories, type Write } from "../../../../src/stories";
 
 type Op = "add" | "replace" | "remove";
 const w = (doc: string, op: Op, path: string, value?: unknown): Write => ({ doc, ops: [op === "remove" ? { op, path } : { op, path, value }] });

@@ -858,7 +858,7 @@ describe("the couple keep a family's invitation", () => {
 });
 
 // Each compartment permits what its pages offer, to whom they offer it, and nothing more (`bun
-// run modeller wedding`): a field is emptied by replacing it with nothing, never removed; a row's
+// run model:check wedding`): a field is emptied by replacing it with nothing, never removed; a row's
 // parent and a dish's or a drink's order are the server's; a reply is changed, never taken back.
 // What the wedding's stories no longer tell one by one is here, each write put to its permit.
 describe("a permit allows what a page offers, and nothing more", () => {
