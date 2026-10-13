@@ -177,12 +177,12 @@ export async function measured(): Promise<Run> {
   found.set("railroad", `${size(mount)} gzipped for \`signal\` and \`mount\`, ${size(list)} with \`list\``);
   near.set("railroad", [mount, list]);
 
-  // the stories `bun run stories:all` runs: an example's, once it has an app
+  // the stories `bun run stories:all` runs: an example's, once it has an app and a story (the starter has none)
   const counts: string[] = [];
   for (const dir of dirs) {
     if (!(await Bun.file(`${root}/${dir}/stories.ts`).exists()) || !(await Bun.file(`${root}/${dir}/index.ts`).exists())) continue;
     const { stories } = (await import(`${root}/${dir}/stories.ts`)) as { stories: { stories: unknown[] } };
-    counts.push(`${stories.stories.length} in ${dir.slice("examples/".length)}`);
+    if (stories.stories.length > 0) counts.push(`${stories.stories.length} in ${dir.slice("examples/".length)}`);
   }
   found.set("stories", counts.length < 2 ? counts.join("") : `${counts.slice(0, -1).join(", ")} and ${counts.at(-1)}`);
   return { found: new Map([...found].map(([name, text]) => [name, text.replaceAll("\u00a0", " ")])), near };

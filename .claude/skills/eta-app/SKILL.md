@@ -1,6 +1,6 @@
 ---
 name: eta-app
-description: Use before building an eta app -- an example under examples/<name>/ or an app in a repo of its own -- or adding a document, compartment, applet, route or CLI verb to one; and before touching the Compartment contract, an app's delta.ts, the applet registry or the {doc, ops} wire. reference.md has the contracts, one section a piece, with a contents table.
+description: Use before building an eta app -- an example under examples/<name>/, the app/ of a project made with `bun create blueshed/eta`, or an app in a repo of its own -- or adding a document, compartment, applet, route or CLI verb to one; and before touching the Compartment contract, an app's delta.ts, the applet registry or the {doc, ops} wire. reference.md has the contracts, one section a piece, with a contents table.
 metadata:
   version: 0.51.0
 ---
@@ -151,9 +151,25 @@ An app whose page an assistant in the browser should use by its writes imports
 `eta/src/client/tools` after the kernel's client: every labelled control is then a tool, registered
 with WebMCP where the browser has it (reference.md, "Assistants").
 
-## An app of its own
+## A project made with `bun create blueshed/eta`
 
-An app need not be an example: it can live in its own repo and install eta. A deployed app depends
+The usual way to start: `bun create blueshed/eta my-app` makes a project of three folders. `app/`
+is the app, where everything above happens (read `examples/<name>/` above as `app/`; it imports
+the kernel as `../src/...`). `model/` is the model's page, where the stories are modelled before
+they are built (the **modelling** skill). `src/` is eta's kernel: the app imports it and never
+edits it. `bun dev`, `bun test`, `bun run stories` and `bun run cli` all work on `app/`
+(`ETA_EXAMPLE=./app`: the kernel takes an app's folder as well as an example's name).
+
+**Updating the kernel.** The project's `CHANGELOG.md` names the eta it started from. To move to a
+later eta: replace `src/` and `model/` whole with that eta's (from its repo, at its tag), then read
+eta's `CHANGELOG.md` from the project's version on and carry across what each "What to change"
+says for the app -- they are written for this. Run the gate; the stories passing is the proof.
+Then say in the project's changelog which eta it is on now. Never patch `src/` in a project: a
+change the kernel needs is eta's, made there and released.
+
+## An app of its own, installed
+
+An app need not be made from the template: it can live in its own repo and install eta. A deployed app depends
 on a released eta: `package.json` says what eta ships (`src` without its tests, these skills, the
 docs), so pack it and add the tarball, never `file:`.
 

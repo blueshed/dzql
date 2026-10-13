@@ -21,6 +21,22 @@ applet, and only there.
 In one line: **multi-person live apps told as stories and checked by them, drawn on the server,
 on delta's live documents.**
 
+## Start a project
+
+```
+bun create blueshed/eta my-app
+cd my-app
+bun run model
+```
+
+A project is three folders: `app/`, your app, empty to begin with; `model/`, the model's page; and
+`src/`, eta's kernel, which the app imports and never edits. You tell Claude the stories, and it
+models them on the model's page (http://localhost:3001; sign in with your name and the password in
+`.env`) while you watch: the documents they need, who holds each, and the entities that follow.
+Then it builds the app from the model (`bun dev`, http://localhost:3000), the least that makes
+each story pass. The project's `CHANGELOG.md` names the eta it started from, so a later eta can be
+carried across.
+
 ## Try it
 
 You need Bun. `bun install` brings `@blueshed/delta` and `@blueshed/railroad` from npm.

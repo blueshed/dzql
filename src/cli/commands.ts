@@ -127,6 +127,18 @@ export function loadOrCreateSessionCookie(file: string): string {
   }
 }
 
+/**
+ * Signs in as a browser does, by posting the app's sign-in form (`/login`, from the app's own
+ * page) to the server `url` names (its `ws:` as `http:`): the session the answer's cookie names, to
+ * keep in the session file; none when the form was refused. So the CLI is a person of the app, as a
+ * page is, and no password crosses the socket.
+ */
+export async function signIn(url: string, form: Record<string, string>): Promise<string | undefined> {
+  const at = new URL("/login", url.replace(/^ws/, "http"));
+  const res = await fetch(at, { method: "POST", body: new URLSearchParams(form), redirect: "manual", headers: { origin: at.origin } });
+  return /session_id=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
+}
+
 export function connectCli(url: string, cookie: string): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     // tsconfig's DOM lib doesn't know about Bun's runtime-only `headers` option.

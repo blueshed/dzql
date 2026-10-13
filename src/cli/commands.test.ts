@@ -21,8 +21,10 @@ import {
   loadOrCreateSessionCookie,
   parseCommand,
   runCommand,
+  signIn,
   watch,
 } from "./commands";
+import { appDir } from "../names";
 
 describe("parseCommand", () => {
   test("inspect, watch, and undo take no argument", () => {
@@ -224,6 +226,14 @@ const widgetCompartment: Compartment = {
 
 const cliTestExample: Example = {
   name: "cli-test",
+  // a sign-in that takes one password, as an app's own does
+  routes: {
+    "/login": async (req) => {
+      const form = await req.formData();
+      if (req.headers.get("origin") !== new URL(req.url).origin || form.get("password") !== "right") return new Response(null, { status: 303, headers: { Location: "/" } });
+      return new Response(null, { status: 303, headers: { Location: "/", "Set-Cookie": `session_id=signed-${form.get("email")}; Path=/` } });
+    },
+  },
   compartments: [widgetCompartment],
   render: (sessionId) => `<p>${read<{ widgets: { color: string } }>(`widget:${sessionId}`).widgets.color}</p>`,
   active: () => true,
@@ -273,6 +283,18 @@ describe("cli against a real server", () => {
     expect((await runCommand(ws, parseCommand(["write", "widget", "remove", "/color"])!)).refused).toEqual({});
     expect(await runCommand(ws, parseCommand(["write", "widget", "replace", "/color", "teal"])!)).not.toHaveProperty("refused");
     ws.close();
+  });
+
+  test("login signs in by the app's own form, from the app's own origin, and answers the session it is given; a wrong one, none", async () => {
+    expect(await signIn(url(), { email: "ada", password: "right" })).toBe("signed-ada");
+    expect(await signIn(url(), { email: "ada", password: "wrong" })).toBeUndefined();
+  });
+
+  test("an app is found by its name among eta's examples, or by its own folder", () => {
+    expect(appDir()).toEndWith("/src/../examples/chat");
+    expect(appDir("leave")).toEndWith("/src/../examples/leave");
+    expect(appDir("./app")).toBe(`${process.cwd()}/app`);
+    expect(appDir("model/")).toBe(`${process.cwd()}/model`);
   });
 
   test("undo walks back the last write", async () => {

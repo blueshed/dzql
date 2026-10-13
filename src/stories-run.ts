@@ -1,20 +1,22 @@
 // Runs one example's stories (`examples/<name>/stories.ts`) against it and prints the report.
-// `bun run stories` (chat, by default) or `ETA_EXAMPLE=wedding bun run stories`. See stories.md.
+// `bun run stories` (chat, by default) or `ETA_EXAMPLE=wedding bun run stories`, or an app's own
+// folder (`ETA_EXAMPLE=./app`, src/names.ts `appDir`). See stories.md.
 // Stories come first, so an example may have them before it has an app: that is said, as the next
 // thing to do, not as a missing module.
 import { print, run } from "./harness";
 import type { Stories } from "./stories";
+import { appDir } from "./names";
 
-const exampleName = process.env.ETA_EXAMPLE ?? "chat";
-const dir = `${import.meta.dir}/../examples/${exampleName}`;
+const dir = appDir(process.env.ETA_EXAMPLE);
+const at = dir.slice(process.cwd().length + 1) || dir;
 
 if (!(await Bun.file(`${dir}/stories.ts`).exists())) {
-  console.log(`examples/${exampleName} has no stories.ts: an example starts with its stories (stories.md).`);
+  console.log(`${at} has no stories.ts: an app starts with its stories (stories.md).`);
   process.exit(1);
 }
 const { stories } = (await import(`${dir}/stories.ts`)) as { stories: Stories };
 if (!(await Bun.file(`${dir}/index.ts`).exists())) {
-  console.log(`examples/${exampleName} has ${stories.stories.length} stories and no app yet (no index.ts): build the least that makes the first one pass -- the eta-app skill says how.`);
+  console.log(`${at} has ${stories.stories.length} stories and no app yet (no index.ts): build the least that makes the first one pass -- the eta-app skill says how.`);
   process.exit(1);
 }
 const { example } = await import(`${dir}/index.ts`);

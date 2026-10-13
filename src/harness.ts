@@ -105,12 +105,14 @@ type LedgerRow = { id: number; doc: string; undoable: number; ops: string; inver
 /**
  * The ledger the stories read, to know whether a story has an undo to check and whether a refusal
  * moved nothing: delta's (`delta_ledger`, in the same database), whose fresh entries -- not an
- * undo's or a redo's -- a story's write starts.
+ * undo's or a redo's -- a story's write starts. An app with no document on the ledger yet (a new
+ * one, its stories told before anything is built) has none: nothing moves it.
  */
 function ledgerOf(): { max(): number; since(id: number): LedgerRow[] } {
-  const max = db.query<{ id: number | null }, []>("SELECT MAX(id) AS id FROM delta_ledger");
-  const since = db.query<LedgerRow, [number]>("SELECT id, doc, undoable, ops, inverse FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id");
-  return { max: () => max.get()?.id ?? 0, since: (id) => since.all(id) };
+  const kept = db.query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'delta_ledger'").get() !== null;
+  const max = kept ? db.query<{ id: number | null }, []>("SELECT MAX(id) AS id FROM delta_ledger") : undefined;
+  const since = kept ? db.query<LedgerRow, [number]>("SELECT id, doc, undoable, ops, inverse FROM delta_ledger WHERE id > ? AND undoes IS NULL ORDER BY id") : undefined;
+  return { max: () => max?.get()?.id ?? 0, since: (id) => since?.all(id) ?? [] };
 }
 
 /** The kinds of document delta keeps in its tables, which `open_at` reads. */

@@ -18,4 +18,6 @@ coverageThreshold = 1.0
 # a copy of hjeli's model and predicates, covered by hjeli's own tests (modeller/model/README.md).
 # An example's stories.ts is a declaration `bun run stories:all` runs whole; a test that imports
 # one to run a story or two would otherwise count the rest as uncovered
-coveragePathIgnorePatterns = ["**/node_modules/**", "modeller/model/**", "examples/*/stories.ts"]
+# create/setup.ts is bun create's postinstall: its test runs it whole, as bun create does, on a
+# scratch copy of eta, in a process of its own, then the new project's own gate.
+coveragePathIgnorePatterns = ["**/node_modules/**", "modeller/model/**", "examples/*/stories.ts", "create/setup.ts"]

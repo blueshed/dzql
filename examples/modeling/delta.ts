@@ -22,9 +22,15 @@ export const schema = defineSchema({
 
 createTables(db, schema);
 
-// The two who keep a model, each with a password made up for the example (a login's id is its
-// email), and the model as it starts: leave's, as the modeller read it from leave's code and a run
-// of its 23 stories -- the team and each person's session, and the logins a sign-in looks up.
+// The two who keep a model, and the model as it starts. Here, in eta: Peter and Claude, each with a
+// password made up for the example (a login's id is its email, `peter@modeling.example`), and
+// leave's model, as the modeller read it from leave's code and a run of its 23 stories -- the team
+// and each person's session, and the logins a sign-in looks up. In a project made with `bun create
+// blueshed/eta`, its `.env` says otherwise: `MODEL_NAME`, the project's own model, empty;
+// `MODEL_PEOPLE`, who keeps it; `MODEL_PASSWORD`, the one password they share.
+const NAME = process.env.MODEL_NAME;
+const PEOPLE = (process.env.MODEL_PEOPLE ?? "Peter,Claude").split(",").map((p) => p.trim()).filter(Boolean);
+const passwordOf = (login: string) => process.env.MODEL_PASSWORD ?? `${login}-password`;
 type Seeded = [actor: string, kind: "does" | "cannot", text: string, touches: string[], post?: string];
 const STORIES: Seeded[] = [
   ["ann", "does", "Ann drags across two days in Bo's week, and sees the clash before she asks", ["sessions"]],
@@ -55,13 +61,13 @@ const field = (name: string, type = "text") => ({ name, type });
 const ids = (...n: number[]) => JSON.stringify(n.map(String));
 
 if (!db.query("SELECT 1 FROM mdl_models").get()) {
-  for (const [id, name] of [["1", "Peter"], ["2", "Claude"]] as const) {
+  PEOPLE.forEach((name, i) => {
     const login = name.toLowerCase();
-    db.run("INSERT INTO mdl_people (id, name) VALUES (?, ?)", [id, name]);
-    db.run("INSERT INTO mdl_logins (id, person_id, hash) VALUES (?, ?, ?)", [`${login}@modeling.example`, id, Bun.password.hashSync(`${login}-password`)]);
-  }
-  db.run("INSERT INTO mdl_models (id, name) VALUES ('1', 'Leave')");
-  STORIES.forEach(([actor, kind, text, touches, post], i) =>
+    db.run("INSERT INTO mdl_people (id, name) VALUES (?, ?)", [String(i + 1), name]);
+    db.run("INSERT INTO mdl_logins (id, person_id, hash) VALUES (?, ?, ?)", [`${login}@modeling.example`, String(i + 1), Bun.password.hashSync(passwordOf(login))]);
+  });
+  db.run("INSERT INTO mdl_models (id, name) VALUES ('1', ?)", [NAME ?? "Leave"]);
+  (NAME ? [] : STORIES).forEach(([actor, kind, text, touches, post], i) =>
     db.run("INSERT INTO mdl_stories (id, models_id, text, actor, kind, post, touches) VALUES (?, '1', ?, ?, ?, ?, ?)", [String(i + 1), text, actor, kind, post ?? null, JSON.stringify(touches)]),
   );
   const team = {
@@ -70,7 +76,7 @@ if (!db.query("SELECT 1 FROM mdl_models").get()) {
     requests: { parent: "teams", fields: [field("person_id"), field("starts", "date"), field("ends", "date"), field("status"), field("answered_by")] },
   };
   const session = { sessions: { parent: null, fields: [field("person_id"), field("page"), field("draft", "json")] } };
-  db.run("INSERT INTO mdl_documents (id, models_id, name, root, own, holds, held_by, stories) VALUES ('1', '1', 'team', 'teams', 0, ?, ?, ?), ('2', '1', 'session', 'sessions', 1, ?, ?, ?)", [
+  if (!NAME) db.run("INSERT INTO mdl_documents (id, models_id, name, root, own, holds, held_by, stories) VALUES ('1', '1', 'team', 'teams', 0, ?, ?, ?), ('2', '1', 'session', 'sessions', 1, ?, ?, ?)", [
     JSON.stringify(team),
     JSON.stringify(["ann", "bo", "mo"]),
     ids(2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19),
