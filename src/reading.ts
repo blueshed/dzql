@@ -13,8 +13,8 @@ const drawings: Set<string>[] = [];
 const shown = new WeakMap<ServerWebSocket<ConnectionData>, Set<string>>();
 
 /** A document's `read()` calls this: `<docType>:<docId>` is on the page being drawn, if one is. */
-export function reading(docType: string, docId: string): void {
-  drawings.at(-1)?.add(prefixDoc(docType, docId));
+export function reading(doc: string): void {
+  drawings.at(-1)?.add(doc);
 }
 
 /** Draws the page for `ws`, in parts (src/parts.ts), and keeps what the drawing read in place of what its page read before. */

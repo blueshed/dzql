@@ -2,7 +2,6 @@ import type { Local } from "@blueshed/delta/local";
 import { applyOps, type DeltaOp } from "@blueshed/delta/core";
 import { failed } from "./failed";
 import { reading } from "./reading";
-import { splitDoc } from "./names";
 import type { PatchOp } from "./json-patch";
 
 // eta's documents are delta's (`@blueshed/delta`). eta keeps a copy of every document
@@ -47,8 +46,7 @@ export function createDocuments(local: Local) {
     if (h) {
       if (data.v !== undefined && h.v !== undefined && data.v <= h.v) return; // held already
       const missed = data.v !== undefined && h.v !== undefined && data.v > h.v + 1;
-      const next = missed ? undefined : applied(h.value, data.ops);
-      if (!next) {
+      if (missed || !lands(h, data.ops)) {
         // a change missed, or one that does not land on the copy (a remove of what it does not
         // hold): the copy is not to be trusted -- load it again, tell it as a whole-document
         // change, and let go of whatever waits for a version it has reached
@@ -60,28 +58,31 @@ export function createDocuments(local: Local) {
         }));
         return;
       }
-      h.value = next.value;
       if (data.v !== undefined) h.v = data.v;
     }
     track(told({ doc, ops: data.ops, v: data.v }));
     if (data.v !== undefined) reached(doc, data.v);
   });
 
-  /** `ops` laid on a copy of `value`; nothing when they do not land on it (RFC 6902: a remove of what is not there). */
-  const applied = (value: any, ops: DeltaOp[]): { value: any } | undefined => {
-    if (value === undefined) return { value };
-    const next = structuredClone(value);
+  /** Lays `ops` on a copy of what `h` holds, and holds that; false, holding what it did, when they do not land on it (RFC 6902: a remove of what is not there). */
+  const lands = (h: Held, ops: DeltaOp[]): boolean => {
+    if (h.value === undefined) return true;
+    const next = structuredClone(h.value);
     try {
       applyOps(next, ops);
     } catch {
-      return undefined;
+      return false;
     }
-    return { value: next };
+    h.value = next;
+    return true;
   };
 
   /** Lets go of whatever waits for `doc` to reach `v` or before. */
   const reached = (doc: string, v: number): void => {
-    for (const w of waiting.get(doc)?.filter((w) => w.v <= v) ?? []) w.resolve();
+    const all = waiting.get(doc);
+    if (!all) return;
+    waiting.set(doc, all.filter((w) => w.v > v));
+    for (const w of all) if (w.v <= v) w.resolve();
   };
 
   function track<T>(p: Promise<T>): Promise<T> {
@@ -195,8 +196,7 @@ export function createDocuments(local: Local) {
 
   /** The document as held, noting that the page being drawn read it; throws `Pending` when not held yet. */
   function heldAs(doc: string): Held {
-    const { docType, docId } = splitDoc(doc);
-    reading(docType, docId);
+    reading(doc);
     const h = held.get(doc);
     if (!h) throw new Pending(doc);
     return h;
@@ -206,15 +206,7 @@ export function createDocuments(local: Local) {
   function caughtUp(doc: string, version: number | undefined): Promise<void> {
     const h = held.get(doc);
     if (version === undefined || !h || h.v === undefined || h.v >= version) return Promise.resolve();
-    return new Promise((resolve) => {
-      const list = waiting.get(doc) ?? [];
-      const w = { v: version, resolve: () => {
-        waiting.set(doc, (waiting.get(doc) ?? []).filter((x) => x !== w));
-        resolve();
-      } };
-      list.push(w);
-      waiting.set(doc, list);
-    });
+    return new Promise((resolve) => void waiting.set(doc, [...(waiting.get(doc) ?? []), { v: version, resolve }]));
   }
 }
 
@@ -238,10 +230,15 @@ export function setActiveDocuments(documents: Documents | undefined): void {
   active = documents;
 }
 
+/** The active example's documents; throws when it keeps none. */
+function kept(): Documents {
+  if (!active) throw new Error("no documents: this example does not keep them in delta");
+  return active;
+}
+
 /** Reads a document from the active example's copy: `room:general`, `session:<id>`. */
 export function read<T = any>(doc: string): T {
-  if (!active) throw new Error("no documents: this example does not keep them in delta");
-  return active.read<T>(doc);
+  return kept().read<T>(doc);
 }
 
 /**
@@ -251,8 +248,7 @@ export function read<T = any>(doc: string): T {
  * like any document, so the page is told its every change.
  */
 export function watch(doc: string, under?: string): { doc: string; under?: string; v?: number } {
-  if (!active) throw new Error("no documents: this example does not keep them in delta");
-  return { doc, under, v: active.version(doc) };
+  return { doc, under, v: kept().version(doc) };
 }
 
 /** The active example's documents, when it keeps them in delta. */
@@ -263,7 +259,6 @@ export const activeDocuments = (): Documents | undefined => active;
  * never on the ledger.
  */
 export async function serverWrite(doc: string, ops: PatchOp[]): Promise<void> {
-  if (!active) throw new Error("no documents: this example does not keep them in delta");
-  const written = await active.write(doc, ops as DeltaOp[], { identity: undefined, cursor: "", undoable: false });
+  const written = await kept().write(doc, ops as DeltaOp[], { identity: undefined, cursor: "", undoable: false });
   if ("error" in written) throw new Error(`${doc}: ${written.error.message}`);
 }
