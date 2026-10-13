@@ -15,8 +15,7 @@
 // family's drawer (`?family=1`), the welcome's (`?answer`), the four lists they keep (`?courses`,
 // `?gifts`, `?events`, `?places`) and a row of one (`?keep=courses/1`), and the modals that invite
 // (`?new=households`) and take off (`?confirm=courses/4`, `?confirm=households/2/guests/3`).
-import type { PatchOp } from "../../src/json-patch";
-import { story, type Stories, type Write } from "../../src/stories";
+import { goTo as goToOn, story, type Stories, type Write } from "../../src/stories";
 
 const session = (path: string, value?: unknown): Write => ({
   doc: "session",
@@ -31,18 +30,8 @@ const board = (op: "add" | "replace" | "remove", path: string, value?: unknown):
   ops: [op === "remove" ? { op, path } : { op, path, value }],
 });
 
-/** Where someone must stand to see it, as one session write: the page's address -- the page, and
- * after a `?` the one thing open over it ("?gifts", "list?guest=2") -- and after " @ " what find
- * is looking for there (`filter.guests=Femi`). */
-function goTo(address: string): Write {
-  const [page = "", rest] = address.split(" @ ");
-  const ops: PatchOp[] = [{ op: "replace", path: "/page", value: page }];
-  for (const pair of rest ? rest.split(", ") : []) {
-    const [key, value] = pair.split("=") as [string, string];
-    ops.push({ op: "replace", path: `/${key.split(".").join("/")}`, value });
-  }
-  return { doc: "session", ops };
-}
+/** Where someone stands, as one write to the session (`goTo`, src/stories.ts). */
+const goTo = goToOn("session");
 
 export const stories: Stories = {
   cast: {

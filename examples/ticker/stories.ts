@@ -6,24 +6,15 @@
 // after every `does` must find the ledger says so and leave the price where it is. Whoever a story
 // does not say sees it must not: Bo, on his board, watches only Bravo, and his board is told only
 // the quotes it shows (a row per symbol, each on `quote:<SYMBOL>`).
-import type { PatchOp } from "../../src/json-patch";
-import { story, type Stories, type Write } from "../../src/stories";
+import { goTo as goToOn, story, type Stories, type Write } from "../../src/stories";
 
 const watch = (symbol: string): Write => ({ doc: "watchlist", ops: [{ op: "add", path: "/symbols/-", value: symbol }] });
 const drop = (index: number): Write => ({ doc: "watchlist", ops: [{ op: "remove", path: `/symbols/${index}` }] });
 const tick = (symbol: string, price: number): Write => ({ doc: "ticker", ops: [{ op: "replace", path: `/${symbol}/price`, value: price }] });
 const city = (tz: string): Write => ({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: tz }] });
 
-/** Where someone stands on the desk, as one desk write: the page's address ("board", "market?symbol=BRVO"), and after " @ " how a collection is read there (`reading.board=list`). */
-function goTo(address: string): Write {
-  const [page = "", rest] = address.split(" @ ");
-  const ops: PatchOp[] = [{ op: "replace", path: "/page", value: page }];
-  for (const pair of rest ? rest.split(", ") : []) {
-    const [key, value] = pair.split("=") as [string, string];
-    ops.push({ op: "replace", path: `/${key.split(".").join("/")}`, value });
-  }
-  return { doc: "desk", ops };
-}
+/** Where someone stands, as one write to the desk (`goTo`, src/stories.ts). */
+const goTo = goToOn("desk");
 
 export const stories: Stories = {
   cast: {

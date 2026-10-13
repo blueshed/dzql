@@ -89,24 +89,15 @@
 // window 1 (14 March, area 1) with assignment 1 (Sam, assigned, deployment 2) and assignment 2
 // (done, deployment 3); trip 1; tasks 1 (todo), 2 (done) and 3 (skipped) on deployment 2; supply
 // line 1 (open, requirement 1) with offer 1 (Northgate Signs, offered) and supply line 2 (accepted).
-import type { PatchOp } from "../../src/json-patch";
-import { story, type Stories, type Write } from "../../src/stories";
+import { goTo as goToOn, story, type Stories, type Write } from "../../src/stories";
 
 type Op = "add" | "replace" | "remove";
 const w = (doc: string, op: Op, path: string, value?: unknown): Write => ({ doc, ops: [op === "remove" ? { op, path } : { op, path, value }] });
 const many = (doc: string, sets: [string, unknown][]): Write => ({ doc, ops: sets.map(([path, value]) => ({ op: "replace" as const, path, value })) });
 const code = (value: string): Write => w("session", "replace", "/code", value);
 
-/** "page @ key=value, key=value" as one session write: the page first, since it closes drawers. */
-function goTo(address: string): Write {
-  const [page, rest] = address.split(" @ ");
-  const ops: PatchOp[] = [{ op: "replace", path: "/page", value: page }];
-  for (const pair of rest ? rest.split(", ") : []) {
-    const [key, raw] = pair.split("=") as [string, string];
-    ops.push({ op: "replace", path: key.startsWith("reading.") ? `/reading/${key.slice(8)}` : `/${key}`, value: raw });
-  }
-  return { doc: "session", ops };
-}
+/** Where someone stands, as one write to the session (`goTo`, src/stories.ts). */
+const goTo = goToOn("session");
 
 export const stories: Stories = {
   cast: {

@@ -171,6 +171,23 @@ export type Stories = {
   stories: Story[];
 };
 
+/**
+ * The write that puts a person at an address, for `Stories.goTo`: the page's address as `doc`'s
+ * `/page`, and after " @ " each `key=value` as a replace at its path, a dot a step
+ * (`reading.board=list` is `/reading/board`). `goTo("session")("list?guest=2 @ filter.guests=Femi")`.
+ */
+export const goTo =
+  (doc: string) =>
+  (address: string): Write => {
+    const [page = "", rest] = address.split(" @ ");
+    const ops: PatchOp[] = [{ op: "replace", path: "/page", value: page }];
+    for (const pair of rest ? rest.split(", ") : []) {
+      const [key, value] = pair.split("=") as [string, string];
+      ops.push({ op: "replace", path: `/${key.split(".").join("/")}`, value });
+    }
+    return { doc, ops };
+  };
+
 export function story(name: string, body: Told): Story {
   return { name, ...body };
 }
