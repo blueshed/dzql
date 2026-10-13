@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import type { PatchOp } from "../json-patch";
+import { isVerb, type PatchOp } from "../json-patch";
 
 export type Command =
   | { kind: "write"; doc: string; ops: PatchOp[] }
@@ -14,16 +14,10 @@ export type Command =
  */
 export type Aliases = Record<string, (args: string[]) => { doc: string; ops: PatchOp[] }>;
 
-const OPS = new Set<PatchOp["op"]>(["add", "replace", "remove"]);
-
-function isPatchOpKind(value: string): value is PatchOp["op"] {
-  return OPS.has(value as PatchOp["op"]);
-}
-
 /** `write <doc> <op> <path> [value]` -- a write names a document and a JSON Pointer path, never a function name, same as the wire protocol itself. */
 function parseWrite(rest: string[]): Command | undefined {
   const [doc, op, path, ...valueParts] = rest;
-  if (!doc || !op || !path || !isPatchOpKind(op)) return undefined;
+  if (!doc || !op || !path || !isVerb(op)) return undefined;
   const value = valueParts.length > 0 ? valueParts.join(" ") : undefined;
   const ops: PatchOp[] = value !== undefined ? [{ op, path, value }] : [{ op, path }];
   return { kind: "write", doc, ops };

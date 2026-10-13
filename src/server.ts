@@ -4,7 +4,7 @@ import { fragmentsMessage, renderMessage } from "./compartments/render";
 import type { ConnectionData } from "./connection";
 import { setActiveDocuments, settled, type Documents } from "./documents";
 import type { Example } from "./example";
-import { isWriteId, patchMessage, refusedMessage, type PatchOp, type WriteId } from "./json-patch";
+import { isVerb, isWriteId, patchMessage, refusedMessage, type PatchOp, type WriteId } from "./json-patch";
 import { failed } from "./failed";
 import { splitDoc } from "./names";
 import { drawing, shownTo } from "./reading";
@@ -176,8 +176,6 @@ const isInspect = (message: unknown): message is { type: "inspect"; limit?: unkn
 /** How many entries an inspect asked for, as a count from 1 to MOST_INSPECTED; undefined, the default. */
 const inspected = (limit: unknown): number | undefined => (Number.isInteger(limit) ? Math.min(Math.max(limit as number, 1), MOST_INSPECTED) : undefined);
 
-const VERBS = new Set(["add", "replace", "remove"]);
-
 /** A message's id, when it carries one that is an id: what its answer hands back. */
 const idOf = (message: unknown): WriteId | undefined => {
   const id = (message as { id?: unknown } | null)?.id;
@@ -197,7 +195,7 @@ function isWrite(message: unknown): message is Write {
     typeof m?.doc === "string" &&
     Array.isArray(m.ops) &&
     m.ops.length > 0 &&
-    m.ops.every((op: { op?: unknown; path?: unknown } | null) => VERBS.has(op?.op as string) && typeof op!.path === "string" && (op!.path === "" || op!.path.startsWith("/")))
+    m.ops.every((op: { op?: unknown; path?: unknown } | null) => isVerb(op?.op) && typeof op!.path === "string" && (op!.path === "" || op!.path.startsWith("/")))
   );
 }
 

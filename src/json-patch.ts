@@ -16,6 +16,9 @@ export type PatchOp = {
   value?: unknown;
 };
 
+/** Is this one of a write's verbs: `add`, `replace` or `remove`? */
+export const isVerb = (op: unknown): op is PatchOp["op"] => op === "add" || op === "replace" || op === "remove";
+
 /**
  * A write's id: the sender's own, a number or a string, which the server only hands back -- on the
  * echo of the change the write made, to its writer alone, or on its refusal -- so a page knows its
