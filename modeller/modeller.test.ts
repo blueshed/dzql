@@ -5,7 +5,7 @@ import { compare, format, judge } from "./report";
 import { extract, rulesIn } from "./extract";
 import { documentsIn } from "./documents";
 import { stories as chat } from "../examples/chat/stories";
-import { stories as londons } from "../examples/londons/stories";
+import { stories as londons } from "./londons/stories";
 
 describe("names", () => {
   test("singular and pascal", () => {

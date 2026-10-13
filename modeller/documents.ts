@@ -4,7 +4,7 @@
 //
 //   the stories  -- each action (who, the document, the verb, the path) puts its document in
 //                   front of its author, and each `seen` names who must hold it. Nothing else is
-//                   needed, so a pile of stories with no app yet (londons) reads too.
+//                   needed, so a pile of stories with no app yet (modeller/londons) reads too.
 //   the example  -- the documents its compartments own (`example.compartments`, each a docType).
 //   a run        -- the harness tells the stories over real sockets, and says at each step what
 //                   each member's page read (`Trace.holds`) and what each was sent; while a step's

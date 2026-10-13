@@ -8,7 +8,7 @@ import { controlsOn, type Heard, type Trace } from "../src/harness";
 import { attempt, documentsIn, documentsOf, exampleAt, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "./documents";
 import { example as chat } from "../examples/chat/index";
 import { stories as chatStories } from "../examples/chat/stories";
-import { stories as londons } from "../examples/londons/stories";
+import { stories as londons } from "./londons/stories";
 
 const cell = (r: Reading, actor: string, doc: string) => r.grid[actor]![doc]!;
 const allows = (r: Reading, doc: string, path: string) => r.permitAllows.find((a) => a.doc === doc && a.path === path)?.ops;
@@ -63,7 +63,7 @@ describe("probes: what to put to permit, from what a document holds", () => {
 
 describe("from the stories alone", () => {
   test("londons, with no app: each author needs what they write, each seen must hold it; the checks that need an app are not asked", async () => {
-    const r = await documentsOf("londons");
+    const r = await documentsOf(`${import.meta.dir}/londons`);
     expect(r).toEqual(read(londons));
     expect(r.ran).toBe(false);
     expect(r.docs.map((d) => d.kind)).toEqual(r.docs.map(() => "from the stories"));

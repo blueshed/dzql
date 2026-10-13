@@ -19,4 +19,4 @@ coverageThreshold = 1.0
 # one to run a story or two would otherwise count the rest as uncovered
 # create/setup.ts is bun create's postinstall: its test runs it whole, as bun create does, on a
 # scratch copy of eta, in a process of its own, then the new project's own gate.
-coveragePathIgnorePatterns = ["**/node_modules/**", "modeller/model/**", "examples/*/stories.ts", "create/setup.ts"]
+coveragePathIgnorePatterns = ["**/node_modules/**", "modeller/model/**", "examples/*/stories.ts", "modeller/londons/stories.ts", "create/setup.ts"]

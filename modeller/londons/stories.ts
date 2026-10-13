@@ -2,7 +2,7 @@
 // root and, for the page, apples.md ("The page": a page is a bento box; a ground drawn as itself).
 // These are the 133 stories of the hjeli model in
 // `the original hjeli model`, retold in eta's words as the whole
-// specification of `examples/londons/`, which does not exist yet.
+// specification of an app that does not exist: the modeller's tests read it as a project of stories alone.
 //
 // THE MARKETPLACE. An authority plans a series of occasions and invites venues, or venues propose
 // themselves; a venue owner has areas and sites with a performance baseline; a promoter packages
