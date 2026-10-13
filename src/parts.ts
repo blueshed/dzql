@@ -33,26 +33,18 @@ export function comparable(html: string): string {
   if (!html.includes("data-doc")) return html;
   let out = "";
   let copied = 0;
-  for (let at = html.indexOf("<"); at >= 0; at = html.indexOf("<", at)) {
-    if (html.startsWith("<!--", at)) {
-      at = past(html, at);
+  let at = 0;
+  for (let t = nextTag(html, at); t; t = nextTag(html, at)) {
+    if (t.end) {
+      at = t.at + 1;
       continue;
     }
-    TAG.lastIndex = at;
-    const name = TAG.exec(html);
-    if (!name || name[1]) {
-      at++;
-      continue;
-    }
-    const end = tagEnd(html, at);
-    const tag = html.slice(at, end);
-    if (!watches(tag)) {
-      at = end;
-      continue;
-    }
-    const tagName = name[2]!.toLowerCase();
-    out += html.slice(copied, at) + watchedTag(tag);
-    copied = at = VOID.has(tagName) ? end : closing(html, end, tagName);
+    const end = tagEnd(html, t.at);
+    const tag = html.slice(t.at, end);
+    at = end;
+    if (!watches(tag)) continue;
+    out += html.slice(copied, t.at) + watchedTag(tag);
+    copied = at = VOID.has(t.name) ? end : closing(html, end, t.name);
   }
   return out + html.slice(copied);
 }
@@ -114,6 +106,24 @@ function without(json: string, under: string): unknown {
   }
 }
 
+/**
+ * The first start or end tag at or after `at`, passing over comments and a `<` that starts no tag:
+ * where it starts, whether it is an end tag, and its name, lower-cased.
+ */
+function nextTag(html: string, at: number): { at: number; end: boolean; name: string } | undefined {
+  for (at = html.indexOf("<", at); at >= 0; at = html.indexOf("<", at)) {
+    if (html.startsWith("<!--", at)) {
+      at = past(html, at);
+      continue;
+    }
+    TAG.lastIndex = at;
+    const m = TAG.exec(html);
+    if (m) return { at, end: m[1] === "/", name: m[2]!.toLowerCase() };
+    at++;
+  }
+  return undefined;
+}
+
 /** Past the comment that starts at `at`: after its `-->`, or the end of `html`. */
 function past(html: string, at: number): number {
   const end = html.indexOf("-->", at + 4);
@@ -141,23 +151,11 @@ function tagEnd(html: string, at: number): number {
  */
 function closing(html: string, from: number, name: string): number {
   const open: string[] = [];
-  for (let at = html.indexOf("<", from); at >= 0; at = html.indexOf("<", at)) {
-    if (html.startsWith("<!--", at)) {
-      at = past(html, at);
-      continue;
-    }
-    TAG.lastIndex = at;
-    const m = TAG.exec(html);
-    if (!m) {
-      at++;
-      continue;
-    }
-    const tag = m[2]!.toLowerCase();
-    if (!m[1]) {
-      if (!VOID.has(tag)) open.push(tag);
-    } else if (open.includes(tag)) open.length = open.lastIndexOf(tag); // it, and what it holds that was left open
-    else return at; // its own end, or the end of what holds it
-    at = tagEnd(html, at);
+  for (let t = nextTag(html, from); t; t = nextTag(html, tagEnd(html, t.at))) {
+    if (!t.end) {
+      if (!VOID.has(t.name)) open.push(t.name);
+    } else if (open.includes(t.name)) open.length = open.lastIndexOf(t.name); // it, and what it holds that was left open
+    else return t.at; // its own end, or the end of what holds it
   }
   return html.length;
 }
