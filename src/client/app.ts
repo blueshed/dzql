@@ -583,6 +583,22 @@ function handBack(): void {
   sending = undefined;
 }
 
+/**
+ * What became of this page's own write `id`, by its echo or its refusal: noted on the last write sent
+ * when it is that one (a refusal as itself, and why if it says), the form that sent it done waiting
+ * -- or, refused, handed back what it sent -- and the script waiting on it told.
+ */
+function answered(answer: Extract<Answer, { echoed: true } | { refused: true }>): void {
+  const refused = "refused" in answer;
+  // not `?.`: another's echo has no id, and would match a page that has sent nothing
+  if (lastSent && lastSent.id === answer.id) Object.assign(lastSent, refused ? answer : { echoed: true });
+  if (sending && sending.id === answer.id) {
+    if (refused) handBack();
+    else sending = undefined;
+  }
+  heard(answer.id, answer);
+}
+
 // An element says what it writes via data-write; a form's field is the
 // value (or a record of its fields, if it has more than one), a button/li's
 // data-value is the value, nothing else goes up.
@@ -770,12 +786,7 @@ function connect() {
       // its form sent goes back in each field (a group of radios is one) not typed in, chosen in,
       // or ticked, since; the morph then keeps a choice by its value, or shows the drawn one if
       // the page no longer offers it (morph.ts)
-      if (lastSent && lastSent.id === message.id) {
-        lastSent.refused = true;
-        if (message.reason !== undefined) lastSent.reason = message.reason;
-      }
-      if (sending && sending.id === message.id) handBack();
-      heard(message.id, { id: message.id, refused: true, ...(message.reason !== undefined && { reason: message.reason }) });
+      answered({ id: message.id, refused: true, ...(message.reason !== undefined && { reason: message.reason }) });
     } else if (message.type === "patch") {
       const kept = docs.get(message.doc)?.ops ?? [];
       docs.set(message.doc, { version: message.version, ops: [...kept, ...message.ops].slice(-MAX_OPS_KEPT_PER_DOC) });
@@ -783,10 +794,8 @@ function connect() {
       // the delta is its update, and no render follows for it.
       for (const [el, held] of mounted) if (el.dataset.doc === message.doc && message.ops.length > 0) watched(el, held, message.version, message.ops);
       // this page's own write, echoed ("yours": the id is its own): it landed
-      if (lastSent && lastSent.id === message.id) lastSent.echoed = true;
-      if (sending && sending.id === message.id) sending = undefined;
       const { doc, version, ops, change } = message;
-      heard(message.id, { id: message.id, echoed: true, doc, version, ops, ...(change !== undefined && { change }) });
+      answered({ id: message.id, echoed: true, doc, version, ops, ...(change !== undefined && { change }) });
       if (message.ops.length > 0) lastEditSent = new WeakMap(); // a write landed: what was sent may be said again
     }
   });
