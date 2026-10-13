@@ -8,6 +8,7 @@ import { tap, type Measured } from "../../../src/costs";
 import { patchMessage } from "../../../src/json-patch";
 import { createServer } from "../../../src/server";
 import { example } from "../index";
+import { connect as socketTo, heard as heardAll, nextMessage, rawOf } from "../../../src/test-socket";
 
 const MEMBERS = 5;
 const HISTORY = 100;
@@ -36,51 +37,15 @@ const server = createServer(example, 0);
 const wire = await tap(server.port!); // what crosses it, as sent: every socket goes through it
 const sessions = new WeakMap<WebSocket, string>();
 
-// A persistent per-socket FIFO queue, not a fresh {once:true} listener per
-// nextMessage() call -- two messages sent back-to-back (a patch echo
-// immediately followed by its render) can both dispatch before this script
-// re-subscribes after awaiting the first, silently dropping one.
-const queues = new WeakMap<WebSocket, string[]>();
-const waiters = new WeakMap<WebSocket, ((raw: string) => void)[]>();
-
 function connect(): WebSocket {
   const session = crypto.randomUUID();
-  // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-  const ws: WebSocket = new WebSocket(wire.url, { headers: { Cookie: `session_id=${session}` } });
+  const ws = socketTo(wire, session); // through the tap: what crosses the wire is measured as sent
   sessions.set(ws, session);
-
-  const queue: string[] = [];
-  const pending: ((raw: string) => void)[] = [];
-  queues.set(ws, queue);
-  waiters.set(ws, pending);
-
-  ws.addEventListener("message", (event) => {
-    const raw = String(event.data);
-    const waiter = pending.shift();
-    if (waiter) waiter(raw);
-    else queue.push(raw);
-  });
-
   return ws;
 }
 
-function nextMessage(ws: WebSocket): Promise<string> {
-  const queue = queues.get(ws)!;
-  if (queue.length > 0) return Promise.resolve(queue.shift()!);
-  return new Promise((resolve) => waiters.get(ws)!.push(resolve));
-}
-
-/**
- * Everything `ws` is sent until the server answers a question asked after it: events are handled
- * one at a time, each once all the one before it set going is done, so nothing it was due is still
- * to come.
- */
-async function heard(ws: WebSocket): Promise<string[]> {
-  ws.send(JSON.stringify({ type: "inspect" }));
-  const raws: string[] = [];
-  for (let raw = await nextMessage(ws); JSON.parse(raw).type !== "inspect"; raw = await nextMessage(ws)) raws.push(raw);
-  return raws;
-}
+/** Everything `ws` is sent until the server answers a question asked after it, each as it came. */
+const heard = async (ws: WebSocket): Promise<string[]> => (await heardAll(ws)).map(rawOf);
 
 function send(ws: WebSocket, doc: string, ops: unknown[]) {
   ws.send(JSON.stringify({ doc, ops }));

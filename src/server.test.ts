@@ -16,7 +16,7 @@ import { createServer } from "./server";
 import { assemble, type Inspection } from "./compartments";
 import { onFailure } from "./failed";
 import { refuse, tell, toldAt } from "./refusal";
-import { connect, expectMessage, expectQuiet, heard, htmlOf, nextMessage, open, opened, write, type WireMessage } from "./test-socket";
+import { connect, expectMessage, expectQuiet, heard, htmlOf, nextMessage, open, opened, rawOf, write, type WireMessage } from "./test-socket";
 
 // A tiny, self-contained example -- not chat, not anything under the examples directory -- so
 // this file proves the kernel on its own: a note per session (its own document), and months of
@@ -241,6 +241,7 @@ describe("createServer, generically (no example from the examples directory invo
 
     write(ws, "note", [{ op: "replace", path: "/text", value: "hello kernel" }]);
     const patch = await expectMessage(ws, "patch");
+    expect(rawOf(patch)).toBe(JSON.stringify(patch)); // as it came, for counting its bytes
     expect(patch.doc).toBe("note");
     expect(patch.ops).toEqual([{ op: "replace", path: "/text", value: "hello kernel" }]); // what changed of the note, at eta's paths
     // the note's page has no parts: a change to it sends it whole

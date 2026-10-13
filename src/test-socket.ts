@@ -26,9 +26,13 @@ export type WireMessage = {
 
 type Held = { queue: WireMessage[]; waiting: ((m: WireMessage) => void)[]; page: string };
 const held = new WeakMap<WebSocket, Held>();
+const raws = new WeakMap<WireMessage, string>();
 
-/** A socket to `server`, as the session `sessionId` (a fresh visit without one). */
-export function connect(server: { url: URL }, sessionId?: string): WebSocket {
+/** A message as it came, for counting its bytes. */
+export const rawOf = (m: WireMessage): string => raws.get(m)!;
+
+/** A socket to `server` -- or to anything with its address, a proxy that measures the wire -- as the session `sessionId` (a fresh visit without one). */
+export function connect(server: { url: URL | string }, sessionId?: string): WebSocket {
   const url = new URL("/ws", server.url);
   url.protocol = "ws:";
   // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
@@ -37,6 +41,7 @@ export function connect(server: { url: URL }, sessionId?: string): WebSocket {
   held.set(ws, h);
   ws.addEventListener("message", (event) => {
     const message = JSON.parse(String(event.data)) as WireMessage;
+    raws.set(message, String(event.data));
     if (message.type === "render") message.page = h.page = hear(h.page, message as Heard);
     const waiter = h.waiting.shift();
     if (waiter) waiter(message);
@@ -49,7 +54,7 @@ export function connect(server: { url: URL }, sessionId?: string): WebSocket {
 export const opened = (ws: WebSocket): Promise<void> => new Promise((resolve) => ws.addEventListener("open", () => resolve(), { once: true }));
 
 /** A socket opened, and its first page drawn. */
-export async function open(server: { url: URL }, sessionId?: string): Promise<WebSocket> {
+export async function open(server: { url: URL | string }, sessionId?: string): Promise<WebSocket> {
   const ws = connect(server, sessionId);
   await opened(ws);
   await expectMessage(ws, "render");
