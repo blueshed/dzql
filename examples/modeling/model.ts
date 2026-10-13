@@ -2,85 +2,27 @@ import { read as readDoc } from "../../src/documents";
 import type { PatchOp } from "../../src/json-patch";
 import { parsePointer } from "../../src/json-pointer";
 import { refuse } from "../../src/refusal";
+import type { Field, Held, Raw } from "./heart";
 
-// modeling's documents as its page reads them, and the rules a write follows. The model
-// (`model:1`): its stories, and the documents they need -- what each holds, who holds it, which
-// stories it serves. The entities are worked out from the documents (`derive`), never kept, so
-// they cannot disagree with them. A session (`session:<id>`): who is signed in, if anyone, and
-// what they have picked to see what goes with it.
+// modeling's documents as its page reads them, and the rules a write to the model follows. The
+// model (`model:1`): its stories and the documents they need, as delta keeps them (`Raw`); the
+// heart is worked out from it (./heart.ts). A session (`session:<id>`): who is signed in, if anyone.
 
 /** The one model. */
 export const MODEL = "1";
 
-export type Field = { name: string; type: string };
-export type Story = { id: string; text: string };
-export type Document = { id: string; name: string; holds: Record<string, Field[]>; held_by: string[]; stories: string[] };
-export type Model = { name: string; stories: Story[]; documents: Document[] };
+/** The model document as delta holds it. */
+export const raw = (): Raw => readDoc<Raw>(`model:${MODEL}`);
 
-type Row<T> = T & { id: string | number };
+type Story = { id: string; touches: string[] };
+type Document = { id: string; root: string; holds: Record<string, Held> };
+/** What the rules need of the model: its stories and documents, by id. */
+export type Model = { stories: Story[]; documents: Document[] };
 
-/** The model as delta holds it, with every id as text, the wire's own, and each in the order it was made. */
-export function model(): Model {
-  const doc = readDoc<{ models: { name: string }; stories: Record<string, Row<{ text: string }>>; documents: Record<string, Row<Omit<Document, "id">>> }>(`model:${MODEL}`);
-  const byId = (a: { id: string }, b: { id: string }) => Number(a.id) - Number(b.id);
-  const stories = Object.values(doc.stories).map((s) => ({ id: String(s.id), text: s.text })).sort(byId);
-  const documents = Object.values(doc.documents)
-    .map((d) => ({ id: String(d.id), name: d.name, holds: d.holds ?? {}, held_by: d.held_by ?? [], stories: (d.stories ?? []).map(String) }))
-    .sort(byId);
-  return { name: doc.models.name, stories, documents };
-}
-
-// ───────────────────────────── what is worked out ─────────────────────────────
-
-export type Entity = { name: string; fields: Field[]; documents: string[] };
-
-/**
- * What the documents say, read the other way: each entity a document holds, its fields (every
- * field any document gives it, first named first), and the documents that hold it; and the gaps --
- * a story no document serves, a document that serves no story still told, an entity held only by
- * such documents.
- */
-export function derive(m: Model) {
-  const told = new Set(m.stories.map((s) => s.id));
-  const serves = (d: Document) => d.stories.filter((id) => told.has(id));
-  const entities = new Map<string, Entity>();
-  for (const d of m.documents) {
-    for (const [name, fields] of Object.entries(d.holds)) {
-      const e = entities.get(name) ?? entities.set(name, { name, fields: [], documents: [] }).get(name)!;
-      e.documents.push(d.id);
-      for (const f of fields) if (!e.fields.some((g) => g.name === f.name)) e.fields.push(f);
-    }
-  }
-  const needed = new Set(m.documents.filter((d) => serves(d).length > 0).map((d) => d.id));
+export function model(r: Raw = raw()): Model {
   return {
-    entities: [...entities.values()].sort((a, b) => a.name.localeCompare(b.name)),
-    /** The ids of the documents that serve a story still told. */
-    needed,
-    /** The documents serving each story. */
-    servedBy: (story: string) => m.documents.filter((d) => d.stories.includes(story)).map((d) => d.id),
-    /** The stories still told that a document serves. */
-    serves,
-  };
-}
-
-export type Derived = ReturnType<typeof derive>;
-
-/** What is picked: a story, a document or an entity, by its id (an entity's is its name). */
-export type Chosen = { k: "story" | "document" | "entity"; id: string };
-
-export const chosenOf = (value: string | null | undefined): Chosen | undefined => {
-  const [k, id] = String(value ?? "").split(":");
-  return (k === "story" || k === "document" || k === "entity") && id ? { k, id } : undefined;
-};
-
-/** What goes with what is picked, in each column: the stories, the documents (by id) and the entities (by name). */
-export function related(m: Model, d: Derived, c: Chosen): { stories: Set<string>; documents: Set<string>; entities: Set<string> } {
-  const docs = c.k === "document" ? [c.id] : c.k === "story" ? d.servedBy(c.id) : d.entities.find((e) => e.name === c.id)?.documents ?? [];
-  const held = m.documents.filter((x) => docs.includes(x.id));
-  return {
-    stories: new Set(c.k === "story" ? [c.id] : held.flatMap(d.serves)),
-    documents: new Set(docs),
-    entities: new Set(c.k === "entity" ? [c.id] : held.flatMap((x) => Object.keys(x.holds))),
+    stories: Object.values(r.stories ?? {}).map((s) => ({ id: String(s.id), touches: s.touches ?? [] })),
+    documents: Object.values(r.documents ?? {}).map((d) => ({ id: String(d.id), root: d.root, holds: d.holds ?? {} })),
   };
 }
 
@@ -95,12 +37,15 @@ const words = (value: unknown, why: string): string => {
 /** Names, from a list of them: each trimmed, a blank dropped. */
 const names = (value: unknown): string[] => (Array.isArray(value) ? value.map((v) => String(v).trim()).filter(Boolean) : []);
 
-/** A field as a document holds it: a name, and a type ("text" unless it says). */
+/** Fields as a document holds them: a name, and a type ("text" unless it says). */
 const fieldsOf = (value: unknown): Field[] =>
   (Array.isArray(value) ? value : []).flatMap((f) => {
     const name = String((f as Partial<Field>)?.name ?? "").trim();
     return name ? [{ name, type: String((f as Partial<Field>).type ?? "").trim() || "text" }] : [];
   });
+
+/** Whether a story is done or refused: `does` unless it says `cannot`. */
+const kindOf = (value: unknown): string => (value === "cannot" ? "cannot" : "does");
 
 /** The stories a document is for: ids the model has, at least one. */
 function storiesOf(m: Model, value: unknown): string[] {
@@ -109,36 +54,58 @@ function storiesOf(m: Model, value: unknown): string[] {
   return ids;
 }
 
+type Said = { text?: unknown; actor?: unknown; kind?: unknown; post?: unknown; touches?: unknown; name?: unknown; root?: unknown; stories?: unknown; held_by?: unknown; own?: unknown; under?: unknown; fields?: unknown };
+
 /**
- * A write to the model as it takes it. A story: added, reworded or taken back, never without
- * words. A document: described with its name and the stories it serves (one at least); what it
- * holds, an entity at a time with its fields; who holds it; the stories it serves; taken out.
+ * A write to the model as it takes it. A story: written down with its words, who tells it, and
+ * whether they do it or are refused (and a route it posts to, the entities it touches); reworded,
+ * retold, taken back -- never without words. A document: described with its name, its root and
+ * the stories it serves (one at least); what it holds, an entity at a time with what it hangs under
+ * and its fields; who holds it; whether it is each person's own; taken out. Its root stays.
  */
 export function shape(m: Model, ops: PatchOp[]): PatchOp[] {
   return ops.flatMap((op): PatchOp[] => {
     const [coll, id, field, entity] = parsePointer(op.path);
+    const said = (op.value ?? {}) as Said;
     if (coll === "stories") {
-      if (op.op === "add") return [{ op: "add", path: "/stories/-", value: { text: words(op.value, "A story needs words.") } }];
+      if (op.op === "add") {
+        const text = words(said.text, "A story needs words.");
+        const post = typeof said.post === "string" && said.post.trim() ? said.post.trim() : null;
+        return [{ op: "add", path: "/stories/-", value: { text, actor: words(said.actor, "A story is someone's: say who tells it."), kind: kindOf(said.kind), post, touches: names(said.touches) } }];
+      }
       if (op.op === "remove") return [op];
-      return field === "text" ? [{ op: "replace", path: op.path, value: words(op.value, "A story needs words.") }] : [];
+      if (field === "text") return [{ op: "replace", path: op.path, value: words(op.value, "A story needs words.") }];
+      if (field === "actor") return [{ op: "replace", path: op.path, value: words(op.value, "A story is someone's: say who tells it.") }];
+      if (field === "kind") return [{ op: "replace", path: op.path, value: kindOf(op.value) }];
+      return [{ op: "replace", path: op.path, value: names(op.value) }]; // touches
     }
     if (op.op === "add") {
-      const said = (op.value ?? {}) as Partial<Document>;
       const name = words(said.name, "A document needs a name.");
-      return [{ op: "add", path: "/documents/-", value: { name, stories: storiesOf(m, said.stories), holds: {}, held_by: names(said.held_by) } }];
+      const root = words(said.root, "A document holds something: name its root.");
+      return [{ op: "add", path: "/documents/-", value: { name, root, own: said.own ? 1 : 0, stories: storiesOf(m, said.stories), holds: { [root]: { parent: null, fields: fieldsOf(said.fields) } }, held_by: names(said.held_by) } }];
     }
     if (op.op === "remove" && field === undefined) return [op];
     const doc = m.documents.find((d) => d.id === id)!;
     if (field === "name") return [{ op: "replace", path: op.path, value: words(op.value, "A document needs a name.") }];
     if (field === "held_by") return [{ op: "replace", path: op.path, value: names(op.value) }];
     if (field === "stories") return [{ op: "replace", path: op.path, value: storiesOf(m, op.value) }];
-    // what it holds, an entity at a time: its fields, or taken out
+    if (field === "own") return [{ op: "replace", path: op.path, value: op.value ? 1 : 0 }];
+    // what it holds, an entity at a time: what it hangs under (the root, unless it says) and its fields; or taken out, but never its root
     const holds = { ...doc.holds };
-    if (op.op === "remove") delete holds[entity!];
-    else holds[words(entity, "An entity needs a name.")] = fieldsOf(op.value);
+    const name = words(entity, "An entity needs a name.");
+    if (op.op === "remove") {
+      if (name === doc.root) throw refuse("A document keeps its root: take the document out instead.");
+      delete holds[name];
+    } else {
+      const under = typeof said.under === "string" && said.under.trim() ? said.under.trim() : doc.root;
+      holds[name] = { parent: name === doc.root ? null : under, fields: fieldsOf(said.fields) };
+    }
     return [{ op: "replace", path: `/documents/${id}/holds`, value: holds }];
   });
 }
+
+const STORY_FIELDS = new Set(["text", "actor", "kind", "touches"]);
+const DOCUMENT_FIELDS = new Set(["name", "held_by", "stories", "own"]);
 
 /** May this op be written at all: a story or a document the model has (or a new one), and only their own fields. */
 export function may(m: Model, op: PatchOp): boolean {
@@ -147,23 +114,22 @@ export function may(m: Model, op: PatchOp): boolean {
   if (coll === "stories") {
     if (id === "-") return op.op === "add" && field === undefined;
     if (!m.stories.some((s) => s.id === id)) return false;
-    return field === undefined ? op.op === "remove" : field === "text" && op.op === "replace" && entity === undefined;
+    return field === undefined ? op.op === "remove" : STORY_FIELDS.has(field) && op.op === "replace" && entity === undefined;
   }
   if (coll !== "documents") return false;
   if (id === "-") return op.op === "add" && field === undefined;
   if (!m.documents.some((d) => d.id === id)) return false;
   if (field === undefined) return op.op === "remove";
   if (field === "holds") return entity !== undefined && (op.op === "replace" || op.op === "remove");
-  return (field === "name" || field === "held_by" || field === "stories") && op.op === "replace" && entity === undefined;
+  return DOCUMENT_FIELDS.has(field) && op.op === "replace" && entity === undefined;
 }
 
 // ───────────────────────────── the session ─────────────────────────────
 
 export type Person = { id: string; name: string };
-export type Session = { person: Person | null; chosen: Chosen | undefined };
 
-/** Who a session is, if anyone, and what they have picked. */
-export function session(sessionId: string): Session {
-  const row = readDoc<{ sessions?: { person_id?: string | null; name?: string | null; chosen?: string | null } }>(`session:${sessionId}`)?.sessions ?? {};
-  return row.person_id == null ? { person: null, chosen: undefined } : { person: { id: String(row.person_id), name: row.name ?? "" }, chosen: chosenOf(row.chosen) };
+/** Who a session is, if anyone. */
+export function session(sessionId: string): { person: Person | null } {
+  const row = readDoc<{ sessions?: { person_id?: string | null; name?: string | null } }>(`session:${sessionId}`)?.sessions ?? {};
+  return { person: row.person_id == null ? null : { id: String(row.person_id), name: row.name ?? "" } };
 }
