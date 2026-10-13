@@ -137,7 +137,7 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
 export const MOST_PROPS = 4096;
 
 /** A cost a render put on the wire in props: which kind, the applet, and what to say. */
-export type PropsCost = { kind: "big" | "again"; applet: string; says: string };
+type PropsCost = { kind: "big" | "again"; applet: string; says: string };
 
 type Mount = { key: string; applet: string; own: string; watching: boolean };
 
@@ -355,7 +355,7 @@ const fits = (pattern: string, path: string): boolean => {
 };
 
 /** Does `c` post this form to its route: a plain form that posts there? */
-export const postsTo = (c: Control, how: Post): boolean => c.op === "post" && c.path === how.path;
+const postsTo = (c: Control, how: Post): boolean => c.op === "post" && c.path === how.path;
 
 /** Does `c` send this op to this document? A free control sends any value; a button only its own. */
 export function offers(c: Control, doc: string, op: PatchOp): boolean {
@@ -379,7 +379,7 @@ export function goesTo(c: Control, goTo: (address: string) => Write): string | u
 }
 
 /** One way on: from where a member stood, the control on their page there that took them to `to`. */
-export type Step = { from: string; to: string; control: Control };
+type Step = { from: string; to: string; control: Control };
 
 /** The most ways by hand the harness tries to one place, each leaving out a step a person could not take. */
 const MOST_TRIES = 20;
@@ -482,7 +482,7 @@ export function hear(page: string, message: Heard): string {
  * story file runs without being type-checked, and a key the harness does not read would otherwise
  * be dropped without a word: `{ does, closesTab }` would close a tab and never write.
  */
-export function misshapen(story: Story): string[] {
+function misshapen(story: Story): string[] {
   const given = Object.entries(story).filter(([, value]) => value !== undefined).map(([key]) => key);
   const kinds = (Object.keys(STORY_KEYS) as (keyof typeof STORY_KEYS)[]).filter((kind) => given.includes(kind));
   if (kinds.length !== 1) return [`a story is one of does, cannot or closesTab, and this one has ${kinds.length ? kinds.join(" and ") : "none"}`];

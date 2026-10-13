@@ -14,7 +14,7 @@ import type { Gesture, Post, Write } from "./stories";
 import { CENTRED, MOUSE, NAMED, urlFor, waitFor } from "./webview";
 
 /** A phone, held upright: the stories are pressed at the size most people hold them. */
-export const PHONE = { width: 390, height: 844 };
+const PHONE = { width: 390, height: 844 };
 
 /** How long a control may take to hold still and come clear, and a page to answer. */
 const PATIENCE = 2000;
@@ -23,7 +23,7 @@ const PATIENCE = 2000;
 const QUIET = 250;
 
 /** What a press did: the writes the page sent, or why a person could not have done it -- `none` when nothing on the page could send it at all. */
-export type Pressed = { sent: Write[] } | { failure: string; none?: true };
+type Pressed = { sent: Write[] } | { failure: string; none?: true };
 
 /** One control the page found for a write, and how a person sends it: a press, a form's fields and its submit, or an editing form's fields; or, first, the summary that opens the `<details>` it is folded in. */
 type Plan = { how: "press" | "submit" | "edit" | "open"; control: string; fields: { at: string; kind: "type" | "choose" | "tick"; text: string; none?: boolean }[]; submit?: string };
