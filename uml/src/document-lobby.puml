@@ -1,5 +1,0 @@
-@startjson
-{
-  "rooms": { "general": true, "kitchen": true }
-}
-@endjson

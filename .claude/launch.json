@@ -30,12 +30,6 @@
       "runtimeExecutable": "bun",
       "runtimeArgs": ["run", "dev:modeling"],
       "port": 3005
-    },
-    {
-      "name": "uml",
-      "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "uml"],
-      "port": 3700
     }
   ]
 }

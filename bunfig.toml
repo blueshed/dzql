@@ -4,9 +4,8 @@
 # A script that only runs as one: src/start.ts, src/cli.ts and src/stories-run.ts, thin over tested
 # code; each example's scripts/measure-render-cost.ts, which src/costs.ts runs whole, each in a
 # process of its own, whenever `bun test` checks the README; the bento mock-up's server and design
-# build, run by hand; and the modeller's and the UML session's commands, run by hand too
-# (modeller/closure.ts and page.ts, uml/drift.ts, and uml/watch.ts, which needs PlantUML in docker,
-# with the canvases it draws), whose logic is in the files their tests load.
+# build, run by hand; and the modeller's commands, run by hand too (modeller/closure.ts and
+# page.ts), whose logic is in the files their tests load.
 # Code that only runs in a browser: src/client/, src/applets.ts, src/island.ts,
 # each example's client/main.ts and its applets' mountings (`*-applet.ts*`, the wedding's
 # picture-field.ts), which the WebView tests drive where coverage cannot see, the mock-up's

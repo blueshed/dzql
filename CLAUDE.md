@@ -38,11 +38,10 @@ it, and everything else is derived from it.
   Its tests may: `src/harness.test.ts` runs the harness against chat's stories, and a few of
   leave's, the wedding's and the ticker's for what only they have (a sign-in, an applet's
   declaration, a deadline passed, a row the tables lost).
-- `modeller/` and `uml/` are tooling, never shipped (not in `files`): the modeller reads an
-  example's documents (from its stories, its compartments and a run of them) and its stories as a
-  hjeli model (`bun run modeller <example>`, `bun run modeller:page
-  <example>`), and `uml/` is the live ASCII-UML session (`bun run uml [londons]`, `bun run
-  uml:check`). Nothing imports them; they read the kernel and the examples. The model
+- `modeller/` is tooling, never shipped (not in `files`): it reads an example's documents (from
+  its stories, its compartments and a run of them) and its stories as a hjeli model (`bun run
+  modeller <example>`, `bun run modeller:page <example>`). Nothing imports it; it reads the kernel
+  and the examples. The model
   and its predicates are a copy of hjeli's, in `modeller/model/`: eta depends on nothing outside itself.
 - `examples/<name>/` is a whole app: its own documents (a `delta.ts`: its schema, seed and
   documents in delta), compartments, applets, client, and an `index.ts` exporting

@@ -1,7 +1,0 @@
-@startuml
-title Availability: the worker's, and the contractor who puts the worker in a window sees it
-[*] --> available
-available --> available : contractor puts the worker in a window (131)
-available --> unavailable : worker marks the week unavailable (134)
-unavailable --> available : worker marks the week available again (135)
-@enduml

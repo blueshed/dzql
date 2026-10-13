@@ -127,12 +127,11 @@ bun run cli <verb>   # a terminal client: inspect, watch, undo, redo, write, and
 bun run costs        # measures every number this README quotes, and writes it in
 ```
 
-Two tools sit beside the kernel and are not shipped: `modeller/` (`bun run modeller <example>`:
+One tool sits beside the kernel and is not shipped: `modeller/` (`bun run modeller <example>`:
 an example's documents -- who holds each, who writes it, who is told of a change, and what permit
 lets through that no page offers -- then hjeli's predicates over its stories; `bun run modeller:page
 <example>`: its page, in `modeller/dist/` -- its stories, documents and entities, and what goes with
-what) and `uml/`, a live ASCII-UML session (`bun run uml`, PlantUML in docker, on
-:3700; `bun run uml:check` checks the diagrams without it).
+what). The same page, kept live while two people talk, is the modeling example.
 
 ## Where to go next
 

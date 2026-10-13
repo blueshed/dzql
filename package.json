@@ -33,9 +33,7 @@
     "stories:all": "STORY_BY_HAND=1 ETA_EXAMPLE=chat bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=ticker bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=wedding bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=leave bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=modeling bun run stories",
     "costs": "bun --env-file=.env.test src/costs.ts",
     "modeller": "LOG_LEVEL=warn bun --env-file=.env.test modeller/closure.ts",
-    "modeller:page": "LOG_LEVEL=warn bun --env-file=.env.test modeller/page.ts",
-    "uml": "docker compose -f uml/compose.yml up -d --wait && bun uml/watch.ts",
-    "uml:check": "bun uml/drift.ts"
+    "modeller:page": "LOG_LEVEL=warn bun --env-file=.env.test modeller/page.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2"

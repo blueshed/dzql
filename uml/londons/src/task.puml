@@ -1,9 +1,0 @@
-@startuml
-title Task: a step on a build, opened by the contractor, ticked by the worker
-[*] --> todo : contractor opens a task (133)
-todo --> done : worker ticks (137)
-done --> todo : worker unticks (138)
-todo --> skipped : worker skips (140)
-skipped --> todo : worker unskips (139)
-todo -[dotted]-> done : contractor cannot tick (148)
-@enduml

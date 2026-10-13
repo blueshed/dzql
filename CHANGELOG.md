@@ -127,6 +127,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a visit's moves telling no other tab, and the rest, are the server tests they always were; the
   harness's own tests tell the two stories they used inline.
 
+### Removed
+
+- **The UML session is retired** (`uml/`, `bun run uml`, `bun run uml:check`): its diagrams were drawn by hand and checked against a vocabulary written by hand (`uml/types.ts`), a second account of an app that drifted from the first. What it was for -- seeing a model change as it is talked through -- is the modeling example, drawn from the model itself. Its Londons diagrams go with it.
+
 ### Fixed
 
 - **A full chat room scrolls to the newest message again** (todo n70): a `[data-autoscroll]` list is pinned to its foot when something new is there, not when its count grows. A room keeps its last fifty, so from the fifty-first each message took the oldest out and landed below the fold, your own included.

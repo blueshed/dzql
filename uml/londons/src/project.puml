@@ -1,6 +1,0 @@
-@startuml
-title Project: the contractor's, and the venue owner sees it close
-[*] --> open : contractor opens a project (115)
-open --> closed : contractor closes it (126)
-closed --> [*]
-@enduml
