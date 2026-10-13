@@ -4,7 +4,7 @@
 // here is proposed; everything is read. A project with no app yet (no index.ts) is read from its
 // stories alone: no run, so nothing of who was told.
 
-import type { Stories, Story } from "../src/stories";
+import { isPost, writeOf, type Stories, type Story } from "../src/stories";
 import type { Example } from "../src/example";
 import { parsePointer } from "../src/json-pointer";
 import { run } from "../src/harness";
@@ -90,7 +90,8 @@ export async function extract(at: string) {
   const outcome = new Map(report ? report.outcomes.map((o) => [o.name, o.failures]) : []);
 
   const storyRows = stories.stories.map((s: Story, i) => {
-    const w = s.does ?? s.cannot;
+    const w = writeOf(s);
+    const posted = s.does ?? s.cannot;
     const seen = s.seen ?? {};
     return {
       n: i + 1,
@@ -104,6 +105,7 @@ export async function extract(at: string) {
       untold: s.untold ?? [],
       premise: s.premise !== undefined,
       offPage: !!s.offPage,
+      post: posted && isPost(posted) ? posted.path : null, // a route's path, where the story posts a form
       failures: outcome.get(s.name) ?? ["not run"],
       sequence: (traces.get(s.name) ?? []).map((t) => ({ phase: t.phase, as: t.as, write: t.write, ledger: t.ledger.map(shown!), heard: t.heard.map((h) => ({ member: h.member, messages: h.messages.map(heardAs) })) })),
     };

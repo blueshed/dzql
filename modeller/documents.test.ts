@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { story, type Stories } from "../src/stories";
+import { post, story, type Stories } from "../src/stories";
+import { run } from "../src/harness";
+import { serverWrite } from "../src/documents";
+import type { Example } from "../src/example";
+import { bornInto, toldNotAsked, touches } from "./heart";
 import { controlsOn, type Heard, type Trace } from "../src/harness";
 import { attempt, documentsIn, documentsOf, exampleAt, format, heardAs, probes, read, shapeOf, typeOf, watch, type Reading } from "./documents";
 import { example as chat } from "../examples/chat/index";
@@ -201,6 +205,37 @@ describe("from a run", () => {
     expect(text).toContain("- cellar: defined, never written, never held in the run");
     expect(text).toContain("## Writes that tell nobody (1)\n- Ada says something nobody sees — ada writes room, and the story says nobody sees it");
   });
+});
+
+describe("a post to a route, read from a run", () => {
+  test("born into the documents its told members were told through, touching what delta wrote for the route, and told-not-asked as for a write", async () => {
+    const { example: leave } = await import("../examples/leave/index");
+    const { stories: told } = await import("../examples/leave/stories");
+    const rename = async (req: Request) => {
+      await serverWrite("team:1", [{ op: "replace", path: "/teams/name", value: String((await req.formData()).get("name")) }]);
+      return new Response(null, { status: 303, headers: { Location: "/" } });
+    };
+    const renaming: Example = { ...leave, routes: { ...leave.routes, "/rename": rename } };
+    const stories: Stories = {
+      ...told,
+      stories: [
+        story("Mo follows a link that renames the team, and Ann sees the new name", { as: "mo", does: post("/rename", { name: "The workshop" }), offPage: true, seen: ["ann", "mo"] }),
+        ...told.stories.filter((s) => s.name.startsWith("Bo signs in on another phone")),
+      ],
+    };
+    const w = watch(renaming);
+    await run(renaming, stories, w.observe);
+    const r = read(stories, renaming, w);
+    const [renamed, signedIn] = r.stories;
+    expect(renamed!.doc).toBeUndefined(); // a post names no document of its own
+    expect(renamed!.changes).toEqual([{ doc: "team:1", told: ["ann", "bo", "mo"].map((member) => ({ member, how: expect.stringContaining("patch 1 op"), bytes: expect.any(Number), seen: member !== "bo" })) }]);
+    expect(bornInto(renamed!, "session")).toEqual(["team"]);
+    expect(toldNotAsked(renamed!, [], "session")).toEqual([{ doc: "team:1", told: [expect.objectContaining({ member: "bo", seen: false })] }]);
+    const ledger = w.traces.find((t) => t.story === renamed!.name)!.ledger;
+    expect(touches([], ledger, [{ name: "team", root: "teams", include: ["people", "requests"] }])).toEqual(["teams"]);
+    expect(bornInto(signedIn!, "session")).toEqual([]); // signing in tells nobody: the session is the page's
+    expect(cell(r, "mo", "team").told).toBe(1);
+  }, 60000);
 });
 
 describe("exampleAt", () => {

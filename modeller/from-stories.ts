@@ -20,7 +20,7 @@
 // No example knowledge: the one document left out is the session's, found by asking the example's
 // own `goTo()` where it writes.
 
-import type { Stories, Story, Write } from "../src/stories";
+import { writeOf, type Stories, type Story, type Write } from "../src/stories";
 import type { PatchOp } from "../src/json-patch";
 import { parsePointer } from "../src/json-pointer";
 import { typeOf as docType } from "./documents";
@@ -139,11 +139,12 @@ export function fromStories(stories: Stories): Reading {
   }
 
   for (const s of stories.stories) {
-    if (!s.does) {
+    const w = s.does && writeOf(s);
+    if (!w) {
       modelStories.push({ actor: s.as, action: s.name, writes: [], opens: [] });
       continue;
     }
-    if (s.does.doc === session) {
+    if (w.doc === session) {
       notes.push({ kind: "session-story", where: s.name, detail: `writes only the session (${session}), which is the page's state, not the model's` });
       modelStories.push({ actor: s.as, action: s.name, writes: [], opens: [] });
       continue;
@@ -154,7 +155,7 @@ export function fromStories(stories: Stories): Reading {
     for (const member of s.untold ?? []) {
       if (!members.has(member)) notes.push({ kind: "uncast-member", where: s.name, detail: `"${member}" must not notice but is not in the cast` });
     }
-    modelStories.push({ actor: s.as, action: s.name, writes: writesOf(s.does), opens: [] });
+    modelStories.push({ actor: s.as, action: s.name, writes: writesOf(w), opens: [] });
   }
 
   // Entities, with an id and every field a write showed. A `_id` field is a reference when it

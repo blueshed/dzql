@@ -29,6 +29,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A story may post a form to a route: `does: post(path, form)`, and `cannot: post(...)`.** What
+  a person does before they hold a document (signing in, coming in by a link) can now be told as
+  a story, not only through the cast's `signIn`. The harness posts it as the browser does, follows
+  the 303 to the page it lands on as the author's (a new session where the cookie names one), and
+  checks `seen`, `untold` and `told` as for a write, from what the route's `serverWrite`s told;
+  there is no undo. The page must offer the form (`offPage` for a link from outside the app), and
+  `STORY_BY_HAND=1` types into it and sends it. A route's refusal is a 4xx or a `tell` with a
+  reason. The modeller reads it: born into what its told members were told through, touching what
+  delta wrote, and "posts to <path>" on the heart page. Leave tells its sign-in so.
+
 - **The modeller reads a project outside eta** (`exampleAt`, modeller/documents.ts): `bun run modeller <path>` and
   `bun run modeller:page <path>` take a path (one with a `/`), named by its last part; a bare name is still
   `examples/<name>`.

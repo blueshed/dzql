@@ -96,6 +96,15 @@ Then:
   listed in `ETA_ORIGINS` (comma-separated).
 - In the stories, `signIn(name)` gives the route and form for a member of the cast. The harness
   posts it, and starts them from the page it signs them into.
+- A story may post to a route itself: `does: post(path, form)` (src/stories.ts), the same shape.
+  The harness posts it as the author's browser does (same site, their cookie), follows the 303 to
+  the page it lands on as theirs (a new session where the answer's cookie names one), and checks
+  `seen` and `untold` as for a write: what the route's `serverWrite`s change is told from delta's
+  stream. No undo follows: the writes are the server's. The author's page must offer a plain
+  `<form method="post" action="<path>">` with a field for each key, or the story says `offPage`
+  (a link from outside the app); by hand the form is typed into and sent. `cannot: post(...)` is
+  a route's refusal: a 4xx (its body the reason) or a `tell` with a reason on the page it came
+  from, checked against `told`.
 
 ## `Compartment` (`src/compartments/compartment.ts`)
 

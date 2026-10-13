@@ -85,7 +85,7 @@ function render() {
         const on = r.stories.has(s.n);
         const unasked = r.unaskedStories.has(s.n);
         const cls = ["story", on && "on", unasked && "unasked", isSel("story", s.n) && "me"].filter(Boolean).join(" ");
-        const tag = (unasked ? `<span class="tag">tells it, not asked · </span>` : "") + (s.kind === "cannot" ? `<span class="cannot">cannot · </span>` : "");
+        const tag = (unasked ? `<span class="tag">tells it, not asked · </span>` : "") + (s.kind === "cannot" ? `<span class="cannot">cannot · </span>` : "") + (s.post ? `<span class="tag">posts to ${esc(s.post)} · </span>` : "");
         const why = unasked && sel.k === "doc" ? infoButton({ kind: "unasked", story: s.n, doc: sel.id }, `Why is story ${s.n} marked?`) : "";
         return `<li><button class="${cls}" data-pick="story:${s.n}" data-key="story:${s.n}" aria-pressed="${isSel("story", s.n)}">${tag}${esc(s.name)}</button>${why}</li>`;
       })
@@ -272,7 +272,7 @@ function evidence(m: Mark): string {
   const u = unaskedOf(s, m.doc)!;
   const patches = Map.groupBy(u.told, (t) => JSON.stringify(t.patch));
   return [
-    column("The story", p(`${s.n}. ${s.name}`) + p(`${s.as} ${s.kind === "closesTab" ? "closes a tab" : "writes"}; seen by ${s.seen.length ? list(s.seen) : "nobody"}.`, true)),
+    column("The story", p(`${s.n}. ${s.name}`) + p(`${s.as} ${s.kind === "closesTab" ? "closes a tab" : s.post ? `posts to ${s.post}` : "writes"}; seen by ${s.seen.length ? list(s.seen) : "nobody"}.`, true)),
     column("Who was told", u.told.map((t) => p(`${t.member}`) + where(`${t.how} · ${bytes(t.bytes)}`)).join("")),
     column(
       "The patch",

@@ -9,7 +9,7 @@
 // closure's dead actor, which read those pages: an actor with nothing in front of them and nothing
 // written is a row of dots in the documents' grid.
 
-import type { Stories } from "../src/stories";
+import { writeOf, type Stories } from "../src/stories";
 import type { Gap, Model } from "./model/grammar";
 import { actorClosure, authorizationClosure, preconditionClosure, referentialClosure } from "./model/predicates";
 import { fromStories, locate, entityOf, noticing, type Note, type Reading } from "./from-stories";
@@ -53,11 +53,12 @@ export function judge(stories: Stories): { reading: Reading; report: Report } {
   const refusals = new Map<string, number>();
 
   for (const s of stories.stories) {
-    for (const op of s.cannot?.ops ?? []) {
-      const entity = entityOf(locate(s.cannot!.doc, op.path).chain);
+    const w = writeOf(s);
+    for (const op of (s.cannot && w?.ops) || []) {
+      const entity = entityOf(locate(w!.doc, op.path).chain);
       refusals.set(entity, (refusals.get(entity) ?? 0) + 1);
     }
-    if (!s.does || s.does.doc === reading.session) continue;
+    if (!s.does || !w || w.doc === reading.session) continue;
     const who = noticing(s).map(([m]) => m);
     if (!who.includes(s.as)) authorBlind.push({ check: "author-blind", where: s.name, detail: `${s.as} writes and does not notice; noticed by ${who.join(", ") || "nobody"}` });
   }

@@ -16,6 +16,7 @@ process.env.LOG_LEVEL ??= "warn";
 import { readFileSync } from "node:fs";
 import { readTypes, type WriteDef } from "./check";
 import type { Trace } from "../src/harness";
+import { writeOf } from "../src/stories";
 
 const dir = import.meta.dir;
 const STORIES = `${dir}/../examples/chat/stories.ts`;
@@ -102,7 +103,7 @@ const parts: string[] = [], lines: string[] = [], checks: string[] = [];
 stories.stories.forEach((s, i) => {
   const t = traces.find((x) => x.story === s.name && x.phase !== "undo" && x.phase !== "redo");
   const x = X(i), ay = Y(s.as);
-  const write = s.does ?? s.cannot; // none when a tab closes
+  const write = writeOf(s); // none when a tab closes, or for a post
   const doc = write?.doc ?? "", ops = (write?.ops ?? []) as Op[];
   const seen = list(s.seen), untold = list(s.untold);
   const outcome = report.outcomes.find((o) => o.name === s.name);

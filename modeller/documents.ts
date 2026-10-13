@@ -15,7 +15,7 @@
 import { basename, resolve } from "node:path";
 import type { Example } from "../src/example";
 import type { Compartment } from "../src/compartments/compartment";
-import type { Stories, Story } from "../src/stories";
+import { writeOf, type Stories, type Story } from "../src/stories";
 import type { PatchOp } from "../src/json-patch";
 import { controlsOn, run, type Control, type Heard, type Trace } from "../src/harness";
 import { allOpenSockets } from "../src/compartments/audience";
@@ -215,7 +215,7 @@ export function privateEntry(example: Example): (entry: Trace["ledger"][number])
  * (`documentsIn`): one no compartment owns is a document too, and nobody can be shown it.
  */
 export function read(stories: Stories, example?: Example, watched?: Watched, defined: string[] = []): Reading {
-  const write = (s: Story) => s.does ?? s.cannot;
+  const write = writeOf;
   const types: Reading["docs"] = example ? example.compartments.map((c) => ({ name: c.docType, kind: c.kind ?? "written" })) : [];
   for (const name of defined) if (!types.some((t) => t.name === name)) types.push({ name, kind: "no compartment" });
   for (const s of stories.stories) {
@@ -266,14 +266,14 @@ export function read(stories: Stories, example?: Example, watched?: Watched, def
 
   // written by a story, by the cast as it sets up, or by going somewhere (`goTo`): people's writes all
   const going = stories.goTo ? [stories.goTo("")] : [];
-  const written = new Set([...stories.stories.flatMap((s) => (s.does ? [s.does] : [])), ...Object.values(stories.cast).flat(), ...going].map((w) => typeOf(w.doc)));
+  const written = new Set([...stories.stories.flatMap((s) => (s.does ? [writeOf(s) ?? []].flat() : [])), ...Object.values(stories.cast).flat(), ...going].map((w) => typeOf(w.doc)));
   const held = (doc: string) => actors.some((a) => grid[a]![doc]!.held > 0);
   const unneeded = watched ? types.filter((t) => !written.has(t.name) && !held(t.name)).map((t) => t.name) : [];
   const readOnly = types.filter((t) => !written.has(t.name) && held(t.name)).map((t) => t.name);
 
   // what permit allows that no story does and no page a member can get to offers, by document and path:
   // an add on a field that permit also lets be replaced is that replace, and goes with it
-  const done = new Set(stories.stories.flatMap((s) => (s.does ? s.does.ops.map((op) => `${typeOf(s.does!.doc)} ${op.op} ${shapeOf(op.path)}`) : [])));
+  const done = new Set(stories.stories.flatMap((s) => { const w = s.does && writeOf(s); return w ? w.ops.map((op) => `${typeOf(w.doc)} ${op.op} ${shapeOf(op.path)}`) : []; }));
   const lets = [...(watched?.allowed.values() ?? [])];
   const replaced = new Set(lets.filter((a) => a.op === "replace").map((a) => `${a.doc} ${a.path}`));
   const byPath = new Map<string, Allowed>();

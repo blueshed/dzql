@@ -1,5 +1,5 @@
 import type { PatchOp } from "../../src/json-patch";
-import { story, type Stories, type Write } from "../../src/stories";
+import { post, story, type Stories, type Write } from "../../src/stories";
 import { mondayOf } from "./calendar";
 
 // A small team asks for days off, told as stories. See stories.md at the root. It is the example
@@ -62,7 +62,9 @@ export const stories: Stories = {
     story("Ann cannot make herself a manager", { as: "ann", cannot: { doc: "team", ops: [{ op: "replace", path: "/people/1/role", value: "manager" }] } }),
     story("Ann cannot become Mo over the wire", { as: "ann", cannot: session({ op: "replace", path: "/person_id", value: "3" }) }),
 
-    // ── and going ──
+    // ── coming and going ──
+    story("Bo signs in on another phone, and sees the team's calendar", { as: "visitor", does: post("/login", { email: "bo@leave.example", password: "bo-password" }), seen: ["visitor"] }),
+    story("Someone types Bo's email with the wrong password, and is told the two do not match", { as: "visitor", cannot: post("/login", { email: "bo@leave.example", password: "not-it" }), told: "That email and password do not match." }),
     story("Ann signs out, and her page asks her to sign in", { as: "ann", from: "", does: session({ op: "remove", path: "/person_id" }), seen: ["ann"] }), // from the calendar: on a phone her draft's drawer covers the page's tools
   ],
 };

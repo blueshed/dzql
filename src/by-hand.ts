@@ -10,7 +10,7 @@
 // Enter is an editing command, not a key, so it presses no button.
 
 import type { PatchOp } from "./json-patch";
-import type { Gesture, Write } from "./stories";
+import type { Gesture, Post, Write } from "./stories";
 import { MOUSE, urlFor, waitFor } from "./webview";
 
 /** A phone, held upright: the stories are pressed at the size most people hold them. */
@@ -119,6 +119,25 @@ const PAGE = `(() => {
     return { failure: first };
   }
 
+  // how to post a form to a route, or why nobody can: a plain form that posts there, a field each
+  function posting(path, form) {
+    const forms = [...document.querySelectorAll("#app form:not([data-write])")].filter((f) => f.method === "post" && f.getAttribute("action") === path);
+    if (forms.length === 0) return { failure: "nothing on the page posts to " + path, none: true };
+    let first = "";
+    for (const f of forms) {
+      const names = Object.keys(form);
+      const missing = names.find((n) => !(f.elements.namedItem(n) instanceof Element));
+      if (missing) { first = first || "its form has no field " + missing; continue; }
+      const fields = names.map((n) => f.elements.namedItem(n));
+      const blocked = fields.map(why).find(Boolean);
+      if (blocked) { first = first || "a field of its form is " + blocked; continue; }
+      const button = f.querySelector("button[type=submit], button:not([type]), input[type=submit]");
+      if (button && why(button)) { first = first || "the button of its form is " + why(button); continue; }
+      return { how: "submit", control: mark(f), fields: fields.map((el, i) => field(el, form[names[i]])), submit: button ? mark(button) : undefined };
+    }
+    return { failure: first };
+  }
+
   // what the page sends, kept to be read back, and how much of it was sent when a press last went
   // down; and a question the server answers after all it sent
   const socket = window.eta.socket();
@@ -156,7 +175,7 @@ const PAGE = `(() => {
     const unchosen = p.fields && p.fields.find((f) => f.none);
     return unchosen ? { failure: "it offers no choice of " + JSON.stringify(unchosen.text), none: true } : p;
   };
-  window.__hand = { plan: planned, why: (selector) => { const el = document.querySelector(selector); return el ? why(el) : "not on the page"; }, drag, asked, stands, choose, clear, leave };
+  window.__hand = { plan: planned, posting, why: (selector) => { const el = document.querySelector(selector); return el ? why(el) : "not on the page"; }, drag, asked, stands, choose, clear, leave };
   return true;
 })()`;
 
@@ -166,8 +185,10 @@ const PAGE = `(() => {
  * theirs.
  */
 export class Hand {
-  readonly view: Bun.WebView;
+  view: Bun.WebView;
   private sent = 0;
+  /** A form was posted: the route's cookie, which no script can take back, is this browser's now. */
+  private posted = false;
   /** What the page sent by itself since it was opened: before anything was pressed, or after a gesture's write. */
   readonly strays: Write[] = [];
 
@@ -217,24 +238,51 @@ export class Hand {
         plan = await planned();
       }
       if ("failure" in plan) return plan;
-      for (const f of plan.fields) {
-        if (f.kind === "choose") await view.evaluate(`window.__hand.choose(${JSON.stringify(f.at)}, ${JSON.stringify(f.text)})`);
-        else if (f.kind === "tick") await this.touch(f.at);
-        else {
-          await this.touch(f.at);
-          await view.evaluate(`window.__hand.clear(${JSON.stringify(f.at)})`);
-          if (f.text === "") await view.press("Backspace");
-          else await view.type(f.text);
-        }
-      }
-      if (plan.how === "press") await this.touch(plan.control);
-      else if (plan.how === "edit") await view.evaluate(`window.__hand.leave()`); // leaving the field sends it
-      else if (plan.submit) await this.touch(plan.submit);
-      else await view.press("Enter"); // the caret is in the form: Enter sends it, as a phone's Go does
+      await this.work(plan);
     } catch (err) {
       return { failure: (err as Error).message };
     }
     return this.heard(plan.how === "press" ? "pressed" : plan.how === "submit" ? "sent" : "left");
+  }
+
+  /** Fills in a plan's fields, then presses, leaves or sends it, as a person does. */
+  private async work(plan: Plan): Promise<void> {
+    const view = this.view;
+    for (const f of plan.fields) {
+      if (f.kind === "choose") await view.evaluate(`window.__hand.choose(${JSON.stringify(f.at)}, ${JSON.stringify(f.text)})`);
+      else if (f.kind === "tick") await this.touch(f.at);
+      else {
+        await this.touch(f.at);
+        await view.evaluate(`window.__hand.clear(${JSON.stringify(f.at)})`);
+        if (f.text === "") await view.press("Backspace");
+        else await view.type(f.text);
+      }
+    }
+    if (plan.how === "press") await this.touch(plan.control);
+    else if (plan.how === "edit") await view.evaluate(`window.__hand.leave()`); // leaving the field sends it
+    else if (plan.submit) await this.touch(plan.submit);
+    else await view.press("Enter"); // the caret is in the form: Enter sends it, as a phone's Go does
+  }
+
+  /**
+   * Posts a form to a route as a person does: its fields typed into, and sent. The browser goes
+   * where the route sends it; whether that is the app again (a 4xx is not), or why a person could
+   * not post it -- `none` when nothing on the page posts there.
+   */
+  async post({ path, form }: Post): Promise<{ app: boolean } | { failure: string; none?: true }> {
+    const view = this.view;
+    this.strays.push(...(await this.since()));
+    const plan = await view.evaluate<Plan | { failure: string; none?: true }>(`window.__hand.posting(${JSON.stringify(path)}, ${JSON.stringify(form)})`);
+    if ("failure" in plan) return plan;
+    try {
+      this.posted = true;
+      await this.work(plan);
+    } catch (err) {
+      return { failure: (err as Error).message };
+    }
+    // a page of its own: the app drawn again, with its socket open, or whatever else the route answered
+    if (!(await this.until(`!window.__hand && document.readyState === "complete" && (!window.eta || (window.eta.socket()?.readyState === 1 && document.querySelector("#app")?.children.length > 0))`))) return { failure: `posted, the page did not come back from ${path}` };
+    return { app: await view.evaluate<boolean>(`!!window.eta`) };
   }
 
   /**
@@ -285,9 +333,13 @@ export class Hand {
     if (!clicked) throw new Error(`the control for it is ${(await this.view.evaluate<string>(`window.__hand.why(${JSON.stringify(selector)})`)) || "never still"}`);
   }
 
-  /** Closes the tab: the page goes, and its socket with it. */
+  /** Closes the tab: the page goes, and its socket with it. After a post, the browser goes too: the next story's is a fresh one, not signed in by the route's cookie. */
   async leave(): Promise<void> {
     await this.view.navigate("about:blank");
+    if (!this.posted) return;
+    this.view.close();
+    this.view = new Bun.WebView(PHONE);
+    this.posted = false;
   }
 
   close(): void {

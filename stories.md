@@ -127,6 +127,30 @@ story("Bob closes his tab, and Ada sees him leave general", {
 });
 ```
 
+What a person does before they hold any document -- signs in, comes in by a link -- is no write
+on the wire: it is a form posted to a route (`Example.routes`), which writes as the server
+(`serverWrite`). A story says it with `post(path, form)` as its `does`, the shape the cast's
+`signIn` gives. The harness posts it as the browser does, from the page's own site with the
+author's cookie, and follows the route's redirect: the author's tab goes, and the page it lands on
+is theirs, in the session the answer's cookie names. What the route wrote is told from delta's one
+stream like any change, so `seen` and `untold` are checked as for a write; there is no undo, the
+writes being the server's. The page must offer a plain form that posts there (`offPage` for a
+link from outside the app), and by hand it is typed into and sent. A `cannot` may be a post too:
+the route refuses it with a 4xx, or tells the reason on the page it came from (`tell`). Leave's:
+
+```ts
+story("Bo signs in on another phone, and sees the team's calendar", {
+  as: "visitor",
+  does: post("/login", { email: "bo@leave.example", password: "bo-password" }),
+  seen: ["visitor"],
+});
+story("Someone types Bo's email with the wrong password, and is told the two do not match", {
+  as: "visitor",
+  cannot: post("/login", { email: "bo@leave.example", password: "not-it" }),
+  told: "That email and password do not match.",
+});
+```
+
 A story that writes may say how a person does it, where the page cannot: an applet draws its own
 controls in the browser, so a drag across its days is the story's `gesture`, a `press` on what a
 CSS selector names or a `drag` from one to another. Leave's:

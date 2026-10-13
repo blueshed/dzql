@@ -7,6 +7,21 @@ import type { PatchOp } from "./json-patch";
 /** One message, exactly as the browser or the CLI would send it. The harness gives each an id of its own, as a page does, so what answers it -- its echo, or its refusal -- is its own. */
 export type Write = { doc: string; ops: PatchOp[] };
 
+/**
+ * A form posted to one of the example's routes (`Example.routes`), as a browser posts it: the
+ * route's path and the form's fields. What a person does before they hold any document -- signing
+ * in, coming in by a link -- is a post; the route writes with `serverWrite`, and every change it
+ * makes is told from delta's stream like any other. The cast's `signIn` is one, and so may be a
+ * story's `does` or `cannot` (`post`).
+ */
+export type Post = { path: string; form: Record<string, string> };
+
+/** A post to a route, for a story's `does` or `cannot`: `post("/login", { email, password })`. */
+export const post = (path: string, form: Record<string, string> = {}): Post => ({ path, form });
+
+/** Is this a post to a route, not a write on the wire? */
+export const isPost = (w: Write | Post): w is Post => "path" in w;
+
 /** The cast: a session per name, and the writes that put it where the stories find it.
  * Every story starts from here: the cast is set up afresh per story, then the story's own premise
  * (the same shape), so no story depends on another. */
@@ -42,12 +57,15 @@ type Budgeted = { budget?: number };
 type Does = Budgeted & {
   /**
    * The write the author makes. Their page must offer a control that sends it, and it must land.
-   * The harness then undoes and redoes it, and checks each puts every page back.
+   * The harness then undoes and redoes it, and checks each puts every page back. Or a form they
+   * post to a route (`post`): their page must offer the form, the route must answer it with no
+   * refusal, and the page it sends them to is theirs; a route writes as the server, so there is
+   * nothing of theirs to undo.
    */
-  does: Write;
+  does: Write | Post;
   /** The address the author acts from: the drawer or modal that holds the control (`"2026-10?draft"`). Omitted: where `seen` or the cast put them. */
   from?: string;
-  /** It comes from no page -- a feed, the CLI -- so no control is looked for. */
+  /** It comes from no page -- a feed, the CLI, a link from outside the app to a route -- so no control is looked for. */
   offPage?: true;
   /**
    * How the author does it on their page. The story is then done by hand too, in a browser the
@@ -76,8 +94,11 @@ type Does = Budgeted & {
 
 /** A story that is refused: `cannot`. */
 type Cannot = Budgeted & {
-  /** A write that must be refused. Nothing may change, and the ledger must not move. */
-  cannot: Write;
+  /**
+   * A write that must be refused. Nothing may change, and the ledger must not move. Or a post to a
+   * route (`post`) that the route refuses: a 4xx, or a `tell` with a reason on the page it came from.
+   */
+  cannot: Write | Post;
   /** The address the author tries it from, as for a `does`. */
   from?: string;
   /** What the refused person is told, beside the control that sent it (`refuse`, src/refusal.ts):
@@ -135,7 +156,7 @@ export type Stories = {
    * session is the one the answer's cookie names -- so a password never crosses the wire, and a
    * story starts from a signed-in page. Undefined for a member who stays a visitor.
    */
-  signIn?: (name: string) => { path: string; form: Record<string, string> } | undefined;
+  signIn?: (name: string) => Post | undefined;
   /**
    * The write that puts a person at an address: for `from`, and for the places in a `seen` record.
    * Leave's is `replace /page` on the session.
@@ -153,3 +174,9 @@ export type Stories = {
 export function story(name: string, body: Told): Story {
   return { name, ...body };
 }
+
+/** A story's write on the wire: its `does` or its `cannot`; none for a post or a tab closing. */
+export const writeOf = (s: Story): Write | undefined => {
+  const w = s.does ?? s.cannot;
+  return w && !isPost(w) ? w : undefined;
+};

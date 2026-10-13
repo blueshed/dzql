@@ -13,7 +13,8 @@ import type { Example } from "./example";
 import { size } from "./costs";
 import { comparable, controlsOn, goesTo, hear, holding, largest, MOST_PROPS, offers, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, type Outcome, type Report, type Trace, type Wire } from "./harness";
 import { diff, drawParts, part, splitTag } from "./parts";
-import type { Story } from "./stories";
+import { post, type Story } from "./stories";
+import { serverWrite } from "./documents";
 import { refuse, tell, toldAt } from "./refusal";
 
 // The harness against chat's own stories: one outcome per story, named as the story is, and the
@@ -361,6 +362,81 @@ describe("stories harness", () => {
     const wrong = { ...told, stories: first, signIn: (name: string) => (name === "visitor" ? undefined : { path: "/login", form: { email: `${name}@leave.example`, password: "not-it" } }) };
     expect(run(leave, wrong)).rejects.toThrow("ann could not sign in at /login: 303");
   }, 30000);
+
+  describe("a post to a route", () => {
+    /** leave, with two routes of a test's own: one that renames the team, and one that is closed. */
+    const leaveWithRoutes = async (): Promise<Example> => {
+      const { example: leave } = await import("../examples/leave/index");
+      const rename = async (req: Request) => {
+        await serverWrite("team:1", [{ op: "replace", path: "/teams/name", value: String((await req.formData()).get("name")) }]);
+        return new Response(null, { status: 303, headers: { Location: "/" } });
+      };
+      return { ...leave, routes: { ...leave.routes, "/rename": rename, "/closed": () => new Response("Closed for the holidays.", { status: 403 }) } };
+    };
+    const rename = post("/rename", { name: "The workshop" });
+
+    test("is posted as the browser posts it, its 303 followed to the page it lands on, and who was told what checked as for a write: the route's writes are told from delta's stream", async () => {
+      const leave = await leaveWithRoutes();
+      const { stories: told } = await import("../examples/leave/stories");
+      const traces: Trace[] = [];
+      const report = await run(leave, {
+        ...told,
+        stories: [
+          ...told.stories.filter((s) => s.name.startsWith("Bo signs in on another phone") || s.name.startsWith("Someone types Bo's email")),
+          { name: "Mo follows a link that renames the team, and everyone in it sees the new name", as: "mo", does: rename, offPage: true, seen: ["ann", "bo", "mo"], untold: ["visitor"] },
+          { name: "Mo renames the team, and nobody is said to see it", as: "mo", does: rename, offPage: true, seen: ["mo"] },
+          { name: "The visitor signs in with the wrong password", as: "visitor", does: post("/login", { email: "bo@leave.example", password: "not-it" }), seen: ["visitor"] },
+          { name: "Ann posts to the sign-in her page does not show", as: "ann", does: post("/login", { email: "bo@leave.example", password: "bo-password" }), seen: ["ann"] },
+          { name: "Bo cannot sign in, but does", as: "visitor", cannot: post("/login", { email: "bo@leave.example", password: "bo-password" }) },
+          { name: "Bo is told something else", as: "visitor", cannot: post("/login", { email: "bo@leave.example", password: "not-it" }), told: "Try again." },
+          { name: "Nobody gets in while it is closed", as: "visitor", cannot: post("/closed"), told: "Closed for the holidays." },
+        ],
+      }, (t) => traces.push(t));
+      expect(report.outcomes.map((o) => o.failures.map((f) => f.split("\n")[0]))).toEqual([
+        [],
+        [],
+        [],
+        ["ann noticed, and should not have", "bo noticed, and should not have"],
+        ['nothing landed: the route refused visitor\'s post to /login: "That email and password do not match."', "visitor did not see it"], // what they were told is not the page
+        ["ann has no form on their page that posts to /login"], // and Bo's calendar is hers now
+        ["refused, but it landed: the route answered visitor's post to /login with 303, and told them nothing", "refused, but: visitor's page differs"],
+        ['refused, but visitor was not told "Try again.": they were told "That email and password do not match."'],
+        [],
+      ]);
+      // the route's change, told to everyone who holds the team, and in the ledger as the server's: nothing to undo
+      const renamed = traces.filter((t) => t.story.startsWith("Mo follows a link"));
+      expect(renamed.map((t) => t.phase)).toEqual(["does"]);
+      expect(renamed[0]!.write).toEqual(rename);
+      const patched = (member: string) => renamed[0]!.heard.find((h) => h.member === member)!.messages.filter((m) => m.type === "patch" && m.doc === "team:1").length;
+      expect([patched("ann"), patched("bo"), patched("mo"), patched("visitor")]).toEqual([1, 1, 1, 0]);
+      expect(renamed[0]!.ledger).toMatchObject([{ doc: "team:1", undoable: 0 }]);
+    }, 60000);
+
+    test("a post takes no undo, redo or gesture, and is a route's path and a form of strings", async () => {
+      const { example: leave } = await import("../examples/leave/index");
+      const { stories: told } = await import("../examples/leave/stories");
+      const misshapen = (story: object) => story as Story;
+      const report = await run(leave, {
+        ...told,
+        stories: [
+          misshapen({ name: "Bo signs in, undone", as: "visitor", does: post("/login"), seen: ["visitor"], undone: "Undone." }),
+          misshapen({ name: "Bo signs in, by a press", as: "visitor", does: post("/login"), seen: ["visitor"], gesture: { press: "button" } }),
+          misshapen({ name: "Bo signs in nowhere", as: "visitor", cannot: { path: "login", form: { n: 1 } } }),
+        ],
+      });
+      const shape = "a post takes no undone, redone or gesture: a route writes as the server, and its form is posted as it is drawn";
+      expect(report.outcomes.map((o) => o.failures)).toEqual([
+        [shape.replace("undone, redone or gesture", "undone")],
+        [shape.replace("undone, redone or gesture", "gesture")],
+        ['a post is a route\'s path and a form of strings: this one is {"path":"login","form":{"n":1}}'],
+      ]);
+    }, 30000);
+
+    test("a form that posts to a route is a control on the page, unless the browser sends nothing from it", () => {
+      const page = `<form method="post" action="/login"><input name="email"></form><form method="POST" action="/join/abc"></form><form method="get" action="/search"></form><form method="post" action="/x" data-write='{"doc":"room","op":"add","path":"/messages/-"}'></form><div hidden><form method="post" action="/hidden"></form></div>`;
+      expect(controlsOn(page).filter((c) => c.op === "post").map((c) => c.path)).toEqual(["/login", "/join/abc"]);
+    });
+  });
 
   test("a control the browser will not press is none: behind something inert, in a disabled fieldset, or hidden", () => {
     const b = (value: string) => `<button${write("room", "replace", "/name", value)}>${value}</button>`;

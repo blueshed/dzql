@@ -78,7 +78,7 @@ Everything below is the least that makes it pass.
 |---|---|
 | Show a document and let people change it | A compartment (`permit`, `shape`) and plain `data-write` controls: steps 2-4 below. |
 | Make a new document (a new plan, a room) | Add its root row through the document that lists it -- a team's document includes its plans' roots, so `add /roots/-` -- and open the id the answer names. When the reader names it (a session, chat's room), `implied: true` in `defineDoc`: its first write makes it. Never a refusal standing in for it. |
-| Act before holding any document (sign in, join by a link, a password) | A route on `Example.routes` answering a plain form: it writes the session with `serverWrite` and redirects (reference.md, "Signing people in"). Nobody should have to hold a document to join it. |
+| Act before holding any document (sign in, join by a link, a password) | A route on `Example.routes` answering a plain form: it writes the session with `serverWrite` and redirects (reference.md, "Signing people in"). Nobody should have to hold a document to join it. The story posts the form: `does: post("/login", { ... })`, and its `seen` says who is told what the route wrote. |
 | Keep a document the server works out (my home, who is here) | `registerMemory`, computed whole from the tables in `afterChange`, written as the difference (step 5). Nobody writes it. |
 | Refuse a write, saying why | `permit` or `shape`, with the story's words (reference.md, "Saying why a write was refused"). |
 | Let a person undo | Register the documents with `{ ledger: true }`: the kernel's Undo and Redo walk it (reference.md, "The ledger"). |

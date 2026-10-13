@@ -2,7 +2,7 @@ import { db } from "./db";
 import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
-import { STORY_KEYS, type Gesture, type Stories, type Story, type Write } from "./stories";
+import { isPost, STORY_KEYS, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
 import { applyPatch, type PatchOp, type WriteId } from "./json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
@@ -80,7 +80,7 @@ export type Trace = {
   phase: "does" | "cannot" | "undo" | "redo" | "closesTab";
   as: string;
   /** None when a tab closes. */
-  write?: Write;
+  write?: Write | Post;
   heard: { member: string; messages: Heard[] }[];
   /** What each member's page read as the step was taken: the documents in front of them, as `<docType>:<docId>` (src/reading.ts). */
   holds: { member: string; docs: string[] }[];
@@ -289,7 +289,8 @@ const IMPLIED: Record<string, { closes: string[]; stops: string[] }> = {
  * its first legend), itself or by what it is in. The page's address (`data-page-write`) is not on
  * the page: the URL bar and the back button send it, so it offers nothing. An applet's
  * declaration that is not `[doc, op, path]` (the form before ops, a hand-written attribute)
- * offers nothing, and is said in `misdeclared`.
+ * offers nothing, and is said in `misdeclared`. A plain form that posts to a route (no
+ * `data-write`) is a control too: its op is `post`, its path the route's, and it names no document.
  */
 export function controlsOn(page: string, misdeclared: string[] = []): Control[] {
   const found: Control[] = [];
@@ -355,6 +356,11 @@ export function controlsOn(page: string, misdeclared: string[] = []): Control[] 
         found.push({ ...s, value: value === null ? undefined : decoded(value), free: ["form", "input", "textarea"].includes(el.tagName) });
       },
     })
+    .on("form[action]:not([data-write])", {
+      element(el) {
+        if (pressable(el) && el.getAttribute("method")?.toLowerCase() === "post") found.push({ doc: "", op: "post", path: decoded(el.getAttribute("action")!), free: true });
+      },
+    })
     .on("[data-writes]", {
       element(el) {
         if (!pressable(el)) return;
@@ -390,6 +396,9 @@ const fits = (pattern: string, path: string): boolean => {
   const have = path.split("/");
   return want.length === have.length && want.every((segment, i) => (segment === "*" ? have[i] !== "-" : segment === have[i]));
 };
+
+/** Does `c` post this form to its route: a plain form that posts there? */
+export const postsTo = (c: Control, how: Post): boolean => c.op === "post" && c.path === how.path;
 
 /** Does `c` send this op to this document? A free control sends any value; a button only its own. */
 export function offers(c: Control, doc: string, op: PatchOp): boolean {
@@ -526,6 +535,11 @@ export function misshapen(story: Story): string[] {
   if (kind === "closesTab" && story.closesTab !== true) why.push(`closesTab is true, or left out: this one is ${JSON.stringify(story.closesTab)}`);
   if (story.gesture !== undefined && !isGesture(story.gesture)) why.push(`a gesture is { press: selector } or { drag: [from, to] }: this one is ${JSON.stringify(story.gesture)}`);
   else if (story.gesture !== undefined && story.offPage) why.push("a story from no page (offPage) has no gesture");
+  const posted = story.does ?? story.cannot;
+  if (posted && isPost(posted)) {
+    if (typeof posted.path !== "string" || !posted.path.startsWith("/") || typeof posted.form !== "object" || posted.form === null || !Object.values(posted.form).every((v) => typeof v === "string")) why.push(`a post is a route's path and a form of strings: this one is ${JSON.stringify(posted)}`);
+    for (const key of ["undone", "redone", "gesture"] as const) if (story[key] !== undefined) why.push(`a post takes no ${key}: a route writes as the server, and its form is posted as it is drawn`);
+  }
   why.push(...unbudgeted(story.budget, "a"));
   return why;
 }
@@ -632,21 +646,35 @@ export async function run(
     return new Map(await Promise.all(cast.map(async (m) => [m.name, m === quiet ? await unsaid(m.sessionId) : unversioned(await draw(m.sessionId))] as const)));
   }
 
+  /** Posts a form to a route as a browser posts it: from the page's own site, with the session's cookie if it has one. The route's answer, not followed. */
+  const postForm = (how: Post, sessionId?: string): Promise<Response> =>
+    fetch(new URL(how.path, server.url), { method: "POST", body: new URLSearchParams(how.form), redirect: "manual", headers: { Origin: server.url.origin, ...(sessionId && { Cookie: `session_id=${sessionId}` }) } });
+
+  /** The session an answer's cookie names, if it names one. */
+  const cookieOf = (res: Response): string | undefined => /(?:^|;\s*|,\s*)session_id=([^;,\s]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
+
   /** Signs a member in through the example's own route, as a browser posts its form: the session the answer's cookie names, or undefined for a visitor. */
   async function signIn(name: string): Promise<string | undefined> {
     const how = stories.signIn?.(name);
     if (!how) return undefined;
-    const res = await fetch(new URL(how.path, server.url), { method: "POST", body: new URLSearchParams(how.form), redirect: "manual" });
-    const sessionId = /(?:^|;\s*|,\s*)session_id=([^;,\s]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
+    const res = await postForm(how);
+    const sessionId = cookieOf(res);
     if (!sessionId) throw new Error(`${name} could not sign in at ${how.path}: ${res.status}`);
     return sessionId;
   }
 
   async function connect(name: string): Promise<Member> {
-    const sessionId = (await signIn(name)) ?? crypto.randomUUID();
+    const member = { name, sessionId: (await signIn(name)) ?? crypto.randomUUID(), inbox: [], answered: [] } as Partial<Member> as Member; // its tab is `open`'s
+    await open(member);
+    return member;
+  }
+
+  /** Opens a tab of `member`'s session, as a page loading does: a socket of its own, and the page it is drawn. */
+  async function open(member: Member): Promise<void> {
     // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-    const ws: WebSocket = new WebSocket(tapped.url, { headers: { Cookie: `session_id=${sessionId}` } });
-    const member: Member = { name, sessionId, ws, inbox: [], page: "", taken: new Map(), answered: [] };
+    const ws: WebSocket = new WebSocket(tapped.url, { headers: { Cookie: `session_id=${member.sessionId}` } });
+    Object.assign(member, { ws, page: "", taken: new Map() });
+    const name = member.name;
     ws.addEventListener("message", (event) => {
       const message = JSON.parse(String(event.data)) as Heard;
       if (message.type === "inspect") return member.answered.shift()?.();
@@ -660,7 +688,35 @@ export async function run(
       if (message.type === "patch") taking(member.taken, message as unknown as { doc: string; version: number; ops: PatchOp[] });
     });
     await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
-    return member;
+  }
+
+  /**
+   * Posts a form to a route as `who`'s browser does (`postForm`), and waits for what the route set
+   * going: its writes, told from delta's stream as any change is. A redirect is followed as a
+   * browser follows it: their tab goes, and the page it lands on is theirs, in the session the
+   * answer's cookie names if it names one -- so what `from` marks for them is that page's. Refused
+   * when the route answers a 4xx (its words, the reason) or tells them a reason on the page they
+   * came from (`tell`).
+   */
+  async function posting(cast: Member[], who: Member, how: Post, from: Map<Member, number>): Promise<{ status: number; reason?: string }> {
+    const toldBefore = JSON.stringify(await settled(documents, () => toldTo(who.sessionId)) ?? null);
+    const res = await postForm(how, who.sessionId);
+    await server.idle();
+    if (res.status >= 400) {
+      await settle(cast);
+      return { status: res.status, reason: (await res.text()).trim() };
+    }
+    const line = await settled(documents, () => toldTo(who.sessionId));
+    await settle(cast); // the tab that posted has heard what the route set going, before it goes
+    if (res.status >= 300) {
+      await closeTab(who);
+      await server.idle();
+      who.sessionId = cookieOf(res) ?? who.sessionId;
+      from.set(who, who.inbox.length);
+      await open(who);
+      await settle(cast);
+    }
+    return { status: res.status, ...(line?.reason !== undefined && JSON.stringify(line) !== toldBefore && { reason: line.reason }) };
   }
 
   /**
@@ -839,7 +895,7 @@ export async function run(
     failing = failures;
     telling = story.name;
     /** What a step of the story carried, for `observe`: what each of `cast` was sent since `from`, and the ledger's entries since `entry`. */
-    function witness(phase: Trace["phase"], who: Member, write: Write | undefined, cast: Member[], from: Map<Member, number>, entry: number, holds: Trace["holds"]): void {
+    function witness(phase: Trace["phase"], who: Member, write: Write | Post | undefined, cast: Member[], from: Map<Member, number>, entry: number, holds: Trace["holds"]): void {
       observe?.({
         story: story.name,
         phase,
@@ -850,16 +906,20 @@ export async function run(
         ledger: ledger.since(entry).map(({ doc, undoable, ops, inverse }) => ({ doc, undoable, ops: JSON.parse(ops) as PatchOp[], inverse: JSON.parse(inverse) as PatchOp[] })),
       });
     }
-    /** `send`, witnessed. */
-    async function told(cast: Member[], who: Member, write: Write, phase: Trace["phase"]): Promise<number> {
-      if (!observe) return send(cast, who, write);
+    /** What `act` does -- `write`, sent or posted -- witnessed. */
+    async function witnessed<T>(cast: Member[], who: Member, write: Write | Post, phase: Trace["phase"], act: () => Promise<T>): Promise<T> {
+      if (!observe) return act();
       const from = mark(cast);
       const entry = ledgerMax();
       const holds = inFront(cast);
-      const id = await send(cast, who, write);
+      const done = await act();
       witness(phase, who, write, cast, from, entry, holds);
-      return id;
+      return done;
     }
+    /** `send`, witnessed. */
+    const told = (cast: Member[], who: Member, write: Write, phase: Trace["phase"]): Promise<number> => witnessed(cast, who, write, phase, () => send(cast, who, write));
+    /** `posting`, witnessed. */
+    const posted = (cast: Member[], who: Member, how: Post, phase: Trace["phase"], from: Map<Member, number>) => witnessed(cast, who, how, phase, () => posting(cast, who, how, from));
     db.exec("BEGIN");
     const cast: Member[] = [];
     try {
@@ -875,24 +935,37 @@ export async function run(
         const before = await snapshot(cast, who);
         const ledgerBefore = ledgerMax();
         const from = mark(cast);
-        // P3: a button on the author's page that sends exactly this, refused without a word, is a control that always fails
-        const buttons = controlsOn(who.page, failures).filter((c) => !c.free);
-        // a control of the page's own that sends it is one to try by hand; with none, that none does is the point
-        const own = controlsOn(who.page).filter((c) => !c.pattern);
-        if (story.cannot.ops.every((op) => own.some((c) => offers(c, story.cannot.doc, op)))) tryable.add(story);
-        if (story.told === undefined && story.cannot.ops.every((op) => buttons.some((c) => offers(c, story.cannot.doc, op)))) failures.push(`${who.name}'s page offers this, and it is refused without a word: a control that always fails`);
-        const answer = answerTo(who, await told(cast, who, story.cannot, "cannot"), from);
-        spent(story, outcome, "cannot", cast, from);
-        const handedBack = sentSince(who, from).some((h) => h.type === "render");
-        if (answer?.type === "patch") failures.push(`refused, but it landed: ${who.name}'s write was echoed back to them`);
-        else if (!answer || !handedBack) failures.push(`refused, but ${who.name} was not answered: ${answer ? "the page was not handed back" : "no refusal carried their write's id"}`);
+        const tried = story.cannot;
+        let reason: string | undefined;
+        let onPage = true; // where the refusal is told: on their page, or, for a route's 4xx, the page the browser shows in its place
+        if (isPost(tried)) {
+          // a route's refusal: a 4xx, or a reason told on the page it came from
+          if (controlsOn(who.page).some((c) => postsTo(c, tried))) tryable.add(story);
+          const answer = await posted(cast, who, tried, "cannot", from);
+          spent(story, outcome, "cannot", cast, from);
+          if (answer.status < 400 && answer.reason === undefined) failures.push(`refused, but it landed: the route answered ${who.name}'s post to ${tried.path} with ${answer.status}, and told them nothing`);
+          ({ reason } = answer);
+          onPage = answer.status < 400;
+        } else {
+          // P3: a button on the author's page that sends exactly this, refused without a word, is a control that always fails
+          const buttons = controlsOn(who.page, failures).filter((c) => !c.free);
+          // a control of the page's own that sends it is one to try by hand; with none, that none does is the point
+          const own = controlsOn(who.page).filter((c) => !c.pattern);
+          if (tried.ops.every((op) => own.some((c) => offers(c, tried.doc, op)))) tryable.add(story);
+          if (story.told === undefined && tried.ops.every((op) => buttons.some((c) => offers(c, tried.doc, op)))) failures.push(`${who.name}'s page offers this, and it is refused without a word: a control that always fails`);
+          const answer = answerTo(who, await told(cast, who, tried, "cannot"), from);
+          spent(story, outcome, "cannot", cast, from);
+          const handedBack = sentSince(who, from).some((h) => h.type === "render");
+          if (answer?.type === "patch") failures.push(`refused, but it landed: ${who.name}'s write was echoed back to them`);
+          else if (!answer || !handedBack) failures.push(`refused, but ${who.name} was not answered: ${answer ? "the page was not handed back" : "no refusal carried their write's id"}`);
+          reason = answer?.type === "refused" ? answer.reason : undefined;
+        }
         const after = await snapshot(cast);
         if (story.told !== undefined) {
           // told why: by the refusal of their own write, and on their page, the one change it may show
           const without = await unsaid(who.sessionId);
-          const reason = answer?.type === "refused" ? answer.reason : undefined;
           if (reason !== story.told) failures.push(`refused, but ${who.name} was not told "${story.told}"${reason === undefined ? "" : `: they were told "${reason}"`}`);
-          else if (!shows(after.get(who.name)!, without, story.told)) failures.push(`refused and told "${story.told}", but ${who.name}'s page does not show it`);
+          else if (onPage && !shows(after.get(who.name)!, without, story.told)) failures.push(`refused and told "${story.told}", but ${who.name}'s page does not show it`);
           after.set(who.name, without);
         }
         compare(before, after, cast, "refused, but", failures);
@@ -933,22 +1006,33 @@ export async function run(
       }
 
       if (story.from !== undefined) await put(cast, who, story.from, failures);
+      const does = story.does;
       // P1: the author's page offers a control for it -- unless it comes from no page (`offPage`)
       const offered = controlsOn(who.page, failures);
-      if (!story.offPage) for (const op of story.does.ops) if (!offered.some((c) => offers(c, story.does.doc, op))) failures.push(`${who.name} has no control on their page for ${op.op} ${op.path} on ${story.does.doc}`);
+      if (!story.offPage) {
+        if (isPost(does)) {
+          if (!offered.some((c) => postsTo(c, does))) failures.push(`${who.name} has no form on their page that posts to ${does.path}`);
+        } else for (const op of does.ops) if (!offered.some((c) => offers(c, does.doc, op))) failures.push(`${who.name} has no control on their page for ${op.op} ${op.path} on ${does.doc}`);
+      }
 
       const before = await snapshot(cast, who);
       const ledgerBefore = ledgerMax();
       const stood = placeOf(who.page);
       let from = mark(cast);
-      const answer = answerTo(who, await told(cast, who, story.does, "does"), from);
-      spent(story, outcome, "does", cast, from);
+      if (isPost(does)) {
+        const answer = await posted(cast, who, does, "does", from);
+        spent(story, outcome, "does", cast, from);
+        if (answer.status >= 400 || answer.reason !== undefined) failures.push(`nothing landed: the route refused ${who.name}'s post to ${does.path}${answer.reason ? `: "${answer.reason}"` : ` with ${answer.status}`}`);
+      } else {
+        const answer = answerTo(who, await told(cast, who, does, "does"), from);
+        spent(story, outcome, "does", cast, from);
+        if (answer?.type !== "patch") failures.push(answer ? `nothing landed: ${who.name}'s write was refused${answer.reason ? `: "${answer.reason}"` : ""}` : `${who.name}'s write was not answered: no echo carried its id`);
+      }
       // Where the write left its author: answering a modal puts it away (off the ledger, a visit),
       // so the undo and the redo are looked at from where each was taken -- where the author stands
       // is theirs, not the write's.
       const landed = placeOf(who.page);
       const moved = stories.goTo && stood !== undefined && landed !== undefined && stood !== landed;
-      if (answer?.type !== "patch") failures.push(answer ? `nothing landed: ${who.name}'s write was refused${answer.reason ? `: "${answer.reason}"` : ""}` : `${who.name}'s write was not answered: no echo carried its id`);
       if (process.env.STORY_TRACE) for (const raw of who.inbox.slice(from.get(who))) console.log(`        ${who.name} heard: ${raw.slice(0, 160)}`);
       checkUntold(cast, story.untold, from, "after the story", failures);
       const after = await snapshot(cast);
@@ -958,6 +1042,7 @@ export async function run(
       await stale(cast, "after the story", failures);
 
       noticed(before, quietAfter, cast, seen, failures); // what the author was told is checked on its own (above); an `untold` member is further told of nothing
+      if (isPost(does)) return outcome; // a route writes as the server: nothing of the author's to undo
 
       // off the ledger, or the author has gone (logged out): no undo is theirs to press
       if (entries.length === 0 || !(await active(who.sessionId))) {
@@ -1211,7 +1296,18 @@ export async function run(
           }
         }
       }
-      if (tried) {
+      if (tried && isPost(tried)) {
+        // a form posted to a route: the browser goes where the route sends it, so what landed is what it was told there
+        const toldBefore = JSON.stringify(await settled(documents, () => toldTo(who.sessionId)) ?? null);
+        tally.presses++;
+        const sent = await hand.post(tried);
+        if ("failure" in sent) return story.cannot && sent.none ? failures : by(`${who.name} could not post to ${tried.path}: ${sent.failure}`);
+        const line = await settled(documents, () => toldTo(who.sessionId));
+        const reason = line?.reason !== undefined && JSON.stringify(line) !== toldBefore ? line.reason : undefined;
+        const refused = !sent.app || reason !== undefined;
+        if (story.does && refused) return by(`nothing landed: the route refused ${who.name}'s post to ${tried.path}${reason ? `: "${reason}"` : ""}`);
+        if (story.cannot && !refused) return by(`${who.name}'s post to ${tried.path} landed, and should have been refused`);
+      } else if (tried) {
         const from = mark(cast);
         const why = await press(tried, story.gesture);
         if (why !== undefined && story.cannot && none) return failures; // nobody could send it from the page: the refusal is for the wire's, as the story says

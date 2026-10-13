@@ -59,6 +59,25 @@ describe("the stories by hand", () => {
     expect(await byHand(loose, [hello])).toEqual([["by hand, ada could not add /messages/- on room: its field is in no form that sends it"]]);
   }, 60000);
 
+  test("a form posted to a route by hand: typed into and sent, the browser following where it sends it, signed in or told why; one a person cannot reach fails by name", async () => {
+    const { example: leave } = await import("../examples/leave/index");
+    const { stories: told } = await import("../examples/leave/stories");
+    const posts = told.stories.filter((s) => s.name.startsWith("Bo signs in on another phone") || s.name.startsWith("Someone types Bo's email"));
+    const after = told.stories.filter((s) => s.name.startsWith("Ann asks for her draft")); // a fresh browser after a post: not signed in as Bo by the route's cookie
+    const report = await run(leave, { ...told, stories: [...posts, ...after] }, undefined, { byHand: true });
+    expect(report.outcomes.map((o) => o.failures)).toEqual([[], [], []]);
+    expect(report.byHand).toMatchObject({ stories: 3 });
+
+    const wrong = (change: (html: string) => string): Example => ({ ...leave, render: (sessionId) => change(leave.render(sessionId)) });
+    const unseen = wrong((html) => html.replace('<form class="sign-in"', '<form style="display: none" class="sign-in"'));
+    const done = await run(unseen, { ...told, stories: posts }, undefined, { byHand: true });
+    expect(done.outcomes.map((o) => o.failures)).toEqual([["by hand, visitor could not post to /login: a field of its form is not to be seen"], ["by hand, visitor could not post to /login: a field of its form is not to be seen"]]);
+    const nameless = wrong((html) => html.replace('name="password"', 'name="secret"'));
+    expect((await run(nameless, { ...told, stories: posts.slice(0, 1) }, undefined, { byHand: true })).outcomes[0]!.failures).toEqual(["by hand, visitor could not post to /login: its form has no field password"]);
+    const buttonless = wrong((html) => html.replace('<button type="submit" class="tool">', '<button type="submit" class="tool" style="visibility: hidden">'));
+    expect((await run(buttonless, { ...told, stories: posts.slice(0, 1) }, undefined, { byHand: true })).outcomes[0]!.failures).toEqual(["by hand, visitor could not post to /login: the button of its form is not to be seen"]);
+  }, 60000);
+
   test("a press the client never hears sends nothing; a button in a disabled fieldset's first legend is pressed", async () => {
     const logout = { doc: "session", ops: [{ op: "remove" as const, path: "/name" }] };
     const going: Story = { name: "Ada logs out", as: "ada", does: logout, seen: ["ada", "bob"] };
