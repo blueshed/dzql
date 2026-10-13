@@ -1,5 +1,7 @@
 import { read as readDoc } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
+import { cityOf } from "../applets/clock"; // the applet's own, pure: the browser says the city the same way
+export { cityOf };
 
 // A session's clock, kept in delta (`clock:<id>`, ../delta.ts): the city whose time it shows, as
 // an IANA zone ("Europe/Zurich"). The zones are the runtime's own list; a write names one of them
@@ -19,8 +21,6 @@ export type ClockDocument = {
 /** Every zone the runtime knows, "Area/City" and the like, sorted. */
 export const ZONES: readonly string[] = Intl.supportedValuesOf("timeZone");
 const ZONE_SET = new Set(ZONES);
-
-export const cityOf = (tz: string): string => (tz.split("/").pop() ?? tz).replaceAll("_", " ");
 
 /** The offset of a zone from UTC at `now`, as "+HH:MM" / "-HH:MM" ("+00:00" for UTC). */
 export function offsetOf(tz: string, now = new Date()): string {
