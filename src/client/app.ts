@@ -395,7 +395,7 @@ function keepPlaces(places: Place[], moving?: Element): void {
  * if the drawing left it nowhere, and follows the page in the URL and a reveal.
  */
 function drawing(draw: () => void, moving?: Element): () => void {
-  const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, el.childNodes.length]));
+  const before = new Map([...app.querySelectorAll<HTMLElement>("[data-autoscroll]")].map((el) => [el, new Set([...el.children].map(known))]));
   const previousReveal = app.querySelector<HTMLElement>("[data-reveal]");
   return () => {
     const keyboard = keyboardAfter();
@@ -403,13 +403,16 @@ function drawing(draw: () => void, moving?: Element): () => void {
     draw();
     keepPlaces(places, moving);
     mountApplets();
-    // Pin to the bottom only when this render actually added content here, or
+    // Pin to the bottom only when this render put something new at its foot, or
     // the element itself just appeared (a fresh load, entering a room) -- an
     // unrelated update (someone else's presence, an undo elsewhere) must not
-    // yank the scroll position out from under someone reading history.
+    // yank the scroll position out from under someone reading history. The foot,
+    // not the count: a list that keeps its last fifty takes the oldest out as the
+    // newest comes in, and its count stays fifty (todo n70).
     for (const el of app.querySelectorAll<HTMLElement>("[data-autoscroll]")) {
       const had = before.get(el);
-      if (had === undefined || el.childNodes.length > had) el.scrollTop = el.scrollHeight;
+      const foot = el.lastElementChild;
+      if (had === undefined || (foot && !had.has(known(foot)))) el.scrollTop = el.scrollHeight;
     }
     keyboard();
     syncPage();
@@ -417,6 +420,9 @@ function drawing(draw: () => void, moving?: Element): () => void {
     for (const fn of drawn) fn();
   };
 }
+
+/** A child of a list as a drawing knows it: by its id, or else by what it is. */
+const known = (el: Element): string => (el.id ? `#${el.id}` : el.outerHTML);
 
 function render(html: string) {
   const moving = movingElement(html);

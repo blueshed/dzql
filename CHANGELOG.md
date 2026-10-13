@@ -126,6 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A full chat room scrolls to the newest message again** (todo n70): a `[data-autoscroll]` list is pinned to its foot when something new is there, not when its count grows. A room keeps its last fifty, so from the fifty-first each message took the oldest out and landed below the fold, your own included.
 - **leave's draft is its asker's alone until they ask**: it is kept in their session (`replace /draft` on `session`, no longer `team`), so dragging across days tells Bo and Mo nothing; asking is the write that tells the team, it drops the draft, and its Undo gives it back (`afterWalk`).
 - **A table code looks up but no document holds is "looked up, never held"**, dashed, not red: a credential read at sign-in (canyou-eta's passkeys, the wedding's couples, leave's logins) belongs in no document. Red is left for a table nothing reaches and no code reads.
 - **holders² is a warning only where a document also tells someone no story asked.** Every holder told of every write is what a shared document is for -- a plan everyone in it follows, a chat room -- so where the stories ask for it the card says the cost (`every holder told of every write, as the stories ask: holders²`) without the amber mark. The wedding's everyone stays marked: it tells ben what no story asked.

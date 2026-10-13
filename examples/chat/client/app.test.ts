@@ -272,10 +272,8 @@ describe("app.ts in a real browser", () => {
     expect(await viewA.evaluate<boolean>(`${m}.scrollTop + ${m}.clientHeight >= ${m}.scrollHeight - 1`)).toBe(true);
   }, 20000); // fifteen messages typed, one by one
 
-  // Fails until the kernel's client is fixed (todo n70): drawing() in src/client/app.ts pins a
-  // [data-autoscroll] list only when its count of children grows, and a full room's stays at fifty.
-  // Remembering the last child instead makes it pass; make this a plain test() when that lands.
-  test.failing("a full room still scrolls to the newest message: the fifty-first takes the oldest out, and lands in view", async () => {
+  // todo n70: a [data-autoscroll] list is pinned when something new is at its foot, not when its count grows
+  test("a full room still scrolls to the newest message: the fifty-first takes the oldest out, and lands in view", async () => {
     await using view = new Bun.WebView();
     await view.navigate(urlFor(view, server.url));
     await submitName(view, `Full-${crypto.randomUUID()}`);
