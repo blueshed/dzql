@@ -1,78 +1,17 @@
-import { afterAll, beforeAll, describe, expect, setSystemTime, test } from "bun:test";
+import { describe, expect, setSystemTime, test } from "bun:test";
 import { bento, choice, type Field } from "../bento";
 import { appletProps, write } from "../html";
 import { diff, drawParts, part, splitTag } from "../parts";
 import { press, waitFor } from "../webview";
 import { renderMessage } from "../compartments/render";
+import { lastId, push, pushRefused, pushRender, quietPages, reconnected, stubEverySocket, stubSend } from "./socket.test.helpers";
 import fixture from "./app.test.html";
 
-let server: ReturnType<typeof Bun.serve>;
+// The client in a real browser, on a socket that goes quiet (socket.test.helpers.ts).
+const open = quietPages({ "/": fixture });
 
 /** A write the client sent, as `stubSend` keeps it in `window.__sent` (its id apart, in `window.__ids`). */
 type Sent = { doc: string; ops: { op: string; path: string; value?: unknown }[] };
-
-beforeAll(() => {
-  // No eta server: app.ts connects a real WebSocket on load, so `/ws` just has to accept the
-  // upgrade and go quiet -- every test drives the client itself by overriding that socket's
-  // `send` and dispatching synthetic "message" events on it (see `stubSend`/`pushRender` below).
-  server = Bun.serve({
-    port: 0,
-    routes: {
-      "/": fixture,
-      "/ws": (req, server) =>
-        server.upgrade(req, { data: {} }) ? undefined : new Response("Upgrade failed", { status: 400 }),
-    },
-    websocket: { open() {}, message() {}, close() {} },
-  });
-});
-
-afterAll(() => {
-  server.stop(true);
-});
-
-
-/** Opens a fresh view on the fixture and waits for app.ts's socket to be open. */
-async function open(): Promise<Bun.WebView> {
-  const view = new Bun.WebView();
-  await view.navigate(server.url.toString());
-  await waitFor(view, `window.eta?.socket()?.readyState === 1`, (v) => v === true);
-  return view;
-}
-
-/** Replaces the live socket's `send` with one that records to `window.__sent` instead of
- * putting anything on the wire -- the fixture's `/ws` route has nothing to say back anyway. Each
- * write's id, which the server would hand back, is kept apart in `window.__ids`. */
-async function stubSend(view: Bun.WebView): Promise<void> {
-  await view.evaluate(`(() => {
-    window.__sent = [];
-    window.__ids = [];
-    window.eta.socket().send = (data) => { const { id, ...write } = JSON.parse(data); window.__ids.push(id); window.__sent.push(write); };
-  })()`);
-}
-
-/** Simulates the server pushing a full render, `src/compartments/render.ts`'s `renderMessage` --
- * a real "message" event on app.ts's own socket. */
-async function pushRender(view: Bun.WebView, html: string): Promise<void> {
-  const payload = renderMessage(html);
-  await view.evaluate(
-    `window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(payload)} }))`,
-  );
-}
-
-/** Simulates the server sending any message -- a patch, a render in parts -- on app.ts's own socket. */
-async function push(view: Bun.WebView, message: unknown): Promise<void> {
-  const payload = JSON.stringify(message);
-  await view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(payload)} }))`);
-}
-
-/** The server refusing this page's last write, and why if `reason`, then handing the page back whole, as src/server.ts does. */
-async function pushRefused(view: Bun.WebView, html: string, reason?: string): Promise<void> {
-  await view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: JSON.stringify({ type: "refused", id: window.__ids.at(-1), reason: ${JSON.stringify(reason)} }) }))`);
-  await pushRender(view, html);
-}
-
-/** The id of the last write this page sent, which its echo or its refusal hands back. */
-const lastId = (view: Bun.WebView): Promise<number> => view.evaluate<number>(`window.__ids.at(-1)`);
 
 /** Waits for the page to have sent `n` writes, and gives the nth. */
 async function sentAt(view: Bun.WebView, n: number, timeout = 1000): Promise<Sent> {
@@ -116,7 +55,6 @@ const ticked = `["booked", "paid", "kind-see", "kind-eat", "kind-travel"].filter
 describe("app.ts in a real browser, with a stubbed socket", () => {
   test("a full render with a matching data-moving element transitions in place and clears its name after", async () => {
     await using view = await open();
-    await stubSend(view);
 
     await pushRender(view, `<div id="c-box" data-moving="box"><p>small</p></div>`);
     await waitFor(view, `document.querySelector('#c-box')?.textContent`, (v) => v === "small");
@@ -150,7 +88,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("what changes inside a data-moving element is not a move: no transition, so nobody's typing is swallowed by one", async () => {
     await using view = await open();
-    await stubSend(view);
     await pushRender(view, `<div id="win" data-moving="rooms" class="open"><p>one room</p><input id="new"></div>`);
     await view.evaluate(`(() => {
       window.__named = [];
@@ -170,7 +107,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("with several data-moving candidates on screen at once, only the one that actually changed transitions (W3: a box with more than one openable cell)", async () => {
     await using view = await open();
-    await stubSend(view);
 
     // three siblings each carry data-moving, the way every navigable cell in a box does before
     // any one of them is known to be the next thing opened
@@ -219,7 +155,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a full render that newly marks an element data-reveal scrolls it into view", async () => {
     await using view = await open();
-    await stubSend(view);
 
     const items = Array.from({ length: 20 }, (_, i) => `<div class="item" id="item-${i}">Item ${i}</div>`).join("");
     await pushRender(view, `<div class="list" id="list">${items}</div>`);
@@ -463,7 +398,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a click in a field that carries data-write writes nothing: the attribute names the field's path, it is not a gesture", async () => {
     await using view = await open();
-    await stubSend(view);
 
     await pushRender(
       view,
@@ -483,7 +417,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("Escape presses what was opened last -- the last [data-escape] on the page -- and nothing when nothing is open, or something took the key first", async () => {
     await using view = await open();
-    await stubSend(view);
     // (the WebView's press() does not deliver a keydown, so the key is dispatched as the browser would)
     const key = (name: string, on = "document") => view.evaluate(`${on}.dispatchEvent(new KeyboardEvent('keydown', { key: '${name}', bubbles: true, cancelable: true }))`);
 
@@ -509,7 +442,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a data-write-on=\"input\" form sends once after several keystrokes, debounced, and never repeats an unchanged value", async () => {
     await using view = await open();
-    await stubSend(view);
 
     await pushRender(
       view,
@@ -566,7 +498,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("after an undo, a field nobody is in shows the value undone to, and leaving another field sends nothing again", async () => {
     await using view = await open();
-    await stubSend(view);
     const form = (message: string, note: string) =>
       `<form data-write-on="blur" id="f">
         <input id="msg" value="${message}" data-write='{"doc":"household","op":"replace","path":"/message"}'>
@@ -599,7 +530,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a select in a data-write-on=\"change\" form goes only when it is chosen, and after an undo shows what was undone to", async () => {
     await using view = await open();
-    await stubSend(view);
     await pushRender(view, tripForm("Temple", "eat"));
 
     await view.click("#title");
@@ -622,7 +552,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("after an undo, a select shows its drawn option, even one chosen by hand before and with someone still in it, so the next commit does not revert the undo", async () => {
     await using view = await open();
-    await stubSend(view);
     await pushRender(view, tripForm("Temple", "see"));
 
     await view.evaluate(`document.getElementById('kind').focus()`); // a pick from its menu leaves the caret in it
@@ -645,7 +574,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("what a select was drawn showing is the browser's own: the last option drawn `selected`, else the first not disabled, and in a list none", async () => {
     await using view = await open();
-    await stubSend(view);
     const form = (pick = "") =>
       `<form data-write-on="blur" id="f">
         <select id="pick" data-write='{"doc":"trip","op":"replace","path":"/kind"}'><option value="" disabled>Pick one</option>${["see", "eat"].map((k) => `<option${k === pick ? " selected" : ""}>${k}</option>`).join("")}</select>
@@ -666,7 +594,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a multiple select is not a field: an editing form never sends it, nor does a render choose in it", async () => {
     await using view = await open();
-    await stubSend(view);
     const form = (title: string) =>
       `<form data-write-on="change" id="f">
         <input id="title" value="${title}" data-write='{"doc":"trip","op":"replace","path":"/title"}'>
@@ -687,7 +614,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("an editing form says a thing once until a write lands, then may say it again: leaving twice sends once, and after an undo the same choice goes", async () => {
     await using view = await open();
-    await stubSend(view);
     const landed = (version: number, kind: string) => push(view, { type: "patch", doc: "trip:1", version, ops: [{ op: "replace", path: "/kind", value: kind }] });
     for (const on of ["blur", "input"]) {
       await pushRender(view, `<p>elsewhere</p>`); // a page of its own, so each form is a new one
@@ -716,7 +642,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a choice not yet sent is the person's: a render that moves the drawn option under it keeps it, and leaving sends it", async () => {
     await using view = await open();
-    await stubSend(view);
     await pushRender(view, tripForm("Temple", "eat", "blur"));
 
     await view.evaluate(`document.getElementById('kind').focus()`);
@@ -729,7 +654,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a choice goes with its value, not its place: an option added before it leaves it chosen", async () => {
     await using view = await open();
-    await stubSend(view);
     const add = (days: string[]) =>
       `<form id="add" data-write='{"doc":"trip","op":"add","path":"/stops/-"}'><input id="what" name="what"><select id="day" name="day">${days.map((d) => `<option>${d}</option>`).join("")}</select></form>`;
     await pushRender(view, add(["D1", "D2", "D3"]));
@@ -740,7 +664,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a refused add whose page no longer offers the option chosen hands back the drawn one, with what was typed", async () => {
     await using view = await open();
-    await stubSend(view);
     const book = (slots: string[], taken = "") =>
       `<form id="book" data-write='{"doc":"diary","op":"add","path":"/bookings/-"}'><input id="who" name="who"><select id="slot" name="slot">${slots.map((s) => `<option${s === taken ? " disabled" : ""}>${s}</option>`).join("")}</select></form>`;
     await pushRender(view, book(["9:00", "10:00", "10:30"]));
@@ -762,7 +685,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("tabbing through a select in a data-write-on=\"blur\" form sends nothing; choosing in it, then leaving, sends it alone", async () => {
     await using view = await open();
-    await stubSend(view);
     // no option drawn `selected`: the select shows its first, and that is what was rendered
     await pushRender(
       view,
@@ -841,7 +763,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a patch a render already holds is not laid on again: the mount says the document's version, and the patches at or below it are passed over", async () => {
     await using view = await open();
-    await stubSend(view);
     const mount = (rows: { n: number }[], v: number) => part("t", `<div id="t" data-applet="tally"${appletProps({ me: "ann", rows }, { doc: "list:1", under: "/rows", v })}></div>`);
     const text = `document.getElementById('t').textContent`;
     await pushRender(view, `<main>${mount([{ n: 1 }], 1)}</main>`);
@@ -914,7 +835,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("words in an editing form are said before Escape or Back puts its drawer away, though a field a render takes out says nothing in WebKit", async () => {
     await using view = await open();
-    await stubSend(view);
     const toPage = `'{"doc":"session","op":"replace","path":"/page"}'`;
     const page = (open: boolean) =>
       `<main data-page="${open ? "?answer" : ""}" data-page-write=${toPage}>${open ? `<aside><button type="button" id="x" data-escape data-write=${toPage} data-value="">×</button><form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>Hello</textarea></form></aside>` : ""}</main>`;
@@ -938,8 +858,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a write made while the socket is down is not taken for sent: a form keeps what is typed, and an editing form says it once the page is drawn afresh", async () => {
     await using view = await open();
-    // every socket's send, the next one's too; as a real socket does, one not open drops what it is given (the id kept apart, as stubSend does)
-    await view.evaluate(`(() => { window.__sent = []; window.__ids ??= []; const send = function (d) { const { id, ...write } = JSON.parse(d); if (this.readyState === 1) { window.__ids.push(id); window.__sent.push(write); } }; WebSocket.prototype.send = send; window.eta.socket().send = send; })()`);
+    await stubEverySocket(view);
     await pushRender(view, `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>
       <form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>Hello</textarea></form>`);
     await view.click("#text");
@@ -950,7 +869,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
     const dropped = await view.evaluate(`(() => { window.__old = window.eta.socket(); window.__old.close(); document.getElementById('say').requestSubmit(); return document.getElementById('text').value; })()`);
     expect(dropped).toBe("hi all"); // not sent, so not cleared
-    await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
+    await reconnected(view);
     const words = { doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] };
     expect(await view.evaluate<number>(`window.__sent.length`)).toBe(0); // not before the page is drawn afresh
     await pushRender(view, `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>
@@ -981,7 +900,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a form clears as it sends: what is typed while the write is on its way is kept, whoever's echo comes", async () => {
     await using view = await open();
-    await stubSend(view);
     const room = `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>`;
     await pushRender(view, room);
     await view.click("#text");
@@ -998,7 +916,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a refused write keeps what is typed after it: its refusal ends the wait, so nobody's echo clears the field", async () => {
     await using view = await open();
-    await stubSend(view);
     const room = `<form id="say" data-write='{"doc":"room","op":"add","path":"/messages/-"}'><input id="text" name="text"></form>`;
     await pushRender(view, room);
     await view.click("#text");
@@ -1014,7 +931,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a refused write hands back the option chosen, as it does what was typed", async () => {
     await using view = await open();
-    await stubSend(view);
     const add = `<form id="add" data-write='{"doc":"trip","op":"add","path":"/events/-"}'>
       <input id="title" name="title">
       <select id="kind" name="kind"><option>see</option><option selected>eat</option><option>travel</option></select>
@@ -1033,7 +949,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a box or a radio in an editing form goes only when it is ticked or unticked: a box as whether it is ticked, a radio as its value", async () => {
     await using view = await open();
-    await stubSend(view);
     await pushRender(view, ticksForm("Temple", true, false, "see"));
 
     await view.click("#title");
@@ -1056,7 +971,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("after an undo, a box and a radio show what they are drawn, a box even with the caret still in it, so the next commit does not revert the undo", async () => {
     await using view = await open();
-    await stubSend(view);
     await pushRender(view, ticksForm("Temple", false, false, "see"));
 
     await view.click("#kind-eat");
@@ -1078,7 +992,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a render drawn between pressing a box and letting go leaves it be, so the click ticks it as the person meant, and nothing undoes the other's tick", async () => {
     await using view = await open();
-    await stubSend(view);
     for (const [touched, pressing] of [
       [false, `document.getElementById('paid').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`],
       [true, `document.getElementById('paid').dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }))`],
@@ -1103,7 +1016,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a tick not yet sent is the person's: a render that draws another choice keeps it, and leaving sends it", async () => {
     await using view = await open();
-    await stubSend(view);
     await pushRender(view, ticksForm("Temple", false, false, "see", "blur"));
 
     await press(view, "#paid");
@@ -1117,7 +1029,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a creating form sends a box as whether it is ticked, ticked or not, so its value keeps one shape", async () => {
     await using view = await open();
-    await stubSend(view);
     await pushRender(view, `<form id="add" data-write='{"doc":"trip","op":"add","path":"/events/-"}'><input id="title" name="title"><input type="checkbox" id="booked" name="booked"></form>`);
     await view.click("#title");
     await view.type("Fushimi");
@@ -1148,7 +1059,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("a refused write hands back what was ticked, as it does what was typed, and keeps a choice made while it was on its way", async () => {
     await using view = await open();
-    await stubSend(view);
     const add = `<form id="add" data-write='{"doc":"trip","op":"add","path":"/events/-"}'>
       <input id="title" name="title">
       <input type="checkbox" id="booked" name="booked">
@@ -1193,7 +1103,6 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
 
   test("the bento's add modal asks with a select and a link, and a refused add hands back what was typed and chosen", async () => {
     await using view = await open();
-    await stubSend(view);
     const { addModal } = bento({ icon: () => "", session: "session" });
     const fields: Field[] = [
       { name: "title", label: "What" },
@@ -1231,7 +1140,6 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
 
   test("a page sent whole for another reason while a write is on its way hands nothing back: someone else's write turned this page into another", async () => {
     await using view = await open();
-    await stubSend(view);
     await pushRender(view, say());
     await saying(view, "first");
 
@@ -1244,7 +1152,6 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
 
   test("a write's own refusal hands back what it sent, though another write's echo of the same document came first", async () => {
     await using view = await open();
-    await stubSend(view);
     await pushRender(view, say());
     await saying(view, "hello");
 
@@ -1257,7 +1164,6 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
 
   test("eta.inspect()'s last write is told by its own id: another's echo of its document marks nothing, and a refusal says why against the write it refused, not the last one sent", async () => {
     await using view = await open();
-    await stubSend(view);
     await pushRender(view, `<button id="hi" data-write='{"doc":"room","op":"add","path":"/messages/-"}' data-value="hi">hi</button><button id="undo" data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>Undo</button>`);
     const lastSent = () => view.evaluate<Record<string, unknown>>(`window.eta.inspect().lastSent`);
 
@@ -1280,7 +1186,6 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
 
   test("a write on its way when the socket goes is unanswered: the page drawn afresh hands back what its form sent, and an editing form says its edit again, once", async () => {
     await using view = await open();
-    await stubSend(view);
     const words = (text: string) => `<form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>${text}</textarea></form>`;
     await pushRender(view, say() + words("Hello"));
     await view.click("#words");
@@ -1291,7 +1196,7 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
 
     // the socket goes before either is answered, and a new one opens: no server will answer either now
     await view.evaluate(`(window.__old = window.eta.socket()).close()`);
-    await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
+    await reconnected(view);
     expect(await view.evaluate<Record<string, unknown>>(`window.eta.inspect().lastSent`)).toMatchObject({ doc: "room", echoed: false, refused: false, unanswered: true });
     await stubSend(view);
     expect(await view.evaluate<number>(`window.__sent.length`)).toBe(0); // nothing said before the page shows what landed
@@ -1308,8 +1213,7 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
 
   test("an edit that landed before its socket went is not said again: the page drawn afresh shows it", async () => {
     await using view = await open();
-    // every socket's send, the next one's too; one not open drops what it is given
-    await view.evaluate(`(() => { window.__sent = []; window.__ids = []; const send = function (d) { const { id, ...write } = JSON.parse(d); if (this.readyState === 1) { window.__ids.push(id); window.__sent.push(write); } }; WebSocket.prototype.send = send; window.eta.socket().send = send; })()`);
+    await stubEverySocket(view);
     const words = (text: string) => `<form data-write-on="blur"><textarea id="words" data-write='{"doc":"household","op":"replace","path":"/message"}'>${text}</textarea></form>`;
     await pushRender(view, words("Hello"));
     await view.click("#words");
@@ -1319,7 +1223,7 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
     await sentAt(view, 1);
 
     await view.evaluate(`(window.__old = window.eta.socket()).close()`); // gone before its echo came
-    await waitFor(view, `window.eta.socket() !== window.__old && window.eta.socket().readyState === 1 && !document.getElementById('app').inert`, (v) => v === true, 4000);
+    await reconnected(view);
     await pushRender(view, words("Hello there")); // the page drawn afresh: it landed
     await Bun.sleep(50);
     expect(await view.evaluate<number>(`window.__sent.length`)).toBe(1); // said once, before the socket went

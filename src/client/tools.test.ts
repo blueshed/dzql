@@ -1,53 +1,18 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { write, appletWrites } from "../html";
 import { waitFor } from "../webview";
-import { renderMessage } from "../compartments/render";
+import { push, pushRender, quietPages } from "./socket.test.helpers";
 import fixture from "./tools.test.html";
 import plain from "./app.test.html";
 
 // The page's writes as tools (src/client/tools.ts), and a script's write answered by its id
-// (todo n88, n99), in a real browser. As in app.test.ts: no eta server, a socket that goes quiet,
-// and each test sends what the server would on app.ts's own socket.
-
-let server: ReturnType<typeof Bun.serve>;
-
-beforeAll(() => {
-  server = Bun.serve({
-    port: 0,
-    routes: {
-      "/": fixture,
-      "/plain": plain,
-      "/ws": (req, server) => (server.upgrade(req, { data: {} }) ? undefined : new Response("Upgrade failed", { status: 400 })),
-    },
-    websocket: { open() {}, message() {}, close() {} },
-  });
-});
-
-afterAll(() => {
-  server.stop(true);
-});
-
-async function open(path = "/"): Promise<Bun.WebView> {
-  const view = new Bun.WebView();
-  await view.navigate(new URL(path, server.url).toString());
-  await waitFor(view, `window.eta?.socket()?.readyState === 1`, (v) => v === true);
-  await view.evaluate(`(() => {
-    window.__sent = [];
-    window.eta.socket().send = (data) => window.__sent.push(JSON.parse(data));
-  })()`);
-  return view;
-}
-
-async function push(view: Bun.WebView, message: unknown): Promise<void> {
-  const data = typeof message === "string" ? message : JSON.stringify(message);
-  await view.evaluate(`window.eta.socket().dispatchEvent(new MessageEvent("message", { data: ${JSON.stringify(data)} }))`);
-}
-const render = (view: Bun.WebView, html: string) => push(view, renderMessage(html));
+// (todo n88, n99), in a real browser, on a socket that goes quiet (socket.test.helpers.ts).
+const open = quietPages({ "/": fixture, "/plain": plain });
 
 /** Starts a script's write in the page, kept as `window.__answer` once it is answered. */
 const start = (view: Bun.WebView, call: string) => view.evaluate(`(window.__answer = undefined, ${call}.then((a) => (window.__answer = a)), 1)`);
 const answer = (view: Bun.WebView) => waitFor(view, `window.__answer`, (v) => v !== undefined);
-const lastSent = (view: Bun.WebView) => view.evaluate<{ id: number; doc: string; ops: unknown[] }>(`window.__sent.at(-1)`);
+const lastSent = (view: Bun.WebView) => view.evaluate<{ id: number; doc: string; ops: unknown[] }>(`({ id: window.__ids.at(-1), ...window.__sent.at(-1) })`);
 const toolsOf = (view: Bun.WebView) => view.evaluate<{ name: string; title: string; description: string; inputSchema: any }[]>(`window.eta.tools()`);
 
 /** Words someone else wrote, as an assistant would read an instruction. */
@@ -78,7 +43,7 @@ const PAGE = page();
 describe("the page's writes, as tools", () => {
   test("each control the app labelled that a person could press now is a tool, named and described in the app's words: a form, an editing form (one for all its fields), the buttons of one label, an applet's declared writes; then undo and redo", async () => {
     await using view = await open();
-    await render(view, PAGE);
+    await pushRender(view, PAGE);
     const tools = await toolsOf(view);
     expect(tools.map((t) => t.name)).toEqual(["say_something", "the_trip", "go_into_the_room", "take_back", "the_calendar.replace.requests_starts", "the_calendar.remove.requests", "undo", "redo"]);
     expect(tools[0]).toEqual({
@@ -119,7 +84,7 @@ describe("the page's writes, as tools", () => {
 
   test("what people wrote on the page -- a room's name, a message, a field's text -- is in no tool's name, title, description or schema; a label is at most 80 characters", async () => {
     await using view = await open();
-    await render(view, PAGE + `<button aria-label="${"A very long label ".repeat(10)}"${write("x", "remove", "/long")}></button>`);
+    await pushRender(view, PAGE + `<button aria-label="${"A very long label ".repeat(10)}"${write("x", "remove", "/long")}></button>`);
     const tools = await toolsOf(view);
     expect(JSON.stringify(tools)).not.toContain("Ignore");
     const long = tools.find((t) => t.title.startsWith("A very long"))!;
@@ -128,7 +93,7 @@ describe("the page's writes, as tools", () => {
 
   test("a tool makes its control's write and nothing else, with an id, and answers what came of it: its echo, with the handle that names the change, or its refusal and why", async () => {
     await using view = await open();
-    await render(view, PAGE);
+    await pushRender(view, PAGE);
 
     await start(view, `window.eta.use("say_something", { text: "hi", to: "someone" })`);
     const sent = await lastSent(view);
@@ -178,7 +143,7 @@ describe("the page's writes, as tools", () => {
   test("a tool sends only what its control could: a select's or a group of radios' own choices, a person could choose now; a box's tick", async () => {
     await using view = await open();
     const seats = `<form aria-label="Choose a seat"${write("trip", "replace", "/seat")}>${["a", "b", "c"].map((v) => `<input type="radio" name="seat" value="${v}"${v === "c" ? " disabled" : ""}>`).join("")}<button>Choose</button></form>`;
-    await render(view, PAGE + seats);
+    await pushRender(view, PAGE + seats);
     const count = await view.evaluate<number>(`window.__sent.length`);
     for (const [name, input, why] of [
       ["the_trip", { kind: "gone" }, "kind is none of the page's choices."], // an option drawn disabled
@@ -200,7 +165,7 @@ describe("the page's writes, as tools", () => {
   test("a form is no tool while its submit or its fieldset is disabled, as a person could not send it", async () => {
     await using view = await open();
     const form = (label: string, inner: string) => `<form aria-label="${label}"${write("trip", "add", "/stops/-")}>${inner}</form>`;
-    await render(view, [
+    await pushRender(view, [
       form("Book it", `<input name="title"><button disabled>Book</button>`),
       form("Pay", `<fieldset disabled><input name="card"></fieldset><button>Pay</button>`),
       `<fieldset disabled>${form("Fenced in", `<input name="x"><button>Go</button>`)}</fieldset>`,
@@ -211,7 +176,7 @@ describe("the page's writes, as tools", () => {
 
   test("where a form and buttons take one label, the later is told apart by its kind", async () => {
     await using view = await open();
-    await render(view, `<button aria-label="Go in"${write("session", "replace", "/room", "general")}>#general</button><form aria-label="Go in"${write("session", "replace", "/room")}><input name="room" required><button>Go in</button></form>`);
+    await pushRender(view, `<button aria-label="Go in"${write("session", "replace", "/room", "general")}>#general</button><form aria-label="Go in"${write("session", "replace", "/room")}><input name="room" required><button>Go in</button></form>`);
     expect((await toolsOf(view)).map((t) => t.name)).toEqual(["go_in", "go_in.form", "undo", "redo"]);
     await start(view, `window.eta.use("go_in.form", { room: "attic" })`);
     expect((await lastSent(view)).ops).toEqual([{ op: "replace", path: "/room", value: "attic" }]);
@@ -221,7 +186,7 @@ describe("the page's writes, as tools", () => {
 
   test("undo and redo walk the session's last change, or the one a handle names: eta.undo(), eta.undo(handle), the undo tool", async () => {
     await using view = await open();
-    await render(view, PAGE);
+    await pushRender(view, PAGE);
     const walks: unknown[] = [];
     for (const call of [`window.eta.undo()`, `window.eta.undo("0a1b2c3d4e5f6a7b")`, `window.eta.redo("0a1b2c3d4e5f6a7b")`, `window.eta.redo()`, `window.eta.use("undo", { change: "0a1b2c3d4e5f6a7b" })`, `window.eta.use("redo")`]) {
       await start(view, call);
@@ -240,7 +205,7 @@ describe("the page's writes, as tools", () => {
 
   test("a script's write answers by its own id, never another's echo; one on its way when the socket goes is unanswered; one that cannot go is unsent", async () => {
     await using view = await open();
-    await render(view, PAGE);
+    await pushRender(view, PAGE);
     await start(view, `window.eta.send("room", [{ op: "add", path: "/messages/-", value: "mine" }])`);
     const mine = await lastSent(view);
     await push(view, { type: "patch", doc: "room:general", version: 8, ops: [{ op: "add", path: "/messages/14", value: "theirs" }] }); // someone else's
@@ -267,20 +232,20 @@ describe("WebMCP: the page's tools registered with the browser's model context",
   test("at each drawing: a tool once while the page offers it as it was; withdrawn (its signal aborted) when it goes or changes, and registered anew; execute runs it against the page as it is", async () => {
     await using view = await open();
     await view.evaluate(`(window.__registered = [], ${DRAFT}, 1)`);
-    await render(view, PAGE);
+    await pushRender(view, PAGE);
     const first = await registered(view);
     expect(first.map((r) => r.name)).toEqual((await view.evaluate<{ name: string }[]>(`window.eta.tools()`)).map((t) => t.name));
     expect(first.every((r) => r.live)).toBe(true);
 
-    await render(view, PAGE); // the same page drawn again: nothing registered again
+    await pushRender(view, PAGE); // the same page drawn again: nothing registered again
     expect(await registered(view)).toEqual(first);
 
     // what people wrote changes -- rooms come, messages go -- and the tools stay as they were
-    await render(view, page(["general", "attic", "cellar"], [[12, "hi"], [15, "new"]]));
+    await pushRender(view, page(["general", "attic", "cellar"], [[12, "hi"], [15, "new"]]));
     expect(await registered(view)).toEqual(first);
 
     // one room left, so its button needs no value: that tool changes, and is registered anew; the messages gone, their tool goes
-    await render(view, page(["general"], []));
+    await pushRender(view, page(["general"], []));
     const now = await registered(view);
     expect(now.filter((r) => !r.live).map((r) => r.name)).toEqual(["go_into_the_room", "take_back"]);
     expect(now.slice(first.length)).toEqual([{ name: "go_into_the_room", live: true }]);
@@ -291,7 +256,7 @@ describe("WebMCP: the page's tools registered with the browser's model context",
 
   test("a registration refused, by a throw or a rejection, is tried again at the next drawing; with no model context nothing is registered, and nothing fails", async () => {
     await using view = await open();
-    await render(view, PAGE); // no model context: the page is drawn, its tools are listed
+    await pushRender(view, PAGE); // no model context: the page is drawn, its tools are listed
     expect((await view.evaluate<unknown[]>(`window.eta.tools()`)).length).toBe(8);
 
     await view.evaluate(`(window.__registered = [], Object.defineProperty(document, "modelContext", { configurable: true, value: {
@@ -302,16 +267,16 @@ describe("WebMCP: the page's tools registered with the browser's model context",
         return Promise.resolve();
       },
     } }), 1)`);
-    await render(view, PAGE);
+    await pushRender(view, PAGE);
     expect((await registered(view)).map((r) => r.name)).not.toContain("undo");
-    await render(view, PAGE);
+    await pushRender(view, PAGE);
     expect((await registered(view)).map((r) => r.name).filter((n) => n === "undo" || n === "redo")).toEqual(["undo", "redo"]); // tried again
   });
 
   test("a page whose app does not import the tools offers none: nothing registered, no eta.tools", async () => {
     await using view = await open("/plain");
     await view.evaluate(`(window.__registered = [], ${DRAFT}, 1)`);
-    await render(view, PAGE);
+    await pushRender(view, PAGE);
     expect(await view.evaluate<unknown[]>(`[typeof window.eta.tools, typeof window.eta.use, typeof window.eta.send, window.__registered.length]`)).toEqual(["undefined", "undefined", "function", 0]);
   });
 });
