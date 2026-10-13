@@ -1,8 +1,8 @@
-import type { PatchOp } from "../../src/json-patch";
+import type { Aliases } from "../../src/cli/commands";
 
 // This example's own short verbs, loaded by src/cli.ts (via ETA_EXAMPLE=ticker). No database
 // import here on purpose -- this file only builds wire ops.
-export const aliases: Record<string, (args: string[]) => { doc: string; ops: PatchOp[] }> = {
+export const aliases: Aliases = {
   /** add <symbol> -- watch it on this session's board. */
   add: (args) => ({ doc: "watchlist", ops: [{ op: "add", path: "/symbols/-", value: args[0] ?? "" }] }),
   /** drop <index> -- take the symbol at that place off the board. */

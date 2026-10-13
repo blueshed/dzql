@@ -1,13 +1,14 @@
+import type { Aliases } from "../../src/cli/commands";
 import type { PatchOp } from "../../src/json-patch";
 
 // This example's own short verbs, loaded by src/cli.ts (via ETA_EXAMPLE=wedding) and tried after
 // the kernel's own doc-agnostic commands (inspect/watch/undo/write). No database import here on
 // purpose -- src/cli.ts loads this file just to build wire ops, never to read or write anything.
-const session = (op: PatchOp): { doc: string; ops: PatchOp[] } => ({ doc: "session", ops: [op] });
-const household = (op: PatchOp): { doc: string; ops: PatchOp[] } => ({ doc: "household", ops: [op] });
-const board = (op: PatchOp): { doc: string; ops: PatchOp[] } => ({ doc: "board", ops: [op] });
+const session = (op: PatchOp) => ({ doc: "session", ops: [op] });
+const household = (op: PatchOp) => ({ doc: "household", ops: [op] });
+const board = (op: PatchOp) => ({ doc: "board", ops: [op] });
 
-export const aliases: Record<string, (args: string[]) => { doc: string; ops: PatchOp[] }> = {
+export const aliases: Aliases = {
   /** enter <code> -- open a household (or the couple's board) by its code. */
   enter: (args) => session({ op: "replace", path: "/code", value: args.join(" ") }),
   leave: () => session({ op: "remove", path: "/code" }),

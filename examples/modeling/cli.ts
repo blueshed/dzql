@@ -1,3 +1,4 @@
+import type { Aliases } from "../../src/cli/commands";
 import type { PatchOp } from "../../src/json-patch";
 
 // modeling's own short verbs, loaded by src/cli.ts (ETA_EXAMPLE=modeling) after the kernel's own
@@ -33,7 +34,7 @@ function told(words: string[]): { text: string; post?: string } {
   return { text: [...words.slice(0, at), ...words.slice(at + 2)].join(" "), post: words[at + 1] };
 }
 
-export const aliases: Record<string, (args: string[]) => Write> = {
+export const aliases: Aliases = {
   story: ([actor, kind, ...words]) => model({ op: "add", path: "/stories/-", value: { actor, kind, ...told(words) } }),
   reword: ([id, ...words]) => model({ op: "replace", path: `/stories/${id}/text`, value: words.join(" ") }),
   touches: ([id, ...entities]) => model({ op: "replace", path: `/stories/${id}/touches`, value: entities }),
