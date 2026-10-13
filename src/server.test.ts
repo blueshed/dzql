@@ -124,6 +124,9 @@ function makeExample(name: string): Example {
   };
 }
 
+/** The page `ws` was last handed, once everything before is done. */
+const pageNow = async (ws: WebSocket): Promise<string> => htmlOf((await heard(ws)).filter((m) => m.type === "render").at(-1)!);
+
 /** A change's handle, as its writer's echo gives it: opaque, the session's own. */
 const HANDLE = /^[0-9a-f]{16}$/;
 
@@ -271,37 +274,33 @@ describe("createServer, generically (no example from the examples directory invo
 
   test("a write whose handling fails is logged and handed back, and the events after it are still handled", async () => {
     const ws = await open(server);
-    const logged: unknown[] = [];
-    const error = console.error;
-    console.error = (...args: unknown[]) => void logged.push(args);
+    const failures: string[] = [];
+    const stop = onFailure((what, err) => void failures.push(`${what}: ${(err as Error).message}`));
     try {
       write(ws, "note", [{ op: "replace", path: "/text", value: "boom" }], 1);
       write(ws, "note", [{ op: "replace", path: "/text", value: "after the boom" }]);
       expect(await expectMessage(ws, "refused")).toEqual({ type: "refused", id: 1 }); // the page it holds is as it was: nothing more
       expect((await expectMessage(ws, "patch")).ops).toEqual([{ op: "replace", path: "/text", value: "after the boom" }]);
-      expect(logged).toHaveLength(1);
-      expect(String((logged[0] as unknown[])[1])).toContain("boom");
+      expect(failures).toEqual(["handling a write: boom"]);
     } finally {
-      console.error = error;
+      stop();
     }
     ws.close();
   });
 
   test("a drawing that fails is logged, and the connection's next drawing goes ahead", async () => {
     const ws = await open(server);
-    const logged: unknown[] = [];
-    const error = console.error;
-    console.error = (...args: unknown[]) => void logged.push(args);
+    const failures: string[] = [];
+    const stop = onFailure((what, err) => void failures.push(`${what}: ${(err as Error).message}`));
     try {
       write(ws, "note", [{ op: "replace", path: "/text", value: "undrawable" }]);
       await expectMessage(ws, "patch"); // the write is told; its drawing fails
       write(ws, "note", [{ op: "replace", path: "/text", value: "drawn again" }]);
       await expectMessage(ws, "patch");
       expect(htmlOf(await nextMessage(ws))).toContain("drawn again");
-      expect(logged).toHaveLength(1);
-      expect(String((logged[0] as unknown[])[1])).toContain("undrawable");
+      expect(failures).toEqual(["drawing a page: undrawable"]);
     } finally {
-      console.error = error;
+      stop();
     }
     ws.close();
   });
@@ -395,33 +394,25 @@ describe("createServer, generically (no example from the examples directory invo
     await Promise.all([opened(ws), opened(other)]);
     await expectMessage(ws, "render");
     await expectMessage(other, "render");
-    // everything a write is answered with: events are handled in order, so all that comes before
-    // the answer to an inspect sent after it, and the inspect's own answer
-    const answer = async (doc: string, ops: PatchOp[]): Promise<{ messages: WireMessage[]; inspection: Inspection }> => {
-      write(ws, doc, ops);
-      ws.send(JSON.stringify({ type: "inspect" }));
-      const messages: WireMessage[] = [];
-      for (let m = await nextMessage(ws); ; m = await nextMessage(ws)) {
-        if (m.type === "inspect") return { messages, inspection: m as unknown as Inspection };
-        messages.push(m);
-      }
-    };
+    // everything a write is answered with
+    const answer = (doc: string, ops: PatchOp[]): Promise<WireMessage[]> => (write(ws, doc, ops), heard(ws));
     const page = (messages: WireMessage[]): string => htmlOf(messages.filter((m) => m.type === "render").at(-1)!);
     const patched = (messages: WireMessage[]): (string | undefined)[] => messages.filter((m) => m.type === "patch").map((m) => m.doc);
     const reason = '<p class="refused" role="alert">A note needs words.</p>';
 
     const told = await answer("note", [{ op: "replace", path: "/text", value: "" }]);
-    expect(page(told.messages)).toContain(reason);
-    expect(patched(told.messages)).toEqual(["told"]); // its own, named by type alone
-    expect(told.inspection.docs.find((d) => d.doc === "note")!.entries).toEqual([]); // nothing happened
+    expect(page(told)).toContain(reason);
+    expect(patched(told)).toEqual(["told"]); // its own, named by type alone
+    ws.send(JSON.stringify({ type: "inspect" }));
+    expect(((await expectMessage(ws, "inspect")) as unknown as Inspection).docs.find((d) => d.doc === "note")!.entries).toEqual([]); // nothing happened
     await server.idle();
     await expectQuiet(other); // the other session is told nothing
 
     // nobody writes a refusal from the wire; and that write, refused without a word, is the
     // session's next, so what it was told goes
     const next = await answer("told", [{ op: "replace", path: "/reason", value: "I say so." }]);
-    expect(page(next.messages)).not.toContain("refused");
-    expect(patched(next.messages)).toEqual(["told"]);
+    expect(page(next)).not.toContain("refused");
+    expect(patched(next)).toEqual(["told"]);
     ws.close();
     other.close();
   });
@@ -433,7 +424,7 @@ describe("createServer, generically (no example from the examples directory invo
     expect(htmlOf((await heard(ws)).at(-1)!)).toContain('<p class="note"></p><p class="said" role="status">Your note is kept.</p>');
 
     write(ws, "note", [{ op: "replace", path: "/text", value: "kept" }], 1);
-    expect(htmlOf((await heard(ws)).filter((m) => m.type === "render").at(-1)!)).toBe('<p class="note">kept</p>');
+    expect(await pageNow(ws)).toBe('<p class="note">kept</p>');
     ws.close();
   });
 
@@ -483,7 +474,7 @@ describe("createServer, generically (no example from the examples directory invo
 
   test("what a write did is told to its writer beside the control that sent it, and what its undo or redo did over the page, where Undo is; each until the next write", async () => {
     const ws = await open(server);
-    const pageAfter = async (doc: string, ops: PatchOp[], id: WriteId): Promise<string> => (write(ws, doc, ops, id), htmlOf((await heard(ws)).filter((m) => m.type === "render").at(-1)!));
+    const pageAfter = async (doc: string, ops: PatchOp[], id: WriteId): Promise<string> => (write(ws, doc, ops, id), pageNow(ws));
     walks.length = 0;
     expect(await pageAfter("note", [{ op: "replace", path: "/text", value: "said" }], 1)).toBe('<p class="note">said</p><p class="said" role="status">Noted.</p>');
     expect(await pageAfter("ledger", [{ op: "remove", path: "/latest" }], 2)).toBe('<p class="note"></p><div data-eta-part="undo-said" class="undo-said"><p class="said" role="status">Undone: “said”.</p></div>');
@@ -504,7 +495,7 @@ describe("createServer, generically (no example from the examples directory invo
     await tell("told-then-walks", { doc: "note", path: "/text", said: "Kept." }); // as a route might, after
     await server.idle();
     write(ws, "ledger", [{ op: "remove", path: "/latest" }], 2);
-    expect(htmlOf((await heard(ws)).filter((m) => m.type === "render").at(-1)!)).toBe('<p class="note"></p>');
+    expect(await pageNow(ws)).toBe('<p class="note"></p>');
     ws.close();
   });
 
