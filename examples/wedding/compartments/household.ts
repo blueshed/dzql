@@ -3,7 +3,8 @@ import * as sessionDoc from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
-import { activeDocuments, serverWrite, settled } from "../../../src/documents";
+import { activeDocuments, settled } from "../../../src/documents";
+import { putAway } from "./session";
 import { householdPage, type HouseholdView } from "../views/household";
 import { keepEveryone } from "../everyone";
 import { refuse, tell } from "../../../src/refusal";
@@ -90,11 +91,7 @@ export const household: Compartment = {
     const offer = { courses: weddingDoc.courses(), gifts: weddingDoc.gifts().map(({ id, shared }) => ({ id, shared })) };
     return householdDoc.shape(householdDoc.read(id)!, offer, ops);
   },
-  // the modal that asked is put away by the write that answers it
-  async afterWrite(ws, _id, ops: PatchOp[]) {
-    const put = sessionDoc.answered(sessionDoc.read(ws.data.sessionId), ops);
-    if (put.length > 0) await serverWrite(`session:${ws.data.sessionId}`, put);
-  },
+  afterWrite: putAway,
   // What an Undo or a Redo did, said over the page, where Undo is: what it changed may be in a
   // drawer that is shut, or in a photo someone else is watching.
   async afterWalk(ws, id, { way, ops, inverse }) {

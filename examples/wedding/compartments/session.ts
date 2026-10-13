@@ -2,6 +2,7 @@ import * as sessionDoc from "../documents/session";
 import type { PatchOp } from "../../../src/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import type { Compartment } from "../../../src/compartments/compartment";
+import { serverWrite } from "../../../src/documents";
 import { keepEveryone } from "../everyone";
 
 // A visit (`session:<id>`): who this session is (a code) and where it is on the site. This is the
@@ -39,4 +40,10 @@ export const session: Compartment = {
   shape: (_ws, id, ops) => sessionDoc.shape(id, ops),
   // who stands in the photo is kept from the tables; a first page makes sure it is
   onOpen: () => keepEveryone(),
+};
+
+/** The household's and the board's `afterWrite`: the modal that asked is put away by the write that answers it. */
+export const putAway: NonNullable<Compartment["afterWrite"]> = async (ws, _id, ops) => {
+  const put = sessionDoc.answered(sessionDoc.read(ws.data.sessionId), ops);
+  if (put.length > 0) await serverWrite(`session:${ws.data.sessionId}`, put);
 };

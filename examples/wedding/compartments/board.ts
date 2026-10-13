@@ -2,7 +2,7 @@ import * as boardDoc from "../documents/board";
 import * as sessionDoc from "../documents/session";
 import type { PatchOp } from "../../../src/json-patch";
 import type { Compartment } from "../../../src/compartments/compartment";
-import { serverWrite } from "../../../src/documents";
+import { putAway } from "./session";
 import { boardPage } from "../views/board";
 import { keepEveryone } from "../everyone";
 
@@ -56,11 +56,7 @@ export const board: Compartment = {
     return RULES.some((r) => r.path.test(op.path) && r.ops.includes(op.op));
   },
   shape: (_ws, id, ops) => boardDoc.shape(boardDoc.held(id), ops),
-  // the modal that asked is put away by the write that answers it
-  async afterWrite(ws, _id, ops: PatchOp[]) {
-    const put = sessionDoc.answered(sessionDoc.read(ws.data.sessionId), ops);
-    if (put.length > 0) await serverWrite(`session:${ws.data.sessionId}`, put);
-  },
+  afterWrite: putAway,
   // a reply, a guest, a gift taken off: what everyone sees follows
   afterChange: () => keepEveryone(),
 };

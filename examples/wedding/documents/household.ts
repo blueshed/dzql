@@ -3,7 +3,7 @@ import { read as readDoc } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import { allowsLook, isLookField, LOOK_FIELDS, type Look } from "../looks";
-import type { Course, Rows } from "./wedding";
+import type { Course, Row, Rows } from "./wedding";
 import { integer, text, yesNo } from "./values";
 
 // A household's document, kept in delta (`household:<id>`, ../delta.ts): the answer, the message,
@@ -37,7 +37,6 @@ export type HouseholdDocument = {
   claims: number[];
 };
 
-type Row = Record<string, unknown> & { id: string };
 const byId = (a: Row, b: Row) => Number(a.id) - Number(b.id);
 
 export const guestOf = (g: Row): Guest => ({

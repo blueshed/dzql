@@ -21,7 +21,7 @@ export type Wedding = {
   picture_key: string | null;
 };
 
-type Row = Record<string, unknown> & { id: string };
+export type Row = Record<string, unknown> & { id: string };
 export type Rows = Record<string, Row>;
 
 /** The rows of a collection in their order (seq, then id), each with its id as a number. */

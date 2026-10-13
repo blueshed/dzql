@@ -3,7 +3,7 @@ import type { PatchOp } from "../../../src/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import { db } from "../delta";
 import { householdFrom, newId, type HouseholdDocument } from "./household";
-import { coursesOf, eventsOf, giftsOf, placesOf, weddingOf, WEDDING, type Course, type Event, type Gift, type Place, type Rows, type Wedding } from "./wedding";
+import { coursesOf, eventsOf, giftsOf, placesOf, weddingOf, WEDDING, type Course, type Event, type Gift, type Place, type Row, type Rows, type Wedding } from "./wedding";
 import { integer, text, yesNo } from "./values";
 
 // The couple's document, kept in delta (`board:<wedding>`, ../delta.ts): the wedding and
@@ -32,7 +32,6 @@ export type BoardDocument = Wedding & {
   totals: Totals;
 };
 
-type Row = Record<string, unknown> & { id: string };
 type Doc = { weddings: Row; households?: Rows; guests?: Rows; asks?: Rows; claims?: Rows; courses?: Rows; dishes?: Rows; drinks?: Rows; gifts?: Rows; events?: Rows; places?: Rows };
 
 /** What the caterer needs, counted from the households and the courses. */
