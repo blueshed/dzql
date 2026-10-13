@@ -1,5 +1,3 @@
-import { drawnOption, radiosOf } from "./morph";
-
 /** What a form holds a value in: typed, chosen, or ticked. */
 export type Field = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
@@ -14,6 +12,10 @@ export const isBox = (field: Field): field is HTMLInputElement & { type: "checkb
 
 /** Is it a radio, one of a group that holds one value between them. */
 export const isRadio = (field: Field): field is HTMLInputElement & { type: "radio" } => field instanceof HTMLInputElement && field.type === "radio";
+
+/** The radios of one group: those of one name, in one form (or in none). */
+export const radiosOf = (form: HTMLFormElement | null, name: string): HTMLInputElement[] =>
+  [...document.querySelectorAll<HTMLInputElement>("input[type=radio]")].filter((r) => r.name === name && r.form === form);
 
 /** A radio's group: the radios of its name in its form. A radio with no name is a group alone. */
 export const groupOf = (radio: HTMLInputElement): HTMLInputElement[] => (radio.name ? radiosOf(radio.form, radio.name) : [radio]);
@@ -47,6 +49,12 @@ export function formValue(form: HTMLFormElement): unknown {
   if (fields.size === 0) return undefined;
   if (fields.size === 1) return [...fields.values()][0];
   return Object.fromEntries(fields);
+}
+
+/** The option a select was drawn showing, by the browser's own rule: the last rendered `selected`, else its first not disabled -- or, in a list (`size` over 1), none. */
+export function drawnOption(select: HTMLSelectElement): HTMLOptionElement | undefined {
+  const options = [...select.options];
+  return options.findLast((o) => o.defaultSelected) ?? (select.size > 1 ? undefined : options.find((o) => !o.matches(":disabled")));
 }
 
 /**

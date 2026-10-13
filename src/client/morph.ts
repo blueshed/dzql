@@ -9,6 +9,8 @@
 // first, then the rest in order by tag (matchInOrder), the same tag reused
 // and a different one replaced. That's enough for lists that only grow,
 // shrink, or update in place, which is all this app ever renders.
+import { drawnOption, radiosOf } from "./form-value";
+
 export type MorphHooks = {
   /** Called when a mounted applet's element is about to be removed. */
   onAppletRemoved?(el: Element): void;
@@ -20,8 +22,8 @@ export type MorphHooks = {
   pressed?(el: Element): boolean;
 };
 
-function isApplet(node: ChildNode): node is Element {
-  return node instanceof Element && node.hasAttribute("data-applet");
+function isApplet(el: Element): boolean {
+  return el.hasAttribute("data-applet");
 }
 
 function sameType(a: ChildNode, b: ChildNode): boolean {
@@ -72,10 +74,6 @@ function showRendered(el: Element, name: string, unsent: boolean): void {
   } else if (name === "value" && el !== document.activeElement) el.value = el.defaultValue;
 }
 
-/** The radios of one group: those of one name, in one form (or in none). */
-export const radiosOf = (form: HTMLFormElement | null, name: string): HTMLInputElement[] =>
-  [...document.querySelectorAll<HTMLInputElement>("input[type=radio]")].filter((r) => r.name === name && r.form === form);
-
 /**
  * Runs a render, then shows each group of radios the choice someone made in it and has not yet seen
  * drawn -- by its value, wherever the radios moved, while the group still offers it -- or else what
@@ -92,12 +90,6 @@ export function keepingChoices(render: () => void): void {
     const radio = group.find((r) => r.value === value && !r.matches(":disabled")) ?? group.findLast((r) => r.defaultChecked);
     if (radio && !radio.checked) radio.checked = true;
   }
-}
-
-/** The option a select was drawn showing, by the browser's own rule: the last rendered `selected`, else its first not disabled -- or, in a list (`size` over 1), none. */
-export function drawnOption(select: HTMLSelectElement): HTMLOptionElement | undefined {
-  const options = [...select.options];
-  return options.findLast((o) => o.defaultSelected) ?? (select.size > 1 ? undefined : options.find((o) => !o.matches(":disabled")));
 }
 
 /**
@@ -127,7 +119,7 @@ function morphApplet(old: Element, next: Element, hooks: MorphHooks): void {
 
 function morphNode(old: ChildNode, next: ChildNode, hooks: MorphHooks): void {
   if (old instanceof Element && next instanceof Element) {
-    if (old.hasAttribute("data-applet")) {
+    if (isApplet(old)) {
       morphApplet(old, next, hooks);
       return;
     }
@@ -145,7 +137,7 @@ function morphNode(old: ChildNode, next: ChildNode, hooks: MorphHooks): void {
 }
 
 export function removeNode(node: ChildNode, hooks: MorphHooks): void {
-  if (isApplet(node)) hooks.onAppletRemoved?.(node);
+  if (node instanceof Element && isApplet(node)) hooks.onAppletRemoved?.(node);
   for (const applet of node instanceof Element ? node.querySelectorAll("[data-applet]") : []) {
     hooks.onAppletRemoved?.(applet);
   }
@@ -199,9 +191,13 @@ function morphChildren(old: Element, next: Element, hooks: MorphHooks): void {
 
   // a child with an id is its own by the id; the rest by type, in order
   const oldByKey = new Map<string, ChildNode>();
-  for (const node of oldNodes) if (key(node)) oldByKey.set(key(node)!, node);
+  for (const node of oldNodes) {
+    const id = key(node);
+    if (id) oldByKey.set(id, node);
+  }
   for (const node of newNodes) {
-    const match = key(node) && oldByKey.get(key(node)!);
+    const id = key(node);
+    const match = id && oldByKey.get(id);
     if (match) matched.set(node, match);
   }
   // one without is known by the ids inside it: the child holding a row or an applet goes on holding it,

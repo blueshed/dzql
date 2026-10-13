@@ -145,20 +145,38 @@ function askForThePage(): void {
 // doesn't concern it -- see morph.ts. [data-applet] elements are a boundary
 // the morph never descends into (see onAppletRemoved/onAppletPropsChanged);
 // mounting a newly-appeared one still happens here, same as before.
-// A box someone is pressing is theirs until the click lands (the morph's `pressed`): a render drawn
-// between the press and the click must not tick it first, or the click unticks it, and sends that,
-// undoing whoever ticked it. Pressing its label is pressing it, and so is holding Space on it.
+// What someone is pressing, heard on its way down, before the page can stop it. A box someone is
+// pressing is theirs until the click lands (the morph's `pressed`): a render drawn between the press
+// and the click must not tick it first, or the click unticks it, and sends that, undoing whoever
+// ticked it. Pressing its label is pressing it, and so is holding Space on it. And while someone
+// presses at all, `holding`, a render keeps no reader's place (placesNow, below).
 let boxPressed: Element | undefined;
+let holding = false;
 const aBox = (el: unknown): HTMLInputElement | undefined => (el instanceof HTMLInputElement && el.type === "checkbox" ? el : undefined);
-app.addEventListener("pointerdown", (event) => {
-  const at = event.target instanceof Element ? event.target : null;
-  boxPressed = aBox(at?.closest("label")?.control ?? at);
-});
+document.addEventListener(
+  "pointerdown",
+  (event) => {
+    holding = true;
+    const at = event.target instanceof Element && app.contains(event.target) ? event.target : undefined;
+    if (at) boxPressed = aBox(at.closest("label")?.control ?? at);
+  },
+  true,
+);
+document.addEventListener(
+  "pointercancel",
+  (event) => {
+    if (event.target instanceof Node && app.contains(event.target)) boxPressed = undefined;
+    if (event.pointerType !== "touch") holding = false; // a touch goes on, as a scroll, until touchend
+  },
+  true,
+);
+document.addEventListener("touchstart", () => (holding = true), true);
+for (const type of ["pointerup", "touchend", "touchcancel", "contextmenu"]) document.addEventListener(type, () => (holding = false), true); // a menu takes the press: WebKit sends no pointerup
+window.addEventListener("blur", () => (holding = false)); // nor when the window loses the press
 app.addEventListener("keydown", (event) => {
   if (event.key === " " && aBox(event.target)) boxPressed = aBox(event.target);
 });
 document.addEventListener("click", () => (boxPressed = undefined), true); // a click lands after its tick
-app.addEventListener("pointercancel", () => (boxPressed = undefined));
 const hooks: MorphHooks = {
   onAppletRemoved(el) {
     mounted.get(el as HTMLElement)?.cleanup();
@@ -328,12 +346,6 @@ function readingTop(port: Element): number {
 // pressing (a drag, a scroll by touch, a selection being made); a selection left there is no reason.
 type Place = [port: Element, at: Element, top: number, apart: boolean];
 
-let holding = false;
-for (const type of ["pointerdown", "touchstart"]) document.addEventListener(type, () => (holding = true), true);
-for (const type of ["pointerup", "touchend", "touchcancel", "contextmenu"]) document.addEventListener(type, () => (holding = false), true); // a menu takes the press: WebKit sends no pointerup
-window.addEventListener("blur", () => (holding = false)); // nor when the window loses the press
-document.addEventListener("pointercancel", (event) => event.pointerType === "touch" || (holding = false), true); // a touch goes on, as a scroll, until touchend
-
 /** The first element in `port`, in the page's order, whose top is at or below where reading starts -- in the window: a scroller's top may be scrolled off it, and a point off it cannot be looked at. */
 function readerIn(port: Element): Element | undefined {
   const line = Math.max(readingTop(port), 0);
@@ -458,7 +470,7 @@ const DIALOG = "dialog,[role=dialog]";
 /** What opened each drawer or modal on the page: where the keyboard goes back to when it goes. */
 const openedBy = new Map<Element, HTMLElement>();
 /** The control last pressed, until the page is next drawn: what opened whatever that drawing brings. */
-let pressed: HTMLElement | undefined;
+let lastPressed: HTMLElement | undefined;
 
 /** Gives the keyboard to the first that takes it: not gone, disabled, inert or undrawn. */
 function giveKeyboard(candidates: Iterable<HTMLElement>): boolean {
@@ -479,8 +491,8 @@ function keyboardAfter(): () => void {
   const cells = new Map([...app.querySelectorAll<HTMLElement>("[data-moving]")].map((el) => [el.dataset.moving!, ownTag(el)]));
   const dialogs = new Set(app.querySelectorAll(DIALOG));
   return () => {
-    const press = pressed;
-    pressed = undefined;
+    const press = lastPressed;
+    lastPressed = undefined;
     const gone: HTMLElement[] = [];
     for (const [dialog, by] of openedBy) {
       if (dialog.isConnected) continue;
@@ -619,7 +631,7 @@ app.addEventListener("click", (event) => {
   // neither is a gesture. Putting the caret in find's field must not send a blank replace.
   if (!target || target.matches("form,input,textarea,select")) return;
   event.preventDefault();
-  pressed = target;
+  lastPressed = target;
   write(target.dataset.write!, target.dataset.value);
 });
 
@@ -717,11 +729,11 @@ function commitNow(form: HTMLFormElement) {
 // "input" form also flushes any pending debounced write here, rather than waiting the debounce
 // out once the person has already moved on.
 app.addEventListener("focusout", (event) => {
-  const blurred = editing(event, "blur");
-  if (blurred) commitEdit(blurred);
   const field = event.target;
-  const form = field instanceof HTMLElement ? field.closest("form") : null;
-  if (form?.dataset.writeOn === "input" && inputTimers.has(form)) commitNow(form);
+  if (!(field instanceof HTMLElement)) return;
+  const form = field.closest("form");
+  if (form?.dataset.writeOn === "blur" && field.matches("[data-write]")) commitEdit(form);
+  else if (form?.dataset.writeOn === "input" && inputTimers.has(form)) commitNow(form);
 });
 app.addEventListener("change", (event) => {
   const form = editing(event, "change");
