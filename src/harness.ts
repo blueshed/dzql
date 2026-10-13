@@ -3,7 +3,7 @@ import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
 import { isPost, STORY_KEYS, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
-import { applyPatch, type PatchOp, type WriteId } from "./json-patch";
+import { isVerb, applyPatch, type PatchOp, type WriteId } from "./json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
 import { comparable, decoded, ownProps, splitTag } from "./parts";
@@ -195,13 +195,11 @@ export function propsCost(whose: string, page: string, message: Heard): PropsCos
  */
 export type Control = { doc: string; op: string; path: string; value?: string; free: boolean; pattern?: true };
 
-const OPS: readonly string[] = ["add", "replace", "remove"];
-
 /** Is this what `appletWrites` puts on a mount, one write of it: a document, an op and a JSON Pointer path, and the only values it sends, if it names them? */
 const isDeclared = (w: unknown): w is { doc: string; op: string; path: string; values?: (string | number | boolean)[] } => {
   const { doc, op, path, values } = (typeof w === "object" && w !== null ? w : {}) as Record<string, unknown>;
   const valued = values === undefined || (Array.isArray(values) && values.length > 0 && values.every((v) => ["string", "number", "boolean"].includes(typeof v)));
-  return typeof doc === "string" && doc !== "" && typeof op === "string" && OPS.includes(op) && typeof path === "string" && (path === "" || path.startsWith("/")) && valued;
+  return typeof doc === "string" && doc !== "" && isVerb(op) && typeof path === "string" && (path === "" || path.startsWith("/")) && valued;
 };
 
 /** Is this a story's gesture (`Gesture`, src/stories.ts): a press on one selector, or a drag from one to another, and nothing else? */

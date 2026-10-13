@@ -83,6 +83,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The kernel and its tests say each thing once** (the review, docs/review-2026-10-13.md; no behaviour changed, every story and test means what it did):
+  - **the server:** one "landed" tail for a write and a walk, the permit asked once, one `isVerb` for the server, the CLI and the harness, `reading(doc)` by the name whole, one `quotedJson`, one tag scanner in parts, `documents.names()` gone;
+  - **the CLI:** one `extractFlag` (a repeated `--limit` with a bad second value now gives no limit rather than the first);
+  - **the harness:** one `step()` for every phase of a story, its header pointing to docs/stories.md, and the small things said once; by hand, one `submitOf`;
+  - **the browser client:** a write's answer recorded once (`answered()`), `isField`, `isRadio` and `namedFields` once, in form-value; the box-pressed tracker now listens on the whole page, so a press a page element swallows is still seen;
+  - **the page kit:** find's class is a tool option, not string surgery, and two CSS rules that did nothing are gone; the examples import `esc` and `write` rather than re-declaring them, use the kernel's `Aliases`, and lose a few copies of their own (leave's `WORD`, the ticker's `cityOf`, the wedding's `putAway` and `Row`);
+  - **the tests:** one quiet-socket module for the client's browser tests, an example loaded once, each story run once, needless waits gone, duplicate tests merged: 686 tests in 87s became 666 in 95s on the same claims (the suite's time is mostly browsers).
 - **The modeller is the modeling example's loader** (`examples/modeling/loader/`, from `modeller/`, which goes): the code that reads an app that exists -- its documents from a run of its stories, its facts, hjeli's predicates over them -- lives with the model it feeds. `bun run modeller` is `bun run model:check`. A `bun create` project gets it in `model/loader/`, without eta's tests of it. The ledger's task list, which only the retired page showed, is no longer read.
 - **`.cap`, `.note` and `.door` are the kernel's** (`src/bento.css`): the kernel's own markup uses the first two, and four examples drew the door. Six stylesheets restated them; each now says only where it differs (the wedding's lighter capitals, starter's wider door, modeling's flat one).
 - **The Londons stories are the modeller's, not an example** (`modeller/londons/stories.ts`, from `examples/londons/`): 149 stories with no app, read only by the modeller's tests as a project of stories alone.
