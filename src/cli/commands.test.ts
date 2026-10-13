@@ -10,6 +10,7 @@ import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/d
 import { createLocal } from "@blueshed/delta/local";
 import { read } from "../documents";
 import { createServer } from "../server";
+import { refuse } from "../refusal";
 import {
   connectCli,
   DEFAULT_SESSION_FILE,
@@ -216,6 +217,7 @@ const widgetCompartment: Compartment = {
     return ws.data.sessionId;
   },
   permit(_ws, op) {
+    if (op.value === "plaid") throw refuse("No plaid.");
     return op.path === "/color" && op.op === "replace";
   },
 };
@@ -262,6 +264,14 @@ describe("cli against a real server", () => {
     expect(widget?.version).toBeGreaterThan(0);
     expect(widget?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "", value: { color: "blue" } }]); // the widget as it is now, its id (the session) left out
 
+    ws.close();
+  });
+
+  test("a refused write says so, and why when its refusal says; one that lands says nothing of it", async () => {
+    const ws = await connectCli(url(), `session_id=${crypto.randomUUID()}`);
+    expect((await runCommand(ws, parseCommand(["write", "widget", "replace", "/color", "plaid"])!)).refused).toEqual({ reason: "No plaid." });
+    expect((await runCommand(ws, parseCommand(["write", "widget", "remove", "/color"])!)).refused).toEqual({});
+    expect(await runCommand(ws, parseCommand(["write", "widget", "replace", "/color", "teal"])!)).not.toHaveProperty("refused");
     ws.close();
   });
 

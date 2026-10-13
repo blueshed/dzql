@@ -41,6 +41,9 @@ if (command.kind === "watch") {
   console.log(`watching ${url} as ${sessionFile} (ctrl-c to stop)`);
   watch(ws, (line) => console.log(line));
 } else {
-  console.log(formatInspection(await runCommand(ws, command, limit)));
+  const inspection = await runCommand(ws, command, limit);
+  if (inspection.refused) console.error(`refused${inspection.refused.reason ? `: ${inspection.refused.reason}` : ""}`);
+  console.log(formatInspection(inspection));
   ws.close();
+  if (inspection.refused) process.exitCode = 1;
 }

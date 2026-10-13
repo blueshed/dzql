@@ -35,7 +35,7 @@ another name and go into the same room: each of you sees the other arrive and sp
 bottom right, takes back your own last write, and the other sees it go: your last message, or, if
 you have only just come in, your coming into the room.
 
-That is chat, the smallest example. Three more, and a mock-up:
+That is chat, the smallest example. Four more, and a mock-up:
 
 - `bun run dev:wedding` (port 3001): a site for one wedding. The codes are `DASH` (the couple),
   `OKAFOR` and `BEN` (two households). There is a Lego minifigure builder, and a photo of
@@ -46,11 +46,16 @@ That is chat, the smallest example. Three more, and a mock-up:
   draft and see who else is off before you ask; drag your own waiting request to move it; a
   manager answers. People sign in: `ann@leave.example` and `bo@leave.example` ask,
   `mo@leave.example` answers; each password is the name and `-password` (`ann-password`).
+- `bun run dev:modeling` (port 3005): a description of an application, kept by two people as they
+  talk: one tells the stories, the other writes them down from the CLI and describes the documents
+  they need, and the entities are worked out from those. The page shows each change live, and the
+  gaps as they open. Sign in as `peter@modeling.example` or `claude@modeling.example`, each password
+  the name and `-password`; `examples/modeling/cli.ts` says how the CLI signs in, and its verbs.
 - `bun run dev:bento` (port 3003): the bento mock-up, a page to look at and click, with no eta
   behind it.
 
 `ETA_EXAMPLE=<name>` picks the example for `bun run dev`, `start`, `stories` and `cli` (default
-`chat`); `dev:wedding`, `dev:ticker`, `dev:leave` and `stories:all` set it themselves. The CLI also needs
+`chat`); `dev:wedding`, `dev:ticker`, `dev:leave`, `dev:modeling` and `stories:all` set it themselves. The CLI also needs
 `ETA_URL` for the server it talks to (default `ws://localhost:3000`). `.env.example` explains every
 setting, `TICK_MS` and `CLOCK_TZ` (the ticker), `REVEAL` (the wedding) and `ETA_ORIGINS` (other
 sites whose pages may open a socket) among them.
@@ -75,7 +80,7 @@ sites whose pages may open a socket) among them.
   (`permitUndo`: answers closed at the deadline).
 - **Stories are the tests.** An example is a list of sentences -- who does what, and who then
   sees it -- and `bun run stories` checks each one over real sockets, with its undo and redo;
-  `bun run stories:all` runs every example's (<!-- measured:stories -->11 in chat, 23 in leave, 17 in ticker and 18 in wedding<!-- /measured -->),
+  `bun run stories:all` runs every example's (<!-- measured:stories -->11 in chat, 23 in leave, 12 in modeling, 17 in ticker and 18 in wedding<!-- /measured -->),
   and does again by hand, in a browser the size of a phone, each write a page sends and each
   refusal a control of the page sends, so a control nobody can press fails.
 - **A small client.** The kernel's client is <!-- measured:client -->6.4 KB<!-- /measured --> minified

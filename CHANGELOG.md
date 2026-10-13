@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A fifth example, modeling** (`bun run dev:modeling`, port 3005; todo n122): a description of an application kept by two people as they talk. Peter tells the stories; Claude writes them down from the CLI (`examples/modeling/cli.ts`: `story`, `reword`, `unsay`, `document`, `holds`, `unhold`, `heldby`, `serves`, `rename`, `drop`) and describes the documents they need -- what each holds, who holds it, which stories it serves. The entities are worked out from the documents, never written, so they cannot disagree. The page is the modeller's three columns, live: stories, documents, entities, each change drawn as it lands; pick one and what goes with it stands while the rest fades; a story no document serves, a document no story needs and an entity only such documents hold each say so. 12 stories. Building the app from the model, and running its stories beside it, is the next step.
+- **The CLI says when a write is refused, and why** (`runCommand`, src/cli/commands.ts): its write goes with an id, the refusal is told by it, and `bun run cli` prints `refused: <reason>` and exits 1. Before, a refused write printed the inspection as though nothing were wrong.
 - **A story may post a form to a route: `does: post(path, form)`, and `cannot: post(...)`.** What
   a person does before they hold a document (signing in, coming in by a link) can now be told as
   a story, not only through the cast's `signIn`. The harness posts it as the browser does, follows

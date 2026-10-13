@@ -96,6 +96,8 @@ function opText(op: PatchOp): string {
 
 export type Inspection = {
   docs: { doc: string; version: number; entries?: { ops: PatchOp[] }[] }[];
+  /** The command's write was refused, and why when the refusal says. */
+  refused?: { reason?: string };
 };
 
 /** Renders an inspect response as the CLI's plain-text output -- ops, not HTML, and generic over whatever docs this example's compartments report. Only the most recent entry shows on this line; `formatHistory` lists the rest. */
@@ -135,17 +137,27 @@ export function connectCli(url: string, cookie: string): Promise<WebSocket> {
   });
 }
 
-/** Sends a command (if it writes) followed by an inspect request, and resolves with that inspection. `limit` asks for that many ledger entries per doc instead of just the latest. */
+/** The id the CLI's one write goes with, so its refusal, if it is refused, is told by it. */
+const WRITE_ID = 1;
+
+/**
+ * Sends a command (if it writes) followed by an inspect request, and resolves with that inspection
+ * -- and, when the write was refused, that it was and why when the refusal says: the server
+ * answers a refused write by its id before the inspect. `limit` asks for that many ledger entries
+ * per doc instead of just the latest.
+ */
 export function runCommand(ws: WebSocket, command: Command, limit?: number): Promise<Inspection> {
   return new Promise((resolve) => {
+    let refused: Inspection["refused"];
     ws.addEventListener("message", function onMessage(event) {
       const message = JSON.parse(String(event.data));
+      if (message.type === "refused" && message.id === WRITE_ID) refused = message.reason === undefined ? {} : { reason: message.reason };
       if (message.type !== "inspect") return;
       ws.removeEventListener("message", onMessage);
-      resolve(message);
+      resolve(refused ? { ...message, refused } : message);
     });
 
-    if (command.kind === "write") ws.send(JSON.stringify({ doc: command.doc, ops: command.ops }));
+    if (command.kind === "write") ws.send(JSON.stringify({ id: WRITE_ID, doc: command.doc, ops: command.ops }));
     ws.send(JSON.stringify({ type: "inspect", limit }));
   });
 }

@@ -1,0 +1,35 @@
+/* modeling's look: the kernel's bento surfaces (src/bento.css) in a drafting ink on paper, light
+   and dark, then the door. */
+
+@import "../../../src/bento.css";
+
+:root {
+  color-scheme: light dark;
+  --paper: #f6f5f1; --tray: #e2e0d8; --card: #ffffff; --card-hover: #fbfaf7; --well: #efede6;
+  --ink: #23283a; --accent: #3b4fa0; --muted: #5f6272; --line: rgba(35, 40, 58, 0.14); --edge: rgba(35, 40, 58, 0.52);
+  --ink-rgb: 35, 40, 58;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #101218; --tray: #1e2130; --card: #161925; --card-hover: #1b1f2d; --well: #12151f;
+    --ink: #e2e4ee; --accent: #9aa9f0; --muted: #9a9db0; --line: rgba(226, 228, 238, 0.14); --edge: rgba(226, 228, 238, 0.42);
+    --ink-rgb: 0, 0, 0;
+  }
+}
+
+body { margin: 0; background: var(--paper); color: var(--ink); font-size: 15px; line-height: 1.45; }
+main#app { box-sizing: border-box; position: relative; max-width: 1200px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg) 96px; }
+h1, h2, h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.cap { font-size: 11.5px; line-height: 16px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; }
+.note { color: var(--muted); font-size: 13px; }
+
+/* ── the door: signing in ── */
+.door { max-width: 24rem; margin: 10vh auto 0; padding: var(--space-2xl); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-panel); box-shadow: var(--shadow-tray); }
+.door h1 { margin-bottom: var(--space-lg); }
+.door form { display: flex; flex-direction: column; gap: var(--space-sm); }
+.door input { width: 100%; box-sizing: border-box; }
+
+/* ── the model: a story's number leads its line; the rows keep their own words whole ── */
+.row .n { min-width: 1.5em; font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; }
+.row .what { font-weight: 500; }
