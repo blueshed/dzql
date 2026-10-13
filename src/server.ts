@@ -184,18 +184,16 @@ const idOf = (message: unknown): WriteId | undefined => {
   return isWriteId(id) ? id : undefined;
 };
 
-/** No id at all: none given, or a number JSON cannot say back (1e400 parses as Infinity). */
-const noId = (id: unknown): boolean => id === undefined || (typeof id === "number" && !Number.isFinite(id));
-
 /**
  * A write as the wire says it: a document's name, and one op or more, each a verb and a JSON
- * Pointer; and an id that is one (`isWriteId`), or none. One whose id is anything else -- a string
- * longer than an id, an object -- is not a write, so nothing is ever sent back larger than an id.
+ * Pointer; and an id that is one (`isWriteId`), or none (none given, or a number JSON cannot say
+ * back: 1e400 parses as Infinity). One whose id is anything else -- a string longer than an id, an
+ * object -- is not a write, so nothing is ever sent back larger than an id.
  */
 function isWrite(message: unknown): message is Write {
   const m = message as { id?: unknown; doc?: unknown; ops?: unknown } | null;
   return (
-    (noId(m?.id) || isWriteId(m!.id)) &&
+    (m?.id === undefined || typeof m.id === "number" || isWriteId(m.id)) &&
     typeof m?.doc === "string" &&
     Array.isArray(m.ops) &&
     m.ops.length > 0 &&
@@ -229,11 +227,22 @@ export function createServer(example: Example, port: number | string = process.e
       .catch((err) => failed("handling an event", err));
   };
 
-  /** A write from the wire: permitted, shaped, written through delta as the person. */
+  /**
+   * A write or a walk has landed: what fails after it is the server's, not a refusal, and its writer
+   * is told it landed; what they were told before it goes, so what follows may say what it did.
+   */
+  async function landed(ws: Socket, follow: () => unknown, what: string): Promise<void> {
+    await tell(ws.data.sessionId);
+    try {
+      await follow();
+    } catch (err) {
+      failed(what, err);
+    }
+  }
+
+  /** A permitted write from the wire: shaped, written through delta as the person. */
   async function writeDelta(ws: Socket, owner: (typeof compartments)[number], docId: string, ops: PatchOp[], id?: WriteId): Promise<boolean> {
     const kind = owner.kind ?? "written";
-    if (kind !== "written" && kind !== "fact") return false; // live, sourced, static: nobody writes them from the wire
-    if (!(await settled(documents, () => ops.every((op) => owner.permit?.(ws, op, docId) ?? false)))) return false;
     const shaped = owner.shape ? await settled(documents, () => owner.shape!(ws, docId, ops)) : ops;
     if (shaped.length === 0) return false;
     const at = owner.under ?? "";
@@ -247,29 +256,20 @@ export function createServer(example: Example, port: number | string = process.e
       const why = owner.ledger === false ? "its compartment keeps it off the ledger (ledger: false), yet delta recorded the write" : "delta recorded no ledger entry: register it with { ledger: true }, or say its compartment keeps it off the ledger (ledger: false)";
       failed(`writing ${named}`, new Error(why));
     }
-    // the write has landed: what fails after it is the server's, not a refusal, and its writer is
-    // told it landed; what they were told before it goes, so what follows may say what it did
-    await tell(ws.data.sessionId);
-    try {
-      await owner.afterWrite?.(ws, docId, ops);
-    } catch (err) {
-      failed(`following a write to ${named}`, err);
-    }
+    await landed(ws, () => owner.afterWrite?.(ws, docId, ops), `following a write to ${named}`);
     return true;
   }
 
   /**
-   * Undo or redo: delta walks the session's cursor -- its next entry (`/latest`), or one change of
-   * the session's named by its handle (`/<change>`) -- and the change is told like any other. The
-   * walk is looked at first, and the document's owner may refuse it (`permitUndo`). One that meets
+   * A permitted undo or redo: delta walks the session's cursor -- its next entry (`/latest`), or one
+   * change of the session's named by its handle (`/<change>`) -- and the change is told like any
+   * other. The walk is looked at first, and the document's owner may refuse it (`permitUndo`). One that meets
    * someone else's later write changes nothing -- delta moves the cursor past it -- and says so; so
    * does a named change that is not the session's, or goes nowhere. One that lands is followed as a
    * fresh write is (`afterWalk`), knowing which way it went; one that changes nothing lands all the
    * same, and tells no change, so its walker is answered by an echo of nothing.
    */
   async function walk(ws: Socket, ops: PatchOp[], id?: WriteId): Promise<boolean> {
-    const ledger = byDocType.get("ledger")!;
-    if (!(await settled(documents, () => ops.every((op) => ledger.permit!(ws, op, ws.data.sessionId))))) return false;
     const way = ops[0]!.op === "add" ? "redo" : "undo";
     const handle = handleOf(ops[0]!.path);
     const change = handle === undefined ? undefined : handles.get(ws.data.sessionId)?.get(handle);
@@ -289,27 +289,29 @@ export function createServer(example: Example, port: number | string = process.e
     const done = walked && !("error" in walked) ? walked : undefined; // none: walked meanwhile, by another process over Postgres
     if (done?.conflict) throw refuse(`Someone has changed that since, so it cannot be ${way === "undo" ? "undone" : "redone"}.`);
     if (!done) return false;
-    await tell(ws.data.sessionId); // it landed, as a write does: what the walker was told before goes
-    if (owner?.afterWalk) {
-      try {
-        await owner.afterWalk(ws, docId, { way, ops: wireOps(owner, docId, done.ops as PatchOp[]), inverse: wireOps(owner, docId, (done.inverse ?? []) as PatchOp[]) });
-      } catch (err) {
-        failed(`following a walk of ${owner.perSession ? owner.docType : plan.doc}`, err);
-      }
-    }
+    await landed(
+      ws,
+      () => owner?.afterWalk?.(ws, docId, { way, ops: wireOps(owner, docId, done.ops as PatchOp[]), inverse: wireOps(owner, docId, (done.inverse ?? []) as PatchOp[]) }),
+      `following a walk of ${owner?.perSession ? owner.docType : plan.doc}`,
+    );
     if (id !== undefined && done.ops.length === 0) send(ws, patchMessage(wireName(docType, docId, ws), done.version ?? 0, [], id));
     return true;
   }
 
   /**
    * A write names its document: whole (`room:general`), or by type alone for the one of that type
-   * this connection is on. Whichever, a connection writes only what it sees, and then only what the
-   * owner permits. True when something was applied.
+   * this connection is on. Whichever, a connection writes only what it sees, of a kind written from
+   * the wire (not live, sourced or static), and then only what the owner permits. True when
+   * something was applied.
    */
   async function write(ws: Socket, { doc, ops }: Write, id: WriteId | undefined): Promise<boolean> {
     const target = await settled(documents, () => resolveName(byDocType, doc, ws));
     if (!target || !(await settled(documents, () => sees(target.owner, ws, target.docId)))) return false;
-    return target.owner.docType === "ledger" ? walk(ws, ops, id) : writeDelta(ws, target.owner, target.docId, ops, id);
+    const { owner, docId } = target;
+    const kind = owner.kind ?? "written";
+    if (kind !== "written" && kind !== "fact") return false;
+    if (!(await settled(documents, () => ops.every((op) => owner.permit?.(ws, op, docId) ?? false)))) return false;
+    return owner.docType === "ledger" ? walk(ws, ops, id) : writeDelta(ws, owner, docId, ops, id);
   }
 
   async function handle(ws: Socket, message: unknown): Promise<void> {
@@ -328,17 +330,20 @@ export function createServer(example: Example, port: number | string = process.e
     // (src/refusal.ts); a write that applied something has let go of it already, before what
     // followed it could say what it did.
     const id = idOf(message);
+    const asWrite = isWrite(message) ? message : undefined;
     let wrote = false;
     let refusal: Refusal | undefined;
     try {
-      wrote = isWrite(message) && (await write(ws, message, id));
+      wrote = asWrite !== undefined && (await write(ws, asWrite, id));
     } catch (err) {
       if (err instanceof Refusal) refusal = err;
       else failed("handling a write", err);
     }
-    if (!wrote && id !== undefined) send(ws, refusedMessage(id, refusal?.reason));
-    if (isWrite(message) && !wrote) await tell(ws.data.sessionId, refusal && { doc: message.doc, path: message.ops[0]!.path, reason: refusal.reason });
-    if (!wrote) void redraw(ws, !isWrite(message)); // a message that is no write asks for the page (src/client/app.ts)
+    if (!wrote) {
+      if (id !== undefined) send(ws, refusedMessage(id, refusal?.reason));
+      if (asWrite) await tell(ws.data.sessionId, refusal && { doc: asWrite.doc, path: asWrite.ops[0]!.path, reason: refusal.reason });
+      void redraw(ws, !asWrite); // a message that is no write asks for the page (src/client/app.ts)
+    }
     await quiet(documents);
     for (const claim of claims) if (claim.ws === ws) claims.delete(claim); // its change told by now, or never to be
   }
