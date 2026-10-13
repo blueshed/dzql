@@ -13,7 +13,7 @@ describe("board", () => {
     expect(rowHtml("X", { name: "x", price: 1, prev: 2 }, [2, 1])).toContain('<span class="abs">-1.00</span> <span class="pct">-50.00%</span>');
     expect(rowHtml("X", { name: "x", price: 1, prev: 1 }, [1])).toContain('class="quote flat"');
     expect(rowHtml("X", { name: "x", price: 1, prev: 0 }, [1])).toContain(">+0.00%<");
-    expect(rowHtml("<b>", { name: "a & b", price: 1, prev: 1 }, [1])).toContain('<span class="symbol">&lt;b></span><span class="name">a &amp; b</span>');
+    expect(rowHtml("<b>", { name: "a & b", price: 1, prev: 1 }, [1])).toContain('<span class="symbol">&lt;b&gt;</span><span class="name">a &amp; b</span>');
     expect(drawRow(state())).toBe(rowHtml("ALPH", state().props.quote, [189.0, 189.42]));
   });
 

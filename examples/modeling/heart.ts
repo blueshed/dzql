@@ -13,6 +13,8 @@
 //   gaps        a story no document serves; a document that serves no story still told; an entity
 //               only such documents hold: needed by no story.
 
+import { esc } from "../../src/html";
+
 export type Field = { name: string; type: string };
 export type Held = { parent: string | null; fields: Field[] };
 
@@ -163,7 +165,6 @@ export type Mark = { kind: "ent"; ent: string };
 /** What a person looking has done to the page: what they picked, what they hid, the reason open. */
 export type Ui = { sel?: Sel; hideStories: boolean; hideEnts: boolean; pop: Mark | null };
 
-const esc = (s: unknown) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const title = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 export const list = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);

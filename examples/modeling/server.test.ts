@@ -103,7 +103,7 @@ describe("the heart, worked out from the model", () => {
     expect(doc).toContain("Stories · 2 it was born from");
     expect(doc).toContain("Documents · Team");
     expect(doc).toContain("Entities · 3 of 5 reached");
-    expect(doc).toContain('<div class="shape"><div style="padding-left:0px">team:&#60;team&#62;</div>');
+    expect(doc).toContain('<div class="shape"><div style="padding-left:0px">team:&lt;team&gt;</div>');
     expect(drawHeart(h, { ...ui, sel: { k: "doc", id: "inbox" } })).toContain("held by 0 · serves no story told");
     expect(doc).toContain('<span class="tag">posts to /login · </span>Bo signs in');
     expect(doc).toContain('<span class="cannot">cannot · </span>Ann cannot approve');

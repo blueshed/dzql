@@ -4,6 +4,7 @@
 // Both are pure functions over a RowState, tested here without a browser; the mounting that owns
 // that state per element is board-applet.ts, imported only by client/main.ts.
 
+import { esc } from "../../../src/html";
 import type { PatchOp } from "../../../src/json-patch";
 
 export type Quote = { name: string; price: number; prev: number };
@@ -21,8 +22,6 @@ export interface RowState {
 }
 
 export const HISTORY = 40;
-
-const esc = (s: string) => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;");
 
 /** A polyline of the recent prices, scaled to its own range, so a flat line is a flat line and a move is visible whatever the price. */
 export function sparkline(prices: number[], w = 120, h = 18): string {

@@ -7,21 +7,13 @@
 import { tap, type Measured } from "../../../src/costs";
 import { patchMessage } from "../../../src/json-patch";
 import { createServer } from "../../../src/server";
+import { esc } from "../../../src/html";
 import { example } from "../index";
 import { connect as socketTo, heard as heardAll, nextMessage, rawOf } from "../../../src/test-socket";
 
 const MEMBERS = 5;
 const HISTORY = 100;
 const room = crypto.randomUUID();
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
 
 // Seed history straight into delta (bypassing the wire) so only the final message's cost is
 // measured, not 100 round trips.
@@ -83,7 +75,7 @@ const renderKind = incoming[0]![0].map((raw) => JSON.parse(raw)).find((m) => m.t
 
 // Reconstruct what request 2-4's behavior would have cost: the same patch
 // echo, plus a single appended <li> instead of a full render.
-const appendHtml = `<li><strong>${escapeHtml("Member0")}:</strong> ${escapeHtml(text)}</li>`;
+const appendHtml = `<li><strong>${esc("Member0")}:</strong> ${esc(text)}</li>`;
 const appendPayload = JSON.stringify({ type: "append", selector: ".messages", html: appendHtml });
 const patchPayload = patchMessage("room", 999, [{ op: "add", path: "/messages/-", value: { name: "Member0", text } }]);
 const beforeBytes = Buffer.byteLength(patchPayload, "utf8") + Buffer.byteLength(appendPayload, "utf8");

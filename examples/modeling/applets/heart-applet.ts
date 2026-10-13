@@ -6,11 +6,11 @@
 // the coverage table, since only a real browser drives it; the drawing is heart.ts.
 
 import { registerApplet } from "../../../src/applets";
+import { esc } from "../../../src/html";
 import { CLOSE, drawHeart, heartOf, keyOf, reason, type Raw, type Sel, type Ui } from "../heart";
 
 type State = { raw: Raw; ui: Ui };
 const state = new WeakMap<HTMLElement, State>();
-const esc = (s: unknown) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** The popover over the page: the reason a mark stands for, placed under the mark. */
 function drawPop(el: HTMLElement, s: State): void {

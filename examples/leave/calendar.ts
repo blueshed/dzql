@@ -2,6 +2,8 @@
 // person's colour, and the calendar and the list as HTML. No server and no DOM, so the page (the
 // server) and the applets (the browser) draw from the same code, and it is tested on its own.
 
+import { esc, write } from "../../src/html";
+
 export type Role = "member" | "manager";
 export type Person = { id: string; name: string; role: Role };
 export type Status = "asked" | "approved" | "declined";
@@ -105,13 +107,7 @@ export function colourOf(people: Person[], personId: string): number {
 
 // ───────────────────────────── the calendar ─────────────────────────────
 
-const esc = (s: string): string => s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-
-/** A write as the kernel's client forwards it (src/html.ts `write`), for a control an applet draws. */
-const writeAttr = (doc: string, op: string, path: string, value?: string): string =>
-  ` data-write='${JSON.stringify({ doc, op, path }).replaceAll("&", "&amp;").replaceAll("'", "&#39;")}'${value === undefined ? "" : ` data-value="${esc(value)}"`}`;
-
-const go = (page: string): string => writeAttr("session", "replace", "/page", page);
+const go = (page: string): string => write("session", "replace", "/page", page);
 
 const WORD: Record<Status, string> = { asked: "waiting", approved: "approved", declined: "declined" };
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
