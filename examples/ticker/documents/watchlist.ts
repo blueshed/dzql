@@ -1,6 +1,6 @@
 import { read as readDoc } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
-import { parsePointer } from "../../../src/json-pointer";
+import { splitPath } from "@blueshed/delta/core";
 import { refuse } from "../../../src/refusal";
 
 // A session's watchlist, kept in delta (`watchlist:<id>`, ../delta.ts): the symbols its board
@@ -21,7 +21,7 @@ export function read(sessionId: string): WatchlistDocument {
 export function after(symbols: string[], ops: PatchOp[], has: (symbol: string) => boolean): string[] {
   const next = [...symbols];
   for (const op of ops) {
-    const [field, key] = parsePointer(op.path);
+    const [field, key] = splitPath(op.path);
     if (field !== "symbols" || key === undefined) continue;
     if (key === "-" && op.op === "add") {
       const symbol = String(op.value ?? "").trim().toUpperCase();

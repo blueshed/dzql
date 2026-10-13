@@ -1,6 +1,6 @@
 import * as sessionDoc from "../documents/session";
 import type { PatchOp } from "../../../src/json-patch";
-import { parsePointer } from "../../../src/json-pointer";
+import { splitPath } from "@blueshed/delta/core";
 import type { Compartment } from "../../../src/compartments/compartment";
 import { keepEveryone } from "../everyone";
 
@@ -32,7 +32,7 @@ export const session: Compartment = {
   },
   permit(ws, op: PatchOp) {
     if (!RULES.some((r) => r.path.test(op.path) && r.ops.includes(op.op))) return false;
-    return BEFORE_CODE.has(parsePointer(op.path)[0]!) || sessionDoc.read(ws.data.sessionId).code !== null;
+    return BEFORE_CODE.has(splitPath(op.path)[0]!) || sessionDoc.read(ws.data.sessionId).code !== null;
   },
   // A visit is nobody else's to see, and never on the ledger (../delta.ts): a code entered, a page
   // gone to, a reading switched, each field it moves replaced whole.

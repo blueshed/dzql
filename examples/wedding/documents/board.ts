@@ -1,6 +1,6 @@
 import { read as readDoc } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
-import { parsePointer } from "../../../src/json-pointer";
+import { splitPath } from "@blueshed/delta/core";
 import { db } from "../delta";
 import { householdFrom, newId, type HouseholdDocument } from "./household";
 import { coursesOf, eventsOf, giftsOf, placesOf, weddingOf, WEDDING, type Course, type Event, type Gift, type Place, type Rows, type Wedding } from "./wedding";
@@ -136,7 +136,7 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
   let made = 0; // a row added at `-` has no id until delta names it: the copy keeps it by a key of its own
   const emit = (op: PatchOp) => {
     out.push(op);
-    const [coll, at, field] = parsePointer(op.path);
+    const [coll, at, field] = splitPath(op.path);
     const id = at === "-" ? `-${++made}` : at!;
     const rows = d[coll as keyof Doc] as Rows;
     if (coll === "weddings") (d.weddings as Record<string, unknown>)[id] = op.value;
@@ -160,7 +160,7 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
   const addGuest = (hid: string, value: Record<string, unknown>, gid = "-"): void => emit({ op: "add", path: `/guests/${gid}`, value: { households_id: hid, ...value } });
 
   for (const op of ops) {
-    const [head, ...rest] = parsePointer(op.path);
+    const [head, ...rest] = splitPath(op.path);
     if (!head) continue;
 
     if (rest.length === 0 && head in ROOT) {

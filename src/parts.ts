@@ -1,6 +1,6 @@
 import type { HtmlOp } from "./compartments/render";
 import { esc } from "./html";
-import { parsePointer } from "./json-pointer";
+import { applyOps } from "@blueshed/delta/core";
 
 // A page is drawn whole on the server and sent in parts. A render names the regions of its page
 // with `part(key, html)`; the kernel keeps, per connection, the parts it last sent, and after a
@@ -107,13 +107,7 @@ function without(json: string, under: string): unknown {
   if (under === "") return ROOT;
   try {
     const props = JSON.parse(json) as unknown;
-    const path = parsePointer(under);
-    const last = path.pop()!;
-    let parent = props;
-    for (const segment of path) parent = (parent as Record<string, unknown> | null)?.[segment];
-    if (parent === null || typeof parent !== "object" || !Object.hasOwn(parent, last)) return undefined;
-    if (Array.isArray(parent)) parent.splice(Number(last), 1);
-    else delete (parent as Record<string, unknown>)[last];
+    applyOps(props, [{ op: "remove", path: under }]);
     return props;
   } catch {
     return undefined;

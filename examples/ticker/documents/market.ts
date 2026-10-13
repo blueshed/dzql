@@ -1,6 +1,6 @@
 import { read as readDoc } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
-import { parsePointer } from "../../../src/json-pointer";
+import { splitPath } from "@blueshed/delta/core";
 
 // The market: one document, a quote per symbol, kept in delta (`ticker:market`, ../delta.ts), and
 // each quote as its own document too (`quote:<SYMBOL>`), for a board that watches it. A
@@ -38,7 +38,7 @@ export function ticks(ops: PatchOp[]): PatchOp[] {
   const quotes = read();
   const shaped: PatchOp[] = [];
   for (const op of ops) {
-    const [symbol, field] = parsePointer(op.path);
+    const [symbol, field] = splitPath(op.path);
     if (op.op !== "replace" || !symbol || field !== "price") continue;
     const price = Number(op.value);
     const before = quotes[symbol];

@@ -1,7 +1,7 @@
 import { read as readDoc } from "../../../src/documents";
 import { address, parseAddress, patchCollections, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
-import { parsePointer } from "../../../src/json-pointer";
+import { splitPath } from "@blueshed/delta/core";
 
 // The desk, kept in delta (`desk:<id>`, ../delta.ts): where this session is on the page -- one
 // address (src/bento.ts): the cell grown into the window, and the one thing open over it,
@@ -37,7 +37,7 @@ function placed(value: unknown): string | undefined {
 export function after(ui: Ui, ops: PatchOp[]): Ui {
   const next: Ui = structuredClone(ui);
   for (const op of ops) {
-    const [field] = parsePointer(op.path);
+    const [field] = splitPath(op.path);
     if (field === "page") {
       const page = op.op === "remove" ? "" : placed(op.value);
       if (page !== undefined) next.page = page;

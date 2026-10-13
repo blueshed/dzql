@@ -6,7 +6,7 @@
 
 import { isPost, writeOf, type Stories, type Story } from "../src/stories";
 import type { Example } from "../src/example";
-import { parsePointer } from "../src/json-pointer";
+import { splitPath } from "@blueshed/delta/core";
 import { run } from "../src/harness";
 import { documentsIn, heardAs, privateEntry, read, typeOf, watch, exampleAt } from "./documents";
 import { heartOf, inSql } from "./heart";
@@ -67,10 +67,10 @@ export async function extract(at: string) {
   const docByName = new Map(documents.map((d) => [d.name, d]));
   function place(doc: string, path: string): { table: string | null; field: string | null } {
     const d = docByName.get(typeOf(doc));
-    if (!d?.root) return { table: null, field: parsePointer(path)[0] ?? null };
+    if (!d?.root) return { table: null, field: splitPath(path)[0] ?? null };
     const known = new Set([d.root, ...d.include]);
     let table = d.root;
-    for (const seg of parsePointer(path)) {
+    for (const seg of splitPath(path)) {
       if (seg === "-" || /^\d+$/.test(seg)) continue;
       if (!known.has(seg)) return { table, field: seg };
       table = seg;

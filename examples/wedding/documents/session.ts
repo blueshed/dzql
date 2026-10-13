@@ -2,7 +2,7 @@ import { db } from "../delta";
 import { read as readDoc } from "../../../src/documents";
 import { address, parseAddress, patchCollections, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
-import { parsePointer } from "../../../src/json-pointer";
+import { splitPath } from "@blueshed/delta/core";
 import { integer } from "./values";
 import { refuse } from "../../../src/refusal";
 
@@ -85,7 +85,7 @@ export function read(id: string): SessionDocument {
 function after(before: Visit, ops: PatchOp[]): Visit {
   const next: Visit = { ...before };
   for (const op of ops) {
-    const [field] = parsePointer(op.path);
+    const [field] = splitPath(op.path);
     const removing = op.op === "remove";
     if (field === "code") {
       const code = removing ? "" : String(op.value ?? "").trim().toUpperCase();

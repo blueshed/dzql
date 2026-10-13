@@ -10,7 +10,7 @@
 import { esc, join, write } from "./html";
 import { part } from "./parts";
 import type { PatchOp } from "./json-patch";
-import { parsePointer } from "./json-pointer";
+import { splitPath } from "@blueshed/delta/core";
 import { slug, grid, type Cell, type Grid } from "./grid";
 
 /** The marks the surfaces draw themselves, by the names an example's icons must know them by. */
@@ -455,7 +455,7 @@ export type Collections = {
  * A session's shape tries this after its own fields.
  */
 export function patchCollections(ui: Collections, op: PatchOp): boolean {
-  const [field, key] = parsePointer(op.path);
+  const [field, key] = splitPath(op.path);
   if ((field !== "reading" && field !== "filter" && field !== "hide") || !key) return false;
   const maps = ui as Record<string, Record<string, string | true> | undefined>;
   if (op.op !== "remove") {

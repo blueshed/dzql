@@ -1,7 +1,7 @@
 import { read as readDoc } from "../../src/documents";
 import { address, parseAddress } from "../../src/bento";
 import type { PatchOp } from "../../src/json-patch";
-import { parsePointer } from "../../src/json-pointer";
+import { splitPath } from "@blueshed/delta/core";
 import { refuse } from "../../src/refusal";
 import { stillMine, workingDaysOf, type Person, type Request, type Span, type Team } from "./calendar";
 
@@ -62,7 +62,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 export function shapeSession(before: Session, ops: PatchOp[]): PatchOp[] {
   let { page, draft } = before;
   for (const op of ops) {
-    const [field, day] = parsePointer(op.path);
+    const [field, day] = splitPath(op.path);
     if (field === "person_id") return [{ op: "replace", path: "/person_id", value: null }, { op: "replace", path: "/page", value: null }];
     if (field === "page") {
       page = (op.op === "remove" ? "" : placed(op.value)) ?? page;
@@ -95,7 +95,7 @@ export function shapeSession(before: Session, ops: PatchOp[]): PatchOp[] {
  * session's.
  */
 export function may(me: Person, op: PatchOp, t: Team): boolean {
-  const [coll, id, field] = parsePointer(op.path);
+  const [coll, id, field] = splitPath(op.path);
   if (coll !== "requests") return false;
   if (op.op === "add") return id === "-" && field === undefined;
   const r = t.requests.find((x) => x.id === id);
@@ -120,7 +120,7 @@ function checked(s: Span): Span {
 export function shape(me: Person, ops: PatchOp[], t: Team, draft: Span | null): PatchOp[] {
   const moved = new Map<string, Span>();
   const out = ops.flatMap((op): PatchOp[] => {
-    const [, id, field] = parsePointer(op.path);
+    const [, id, field] = splitPath(op.path);
     if (op.op === "add") {
       const said = (op.value ?? draft) as Partial<Span> | null;
       if (!said || typeof said.starts !== "string" || typeof said.ends !== "string" || !DAY.test(said.starts) || !DAY.test(said.ends)) return [];

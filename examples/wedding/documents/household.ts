@@ -1,7 +1,7 @@
 import { db } from "../delta";
 import { read as readDoc } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
-import { parsePointer } from "../../../src/json-pointer";
+import { splitPath } from "@blueshed/delta/core";
 import { allowsLook, isLookField, LOOK_FIELDS, type Look } from "../looks";
 import type { Course, Rows } from "./wedding";
 import { integer, text, yesNo } from "./values";
@@ -115,7 +115,7 @@ export function shape(h: HouseholdDocument, offer: Offer, ops: PatchOp[], now = 
   const nameOf = (value: unknown) => text(typeof value === "string" ? value : (value as { name?: unknown } | null)?.name);
 
   for (const op of ops) {
-    const [head, second, third, fourth, fifth] = parsePointer(op.path);
+    const [head, second, third, fourth, fifth] = splitPath(op.path);
     const removing = op.op === "remove";
 
     if (head === "answer") {
@@ -195,7 +195,7 @@ const rowOf = (op: PatchOp | undefined): Record<string, unknown> => ((op as { va
  */
 export function whatItDid(left: PatchOp[], was: PatchOp[], h: HouseholdDocument, gifts: { id: number; name: string }[]): string[] {
   return left.flatMap((op) => {
-    const [table, id] = parsePointer(op.path);
+    const [table, id] = splitPath(op.path);
     const row = rowOf(op);
     const before = rowOf(was.find((w) => w.path === op.path));
     const changed = (field: string) => JSON.stringify(row[field] ?? null) !== JSON.stringify(before[field] ?? null);

@@ -1,6 +1,6 @@
 import { read as readDoc } from "../../src/documents";
 import type { PatchOp } from "../../src/json-patch";
-import { parsePointer } from "../../src/json-pointer";
+import { splitPath } from "@blueshed/delta/core";
 import { refuse } from "../../src/refusal";
 import type { Field, Held, Raw } from "./heart";
 
@@ -65,7 +65,7 @@ type Said = { text?: unknown; actor?: unknown; kind?: unknown; post?: unknown; t
  */
 export function shape(m: Model, ops: PatchOp[]): PatchOp[] {
   return ops.flatMap((op): PatchOp[] => {
-    const [coll, id, field, entity] = parsePointer(op.path);
+    const [coll, id, field, entity] = splitPath(op.path);
     const said = (op.value ?? {}) as Said;
     if (coll === "stories") {
       if (op.op === "add") {
@@ -109,7 +109,7 @@ const DOCUMENT_FIELDS = new Set(["name", "held_by", "stories", "own"]);
 
 /** May this op be written at all: a story or a document the model has (or a new one), and only their own fields. */
 export function may(m: Model, op: PatchOp): boolean {
-  const [coll, id, field, entity, ...more] = parsePointer(op.path);
+  const [coll, id, field, entity, ...more] = splitPath(op.path);
   if (more.length > 0) return false;
   if (coll === "stories") {
     if (id === "-") return op.op === "add" && field === undefined;

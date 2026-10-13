@@ -22,7 +22,7 @@
 
 import { writeOf, type Stories, type Story, type Write } from "../src/stories";
 import type { PatchOp } from "../src/json-patch";
-import { parsePointer } from "../src/json-pointer";
+import { splitPath } from "@blueshed/delta/core";
 import { typeOf as docType } from "./documents";
 import type { Entity, Field, Model, Story as ModelStory, StoryWrite } from "./model/grammar";
 
@@ -61,7 +61,7 @@ export type Located = { chain: string[]; field?: string; row: boolean };
 
 /** Walk a pointer: a row segment selects a row; a name followed by a row is a child collection; any other name is the field (the rest is inside it). */
 export function locate(doc: string, path: string): Located {
-  const segs = parsePointer(path);
+  const segs = splitPath(path);
   const chain = [docType(doc)]; // by its type: Japan (ask:1) and the picnic (ask:2) are one entity
   let row = false;
   for (let i = 0; i < segs.length; i++) {

@@ -1028,13 +1028,13 @@ describe("the patch stream: what an applet that takes a document's patches holds
     expect(unheld("ann's", taken, mount("{&quot;B&quot;:{&quot;b&quot;:1},&quot;A&quot;:2}"))).toEqual([]); // keys in any order
     expect(unheld("ann's", taken, mount("{&quot;A&quot;:3,&quot;B&quot;:{&quot;b&quot;:1}}"))[0]).toStartWith("ann's board holds what a fresh render does not");
     taken.get("board").ops.push({ op: "remove", path: "/C" });
-    expect(unheld("ann's", taken, mount("{}"))).toEqual(["ann's board was sent ticker:market ops that do not land on its props: remove /C: no such member"]);
+    expect(unheld("ann's", taken, mount("{}"))).toEqual(["ann's board was sent ticker:market ops that do not land on its props: Path not found: \"/C\" is not there to remove"]);
     expect(unheld("ann's", taken, "<main></main>")).toEqual([]);
   });
 
   test("ops land where the document sits in the props, or say why they do not", () => {
     expect(holding({ applet: "board", doc: "d", under: "/quotes", props: '{"quotes":{"A":1}}', ops: [{ op: "replace", path: "/A", value: 3 }] })).toEqual({ value: { quotes: { A: 3 } } });
-    expect(holding({ applet: "board", doc: "d", under: "", props: '{"quotes":{}}', ops: [{ op: "replace", path: "/A", value: 3 }] })).toEqual({ error: "replace /A: no such member" });
+    expect(holding({ applet: "board", doc: "d", under: "", props: '{"quotes":{}}', ops: [{ op: "replace", path: "/A", value: 3 }] })).toEqual({ error: 'Path not found: "/A" is not there to replace' });
   });
 });
 
