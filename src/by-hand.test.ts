@@ -6,34 +6,41 @@ import { sameWrite } from "./by-hand";
 import { run, stillOpen } from "./harness";
 import { createServer } from "./server";
 import { write } from "./html";
-import type { Story } from "./stories";
+import type { Stories, Story } from "./stories";
 import wrongPage from "./by-hand.test.html";
 
 // The stories by hand: each told as the harness tells it, then done in a browser the size of a
 // phone. A control the page draws can be there and still not be pressed; the harness without a
 // browser cannot tell, and these say so by story name.
 
+/** An example and its stories, by its folder under examples/. */
+async function load(name: string): Promise<{ example: Example; stories: Stories }> {
+  const { example } = await import(`../examples/${name}/index`);
+  const { stories } = await import(`../examples/${name}/stories`);
+  return { example, stories };
+}
+
 const say = { doc: "room", ops: [{ op: "add" as const, path: "/messages/-", value: "hello" }] };
 const hello: Story = { name: "Ada says hello", as: "ada", does: say, seen: ["ada", "bob"], untold: ["cy", "dee", "eve"] };
 /** Chat, its page drawn otherwise: what `change` makes of the message form. */
 const chatWith = (change: (html: string) => string): Example => ({ ...chat, render: (sessionId) => change(chat.render(sessionId)) });
 const MESSAGE_FORM = /<form class="say"[^>]*data-write='\{"doc":"room"[^]*?<\/form>/;
-const told = async (example: Example, stories: Story[]) => (await run(example, { ...chatStories, stories })).outcomes.map((o) => o.failures);
+/** Each story's failures, told among chat's cast, and with `byHand` done by hand too. */
+const told = async (example: Example, stories: Story[], byHand = false) => (await run(example, { ...chatStories, stories }, undefined, { byHand })).outcomes.map((o) => o.failures);
 /** leave, its calendar made wrong as `wrong` says (src/by-hand.test.entry.ts); "" is leave's own. */
 const leaveWith = async (wrong: string): Promise<Example> => {
-  const { example: leave } = await import("../examples/leave/index");
+  const { example: leave } = await load("leave");
   return { ...leave, index: wrongPage, render: (sessionId) => leave.render(sessionId).replace('data-applet="calendar"', `data-applet="calendar" data-wrong="${wrong}"`) };
 };
-const byHand = async (example: Example, stories: Story[]) => (await run(example, { ...chatStories, stories }, undefined, { byHand: true })).outcomes.map((o) => o.failures);
 
 describe("the stories by hand", () => {
   test("a story a person can do passes by hand too: a form typed into and sent, a button pressed, a way pressed to where it is done", async () => {
     const report = await run(chat, chatStories, undefined, { byHand: true });
+    expect(report.outcomes.map((o) => o.name)).toEqual(chatStories.stories.map((s) => s.name));
     expect(report.outcomes.flatMap((o) => o.failures)).toEqual([]);
     expect(report.byHand).toMatchObject({ stories: 8, presses: 8, applets: 0 });
 
-    const { example: ticker } = await import("../examples/ticker/index");
-    const { stories: told } = await import("../examples/ticker/stories");
+    const { example: ticker, stories: told } = await load("ticker");
     const reading = (value: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/reading/board", value }] });
     const ann: Story[] = [
       ...told.stories.filter((s) => s.name.startsWith("Ann watches Charlie Metals, and only") || s.name.startsWith("Ann sets her clock")), // a modal's select; the city picker, an applet's
@@ -47,21 +54,20 @@ describe("the stories by hand", () => {
   test("a control that is on the page and cannot be pressed passes without a browser, and fails by hand, by name", async () => {
     const covered = chatWith((html) => html.replace(MESSAGE_FORM, (form) => `<div style="position: relative">${form}<div id="veil" style="position: absolute; inset: 0"></div></div>`));
     expect(await told(covered, [hello])).toEqual([[]]);
-    expect(await byHand(covered, [hello])).toEqual([["by hand, ada could not add /messages/- on room: the control for it is covered by div#veil"]]);
+    expect(await told(covered, [hello], true)).toEqual([["by hand, ada could not add /messages/- on room: the control for it is covered by div#veil"]]);
 
     const unseen = chatWith((html) => html.replace(MESSAGE_FORM, (form) => `<div style="display: none">${form}</div>`));
     expect(await told(unseen, [hello])).toEqual([[]]);
-    expect(await byHand(unseen, [hello])).toEqual([["by hand, ada could not add /messages/- on room: the control for it is not to be seen"]]);
+    expect(await told(unseen, [hello], true)).toEqual([["by hand, ada could not add /messages/- on room: the control for it is not to be seen"]]);
 
     // a field that writes, in no form that sends it: the client never does
     const loose = chatWith((html) => html.replace(MESSAGE_FORM, `<input name="text"${write("room", "add", "/messages/-")}>`));
     expect(await told(loose, [hello])).toEqual([[]]);
-    expect(await byHand(loose, [hello])).toEqual([["by hand, ada could not add /messages/- on room: its field is in no form that sends it"]]);
+    expect(await told(loose, [hello], true)).toEqual([["by hand, ada could not add /messages/- on room: its field is in no form that sends it"]]);
   }, 60000);
 
   test("a form posted to a route by hand: typed into and sent, the browser following where it sends it, signed in or told why; one a person cannot reach fails by name", async () => {
-    const { example: leave } = await import("../examples/leave/index");
-    const { stories: told } = await import("../examples/leave/stories");
+    const { example: leave, stories: told } = await load("leave");
     const posts = told.stories.filter((s) => s.name.startsWith("Bo signs in on another phone") || s.name.startsWith("Someone types Bo's email"));
     const after = told.stories.filter((s) => s.name.startsWith("Ann asks for her draft")); // a fresh browser after a post: not signed in as Bo by the route's cookie
     const report = await run(leave, { ...told, stories: [...posts, ...after] }, undefined, { byHand: true });
@@ -84,11 +90,11 @@ describe("the stories by hand", () => {
     const off = write("session", "remove", "/name");
     const unheard = chatWith((html) => html.replace(off, ` onclick="event.stopPropagation()"${off}`));
     expect(await told(unheard, [going])).toEqual([[]]);
-    expect(await byHand(unheard, [going])).toEqual([["by hand, ada could not remove /name on session: the page sent nothing when it was pressed"]]);
+    expect(await told(unheard, [going], true)).toEqual([["by hand, ada could not remove /name on session: the page sent nothing when it was pressed"]]);
 
     // a button in a disabled fieldset's first legend is not disabled, as the browser has it (`:disabled`)
     const legend = chatWith((html) => html.replace(/<button[^>]*aria-label="Log out"[^]*?<\/button>/, (b) => `<fieldset disabled><legend>${b}</legend></fieldset>`));
-    expect(await byHand(legend, [going])).toEqual([[]]);
+    expect(await told(legend, [going], true)).toEqual([[]]);
   }, 60000);
 
   test("a tab that does not close is said, not waited on in silence: the server still holding its socket", async () => {
@@ -115,19 +121,18 @@ describe("the stories by hand", () => {
 
   test("what is folded in a <details> is opened first; a write the server refuses lands nothing by hand either", async () => {
     const folded = chatWith((html) => html.replace(MESSAGE_FORM, (form) => `<details><summary>Say something</summary>${form}</details>`));
-    expect(await byHand(folded, [hello])).toEqual([[]]);
+    expect(await told(folded, [hello], true)).toEqual([[]]);
 
     const blank: Story = { name: "Dee enters a room with no name", as: "dee", does: { doc: "session", ops: [{ op: "replace", path: "/room", value: "  " }] }, seen: ["dee"] };
-    expect((await byHand(chat, [blank]))[0]).toContain("by hand, nothing landed: dee's write was refused");
+    expect((await told(chat, [blank], true))[0]).toContain("by hand, nothing landed: dee's write was refused");
 
     // a field that takes less than the story types sends what it took, which is not the story's write
     const short = chatWith((html) => html.replace('<input name="text"', '<input name="text" maxlength="3"'));
-    expect(await byHand(short, [hello])).toEqual([['by hand, ada could not add /messages/- on room: the page sent add /messages/- "hel" on room']]);
+    expect(await told(short, [hello], true)).toEqual([['by hand, ada could not add /messages/- on room: the page sent add /messages/- "hel" on room']]);
   }, 60000);
 
   test("a way that cannot be pressed is left for another, and with none left it is said where the way stopped", async () => {
-    const { example: ticker } = await import("../examples/ticker/index");
-    const { stories: told } = await import("../examples/ticker/stories");
+    const { example: ticker, stories: told } = await load("ticker");
     const watches = told.stories.filter((s) => s.name.startsWith("Ann watches Charlie Metals, and only"));
     const plus = write("desk", "replace", "/page", "board?new");
     const flat: Example = { ...ticker, render: (sessionId) => ticker.render(sessionId).replaceAll(plus, ` style="display: block; width: 0; height: 0; padding: 0; border: 0; overflow: hidden"${plus}`) };
@@ -136,8 +141,7 @@ describe("the stories by hand", () => {
   }, 60000);
 
   test("a story may say its gesture: leave's drags on its calendar are done by hand whenever they are told, and must send the story's write", async () => {
-    const { example: leave } = await import("../examples/leave/index");
-    const { stories: told } = await import("../examples/leave/stories");
+    const { example: leave, stories: told } = await load("leave");
     const drags = told.stories.filter((s) => s.gesture !== undefined);
     expect(drags.map((s) => s.name)).toEqual([
       "Ann drags across two days in Bo's week, and sees the clash before she asks",
@@ -161,7 +165,7 @@ describe("the stories by hand", () => {
   }, 60000);
 
   test("a gesture's write is the one its events sent: a calendar that hears no pointer and writes by itself, late, fails; so does one that writes twice, or unasked before anything is pressed", async () => {
-    const { stories: told } = await import("../examples/leave/stories");
+    const { stories: told } = await load("leave");
     const across = told.stories.filter((s) => s.name.startsWith("Ann drags across"));
     const failures = async (wrong: string) => (await run(await leaveWith(wrong), { ...told, stories: across })).outcomes[0]!.failures;
     expect(await failures("")).toEqual([]);
@@ -203,8 +207,7 @@ describe("the stories by hand", () => {
   }, 60000);
 
   test("a refusal whose write a control on the page sends is tried by hand: leave's days hidden by a stylesheet fail the story that types one", async () => {
-    const { example: leave } = await import("../examples/leave/index");
-    const { stories: told } = await import("../examples/leave/stories");
+    const { example: leave, stories: told } = await load("leave");
     const hidden: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replaceAll('<form class="days"', '<form class="days" style="display: none"') };
     const report = await run(hidden, told, undefined, { byHand: true });
     expect(report.outcomes.filter((o) => o.failures.length > 0).map((o) => [o.name, o.failures])).toEqual([
@@ -212,8 +215,7 @@ describe("the stories by hand", () => {
     ]);
 
     // a symbol the Watch modal's select does not offer is one nobody can send from the page: its refusal is the wire's
-    const { example: ticker } = await import("../examples/ticker/index");
-    const { stories: watching } = await import("../examples/ticker/stories");
+    const { example: ticker, stories: watching } = await load("ticker");
     const unquoted = watching.stories.filter((s) => s.name.startsWith("Ann cannot watch a symbol"));
     expect((await run(ticker, { ...watching, stories: unquoted }, undefined, { byHand: true })).outcomes[0]!.failures).toEqual([]);
     // and a refusal that lands, sent from the page, fails when it is told and by hand
@@ -222,7 +224,7 @@ describe("the stories by hand", () => {
   }, 60000);
 
   test("a record the page sent with a key the story does not name is not its write, unless the key is blank: a calendar's half day fails", async () => {
-    const { stories: told } = await import("../examples/leave/stories");
+    const { stories: told } = await load("leave");
     const across = told.stories.filter((s) => s.name.startsWith("Ann drags across"));
     expect((await run(await leaveWith("half"), { ...told, stories: across })).outcomes[0]!.failures).toEqual([
       'by hand, ann could not replace /draft on session: the page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-07","half":true} on session',
