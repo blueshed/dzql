@@ -14,10 +14,9 @@ import { quote, type MarketDocument, type Quote } from "../documents/market";
 import type { WatchlistDocument } from "../documents/watchlist";
 import { icon } from "./icons";
 
-const { tool, readingSwitch, addTool, findControl, cell, boxPage, row, drawer, addModal, confirmModal } = bento({ icon, session: "desk" });
+const { tool, readingSwitch, addTool, findControl, cell, boxPage, row, drawer, addModal, confirmModal, go, site } = bento({ icon, session: "desk" });
 
 /** Going somewhere on the desk -- a window, a drawer over it, a modal -- is one write: the address. */
-const go = (page: string): string => write("desk", "replace", "/page", page);
 /** Where this session is: the window, and the one thing open over it. */
 export const where = (ui: Ui) => parseAddress(ui.page);
 
@@ -209,10 +208,6 @@ export function page(v: View): string {
   const trail = opened ? [desk, { label: `the ${opened.key}` }] : [desk];
   const modal = modals(v);
   const over = openDrawer(v);
-  // the page's address goes in the URL (the kernel client mirrors data-page), so the back button closes a drawer and a link opens one;
-  // the site is a part, so a drawer opening changes its tag (the address) and its drawer layer, and nothing else is sent
-  return part(
-    "site",
-    `<div class="site" data-page="${esc(v.ui.page ?? "")}" data-page-write='${JSON.stringify({ doc: "desk", op: "replace", path: "/page" })}'>${layers(boxPage(trail, [], cells, opened), over, modal)}</div>`,
-  );
+  // the page's address goes in the URL, so the back button closes a drawer and a link opens one
+  return site(v.ui.page ?? "", layers(boxPage(trail, [], cells, opened), over, modal));
 }

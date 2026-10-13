@@ -3,12 +3,11 @@
 
 import type { Answer, Guest, HouseholdDocument } from "../documents/household";
 import type { Course, Event, Place, Wedding } from "../documents/wedding";
-import { row } from "./bento";
+import { row, site } from "./bento";
 import { rows } from "../../../src/bento";
 
 export { layers, matches } from "../../../src/bento";
 import { esc } from "./html";
-import { part } from "../../../src/parts";
 import { icon } from "./icons";
 
 export function formatDay(day: string): string {
@@ -144,14 +143,7 @@ export function placeRows(places: Place[], o: ListOptions = {}): string {
   );
 }
 
-/**
- * The whole of #app: the flowers along the foot behind everything, then the site. `page`, when a
- * household or the couple has one, is the session's own page as `data-page`/`data-page-write` --
- * the kernel client mirrors it into the URL and sends this write back on the browser's own
- * back/forward (change-request.md item 3). Pre-login (the welcome), there is no page to follow.
- */
+/** The whole of #app: the flowers along the foot behind everything, then the site, at the session's page (`site`); at the welcome, there is no page to follow. */
 export function frame(atWelcome: boolean, body: string, page?: string): string {
-  const pageAttrs = page === undefined ? "" : ` data-page="${esc(page)}" data-page-write='${JSON.stringify({ doc: "session", op: "replace", path: "/page" })}'`;
-  // the site is a part: a drawer or a modal opening changes its tag (the address) and a layer inside it, and nothing else is sent
-  return `<div class="flowers" aria-hidden="true"></div>` + part("site", `<div class="site${atWelcome ? " at-welcome" : ""}"${pageAttrs}>${body}</div>`);
+  return `<div class="flowers" aria-hidden="true"></div>` + site(page, body, atWelcome ? "at-welcome" : "");
 }

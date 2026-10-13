@@ -12,9 +12,8 @@ import { icon } from "./icons";
 // request's drawer is where a manager answers, and where you change or take back your own. The
 // drawers' fields do everything a drag does, for a keyboard.
 
-const { tool, collectionPage, drawer, confirmModal, addTool } = bento({ icon, session: "session", leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
+const { tool, collectionPage, drawer, confirmModal, addTool, go, site } = bento({ icon, session: "session", leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
 
-const go = (page: string): string => write("session", "replace", "/page", page);
 
 const WORD: Record<Status, string> = { asked: "waiting", approved: "approved", declined: "declined" };
 
@@ -116,10 +115,7 @@ export function render(sessionId: string): string {
   const r = open === null ? undefined : t.requests.find((x) => x.id === open);
   const drawer = what === "request" && r ? requestSheet(t, me, r, path, sessionId) : what === "draft" ? draftSheet(t, me, draft, path, sessionId) : "";
   const modal = what === "confirm" && r && stillMine(me, r) ? confirmModal("Take it back", `Take back ${days(r)}?`, write("team", "remove", `/requests/${r.id}`), go(address(path, "request", r.id)), "Take it back") : "";
-  return part(
-    "site",
-    `<div class="site" data-page="${esc(page)}" data-page-write='${JSON.stringify({ doc: "session", op: "replace", path: "/page" })}'>${layers(collectionPage([{ label: t.name }], { key: "leave", reading, tools, body }), drawer, modal)}</div>`,
-  );
+  return site(page, layers(collectionPage([{ label: t.name }], { key: "leave", reading, tools, body }), drawer, modal));
 }
 
 /** The calendar applet's mount: drawn here first, so the page reads before a script runs, then kept by the applet, which adds the drags. It writes your draft, and moves your requests. */

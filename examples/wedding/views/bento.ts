@@ -8,7 +8,7 @@ import { icon } from "./icons";
 
 export { choice, prop, rows, type Crumb, type OpenOptions } from "../../../src/bento";
 
-export const { crumbs, tool, pageTools, readingSwitch, addTool, findControl, cell, boxPage, collectionPage, row, drawer, addModal, confirmModal } = bento({
+export const { tool, addTool, findControl, collectionPage, row, drawer, addModal, confirmModal, site } = bento({
   icon,
   session: "session",
   leave: { text: "Leave", icon: "log-out", path: "/code" },

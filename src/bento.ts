@@ -412,7 +412,23 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     return modal(title, close, `<p class="note">${esc(question)}</p>${foot}`);
   }
 
-  return { crumbs, tool, pageTools, readingSwitch, addTool, findControl, cell, boxPage, collectionPage, row, drawer, addModal, confirmModal };
+  // ───────────────────────────── where you are ─────────────────────────────
+
+  /** The write that goes to a page: its address, on the session. */
+  const go = (page: string): string => write(trayDoc, "replace", "/page", page);
+
+  /**
+   * The whole page, a part (`site`): a drawer or a modal opening changes its tag (the address) and
+   * a layer inside it, and nothing else is sent. With an address, it carries it (`data-page`), which
+   * the client mirrors into the URL, and the write the browser's back and forward send
+   * (`data-page-write`); without one (signed out), there is nothing to follow.
+   */
+  function site(page: string | undefined, html: string, className = ""): string {
+    const follows = page === undefined ? "" : ` data-page="${esc(page)}" data-page-write='${JSON.stringify({ doc: trayDoc, op: "replace", path: "/page" })}'`;
+    return part("site", `<div class="site${className ? ` ${className}` : ""}"${follows}>${html}</div>`);
+  }
+
+  return { crumbs, tool, pageTools, readingSwitch, addTool, findControl, cell, boxPage, collectionPage, row, drawer, addModal, confirmModal, go, site };
 }
 
 // ───────────────────────────── where you are ─────────────────────────────
