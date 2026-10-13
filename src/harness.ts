@@ -16,8 +16,6 @@ import type { Kind } from "./compartments/compartment";
 import { splitDoc } from "./names";
 import { size, sum, tap } from "./costs";
 
-export { comparable };
-
 // Runs an example's stories against it, over real sockets, and reports by story name: what each
 // step checks is docs/stories.md, "The harness". Canon 1 compares every member's page, drawn from
 // the server's copy, before and after; Canon 2 holds each open page, kept as the client keeps it,
@@ -114,6 +112,9 @@ export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string;
 /** An applet that takes a document's patches, as a member's page holds it: the props a render gave it, the document's version they hold when the mount says it (`data-v`), and the ops taken since. */
 type Taken = { applet: string; doc: string; under: string; props: string; v?: number; ops: PatchOp[] };
 
+/** Where a page keeps a mount: by its id, or its part, or else its applet and how many were found before it. */
+const mountKey = (el: HTMLRewriterTypes.Element, applet: string, before: number): string => el.getAttribute("id") ?? el.getAttribute("data-eta-part") ?? `${applet}#${before}`;
+
 /** The applets on a page that take a document's patches, by their id (or part, or place). */
 export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
   const found = new Map<string, Omit<Taken, "ops">>();
@@ -121,9 +122,8 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
     .on("[data-doc]", {
       element(el) {
         const applet = el.getAttribute("data-applet") ?? "";
-        const key = el.getAttribute("id") ?? el.getAttribute("data-eta-part") ?? `${applet}#${found.size}`;
         const v = el.getAttribute("data-v");
-        found.set(key, { applet, doc: el.getAttribute("data-doc")!, under: el.getAttribute("data-under") ?? "", props: decoded(el.getAttribute("data-props") ?? "null"), ...(v !== null && { v: Number(v) }) });
+        found.set(mountKey(el, applet, found.size), { applet, doc: el.getAttribute("data-doc")!, under: el.getAttribute("data-under") ?? "", props: decoded(el.getAttribute("data-props") ?? "null"), ...(v !== null && { v: Number(v) }) });
       },
     })
     .transform(page);
@@ -148,7 +148,7 @@ function mountsIn(html: string): Mount[] {
     .on("[data-applet][data-props]", {
       element(el) {
         const applet = el.getAttribute("data-applet")!;
-        const key = el.getAttribute("id") ?? el.getAttribute("data-eta-part") ?? `${applet}#${found.length}`;
+        const key = mountKey(el, applet, found.length);
         const props = decoded(el.getAttribute("data-props")!);
         const watching = el.hasAttribute("data-doc");
         found.push({ key, applet, watching, own: watching ? ownProps(props, decoded(el.getAttribute("data-under") ?? "")) : props });
@@ -344,6 +344,9 @@ export const placeOf = (page: string): string | undefined => {
   return m ? decoded(m[1]!) : undefined;
 };
 
+/** A place's own address: what `where` says before any " @ " (what else the place holds). */
+const placeIn = (where: string): string => where.split(" @ ")[0]!;
+
 /** Does a path an applet names (`*` for any one member: an id, never `-`, the end of a list an append names as such) name this one? */
 const fits = (pattern: string, path: string): boolean => {
   const want = pattern.split("/");
@@ -521,7 +524,6 @@ export async function run(
   const { draw, page, documents, byDocType } = assemble(example);
   const active = (sessionId: string): Promise<boolean> => settled(documents, () => example.active(sessionId));
   const ledger = ledgerOf();
-  const ledgerMax = ledger.max;
   const outcomes: Outcome[] = [];
   let byHandTally: ByHand | undefined;
   const tryable = new Set<Story>(); // the refusals a control of the page's own sends, when told: tried by hand
@@ -639,6 +641,9 @@ export async function run(
     await new Promise((resolve) => ws.addEventListener("open", resolve, { once: true }));
   }
 
+  /** What a session is told now (src/refusal.ts). */
+  const toldNow = (sessionId: string): Promise<Line | undefined> => settled(documents, () => toldTo(sessionId));
+
   /**
    * Posts a form to a route as `who`'s browser does (`postForm`), and waits for what the route set
    * going: its writes, told from delta's stream as any change is. A redirect is followed as a
@@ -648,14 +653,14 @@ export async function run(
    * came from (`tell`).
    */
   async function posting(cast: Member[], who: Member, how: Post, from: Map<Member, number>): Promise<{ status: number; reason?: string }> {
-    const toldBefore = JSON.stringify(await settled(documents, () => toldTo(who.sessionId)) ?? null);
+    const toldBefore = JSON.stringify((await toldNow(who.sessionId)) ?? null);
     const res = await postForm(how, who.sessionId);
     await server.idle();
     if (res.status >= 400) {
       await settle(cast);
       return { status: res.status, reason: (await res.text()).trim() };
     }
-    const line = await settled(documents, () => toldTo(who.sessionId));
+    const line = await toldNow(who.sessionId);
     await settle(cast); // the tab that posted has heard what the route set going, before it goes
     if (res.status >= 300) {
       await closeTab(who);
@@ -702,8 +707,16 @@ export async function run(
     if (!stories.goTo) return;
     await send(cast, m, stories.goTo(where));
     const stands = placeOf(m.page);
-    const asked = where.split(" @ ")[0]!;
-    if (stands !== undefined && stands !== asked) failures.push(`${m.name} could not be put on ${JSON.stringify(where)}: their page is at ${JSON.stringify(stands)}`);
+    if (stands !== undefined && stands !== placeIn(where)) failures.push(`${m.name} could not be put on ${JSON.stringify(where)}: their page is at ${JSON.stringify(stands)}`);
+  }
+
+  /** What else `where` holds, past its place (" @ "): the ops of goTo's write for it that going to the place sends none of. Undefined where it says no more than its place. */
+  function past(where: string): Write | undefined {
+    const place = placeIn(where);
+    if (place === where) return undefined;
+    const going = stories.goTo!(place).ops.map((op) => JSON.stringify(op));
+    const all = stories.goTo!(where);
+    return { doc: all.doc, ops: all.ops.filter((op) => !going.includes(JSON.stringify(op))) };
   }
 
   /** The documents in front of each member: what the page last drawn for their socket read. */
@@ -758,7 +771,7 @@ export async function run(
     });
     if (phase === "undo" || phase === "redo") outcome.wire![phase] = handed;
     else {
-      const write = phase === "does" ? story.does : phase === "cannot" ? story.cannot : undefined;
+      const write = story.does ?? story.cannot;
       outcome.wire = { ...(write && { write: Buffer.byteLength(JSON.stringify(write)) }), handed };
     }
     const [budget, whose] = story.budget !== undefined ? [story.budget, "story's"] : [stories.budget, "example's"];
@@ -785,7 +798,7 @@ export async function run(
    * what that was) was told nothing of its own. The line, for the next step to be told apart from.
    */
   async function checkTold(who: Member, when: string, expected: string | undefined, failures: string[], before?: { line: Line | undefined; what: string }): Promise<Line | undefined> {
-    const line = await settled(documents, () => toldTo(who.sessionId));
+    const line = await toldNow(who.sessionId);
     const words = line?.said ?? line?.reason;
     if (line && before && JSON.stringify(line) === JSON.stringify(before.line)) failures.push(`${when}, ${who.name} is still told "${words}", what ${before.what} told them`);
     else if (expected !== undefined && line?.said !== expected) failures.push(`${when}, ${who.name} was not told "${expected}"${words === undefined ? "" : `: they were told "${words}"`}`);
@@ -796,20 +809,17 @@ export async function run(
   /** Does `page` show what its member was told, in its own words, where the same page told nothing (`without`) does not? */
   const shows = (page: string, without: string, words: string): boolean => page !== without && page.includes(esc(words));
 
-  function differs(a: Snapshot, b: Snapshot, name: string): boolean {
-    return a.get(name) !== b.get(name);
-  }
-
   function compare(a: Snapshot, b: Snapshot, cast: Member[], what: string, failures: string[]): void {
-    for (const m of cast) if (differs(a, b, m.name)) failures.push(`${what}: ${m.name}'s page differs${excerpt(a.get(m.name)!, b.get(m.name)!)}`);
+    for (const m of cast) if (a.get(m.name) !== b.get(m.name)) failures.push(`${what}: ${m.name}'s page differs${excerpt(a.get(m.name)!, b.get(m.name)!)}`);
   }
 
   /** `seen` must notice, and everyone else must not (R3): nobody's page changes unless the story says so. */
   function noticed(before: Snapshot, after: Snapshot, looking: Member[], seen: Map<string, string | undefined>, failures: string[]): void {
     for (const m of looking) {
+      const differs = before.get(m.name) !== after.get(m.name);
       if (seen.has(m.name)) {
-        if (!differs(before, after, m.name)) failures.push(`${m.name} did not see it${where(seen.get(m.name))}`);
-      } else if (differs(before, after, m.name)) failures.push(`${m.name} noticed, and should not have${excerpt(before.get(m.name)!, after.get(m.name)!)}`);
+        if (!differs) failures.push(`${m.name} did not see it${where(seen.get(m.name))}`);
+      } else if (differs) failures.push(`${m.name} noticed, and should not have${excerpt(before.get(m.name)!, after.get(m.name)!)}`);
     }
   }
 
@@ -821,16 +831,13 @@ export async function run(
     return closed;
   }
 
-  /** The patch stream: what each member's applets hold must be what a fresh render gives them. */
-  async function held(cast: Member[], when: string, failures: string[]): Promise<void> {
-    for (const m of cast) failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, await fresh(m.sessionId)));
-  }
-
-  /** Canon 2: what each member's open page holds must be what a fresh render shows. */
+  /** Canon 2: what each member's applets hold (the patch stream), then what their open page holds, must be what a fresh render gives them. */
   async function stale(cast: Member[], when: string, failures: string[]): Promise<void> {
-    await held(cast, when, failures);
-    for (const m of cast) {
-      const drawn = comparable(await fresh(m.sessionId));
+    const pages: string[] = [];
+    for (const m of cast) pages.push(await fresh(m.sessionId));
+    cast.forEach((m, i) => failures.push(...unheld(`${when}, ${m.name}'s`, m.taken, pages[i]!)));
+    for (const [i, m] of cast.entries()) {
+      const drawn = comparable(pages[i]!);
       const held = comparable(m.page);
       if (held !== drawn) failures.push(`${when}, ${m.name}'s open page is not what a fresh render shows${excerpt(drawn, held)}`);
     }
@@ -858,7 +865,7 @@ export async function run(
        */
       const step = async <T>(phase: Trace["phase"], write: Write | Post | undefined, cast: Member[], act: (from: Map<Member, number>) => Promise<T>): Promise<{ from: Map<Member, number>; done: T }> => {
         const from = mark(cast);
-        const seen = observe && { from: new Map(from), entry: ledgerMax(), holds: inFront(cast) };
+        const seen = observe && { from: new Map(from), entry: ledger.max(), holds: inFront(cast) };
         const done = await act(from);
         if (seen)
           observe!({
@@ -881,7 +888,7 @@ export async function run(
       if (story.cannot !== undefined) {
         if (story.from !== undefined) await put(cast, who, story.from, failures);
         const before = await snapshot(cast, who);
-        const ledgerBefore = ledgerMax();
+        const ledgerBefore = ledger.max();
         const tried = story.cannot;
         let reason: string | undefined;
         let onPage = true; // where the refusal is told: on their page, or, for a route's 4xx, the page the browser shows in its place
@@ -894,9 +901,10 @@ export async function run(
           onPage = answer.status < 400;
         } else {
           // P3: a button on the author's page that sends exactly this, refused without a word, is a control that always fails
-          const buttons = controlsOn(who.page, failures).filter((c) => !c.free);
+          const controls = controlsOn(who.page, failures);
+          const buttons = controls.filter((c) => !c.free);
           // a control of the page's own that sends it is one to try by hand; with none, that none does is the point
-          const own = controlsOn(who.page).filter((c) => !c.pattern);
+          const own = controls.filter((c) => !c.pattern);
           if (tried.ops.every((op) => own.some((c) => offers(c, tried.doc, op)))) tryable.add(story);
           if (story.told === undefined && tried.ops.every((op) => buttons.some((c) => offers(c, tried.doc, op)))) failures.push(`${who.name}'s page offers this, and it is refused without a word: a control that always fails`);
           const { done: answer } = await sent("cannot", tried, cast);
@@ -914,7 +922,7 @@ export async function run(
         }
         compare(before, after, cast, "refused, but", failures);
         await stale(cast, "after the refusal", failures);
-        if (ledgerMax() !== ledgerBefore) failures.push("refused, but the ledger moved");
+        if (ledger.max() !== ledgerBefore) failures.push("refused, but the ledger moved");
         return outcome;
       }
 
@@ -957,7 +965,7 @@ export async function run(
       }
 
       const before = await snapshot(cast, who);
-      const ledgerBefore = ledgerMax();
+      const ledgerBefore = ledger.max();
       const stood = placeOf(who.page);
       let { from, done: unlanded } = isPost(does)
         ? await step("does", does, cast, async (from) => {
@@ -1133,19 +1141,18 @@ export async function run(
 
     for (const group of starting.values()) {
       const wanted = new Map<string, Set<string>>();
-      for (const { story } of group) for (const [name, where] of placesOf(story)) (wanted.get(name) ?? wanted.set(name, new Set()).get(name)!).add(where.split(" @ ")[0]!);
+      for (const { story } of group) for (const [name, where] of placesOf(story)) (wanted.get(name) ?? wanted.set(name, new Set()).get(name)!).add(placeIn(where));
       const found = await walk(group[0]!.story, wanted, group.some(({ story }) => byHandToo(story)));
       if (!found) continue; // its premise does not hold: the story says so
       const { state, ways } = found;
       const lead = (name: string, where: string, why: string): string | undefined => {
         if (state.starts.get(name) === undefined) return undefined; // a page that says nowhere it stands (a welcome): nowhere to go
-        const [place = "", rest] = where.split(" @ ");
+        const place = placeIn(where);
         if (!ways.get(name)?.has(place)) return `no control leads ${name} to ${JSON.stringify(place)}, where ${why}`;
-        if (rest === undefined) return undefined;
-        const going = stories.goTo!(place).ops.map((op) => JSON.stringify(op));
-        const all = stories.goTo!(where);
+        const rest = past(where);
+        if (!rest) return undefined;
         const there = [...(state.pages.get(name)?.get(place)?.values() ?? [])];
-        const unsent = all.ops.filter((op) => !going.includes(JSON.stringify(op)) && !there.some((c) => offers(c, all.doc, op)));
+        const unsent = rest.ops.filter((op) => !there.some((c) => offers(c, rest.doc, op)));
         return unsent.length === 0 ? undefined : `no control leads ${name} to ${JSON.stringify(where)}, where ${why}: nothing on their page at ${JSON.stringify(place)} sends ${unsent.map((op) => `${op.op} ${op.path}`).join(", ")}`;
       };
       for (const { story, outcome } of group) {
@@ -1208,7 +1215,7 @@ export async function run(
       };
 
       if (target !== undefined && stories.goTo && start !== undefined && state) {
-        const [place = "", rest] = target.split(" @ ");
+        const place = placeIn(target);
         const blocked = new Set<string>();
         let first: string | undefined;
         for (let at = start; at !== place; ) {
@@ -1224,22 +1231,20 @@ export async function run(
             break;
           }
         }
-        if (rest !== undefined) {
-          const going = stories.goTo(place).ops.map((op) => JSON.stringify(op));
-          const all = stories.goTo(target);
-          for (const op of all.ops.filter((o) => !going.includes(JSON.stringify(o)))) {
-            const why = await press({ doc: all.doc, ops: [op] });
+        const rest = past(target);
+        if (rest)
+          for (const op of rest.ops) {
+            const why = await press({ doc: rest.doc, ops: [op] });
             if (why !== undefined) return by(`${who.name} could not ${op.op} ${op.path} at ${JSON.stringify(place)}: ${why}`);
           }
-        }
       }
       if (tried && isPost(tried)) {
         // a form posted to a route: the browser goes where the route sends it, so what landed is what it was told there
-        const toldBefore = JSON.stringify(await settled(documents, () => toldTo(who.sessionId)) ?? null);
+        const toldBefore = JSON.stringify((await toldNow(who.sessionId)) ?? null);
         tally.presses++;
         const sent = await hand.post(tried);
         if ("failure" in sent) return story.cannot && sent.none ? failures : by(`${who.name} could not post to ${tried.path}: ${sent.failure}`);
-        const line = await settled(documents, () => toldTo(who.sessionId));
+        const line = await toldNow(who.sessionId);
         const reason = line?.reason !== undefined && JSON.stringify(line) !== toldBefore ? line.reason : undefined;
         const refused = !sent.app || reason !== undefined;
         if (story.does && refused) return by(`nothing landed: the route refused ${who.name}'s post to ${tried.path}${reason ? `: "${reason}"` : ""}`);
