@@ -189,9 +189,6 @@ export function createDocuments(local: Local) {
         await local.call("close", { doc });
       }
     },
-
-    /** Everything held, by name (for inspect and tests). */
-    names: (): string[] => [...held.keys()],
   };
 
   /** The document as held, noting that the page being drawn read it; throws `Pending` when not held yet. */

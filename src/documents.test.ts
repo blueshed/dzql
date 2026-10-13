@@ -35,7 +35,7 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     let runs = 0;
     expect(await settled(documents, () => (runs++, documents.read<{ n: number }>("slow:1")))).toEqual({ n: 0 });
     expect(runs).toBe(2);
-    expect(documents.names()).toContain("slow:1");
+    expect(documents.read("slow:1")).toEqual({ n: 0 }); // held now
   });
 
   test("a write resolves once its change is back and held -- after the answer, as over Postgres", async () => {
@@ -123,9 +123,10 @@ describe("the documents a page reads, kept from delta's stream of changes", () =
     expect(documents.read("gone:1")).toBeUndefined();
     await documents.load("slow:1");
     await documents.release(new Set(["slow:1"]));
-    expect(documents.names()).toEqual(["slow:1"]);
+    expect(documents.read("slow:1")).toEqual({ n: 0 });
+    expect(() => documents.read("gone:1")).toThrow(Pending);
     await documents.release(new Set());
-    expect(documents.names()).toEqual([]);
+    expect(() => documents.read("slow:1")).toThrow(Pending);
   });
 
   test("a refused write says why; undo without a ledger is delta's answer, that nothing handles it; history without a ledger is empty", async () => {
