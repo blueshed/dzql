@@ -14,6 +14,9 @@ export function esc(value: unknown): string {
 
 export type Op = "add" | "replace" | "remove";
 
+/** `value` as JSON for a single-quoted attribute, escaped so nothing in it can end the attribute. */
+const quotedJson = (value: unknown): string => `'${JSON.stringify(value).replaceAll("&", "&amp;").replaceAll("'", "&#39;")}'`;
+
 /**
  * Makes a control write: a form on submit, a button or row on click.
  * `<form${write("room", "add", "/messages/-")}>` sends the field's value to `room`'s messages.
@@ -23,8 +26,7 @@ export type Op = "add" | "replace" | "remove";
  *   the attribute.
  */
 export function write(doc: string, op: Op, path: string, value?: unknown): string {
-  const spec = JSON.stringify({ doc, op, path }).replaceAll("&", "&amp;").replaceAll("'", "&#39;");
-  return ` data-write='${spec}'${value === undefined ? "" : ` data-value="${esc(value)}"`}`;
+  return ` data-write=${quotedJson({ doc, op, path })}${value === undefined ? "" : ` data-value="${esc(value)}"`}`;
 }
 
 /**
@@ -53,7 +55,7 @@ export function appletWrites(...writes: (readonly [doc: string, op: Op, path: st
     if (!same) said.push(value === undefined ? { doc, op, path } : { doc, op, path, values: [value] });
     else if (value !== undefined) same.values!.push(value);
   }
-  return ` data-writes='${JSON.stringify(said).replaceAll("&", "&amp;").replaceAll("'", "&#39;")}'`;
+  return ` data-writes=${quotedJson(said)}`;
 }
 
 /**
