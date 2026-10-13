@@ -87,7 +87,7 @@ describe("the surfaces", () => {
   });
 
   test("the reading switch writes the session's /reading/<key>, the current one checked (a radio is checked, not pressed); the plus writes /new", () => {
-    const out = b.readingSwitch("board", "list", [["spark", "chart"], ["list", "list"]]);
+    const out = b.readingSwitch([["spark", "chart", false, b.readAs("board", "spark")], ["list", "list", true, b.readAs("board", "list")]]);
     expect(out).toContain(`role="radio" aria-checked="false" aria-label="spark" data-write='{"doc":"desk","op":"replace","path":"/reading/board"}' data-value="spark"><i data-icon="chart"`);
     expect(out).toContain('role="radio" aria-checked="true" aria-label="list"');
     expect(b.addTool(open, "Watch")).toContain(`aria-label="Watch"${open}>`);

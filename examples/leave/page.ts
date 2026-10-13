@@ -12,7 +12,7 @@ import { icon } from "./icons";
 // request's drawer is where a manager answers, and where you change or take back your own. The
 // drawers' fields do everything a drag does, for a keyboard.
 
-const { tool, collectionPage, drawer, confirmModal, addTool, go, site } = bento({ icon, session: "session", leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
+const { tool, collectionPage, drawer, confirmModal, addTool, go, site, readingSwitch } = bento({ icon, session: "session", leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
 
 
 const WORD: Record<Status, string> = { asked: "waiting", approved: "approved", declined: "declined" };
@@ -99,7 +99,7 @@ export function render(sessionId: string): string {
     ["Calendar", "month", !list, go(list ? "" : path)],
     ["List", "list", list, go("list")],
   ];
-  const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${readings.map(([text, mark, on, w]) => `<button type="button" class="tool" role="radio" aria-checked="${on}" aria-label="${text}"${w}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
+  const reading = readingSwitch(readings);
   const ask = addTool(go(address(path, "draft")), "Ask for leave");
   const tools = list
     ? [ask]

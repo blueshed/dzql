@@ -9,7 +9,7 @@
 import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
 import { over, type SessionDocument } from "../documents/session";
-import { addModal, addTool, choice, collectionPage, confirmModal, findControl, prop, row, rows, drawer, tool } from "./bento";
+import { addModal, addTool, choice, collectionPage, confirmModal, findControl, prop, readingSwitch, row, rows, drawer, tool } from "./bento";
 import { appletWrites, esc, join, nav, open as openAt, write } from "./html";
 import { address } from "../../../src/bento";
 import { part } from "../../../src/parts";
@@ -54,7 +54,7 @@ export function boardPage(v: BoardView): string {
     ["Everyone", !list, "", "camera"],
     ["List", list, "list", "list"],
   ];
-  const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${readings.map(([text, on, path, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${on}" aria-label="${text}"${nav(path)}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
+  const reading = readingSwitch(readings.map(([text, on, path, mark]) => [text, mark, on, nav(path)]));
   const find = b.households.length ? findControl("households", { word, hide, shown: b.households.filter((h) => hits(h, word)).length, total: b.households.length }) : undefined;
   const kept = keptIn(v)?.table;
   const tools = [

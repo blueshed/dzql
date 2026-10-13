@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for example authors)
 
+- **`readingSwitch` takes each option's own write**: `readingSwitch([[text, mark, on, write], ...])`, and `readAs(key, value)` is the write that keeps a collection's reading in the session, as the old `readingSwitch(key, current, [[value, mark]])` did. So a switch between pages (the wedding's, leave's) is the kernel's too, where three pages built it by hand. What to change: `readingSwitch("board", current, [["spark", "chart"], ["list", "list"]])` becomes `readingSwitch([["spark", "chart", current === "spark", readAs("board", "spark")], ["list", "list", current === "list", readAs("board", "list")]])`.
 - **eta runs on `@blueshed/delta` 0.13, which tells a change as the fields it changed, not the
   row.** A patch on the wire, in `window.eta.docs()` and in `bun run cli watch` is `replace
   /<coll>/<id>/<field>` (a session's own: `replace /name`); a row that arrives or leaves is still

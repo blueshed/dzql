@@ -14,7 +14,7 @@ import { quote, type MarketDocument, type Quote } from "../documents/market";
 import type { WatchlistDocument } from "../documents/watchlist";
 import { icon } from "./icons";
 
-const { tool, readingSwitch, addTool, findControl, cell, boxPage, row, drawer, addModal, confirmModal, go, site } = bento({ icon, session: "desk" });
+const { tool, readingSwitch, addTool, findControl, cell, boxPage, row, drawer, addModal, confirmModal, go, site, readAs } = bento({ icon, session: "desk" });
 
 /** Going somewhere on the desk -- a window, a drawer over it, a modal -- is one write: the address. */
 /** Where this session is: the window, and the one thing open over it. */
@@ -141,7 +141,7 @@ function boardOpen(v: View): OpenOptions {
   const left = unwatched(v).length > 0;
   return {
     key: "board",
-    reading: readingSwitch("board", reading(v.ui), [["sparkline", "board"], ["list", "list"]]),
+    reading: readingSwitch((["sparkline", "list"] as const).map((r) => [r, r === "sparkline" ? "board" : "list", reading(v.ui) === r, readAs("board", r)])),
     tools: left ? [addTool(go(address("board", "new")), "Watch a symbol")] : [],
     body: reading(v.ui) === "list" ? boardList(v) : `<div class="reading sparkline">${boardMount(v.list, v.market, v.ui)}</div>`,
     note: left ? null : "Everything is watched.",

@@ -11,7 +11,7 @@ import type { Guest, HouseholdDocument } from "../documents/household";
 import { over, type Named, type SessionDocument } from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { Course, Gift, Wedding } from "../documents/wedding";
-import { addModal, addTool, choice, collectionPage, findControl, prop, row, rows, drawer, tool, type Crumb } from "./bento";
+import { addModal, addTool, choice, collectionPage, findControl, prop, readingSwitch, row, rows, drawer, tool, type Crumb } from "./bento";
 import type { DressProps } from "../applets/dress";
 import { LOOK_FIELDS } from "../looks";
 import type { MenuProps } from "../applets/menu";
@@ -76,7 +76,7 @@ export function householdPage(v: HouseholdView): string {
   const everyone = read.as === "everyone" ? everyoneReading(v, read.family) : undefined;
   const trail: Crumb[] = [{ label: coupleName(v.w) }, ...(everyone?.crumbs ?? [{ label: v.h.code }])];
 
-  const reading = `<div class="stack" role="radiogroup" aria-label="Read as">${READINGS.map(([text, as, path, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${read.as === as}" aria-label="${text}"${nav(path)}>${icon(mark)}<span class="sr-only">${text}</span></button>`).join("")}</div>`;
+  const reading = readingSwitch(READINGS.map(([text, as, path, mark]) => [text, mark, read.as === as, nav(path)]));
   const owed = v.h.guests.filter((g) => g.named_by === "household").length < v.h.plus_ones;
   // find, on the people this reading shows: everyone's photo is nameless until the day
   const { word, hide } = findOf(v);

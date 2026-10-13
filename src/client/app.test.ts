@@ -1219,8 +1219,8 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
   test("a choice and the reading switch are drawn chosen by aria-checked alone, as a pressed tool is", async () => {
     await using view = await open();
     const css = await Bun.file(new URL("../bento.css", import.meta.url)).text();
-    const { readingSwitch, tool } = bento({ icon: () => "", session: "session" });
-    await pushRender(view, `<style>${css} :root { --accent: rgb(1, 2, 3); --card: rgb(4, 5, 6); }</style>${choice("Coming?", [{ text: "Yes", on: true, write: "" }, { text: "No", on: false, write: "" }])}${readingSwitch("board", "list", [["spark", "chart"], ["list", "list"]])}<div class="pick">${tool("Find", { pressed: true, write: "" })}</div>`);
+    const { readingSwitch, readAs, tool } = bento({ icon: () => "", session: "session" });
+    await pushRender(view, `<style>${css} :root { --accent: rgb(1, 2, 3); --card: rgb(4, 5, 6); }</style>${choice("Coming?", [{ text: "Yes", on: true, write: "" }, { text: "No", on: false, write: "" }])}${readingSwitch([["spark", "chart", false, readAs("board", "spark")], ["list", "list", true, readAs("board", "list")]])}<div class="pick">${tool("Find", { pressed: true, write: "" })}</div>`);
     await waitFor(view, `document.querySelectorAll('[role=radio]').length`, (v) => v === 4);
     const drawn = await view.evaluate<unknown>(`(() => {
       const fill = (el) => getComputedStyle(el).backgroundColor;

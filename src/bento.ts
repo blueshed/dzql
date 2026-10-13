@@ -208,12 +208,19 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     );
   }
 
-  /** The reading switch (rule 16): the same figures drawn another way, each with its mark, the current one checked (a radio: `aria-checked`, never `aria-pressed`). A stack of its own. */
-  function readingSwitch(key: string, current: string, options: [value: string, mark: I | BentoIcon][]): string {
+  /**
+   * The reading switch (rule 16): the same figures drawn another way, each with its mark and the
+   * write that reads them so -- a collection's reading kept in the session (`readAs`), or a page
+   * of its own -- the one on checked (a radio: `aria-checked`, never `aria-pressed`). A stack of its own.
+   */
+  function readingSwitch(options: [text: string, mark: I | BentoIcon, on: boolean, write: string][]): string {
     return `<div class="stack" role="radiogroup" aria-label="Read as">${options
-      .map(([value, mark]) => `<button type="button" class="tool" role="radio" aria-checked="${current === value}" aria-label="${esc(value)}"${write(trayDoc, "replace", `/reading/${key}`, value)}>${icon(mark)}<span class="sr-only">${esc(value)}</span></button>`)
+      .map(([text, mark, on, w]) => `<button type="button" class="tool" role="radio" aria-checked="${on}" aria-label="${esc(text)}"${w}>${icon(mark)}<span class="sr-only">${esc(text)}</span></button>`)
       .join("")}</div>`;
   }
+
+  /** The write that reads a collection another way, kept in the session as `/reading/<key>` (`patchCollections`). */
+  const readAs = (key: string, value: string): string => write(trayDoc, "replace", `/reading/${key}`, value);
 
   /** The plus on a collection's rail: `open` is the write that opens the modal that adds to it. */
   const addTool = (open: string, label: string): string => tool(label, { icon: "plus", write: open, iconOnly: true, label });
@@ -428,7 +435,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     return part("site", `<div class="site${className ? ` ${className}` : ""}"${follows}>${html}</div>`);
   }
 
-  return { crumbs, tool, pageTools, readingSwitch, addTool, findControl, cell, boxPage, collectionPage, row, drawer, addModal, confirmModal, go, site };
+  return { crumbs, tool, pageTools, readingSwitch, addTool, findControl, cell, boxPage, collectionPage, row, drawer, addModal, confirmModal, go, site, readAs };
 }
 
 // ───────────────────────────── where you are ─────────────────────────────
