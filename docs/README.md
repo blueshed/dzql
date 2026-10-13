@@ -3,12 +3,13 @@
 Two kinds. **Guidance**, current:
 
 - `stories.md` -- what eta is for, and how stories drive it.
+- `bento.md` -- how a page looks and moves: the bento's rules, built in `src/bento.ts`.
 - `first-app.md` -- a first app, step by step: chat, then leave, in the order you meet the words.
 - `review-2026-10-13.md` -- the review in progress: is the repo as small and simple as it can be,
   with every example and test justified. Its decisions are being carried out.
 
 **The record**: finished work, kept for the record. Nothing in it is guidance: the current rules
-are in `CLAUDE.md`, the eta-app skill, `stories.md` and `examples/bento/README.md`, and where these
+are in `CLAUDE.md`, the eta-app skill, `stories.md` and `docs/bento.md`, and where these
 disagree with them, they are right.
 
 - `change-request.md` -- what the wedding asked of the kernel, eleven items, all done. Code comments

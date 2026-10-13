@@ -51,7 +51,7 @@ another name and go into the same room: each of you sees the other arrive and sp
 bottom right, takes back your own last write, and the other sees it go: your last message, or, if
 you have only just come in, your coming into the room.
 
-That is chat, the smallest example. Four more, and a mock-up:
+That is chat, the smallest example. Four more:
 
 - `bun run dev:wedding` (port 3001): a site for one wedding. The codes are `DASH` (the couple),
   `OKAFOR` and `BEN` (two households). There is a Lego minifigure builder, and a photo of
@@ -66,9 +66,7 @@ That is chat, the smallest example. Four more, and a mock-up:
   talk: one tells the stories, the other writes them down from the CLI and describes the documents
   they need, and the entities are worked out from those. The page shows each change live, and the
   gaps as they open. Sign in as `peter@modeling.example` or `claude@modeling.example`, each password
-  the name and `-password`; `examples/modeling/cli.ts` says how the CLI signs in, and its verbs.
-- `bun run dev:bento` (port 3003): the bento mock-up, a page to look at and click, with no eta
-  behind it.
+  the name and `-password`; the CLI signs in with `login`, and `examples/modeling/cli.ts` lists its verbs.
 
 `ETA_EXAMPLE=<name>` picks the example for `bun run dev`, `start`, `stories` and `cli` (default
 `chat`); `dev:wedding`, `dev:ticker`, `dev:leave`, `dev:modeling` and `stories:all` set it themselves. The CLI also needs
@@ -156,5 +154,5 @@ what). The same page, kept live while two people talk, is the modeling example.
 - `.claude/skills/eta-app/`: how to build or extend an example, step by step, with the contracts
   in `reference.md`.
 - `CLAUDE.md`: the rules a change must not break.
-- `examples/bento/README.md`: how a page looks and moves.
+- `docs/bento.md`: how a page looks and moves.
 - `CHANGELOG.md`: what changed, and how to move an example across a breaking change.

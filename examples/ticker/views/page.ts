@@ -1,4 +1,4 @@
-// The desk, drawn as the bento mock-up draws a page (examples/bento): a box with three
+// The desk, drawn by the bento's rules (docs/bento.md): a box with three
 // cells -- the board, big, with two readings; the market; the clock, a thing whose drawer
 // holds the city -- each growing into the window when opened, the tools on the rail, the page's
 // at the bottom right. A row is a symbol: its drawer holds what it is and what it can carry, watch

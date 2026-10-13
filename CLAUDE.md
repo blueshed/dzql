@@ -90,7 +90,7 @@ One word, one meaning. Two used to have two, so they were renamed:
 
 ## Pages
 
-A page follows the bento's rules, stated once in `examples/bento/README.md` and built in
+A page follows the bento's rules, stated once in `docs/bento.md` and built in
 `src/bento.ts` and `src/bento.css`. A page is a box (`boxPage`) or a collection (`collectionPage`).
 Read the rules for what they intend, not as a checklist to satisfy.
 

@@ -20,12 +20,6 @@
       "port": 3002
     },
     {
-      "name": "bento",
-      "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "dev:bento"],
-      "port": 3003
-    },
-    {
       "name": "modeling",
       "runtimeExecutable": "bun",
       "runtimeArgs": ["run", "dev:modeling"],

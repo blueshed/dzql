@@ -141,6 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **The bento mock-up** (`examples/bento`, `bun run dev:bento`): a static page that predates the kernel's `src/bento.ts`, with its design-canvas generator. Its rules, which the kernel and every example follow, are `docs/bento.md`.
 - **The UML session is retired** (`uml/`, `bun run uml`, `bun run uml:check`): its diagrams were drawn by hand and checked against a vocabulary written by hand (`uml/types.ts`), a second account of an app that drifted from the first. What it was for -- seeing a model change as it is talked through -- is the modeling example, drawn from the model itself. Its Londons diagrams go with it.
 
 ### Fixed
@@ -944,7 +945,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   way, as the trail's crumbs are. The way back's words are in a span of their own, which gives way
   to a long trail instead of the link.
 - **The bento's rules say what the keyboard does** (todo n56). Rule 19 in
-  `examples/bento/README.md`: what a finger opens, the keyboard opens; the keyboard goes into a
+  `docs/bento.md`: what a finger opens, the keyboard opens; the keyboard goes into a
   window and back to its cell; the box behind a window is inert; Escape puts away what was opened
   last. The skill's reference says an example's own opener is a `<button>`.
 - **The keyboard is never left nowhere** (`src/client/app.ts`). Escape in a drawer, or from a modal,
@@ -1534,7 +1535,7 @@ left in the database as they were, and nothing migrates them. Compare the ticker
 
 ### Changed
 
-- **Rule 17 rewritten, after the filter: the eye.** `examples/bento/README.md`'s rule 17 and
+- **Rule 17 rewritten, after the filter: the eye.** `docs/bento.md`'s rule 17 and
   `bento-request.md`'s W4 no longer say the filter "never hides" -- find still dims by default,
   but an eye beside the field hides what misses instead, for a long list, and the tally still
   counts all; closing find still forgets both. `bento-request.md` gains W5, the five findings

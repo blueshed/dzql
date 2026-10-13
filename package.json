@@ -25,7 +25,6 @@
     "dev": "bun --watch src/start.ts",
     "dev:wedding": "ETA_EXAMPLE=wedding PORT=3001 bun --watch src/start.ts",
     "dev:ticker": "ETA_EXAMPLE=ticker PORT=3002 bun --watch src/start.ts",
-    "dev:bento": "PORT=3003 bun --watch examples/bento/server.ts",
     "dev:leave": "ETA_EXAMPLE=leave PORT=3004 bun --watch src/start.ts",
     "dev:modeling": "ETA_EXAMPLE=modeling PORT=3005 bun --watch src/start.ts",
     "start": "NODE_ENV=production nohup bun src/start.ts > ${LOG_FILE:-server.log} 2>&1 & disown",

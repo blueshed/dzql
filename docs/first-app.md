@@ -268,5 +268,5 @@ drag halfway through, a scroll position, a chart's history. That piece is an **a
 
 - `docs/stories.md`: why eta is shaped this way.
 - `.claude/skills/eta-app/reference.md`: every part, in full.
-- `examples/bento/README.md`: how a page looks and moves.
+- `docs/bento.md`: how a page looks and moves.
 - `examples/leave/`: sign-in, a calendar applet, drafts, and a manager's rules, in about 1,000 lines.

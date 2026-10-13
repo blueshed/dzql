@@ -3,7 +3,7 @@ import { slug, grid } from "./grid";
 
 describe("grid", () => {
   test("places cells first-fit in the box's own order, and says which tray corners each sits in", () => {
-    // the mock-up's tray: the map tall on the left, then households, photos wide, gifts wide, the answer
+    // a tray: the map tall on the left, then households, photos wide, gifts wide, the answer
     const t = grid(
       [
         { key: "stay", rows: 2 },

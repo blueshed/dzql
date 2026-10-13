@@ -1,13 +1,9 @@
-# Bento
+# The bento: how a page looks and moves
 
-A design mock-up of the page, not an eta example: no documents, no compartments in the kernel's
-sense, no wire. `bun run dev:bento` serves it on port 3003, and it is in `.claude/launch.json`.
-It exists so the rules below can be looked at and clicked on before they are built into the
-wedding's pages, and so that whoever builds them builds from the rules, not from this CSS.
-
-The rules come from two places: apples.md, "The page", in `Workshop/apples_pears`, and the
-atlas in `Workshop/concept/location`, whose map is the window and whose tools all float on it.
-Each rule names where the mock-up honours it.
+A page is a box or a collection. These are its rules, built in the kernel (`src/bento.ts`,
+`src/bento.css`) and followed by every example. They come from two places: apples.md, "The page",
+in `Workshop/apples_pears`, and the atlas in `Workshop/concept/location`, whose map is the window
+and whose tools all float on it.
 
 ## The box
 
@@ -95,33 +91,12 @@ Each rule names where the mock-up honours it.
     closes, as the page is behind a modal (rule 14). Escape puts away the drawer or the modal
     opened last, and the keyboard goes back to what opened it. Nothing leaves the keyboard nowhere.
 
-## What eta already does with this
+## Where they are built
 
-The rules are built in the kernel: `src/bento.ts` draws the trail, the tray, the window, the
-stacks, the rows, the drawer and the modal the way this mock-up does, and `src/bento.css` is their
-look, the measurements taken from `styles.css` here. The wedding (`examples/wedding`, from 0.41.0)
-was the first built on them; chat and the ticker are the others, each binding the surfaces to its
-own icons (`bento({icon, session})`) and bringing its own paper and ink as tokens. The tray is computed in
-eta by `src/grid.ts`: a box declares its cells and their spans, and the grid's areas and
-each cell's corner cuts come out, once for three columns and once for one. The grid in this
-mock-up's stylesheet is the same result written by hand, so it can be looked at without a server.
-Where the wedding and this mock-up part company -- an ask's yes or no on its row, a photo that
-reflows rather than scrolls -- `docs/bento-request.md`'s Findings say why.
-
-## Where it shows the shape and not the function
-
-The drawer draws a figure's properties and, for the answer, its fields, but nothing is saved; the
-atlas's drawer writes.
-The modal makes and does not destroy. The second reading on each rail is a pressed button and
-nothing more. The zoom is furniture. Those four are the places the wedding's pages will have to
-finish what the mock-up only draws.
-
-## Files
-
-| File | Role |
-| --- | --- |
-| `index.html` | The box: the trail, the tray, five cells each with the same parts, the drawer, the modal. |
-| `styles.css` | The rules as CSS, in the order above, with one paragraph at the top saying the whole. |
-| `app.ts` | Open and close (the morph), the drawer, the filter, the modal, Escape. Icons are lucide's, drawn by `createIcons` from `<i data-lucide>` marks. |
-| `server.ts` | Serves `index.html`, nothing else. |
-| `design/` | The canvas: `build.ts` generates one artboard per state from `index.html` and `styles.css` (icons through the kernel's `svg`), `canvas.json` lays them out with the rules as notes, and the design skill's helper seeds `wedding-bento.html`, which is saved at claude.ai/artifact/7zUmiK3Qt5HLpDsSf3kN9P. Regenerate, never hand-edit the artboards. |
+`src/bento.ts` draws the trail, the tray, the window, the stacks, the rows, the drawer and the
+modal; `src/bento.css` is their look. Each example binds the surfaces to its own icons (`bento({icon,
+session})`) and brings its own paper and ink as tokens. The tray is computed by `src/grid.ts`: a box
+declares its cells and their spans, and the grid's areas and each cell's corner cuts come out, once
+for three columns and once for one. Where the wedding parts company with a rule -- an ask's yes or
+no on its row, a photo that reflows rather than scrolls -- `docs/bento-request.md`'s Findings say
+why.
