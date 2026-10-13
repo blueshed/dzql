@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
 import { createServer } from "../../src/server";
-import { hear, type Heard } from "../../src/harness";
+import { connect as socketTo, forget, expectMessage, expectQuiet, heard, nextMessage, open as openAs, opened, pageOf, write } from "../../src/test-socket";
 import { randomTick, startFeed, stopFeed } from "./compartments/ticker";
 import type { MarketDocument } from "./documents/market";
 import { example } from "./index";
@@ -25,70 +25,12 @@ afterAll(() => {
   server.stop(true);
 });
 
-/** `page`, on a render: the page this connection holds once it is applied, kept as the client keeps it. */
-type WireMessage = { type: string; html?: string; doc?: string; version?: number; ops?: unknown[]; page?: string; id?: unknown; change?: string };
-
-const queues = new WeakMap<WebSocket, WireMessage[]>();
-const waiters = new WeakMap<WebSocket, ((message: WireMessage) => void)[]>();
-
-function connect(): WebSocket {
-  const url = new URL("/ws", server.url);
-  url.protocol = "ws:";
-  // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-  const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${crypto.randomUUID()}` } });
-  const queue: WireMessage[] = [];
-  const pending: ((message: WireMessage) => void)[] = [];
-  queues.set(ws, queue);
-  waiters.set(ws, pending);
-  let page = "";
-  ws.addEventListener("message", (event) => {
-    const message = JSON.parse(event.data as string) as WireMessage;
-    if (message.type === "render") message.page = page = hear(page, message as Heard);
-    const waiter = pending.shift();
-    if (waiter) waiter(message);
-    else queue.push(message);
-  });
-  return ws;
-}
-
-const opened = (ws: WebSocket) => new Promise<void>((resolve) => ws.addEventListener("open", () => resolve(), { once: true }));
-
-function nextMessage(ws: WebSocket): Promise<WireMessage> {
-  const queue = queues.get(ws)!;
-  if (queue.length > 0) return Promise.resolve(queue.shift()!);
-  return new Promise((resolve) => waiters.get(ws)!.push(resolve));
-}
-
-async function expectMessage(ws: WebSocket, type: string): Promise<WireMessage> {
-  const message = await nextMessage(ws);
-  expect(message.type).toBe(type);
-  return message;
-}
-
-async function expectQuiet(ws: WebSocket): Promise<void> {
-  await Bun.sleep(30);
-  expect(queues.get(ws)!).toEqual([]);
-}
-
-const write = (ws: WebSocket, doc: string, ops: PatchOp[]) => ws.send(JSON.stringify({ doc, ops }));
-
-/** Everything a connection was sent until what it asked before is done: an `inspect` is answered after all of it. */
-async function heard(ws: WebSocket): Promise<WireMessage[]> {
-  ws.send(JSON.stringify({ type: "inspect" }));
-  const messages: WireMessage[] = [];
-  for (let m = await nextMessage(ws); m.type !== "inspect"; m = await nextMessage(ws)) messages.push(m);
-  return messages;
-}
+/** A socket as a fresh visitor of its own, opened, and its first page drawn. */
+const open = (): Promise<WebSocket> => openAs(server, crypto.randomUUID());
+const connect = (): WebSocket => socketTo(server, crypto.randomUUID());
 
 /** The page as the connection holds it, once what it asked is done. */
-const pageNow = async (ws: WebSocket): Promise<string> => (await heard(ws)).filter((m) => m.type === "render").pop()!.page!;
-
-async function open(): Promise<WebSocket> {
-  const ws = connect();
-  await opened(ws);
-  await expectMessage(ws, "render");
-  return ws;
-}
+const pageNow = async (ws: WebSocket): Promise<string> => (await heard(ws), pageOf(ws));
 
 describe("the ticker", () => {
   test("the page carries the clock, the watchlist and the board, empty until something is watched", async () => {
@@ -211,7 +153,7 @@ describe("the ticker", () => {
     stopFeed();
     stopFeed(); // already stopped
     await Bun.sleep(20);
-    queues.get(ws)!.length = 0;
+    forget(ws);
     await expectQuiet(ws);
     startFeed(0); // no feed at all
     await expectQuiet(ws);

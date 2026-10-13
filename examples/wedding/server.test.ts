@@ -1,8 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
-import type { HtmlOp } from "../../src/compartments/render";
 import { createServer } from "../../src/server";
-import { hear, type Heard as HeardRender } from "../../src/harness";
+import { connect as socketTo, heard as heardBy, nextMessage, opened, pageOf, type WireMessage } from "../../src/test-socket";
 import { decoded } from "../../src/parts";
 import { crowd } from "./applets/photo";
 import { asCouple, asHousehold, board, household } from "./setup";
@@ -30,46 +29,8 @@ afterAll(() => {
   server.stop(true);
 });
 
-type WireMessage = {
-  type: string;
-  html?: string;
-  doc?: string;
-  version?: number;
-  ops?: PatchOp[] | HtmlOp[];
-  docs?: { doc: string; version: number }[];
-};
-
-const queues = new WeakMap<WebSocket, WireMessage[]>();
-const waiters = new WeakMap<WebSocket, ((message: WireMessage) => void)[]>();
-/** The page each connection holds, from everything it has been sent, as the client keeps it. */
-const held = new WeakMap<WebSocket, string>();
-
-function connect(cookie?: string): WebSocket {
-  const url = new URL("/ws", server.url);
-  url.protocol = "ws:";
-  const options = cookie ? { headers: { Cookie: cookie } } : undefined;
-  // tsconfig's DOM lib shadows Bun's WebSocket type, which supports `headers` at runtime.
-  // @ts-expect-error
-  const ws: WebSocket = new WebSocket(url, options);
-  queues.set(ws, []);
-  waiters.set(ws, []);
-  ws.addEventListener("message", (event) => {
-    const message = JSON.parse(event.data as string) as WireMessage;
-    if (message.type === "render") held.set(ws, hear(held.get(ws) ?? "", message as HeardRender));
-    const waiter = waiters.get(ws)!.shift();
-    if (waiter) waiter(message);
-    else queues.get(ws)!.push(message);
-  });
-  return ws;
-}
-
-const opened = (ws: WebSocket) => new Promise<void>((resolve) => ws.addEventListener("open", () => resolve(), { once: true }));
-
-function nextMessage(ws: WebSocket): Promise<WireMessage> {
-  const queue = queues.get(ws)!;
-  if (queue.length > 0) return Promise.resolve(queue.shift()!);
-  return new Promise((resolve) => waiters.get(ws)!.push(resolve));
-}
+/** A socket to the server, as the session the cookie names (a fresh visit without one). */
+const connect = (cookie?: string): WebSocket => socketTo(server, cookie?.replace("session_id=", ""));
 
 /** What a connection was sent, up to now. */
 type Heard = {
@@ -87,12 +48,10 @@ type Heard = {
  * handles events in. So after a write, each connection's `heard` is all the write caused it.
  */
 async function heard(ws: WebSocket): Promise<Heard> {
-  ws.send(JSON.stringify({ type: "inspect" }));
-  const messages: WireMessage[] = [];
-  for (let m = await nextMessage(ws); m.type !== "inspect"; m = await nextMessage(ws)) messages.push(m);
+  const messages = await heardBy(ws);
   const renders = messages.filter((m) => m.type === "render");
   const targets = renders.flatMap((r) => ((r.ops ?? []) as { op: string; target?: string }[]).filter((o) => o.target).map((o) => `${o.op} ${/data-eta-part="(.*)"/.exec(o.target!)![1]}`));
-  return { patches: messages.filter((m) => m.type === "patch"), renders, page: held.get(ws) ?? "", targets };
+  return { patches: messages.filter((m) => m.type === "patch"), renders, page: pageOf(ws), targets };
 }
 
 /** A write, and what its own connection was sent for it. */
@@ -557,8 +516,8 @@ describe("a household", () => {
 describe("the couple", () => {
   test("the couple's code opens the photo of families; a family, the welcome, the four lists and a row of each are drawers; a new one is named in place; a removal asks first, then goes back to its list", async () => {
     const ws = await enter("DASH");
-    expect(held.get(ws)).toContain('class="bubble couple thing"'); // the welcome, over the photo
-    expect(held.get(ws)).toContain('id="board-photo" data-applet="photo"');
+    expect(pageOf(ws)).toContain('class="bubble couple thing"'); // the welcome, over the photo
+    expect(pageOf(ws)).toContain('id="board-photo" data-applet="photo"');
     // the welcome is a "thing" (rule 15): ✎ opens its own drawer, where its picture lives
     expect(await at(ws, "?answer")).toContain('data-applet="picture-field"');
     expect(await at(ws, "list")).toContain(`class="row tap" id="household-${hid}"`); // the other reading: a household a row

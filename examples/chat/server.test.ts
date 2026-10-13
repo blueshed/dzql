@@ -1,9 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
-import type { HtmlOp } from "../../src/compartments/render";
 import { db } from "./delta";
 import { createServer } from "../../src/server";
-import { hear, type Heard } from "../../src/harness";
+import { connect as socketTo, open, expectMessage, expectQuiet, heard as heardBy, htmlOf, nextMessage, opened, pageOf, write, type WireMessage } from "../../src/test-socket";
 import { assemble } from "../../src/compartments";
 import { example } from "./index";
 import { keepPresence } from "./presence";
@@ -38,88 +37,18 @@ afterAll(() => {
   server.stop(true);
 });
 
-type WireMessage = { type: string; html: string; doc?: string; version?: number; ops?: unknown[] };
+/** A socket to the server, as the session the cookie names (a fresh visit without one). */
+const connect = (cookie?: string): WebSocket => socketTo(server, cookie?.replace("session_id=", ""));
 
-/** A render's HTML, whether it came as the whole page or as fragment ops. */
-const htmlOf = (m: WireMessage): string => m.html ?? (m.ops as HtmlOp[]).map((o) => ("html" in o ? o.html : "")).join("");
-
-// A persistent per-socket FIFO queue, not a fresh {once:true} listener per
-// nextMessage() call: two messages sent back-to-back by the server (e.g. a
-// patch echo immediately followed by its render) can both dispatch before
-// test code re-subscribes after awaiting the first, silently dropping one.
-const queues = new WeakMap<WebSocket, WireMessage[]>();
-const waiters = new WeakMap<WebSocket, ((message: WireMessage) => void)[]>();
-
-function connect(cookie?: string): WebSocket {
-  const url = new URL("/ws", server.url);
-  url.protocol = "ws:";
-  const options = cookie ? { headers: { Cookie: cookie } } : undefined;
-  // tsconfig's DOM lib shadows Bun's WebSocket type, which supports `headers` at runtime.
-  // @ts-expect-error
-  const ws: WebSocket = new WebSocket(url, options);
-
-  const queue: WireMessage[] = [];
-  const pending: ((message: WireMessage) => void)[] = [];
-  queues.set(ws, queue);
-  waiters.set(ws, pending);
-
-  ws.addEventListener("message", (event) => {
-    const message = JSON.parse(event.data as string) as WireMessage;
-    if (message.type === "render") pages.set(ws, hear(pages.get(ws) ?? "", message as Heard));
-    const waiter = pending.shift();
-    if (waiter) waiter(message);
-    else queue.push(message);
-  });
-
-  return ws;
-}
-
-function opened(ws: WebSocket): Promise<void> {
-  return new Promise((resolve) => ws.addEventListener("open", () => resolve(), { once: true }));
-}
-
-function nextMessage(ws: WebSocket): Promise<WireMessage> {
-  const queue = queues.get(ws)!;
-  if (queue.length > 0) return Promise.resolve(queue.shift()!);
-  return new Promise((resolve) => waiters.get(ws)!.push(resolve));
-}
-
-/** Consumes the next message and asserts its type, so a wrong sequence fails clearly instead of as a content mismatch. */
-async function expectMessage(ws: WebSocket, type: string): Promise<WireMessage> {
-  const message = await nextMessage(ws);
-  expect(message.type).toBe(type);
-  return message;
-}
-
-function write(ws: WebSocket, doc: string, ops: PatchOp[]) {
-  ws.send(JSON.stringify({ doc, ops }));
-}
-
-/** Nothing arrives for `ws` in a short window -- used to prove a write that changed nothing on
- * this connection's page (item 8: a redundant tab closing) sent it nothing, not a wasted render. */
-async function expectQuiet(ws: WebSocket): Promise<void> {
-  await Bun.sleep(30);
-  expect(queues.get(ws)!).toEqual([]);
-}
-
-/** The page each connection holds, kept as the client keeps it (the harness's `hear`). */
-const pages = new WeakMap<WebSocket, string>();
+/** A socket opened, and its first page drawn. */
+const openTab = (cookie?: string): Promise<WebSocket> => open(server, cookie?.replace("session_id=", ""));
 
 /**
- * Everything `ws` has been sent, up to the server having finished with all that came before (an
- * inspect round trip -- the server handles events in order), and the page it then holds. A write
- * now causes changes to more than one document (the room, and who is here, or the list of rooms),
- * in no promised order: a test finds what it asks about by document, not by position.
+ * Everything `ws` has been sent until the server is done with all that came before, and the page it
+ * then holds. A write now causes changes to more than one document (the room, and who is here, or the
+ * list of rooms), in no promised order: a test finds what it asks about by document, not position.
  */
-async function heard(ws: WebSocket): Promise<{ messages: WireMessage[]; page: string }> {
-  ws.send(JSON.stringify({ type: "inspect" }));
-  const messages: WireMessage[] = [];
-  for (;;) {
-    const m = await nextMessage(ws);
-    if (m.type === "inspect") return { messages, page: pages.get(ws) ?? "" };
-    messages.push(m);
-  }
-}
+const heard = async (ws: WebSocket): Promise<{ messages: WireMessage[]; page: string }> => ({ messages: await heardBy(ws), page: pageOf(ws) });
 
 /** The patch echo for `doc` among what a connection heard. */
 const patchFor = (messages: WireMessage[], doc: string): WireMessage | undefined => messages.find((m) => m.type === "patch" && m.doc === doc);
@@ -161,9 +90,7 @@ describe("websocket write protocol", () => {
   });
 
   test("invalid JSON is refused like any write that is not one, instead of crashing the connection", async () => {
-    const ws = connect();
-    await opened(ws);
-    await expectMessage(ws, "render"); // initial name form
+    const ws = await openTab(); // initial name form
 
     ws.send("not-json{{{"); // not a write: the page handed back, and the server goes on
     expect(htmlOf(await expectMessage(ws, "render"))).toContain('id="name"');
@@ -177,9 +104,7 @@ describe("websocket write protocol", () => {
   });
 
   test("an empty ops array does not crash and just re-renders the current state", async () => {
-    const ws = connect();
-    await opened(ws);
-    await expectMessage(ws, "render");
+    const ws = await openTab();
 
     write(ws, "session", []);
     const message = await expectMessage(ws, "render");
@@ -189,9 +114,7 @@ describe("websocket write protocol", () => {
   });
 
   test("a write with no value is rejected without crashing", async () => {
-    const ws = connect();
-    await opened(ws);
-    await expectMessage(ws, "render");
+    const ws = await openTab();
 
     write(ws, "session", [{ op: "replace", path: "/name" } as PatchOp]);
     // rejected (blank name): no patch echo, and the page it holds is the page still, so nothing at all
@@ -229,9 +152,7 @@ describe("websocket write protocol", () => {
   });
 
   test("inspect on a fresh connection sees only the session doc, with no ledger history yet", async () => {
-    const ws = connect();
-    await opened(ws);
-    await expectMessage(ws, "render");
+    const ws = await openTab();
 
     ws.send(JSON.stringify({ type: "inspect" }));
     const inspection = await expectMessage(ws, "inspect");
@@ -243,9 +164,7 @@ describe("websocket write protocol", () => {
   });
 
   test("an unknown doc is ignored without crashing", async () => {
-    const ws = connect();
-    await opened(ws);
-    await expectMessage(ws, "render");
+    const ws = await openTab();
 
     write(ws, "nonsense", [{ op: "replace", path: "/x", value: "y" }]);
     expect((await heard(ws)).messages).toEqual([]); // refused, the page unchanged: nothing sent
@@ -253,9 +172,7 @@ describe("websocket write protocol", () => {
   });
 
   test("set-name renders a room selector with the escaped name", async () => {
-    const ws = connect();
-    await opened(ws);
-    await expectMessage(ws, "render"); // initial name form
+    const ws = await openTab(); // initial name form
 
     write(ws, "session", [{ op: "replace", path: "/name", value: "<b>Ada</b>" }]);
     await expectMessage(ws, "patch"); // echo of the write; asserted precisely below
@@ -286,9 +203,7 @@ describe("websocket write protocol", () => {
   });
 
   test("join-room renders the chat view for that room", async () => {
-    const ws = connect();
-    await opened(ws);
-    await expectMessage(ws, "render"); // initial name form
+    const ws = await openTab(); // initial name form
 
     write(ws, "session", [{ op: "replace", path: "/name", value: "Ada" }]);
     await expectMessage(ws, "patch");
@@ -308,9 +223,7 @@ describe("websocket write protocol", () => {
   test("a stale tab cannot join a room after the session has logged out elsewhere", async () => {
     const cookie = `session_id=${crypto.randomUUID()}`;
 
-    const first = connect(cookie);
-    await opened(first);
-    await expectMessage(first, "render");
+    const first = await openTab(cookie);
     write(first, "session", [{ op: "replace", path: "/name", value: "Ada" }]);
     await expectMessage(first, "patch");
     await expectMessage(first, "render");
@@ -319,9 +232,7 @@ describe("websocket write protocol", () => {
     await expectMessage(first, "render");
 
     // a second, stale tab shares the same session cookie and still has its old room-selector UI open
-    const second = connect(cookie);
-    await opened(second);
-    await expectMessage(second, "render"); // name form: this session is logged out
+    const second = await openTab(cookie); // name form: this session is logged out
 
     const room = crypto.randomUUID();
     write(second, "session", [{ op: "replace", path: "/room", value: room }]);
@@ -358,9 +269,7 @@ describe("websocket write protocol", () => {
   });
 
   test("logout clears the session and re-renders the name form", async () => {
-    const ws = connect();
-    await opened(ws);
-    await expectMessage(ws, "render");
+    const ws = await openTab();
 
     write(ws, "session", [{ op: "replace", path: "/name", value: "Grace" }]);
     await expectMessage(ws, "patch");
@@ -377,9 +286,7 @@ describe("websocket write protocol", () => {
   test("a revoked session can set a new name again (soft-delete, not gone forever)", async () => {
     const cookie = `session_id=${crypto.randomUUID()}`;
 
-    const first = connect(cookie);
-    await opened(first);
-    await expectMessage(first, "render");
+    const first = await openTab(cookie);
     write(first, "session", [{ op: "replace", path: "/name", value: "Ada" }]);
     await expectMessage(first, "patch");
     await expectMessage(first, "render");
@@ -448,9 +355,7 @@ describe("websocket write protocol", () => {
   test("a stale tab cannot undo after the session has logged out elsewhere", async () => {
     const cookie = `session_id=${crypto.randomUUID()}`;
 
-    const first = connect(cookie);
-    await opened(first);
-    await expectMessage(first, "render");
+    const first = await openTab(cookie);
     write(first, "session", [{ op: "replace", path: "/name", value: "Ada" }]);
     await expectMessage(first, "patch");
     await expectMessage(first, "render");
@@ -458,9 +363,7 @@ describe("websocket write protocol", () => {
     await expectMessage(first, "patch");
     await expectMessage(first, "render");
 
-    const second = connect(cookie);
-    await opened(second);
-    await expectMessage(second, "render"); // name form: this session is logged out
+    const second = await openTab(cookie); // name form: this session is logged out
 
     write(second, "ledger", [{ op: "remove", path: "/latest" }]);
     // rejected by permit (logged out): no patch echo, and nothing else, the page unchanged
@@ -475,9 +378,7 @@ describe("websocket write protocol", () => {
   test("reconnecting with the same session cookie remembers the name", async () => {
     const cookie = `session_id=${crypto.randomUUID()}`;
 
-    const first = connect(cookie);
-    await opened(first);
-    await expectMessage(first, "render");
+    const first = await openTab(cookie);
     write(first, "session", [{ op: "replace", path: "/name", value: "Linus" }]);
     await expectMessage(first, "patch");
     await expectMessage(first, "render");
@@ -718,9 +619,7 @@ describe("chat", () => {
   });
 
   test("a room write from a connection not currently in a room is rejected", async () => {
-    const ws = connect();
-    await opened(ws);
-    await expectMessage(ws, "render");
+    const ws = await openTab();
     write(ws, "session", [{ op: "replace", path: "/name", value: "NoRoom" }]);
     await expectMessage(ws, "patch");
     await expectMessage(ws, "render"); // room selector, not in any room
