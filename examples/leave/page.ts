@@ -2,8 +2,8 @@ import { address, bento, choice, layers, parseAddress, prop } from "../../src/be
 import { esc, join, write, appletWrites } from "../../src/html";
 import { part } from "../../src/parts";
 import { toldAt } from "../../src/refusal";
-import { alsoOff, calendarHtml, clashes, days, listRows, nextMonth, offOn, prevMonth, rowHtml, stillMine, worked, workingDaysOf, type CalendarProps, type ListProps } from "./calendar";
-import { session as sessionOf, team as teamOf, type Person, type Request, type Span, type Status, type Team } from "./documents";
+import { alsoOff, calendarHtml, clashes, days, listRows, nextMonth, offOn, prevMonth, rowHtml, stillMine, worked, workingDaysOf, WORD, type CalendarProps, type ListProps } from "./calendar";
+import { session as sessionOf, team as teamOf, type Person, type Request, type Span, type Team } from "./documents";
 import { icon } from "./icons";
 
 // leave's page. Signed out: sign in. Signed in: one calendar -- or the same requests as a list --
@@ -13,9 +13,6 @@ import { icon } from "./icons";
 // drawers' fields do everything a drag does, for a keyboard.
 
 const { tool, collectionPage, drawer, confirmModal, addTool, go, site, readingSwitch } = bento({ icon, session: "session", leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
-
-
-const WORD: Record<Status, string> = { asked: "waiting", approved: "approved", declined: "declined" };
 
 /** Signed out: the one thing to do, and why the last try did not work, if it did not. */
 function signInPage(sessionId: string): string {

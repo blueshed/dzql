@@ -109,7 +109,8 @@ export function colourOf(people: Person[], personId: string): number {
 
 const go = (page: string): string => write("session", "replace", "/page", page);
 
-const WORD: Record<Status, string> = { asked: "waiting", approved: "approved", declined: "declined" };
+/** A request's status, as it is said. */
+export const WORD: Record<Status, string> ={ asked: "waiting", approved: "approved", declined: "declined" };
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /** What the calendar is drawn from: three months from `from`, today, who is looking, the team, their draft, the request whose drawer is open, and where a tap opens a drawer. */
