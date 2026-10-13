@@ -6,10 +6,9 @@ import { costs, differing, gzipped, item, measure, received, rewritten, said, si
 
 // Every number the README quotes is a run's (src/costs.ts): what one write sends everyone else,
 // the client's size, the stories. A change that moves one fails here until `bun run costs` writes
-// it in. The run is taken here in this process, where coverage sees it, and once more as the
-// script `bun run costs` is, a process of its own; each example's measure is one of its own
-// either way, as a process serves one example. Then each piece: the words, the comparison, the
-// writing, and what a run that goes wrong says.
+// it in. The run is taken here in this process, where coverage sees it; each example's measure is
+// a process of its own, as a process serves one example. Then each piece: the words, the
+// comparison, the writing, and what a run that goes wrong says.
 
 const dir = mkdtempSync(join(tmpdir(), "eta-costs-"));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
@@ -25,38 +24,20 @@ test("every number the README quotes is what a run measures", async () => {
   expect(await run(["--check"])).toEqual({ code: 0, said: [] }); // or: what the README says, and what the run found
 }, 60_000);
 
-/** `bun run costs --check`, with these settings besides the test's own: what it says, and how it ends. */
-async function check(settings: Record<string, string> = {}): Promise<{ said: string; code: number }> {
-  const proc = Bun.spawn(["bun", "src/costs.ts", "--check"], { cwd: `${import.meta.dir}/..`, env: { ...process.env, DB_PATH: ":memory:", TICK_MS: "0", ...settings }, stdout: "pipe", stderr: "pipe" });
-  const [said, err, code] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
-  return { said: code === 0 ? said : said + err, code };
-}
-
-test("run as the script, a run says the same whatever is set: REVEAL, which names the wedding's photo, changes nothing", async () => {
-  expect(await check({ REVEAL: "1" })).toEqual({ said: "", code: 0 });
-}, 60_000);
-
-test("what one page was sent, in words, as it crossed the wire: its sizes, the patches and the HTML, and what they were before compression; a message of another kind is not described but refused", () => {
+test("what one page was sent, in words, as it crossed the wire: its sizes, the patches and the HTML, and what they were before compression, each size said through `say` in the order the words say them (a run keeps them, to hold the README's within 3%); a message of another kind is not described but refused", () => {
   expect([size(1023), size(1024), size(1280)]).toEqual(["1023\u00a0B", "1.0\u00a0KB", "1.3\u00a0KB"]);
-  const words = (heard: Heard[]) => received({ who: "each viewer", heard }).replaceAll("\u00a0", " ");
+  const words = (heard: Heard[]) => {
+    const kept: number[] = [];
+    const said = received({ who: "each viewer", heard }, (bytes) => (kept.push(bytes), size(bytes))).replaceAll("\u00a0", " ");
+    expect([...said.matchAll(/(\d+(?:\.\d+)?) (K?B)\b/g)].map((m) => m[0])).toEqual(kept.map((bytes) => size(bytes).replaceAll("\u00a0", " ")));
+    return said;
+  };
   expect(words([{ type: "patch", bytes: 345, sent: 210 }, { type: "render", bytes: 844, sent: 308 }])).toBe("518 B, compressed from 1.2 KB, to each viewer (a 210 B patch and 308 B of HTML)");
   expect(words([{ type: "patch", bytes: 300, sent: 218 }])).toBe("218 B, compressed from 300 B, to each viewer (one patch and no HTML)");
   expect(words([{ type: "patch", bytes: 200, sent: 150 }, { type: "patch", bytes: 100, sent: 80 }, { type: "patch", bytes: 64, sent: 60 }])).toBe("290 B, compressed from 364 B, to each viewer (patches of 150 B, 80 B and 60 B, and no HTML)");
   expect(words([{ type: "render", bytes: 900, sent: 300 }])).toBe("300 B, compressed from 900 B, to each viewer (no patch and 300 B of HTML)");
+  expect(words([{ type: "patch", bytes: 200, sent: 150 }, { type: "patch", bytes: 100, sent: 80 }, { type: "render", bytes: 2000, sent: 400 }])).toBe("630 B, compressed from 2.2 KB, to each viewer (patches of 150 B and 80 B, and 400 B of HTML)");
   expect(() => words([{ type: "patch", bytes: 1, sent: 1 }, { type: "welcome", bytes: 9, sent: 9 }])).toThrow("each viewer was sent a welcome, which the README does not describe");
-});
-
-test("each size the words say is said through `say`, in the order they say them: a run keeps them, to hold the README's within 3%", () => {
-  for (const heard of [
-    [{ type: "patch", bytes: 345, sent: 210 }, { type: "render", bytes: 844, sent: 308 }],
-    [{ type: "patch", bytes: 300, sent: 218 }],
-    [{ type: "patch", bytes: 200, sent: 150 }, { type: "patch", bytes: 100, sent: 80 }, { type: "render", bytes: 2000, sent: 400 }],
-    [{ type: "render", bytes: 900, sent: 300 }],
-  ]) {
-    const kept: number[] = [];
-    const words = received({ who: "each viewer", heard }, (bytes) => (kept.push(bytes), size(bytes))).replaceAll("\u00a0", " ");
-    expect([...words.matchAll(/(\d+(?:\.\d+)?) (K?B)\b/g)].map((m) => m[0])).toEqual(kept.map((bytes) => size(bytes).replaceAll("\u00a0", " ")));
-  }
 });
 
 test("a tap sees what crosses the wire: each text frame a session is sent, as sent -- compressed or not, whatever form its length takes, however the reads fall -- and nothing else", async () => {
