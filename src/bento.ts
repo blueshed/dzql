@@ -87,6 +87,8 @@ export interface ToolOptions<I extends string> {
   expanded?: boolean;
   disabled?: boolean;
   submit?: boolean;
+  /** A class of its own beside `tool` and the kind: find's anchor (`.find`). */
+  className?: string;
 }
 
 export interface FindState {
@@ -157,7 +159,6 @@ export function choice(label: string, options: Option[], locked = false): string
     .join("")}</div>`;
 }
 
-/** The page behind a modal is `inert` while it asks -- nothing else may be touched (rule 14). */
 /**
  * A page with what may open over it: the ground -- the page, and the drawer's layer over it -- and
  * the modal's layer. Each layer is always there, empty when nothing is open, so opening or closing
@@ -194,7 +195,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     const label = o.label ?? (o.iconOnly ? text : undefined); // a square button says its word to a screen reader
     const pressed = o.pressed === undefined ? "" : ` aria-pressed="${o.pressed}"`;
     const expanded = o.expanded === undefined ? "" : ` aria-expanded="${o.expanded}"`;
-    return `<button type="${o.submit ? "submit" : "button"}" class="tool${o.kind ? ` ${o.kind}` : ""}"${label ? ` aria-label="${esc(label)}"` : ""}${pressed}${expanded}${o.disabled ? " disabled" : ""}${o.write}>${o.icon ? icon(o.icon) : ""}${word}</button>`;
+    return `<button type="${o.submit ? "submit" : "button"}" class="tool${o.kind ? ` ${o.kind}` : ""}${o.className ? ` ${o.className}` : ""}"${label ? ` aria-label="${esc(label)}"` : ""}${pressed}${expanded}${o.disabled ? " disabled" : ""}${o.write}>${o.icon ? icon(o.icon) : ""}${word}</button>`;
   }
 
   /** The page's own tools -- undo and redo, writes to the ledger, the kernel's own document, and leaving -- one stack, at the bottom right of the window, or across beside the trail on the box (rule 9). */
@@ -233,7 +234,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
    */
   function findControl(key: string, f: FindState): { tool: string; filter?: string } {
     const open = f.word !== undefined;
-    const button = tool("Find", { icon: "search", iconOnly: true, pressed: open, write: open ? write(trayDoc, "remove", `/filter/${key}`) : write(trayDoc, "replace", `/filter/${key}`, "") }).replace('class="tool"', 'class="tool find"');
+    const button = tool("Find", { icon: "search", className: "find", iconOnly: true, pressed: open, write: open ? write(trayDoc, "remove", `/filter/${key}`) : write(trayDoc, "replace", `/filter/${key}`, "") });
     if (!open) return { tool: button };
     const eye = tool(f.hide ? "Show what misses" : "Hide what misses", {
       icon: f.hide ? "eye-off" : "eye",

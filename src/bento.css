@@ -94,7 +94,6 @@
 
 /* ── the tray: cells cut into it, walled by its padding. Computed by src/grid.ts, which
    hands over the areas for three columns and for one, and each cell's tray corners. ── */
-.page.box { margin: 0; }
 .cells { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: var(--tray-areas-phone); gap: var(--space-md); padding: var(--space-md); background: var(--tray); border-radius: var(--radius-tray); box-shadow: var(--shadow-tray); }
 .cell { position: relative; display: flex; flex-direction: column; gap: var(--space-sm); min-height: 96px; min-width: 0; padding: var(--space-lg); background: var(--card); border-radius: 0; overflow: hidden; }
 /* a cell that opens is tapped anywhere on it, and its name is its button: the keyboard's stop, the
@@ -107,7 +106,7 @@
 .cell-head { display: flex; align-items: center; gap: 7px; }
 .cell-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cell-icon, .chev { display: inline-flex; align-items: center; color: var(--accent); }
-.chev.pencil, .thing .pencil { color: var(--mark); }
+.thing .pencil { color: var(--mark); }
 .cell-summary { margin: -4px 0 0; font-size: 14px; color: var(--muted); }
 .cell-body { position: relative; flex: 1; min-height: 0; }
 /* a cell that is a thing: ✎, a tap opens its drawer, lit while it is open (rule 15) */
