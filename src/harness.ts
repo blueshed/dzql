@@ -18,53 +18,12 @@ import { size, sum, tap } from "./costs";
 
 export { comparable };
 
-// Runs an example's stories against it, over real sockets, and reports by story name. See
-// docs/stories.md ("The harness"). Canon 1 is checked here: for every member of the cast, a render
-// from the server's copy of the documents, as a page is drawn (only Canon 2's reads the tables),
-// before and after the story, compared -- so a change that reaches a page through an applet's
-// patch (a tick) counts the same as one that reaches it as HTML. A member a
-// story says sees it on a page is put on that page first (`Stories.page`), since a person sees
-// only the page they are on. Then the story is undone and redone as its author, and the pages
-// must go back and forth with it; a write the ledger calls a fact (undoable = 0) must survive its
-// undo instead, and an author the example no longer counts as active (logged out) gets no undo.
-// Every write carries an id, as a page's does, so what answers it is its own: a `does` has landed
-// when its author is echoed the change with the write's id, whoever else writes meanwhile.
-// A `cannot` must change no page, add nothing to the ledger, and be answered: refused, by its own
-// write's id, the writer's page showing them why when the story says what they are `told` -- the
-// reason its refusal gave, and nothing else. Their page is handed back only as what differs (todo
-// n103): one the refusal leaves as it was is sent nothing, and must then be the page still. What a write, its undo or its redo
-// tells its author (src/refusal.ts) is of that moment, so their pages are compared without it, and
-// it is checked on its own: on their page, and after the undo what the story's `undone` says,
-// when it says. For a `does`, nobody the story
-// does not say sees it may notice it: a story names everyone
-// whose page changes. Delivery is checked as well as pages: a member the story says is `untold`
-// must be told of no document -- no patch -- by the write, its undo or its redo, and anything the
-// kernel reports failing while a story runs (a message, a drawing, a change being told) fails the
-// story. A tab that closes (`closesTab`) is told by its socket going: whoever is still looking must
-// see it as the story says, and there is nothing to undo. Each story runs inside one database
-// transaction that is rolled back afterwards, so every story starts from the cast and its own
-// premise alone.
-//
-// Canon 2 is checked here too, without a browser: every member's open page is kept as the client
-// would keep it -- a full render replaces it, a fragment render is applied target by target -- and
-// after the story, its undo and its redo, that page must equal a fresh render from storage: each
-// document the page reads read again from delta's tables, not from the copy the server draws from.
-// So a write that reaches the tables but not someone's open page fails, by name, and so does a
-// copy that drifted from the tables, which a render from the copy would only compare with itself.
-// An applet that takes its document's patches itself (`data-doc`) is compared without its props:
-// they follow the patches, not the renders. What the morph does with the HTML is the browser
-// tests' to check.
-//
-// By hand, a story is done again in a browser the size of a phone, as a person does it
-// (src/by-hand.ts): each story that says its `gesture`, and with `byHand` each write a page sends
-// and each refusal a control of the page sends (docs/stories.md, the harness, step 6). Its write must
-// be what the page sends, and land, or be refused.
-//
-// Every story's cost on the wire is kept: what its step (the write, the refusal, the tab closing),
-// and the undo and the redo of a write, handed each member's page, as the page takes it and as it
-// crossed the wire, counted by the costs' tap (src/costs.ts) that the cast's sockets go through. A
-// story, or the example, may say a budget, and a page handed more than it by any of them fails the
-// story: a person's undo is a write too, and its bytes go to every page.
+// Runs an example's stories against it, over real sockets, and reports by story name: what each
+// step checks is docs/stories.md, "The harness". Canon 1 compares every member's page, drawn from
+// the server's copy, before and after; Canon 2 holds each open page, kept as the client keeps it,
+// to a fresh render from delta's tables; by hand (src/by-hand.ts) a story is done in a browser the
+// size of a phone; and what each step hands each page is counted (src/costs.ts `tap`) and held to
+// a budget. Each story runs in a transaction rolled back after it.
 
 /** What a story handed each member's page: the write's own size (none when a tab closes), and each member handed anything by its step, by its undo, and by its redo, when it has them. */
 export type Wire = { write?: number; handed: Handed[]; undo?: Handed[]; redo?: Handed[] };
@@ -150,11 +109,7 @@ function applyOp(page: string, op: HtmlOp): string {
 
 export type Heard = { type: string; html?: string; ops?: HtmlOp[]; doc?: string; version?: number; id?: WriteId; reason?: string };
 
-// The patch stream, checked. An applet that takes a document's patches (`data-doc`) holds props: the
-// ones the last render gave it, with every patch for that document laid on since, at the place in
-// its props the document sits (`data-under`, the root by default). That is what the client's applet
-// holds, and it must be what a fresh render would give it -- or the ops did not say everything the
-// document did, or props that changed for another reason were never sent.
+// The patch stream, checked: what an applet holds must be what a fresh render gives it (`unheld`).
 
 /** An applet that takes a document's patches, as a member's page holds it: the props a render gave it, the document's version they hold when the mount says it (`data-v`), and the ops taken since. */
 type Taken = { applet: string; doc: string; under: string; props: string; v?: number; ops: PatchOp[] };
@@ -175,12 +130,8 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
   return found;
 }
 
-// What props cost (todo n94). An applet's data comes from a document it watches, and its props
-// say only what to show and for whom; props that carry the data themselves go again whole with
-// every change to it. So the harness says -- it does not fail -- where a render sends a mount whose
-// own props (the document it watches left out) pass MOST_PROPS, and where a render in parts sends a
-// mount with the very props the page already had for it: a part replaced around it, or its tag
-// sent for something else on it.
+// What props cost (todo n94), said and not failed: props that carry an applet's data go again
+// whole with every change to it (`propsCost`).
 
 /** How big a mount's own props, as JSON, may be before the harness says so: the document it watches left out. */
 export const MOST_PROPS = 4096;
@@ -585,12 +536,7 @@ export async function run(
     if (telling !== undefined && !warned.has(key)) warned.set(key, { story: telling, says: found.says });
   };
 
-  // Where a person can go, judged from where each story starts: the cast, as its own writes left
-  // it, and the story's premise. The places a story names are walked in a cast of its own in that
-  // state, from where it put each member: every page a member is drawn there is kept by where it
-  // stands (`data-page`), with its controls, and a place is somewhere they can get to when a
-  // control on a page they can get to leads there (`goesTo`). The pages of the stories as they
-  // are told are not kept: a plus another story's write drew is not one this story starts with.
+  // Where a person can go (`reach`): every page a member is drawn while a walk is under way, kept by where it stands.
   type State = { pages: Map<string, Map<string, Map<string, Control>>>; starts: Map<string, string | undefined> }; // member → place → controls, by what each writes
   let walked: State | undefined; // the state being walked, whose pages are kept
   function keep(m: Member): void {
