@@ -10,6 +10,7 @@ work in.
 - [The verbs](#the-verbs)
 - [Documents](#documents)
 - [The gaps](#the-gaps)
+- [Loading an app that exists](#loading-an-app-that-exists)
 - [From the model to the app](#from-the-model-to-the-app)
 
 ## Where it runs
@@ -58,6 +59,16 @@ Every holder is told every write to it, so cut documents by who must be told, no
 | *needed by no story* (red) | A document, or its entities, that no story still told needs: take it out, or is a story missing? |
 | *looked up, never held* (dashed) | Touched by a story, held by no document: right for a credential read at sign-in; otherwise, who is told when it changes? |
 | A document everyone holds and everyone writes | Every write tells every holder: is that what the stories ask for? |
+
+## Loading an app that exists
+
+An app already built can be read into the model rather than told: `bun run model:load <example |
+path>` (in a project, `bun run model:load ./app`) reads its code and runs its stories
+(`loader/extract.ts`), then writes every story and every document the stories need into the model
+on the page, as the person the CLI signed in as -- each write lands in front of whoever watches,
+and each undoes. A document no story needs is left out, and said. `bun run model:check <example>`
+reads the same app and prints its documents -- who holds each, who is told, what permit lets
+through that no page offers -- and hjeli's predicates over its stories.
 
 ## From the model to the app
 
