@@ -1,6 +1,6 @@
 import { applets } from "../applets";
 import { applyPatch, WIRE, type PatchOp } from "../json-patch";
-import { formValue, groupOf, held, isBox, rendered, type Field } from "./form-value";
+import { formValue, groupOf, held, isBox, isField, isRadio, rendered, type Field } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
 import { keepingChoices, morph, morphElement, morphTag, removeNode, type MorphHooks } from "./morph";
 
@@ -558,10 +558,7 @@ function write(spec: string, value?: unknown): number | undefined {
 
 /** A field (form-value.ts) an editing form sends and a refusal hands back. A `multiple` select holds several values where a
  * write carries one, so it is not one here: an editing form never sends it, and a refusal does not hand it back. */
-const isField = (el: Element): el is Field =>
-  el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el instanceof HTMLSelectElement && !el.multiple);
-
-const isRadio = (field: Field): field is HTMLInputElement & { type: "radio" } => field instanceof HTMLInputElement && field.type === "radio";
+const holdsOne = (el: Element): el is Field => isField(el) && !(el instanceof HTMLSelectElement && el.multiple);
 
 /** Puts back what a field held: a box's tick, a group's choice (by its value; none for null), or a value. */
 function hold(field: Field, value: string | boolean | null): void {
@@ -608,7 +605,7 @@ app.addEventListener("submit", (event) => {
   const spec = form.dataset.write;
   if (!spec) return; // not a write: a plain form posts as the browser does (a sign-in)
   event.preventDefault();
-  const fields = [...form.elements].filter(isField);
+  const fields = [...form.elements].filter(holdsOne);
   const sent: [Field, string | boolean | null][] = fields.map((f) => [f, held(f)]);
   const id = write(spec, formValue(form));
   if (id === undefined) return; // not sent: what is typed stays
@@ -661,7 +658,7 @@ function editingChange(form: HTMLFormElement): { doc: string; ops: PatchOp[] } |
   const ops: PatchOp[] = [];
   let doc: string | undefined;
   const said = new Set<Field>(); // a group of radios is said once
-  for (const field of [...form.querySelectorAll("[data-write]")].filter(isField)) {
+  for (const field of [...form.querySelectorAll("[data-write]")].filter(holdsOne)) {
     if (said.has(field)) continue;
     if (isRadio(field)) for (const r of groupOf(field)) said.add(r);
     const value = held(field);

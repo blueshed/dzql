@@ -1,6 +1,6 @@
 import type { PatchOp } from "../json-patch";
 import { afterDrawing, ask, walked, type Answer, type Write } from "./app";
-import { groupOf, isBox, rendered, type Field } from "./form-value";
+import { groupOf, isBox, isField, isRadio, namedFields, rendered, type Field } from "./form-value";
 
 // The page's writes as tools for an assistant (todo n99), for an app that opts in: its client/main.ts
 // imports this after the kernel's client, `import "eta/src/client/tools"`. Every control a person
@@ -32,8 +32,6 @@ const pressable = (el: Element): boolean => !el.closest("[inert],[hidden]") && !
 const MOST_SAID = 80;
 const words = (text: string | null | undefined): string => (text ?? "").replace(/\s+/g, " ").trim().slice(0, MOST_SAID);
 
-const isField = (el: Element): el is Field => el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement;
-
 /** The label the app gave a control: its aria-label; a form's legend; a field's label. Never what it shows. */
 const labelOf = (el: Element): string =>
   words(el.getAttribute("aria-label")) || words((el instanceof HTMLFormElement ? el.querySelector("legend") : isField(el) ? el.labels?.[0] : null)?.textContent);
@@ -58,7 +56,7 @@ function sent(field: Field, key: string, given: unknown): { value: unknown } | s
   const value = given == null ? given : String(given);
   const offered =
     field instanceof HTMLSelectElement ? [...field.options].filter((o) => !o.disabled).map((o) => o.value)
-    : field.type === "radio" ? groupOf(field as HTMLInputElement).filter(pressable).map((r) => r.value)
+    : isRadio(field) ? groupOf(field).filter(pressable).map((r) => r.value)
     : undefined;
   return offered && !offered.includes(value as string) ? `${key} is none of the page's choices.` : { value };
 }
@@ -72,9 +70,7 @@ function formTool(form: HTMLFormElement, label: string): Tool | undefined {
   if (form.closest("fieldset:disabled") || form.querySelector("fieldset:disabled, :is(button:not([type=button],[type=reset]), input[type=submit]):disabled")) return undefined;
   const spec = specOf(form);
   const fields = new Map<string, Field>();
-  for (const el of form.elements as unknown as Iterable<Field>) {
-    if (el.name && el.matches("input,select,textarea") && !el.matches(":disabled,[type=submit],[type=button],[type=reset],[type=image],[type=file]") && !fields.has(el.name)) fields.set(el.name, el);
-  }
+  for (const el of namedFields(form)) if (!fields.has(el.name)) fields.set(el.name, el); // a name again is its first
   const asked = [...fields].filter(([, f]) => !(f as HTMLInputElement).readOnly && f.type !== "hidden");
   const required = asked.filter(([, f]) => f.required).map(([name]) => name);
   return {
