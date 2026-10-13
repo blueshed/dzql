@@ -30,8 +30,9 @@ export { comparable };
 // Every write carries an id, as a page's does, so what answers it is its own: a `does` has landed
 // when its author is echoed the change with the write's id, whoever else writes meanwhile.
 // A `cannot` must change no page, add nothing to the ledger, and be answered: refused, by its own
-// write's id, and the writer's page handed back, showing them why when the story says what they
-// are `told` -- the reason its refusal gave, and nothing else. What a write, its undo or its redo
+// write's id, the writer's page showing them why when the story says what they are `told` -- the
+// reason its refusal gave, and nothing else. Their page is handed back only as what differs (todo
+// n103): one the refusal leaves as it was is sent nothing, and must then be the page still. What a write, its undo or its redo
 // tells its author (src/refusal.ts) is of that moment, so their pages are compared without it, and
 // it is checked on its own: on their page, and after the undo what the story's `undone` says,
 // when it says. For a `does`, nobody the story
@@ -955,9 +956,8 @@ export async function run(
           if (story.told === undefined && tried.ops.every((op) => buttons.some((c) => offers(c, tried.doc, op)))) failures.push(`${who.name}'s page offers this, and it is refused without a word: a control that always fails`);
           const answer = answerTo(who, await told(cast, who, tried, "cannot"), from);
           spent(story, outcome, "cannot", cast, from);
-          const handedBack = sentSince(who, from).some((h) => h.type === "render");
           if (answer?.type === "patch") failures.push(`refused, but it landed: ${who.name}'s write was echoed back to them`);
-          else if (!answer || !handedBack) failures.push(`refused, but ${who.name} was not answered: ${answer ? "the page was not handed back" : "no refusal carried their write's id"}`);
+          else if (!answer) failures.push(`refused, but ${who.name} was not answered: no refusal carried their write's id`);
           reason = answer?.type === "refused" ? answer.reason : undefined;
         }
         const after = await snapshot(cast);

@@ -118,9 +118,9 @@ describe("the ticker", () => {
     await expectQuiet(a);
     expect(await expectMessage(b, "patch")).toMatchObject({ doc: "ticker:market" });
     await expectQuiet(b);
-    // a tick that changes nothing (the same price) is a render, no patch: the dispatcher's own fallback
+    // a tick that changes nothing (the same price) lands nothing, and the page it holds is the page still: nothing is sent
     write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
-    await expectMessage(a, "render");
+    expect(await heard(a)).toEqual([]);
     await expectQuiet(b);
     // a tick is a fact: Undo passes over it to the person's own last write, and the market stands
     write(a, "watchlist", [{ op: "add", path: "/symbols/-", value: "DLTA" }]);
@@ -159,18 +159,17 @@ describe("the ticker", () => {
     const ws = await open();
     const refused = async (doc: string, ops: PatchOp[]) => {
       write(ws, doc, ops);
-      await expectMessage(ws, "render");
-      await expectQuiet(ws);
+      expect(await heard(ws)).toEqual([]); // no patch, and no page: the one it holds is the page still
     };
     await refused("ticker", [{ op: "replace", path: "/DLTA/name", value: "x" }]);
     await refused("ticker", [{ op: "remove", path: "/DLTA/price" }]);
     await refused("ticker", [{ op: "add", path: "/NEW/price", value: 1 }]);
     await refused("watchlist", [{ op: "replace", path: "/symbols/0", value: "x" }]);
-    // permitted, and refused with why: the reason is kept in the session's own refusal document, and the page handed back
+    // permitted, and refused with why: the reason is kept in the session's own refusal document
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "NOPE" }]);
-    expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "told", ops: expect.arrayContaining([{ op: "replace", path: "/reason", value: "The market does not quote NOPE." }]) });
-    await expectMessage(ws, "render");
-    await expectQuiet(ws);
+    const said = await heard(ws);
+    expect(said.map((m) => m.type)).toEqual(["patch"]); // the box shows no reason, so its page is not sent again
+    expect(said[0]).toMatchObject({ doc: "told", ops: expect.arrayContaining([{ op: "replace", path: "/reason", value: "The market does not quote NOPE." }]) });
     ws.close();
   });
 
@@ -247,9 +246,9 @@ describe("the ticker", () => {
     await expectMessage(ws, "render");
     await expectQuiet(ws);
     write(ws, "clock", [{ op: "replace", path: "/tz", value: "Mars/Base" }]);
-    await expectMessage(ws, "render"); // permitted, not applied: the page, no patch
+    expect(await heard(ws)).toEqual([]); // permitted, not applied: no patch, and the page unchanged
     write(ws, "clock", [{ op: "remove", path: "/tz" }]);
-    await expectMessage(ws, "render"); // refused
+    expect(await heard(ws)).toEqual([]); // refused
     ws.close();
   });
 

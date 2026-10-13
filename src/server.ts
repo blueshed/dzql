@@ -62,7 +62,7 @@ const track = (p: Promise<unknown>): void => {
 /**
  * Draws a connection's page -- until every document it reads is held -- and sends what changed:
  * the parts that differ, nothing if none do, or the page whole when its outline changed (a
- * different page) or `whole` says so (a first drawing, a refused write handing the page back).
+ * different page) or `whole` says so (a first drawing).
  * A drawing that fails is logged, and the connection's next drawing goes ahead.
  */
 function redraw(ws: Socket, whole = false): Promise<void> {
@@ -320,8 +320,10 @@ export function createServer(example: Example, port: number | string = process.e
     // A write that applied something is told from its change, the writer's page with the rest, and
     // its echo carries its id to its writer. Nothing applied -- refused, not a write at all, an
     // unknown document, nothing to walk, or a failure on the way -- is answered `refused`, with its
-    // id and why when the refusal says, and the page is handed back. A message without an id (a
-    // page from before ids, the CLI) is answered by the page alone, as it always was. A refusal
+    // id and why when the refusal says, and the page is handed back as what differs from the one
+    // its writer holds (todo n103): the line saying why, or nothing -- never the page whole, which
+    // they have. A message that is no write at all is answered by the page whole: it is how a page
+    // asks for itself afresh. A message without an id (the CLI) is answered by that alone. A refusal
     // that says why is also kept for the page to draw, until the session's next write
     // (src/refusal.ts); a write that applied something has let go of it already, before what
     // followed it could say what it did.
@@ -336,7 +338,7 @@ export function createServer(example: Example, port: number | string = process.e
     }
     if (!wrote && id !== undefined) send(ws, refusedMessage(id, refusal?.reason));
     if (isWrite(message) && !wrote) await tell(ws.data.sessionId, refusal && { doc: message.doc, path: message.ops[0]!.path, reason: refusal.reason });
-    if (!wrote) void redraw(ws, true);
+    if (!wrote) void redraw(ws, !isWrite(message)); // a message that is no write asks for the page (src/client/app.ts)
     await quiet(documents);
     for (const claim of claims) if (claim.ws === ws) claims.delete(claim); // its change told by now, or never to be
   }

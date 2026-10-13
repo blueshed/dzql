@@ -194,10 +194,10 @@ describe("websocket write protocol", () => {
     await expectMessage(ws, "render");
 
     write(ws, "session", [{ op: "replace", path: "/name" } as PatchOp]);
-    // rejected (blank name): no patch echo, just the unchanged render
-    const message = await expectMessage(ws, "render");
-
-    expect(htmlOf(message)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // no name was set
+    // rejected (blank name): no patch echo, and the page it holds is the page still, so nothing at all
+    const { messages, page } = await heard(ws);
+    expect(messages).toEqual([]);
+    expect(page).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // no name was set
     ws.close();
   });
 
@@ -248,7 +248,7 @@ describe("websocket write protocol", () => {
     await expectMessage(ws, "render");
 
     write(ws, "nonsense", [{ op: "replace", path: "/x", value: "y" }]);
-    await expectMessage(ws, "render"); // falls through to the normal render
+    expect((await heard(ws)).messages).toEqual([]); // refused, the page unchanged: nothing sent
     ws.close();
   });
 
@@ -325,9 +325,10 @@ describe("websocket write protocol", () => {
 
     const room = crypto.randomUUID();
     write(second, "session", [{ op: "replace", path: "/room", value: room }]);
-    // rejected by permit (logged out): no patch echo, just the unchanged render
-    const rejected = await expectMessage(second, "render");
-    expect(htmlOf(rejected)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // still logged out
+    // rejected by permit (logged out): no patch echo, and nothing else, the page unchanged
+    const rejected = await heard(second);
+    expect(rejected.messages).toEqual([]);
+    expect(rejected.page).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // still logged out
 
     // reactivating afterward must not reveal a room leaked by the rejected write
     write(second, "session", [{ op: "replace", path: "/name", value: "Ada again" }]);
@@ -462,9 +463,10 @@ describe("websocket write protocol", () => {
     await expectMessage(second, "render"); // name form: this session is logged out
 
     write(second, "ledger", [{ op: "remove", path: "/latest" }]);
-    // rejected by permit (logged out): no patch echo, just the unchanged render
-    const rejected = await expectMessage(second, "render");
-    expect(htmlOf(rejected)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
+    // rejected by permit (logged out): no patch echo, and nothing else, the page unchanged
+    const rejected = await heard(second);
+    expect(rejected.messages).toEqual([]);
+    expect(rejected.page).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
 
     first.close();
     second.close();
@@ -706,8 +708,8 @@ describe("chat", () => {
     await login(ws, "Blank", crypto.randomUUID());
 
     write(ws, "room", [{ op: "add", path: "/messages/-", value: "   " }]);
-    // shaped to nothing (blank text): no patch echo, just the page handed back
-    expect((await heard(ws)).messages.map((m) => m.type)).toEqual(["render"]);
+    // shaped to nothing (blank text): no patch echo, and the page unchanged, so nothing at all
+    expect((await heard(ws)).messages).toEqual([]);
 
     const uniqueText = `after blank ${crypto.randomUUID()}`;
     write(ws, "room", [{ op: "add", path: "/messages/-", value: uniqueText }]);
@@ -725,8 +727,9 @@ describe("chat", () => {
 
     write(ws, "room", [{ op: "add", path: "/messages/-", value: "hello?" }]);
     // rejected: resolveDoc finds no current room, so permit/write are never reached
-    const message = await expectMessage(ws, "render");
-    expect(htmlOf(message)).toContain('class="cell open" data-key="rooms"');
+    const { messages, page } = await heard(ws);
+    expect(messages).toEqual([]);
+    expect(page).toContain('class="cell open" data-key="rooms"');
     ws.close();
   });
 

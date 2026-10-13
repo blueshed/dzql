@@ -105,11 +105,11 @@ function send(ws: WebSocket, doc: string, ops: PatchOp[]): Promise<Heard> {
 const go = async (ws: WebSocket, ops: PatchOp[]): Promise<string> => (await send(ws, "session", ops)).page;
 const at = (ws: WebSocket, page: string): Promise<string> => go(ws, [{ op: "replace", path: "/page", value: page }]);
 
-/** Refused: nothing applied, nothing told -- the page handed back as it was. */
+/** Refused: nothing applied, nothing told -- and the page it holds not sent again, only a part that says why, if one does (todo n103). */
 async function refused(ws: WebSocket, doc: string, ops: PatchOp[]): Promise<Heard> {
   const h = await send(ws, doc, ops);
   expect(h.patches).toEqual([]);
-  expect(h.renders).toHaveLength(1);
+  expect(h.renders.filter((r) => r.html !== undefined)).toEqual([]);
   return h;
 }
 

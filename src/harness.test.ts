@@ -84,9 +84,9 @@ describe("stories harness", () => {
       expect(said.handed.map((h) => h.most.part)).toEqual(["messages", "messages"]); // the new message, beside the last: a part of the messages
       expect([said.undo, said.redo].map((phase) => phase!.map((h) => h.member))).toEqual([["ada", "bob"], ["ada", "bob"]]); // an undo and a redo are writes too, to the same pages
       expect(refused.write).toBe(Buffer.byteLength(JSON.stringify(take.cannot)));
-      expect(refused.handed.map((h) => h.member)).toEqual(["ada"]); // told no, and her page handed back
-      expect(refused.handed[0]!.most.part).toBe("the whole page");
-      expect(refused.handed[0]!.sent).toBeLessThan(refused.handed[0]!.bytes / 2); // a page crosses the wire compressed
+      expect(refused.handed.map((h) => h.member)).toEqual(["ada"]); // told no
+      expect(refused.handed[0]!.most.part).toBe("refused"); // and nothing more: the page she holds is the page still (todo n103)
+      expect(refused.handed[0]!.bytes).toBeLessThan(40); // its write's id, no page
       expect(closed.write).toBeUndefined(); // a tab closing writes nothing
       expect(closed.handed.map((h) => h.member)).toEqual(["ada"]);
       expect([refused.undo, refused.redo, closed.undo, closed.redo]).toEqual([undefined, undefined, undefined, undefined]); // nothing to undo
@@ -597,11 +597,11 @@ describe("stories harness", () => {
     }
   }, 30000);
 
-  test("a refusal that is really the server failing fails the story, and so does one nobody answers", async () => {
+  test("a refusal that is really the server failing fails the story, though its writer is answered", async () => {
     const throwing = withRoom((room) => ({ ...room, permit: () => { throw new Error("a permit that throws"); } }));
     expect((await failuresOf(throwing, only("Nobody can take"))).some((f) => f.startsWith("the server failed") && f.endsWith("a permit that throws"))).toBe(true);
 
-    // the page handed back cannot be drawn: the refusal goes unanswered
+    // the page drawn after it cannot be: the refusal is answered all the same, and the failure is the server's
     let refusing = false;
     const unanswered: Example = {
       ...withRoom((room) => ({ ...room, permit: (ws, op, id) => ((refusing = true), room.permit!(ws, op, id)) })),
@@ -611,7 +611,7 @@ describe("stories harness", () => {
       },
     };
     const failures = await failuresOf(unanswered, only("Nobody can take"));
-    expect(failures).toContain("refused, but ada was not answered: the page was not handed back");
+    expect(failures.filter((f) => f.includes("not answered"))).toEqual([]);
     expect(failures).toContain("the server failed drawing a page: the page cannot be drawn");
   }, 30000);
 

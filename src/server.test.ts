@@ -319,9 +319,9 @@ describe("createServer, generically (no example from the examples directory invo
     const redonePatch = await expectMessage(ws, "patch");
     expect(redonePatch.ops).toEqual([{ op: "replace", path: "/text", value: "hello kernel" }]);
     expect(htmlOf(await expectMessage(ws, "render"))).toContain("hello kernel");
-    // nothing left to redo: a render, no patch
-    write(ws, "ledger", [{ op: "add", path: "/latest" }]);
-    await expectMessage(ws, "render");
+    // nothing left to redo: refused, and the page it holds is the page still, so nothing more
+    write(ws, "ledger", [{ op: "add", path: "/latest" }], 9);
+    expect(await until(ws)).toEqual([{ type: "refused", id: 9 }]);
 
     ws.close();
   });
@@ -334,9 +334,9 @@ describe("createServer, generically (no example from the examples directory invo
     const error = console.error;
     console.error = (...args: unknown[]) => void logged.push(args);
     try {
-      write(ws, "note", [{ op: "replace", path: "/text", value: "boom" }]);
+      write(ws, "note", [{ op: "replace", path: "/text", value: "boom" }], 1);
       write(ws, "note", [{ op: "replace", path: "/text", value: "after the boom" }]);
-      expect(htmlOf(await expectMessage(ws, "render"))).not.toContain("boom"); // the page, handed back as it was
+      expect(await expectMessage(ws, "refused")).toEqual({ type: "refused", id: 1 }); // the page it holds is as it was: nothing more
       expect((await expectMessage(ws, "patch")).ops).toEqual([{ op: "replace", path: "/text", value: "after the boom" }]);
       expect(logged).toHaveLength(1);
       expect(String((logged[0] as unknown[])[1])).toContain("boom");
@@ -654,13 +654,13 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
-  test("an unpermitted op is rejected without crashing: no patch echo, just a re-render", async () => {
+  test("an unpermitted op is rejected without crashing: no patch echo, and the page not sent again (todo n103)", async () => {
     const ws = connect(server);
     await opened(ws);
     await expectMessage(ws, "render");
 
-    write(ws, "note", [{ op: "remove", path: "/text" }]); // permit() only allows replace
-    await expectMessage(ws, "render"); // falls straight through, no patch
+    write(ws, "note", [{ op: "remove", path: "/text" }], 1); // permit() only allows replace
+    expect(await until(ws)).toEqual([{ type: "refused", id: 1 }]); // no patch, and no page: the one it holds is the page still
 
     ws.close();
   });
@@ -767,13 +767,13 @@ describe("one socket, any documents: a document is named whole, and seen because
     const { ws: b } = await showingMonths("2026-08");
 
     showing.set(sessionId, ["2026-09"]);
-    write(a, "nothing:here", [{ op: "add", path: "/x", value: 1 }]); // refused: the page is drawn again, without August
-    await expectMessage(a, "render");
+    write(a, "nothing:here", [{ op: "add", path: "/x", value: 1 }], 1); // refused: the page is drawn again, without August
+    expect((await until(a)).map((m) => m.type)).toEqual(["refused", "render"]);
 
     write(b, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "vet" }]);
     await nextPatch(b);
-    write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "not mine now" }]);
-    expect((await nextMessage(a)).type).toBe("render"); // no patch about August came first, and the write was refused
+    write(a, "month:2026-08", [{ op: "add", path: "/appointments/-", value: "not mine now" }], 2);
+    expect(await until(a)).toEqual([{ type: "refused", id: 2 }]); // no patch about August came first, and the write was refused
     expect((await appointments("2026-08")).map((a) => a.what)).not.toContain("not mine now");
 
     a.close();
@@ -897,8 +897,8 @@ describe("one socket, any documents: a document is named whole, and seen because
   test("permit judges by the name: last month's closed one is seen and not written", async () => {
     const { ws } = await showingMonths("2026-07");
     const before = (await appointments("2026-07")).length;
-    write(ws, "month:2026-07", [{ op: "add", path: "/appointments/-", value: "too late" }]);
-    await expectMessage(ws, "render"); // refused: the page again, and nothing else
+    write(ws, "month:2026-07", [{ op: "add", path: "/appointments/-", value: "too late" }], 1);
+    expect(await until(ws)).toEqual([{ type: "refused", id: 1 }]); // refused, and nothing else
     expect((await appointments("2026-07")).length).toBe(before);
     expect(monthPermits.at(-1)).toBe("2026-07");
     ws.close();
@@ -907,8 +907,8 @@ describe("one socket, any documents: a document is named whole, and seen because
   test("a document the page does not show is refused before its owner is asked", async () => {
     const { ws } = await showingMonths("2026-08");
     const asked = monthPermits.length;
-    write(ws, "month:1999-01", [{ op: "add", path: "/appointments/-", value: "sneaky" }]);
-    await expectMessage(ws, "render");
+    write(ws, "month:1999-01", [{ op: "add", path: "/appointments/-", value: "sneaky" }], 1);
+    expect(await until(ws)).toEqual([{ type: "refused", id: 1 }]);
     expect(await appointments("1999-01")).toEqual([]);
     expect(monthPermits.length).toBe(asked);
     ws.close();
@@ -916,8 +916,8 @@ describe("one socket, any documents: a document is named whole, and seen because
 
   test("a name nothing owns is refused", async () => {
     const { ws } = await showingMonths();
-    write(ws, "nothing:here", [{ op: "add", path: "/x", value: 1 }]);
-    expect((await nextMessage(ws)).type).toBe("render");
+    write(ws, "nothing:here", [{ op: "add", path: "/x", value: 1 }], 1);
+    expect(await until(ws)).toEqual([{ type: "refused", id: 1 }]);
     ws.close();
   });
 
