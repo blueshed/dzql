@@ -1,5 +1,5 @@
 // The heart of a model: its stories, its documents and its entities, and what goes with what --
-// the modeller's page (modeller/heart.ts, heart.client.ts), drawn from the model document as it is
+// the page the modeller once drew from a run of an app's code (modeller/heart.ts), drawn from the model document as it is
 // kept, not from a run of an app's code. Pure: the server draws the first paint with it, and the
 // heart applet (applets/heart-applet.ts) draws every one after, as the model's patches come.
 //

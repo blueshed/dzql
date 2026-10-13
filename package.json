@@ -34,8 +34,7 @@
     "stories": "bun --env-file=.env.test src/stories-run.ts",
     "stories:all": "STORY_BY_HAND=1 ETA_EXAMPLE=chat bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=ticker bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=wedding bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=leave bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=modeling bun run stories",
     "costs": "bun --env-file=.env.test src/costs.ts",
-    "modeller": "LOG_LEVEL=warn bun --env-file=.env.test modeller/closure.ts",
-    "modeller:page": "LOG_LEVEL=warn bun --env-file=.env.test modeller/page.ts"
+    "modeller": "LOG_LEVEL=warn bun --env-file=.env.test modeller/closure.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.4.3"

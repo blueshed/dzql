@@ -147,6 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **`bun run modeller:page`**, the modeller's static page (`modeller/page.ts`, `heart.html`, `heart.client.ts`): the modeling example is its live successor. Its two layout tests, which the modeling example's own test already covers, go with it.
 - **The bento mock-up** (`examples/bento`, `bun run dev:bento`): a static page that predates the kernel's `src/bento.ts`, with its design-canvas generator. Its rules, which the kernel and every example follow, are `docs/bento.md`.
 - **The UML session is retired** (`uml/`, `bun run uml`, `bun run uml:check`): its diagrams were drawn by hand and checked against a vocabulary written by hand (`uml/types.ts`), a second account of an app that drifted from the first. What it was for -- seeing a model change as it is talked through -- is the modeling example, drawn from the model itself. Its Londons diagrams go with it.
 

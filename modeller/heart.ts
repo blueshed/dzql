@@ -1,4 +1,4 @@
-// The heart page's facts (heart.html): an example's stories, its documents and its entities, and
+// The heart of an app: its stories, its documents and its entities, and
 // what goes with what -- read from its code and a run of its stories (extract.ts), never written
 // by hand. How each is read:
 //

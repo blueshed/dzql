@@ -41,7 +41,7 @@ it, and everything else is derived from it.
   declaration, a deadline passed, a row the tables lost).
 - `modeller/` is tooling, never shipped (not in `files`): it reads an example's documents (from
   its stories, its compartments and a run of them) and its stories as a hjeli model (`bun run
-  modeller <example>`, `bun run modeller:page <example>`). Nothing imports it; it reads the kernel
+  modeller <example>`). Nothing imports it; it reads the kernel
   and the examples. The model
   and its predicates are a copy of hjeli's, in `modeller/model/`: eta depends on nothing outside itself.
 - `examples/<name>/` is a whole app: its own documents (a `delta.ts`: its schema, seed and

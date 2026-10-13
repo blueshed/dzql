@@ -3,7 +3,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import type { StoryRow, Told } from "./documents";
 import { bornInto, inSql, keeper, readBy, shape, squared, toldNotAsked, touches, unreached } from "./heart";
-import { BOX, MIN_COL, layout } from "../examples/modeling/heart";
 import { extract } from "./extract";
 import { documentsIn } from "./documents";
 
@@ -104,52 +103,6 @@ describe("an entity: red, who reads it, where it sits", () => {
     expect(readBy({ path: "x.ts", lines: ["db.run('SELECT 1 FROM w_couples');"] }, 0)).toBeNull();
   });
 
-  test("the tree: depth left to right, a leaf a row, a parent level with the middle of its children, each root's tree apart", () => {
-    const { W, H, COL, ROW } = BOX;
-    const tables = [
-      { name: "weddings", parent: null },
-      { name: "households", parent: "weddings" },
-      { name: "guests", parent: "households" },
-      { name: "asks", parent: "households" },
-      { name: "gifts", parent: "weddings" },
-      { name: "visits", parent: null },
-    ];
-    const { pos, segs, width, height } = layout(tables);
-    expect(pos.guests).toEqual({ x: 2 * COL, y: 0 });
-    expect(pos.asks).toEqual({ x: 2 * COL, y: ROW });
-    expect(pos.households).toEqual({ x: COL, y: ROW / 2 });
-    expect(pos.gifts).toEqual({ x: COL, y: 2 * ROW });
-    expect(pos.weddings).toEqual({ x: 0, y: (ROW / 2 + 2 * ROW) / 2 });
-    expect(pos.visits).toEqual({ x: 0, y: 3.4 * ROW });
-    expect(width).toBe(2 * COL + W);
-    expect(height).toBe(3.4 * ROW + H);
-    // a parent's stub, its spine, and a stub to each child: weddings' two, households' two
-    expect(segs.length).toBe(2 * (2 + 2));
-    expect(segs).toContainEqual({ left: W, top: pos.weddings!.y + H / 2 - 1, width: (COL - W) / 2, height: 2 });
-
-    // hidden: what is left is laid out alone, and a node whose parent is hidden is a root
-    const some = layout(tables, new Set(["guests", "asks", "visits"]));
-    expect(some.pos).toEqual({ guests: { x: 0, y: 0 }, asks: { x: 0, y: 1.4 * ROW }, visits: { x: 0, y: 2.8 * ROW } });
-    expect(some.segs).toEqual([]);
-    expect(layout(tables, new Set())).toEqual({ pos: {}, segs: [], width: 0, height: 0 });
-  });
-
-  test("a tree deeper than its width takes narrower columns, never narrower than a box and its spine", () => {
-    // canyou-eta's: teams, roots, asks, answers -- four deep
-    const chain = [
-      { name: "teams", parent: null },
-      { name: "roots", parent: "teams" },
-      { name: "asks", parent: "roots" },
-      { name: "answers", parent: "asks" },
-    ];
-    expect(layout(chain).width).toBe(BOX.W + 3 * BOX.COL); // room enough: columns as they are
-    expect(layout(chain, undefined, 2000).width).toBe(BOX.W + 3 * BOX.COL);
-    const fitted = layout(chain, undefined, 800);
-    expect(fitted.width).toBeLessThanOrEqual(800);
-    expect(fitted.pos.answers!.x).toBe(3 * Math.floor((800 - BOX.W) / 3));
-    expect(layout(chain, undefined, 300).pos.answers!.x).toBe(3 * MIN_COL); // too narrow: the floor, and the pane scrolls
-    expect(layout(chain, new Set(["asks", "answers"]), 1000).width).toBe(BOX.W + BOX.COL); // only what is shown is measured: two deep fits
-  });
 });
 
 describe("the heart, from a run", () => {
