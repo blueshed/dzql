@@ -41,12 +41,8 @@ export type Reading = {
 const isRow = (seg: string): boolean => seg === "-" || /^\d+$/.test(seg);
 
 /** "areas" -> "Area", "series" -> "Series", "work_windows" -> "WorkWindow", "venueOwner" -> "VenueOwner". */
-export function singular(word: string): string {
-  if (/(ss|us|series|news)$/.test(word)) return word;
-  if (/ies$/.test(word)) return word.slice(0, -3) + "y";
-  if (/s$/.test(word)) return word.slice(0, -1);
-  return word;
-}
+import { singular } from "../examples/modeling/heart";
+export { singular }; // one rule for a word's one: the modeling page's
 
 export function pascal(word: string): string {
   return word

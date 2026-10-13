@@ -4,7 +4,7 @@
 // the reason, which grows into a view of the evidence. Nothing here rewrites the model.
 
 import type { Heart } from "./heart";
-import { BOX, layout } from "./layout";
+import { BOX, layout } from "../examples/modeling/heart";
 
 const H: Heart = JSON.parse(document.getElementById("data")!.textContent!);
 type Story = Heart["stories"][number];

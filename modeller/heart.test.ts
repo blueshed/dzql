@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import type { StoryRow, Told } from "./documents";
 import { bornInto, inSql, keeper, readBy, shape, squared, toldNotAsked, touches, unreached } from "./heart";
-import { BOX, MIN_COL, layout } from "./layout";
+import { BOX, MIN_COL, layout } from "../examples/modeling/heart";
 import { extract } from "./extract";
 import { documentsIn } from "./documents";
 

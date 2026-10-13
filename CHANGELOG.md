@@ -79,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The modeller lays out its entities, and says a word's one, with the modeling page's code** (`layout`, `singular` from `examples/modeling/heart.ts`): `modeller/layout.ts` goes. The copies had drifted: the modeller's left out an entity that is its own parent, and now draws it; and "people" is now "person".
 - **The docs are in `docs/`**: `history/` is `docs/`, and `stories.md` and `first-app.md` moved into it, beside the record of finished work; `docs/README.md` says which is which. The root keeps README, CLAUDE.md and CHANGELOG. A project made with `bun create` keeps `docs/stories.md` and none of eta's record.
 - **`@types/bun` ^1.4.3**, the Bun eta asks for (`engines`), where it was 1.4.2's.
 - **eta uses delta's JSON Pointer and patch code** (todo n13): `splitPath` and `applyOps` from `@blueshed/delta/core` in place of eta's own `src/json-pointer.ts` (gone) and `applyPatch`'s body, which is now a copy laid with delta's rule. One patch rule, not two. What to change: an app that imported `parsePointer` from `src/json-pointer` imports `splitPath` from `@blueshed/delta/core`; a malformed pointer (a stray `~`) is now refused. The browser's script grows from 6.4 KB to 7.1 KB gzipped: delta's version brings its safety checks (unsafe keys, a root replace's container).
