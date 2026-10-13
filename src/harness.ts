@@ -843,32 +843,6 @@ export async function run(
     const outcome: Outcome = { name: story.name, failures };
     failing = failures;
     telling = story.name;
-    /** What a step of the story carried, for `observe`: what each of `cast` was sent since `from`, and the ledger's entries since `entry`. */
-    function witness(phase: Trace["phase"], who: Member, write: Write | Post | undefined, cast: Member[], from: Map<Member, number>, entry: number, holds: Trace["holds"]): void {
-      observe?.({
-        story: story.name,
-        phase,
-        as: who.name,
-        write,
-        heard: cast.map((m) => ({ member: m.name, messages: sentSince(m, from) })),
-        holds,
-        ledger: ledger.since(entry).map(({ doc, undoable, ops, inverse }) => ({ doc, undoable, ops: JSON.parse(ops) as PatchOp[], inverse: JSON.parse(inverse) as PatchOp[] })),
-      });
-    }
-    /** What `act` does -- `write`, sent or posted -- witnessed. */
-    async function witnessed<T>(cast: Member[], who: Member, write: Write | Post, phase: Trace["phase"], act: () => Promise<T>): Promise<T> {
-      if (!observe) return act();
-      const from = mark(cast);
-      const entry = ledgerMax();
-      const holds = inFront(cast);
-      const done = await act();
-      witness(phase, who, write, cast, from, entry, holds);
-      return done;
-    }
-    /** `send`, witnessed. */
-    const told = (cast: Member[], who: Member, write: Write, phase: Trace["phase"]): Promise<number> => witnessed(cast, who, write, phase, () => send(cast, who, write));
-    /** `posting`, witnessed. */
-    const posted = (cast: Member[], who: Member, how: Post, phase: Trace["phase"], from: Map<Member, number>) => witnessed(cast, who, how, phase, () => posting(cast, who, how, from));
     db.exec("BEGIN");
     const cast: Member[] = [];
     try {
@@ -876,6 +850,31 @@ export async function run(
 
       const who = cast.find((m) => m.name === story.as);
       if (!who) return { name: story.name, failures: [`no one in the cast is called ${story.as}`] };
+      /**
+       * One step of the story (`phase`): `act`, from where each of `cast`'s inboxes stands (`from`);
+       * then, for `observe`, what each was sent and what the ledger took; and what it handed each
+       * page, kept and held to the budget (`spent`). A post its route redirects moves its author's
+       * `from` on (`posting`): what they were sent before that is still the step's, for `observe`.
+       */
+      const step = async <T>(phase: Trace["phase"], write: Write | Post | undefined, cast: Member[], act: (from: Map<Member, number>) => Promise<T>): Promise<{ from: Map<Member, number>; done: T }> => {
+        const from = mark(cast);
+        const seen = observe && { from: new Map(from), entry: ledgerMax(), holds: inFront(cast) };
+        const done = await act(from);
+        if (seen)
+          observe!({
+            story: story.name,
+            phase,
+            as: who.name,
+            write,
+            heard: cast.map((m) => ({ member: m.name, messages: sentSince(m, seen.from) })),
+            holds: seen.holds,
+            ledger: ledger.since(seen.entry).map(({ doc, undoable, ops, inverse }) => ({ doc, undoable, ops: JSON.parse(ops) as PatchOp[], inverse: JSON.parse(inverse) as PatchOp[] })),
+          });
+        spent(story, outcome, phase, cast, from);
+        return { from, done };
+      };
+      /** `write` sent as a step: what answered it. */
+      const sent = (phase: Trace["phase"], write: Write, cast: Member[]) => step(phase, write, cast, async (from) => answerTo(who, await send(cast, who, write), from));
       const why = await premise(cast, story);
       if (why.length > 0) return { name: story.name, failures: [...failures, ...why] }; // not the state the story starts from: nothing it finds would be true of it
 
@@ -883,15 +882,13 @@ export async function run(
         if (story.from !== undefined) await put(cast, who, story.from, failures);
         const before = await snapshot(cast, who);
         const ledgerBefore = ledgerMax();
-        const from = mark(cast);
         const tried = story.cannot;
         let reason: string | undefined;
         let onPage = true; // where the refusal is told: on their page, or, for a route's 4xx, the page the browser shows in its place
         if (isPost(tried)) {
           // a route's refusal: a 4xx, or a reason told on the page it came from
           if (controlsOn(who.page).some((c) => postsTo(c, tried))) tryable.add(story);
-          const answer = await posted(cast, who, tried, "cannot", from);
-          spent(story, outcome, "cannot", cast, from);
+          const { done: answer } = await step("cannot", tried, cast, (from) => posting(cast, who, tried, from));
           if (answer.status < 400 && answer.reason === undefined) failures.push(`refused, but it landed: the route answered ${who.name}'s post to ${tried.path} with ${answer.status}, and told them nothing`);
           ({ reason } = answer);
           onPage = answer.status < 400;
@@ -902,8 +899,7 @@ export async function run(
           const own = controlsOn(who.page).filter((c) => !c.pattern);
           if (tried.ops.every((op) => own.some((c) => offers(c, tried.doc, op)))) tryable.add(story);
           if (story.told === undefined && tried.ops.every((op) => buttons.some((c) => offers(c, tried.doc, op)))) failures.push(`${who.name}'s page offers this, and it is refused without a word: a control that always fails`);
-          const answer = answerTo(who, await told(cast, who, tried, "cannot"), from);
-          spent(story, outcome, "cannot", cast, from);
+          const { done: answer } = await sent("cannot", tried, cast);
           if (answer?.type === "patch") failures.push(`refused, but it landed: ${who.name}'s write was echoed back to them`);
           else if (!answer) failures.push(`refused, but ${who.name} was not answered: no refusal carried their write's id`);
           reason = answer?.type === "refused" ? answer.reason : undefined;
@@ -937,14 +933,11 @@ export async function run(
         const looking = cast.filter((m) => m !== who);
         if (seen.has(who.name)) failures.push(`${who.name} closed their tab: they are not there to see it`);
         const before = await snapshot(looking);
-        const from = mark(looking);
-        const entry = ledgerMax();
-        const holds = inFront(looking);
-        await closeTab(who);
-        await server.idle(); // the close handled, and what it set going
-        await settle(looking);
-        spent(story, outcome, "closesTab", looking, from);
-        witness("closesTab", who, undefined, looking, from, entry, holds);
+        const { from } = await step("closesTab", undefined, looking, async () => {
+          await closeTab(who);
+          await server.idle(); // the close handled, and what it set going
+          await settle(looking);
+        });
         if (!landedSince(looking, from)) failures.push(`nothing landed: closing ${who.name}'s tab changed nothing`);
         checkUntold(looking, story.untold, from, "after the tab closed", failures);
         const after = await snapshot(looking);
@@ -966,16 +959,16 @@ export async function run(
       const before = await snapshot(cast, who);
       const ledgerBefore = ledgerMax();
       const stood = placeOf(who.page);
-      let from = mark(cast);
-      if (isPost(does)) {
-        const answer = await posted(cast, who, does, "does", from);
-        spent(story, outcome, "does", cast, from);
-        if (answer.status >= 400 || answer.reason !== undefined) failures.push(`nothing landed: the route refused ${who.name}'s post to ${does.path}${answer.reason ? `: "${answer.reason}"` : ` with ${answer.status}`}`);
-      } else {
-        const answer = answerTo(who, await told(cast, who, does, "does"), from);
-        spent(story, outcome, "does", cast, from);
-        if (answer?.type !== "patch") failures.push(answer ? `nothing landed: ${who.name}'s write was refused${answer.reason ? `: "${answer.reason}"` : ""}` : `${who.name}'s write was not answered: no echo carried its id`);
-      }
+      let { from, done: unlanded } = isPost(does)
+        ? await step("does", does, cast, async (from) => {
+            const answer = await posting(cast, who, does, from);
+            return answer.status >= 400 || answer.reason !== undefined ? `nothing landed: the route refused ${who.name}'s post to ${does.path}${answer.reason ? `: "${answer.reason}"` : ` with ${answer.status}`}` : undefined;
+          })
+        : await step("does", does, cast, async (from) => {
+            const answer = answerTo(who, await send(cast, who, does), from);
+            return answer?.type === "patch" ? undefined : answer ? `nothing landed: ${who.name}'s write was refused${answer.reason ? `: "${answer.reason}"` : ""}` : `${who.name}'s write was not answered: no echo carried its id`;
+          });
+      if (unlanded) failures.push(unlanded);
       // Where the write left its author: answering a modal puts it away (off the ledger, a visit),
       // so the undo and the redo are looked at from where each was taken -- where the author stands
       // is theirs, not the write's.
@@ -1000,9 +993,7 @@ export async function run(
       }
 
       const facts = entries.every((e) => e.undoable === 0);
-      from = mark(cast);
-      await told(cast, who, UNDO, "undo");
-      spent(story, outcome, "undo", cast, from);
+      ({ from } = await sent("undo", UNDO, cast));
       const undid = await checkTold(who, "after undo", story.undone, failures, { line: wrote, what: "the write" }); // where the undo left them, before they are put back
       if (moved) await send(cast, who, stories.goTo!(stood!));
       const afterUndo = await snapshot(cast, who);
@@ -1014,9 +1005,7 @@ export async function run(
       if (facts || !(await active(who.sessionId))) {
         if (story.redone !== undefined) failures.push(`no redo follows to tell ${who.name} "${story.redone}"`);
       } else {
-        from = mark(cast);
-        await told(cast, who, REDO, "redo");
-        spent(story, outcome, "redo", cast, from);
+        ({ from } = await sent("redo", REDO, cast));
         await checkTold(who, "after redo", story.redone, failures, { line: undid, what: "the undo" });
         if (moved) await send(cast, who, stories.goTo!(landed!));
         compare(quietAfter, await snapshot(cast, who), cast, "redo did not restore", failures);
