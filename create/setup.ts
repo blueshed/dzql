@@ -121,7 +121,7 @@ export async function setup(root: string): Promise<void> {
           start: "NODE_ENV=production ETA_EXAMPLE=./app bun src/start.ts",
           cli: "ETA_EXAMPLE=./app bun src/cli.ts",
           "cli:model": "ETA_EXAMPLE=./model ETA_URL=ws://localhost:3001 bun src/cli.ts",
-          "model:check": "LOG_LEVEL=warn bun --env-file=.env.test model/loader/check.ts",
+          "model:check": "ETA_URL=ws://localhost:3001 LOG_LEVEL=warn bun --env-file=.env.test model/loader/check.ts",
           "model:load": "ETA_URL=ws://localhost:3001 LOG_LEVEL=warn bun --env-file=.env.test model/loader/load.ts",
           check: "bun check",
           test: "bun test",

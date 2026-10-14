@@ -84,3 +84,11 @@ Load the **eta-app** skill; the model says what to build, story by story:
 | What each story does or cannot | Its compartment's `permit` and `shape` |
 
 Then `bun run stories`: the least that makes the next story pass, then the next.
+
+Last, read it back: is the app the model as told? `bun run model:check <example | ./app>
+--against-page` reads the model page as the CLI is signed in to it (`.eta-session`; `ETA_URL`), and
+the app as `model:load` would write it, and names each gap as a question for the teller: a story told
+that the app does not tell, one it tells that was never told, one whose teller or does/cannot
+differs, and a document whose root, holders, holdings (what each hangs under, its fields) or
+own-ness differ, or that serves other stories. Stories match by their words, so a story reworded on
+one side shows as two gaps. `--against-page <file.json>` reads the page's document saved instead.
