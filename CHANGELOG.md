@@ -30,6 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`Example.identify(req)`**: before a socket opens, an app names the session to open (its cookie is set when it differs from the one sent), refuses with a `Response`, or leaves it a visit. Leave uses it for a trusted proxy's `X-Forwarded-Email` (with `LEAVE_PROXY_SECRET`) and a CLI bearer token (`ETA_TOKEN`); a person found gets a fresh session unless the cookie's is already theirs. Leave also slows password guessing to once a minute after five wrong tries at one email (n8).
+- **A page drawn from a document's shape** (`src/derive.ts`, `derivedPage`): a list, a drawer to change a row, and modals to add or take one off, worked out at render time from delta's schema and a small declaration (a noun, a field's label or applet), never generated. The permit is asked for each control; a field that names an applet is overridden by registering another. The wedding's venues are drawn this way, with three stories (n2, started).
+- **Chat reads back past the first fifty messages**: "Earlier" shows the fifty before them and "Latest" comes back. The window is a keyset in the session (`/before`), so a message said meanwhile never moves it and a page reading back is sent nothing (n3).
+- **`bun run stories` warns of a hidden verb**: a write a compartment takes that no story tells and no page offers, named by its document and who may make it. It asks only the permit and the shape, never writes, and adds about 1.8 s to `stories:all` (n32).
+- **The client is in the coverage gate** (`src/client-coverage.ts`): what each test page ran, read from Chrome, so `src/client/`, `src/applets.ts`, `src/island.ts` and the applets are held to 100% (n15).
+- **`bun run model:check <app> --against-page`** compares the model as told on the model page with the app as built, as questions for the teller: each story told and not built, each built and never told, and each document whose root, holders, holdings or own-ness differ. It reads the page over the socket as the CLI is signed in, or a saved copy.
+- **A Bun-only SessionStart hook** (`.claude/hooks/session-start.sh`) makes a Claude Code web session green: Bun up to `engines.bun`, `bun install`, and Chromium with `BUN_CHROME_PATH` when a test uses `Bun.WebView`. It does nothing on a Mac or outside the web sandbox; `--dry-run` says what it would do. A `bun create` project gets it too (n23, eta's half).
+- `docs/bento/paintbrush/`, a second set of sample pages in Paintbrush's look; `docs/least-resistance.md`; `docs/plan-2026-10-14.md`; a picture of the wedding at the top of the README.
 - **`bun run model:load <example | path>`** (`examples/modeling/loader/load.ts`, `writes.ts`): loads an app that exists into the model on the page -- every story, and every document the stories need, with its root, what it holds and who holds it -- as the person the CLI signed in as, so whoever watches sees it arrive, and each write undoes. Loading leave writes exactly the model the example seeds by hand. A `bun create` project has it as `bun run model:load ./app`.
 - **`bento()` returns `go(page)` and `site(page, html, className?)`**: the write that goes to a page, and the whole page as the part `site` carrying its address for the URL (`data-page`, `data-page-write`). Leave, the ticker and the wedding each wrote both out. The wedding also stops binding five surfaces it never used.
 - **`goTo(doc)` in `src/stories.ts`**: the write that puts a person at an address (`page @ key.path=value`), for `Stories.goTo`. The ticker's, the wedding's and the Londons' stories each wrote it out; now each is one line.
@@ -83,6 +91,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A field you are typing in is not written over unseen** (n4): its write carries RFC 6902's `test`, the value it was drawn with, and the server refuses it when the field is drawn otherwise now, saying so beside it ("This was changed elsewhere as you typed: here it is now."); the field then shows the new value. The wire is version 3, so a page from before reloads itself.
+- **"Reconnecting…" is said in a `role="status"` region** beside `#app`, in place of CSS content that screen readers did not read. A change from someone else stays silent, by decision (n45).
+- **The browser tests run on Chrome on every platform** (`webview()`, src/webview.ts); `BUN_CHROME_PATH` names it where it is not found. The stories by hand stay on WebKit on a Mac.
+- **The README is for people** and `CLAUDE.md` is the rules plus which skill to load; the setup detail moved to the eta-app reference, which also takes paging and trying a delta checkout.
+- The wedding's couple are Nick and Nora, from The Thin Man; their code is `NICK`, not `DASH`.
+- `connectCli(url, cookie, token?)`: the CLI sends `ETA_TOKEN` as `Authorization: Bearer`.
 - **The bento is a guide, not rules.** `docs/bento/README.md` is rewritten from Peter's own words
   (apples' "The page", Can You's tap rules): directions, no numbers. `src/bento.ts` and
   `src/bento.css` are the kernel's defaults for drawing it, and code cites the intent, never a
@@ -167,6 +181,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Chat's session no longer takes `add /name` or `add /room` as a replace; a wedding household owed a plus-one can no longer ask to bring someone over the wire (both found by the hidden-verb probe).
 - **A full chat room scrolls to the newest message again** (todo n70): a `[data-autoscroll]` list is pinned to its foot when something new is there, not when its count grows. A room keeps its last fifty, so from the fifty-first each message took the oldest out and landed below the fold, your own included.
 - **leave's draft is its asker's alone until they ask**: it is kept in their session (`replace /draft` on `session`, no longer `team`), so dragging across days tells Bo and Mo nothing; asking is the write that tells the team, it drops the draft, and its Undo gives it back (`afterWalk`).
 - **A table code looks up but no document holds is "looked up, never held"**, dashed, not red: a credential read at sign-in (canyou-eta's passkeys, the wedding's couples, leave's logins) belongs in no document. Red is left for a table nothing reaches and no code reads.
