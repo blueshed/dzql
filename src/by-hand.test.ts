@@ -19,6 +19,8 @@ async function load(name: string): Promise<{ example: Example; stories: Stories 
   const { stories } = await import(`../examples/${name}/stories`);
   return { example, stories };
 }
+/** `stories` told among only the members `names`: each member walks every place it can get to, so a test casts no more than its stories need. */
+const among = (stories: Stories, ...names: string[]): Stories => ({ ...stories, cast: Object.fromEntries(names.map((name) => [name, stories.cast[name]!])) });
 
 const say = { doc: "room", ops: [{ op: "add" as const, path: "/messages/-", value: "hello" }] };
 const hello: Story = { name: "Ada says hello", as: "ada", does: say, seen: ["ada", "bob"], untold: ["cy", "dee", "eve"] };
@@ -69,19 +71,19 @@ describe("the stories by hand", () => {
   test("a form posted to a route by hand: typed into and sent, the browser following where it sends it, signed in or told why; one a person cannot reach fails by name", async () => {
     const { example: leave, stories: told } = await load("leave");
     const posts = told.stories.filter((s) => s.name.startsWith("Bo signs in on another phone") || s.name.startsWith("Someone types Bo's email"));
-    const after = told.stories.filter((s) => s.name.startsWith("Ann asks for her draft")); // a fresh browser after a post: not signed in as Bo by the route's cookie
-    const report = await run(leave, { ...told, stories: [...posts, ...after] }, undefined, { byHand: true });
+    const after = told.stories.filter((s) => s.name.startsWith("Ann asks for her draft")).map((s) => ({ ...s, seen: { ann: "2026-10" } }) as Story); // a fresh browser after a post: not signed in as Bo by the route's cookie
+    const report = await run(leave, { ...among(told, "visitor", "ann"), stories: [...posts, ...after] }, undefined, { byHand: true });
     expect(report.outcomes.map((o) => o.failures)).toEqual([[], [], []]);
     expect(report.byHand).toMatchObject({ stories: 3 });
 
     const wrong = (change: (html: string) => string): Example => ({ ...leave, render: (sessionId) => change(leave.render(sessionId)) });
     const unseen = wrong((html) => html.replace('<form class="sign-in"', '<form style="display: none" class="sign-in"'));
-    const done = await run(unseen, { ...told, stories: posts }, undefined, { byHand: true });
+    const done = await run(unseen, { ...among(told, "visitor"), stories: posts }, undefined, { byHand: true });
     expect(done.outcomes.map((o) => o.failures)).toEqual([["by hand, visitor could not post to /login: a field of its form is not to be seen"], ["by hand, visitor could not post to /login: a field of its form is not to be seen"]]);
     const nameless = wrong((html) => html.replace('name="password"', 'name="secret"'));
-    expect((await run(nameless, { ...told, stories: posts.slice(0, 1) }, undefined, { byHand: true })).outcomes[0]!.failures).toEqual(["by hand, visitor could not post to /login: its form has no field password"]);
+    expect((await run(nameless, { ...among(told, "visitor"), stories: posts.slice(0, 1) }, undefined, { byHand: true })).outcomes[0]!.failures).toEqual(["by hand, visitor could not post to /login: its form has no field password"]);
     const buttonless = wrong((html) => html.replace('<button type="submit" class="tool">', '<button type="submit" class="tool" style="visibility: hidden">'));
-    expect((await run(buttonless, { ...told, stories: posts.slice(0, 1) }, undefined, { byHand: true })).outcomes[0]!.failures).toEqual(["by hand, visitor could not post to /login: the button of its form is not to be seen"]);
+    expect((await run(buttonless, { ...among(told, "visitor"), stories: posts.slice(0, 1) }, undefined, { byHand: true })).outcomes[0]!.failures).toEqual(["by hand, visitor could not post to /login: the button of its form is not to be seen"]);
   }, 60000);
 
   test("a press the client never hears sends nothing; a button in a disabled fieldset's first legend is pressed", async () => {
@@ -142,32 +144,27 @@ describe("the stories by hand", () => {
 
   test("a story may say its gesture: leave's drags on its calendar are done by hand whenever they are told, and must send the story's write", async () => {
     const { example: leave, stories: told } = await load("leave");
-    const drags = told.stories.filter((s) => s.gesture !== undefined);
-    expect(drags.map((s) => s.name)).toEqual([
-      "Ann drags across two days in Bo's week, and sees the clash before she asks",
-      "Ann drags her day in November to the Friday after, and Mo and Bo see it move",
-      "Mo moves the week he approved for himself, and the team sees it move",
-    ]);
-    const report = await run(leave, { ...told, stories: drags }); // without `byHand`: a story that says its gesture asks for a browser
-    expect(report.outcomes.map((o) => o.failures)).toEqual([[], [], []]);
-    expect(report.byHand).toMatchObject({ stories: 3, applets: 0 });
+    const across = told.stories.find((s) => s.name.startsWith("Ann drags across"))!; // leave's other drags, a request's bar to a day, are `stories:all`'s
 
     // let go a day too far, and the page sends another draft; from nothing, nothing is dragged
     const tuesday = '.week[data-month="2026-10"][data-monday="2026-10-05"] > .date:nth-child(2)';
     const thursday = '.week[data-month="2026-10"][data-monday="2026-10-05"] > .date:nth-child(4)';
-    const dragged = (from: string, to: string) => ({ ...drags[0]!, gesture: { drag: [from, to] } }) as Story;
+    const dragged = (from: string, to: string) => ({ ...across, gesture: { drag: [from, to] } }) as Story;
     const [astray, nowhere, offscreen] = [dragged(tuesday, thursday), dragged(".nowhere", thursday), dragged(tuesday, '.week[data-month="2026-12"][data-monday="2026-12-28"] > .date:nth-child(4)')];
-    expect((await run(leave, { ...told, stories: [astray, nowhere, offscreen] })).outcomes.map((o) => o.failures)).toEqual([
+    const report = await run(leave, { ...among(told, "ann"), stories: [across, astray, nowhere, offscreen] }); // without `byHand`: a story that says its gesture asks for a browser
+    expect(report.outcomes.map((o) => o.failures)).toEqual([
+      [],
       ['by hand, ann could not replace /draft on session: the page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-08"} on session'],
       ["by hand, ann could not replace /draft on session: what it is dragged from is not on the page"],
       ["by hand, ann could not replace /draft on session: where it is dragged to is off the screen"],
     ]);
+    expect(report.byHand).toMatchObject({ stories: 4, applets: 0 });
   }, 60000);
 
   test("a gesture's write is the one its events sent: a calendar that hears no pointer and writes by itself, late, fails; so does one that writes twice, or unasked before anything is pressed", async () => {
     const { stories: told } = await load("leave");
     const across = told.stories.filter((s) => s.name.startsWith("Ann drags across"));
-    const failures = async (wrong: string) => (await run(await leaveWith(wrong), { ...told, stories: across })).outcomes[0]!.failures;
+    const failures = async (wrong: string) => (await run(await leaveWith(wrong), { ...among(told, "ann"), stories: across })).outcomes[0]!.failures;
     expect(await failures("")).toEqual([]);
     for (const late of ["late-200", "late-1500"]) {
       const failed = await failures(late);
@@ -209,10 +206,14 @@ describe("the stories by hand", () => {
   test("a refusal whose write a control on the page sends is tried by hand: leave's days hidden by a stylesheet fail the story that types one", async () => {
     const { example: leave, stories: told } = await load("leave");
     const hidden: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replaceAll('<form class="days"', '<form class="days" style="display: none"') };
-    const report = await run(hidden, told, undefined, { byHand: true });
-    expect(report.outcomes.filter((o) => o.failures.length > 0).map((o) => [o.name, o.failures])).toEqual([
+    // Bo's weekend is asked for by the Ask button, which is to be seen: pressed, and refused, it passes
+    const refusals = told.stories.filter((s) => s.name.startsWith("Ann sets her draft's last day") || s.name.startsWith("Bo asks for a draft that is only a weekend"));
+    const report = await run(hidden, { ...among(told, "ann", "bo"), stories: refusals }, undefined, { byHand: true });
+    expect(report.outcomes.map((o) => [o.name, o.failures])).toEqual([
       ["Ann sets her draft's last day before its first, and is told so", ["by hand, ann could not replace /draft/ends on session: the control for it is not to be seen"]],
+      ["Bo asks for a draft that is only a weekend, and is told it has no working days", []],
     ]);
+    expect(report.byHand).toMatchObject({ stories: 2 });
 
     // a symbol the Watch modal's select does not offer is one nobody can send from the page: its refusal is the wire's
     const { example: ticker, stories: watching } = await load("ticker");
@@ -226,7 +227,7 @@ describe("the stories by hand", () => {
   test("a record the page sent with a key the story does not name is not its write, unless the key is blank: a calendar's half day fails", async () => {
     const { stories: told } = await load("leave");
     const across = told.stories.filter((s) => s.name.startsWith("Ann drags across"));
-    expect((await run(await leaveWith("half"), { ...told, stories: across })).outcomes[0]!.failures).toEqual([
+    expect((await run(await leaveWith("half"), { ...among(told, "ann"), stories: across })).outcomes[0]!.failures).toEqual([
       'by hand, ann could not replace /draft on session: the page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-07","half":true} on session',
     ]);
   }, 60000);

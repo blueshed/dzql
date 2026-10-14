@@ -373,7 +373,9 @@ describe("the wedding in a real browser", () => {
       box.dispatchEvent(new Event('focusout', { bubbles: true }));
     })()`);
 
-    await waitFor(view, `document.querySelector('.welcome-drawer textarea').value`, (v) => v === "so happy for you both");
+    // the box says what was typed at once; the board, once the write has landed: waited for, not assumed
+    await waitFor(view, `window.eta.inspect().lastSent?.doc`, (v) => v === "board");
+    for (const end = performance.now() + 2000; (await board()).message !== "so happy for you both" && performance.now() < end; ) await Bun.sleep(20);
     expect((await board()).message).toBe("so happy for you both");
   });
 

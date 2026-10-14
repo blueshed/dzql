@@ -23,6 +23,8 @@ async function load(name: string): Promise<{ example: Example; stories: Stories 
   const { stories } = await import(`../examples/${name}/stories`);
   return { example, stories };
 }
+/** `stories` told among only the members `names`: each member walks every place it can get to, so a test casts no more than its stories need. */
+const among = (stories: Stories, ...names: string[]): Stories => ({ ...stories, cast: Object.fromEntries(names.map((name) => [name, stories.cast[name]!])) });
 /** Chat's write that says `text` in a room. */
 const say = (text: string) => ({ doc: "room", ops: [{ op: "add" as const, path: "/messages/-", value: text }] });
 /** Chat's write that puts a session in `room`. */
@@ -410,7 +412,7 @@ describe("stories harness", () => {
     test("a post takes no undo, redo or gesture, and is a route's path and a form of strings", async () => {
       const { example: leave, stories: told } = await load("leave");
       const report = await run(leave, {
-        ...told,
+        ...among(told, "visitor"),
         stories: [
           misshapen({ name: "Bo signs in, undone", as: "visitor", does: post("/login"), seen: ["visitor"], undone: "Undone." }),
           misshapen({ name: "Bo signs in, by a press", as: "visitor", does: post("/login"), seen: ["visitor"], gesture: { press: "button" } }),
@@ -468,9 +470,12 @@ describe("stories harness", () => {
 
   test("a story stands where it stands whatever the day: leave's, under October's clock, where the month they name is this one", async () => {
     const { example: leave, stories: told } = await load("leave");
+    // a story from each month the stories name: this one, the next, and the one after
+    const months = told.stories.filter((s) => ["Ann cannot move Bo's week", "Ann cannot approve her own day off", "Ann cannot move days Mo has already approved"].includes(s.name));
+    expect(months.map((s) => s.from)).toEqual(["2026-11?request=2", "2026-10", "2026-12?request=3"]);
     setSystemTime(new Date("2026-10-15T12:00:00Z"));
     try {
-      const report = await run(leave, told);
+      const report = await run(leave, { ...among(told, "ann"), stories: months });
       expect(report.outcomes.flatMap((o) => o.failures)).toEqual([]);
     } finally {
       setSystemTime();
@@ -489,7 +494,7 @@ describe("stories harness", () => {
     const { example: leave, stories: told } = await load("leave");
     const approve = write("team", "replace", "/requests/1/status", "approved");
     const lost: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replace(approve, "") };
-    const report = await run(lost, { ...told, stories: told.stories.filter((s) => s.name.startsWith("Mo approves")) });
+    const report = await run(lost, { ...among(told, "mo"), stories: told.stories.filter((s) => s.name.startsWith("Mo approves")) });
     expect(report.outcomes.flatMap((o) => o.failures)).toContain("mo has no control on their page for replace /requests/1/status on team");
   }, 30000);
 
@@ -523,7 +528,7 @@ describe("stories harness", () => {
 
     const { example: leave, stories: told } = await load("leave");
     const stale: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replace(/data-writes='[^']*'/, `data-writes='{"doc":"team","path":"/draft"}'`) };
-    const report = await run(stale, { ...told, stories: told.stories.filter((s) => s.name.startsWith("Ann drags across") || s.name.startsWith("Ann cannot move Bo's week")) });
+    const report = await run(stale, { ...among(told, "ann"), stories: told.stories.filter((s) => s.name.startsWith("Ann drags across") || s.name.startsWith("Ann cannot move Bo's week")) });
     expect(report.outcomes.map((o) => o.failures.filter((f) => f.startsWith("applet declaration")))).toEqual([
       ['applet declaration must be [doc, op, path]: calendar says {"doc":"team","path":"/draft"}'],
       ['applet declaration must be [doc, op, path]: calendar says {"doc":"team","path":"/draft"}'],

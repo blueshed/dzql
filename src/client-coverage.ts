@@ -5,9 +5,17 @@
 // test's, not one a test loads itself -- is held to the same bar at the end of the run: every line
 // ran, and every function was called. A page's counts go with it, so they are read before a view
 // goes somewhere else and before it closes.
+//
+// Only a whole run is judged: one that loaded every test file. A run of some (`bun test <file>`)
+// would fail for lines only the others' pages reach, so it says it was not judged. In a parallel
+// run (`bun test --parallel`) each file is its own: each leaves what its pages ran beside the
+// others', and the file that finds every test file there judges them all. A run filtered by name
+// (`-t`) loads every file, and is judged as whole, as bun's own threshold judges it.
 
 import { afterAll, expect } from "bun:test";
-import { dirname, relative } from "node:path";
+import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, relative } from "node:path";
 import { measured } from "./webview";
 
 type Range = { startOffset: number; endOffset: number; count: number };
@@ -98,7 +106,40 @@ export function gaps(ran: Ran, judge: (file: string) => boolean = judged): strin
   return missed.filter(([, lines]) => lines.length > 0).map(([file, lines]) => `${relative(root, Bun.fileURLToPath(file))}: ${spans(lines)}`).sort();
 }
 
+/** What one process, or one file of a parallel run, leaves to be judged: the project's files it loaded, its tests among them, and what its pages ran. */
+export type Kept = { loaded: string[]; ran: [file: string, lines: [number, boolean][]][] };
+
+/** The project's test files, as bun test finds them: a whole run loads each one. */
+export const testFiles = (): string[] => [...new Bun.Glob("**/*.{test,spec}.{ts,tsx,js,jsx}").scanSync({ cwd: root, absolute: true })].filter((f) => !f.includes("/node_modules/"));
+
+/** What `ran` and the project's files `loaded` leave to be judged. */
+export const kept = (ran: Ran, loaded: string[] = Object.keys(require.cache)): Kept => ({ loaded: loaded.filter((f) => f.startsWith(`${root}/`) && !f.includes("/node_modules/")), ran: [...ran].map(([file, lines]) => [file, [...lines]]) });
+
+/** `mine`, left in `dir` beside what the other files of a parallel run left there; and all of it. */
+export function shared(dir: string, name: string, mine: Kept): Kept[] {
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, `${name}.part`), JSON.stringify(mine));
+  renameSync(join(dir, `${name}.part`), join(dir, `${name}.json`)); // whole or not there: another file may be reading
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => JSON.parse(readFileSync(join(dir, f), "utf8")) as Kept);
+}
+
+/** Once what is `kept` loaded every one of `tests`, the files held and the lines no page ran; until then undefined: a partial run is not judged. */
+export function judge(kept: Kept[], tests: string[]): { held: number; missed: string[] } | undefined {
+  const loaded = new Set(kept.flatMap((k) => k.loaded));
+  if (!tests.every((t) => loaded.has(t))) return undefined;
+  const ran: Ran = new Map();
+  for (const [file, lines] of kept.flatMap((k) => k.ran)) {
+    const all = ran.get(file) ?? ran.set(file, new Map()).get(file)!;
+    for (const [line, r] of lines) all.set(line, all.get(line) === true || r);
+  }
+  const held = (file: string) => judged(file, [...loaded]);
+  return { held: [...ran.keys()].filter(held).length, missed: gaps(ran, held) };
+}
+
 const ran: Ran = new Map();
+const me = crypto.randomUUID(); // this file's name among a parallel run's
 const bundles = new Map<string, Promise<Bundle>>();
 const started = new WeakSet<Bun.WebView>();
 const pending: Promise<void>[] = [];
@@ -162,6 +203,11 @@ Object.defineProperty(P, Symbol.asyncDispose, {
 
 afterAll(async () => {
   await Promise.all(pending);
-  console.log(`src/client-coverage.ts: ${[...ran.keys()].filter((file) => judged(file)).length} files a page ran, beside bun's table, held to it`);
-  expect(gaps(ran), "a line of the client no page ran (src/client-coverage.ts)").toEqual([]);
+  const worker = process.env.BUN_TEST_WORKER_ID !== undefined; // a parallel run's, whose coordinator is its parent
+  const dir = join(tmpdir(), `eta-client-coverage-${process.ppid}`);
+  const verdict = judge(worker ? shared(dir, me, kept(ran)) : [kept(ran)], testFiles());
+  if (verdict === undefined) return void (worker || console.log("src/client-coverage.ts: a run of some test files, so the client's coverage is not judged: a whole run judges it"));
+  if (worker) rmSync(dir, { recursive: true, force: true });
+  console.log(`src/client-coverage.ts: ${verdict.held} files a page ran, beside bun's table, held to it`);
+  expect(verdict.missed, "a line of the client no page ran (src/client-coverage.ts)").toEqual([]);
 });

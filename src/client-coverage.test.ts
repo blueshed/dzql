@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname } from "node:path";
-import { bundle, count, decode, gaps, judged, read, spans, type Ran } from "./client-coverage";
+import { bundle, count, decode, gaps, judge, judged, kept, read, shared, spans, testFiles, type Ran } from "./client-coverage";
 import fixture from "./client/morph.test.html";
 import { waitFor, webview } from "./webview";
 
@@ -72,5 +74,30 @@ describe("the client's coverage", () => {
       [`${root}/src/c.ts`, new Map([[1, true]])],
     ]);
     expect(gaps(ran, () => true)).toEqual(["src/a.ts: 2", "src/b.ts: 3"]);
+  });
+
+  test("a builder runs one test file, and is not failed for lines only the others' pages run: only a whole run is judged, a parallel run's files together", () => {
+    const tests = testFiles();
+    expect(tests).toContain(Bun.fileURLToPath(import.meta.url));
+    expect(tests.some((f) => f.includes("/node_modules/") || f.endsWith(".test.entry.ts"))).toBe(false);
+    const [one, other] = [`${dirname(import.meta.dir)}/src/a.test.ts`, `${dirname(import.meta.dir)}/src/b.test.ts`];
+    const morph = `${root}/src/client/morph.ts`;
+    const ran = (r: boolean): Ran => new Map([[morph, new Map([[1, true], [2, r]])]]);
+    // a file of its own: some of the tests, not judged; what a package or another place loaded is not kept
+    const first = kept(ran(false), [one, "/elsewhere/x.ts", `${dirname(import.meta.dir)}/node_modules/y.ts`]);
+    expect(first.loaded).toEqual([one]);
+    expect(judge([first], [one, other])).toBeUndefined();
+    // a parallel run's files, each left beside the others': the last finds them all, and a line any page ran, ran
+    const dir = `${tmpdir()}/eta-client-coverage-test-${crypto.randomUUID()}`;
+    try {
+      expect(shared(dir, "one", first)).toEqual([first]);
+      const all = shared(dir, "other", kept(ran(true), [other]));
+      expect(judge(all, [one, other])).toEqual({ held: 1, missed: [] });
+      expect(judge([first, kept(ran(false), [other])], [one, other])).toEqual({ held: 1, missed: ["src/client/morph.ts: 2"] });
+      // a file a test loads is bun's to judge, whichever file loaded it
+      expect(judge([first, kept(ran(false), [other, Bun.fileURLToPath(morph)])], [one, other])).toEqual({ held: 0, missed: [] });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

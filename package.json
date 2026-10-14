@@ -30,7 +30,7 @@
     "start": "NODE_ENV=production nohup bun src/start.ts > ${LOG_FILE:-server.log} 2>&1 & disown",
     "stop": "kill $(lsof -ti tcp:${PORT:-3000} -sTCP:LISTEN)",
     "cli": "bun src/cli.ts",
-    "test": "bun test",
+    "test": "bun test --parallel",
     "stories": "bun --env-file=.env.test src/stories-run.ts",
     "stories:all": "STORY_BY_HAND=1 ETA_EXAMPLE=chat bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=ticker bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=wedding bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=leave bun run stories && STORY_BY_HAND=1 ETA_EXAMPLE=modeling bun run stories",
     "costs": "bun --env-file=.env.test src/costs.ts",

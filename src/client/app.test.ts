@@ -126,6 +126,23 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(keptIdentity).toBe(true);
   });
 
+  test("a move another render overtakes is skipped, not an error: the page is the later one", async () => {
+    await using view = await open();
+    await pushRender(view, `<div id="c-box" data-moving="box"><p>small</p></div>`);
+    await waitFor(view, `document.querySelector('#c-box')?.textContent`, (v) => v === "small");
+    await view.evaluate(`(() => {
+      window.__unhandled = 0;
+      addEventListener("unhandledrejection", () => window.__unhandled++);
+      const say = (data) => window.eta.socket().dispatchEvent(new MessageEvent("message", { data }));
+      say(${JSON.stringify(renderMessage(`<div id="c-box" data-moving="box" class="open"><p>big</p></div>`))});
+      say(${JSON.stringify(renderMessage(`<div id="c-box" data-moving="box"><p>small again</p></div>`))}); // before the first has settled: it is skipped
+    })()`);
+    const box = `(() => { const el = document.querySelector('#c-box'); return el.textContent + "|" + el.style.viewTransitionName; })()`;
+    await waitFor(view, box, (v) => v === "small again|"); // drawn, and its move done
+    await aFrame(view);
+    expect(await view.evaluate(`window.__unhandled`)).toBe(0);
+  });
+
   test("what changes inside a data-moving element is not a move: no transition, so nobody's typing is swallowed by one", async () => {
     await using view = await open();
     await pushRender(view, `<div id="win" data-moving="rooms" class="open"><p>one room</p><input id="new"></div>`);

@@ -48,7 +48,9 @@ Each step is the least that makes the next story pass. Run `bun run stories` aft
   `shape`, then delta; every change is told from delta's stream, never by hand.
 - A page sees what it read: `read()` what you show, and cut documents by who reads them.
 - A change goes as the smallest part that holds it; a part far bigger than its write is a bug.
-- The gate: `bun check`, `bun test` (100% coverage), `bun run stories`.
+- The loop is seconds: `bun run stories` (`STORY=<words>` for one) and `bun test <file>`, read for
+  its passes and fails, as coverage is a whole run's. The gate, before a commit: `bun check`,
+  `bun test --parallel` (100% coverage), `bun run stories`.
 - Never edit `src/` from an app: a missing seam is rare. →
   [where-an-app-lives](reference/where-an-app-lives.md#when-it-looks-like-you-need-to-touch-src)
 
