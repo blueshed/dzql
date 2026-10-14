@@ -9,7 +9,7 @@ A Bun website where people share documents. **Documents are how people communica
 Requires Bun 1.4.3 or later.
 
 ```sh
-bun create blueshed/paintbrush myapp   # or, from npm: bunx create-blueshed myapp
+bun create blueshed/paintbrush myapp
 cd myapp
 bun dev
 ```
