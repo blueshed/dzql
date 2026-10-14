@@ -235,6 +235,10 @@ so:
 4. In the stories, `signIn(name)` gives the route and form, and the harness signs the cast in
    through it.
 
+Where who you are comes with the request -- a sign-in proxy in front, the CLI's token --
+`Example.identify(req)` says so before the socket opens: the session to use, or a refusal. Leave's
+is in `examples/leave/signin.ts`.
+
 ## 12. When you need an applet
 
 Draw everything on the server until something must keep state that a redraw would destroy: a

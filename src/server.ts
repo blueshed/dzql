@@ -353,14 +353,18 @@ export function createServer(example: Example, port: number | string = process.e
       // that isn't an exact route above, and the client reads the URL itself once it connects.
       "/*": example.index,
       "/api/health": () => Response.json({ ok: true }),
-      "/ws": (req: Bun.BunRequest, server: Bun.Server<ConnectionData>) => {
+      "/ws": async (req: Bun.BunRequest, server: Bun.Server<ConnectionData>) => {
         // A socket is not bound by the same-origin policy: one opened from another site is refused
         // before it is a session (delta's rule: no Origin, or the page's own, or ETA_ORIGINS).
         const refused = refuseOrigin(req, origins());
         if (refused) return refused;
-        const sessionId = req.cookies.get("session_id") ?? crypto.randomUUID();
+        // Then who it is, where the example can say before it opens (a proxy's header, a token).
+        const identified = await example.identify?.(req);
+        if (identified instanceof Response) return identified;
+        const cookie = req.cookies.get("session_id");
+        const sessionId = identified ?? cookie ?? crypto.randomUUID();
         const headers = new Headers();
-        if (!req.cookies.has("session_id")) headers.append("Set-Cookie", sessionCookie(sessionId));
+        if (sessionId !== cookie) headers.append("Set-Cookie", sessionCookie(sessionId));
 
         if (server.upgrade(req, { data: { sessionId }, headers })) return;
         return new Response("Upgrade failed", { status: 400 });

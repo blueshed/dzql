@@ -121,6 +121,11 @@ function makeExample(name: string): Example {
     active: () => true,
     index,
     delta,
+    // who a request is, by a header of this test's own: a session, a refusal, or a visit
+    identify: (req) => {
+      const who = req.headers.get("x-test-who");
+      return who === "refused" ? new Response("not you", { status: 401 }) : (who ?? undefined);
+    },
   };
 }
 
@@ -166,6 +171,24 @@ describe("createServer, generically (no example from the examples directory invo
     } finally {
       delete process.env.ETA_ORIGINS;
     }
+  });
+
+  test("who a socket is, the example says before it opens: a session, its cookie set when it is not the one sent; or a refusal", async () => {
+    /** The answer to a socket's opening, by hand: its status line and headers. */
+    async function answer(headers: string): Promise<string> {
+      const socket = tcp(Number(server.port), "127.0.0.1");
+      socket.write(`GET /ws HTTP/1.1\r\nHost: 127.0.0.1\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n${headers}\r\n`);
+      let got = "";
+      for await (const chunk of socket) if ((got += (chunk as Buffer).toString("latin1")).includes("\r\n\r\n")) break;
+      socket.destroy();
+      return got.slice(0, got.indexOf("\r\n\r\n"));
+    }
+    const given = await answer("X-Test-Who: ada-session\r\nCookie: session_id=a-visit\r\n");
+    expect(given).toStartWith("HTTP/1.1 101");
+    expect(given).toMatch(/^set-cookie: session_id=ada-session;/im); // never the visit's
+    expect(await answer("X-Test-Who: ada-session\r\nCookie: session_id=ada-session\r\n")).not.toMatch(/^set-cookie:/im);
+    expect(await answer("X-Test-Who: refused\r\n")).toStartWith("HTTP/1.1 401");
+    expect(await answer("Cookie: session_id=a-visit\r\n")).not.toMatch(/^set-cookie:/im); // nobody said: the visit's own
   });
 
   test("a non-upgrade request to /ws is rejected", async () => {

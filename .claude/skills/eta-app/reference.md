@@ -121,6 +121,7 @@ export type Example = {
   index: HTMLBundle;                  // served at "/" and at any path the kernel does not own
   delta: Local;                       // its documents: delta's backends on a createLocal()
   who?(sessionId: string): unknown;   // who a session is, to delta (the ledger's who, row-level security); default the session
+  identify?(req): string | Response | undefined; // at /ws, before it opens: the session to use, a refusal, or a visit (may be async)
   routes?: Record<string, ...>;       // extra HTTP routes; a kernel route of the same path wins
 };
 ```
@@ -168,6 +169,35 @@ Then:
   (a link from outside the app); by hand the form is typed into and sent. `cannot: post(...)` is
   a route's refusal: a 4xx (its body the reason) or a `tell` with a reason on the page it came
   from, checked against `told`.
+- Someone who keeps guessing is slowed: leave lets one email's password be tried five times, each
+  within a minute of the last, then once a minute, the right one included, and says so.
+
+**Who you are, before the socket opens.** Where the request itself says who it is -- a sign-in
+proxy in front of the app, a token from the CLI -- `Example.identify(req)` says so at `/ws`, after
+the Origin check and before the upgrade. It returns the session to open (the kernel sets its
+cookie when it is not the one sent), a `Response` that refuses it (leave's: 403), or undefined: a visit, on
+its cookie's session or a new one, which signs in by the page as above. Leave's
+(`examples/leave/signin.ts`):
+
+- `Authorization: Bearer <token>` is the person whose token it is, kept as its SHA-256 in a table
+  no document includes. The CLI sends `ETA_TOKEN` so (*CLI*).
+- `X-Forwarded-Email` is believed only with the proxy's secret (`X-Proxy-Secret`, set as
+  `LEAVE_PROXY_SECRET`; none set, no proxy is trusted). The proxy must overwrite both headers on
+  every request, so a browser cannot send its own.
+- A person found keeps the cookie's session when it is already theirs, else gets a fresh one with
+  who it is written in, as signing in does: never the visit's id. One not on the team is refused.
+
+OAuth2 and LDAP plug in behind the same shapes, and are not built:
+
+- **LDAP** is a password checked elsewhere: the `/login` route binds as the person (a client such
+  as `ldapts`, a new dependency to ask about) where leave calls `Bun.password.verify`, and the rest
+  is the same.
+- **OAuth2 / OpenID Connect** is two routes: `GET /login` redirects to the provider with a `state`
+  and a PKCE challenge kept in a short cookie; `GET /callback` checks the state, exchanges the code
+  with `fetch`, verifies the id_token against the provider's keys (`crypto.subtle`, or `jose`, to
+  ask about), finds the person by its email or subject, then starts a fresh session and redirects
+  home, as `/login` does. `identify` is not needed: the cookie carries it from there.
+- A proxy that does OAuth2 for the app (oauth2-proxy, Cloudflare Access) is the header case above.
 
 ## `Compartment` (`src/compartments/compartment.ts`)
 
@@ -852,6 +882,8 @@ The CLI talks to a running server over the same socket a browser does, with no d
 - `src/cli.ts` knows `login <email> <password>` (signs in by the app's own `/login` form, and keeps
   the session in `.eta-session`, or `--session <file>`), `inspect`, `watch`, `undo`, `redo` and
   `write <doc> <op> <path> [value]`. A refused write prints `refused: <why>` and exits 1.
+- With `ETA_TOKEN` set, it sends `Authorization: Bearer <token>` too, and the app's `identify` says
+  who it is (*Signing people in*): no `login` first. A token the app does not know refuses the socket.
 - An app's `cli.ts` may export `aliases`: short verbs that build `{doc, ops}`, with no database.
 - `ETA_EXAMPLE` says which app (`./app`, or an example's name), `ETA_URL` which server.
 
@@ -925,6 +957,7 @@ It usually means a seam is missing from what you know, not that the example is s
 
 - a per-example "may this session write" is `Example.active`;
 - an extra HTTP route is `Example.routes`;
+- who a request is before its socket opens (a proxy's header, a token) is `Example.identify`;
 - a fresh write that differs from its undo is `shape` (undo is never shaped);
 - what follows a write is `afterChange` or `afterWrite`, and what follows an undo or redo `afterWalk`;
 - saying what just happened is `tell` (why, or what it did), never a field of your own session: the

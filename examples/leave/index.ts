@@ -2,7 +2,7 @@ import type { Example } from "../../src/example";
 import { session, team } from "./compartments";
 import { session as sessionOf } from "./documents";
 import { render } from "./page";
-import { signIn } from "./signin";
+import { identify, signIn } from "./signin";
 import index from "./client/index.html";
 import { delta } from "./delta";
 
@@ -18,6 +18,7 @@ export const example: Example = {
   // The ledger's who is the person, not the visit.
   who: (sessionId) => sessionOf(sessionId).person?.id ?? sessionId,
   index,
+  identify, // a trusted proxy's header, or the CLI's token (./signin.ts)
   routes: { "/login": signIn },
   delta, // the documents are delta's (./delta.ts)
 };

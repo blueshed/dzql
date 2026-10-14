@@ -120,11 +120,12 @@ export async function signIn(url: string, form: Record<string, string>): Promise
   return /session_id=([^;]+)/.exec(res.headers.get("set-cookie") ?? "")?.[1];
 }
 
-export function connectCli(url: string, cookie: string): Promise<WebSocket> {
+/** Opens the socket as the session `cookie` names, or, with a `token` (`ETA_TOKEN`), as whoever the app's `identify` says it is. */
+export function connectCli(url: string, cookie: string, token?: string): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     // tsconfig's DOM lib doesn't know about Bun's runtime-only `headers` option.
     // @ts-expect-error
-    const ws: WebSocket = new WebSocket(url, { headers: { Cookie: cookie } });
+    const ws: WebSocket = new WebSocket(url, { headers: { Cookie: cookie, ...(token && { Authorization: `Bearer ${token}` }) } });
     ws.addEventListener("open", () => resolve(ws), { once: true });
     ws.addEventListener("error", () => reject(new Error(`could not connect to ${url}`)), { once: true });
   });

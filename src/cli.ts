@@ -46,7 +46,7 @@ if (!command) {
 }
 
 const cookie = loadOrCreateSessionCookie(sessionFile);
-const ws = await connectCli(url, cookie);
+const ws = await connectCli(url, cookie, process.env.ETA_TOKEN); // a token: the app says who it is (Example.identify)
 
 if (command.kind === "watch") {
   // Catches up on each doc's recent history before following live patches, so joining a watch
