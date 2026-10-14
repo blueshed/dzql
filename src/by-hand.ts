@@ -40,6 +40,8 @@ const PAGE = `(() => {
   let marks = 0;
   const mark = (el) => { const id = String(++marks); el.setAttribute("data-hand", id); return '[data-hand="' + id + '"]'; };
   const text = (v) => (v === undefined || v === null ? "" : String(v));
+  const sameValue = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const pressed = (el) => { try { return { value: el.dataset.value === undefined ? undefined : JSON.parse(el.dataset.value) }; } catch { return undefined; } };
 
   // why a person could not press it, or "" when they could: the browser's own rules, then the eye's
   function why(el) {
@@ -63,8 +65,8 @@ const PAGE = `(() => {
       if (!s || !same(s.doc, doc) || s.op !== op.op || s.path !== op.path) continue;
       if (el.matches("form")) { if (!el.dataset.writeOn) found.push({ el, how: "submit" }); continue; }
       if (el.matches("input, textarea, select")) { found.push({ el, how: el.closest("form[data-write-on]") ? "edit" : "dead" }); continue; }
-      const v = el.dataset.value;
-      if (op.value === undefined ? v === undefined : v === text(op.value)) found.push({ el, how: "press" });
+      const v = pressed(el); // its data-value, JSON, as the client parses it: with its type
+      if (v && sameValue(v.value, op.value)) found.push({ el, how: "press" });
     }
     return found;
   }
@@ -355,17 +357,17 @@ export class Hand {
 export const worded = (w: Write): string => `${w.ops.map((op) => `${op.op} ${op.path}${op.value === undefined ? "" : ` ${JSON.stringify(op.value)}`}`).join(", ")} on ${w.doc}`;
 
 /**
- * Does `sent` say what `story` writes? A value from a page is a string, so a value compares as the
- * wire sends a button's (`String`), a record by its keys: the story's, and no other but one a
- * form sent blank (a field left empty). A `test` is no write, and the page's own (todo n4): the
- * two are compared by their verbs.
+ * Does `sent` say what `story` writes? A value compares with its type, as the wire carries it (a
+ * button's `true` is not "true", a number field's 2 is not "2"); a record by its keys: the story's,
+ * and no other but one a form sent blank (a field left empty: "" or null). A `test` is no write,
+ * and the page's own (todo n4): the two are compared by their verbs.
  */
 export function sameWrite(sent: Write, story: Write): boolean {
-  const blank = (v: unknown): boolean => String(v ?? "") === "";
+  const blank = (v: unknown): boolean => v === "" || v === null || v === undefined;
   const same = (a: unknown, b: unknown): boolean =>
     a !== null && b !== null && typeof a === "object" && typeof b === "object"
       ? Object.keys(b).every((k) => same((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])) && Object.keys(a).every((k) => k in b || blank((a as Record<string, unknown>)[k]))
-      : String(a ?? "") === String(b ?? "");
+      : a === b;
   const [ours, theirs] = [sent, story].map((w) => w.ops.filter((op) => !isTest(op))) as [Write["ops"], Write["ops"]];
   return sameDoc(sent.doc, story.doc) && ours.length === theirs.length && ours.every((op, i) => op.op === theirs[i]!.op && op.path === theirs[i]!.path && same(op.value, theirs[i]!.value));
 }

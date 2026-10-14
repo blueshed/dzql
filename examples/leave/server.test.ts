@@ -217,9 +217,9 @@ describe("the page", () => {
     expect(oct).toContain("October 2026");
     expect(oct).toContain("December 2026");
     // a month at a time, each by its own name whatever today is, so every month is one a person can get to
-    expect(oct).toMatch(/aria-label="Previous" data-write='[^']*' data-value="2026-09"/);
-    expect(oct).toMatch(/aria-label="Next" data-write='[^']*' data-value="2026-11"/);
-    expect(oct).toMatch(/aria-label="Today" aria-pressed="false" data-write='[^']*' data-value=""/);
+    expect(oct).toMatch(/aria-label="Previous" data-write='[^']*' data-value='"2026-09"'/);
+    expect(oct).toMatch(/aria-label="Next" data-write='[^']*' data-value='"2026-11"'/);
+    expect(oct).toMatch(/aria-label="Today" aria-pressed="false" data-write='[^']*' data-value='""'/);
     expect(oct).not.toContain('aria-current="date"');
     expect(await go(mo, "2026-13")).toContain('data-page="2026-10"'); // no such month: he stays where he was
     expect(await go(mo, "2026-10?nowhere")).toContain('data-page="2026-10"');
@@ -227,7 +227,7 @@ describe("the page", () => {
     expect(list).toContain('data-applet="leave-list"');
     expect(list).toContain('role="radio" aria-checked="true" aria-label="List"'); // the reading switch: a radio, checked, never pressed (a toggle's)
     expect(list).not.toMatch(/role="radio"[^>]*aria-pressed/);
-    expect(list).toContain('data-value="list?request=1"'); // a row opens its request
+    expect(list).toContain(`data-value='"list?request=1"'`); // a row opens its request
     mo.ws.close();
   });
 
@@ -352,7 +352,7 @@ describe("the page", () => {
     try {
       await send(ann, "session", [{ op: "replace", path: "/draft", value: { starts: "2027-01-04", ends: "2027-01-05" } }]);
       await send(ann, "team", [{ op: "add", path: "/requests/-" }]);
-      const at = /data-value="(2027-01\?request=[^"]+)"/.exec(await go(ann, "2027-01"))?.[1];
+      const at = /data-value='"(2027-01\?request=[^"]+)"'/.exec(await go(ann, "2027-01"))?.[1];
       expect(at).toBeDefined();
       expect(await go(ann, at!)).toContain("Mon 4 – Tue 5 Jan");
       await go(ann, at!.replace("request", "confirm"));
@@ -527,7 +527,7 @@ describe("time, on its own (./calendar.ts)", () => {
     expect(html).not.toContain("Oct 26"); // declined: nobody's
     const drafted = calendarHtml(props({ draft: { starts: "2026-10-19", ends: "2026-10-20" } }));
     expect(drafted).toContain('class="bar draft who-0" style="grid-column: 1 / span 2"');
-    expect(drafted).toContain('data-value="2026-10?draft"');
+    expect(drafted).toContain(`data-value='"2026-10?draft"'`);
     expect(drafted).toContain('title="Your draft · not asked for yet · Mon 19 – Tue 20 Oct · 2 working days"');
     const moving = calendarHtml(props(), { id: "2", starts: "2026-10-13", ends: "2026-10-14" });
     expect(moving).toContain("you, waiting, Tue 13 – Wed 14 Oct"); // where a drag would put it
@@ -545,6 +545,6 @@ describe("time, on its own (./calendar.ts)", () => {
     expect(rows.map((r) => [r.id, r.who, r.state])).toEqual([["1", "Bo", "waiting"], ["2", "", "waiting"], ["3", "Bo", "declined"]]);
     expect(rowHtml(rows[1]!, "2", 2, 3)).toContain('aria-posinset="2" aria-setsize="3" aria-expanded="true"');
     expect(rowHtml(rows[1]!, "2")).toContain('<span class="sr-only">yours</span>');
-    expect(rowHtml(rows[0]!, null)).toContain('data-value="list?request=1"');
+    expect(rowHtml(rows[0]!, null)).toContain(`data-value='"list?request=1"'`);
   });
 });

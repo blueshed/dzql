@@ -80,8 +80,18 @@ export async function expectQuiet(ws: WebSocket): Promise<void> {
   expect(held.get(ws)!.queue).toEqual([]);
 }
 
-/** A write, as a page sends it: with an id of its own, or, as the CLI's did, without. */
-export const write = (ws: WebSocket, doc: string, ops: (PatchOp | Test)[], id?: WriteId): void => ws.send(JSON.stringify({ id, doc, ops }));
+let writes = 0;
+
+/**
+ * A write, as a page sends it: with an id, the one given or the next of this module's, which its echo
+ * or its refusal hands back, so a refused write is answered (`expectMessage(ws, "refused")`) and
+ * nothing waits on silence. The id, returned. A write without one (a page from before ids, the CLI)
+ * is `ws.send(JSON.stringify({ doc, ops }))`.
+ */
+export function write(ws: WebSocket, doc: string, ops: (PatchOp | Test)[], id: WriteId = `t${++writes}`): WriteId {
+  ws.send(JSON.stringify({ id, doc, ops }));
+  return id;
+}
 
 /**
  * Everything the socket was sent until what came before is done: it asks (`inspect`), and the server,

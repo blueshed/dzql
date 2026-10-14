@@ -316,9 +316,9 @@ describe("stories harness", () => {
 
   test("controls: a button sends its own value, a field or a form any, an applet only what it says it writes", () => {
     const page = [
-      `<button data-write='{"doc":"room","op":"replace","path":"/name"}' data-value="Tess &amp; Tom">x</button>`,
+      `<button data-write='{"doc":"room","op":"replace","path":"/name"}' data-value='"Tess &amp; Tom"'>x</button>`,
       `<button data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>undo</button>`,
-      `<button data-write='{"doc":"household","op":"replace","path":"/answer"}' data-value="maybe" disabled>maybe</button>`,
+      `<button data-write='{"doc":"household","op":"replace","path":"/answer"}' data-value='"maybe"' disabled>maybe</button>`,
       `<input data-write='{"doc":"household","op":"replace","path":"/message"}' disabled>`,
       `<form data-write='{"doc":"room","op":"add","path":"/messages/-"}'></form>`,
       `<div class="site" data-page="gifts?new=gifts" data-page-write='{"doc":"session","op":"replace","path":"/page"}'></div>`,
@@ -351,6 +351,23 @@ describe("stories harness", () => {
     expect(any("watchlist", { op: "add", path: "/symbols/-", value: "X" })).toBe(false);
     expect(placeOf(page)).toBe("gifts?new=gifts");
     expect(placeOf("<p>no address</p>")).toBeUndefined();
+  });
+
+  test("Mo marks the bill paid with a button, and the till receives true, not \"true\": a button offers its value with its type", () => {
+    const paid = (value: unknown): PatchOp => ({ op: "replace", path: "/bills/1/paid", value });
+    const offered = (drawn: unknown, sent: unknown) => controlsOn(`<button${write("till", "replace", "/bills/1/paid", drawn)}>Paid</button>`).some((c) => offers(c, "till:1", paid(sent)));
+    expect(offered(true, true)).toBe(true);
+    expect(offered(true, "true")).toBe(false); // the story's text is not what the button sends
+    expect(offered("true", true)).toBe(false); // nor is a button drawn with text the story's true
+    expect(offered(3, 3)).toBe(true);
+    expect(offered(3, "3")).toBe(false);
+    expect(offered(null, null)).toBe(true);
+    expect(offered("", "")).toBe(true);
+    expect(offered({ by: "Mo" }, { by: "Mo" })).toBe(true);
+    // a hand-drawn data-value that is not JSON offers nothing, and says so
+    const misdeclared: string[] = [];
+    expect(controlsOn(`<button data-write='{"doc":"till","op":"replace","path":"/bills/1/paid"}' data-value="yes">Paid</button>`, misdeclared)).toEqual([]);
+    expect(misdeclared).toEqual(['a data-value must be JSON: button says yes']);
   });
 
   test("a cast signs in through the example's own sign-in route; one that cannot is said, not run as a visitor", async () => {
@@ -1209,12 +1226,12 @@ describe("a failure that says why", () => {
     };
     const report = await run(careless, { ...stories, stories: only("Bob closes his tab") });
     expect(report.warnings!.filter((w) => w.story.startsWith("a control the wire refuses")).map((w) => `${w.story} | ${w.says}`)).toEqual([
-      'a control the wire refuses, on ada\'s page | button[data-value="psst"], add /messages/- on room:kitchen: the page did not read room:kitchen',
-      'a control the wire refuses, on ada\'s page | button[data-value="general"], replace room on session: room is not a JSON Pointer',
+      `a control the wire refuses, on ada's page | button[data-value='"psst"'], add /messages/- on room:kitchen: the page did not read room:kitchen`,
+      `a control the wire refuses, on ada's page | button[data-value='"general"'], replace room on session: room is not a JSON Pointer`,
       "a control the wire refuses, on ada's page | button, move /room on session: move is not add, replace, remove or test",
       'a control the wire refuses, on ada\'s page | input[name="nickname"], replace /nickname on session: session holds nothing at /nickname, and its permit refuses it without a word',
-      'a control the wire refuses, on ada\'s page | button[data-value="x"], replace /topic on room: the page did not read room', // her page before she has a name: in no room
-      'a control the wire refuses, on ada\'s page | button[data-value="x"], replace /topic on room: room holds nothing at /topic to replace',
+      `a control the wire refuses, on ada's page | button[data-value='"x"'], replace /topic on room: the page did not read room`, // her page before she has a name: in no room
+      `a control the wire refuses, on ada's page | button[data-value='"x"'], replace /topic on room: room holds nothing at /topic to replace`,
     ]);
   }, 30000);
 

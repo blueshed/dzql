@@ -100,7 +100,7 @@ every change to it.** You never subscribe by hand. So cut your documents by who 
 ```
 
 - A **form** writes the value of its field (or a record of its fields) when it is submitted.
-- A **button** writes on click, with its `data-value` if it has one.
+- A **button** writes on click, with its `data-value` if it has one, with its type: `true`, not `"true"`.
 - Wrap a region in `part(key, html)` when a change should send that region alone.
 
 ## 5. Say who may write what

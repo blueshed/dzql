@@ -1,6 +1,7 @@
 // HTML is the only vocabulary (CLAUDE.md): every view is a string of it, built with these. A
 // gesture is a `data-write` attribute naming a document, an op and a JSON Pointer path -- the
-// kernel's client (src/client/app.ts) forwards it as is -- with the value, if any, in `data-value`.
+// kernel's client (src/client/app.ts) forwards it as is -- with the value, if any, as JSON in
+// `data-value`, so it goes with its type: `true`, not "true".
 // Pure: an applet may import it in the browser.
 
 export function esc(value: unknown): string {
@@ -21,12 +22,13 @@ const quotedJson = (value: unknown): string => `'${JSON.stringify(value).replace
  * Makes a control write: a form on submit, a button or row on click.
  * `<form${write("room", "add", "/messages/-")}>` sends the field's value to `room`'s messages.
  *
- * - Gives `data-write` (the document, the op, the path) and, with a value, `data-value`.
- * - The spec is JSON in single quotes, escaped, so a path built from what someone typed cannot end
- *   the attribute.
+ * - Gives `data-write` (the document, the op, the path) and, with a value, `data-value`: the value as
+ *   JSON, which the client parses, so a button sends `true`, `3` or `null` as such, and text as text.
+ * - Each is JSON in single quotes, escaped, so a path built from what someone typed cannot end the
+ *   attribute.
  */
 export function write(doc: string, op: Op, path: string, value?: unknown): string {
-  return ` data-write=${quotedJson({ doc, op, path })}${value === undefined ? "" : ` data-value="${esc(value)}"`}`;
+  return ` data-write=${quotedJson({ doc, op, path })}${value === undefined ? "" : ` data-value=${quotedJson(value)}`}`;
 }
 
 /**

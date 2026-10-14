@@ -246,7 +246,7 @@ describe("a household", () => {
     expect(named).toContain("Plus");
     expect(named).not.toContain('class="modal"');
     await refused(ws, "household", [{ op: "add", path: "/guests/-", value: "Plus Two" }]);
-    expect(await at(ws, "")).toContain(`aria-label="Ask to bring someone" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="?new=asks"`);
+    expect(await at(ws, "")).toContain(`aria-label="Ask to bring someone" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value='"?new=asks"'`);
 
     // after the deadline the answer, coming and the choices are locked; the look and the words are not
     await asCouple([{ op: "replace", path: "/deadline", value: "2000-01-01" }]);
@@ -268,14 +268,14 @@ describe("a household", () => {
     expect(html).toContain(`aria-label="${guest.name}"`);
     html = await at(ws, "?answer");
     expect(html).toContain('aria-label="Our answer"');
-    expect(html).toContain('data-write=\'{"doc":"household","op":"replace","path":"/answer"}\' data-value="yes"');
+    expect(html).toContain(`data-write='{"doc":"household","op":"replace","path":"/answer"}' data-value='"yes"'`);
 
     // the gifts: each whole, and what this household may do with it; the tool, pressed, puts the drawer away
     html = await at(ws, "?gifts");
     expect(html).not.toContain('data-applet="dress"');
-    expect(html).toContain(`aria-label="Gifts" aria-expanded="true" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value=""`);
+    expect(html).toContain(`aria-label="Gifts" aria-expanded="true" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value='""'`);
     expect(html).toContain("Le Creuset casserole");
-    expect(html).toContain('data-write=\'{"doc":"household","op":"add","path":"/claims/-"}\' data-value="1"');
+    expect(html).toContain(`data-write='{"doc":"household","op":"add","path":"/claims/-"}' data-value='1'`);
     // the honeymoon fund, shared, given to by nobody yet: its control says anyone may give, and nothing says it again
     expect(html).toContain("Give to it");
     expect(html).not.toContain("anyone may");
@@ -544,7 +544,7 @@ describe("the couple", () => {
     expect(await at(ws, "?events")).toContain("Add an event");
     expect(html).toContain("Remove this course");
     expect(html).toContain(`aria-label="Courses" aria-expanded="true"`);
-    expect(html).toContain(`aria-label="Close" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="?courses"`);
+    expect(html).toContain(`aria-label="Close" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value='"?courses"'`);
     expect(await at(ws, "?keep=gifts/2")).toContain('aria-label="Shared: any number may claim it"');
     expect(await at(ws, "?keep=events/1")).toContain("2027-04-02T13:00");
     expect(await at(ws, "?keep=places/1")).toContain("how far, how to book");
@@ -573,7 +573,7 @@ describe("the couple", () => {
 
   test("the venues are a page nobody wrote, drawn from their shape: a row each, its drawer, a new one asked for in a modal; a removal asks first, then goes back to the page", async () => {
     const ws = await enter("NICK");
-    expect(pageOf(ws)).toContain(`aria-label="Venues" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="venues"`); // a tool on the couple's rail
+    expect(pageOf(ws)).toContain(`aria-label="Venues" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value='"venues"'`); // a tool on the couple's rail
     let html = await at(ws, "venues?row=1");
     expect(html).toContain(`<span class="what">The Mount Without</span>`);
     expect(html).toContain(`id="venues-drawer"`);
@@ -601,7 +601,7 @@ describe("the couple", () => {
     expect(await names()).toEqual(before);
 
     // a gift is shared or not, however a form spells it; a name may not be blanked; a date must be one
-    await send(ws, "board", [{ op: "replace", path: "/gifts/3/shared", value: "on" }]);
+    await send(ws, "board", [{ op: "replace", path: "/gifts/3/shared", value: true }]);
     expect((await board()).gifts.find((g) => g.id === 3)!.shared).toBe(true);
     await send(ws, "board", [{ op: "replace", path: "/gifts/3/shared", value: "off" }]);
     await refused(ws, "board", [{ op: "replace", path: "/gifts/3/name", value: "  " }]);

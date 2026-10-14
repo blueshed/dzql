@@ -186,14 +186,27 @@ export function propsCost(whose: string, page: string, message: Heard): PropsCos
 
 /**
  * A control a page offers (src/html.ts `write`): the document, op and path it writes, and the value
- * a button carries (`data-value`, sent as a string). A field or a form writes whatever is typed, so
- * any value. An applet draws its own controls in
+ * a button carries (`data-value`, JSON, sent with its type: `true`, not "true"; an option's or a
+ * radio's is its text). A field or a form writes whatever is typed, so any value. An applet draws its own controls in
  * the browser, so it offers only what its mount says it writes (`data-writes`, src/html.ts), where
  * a `*` segment of its path is any one, with any value or only the ones it names; one that says
  * nothing offers nothing, whatever document it reads (`data-doc`), as the clock's face writes
  * nothing to the clock it shows.
  */
-export type Control = { doc: string; op: string; path: string; value?: string; free: boolean; pattern?: true };
+export type Control = { doc: string; op: string; path: string; value?: unknown; free: boolean; pattern?: true };
+
+/** The same value, as the wire carries it: by its type and its JSON, so `true` is not "true". */
+const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+
+/** A `data-value` as the client parses it (src/client/form-value.ts `pressed`): `{ value }`, none when there is none, or why it is no JSON. */
+function pressedValue(attr: string | null): { value?: unknown } | string {
+  if (attr === null) return {};
+  try {
+    return { value: JSON.parse(decoded(attr)) };
+  } catch {
+    return decoded(attr);
+  }
+}
 
 /** Is this what `appletWrites` puts on a mount, one write of it: a document, an op and a JSON Pointer path, and the only values it sends, if it names them? */
 const isDeclared = (w: unknown): w is { doc: string; op: string; path: string; values?: (string | number | boolean)[] } => {
@@ -304,8 +317,9 @@ export function controlsOn(page: string, misdeclared: string[] = []): Control[] 
           return;
         }
         if (el.tagName === "input" && el.getAttribute("type") === "radio") return void found.push({ ...s, value: decoded(el.getAttribute("value") ?? "on"), free: false }); // a radio sends its own value
-        const value = el.getAttribute("data-value");
-        found.push({ ...s, value: value === null ? undefined : decoded(value), free: ["form", "input", "textarea"].includes(el.tagName) });
+        const value = pressedValue(el.getAttribute("data-value"));
+        if (typeof value === "string") return void misdeclared.push(`a data-value must be JSON: ${el.tagName} says ${value}`); // the client cannot send it
+        found.push({ ...s, value: value.value, free: ["form", "input", "textarea"].includes(el.tagName) });
       },
     })
     .on("form[action]:not([data-write])", {
@@ -328,7 +342,7 @@ export function controlsOn(page: string, misdeclared: string[] = []): Control[] 
         for (const w of said) {
           if (!isDeclared(w)) wrong(JSON.stringify(w));
           else if (!w.values) found.push({ doc: w.doc, op: w.op, path: w.path, free: true, pattern: true });
-          else for (const value of w.values) found.push({ doc: w.doc, op: w.op, path: w.path, value: String(value), free: false, pattern: true });
+          else for (const value of w.values) found.push({ doc: w.doc, op: w.op, path: w.path, value, free: false, pattern: true });
         }
       },
     })
@@ -358,9 +372,9 @@ const postsTo = (c: Control, how: Post): boolean => c.op === "post" && c.path ==
 /** Does `c` send this op to this document? A free control sends any value; a button only its own. */
 export function offers(c: Control, doc: string, op: PatchOp | Test): boolean {
   if (!sameDoc(c.doc, doc)) return false;
-  if (c.pattern) return c.op === op.op && fits(c.path, op.path) && (c.value === undefined || ("value" in op && String(op.value) === c.value)); // an applet's own: exactly what its mount names
+  if (c.pattern) return c.op === op.op && fits(c.path, op.path) && (c.value === undefined || ("value" in op && same(op.value, c.value))); // an applet's own: exactly what its mount names
   if (c.op !== op.op || c.path !== op.path) return false;
-  return c.free || (c.value === undefined ? !("value" in op) || op.value === undefined : "value" in op && String(op.value) === c.value);
+  return c.free || (c.value === undefined ? !("value" in op) || op.value === undefined : "value" in op && same(op.value, c.value));
 }
 
 /**
@@ -371,9 +385,9 @@ export function offers(c: Control, doc: string, op: PatchOp | Test): boolean {
  * button are not on the page (`controlsOn`).
  */
 export function goesTo(c: Control, goTo: (address: string) => Write): string | undefined {
-  if (c.free || c.value === undefined) return undefined;
+  if (c.free || typeof c.value !== "string") return undefined; // an address is text
   const w = goTo(c.value);
-  return sameDoc(w.doc, c.doc) && w.ops.some((op) => op.op === c.op && op.path === c.path && "value" in op && String(op.value) === c.value) ? c.value : undefined; // the op of it that sets the address: going somewhere may put other things away too
+  return sameDoc(w.doc, c.doc) && w.ops.some((op) => op.op === c.op && op.path === c.path && "value" in op && op.value === c.value) ? c.value : undefined; // the op of it that sets the address: going somewhere may put other things away too
 }
 
 /** One way on: from where a member stood, the control on their page there that took them to `to`. */
@@ -506,8 +520,8 @@ export function holds(value: unknown, path: string): boolean {
 /** A JSON Pointer: "", or each step a "/" and its key, a "~" only as "~0" or "~1". */
 const POINTER = /^(\/([^/~]|~[01])*)*$/;
 
-/** What a control writes, the value it is drawn with ("" for none), and a short name for it. */
-type Writing = { doc: string; op: string; path: string; value: string; control: string };
+/** What a control writes, the value it is drawn with (a button's with its type; a field's text; "" for none), and a short name for it. */
+type Writing = { doc: string; op: string; path: string; value: unknown; control: string };
 
 /** Each control a page draws that writes (`data-write`: a button, a form, an editing form's field), but one drawn `disabled`, which sends nothing; and a short name for it: its tag, and its label, name, value or id. */
 export function writesOn(page: string): Writing[] {
@@ -517,8 +531,12 @@ export function writesOn(page: string): Writing[] {
       element(el) {
         const { doc, op, path } = JSON.parse(decoded(el.getAttribute("data-write")!)) as { doc: string; op: string; path: string };
         const by = ["aria-label", "name", "data-value", "id"].find((a) => el.hasAttribute(a));
-        const value = el.getAttribute("data-value") ?? el.getAttribute("value");
-        found.push({ doc, op, path, value: value === null ? "" : decoded(value), control: by ? `${el.tagName}[${by}="${decoded(el.getAttribute(by)!)}"]` : el.tagName });
+        const pressed = pressedValue(el.getAttribute("data-value"));
+        const text = decoded(el.getAttribute("value") ?? "");
+        const number = el.tagName === "input" && ["number", "range"].includes(el.getAttribute("type") ?? ""); // a number field sends a number, or null
+        const value = typeof pressed === "string" ? pressed : "value" in pressed ? pressed.value : number ? (text === "" ? null : Number(text)) : text;
+        const said = by && decoded(el.getAttribute(by)!);
+        found.push({ doc, op, path, value, control: by ? `${el.tagName}[${by}=${said!.includes('"') ? `'${said}'` : `"${said}"`}]` : el.tagName });
       },
     })
     .transform(page);

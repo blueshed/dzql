@@ -33,11 +33,14 @@ Use `field()` for a field that edits a document: it cannot be wired wrong. Its o
 `write(doc, op, path, value?)` (`src/html.ts`) gives `data-write='{"doc","op","path"}'`.
 
 - A **form** writes on submit: its one field's value, or a record of every named field. A box is
-  `true` or `false`; a group of radios one field, the value chosen or `null`; a `multiple` select its
-  last choice or `null`; anything else its text. It clears as it sends.
+  `true` or `false`; a number field a number, or `null` when empty; a group of radios one field, the
+  value chosen or `null`; a `multiple` select its last choice or `null`; anything else its text (a
+  date its day, `"2026-10-14"`). It clears as it sends.
 - Refused, a form hands back what it sent into each field not typed in since; its echo ends the
   wait. What is typed while a write is on its way is kept.
-- A **button or row** writes on click, with its `data-value`. A click in a field never writes.
+- A **button or row** writes on click, with its `data-value`: JSON, so the value goes with its type
+  (`write(…, true)` sends `true`, not `"true"`). A permit takes the type it draws. A click in a field
+  never writes.
 - **`data-write-on="blur"`, `"change"` or `"input"`** on a form edits in place (leave's day fields):
   `data-write` on each field, and every field that differs from what was rendered is one op in one
   message. `"input"` is debounced about 150ms. The same message is not sent twice until a write lands.

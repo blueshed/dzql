@@ -106,7 +106,8 @@ describe("websocket write protocol", () => {
   test("an empty ops array does not crash and just re-renders the current state", async () => {
     const ws = await openTab();
 
-    write(ws, "session", []);
+    const id = write(ws, "session", []);
+    expect(await expectMessage(ws, "refused")).toEqual({ type: "refused", id }); // its id answered
     const message = await expectMessage(ws, "render");
 
     expect(htmlOf(message)).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
@@ -116,10 +117,10 @@ describe("websocket write protocol", () => {
   test("a write with no value is rejected without crashing", async () => {
     const ws = await openTab();
 
-    write(ws, "session", [{ op: "replace", path: "/name" } as PatchOp]);
-    // rejected (blank name): no patch echo, and the page it holds is the page still, so nothing at all
+    const id = write(ws, "session", [{ op: "replace", path: "/name" } as PatchOp]);
+    // rejected (blank name): no patch echo, and the page it holds is the page still, so its refusal alone
     const { messages, page } = await heard(ws);
-    expect(messages).toEqual([]);
+    expect(messages).toEqual([{ type: "refused", id }]);
     expect(page).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // no name was set
     ws.close();
   });
@@ -166,8 +167,8 @@ describe("websocket write protocol", () => {
   test("an unknown doc is ignored without crashing", async () => {
     const ws = await openTab();
 
-    write(ws, "nonsense", [{ op: "replace", path: "/x", value: "y" }]);
-    expect((await heard(ws)).messages).toEqual([]); // refused, the page unchanged: nothing sent
+    const id = write(ws, "nonsense", [{ op: "replace", path: "/x", value: "y" }]);
+    expect((await heard(ws)).messages).toEqual([{ type: "refused", id }]); // refused, the page unchanged: its refusal alone
     ws.close();
   });
 
@@ -235,10 +236,10 @@ describe("websocket write protocol", () => {
     const second = await openTab(cookie); // name form: this session is logged out
 
     const room = crypto.randomUUID();
-    write(second, "session", [{ op: "replace", path: "/room", value: room }]);
-    // rejected by permit (logged out): no patch echo, and nothing else, the page unchanged
+    const id = write(second, "session", [{ op: "replace", path: "/room", value: room }]);
+    // rejected by permit (logged out): no patch echo, and nothing but its refusal, the page unchanged
     const rejected = await heard(second);
-    expect(rejected.messages).toEqual([]);
+    expect(rejected.messages).toEqual([{ type: "refused", id }]);
     expect(rejected.page).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\''); // still logged out
 
     // reactivating afterward must not reveal a room leaked by the rejected write
@@ -383,10 +384,10 @@ describe("websocket write protocol", () => {
 
     const second = await openTab(cookie); // name form: this session is logged out
 
-    write(second, "ledger", [{ op: "remove", path: "/latest" }]);
-    // rejected by permit (logged out): no patch echo, and nothing else, the page unchanged
+    const id = write(second, "ledger", [{ op: "remove", path: "/latest" }]);
+    // rejected by permit (logged out): no patch echo, and nothing but its refusal, the page unchanged
     const rejected = await heard(second);
-    expect(rejected.messages).toEqual([]);
+    expect(rejected.messages).toEqual([{ type: "refused", id }]);
     expect(rejected.page).toContain('data-write=\'{"doc":"session","op":"replace","path":"/name"}\'');
 
     first.close();
@@ -626,9 +627,9 @@ describe("chat", () => {
     const ws = connect();
     await login(ws, "Blank", crypto.randomUUID());
 
-    write(ws, "room", [{ op: "add", path: "/messages/-", value: "   " }]);
-    // shaped to nothing (blank text): no patch echo, and the page unchanged, so nothing at all
-    expect((await heard(ws)).messages).toEqual([]);
+    const id = write(ws, "room", [{ op: "add", path: "/messages/-", value: "   " }]);
+    // shaped to nothing (blank text): no patch echo, and the page unchanged, so its refusal alone
+    expect((await heard(ws)).messages).toEqual([{ type: "refused", id }]);
 
     const uniqueText = `after blank ${crypto.randomUUID()}`;
     write(ws, "room", [{ op: "add", path: "/messages/-", value: uniqueText }]);
@@ -642,10 +643,10 @@ describe("chat", () => {
     await expectMessage(ws, "patch");
     await expectMessage(ws, "render"); // room selector, not in any room
 
-    write(ws, "room", [{ op: "add", path: "/messages/-", value: "hello?" }]);
+    const id = write(ws, "room", [{ op: "add", path: "/messages/-", value: "hello?" }]);
     // rejected: resolveDoc finds no current room, so permit/write are never reached
     const { messages, page } = await heard(ws);
-    expect(messages).toEqual([]);
+    expect(messages).toEqual([{ type: "refused", id }]);
     expect(page).toContain('class="cell open" data-key="rooms"');
     ws.close();
   });

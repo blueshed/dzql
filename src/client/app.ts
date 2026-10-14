@@ -1,6 +1,6 @@
 import { applets } from "../applets";
 import { applyPatch, WIRE, type PatchOp, type Test } from "../json-patch";
-import { formValue, groupOf, held, isBox, isField, isRadio, rendered, type Field } from "./form-value";
+import { formValue, groupOf, held, isBox, isField, isRadio, pressed, rendered, sends, type Field } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
 import { keepingChoices, morph, morphElement, morphTag, removeNode, type MorphHooks } from "./morph";
 
@@ -615,7 +615,7 @@ function answered(answer: Extract<Answer, { echoed: true } | { refused: true }>)
 
 // An element says what it writes via data-write; a form's field is the
 // value (or a record of its fields, if it has more than one), a button/li's
-// data-value is the value, nothing else goes up.
+// data-value, JSON, is the value with its type, nothing else goes up.
 app.addEventListener("submit", (event) => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
@@ -637,7 +637,7 @@ app.addEventListener("click", (event) => {
   if (!target || target.matches("form,input,textarea,select")) return;
   event.preventDefault();
   lastPressed = target;
-  write(target.dataset.write!, target.dataset.value);
+  write(target.dataset.write!, pressed(target));
 });
 
 // Escape puts away what was opened last: it presses the last `[data-escape]` on the page -- a
@@ -671,12 +671,11 @@ function editingChange(form: HTMLFormElement): { doc: string; ops: Op[] } | unde
   for (const field of [...form.querySelectorAll("[data-write]")].filter(holdsOne)) {
     if (said.has(field)) continue;
     if (isRadio(field)) for (const r of groupOf(field)) said.add(r);
-    const value = held(field);
-    if (value === rendered(field)) continue;
+    if (held(field) === rendered(field)) continue;
     const spec = JSON.parse(field.dataset.write!) as WriteSpec;
     doc = spec.doc;
     if (typed(field)) ops.push({ op: "test", path: spec.path, value: seen.get(field) ?? (rendered(field) as string) });
-    ops.push({ op: spec.op, path: spec.path, value });
+    ops.push({ op: spec.op, path: spec.path, value: sends(field) });
   }
   return doc && ops.length > 0 ? { doc, ops } : undefined;
 }

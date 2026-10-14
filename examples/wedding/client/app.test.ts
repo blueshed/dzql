@@ -168,7 +168,7 @@ describe("the wedding in a real browser", () => {
     await enter(view, code);
     await press(view, ".bubble.ours");
     await waitFor(view, `document.querySelectorAll('.answer-option').length`, (v) => v === 3);
-    await press(view, '.answer-option[data-value="maybe"]');
+    await press(view, `.answer-option[data-value='"maybe"']`);
     await waitFor(view, `document.querySelector('.bubble.ours .face-mark')?.classList.contains('maybe')`, (v) => v === true);
     await press(view, ".drawer-close");
     await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
@@ -182,7 +182,7 @@ describe("the wedding in a real browser", () => {
       await enter(view, code);
       await press(view, ".bubble.ours");
       await waitFor(view, `document.querySelectorAll('.answer-option').length`, (v) => v === 3);
-      await press(view, '.answer-option[data-value="no"]');
+      await press(view, `.answer-option[data-value='"no"']`);
       await waitFor(view, `document.querySelector('.bubble.ours .face-mark')?.classList.contains('no')`, (v) => v === true);
       await press(view, ".drawer-close");
       await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
