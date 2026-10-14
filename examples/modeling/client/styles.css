@@ -68,7 +68,7 @@ button:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }
 .node { position: absolute; width: 176px; height: 46px; }
 .ent { width: 100%; height: 100%; border-radius: 8px; border: 1px solid var(--line); background: var(--card); padding: 5px 10px; text-align: left; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
 .ent .name { font-size: 14px; font-weight: 500; color: var(--faint); }
-.ent .sub { display: block; max-width: 100%; font-family: var(--mono); font-size: 11px; color: var(--fainter); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ent .sub { display: block; max-width: 100%; font-family: var(--mono); font-size: 11px; line-height: 14px; color: var(--fainter); overflow-wrap: anywhere; } /* every column shows: the box is as tall as they need (boxHeight) */
 .ent.red { background: var(--red-bg); border: 1px solid var(--red-line); padding-right: 46px; }
 .ent.red .name { color: var(--red-ink); }
 .ent.red .sub { color: var(--red); }

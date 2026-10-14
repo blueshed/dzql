@@ -3,7 +3,7 @@ import type { PatchOp } from "../../src/json-patch";
 import { createServer } from "../../src/server";
 import { run } from "../../src/harness";
 import { Refusal } from "../../src/refusal";
-import { drawHeart, heartOf, layout, picked, plain, reason, related, shape as shapeOf, singular, type Raw, type Ui } from "./heart";
+import { BOX, boxHeight, drawHeart, heartOf, layout, picked, plain, reason, related, shape as shapeOf, singular, type Raw, type Ui } from "./heart";
 import { may, model, shape, type Model } from "./model";
 import { aliases, show, stdin } from "./cli";
 import { stories } from "./stories";
@@ -159,6 +159,19 @@ describe("the heart, worked out from the model", () => {
     expect(layout(tables, undefined, 500).pos.d!.x).toBe(400); // two columns of 200, the least they may be
     expect(layout(tables, new Set(["b", "d"])).pos).toEqual({ d: { x: 236, y: 0 }, b: { x: 0, y: 0 } }); // b's parent hidden: b is a root
     expect(layout([])).toEqual({ pos: {}, segs: [], width: 0, height: 0 });
+  });
+
+  test("an entity's box is as tall as its columns need, and the tree makes room for it", () => {
+    const columns = ["words", "kind", "asked_by", "next", "in", "status", "answered_at"]; // canyou's asks: 7 columns, clipped before
+    expect(boxHeight([])).toBe(BOX.H);
+    expect(boxHeight(["name"])).toBe(BOX.H); // one line, the box as it was
+    expect(boxHeight(columns)).toBe(BOX.H + 2 * BOX.LINE); // three lines of about 23 characters
+    expect(boxHeight(columns, 17)).toBeGreaterThan(boxHeight(columns)); // a marked box is narrower inside
+    const tall = boxHeight(columns);
+    const t = layout([{ name: "a", parent: null }, { name: "b", parent: "a", h: tall }, { name: "c", parent: "a" }]);
+    expect(t.pos.c!.y).toBe(tall + BOX.ROW - BOX.H); // c starts below b's whole height
+    expect(t.pos.a!.y + BOX.H / 2).toBe((tall / 2 + t.pos.c!.y + BOX.H / 2) / 2); // a is level with the middle of its children
+    expect(t.height).toBe(t.pos.c!.y + BOX.H);
   });
 });
 

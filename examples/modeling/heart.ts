@@ -103,7 +103,20 @@ type Doc = Heart["documents"][number];
 
 // ───────────────────────────── the entities' tree, laid out ─────────────────────────────
 
-export const BOX = { W: 176, H: 46, COL: 236, ROW: 56 };
+export const BOX = { W: 176, H: 46, COL: 236, ROW: 56, LINE: 14 };
+/**
+ * How tall a box is to show every column, wrapped as the box wraps them: a line holds about `per`
+ * characters of the list (fewer in a box with a mark at its right). One line is the box as it was.
+ */
+export function boxHeight(columns: string[], per = 23): number {
+  let lines = 1, used = 0;
+  for (const c of columns) {
+    const need = (used ? 3 : 0) + c.length;
+    if (used && used + need > per) (lines++, (used = c.length));
+    else used += need;
+  }
+  return BOX.H + (lines - 1) * BOX.LINE;
+}
 /** The narrowest a column may be: a box and room for its connector's spine. */
 export const MIN_COL = BOX.W + 24;
 
@@ -113,8 +126,9 @@ export const MIN_COL = BOX.W + 24;
  * children, each root's tree a little apart from the next. `visible` keeps some: one whose parent is
  * hidden is a root. `fit` is the width it has: a tree deeper than fits takes narrower columns.
  */
-export function layout(tables: { name: string; parent: string | null }[], visible?: Set<string>, fit = Infinity) {
+export function layout(tables: { name: string; parent: string | null; h?: number }[], visible?: Set<string>, fit = Infinity) {
   const { W, H, ROW } = BOX;
+  const hOf = (n: string) => tables.find((t) => t.name === n)?.h ?? H;
   const shown = tables.filter((t) => !visible || visible.has(t.name));
   const on = new Set(shown.map((t) => t.name));
   const depthOf = (n: string, seen = 0): number => {
@@ -125,35 +139,36 @@ export function layout(tables: { name: string; parent: string | null }[], visibl
   const COL = deepest && W + deepest * BOX.COL > fit ? Math.max(MIN_COL, Math.floor((fit - W) / deepest)) : BOX.COL;
   const kidsOf = (n: string) => shown.filter((t) => t.parent === n && t.name !== n).map((t) => t.name);
   const pos: Record<string, { x: number; y: number }> = {};
-  let slot = 0;
+  let below = 0; // the next leaf's top: each leaf below the last, as tall as its columns need
+  const mid = (n: string) => pos[n]!.y + hOf(n) / 2;
   const place = (n: string, depth: number) => {
     const kids = kidsOf(n);
     if (kids.length === 0) {
-      pos[n] = { x: depth * COL, y: slot * ROW };
-      slot++;
+      pos[n] = { x: depth * COL, y: below };
+      below += hOf(n) + ROW - H;
       return;
     }
     kids.forEach((k) => place(k, depth + 1));
-    const ys = kids.map((k) => pos[k]!.y);
-    pos[n] = { x: depth * COL, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+    const ys = kids.map(mid);
+    pos[n] = { x: depth * COL, y: (Math.min(...ys) + Math.max(...ys)) / 2 - hOf(n) / 2 };
   };
   for (const t of shown) {
     if (t.parent && on.has(t.parent) && t.parent !== t.name) continue;
     place(t.name, 0);
-    slot += 0.4;
+    below += 0.4 * ROW;
   }
   const segs: { left: number; top: number; width: number; height: number }[] = [];
   for (const [n, p] of Object.entries(pos)) {
     const kids = kidsOf(n);
     if (kids.length === 0) continue;
     const spine = p.x + W + (COL - W) / 2;
-    const ys = [...kids.map((k) => pos[k]!.y + H / 2), p.y + H / 2];
-    segs.push({ left: p.x + W, top: p.y + H / 2 - 1, width: spine - p.x - W, height: 2 });
+    const ys = [...kids.map(mid), mid(n)];
+    segs.push({ left: p.x + W, top: mid(n) - 1, width: spine - p.x - W, height: 2 });
     segs.push({ left: spine - 1, top: Math.min(...ys) - 1, width: 2, height: Math.max(...ys) - Math.min(...ys) + 2 });
-    for (const k of kids) segs.push({ left: spine, top: pos[k]!.y + H / 2 - 1, width: pos[k]!.x - spine, height: 2 });
+    for (const k of kids) segs.push({ left: spine, top: mid(k) - 1, width: pos[k]!.x - spine, height: 2 });
   }
   const all = Object.values(pos);
-  return { pos, segs, width: Math.max(0, ...all.map((p) => p.x + W)), height: Math.max(0, ...all.map((p) => p.y + H)) };
+  return { pos, segs, width: Math.max(0, ...all.map((p) => p.x + W)), height: Math.max(0, ...Object.entries(pos).map(([n, p]) => p.y + hOf(n))) };
 }
 
 // ───────────────────────────── the drawing ─────────────────────────────
@@ -247,7 +262,8 @@ export function drawHeart(h: Heart, ui: Ui, width = Infinity): string {
 
   // ── Entities ──
   const visible = ui.hideEnts ? new Set(h.entities.filter((e) => r.ents.has(e.name)).map((e) => e.name)) : undefined;
-  const { pos, segs, width: w, height } = layout(h.entities, visible, width);
+  const tall = (e: (typeof h.entities)[number]) => boxHeight(e.columns, e.red || e.looked ? 17 : 23); // a mark at the right takes its room
+  const { pos, segs, width: w, height } = layout(h.entities.map((e) => ({ ...e, h: tall(e) })), visible, width);
   const reached = h.entities.filter((e) => r.ents.has(e.name)).length;
   const entsHead = sel.k === "doc" ? `${reached} of ${h.entities.length} reached` : sel.k === "ent" ? subject : `${reached} it touches`;
   const nodes = Object.entries(pos)
@@ -255,7 +271,7 @@ export function drawHeart(h: Heart, ui: Ui, width = Infinity): string {
       const e = h.entities.find((x) => x.name === name)!;
       const cls = ["ent", r.ents.has(name) && "on", e.red && "red", e.looked && "looked", isSel("ent", name) && "me"].filter(Boolean).join(" ");
       const why = e.red || e.looked ? infoButton({ kind: "ent", ent: name }, e.red ? `Why is ${name} marked?` : `Who looks ${name} up?`, e.red) : "";
-      return `<div class="node" style="left:${p.x}px;top:${p.y}px"><button class="${cls}" data-pick="ent:${esc(name)}" data-key="ent:${esc(name)}" aria-pressed="${isSel("ent", name)}" title="${esc(e.columns.join(" · "))}"><span class="name">${esc(name)}</span><span class="sub">${esc(e.columns.join(" · "))}</span></button>${why}</div>`;
+      return `<div class="node" style="left:${p.x}px;top:${p.y}px;height:${tall(e)}px"><button class="${cls}" data-pick="ent:${esc(name)}" data-key="ent:${esc(name)}" aria-pressed="${isSel("ent", name)}" title="${esc(e.columns.join(" · "))}"><span class="name">${esc(name)}</span><span class="sub">${esc(e.columns.join(" · "))}</span></button>${why}</div>`;
     })
     .join("");
   const entities = `<section id="entities" aria-labelledby="entities-head"><div class="head"><h2 id="entities-head">Entities · ${esc(entsHead)}</h2>${eye("ents", ui.hideEnts, "Show only the entities that go with it", "Show every entity")}</div>${
