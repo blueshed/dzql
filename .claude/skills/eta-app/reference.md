@@ -30,6 +30,7 @@ where this file and the code disagree, the code is right.
   - [Controls](#controls)
 - [Where you are: the address (`src/bento.ts`)](#where-you-are-the-address-srcbentots)
 - [Pages: the bento (`src/bento.ts`, `src/bento.css`)](#pages-the-bento-srcbentots-srcbentocss)
+  - [A field: one call (`field()`, `src/bento.ts`)](#a-field-one-call-field-srcbentots)
   - [A page drawn from a document's shape (`src/derive.ts`)](#a-page-drawn-from-a-documents-shape-srcderivets)
 - [Applets (`src/applets.ts`)](#applets-srcappletsts)
   - [How an applet gets its data: the document it watches](#how-an-applet-gets-its-data-the-document-it-watches)
@@ -736,6 +737,33 @@ const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "s
 Escalate only as the data forces: in place, then the cell, then a drawer, then a window, then a
 modal. A list of five needs no find.
 
+### A field: one call (`field()`, `src/bento.ts`)
+
+A field that edits one value of a document in place is one call, so it cannot be wired wrong:
+
+```ts
+field({ doc: "household", path: "/message", value: h.message, label: "Our words", kind: "textarea", said: toldAt(sessionId, "household", "/message") })
+```
+
+- It is **its own form** that writes `path` (`replace`), on the trigger its kind takes
+  (`data-write-on`): `text`, `textarea`, `number`, `email` as they are left (`blur`); `date`,
+  `select` (`options: { value, text }[]`) and `checkbox` as they are made (`change`). `on: "input"`
+  is for a reading drawn as it is typed, debounced (find's word), never for a document's value.
+- **Its name** is the path's last segment; **its label** a `<label for>` tied to its id
+  (`field-<doc><path>`, one per page, since a value is shown once); **its value** the one the page
+  read, drawn into it, so a write typed over it tests what it was drawn with (see *Controls*).
+- **`said`**, what the person was told at it (`toldAt`), is drawn beside it as the status it is
+  described by (`aria-describedby`); without `said` there is none.
+- **`may: false`**, the permit's no, draws it read, not a control (a choice by its text, a box
+  "Yes" or "No"), as a derived page does.
+- It is drawn as a drawer's property (`.prop`: the label, then the control); with **`inRow`**, as
+  one of a row's own (a dish's name beside its marks and its trash), its label heard, not seen.
+- One field is one write: two fields are two forms, each written as it is left. Several values in
+  one message is a form of the app's own.
+- A plain export, since it binds nothing. It is a default an app may skip: a form with
+  `data-write-on` and `write()` on its fields is the same wire. A derived page draws its fields
+  with it, and the wedding's drawers are drawn with it.
+
 ### A page drawn from a document's shape (`src/derive.ts`)
 
 For a collection nobody would write a page for (reference data: the wedding's venues), draw it
@@ -756,7 +784,8 @@ export const derived: Record<string, Declared> = {
 The ladder, and where it stops:
 
 1. **Derived.** A field is typed by its column (a number for an integer or a real, else text; json
-   is not drawn) and named by it. A field the permit refuses is read, not typed. The add modal asks
+   is not drawn) and named by it, drawn by the bento's `field()`. A field the permit refuses is
+   read, not typed. The add modal asks
    for what cannot be empty; a row is named by its first column.
 2. **A field names an applet.** It is drawn as that applet's mount, given `{ doc, path, current }`
    and declaring the one write it sends. Register another applet under that name

@@ -6,8 +6,8 @@
 //
 // The ladder, and where it stops:
 // 1. Derived. A field is typed by its column (a number for an integer or a real, else text; json is
-//    not drawn) and named by it, unless declared. The add modal asks for what cannot be empty. A row
-//    is named by its first column.
+//    not drawn) and named by it, unless declared, and drawn by the bento's `field()`. The add modal
+//    asks for what cannot be empty. A row is named by its first column.
 // 2. A field declared with an applet is drawn as that applet's mount, given `{ doc, path, current }`
 //    and naming the one write it sends. Registering another applet under that name
 //    (`registerApplet`, last wins) changes the field on every derived page.
@@ -15,7 +15,7 @@
 //    templates by mode, no blocks, no settings.
 
 import type { ColumnDef, ResolvedTable } from "@blueshed/delta/sqlite";
-import { address, parseAddress, prop, rows, type bento, type Crumb } from "./bento";
+import { address, field, parseAddress, prop, rows, type bento, type Crumb } from "./bento";
 import { appletProps, appletWrites, esc, write, type Op } from "./html";
 import { part } from "./parts";
 
@@ -68,20 +68,20 @@ export function derivedPage(b: Bento, d: Derivation): { page: string; drawer: st
   const adds = d.may("add", `/${key}/-`);
   const page = b.collectionPage([...d.trail, { label: words(key) }], { key, tools: adds ? [b.addTool(go("new"), `New ${noun}`)] : [], body: list });
 
-  /** A field of the open row: read where the permit says no, its applet where one is declared, else typed in place. */
-  const field = (r: Record<string, unknown>, c: string): string => {
+  /** A field of the open row, as a property: its applet where one is declared and the permit says yes, else the bento's field, typed by its column. */
+  const fieldOf = (r: Record<string, unknown>, c: string): string => {
     const path = `/${key}/${r.id}/${c}`;
     const value = r[c] ?? null;
     const applet = d.declared.fields?.[c]?.applet;
-    if (!d.may("replace", path)) return esc(value);
-    if (applet) return `<div data-applet="${esc(applet)}"${appletWrites([d.doc, "replace", path])}${appletProps({ doc: d.doc, path, current: value })}></div>`;
-    return `<input class="field"${write(d.doc, "replace", path)} name="${esc(c)}" type="${numeric(columns[c]!) ? "number" : "text"}" value="${esc(value)}" aria-label="${esc(label(c))}" autocomplete="off">`;
+    const may = d.may("replace", path);
+    if (applet && may) return prop(label(c), `<div data-applet="${esc(applet)}"${appletWrites([d.doc, "replace", path])}${appletProps({ doc: d.doc, path, current: value })}></div>`);
+    return field({ doc: d.doc, path, value: value as string | number | null, label: label(c), kind: numeric(columns[c]!) ? "number" : "text", may });
   };
   const removes = (r: Record<string, unknown>): boolean => d.may("remove", `/${key}/${r.id}`);
 
   let drawer = "";
   if (open && at.what === "row") {
-    const body = `<form data-write-on="blur"><div class="props">${names.map((c) => part(`${key}-${open.id}-${c}`, prop(label(c), field(open, c)))).join("")}</div></form>`;
+    const body = `<div class="props">${names.map((c) => part(`${key}-${open.id}-${c}`, fieldOf(open, c))).join("")}</div>`;
     const foot = removes(open) ? `<div class="drawer-foot">${b.tool(`Remove this ${noun}`, { icon: "trash", kind: "danger", write: go("confirm", open.id) })}</div>` : "";
     drawer = b.drawer(`${key}-drawer`, nameOf(open), body + foot, go());
   }

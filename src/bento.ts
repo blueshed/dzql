@@ -152,6 +152,67 @@ export const rows = (items: string[], empty: string, key?: string): string => {
 /** A property in a drawer: its name, and its value or the control that sets it. */
 export const prop = (name: string, value: string): string => `<div class="prop"><span class="prop-name cap">${esc(name)}</span><div class="prop-value">${value}</div></div>`;
 
+/** What a field holds, and so how it is drawn and when it writes. */
+export type FieldKind = "text" | "textarea" | "number" | "date" | "email" | "select" | "checkbox";
+
+export interface FieldOptions {
+  /** The document it writes, as the page names it: "board", "room:general". */
+  doc: string;
+  /** The JSON Pointer it replaces: "/households/2/email". Its last segment is the field's name. */
+  path: string;
+  /** What the page read there: drawn into it, so what its write tests when typed over (the field you are typing in). */
+  value: string | number | boolean | null | undefined;
+  /** Its name in words, its `<label>`: seen beside it, or in a row only heard. */
+  label: string;
+  /** Text by default. */
+  kind?: FieldKind;
+  /** A select's choices: the one whose value is `value` is drawn chosen. */
+  options?: { value: string; text: string }[];
+  placeholder?: string;
+  /** When it writes. By its kind: what is typed as it is left; a date, a choice or a tick as it is made. "input" is for a reading drawn as it is typed (find's word): debounced. */
+  on?: "blur" | "change" | "input";
+  /** The permit's answer for this person: no, and it is read, not a control. */
+  may?: boolean;
+  /** What this person was told at it (src/refusal.ts `toldAt`), drawn beside it as the status it is described by. Without it, there is none. */
+  said?: string;
+  /** One of a row's own (a dish's name beside its marks): its label heard, not seen, and laid out as the row lays it out. */
+  inRow?: boolean;
+}
+
+/** The kinds that write as they are chosen, not as they are left. */
+const CHOSEN = new Set<FieldKind>(["date", "select", "checkbox"]);
+
+/**
+ * A field that edits one value of a document in place, in one call: its own form that writes on
+ * the right trigger (`data-write-on`), the control named by its path's last segment and writing
+ * that path, its label tied to it (`for`), the value drawn into it (what a write typed over tests,
+ * so a change from someone else is not written over unseen), a status beside it when one is given
+ * (`aria-describedby`), and read, not a control, where the permit says no. Drawn as a property (a
+ * drawer's), or `inRow`. Nothing is bound, so it is a plain export. A default an app may skip: a
+ * form of its own with `data-write-on` and `write()` on its fields is the same wire.
+ */
+export function field(o: FieldOptions): string {
+  const kind = o.kind ?? "text";
+  const id = `field-${o.doc}${o.path}`.replace(/[^\w-]/g, "-");
+  if (o.may === false) {
+    const read = kind === "select" ? o.options?.find((c) => c.value === String(o.value ?? ""))?.text : kind === "checkbox" ? (o.value ? "Yes" : "No") : o.value;
+    return o.inRow ? `<span class="field">${esc(read)}</span>` : prop(o.label, esc(read));
+  }
+  const name = o.path.slice(o.path.lastIndexOf("/") + 1);
+  const said = o.said === undefined ? "" : ` aria-describedby="${id}-said"`;
+  const attrs = ` id="${id}" name="${esc(name)}"${write(o.doc, "replace", o.path)}${said}`;
+  const hint = o.placeholder ? ` placeholder="${esc(o.placeholder)}"` : "";
+  const control =
+    kind === "textarea" ? `<textarea class="field"${attrs}${hint} rows="3">\n${esc(o.value)}</textarea>` // the first newline is the parser's to drop, so the value's own survives
+    : kind === "select" ? `<select class="field"${attrs}>${(o.options ?? []).map((c) => `<option value="${esc(c.value)}"${c.value === String(o.value ?? "") ? " selected" : ""}>${esc(c.text)}</option>`).join("")}</select>`
+    : kind === "checkbox" ? `<input${attrs} type="checkbox"${o.value ? " checked" : ""}>`
+    : `<input class="field"${attrs} type="${kind}" value="${esc(o.value)}"${hint} autocomplete="off">`;
+  const status = o.said === undefined ? "" : `<div class="field-said" id="${id}-said">${o.said}</div>`;
+  const on = ` data-write-on="${o.on ?? (CHOSEN.has(kind) ? "change" : "blur")}"`;
+  const label = `<label class="${o.inRow ? "sr-only" : "prop-name cap"}" for="${id}">${esc(o.label)}</label>`;
+  return o.inRow ? `<form class="in-row"${on}>${label}${control}${status}</form>` : `<form class="prop"${on}>${label}<div class="prop-value">${control}${status}</div></form>`;
+}
+
 /** One choice among a few: every option shown, the current one filled. `locked` after a deadline. */
 export function choice(label: string, options: Option[], locked = false): string {
   return `<div class="pick" role="radiogroup" aria-label="${esc(label)}">${options

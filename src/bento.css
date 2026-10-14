@@ -218,6 +218,10 @@ body:has(.page.windowed) { overflow: hidden; }
 .prop-name { color: var(--muted); }
 .prop-value { min-width: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
 .prop-value > .field { width: 100%; flex: none; } /* the value's column is a column: a field there keeps a field's height */
+.prop-value > [type="checkbox"] { align-self: flex-start; width: 20px; height: 20px; padding: 0; accent-color: var(--accent); }
+/* a field (bento.ts field()) is a form of its own: one in a row is laid out as if the form were not there; its status takes no room until it says something */
+form.in-row { display: contents; }
+.field-said:empty { display: none; }
 
 @media (min-width: 820px) {
   /* its outer corners lie on the window's, so they take the window's curve, not poke past it */

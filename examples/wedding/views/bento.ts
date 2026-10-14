@@ -6,7 +6,7 @@
 import { bento } from "../../../src/bento";
 import { icon } from "./icons";
 
-export { choice, prop, rows, type Crumb, type OpenOptions } from "../../../src/bento";
+export { choice, field, prop, rows, type Crumb, type FieldOptions, type OpenOptions } from "../../../src/bento";
 
 /** Bound whole, too: a page drawn from a document's shape is built from them (src/derive.ts). */
 export const surfaces = bento({ icon, session: "session", leave: { text: "Leave", icon: "log-out", path: "/code" } });
