@@ -1,6 +1,6 @@
 {
   "name": "eta",
-  "version": "0.52.0",
+  "version": "0.53.0",
   "packageManager": "bun@1.4.3",
   "engines": {
     "bun": ">=1.4.3"

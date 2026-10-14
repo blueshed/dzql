@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.53.0] - 2026-10-14
+
 ### Added
 
 - **A failure that says why.** A story whose `seen` member was not told names the documents their page read and the one the write changed (`cy did not see it: cy's page read session, room:kitchen; the write was to room:general`); a `does` refused names the check that refused it and quotes its words; and while the stories run, every control on every page drawn is held to the wire (its document read by that page, a JSON Pointer path, add/replace/remove/test, a replace's path held), a warning for each that fails. About 0.4 s on `stories:all`.

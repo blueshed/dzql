@@ -2,7 +2,7 @@
 name: modelling
 description: Use while someone tells the stories of an app to be built on eta -- to write each story down on the model's page as it is told, describe the documents it needs (root, what each holds, who holds it), and read the gaps back, before any of the app is built. Then the eta-app skill builds from the model. reference.md has the verbs, the gaps and the move to an app, with a contents table.
 metadata:
-  version: 0.52.0
+  version: 0.53.0
 ---
 
 # Keeping the model while the stories are told

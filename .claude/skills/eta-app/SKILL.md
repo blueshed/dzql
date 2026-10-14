@@ -2,7 +2,7 @@
 name: eta-app
 description: Use before building an eta app -- the app/ of a project made with `bun create blueshed/eta`, an example under examples/<name>/, or an app in a repo of its own -- or adding a document, compartment, applet, route or CLI verb to one; and before touching the Compartment contract, an app's delta.ts, the applet registry or the {doc, ops} wire. reference/ has one short file a piece; SKILL.md says which to read for which step.
 metadata:
-  version: 0.52.0
+  version: 0.53.0
 ---
 
 # Building an app on eta
