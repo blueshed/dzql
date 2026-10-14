@@ -11,7 +11,7 @@ import { read } from "./documents";
 import { appletProps, appletWrites, write } from "./html";
 import type { Example } from "./example";
 import { size } from "./costs";
-import { anyOne, controlsOn, goesTo, hear, holding, holds,largest, MOST_PROPS, offers, pathsIn, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, valueAt, type Outcome, type Report, type Trace, type Wire } from "./harness";
+import { anyOne, controlsOn, goesTo, hear, holding, holds, largest, MOST_PROPS, offers, pathsIn, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, valueAt, writesOn, type Outcome, type Report, type Trace, type Wire } from "./harness";
 import { comparable, diff, drawParts, part, splitTag } from "./parts";
 import { post, type Stories, type Story } from "./stories";
 import { serverWrite } from "./documents";
@@ -1239,5 +1239,19 @@ describe("a failure that says why", () => {
     const doc = { a: { "b/c": [1, { "d~": null }] } };
     expect(["", "/a", "/a/b~1c", "/a/b~1c/0", "/a/b~1c/1/d~0"].every((p) => holds(doc, p))).toBe(true);
     expect(["/b", "/a/b~1c/2", "/a/b~1c/-", "/a/b~1c/length", "/a/b~1c/0/x", "/a/b~1c/01"].some((p) => holds(doc, p))).toBe(false);
+  });
+});
+
+describe("a select, held to the wire", () => {
+  test("is probed with the option it was drawn showing, as the browser sends it: the last selected, else the first not disabled, or none in a list", () => {
+    const w = (body: string, attrs = "") => writesOn(`<select data-write='{"doc":"answer","op":"replace","path":"/kind"}' aria-label="Kind"${attrs}>${body}</select>`).map((x) => x.value);
+    expect(w(`<option value="yes">Yes</option><option value="no" selected>No</option>`)).toEqual(["no"]);
+    expect(w(`<option value="a" selected>A</option><option value="b" selected>B</option>`)).toEqual(["b"]); // the last selected
+    expect(w(`<option value="x" disabled>X</option><option value="peek">Peek</option>`)).toEqual(["peek"]); // the first not disabled
+    expect(w(`<optgroup disabled><option value="x">X</option></optgroup><option value="r">r</option>`)).toEqual(["r"]); // a disabled group's options choose nothing
+    expect(w(`<option>  Read  only </option>`)).toEqual(["Read only"]); // no value: its words
+    expect(w(`<option value="yes">Yes</option>`, ` size="3"`)).toEqual([]); // a list shows nothing chosen: nothing to send
+    expect(w(`<option value="r" selected>r</option>`, ` multiple`)).toEqual([]); // several at once: no one value
+    expect(writesOn(`<select data-write='{"doc":"d","op":"replace","path":"/k"}' disabled><option value="a">A</option></select>`)).toEqual([]); // drawn disabled: sends nothing
   });
 });

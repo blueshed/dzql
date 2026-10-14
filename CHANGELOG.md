@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The stories' wire check probes a select with the option it was drawn showing, as a browser sends it (the last `selected`, else the first not disabled; none in a list), not an empty value, so a permit no longer needs a refusal for a value no select sends.
 - `bun create` no longer says a project started "with what its changelog had under Unreleased" when that section was empty.
 
 ### Added

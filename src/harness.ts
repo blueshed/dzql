@@ -526,19 +526,46 @@ type Writing = { doc: string; op: string; path: string; value: unknown; control:
 /** Each control a page draws that writes (`data-write`: a button, a form, an editing form's field), but one drawn `disabled`, which sends nothing; and a short name for it: its tag, and its label, name, value or id. */
 export function writesOn(page: string): Writing[] {
   const found: Writing[] = [];
+  // a select sends the option it was drawn showing, by the browser's rule (`drawnOption`, src/client/form-value.ts):
+  // the last `selected`, else its first not disabled, or in a list (`size` over 1) none
+  let choosing: { options: { value: string | null; text: string; disabled: boolean; selected: boolean }[] } | undefined;
   new HTMLRewriter()
     .on("[data-write]:not([disabled])", {
       element(el) {
         const { doc, op, path } = JSON.parse(decoded(el.getAttribute("data-write")!)) as { doc: string; op: string; path: string };
         const by = ["aria-label", "name", "data-value", "id"].find((a) => el.hasAttribute(a));
+        const name = (said: string | undefined) => (by ? `${el.tagName}[${by}=${said!.includes('"') ? `'${said}'` : `"${said}"`}]` : el.tagName);
+        if (el.tagName === "select") {
+          if (el.hasAttribute("multiple")) return; // several at once: no one value drawn to send
+          const list = Number(el.getAttribute("size") ?? "1") > 1;
+          const control = name(by && decoded(el.getAttribute(by)!));
+          const at: NonNullable<typeof choosing> = { options: [] };
+          choosing = at;
+          el.onEndTag(() => {
+            const open = at.options.filter((o) => !o.disabled);
+            const drawn = at.options.findLast((o) => o.selected) ?? (list ? undefined : open[0]);
+            if (drawn) found.push({ doc, op, path, value: drawn.value ?? drawn.text.replace(/\s+/g, " ").trim(), control });
+            choosing = undefined;
+          });
+          return;
+        }
         const pressed = pressedValue(el.getAttribute("data-value"));
         const text = decoded(el.getAttribute("value") ?? "");
         const number = el.tagName === "input" && ["number", "range"].includes(el.getAttribute("type") ?? ""); // a number field sends a number, or null
         const value = typeof pressed === "string" ? pressed : "value" in pressed ? pressed.value : number ? (text === "" ? null : Number(text)) : text;
-        const said = by && decoded(el.getAttribute(by)!);
-        found.push({ doc, op, path, value, control: by ? `${el.tagName}[${by}=${said!.includes('"') ? `'${said}'` : `"${said}"`}]` : el.tagName });
+        found.push({ doc, op, path, value, control: name(by && decoded(el.getAttribute(by)!)) });
       },
     })
+    .on("select option", {
+      element(el) {
+        choosing?.options.push({ value: el.hasAttribute("value") ? decoded(el.getAttribute("value")!) : null, text: "", disabled: el.hasAttribute("disabled"), selected: el.hasAttribute("selected") });
+      },
+      text(t) {
+        const o = choosing?.options.at(-1);
+        if (o) o.text += t.text;
+      },
+    })
+    .on("select optgroup[disabled] option", { element: () => void (choosing?.options.at(-1) && (choosing.options.at(-1)!.disabled = true)) })
     .transform(page);
   return found;
 }
