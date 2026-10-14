@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { write, appletWrites } from "../html";
-import { waitFor } from "../webview";
+import { waitFor, webview } from "../webview";
 import { push, pushRender, quietPages } from "./socket.test.helpers";
 import fixture from "./tools.test.html";
 import plain from "./app.test.html";

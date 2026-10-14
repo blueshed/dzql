@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { webview } from "../../../src/webview";
 import fixture from "./applets.test.html";
 
 // A 1x1 transparent PNG, small enough that downsized() takes its "already small" shortcut
@@ -16,7 +17,7 @@ beforeAll(() => {
     port: 0,
     routes: {
       "/": fixture,
-      "/api/picture": () => Response.json(picture.body, { status: picture.status }),
+      "/api/picture": () => (typeof picture.body === "string" ? new Response(picture.body, { status: picture.status }) : Response.json(picture.body, { status: picture.status })),
     },
   });
 });
@@ -27,7 +28,7 @@ afterAll(() => {
 
 /** Runs `script` in a fresh browser with a bare `#root` element and this example's applets registered as `window.applets`. */
 async function run(script: string): Promise<unknown> {
-  await using view = new Bun.WebView();
+  await using view = webview();
   await view.navigate(server.url.toString());
 
   const start = Date.now();
@@ -73,9 +74,79 @@ describe("photo applet's update()", () => {
     `);
     expect(result).toEqual({ beforeReveal: false, firstReveal: true, secondReveal: false });
   });
+
+  test("a newcomer stops walking once the walk is over; a figure that opens something opens by Enter or Space, as by a finger", async () => {
+    const result = await run(`
+      const el = root.appendChild(document.createElement("div"));
+      const sent = [];
+      const tap = { doc: "household", op: { op: "replace", path: "/open", value: "1" } };
+      window.applets.photo.mount(el, { props: { entries: [{ key: "1", spec: ${JSON.stringify(look)}, tap }], label: "x" }, send: (doc, ops) => sent.push(doc) });
+      window.applets.photo.update(el, { entries: [{ key: "1", spec: ${JSON.stringify(look)}, tap }, { key: "2", spec: ${JSON.stringify(look)} }], label: "x" });
+      const walk = el.querySelector(".walk");
+      walk.dispatchEvent(new AnimationEvent("animationend", { animationName: "walk-in", bubbles: true }));
+      const figure = el.querySelector('[data-key="1"]');
+      figure.focus();
+      for (const key of ["Enter", " ", "a"]) figure.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+      return [walk.querySelector(".fig").classList.contains("walking"), sent];
+    `);
+    expect(result).toEqual([false, ["household", "household"]]);
+  });
+});
+
+describe("dress applet", () => {
+  test("a part of the figure opens by Enter and closes by Space, as a finger opens and closes it", async () => {
+    const result = await run(`
+      const el = root.appendChild(document.createElement("div"));
+      window.applets.dress.mount(el, { props: { guestId: 1, spec: ${JSON.stringify(look)}, firstName: "Ada" }, send: () => {} });
+      const key = (k) => {
+        el.querySelector(".hit-legs").focus();
+        document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true }));
+        return el.querySelector(".pop-legs") !== null;
+      };
+      return [key("Enter"), key(" ")];
+    `);
+    expect(result).toEqual([true, false]);
+  });
 });
 
 describe("picture-field applet", () => {
+  test("a photograph bigger than a screen goes drawn down to 1600px on its long side, as a JPEG; one the browser cannot draw goes as it is", async () => {
+    const result = await run(`
+      const canvas = Object.assign(document.createElement("canvas"), { width: 2000, height: 1000 });
+      canvas.getContext("2d").fillRect(0, 0, 10, 10);
+      const png = await new Promise((done) => canvas.toBlob(done, "image/png"));
+      const small = await window.downsized(new File([png], "big.png", { type: "image/png" }));
+      const { width, height } = await createImageBitmap(small);
+      const broken = new File([new Uint8Array([1, 2, 3])], "broken.png", { type: "image/png" });
+      return [small.name, small.type, width, height, (await window.downsized(broken)) === broken];
+    `);
+    expect(result).toEqual(["big.jpg", "image/jpeg", 1600, 800, true]);
+  });
+
+  test("its button opens the chooser; a refusal that says nothing says the picture was not kept; a render's new props draw the picture", async () => {
+    picture = { status: 500, body: "not json" };
+    const result = await run(`
+      const el = root.appendChild(document.createElement("div"));
+      const props = { doc: "board", path: "/picture_key", current: null };
+      window.applets["picture-field"].mount(el, { props, send: () => {} });
+      let chooser = 0;
+      el.querySelector("input").addEventListener("click", (e) => (chooser++, e.preventDefault()));
+      el.querySelector("button").click();
+
+      const dt = new DataTransfer();
+      dt.items.add(new File([new Uint8Array([1, 2, 3])], "pic.gif", { type: "image/gif" }));
+      const input = el.querySelector("input[type=file]");
+      input.files = dt.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      const start = Date.now();
+      while (["Sending…", undefined].includes(el.querySelector(".note")?.textContent) && Date.now() - start < 5000) await new Promise((r) => setTimeout(r, 10));
+      const note = el.querySelector(".note")?.textContent;
+
+      window.applets["picture-field"].update(el, { ...props, current: "a.jpg" });
+      return [chooser, note, el.querySelector("img").getAttribute("src"), el.querySelector("button").textContent];
+    `);
+    expect(result).toEqual([1, "The picture was not kept.", "/pictures/a.jpg", "Change picture"]);
+  });
   test("choosing a picture sends it downsized, and writes the key the route hands back", async () => {
     picture = { status: 200, body: { key: "new.jpg" } };
     const sent = await run(`

@@ -7,10 +7,11 @@ What a builder must not break. How the pieces work is in the eta-app skill
 
 - Bun only: never `node`, `npm` or `yarn`.
 - Tests: `bun test`. `.env.test` keeps it off the dev database and `bunfig.toml` fails the run
-  below 100% coverage. The browser tests (`Bun.WebView`) need Chrome or Chromium on Linux:
-  `BUN_CHROME_PATH` names it. In a Claude Code web session the SessionStart hook
-  (`.claude/hooks/session-start.sh`, Bun only, nothing on a Mac) stages it and sets that, and
-  brings Bun up to `engines.bun`; `--dry-run` says what it would do here.
+  below 100% coverage, the client's too (src/client-coverage.ts). The browser tests (`webview()`,
+  src/webview.ts) need Chrome or Chromium, on every platform: `BUN_CHROME_PATH` names it where it
+  is not found. In a Claude Code web session the SessionStart hook (`.claude/hooks/session-start.sh`,
+  Bun only, nothing on a Mac) stages it and sets that, and brings Bun up to `engines.bun`;
+  `--dry-run` says what it would do here.
 - The gate, before any commit that should ship: `bun check` (Bun's type check, TypeScript 7; Bun 1.4.3 or later), `bun test`,
   `bun run stories:all` (every example's stories). A release is `/publish`
   (`.claude/commands/publish.md`): eta's own, since a release is what `bun create` projects

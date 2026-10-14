@@ -3,17 +3,31 @@
 
 let views = 0;
 const hosts = new WeakMap<Bun.WebView, string>();
+const chromes = new WeakSet<Bun.WebView>();
 
 /**
- * Where `view` goes for `path` on the server at `url`, as a browser of its own. On Chrome (Linux,
- * the Claude Code sandbox) every view in a process shares one profile, and a cookie ignores the
+ * A test's view: on Chrome on every platform, whose DevTools say what of the client a page ran
+ * (src/client-coverage.ts). A Chrome of the tests' own, never one already running.
+ */
+export function webview(options: Bun.WebView.ConstructorOptions = {}): Bun.WebView {
+  const view = new Bun.WebView({ ...options, backend: { type: "chrome", url: false } });
+  chromes.add(view);
+  return view;
+}
+
+/** Whether `view` is a test's, on Chrome. */
+export const measured = (view: Bun.WebView): boolean => chromes.has(view);
+
+/**
+ * Where `view` goes for `path` on the server at `url`, as a browser of its own. On Chrome (a
+ * test's, or any on Linux) every view in a process shares one profile, and a cookie ignores the
  * port, so a second view would open already signed in as the first. Each view is given a host of
  * its own instead -- Chrome takes every `*.localhost` to this machine -- and keeps it, so a
- * reload or a link is the same person. WebKit's views (macOS) are apart already.
+ * reload or a link is the same person. WebKit's views (macOS, by hand) are apart already.
  */
 export function urlFor(view: Bun.WebView, url: URL | string, path = "", platform: string = process.platform): string {
   const address = new URL(path, url);
-  if (platform === "darwin") return address.toString();
+  if (platform === "darwin" && !chromes.has(view)) return address.toString();
   if (!hosts.has(view)) hosts.set(view, `view${++views}.localhost`);
   address.hostname = hosts.get(view)!;
   return address.toString();

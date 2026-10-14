@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { press, urlFor, waitFor } from "../../../src/webview";
+import { press, urlFor, waitFor, webview } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { asCouple, asHousehold, board, household } from "../setup";
 import { example } from "../index";
@@ -36,7 +36,7 @@ async function enter(view: Bun.WebView, who: string) {
 
 describe("the wedding in a real browser", () => {
   test("on a phone the reader may zoom: the viewport does not hold the scale, and no field is under 16px, which iOS would zoom into", async () => {
-    await using view = new Bun.WebView({ width: 375, height: 740 });
+    await using view = webview({ width: 375, height: 740 });
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
     expect(await view.evaluate<string>(`document.querySelector('meta[name=viewport]').content`)).not.toMatch(/maximum-scale|user-scalable/);
@@ -44,7 +44,7 @@ describe("the wedding in a real browser", () => {
   });
 
   test("a code opens the household's photo, the family standing in it; a tap on a figure opens the guest's drawer with the dress and menu applets", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await enter(view, code.toLowerCase());
     // the page is the photo: the family stands in it, and a figure can be tapped
     const names = await waitFor(view, `[...document.querySelectorAll('#family-photo .print text')].map((t) => t.textContent)`, (v) => Array.isArray(v) && v.length === 2);
@@ -74,7 +74,7 @@ describe("the wedding in a real browser", () => {
   });
 
   test("reading the page as a list swaps the photo for rows, and back", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await enter(view, code);
     await waitFor(view, `document.querySelector('#family-photo svg') !== null`, (v) => v === true);
     // the reading switch is a stack on the page's rail
@@ -86,7 +86,7 @@ describe("the wedding in a real browser", () => {
   });
 
   test("the page follows into the URL; the browser's back button sends the session there; reopening a link catches the session up to it", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await enter(view, code);
     expect(await view.evaluate<string>(`location.pathname`)).toBe("/");
 
@@ -129,7 +129,7 @@ describe("the wedding in a real browser", () => {
     const theirs = (await board()).households.find((x) => x.email === email)!;
     await asHousehold(theirs.code, [{ op: "replace", path: "/answer", value: "yes" }]);
     const guest = (await household(theirs.code)).guests[0]!;
-    await using view = new Bun.WebView();
+    await using view = webview();
     await enter(view, theirs.code.toLowerCase());
     await view.navigate(urlFor(view, server.url, "everyone"));
     await waitFor(view, `document.querySelector('#everyone-photo svg') !== null`, (v) => v === true);
@@ -146,7 +146,7 @@ describe("the wedding in a real browser", () => {
   });
 
   test("beside a docked drawer the page is in reach: one tap goes from the gifts to the day, one to a guest; Escape puts the drawer away", async () => {
-    await using view = new Bun.WebView({ width: 1280, height: 800 }); // wide enough that the drawer docks
+    await using view = webview({ width: 1280, height: 800 }); // wide enough that the drawer docks
     await enter(view, code);
     await waitFor(view, `document.querySelector('#family-photo svg') !== null`, (v) => v === true);
     await view.click('.rail [aria-label="Gifts"]');
@@ -164,7 +164,7 @@ describe("the wedding in a real browser", () => {
   }, 15000);
 
   test("the answer: the pencil opens the drawer, an option writes it, the bubble shows it, Undo takes it back", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await enter(view, code);
     await press(view, ".bubble.ours");
     await waitFor(view, `document.querySelectorAll('.answer-option').length`, (v) => v === 3);
@@ -178,7 +178,7 @@ describe("the wedding in a real browser", () => {
 
   for (const [where, width, height] of [["on a phone", 390, 760], ["at a desk", 1100, 720]] as const) {
     test(`Undo says what it took back beside the page's tools, ${where}, and over neither of them: Redo and Undo are pressed again`, async () => {
-      await using view = new Bun.WebView({ width, height });
+      await using view = webview({ width, height });
       await enter(view, code);
       await press(view, ".bubble.ours");
       await waitFor(view, `document.querySelectorAll('.answer-option').length`, (v) => v === 3);
@@ -198,7 +198,7 @@ describe("the wedding in a real browser", () => {
   }
 
   test("the couple's page is the photo of families: a tap on a family opens its drawer, and Escape puts it away", async () => {
-    await using view = new Bun.WebView({ width: 1280, height: 800 });
+    await using view = webview({ width: 1280, height: 800 });
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
     await view.scrollTo("#code");
@@ -216,7 +216,7 @@ describe("the wedding in a real browser", () => {
   }, 15000);
 
   test("find's field opens beside its own tool, below the reading in the rail, not at the rail's top, and stays beside it when a drawer moves the rail", async () => {
-    await using view = new Bun.WebView({ width: 1280, height: 800 });
+    await using view = webview({ width: 1280, height: 800 });
     await enter(view, code.toLowerCase());
     await view.click(".rail .tool.find");
     await waitFor(view, `document.querySelector('.filter') !== null`, (v) => v === true);
@@ -236,7 +236,7 @@ describe("the wedding in a real browser", () => {
   }, 15000);
 
   test("find fades and lights the figures where they stand: the photo is not drawn again as find opens, looks and closes", async () => {
-    await using view = new Bun.WebView({ width: 1280, height: 800 });
+    await using view = webview({ width: 1280, height: 800 });
     await enter(view, code.toLowerCase());
     // the photo's element and its drawing, tagged: a redraw would leave them untagged
     const SAME = `(() => { const m = document.querySelector('#family-photo'), s = m.querySelector('svg'), same = m.__tag === 1 && s.__tag === 1; m.__tag = 1; s.__tag = 1; return same; })()`;
@@ -257,7 +257,7 @@ describe("the wedding in a real browser", () => {
   }, 15000);
 
   test("the rail's tools and find's bar keep the bento's heights; in a drawer a long state goes under its words and stays inside", async () => {
-    await using view = new Bun.WebView({ width: 1280, height: 800 });
+    await using view = webview({ width: 1280, height: 800 });
     await enter(view, code);
     await view.click(".rail .tool.find");
     await waitFor(view, `document.querySelector('.filter') !== null`, (v) => v === true);
@@ -273,7 +273,7 @@ describe("the wedding in a real browser", () => {
     await asCouple([{ op: "add", path: "/households/-", value: { email, names: "Gil Giver" } }]);
     const other = (await board()).households.find((x) => x.email === email)!.code;
     for (const who of [code, other]) await asHousehold(who, [{ op: "add", path: "/claims/-", value: 2 }]);
-    await using couple = new Bun.WebView({ width: 1280, height: 800 });
+    await using couple = webview({ width: 1280, height: 800 });
     await couple.navigate(urlFor(couple, server.url, "?gifts"));
     await waitFor(couple, `document.querySelector('#code') !== null`, (v) => v === true);
     await couple.evaluate(`(() => { const i = document.querySelector('#code'); i.value = 'DASH'; i.form.requestSubmit(); })()`);
@@ -298,7 +298,7 @@ describe("the wedding in a real browser", () => {
   }, 20000);
 
   test("editing a gift's fields in its drawer writes on blur, batches fields changed together, and does not reset", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     // the couple's own code, not a household's: the keep drawers are theirs to edit
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
@@ -344,7 +344,7 @@ describe("the wedding in a real browser", () => {
   test("the welcome's message textarea writes on blur too, comparing against its rendered content, not an input's value attribute", async () => {
     await asCouple([{ op: "replace", path: "/message", value: "can't wait" }]);
 
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
     await view.scrollTo("#code");
@@ -377,7 +377,7 @@ describe("the wedding in a real browser", () => {
   });
 
   test("the answer's words are written as they are left, as every drawer's are; a choice of three stays inside the guest's drawer", async () => {
-    await using view = new Bun.WebView({ width: 1280, height: 800 });
+    await using view = webview({ width: 1280, height: 800 });
     await enter(view, code);
     const guest = (await household(code)).guests[0]!;
     await view.navigate(urlFor(view, server.url, `?guest=${guest.id}`));
@@ -399,7 +399,7 @@ describe("the wedding in a real browser", () => {
   }, 15000);
 
   test("leaving returns to the welcome, and the session survives a reload", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await enter(view, code);
     await view.reload();
     await waitFor(view, CRUMBS, (v) => typeof v === "string" && v.includes(code));

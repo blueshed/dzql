@@ -447,15 +447,14 @@ function render(html: string) {
   const reduced = matchMedia("(prefers-reduced-motion:reduce)").matches;
   if (moving && !reduced && "startViewTransition" in document) {
     moving.style.viewTransitionName = "moving";
-    // `finished` rejects when the transition is skipped -- another render arrived before it settled,
-    // or the page is hidden -- which is routine, not an error: the morph still ran, only the animation did not
+    // `ready` rejects when the transition is skipped -- another render arrived before it settled,
+    // or the page is hidden -- which is routine, not an error: the morph still ran, only the animation
+    // did not. `finished` rejects only when the morph threw, which is.
     const transition = document.startViewTransition(apply);
     transition.ready.catch(() => {});
-    transition.finished
-      .catch(() => {})
-      .finally(() => {
-        moving.style.viewTransitionName = "";
-      });
+    transition.finished.finally(() => {
+      moving.style.viewTransitionName = "";
+    });
   } else {
     apply();
   }
@@ -861,8 +860,7 @@ function connect() {
     setTimeout(connect, reconnectDelay);
     reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY_MS);
   });
-
-  socket.addEventListener("error", () => socket?.close());
+  // a socket's error is always followed by its close
 }
 
 connect();

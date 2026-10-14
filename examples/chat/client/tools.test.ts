@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { urlFor, waitFor } from "../../../src/webview";
+import { urlFor, waitFor, webview } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { example } from "../index";
 
@@ -33,7 +33,7 @@ const MESSAGES = `document.querySelector('.messages')?.textContent ?? ""`;
 
 describe("chat, with an assistant in the page", () => {
   test("the assistant says something through the page's own form, the person says something by hand, and the assistant undoes its own change by its handle -- the person's stands", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `window.eta?.socket()?.readyState === 1`, (v) => v === true);
     await view.evaluate(MODEL_CONTEXT);

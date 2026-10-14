@@ -1,9 +1,8 @@
 // The photo applet's mounting: redrawn on every change to what it shows -- but for find's fade,
 // changed where each figure stands -- a newcomer walking in
 // from the nearest side, the names coming down on the day, once the walk is over the attitude
-// takes over. Imported only by client/main.ts, like chat's room-picker -- not measured by the
-// coverage table, since only a real browser drives it (client/app.test.ts); the drawing above it
-// is (change-request.md item 4).
+// takes over. Imported only by client/main.ts, and measured from the pages that run it
+// (src/client-coverage.ts); the drawing is photo.ts (change-request.md item 4).
 
 import { registerApplet, type Applet } from "../../../src/applets";
 import { crowd, onlyFadeChanged, photoSvg, type CrowdProps, type PhotoProps } from "./photo";

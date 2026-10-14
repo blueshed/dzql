@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { waitFor } from "../webview";
+import { waitFor, webview } from "../webview";
 import fixture from "./morph.test.html";
 
 let server: ReturnType<typeof Bun.serve>;
@@ -14,7 +14,7 @@ afterAll(() => {
 
 /** Runs `script` in a fresh browser with a bare `#root` element and morph.ts loaded as `window.morph`. */
 async function run(script: string): Promise<unknown> {
-  await using view = new Bun.WebView();
+  await using view = webview();
   await view.navigate(server.url.toString());
   await waitFor(view, `typeof window.morph`, (v) => v === "function"); // the module script runs a moment after navigate() resolves
 
@@ -80,6 +80,17 @@ describe("morph", () => {
       return [root.querySelector('#line-FXTR')._kept === true, [...root.firstChild.children].map((el) => el.className)];
     `);
     expect(result).toEqual([true, ["cell-head", "cell-summary", "cell-body"]]);
+  });
+
+  test("a list too long to compare whole is matched by place: each child of the same type kept, and drawn as it is now", async () => {
+    const result = await run(`
+      const items = (n) => Array.from({ length: n }, (_, i) => '<li>' + i + '</li>').join('');
+      root.innerHTML = items(600);
+      const second = root.children[1];
+      window.morph(root, '<p>new</p>' + items(600) + '<p>end</p>'); // 602 by 600: over 250,000 pairs
+      return [root.children[1] === second, root.children.length, root.children[1].textContent, root.firstChild.tagName, root.lastChild.textContent];
+    `);
+    expect(result).toEqual([true, 602, "0", "P", "end"]);
   });
 
   test("removes leftover children when the new list is shorter, and appends new ones when it is longer", async () => {

@@ -4,7 +4,7 @@
 // what the server would as "message" events on that same socket (`push`).
 import { afterAll, beforeAll } from "bun:test";
 import { renderMessage } from "../compartments/render";
-import { waitFor } from "../webview";
+import { waitFor, webview } from "../webview";
 
 /** What the socket says, whatever it is told: nothing. */
 const quiet = (): void => {};
@@ -24,7 +24,7 @@ export function quietPages(pages: Record<string, Bun.HTMLBundle>): (path?: strin
   });
   afterAll(() => server.stop(true));
   return async (path = "/") => {
-    const view = new Bun.WebView();
+    const view = webview();
     await view.navigate(new URL(path, server.url).toString());
     await waitFor(view, `window.eta?.socket()?.readyState === 1`, (v) => v === true);
     await stubSend(view);

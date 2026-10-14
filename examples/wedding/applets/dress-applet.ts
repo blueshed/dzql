@@ -1,7 +1,7 @@
 // The dressing applet's mounting: which part is open is this applet's own DOM state; a choice is
 // one write on one field, and the figure redraws from the render that follows. Imported only by
-// client/main.ts, like chat's room-picker -- not measured by the coverage table, since only a
-// real browser drives it (client/app.test.ts); the drawing above it is (change-request.md item 4).
+// client/main.ts, and measured from the pages that run it (src/client-coverage.ts); the drawing
+// is dress.ts (change-request.md item 4).
 
 import { registerApplet } from "../../../src/applets";
 import { dressHtml, type DressProps, type Part } from "./dress";

@@ -1,0 +1,96 @@
+railroad: the other-copy check in development only (eta's todo n102)
+
+For @blueshed/railroad 0.16.2, at its root: `patch -p1 < railroad-own-signal.patch`. Not applied:
+railroad's to take or leave.
+
+0.16 already folds DEV, as n102 asked: an app's production build drops every warning, the .get()
+in a render body's among them (3537 -> 2925 B gzipped for `signal` and `mount`, measured as
+src/costs.ts measures railroad). What production still carries of development is the check that a
+Signal was made by this copy of railroad (`assertOwnSignal`), and its message. A production bundle
+is one copy by construction, so this makes the check development's, as the second-copy warning is:
+`ownSignal`, null until startDevelopment() sets it, which a production build never calls.
+
+Measured (Bun.build, minified, NODE_ENV "production", gzipped), with railroad 0.16.2:
+
+  signal and mount          2925 -> 2754 B   (-171)
+  signal, mount and list    3795 -> 3628 B   (-167)
+
+The cost: a production page handed another copy's Signal renders "[object Object]" where
+development throws. railroad's header says "what throws still throws" in production; this would be
+the one exception, for a mistake a production bundle cannot make.
+
+--- a/signals.ts
++++ b/signals.ts
+@@ -117,8 +117,8 @@
+ // rather than render "[object Object]" or a when() that never switches.
+ const MADE_BY = Symbol.for("@blueshed/railroad.Signal");
+
+-/** @internal -- jsx.ts: throws if `value` is a Signal made by another copy of railroad. */
+-export function assertOwnSignal(value: unknown): void {
++/** Throws if `value` is a Signal made by another copy of railroad: in development (`ownSignal`). */
++function assertOwnSignal(value: unknown): void {
+   if (typeof value !== "object" || value === null || value instanceof Signal) return;
+   const other = (value as { [MADE_BY]?: unknown })[MADE_BY];
+   if (typeof other !== "string") return;
+@@ -246,11 +246,14 @@
+
+ /** @internal -- jsx.ts: the development warnings, or null in a production build. */
+ export let warn: typeof warnings | null = null;
++/** @internal -- jsx.ts: throws if a value is a Signal made by another copy of railroad; null in a production build, which has one copy. */
++export let ownSignal: typeof assertOwnSignal | null = null;
+
+ declare const process: { env: { NODE_ENV?: string } };
+ function startDevelopment(): void {
+   warnIfSecondCopy();
+   warn = warnings;
++  ownSignal = assertOwnSignal;
+ }
+ try {
+   if (process.env.NODE_ENV !== "production") startDevelopment();
+--- a/jsx.ts
++++ b/jsx.ts
+@@ -83,7 +83,7 @@
+  * annotate: `import type { JSX } from "@blueshed/railroad"` (JSX.Element is Node).
+  */
+
+-import { Signal, signal, effect, computed, untrack, untrackRender, scoped, trackDispose, hasActiveDisposeScope, assertOwnSignal, warn } from "./signals";
++import { Signal, signal, effect, computed, untrack, untrackRender, scoped, trackDispose, hasActiveDisposeScope, ownSignal, warn } from "./signals";
+ import type { Dispose, ReadonlySignal, SignalOptions } from "./signals";
+
+ // === SVG namespace ===
+@@ -204,7 +204,7 @@
+     } else if (typeof value === "function") {
+       disposers.push(effect(() => apply(value())));
+     } else {
+-      assertOwnSignal(value);
++      ownSignal?.(value);
+       apply(value);
+     }
+   }
+@@ -509,7 +509,7 @@
+       // and passes Text/Comment/already-SVG nodes through untouched.
+       parent.appendChild(isSvgParent ? adoptIntoSvg(child, parent) : child);
+     } else {
+-      assertOwnSignal(child);
++      ownSignal?.(child);
+       parent.appendChild(document.createTextNode(String(child)));
+     }
+   }
+@@ -560,7 +560,7 @@
+   falsy?: () => Node,
+ ): Node {
+   if (!hasActiveDisposeScope()) warn?.scopeless("when");
+-  assertOwnSignal(condition);
++  ownSignal?.(condition);
+   // The branch lives between brackets, whose teardown goes with the scope
+   // around when(). Registered before the first swap, as list()'s is: a first
+   // branch that throws leaves when() with its effect live, and if that scope
+@@ -663,7 +663,7 @@
+   options?: SignalOptions<T>,
+ ): Node {
+   if (!hasActiveDisposeScope()) warn?.scopeless("list");
+-  assertOwnSignal(items);
++  ownSignal?.(items);
+   const hasKeyFn = maybeRender !== undefined;
+   const keyFn = hasKeyFn ? keyFnOrRender as (item: T) => string | number : null;
+
