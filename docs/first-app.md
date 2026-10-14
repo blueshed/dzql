@@ -272,7 +272,7 @@ drag halfway through, a scroll position, a chart's history. That piece is an **a
 ## Where next
 
 - `docs/stories.md`: why eta is shaped this way.
-- `.claude/skills/eta-app/reference/`: every part, in full, one short file a part (its `SKILL.md`
-  says which for which step).
+- `.claude/skills/eta-app/reference/`: every part, one short file a part (its `SKILL.md` says which
+  for which step); `docs/eta-app-notes.md` has the why.
 - `docs/bento/README.md`: the bento, a guide to where am I and what can I do.
 - `examples/leave/`: sign-in, a calendar applet, drafts, and a manager's rules, in about 1,000 lines.

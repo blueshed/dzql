@@ -9,19 +9,23 @@ let server: ReturnType<typeof createServer>;
 beforeAll(() => { server = createServer(example, 0); });
 afterAll(() => { server.stop(true); });
 
-test("a draft asked for from its drawer", async () => {
+test("a drag across days is a draft, its drawer saying what it would mean; asked for, the bar drags to other days", async () => {
   await using view = webview();
   await view.navigate(urlFor(view, server.url));
-  await waitFor(view, `document.querySelector('.calendar-view .month') !== null`, (v) => v === true);
-  await press(view, ".draft-drawer .tool.add");
+  … // signs in, drags across two days
+  await waitFor(view, `document.querySelector('.draft-drawer')?.textContent ?? ''`, (v) => String(v).includes("2 working days"));
+  await press(view, ".draft-drawer .tool.add"); // Ask
   …
 });
 ```
 
 `webview`, `urlFor`, `waitFor` and `press` are `src/webview.ts`.
 
+- The fast loop: `ETA_EXAMPLE=<name> bun run stories` and the app's own test files
+  (`bun test examples/<name>`); the full gate before a commit.
 - A test for each document's rules and shapes, called directly, without a server.
-- A `server.test.ts` that drives writes and undo over a real websocket (two writes racing).
+- A `server.test.ts` that drives writes and undo over a real websocket (two writes racing), and checks
+  that a value is drawn, which no story's `seen` does.
 - A `client/app.test.ts` for what only a browser can show (`Bun.WebView`, on Chrome).
 - Open a view with `webview()`, never `new Bun.WebView()`: only `webview()` is measured for the
   client's coverage (`src/client-coverage.ts`).

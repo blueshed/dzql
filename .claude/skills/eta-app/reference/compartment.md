@@ -32,6 +32,8 @@ The hooks, in the order they run: see `Compartment` in `src/compartments/compart
 
 - A page sees what it read: every `read("<docType>:<id>")` while drawing, and the one of each type
   it is on (`resolveDoc`). Those it is told about, and may write. Nothing declares it.
+- A field in a document reaches every page that reads it, drawn or not: a field only some may see
+  belongs in a document only they read.
 - So cut documents by who reads them: the wedding's households read `wedding:1` and `everyone:1`,
   never the couple's board. An id may be criteria (`month:2026-09`); `permit` is given it.
 - `perSession`: one per session (the session, a desk), seen by its own session alone, named on the

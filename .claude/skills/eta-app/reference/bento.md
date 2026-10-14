@@ -18,8 +18,7 @@ export function render(sessionId: string): string {
 ```
 
 `docs/bento/README.md` says what a page is for: where am I, what can I do. `bento()` (`src/bento.ts`)
-binds the app's icons, its session's docType and the last tool; what it returns is its type. These
-are defaults, not rules: draw your own when a story asks.
+binds the app's icons, its session's docType and the last tool, once. These are defaults, not rules.
 
 - A page is a **box** (`boxPage`: cells in a tray, one may grow into the window; laid out by
   `grid()`, `src/grid.ts`) or a **collection** (`collectionPage`: the window alone).
@@ -32,13 +31,13 @@ are defaults, not rules: draw your own when a story asks.
 - The stylesheet imports `src/bento.css` first, then says its own tokens. `bento.css` styles only
   inside `layers()`: draw every bento page in it (`layers(page, "", "")` when nothing is open).
   Outside it (`body`, `#app`) is the app's to style.
-- What opens is a `<button>`, never a `div` with `role="button"`. A figure in an applet's SVG says
-  `role="button"` and answers Enter and Space itself. A row an applet draws is opened by a page's
-  `<button>` beside the mount, named by it (`aria-labelledby`), not around it.
+- What opens is a `<button>`, never a `div` with `role="button"` (an applet's SVG figure says
+  `role="button"` and answers Enter and Space). A row an applet draws is opened by a `<button>`
+  beside the mount (`aria-labelledby`), not around it.
 - `data-moving` names what grows (a view transition runs only when its own tag changes);
   `data-reveal` scrolls the chosen row into the clear, one too tall by its top.
-- A render keeps the reader's place, below any sticky bar the client can measure; one it cannot is
-  declared with `scroll-padding-top`.
+- A render keeps the reader's place below a sticky bar; one the client cannot measure is declared
+  with `scroll-padding-top`.
 
 ## Where you are: the address
 
@@ -53,5 +52,5 @@ open over it (`guests?guest=2`, `gifts?new`, leave's `2026-10?request=1`).
   catches up to the URL.
 - The stories put people there with `Stories.goTo(address)`. A story's `from`, and each place its
   `seen` names, must be one a control leads to: a button whose `data-value` is the address, or a tap
-  an applet names. The URL and the back button are not controls: a place reached by a link (an
-  email) goes in the cast's own writes.
+  an applet names. The URL, `data-page-write` and the back button are not controls: a place reached
+  by a link (an email) goes in the cast's own writes.

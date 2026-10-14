@@ -21,8 +21,8 @@ path)` is the compartment's permit ([compartment.md](compartment.md)), asked for
 The ladder, and where it stops:
 
 1. **Derived.** A field is typed by its column (a number for an integer or a real, else text; json is
-   not drawn) and named by it. A field the permit refuses is read, not typed. The add modal asks for
-   what cannot be empty; a row is named by its first column.
+   not drawn) and named by it, drawn by `field()` ([controls.md](controls.md)). A field the permit
+   refuses is read, not typed. The add modal asks for what cannot be empty; a row is named by its first column.
 2. **A field names an applet.** It is drawn as that applet's mount, given `{ doc, path, current }`,
    declaring the one write it sends. Register another applet under that name (`registerApplet`,
    last wins) and the field changes on every derived page.

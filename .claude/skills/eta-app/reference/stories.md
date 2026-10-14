@@ -40,6 +40,11 @@ The shape is `Story` and `Stories` in `src/stories.ts`; `docs/stories.md` says w
   biggest part. `budget` (bytes before compression), on a story or on `Stories`, fails a page handed
   more. A part far bigger than its write is cut too coarse ([page.md](page.md)), or an applet is
   handed its props whole ([applets.md](applets.md)).
+- `seen` compares pages; it does not look for a word. That a value is drawn, check in a server test
+  ([tests.md](tests.md)).
+- Start no two stories alike: tests pick stories by the start of their name (`src/by-hand.test.ts`).
+- A new story moves numbers other files pin: run `bun run costs` (it rewrites the README's measured
+  counts); in eta's repo, `examples/modeling/loader/*.test.ts` pins some examples' story counts.
 - A write a compartment permits that no story tells and no page offers is a hidden verb, warned of
   by document: `session: a write no story tells and no page offers / ada may add /name`. Narrow the
   `permit`, or leave it wide on purpose and say why beside it. Never write a story to quiet it.

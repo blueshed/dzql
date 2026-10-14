@@ -8,6 +8,9 @@ Two kinds. **Guidance**, current:
 - `least-resistance.md` -- why eta suits an AI that builds apps, what still slows it, and the
   five things that would make eta the easy path, model first among them.
 - `plan-2026-10-14.md` -- the ten medium items, a story each, done by a team in parallel.
+- `concise-skills.md` -- the standard the skills are cut to: a compass, not an encyclopedia.
+- `eta-app-notes.md` -- the why behind the eta-app skill: the numbers, the reasons and the
+  sketches (OAuth2, LDAP) that left it when it was cut.
 - `review-2026-10-13.md` -- the review in progress: is the repo as small and simple as it can be,
   with every example and test justified. Its decisions are being carried out.
 

@@ -25,29 +25,28 @@ export function read(id: string): SessionDocument {
 }
 ```
 
-A document is a root row and the collections it includes, each a map of rows by id; two documents
-may include the same rows, and delta carries a write to both. `defineSchema`, `defineDoc` and their
-options are delta's: its `delta-doc` skill (`node_modules/@blueshed/delta/.claude/skills/delta-doc/`).
-`read<T>(name)` (`src/documents.ts`) gives the document as held, synchronously; it throws `Pending`
-when it is not held yet, and the kernel loads it and draws again. Adapt rows there for the page, and
-put the pure rules beside it (`shape(doc, ops)`), tested without a server.
+A document is a root row and the collections it includes, maps of rows by id; two documents may
+include the same rows, and a write reaches both. `defineSchema` and `defineDoc` are delta's: its `delta-doc` skill
+(`node_modules/@blueshed/delta/.claude/skills/delta-doc/`). `read<T>(name)` (`src/documents.ts`) is
+synchronous; it throws `Pending` when the document is not held yet, and the kernel loads it and draws
+again. Put the pure rules beside it (`shape(doc, ops)`), tested without a server.
 
-- Prefix tables with the app's name (`chat_`). Seed only into empty tables. No migrations:
-  `createTables` makes what is missing (`migrateSchema` adds a column that came later).
+- Prefix tables with the app's name (`chat_`). Seed only into empty tables.
+- `createTables` makes a missing table, not a missing column: a column added later needs
+  `migrateSchema` (as chat's `delta.ts` calls it), or the dev database deleted.
 - Address a row by its id, never its position: others write between a write and its undo. Make ids
-  in `shape` (`Bun.randomUUIDv7()` is time-ordered, so the key is the order).
-- An id is text on the wire (`/asks/3`): compare ids as text (delta's skill, "The id rule").
+  in `shape` (`Bun.randomUUIDv7()` is time-ordered). Ids are text on the wire: compare them as text.
 - A value a column cannot default in SQL (an object) goes in the schema's `default`; treat null as
   empty all the same.
-- `serverWrite(doc, ops)` is the server's own write: no person, no cursor, never undone. Its paths
-  are the document's own, `under` not added (`/sessions/person_id`, not `/person_id`).
+- `serverWrite(doc, ops)` is the server's own write: no person, never undone. Its paths are the
+  document's own, `under` not added (`/sessions/person_id`, not `/person_id`).
 - Tests and scripts write as a person would, through the same `shape`.
 - A page reads through `read()`. Go to the tables only for what no page reads as a document: what a
   live document is computed from, a credential, a blob, a rule `shape` checks across rows.
-- A session that is not history goes in a registry of its own, without `{ ledger: true }`, and its
-  compartment says `ledger: false`: one left off the ledger by mistake is then caught (leave's).
-- Read a long document in windows by a keyset, never an offset: chat keeps `/before` in the session
-  and draws the fifty before it, while the page still reads the whole room, so it is told every change.
+- A session that is not history goes in a registry without `{ ledger: true }`, and its compartment
+  says `ledger: false`, so one left off the ledger by mistake is caught (leave's).
+- Read a long document in windows by a keyset, never an offset (chat's `/before`); the page still
+  reads it whole, so it is told every change.
 
 ## The ledger
 
