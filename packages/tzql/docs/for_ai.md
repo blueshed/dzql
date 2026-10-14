@@ -99,7 +99,8 @@ ROOT KEY RULES:
 
 SUBSCRIBABLE TYPES:
 1. Single Entity: has root.key, returns one document with includes
-2. List Subscribable: no root.key, returns array of documents
+2. List Subscribable: no root.key, returns array of documents, only the
+   root rows the subscriber may view (the root entity's view rules apply)
 ```
 
 ## Entity Definition
@@ -309,6 +310,9 @@ export const subscribables = {
     // Who can subscribe: rules are checked against the root row, and a
     // reference to the key param (venue_id) means the root's id.
     // [] denies everyone; use ['TRUE'] or ['AUTHENTICATED'] to open it.
+    // canSubscribe is the whole gate: the root's view rules are NOT also
+    // applied. To give the document the same audience as get_venues, copy
+    // venues.permissions.view in here.
     canSubscribe: ['@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id']
   }
 };
@@ -320,7 +324,7 @@ Returns an array of entities. Omit `root.key` to create a list:
 
 ```typescript
 export const subscribables = {
-  // Returns all venues, to any signed-in user
+  // Returns the venues the subscriber may view, to any signed-in user
   my_venues: {
     params: {},  // No params needed
 
@@ -337,8 +341,9 @@ export const subscribables = {
 
     // A list has no root row for a path to start from, so only TRUE, FALSE
     // or AUTHENTICATED are allowed here; [] denies everyone.
-    // The list returns every root row matching root.filter: it does not
-    // apply the entity's view rules, so filter the root to what may be shown.
+    // Each subscriber gets only the root rows that match root.filter AND
+    // that venues.permissions.view lets them see (view: [] shows no rows).
+    // Includes are not filtered by their own entities' view rules.
     canSubscribe: ['AUTHENTICATED']
   }
 };

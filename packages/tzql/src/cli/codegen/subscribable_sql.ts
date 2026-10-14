@@ -202,6 +202,13 @@ function generateGetFunction(name: string, sub: SubscribableIR, entities: Record
       }
     }
   }
+  if (isList) {
+    // canSubscribe on a list can only be a literal, so it can't tell rows apart.
+    // Return just the rows the subscriber may view: the root's view rules,
+    // checked against each root row ([] shows nobody any row).
+    const viewRules = entities[sub.root.entity]?.permissions?.view;
+    whereConditions.push(`(${compileRuleList(sub.root.entity, viewRules, { kind: 'row', name: 'root' })})`);
+  }
   const whereClause = whereConditions.length > 0
     ? `WHERE ${whereConditions.join(' AND ')}`
     : '';
