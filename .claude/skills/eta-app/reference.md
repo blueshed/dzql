@@ -86,6 +86,11 @@ A story is who does what, and who then sees it, as a sentence a customer could c
   handed each page, and its biggest part. A part far bigger than the write is a part cut coarser
   than what changes, or an applet handed its props whole where it could take patches (`data-doc`).
   `budget` (bytes before compression), on a story or on `Stories`, fails a page handed more.
+- A write a compartment takes that no story tells and no page offers is a hidden verb, and `bun
+  run stories` warns of it, by its document: `session: a write no story tells and no page offers
+  / ada may add /name`. Permit the writes the stories make: narrow the `permit`, or leave it wide
+  on purpose and say why beside it (the ticker's "anyone may type a tick"). Never write a story
+  to quiet it.
 
 ## The first questions an app asks
 

@@ -73,10 +73,11 @@ export const household: Compartment = {
     const rule = RULES.find((r) => r.path.test(op.path) && r.ops.includes(op.op));
     if (!rule) return false;
     if (rule.dated && !weddingDoc.answersOpen()) return false;
-    if (op.path === "/guests/-") {
-      // A plus-one only while the invitation gave them one they have not yet named.
+    if (op.path === "/guests/-" || op.path === "/asks/-") {
+      // A plus-one only while the invitation gave them one they have not yet named; an ask only once they have.
       const h = householdDoc.read(session.id!)!;
-      return h.guests.filter((g) => g.named_by === "household").length < h.plus_ones;
+      const owed = h.guests.filter((g) => g.named_by === "household").length < h.plus_ones;
+      return op.path === "/guests/-" ? owed : !owed;
     }
     return true;
   },

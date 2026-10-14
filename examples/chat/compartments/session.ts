@@ -41,7 +41,7 @@ export const session: Compartment = {
     return ws.data.sessionId; // every connection always sees its own session
   },
   permit(ws, op) {
-    if (!WRITABLE_PATHS.has(op.path)) return false;
+    if (!WRITABLE_PATHS.has(op.path) || op.op === "add") return false; // a name or a room is replaced, or taken back
     // A room only with a name: a stale tab, logged out elsewhere, does not wander into one.
     if (op.path === "/room") return sessionDoc.read(ws.data.sessionId).name !== null;
     if (op.path === "/before") return sessionDoc.read(ws.data.sessionId).room !== null;

@@ -11,7 +11,7 @@ import { read } from "./documents";
 import { appletProps, appletWrites, write } from "./html";
 import type { Example } from "./example";
 import { size } from "./costs";
-import { controlsOn, goesTo, hear, holding, largest, MOST_PROPS, offers, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, type Outcome, type Report, type Trace, type Wire } from "./harness";
+import { anyOne, controlsOn, goesTo, hear, holding, largest, MOST_PROPS, offers, pathsIn, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, valueAt, type Outcome, type Report, type Trace, type Wire } from "./harness";
 import { comparable, diff, drawParts, part, splitTag } from "./parts";
 import { post, type Stories, type Story } from "./stories";
 import { serverWrite } from "./documents";
@@ -905,19 +905,63 @@ describe("propsCost: what a render sends in props, which the harness says and do
     const ticks = told.stories.filter((s) => s.name.startsWith("Bravo ticks while Ann has its drawer open"));
     const report = await run(ticker, { ...told, stories: [...ticks, ...ticks] });
     expect(report.failed).toBe(0);
+    const props = report.warnings!.filter((w) => w.says.includes("props")); // what a write no story tells finds is another test's
     // told twice, said once: the board and the clock sent again as the cast stands where the story says, the spark with the drawer each tick
-    expect(report.warnings!.map((w) => [w.story, /was sent the (\S+) applet's props again/.exec(w.says)?.[1]])).toEqual(["board", "clock", "spark"].map((applet) => [ticks[0]!.name, applet]));
+    expect(props.map((w) => [w.story, /was sent the (\S+) applet's props again/.exec(w.says)?.[1]])).toEqual(["board", "clock", "spark"].map((applet) => [ticks[0]!.name, applet]));
     const said: string[] = [];
     const log = spyOn(console, "log").mockImplementation((line: string) => void said.push(line));
     try {
-      print(report);
-      print({ ...report, warnings: report.warnings!.slice(0, 1) });
+      print({ ...report, warnings: props });
+      print({ ...report, warnings: props.slice(0, 1) });
     } finally {
       log.mockRestore();
     }
-    expect(said).toContain(`warn  ${ticks[0]!.name}\n        ${report.warnings![2]!.says}`);
+    expect(said).toContain(`warn  ${ticks[0]!.name}\n        ${props[2]!.says}`);
     expect(said.filter((line) => line.includes("passed"))).toEqual(["\n2 passed, 0 failed, 3 warnings", "\n2 passed, 0 failed, 1 warning"]);
   }, 30000);
+});
+
+describe("a hidden verb: a write the server takes that no story tells and no page offers", () => {
+  const withOwn = (docType: string, f: (c: Compartment) => Partial<Compartment>): Example => ({ ...example, compartments: example.compartments.map((c) => (c.docType === docType ? { ...c, ...f(c) } : c)) });
+
+  test("A compartment that permits a write no story tells and no page offers is named by `bun run stories`", async () => {
+    // chat's own: every write its permits take, a story tells or a page offers
+    expect((await run(example, stories)).warnings).toBeUndefined();
+    // a room that takes a message back over the wire: Ada's refusal tells it, so it is not hidden from her; from anyone else it is
+    const loose = withOwn("room", (room) => ({ permit: (ws, op, id) => op.op === "remove" || room.permit!(ws, op, id), shape: (ws, id, ops) => [...ops.filter((op) => op.op === "remove"), ...room.shape!(ws, id, ops)] }));
+    const report = await run(loose, stories);
+    expect(report.failed).toBe(0);
+    const says = (doc: string) => report.warnings!.filter((w) => w.story === `${doc}: a write no story tells and no page offers`).map((w) => w.says);
+    expect(says("room:general")).toEqual(["ada, bob and dee may remove the document, remove /rooms, remove /rooms/id, remove /messages, remove /messages/-", "bob and dee may remove /messages/any"]);
+    expect(says("room:kitchen")).toEqual(["cy may remove the document, remove /rooms, remove /rooms/id, remove /messages, remove /messages/-, remove /messages/any"]); // each room as its readers met it
+    // a permit that refuses by throwing refuses, as on the wire: chat's shape would take an add to a name as its replace
+    const throwing = withOwn("session", (session) => ({ permit: (ws, op, id) => (op.op === "add" ? (() => { throw refuse("No."); })() : session.permit!(ws, op, id)) }));
+    expect((await run(throwing, stories)).warnings).toBeUndefined();
+    // and what it says is printed after the stories, as the props' cost is
+    const said: string[] = [];
+    const log = spyOn(console, "log").mockImplementation((line: string) => void said.push(line));
+    try {
+      print({ ...report, warnings: report.warnings!.slice(1, 2) });
+    } finally {
+      log.mockRestore();
+    }
+    expect(said).toContain("warn  room:general: a write no story tells and no page offers\n        bob and dee may remove /messages/any");
+  }, 30000);
+
+  test("a member of a collection is any one -- an id, or a key of rows of the same fields -- never the end of a list, and a record's fields are their own", () => {
+    const doc = { quotes: { ALPH: { price: 1 }, BRVO: { price: 2 } }, guests: [{ name: "Ada" }], me: { name: "Ada", room: { id: 1 } }, "a/b~": 3 };
+    expect(anyOne("/quotes/ALPH/price", doc)).toBe("/quotes/*/price");
+    expect(anyOne("/guests/0/name", doc)).toBe("/guests/*/name");
+    expect(anyOne("/guests/-", doc)).toBe("/guests/-");
+    expect(anyOne("/me/room/id", doc)).toBe("/me/room/id");
+    expect(anyOne("/nowhere/12", doc)).toBe("/nowhere/*"); // past the document, an id is still any one
+    expect(anyOne("", doc)).toBe("");
+    // every path, escaped as a pointer is, and what is at each: an array's end holds its first member's shape
+    expect(pathsIn(doc)).toEqual(["", "/quotes", "/quotes/ALPH", "/quotes/ALPH/price", "/quotes/BRVO", "/quotes/BRVO/price", "/guests", "/guests/0", "/guests/0/name", "/guests/-", "/me", "/me/name", "/me/room", "/me/room/id", "/a~1b~0"]);
+    expect(valueAt(doc, "/a~1b~0")).toBe(3);
+    expect(valueAt(doc, "/guests/-")).toEqual({ name: "Ada" });
+    expect(valueAt(doc, "/me/name/first")).toBeUndefined();
+  });
 });
 
 describe("hear: a member's page, kept as the client keeps it", () => {
