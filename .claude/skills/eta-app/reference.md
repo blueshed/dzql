@@ -474,7 +474,12 @@ Messages:
   for the one of that type the page is on (`resolveDoc`). `path` is a JSON Pointer, never a verb.
   `id` is the sender's own, which the server only hands back: a number JSON can say, or a string
   of at most 64 characters (`LONGEST_ID`). The kernel's client numbers its writes from 1, and the
-  harness gives every write it sends one.
+  harness gives every write it sends one. An op may be RFC 6902's `test` (`{op: "test", path,
+  value}`), a condition and no change: the value the field that writes `path` was drawn with when
+  someone began typing in it. The server holds it against what that field is drawn with on their
+  page now -- the page's own words, so a compartment that `shape`s its paths needs nothing -- and
+  refuses the write, saying so beside the field (`CHANGED_SINCE`), when it differs. A `test` never
+  reaches `permit` or `shape`; a write of tests alone is none.
 - Server to client: `{type: "patch", doc, version, ops, id?, change?}`, with `doc` named whole (what
   was applied; kept in `window.eta.docs()` under that name). The echo sent to the writer of the
   change its write made (an undo's or a redo's too) carries the write's `id`, and `change`, the
@@ -583,7 +588,10 @@ A control says what it writes with `write(doc, op, path, value?)`, which gives
   goes on each field, and every field whose value differs from what was rendered becomes one op
   in one message. `"input"` is debounced about 150ms and sent when focus leaves. None of them
   sends the same message twice until a write lands; after that (an echo, an undo) it may. A render that changes a field nobody is in shows the new value (an undo's), so it is not
-  sent again; a field someone is in keeps what they type. A select was rendered showing the last
+  sent again; a field someone is in keeps what they type. So a field typed in (not a box, a radio
+  or a select) sends, before its op, a `test` of what it was drawn with when its typist last saw
+  it drawn: a change from someone else drawn under the caret is not written over unseen. Refused
+  so, the field shows what is drawn; draw `toldAt` beside it to say why. A select was rendered showing the last
   option drawn `selected`, else its first not disabled; it keeps a choice not yet drawn, by its
   value, however its options move, and otherwise shows what is drawn. A box was rendered ticked
   or not (`checked`), a group of radios with the value drawn `checked`; each goes only when what
@@ -602,8 +610,10 @@ Also:
   (`data-page-write`) is the URL bar's, not a control: a story that goes somewhere needs the
   button that goes there.
 - When the connection drops, the page stays as it was (what is typed, what applets hold), but
-  `inert`, and `#app` is marked `data-offline` (`src/bento.css` dims it and says so) until the
-  server, reached again, draws it afresh. A write made while it is down is not sent, nor taken
+  `inert`, and `#app` is marked `data-offline` (`src/bento.css` dims it) until the server, reached
+  again, draws it afresh. The client says "Reconnecting…" in a `role="status"` region it puts
+  beside `#app` (`.connection`), since what is inert is not read out. It says nothing else: a
+  change from someone else is drawn in silently, as a change speaks to the person who made it. A write made while it is down is not sent, nor taken
   for sent: a form keeps what is typed, and an editing form says it once the page is drawn afresh.
 - `autofocus` means "this field is waiting for the caret": after a render the client focuses it,
   but only when nothing else has the caret.

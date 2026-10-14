@@ -16,7 +16,7 @@ export const example: Example = {
   // The welcome until a code says who you are, then whichever of the two it makes you.
   render(sessionId) {
     const visit = sessionDoc.read(sessionId);
-    const page = visit.kind === "household" ? renderHousehold(visit) : visit.kind === "couple" ? renderBoard(visit) : undefined;
+    const page = visit.kind === "household" ? renderHousehold(visit, sessionId) : visit.kind === "couple" ? renderBoard(visit) : undefined;
     return page ?? welcome(weddingDoc.welcome(), visit.note, toldAt(sessionId, "session", "/code"));
   },
   // The same guard every write path already needs: a tab that has left (or whose code no longer

@@ -4,11 +4,11 @@ import { fragmentsMessage, renderMessage } from "./compartments/render";
 import type { ConnectionData } from "./connection";
 import { setActiveDocuments, settled, type Documents } from "./documents";
 import type { Example } from "./example";
-import { isVerb, isWriteId, patchMessage, refusedMessage, type PatchOp, type WriteId } from "./json-patch";
+import { isTest, isVerb, isWriteId, patchMessage, refusedMessage, type PatchOp, type Test, type WriteId } from "./json-patch";
 import { failed } from "./failed";
 import { splitDoc } from "./names";
 import { drawing, shownTo } from "./reading";
-import { diff, type Drawn } from "./parts";
+import { diff, drawnValues, type Drawn } from "./parts";
 import { Refusal, refuse, tell } from "./refusal";
 import { handleOf, newHandle } from "./compartments/ledger";
 import { refuseOrigin } from "@blueshed/delta/server";
@@ -162,7 +162,10 @@ function tellChanges(documents: Documents): void {
   });
 }
 
-type Write = { id?: unknown; doc: string; ops: PatchOp[] };
+type Write = { id?: unknown; doc: string; ops: (PatchOp | Test)[] };
+
+/** Why a write whose `test` fails is refused, beside the field (todo n4). */
+export const CHANGED_SINCE = "This was changed elsewhere as you typed: here it is now.";
 
 /** The most ledger entries `inspect` gives a document: it asks delta's history, and every event waits on it. */
 const MOST_INSPECTED = 100;
@@ -179,9 +182,9 @@ const idOf = (message: unknown): WriteId | undefined => {
 };
 
 /**
- * A write as the wire says it: a document's name, and one op or more, each a verb and a JSON
- * Pointer; and an id that is one (`isWriteId`), or none (none given, or a number JSON cannot say
- * back: 1e400 parses as Infinity). One whose id is anything else -- a string longer than an id, an
+ * A write as the wire says it: a document's name, and ops, each a verb or a `test` and a JSON
+ * Pointer, a verb among them; and an id that is one (`isWriteId`), or none (none given, or a
+ * number JSON cannot say back: 1e400 parses as Infinity). One whose id is anything else -- a string longer than an id, an
  * object -- is not a write, so nothing is ever sent back larger than an id.
  */
 function isWrite(message: unknown): message is Write {
@@ -190,8 +193,8 @@ function isWrite(message: unknown): message is Write {
     (m?.id === undefined || typeof m.id === "number" || isWriteId(m.id)) &&
     typeof m?.doc === "string" &&
     Array.isArray(m.ops) &&
-    m.ops.length > 0 &&
-    m.ops.every((op: { op?: unknown; path?: unknown } | null) => isVerb(op?.op) && typeof op!.path === "string" && (op!.path === "" || op!.path.startsWith("/")))
+    m.ops.some((op: { op?: unknown } | null) => isVerb(op?.op)) &&
+    m.ops.every((op: { op?: unknown; path?: unknown } | null) => (isVerb(op?.op) || op?.op === "test") && typeof op!.path === "string" && (op!.path === "" || op!.path.startsWith("/")))
   );
 }
 
@@ -298,13 +301,18 @@ export function createServer(example: Example, port: number | string = process.e
    * the wire (not live, sourced or static), and then only what the owner permits. True when
    * something was applied.
    */
-  async function write(ws: Socket, { doc, ops }: Write, id: WriteId | undefined): Promise<boolean> {
+  async function write(ws: Socket, { doc, ops: all }: Write, id: WriteId | undefined): Promise<boolean> {
+    const ops = all.filter((op): op is PatchOp => !isTest(op));
     const target = await settled(documents, () => resolveName(byDocType, doc, ws));
     if (!target || !(await settled(documents, () => sees(target.owner, ws, target.docId)))) return false;
     const { owner, docId } = target;
     const kind = owner.kind ?? "written";
     if (kind !== "written" && kind !== "fact") return false;
     if (!(await settled(documents, () => ops.every((op) => owner.permit?.(ws, op, docId) ?? false)))) return false;
+    // A field typed in says what it was drawn with as the typing began (todo n4): drawn otherwise on
+    // this page now, someone changed it since, unseen, and the typing would write over it.
+    const page = sent.get(ws)?.html ?? "";
+    if (all.filter(isTest).some((t) => !drawnValues(page, doc, t.path).includes(t.value))) throw refuse(CHANGED_SINCE);
     return owner.docType === "ledger" ? walk(ws, ops, id) : writeDelta(ws, owner, docId, ops, id);
   }
 

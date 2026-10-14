@@ -94,10 +94,10 @@ sites whose pages may open a socket) among them.
   (`permitUndo`: answers closed at the deadline).
 - **Stories are the tests.** An example is a list of sentences -- who does what, and who then
   sees it -- and `bun run stories` checks each one over real sockets, with its undo and redo;
-  `bun run stories:all` runs every example's (<!-- measured:stories -->11 in chat, 23 in leave, 12 in modeling, 17 in ticker and 18 in wedding<!-- /measured -->),
+  `bun run stories:all` runs every example's (<!-- measured:stories -->11 in chat, 23 in leave, 12 in modeling, 17 in ticker and 19 in wedding<!-- /measured -->),
   and does again by hand, in a browser the size of a phone, each write a page sends and each
   refusal a control of the page sends, so a control nobody can press fails.
-- **A small client.** The kernel's client is <!-- measured:client -->7.1 KB<!-- /measured --> minified
+- **A small client.** The kernel's client is <!-- measured:client -->7.4 KB<!-- /measured --> minified
   and gzipped: a morph, the write gestures and an applet registry. There is no framework to learn.
 - **Nothing else to run.** Bun and SQLite, one process, one file.
 - **A readable wire.** `bun run cli watch` prints every patch as it happens; `bun run cli undo`

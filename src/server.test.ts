@@ -12,7 +12,7 @@ import { WIRE, type PatchOp, type WriteId } from "./json-patch";
 import { closeConnection, openConnection, wireName } from "./compartments/audience";
 import { read, serverWrite } from "./documents";
 import { part } from "./parts";
-import { createServer } from "./server";
+import { CHANGED_SINCE, createServer } from "./server";
 import { assemble, type Inspection } from "./compartments";
 import { onFailure } from "./failed";
 import { refuse, tell, toldAt } from "./refusal";
@@ -115,7 +115,9 @@ function makeExample(name: string): Example {
     compartments: [noteCompartment, monthCompartment, tickCompartment],
     render: (sessionId) => {
       if (readNote(sessionId) === "undrawable") throw new Error("undrawable"); // a page whose drawing fails
-      return `<p class="note">${readNote(sessionId)}</p>` + toldAt(sessionId, "note", "/text") +
+      // one typing in the note draws it in a field
+      const field = sessionId.startsWith("typing") ? `<textarea data-write='{"doc":"note","op":"replace","path":"/text"}'>\n${readNote(sessionId)}</textarea>` : "";
+      return `<p class="note">${readNote(sessionId)}</p>` + field + toldAt(sessionId, "note", "/text") +
         (showing.get(sessionId) ?? []).map((m) => part(`month-${m}`, `<ul data-month="${m}">${readMonth(m).map((a) => part(`a-${a.id}`, `<li>${a.what}</li>`)).join("")}</ul>`)).join("");
     },
     active: () => true,
@@ -557,6 +559,26 @@ describe("createServer, generically (no example from the examples directory invo
     const beyond = (await heard(ws)).find((m) => m.type === "patch");
     expect(beyond).toMatchObject({ ops: [{ path: "/text", value: "beyond a number" }] });
     expect(beyond).not.toHaveProperty("id");
+    ws.close();
+  });
+
+  test("a field typed in says what it was drawn with when the typing began: drawn otherwise now, its write is refused and says so; drawn so, it lands (n4)", async () => {
+    const ws = await open(server, "typing-ann");
+    write(ws, "note", [{ op: "replace", path: "/text", value: "Ben's" }], 1); // as though someone changed it under the caret
+    await heard(ws);
+    const typed = (was: string, value: string, id: number) => write(ws, "note", [{ op: "test", path: "/text", value: was }, { op: "replace", path: "/text", value }], id);
+
+    typed("", "Ann's", 2);
+    const refused = await heard(ws);
+    expect(refused[0]).toEqual({ type: "refused", id: 2, reason: CHANGED_SINCE });
+    expect(htmlOf(refused.at(-1)!)).toContain(CHANGED_SINCE); // beside the field
+    expect(readNote("typing-ann")).toBe("Ben's");
+
+    typed("Ben's", "Ann's", 3); // the textarea's first newline is the browser's to drop, as the server does
+    expect((await heard(ws)).find((m) => m.type === "patch" && m.doc === "note")).toMatchObject({ id: 3, ops: [{ op: "replace", path: "/text", value: "Ann's" }] }); // a test is no change: its echo carries none
+
+    ws.send(JSON.stringify({ id: 4, doc: "note", ops: [{ op: "test", path: "/text", value: "Ann's" }] })); // a test alone is no write
+    expect((await heard(ws))[0]).toEqual({ type: "refused", id: 4 });
     ws.close();
   });
 

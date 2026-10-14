@@ -241,5 +241,7 @@ describe("the stories by hand", () => {
     expect(sameWrite({ doc: "room:kitchen", ops: say.ops }, { doc: "room:general", ops: say.ops })).toBe(false);
     expect(sameWrite({ doc: "room", ops: [{ op: "add", path: "/messages/-", value: "hi" }] }, say)).toBe(false);
     expect(sameWrite({ doc: "session", ops: [{ op: "remove", path: "/name" }] }, { doc: "session", ops: [{ op: "remove", path: "/name" }, { op: "remove", path: "/room" }] })).toBe(false);
+    const words = { doc: "household", ops: [{ op: "replace" as const, path: "/message", value: "Hi" }] };
+    expect(sameWrite({ doc: "household", ops: [{ op: "test", path: "/message", value: "" }, ...words.ops] }, words)).toBe(true); // a field's test is the page's own
   });
 });

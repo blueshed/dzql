@@ -30,6 +30,8 @@ const close = (v: HouseholdView): string => nav(over(v.session.ui).path);
 /** Everything a household's page reads: their own document, the wedding, and the lists. */
 export type HouseholdView = {
   session: SessionDocument;
+  /** What this tab was last told beside the household's words: why they were refused (src/refusal.ts `toldAt`). */
+  wordsTold: string;
   h: HouseholdDocument;
   w: Wedding;
   courses: Course[];
@@ -300,7 +302,7 @@ function answerSheet(v: HouseholdView): string {
     h.answer && v.open && `<div class="drawer-foot">${tool("Take back our answer", { kind: "quiet", write: write("household", "remove", "/answer") })}</div>`,
     `<div class="props">${prop(
       "Our words",
-      `<form data-write-on="blur"><textarea name="message"${write("household", "replace", "/message")} rows="3" placeholder="Say something to the couple" aria-label="Our words">${esc(h.message ?? "")}</textarea></form>`,
+      `<form data-write-on="blur"><textarea name="message"${write("household", "replace", "/message")} rows="3" placeholder="Say something to the couple" aria-label="Our words">${esc(h.message ?? "")}</textarea></form>${v.wordsTold}`,
     )}</div>`,
   );
   return drawer("answer-drawer", "Our answer", body, close(v), "answer-drawer");

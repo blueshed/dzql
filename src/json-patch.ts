@@ -20,6 +20,16 @@ export type PatchOp = {
 export const isVerb = (op: unknown): op is PatchOp["op"] => op === "add" || op === "replace" || op === "remove";
 
 /**
+ * RFC 6902's `test`, a condition and not a change: the value the field that writes `path` was drawn
+ * with when someone began typing in it (todo n4). The server holds it against what that field is
+ * drawn with on their page now, and refuses the write when it differs: someone else changed it since.
+ */
+export type Test = { op: "test"; path: string; value: string };
+
+/** Is this op a `test`? */
+export const isTest = (op: { op: unknown }): op is Test => op.op === "test";
+
+/**
  * A write's id: the sender's own, a number or a string, which the server only hands back -- on the
  * echo of the change the write made, to its writer alone, or on its refusal -- so a page knows its
  * own write from anyone else's.

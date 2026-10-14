@@ -21,7 +21,7 @@
 // own `goTo()` where it writes.
 
 import { writeOf, type Stories, type Story, type Write } from "../../../src/stories";
-import type { PatchOp } from "../../../src/json-patch";
+import { isTest, type PatchOp } from "../../../src/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import { typeOf as docType } from "./documents";
 import type { Entity, Field, Model, Story as ModelStory, StoryWrite } from "./model/grammar";
@@ -117,8 +117,8 @@ export function fromStories(stories: Stories): Reading {
   const modelStories: ModelStory[] = [];
 
   const writesOf = (w: Write): StoryWrite[] =>
-    w.ops.map((op) => {
-      const { write, fields: fs } = readOp(w.doc, op);
+    w.ops.filter((op): op is PatchOp => !isTest(op)).map((op) => {
+      const { write, fields: fs } = readOp(w.doc, op); // a test is no write: a condition on one
       collections.set(write.entity, locate(w.doc, op.path).chain.join("/"));
       const known = fields.get(write.entity) ?? new Map<string, unknown>();
       for (const [name, value] of fs) if (known.get(name) === undefined) known.set(name, value);
