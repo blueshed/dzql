@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { press, urlFor, waitFor } from "../../../src/webview";
+import { press, urlFor, waitFor, webview } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { example } from "../index";
 
@@ -55,7 +55,7 @@ const VIEWPORT = `document.querySelector('meta[name=viewport]').content`;
 
 describe("app.ts in a real browser", () => {
   test("on a phone no field is under 16px, so iOS does not zoom into it, and the reader may zoom", async () => {
-    await using view = new Bun.WebView({ width: 375, height: 740 });
+    await using view = webview({ width: 375, height: 740 });
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, NAME_FORM_VISIBLE, (v) => v === true);
     expect(await view.evaluate<string>(VIEWPORT)).not.toMatch(/maximum-scale|user-scalable/);
@@ -69,7 +69,7 @@ describe("app.ts in a real browser", () => {
   });
 
   test("a fresh session shows the name form, then the user bar after submitting", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
 
     await submitName(view, "Ada");
@@ -79,7 +79,7 @@ describe("app.ts in a real browser", () => {
   });
 
   test("the session survives a reload via the session cookie", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
 
     await submitName(view, "Grace");
@@ -92,7 +92,7 @@ describe("app.ts in a real browser", () => {
   });
 
   test("reconnection backoff resets after a successful reconnect, rather than compounding", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
 
     const socketOpen = `window.eta?.socket()?.readyState === WebSocket.OPEN`;
@@ -114,7 +114,7 @@ describe("app.ts in a real browser", () => {
   });
 
   test("logout clears the session and shows the name form again", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
 
     await submitName(view, "Linus");
@@ -126,7 +126,7 @@ describe("app.ts in a real browser", () => {
   });
 
   test("joining a room then changing room returns to the room selector", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     await submitName(view, `Chatter-${crypto.randomUUID()}`);
     await joinRoom(view, crypto.randomUUID());
@@ -139,7 +139,7 @@ describe("app.ts in a real browser", () => {
   });
 
   test("tapping a room's row enters it", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     await submitName(view, `Clicker-${crypto.randomUUID()}`);
 
@@ -157,7 +157,7 @@ describe("app.ts in a real browser", () => {
   });
 
   test("a sent chat message appears in the message list", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     await submitName(view, `Chatter-${crypto.randomUUID()}`);
     await joinRoom(view, crypto.randomUUID());
@@ -170,7 +170,7 @@ describe("app.ts in a real browser", () => {
   });
 
   test("a sent message clears the input, but a rejected (blank) one hands the text back", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     await submitName(view, `Typist-${crypto.randomUUID()}`);
     await joinRoom(view, crypto.randomUUID());
@@ -193,7 +193,7 @@ describe("app.ts in a real browser", () => {
   });
 
   test("new messages are morphed in without replacing the existing message list DOM node", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     await submitName(view, `Persist-${crypto.randomUUID()}`);
     await joinRoom(view, crypto.randomUUID());
@@ -214,8 +214,8 @@ describe("app.ts in a real browser", () => {
   });
 
   test("a presence-only update does not reset the message list scroll position", async () => {
-    await using viewA = new Bun.WebView();
-    await using viewB = new Bun.WebView();
+    await using viewA = webview();
+    await using viewB = webview();
 
     await viewA.navigate(urlFor(viewA, server.url));
     await submitName(viewA, `ScrollA-${crypto.randomUUID()}`);
@@ -252,7 +252,7 @@ describe("app.ts in a real browser", () => {
   }, 20000); // fifteen messages typed, one by one
 
   test("a room with history opens scrolled to the newest message, not the oldest", async () => {
-    await using viewA = new Bun.WebView();
+    await using viewA = webview();
     await viewA.navigate(urlFor(viewA, server.url));
     await submitName(viewA, `Fresh-${crypto.randomUUID()}`);
     const room = crypto.randomUUID();
@@ -274,7 +274,7 @@ describe("app.ts in a real browser", () => {
 
   // todo n70: a [data-autoscroll] list is pinned when something new is at its foot, not when its count grows
   test("a full room still scrolls to the newest message: the fifty-first takes the oldest out, and lands in view", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     await submitName(view, `Full-${crypto.randomUUID()}`);
     await joinRoom(view, crypto.randomUUID());
@@ -298,8 +298,8 @@ describe("app.ts in a real browser", () => {
   }, 20000);
 
   test("a message sent from one browser appears live in another browser in the same room", async () => {
-    await using viewA = new Bun.WebView();
-    await using viewB = new Bun.WebView();
+    await using viewA = webview();
+    await using viewB = webview();
 
     await viewA.navigate(urlFor(viewA, server.url));
     await viewB.navigate(urlFor(viewB, server.url));
@@ -318,8 +318,8 @@ describe("app.ts in a real browser", () => {
   });
 
   test("browser A's half-typed message and caret survive a re-render triggered by browser B", async () => {
-    await using viewA = new Bun.WebView();
-    await using viewB = new Bun.WebView();
+    await using viewA = webview();
+    await using viewB = webview();
 
     await viewA.navigate(urlFor(viewA, server.url));
     await viewB.navigate(urlFor(viewB, server.url));
@@ -351,8 +351,8 @@ describe("app.ts in a real browser", () => {
   });
 
   test("eta.docs() gains the message delta made when another browser sends one", async () => {
-    await using viewA = new Bun.WebView();
-    await using viewB = new Bun.WebView();
+    await using viewA = webview();
+    await using viewB = webview();
 
     await viewA.navigate(urlFor(viewA, server.url));
     await viewB.navigate(urlFor(viewB, server.url));
@@ -381,7 +381,7 @@ describe("app.ts in a real browser", () => {
   });
 
   test("eta.inspect() reports the last write sent and whether it was echoed", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     await submitName(view, `Inspector-${crypto.randomUUID()}`);
     const room = crypto.randomUUID();

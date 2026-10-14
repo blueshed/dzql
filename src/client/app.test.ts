@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { bento, choice, type Field } from "../bento";
 import { appletProps, write } from "../html";
 import { diff, drawParts, part, splitTag } from "../parts";
-import { press, waitFor } from "../webview";
+import { press, waitFor, webview } from "../webview";
 import { renderMessage } from "../compartments/render";
 import { lastId, push, pushRefused, pushRender, quietPages, reconnected, stubEverySocket, stubSend } from "./socket.test.helpers";
 import fixture from "./app.test.html";
@@ -288,8 +288,8 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
         },
       });
       try {
-        await using ann = new Bun.WebView();
-        await using willem = new Bun.WebView();
+        await using ann = webview();
+        await using willem = webview();
         for (const view of [ann, willem]) {
           await view.navigate(relay.url.toString());
           await waitFor(view, `document.getElementById('thu') !== null`, (v) => v === true);
@@ -342,6 +342,44 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
       kept[how] = await view.evaluate<number>(R11);
     }
     expect(kept).toEqual({ "a selection left above": 60, "after a right-click": 60, "after a press the window lost": 60 });
+  });
+
+  test("a touch leaves the place to the browser until it ends, though the browser takes it for a scroll; a mouse's cancelled press ends at once", async () => {
+    await using view = await open();
+    const on = (type: string, pointer = "") => view.evaluate(`document.getElementById('full').dispatchEvent(new ${pointer ? `PointerEvent("${type}", { bubbles: true, pointerType: "${pointer}" })` : `Event("${type}", { bubbles: true })`})`);
+    // the browser keeps no place of its own here, so what is kept is the client's
+    const without = (gone: string[]) => scroller(gone).replace("overflow:auto", "overflow:auto;overflow-anchor:none");
+    /** Whether r11 is where it was read, after the page is drawn without `gone`. */
+    const kept = async (gone: string[]) => {
+      const read = await view.evaluate<number>(R11);
+      await pushRender(view, without(gone));
+      return (await view.evaluate<number>(R11)) === read;
+    };
+    await pushRender(view, without([]));
+    await view.evaluate(`document.getElementById('full').scrollTop = 550`);
+    await aFrame(view);
+    await on("touchstart");
+    await on("pointercancel", "touch"); // the browser took it for a scroll: the finger is still down
+    expect(await kept(["r10"])).toBe(false); // left to the browser
+    await on("touchend");
+    expect(await kept(["r10", "r9"])).toBe(true);
+
+    await on("pointerdown", "mouse");
+    await on("pointercancel", "mouse");
+    expect(await kept(["r10", "r9", "r8"])).toBe(true);
+  });
+
+  test("the reader's place is kept in a scroller inside another, each scrolled, the inner one's first", async () => {
+    await using view = await open();
+    const page = (gone: string[] = []) =>
+      `<div id="outer" style="position:fixed;inset:8px;overflow:auto"><div style="height:200px"></div><div id="full" style="height:300px;overflow:auto"><header style="position:sticky;top:0;height:60px;background:#fff;z-index:1">the day</header><ul style="margin:0;padding:0;list-style:none">${rows(gone)}</ul></div><div style="height:2000px"></div></div>`;
+    await pushRender(view, page());
+    await view.evaluate(`(() => { document.getElementById('full').scrollTop = 550; document.getElementById('outer').scrollTop = 100; })()`);
+    await aFrame(view);
+    const where = `[document.getElementById('outer').scrollTop, ${R11}]`;
+    expect(await view.evaluate<number[]>(where)).toEqual([100, 60]);
+    await push(view, { type: "render", ops: [{ op: "remove", target: '[data-eta-part="r10"]' }] });
+    expect(await view.evaluate<number[]>(where)).toEqual([100, 60]);
   });
 
   test("the reader's place is kept in a scroller whose top is scrolled off the page, and the page stays where it is", async () => {
@@ -420,6 +458,15 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.click("#q");
     await pushRender(view, `<form><input id="q" name="q"></form><form><input id="say" name="text" autofocus></form><p id="more">more</p>`);
     expect(await view.evaluate<string>(`document.activeElement?.id`)).toBe("q");
+  });
+
+  test("two cells drawn anew at once leave the keyboard in the one it was in", async () => {
+    await using view = await open();
+    const cells = (open: boolean) => ["a", "b"].map((k) => (open ? `<section data-moving="${k}"><a href="#${k}" id="${k}-back">back</a></section>` : `<div data-moving="${k}"><button id="${k}-open">${k}</button></div>`)).join("");
+    await pushRender(view, cells(false));
+    await view.evaluate(`document.getElementById('b-open').focus()`);
+    await pushRender(view, cells(true));
+    await waitFor(view, `document.activeElement?.id`, (v) => v === "b-back", 1000);
   });
 
   test("a click in a field that carries data-write writes nothing: the attribute names the field's path, it is not a gesture", async () => {
@@ -744,6 +791,11 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await waitFor(view, `document.getElementById('t').textContent`, (v) => v === "bo: 10");
     expect((await given()).updates.slice(2)).toEqual([{ me: "bo", rows: { a: { n: 5 }, b: { n: 2 } } }, { me: "bo", rows: { z: { n: 10 } } }]);
     expect(await view.evaluate<boolean>(`document.getElementById('t')._probe`)).toBe(true);
+
+    // taken out, it is given nothing more, though its document goes on
+    await pushRender(view, `<main></main>`);
+    await patch(6, [{ op: "replace", path: "", value: {} }]);
+    expect((await given()).updates).toHaveLength(4);
   });
 
   test("a patch a render already holds is not laid on again: the mount says the document's version, and the patches at or below it are passed over", async () => {
@@ -1008,6 +1060,14 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.click("#kind-travel");
     await push(view, { type: "render", ops: [{ op: "replace", target: '[data-eta-part="a"]', html: a("fieldset") }] });
     expect(await view.evaluate<string>(chosen)).toBe("travel");
+  });
+
+  test("a choice not yet sent that the group no longer offers gives way to what the group is drawn showing", async () => {
+    await using view = await open();
+    await pushRender(view, ticksForm("Temple", false, false, "see", "blur"));
+    await press(view, "#kind-eat"); // ticked, and not yet left
+    await pushRender(view, ticksForm("Temple", false, false, "see", "blur").replace(/<input type="radio"[^>]*id="kind-eat"[^>]*>/, "")); // eat is no longer a kind
+    expect(await view.evaluate<string[]>(`[...document.querySelectorAll('[name=kind]:checked')].map((r) => r.id)`)).toEqual(["kind-see"]);
   });
 
   test("a refused write hands back what was ticked, as it does what was typed, and keeps a choice made while it was on its way", async () => {

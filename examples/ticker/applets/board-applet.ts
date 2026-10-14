@@ -1,7 +1,7 @@
 // The board applet's mounting: a row per watched symbol, each on its quote's own document, with
 // its sparkline history derived from the ticks seen so far -- the state a render would destroy --
-// and the same for the sparkline in a symbol's drawer. Drawn on mount and on the quote's own tick echo. Imported only by client/main.ts -- not measured
-// by the coverage table, since only a real browser drives it; the drawing and patch logic are
+// and the same for the sparkline in a symbol's drawer. Drawn on mount and on the quote's own tick echo. Imported only by client/main.ts, and
+// measured from the pages that run it (src/client-coverage.ts); the drawing and patch logic are
 // board.ts.
 
 import { registerApplet } from "../../../src/applets";

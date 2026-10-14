@@ -5,12 +5,14 @@
 # code; each example's scripts/measure-render-cost.ts, which src/costs.ts runs whole, each in a
 # process of its own, whenever `bun test` checks the README; and the loader's commands, run by hand too (examples/modeling/loader/check.ts and
 # load.ts), whose logic is in the files their tests load.
-# Code that only runs in a browser: src/client/, src/applets.ts, src/island.ts,
-# each example's client/main.ts and its applets' mountings (`*-applet.ts*`, the wedding's
-# picture-field.ts), which the WebView tests drive where coverage cannot see. And a file of types alone (src/example.ts, src/connection.ts,
+# Code that only runs in a browser: src/client/, src/applets.ts, src/island.ts, each example's
+# client/main.ts and its applets' mountings (`*-applet.ts*`, the wedding's picture-field.ts). The
+# preload holds it to the same bar: what the WebView tests' pages ran, read from Chrome
+# (src/client-coverage.ts), and the run fails at its end on a line no page ran. And a file of types alone (src/example.ts, src/connection.ts,
 # src/compartments/compartment.ts), with nothing to run. Anything else is loaded by a test: even
 # src/costs.ts, a script, is taken in hand by its own
 coverage = true
+preload = ["./src/client-coverage.ts"]
 coverageThreshold = 1.0
 # delta is linked from its checkout: its source is delta's to cover, not eta's. the loader's model/ is
 # a copy of hjeli's model and predicates, covered by hjeli's own tests (its README.md).

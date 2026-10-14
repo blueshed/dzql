@@ -1,7 +1,7 @@
 // The menu applet's mounting: which course is open is this applet's own DOM state; a choice is
 // one write, and the pills redraw from the render that follows. Imported only by client/main.ts,
-// like chat's room-picker -- not measured by the coverage table, since only a real browser drives
-// it (client/app.test.ts); the drawing above it is (change-request.md item 4).
+// and measured from the pages that run it (client/app.test.ts, src/client-coverage.ts); the
+// drawing above it is menu.ts (change-request.md item 4).
 
 import { registerApplet } from "../../../src/applets";
 import { menuHtml, type MenuProps } from "./menu";

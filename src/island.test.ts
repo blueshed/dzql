@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import fixture from "./island.test.html";
-import { press, waitFor } from "./webview";
+import { press, waitFor, webview } from "./webview";
 
 let server: ReturnType<typeof Bun.serve>;
 
@@ -14,7 +14,7 @@ afterAll(() => {
 
 /** A fresh browser on the fixture, its islands on `window`. */
 async function open(): Promise<Bun.WebView> {
-  const view = new Bun.WebView();
+  const view = webview();
   await view.navigate(server.url.toString());
   await waitFor(view, `typeof window.counter`, (v) => v === "object");
   return view;

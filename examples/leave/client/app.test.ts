@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { press, urlFor, waitFor } from "../../../src/webview";
+import { press, urlFor, waitFor, webview } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { example } from "../index";
 
@@ -15,7 +15,7 @@ afterAll(() => {
 
 describe("leave in a real browser", () => {
   test("the sign-in page posts as a plain form, the password never on the socket, and Ann is on the calendar", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('form.sign-in') !== null`, (v) => v === true);
     await view.click("input[name=email]");
@@ -30,7 +30,7 @@ describe("leave in a real browser", () => {
   }, 15000);
 
   test("a drag across days is a draft, its drawer saying what it would mean; asked for, the bar drags to other days", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('form.sign-in') !== null`, (v) => v === true);
     await view.evaluate(`(() => { const f = document.querySelector('form.sign-in'); f.email.value = 'ann@leave.example'; f.password.value = 'ann-password'; f.requestSubmit(); return 1; })()`);
@@ -60,10 +60,29 @@ describe("leave in a real browser", () => {
       return 1;
     })()`);
     await waitFor(view, `[...document.querySelectorAll('.calendar-view .bar .sr-only')].map((s) => s.textContent).join('|')`, (v) => String(v).includes("you, waiting, Wed 14 – Thu 15 Oct"));
+    // a bar dragged is not a bar tapped: the click that ends the drag goes nowhere, and the next one opens its drawer
+    await view.evaluate(`(() => { const s = window.eta.socket(), send = s.send.bind(s); window.__sends = 0; s.send = (d) => (window.__sends++, send(d)); })()`);
+    const click = `(document.querySelector('.calendar-view .bar.movable').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })), window.__sends)`;
+    expect([await view.evaluate<number>(click), await view.evaluate<number>(click)]).toEqual([0, 1]);
     // as it was, for the other tests: the move and the ask undone, which gives the draft back, then the draft cancelled
     for (let i = 0; i < 2; i++) await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "ledger", ops: [{ op: "remove", path: "/latest" }] }))`);
     await waitFor(view, `[...document.querySelectorAll('.calendar-view .bar .sr-only')].some((s) => s.textContent === 'your draft, Wed 7 – Thu 8 Oct')`, (v) => v === true);
     await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "remove", path: "/draft" }] }))`);
     await waitFor(view, `[...document.querySelectorAll('.calendar-view .bar .sr-only')].some((s) => s.textContent.includes('Wed 7'))`, (v) => v === false);
   }, 20000);
+
+  test("Ann reads every request as a list, drawn as she scrolls it, and opens one", async () => {
+    await using view = webview({ height: 340 });
+    await view.navigate(urlFor(view, server.url));
+    await waitFor(view, `document.querySelector('form.sign-in') !== null`, (v) => v === true);
+    await view.evaluate(`(() => { const f = document.querySelector('form.sign-in'); f.email.value = 'ann@leave.example'; f.password.value = 'ann-password'; f.requestSubmit(); return 1; })()`);
+    await waitFor(view, `document.querySelector('.calendar-view .month') !== null`, (v) => v === true);
+    await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/page", value: "list" }] }))`);
+    const rows = `[...document.querySelectorAll('#list .vitem .vrow')].map((r) => r.getAttribute('aria-posinset') + ' ' + r.getAttribute('aria-expanded'))`;
+    await waitFor(view, rows, (v) => (v as string[]).length >= 4);
+    await view.evaluate(`(document.querySelector('#list .vlist').scrollTop = 60, window.__painted = new Promise((done) => new MutationObserver(done).observe(document.querySelector('#list .vspace'), { childList: true })), 1)`);
+    await view.evaluate(`window.__painted.then(() => true)`); // drawn again as it scrolled
+    await press(view, '#list .vrow[aria-posinset="2"]');
+    await waitFor(view, `document.querySelector('#list .vrow[aria-posinset="2"]').getAttribute('aria-expanded')`, (v) => v === "true");
+  }, 15000);
 });

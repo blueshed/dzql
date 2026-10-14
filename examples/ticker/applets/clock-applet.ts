@@ -1,9 +1,9 @@
 // A Swiss railway clock's mounting: drawn and driven entirely in the browser, because the time is
 // here, not on the server. The server mounts it once with the session's zone, and the only thing
 // that ever crosses the wire for it afterwards is the clock document's own `replace /tz` when a
-// city is chosen, which the applet takes itself. Imported only by client/main.ts, like chat's
-// room-picker -- not measured by the coverage table, since only a real browser drives it; the
-// drawing and time math above it are (change-request.md item 4).
+// city is chosen, which the applet takes itself. Imported only by client/main.ts, and measured
+// from the pages that run it (src/client-coverage.ts); the drawing and time math are clock.ts
+// (change-request.md item 4).
 
 import { registerApplet } from "../../../src/applets";
 import { clockSvg, handsAt, partsIn, timeSaid, tzAfter, type ClockProps } from "./clock";

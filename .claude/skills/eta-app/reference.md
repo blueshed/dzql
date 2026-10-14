@@ -861,8 +861,8 @@ The stories are most of the tests. Beside them, for what a story cannot say:
 
 - a test for each document's rules and shapes, called directly;
 - a `server.test.ts` that drives writes and undo over a real websocket (two writes racing);
-- a `client/app.test.ts` for what only a browser can show (`Bun.WebView`: open each view at
-  `urlFor(view, server.url)` and wait with `waitFor`, both `src/webview.ts`).
+- a `client/app.test.ts` for what only a browser can show (`Bun.WebView`: open each view with
+  `webview()`, on Chrome, at `urlFor(view, server.url)`, and wait with `waitFor`, all `src/webview.ts`).
 
 Press as a mouse does, never with `element.click()`: it sends no pointerdown or pointerup and
 reaches a control whatever is drawn over it, so a tap that goes nowhere passes. `press`

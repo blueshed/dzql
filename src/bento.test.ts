@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { address, bento, choice, layers, matches, parseAddress, patchCollections, prop, rows, type Collections } from "./bento";
 import { appletProps, esc, join, write } from "./html";
 import { decoded, diff, drawParts, part } from "./parts";
-import { waitFor } from "./webview";
+import { waitFor, webview } from "./webview";
 import { renderMessage } from "./compartments/render";
 import fixture from "./bento.test.html";
 
@@ -315,10 +315,8 @@ describe("the surfaces in a browser", () => {
   afterAll(() => server.stop(true));
 
   /** A phone's view of `html`, drawn as a render the server sent. */
-  // `ETA_BROWSER=chrome bun test src/bento.test.ts` runs these on Chrome, the default elsewhere than macOS
-  const chrome = process.env.ETA_BROWSER === "chrome" || process.platform !== "darwin";
   async function show(html: string, width = 375): Promise<Bun.WebView> {
-    const view = new Bun.WebView({ width, height: 740, ...(chrome ? { backend: "chrome" as const } : {}) });
+    const view = webview({ width, height: 740 });
     await view.navigate(server.url.toString());
     await waitFor(view, `window.eta?.socket()?.readyState === 1`, (v) => v === true);
     await view.evaluate(`(() => { window.__sent = []; window.eta.socket().send = (data) => { const { id, ...write } = JSON.parse(data); window.__sent.push(write); }; })()`);
@@ -585,11 +583,8 @@ describe("the surfaces in a browser", () => {
       await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000).catch(() => {});
       expect({ selector, sent: await sent(view) }).toEqual({ selector, sent: [{ doc: "desk", ops: [{ op: "replace", path: "/page", value: page }] }] });
       expect(await view.evaluate<string>(`${stop(selector)}.tagName`)).toBe("BUTTON"); // so Enter opens it too: the browser's own
-      // WebKit's press("Enter") is an editing command, not a key, so it is Chrome that says so
-      if (chrome) {
-        await view.press("Enter");
-        await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
-      }
+      await view.press("Enter");
+      await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
     }
     // what only reads is not a stop at all
     expect(await view.evaluate<boolean>(`document.querySelector('.cell[data-key="quiet"]').matches(':is(button, [tabindex]), :has(button, [tabindex])')`)).toBe(false);

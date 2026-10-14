@@ -1,9 +1,8 @@
 // The city picker's mounting, an island (src/island.ts): the zones are HTML -- the server renders
 // them as <option>s inside this applet's mount, and the applet reads them there, so nothing about
 // them crosses the wire as JSON. Choosing one is a write to the clock document; the placeholder
-// follows the clock's own patches. Imported only by client/main.ts -- not measured by the coverage
-// table, since only a real browser drives it (client/app.test.ts); the ranking logic in
-// city-picker.ts is.
+// follows the clock's own patches. Imported only by client/main.ts, and measured from the pages
+// that run it (client/app.test.ts, src/client-coverage.ts); the ranking logic is city-picker.ts.
 import { list } from "@blueshed/railroad/jsx";
 import { computed, signal } from "@blueshed/railroad/signals";
 import { registerApplet } from "../../../src/applets";

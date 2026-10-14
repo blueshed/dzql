@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { press, urlFor, waitFor } from "../../../src/webview";
+import { press, urlFor, waitFor, webview } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { tick } from "../compartments/ticker";
 import type { MarketDocument } from "../documents/market";
@@ -35,7 +35,7 @@ const FIELDS = `[...document.querySelectorAll('input, select, textarea')].map((e
 
 describe("the ticker in a real browser", () => {
   test("on a phone no field is under 16px, so iOS does not zoom into it -- the city's, the symbol's -- and the reader may zoom", async () => {
-    await using view = new Bun.WebView({ width: 375, height: 740 });
+    await using view = webview({ width: 375, height: 740 });
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('.cell.thing') !== null`, (v) => v === true);
     expect(await view.evaluate<string>(`document.querySelector('meta[name=viewport]').content`)).not.toMatch(/maximum-scale|user-scalable/);
@@ -52,7 +52,7 @@ describe("the ticker in a real browser", () => {
   });
 
   test("the board applet takes a tick from the patch itself -- no render -- and the clock runs on its own", async () => {
-    await using view = new Bun.WebView();
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     // the board grows into the window; the plus on its rail asks which symbol in a modal
     await waitFor(view, `document.querySelector('.cell[data-key="board"]') !== null`, (v) => v === true);
@@ -148,6 +148,13 @@ describe("the ticker in a real browser", () => {
     expect(await view.evaluate<string>(`document.querySelector('#city input').placeholder`)).toBe("London");
     expect(await view.evaluate<number>(`window.eta.docs().clock.ops.length`)).toBe(1);
 
+    // a suggestion pressed is taken as Enter takes one: back to Zurich, two in the afternoon
+    await view.click("#city input");
+    await view.type("zur");
+    await waitFor(view, `document.querySelector('#city .suggestions li[data-tz="Europe/Zurich"]') !== null`, (v) => v === true);
+    await view.click('#city .suggestions li[data-tz="Europe/Zurich"]');
+    await waitFor(view, face, (v) => v === "14:00");
+
     // Escape: the first empties the picker's word and leaves the drawer open; the next puts the drawer away
     await view.click("#city input");
     await view.type("par");
@@ -159,11 +166,8 @@ describe("the ticker in a real browser", () => {
     await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
   }, 15000);
 
-  // `ETA_BROWSER=chrome` runs this on Chrome, the default elsewhere than macOS, where Enter is a key and not an editing command
-  const chrome = process.env.ETA_BROWSER === "chrome" || process.platform !== "darwin";
-
   test("the keyboard opens a board row as a finger does: Space opens its drawer, Enter too, and the row says it is expanded", async () => {
-    await using view = new Bun.WebView(chrome ? { backend: "chrome" } : {});
+    await using view = webview();
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('.cell[data-key="board"]') !== null`, (v) => v === true);
     await press(view, '.cell[data-key="board"]');
@@ -189,11 +193,11 @@ describe("the ticker in a real browser", () => {
     await view.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))`);
     await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
     expect(await view.evaluate<unknown[]>(`[document.activeElement === ${stop}, ${stop}.getAttribute('aria-expanded')]`)).toEqual([true, "false"]);
-    if (chrome) {
-      await view.press("Enter");
-      await waitFor(view, drawer, (v) => v === "FXTR");
-      expect(await view.evaluate<string>(`${stop}.getAttribute('aria-expanded')`)).toBe("true");
-    }
+    await view.press("Enter");
+    await waitFor(view, drawer, (v) => v === "FXTR");
+    expect(await view.evaluate<string>(`${stop}.getAttribute('aria-expanded')`)).toBe("true");
+    await view.evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))`);
+    await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
 
     // the button is beside the applet, not around it: the line is the same applet on the box as in
     // the window, so closing the window keeps the ticks it has seen, and on the box it is no stop
