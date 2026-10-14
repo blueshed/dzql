@@ -26,7 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by the clock in microseconds, past any id the serial has handed out, until delta lets a write
   refer to a row it makes. So a household's code is no longer its id: it is its email's name and
   the least number no code has (`GRACE1`). A database from before needs its `leave_sessions` table
-  dropped: it gains `draft` (Fixed, below).
+  dropped: it gains `draft` (Fixed, below). What to change: add a row at `-` and read its id from what delta answers;
+  never name an id the serial may have handed out; drop `leave_sessions` from a database made before.
 
 ### Added
 
