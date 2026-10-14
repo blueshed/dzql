@@ -165,7 +165,7 @@ story("Ann drags across two days in Bo's week, and sees the clash before she ask
 });
 ```
 
-A story with a gesture is done by hand whenever it is told (the harness, step 6), and the drag
+A story with a gesture is done by hand whenever it is told (the harness, step 7), and the drag
 must send its `does`.
 
 A story is one of the three -- `does`, `cannot`, `closesTab` -- with only that one's keys. The
@@ -284,7 +284,24 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    they are told about it -- a link in an email, a shared URL -- the cast says so in its own
    writes: a member the cast puts at an address arrived there as the link brings them, and their
    ways start from it.
-6. By hand, in a browser the size of a phone (`Bun.WebView`, `src/by-hand.ts`), as its author, in
+6. Then the other way round: a write the server takes that no story tells and no page offers, a
+   hidden verb. Each member of the cast walks everywhere their pages lead from where the cast
+   starts, and every document a page of theirs read, in the stories or the walk, and every
+   control one offered, is kept. In a cast of its own, where the cast starts, rolled back after,
+   each document they read is asked, as each of them, every op on every path it holds, and on
+   each path a story or a page writes there: a write the stories tell them (the cast's, a
+   premise's, a story's own, done or refused, and `goTo`'s, which is the URL bar's) or a control
+   on a page of theirs offered is no hidden verb, a member of a collection as any one
+   (`/guests/0/coming` is `/guests/2/coming`, and the market's `/ALPH/price` is `/BRVO/price`).
+   The rest are put to the compartment's `permit` and `shape`, with the value there and each
+   value a story or a page writes to that path; nothing is written. One the server would take is
+   said, by the document, as a warning, not a failure: `session: a write no story tells and no
+   page offers / ada, bob, cy, dee and eve may add /name`, chat's, before its permit learned
+   that a name is replaced or taken back, never added. A permit may be wider than its stories on
+   purpose (the ticker lets anyone type a tick, a demo of the wire); the warning says so once a
+   run, and the builder narrows it or leaves it. Undo and Redo are the kernel's, offered on every
+   page, and not asked.
+7. By hand, in a browser the size of a phone (`Bun.WebView`, `src/by-hand.ts`), as its author, in
    a tab of their session: each story that says its `gesture`, and with `STORY_BY_HAND=1`
    (`run(example, stories, undefined, { byHand: true })`, which `bun run stories:all` sets) these:
    - a write from a page (`does`, not `offPage`): the controls on the way to where it is done are
@@ -308,7 +325,7 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    story. A record may carry no key the story does not name, but for a field left blank. A write
    only an applet's own control sends is sent as its mount declares, unless the story says the
    gesture.
-7. Report by story name. A failing story is a sentence, not a stack trace.
+8. Report by story name. A failing story is a sentence, not a stack trace.
 
 *What it does not do yet (17 September).* Said plainly, because a builder will otherwise trust it
 for more than it checks:
@@ -318,7 +335,7 @@ for more than it checks:
   a class, `visibility: hidden`, `aria-hidden`, covered by something drawn over it, of no size,
   or off a phone's screen, is offered as if a person could press it. Only what HTML itself says
   is looked at: `disabled`, `inert`, `hidden`, a `<template>`, a disabled fieldset. By hand
-  (step 6) each of those fails by name. By hand, a drag's pointer is not captured: its events go
+  (step 7) each of those fails by name. By hand, a drag's pointer is not captured: its events go
   to what is under it, so an applet must allow `setPointerCapture` to refuse a test's pointer
   (leave's calendar does); and an applet's control no story says the gesture for is not worked.
   And a page that sends again more than a quarter second after a gesture's write has landed is
@@ -332,13 +349,15 @@ for more than it checks:
   someone's open page fails, by name. An applet that takes its document's patches itself is
   compared without its props. What the morph then does with the
   HTML, and what an applet draws, are the browser tests' to check.
-- **A permitted write no story tells is not found.** Every control a story uses is on a page, and
-  a button offered that is always refused fails; but the other way round -- a write the server
-  accepts that no page offers -- needs a list of what is permitted.
-- **No permit table is checked against the stories.** The intent was that a permitted write no
-  story tells is a story nobody wrote. While permit tables are written by hand that check would
-  run backwards -- it would push a builder to write a story after a feature, to justify it -- so it
-  waits until the table is derived from the stories.
+- **A hidden verb is found by asking, not by proof, and only warned of.** The probe (step 6) asks
+  the paths a document holds and the ones its stories and pages write, from where the cast
+  starts, with the values found there: a permit that opens only in a state no story reaches, a
+  path that is in no document and no story's write, or a value nobody writes is not asked. A
+  page the walk does not reach (past its 400 places, or behind a control that is no address: a
+  find opened) is not met, so what it offers is not counted. And it is a warning: the intent was
+  that a permitted write no story tells is a story nobody wrote, but while permit tables are
+  written by hand a failure would run backwards -- it would push a builder to write a story after
+  a feature, to justify it -- so it waits until the table is derived from the stories.
 - **A story about the session cannot fail.** Any write to a session's own state changes its author's
   page, so "Ada opens the people, and only her page shows the window" passes whatever the code
   does. Such a story proves nothing. Tell what a person wants; where they must stand to see it is

@@ -2,7 +2,7 @@ import { db } from "./db";
 import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
-import { isPost, STORY_KEYS, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
+import { isPost, STORY_KEYS, writeOf, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
 import { isVerb, applyPatch, type PatchOp, type WriteId } from "./json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
@@ -12,8 +12,8 @@ import { esc } from "./html";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
 import { allOpenSockets } from "./compartments/audience";
 import { shownTo } from "./reading";
-import type { Kind } from "./compartments/compartment";
-import { splitDoc } from "./names";
+import type { Compartment, Kind } from "./compartments/compartment";
+import { prefixDoc, splitDoc } from "./names";
 import { size, sum, tap } from "./costs";
 
 // Runs an example's stories against it, over real sockets, and reports by story name: what each
@@ -45,7 +45,7 @@ export type Trace = {
   /** What the ledger took: the ops as written, and their inverse -- which holds what was there before. */
   ledger: { doc: string; undoable: number; ops: PatchOp[]; inverse: PatchOp[] }[];
 };
-/** What the stories found props cost (`propsCost`), which does not fail them: each kind for each applet once, in the first story that sent it. */
+/** What the stories found that does not fail them: what props cost (`propsCost`), each kind for each applet once, in the first story that sent it; and a permit wider than its stories (`hiddenVerbs`), by the document it is on. */
 export type Warning = { story: string; says: string };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number; warnings?: Warning[]; byHand?: ByHand };
 
@@ -473,7 +473,46 @@ export function hear(page: string, message: Heard): string {
   return (message.ops ?? []).reduce(applyOp, page);
 }
 
+// A hidden verb (todo n32): a write the server takes that no story tells and no page offers.
 
+/** Every path in a document, as JSON Pointers: the whole (""), each member of each object and array, and an array's end (`-`), where an append goes. */
+export function pathsIn(value: unknown, at = ""): string[] {
+  if (typeof value !== "object" || value === null) return [at];
+  if (Array.isArray(value)) return [at, ...value.flatMap((v, i) => pathsIn(v, `${at}/${i}`)), `${at}/-`];
+  return [at, ...Object.entries(value).flatMap(([key, v]) => pathsIn(v, `${at}/${key.replaceAll("~", "~0").replaceAll("/", "~1")}`))];
+}
+
+/** What is at a JSON Pointer in a document, if anything; at an array's end (`-`), its first member, the shape an append takes. */
+export function valueAt(value: unknown, path: string): unknown {
+  for (const key of path.split("/").slice(1)) {
+    if (typeof value !== "object" || value === null) return undefined;
+    value = Array.isArray(value) && key === "-" ? value[0] : (value as Record<string, unknown>)[key.replaceAll("~1", "/").replaceAll("~0", "~")];
+  }
+  return value;
+}
+
+/**
+ * A path with each member of a collection in it as any one (`*`, as an applet names one): an id (a
+ * run of digits), or a key of an object `doc` keeps rows under, objects of the same fields.
+ * `/guests/0/coming` and `/guests/2/coming` are one verb, and so are the market's `/ALPH/price`
+ * and `/BRVO/price`.
+ */
+export function anyOne(path: string, doc?: unknown): string {
+  let at = doc;
+  return path
+    .split("/")
+    .map((key, i) => {
+      if (i === 0) return key;
+      const shapes = typeof at === "object" && at !== null && !Array.isArray(at) ? Object.values(at).map((v) => (typeof v === "object" && v !== null && !Array.isArray(v) ? Object.keys(v).sort().join() : undefined)) : [];
+      const rows = shapes.length > 0 && shapes.every((s) => s !== undefined && s === shapes[0]); // every member an object of the same fields
+      at = valueAt(at, `/${key}`);
+      return key !== "-" && (rows || /^\d+$/.test(key)) ? "*" : key; // the end of a list is where an append goes, not a member
+    })
+    .join("/");
+}
+
+/** Names, as a sentence says them: `ann`, `ann and bo`, `ann, bo and mo`. */
+const listed = (names: string[]): string => (names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
 
 /**
  * Why a story is not one kind of story with only that kind's keys (`STORY_KEYS`), if it is not. A
@@ -531,6 +570,7 @@ export async function run(
   // what a render costs in props goes to the story being told, once for each applet and kind
   let telling: string | undefined;
   const warned = new Map<string, Warning>();
+  const hidden: Warning[] = []; // a permit wider than its stories (`hiddenVerbs`)
   const warn = (found: PropsCost): void => {
     const key = `${found.kind} ${found.applet}`;
     if (telling !== undefined && !warned.has(key)) warned.set(key, { story: telling, says: found.says });
@@ -539,12 +579,23 @@ export async function run(
   // Where a person can go (`reach`): every page a member is drawn while a walk is under way, kept by where it stands.
   type State = { pages: Map<string, Map<string, Map<string, Control>>>; starts: Map<string, string | undefined> }; // member → place → controls, by what each writes
   let walked: State | undefined; // the state being walked, whose pages are kept
+  // What each of the cast met, whatever they were doing: every document a page of theirs read (a
+  // session's own by its type alone) and every control one offered, for `hiddenVerbs`.
+  const met = new Map<string, { reads: Set<string>; offered: Map<string, Control> }>();
   function keep(m: Member): void {
+    const controls = controlsOn(m.page);
+    const mine = met.get(m.name) ?? met.set(m.name, { reads: new Set(), offered: new Map() }).get(m.name)!;
+    for (const c of controls) mine.offered.set(JSON.stringify(c), c);
+    for (const doc of inFront([m])[0]!.docs) {
+      const { docType, docId } = splitDoc(doc);
+      if (!byDocType.get(docType)?.perSession) mine.reads.add(doc);
+      else if (docId === m.sessionId) mine.reads.add(docType);
+    }
     const at = placeOf(m.page);
     if (!walked || at === undefined) return;
     const byPlace = walked.pages.get(m.name) ?? walked.pages.set(m.name, new Map()).get(m.name)!;
     const here = byPlace.get(at) ?? byPlace.set(at, new Map()).get(at)!;
-    for (const c of controlsOn(m.page)) here.set(JSON.stringify(c), c);
+    for (const c of controls) here.set(JSON.stringify(c), c);
   }
 
   /**
@@ -1271,6 +1322,78 @@ export async function run(
     }
   }
 
+  /** Would the server take `op` to `docId` from `ws`: permitted, and shaped to something? One that throws is refused. Nothing is written. */
+  async function takes(owner: Compartment, ws: ReturnType<typeof allOpenSockets>[number], op: PatchOp, docId: string): Promise<boolean> {
+    try {
+      if (!(await settled(documents, () => owner.permit!(ws, op, docId)))) return false;
+      return !owner.shape || (await settled(documents, () => owner.shape!(ws, docId, [op]))).length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Hidden verbs (todo n32): where the cast starts, as each of them, each op on each path of every
+   * document their pages read -- and on each path a story or a page writes there -- that no story
+   * tells them and no page offered them, a member of a collection as any one (`anyOne`), with the
+   * value there and each a story or a page writes to that path. One the server would take is a
+   * write nobody would know to make: said, not failed, since a permit may be wider than its stories
+   * on purpose. Only the permit and the shape are asked, so nothing is written; Undo and Redo are
+   * the kernel's, on every page, and are not asked.
+   */
+  async function hiddenVerbs(): Promise<Warning[]> {
+    const found = new Map<string, Map<string, string[]>>(); // document → verb → who may
+    // what goTo writes is the URL bar's, anyone's: for each place a story names
+    const places = stories.stories.flatMap((s) => [s.from, ...(s.seen && !Array.isArray(s.seen) ? Object.values(s.seen) : [])]);
+    const anyone = stories.goTo ? ["", ...places].filter((p) => typeof p === "string").map(stories.goTo) : [];
+    /** Is `n` who is asked about: `name`, or anyone when it names none? */
+    const whose = (n: string, name?: string): boolean => name === undefined || n === name;
+    /** Each op on `doc` the stories tell `name` (anyone, with none), and each a page of theirs offered. */
+    const toldTo = (doc: string, name?: string): { op: string; path: string; value?: unknown; pattern?: true }[] => {
+      const writes = [...anyone, ...Object.entries(stories.cast).flatMap(([n, ws]) => (whose(n, name) ? ws : [])), ...stories.stories.flatMap((s) => [...Object.entries(s.premise ?? {}).flatMap(([n, ws]) => (whose(n, name) ? ws : [])), ...(whose(s.as, name) ? [writeOf(s)] : [])])];
+      return [...writes.flatMap((w) => (w && sameDoc(w.doc, doc) ? w.ops : [])), ...[...met].flatMap(([n, { offered }]) => (whose(n, name) ? [...offered.values()].filter((c) => sameDoc(c.doc, doc)) : []))];
+    };
+    db.exec("BEGIN");
+    const cast: Member[] = [];
+    try {
+      await gather(cast);
+      for (const m of cast) {
+        const ws = allOpenSockets().find((s) => s.data.sessionId === m.sessionId)!;
+        for (const doc of met.get(m.name)!.reads) {
+          const { docType, docId } = doc.includes(":") ? splitDoc(doc) : { docType: doc, docId: m.sessionId };
+          const owner = byDocType.get(docType)!;
+          if (!owner.permit || docType === "ledger" || !STORED.has(owner.kind ?? "written")) continue;
+          const value = valueAt(await settled(documents, () => documents.read(prefixDoc(docType, docId))), owner.under ?? "");
+          const saying = (op: string, path: string): string => `${op} ${anyOne(path, value) || "the document"}`; // a verb, as the warning says it
+          const known = new Set(toldTo(doc, m.name).map((w) => saying(w.op, w.path)));
+          const written = toldTo(doc); // anyone's: more paths to try, and the values written there
+          const paths = new Set([...pathsIn(value), ...written.filter((w) => !w.pattern).map((w) => w.path)]);
+          const verbs = found.get(doc) ?? found.set(doc, new Map()).get(doc)!;
+          for (const path of paths) {
+            const any = anyOne(path, value);
+            const values = new Map([valueAt(value, path) ?? null, ...written.filter((w) => w.value !== undefined && anyOne(w.path, value) === any).map((w) => w.value)].map((v) => [JSON.stringify(v), v]));
+            for (const verb of ["add", "replace", "remove"] as const) {
+              const said = saying(verb, path);
+              if (known.has(said) || verbs.get(said)?.includes(m.name)) continue;
+              for (const v of verb === "remove" ? [undefined] : values.values()) {
+                if (!(await takes(owner, ws, { op: verb, path, ...(verb !== "remove" && { value: v }) }, docId))) continue;
+                (verbs.get(said) ?? verbs.set(said, []).get(said)!).push(m.name);
+                break;
+              }
+            }
+          }
+        }
+      }
+    } finally {
+      await disband(cast);
+    }
+    return [...found].flatMap(([doc, verbs]) => {
+      const byWho = new Map<string, string[]>();
+      for (const [said, who] of verbs) (byWho.get(listed(who)) ?? byWho.set(listed(who), []).get(listed(who))!).push(said);
+      return [...byWho].map(([who, said]) => ({ story: `${doc}: a write no story tells and no page offers`, says: `${who} may ${said.join(", ")}` }));
+    });
+  }
+
   try {
     const only = process.env.STORY; // run only the stories whose name contains this
     const told: { story: Story; outcome: Outcome }[] = [];
@@ -1278,12 +1401,13 @@ export async function run(
     // by hand: with `byHand` each story that has something to do there, and without it each that says its gesture
     const byHandToo = (story: Story): boolean => (options.byHand || story.gesture !== undefined) && misshapen(story).length === 0;
     const startsFrom = stories.goTo ? await reach(told, byHandToo) : new Map<Story, State>();
-    if (options.everywhere && stories.goTo) {
-      // a place nobody can get to, so each member's walk goes everywhere it can
+    if (stories.goTo) {
+      // a place nobody can get to, so each member's walk goes everywhere it can, and meets every page
       const nowhere = new Map(Object.keys(stories.cast).map((name) => [name, new Set(["\u0000"])]));
       const { state } = (await walk({} as Story, nowhere, false))!; // from where the cast starts: no premise to fail
-      for (const [member, places] of state.pages) for (const [place, controls] of places) options.everywhere(member, place, [...controls.values()]);
+      if (options.everywhere) for (const [member, places] of state.pages) for (const [place, controls] of places) options.everywhere(member, place, [...controls.values()]);
     }
+    hidden.push(...(await hiddenVerbs()));
     outcomes.push(...told.map(({ outcome }) => outcome));
     const handed = told.filter(({ story }) => byHandToo(story));
     if (handed.length > 0) {
@@ -1304,7 +1428,7 @@ export async function run(
     tapped.close();
   }
   const failed = outcomes.filter((o) => o.failures.length > 0).length;
-  return { outcomes, passed: outcomes.length - failed, failed, ...(warned.size > 0 && { warnings: [...warned.values()] }), ...(byHandTally && { byHand: byHandTally }) };
+  return { outcomes, passed: outcomes.length - failed, failed, ...(warned.size + hidden.length > 0 && { warnings: [...warned.values(), ...hidden] }), ...(byHandTally && { byHand: byHandTally }) };
 }
 
 /** The report, story by story; with `wire`, under each story what it cost there (`cost`). */

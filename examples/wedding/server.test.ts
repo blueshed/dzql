@@ -228,7 +228,7 @@ describe("a household", () => {
     ws.close();
   });
 
-  test("permit: only the household's own surface, only while answers are open, a plus-one only while one is owed", async () => {
+  test("permit: only the household's own surface, only while answers are open, a plus-one only while one is owed, and an ask only once none is", async () => {
     const ws = await enter(code);
     await refused(ws, "household", [{ op: "replace", path: "/code", value: "X" }]);
     await refused(ws, "household", [{ op: "remove", path: "/guests/1" }]);
@@ -241,6 +241,7 @@ describe("a household", () => {
     const plus = await at(ws, "?new=guests");
     expect(plus).toContain('aria-label="Name our plus-one"');
     expect(plus).toContain('<dialog open class="modal" aria-label="Name our plus-one">');
+    await refused(ws, "household", [{ op: "add", path: "/asks/-", value: "Cousin Vim" }]); // owed a plus-one, they name them: no page asks
     const named = (await send(ws, "household", [{ op: "add", path: "/guests/-", value: "Plus One" }])).page;
     expect(named).toContain("Plus");
     expect(named).not.toContain('class="modal"');
