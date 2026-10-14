@@ -1,11 +1,11 @@
--- Demo data: Rowena & Dashiell's wedding, two households, the courses, a waiting ask, the gifts
--- (with their drawings), the day, where to stay and the venues they chose between. The couple's code is DASH; the households'
+-- Demo data: Nick & Nora's wedding, two households, the courses, a waiting ask, the gifts
+-- (with their drawings), the day, where to stay and the venues they chose between. The couple's code is NICK; the households'
 -- are OKAFOR and BEN. Run once, into empty tables (../delta.ts). Ids are text, as delta keeps them.
 INSERT INTO wedding_weddings (id, day, deadline, name1, name2, venue, message, picture_key) VALUES
-  ('1', '2027-04-02', NULL, 'Rowena', 'Dashiell', 'The Mount Without, Bristol', 'We can''t wait to celebrate with you.', NULL);
+  ('1', '2027-04-02', NULL, 'Nick', 'Nora', 'The Mount Without, Bristol', 'We can''t wait to celebrate with you.', NULL);
 
 -- the couple's code, kept apart from the wedding's row, which every household reads
-INSERT INTO wedding_couples (id, weddings_id, code) VALUES ('1', '1', 'DASH');
+INSERT INTO wedding_couples (id, weddings_id, code) VALUES ('1', '1', 'NICK');
 
 INSERT INTO wedding_households (id, weddings_id, code, email, plus_ones, answer, message) VALUES
   ('1', '1', 'OKAFOR', 'ada@example.com', 1, 'yes', 'Cannot wait.'),

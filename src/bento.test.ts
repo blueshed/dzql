@@ -400,7 +400,7 @@ describe("the surfaces in a browser", () => {
 
   for (const width of [320, 375]) {
     test(`${width} wide, a trail that wraps: each way back is pressed over a touch, and a press on one never lands on another`, async () => {
-      const trail = [{ label: "Rowena & Dashiell", back: go("a") }, { label: "The Okafors", back: go("b") }, { label: "Where to stay", back: go("c") }, { label: "the market" }];
+      const trail = [{ label: "Nick & Nora", back: go("a") }, { label: "The Okafors", back: go("b") }, { label: "Where to stay", back: go("c") }, { label: "the market" }];
       await using view = await show(framed(b.boxPage(trail, [], [b.cell({ name: "market", opens: go("market") })])), width);
       expect(await view.evaluate<number>(`new Set([...document.querySelectorAll('.crumbs a, .crumbs b')].map((e) => Math.round(e.getBoundingClientRect().top))).size`)).toBeGreaterThan(1); // it wraps
       expect(await pressesElsewhere(view, ".crumbs a")).toEqual([]);

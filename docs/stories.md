@@ -32,7 +32,7 @@ where. Three from the wedding's `stories.ts`:
 ```ts
 // The cast: a session each, and the writes that put it where the stories find it.
 cast: {
-  couple:  [session("/code", "DASH")],
+  couple:  [session("/code", "NICK")],
   okafors: [session("/code", "OKAFOR")],
   benToo:  [session("/code", "BEN")], // Ben's household, a second tab
   stranger: [],

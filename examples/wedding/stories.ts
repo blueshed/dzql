@@ -40,7 +40,7 @@ const goTo = goToOn("session");
 
 export const stories: Stories = {
   cast: {
-    couple: [session("/code", "DASH")],
+    couple: [session("/code", "NICK")],
     okafors: [session("/code", "OKAFOR")],
     ben: [session("/code", "BEN")],
     benToo: [session("/code", "BEN")], // Ben's household, a second tab

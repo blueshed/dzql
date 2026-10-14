@@ -22,7 +22,7 @@ const shaped = (...ops: PatchOp[]) => shape(held(), ops, "2026-09-24T12:00:00Z")
 describe("the board", () => {
   test("reads the wedding whole: households by code, each whole, the lists in their order", () => {
     const b = read()!;
-    expect(b.name1).toBe("Rowena");
+    expect(b.name1).toBe("Nick");
     const codes = b.households.map((h) => h.code);
     expect(codes).toEqual([...codes].sort()); // by code
     expect(codes).toEqual(expect.arrayContaining(["BEN", "OKAFOR"]));
@@ -57,7 +57,7 @@ describe("the board", () => {
 describe("what a couple's write becomes", () => {
   test("the wedding's own fields: text kept, blanks and bad dates refused, an optional one cleared by a remove", () => {
     expect(shaped({ op: "replace", path: "/name1", value: " Ro " })).toEqual([{ op: "replace", path: "/weddings/name1", value: "Ro" }]);
-    expect(shaped({ op: "replace", path: "/name1", value: " " }, { op: "remove", path: "/name1" }, { op: "replace", path: "/day", value: "soon" }, { op: "replace", path: "/name1", value: "Rowena" }, { op: "replace", path: "/nope", value: 1 }, { op: "replace", path: "", value: 1 })).toEqual([]);
+    expect(shaped({ op: "replace", path: "/name1", value: " " }, { op: "remove", path: "/name1" }, { op: "replace", path: "/day", value: "soon" }, { op: "replace", path: "/name1", value: "Nick" }, { op: "replace", path: "/nope", value: 1 }, { op: "replace", path: "", value: 1 })).toEqual([]);
     expect(shaped({ op: "replace", path: "/deadline", value: "2027-03-01" }, { op: "remove", path: "/venue" })).toEqual([
       { op: "replace", path: "/weddings/deadline", value: "2027-03-01" },
       { op: "replace", path: "/weddings/venue", value: null },

@@ -203,7 +203,7 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
     await view.scrollTo("#code");
     await view.click("#code");
-    await view.type("DASH");
+    await view.type("NICK");
     await view.click("button.gold");
     await waitFor(view, `document.querySelector('#board-photo svg .slot[role="button"]') !== null`, (v) => v === true);
     // a figure never stands still, so the tap is where it stands now
@@ -276,7 +276,7 @@ describe("the wedding in a real browser", () => {
     await using couple = webview({ width: 1280, height: 800 });
     await couple.navigate(urlFor(couple, server.url, "?gifts"));
     await waitFor(couple, `document.querySelector('#code') !== null`, (v) => v === true);
-    await couple.evaluate(`(() => { const i = document.querySelector('#code'); i.value = 'DASH'; i.form.requestSubmit(); })()`);
+    await couple.evaluate(`(() => { const i = document.querySelector('#code'); i.value = 'NICK'; i.form.requestSubmit(); })()`);
     await couple.navigate(urlFor(couple, server.url, "?gifts"));
     await waitFor(couple, `document.querySelector('#gifts-drawer #gift-2 .state')?.textContent ?? ""`, (v) => typeof v === "string" && v.includes(other));
     const fits = await couple.evaluate<{ words: number; inside: boolean }[]>(`(() => {
@@ -304,7 +304,7 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
     await view.scrollTo("#code");
     await view.click("#code");
-    await view.type("DASH");
+    await view.type("NICK");
     await view.click("button.gold");
     await waitFor(view, `document.querySelector('.bubble.couple') !== null`, (v) => v === true);
 
@@ -349,7 +349,7 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('#code') !== null`, (v) => v === true);
     await view.scrollTo("#code");
     await view.click("#code");
-    await view.type("DASH");
+    await view.type("NICK");
     await view.click("button.gold");
     await waitFor(view, `document.querySelector('.bubble.couple') !== null`, (v) => v === true);
     // the welcome is a "thing": its message lives in its own drawer now

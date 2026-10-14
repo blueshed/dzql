@@ -54,7 +54,7 @@ await nextMessage(sender);
 await nextMessage(sender);
 const audience: [string, WebSocket][] = [
   ["the same household's second tab, on its photo", await enter(mine!.code)],
-  ["the couple, on their photo of families", await enter("DASH")],
+  ["the couple, on their photo of families", await enter("NICK")],
   ["another household, on its photo", await enter(theirs!.code)],
   ["another household, reading everyone", await enter(theirs!.code, "everyone")],
 ];

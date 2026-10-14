@@ -42,7 +42,7 @@ http://localhost:3000. That is chat: give a name, name a room, say something. Op
 as someone else and you each see the other speak. Undo, bottom right, takes back your own last
 write.
 
-- `bun run dev:wedding` (port 3001): a site for one wedding, the picture above. Codes: `DASH` for
+- `bun run dev:wedding` (port 3001): a site for one wedding, the picture above. Codes: `NICK` for
   the couple, `OKAFOR` and `BEN` for two households.
 - `bun run dev:leave` (port 3004): a team's leave on one calendar. Drag across days to ask. Sign in
   as `ann@leave.example`, `bo@leave.example` or `mo@leave.example` (the manager); each password is

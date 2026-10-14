@@ -103,7 +103,7 @@ describe("routes", () => {
     tab.close();
 
     const couple = `session_id=${crypto.randomUUID()}`;
-    const ws = await enter("DASH", couple);
+    const ws = await enter("NICK", couple);
     expect((await post(couple, "not a form")).status).toBe(400);
     const noFile = new FormData();
     noFile.set("file", new File(["hello"], "hello.txt", { type: "text/plain" }));
@@ -135,7 +135,7 @@ describe("the welcome", () => {
     const ws = connect();
     await opened(ws);
     const { page } = await heard(ws);
-    expect(page).toContain("Rowena");
+    expect(page).toContain("Nick");
     expect(page).toContain('data-write=\'{"doc":"session","op":"replace","path":"/code"}\'');
     expect(page).toContain('class="site at-welcome"');
     ws.close();
@@ -181,7 +181,7 @@ describe("a household", () => {
   test("a write is told to the household's tabs and the couple's; another household hears what everyone may, never the household's own", async () => {
     const mine = await enter(code);
     const other = await enter(code); // a second tab, same household
-    const couple = await enter("DASH");
+    const couple = await enter("NICK");
     const stranger = await enter("OKAFOR");
     await at(stranger, "everyone"); // another household sees this one only in the photo of everyone
 
@@ -333,7 +333,7 @@ describe("a household", () => {
     ws.close();
 
     // a household nobody is named on yet: the photo says so
-    const couple = await enter("DASH");
+    const couple = await enter("NICK");
     const nobody = `empty-${Date.now()}@example.com`;
     await send(couple, "board", [{ op: "add", path: "/households/-", value: nobody }]);
     const empty = await enter((await board()).households.find((x) => x.email === nobody)!.code);
@@ -460,8 +460,8 @@ describe("a household", () => {
     const list = await enter(code);
     const everyone = await enter("OKAFOR");
     const elsewhere = await enter("OKAFOR");
-    const couple = await enter("DASH");
-    const family = await enter("DASH");
+    const couple = await enter("NICK");
+    const family = await enter("NICK");
     const welcome = connect(); // no code yet
     await opened(welcome);
     await heard(welcome);
@@ -516,7 +516,7 @@ describe("a household", () => {
 
 describe("the couple", () => {
   test("the couple's code opens the photo of families; a family, the welcome, the four lists and a row of each are drawers; a new one is named in place; a removal asks first, then goes back to its list", async () => {
-    const ws = await enter("DASH");
+    const ws = await enter("NICK");
     expect(pageOf(ws)).toContain('class="bubble couple thing"'); // the welcome, over the photo
     expect(pageOf(ws)).toContain('id="board-photo" data-applet="photo"');
     // the welcome is a "thing": ✎ opens its own drawer, where its picture lives
@@ -572,7 +572,7 @@ describe("the couple", () => {
   });
 
   test("the venues are a page nobody wrote, drawn from their shape: a row each, its drawer, a new one asked for in a modal; a removal asks first, then goes back to the page", async () => {
-    const ws = await enter("DASH");
+    const ws = await enter("NICK");
     expect(pageOf(ws)).toContain(`aria-label="Venues" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="venues"`); // a tool on the couple's rail
     let html = await at(ws, "venues?row=1");
     expect(html).toContain(`<span class="what">The Mount Without</span>`);
@@ -590,7 +590,7 @@ describe("the couple", () => {
   });
 
   test("the lists are the couple's to keep: a move renumbers, a field takes its kind, a course taken off takes its choices with it", async () => {
-    const ws = await enter("DASH");
+    const ws = await enter("NICK");
     const names = async () => (await board()).courses.map((c) => c.name);
     const before = await names();
     await send(ws, "board", [{ op: "replace", path: "/courses/4/seq", value: 1 }]);
@@ -634,7 +634,7 @@ describe("the couple", () => {
     // two households this test alone owns, so the asks it adds disturb no one else's
     const stamp = Date.now();
     for (const who of ["findme", "other"]) await asCouple([{ op: "add", path: "/households/-", value: { email: `${who}-${stamp}@example.com`, names: `${who} ${stamp}` } }]);
-    const ws = await enter("DASH");
+    const ws = await enter("NICK");
     const households = (await board()).households;
     const matching = households.find((h) => h.email === `findme-${stamp}@example.com`)!;
     const other = households.find((h) => h.email === `other-${stamp}@example.com`)!;
@@ -669,7 +669,7 @@ describe("the couple", () => {
   });
 
   test("a family's drawer: whether each guest is coming and what they chose, and whoever they asked for -- waiting, with the couple's yes or no, or refused; their figures ring in the photo", async () => {
-    const ws = await enter("DASH");
+    const ws = await enter("NICK");
     // under the family's code, a surname they share is said once in each list
     const okafors = await at(ws, `?family=${(await board()).households.find((h) => h.code === "OKAFOR")!.id}`);
     expect(okafors).toContain('<span class="what">Ada</span>');
@@ -695,7 +695,7 @@ describe("the couple", () => {
   });
 
   test("beyond sixteen in the photo, everyone sees the families, one figure each with its count, and a family opens", async () => {
-    const couple = await enter("DASH");
+    const couple = await enter("NICK");
     const email = `crowd-${Date.now()}@example.com`;
     const names = Array.from({ length: 17 }, (_, i) => `Guest${i}`).join(",");
     await send(couple, "board", [{ op: "add", path: "/households/-", value: { email, names } }]);
@@ -723,7 +723,7 @@ describe("the couple", () => {
   });
 
   test("a yes to an ask makes a guest the household sees; the couple's undo takes it back; a household may not reply", async () => {
-    const couple = await enter("DASH");
+    const couple = await enter("NICK");
     const tab = await enter(code);
     await send(tab, "household", [{ op: "add", path: "/asks/-", value: "Friend" }]);
     expect((await heard(couple)).page).toMatch(/\d+ asks? waiting/);
@@ -745,7 +745,7 @@ describe("the couple", () => {
   });
 
   test("an invitation, and its undo, through the wire", async () => {
-    const ws = await enter("DASH");
+    const ws = await enter("NICK");
     const email = `wire-${Date.now()}@example.com`;
     await send(ws, "board", [{ op: "add", path: "/households/-", value: { email, names: "Wire Test", plus_ones: "0" } }]);
     const invited = (await board()).households.find((h) => h.email === email)!;
@@ -758,7 +758,7 @@ describe("the couple", () => {
   });
 
   test("a household's tab whose code stops existing is back at the welcome", async () => {
-    const couple = await enter("DASH");
+    const couple = await enter("NICK");
     const email = `gone-${Date.now()}@example.com`;
     await send(couple, "board", [{ op: "add", path: "/households/-", value: email }]);
     const gone = (await board()).households.find((h) => h.email === email)!;
@@ -858,7 +858,7 @@ describe("undo beside someone else", () => {
 
 describe("the couple keep a family's invitation", () => {
   test("taking a guest off asks first, and goes back to the family's drawer; the email is edited in place", async () => {
-    const ws = await enter("DASH");
+    const ws = await enter("NICK");
     const email = `takeoff-${Date.now()}@example.com`;
     await asCouple([{ op: "add", path: "/households/-", value: { email, names: "Tak Test, Tik Test" } }]);
     const h = (await board()).households.find((x) => x.email === email)!;
@@ -917,7 +917,7 @@ describe("a permit allows what a page offers, and nothing more", () => {
   ];
 
   test("the couple may write what their page offers, and a household none of it", async () => {
-    const couple = await as("DASH");
+    const couple = await as("NICK");
     const ben = await as(code);
     for (const w of COUPLE) expect([w, couple.may("board", w)]).toEqual([w, true]);
     for (const w of COUPLE) expect([w, ben.may("board", w)]).toEqual([w, false]);
@@ -927,7 +927,7 @@ describe("a permit allows what a page offers, and nothing more", () => {
 
   test("a household may write what its page offers, and the couple none of it", async () => {
     const household = await as(code);
-    const couple = await as("DASH");
+    const couple = await as("NICK");
     for (const w of HOUSEHOLD) expect([w, household.may("household", w)]).toEqual([w, true]);
     for (const w of HOUSEHOLD) expect([w, couple.may("household", w)]).toEqual([w, false]);
     household.ws.close();
@@ -935,7 +935,7 @@ describe("a permit allows what a page offers, and nothing more", () => {
   });
 
   test("nobody may remove a field, a row's parent or a dish's order, take back a reply, or uninvite their own guest", async () => {
-    const couple = await as("DASH");
+    const couple = await as("NICK");
     const household = await as(code);
     const fields = COUPLE.filter(([op, path]) => op === "replace" && !path.endsWith("/seq")).map(([, path]): W => ["remove", path]);
     for (const w of [...fields, ...each("replace", "/courses/1/weddings_id", "/gifts/1/weddings_id", "/events/1/weddings_id", "/places/1/weddings_id", "/venues/1/weddings_id", "/courses/1/dishes/1/courses_id", "/courses/1/dishes/1/seq", "/courses/1/drinks/1/seq", "/gifts/1/nope")]) {
@@ -979,7 +979,7 @@ describe("a permit allows what a page offers, and nothing more", () => {
   test("a visit's moves are its own: going somewhere and finding someone tell no other tab, the household's own or anyone's", async () => {
     const mine = await enter(code);
     const theirs = await enter(code);
-    const couple = await enter("DASH");
+    const couple = await enter("NICK");
     await go(mine, [{ op: "replace", path: "/page", value: "?gifts" }]);
     await go(mine, [{ op: "replace", path: "/filter/guests", value: "Tess" }]);
     for (const ws of [theirs, couple]) expect(await heard(ws)).toMatchObject({ patches: [], renders: [] });
