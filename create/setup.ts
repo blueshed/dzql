@@ -27,8 +27,8 @@ const SKILLS = [
 /** What only developing eta needs. */
 const ETA_ONLY = ["examples", "create", "todo.jsonl", "CHANGELOG.md", ".claude/commands/publish.md", ".env.example"];
 
-/** Of eta's docs, what a project keeps: what stories are for. The rest is eta's own record. */
-const DOCS_KEPT = ["stories.md"];
+/** Of eta's docs, what a project keeps: what stories are for, and how a page looks and moves. The rest is eta's own record. */
+const DOCS_KEPT = ["stories.md", "bento"];
 
 /** eta's own clone is the one place this must never run: it deletes things. */
 function isTemplateClone(root: string): boolean {
@@ -102,7 +102,7 @@ export async function setup(root: string): Promise<void> {
   rmSync(join(root, "model/loader/londons"), { recursive: true });
   for (const path of ["app/index.ts", "app/page.ts", "app/client/index.html", "app/client/styles.css"]) await rewrite(join(root, path), (t) => t.replaceAll("Starter", Name).replaceAll("starter", name));
   for (const path of ETA_ONLY) rmSync(join(root, path), { recursive: true, force: true });
-  for (const doc of readdirSync(join(root, "docs")).filter((d) => !DOCS_KEPT.includes(d))) rmSync(join(root, "docs", doc));
+  for (const doc of readdirSync(join(root, "docs")).filter((d) => !DOCS_KEPT.includes(d))) rmSync(join(root, "docs", doc), { recursive: true });
   for (const path of filesIn(join(root, "src")).filter((f) => /\.test\.|\.test-|test\.fixture/.test(f))) rmSync(path); // the kernel's tests are eta's
 
   await Bun.write(

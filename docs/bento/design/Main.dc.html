@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The box</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2f5fb3}a:hover{color:#1f4690}
+.cap{font-size:11.5px;line-height:16px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700}
+.tool{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;background:#fff;color:#2f5fb3;cursor:pointer;padding:0}
+.stack{display:inline-flex;border:1px solid rgba(29,39,51,0.52);border-radius:6px;overflow:hidden;box-shadow:0 1px 4px rgba(29,39,51,0.2)}
+.stack .tool + .tool{border-left:1px solid rgba(29,39,51,0.14)}
+.look{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:0;background:#fff;color:#2f5fb3;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.look[aria-checked="true"]{background:#2f5fb3;color:#fff}
+.cell{background:#fff;border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.cell-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cell-name{border:0;background:none;padding:0;font:inherit;color:#1d2733;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(29,39,51,0.1)}
+.row:last-child{border-bottom:0}
+.kind{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.words{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.what{font-weight:600;font-size:14.5px;color:#1d2733;border:0;background:none;padding:0;font-family:inherit;text-align:left;cursor:pointer}
+.line{font-size:12.5px;color:#5d6877}
+.pin{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 8px;border:1px solid rgba(29,39,51,0.2);border-radius:999px;background:#fff;color:#1d2733;font:inherit;font-size:12px;cursor:pointer}
+.move{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;color:#b4471f}
+.day{height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#1d2733;border-radius:4px}
+.face{width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#1d2733;background:#eef1f5}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; padding: 28px 36px; background: #f5f6f8; color: #1d2733; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 18px">
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <nav class="cap" aria-label="Where you are" style="display: flex; align-items: center; gap: 6px; color: #5d6877">
+        <a href="#" style="display: inline-flex; align-items: center; gap: 5px; text-decoration: none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21H3z"></path></svg>The family</a>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+        <span aria-current="page">Japan</span>
+      </nav>
+      <h1 style="margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.01em">Japan</h1>
+      <p style="margin: 0; font-size: 14px; color: #5d6877">8–18 Nov · 4 of 5 have said · <span style="color: #b4471f; font-weight: 600">asking you</span></p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div class="stack" role="radiogroup" aria-label="Read as">
+        <button class="look" role="radio" aria-checked="true">List</button>
+        <button class="look" role="radio" aria-checked="false">Calendar</button>
+        <button class="look" role="radio" aria-checked="false">Map</button>
+        <button class="look" role="radio" aria-checked="false">Line</button>
+      </div>
+      <div class="stack" aria-label="Tools">
+        <button class="tool" aria-label="Undo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h11a5 5 0 0 1 0 10h-3"></path></svg></button>
+        <button class="tool" aria-label="Redo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m15 14 5-5-5-5"></path><path d="M20 9H9a5 5 0 0 0 0 10h3"></path></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <section aria-label="Japan" style="flex: 1; min-height: 0; background: #dde2ea; border-radius: 28px; padding: 10px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; box-shadow: 0 12px 30px rgba(29,39,51,0.16)">
+
+    <div class="cell" style="grid-column: 1 / 3; grid-row: 1 / 3; border-top-left-radius: 18px">
+      <div class="cell-head">
+        <button class="cell-name cap">What's asked · 4<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2f5fb3" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button>
+        <div class="stack"><button class="tool" aria-label="Ask something here"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button></div>
+      </div>
+      <div style="display: flex; flex-direction: column">
+        <div class="row">
+          <span class="kind" style="background: #f3e8d8; color: #9a5b12" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0"></path></svg></span>
+          <span class="words"><button class="what">Book the ryokan in Hakone</button><span class="line">Peter asks you · before Hakone</span></span>
+          <button class="pin" aria-label="When: by Fri 30 Oct"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Fri 30 Oct</button>
+          <button class="pin" aria-label="Where: Hakone"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>Hakone</button>
+          <span class="move">your move</span>
+        </div>
+        <div class="row">
+          <span class="kind" style="background: #e7e3f6; color: #5a3fa8" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.5"></circle><path d="M3 20a6 6 0 0 1 12 0M14 20a4 4 0 0 1 7 0"></path></svg></span>
+          <span class="words"><button class="what">Land at Haneda</button><span class="line">Everyone · 5 going</span></span>
+          <button class="pin" aria-label="When: Sun 8 Nov"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Sun 8 Nov</button>
+          <button class="pin" aria-label="Where: Tokyo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>Tokyo</button>
+          <span class="move" style="color: #5d6877">on</span>
+        </div>
+        <div class="row">
+          <span class="kind" style="background: #f3e8d8; color: #9a5b12" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 16 0v-3a2 2 0 0 0-4 0"></path></svg></span>
+          <span class="words"><button class="what">Book teamLab tickets</button><span class="line">Daisy said yes</span></span>
+          <button class="pin" aria-label="When: by Mon 9 Nov"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Mon 9 Nov</button>
+          <button class="pin" aria-label="Where: Toyosu"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>Toyosu</button>
+          <span class="move" style="color: #5d6877">waiting</span>
+        </div>
+        <div class="row">
+          <span class="kind" style="background: #e7e3f6; color: #5a3fa8" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.5"></circle><path d="M3 20a6 6 0 0 1 12 0M14 20a4 4 0 0 1 7 0"></path></svg></span>
+          <span class="words"><button class="what">Can we do a konbini crawl?</button><span class="line">Ann asks everyone · 2 of 5 have said</span></span>
+          <button class="pin" aria-label="When: an idea, no day yet"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>an idea</button>
+          <button class="pin" aria-label="Where: Tokyo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>Tokyo</button>
+          <span class="move">your say</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cell" style="grid-column: 3; grid-row: 1; border-top-right-radius: 18px">
+      <div class="cell-head"><button class="cell-name cap">November<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2f5fb3" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button><span style="font-size: 12px; color: #5d6877">10 nights</span></div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px">
+        <span class="day" style="color: #5d6877; font-size: 11px">M</span><span class="day" style="color: #5d6877; font-size: 11px">T</span><span class="day" style="color: #5d6877; font-size: 11px">W</span><span class="day" style="color: #5d6877; font-size: 11px">T</span><span class="day" style="color: #5d6877; font-size: 11px">F</span><span class="day" style="color: #5d6877; font-size: 11px">S</span><span class="day" style="color: #5d6877; font-size: 11px">S</span>
+        <span class="day">2</span><span class="day">3</span><span class="day">4</span><span class="day">5</span><span class="day">6</span><span class="day">7</span><span class="day" style="background: #2f5fb3; color: #fff; font-weight: 600">8</span>
+        <span class="day" style="background: #dbe5f7">9</span><span class="day" style="background: #dbe5f7">10</span><span class="day" style="background: #dbe5f7">11</span><span class="day" style="background: #dbe5f7">12</span><span class="day" style="background: #dbe5f7">13</span><span class="day" style="background: #dbe5f7">14</span><span class="day" style="background: #dbe5f7">15</span>
+        <span class="day" style="background: #dbe5f7">16</span><span class="day" style="background: #dbe5f7">17</span><span class="day" style="background: #2f5fb3; color: #fff; font-weight: 600">18</span><span class="day">19</span><span class="day">20</span><span class="day">21</span><span class="day">22</span>
+      </div>
+    </div>
+
+    <div class="cell" style="grid-column: 3; grid-row: 2">
+      <div class="cell-head"><button class="cell-name cap">Where<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2f5fb3" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button><span style="font-size: 12px; color: #5d6877">3 places</span></div>
+      <div style="flex: 1; min-height: 120px; border-radius: 8px; background: #e6edf3; position: relative; overflow: hidden">
+        <div style="position: absolute; left: 34%; top: 18%; width: 52%; height: 70%; background: #f2efe6; border-radius: 46% 38% 52% 40%; transform: rotate(-24deg)"></div>
+        <div style="position: absolute; left: 66%; top: 30%; display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600"><span style="width: 10px; height: 10px; border-radius: 50%; background: #b4471f; box-shadow: 0 0 0 3px #fff"></span>Tokyo</div>
+        <div style="position: absolute; left: 52%; top: 46%; display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600"><span style="width: 10px; height: 10px; border-radius: 50%; background: #2f5fb3; box-shadow: 0 0 0 3px #fff"></span>Hakone</div>
+        <div style="position: absolute; left: 30%; top: 64%; display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600"><span style="width: 10px; height: 10px; border-radius: 50%; background: #2f5fb3; box-shadow: 0 0 0 3px #fff"></span>Kyoto</div>
+      </div>
+    </div>
+
+    <div class="cell" style="grid-column: 1 / 4; grid-row: 3; flex-direction: row; align-items: center; justify-content: space-between; border-bottom-left-radius: 18px; border-bottom-right-radius: 18px">
+      <div style="display: flex; align-items: center; gap: 16px">
+        <span class="cap">Who's going</span>
+        <div style="display: flex; gap: 8px">
+          <span class="face" style="box-shadow: 0 0 0 2px #2f8a5b">P</span>
+          <span class="face" style="box-shadow: 0 0 0 2px #2f8a5b">A</span>
+          <span class="face" style="box-shadow: 0 0 0 2px #2f8a5b">D</span>
+          <span class="face" style="box-shadow: 0 0 0 2px #2f8a5b">W</span>
+          <span class="face" style="box-shadow: 0 0 0 2px dashed #b4471f; background: #fff">S</span>
+        </div>
+      </div>
+      <span style="font-size: 13px; color: #5d6877">4 of 5 have said · yours to say</span>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

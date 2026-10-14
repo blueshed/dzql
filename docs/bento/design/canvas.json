@@ -1,0 +1,21 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-14T09:00:00Z" },
+  "title": "Bento samples",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1280, "h": 800, "title": "1 · The box: everything in its place" },
+    "Grown.dc.html": { "x": 1360, "y": 0, "w": 1280, "h": 800, "title": "2 · A compartment grown into the window" },
+    "Pins.dc.html": { "x": 0, "y": 920, "w": 1280, "h": 800, "title": "3 · A card's pins: small first, full when asked" },
+    "Drawer.dc.html": { "x": 1360, "y": 920, "w": 1280, "h": 800, "title": "4 · Change in a drawer" },
+    "Modal.dc.html": { "x": 0, "y": 1840, "w": 1280, "h": 800, "title": "5 · Make in a modal" },
+    "Phone.dc.html": { "x": 1360, "y": 1840, "w": 390, "h": 844, "title": "6 · The box on a phone" }
+  },
+  "order": ["Main.dc.html", "Grown.dc.html", "Pins.dc.html", "Drawer.dc.html", "Modal.dc.html", "Phone.dc.html"],
+  "notes": {
+    "title": { "x": 0, "y": -300, "text": "Bento: everything in its place", "kind": "title1", "maxW": 2640 },
+    "rules": { "x": 1880, "y": 1840, "w": 560, "maxH": 700, "fill": "gray", "size": "m", "text": "The twelve directions, docs/bento.md\n\nThe box\n1 A page is a box of compartments, or one on its own.\n2 It lays itself out from what it holds.\n3 A compartment grows into the window.\n\nWhere am I\n4 The name, and the trail back up.\n5 The same place read another way.\n\nCards and pins\n6 A pin opens a popover; it grows into the full calendar or map.\n\nWhat can I do\n7 A tap does what it names.\n8 Make or remove in a modal; change in a drawer.\n9 One overlay at a time, each a step.\n10 Offer only what this person may do.\n\nWhat happened\n11 Every change says what it did.\n12 A thing once on a page, in plain words." }
+  },
+  "designSystems": []
+}

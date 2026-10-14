@@ -1,4 +1,4 @@
-/* The look of the kernel's bento surfaces (src/bento.ts), by the bento's rules (docs/bento.md): a page is a box, a tray with cells cut into it and the trail
+/* The look of the kernel's bento surfaces (src/bento.ts), by the bento's rules (docs/bento/README.md): a page is a box, a tray with cells cut into it and the trail
    above. A cell grows into the window: the trail floats top-left in it, the cell's
    tools stand at the right edge as stacks of square buttons, the page's tools are one more stack at
    the bottom right, and the reading keeps clear of them. A figure in the reading opens the drawer:

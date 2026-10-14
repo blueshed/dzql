@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A compartment grown</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2f5fb3}a:hover{color:#1f4690}
+.cap{font-size:11.5px;line-height:16px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700}
+.tool{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;background:#fff;color:#2f5fb3;cursor:pointer;padding:0}
+.stack{display:inline-flex;flex-direction:column;border:1px solid rgba(29,39,51,0.52);border-radius:6px;overflow:hidden;box-shadow:0 1px 4px rgba(29,39,51,0.2)}
+.stack .tool + .tool{border-top:1px solid rgba(29,39,51,0.14)}
+.tool[aria-checked="true"]{background:#2f5fb3;color:#fff}
+.wd{font-size:11px;font-weight:600;color:#5d6877;text-align:center;padding-bottom:6px}
+.date{font-size:12px;color:#5d6877;padding:6px 8px;border-top:1px solid rgba(29,39,51,0.12);min-height:74px;box-sizing:border-box;position:relative}
+.bar{position:absolute;left:4px;right:4px;height:22px;border-radius:6px;font-size:11.5px;font-weight:600;line-height:22px;padding:0 8px;white-space:nowrap;overflow:hidden;color:#1d2733}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; position: relative; background: #f5f6f8; color: #1d2733; font-family: 'IBM Plex Sans', system-ui, sans-serif; overflow: hidden">
+  <div aria-hidden="true" style="position: absolute; inset: 0; padding: 28px 36px; opacity: 0.35; filter: blur(1px)">
+    <div style="height: 110px"></div>
+    <div style="height: 610px; background: #dde2ea; border-radius: 28px"></div>
+  </div>
+
+  <section aria-label="November" style="position: absolute; inset: 24px; background: #fff; border-radius: 28px; box-shadow: 0 20px 50px rgba(29,39,51,0.25); display: flex; flex-direction: column">
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 10px">
+      <nav class="cap" aria-label="Where you are" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 6px; background: #fff; box-shadow: 0 1px 4px rgba(29,39,51,0.2); border: 1px solid rgba(29,39,51,0.2)">
+        <a href="#" style="text-decoration: none">The family</a>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5d6877" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+        <a href="#" style="text-decoration: none">Japan</a>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5d6877" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+        <span aria-current="page">November</span>
+      </nav>
+      <span style="font-size: 13px; color: #5d6877">Japan · 8–18 Nov · 10 nights</span>
+    </div>
+
+    <div style="flex: 1; min-height: 0; display: flex; gap: 16px; padding: 4px 20px 20px">
+      <div style="flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); align-content: start">
+        <span class="wd">Mon</span><span class="wd">Tue</span><span class="wd">Wed</span><span class="wd">Thu</span><span class="wd">Fri</span><span class="wd">Sat</span><span class="wd">Sun</span>
+        <div class="date">2</div><div class="date">3</div><div class="date">4</div><div class="date">5</div><div class="date">6</div><div class="date">7</div>
+        <div class="date" style="color: #1d2733; font-weight: 600">8<span class="bar" style="top: 28px; background: #e7e3f6">Land at Haneda</span></div>
+        <div class="date">9<span class="bar" style="top: 28px; background: #dbe5f7; border-radius: 6px 0 0 6px; right: 0">Tokyo</span><span class="bar" style="top: 52px; background: #f3e8d8">teamLab</span></div>
+        <div class="date">10<span class="bar" style="top: 28px; background: #dbe5f7; border-radius: 0; left: 0; right: 0">&#160;</span></div>
+        <div class="date">11<span class="bar" style="top: 28px; background: #dbe5f7; border-radius: 0 6px 6px 0; left: 0">&#160;</span></div>
+        <div class="date">12<span class="bar" style="top: 28px; background: #d9eee3; border-radius: 6px 0 0 6px; right: 0">Hakone</span></div>
+        <div class="date">13<span class="bar" style="top: 28px; background: #d9eee3; border-radius: 0 6px 6px 0; left: 0">&#160;</span></div>
+        <div class="date">14<span class="bar" style="top: 28px; background: #f6e2dc; border-radius: 6px 0 0 6px; right: 0">Kyoto</span></div>
+        <div class="date">15<span class="bar" style="top: 28px; background: #f6e2dc; border-radius: 0; left: 0; right: 0">&#160;</span></div>
+        <div class="date">16<span class="bar" style="top: 28px; background: #f6e2dc; border-radius: 0; left: 0; right: 0">&#160;</span></div>
+        <div class="date">17<span class="bar" style="top: 28px; background: #f6e2dc; border-radius: 0 6px 6px 0; left: 0">&#160;</span></div>
+        <div class="date" style="color: #1d2733; font-weight: 600">18<span class="bar" style="top: 28px; background: #e7e3f6">Fly home</span></div>
+        <div class="date">19</div><div class="date">20</div><div class="date">21</div><div class="date">22</div>
+        <div class="date">23</div><div class="date">24</div><div class="date">25</div><div class="date">26</div><div class="date">27</div><div class="date">28</div><div class="date">29</div>
+      </div>
+      <div style="display: flex; flex-direction: column; justify-content: space-between">
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <div class="stack" role="radiogroup" aria-label="Read as">
+            <button class="tool" role="radio" aria-checked="false" aria-label="List"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg></button>
+            <button class="tool" role="radio" aria-checked="true" aria-label="Calendar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg></button>
+            <button class="tool" role="radio" aria-checked="false" aria-label="Map"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></button>
+          </div>
+          <div class="stack"><button class="tool" aria-label="Ask something on a day"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></button></div>
+        </div>
+        <div class="stack" aria-label="Tools">
+          <button class="tool" aria-label="Undo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 14 4 9l5-5"></path><path d="M4 9h11a5 5 0 0 1 0 10h-3"></path></svg></button>
+          <button class="tool" aria-label="Redo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m15 14 5-5-5-5"></path><path d="M20 9H9a5 5 0 0 0 0 10h3"></path></svg></button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

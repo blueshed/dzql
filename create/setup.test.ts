@@ -33,7 +33,7 @@ describe("bun create blueshed/eta garden", () => {
     const setup = run(["bun", "create/setup.ts"]);
     expect(setup.out).toContain("garden is ready!");
     expect(setup.code).toBe(0);
-    for (const path of ["docs/stories.md", "app/index.ts", "app/stories.ts", "model/index.ts", "model/cli.ts", "src/server.ts", ".claude/skills/eta-app/SKILL.md", ".claude/skills/modelling/SKILL.md", ".claude/skills/delta-doc", ".claude/skills/railroad"]) expect(existsSync(join(root, path))).toBe(true);
+    for (const path of ["docs/stories.md", "docs/bento/README.md", "app/index.ts", "app/stories.ts", "model/index.ts", "model/cli.ts", "src/server.ts", ".claude/skills/eta-app/SKILL.md", ".claude/skills/modelling/SKILL.md", ".claude/skills/delta-doc", ".claude/skills/railroad"]) expect(existsSync(join(root, path))).toBe(true);
     for (const path of ["examples", "create", "model/loader/londons", "model/loader/documents.test.ts", "docs/first-app.md", "docs/README.md", "model/server.test.ts", "src/server.test.ts", "src/client/app.test.html", ".claude/commands/publish.md"]) expect(existsSync(join(root, path))).toBe(false);
   }, 60000);
 

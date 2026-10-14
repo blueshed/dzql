@@ -57,7 +57,7 @@ where this file and the code disagree, the code is right.
   (a drag halfway through, a sparkline's history). It is not "the view for X": plain `data-write`
   HTML is the default.
 - A **cell** is a place in a bento box, and the **tray** is the box the cells are cut into: how a
-  page looks. The **bento** (`docs/bento.md`, built in `src/bento.ts`, `src/bento.css`)
+  page looks. The **bento** (`docs/bento/README.md`, built in `src/bento.ts`, `src/bento.css`)
   is how a page looks and moves: a box or a collection. A way of seeing, not features to have.
 
 ## Stories (`stories.ts`)
@@ -631,7 +631,7 @@ is the page, and the one thing open over it: `guests?guest=2`, `gifts?new`, `?an
 
 ## Pages: the bento (`src/bento.ts`, `src/bento.css`)
 
-The bento is how a page looks and moves. Its rules are in `docs/bento.md`. Bind it once
+The bento is how a page looks and moves. Its rules are in `docs/bento/README.md`. Bind it once
 per example, then build pages from what it returns:
 
 ```ts

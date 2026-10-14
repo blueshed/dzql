@@ -1,4 +1,4 @@
-// The surfaces a page that is a box is made of, by the bento's rules (docs/bento.md): the trail (where am I), the tray and its cells, the window a
+// The surfaces a page that is a box is made of, by the bento's rules (docs/bento/README.md): the trail (where am I), the tray and its cells, the window a
 // cell grows into, the stacks of tools that float in it, the rows of a list, the drawer (a
 // panel at the right from 820px, a sheet from the foot on a phone) and its properties, the modal.
 // `src/bento.css` is their look, in an example's own tokens. No example knowledge here: an example

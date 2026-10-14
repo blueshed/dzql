@@ -153,5 +153,5 @@ stories; `bun run model:load <example>` loads it into the model on the page.
 - `.claude/skills/eta-app/`: how to build or extend an example, step by step, with the contracts
   in `reference.md`.
 - `CLAUDE.md`: the rules a change must not break.
-- `docs/bento.md`: how a page looks and moves.
+- `docs/bento/README.md`: how a page looks and moves.
 - `CHANGELOG.md`: what changed, and how to move an example across a breaking change.
