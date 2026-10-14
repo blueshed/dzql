@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A failure that says why.** A story whose `seen` member was not told names the documents their page read and the one the write changed (`cy did not see it: cy's page read session, room:kitchen; the write was to room:general`); a `does` refused names the check that refused it and quotes its words; and while the stories run, every control on every page drawn is held to the wire (its document read by that page, a JSON Pointer path, add/replace/remove/test, a replace's path held), a warning for each that fails. About 0.4 s on `stories:all`.
+- **`field()`** (`src/bento.ts`): one call for a field that edits one value of a document in place: its own form with the right trigger for its kind, its label tied to it, the value drawn (so a typed write tests it), a status beside it, read-only where the permit says no. `derivedPage` and the wedding's drawers use it.
+- `docs/concise-skills.md`, the standard the skills are cut to; `docs/eta-app-notes.md`, the reasons and numbers that left the skill, which a `bun create` project keeps.
+
+### Changed
+
+- **The eta-app skill is a compass**: `SKILL.md` (under 600 words) says the model, the order, what must not break and which file to read for which step; `reference/` is seventeen short files, each leading with a real example and pointing at the types. What to change: in a project, replace `.claude/skills/eta-app` whole (`reference.md` is gone).
+- **`bun test --parallel` runs the suite in about 50 s**, from about 190 s run file by file: the kernel's harness tests cast only the members their stories need (leave's stories whole are `stories:all`'s), a test's Chrome reaches nothing beyond this machine (no web fonts), and `bun run test` and the gate run in parallel. The client's coverage is judged on a whole run only; a run of some files says it was not judged.
+- The wedding's Ben wears green in the seed.
+
 ## [0.52.0] - 2026-10-14
 
 ### Breaking (for example authors)

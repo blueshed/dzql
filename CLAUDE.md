@@ -17,7 +17,7 @@ the contract.
 
 - Bun only: never `node`, `npm` or `yarn`. No new dependencies without asking; the kernel imports
   delta, and railroad only in `src/island.ts`; the examples add `lucide`, and the kernel imports no icon set.
-- The gate, before a commit that ships: `bun check`, `bun test` (100% coverage, the client's too),
+- The gate, before a commit that ships: `bun check`, `bun test --parallel` (100% coverage, the client's too),
   `bun run stories:all`, `bun run costs --check`. The browser tests need Chrome: the eta-app
   reference, *Tests*, says where it is found.
 - Verify every bug fix by reverting it, watching its test fail, then restoring it.
