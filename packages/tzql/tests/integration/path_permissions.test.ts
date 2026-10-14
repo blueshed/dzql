@@ -114,11 +114,38 @@ describe("modeling-dzql rules, enforced by the generated SQL", () => {
 
     test("the update is checked against the stored row, not the body", async () => {
       // Zed promotes 101, not 100: naming 101 in the body must not let Zed edit 1000.
+      // (Pat and Mo are refused too: they don't promote 101, the row's new occasion.)
       expect(await allowed(async p => {
         await sql`UPDATE packages SET occasion_id = 100 WHERE id = 1000`;
         await save("packages", p, { id: 1000, occasion_id: 101, name: "moved" });
-      })).toEqual(["Pat", "Mo"]);
+      })).toEqual([]);
       await sql`UPDATE packages SET occasion_id = 100, name = 'Gold' WHERE id = 1000`;
+    });
+
+    test("an editor cannot move the package to an occasion they don't promote", async () => {
+      // Pat and Mo may edit 1000 (on 100), but 101 belongs to Zed's org: the row
+      // as it will be after the update must pass the update rule too.
+      expect(await allowed(async p => {
+        await sql`UPDATE packages SET occasion_id = 100 WHERE id = 1000`;
+        await save("packages", p, { id: 1000, occasion_id: 101 });
+      })).toEqual([]);
+      const [row] = await sql`SELECT occasion_id FROM packages WHERE id = 1000`;
+      expect(row.occasion_id).toBe(100);
+    });
+
+    test("an editor may move the package to another occasion they promote", async () => {
+      await sql`INSERT INTO occasions (id, series_id, name) VALUES (102, 500, 'Also ours')`;
+      await sql`INSERT INTO occasion_promoters (id, occasion_id, promoter_id) VALUES (702, 102, 10)`;
+      try {
+        expect(await allowed(async p => {
+          await sql`UPDATE packages SET occasion_id = 100 WHERE id = 1000`;
+          await save("packages", p, { id: 1000, occasion_id: 102 });
+        })).toEqual(["Pat", "Mo"]);
+      } finally {
+        await sql`UPDATE packages SET occasion_id = 100, name = 'Gold' WHERE id = 1000`;
+        await sql`DELETE FROM occasion_promoters WHERE id = 702`;
+        await sql`DELETE FROM occasions WHERE id = 102`;
+      }
     });
 
     test("only an owner of the promoting org may delete a package ([org_id=$,role=owner] in a chain)", async () => {

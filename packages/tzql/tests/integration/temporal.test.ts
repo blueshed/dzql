@@ -204,6 +204,27 @@ describe("Temporal Entities with refField", () => {
       expect(updated[0].doc.content).toBe('Content'); // Copied forward
       expect(updated[0].doc.author_id).toBe(1); // Copied forward
     });
+
+    test("the new version must pass the update rule too: an author cannot hand the document to someone else", async () => {
+      const created = await sql`
+        SELECT dzql_v2.save_documents(1, ${sql.json({ title: 'Mine' })}) as doc
+      `;
+      const ref = created[0].doc.ref;
+
+      let err: any;
+      try {
+        await sql`SELECT dzql_v2.save_documents(1, ${sql.json({ ref, author_id: 2 })})`;
+      } catch (e) {
+        err = e;
+      }
+      expect(err, "expected the save to be rejected").toBeDefined();
+      expect(String(err.message)).toMatch(/permission_denied/);
+
+      const versions = await sql`SELECT author_id, valid_to FROM documents WHERE ref = ${ref}`;
+      expect(versions.length).toBe(1); // no new version, the old one still open
+      expect(versions[0].author_id).toBe(1);
+      expect(versions[0].valid_to).toBeNull();
+    });
   });
 
   describe("GET", () => {

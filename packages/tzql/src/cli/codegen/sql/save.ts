@@ -178,6 +178,16 @@ export function generateSaveFunction(name: string, entityIR: EntityIR, entities:
   // someone else's row. delete.ts and the temporal save path already do this.
   const updatePerm = compileRuleList(name, entityIR.permissions?.update, 'v_old_data');
 
+  // ...and again against the row as it is after the update (v_result), so an
+  // editor can't move a row to a parent they don't control (e.g. change its
+  // occasion_id to an occasion they don't promote). The update rule, not the
+  // create rule, guards the new state: create rules are often broader
+  // (AUTHENTICATED) or empty (an entity only seeded, never created by users),
+  // and either would make the check wrong for an update. Checking after the
+  // UPDATE sees the real stored row (casts, defaults, triggers, and the table
+  // itself for rules that read it); the RAISE rolls the UPDATE back.
+  const updatePermNew = compileRuleList(name, entityIR.permissions?.update, 'v_result');
+
   const onCreateRules = entityIR.graphRules?.onCreate
     ? compileGraphRules(name, 'create', entityIR.graphRules.onCreate)
     : '';
@@ -226,11 +236,16 @@ ${m2mExtraction}
       RAISE EXCEPTION 'permission_denied';
     END IF;
 
-    -- Perform Partial Update
+    ${updateSetClause ? `-- Perform Partial Update
     UPDATE ${name} SET
     ${updateSetClause}
     WHERE ${pkWhereClause}
-    RETURNING to_jsonb(${name}.*) INTO v_result;
+    RETURNING to_jsonb(${name}.*) INTO v_result;` : `-- No non-key columns: nothing to update
+    v_result := v_old_data;`}
+
+    IF NOT (${updatePermNew}) THEN
+      RAISE EXCEPTION 'permission_denied';
+    END IF;
 
     ${onUpdateRules}
 
@@ -241,8 +256,8 @@ ${m2mExtraction}
     END IF;
 
     -- Perform Insert
-    INSERT INTO ${name} (${colList})
-    VALUES (${valList})
+    INSERT INTO ${name} ${colList ? `(${colList})
+    VALUES (${valList})` : 'DEFAULT VALUES'}
     RETURNING to_jsonb(${name}.*) INTO v_result;
 
     ${onCreateRules}
@@ -349,6 +364,8 @@ function generateTemporalSaveFunction(name: string, entityIR: EntityIR, entities
   const createPerm = compileRuleList(name, entityIR.permissions?.create, 'p_data');
 
   const updatePerm = compileRuleList(name, entityIR.permissions?.update, 'v_current');
+  // The new version must pass the update rule too (see generateSaveFunction).
+  const updatePermNew = compileRuleList(name, entityIR.permissions?.update, 'v_result');
 
   const onCreateRules = entityIR.graphRules?.onCreate
     ? compileGraphRules(name, 'create', entityIR.graphRules.onCreate)
@@ -369,14 +386,16 @@ function generateTemporalSaveFunction(name: string, entityIR: EntityIR, entities
   const includes: Record<string, IncludeIR> = entityIR.includes || {};
   const fkExpansion = generateFKExpansion(includes, entityIR.columns, entities);
 
-  // Non-temporal columns for INSERT
-  const nonTemporalCols = entityIR.columns
+  // Columns and values for the new version's INSERT (copyForwardFields may be
+  // empty when the entity has no columns beyond its key and temporal fields)
+  const versionCols = [refField, validFrom, ...entityIR.columns
     .filter((c: ColumnInfo) => {
       const isSerial = c.type.toLowerCase().includes('serial');
       const isTemporal = c.name === validFrom || c.name === validTo;
       return !isSerial && !isTemporal && c.name !== refField;
     })
-    .map(c => c.name).join(', ');
+    .map(c => c.name)].join(', ');
+  const versionValues = ['v_ref', 'now()', ...(copyForwardFields ? [copyForwardFields] : [])].join(',\n      ');
 
   return `
 CREATE OR REPLACE FUNCTION dzql_v2.save_${name}(p_user_id int, p_data jsonb)
@@ -422,12 +441,14 @@ ${m2mExtraction}
     WHERE ${refField} = v_ref AND ${validTo} IS NULL;
 
     -- Insert new version with copy-forward of unchanged fields
-    INSERT INTO ${name} (${refField}, ${validFrom}, ${nonTemporalCols})
+    INSERT INTO ${name} (${versionCols})
     SELECT
-      v_ref,
-      now(),
-      ${copyForwardFields}
+      ${versionValues}
     RETURNING to_jsonb(${name}.*) INTO v_result;
+
+    IF NOT (${updatePermNew}) THEN
+      RAISE EXCEPTION 'permission_denied';
+    END IF;
 
     ${onUpdateRules}
 

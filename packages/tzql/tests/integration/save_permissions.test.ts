@@ -104,6 +104,15 @@ describe("save: update permission is evaluated against the stored row", () => {
     expect(row.author_id).toBe(1);
   });
 
+  test("the owner cannot hand the row to someone else: the updated row must pass the rule too", async () => {
+    await expectReject(
+      () => sql`SELECT dzql_v2.save_posts(1, '{"id": 1, "author_id": 2}'::jsonb)`,
+      /permission_denied/,
+    );
+    const [row] = await sql`SELECT author_id FROM posts WHERE id = 1`;
+    expect(row.author_id).toBe(1);
+  });
+
   test("a non-owner is still denied when sending the true owner id", async () => {
     await expectReject(
       () => sql`SELECT dzql_v2.save_posts(2, '{"id": 1, "title": "nope", "author_id": 1}'::jsonb)`,
