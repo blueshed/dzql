@@ -4,12 +4,13 @@
 // The same families as a list is the other reading; find looks for a family by its code
 // or a name; the plus invites a household. The four lists the couple keep -- courses,
 // gifts, events, where to stay -- are tools on the rail, each a drawer of rows that takes a new one
-// in place, and a row opens a drawer of its own, whose × goes back to its list.
+// in place, and a row opens a drawer of its own, whose × goes back to its list. The venues are a
+// page nobody wrote: drawn from their shape (src/derive.ts), by what delta.ts declares of them.
 
 import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
 import { over, type SessionDocument } from "../documents/session";
-import { addModal, addTool, choice, collectionPage, confirmModal, findControl, prop, readingSwitch, row, rows, drawer, tool } from "./bento";
+import { addModal, addTool, choice, collectionPage, confirmModal, findControl, prop, readingSwitch, row, rows, drawer, surfaces, tool } from "./bento";
 import { appletWrites, esc, join, nav, open as openAt, write } from "./html";
 import { address } from "../../../src/bento";
 import { part } from "../../../src/parts";
@@ -17,12 +18,16 @@ import { icon, type IconName } from "./icons";
 import { familiesPhoto, photoMount, type Family, type PhotoEntry } from "./photo";
 import { answerOf, answerSays, answerWord, choicesLine, coupleName, faceMark, firstNameOf, formatDay, frame, guestMark, layers, isComing, matches, picture, placeRows, plural, runNames, specOf, timetableRows, type AnswerMark } from "./shared";
 import { inPhoto } from "../documents/wedding";
+import { derived, schema } from "../delta";
+import { derivedPage } from "../../../src/derive";
+import type { Op } from "../../../src/html";
 
 /** Opening something over the page the couple are on -- a drawer, a modal -- and putting it away: both are going somewhere (views/html.ts). */
 const open_ = (v: BoardView, what: string, which: string | number = ""): string => openAt(over(v.session.ui).path, what, which);
 const close = (v: BoardView): string => nav(over(v.session.ui).path);
 
-export type BoardView = { session: SessionDocument; b: BoardDocument };
+/** `may` is the couple's permit, asked by a page drawn from a collection's shape. */
+export type BoardView = { session: SessionDocument; b: BoardDocument; may(op: Op, path: string): boolean };
 
 type KeepTable = "courses" | "gifts" | "events" | "places";
 const KEEP: Record<KeepTable, { label: string; noun: string; mark: IconName }> = {
@@ -49,6 +54,7 @@ export function boardPage(v: BoardView): string {
   const at = over(ui);
   const list = at.path === "list";
   const { word, hide } = findOf(v);
+  if (derived[at.path]) return derivedBoard(v, at.path);
 
   const readings: [text: string, on: boolean, path: string, mark: IconName][] = [
     ["Everyone", !list, "", "camera"],
@@ -63,6 +69,7 @@ export function boardPage(v: BoardView): string {
       const on = at.drawer === table || kept === table;
       return tool(KEEP[table].label, { icon: KEEP[table].mark, iconOnly: true, expanded: on, write: on ? close(v) : open_(v, table) });
     }),
+    tool("Venues", { icon: "map-pin", iconOnly: true, write: nav("venues") }),
     addTool(open_(v, "new", "households"), "Invite a household"),
   ].filter(Boolean);
   const body = join(`<div class="photo-page">`, welcomeBubble(b, !!at.answering, open_(v, "answer")), list ? householdsList(v) : photoReading(v), `</div>`);
@@ -86,6 +93,13 @@ export function boardPage(v: BoardView): string {
   );
   const drawers = join(familySheet(v), listSheet(v), keepSheet(v), welcomeSheet(v));
   return frame(false, layers(page, drawers, modal), ui.page ?? "");
+}
+
+/** A collection nobody wrote a page for: drawn from its shape, under the couple's names. */
+function derivedBoard(v: BoardView, table: string): string {
+  const page = v.session.ui.page ?? "";
+  const d = derivedPage(surfaces, { doc: "board", table: schema.tables[table]!, declared: derived[table]!, rows: v.b.derived[table]!, page, trail: [{ label: coupleName(v.b), back: nav("") }], may: v.may });
+  return frame(false, layers(d.page, d.drawer, d.modal), page);
 }
 
 // ───────────────────────────── the page ─────────────────────────────

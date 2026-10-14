@@ -8,8 +8,6 @@ import { icon } from "./icons";
 
 export { choice, prop, rows, type Crumb, type OpenOptions } from "../../../src/bento";
 
-export const { tool, addTool, findControl, collectionPage, row, drawer, addModal, confirmModal, site, go, readingSwitch } = bento({
-  icon,
-  session: "session",
-  leave: { text: "Leave", icon: "log-out", path: "/code" },
-});
+/** Bound whole, too: a page drawn from a document's shape is built from them (src/derive.ts). */
+export const surfaces = bento({ icon, session: "session", leave: { text: "Leave", icon: "log-out", path: "/code" } });
+export const { tool, addTool, findControl, collectionPage, row, drawer, addModal, confirmModal, site, go, readingSwitch } = surfaces;

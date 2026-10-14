@@ -2,6 +2,7 @@ import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/d
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { db } from "../../src/db";
+import type { Declared } from "../../src/derive";
 
 // The wedding's documents, in delta (`@blueshed/delta`). One set of tables, seen as
 // several documents, each cut for who reads it:
@@ -63,6 +64,8 @@ export const schema = defineSchema({
   },
   events: { table: "wedding_events", parent: "weddings", columns: { name: "text", when_at: "text?", where_at: "text?", notes: "text?", seq: "integer" }, temporal: false },
   places: { table: "wedding_places", parent: "weddings", columns: { name: "text", notes: "text?", link: "text?", picture_key: "text?", seq: "integer" }, temporal: false },
+  // the venues the couple are choosing between: a page nobody wrote, drawn from these columns (`derived`, below)
+  venues: { table: "wedding_venues", parent: "weddings", columns: { name: "text", notes: "text?", picture_key: "text?" }, temporal: false },
   visits: {
     table: "wedding_visits",
     columns: { code: "text?", page: "text?", reading: "json?", filter: "json?", hide: "json?", note: "text?" },
@@ -87,6 +90,11 @@ if (!db.query("SELECT 1 FROM wedding_weddings").get()) db.run(await Bun.file(`${
 
 export const delta = createLocal();
 
+/** The couple's collections drawn from their shape (src/derive.ts): what each says beyond its columns. Text columns only: the board's shape takes them as text. */
+export const derived: Record<string, Declared> = {
+  venues: { noun: "venue", fields: { picture_key: { label: "Picture", applet: "picture-field" } } },
+};
+
 const LISTS = ["courses", "dishes", "drinks", "gifts", "events", "places"];
 
 registerDocs(
@@ -94,7 +102,7 @@ registerDocs(
   db,
   schema,
   [
-    defineDoc("board:", { root: "weddings", include: ["households", "guests", "asks", "claims", ...LISTS] }),
+    defineDoc("board:", { root: "weddings", include: ["households", "guests", "asks", "claims", ...LISTS, "venues"] }),
     defineDoc("household:", { root: "households", include: ["guests", "asks", "claims"] }),
     defineDoc("wedding:", { root: "weddings", include: LISTS }),
     defineDoc("welcome:", { root: "weddings", include: [] }),

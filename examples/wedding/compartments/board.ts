@@ -14,7 +14,7 @@ import { keepEveryone } from "../everyone";
 
 type Rule = { path: RegExp; ops: PatchOp["op"][] };
 
-const LIST = "(courses|gifts|events|places)";
+const LIST = "(courses|gifts|events|places|venues)";
 const CHILD = "(dishes|drinks)";
 
 /** The couple's writable surface: what their page offers, which paths with which ops. A field is
@@ -33,16 +33,20 @@ const RULES: Rule[] = [
   { path: /^\/gifts\/\d+\/(name|description|link|picture_key|shared|seq)$/, ops: ["replace"] },
   { path: /^\/events\/\d+\/(name|when_at|where_at|notes|seq)$/, ops: ["replace"] },
   { path: /^\/places\/\d+\/(name|notes|link|picture_key|seq)$/, ops: ["replace"] },
+  { path: /^\/venues\/\d+\/(name|notes|picture_key)$/, ops: ["replace"] },
   { path: new RegExp(`^/courses/\\d+/${CHILD}/-$`), ops: ["add"] },
   { path: new RegExp(`^/courses/\\d+/${CHILD}/\\d+$`), ops: ["remove"] },
   { path: /^\/courses\/\d+\/dishes\/\d+\/(name|dietary)$/, ops: ["replace"] },
   { path: /^\/courses\/\d+\/drinks\/\d+\/name$/, ops: ["replace"] },
 ];
 
+/** May the couple make this change? The permit's, and the page's, which draws a control only where it says yes. */
+const may = (op: PatchOp["op"], path: string): boolean => RULES.some((r) => r.path.test(path) && r.ops.includes(op));
+
 /** The couple's page. The board is always there in practice: read() only reports a kind for a code that exists. */
 export function renderBoard(session: sessionDoc.SessionDocument): string | undefined {
   const b = boardDoc.read(session.id!);
-  return b && boardPage({ session, b });
+  return b && boardPage({ session, b, may });
 }
 
 export const board: Compartment = {
@@ -52,8 +56,7 @@ export const board: Compartment = {
     return session.kind === "couple" ? session.id! : undefined;
   },
   permit(ws, op) {
-    if (sessionDoc.read(ws.data.sessionId).kind !== "couple") return false;
-    return RULES.some((r) => r.path.test(op.path) && r.ops.includes(op.op));
+    return sessionDoc.read(ws.data.sessionId).kind === "couple" && may(op.op, op.path);
   },
   shape: (_ws, id, ops) => boardDoc.shape(boardDoc.held(id), ops),
   afterWrite: putAway,
