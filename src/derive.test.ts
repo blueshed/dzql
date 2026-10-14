@@ -49,8 +49,10 @@ describe("a page drawn from a collection's shape", () => {
     const { drawer, page } = derive("venues?row=1", { may });
     expect(page).toContain(`id="venues-1" ${go("venues?row=1").trim()} aria-expanded="true" data-reveal`);
     expect(drawer).toContain(`aria-label="The Mount"`);
-    expect(drawer).toContain(`name="seats" type="number" value="120" aria-label="Seats"`);
-    expect(drawer).toContain(`${write("board", "replace", "/venues/1/name")} name="name" type="text"`);
+    // each the bento's field: a form of its own, its label tied to it
+    expect(drawer).toContain(`<form data-eta-part="venues-1-seats" class="prop" data-write-on="blur"><label class="prop-name cap" for="field-board-venues-1-seats">Seats</label>`);
+    expect(drawer).toContain(`id="field-board-venues-1-seats" name="seats"${write("board", "replace", "/venues/1/seats")} type="number" value="120"`);
+    expect(drawer).toContain(`name="name"${write("board", "replace", "/venues/1/name")} type="text"`);
     expect(drawer).toContain(`<div class="prop-value">&lt;booked&gt;</div>`); // the permit says no: read, not typed
     expect(drawer).toContain(`<span class="prop-name cap">Picture</span>`);
     expect(drawer).toContain(`<div data-applet="picture-field" data-writes='[{"doc":"board","op":"replace","path":"/venues/1/picture_key"}]' data-props="{&quot;doc&quot;:&quot;board&quot;,&quot;path&quot;:&quot;/venues/1/picture_key&quot;,&quot;current&quot;:null}"></div>`);
