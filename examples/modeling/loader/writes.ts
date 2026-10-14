@@ -1,9 +1,11 @@
+import type { PatchOp } from "../../../src/json-patch";
+import { nextMessage, write, type WireMessage } from "../../../src/test-socket";
 import type { Heart } from "./facts";
 
 // What loading an app into a model writes (`bun run model:load`, ./load.ts): the app's facts, as
 // the loader reads them from its code and a run of its stories (./extract.ts), said in the model's
-// own words -- the same writes the CLI's verbs make (../cli.ts). Pure, so what a load would write is
-// tested without a server; ./load.ts sends it.
+// own words -- the same writes the CLI's verbs make (../cli.ts). `writesOf` is pure, so what a load
+// would write is tested without a server; `send` sends it.
 
 type Field = { name: string; type: string };
 
@@ -44,4 +46,27 @@ export function writesOf(heart: Heart): Load {
     });
   }
   return { stories, documents, skipped };
+}
+
+let ids = 0;
+
+/** Sends one write to the model and waits for its own answer: the id of the row it made, or why it was refused. */
+export async function said(ws: WebSocket, ops: PatchOp[]): Promise<string> {
+  const id = ++ids;
+  write(ws, "model", ops, id);
+  for (let m: WireMessage = await nextMessage(ws); ; m = await nextMessage(ws)) {
+    if (m.id !== id) continue;
+    if (m.type === "refused") throw new Error(`refused: ${m.reason ?? "no reason given"} (${JSON.stringify(ops[0])})`);
+    return String(m.ops?.[0]?.path.split("/")[2]);
+  }
+}
+
+/** A load, sent a write at a time: every story, then every document, naming the stories it serves by the ids they were given, then what it holds. */
+export async function send(ws: WebSocket, load: Load): Promise<void> {
+  const storyIds: string[] = [];
+  for (const s of load.stories) storyIds.push(await said(ws, [{ op: "add", path: "/stories/-", value: s }]));
+  for (const d of load.documents) {
+    const id = await said(ws, [{ op: "add", path: "/documents/-", value: { name: d.name, root: d.root, own: d.own, held_by: d.held_by, stories: d.serves.map((i) => storyIds[i]), fields: d.fields } }]);
+    for (const h of d.holds) await said(ws, [{ op: "replace", path: `/documents/${id}/holds/${h.entity}`, value: { under: h.under, fields: h.fields } }]);
+  }
 }

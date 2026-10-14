@@ -113,11 +113,12 @@ The loop exists; it should be the way in, and it never generates code:
    `stories.ts`, a document in `delta.ts`, who holds it in its compartment. Then `bun run stories`
    and the least that makes the next one pass.
 3. **Read it back.** `bun run model:load` loads the app that was built into the model, so the
-   teller sees it; `bun run model:check` reads its documents from a run of its stories.
+   teller sees it; `bun run model:check` reads its documents from a run of its stories; and
+   `bun run model:check <app> --against-page` compares the model as told on the page with the model
+   the app turned out to be, gap by gap: each story told and not built, each built and never told,
+   each document whose holders, holdings or own-ness differ, said as a question for the teller.
 
-What is missing is the comparison: the model as told against the model the app turned out to be,
-gap by gap. `model:check --against` does it for hjeli's models; it should take the model page's
-own. A scaffold that writes code is the wrong step: it is code no story asked for, and the model
+A scaffold that writes code is the wrong step: it is code no story asked for, and the model
 already says, story by story, what to build.
 
 ## The verdict
