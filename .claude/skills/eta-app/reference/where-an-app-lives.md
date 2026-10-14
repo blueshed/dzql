@@ -1,50 +1,56 @@
-# Where an app lives, and when it seems to need `src/`
+# Where an app lives, and when it seems to need eta's kernel
 
-How an app is found and run, how a project moves to a later eta, and the seams to look for before
-touching `src/`.
+How a project is made and laid out, how it moves to a later eta, and the seams to look for before
+touching the kernel.
 
 ```sh
-bun create blueshed/eta my-app   # app/ (the app), model/ (the model's page), src/ (eta's kernel)
+bun create blueshed/eta my-app   # the root is the app; eta is one folder, eta/, never edited
 cd my-app
 bun run model                    # the model, where the stories are told first (the modelling skill)
-bun dev                          # the app; bun test, bun run stories and bun run cli work on app/
+bun dev                          # the app; bun test, bun run stories and bun run cli work on src/
+bun run eta:update               # a later eta: eta/ replaced whole, and what to change
 ```
-
-The kernel finds an app by `ETA_EXAMPLE`: an example by name (`chat`) or a folder (`./app`).
-`start`, `stories` and `cli` all take it, and none of the steps edits `src/`.
 
 ## A project made with `bun create blueshed/eta`
 
-- `app/` starts as a page and no stories (eta's `examples/starter`); it imports the kernel
-  (`../src/...`) and never edits it. `bun run cli:model` works on `model/`.
+```
+src/          the app: index.ts, stories.ts, delta.ts, page, compartments, client (begun as eta's examples/starter)
+migrations/   a field renamed or dropped, or data moved; never edit one that has run
+eta/          eta's, never edited: src/ (the kernel), model/ (the model's page), docs/, CHANGELOG.md, VERSION, update.ts
+package.json  the app's, with eta as a Bun workspace ("workspaces": ["eta"], "eta": "workspace:*")
+CLAUDE.md, CHANGELOG.md, todo.jsonl, README.md, .claude/ (skills, hooks), .env, .env.test
+```
+
+- The app imports eta by name, never by a path into `eta/`: `import { story } from "eta/stories"`,
+  `import "eta/client/app"`, `@import "eta/bento.css"`. eta/package.json's `exports` maps `eta/<x>`
+  to `eta/src/<x>.ts`; inside `eta/`, the kernel and the model's page import each other relatively.
+- The scripts run eta's own files on the app: `ETA_EXAMPLE=./src bun eta/src/start.ts` (dev, start),
+  `eta/src/stories-run.ts` (stories), `eta/src/cli.ts` (cli); `bun run model` and `bun run cli:model`
+  are `ETA_EXAMPLE=./eta/model`. `bun run model:check` and `model:load` read `./src`.
 - `.env` holds the model's name, who keeps it, and the password they share.
+- eta's docs a project keeps are in `eta/docs/` (what stories are for, the bento's rules).
+
+The kernel finds an app by `ETA_EXAMPLE`: an example by name (`chat`, in eta) or a folder (`./src`).
 
 ## Moving a project to a later eta
 
-The project's `CHANGELOG.md` names the eta it started from. Replace `src/` and `model/` whole with
-the later eta's, from its repo at its tag; carry across what each "What to change" in eta's
-`CHANGELOG.md` says, from the project's version on; run the gate (the stories passing is the proof);
-say in the project's changelog which eta it is on now. Never patch `src/` in a project: a change the
-kernel needs is eta's, made there and released.
+`bun run eta:update` (the latest release), `bun run eta:update 0.54.0` (a release), or
+`bun run eta:update ../eta` (a checkout, as it stands). It replaces `eta/` whole, sets the root's eta
+scripts and the kernel's dependencies at that eta's versions, installs, refreshes the eta-app,
+modelling, delta-doc and railroad skills, notes it in the project's changelog, prints what eta's
+changelog says changed since `eta/VERSION` -- what to change first -- and runs the gate. It commits
+nothing: carry across what each "What to change" says, run the gate until it passes, then commit.
 
-## An app that installs eta
+Never edit `eta/` in a project: the next update replaces it. A change the kernel needs is eta's,
+made there and released.
 
-An app in a repo of its own depends on a packed eta, a tarball, never `file:`:
+A project made before `eta/` was (`app/`, `model/`, and eta's kernel in `src/`) has no
+`eta/update.ts`. From its root, run eta's: `bun ../eta/create/update.ts ../eta` with a checkout
+beside it. It moves the project once: `app/` becomes `src/`, its imports of `../src/...` become
+`eta/...`; eta's `src/`, `model/` and docs go to `eta/`; `migrations/` is made; `tsconfig.json`,
+`bunfig.toml` and `CLAUDE.md` follow (`git diff CLAUDE.md` for lines of your own).
 
-```sh
-cd ../blueshed/eta && bun pm pack && cd - && bun add ../blueshed/eta/eta-<version>.tgz
-```
-
-- After a change to eta, pack again, then `bun remove eta && bun add` the tarball: the lockfile keeps
-  a tarball's first contents.
-- It imports `eta/src/...` (the stylesheet: `@import "eta/src/bento.css"`), and has a `server.ts`
-  (`createServer(example)`), a stories runner (`print(await run(example, stories, undefined, {
-  byHand: !!process.env.STORY_BY_HAND }), { wire: !!process.env.STORY_WIRE })`), and eta's
-  `tsconfig.json`, `bunfig.toml` and `.env.test`.
-- To be read by eta's loader (`bun run model:check <path>`), it links eta from its checkout instead
-  (`bun link`, then `"eta": "link:eta"`), keeping delta and railroad at eta's versions.
-
-## When it looks like you need to touch `src/`
+## When it looks like you need to touch the kernel
 
 A seam is missing from what you know, not the app special:
 

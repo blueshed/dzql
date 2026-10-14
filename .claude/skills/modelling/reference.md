@@ -1,6 +1,6 @@
 # modelling reference
 
-The model's page is eta's modeling app (`examples/modeling` in eta, `model/` in a project). The
+The model's page is eta's modeling app (`examples/modeling` in eta, `eta/model/` in a project). The
 model is one delta document: its stories, and the documents they need. `SKILL.md` is the order to
 work in.
 
@@ -27,7 +27,7 @@ case>@modeling.example`; `.env`'s `MODEL_PEOPLE` says who.
 
 ## The verbs
 
-`model/cli.ts` (eta: `examples/modeling/cli.ts`). Stories and documents are numbered as they are
+`eta/model/cli.ts` (eta: `examples/modeling/cli.ts`). Stories and documents are numbered as they are
 made; the page shows each story's number.
 
 | Said | Verb |
@@ -63,7 +63,7 @@ Every holder is told every write to it, so cut documents by who must be told, no
 ## Loading an app that exists
 
 An app already built can be read into the model rather than told: `bun run model:load <example |
-path>` (in a project, `bun run model:load ./app`) reads its code and runs its stories
+path>` (in a project, `bun run model:load`, which reads `./src`) reads its code and runs its stories
 (`loader/extract.ts`), then writes every story and every document the stories need into the model
 on the page, as the person the CLI signed in as -- each write lands in front of whoever watches,
 and each undoes. A document no story needs is left out, and said. `bun run model:check <example>`
@@ -76,8 +76,8 @@ Load the **eta-app** skill; the model says what to build, story by story:
 
 | In the model | In the app |
 |---|---|
-| A story | A story in `app/stories.ts`, in the wire's words: its actor is the cast member `as`, `does` or `cannot` the write, `seen` the holders of the documents it is born into |
-| A document | A `defineDoc` in `app/delta.ts`: its root, and what it holds as its includes |
+| A story | A story in `src/stories.ts`, in the wire's words: its actor is the cast member `as`, `does` or `cannot` the write, `seen` the holders of the documents it is born into |
+| A document | A `defineDoc` in `src/delta.ts`: its root, and what it holds as its includes |
 | An entity, its fields, its parent | A table in `defineSchema`, its columns, its `parent` |
 | `own` | A `perSession` compartment |
 | Who holds it | Who its compartment lets see it |
@@ -85,8 +85,8 @@ Load the **eta-app** skill; the model says what to build, story by story:
 
 Then `bun run stories`: the least that makes the next story pass, then the next.
 
-Last, read it back: is the app the model as told? `bun run model:check <example | ./app>
---against-page` reads the model page as the CLI is signed in to it (`.eta-session`; `ETA_URL`), and
+Last, read it back: is the app the model as told? `bun run model:check --against-page`
+(eta: `model:check <example> --against-page`) reads the model page as the CLI is signed in to it (`.eta-session`; `ETA_URL`), and
 the app as `model:load` would write it, and names each gap as a question for the teller: a story told
 that the app does not tell, one it tells that was never told, one whose teller or does/cannot
 differs, and a document whose root, holders, holdings (what each hangs under, its fields) or

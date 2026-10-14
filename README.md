@@ -35,6 +35,9 @@ You tell Claude the stories. It writes them down on the model's page (http://loc
 while you watch, with the documents they need and who holds each. Then it builds the app from the
 model (`bun dev`, http://localhost:3000), story by story.
 
+The project's root is your app, in `src/`; eta is one folder, `eta/`, that you never edit.
+`bun run eta:update` brings a later eta, says what to change, and runs your gate.
+
 ## Try the examples
 
 You need [Bun](https://bun.sh). Then `bun install` and `bun run dev`, and open

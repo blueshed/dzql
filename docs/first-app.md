@@ -266,7 +266,7 @@ drag halfway through, a scroll position, a chart's history. That piece is an **a
   secret in it.
 - **One Undo is one document.** Keep a gesture's changes in one.
 - **Don't edit `src/` for one app.** If it seems you must, read the eta-app reference's "When it looks
-  like you need to touch `src/`" (`.claude/skills/eta-app/reference/where-an-app-lives.md`) first:
+  like you need to touch the kernel" (`.claude/skills/eta-app/reference/where-an-app-lives.md`) first:
   a missing seam is rare.
 
 ## Where next

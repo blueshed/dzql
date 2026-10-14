@@ -3,7 +3,7 @@ import { afterDrawing, ask, walked, type Answer, type Write } from "./app";
 import { groupOf, isBox, isField, isRadio, namedFields, rendered, type Field } from "./form-value";
 
 // The page's writes as tools for an assistant (todo n99), for an app that opts in: its client/main.ts
-// imports this after the kernel's client, `import "eta/src/client/tools"`. Every control a person
+// imports this after the kernel's client, `import "eta/client/tools"`. Every control a person
 // could press on the page now, that the app has labelled, is a tool -- a form, an editing form, the
 // buttons and rows of one label, an applet's `data-writes` -- and undo and redo are two more. A
 // tool makes the write its control would, and sends only what its control could: a choice among

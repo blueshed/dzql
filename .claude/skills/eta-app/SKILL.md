@@ -1,6 +1,6 @@
 ---
 name: eta-app
-description: Use before building an eta app -- the app/ of a project made with `bun create blueshed/eta`, an example under examples/<name>/, or an app in a repo of its own -- or adding a document, compartment, applet, route or CLI verb to one; and before touching the Compartment contract, an app's delta.ts, the applet registry or the {doc, ops} wire. reference/ has one short file a piece; SKILL.md says which to read for which step.
+description: Use before building an eta app -- the src/ of a project made with `bun create blueshed/eta`, an example under examples/<name>/, or an app in a repo of its own -- or adding a document, compartment, applet, route or CLI verb to one; and before touching the Compartment contract, an app's delta.ts, the applet registry or the {doc, ops} wire. reference/ has one short file a piece; SKILL.md says which to read for which step.
 metadata:
   version: 0.53.0
 ---
@@ -14,7 +14,7 @@ person's page from the documents they hold, and sends only what changed.
 Stories, then documents, then pages: a story says who does what and who then sees it; documents are
 cut so that whoever must see a change holds it; the page is drawn from what it reads. This file is
 the order to work in; `reference/` says how each piece works, one short file a piece. The types in
-`src/` are the contract: read them, not prose about them. Only while someone is telling you the stories,
+`src/` (a project's `eta/src/`) are the contract: read them, not prose about them. Only while someone is telling you the stories,
 there to answer, does the **modelling** skill come first; asked to build or change, build.
 
 ## The order
@@ -53,8 +53,8 @@ Each step is the least that makes the next story pass. Run `bun run stories` aft
 - The loop is seconds: `bun run stories` (`STORY=<words>` for one) and `bun test <file>`, read for
   its passes and fails, as coverage is a whole run's. The gate, before a commit: `bun check`,
   `bun test --parallel` (100% coverage), `bun run stories`.
-- Never edit `src/` from an app: a missing seam is rare. →
-  [where-an-app-lives](reference/where-an-app-lives.md#when-it-looks-like-you-need-to-touch-src)
+- Never edit eta's kernel from an app (a project's `eta/`): a missing seam is rare. →
+  [where-an-app-lives](reference/where-an-app-lives.md#when-it-looks-like-you-need-to-touch-the-kernel)
 
 ## Which file for which step
 
@@ -76,4 +76,4 @@ Each step is the least that makes the next story pass. Run `bun run stories` aft
 | What crosses the socket | [wire](reference/wire.md) |
 | Let an assistant use the page | [assistants](reference/assistants.md) |
 | Browser tests; the gate | [tests](reference/tests.md) |
-| Start, upgrade or install eta; before touching `src/` | [where-an-app-lives](reference/where-an-app-lives.md) |
+| Start a project, or update its eta; before touching the kernel | [where-an-app-lives](reference/where-an-app-lives.md) |

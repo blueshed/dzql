@@ -9,8 +9,8 @@ Releases eta: the gate, the version, the changelog, a tag. The bump level is `$A
 
 eta is not on npm. A release is a tag on GitHub, and what it is for is the projects made from eta:
 `bun create blueshed/eta` takes `main` as it stands, and a project's changelog names the eta it
-started from. A project moves to a later eta by reading eta's changelog from its version on and
-carrying across what each breaking change says to do. So a release must leave three things true:
+started from. A project moves to a later eta with `bun run eta:update`, which replaces its `eta/`
+folder and prints eta's changelog from its version on, each breaking change's "What to change" first. So a release must leave three things true:
 `main` passes the gate, the changelog says what shipped, and every breaking change says what an app
 must change.
 
