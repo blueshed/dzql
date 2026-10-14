@@ -223,14 +223,14 @@ ${Name}: an app on eta, told before it is built.
   them down and describes the documents they need with \`bun run cli:model\`, and the page shows
   each change as it lands. Load the **modelling** skill before writing to it.
 - \`app/\`: the app (\`bun dev\`, port 3000), built from the model. Load the **eta-app** skill before
-  adding a document, a compartment, an applet or a route.
+  any change to it: it says which short file to read for each step.
 - \`src/\`: eta's kernel. The app imports it and never edits it. To update it, replace \`src/\` and
   \`model/\` with a later eta's, and carry across what eta's changelog says to change (CHANGELOG.md
   says which eta this started from).
 
 ## Working here
 
-- Bun only: never \`node\`, \`npm\` or \`yarn\`.
+- Bun only: never \`node\`, \`npm\`, \`yarn\` or \`python\`; a script or an edit is \`bun -e\` or a file.
 - Stories first: a story in \`app/stories.ts\`, modelled on the model's page, then the least that
   makes it pass. Build nothing no story needs.
 - The gate before a commit: \`bun check\`, \`bun test\` (100% coverage of \`app/\`), \`bun run stories\`.
