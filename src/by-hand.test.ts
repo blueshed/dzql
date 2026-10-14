@@ -38,7 +38,7 @@ describe("the stories by hand", () => {
     const report = await run(chat, chatStories, undefined, { byHand: true });
     expect(report.outcomes.map((o) => o.name)).toEqual(chatStories.stories.map((s) => s.name));
     expect(report.outcomes.flatMap((o) => o.failures)).toEqual([]);
-    expect(report.byHand).toMatchObject({ stories: 8, presses: 8, applets: 0 });
+    expect(report.byHand).toMatchObject({ stories: 11, presses: 11, applets: 0 });
 
     const { example: ticker, stories: told } = await load("ticker");
     const reading = (value: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/reading/board", value }] });

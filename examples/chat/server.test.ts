@@ -268,6 +268,24 @@ describe("websocket write protocol", () => {
     ws.close();
   });
 
+  test("how far back you read goes with the room you leave", async () => {
+    const ws = await openTab();
+    write(ws, "session", [{ op: "replace", path: "/name", value: "Ada" }]);
+    await heard(ws);
+    write(ws, "session", [{ op: "replace", path: "/room", value: crypto.randomUUID() }]);
+    await heard(ws);
+    for (let i = 0; i <= 50; i++) write(ws, "room", [{ op: "add", path: "/messages/-", value: `said ${i}` }]);
+    await heard(ws);
+    write(ws, "session", [{ op: "replace", path: "/before", value: "earlier" }]);
+    expect((await heard(ws)).page).toContain("said 0");
+
+    write(ws, "session", [{ op: "remove", path: "/room" }]);
+    const { messages } = await heard(ws);
+
+    expect(patchFor(messages, "session")!.ops).toEqual([{ op: "replace", path: "/before", value: null }, { op: "replace", path: "/room", value: null }]); // a row's fields, told by name
+    ws.close();
+  });
+
   test("logout clears the session and re-renders the name form", async () => {
     const ws = await openTab();
 

@@ -293,7 +293,7 @@ describe("app.ts in a real browser", () => {
     const long = `the fifty-first, ${"and it goes on for a while ".repeat(12)}`;
     await sendChatMessage(view, long);
     await waitFor(view, MESSAGES_TEXT, (v) => typeof v === "string" && v.includes("the fifty-first"));
-    expect(await view.evaluate<number>(`${m}.children.length`)).toBe(50);
+    expect(await view.evaluate<number>(`${m}.querySelectorAll('li[id]').length`)).toBe(50); // and "Earlier" at their head
     expect(await view.evaluate<boolean>(atFoot)).toBe(true);
   }, 20000);
 

@@ -115,7 +115,7 @@ describe("from a run", () => {
     const text = format("chat", r);
     expect(text).toContain("## Writes the server accepts that no page offers (0 paths)");
     expect(text).toContain("Read-only (held, written by nobody): here, lobby");
-    expect(text).toContain("11. closes a tab · Bob closes his tab");
+    expect(text).toContain("14. closes a tab · Bob closes his tab");
     expect(text).toContain("2. cannot · Without a name");
   }, 30000);
 

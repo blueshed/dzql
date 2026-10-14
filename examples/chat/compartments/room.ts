@@ -16,7 +16,7 @@ import { keepLobby } from "../presence";
 // one form that names a new one; a room, its conversation and the one form that says something,
 // with who is here across its head. The trail is the way back, and the page's tools are undo,
 // redo and logging out. Nothing here is kept between taps: what the page shows is the session's
-// name and room, and the room's messages and people.
+// name, room and how far back it reads, and the room's messages and people.
 const { collectionPage, row } = bento({ icon, session: "session", leave: { text: "Log out", icon: "log-out", path: "/name" } });
 
 /** The first letter of a name, as the face it wears. */
@@ -58,22 +58,37 @@ function renderMessage(message: ChatMessage, index: number, messages: ChatMessag
   return part(`m${message.id}`, `<li id="m${message.id}"${mine ? ' class="mine"' : ""}>${mark}<div class="body">${who}<span class="bubble">${esc(message.text)}</span></div></li>`);
 }
 
-/** Say something: the room's conversation, and the form at its foot. "Chat" in the trail is the way back to the rooms. */
-function renderRoom(name: string, room: string, people: string[], transcript: ChatMessage[]): string {
+/**
+ * Say something: the room's conversation, and the form at its foot. "Chat" in the trail is the way
+ * back to the rooms. Fifty messages at a time (../documents/room.ts): "Earlier" at their head while
+ * there are more, and reading back, "Latest" at the foot in place of the form. Another fifty
+ * share no message with these, so the conversation goes whole, as a room does when you go in.
+ */
+function renderRoom(name: string, room: string, people: string[], before: string | null, { messages, earlier }: { messages: ChatMessage[]; earlier: boolean }): string {
   return collectionPage([{ label: "Chat", back: write("session", "remove", "/room") }, { label: `#${room}` }], {
     key: "conversation",
     body: join(
       renderPeople(people, name),
-      part("messages", `<ul class="messages" id="messages" data-autoscroll>${transcript.map((m, i) => renderMessage(m, i, transcript, name)).join("")}</ul>`),
-      `<form class="say" aria-label="Say something"${write("room", "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message" aria-label="Message"><button type="submit" class="tool">Send</button></form>`,
+      part(
+        "messages",
+        `<ul class="messages" id="messages" data-autoscroll>${earlier ? `<li class="earlier"><button type="button" class="tool"${write("session", "replace", "/before", "earlier")}>Earlier</button></li>` : ""}${messages.map((m, i) => renderMessage(m, i, messages, name)).join("")}</ul>`,
+      ),
+      part(
+        "foot",
+        `<div class="foot">${
+          before === null
+            ? `<form class="say" aria-label="Say something"${write("room", "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus placeholder="Message" aria-label="Message"><button type="submit" class="tool">Send</button></form>`
+            : `<button type="button" class="tool"${write("session", "remove", "/before")}>Latest</button>`
+        }</div>`,
+      ),
     ),
   });
 }
 
 /** Chat's page: the three steps, in the bento's frame (nothing opens over them). No name, the name form; no room, the rooms; else the room. */
 export function render(sessionId: string): string {
-  const { name, room: current } = sessionDoc.read(sessionId);
-  const page = !name ? renderNameForm() : !current ? renderRooms(name, roomDoc.list()) : renderRoom(name, current, roomDoc.people(current), roomDoc.read(current));
+  const { name, room: current, before } = sessionDoc.read(sessionId);
+  const page = !name ? renderNameForm() : !current ? renderRooms(name, roomDoc.list()) : renderRoom(name, current, roomDoc.people(current), before, roomDoc.read(current, before));
   return layers(page, "", "");
 }
 
