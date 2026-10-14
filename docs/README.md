@@ -3,7 +3,7 @@
 Two kinds. **Guidance**, current:
 
 - `stories.md` -- what eta is for, and how stories drive it.
-- `bento/` -- how a page looks and moves: the bento's rules (`README.md`), built in `src/bento.ts`, and sample designs of them (`design/`).
+- `bento/` -- where am I and what can I do: the directions (`README.md`), built in `src/bento.ts`, and two sets of sample designs (`design/`, `paintbrush/`).
 - `first-app.md` -- a first app, step by step: chat, then leave, in the order you meet the words.
 - `review-2026-10-13.md` -- the review in progress: is the repo as small and simple as it can be,
   with every example and test justified. Its decisions are being carried out.

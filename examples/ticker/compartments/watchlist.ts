@@ -12,7 +12,7 @@ import type { PatchOp } from "../../../src/json-patch";
 // comparing the page, not listed by hand. A person watches and drops at a person's pace; the
 // ticks, which are not, never come through here.
 
-/** A modal asks one question; the write that answers it puts it away (rule 14): watching closes the ask, dropping closes the asking-first. Either way the desk is back on the window it was asked from. */
+/** A modal asks one question; the write that answers it puts it away: watching closes the ask, dropping closes the asking-first. Either way the desk is back on the window it was asked from. */
 async function closeAsked(sessionId: string, ops: PatchOp[]): Promise<void> {
   const { path, what } = parseAddress(await settled(activeDocuments(), () => deskDoc.read(sessionId).page));
   const answered = (what === "new" && ops.some((op) => op.op === "add")) || (what === "confirm" && ops.some((op) => op.op === "remove"));

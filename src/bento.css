@@ -1,4 +1,4 @@
-/* The look of the kernel's bento surfaces (src/bento.ts), by the bento's rules (docs/bento/README.md): a page is a box, a tray with cells cut into it and the trail
+/* The look of the kernel's bento surfaces (src/bento.ts), one way to draw the bento (docs/bento/README.md), a default an app may change: a page is a box, a tray with cells cut into it and the trail
    above. A cell grows into the window: the trail floats top-left in it, the cell's
    tools stand at the right edge as stacks of square buttons, the page's tools are one more stack at
    the bottom right, and the reading keeps clear of them. A figure in the reading opens the drawer:
@@ -109,7 +109,7 @@
 .thing .pencil { color: var(--mark); }
 .cell-summary { margin: -4px 0 0; font-size: 14px; color: var(--muted); }
 .cell-body { position: relative; flex: 1; min-height: 0; }
-/* a cell that is a thing: ✎, a tap opens its drawer, lit while it is open (rule 15) */
+/* a cell that is a thing: ✎, a tap opens its drawer, lit while it is open */
 .thing[aria-expanded="true"], .thing:has(> .cell-head > [aria-expanded="true"]) { box-shadow: inset 0 0 0 2px var(--accent); }
 @media (max-width: 819px) {
   .cell[data-corners-phone~="tl"] { border-top-left-radius: var(--radius-corner); }
@@ -125,7 +125,7 @@
   .cell[data-corners~="bl"] { border-bottom-left-radius: var(--radius-corner); }
 }
 
-/* ── the window: the cell open. Opening goes nowhere (rule 7): the same element, named for
+/* ── the window: the cell open. Opening goes nowhere: the same element, named for
    the view transition, grows to the screen less a margin; the page behind holds still. ── */
 .cell.open { position: fixed; inset: var(--space-sm); z-index: 40; padding: 0; gap: 0; border-radius: var(--radius-tray); box-shadow: var(--shadow-window); cursor: default; }
 @media (min-width: 820px) { .cell.open { inset: var(--space-2xl); } }
@@ -145,10 +145,10 @@ body:has(.page.windowed) { overflow: hidden; }
 .full { position: absolute; inset: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 60px 60px 72px var(--space-lg); border-radius: inherit; }
 @media (min-width: 820px) { .full { padding: 72px var(--clear) 96px var(--space-2xl); } }
 .full > .note { margin: var(--space-md) 0 0; }
-/* the rails: the cell's own tools at the right edge, the page's at the bottom right (rule 9) */
+/* the rails: the cell's own tools at the right edge, the page's at the bottom right */
 .rail { position: absolute; z-index: 3; right: var(--space-lg); top: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-md); }
 .cell.open .page-tools { position: absolute; z-index: 3; right: var(--space-lg); bottom: var(--space-lg); }
-/* find: its field beside the rail, the tally, the eye (rule 17) */
+/* find: its field beside the rail, the tally, the eye */
 .filter { position: absolute; z-index: 3; top: var(--space-lg); right: calc(var(--space-lg) + var(--control) + var(--space-md)); display: flex; align-items: center; gap: var(--space-sm); height: var(--control); padding: 0 2px 0 var(--space-md); background: var(--card); border: 1px solid var(--edge); border-radius: var(--radius-control); box-shadow: var(--shadow-control); }
 .filter input { width: 140px; height: 24px; padding: 0; border: 0; background: transparent; } /* 16px, as every field: iOS zooms into a smaller one */
 .filter input:focus-visible { outline: none; } /* the bar it sits in shows the focus */
@@ -172,7 +172,7 @@ body:has(.page.windowed) { overflow: hidden; }
   .cell.open:has(> .filter) .full { padding-top: calc(2 * var(--space-lg) + 2 * var(--control) + var(--space-sm)); }
 }
 .hushed { opacity: 0.3; }
-/* the rails step aside for the drawer, and the reading reflows to the clear beside it (rule 18) */
+/* the rails step aside for the drawer, and the reading reflows to the clear beside it */
 @media (min-width: 820px) {
   .rail, .cell.open .page-tools, .undo-said, .filter, .full { transition: right 200ms ease, padding-right 200ms ease; }
   main#app:has(.drawer) .rail, main#app:has(.drawer) .cell.open .page-tools { right: calc(var(--panel) + var(--space-2xl) + var(--space-lg)); }
@@ -186,7 +186,7 @@ body:has(.page.windowed) { overflow: hidden; }
 
 /* ── the rows: a list is a table, one line per thing, the same columns on every list -- a lead,
    the words, the state, the mark. A row is a figure: tap it and its drawer opens and the whole
-   line shows it is chosen; what it can carry waits in its drawer, not on the line (rule 13). ── */
+   line shows it is chosen; what it can carry waits in its drawer, not on the line. ── */
 .rows { display: flex; flex-direction: column; }
 .row { display: flex; align-items: center; gap: var(--space-md); min-height: 56px; padding: var(--space-md) var(--space-md); margin: 0 calc(-1 * var(--space-md)); border-bottom: 1px solid var(--line); border-radius: var(--radius-inner); }
 .row:last-child { border-bottom: 0; }
@@ -226,12 +226,12 @@ body:has(.page.windowed) { overflow: hidden; }
      the rail, Undo -- and the drawer goes by its ×, by Escape, or by what is tapped next */
   .scrim:not(.modal-scrim) { display: none; }
 }
-/* the page behind holds still while a modal asks (rule 14), and below 820px while a drawer's sheet
-   covers it (rule 6); from 820px a docked drawer leaves the page in reach, scrolling (rule 18) */
+/* the page behind holds still while a modal asks, and below 820px while a drawer's sheet
+   covers it; from 820px a docked drawer leaves the page in reach, scrolling */
 body:has(dialog.modal) { overflow: hidden; }
 @media (max-width: 819.98px) { body:has(.drawer) { overflow: hidden; } }
 
-/* ── the modal: new or delete, one question, nothing else may be touched while it asks (rule 14).
+/* ── the modal: new or delete, one question, nothing else may be touched while it asks.
    Rendered `open`, not shown by script, so it carries its own scrim and is centred by hand. ── */
 .modal-scrim { z-index: 70; }
 dialog.modal { position: fixed; inset: 0; margin: auto; z-index: 71; width: min(420px, calc(100vw - 2 * var(--space-2xl))); height: fit-content; max-height: calc(100dvh - 48px); overflow: auto; border: 0; padding: var(--space-xl) var(--space-xl) var(--space-2xl); background: var(--card); color: var(--ink); border-radius: var(--radius-panel); box-shadow: 0 20px 50px rgba(var(--ink-rgb), 0.3); animation: drawer-rise 160ms ease-out; }

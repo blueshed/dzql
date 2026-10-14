@@ -1,8 +1,8 @@
 // The couple's page: the photo of every family, as a household's is its own. Their welcome is the
 // bubble over it, a thing with ✎. A tap on a family opens its drawer -- their answer and words,
 // their guests (added, taken off), whoever they asked for (yes or no), their email and plus-ones.
-// The same families as a list is the other reading (rule 16); find looks for a family by its code
-// or a name (rule 17); the plus invites a household. The four lists the couple keep -- courses,
+// The same families as a list is the other reading; find looks for a family by its code
+// or a name; the plus invites a household. The four lists the couple keep -- courses,
 // gifts, events, where to stay -- are tools on the rail, each a drawer of rows that takes a new one
 // in place, and a row opens a drawer of its own, whose × goes back to its list.
 
@@ -39,7 +39,7 @@ const keptIn = (v: BoardView): { table: KeepTable; id: number } | undefined => {
   return isKeepTable(table) ? { table, id: Number(id) } : undefined;
 };
 
-/** Find's word on the families, and the eye (rule 17): a family is found by its code or any of its names. */
+/** Find's word on the families, and the eye: a family is found by its code or any of its names. */
 const findOf = (v: BoardView) => ({ word: v.session.ui.filter?.households, hide: v.session.ui.hide?.households });
 const hits = (h: HouseholdDocument, word: string | undefined): boolean => matches(`${h.code} ${h.guests.map((g) => g.name).join(" ")}`, word);
 
@@ -90,7 +90,7 @@ export function boardPage(v: BoardView): string {
 
 // ───────────────────────────── the page ─────────────────────────────
 
-/** The welcome as the couple's own thing (rule 15), over the photo: their words, the day, the place, the deadline, carrying ✎;
+/** The welcome as the couple's own thing, over the photo: their words, the day, the place, the deadline, carrying ✎;
  * a button: a tap opens the drawer where the whole of it is edited, and it is lit while that drawer is open. Their names are the trail's. */
 function welcomeBubble(b: BoardDocument, open: boolean, edit: string): string {
   return join(
@@ -241,7 +241,7 @@ function familySheet(v: BoardView): string {
   return drawer("family-drawer", h.code, body, close(v), "family-drawer");
 }
 
-/** The modal asking to take a guest off a family's invitation (rule 14), named for them; cancelling goes back to the family's drawer. */
+/** The modal asking to take a guest off a family's invitation, named for them; cancelling goes back to the family's drawer. */
 function confirmTakeOff(v: BoardView): string {
   const [what, hid, sub, gid] = (over(v.session.ui).confirm ?? "").split("/");
   const h = what === "households" && sub === "guests" ? v.b.households.find((x) => String(x.id) === hid) : undefined;
@@ -306,7 +306,7 @@ function listSheet(v: BoardView): string {
   return drawer(`${table}-drawer`, label, join(body, addInPlace(`/${table}/-`, noun)), close(v), "list-drawer");
 }
 
-/** The modal asking to confirm a removal -- a modal is new or delete and nothing else (rule 14) -- named for what it removes;
+/** The modal asking to confirm a removal -- a modal is new or delete and nothing else -- named for what it removes;
  * cancelling goes back to the row's drawer. */
 function confirmRemove(v: BoardView): string {
   const confirm = over(v.session.ui).confirm ?? "";
@@ -386,7 +386,7 @@ function keepSheet(v: BoardView): string {
       prop("Picture", pictureField(`${at}/picture_key`, p.picture_key)),
     );
   }
-  // removing asks in a modal (rule 14) -- the drawer only opens it; `confirmRemove` does the write
+  // removing asks in a modal -- the drawer only opens it; `confirmRemove` does the write
   const remove = `<div class="drawer-foot">${tool(`Remove this ${noun}`, { icon: "trash", kind: "danger", write: open_(v, "confirm", at.slice(1)) })}</div>`;
   const body = join(`<form data-write-on="blur"><div class="props">${props.join("")}${order}</div></form>`, extra, remove);
   return drawer("keep-drawer", found.name, body, open_(v, table), "keep-drawer");

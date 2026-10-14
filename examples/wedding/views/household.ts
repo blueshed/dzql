@@ -1,8 +1,8 @@
 // A household's page: their photo, as leave's is its calendar. What they say is the bubble over it,
 // a thing with ✎; their guests stand in it, and a tap on one opens their drawer -- dress them, say
 // whether they are coming, choose the meal; a waiting ask stands as a ghost. The same people as a
-// list, or the photo every household watches, are readings of it (rule 16), and find looks for
-// someone in the first two by name (rule 17). The plus brings someone: names a plus-one while one
+// list, or the photo every household watches, are readings of it, and find looks for
+// someone in the first two by name. The plus brings someone: names a plus-one while one
 // is owed, asks the couple after. Gifts, the day and where to stay are what the couple tell every
 // household: tools on the rail, each opening a drawer that is read, used (a gift claimed) and put
 // away. Which reading and which drawer is the session's word.
@@ -42,7 +42,7 @@ export type HouseholdView = {
   names: boolean;
 };
 
-/** Find's word and its eye on the household's people (rule 17): by name, the photo and the list alike. */
+/** Find's word and its eye on the household's people: by name, the photo and the list alike. */
 const findOf = (v: HouseholdView): { word?: string; hide?: boolean } => ({ word: v.session.ui.filter?.guests, hide: v.session.ui.hide?.guests });
 
 /** Whoever was asked for and is not a guest: waiting (a ghost in the photo), or refused (in the list alone). */
@@ -107,7 +107,7 @@ export function householdPage(v: HouseholdView): string {
 
 // ───────────────────────────── the page ─────────────────────────────
 
-/** What the household says, over the photo: the chosen face and the words. A thing (rule 15), and a
+/** What the household says, over the photo: the chosen face and the words. A thing, and a
  * button: ✎ opens the answer's drawer, and it is lit while the drawer is open. */
 function speechBubble(h: HouseholdDocument, open: boolean, answer: string): string {
   const words = h.message ?? "";
@@ -131,7 +131,7 @@ function usReading(v: HouseholdView): string {
 }
 
 /** One guest as a row: the name (`said`: as the list says it, the family's surname once), their choices, whether they are coming;
- * ✎ the drawer, lit while it is open (rule 13). Find dims it, or with the eye hides it, when the word misses. */
+ * ✎ the drawer, lit while it is open. Find dims it, or with the eye hides it, when the word misses. */
 function guestRow(v: HouseholdView, g: Guest, said: string): string {
   const { word, hide } = findOf(v);
   const miss = !matches(g.name, word);
@@ -209,7 +209,7 @@ export function menuMount(v: HouseholdView, g: Guest): string {
   return part(`menu-${g.id}`, `<div id="menu-${g.id}" data-applet="menu"${writes} data-props="${esc(JSON.stringify(menu))}"></div>`);
 }
 
-/** The guest's drawer, named for them: the dressing sheet, whose callouts name its parts, the hint, coming as one choice (rule 13, off
+/** The guest's drawer, named for them: the dressing sheet, whose callouts name its parts, the hint, coming as one choice (off
  * the line), and the menu. */
 function guestSheet(v: HouseholdView): string {
   const focus = over(v.session.ui).focus;

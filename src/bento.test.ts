@@ -558,7 +558,7 @@ describe("the surfaces in a browser", () => {
   };
 
   for (const width of [375, 1280]) {
-    test(`${width} wide, whatever the app calls its root: a modal holds the page behind it still; a drawer does ${width < 820 ? "too, its sheet over the page" : "not, docked beside a page still in reach (rule 18)"}`, async () => {
+    test(`${width} wide, whatever the app calls its root: a modal holds the page behind it still; a drawer does ${width < 820 ? "too, its sheet over the page" : "not, docked beside a page still in reach"}`, async () => {
       const box = b.boxPage([{ label: "The desk" }], [`<div style="height: 3000px"></div>`], [b.cell({ name: "clock", thing: { open: go("?clock"), chosen: false } })]);
       const trip = (drawer: string, modal: string) => `<div class="trip">${layers(box, drawer, modal)}</div>`;
       await using view = await show(trip(b.drawer("clock", "The clock", "", go("")), ""), width);

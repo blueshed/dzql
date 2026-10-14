@@ -631,8 +631,9 @@ is the page, and the one thing open over it: `guests?guest=2`, `gifts?new`, `?an
 
 ## Pages: the bento (`src/bento.ts`, `src/bento.css`)
 
-The bento is how a page looks and moves. Its rules are in `docs/bento/README.md`. Bind it once
-per example, then build pages from what it returns:
+The bento (`docs/bento/README.md`) says what a page is for: where am I, what can I do. These are
+the kernel's defaults for drawing it, not rules: use them, change them, or draw your own when
+a story asks. Bind it once per example, then build pages from what it returns:
 
 ```ts
 const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "session", leave: { text: "Sign out", icon: "log-out", path: "/person_id" } });
@@ -646,7 +647,7 @@ const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "s
   cells in a tray, one of which may be grown into the window; its layout is computed by `grid()`
   (`src/grid.ts`). A collection (`collectionPage(trail, open)`) is the window alone.
 - Every gesture is a `data-write` string you hand in.
-- A modal is new or delete (rule 14), so there are two and no bare one. `addModal(title, fields,
+- A modal is new or delete, so there are two and no bare one. `addModal(title, fields,
   add, close, verb?, said?)` asks for a new thing: each `Field` is typed (`type`: `text`, `email`,
   `number`, `date` or `url`), or, given `options` (`{ value, text }`), chosen from a select, its
   `value` the option drawn chosen, else the first. A refused add hands back what was typed and
@@ -659,7 +660,7 @@ const { collectionPage, drawer, confirmModal, tool } = bento({ icon, session: "s
   are), and the page outside it (`body`, `#app`, an old page) is the app's to style.
 - `data-moving` names the element that grows (a view transition runs only when its own tag
   changes). `data-reveal` scrolls the chosen row into the clear.
-- What opens is a button (rule 19): a cell's name is its button, and a row that taps is a
+- What opens is a button: a cell's name is its button, and a row that taps is a
   `<button>`, so Enter and Space open them. An opener of the example's own is a `<button>` too
   (the wedding's bubbles), never a `div` with `role="button"`, which nothing opens from the
   keyboard; a figure in an applet's SVG says `role="button"` and answers Enter and Space itself.

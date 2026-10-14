@@ -31,7 +31,7 @@ describe("photoSvg", () => {
     expect(svg).toContain('role="button" tabindex="0" data-key="4" aria-label="a family of 5" aria-expanded="false"');
   });
 
-    test("a chosen figure rings, is marked expanded (its drawer is open), and scrolls into the clear (K2, rule 13)", () => {
+    test("a chosen figure rings, is marked expanded (its drawer is open), and scrolls into the clear (K2)", () => {
     const entries: PhotoEntry[] = [
       { key: "1", spec: { ...look, name: "Ada" }, tap: { doc: "session", op: { op: "replace", path: "/page", value: "guests?guest=1" } }, chosen: true },
       { key: "2", spec: look },
@@ -45,7 +45,7 @@ describe("photoSvg", () => {
     expect(svg).toContain('<g class="slot" transform');
   });
 
-  test("a figure the word misses hushes, never hides (rule 17)", () => {
+  test("a figure the word misses hushes, never hides", () => {
     const entries: PhotoEntry[] = [
       { key: "1", spec: { ...look, name: "Ada" } },
       { key: "2", spec: { ...look, name: "Femi" }, hushed: true },

@@ -120,7 +120,7 @@ describe("routes", () => {
     const served = await fetch(new URL(`/pictures/${key}`, server.url));
     expect(served.headers.get("content-type")).toBe("image/svg+xml");
     expect(await served.text()).toBe("<svg/>");
-    // the picture shows in the welcome's own drawer (rule 15: the couple's welcome is a "thing", its picture with it)
+    // the picture shows in the welcome's own drawer (the couple's welcome is a thing, its picture with it)
     await at(ws, "?answer");
     // and the key is a plain write on the document, undoable like any other
     expect((await send(ws, "board", [{ op: "replace", path: "/picture_key", value: key }])).page).toContain(`/pictures/${key}`);
@@ -236,7 +236,7 @@ describe("a household", () => {
     await refused(ws, "board", [{ op: "replace", path: "/name1", value: "X" }]);
     await refused(ws, "nothing", [{ op: "replace", path: "/x", value: "X" }]);
 
-    // one plus-one is owed: the plus names them, in a modal (rule 14); the first is taken and the
+    // one plus-one is owed: the plus names them, in a modal; the first is taken and the
     // modal put away, the second refused, and the plus asks the couple after
     const plus = await at(ws, "?new=guests");
     expect(plus).toContain('aria-label="Name our plus-one"');
@@ -342,7 +342,7 @@ describe("a household", () => {
     couple.close();
   });
 
-  test("find looks for someone by name in the photo and the list: fades whoever it misses, tallies, the eye takes them out, and it forgets on close (rule 17)", async () => {
+  test("find looks for someone by name in the photo and the list: fades whoever it misses, tallies, the eye takes them out, and it forgets on close", async () => {
     const ws = await enter(code);
     const guests = (await household(code)).guests;
     const [found, missed] = [guests[0]!, guests[1]!];
@@ -518,7 +518,7 @@ describe("the couple", () => {
     const ws = await enter("DASH");
     expect(pageOf(ws)).toContain('class="bubble couple thing"'); // the welcome, over the photo
     expect(pageOf(ws)).toContain('id="board-photo" data-applet="photo"');
-    // the welcome is a "thing" (rule 15): ✎ opens its own drawer, where its picture lives
+    // the welcome is a "thing": ✎ opens its own drawer, where its picture lives
     expect(await at(ws, "?answer")).toContain('data-applet="picture-field"');
     expect(await at(ws, "list")).toContain(`class="row tap" id="household-${hid}"`); // the other reading: a household a row
 
@@ -557,7 +557,7 @@ describe("the couple", () => {
     expect(html).toContain(`id="course-${pudding.id}"`);
     expect(html).toContain('id="courses-drawer"');
 
-    // removing asks in a modal -- a modal is new or delete and nothing else (rule 14); answered, back to the list
+    // removing asks in a modal -- a modal is new or delete and nothing else; answered, back to the list
     html = await at(ws, `?confirm=courses/${pudding.id}`);
     expect(html).toContain('<dialog open class="modal" aria-label="Pudding"><h3>Pudding</h3><p class="note">Remove it from the list?</p>'); // named once, then asked
     expect(html).toContain('class="ground" inert>');
@@ -611,7 +611,7 @@ describe("the couple", () => {
     ws.close();
   });
 
-  test("find looks for a family by its code or a name: fades the rest in the photo and the list, tallies, and the eye takes them out (rule 17)", async () => {
+  test("find looks for a family by its code or a name: fades the rest in the photo and the list, tallies, and the eye takes them out", async () => {
     // two households this test alone owns, so the asks it adds disturb no one else's
     const stamp = Date.now();
     for (const who of ["findme", "other"]) await asCouple([{ op: "add", path: "/households/-", value: { email: `${who}-${stamp}@example.com`, names: `${who} ${stamp}` } }]);

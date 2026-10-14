@@ -1,4 +1,4 @@
-/* The wedding's look, by the bento's rules (docs/bento/README.md): the same parts in
+/* The wedding's look, drawn to the bento (docs/bento/README.md): the same parts in
    the same places, the wedding's own paper, ink and gold. A page is a box: a tray with compartments
    cut into it, the trail above. A compartment grows into the window; the window is the rule for
    everything opened. The trail floats top-left in it, the compartment's tools stand at the right
@@ -212,14 +212,14 @@ dialog.modal h3 { font-family: var(--serif); font-size: 18px; color: var(--navy)
 /* ── the photo ── */
 .photo .slot[role="button"] { cursor: pointer; }
 .photo .slot:focus-visible { outline: 2px solid var(--navy); }
-/* rule 13: a chosen figure rings, while its drawer is open */
+/* a chosen figure rings, while its drawer is open */
 svg .ring { fill: none; stroke: var(--navy); stroke-width: 2.5; }
 svg .mark { stroke-width: 1.2; }
 svg .mark-yes { fill: var(--leaf); stroke: var(--leaf); } svg .mark-maybe { fill: var(--amber); stroke: var(--amber-deep); } svg .mark-no { fill: var(--red); stroke: var(--red-deep); }
 svg .mark-none { fill: none; stroke: var(--muted); stroke-dasharray: 2 1.5; }
 svg .count circle { fill: var(--navy); stroke: var(--card); stroke-width: 1.5; }
 svg .count text { fill: var(--paper); font-family: var(--sans); font-size: 10px; font-weight: 700; }
-/* a fade is find's alone (rule 17): whether someone is coming is the mark at their feet */
+/* a fade is find's alone: whether someone is coming is the mark at their feet */
 /* a ghost: a waiting ask in the family, a maybe in the photo. Still, dashed at every edge */
 svg .fig.ghost .body, svg .fig.ghost .head, svg .fig.ghost .swing { animation: none !important; }
 svg .fig.ghost .torso, svg .fig.ghost .leg, svg .fig.ghost .head > rect, svg .fig.ghost .swing rect, svg .fig.ghost .swing circle { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 3 3; }

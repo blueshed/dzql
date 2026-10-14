@@ -165,7 +165,7 @@ describe("the ticker", () => {
     await opened(ws);
     const { html: box } = await expectMessage(ws, "render");
     expect(box).toContain('id="clock" data-applet="clock" data-doc="clock" data-props="{&quot;tz&quot;:&quot;Europe/Zurich&quot;}"');
-    // the clock is a thing (rule 15): its drawer holds the city, and every zone to choose from
+    // the clock is a thing: its drawer holds the city, and every zone to choose from
     write(ws, "desk", [{ op: "replace", path: "/page", value: "?clock" }]);
     await expectMessage(ws, "patch");
     const { page: html } = await expectMessage(ws, "render");

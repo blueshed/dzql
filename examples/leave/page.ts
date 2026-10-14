@@ -91,7 +91,7 @@ export function render(sessionId: string): string {
   const from = list || path === "" ? today.slice(0, 7) : path; // the calendar starts at the month its address names, or this one
   const open = what === "request" || what === "confirm" ? which! : null;
 
-  // the reading: the calendar or the list, the same requests (rule 16); from the list, the calendar is today's
+  // the reading: the calendar or the list, the same requests; from the list, the calendar is today's
   const readings: [text: string, mark: "month" | "list", on: boolean, w: string][] = [
     ["Calendar", "month", !list, go(list ? "" : path)],
     ["List", "list", list, go("list")],

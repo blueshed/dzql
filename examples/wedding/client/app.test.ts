@@ -215,7 +215,7 @@ describe("the wedding in a real browser", () => {
     await waitFor(view, `document.querySelector('.drawer') === null`, (v) => v === true);
   }, 15000);
 
-  test("find's field opens beside its own tool, below the reading in the rail, not at the rail's top, and stays beside it when a drawer moves the rail (rules 17, 18)", async () => {
+  test("find's field opens beside its own tool, below the reading in the rail, not at the rail's top, and stays beside it when a drawer moves the rail", async () => {
     await using view = new Bun.WebView({ width: 1280, height: 800 });
     await enter(view, code.toLowerCase());
     await view.click(".rail .tool.find");
@@ -235,7 +235,7 @@ describe("the wedding in a real browser", () => {
     expectBeside(await view.evaluate(BESIDE));
   }, 15000);
 
-  test("find fades and lights the figures where they stand: the photo is not drawn again as find opens, looks and closes (rule 17)", async () => {
+  test("find fades and lights the figures where they stand: the photo is not drawn again as find opens, looks and closes", async () => {
     await using view = new Bun.WebView({ width: 1280, height: 800 });
     await enter(view, code.toLowerCase());
     // the photo's element and its drawing, tagged: a redraw would leave them untagged
@@ -256,7 +256,7 @@ describe("the wedding in a real browser", () => {
     expect(await view.evaluate<boolean>(SAME)).toBe(true);
   }, 15000);
 
-  test("the rail's tools and find's bar keep the bento's heights; in a drawer a long state goes under its words and stays inside (rules 9, 11)", async () => {
+  test("the rail's tools and find's bar keep the bento's heights; in a drawer a long state goes under its words and stays inside", async () => {
     await using view = new Bun.WebView({ width: 1280, height: 800 });
     await enter(view, code);
     await view.click(".rail .tool.find");
@@ -352,7 +352,7 @@ describe("the wedding in a real browser", () => {
     await view.type("DASH");
     await view.click("button.gold");
     await waitFor(view, `document.querySelector('.bubble.couple') !== null`, (v) => v === true);
-    // the welcome is a "thing" (rule 15): its message lives in its own drawer now
+    // the welcome is a "thing": its message lives in its own drawer now
     await press(view, ".bubble.couple");
     await waitFor(view, `document.querySelector('.welcome-drawer textarea') !== null`, (v) => v === true);
 

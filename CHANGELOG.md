@@ -83,7 +83,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **The bento is twelve directions, with samples** (`docs/bento/`): `README.md` says the box (different things, each in its compartment, small and able to grow), where am I, a card's pins (a popover that grows into the full calendar or map, as Can You found), what a tap, a modal and a drawer each do, and what a change says -- in place of nineteen rules; `design/` holds six sample pages drawn to them. A `bun create` project keeps `docs/bento/`. Code comments still cite the old rule numbers.
+- **The bento is a guide, not rules.** `docs/bento/README.md` is rewritten from Peter's own words
+  (apples' "The page", Can You's tap rules): directions, no numbers. `src/bento.ts` and
+  `src/bento.css` are the kernel's defaults for drawing it, and code cites the intent, never a
+  rule number. `CLAUDE.md` says a page's shape comes from its stories. `docs/bento/` holds two
+  sample sets, `design/` and `paintbrush/`, in two looks, and a `bun create` project keeps it.
 - **The kernel and its tests say each thing once** (the review, docs/review-2026-10-13.md; no behaviour changed, every story and test means what it did):
   - **the server:** one "landed" tail for a write and a walk, the permit asked once, one `isVerb` for the server, the CLI and the harness, `reading(doc)` by the name whole, one `quotedJson`, one tag scanner in parts, `documents.names()` gone;
   - **the CLI:** one `extractFlag` (a repeated `--limit` with a bad second value now gives no limit rather than the first);

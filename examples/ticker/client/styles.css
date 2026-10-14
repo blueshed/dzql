@@ -25,7 +25,7 @@ p.note { margin: 0 0 var(--space-md); }
 .cell { min-height: 120px; }
 
 /* the small readings: the board applet, the clock's face. A well is cut square, as the cell it sits in
-   is where it does not meet the tray's curve (rule 3) */
+   is where it does not meet the tray's curve */
 .mini.sparkline { overflow: hidden; }
 .mini.face { display: grid; place-items: center; padding: var(--space-sm) 0 0; }
 .mini.face svg.clock { width: 120px; height: 120px; }
@@ -64,7 +64,7 @@ p.note { margin: 0 0 var(--space-md); }
   .quote .name, .quote .change .abs { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 /* in the window a row is a figure: a button over the whole line opens its drawer, from a finger or the
-   keyboard, and the line is lit while it is open (rules 13 and 19) */
+   keyboard, and the line is lit while it is open */
 .board-row { position: relative; }
 .board-tap { position: absolute; inset: 0; z-index: 1; }
 .board-tap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }

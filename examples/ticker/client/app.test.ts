@@ -162,7 +162,7 @@ describe("the ticker in a real browser", () => {
   // `ETA_BROWSER=chrome` runs this on Chrome, the default elsewhere than macOS, where Enter is a key and not an editing command
   const chrome = process.env.ETA_BROWSER === "chrome" || process.platform !== "darwin";
 
-  test("the keyboard opens a board row as a finger does (rule 19): Space opens its drawer, Enter too, and the row says it is expanded", async () => {
+  test("the keyboard opens a board row as a finger does: Space opens its drawer, Enter too, and the row says it is expanded", async () => {
     await using view = new Bun.WebView(chrome ? { backend: "chrome" } : {});
     await view.navigate(urlFor(view, server.url));
     await waitFor(view, `document.querySelector('.cell[data-key="board"]') !== null`, (v) => v === true);

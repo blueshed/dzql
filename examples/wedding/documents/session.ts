@@ -123,7 +123,7 @@ export function shape(id: string, ops: PatchOp[]): PatchOp[] {
     .map((field) => ({ op: "replace", path: `/${field}`, value: next[field] }));
 }
 
-/** A modal asks one question; the write that answers it puts it away (rule 14): an add answers the
+/** A modal asks one question; the write that answers it puts it away: an add answers the
  * ask, a removal answers the asking-first. A removal goes back to the drawer it was asked from --
  * the family a guest was taken off, the list a row left -- and an add to the page. The ops that do
  * it, for the visit, or none. */

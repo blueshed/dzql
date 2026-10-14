@@ -90,13 +90,17 @@ One word, one meaning. Two used to have two, so they were renamed:
 
 ## Pages
 
-A page follows the bento's rules, stated once in `docs/bento/README.md` and built in
-`src/bento.ts` and `src/bento.css`. A page is a box (`boxPage`) or a collection (`collectionPage`).
-Read the rules for what they intend, not as a checklist to satisfy.
+A page's shape comes from its stories. The bento (`docs/bento/README.md`, Peter's words) is how
+to check it: does a person know where they are and what they can do? It is a guide, not a
+command; cite a story for a choice, never the bento. `src/bento.ts` and `src/bento.css` are the
+kernel's defaults for drawing it, to use, change or leave.
+
+Stop when you are splitting one thing across compartments, or adding one to fill a box: that is a
+collection. Chat was once drawn as a box and showed the same thing in several compartments; it is
+three collections -- a name, the rooms, a room -- and names a room in a form in place, since a
+modal needs session state its stories never need.
 
 Say a thing once. Nothing is shown twice on a page. In a list, what an item shares with the one
 before it (its author, its day, its group) is said at the start of the run, not on every item;
 what is true of the person looking (their own name on their own things) is not said to them at
-all -- show it by place or colour instead. Repeating a label because it was easy is lazy. Where a bento rule and the
-stories disagree, the stories win: rule 14 makes a new thing with a plus and a modal, but a modal
-needs session state, and chat's stories need none, so chat names a room in a form in place.
+all -- show it by place or colour instead. Repeating a label because it was easy is lazy.

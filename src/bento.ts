@@ -1,4 +1,4 @@
-// The surfaces a page that is a box is made of, by the bento's rules (docs/bento/README.md): the trail (where am I), the tray and its cells, the window a
+// The surfaces a page that is a box is made of, one way to draw the bento (docs/bento/README.md), a default an app may change: the trail (where am I), the tray and its cells, the window a
 // cell grows into, the stacks of tools that float in it, the rows of a list, the drawer (a
 // panel at the right from 820px, a sheet from the foot on a phone) and its properties, the modal.
 // `src/bento.css` is their look, in an example's own tokens. No example knowledge here: an example
@@ -37,15 +37,15 @@ export interface CellOptions<I extends string> {
   /** How many are here; it rides in the head beside the name. */
   count?: number | string | null;
   summary?: string | null;
-  /** The write that opens it into the window: › into it. A thing (rule 15) has none and carries ✎ instead. */
+  /** The write that opens it into the window: › into it. A thing has none and carries ✎ instead. */
   opens?: string;
   /** Its key, when it differs from `slug(name)` ("the day" opens under "day"). */
   key?: string;
-  /** Spans the tray: the one that matters more (rule 5). */
+  /** Spans the tray: the one that matters more. */
   big?: boolean;
   /** Columns it spans when it is not big. Default 1. */
   span?: number;
-  /** The small reading (rule 4): the family photo, a few lines. */
+  /** The small reading: the family photo, a few lines. */
   body?: string;
   mark?: I | BentoIcon;
   /** A thing: the write that opens its drawer, and whether the drawer is open (lit while it is). */
@@ -57,15 +57,15 @@ export interface Placeable extends Cell {
   html: string;
 }
 
-/** What grows into the window when a cell opens (rules 7, 8): its reading, its tools on the rail, a note. */
+/** What grows into the window when a cell opens: its reading, its tools on the rail, a note. */
 export interface OpenOptions {
   /** The key of the cell that grows: `cell()`'s own. */
   key: string;
-  /** The reading switch, a stack of its own at the top of the rail (rule 16). */
+  /** The reading switch, a stack of its own at the top of the rail. */
   reading?: string;
   /** The cell's other tools -- find, plus -- one stack beneath it. */
   tools?: string[];
-  /** Find's field, open beside its tool (rule 17). */
+  /** Find's field, open beside its tool. */
   filter?: string;
   /** The reading itself; a picture, or rows. */
   body: string;
@@ -79,7 +79,7 @@ export interface ToolOptions<I extends string> {
   /** The write attributes (src/html.ts's write()). */
   write: string;
   label?: string;
-  /** In a stack (rule 9): a square button, the word for a screen reader only. */
+  /** In a stack: a square button, the word for a screen reader only. */
   iconOnly?: boolean;
   /** A toggle, and whether it is on: find, the eye. */
   pressed?: boolean;
@@ -104,9 +104,9 @@ export interface RowOptions {
   id?: string;
   /** What a tap writes: the row's drawer, or the page it goes into. A row without one is read only. */
   tap?: string;
-  /** Lit across its whole line while its drawer is open (rule 13), and scrolled into the clear (K2); a screen reader hears it expanded. */
+  /** Lit across its whole line while its drawer is open, and scrolled into the clear (K2); a screen reader hears it expanded. */
   chosen?: boolean;
-  /** Find's word missed it (rule 17): dimmed, or with the eye, hidden. */
+  /** Find's word missed it: dimmed, or with the eye, hidden. */
   hushed?: boolean;
   hidden?: boolean;
   /** What leads the line, as HTML: a picture, a time. */
@@ -198,7 +198,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     return `<button type="${o.submit ? "submit" : "button"}" class="tool${o.kind ? ` ${o.kind}` : ""}${o.className ? ` ${o.className}` : ""}"${label ? ` aria-label="${esc(label)}"` : ""}${pressed}${expanded}${o.disabled ? " disabled" : ""}${o.write}>${o.icon ? icon(o.icon) : ""}${word}</button>`;
   }
 
-  /** The page's own tools -- undo and redo, writes to the ledger, the kernel's own document, and leaving -- one stack, at the bottom right of the window, or across beside the trail on the box (rule 9). */
+  /** The page's own tools -- undo and redo, writes to the ledger, the kernel's own document, and leaving -- one stack, at the bottom right of the window, or across beside the trail on the box. */
   function pageTools(lay: "down" | "across" = "down"): string {
     return join(
       `<div class="stack page-tools${lay === "across" ? " across" : ""}" aria-label="Tools">`,
@@ -210,7 +210,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
   }
 
   /**
-   * The reading switch (rule 16): the same figures drawn another way, each with its mark and the
+   * The reading switch: the same figures drawn another way, each with its mark and the
    * write that reads them so -- a collection's reading kept in the session (`readAs`), or a page
    * of its own -- the one on checked (a radio: `aria-checked`, never `aria-pressed`). A stack of its own.
    */
@@ -227,7 +227,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
   const addTool = (open: string, label: string): string => tool(label, { icon: "plus", write: open, iconOnly: true, label });
 
   /**
-   * Find (rule 17): on the rail, a tool pressed while it is open; open, a field beside that tool,
+   * Find: on the rail, a tool pressed while it is open; open, a field beside that tool,
    * wherever it stands in the rail (`.find`, the field's anchor), writing the word as it is typed
    * (K3), the eye that hides what misses instead of fading it, and the tally of how many of all the
    * word hits. Closing forgets the word and the eye.
@@ -268,7 +268,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     const name = tap ? `<button type="button" class="cell-name"${expanded}>${said}</button>` : `<span class="cell-name">${said}</span>`;
     const mark = o.mark ? `<span class="cell-icon">${icon(o.mark, 18)}</span>` : "";
     const chev = o.opens ? `<span class="chev">${icon("chevron-right", 18)}</span>` : o.thing ? `<span class="chev pencil">${icon("pencil", 16)}</span>` : "";
-    // rule 7 (K1): a cell that opens names itself for the view transition, in the box's
+    // opening goes nowhere (K1): a cell that opens names itself for the view transition, in the box's
     // render and the open render alike -- one attribute, one element
     const moving = o.opens ? ` data-moving="${esc(key)}"` : "";
     const html = join(
@@ -310,8 +310,8 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
   /**
    * A page that is a box: the trail and the page's tools above, the ground's own in place, the
    * cells in the tray -- or, when `open` names one, that cell grown into the window
-   * (rule 7: the same element, `data-moving`, bigger), with its trail floating top-left, its rail
-   * at the right and the page's tools at the bottom right (rule 9). The tray is computed
+   * (opening goes nowhere: the same element, `data-moving`, bigger), with its trail floating top-left, its rail
+   * at the right and the page's tools at the bottom right. The tray is computed
    * (src/grid.ts): each cell lands in its area, first-fit in the box's own order, and learns
    * which of the tray's corners it sits in, for three columns and for one. While a window is open,
    * what is behind it -- the trail, the other cells, what is in place -- is `inert`: not to be
@@ -340,8 +340,8 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
   }
 
   /**
-   * A page that is a collection, not a box (rule 1): there is nothing to open, so the page is the
-   * window itself (rule 8: a window, whatever it holds) -- the whole trail in its head, its tools on
+   * A page that is a collection, not a box: there is nothing to open, so the page is the
+   * window itself (a window, whatever it holds) -- the whole trail in its head, its tools on
    * the rail, the reading, the page's tools at the bottom right.
    */
   const collectionPage = (trail: Crumb[], open: OpenOptions): string => `<section class="page windowed">${windowOf(trail, open)}</section>`;
@@ -391,7 +391,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
   // ───────────────────────────── the modal ─────────────────────────────
 
   /**
-   * A modal: new or delete, one question, nothing else (rule 14). Not `<dialog>.showModal()` --
+   * A modal: new or delete, one question, nothing else. Not `<dialog>.showModal()` --
    * the kernel's client learns no such call, the shape is HTML -- so it carries its own scrim, the
    * way a sheet does, and the page behind it is put `inert` by `layers`. Escape presses the scrim.
    */
@@ -414,7 +414,7 @@ export function bento<I extends string>({ icon, session: trayDoc, leave }: Bento
     return modal(title, close, `<form${add}>${inputs}${said}${foot}</form>`);
   }
 
-  /** Removing a thing asks in a modal too -- a modal is new or delete and nothing else (rule 14). */
+  /** Removing a thing asks in a modal too -- a modal is new or delete and nothing else. */
   function confirmModal(title: string, question: string, destroy: string, close: string, verb = "Remove"): string {
     const foot = `<div class="modal-foot">${tool("Cancel", { kind: "quiet", write: close })}${tool(verb, { icon: "trash", kind: "danger", write: destroy })}</div>`;
     return modal(title, close, `<p class="note">${esc(question)}</p>${foot}`);
@@ -474,7 +474,7 @@ export type Collections = {
 /**
  * Applies one op at `/reading/<key>`, `/filter/<key>` or `/hide/<key>` to `ui`, in place. False
  * when the path is not one of those, or a remove finds nothing there. Closing find removes just
- * its own key (rule 17: everything is lit again, not merely emptied) and forgets the eye with it.
+ * its own key (everything is lit again, not merely emptied) and forgets the eye with it.
  * A session's shape tries this after its own fields.
  */
 export function patchCollections(ui: Collections, op: PatchOp): boolean {

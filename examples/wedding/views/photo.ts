@@ -33,9 +33,9 @@ export function photoMount(id: string, entries: PhotoEntry[], label: string, rev
 }
 
 /** The household's guests as photo entries, each with whether they are coming at their feet -- a
- * tap opens the guest's drawer, and rings while it is open (`focus`, rule 13) -- with a waiting ask
+ * tap opens the guest's drawer, and rings while it is open (`focus`) -- with a waiting ask
  * as a ghost, still: someone asked for, not yet a guest, with nothing of theirs to open. Find's word
- * (rule 17) fades whoever it misses, by name, and fading means nothing else; with the eye, they
+ * fades whoever it misses, by name, and fading means nothing else; with the eye, they
  * step out of the photo. */
 export function familyEntries(h: HouseholdDocument, live?: { path: string; focus?: number }, find: { word?: string; hide?: boolean } = {}): PhotoEntry[] {
   const misses = (name: string) => find.word !== undefined && !matches(name, find.word);

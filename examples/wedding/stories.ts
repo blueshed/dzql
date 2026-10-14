@@ -6,7 +6,7 @@
 // id, never by position.
 //
 // Where: the page's address -- the page, and after a `?` the one thing open over it -- and after
-// " @ ", what find is looking for (`filter.guests=Femi`, rule 17). A household's page is its
+// " @ ", what find is looking for (`filter.guests=Femi`). A household's page is its
 // photo: "" (the household, with a waiting ask as a ghost), "list" (the same people as a list) or
 // "everyone" (the photo every household watches); over it, a guest's drawer (`?guest=2`),
 // the answer's (`?answer`), the plus's modal (`?new=guests` names a plus-one, `?new=asks` asks the

@@ -26,9 +26,9 @@ export interface PhotoEntry {
   tap?: Tap;
   /** The figure's name for someone who cannot see it, where no name is printed on it that says what a tap opens (a family's figure). */
   name?: string;
-  /** This figure's drawer is open: rings (rule 13), scrolls into the clear beside it (K2). */
+  /** This figure's drawer is open: rings, scrolls into the clear beside it (K2). */
   chosen?: boolean;
-  /** Find's word missed this one: it fades, never hides (rule 17), and a fade says nothing else. */
+  /** Find's word missed this one: it fades, never hides, and a fade says nothing else. */
   hushed?: boolean;
 }
 
@@ -41,7 +41,7 @@ export interface PhotoProps {
 
 const n = (x: number): string => x.toFixed(1);
 
-/** Whether `next` differs from `prev` only in what find fades (rule 17): the same figures, in the
+/** Whether `next` differs from `prev` only in what find fades: the same figures, in the
  * same order, alike in all else -- so the fade can change where they stand, not the photo be drawn again. */
 export function onlyFadeChanged(prev: PhotoProps, next: PhotoProps): boolean {
   const still = (p: PhotoProps) => JSON.stringify({ ...p, entries: p.entries.map(({ hushed, ...rest }) => rest) });
@@ -84,7 +84,7 @@ export function photoSvg(entries: PhotoEntry[], label: string, arriving: Set<str
     const reveal = entry.chosen ? ` data-reveal` : "";
     const mark = entry.mark ? `<circle class="mark mark-${esc(entry.mark)}" cx="50" cy="147" r="4.5"/>` : "";
     const count = entry.count && entry.count > 1 ? `<g class="count"><circle cx="82" cy="46" r="10"/><text x="82" y="49.5" text-anchor="middle">${entry.count}</text></g>` : "";
-    // rule 13: a figure rings to show it is chosen -- an ellipse behind it, roughly its own bounds
+    // a figure rings to show it is chosen -- an ellipse behind it, roughly its own bounds
     const ring = entry.chosen ? `<ellipse class="ring" cx="50" cy="72" rx="58" ry="80"/>` : "";
     const hush = entry.hushed ? " hushed" : "";
     return `<g class="slot${entry.chosen ? " chosen" : ""}${hush}" transform="translate(${n(slot.x)} ${n(slot.y)}) scale(${slot.s.toFixed(3)})"${tap}${reveal} data-slot="${esc(entry.key)}">${ring}${mark}${count}${inner}</g>`;
@@ -107,9 +107,9 @@ export interface Family {
   out?: boolean;
   /** What a tap on the family figure writes. */
   tap?: PhotoEntry["tap"];
-  /** Find's word missed this whole family (rule 17). */
+  /** Find's word missed this whole family. */
   hushed?: boolean;
-  /** Its drawer is open: the family figure rings (rule 13). */
+  /** Its drawer is open: the family figure rings. */
   chosen?: boolean;
 }
 

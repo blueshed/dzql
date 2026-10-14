@@ -239,7 +239,7 @@ window.addEventListener("popstate", () => {
   if (pageWrite) write(pageWrite, page);
 });
 
-// Rule 7 of docs/bento-request.md's K1: a render may mark one element `data-moving="<name>"`. When
+// Opening goes nowhere (docs/bento-request.md, K1): a render may mark one element `data-moving="<name>"`. When
 // the page as it is and the page as rendered both carry an element with the same value, that
 // element -- and only that one -- grows into the window instead of the page going anywhere.
 // `movingElement` parses the incoming HTML (a `<template>`, same technique `applyFragments` uses
@@ -271,7 +271,7 @@ function ownTag(el: Element): string {
   return tag.outerHTML;
 }
 
-// Rule 18 of docs/bento-request.md's K2: after a full render's morph, an element newly carrying
+// The reading moves, the window does not (docs/bento-request.md, K2): after a full render's morph, an element newly carrying
 // `data-reveal` (or carrying it for the first time on a different element than before) scrolls
 // into view -- the window itself never moves, only the reading beside it. `previous` is captured
 // before the morph runs, since the morph is what may add, move, or remove the attribute. It comes
@@ -457,12 +457,12 @@ function render(html: string) {
   }
 }
 
-// Where the keyboard goes (the bento's rule 19). Drawing the page again may take away what had the
+// Where the keyboard goes. Drawing the page again may take away what had the
 // keyboard, or put it behind something `inert` (a modal's ground, the box behind a window); then the
 // keyboard is nowhere, and it is given, in turn, to: what opened a drawer or a modal that has just
 // gone (a dialog, in HTML's words); a field waiting for the caret (`autofocus`: a browser honours it
 // once per document, so one a later drawing brings, a modal's first, would otherwise wait for a
-// click); the first control of a cell that has just moved (rule 7: the window's way back as it
+// click); the first control of a cell that has just moved (the window's way back as it
 // opens, the cell's name as it closes), the one the keyboard was in first. Never from somewhere it is.
 const CONTROL = "a[href],button,input,select,textarea,[tabindex]";
 const DIALOG = "dialog,[role=dialog]";

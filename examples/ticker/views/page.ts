@@ -1,4 +1,4 @@
-// The desk, drawn by the bento's rules (docs/bento/README.md): a box with three
+// The desk, drawn to the bento (docs/bento/README.md): a box with three
 // cells -- the board, big, with two readings; the market; the clock, a thing whose drawer
 // holds the city -- each growing into the window when opened, the tools on the rail, the page's
 // at the bottom right. A row is a symbol: its drawer holds what it is and what it can carry, watch
@@ -38,8 +38,8 @@ const NOTHING_WATCHED = "Nothing watched yet. The plus asks which symbol.";
  * The board: a row per watched symbol, each an applet on that symbol's own document, so a board is
  * told only the symbols it watches and each row takes its own ticks. Empty, the window says so; the
  * box's cell has said it already. On the box the cell is the one tap. In the window (`ui`), a row is
- * a figure, as a list's is (rule 13): a button over the whole line opens its drawer, from a finger
- * or the keyboard (rule 19), and says it is expanded while that is open. The button is named by the
+ * a figure, as a list's is: a button over the whole line opens its drawer, from a finger
+ * or the keyboard, and says it is expanded while that is open. The button is named by the
  * line it lies over, which a reader then hears once, as the button. It is beside the applet's
  * mount, not around it, so the mount stands in the same place on the box and in the window and
  * keeps the ticks it has seen as the cell opens; and it is a part, so opening a drawer sends its

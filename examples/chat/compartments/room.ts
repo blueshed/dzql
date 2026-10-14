@@ -11,8 +11,8 @@ import { icon } from "../icons";
 import { renderNameForm } from "./session";
 import { keepLobby } from "../presence";
 
-// Chat is three steps -- your name, a room, say something -- and each page is a collection (the
-// bento's rule 1), drawn with the kernel's surfaces (src/bento.ts): the rooms, a row each and the
+// Chat is three steps -- your name, a room, say something -- and each page is a collection, not a box,
+// drawn with the kernel's surfaces (src/bento.ts): the rooms, a row each and the
 // one form that names a new one; a room, its conversation and the one form that says something,
 // with who is here across its head. The trail is the way back, and the page's tools are undo,
 // redo and logging out. Nothing here is kept between taps: what the page shows is the session's
