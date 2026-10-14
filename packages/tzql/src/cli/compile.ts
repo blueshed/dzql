@@ -7,6 +7,7 @@
 import type { DomainConfig } from "../shared/ir.js";
 import { analyzeDomain } from "./compiler/analyzer.js";
 import { generateIR } from "./compiler/ir.js";
+import { validateDomainPaths } from "./compiler/path-validator.js";
 import { generateCoreSQL, generateAuthSQL, generateEntitySQL, generateSchemaSQL } from "./codegen/sql.js";
 import { generateSubscribableSQL, generateComputeAffectedKeysFunction } from "./codegen/subscribable_sql.js";
 
@@ -34,6 +35,14 @@ export function compileDomain(domain: DomainConfig): CompiledDomain {
   }
 
   const ir = generateIR(domain);
+
+  // Every permission, notification and canSubscribe path must compile against
+  // this domain. A path that can't is a build error, never FALSE or a fallback.
+  const pathErrors = validateDomainPaths(ir);
+  if (pathErrors.length > 0) {
+    throw new DomainValidationError(pathErrors);
+  }
+
   const coreSQL = generateCoreSQL();
 
   // Topologically sort entities by FK dependencies

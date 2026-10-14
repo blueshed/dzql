@@ -16,7 +16,7 @@ const domain = {
       label: "name",
       searchable: ["name", "email"],
       hidden: ["password_hash"],
-      permissions: { view: [], create: [], update: ["@id"], delete: ["@id"] },
+      permissions: { view: ['TRUE'], create: ['AUTHENTICATED'], update: ["@id"], delete: ["@id"] },
     },
   },
   subscribables: {},

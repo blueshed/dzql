@@ -16,7 +16,7 @@ const domain = {
       },
       label: "name",
       hidden: ["password_hash"],
-      permissions: { view: [], create: [], update: ["@id"], delete: ["@id"] },
+      permissions: { view: ['TRUE'], create: ['AUTHENTICATED'], update: ["@id"], delete: ["@id"] },
     },
     posts: {
       schema: {
@@ -26,7 +26,7 @@ const domain = {
       },
       label: "title",
       includes: { author: "users" },
-      permissions: { view: [], create: [], update: ["@author_id == @user_id"], delete: ["@author_id == @user_id"] },
+      permissions: { view: ['TRUE'], create: ['AUTHENTICATED'], update: ["@author_id == @user_id"], delete: ["@author_id == @user_id"] },
     },
   },
   subscribables: {},

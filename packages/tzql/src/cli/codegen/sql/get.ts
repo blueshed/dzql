@@ -1,4 +1,4 @@
-import { compilePermission } from "../../compiler/permissions.js";
+import { compileRuleList } from "../../compiler/permissions.js";
 import type { EntityIR, ManyToManyIR, IncludeIR, ColumnInfo } from "./types.js";
 import { buildVisibleJsonb, buildVisibleJsonbForEntity } from "./utils.js";
 
@@ -65,9 +65,8 @@ export function generateGetFunction(name: string, entityIR: EntityIR, entities: 
     }).join(' AND ');
   }
 
-  const viewPerm = entityIR.permissions?.view?.length > 0
-    ? entityIR.permissions.view.map((rule: string) => compilePermission(name, rule, null, name)).join(' OR ')
-    : 'TRUE';
+  // An empty view list denies everyone.
+  const viewPerm = compileRuleList(name, entityIR.permissions?.view, name);
 
   const selectExpr = buildVisibleJsonb(name, entityIR.columns, hidden);
 
@@ -145,9 +144,8 @@ export function generateHistoryFunction(name: string, entityIR: EntityIR): strin
   const refField = temporal.refField;
   const validFrom = temporal.validFrom;
 
-  const viewPerm = entityIR.permissions?.view?.length > 0
-    ? entityIR.permissions.view.map((rule: string) => compilePermission(name, rule, null, name)).join(' OR ')
-    : 'TRUE';
+  // An empty view list denies everyone.
+  const viewPerm = compileRuleList(name, entityIR.permissions?.view, name);
 
   const selectExpr = buildVisibleJsonb(name, entityIR.columns, hidden);
 

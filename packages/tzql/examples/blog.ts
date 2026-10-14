@@ -12,8 +12,8 @@ export const entities: DomainConfig['entities'] = {
     label: 'name',
     hidden: ['password_hash'],
     permissions: {
-      view: [],
-      create: [],
+      view: ['TRUE'],
+      create: ['AUTHENTICATED'],
       update: ['@id'],
       delete: ['@id']
     }
@@ -30,7 +30,7 @@ export const entities: DomainConfig['entities'] = {
       author: 'users'  // FK expansion: include author object
     },
     permissions: {
-      view: [], // Public
+      view: ['TRUE'], // Public
       create: ['@author_id == @user_id'], // Only create for self
       update: ['@author_id == @user_id'], // Only owner
       delete: ['@author_id == @user_id']  // Only owner
@@ -58,8 +58,8 @@ export const entities: DomainConfig['entities'] = {
       post: 'posts'     // FK expansion: include post object
     },
     permissions: {
-      view: [],
-      create: [],
+      view: ['TRUE'],
+      create: ['AUTHENTICATED'],
       delete: ['@author_id == @user_id']
     }
   }

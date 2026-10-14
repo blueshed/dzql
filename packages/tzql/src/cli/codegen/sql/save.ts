@@ -1,4 +1,4 @@
-import { compilePermission } from "../../compiler/permissions.js";
+import { compileRuleList } from "../../compiler/permissions.js";
 import { compileGraphRules } from "../../compiler/graph_rules.js";
 import type { EntityIR, ManyToManyIR, IncludeIR, ColumnInfo } from "./types.js";
 import { getCastForType, buildVisibleJsonbForEntity } from "./utils.js";
@@ -169,17 +169,14 @@ export function generateSaveFunction(name: string, entityIR: EntityIR, entities:
   const pkNullCheck = pkFields.map(f => `(p_data->>'${f}') IS NOT NULL`).join(' AND ');
 
   // Permissions & Graph Rules
-  const createPerm = entityIR.permissions?.create?.[0]
-    ? compilePermission(name, entityIR.permissions.create[0], null, 'p_data')
-    : 'TRUE';
+  // Every rule in a list grants access (OR); an empty list denies everyone.
+  const createPerm = compileRuleList(name, entityIR.permissions?.create, 'p_data');
 
   // Compile the update predicate against the STORED row (v_old_data), not the
   // request body. Evaluating it against p_data lets a caller pass their own
   // owner/tenant id in the body to satisfy an ownership rule and then overwrite
   // someone else's row. delete.ts and the temporal save path already do this.
-  const updatePerm = entityIR.permissions?.update?.[0]
-    ? compilePermission(name, entityIR.permissions.update[0], null, 'v_old_data')
-    : 'TRUE';
+  const updatePerm = compileRuleList(name, entityIR.permissions?.update, 'v_old_data');
 
   const onCreateRules = entityIR.graphRules?.onCreate
     ? compileGraphRules(name, 'create', entityIR.graphRules.onCreate)
@@ -348,13 +345,10 @@ function generateTemporalSaveFunction(name: string, entityIR: EntityIR, entities
   const pkJsonbExpr = `jsonb_build_object('${pk}', v_result->'${pk}')`;
 
   // Permissions
-  const createPerm = entityIR.permissions?.create?.[0]
-    ? compilePermission(name, entityIR.permissions.create[0], null, 'p_data')
-    : 'TRUE';
+  // Every rule in a list grants access (OR); an empty list denies everyone.
+  const createPerm = compileRuleList(name, entityIR.permissions?.create, 'p_data');
 
-  const updatePerm = entityIR.permissions?.update?.[0]
-    ? compilePermission(name, entityIR.permissions.update[0], null, 'v_current')
-    : 'TRUE';
+  const updatePerm = compileRuleList(name, entityIR.permissions?.update, 'v_current');
 
   const onCreateRules = entityIR.graphRules?.onCreate
     ? compileGraphRules(name, 'create', entityIR.graphRules.onCreate)

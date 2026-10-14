@@ -1,4 +1,4 @@
-import { compilePermission } from "../../compiler/permissions.js";
+import { compileRuleList } from "../../compiler/permissions.js";
 import type { EntityIR } from "./types.js";
 
 /**
@@ -13,10 +13,9 @@ export function generateLookupFunction(name: string, entityIR: EntityIR): string
   const softDelete = entityIR.softDelete || false;
   const temporal = entityIR.temporal;
 
-  const viewPermRaw = entityIR.permissions?.view?.length > 0
-    ? entityIR.permissions.view.map((rule: string) => compilePermission(name, rule, null, name)).join(' OR ')
-    : 'TRUE';
-  const viewPerm = viewPermRaw.replace(/p_user_id/g, '$1');
+  // The query reads FROM ${name} t, so the rule is compiled against alias t.
+  // An empty view list denies everyone.
+  const viewPerm = compileRuleList(name, entityIR.permissions?.view, { kind: 'row', name: 't' });
 
   const softDeleteFilter = softDelete ? ' AND deleted_at IS NULL' : '';
   const temporalFilter = temporal ? ` AND ${temporal.validTo} IS NULL` : '';

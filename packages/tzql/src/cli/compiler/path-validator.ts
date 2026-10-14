@@ -1,118 +1,150 @@
 /**
  * Path Validator
  *
- * Validates all permission and notification paths in a domain configuration.
- * Used by the CLI `validate-paths` command.
+ * Checks every permission, notification and canSubscribe path in a domain
+ * against the domain itself: the syntax parses, every table is an entity,
+ * every column exists, and values compared with ids are integer keys.
+ * compileDomain refuses to build a domain with any error here, and the CLI
+ * `validate-paths` command reports them path by path.
  */
 
-import type { DomainConfig, EntityConfig } from "../../shared/ir.js";
-import { parsePath } from "./paths.js";
+import type { DomainConfig } from "../../shared/ir.js";
+import { generateIR } from "./ir.js";
+import { parsePath, isIntegerType } from "./paths.js";
 
 export interface PathValidationResult {
   entity: string;
-  pathType: 'permissions.view' | 'permissions.create' | 'permissions.update' | 'permissions.delete' | 'notifications';
+  pathType: 'permissions.view' | 'permissions.create' | 'permissions.update' | 'permissions.delete' | 'notifications' | 'canSubscribe';
   pathIndex: number;
   path: string;
   valid: boolean;
   error?: string;
 }
 
+interface EntityLike {
+  columns: Array<{ name: string; type: string }>;
+}
+
+type PathKind = 'permission' | 'notification' | 'subscribe-list';
+
 /**
- * Validate all paths in a domain configuration
+ * Check one path against the domain. Returns the problems found (empty if none).
+ *
+ * @param entity - the entity whose row the path starts from
+ * @param fieldMap - renames start fields (a subscribable's key param is the root's id)
  */
-export function validatePaths(domain: DomainConfig): PathValidationResult[] {
-  const results: PathValidationResult[] = [];
+export function checkPath(
+  rule: string,
+  entityName: string,
+  entities: Record<string, EntityLike>,
+  kind: PathKind = 'permission',
+  fieldMap: Record<string, string> = {}
+): string[] {
+  const parsed = parsePath(rule);
+  if (!parsed.isValid) return [parsed.error ?? 'invalid path'];
 
-  for (const [entityName, entity] of Object.entries(domain.entities)) {
-    // Validate permission paths
-    const permissions = entity.permissions || {};
+  if (parsed.literal) {
+    return kind === 'notification' ? [`a notification path must lead to users, not ${parsed.literal}`] : [];
+  }
+  if (kind === 'subscribe-list') {
+    return ['a list subscribable has no root row to follow a path from; use TRUE, FALSE or AUTHENTICATED'];
+  }
 
-    for (const permType of ['view', 'create', 'update', 'delete'] as const) {
-      const paths = permissions[permType] || [];
-      for (let i = 0; i < paths.length; i++) {
-        const path = paths[i];
-        const result = validateSinglePath(path, entityName, domain);
-        results.push({
-          entity: entityName,
-          pathType: `permissions.${permType}`,
-          pathIndex: i,
-          path,
-          valid: result.valid,
-          error: result.error
-        });
-      }
+  const problems: string[] = [];
+  const columnOf = (table: string, column: string) =>
+    entities[table]?.columns.find(c => c.name === column);
+
+  const requireColumn = (table: string, column: string, integer: boolean) => {
+    const col = columnOf(table, column);
+    if (!col) {
+      problems.push(`no column '${column}' on ${table}`);
+    } else if (integer && !isIntegerType(col.type)) {
+      problems.push(`'${column}' is ${col.type.split(/\s/)[0]}, not an integer key`);
     }
+  };
+  // A field of the row being checked (its start field, or an @field in a filter)
+  const requireOwnField = (field: string) => requireColumn(entityName, fieldMap[field] ?? field, true);
 
-    // Validate notification paths
-    const notifications = (entity as any).notifications || {};
-    for (const [notifyName, paths] of Object.entries(notifications)) {
+  if (!parsed.tableFirst) requireOwnField(parsed.startField!);
+
+  const steps = parsed.tableFirst ? parsed.hops : parsed.hops.slice(1);
+  for (const hop of steps) {
+    const table = hop.table!;
+    if (!entities[table]) {
+      problems.push(`unknown table '${table}'`);
+      continue;
+    }
+    // A hop without [filters] joins the previous value on its id.
+    if (!hop.filters?.length) requireColumn(table, 'id', true);
+    for (const f of hop.filters ?? []) {
+      requireColumn(table, f.field, f.value === '$');
+      if (f.value.startsWith('@')) requireOwnField(f.value.slice(1));
+    }
+    for (const c of hop.conditions ?? []) requireColumn(table, c.field, false);
+    // The value passed on joins the next hop's key; the last one is compared with the user.
+    requireColumn(table, hop.outputField!, true);
+  }
+
+  return problems;
+}
+
+/**
+ * Validate every path in a compiled domain. Each error names where the path is
+ * written, what is wrong, and the path itself.
+ */
+export function validateDomainPaths(ir: { entities: Record<string, any>; subscribables: Record<string, any> }): string[] {
+  return collectResults(ir).filter(r => !r.valid).map(r => r.error!);
+}
+
+function collectResults(ir: { entities: Record<string, any>; subscribables: Record<string, any> }): PathValidationResult[] {
+  const results: PathValidationResult[] = [];
+  const record = (entity: string, pathType: PathValidationResult['pathType'], where: string, pathIndex: number, path: string, problems: string[]) => {
+    results.push({
+      entity,
+      pathType,
+      pathIndex,
+      path,
+      valid: problems.length === 0,
+      error: problems.length ? `${where}: ${problems.join('; ')} — in '${path}'` : undefined,
+    });
+  };
+
+  for (const [entityName, entity] of Object.entries<any>(ir.entities)) {
+    for (const action of ['view', 'create', 'update', 'delete'] as const) {
+      (entity.permissions?.[action] ?? []).forEach((path: string, i: number) => {
+        record(entityName, `permissions.${action}`, `${entityName}.permissions.${action}`, i, path,
+          checkPath(path, entityName, ir.entities));
+      });
+    }
+    for (const [notifyName, paths] of Object.entries<any>(entity.notifications ?? {})) {
       if (!Array.isArray(paths)) continue;
-      for (let i = 0; i < paths.length; i++) {
-        const path = paths[i] as string;
-        const result = validateSinglePath(path, entityName, domain);
-        results.push({
-          entity: entityName,
-          pathType: 'notifications',
-          pathIndex: i,
-          path,
-          valid: result.valid,
-          error: result.error ? `${notifyName}: ${result.error}` : undefined
-        });
-      }
+      paths.forEach((path: string, i: number) => {
+        record(entityName, 'notifications', `${entityName}.notifications.${notifyName}`, i, path,
+          checkPath(path, entityName, ir.entities, 'notification'));
+      });
     }
   }
 
-  // Validate subscribable canSubscribe paths
-  for (const [subName, sub] of Object.entries(domain.subscribables || {})) {
-    const paths = sub.canSubscribe || [];
-    for (let i = 0; i < paths.length; i++) {
-      const path = paths[i];
-      const result = validateSinglePath(path, subName, domain);
-      results.push({
-        entity: subName,
-        pathType: 'permissions.view',
-        pathIndex: i,
-        path,
-        valid: result.valid,
-        error: result.error
-      });
-    }
+  for (const [subName, sub] of Object.entries<any>(ir.subscribables)) {
+    const rootKey: string = sub.root?.key ?? '';
+    const isList = !rootKey;
+    const fieldMap = rootKey && !rootKey.startsWith('@') ? { [rootKey]: 'id' } : {};
+    (sub.canSubscribe ?? []).forEach((path: string, i: number) => {
+      const problems = !isList && !ir.entities[sub.root?.entity]
+        ? [`unknown root entity '${sub.root?.entity}'`]
+        : checkPath(path, sub.root.entity, ir.entities, isList ? 'subscribe-list' : 'permission', fieldMap);
+      record(subName, 'canSubscribe', `${subName}.canSubscribe`, i, path, problems);
+    });
   }
 
   return results;
 }
 
 /**
- * Validate a single path expression
+ * Validate all paths in a domain configuration (for the CLI `validate-paths` command)
  */
-function validateSinglePath(
-  path: string,
-  entityName: string,
-  domain: DomainConfig
-): { valid: boolean; error?: string } {
-  // Parse the path
-  const parsed = parsePath(path);
-
-  if (!parsed.isValid) {
-    return { valid: false, error: parsed.error };
-  }
-
-  // Optionally validate that referenced tables exist
-  const errors: string[] = [];
-
-  for (const hop of parsed.hops) {
-    if (hop.table && hop.type !== 'field') {
-      if (!domain.entities[hop.table]) {
-        errors.push(`Unknown table '${hop.table}'`);
-      }
-    }
-  }
-
-  if (errors.length > 0) {
-    return { valid: false, error: errors.join('; ') };
-  }
-
-  return { valid: true };
+export function validatePaths(domain: DomainConfig): PathValidationResult[] {
+  return collectResults(generateIR(domain));
 }
 
 /**

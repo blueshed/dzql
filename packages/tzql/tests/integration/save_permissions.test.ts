@@ -15,8 +15,8 @@ const domain = {
       label: "title",
       searchable: ["title"],
       permissions: {
-        view: [],
-        create: [],
+        view: ['TRUE'],
+        create: ['AUTHENTICATED'],
         update: ["@author_id == @user_id"],
         delete: ["@author_id == @user_id"],
       },

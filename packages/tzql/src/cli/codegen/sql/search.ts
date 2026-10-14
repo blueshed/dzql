@@ -1,4 +1,4 @@
-import { compilePermission } from "../../compiler/permissions.js";
+import { compileRuleList } from "../../compiler/permissions.js";
 import type { EntityIR, ManyToManyIR, ColumnInfo } from "./types.js";
 import { buildVisibleJsonb, buildVisibleJsonbForEntity } from "./utils.js";
 
@@ -19,11 +19,13 @@ export function generateSearchFunction(name: string, entityIR: EntityIR, entitie
     .filter((n: string) => !hidden.includes(n));
   const allowedColsSql = `ARRAY[${allowedCols.map(n => `'${n}'`).join(', ')}]::text[]`;
 
-  // For dynamic SQL in EXECUTE, we need to use $1 instead of p_user_id
-  const viewPermRaw = entityIR.permissions?.view?.length > 0
-    ? entityIR.permissions.view.map((rule: string) => compilePermission(name, rule, null, name)).join(' OR ')
-    : 'TRUE';
-  const viewPerm = viewPermRaw.replace(/p_user_id/g, '$1');
+  // The view rule is spliced into a format() string run by EXECUTE: p_user_id
+  // becomes the $1 bind, quotes are doubled for the string literal, and % is
+  // escaped for format(). An empty view list denies everyone.
+  const viewPerm = compileRuleList(name, entityIR.permissions?.view, name)
+    .replace(/\bp_user_id\b/g, '$1')
+    .replace(/'/g, "''")
+    .replace(/%/g, '%%');
 
   // Soft delete filter
   const softDeleteFilter = softDelete ? ' AND deleted_at IS NULL' : '';

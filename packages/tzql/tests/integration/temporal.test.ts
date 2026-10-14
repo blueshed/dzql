@@ -51,7 +51,7 @@ const temporalDomain: DomainConfig = {
       },
       permissions: {
         view: ['TRUE'],
-        create: [],
+        create: ['AUTHENTICATED'],
         update: ['@author_id'],
         delete: ['@author_id']
       },
