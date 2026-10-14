@@ -377,8 +377,8 @@ function keepSheet(v: BoardView): string {
       prop(
         "Shared",
         choice("Shared: any number may claim it", [
-          { text: "Yes", on: g.shared, write: write("board", "replace", `${at}/shared`, "1"), kind: "yes" },
-          { text: "No", on: !g.shared, write: write("board", "replace", `${at}/shared`, "0"), kind: "no" },
+          { text: "Yes", on: g.shared, write: write("board", "replace", `${at}/shared`, true), kind: "yes" },
+          { text: "No", on: !g.shared, write: write("board", "replace", `${at}/shared`, false), kind: "no" },
         ]),
       ),
       prop("Picture", pictureField(`${at}/picture_key`, g.picture_key)),

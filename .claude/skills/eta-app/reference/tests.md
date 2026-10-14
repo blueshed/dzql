@@ -25,7 +25,8 @@ test("a drag across days is a draft, its drawer saying what it would mean; asked
   (`bun test examples/<name>`); the full gate before a commit.
 - A test for each document's rules and shapes, called directly, without a server.
 - A `server.test.ts` that drives writes and undo over a real websocket (two writes racing), and checks
-  that a value is drawn, which no story's `seen` does.
+  that a value is drawn, which no story's `seen` does. `write(ws, doc, ops)` (`src/test-socket.ts`)
+  gives each write an id and returns it, so a refused one is answered: `expectMessage(ws, "refused")`.
 - A `client/app.test.ts` for what only a browser can show (`Bun.WebView`, on Chrome).
 - Open a view with `webview()`, never `new Bun.WebView()`: only `webview()` is measured for the
   client's coverage (`src/client-coverage.ts`).

@@ -19,7 +19,7 @@ describe("html", () => {
 
   test("write names a document, an op and a path, and carries a value only when there is one", () => {
     expect(write("desk", "remove", "/open")).toBe(` data-write='{"doc":"desk","op":"remove","path":"/open"}'`);
-    expect(open).toBe(` data-write='{"doc":"desk","op":"replace","path":"/open"}' data-value="board"`);
+    expect(open).toBe(` data-write='{"doc":"desk","op":"replace","path":"/open"}' data-value='"board"'`);
   });
 
   test("a path built from what someone typed cannot end write's attribute", () => {
@@ -88,7 +88,7 @@ describe("the surfaces", () => {
 
   test("the reading switch writes the session's /reading/<key>, the current one checked (a radio is checked, not pressed); the plus writes /new", () => {
     const out = b.readingSwitch([["spark", "chart", false, b.readAs("board", "spark")], ["list", "list", true, b.readAs("board", "list")]]);
-    expect(out).toContain(`role="radio" aria-checked="false" aria-label="spark" data-write='{"doc":"desk","op":"replace","path":"/reading/board"}' data-value="spark"><i data-icon="chart"`);
+    expect(out).toContain(`role="radio" aria-checked="false" aria-label="spark" data-write='{"doc":"desk","op":"replace","path":"/reading/board"}' data-value='"spark"'><i data-icon="chart"`);
     expect(out).toContain('role="radio" aria-checked="true" aria-label="list"');
     expect(b.addTool(open, "Watch")).toContain(`aria-label="Watch"${open}>`);
   });
@@ -96,12 +96,12 @@ describe("the surfaces", () => {
   test("find: closed, a tool that opens it; open, the field, the tally and the eye, each a write to the session", () => {
     const closed = b.findControl("market", { shown: 3, total: 3 });
     expect(closed.filter).toBeUndefined();
-    expect(closed.tool).toContain(`aria-pressed="false" data-write='{"doc":"desk","op":"replace","path":"/filter/market"}' data-value=""`);
+    expect(closed.tool).toContain(`aria-pressed="false" data-write='{"doc":"desk","op":"replace","path":"/filter/market"}' data-value='""'`);
     const dim = b.findControl("market", { word: "al", shown: 1, total: 3 });
     expect(dim.tool).toContain(`aria-pressed="true" data-write='{"doc":"desk","op":"remove","path":"/filter/market"}'`);
     expect(dim.filter).toContain('<form data-write-on="input"><input name="q" type="search" value="al"');
     expect(dim.filter).toContain('<span class="tally">1 of 3</span>');
-    expect(dim.filter).toContain(`aria-label="Hide what misses" aria-pressed="false" data-write='{"doc":"desk","op":"replace","path":"/hide/market"}' data-value="true"><i data-icon="eye"`);
+    expect(dim.filter).toContain(`aria-label="Hide what misses" aria-pressed="false" data-write='{"doc":"desk","op":"replace","path":"/hide/market"}' data-value='true'><i data-icon="eye"`);
     const hid = b.findControl("market", { word: "al", hide: true, shown: 1, total: 3 });
     expect(hid.filter).toContain(`aria-label="Show what misses" aria-pressed="true" data-write='{"doc":"desk","op":"remove","path":"/hide/market"}'><i data-icon="eye-off"`);
   });

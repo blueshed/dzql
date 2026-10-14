@@ -478,11 +478,19 @@ describe("createServer, generically (no example from the examples directory invo
     expect(htmlOf(badId.at(-1)!)).not.toContain("sneaked");
 
     // a write without an id -- a page from before ids, the CLI -- is refused as it always was: the page alone
-    const bare = await answered(() => write(ws, "note", [{ op: "replace", path: "/text", value: "" }]));
+    const bare = await answered(() => ws.send(JSON.stringify({ doc: "note", ops: [{ op: "replace", path: "/text", value: "" }] })));
     expect(bare.map((m) => m.type)).not.toContain("refused");
     expect(htmlOf(bare.at(-1)!)).toContain("A note needs words.");
     ws.close();
   });
+
+  test("a refused write from a test's socket is answered within a second: `write` gives every write an id, so its refusal has one to answer", async () => {
+    const ws = await open(server);
+    const id = write(ws, "note", [{ op: "replace", path: "/text", value: "" }]);
+    expect(await expectMessage(ws, "refused")).toEqual({ type: "refused", id, reason: "A note needs words." });
+    expect(write(ws, "note", [{ op: "replace", path: "/text", value: "" }])).not.toBe(id); // each its own
+    ws.close();
+  }, 1000);
 
   test("an undo or redo with an id is answered as a write is: the change it walked echoed with the id, and nothing to walk refused with it", async () => {
     const ws = await open(server);

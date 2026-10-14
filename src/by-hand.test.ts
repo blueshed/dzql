@@ -236,9 +236,15 @@ describe("the stories by hand", () => {
     ]);
   }, 60000);
 
-  test("what the page sent is the story's write: a value as the wire sends a button's, a record by its keys, a document by either name", () => {
+  test("what the page sent is the story's write: a value with its type, as the wire sends it, a record by its keys, a document by either name", () => {
     const add = (value: unknown) => ({ doc: "board", ops: [{ op: "add" as const, path: "/households/-", value }] });
-    expect(sameWrite(add({ email: "a@b", plus_ones: "2" }), add({ email: "a@b", plus_ones: 2 }))).toBe(true);
+    expect(sameWrite(add({ email: "a@b", plus_ones: 2 }), add({ email: "a@b", plus_ones: 2 }))).toBe(true);
+    expect(sameWrite(add({ email: "a@b", plus_ones: "2" }), add({ email: "a@b", plus_ones: 2 }))).toBe(false); // a number field sends a number
+    const paid = (value: unknown) => ({ doc: "till", ops: [{ op: "replace" as const, path: "/bills/1/paid", value }] });
+    expect(sameWrite(paid(true), paid(true))).toBe(true);
+    expect(sameWrite(paid("true"), paid(true))).toBe(false); // Mo's button sends true, not "true"
+    expect(sameWrite(paid(null), paid(undefined))).toBe(false);
+    expect(sameWrite(add({ email: "a@b", extra: null, paid: false }), add({ email: "a@b" }))).toBe(false); // a box unticked is no blank: it says no
     expect(sameWrite(add({ email: "a@b" }), add({ email: "a@b", plus_ones: 2 }))).toBe(false);
     expect(sameWrite(add({ email: "a@b", plus_ones: "2", half: true }), add({ email: "a@b", plus_ones: 2 }))).toBe(false); // a key the story does not name
     expect(sameWrite(add({ email: "a@b", names: "" }), add({ email: "a@b" }))).toBe(true); // but a field left blank (the wedding's invite)

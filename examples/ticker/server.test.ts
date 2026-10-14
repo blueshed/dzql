@@ -60,9 +60,9 @@ describe("the ticker", () => {
     await expectQuiet(a);
     expect(await expectMessage(b, "patch")).toMatchObject({ doc: "ticker:market" });
     await expectQuiet(b);
-    // a tick that changes nothing (the same price) lands nothing, and the page it holds is the page still: nothing is sent
-    write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
-    expect(await heard(a)).toEqual([]);
+    // a tick that changes nothing (the same price) lands nothing, and the page it holds is the page still: its refusal alone is sent
+    const same = write(a, "ticker", [{ op: "replace", path: "/DLTA/price", value: before + 1 }]);
+    expect(await heard(a)).toEqual([{ type: "refused", id: same }]);
     await expectQuiet(b);
     // a tick is a fact: Undo passes over it to the person's own last write, and the market stands
     write(a, "watchlist", [{ op: "add", path: "/symbols/-", value: "DLTA" }]);
@@ -100,18 +100,19 @@ describe("the ticker", () => {
   test("permit: only a tick on the market; only the watchlist's own two paths", async () => {
     const ws = await open();
     const refused = async (doc: string, ops: PatchOp[]) => {
-      write(ws, doc, ops);
-      expect(await heard(ws)).toEqual([]); // no patch, and no page: the one it holds is the page still
+      const id = write(ws, doc, ops);
+      expect(await heard(ws)).toEqual([{ type: "refused", id }]); // no patch, and no page: the one it holds is the page still
     };
     await refused("ticker", [{ op: "replace", path: "/DLTA/name", value: "x" }]);
     await refused("ticker", [{ op: "remove", path: "/DLTA/price" }]);
     await refused("ticker", [{ op: "add", path: "/NEW/price", value: 1 }]);
     await refused("watchlist", [{ op: "replace", path: "/symbols/0", value: "x" }]);
     // permitted, and refused with why: the reason is kept in the session's own refusal document
-    write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "NOPE" }]);
+    const nope = write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "NOPE" }]);
     const said = await heard(ws);
-    expect(said.map((m) => m.type)).toEqual(["patch"]); // the box shows no reason, so its page is not sent again
-    expect(said[0]).toMatchObject({ doc: "told", ops: expect.arrayContaining([{ op: "replace", path: "/reason", value: "The market does not quote NOPE." }]) });
+    expect(said.map((m) => m.type)).toEqual(["refused", "patch"]); // the box shows no reason, so its page is not sent again
+    expect(said[0]).toEqual({ type: "refused", id: nope, reason: "The market does not quote NOPE." });
+    expect(said[1]).toMatchObject({ doc: "told", ops: expect.arrayContaining([{ op: "replace", path: "/reason", value: "The market does not quote NOPE." }]) });
     ws.close();
   });
 
@@ -187,10 +188,10 @@ describe("the ticker", () => {
     expect(await expectMessage(ws, "patch")).toMatchObject({ doc: "clock", ops: [{ op: "replace", path: "/tz", value: "Asia/Tokyo" }] });
     await expectMessage(ws, "render");
     await expectQuiet(ws);
-    write(ws, "clock", [{ op: "replace", path: "/tz", value: "Mars/Base" }]);
-    expect(await heard(ws)).toEqual([]); // permitted, not applied: no patch, and the page unchanged
-    write(ws, "clock", [{ op: "remove", path: "/tz" }]);
-    expect(await heard(ws)).toEqual([]); // refused
+    const mars = write(ws, "clock", [{ op: "replace", path: "/tz", value: "Mars/Base" }]);
+    expect(await heard(ws)).toEqual([{ type: "refused", id: mars }]); // permitted, not applied: no patch, and the page unchanged
+    const none = write(ws, "clock", [{ op: "remove", path: "/tz" }]);
+    expect(await heard(ws)).toEqual([{ type: "refused", id: none }]);
     ws.close();
   });
 
@@ -246,7 +247,7 @@ describe("the ticker", () => {
     // a symbol's drawer offers to watch it; watching it closes nothing but marks it, and the drawer then offers to drop it
     html = await page([{ op: "replace", path: "/page", value: "market?symbol=CHRL" }]);
     expect(html).toContain('aria-label="CHRL"');
-    expect(html).toContain('data-write=\'{"doc":"watchlist","op":"add","path":"/symbols/-"}\' data-value="CHRL"');
+    expect(html).toContain(`data-write='{"doc":"watchlist","op":"add","path":"/symbols/-"}' data-value='"CHRL"'`);
     write(ws, "watchlist", [{ op: "add", path: "/symbols/-", value: "CHRL" }]);
     await expectMessage(ws, "patch");
     await expectMessage(ws, "render");
@@ -261,7 +262,7 @@ describe("the ticker", () => {
     expect(JSON.stringify(chosen.ops)).not.toContain("data-props");
     html = chosen.page!;
     expect(html).toContain(`<div data-eta-part="quote-CHRL" id="quote-CHRL" class="board-row"><div id="line-CHRL" data-applet="board" data-doc="quote:CHRL" data-under="/quote" aria-hidden="true" data-props=`);
-    expect(html).toContain(`<button data-eta-part="tap-CHRL" type="button" class="board-tap" aria-labelledby="line-CHRL" data-write='{"doc":"desk","op":"replace","path":"/page"}' data-value="board?symbol=CHRL" aria-expanded="true" data-reveal></button></div>`);
+    expect(html).toContain(`<button data-eta-part="tap-CHRL" type="button" class="board-tap" aria-labelledby="line-CHRL" data-write='{"doc":"desk","op":"replace","path":"/page"}' data-value='"board?symbol=CHRL"' aria-expanded="true" data-reveal></button></div>`);
     expect(html).toContain("Stop watching");
     // the board row has the move and the sparkline, and a narrow board hides its name: its drawer gives the name
     const fromRow = html.slice(html.indexOf('id="drawer"'));
@@ -289,7 +290,7 @@ describe("the ticker", () => {
     // dropping asks first, from the drawer: the drawer's layer closes, the modal's opens, the ground
     // goes inert and the site's tag says where -- and none of it is the page
     html = await page([{ op: "replace", path: "/page", value: "board?symbol=CHRL" }]);
-    expect(html).toContain(`data-value="board?confirm=CHRL"`);
+    expect(html).toContain(`data-value='"board?confirm=CHRL"'`);
     write(ws, "desk", [{ op: "replace", path: "/page", value: "board?confirm=CHRL" }]);
     await expectMessage(ws, "patch");
     const asked = await expectMessage(ws, "render");

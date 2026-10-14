@@ -32,12 +32,28 @@ export function held(field: Field): string | boolean | null {
   return field.value;
 }
 
+/** Is it a field that holds a number: its value goes as one. */
+export const isNumber = (field: Field): boolean => field instanceof HTMLInputElement && (field.type === "number" || field.type === "range");
+
+/**
+ * What a field sends of what it holds (`held`, or `value`, what it was drawn with), with its type, as
+ * JSON says it: a number field its number, or null when it is empty (the browser holds what is no
+ * number as empty); a date, a time or a select its text, as the browser holds it (`2026-10-14`); a
+ * box true or false; a group of radios its choice or null; words as words.
+ */
+export function sends(field: Field, value = held(field)): string | number | boolean | null {
+  return isNumber(field) && typeof value === "string" ? (value === "" ? null : Number(value)) : value;
+}
+
+/** What a button or a row sends: its `data-value`, JSON (src/html.ts `write`), parsed, so `true` goes as true; none, nothing. */
+export const pressed = (el: HTMLElement): unknown => (el.dataset.value === undefined ? undefined : JSON.parse(el.dataset.value));
+
 /** A form's named fields, in its order, that a write carries: none disabled, nor a button or a file; each radio of a group among them. */
 export const namedFields = (form: HTMLFormElement): Field[] =>
   [...form.elements].filter((el): el is Field => isField(el) && el.name !== "" && !el.matches(":disabled") && !(el instanceof HTMLInputElement && NOT_A_VALUE.has(el.type)));
 
 /**
- * A form's value on submit: its one named field's value, or a record of all its named fields if
+ * A form's value on submit: its one named field's value (`sends`), or a record of all its named fields if
  * it has more than one, each there whatever it holds (a box unticked is false, a group of radios
  * none of which is chosen is null), so a value keeps one shape. No named fields at all is
  * undefined. A disabled field is none, nor is a button. The single-field case stays a scalar
@@ -45,7 +61,7 @@ export const namedFields = (form: HTMLFormElement): Field[] =>
  */
 export function formValue(form: HTMLFormElement): unknown {
   const fields = new Map<string, unknown>();
-  for (const el of namedFields(form)) fields.set(el.name, held(el)); // a name again is its last
+  for (const el of namedFields(form)) fields.set(el.name, sends(el)); // a name again is its last
   if (fields.size === 0) return undefined;
   if (fields.size === 1) return [...fields.values()][0];
   return Object.fromEntries(fields);

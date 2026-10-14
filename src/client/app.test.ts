@@ -284,7 +284,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     for (const whole of [false, true]) {
       const trip = { wed: ["w0", "w1", "w2", "w3", "w4"], thu: ["t0", "t1", "t2"] };
       const page = () =>
-        `<style>body { margin: 0 }</style><header style="position:sticky;top:0;height:140px;background:#fff;z-index:1"><button type="button" id="move" data-write='{"doc":"trip","op":"replace","path":"/move"}' data-value="w4">Move</button></header>` +
+        `<style>body { margin: 0 }</style><header style="position:sticky;top:0;height:140px;background:#fff;z-index:1"><button type="button" id="move" data-write='{"doc":"trip","op":"replace","path":"/move"}' data-value='"w4"'>Move</button></header>` +
         part("trip", `<main><div style="height:300px"></div>${day("wed", trip.wed)}${day("thu", trip.thu)}<div style="height:2000px"></div></main>`);
       const clients = new Set<Bun.ServerWebSocket<{ drawn?: ReturnType<typeof drawParts> }>>();
       const relay = Bun.serve<{ drawn?: ReturnType<typeof drawParts> }>({
@@ -523,8 +523,8 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     // a drawer's × and, drawn after it, a modal's scrim: the modal was opened last
     await pushRender(
       view,
-      `<aside><button id="x" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="">×</button><input id="own"></aside>` +
-        `<div id="scrim" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="?drawer"></div>`,
+      `<aside><button id="x" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value='""'>×</button><input id="own"></aside>` +
+        `<div id="scrim" data-escape data-write='{"doc":"session","op":"replace","path":"/page"}' data-value='"?drawer"'></div>`,
     );
     await key("Enter"); // another key is nobody's
     // a field (or an applet) that takes Escape for itself says so, and the page leaves it be
@@ -897,7 +897,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await using view = await open();
     const toPage = `'{"doc":"session","op":"replace","path":"/page"}'`;
     const page = (open: boolean) =>
-      `<main data-page="${open ? "?answer" : ""}" data-page-write=${toPage}>${open ? `<aside><button type="button" id="x" data-escape data-write=${toPage} data-value="">×</button>${words()}</aside>` : ""}</main>`;
+      `<main data-page="${open ? "?answer" : ""}" data-page-write=${toPage}>${open ? `<aside><button type="button" id="x" data-escape data-write=${toPage} data-value='""'>×</button>${words()}</aside>` : ""}</main>`;
     const away = { doc: "session", ops: [{ op: "replace", path: "/page", value: "" }] };
     await pushRender(view, page(false));
     for (const how of ["Escape", "Back"]) {
@@ -1105,6 +1105,35 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/paid", value: true }, { op: "replace", path: "/kind", value: "travel" }] });
   });
 
+  test("Mo marks the bill paid with a button, and the till receives true, not \"true\": a button's value goes with its type", async () => {
+    await using view = await open();
+    const values = [true, 3, "earlier", "", null, { by: "Mo" }];
+    await pushRender(view, values.map((v, i) => `<button type="button" id="b${i}"${write("till", "replace", "/bills/1/paid", v)}>${i}</button>`).join(""));
+    for (const i of values.keys()) await view.click(`#b${i}`);
+    await sentAt(view, values.length);
+    expect(await view.evaluate<unknown[]>(`window.__sent.map((s) => s.ops[0].value)`)).toEqual(values);
+  });
+
+  test("a field goes with its type: a number as a number, or null when empty; a date as its day; a box as whether it is ticked; anything else as its text", async () => {
+    await using view = await open();
+    await pushRender(
+      view,
+      `<form id="add" data-write='{"doc":"till","op":"add","path":"/bills/-"}'><input id="who" name="who"><input type="number" id="covers" name="covers"><input type="number" name="tip"><input type="date" name="on" value="2026-10-14"><input type="checkbox" name="paid" checked><button id="go">Start</button></form>` +
+        `<form data-write-on="blur"><input type="number" id="table" value="2" data-write='{"doc":"till","op":"replace","path":"/bills/1/table"}'></form>`,
+    );
+    await view.click("#who");
+    await view.type("Mo");
+    await view.click("#covers");
+    await view.type("4");
+    await view.click("#go");
+    expect((await sentAt(view, 1)).ops[0]!.value).toEqual({ who: "Mo", covers: 4, tip: null, on: "2026-10-14", paid: true });
+
+    await view.click("#table");
+    await view.type("5");
+    await view.evaluate(`document.getElementById('table').blur()`);
+    expect((await sentAt(view, 2)).ops).toEqual([{ op: "test", path: "/bills/1/table", value: "2" }, { op: "replace", path: "/bills/1/table", value: 25 }]); // the test is what was drawn, as the page says it
+  });
+
   test("a creating form sends a box as whether it is ticked, ticked or not, so its value keeps one shape", async () => {
     await using view = await open();
     await pushRender(view, `<form id="add" data-write='{"doc":"trip","op":"add","path":"/events/-"}'><input id="title" name="title"><input type="checkbox" id="booked" name="booked"></form>`);
@@ -1251,7 +1280,7 @@ describe("a write's own answer: its echo or its refusal, by its id (n14)", () =>
 
   test("eta.inspect()'s last write is told by its own id: another's echo of its document marks nothing, and a refusal says why against the write it refused, not the last one sent", async () => {
     await using view = await open();
-    await pushRender(view, `<button id="hi" data-write='{"doc":"room","op":"add","path":"/messages/-"}' data-value="hi">hi</button><button id="undo" data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>Undo</button>`);
+    await pushRender(view, `<button id="hi" data-write='{"doc":"room","op":"add","path":"/messages/-"}' data-value='"hi"'>hi</button><button id="undo" data-write='{"doc":"ledger","op":"remove","path":"/latest"}'>Undo</button>`);
     const lastSent = () => view.evaluate<Record<string, unknown>>(`window.eta.inspect().lastSent`);
 
     await view.click("#hi");

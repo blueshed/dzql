@@ -59,7 +59,7 @@ export const stories: Stories = {
 
     // ── A household answers, and asks ──
     story("The Okafors say maybe, and the couple's photo and everyone's change", { as: "okafors", does: household("replace", "/answer", "maybe"), seen: { okafors: "?answer", couple: "", benToo: "everyone" }, undone: "Undone: your answer.", redone: "Redone: your answer." }),
-    story("Femi is not coming after all: the mark at his feet says so, and he leaves everyone's photo", { as: "okafors", from: "?guest=2", does: household("replace", "/guests/2/coming", "0"), seen: { okafors: "", couple: "", benToo: "everyone" } }),
+    story("Femi is not coming after all: the mark at his feet says so, and he leaves everyone's photo", { as: "okafors", from: "?guest=2", does: household("replace", "/guests/2/coming", 0), seen: { okafors: "", couple: "", benToo: "everyone" } }),
     story("The Okafors leave the caterer a note, and only the couple read it", { as: "okafors", from: "?answer", does: household("replace", "/message", "Ada is vegetarian."), seen: { okafors: "", couple: "?family=1" }, untold: ["ben", "benToo"] }),
     story("Ben is writing his note on his phone when he changes it on his laptop; the phone is told, and its next keystroke does not write over the laptop's unseen", { as: "ben", premise: { benToo: [household("replace", "/message", "Can I bring the dog?")] }, from: "?answer", cannot: typed("/message", "", "See you there."), told: "This was changed elsewhere as you typed: here it is now." }),
     story("The Okafors bring a plus-one, and the couple see the name", { as: "okafors", from: "?new=guests", does: household("add", "/guests/-", "Tolu Adebayo"), seen: { okafors: "", couple: "?family=1", benToo: "everyone" }, undone: "Undone: bringing Tolu Adebayo.", redone: "Redone: bringing Tolu Adebayo." }),
@@ -69,16 +69,16 @@ export const stories: Stories = {
 
     // ── The meal and the gifts ──
     story("Femi picks the sea bass, and the couple see it in the Okafors' drawer", { as: "okafors", from: "list?guest=2", does: household("replace", "/guests/2/choices/2/dish", 5), seen: { okafors: "list", couple: "?family=1" } }),
-    story("The couple offer a vegan main", { as: "couple", from: "?keep=courses/2", does: board("add", "/courses/2/dishes/-", { name: "Aubergine tagine", dietary: "vg, gf" }), seen: { couple: "?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
-    story("The couple add a gift, and it is on every list", { as: "couple", from: "?gifts", does: board("add", "/gifts/-", { name: "A tree for the garden", description: "A crab apple." }), seen: { couple: "?gifts", okafors: "?gifts", ben: "?gifts" } }),
+    story("The couple offer a vegan main", { as: "couple", from: "?keep=courses/2", does: board("add", "/courses/2/dishes/-", "Aubergine tagine"), seen: { couple: "?keep=courses/2", okafors: "?guest=2", ben: "?guest=3" } }),
+    story("The couple add a gift, and it is on every list", { as: "couple", from: "?gifts", does: board("add", "/gifts/-", "A tree for the garden"), seen: { couple: "?gifts", okafors: "?gifts", ben: "?gifts" } }),
     story("The Okafors claim the casserole, and it leaves Ben's list", { as: "okafors", from: "?gifts", does: household("add", "/claims/-", 1), seen: { okafors: "?gifts", couple: "?gifts", ben: "?gifts" } }),
 
     // ── The day, and where to stay ──
-    story("The couple add an event to the day", { as: "couple", from: "?events", does: board("add", "/events/-", { name: "Fireworks", when_at: "2027-04-02T22:00" }), seen: { couple: "?events", okafors: "?day", ben: "?day" } }),
-    story("The couple add somewhere to stay", { as: "couple", from: "?places", does: board("add", "/places/-", { name: "The Bristol Hotel", notes: "Ask for the wedding rate." }), seen: { couple: "?places", okafors: "?stay", ben: "?stay" } }),
+    story("The couple add an event to the day", { as: "couple", from: "?events", does: board("add", "/events/-", "Fireworks"), seen: { couple: "?events", okafors: "?day", ben: "?day" } }),
+    story("The couple add somewhere to stay", { as: "couple", from: "?places", does: board("add", "/places/-", "The Bristol Hotel"), seen: { couple: "?places", okafors: "?stay", ben: "?stay" } }),
 
     // ── The venues, a page nobody wrote ──
-    story("The couple add a venue, and it is in the list", { as: "couple", from: "venues?new", does: board("add", "/venues/-", { name: "Arnos Vale" }), seen: { couple: "venues" } }),
+    story("The couple add a venue, and it is in the list", { as: "couple", from: "venues?new", does: board("add", "/venues/-", "Arnos Vale"), seen: { couple: "venues" } }),
     story("The couple put a picture on a venue", { as: "couple", from: "venues?row=1", does: board("replace", "/venues/1/picture_key", "seed/mount-without.svg"), seen: { couple: "venues?row=1" } }),
     story("The couple cross a venue off, and it leaves the list", { as: "couple", from: "venues?confirm=2", does: board("remove", "/venues/2"), seen: { couple: "venues" } }),
   ],

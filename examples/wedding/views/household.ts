@@ -220,8 +220,8 @@ function guestSheet(v: HouseholdView): string {
   const coming = choice(
     "Coming",
     [
-      { text: "Yes", on: g.coming === 1, write: write("household", "replace", `/guests/${g.id}/coming`, "1"), kind: "yes" },
-      { text: "No", on: g.coming === 0, write: write("household", "replace", `/guests/${g.id}/coming`, "0"), kind: "no" },
+      { text: "Yes", on: g.coming === 1, write: write("household", "replace", `/guests/${g.id}/coming`, 1), kind: "yes" },
+      { text: "No", on: g.coming === 0, write: write("household", "replace", `/guests/${g.id}/coming`, 0), kind: "no" },
       { text: "Not sure", on: g.coming === null, write: write("household", "remove", `/guests/${g.id}/coming`) },
     ],
     !v.open,

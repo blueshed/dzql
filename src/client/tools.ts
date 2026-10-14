@@ -1,6 +1,6 @@
 import type { PatchOp } from "../json-patch";
 import { afterDrawing, ask, walked, type Answer, type Write } from "./app";
-import { groupOf, isBox, isField, isRadio, namedFields, rendered, type Field } from "./form-value";
+import { groupOf, isBox, isField, isNumber, isRadio, namedFields, pressed, rendered, sends, type Field } from "./form-value";
 
 // The page's writes as tools for an assistant (todo n99), for an app that opts in: its client/main.ts
 // imports this after the kernel's client, `import "eta/client/tools"`. Every control a person
@@ -42,17 +42,19 @@ const nameOf = (...parts: string[]): string =>
 
 const specOf = (el: HTMLElement): Spec => JSON.parse(el.dataset.write!);
 
-/** A field's input, as it holds one: a box true or false, else text; described by its label. */
+/** A field's input, as it sends one: a box true or false, a number field a number, else text; described by its label. */
 function schemaOf(field: Field): Schema {
   const description = labelOf(field) || undefined;
   if (isBox(field)) return { type: "boolean", description };
+  if (isNumber(field)) return { type: "number", description };
   const format = field instanceof HTMLInputElement && ({ date: "date", time: "time", email: "email", url: "uri" } as Record<string, string>)[field.type];
   return { type: "string", description, ...(format && { format }) };
 }
 
-/** What a field sends of `given`, as a person could make it: a box a tick, a choice one it offers now, anything else text -- or why it cannot. */
+/** What a field sends of `given`, as a person could make it: a box a tick, a number field a number or none, a choice one it offers now, anything else text -- or why it cannot. */
 function sent(field: Field, key: string, given: unknown): { value: unknown } | string {
   if (isBox(field)) return typeof given === "boolean" ? { value: given } : `${key} is true or false.`;
+  if (isNumber(field)) return given === null || Number.isFinite(given) ? { value: given } : `${key} is a number.`;
   const value = given == null ? given : String(given);
   const offered =
     field instanceof HTMLSelectElement ? [...field.options].filter((o) => !o.disabled).map((o) => o.value)
@@ -83,7 +85,7 @@ function formTool(form: HTMLFormElement, label: string): Tool | undefined {
       if (missing.length) return `Give ${missing.join(", ")}.`;
       const value: Record<string, unknown> = {};
       for (const [name, f] of fields) {
-        const given = asked.some(([n]) => n === name) && name in input ? sent(f, name, input[name]) : { value: rendered(f) };
+        const given = asked.some(([n]) => n === name) && name in input ? sent(f, name, input[name]) : { value: sends(f, rendered(f)) };
         if (typeof given === "string") return given;
         value[name] = given.value;
       }
@@ -123,15 +125,16 @@ function editTool(form: HTMLFormElement, label: string): Tool | undefined {
 
 /** The buttons and rows of one label: one tool, told which to press by what differs between their writes, its path or its value. */
 function pressTool(label: string, presses: HTMLElement[]): Tool {
-  const writes = presses.map((el) => ({ ...specOf(el), value: el.dataset.value }));
-  const asks = (["path", "value"] as const).filter((k) => new Set(writes.map((w) => w[k])).size > 1);
+  const writes = presses.map((el) => ({ ...specOf(el), value: pressed(el) }));
+  const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+  const asks = (["path", "value"] as const).filter((k) => new Set(writes.map((w) => JSON.stringify(w[k]))).size > 1);
   return {
     name: nameOf(label),
     title: label,
     description: asks.length ? `${label}: give the ${asks.join(" and ")} of the one to press, as the page's markup says.` : `${label}.`,
-    inputSchema: { type: "object", properties: Object.fromEntries(asks.map((k) => [k, { type: "string" }])), required: [...asks] },
+    inputSchema: { type: "object", properties: Object.fromEntries(asks.map((k) => [k, writes.every((w) => typeof w[k] === "string") ? { type: "string" } : {}])), required: [...asks] },
     write(input) {
-      const w = writes.find((w) => asks.every((k) => w[k] === input[k]));
+      const w = writes.find((w) => asks.every((k) => same(w[k], input[k])));
       return w ? { doc: w.doc, ops: [{ op: w.op, path: w.path, value: w.value }] } : `That is none of the page's ${label}.`;
     },
   };
