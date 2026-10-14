@@ -1,54 +1,121 @@
-# DZQL Documentation
+# DZQL: Realtime Apps Without the Boilerplate
 
-Complete documentation for the DZQL PostgreSQL-powered framework.
+DZQL compiles your data model into a complete realtime backend. Define entities and permissions in TypeScript, get a PostgreSQL database with CRUD operations, WebSocket sync, and type-safe client SDK - all generated.
 
-## 📚 Getting Started
+## Why DZQL?
 
-New to DZQL? Start here:
+Building realtime apps typically means:
+- Writing CRUD endpoints for every entity
+- Implementing row-level security in your API layer
+- Keeping frontend state in sync with the database
+- Managing WebSocket subscriptions manually
 
-- **[Tutorial](getting-started/tutorial.md)** - Complete step-by-step guide with a working todo app
-- **[Interpreter vs Compiler](guides/interpreter-vs-compiler.md)** - Understand the two execution modes
-- **[Subscriptions Quick Start](getting-started/subscriptions-quick-start.md)** - Get real-time subscriptions working in 5 minutes
+**DZQL eliminates this.** You define *what* your data looks like. DZQL generates *how* it works.
 
-## 📖 Guides
+## 30-Second Start
 
-Feature-specific guides and how-tos:
+```bash
+bun create dzql my-app
+cd my-app
+bun install
+bun run db:rebuild
+bun run dev
+```
 
-- **[Live Query Subscriptions](guides/subscriptions.md)** - Real-time denormalized documents
-- **[Many-to-Many Relationships](guides/many-to-many.md)** - Junction table management
-- **[Composite Primary Keys](guides/composite-primary-keys.md)** - Tables with compound keys
-- **[Field Defaults](guides/field-defaults.md)** - Auto-populate fields on create
-- **[Custom Functions](guides/custom-functions.md)** - Extend with PostgreSQL or Bun functions
-- **[Client Stores](guides/client-stores.md)** - Pinia store patterns for Vue.js
+Open http://localhost:5173 - you have a working realtime app.
 
-## 📘 Reference
+## How It Works
 
-Complete API documentation:
+**1. Define your domain** (`domain.ts`):
 
-- **[API Reference](reference/api.md)** - The 5 operations, entities, permissions, graph rules
-- **[Client API](reference/client.md)** - WebSocket client and connection management
-- **[Compiler](compiler/)** - Entity compilation, code generation, and coding standards
+```typescript
+export const entities = {
+  posts: {
+    schema: {
+      id: 'serial PRIMARY KEY',
+      title: 'text NOT NULL',
+      author_id: 'int REFERENCES users(id)'
+    },
+    permissions: {
+      view: ['TRUE'],          // Anyone can view ([] would deny everyone)
+      update: ['@author_id']   // Only author can edit
+    }
+  }
+};
+```
 
-### Compiler Documentation
+**2. Compile:**
 
-- [Quickstart](compiler/QUICKSTART.md) - Get started with the DZQL compiler
-- [Advanced Filters](compiler/ADVANCED_FILTERS.md) - Complex search operators
-- [Coding Standards](compiler/CODING_STANDARDS.md) - Best practices for DZQL code
-- [Comparison](compiler/COMPARISON.md) - Runtime vs compiled side-by-side
+```bash
+bunx dzql domain.ts
+```
 
-## 🤖 For AI Assistants
+This generates:
+- SQL migrations with CRUD functions and permission checks
+- TypeScript client SDK with full type safety
+- Pinia stores with automatic realtime sync
 
-- **[Claude Guide](for-ai/claude-guide.md)** - Complete guide for AI-assisted DZQL development
+**3. Use in your app:**
 
-## 🔗 Quick Links
+```typescript
+// Type-safe API
+const post = await ws.api.save_posts({ title: 'Hello World' });
 
-- [npm Package](https://www.npmjs.com/package/dzql)
-- [GitHub Repository](https://github.com/blueshed/dzql)
-- [Issue Tracker](https://github.com/blueshed/dzql/issues)
+// Realtime subscriptions
+const store = usePostFeedStore();
+const { data } = await store.bind({ author_id: 1 });
+// data updates automatically when posts change - no refetching
+```
 
-## Need Help?
+## Key Concepts
 
-- 📖 Check the guides above
-- 🐛 [Report an issue](https://github.com/blueshed/dzql/issues)
-- 💬 [Start a discussion](https://github.com/blueshed/dzql/discussions)
-- 🤖 Ask your AI assistant (they have access to this documentation!)
+| Concept | What it does |
+|---------|--------------|
+| **Entities** | Database tables with CRUD operations (get, save, delete, search, lookup) |
+| **Get = Rich Document** | `get` returns FK expansions and M2M relationships - a complete document |
+| **Subscribables** | For complex queries with realtime sync (one-to-many, nested includes) |
+| **Permissions** | Row-level security compiled to SQL |
+| **Graph Rules** | Side effects on create/update/delete |
+
+**Progression:** Start with `get` for simple documents. Move to subscribables when you need one-to-many relationships or realtime updates across multiple tables.
+
+## What Gets Generated
+
+```
+generated/
+├── db/migrations/     # SQL schema + functions
+├── runtime/manifest.json  # API allowlist
+└── client/
+    ├── ws.ts          # Type-safe WebSocket client
+    └── stores/        # Pinia stores with realtime sync
+```
+
+## Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Browser   │────▶│   Runtime   │────▶│  PostgreSQL │
+│  Vue + SDK  │◀────│  WebSocket  │◀────│   + Notify  │
+└─────────────┘     └─────────────┘     └─────────────┘
+     Pinia              Allowlist           Compiled
+     Stores             Gateway              SQL
+```
+
+- **Compiler**: Generates SQL and TypeScript at build time
+- **Runtime**: Lightweight WebSocket gateway (no query building)
+- **Client**: Type-safe SDK with automatic state sync
+
+## Learn More
+
+- [Domain Modeling Guide](./for_ai.md) - Entity and permission patterns
+- [Project Setup](./project-setup.md) - Manual setup and configuration
+- [Architecture Roadmap](./futures.md) - Performance and scaling plan
+- [Feature Requests](./feature-requests/) - Roadmap and proposals
+
+## Package Exports
+
+```typescript
+import { startServer } from 'dzql';           // Runtime server
+import { WebSocketManager } from 'dzql/client'; // Client SDK
+import { DzqlNamespace } from 'dzql/namespace'; // CLI/scripting
+```

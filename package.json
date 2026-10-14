@@ -6,11 +6,10 @@
   "description": "DZQL - Database-first, real-time framework for PostgreSQL",
   "workspaces": [
     "packages/dzql",
-    "packages/tzql",
     "packages/create-dzql"
   ],
   "scripts": {
-    "test": "cd packages/tzql && bun run test",
+    "test": "cd packages/dzql && bun run test",
     "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist",
     "cache:clear": "bun pm cache rm"
   },

@@ -3,7 +3,7 @@ node_modules/
 .DS_Store
 
 # Generated compiler output
-packages/tzql/dist/
+packages/dzql/dist/
 
 # Test coverage output
 coverage/

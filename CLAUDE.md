@@ -3,30 +3,30 @@
 ## Read the Documentation First
 
 Before working on this codebase, read:
-- `packages/tzql/docs/for_ai.md` - **AI guide for domain definitions and patterns**
-- `packages/tzql/docs/README.md` - General documentation
-- `packages/tzql/docs/project-setup.md` - Project setup guide
+- `packages/dzql/docs/for_ai.md` - **AI guide for domain definitions and patterns**
+- `packages/dzql/docs/README.md` - General documentation
+- `packages/dzql/docs/project-setup.md` - Project setup guide
 - `packages/create-dzql/README.md` - Starter template documentation
 
 ## Project Structure
 
 ```
 packages/
-├── dzql/          # Legacy runtime (deprecated, DO NOT USE)
-├── tzql/          # Main package (published as 'dzql' on npm)
+├── dzql/          # The dzql package on npm: compiler, runtime, client
 │   ├── src/       # Compiler, runtime, client
 │   ├── docs/      # Documentation
 │   └── tests/     # Integration tests
 └── create-dzql/   # Starter template (bun create dzql)
 ```
 
-**Important:** The `packages/dzql` folder contains the old interpreter-based runtime. All new development uses `packages/tzql` which compiles TypeScript domain definitions to SQL.
+dzql compiles TypeScript domain definitions to SQL. The old interpreter-based
+runtime has been removed; it remains in git history only.
 
 ## Testing
 
-- Run tests: `cd packages/tzql && bun run test`
-- Tests run against Docker PostgreSQL (see `packages/tzql/compose.yml`)
-- Follow patterns in `packages/tzql/tests/integration/`
+- Run tests: `cd packages/dzql && bun run test`
+- Tests run against Docker PostgreSQL (see `packages/dzql/compose.yml`)
+- Follow patterns in `packages/dzql/tests/integration/`
 - The test script handles Docker lifecycle: starts fresh, runs tests, tears down
 
 **Test-Driven Development:** Write tests first. Add failing tests for new features or bugs, then implement until they pass. This ensures the feature works and prevents regressions.
@@ -35,11 +35,11 @@ packages/
 
 ### Testing the create-dzql Template
 
-Before publishing changes to `create-dzql` or `tzql`, test by creating a sample app using the local template **with local packages linked**:
+Before publishing changes to `create-dzql` or `dzql`, test by creating a sample app using the local template **with local packages linked**:
 
 ```bash
 # 1. Link local dzql package globally
-cd /Users/peterb/Workshop/blueshed/dzql/packages/tzql
+cd /Users/peterb/Workshop/blueshed/dzql/packages/dzql
 bun link
 
 # 2. Create test app from local template
@@ -95,7 +95,7 @@ docker compose down -v
 cd /tmp && rm -rf dzql-test-app
 
 # 3. Remove the global bun link
-cd /Users/peterb/Workshop/blueshed/dzql/packages/tzql
+cd /Users/peterb/Workshop/blueshed/dzql/packages/dzql
 bun unlink
 ```
 
@@ -105,22 +105,20 @@ The `bun unlink` step removes the global link so future projects use the publish
 
 Publishing is done via GitHub Actions, triggered by git tags. Do NOT publish directly.
 
-**WARNING: The npm package name is `dzql`, NOT `tzql`. Always tag as `dzql@X.Y.Z`**
-
 ### Pre-Publish Checklist
 
 **STOP. Before creating a git tag, verify ALL of these:**
 
-- [ ] Tag format is `dzql@X.Y.Z` (NOT `tzql@` - the folder is tzql but npm package is dzql)
-- [ ] Version updated in `packages/tzql/package.json`
+- [ ] Tag format is `dzql@X.Y.Z`
+- [ ] Version updated in `packages/dzql/package.json`
 - [ ] Version updated in `packages/create-dzql/package.json` (both the package version AND the dzql dependency)
-- [ ] TypeScript compiles without errors (`cd packages/tzql && bunx tsc --noEmit`)
-- [ ] All tests pass (`cd packages/tzql && bun run test`)
+- [ ] TypeScript compiles without errors (`cd packages/dzql && bunx tsc --noEmit`)
+- [ ] All tests pass (`cd packages/dzql && bun run test`)
 - [ ] Changes committed and pushed
 
 ### Steps
 
-1. Update version in `packages/tzql/package.json`
+1. Update version in `packages/dzql/package.json`
 2. Commit the changes
 3. Create and push a git tag:
    ```bash
@@ -131,7 +129,7 @@ Publishing is done via GitHub Actions, triggered by git tags. Do NOT publish dir
 
 **Tag format:** `dzql@<version>` or `create-dzql@<version>`
 
-**Version sync:** `tzql` (published as `dzql`) and `create-dzql` should always have the same version number.
+**Version sync:** `dzql` and `create-dzql` should always have the same version number.
 
 ## Events
 

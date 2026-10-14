@@ -31,7 +31,7 @@ jobs:
 
       - name: Publish dzql
         run: npm publish --provenance --access public
-        working-directory: packages/tzql
+        working-directory: packages/dzql
 
   publish-create-dzql:
     if: startsWith(github.ref, 'refs/tags/create-dzql@') || (github.event_name == 'workflow_dispatch' && (inputs.package == 'create-dzql' || inputs.package == 'both'))
