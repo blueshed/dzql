@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking (for projects)
 
+- **A control's value goes on the wire with its type; the wire is 4.** `write(doc, op, path, true)` sends `true`, not `"true"`; a number field sends a number, or `null` when empty; a box `true` or `false`. The stories compare a story's value with what the page sends, typed, so a story can no longer pass where a browser would be refused (five of the wedding's could never be done by hand). What to change: a permit or shape that compares a button's value as text (`value === "true"`, `"1"`) takes the type the page draws (`true`, `1`); a story that says `"0"` where the page sends `0` says `0`; hand-written markup with a non-JSON `data-value` uses `write()`.
+- **`write(ws, doc, ops)` from `src/test-socket.ts` gives each write an id and returns it**, so a refused write is answered (`{type: "refused", id}`) and a test no longer hangs. What to change: a test that expected silence after a refusal now gets that message first; to send without an id, `ws.send(JSON.stringify({ doc, ops }))`.
+- **`afterWrite(ws, docId, ops, landed)`**: `landed` is the ops as delta applied them, so a new row comes by its id whether `shape` or the store named it. What to change: only code that calls a compartment's `afterWrite` itself passes the fourth argument.
 - **A project's root is its app; eta is one folder, `eta/`, never edited.** `bun create blueshed/eta my-app` makes `src/` (the app, begun as the starter), `migrations/`, and `eta/`: the kernel (`eta/src/`), the model's page (`eta/model/`), the docs a project keeps, eta's changelog and `eta/VERSION`. `eta/` is a Bun workspace named `eta`: the app imports `eta/stories`, `eta/client/app`, `@import "eta/bento.css"`, never a path into `eta/`. `bun run eta:update [version | path]` brings a later eta (the latest by default): `eta/` replaced whole, the root's eta scripts and the kernel's dependencies set, `bun install`, the skills refreshed, eta's changelog since `eta/VERSION` printed with what to change first, the gate run, nothing committed. What to change: a project of `app/`, `model/` and `src/` runs `bun ../eta/create/update.ts ../eta` once from its root, with a checkout of eta beside it. It moves `app/` to `src/` (its `../src/...` imports become `eta/...`), puts eta's `src/`, `model/` and docs in `eta/`, makes `migrations/`, and rewrites `tsconfig.json`, `bunfig.toml`, `package.json`'s scripts and `CLAUDE.md` (`git diff CLAUDE.md` for lines of your own).
 - **A project's model page keeps its own database, `model.sqlite`** (`MODEL_DB` names another), never the app's. What to change: nothing, unless a model was kept in the app's database; move it with `bun run model:load`.
 
@@ -19,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `bun create` no longer says a project started "with what its changelog had under Unreleased" when that section was empty.
+
+### Added
+
+- `collectionsWrite(op, ui?)` (`src/bento.ts`): a session's permit and shape for `/reading`, `/filter` and `/hide` in one call. The ticker's desk and the wedding's session use it.
+- The model: a story is one line (words that run onto a second are refused, so an open shell quote can no longer save the next commands as a story); `story <actor> <does|cannot> -` and `reword <n> -` read the words from stdin; `bun run cli:model show` prints the model as its page shows it.
+- A story may name the model story it tells (`model: 10`); `model:check --against-page` matches on it, else by words, and says which matched how.
+- The eta-app skill's `reference/scope.md`: three ways to keep a document from holding every row ever (the day as its root, a list scoped by a column, a keyset window).
+- `docs/feedback-cafe-2026-10-14.md`, the cafe's nine frictions, each now fixed.
 
 ## [0.53.0] - 2026-10-14
 
