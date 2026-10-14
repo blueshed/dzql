@@ -75,6 +75,14 @@ async function processEventNotifications(event: {
     params: { table, op, pk, data: visibleData }
   });
 
+  // The same event carrying only its key, for a subscriber who may be told a
+  // row was deleted but not what it contained.
+  const keyOnlyEventMessage = JSON.stringify({
+    jsonrpc: "2.0",
+    method: `${table}:${op}`,
+    params: { table, op, pk, data: pk }
+  });
+
   // 1. Send to users in notify_users list (entity notifications)
   if (notify_users && notify_users.length > 0) {
     for (const userId of notify_users) {
@@ -110,29 +118,32 @@ async function processEventNotifications(event: {
           if (!notifiedConnections.has(sub.connection_id)) {
             // Re-authorize on push: a matching affected_key means the change is
             // relevant to this subscription's params, not that the subscriber may
-            // still see it. Re-run can_subscribe so a user whose access was
-            // revoked after subscribing stops receiving updates. Fail closed.
-            // Pass params as an object so postgres serializes it to jsonb; do
-            // NOT JSON.stringify + ::jsonb, which double-encodes into a json
+            // see it. can_receive re-runs can_subscribe (so revoked access stops
+            // updates) and, for a list, checks this row against the subscriber's
+            // view rules and documents. It answers 'row', 'pk' (send the key only,
+            // for a delete), or NULL. Fail closed.
+            // Pass params and data as objects so postgres serializes them to jsonb;
+            // do NOT JSON.stringify + ::jsonb, which double-encodes into a json
             // string scalar and makes every ->> lookup null (and the check fail).
-            let authorized = false;
+            let receive: string | null = null;
             try {
               const rows: any = await db.query(
-                `SELECT dzql_v2.${subscribableName}_can_subscribe($1, $2) AS ok`,
-                [sub.user_id, sub.params ?? {}]
+                `SELECT dzql_v2.${subscribableName}_can_receive($1, $2, $3, $4, $5) AS receive`,
+                [sub.user_id, sub.params ?? {}, table, op, data ?? {}]
               );
-              authorized = rows?.[0]?.ok === true;
+              receive = rows?.[0]?.receive ?? null;
             } catch (e: any) {
-              notifyLogger.error(`can_subscribe re-check failed for ${subscribableName}: ${e.message}`);
-              authorized = false;
+              notifyLogger.error(`can_receive check failed for ${subscribableName}: ${e.message}`);
+              receive = null;
             }
 
-            if (!authorized) {
-              notifyLogger.debug(`Suppressed push to ${sub.connection_id.slice(0, 8)}... (no longer authorized for ${subscribableName})`);
+            if (receive !== 'row' && receive !== 'pk') {
+              notifyLogger.debug(`Suppressed push to ${sub.connection_id.slice(0, 8)}... (may not see this ${table} row via ${subscribableName})`);
               continue;
             }
 
-            const sent = wsServer.toConnection(sub.connection_id, entityEventMessage);
+            const message = receive === 'row' ? entityEventMessage : keyOnlyEventMessage;
+            const sent = wsServer.toConnection(sub.connection_id, message);
             if (sent) {
               notifiedConnections.add(sub.connection_id);
               notifyLogger.debug(`Sent entity broadcast to ${sub.connection_id.slice(0, 8)}... via ${subscribableName} (${table}:${op})`);

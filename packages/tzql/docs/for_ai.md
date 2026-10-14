@@ -168,6 +168,9 @@ Permissions compile to SQL `EXISTS` clauses. Rules are OR'd together.
 ```typescript
 // Owner only
 update: ['@author_id']  // Shorthand for @author_id == @user_id
+// An update must pass the rule on the stored row AND on the row after the
+// change, so an owner can't hand the row to someone else through save, and an
+// org member can't move a row into an org they don't belong to.
 
 // Organization member via junction table
 view: ['@org_id->acts_for[org_id=$]{active}.user_id']
@@ -344,6 +347,10 @@ export const subscribables = {
     // Each subscriber gets only the root rows that match root.filter AND
     // that venues.permissions.view lets them see (view: [] shows no rows).
     // Includes are not filtered by their own entities' view rules.
+    // Realtime pushes follow the same rule: a change to a root row is pushed
+    // only to subscribers whose view rules allow it, and a change to an
+    // included row only to subscribers whose documents show it. A deleted
+    // included row is pushed as its key alone.
     canSubscribe: ['AUTHENTICATED']
   }
 };
