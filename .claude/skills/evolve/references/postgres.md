@@ -94,4 +94,4 @@ test("stopped and started again on the same folder, the order carries on where i
 - The documents are the listener's own (`types`): every server has its own.
 - Rows come across with `exportTables` from SQLite and `importTables` here.
 - A server: `new Pool({ connectionString })` from `pg` (`bun add pg`) in place of `openPglite`. Its documents hear every process's writes: the step to more than one replica.
-- Who may open what (`auth`, `owns`, row-level security): delta-doc's reference, *Quick start (Postgres backend)*, *Doc patterns* (per-user isolation) and *RLS with `app.user_id`*.
+- Who may open what (`auth`, `owns`, row-level security): delta-doc's `reference/postgres.md`, `reference/ownership.md` (per-user isolation) and `reference/rls.md`.

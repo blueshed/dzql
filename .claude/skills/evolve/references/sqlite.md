@@ -98,4 +98,4 @@ test("undo takes back this client's last change, and every document holding it i
 - A change to a row reaches every document holding it.
 - `{ ledger: true }` keeps each change with what undoes it. Over the socket, undo walks back what that connection wrote.
 - Seed only an empty table.
-- Redo, history, a change named by its entry, and the cursor: delta-doc's reference, *The ledger*.
+- Redo, history, a change named by its entry, and the cursor: delta-doc's `reference/ledger.md`.
