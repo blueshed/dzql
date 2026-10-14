@@ -6,6 +6,8 @@ import { may, placed, shape, shapeSession, type Person, type Team } from "./docu
 import { alsoOff, calendarHtml, clashes, colourOf, days, daysOf, isWorkingDay, listRows, mondayOf, nextDay, nextMonth, offOn, prevMonth, rowHtml, workingDaysOf, type CalendarProps } from "./calendar";
 import { example } from "./index";
 import { session } from "./compartments";
+import { db } from "./delta";
+import { connectCli, runCommand } from "../../src/cli/commands";
 
 let server: ReturnType<typeof createServer>;
 
@@ -25,12 +27,12 @@ async function signIn(email: string, password: string, headers: Record<string, s
 
 type Tab = { ws: WebSocket; page: string; inbox: Heard[]; answered: (() => void)[] };
 
-/** A tab on a session: its page as the client keeps it, and everything it was sent. */
-async function open(sessionId: string): Promise<Tab> {
+/** A tab on a session: its page as the client keeps it, and everything it was sent. `headers`: what else its request carries (a proxy's). */
+async function open(sessionId: string, headers: Record<string, string> = {}): Promise<Tab> {
   const url = new URL("/ws", server.url);
   url.protocol = "ws:";
   // @ts-expect-error Bun's runtime-only `headers` option on WebSocket
-  const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}` } });
+  const ws: WebSocket = new WebSocket(url, { headers: { Cookie: `session_id=${sessionId}`, ...headers } });
   const tab: Tab = { ws, page: "", inbox: [], answered: [] };
   ws.addEventListener("message", (event) => {
     const message = JSON.parse(String(event.data)) as Heard;
@@ -122,7 +124,80 @@ describe("signing in", () => {
   });
 });
 
-const withAnn = async () => open((await signIn("ann@leave.example", "ann-password")).sessionId!);
+describe("who you are, before the socket opens", () => {
+  const SECRET = "what-the-proxy-sends";
+  /** What the trusted proxy adds to a request: who it signed in, and the secret that says it is the proxy. */
+  const proxy = (email: string, secret = SECRET) => ({ "X-Forwarded-Email": email, "X-Proxy-Secret": secret });
+  /** The sessions signed in as a person. */
+  const sessionsOf = (personId: string) => db.query<{ id: string }, [string]>("SELECT id FROM leave_sessions WHERE person_id = ?").all(personId).map((r) => r.id);
+  const wsUrl = () => Object.assign(new URL("/ws", server.url), { protocol: "ws:" }).href;
+  beforeAll(() => void (process.env.LEAVE_PROXY_SECRET = SECRET));
+  afterAll(() => void delete process.env.LEAVE_PROXY_SECRET);
+  afterEach(() => void setSystemTime());
+
+  test("A request from the trusted proxy naming Ann opens on Ann's calendar, with no sign-in", async () => {
+    const before = sessionsOf("1");
+    const planted = crypto.randomUUID();
+    const tab = await open(planted, proxy("ann@leave.example"));
+    expect(tab.page).toContain('data-applet="calendar"');
+    expect(tab.page).toContain("Sign out");
+    expect(sessionsOf("1").length).toBe(before.length + 1); // a fresh session, Ann's
+    expect(sessionsOf("1")).not.toContain(planted); // never the visit's own id
+    tab.ws.close();
+  });
+
+  test("Ann's own session is kept when the proxy names her again; anyone else's is not hers", async () => {
+    const ann = (await signIn("ann@leave.example", "ann-password")).sessionId!;
+    const first = await open(ann);
+    await go(first, "list");
+    const again = await open(ann, proxy("ann@leave.example"));
+    expect(again.page).toContain('data-page="list"'); // the same session: where she stood
+    const bo = (await signIn("bo@leave.example", "bo-password")).sessionId!;
+    const before = sessionsOf("1").length;
+    const named = await open(bo, proxy("ann@leave.example"));
+    expect(sessionsOf("1").length).toBe(before + 1);
+    expect(sessionsOf("2")).toContain(bo); // Bo's is still Bo's
+    for (const tab of [first, again, named]) tab.ws.close();
+  });
+
+  test("the proxy is believed only with its secret, and refused for someone not on the team", async () => {
+    const forged = await open(crypto.randomUUID(), proxy("ann@leave.example", "a-guess"));
+    expect(forged.page).toContain('action="/login"'); // a visit, as though the header were not there
+    forged.ws.close();
+    delete process.env.LEAVE_PROXY_SECRET;
+    const unset = await open(crypto.randomUUID(), proxy("ann@leave.example"));
+    expect(unset.page).toContain('action="/login"'); // no proxy is trusted until one is set
+    unset.ws.close();
+    process.env.LEAVE_PROXY_SECRET = SECRET;
+    const stranger = await fetch(new URL("/ws", server.url), { headers: proxy("cy@leave.example") });
+    expect(stranger.status).toBe(403);
+  });
+
+  test("The CLI signs in as Ann with a token and reads her calendar", async () => {
+    const ws = await connectCli(wsUrl(), `session_id=${crypto.randomUUID()}`, "ann-token");
+    const { docs } = await runCommand(ws, { kind: "inspect" });
+    expect(docs.map((d) => d.doc)).toContain("team:1"); // only someone signed in holds the team
+    ws.close();
+    await expect(connectCli(wsUrl(), `session_id=${crypto.randomUUID()}`, "not-a-token")).rejects.toThrow("could not connect");
+  });
+
+  test("Someone who keeps guessing Ann's password is slowed down", async () => {
+    setSystemTime(new Date("2030-01-07T09:00:00Z")); // past every guess the tests before made
+    const visit = crypto.randomUUID();
+    const tab = await open(visit);
+    const from = { Cookie: `session_id=${visit}` };
+    for (let i = 0; i < 5; i++) await signIn("ann@leave.example", `guess-${i}`, from);
+    expect((await signIn("ann@leave.example", "ann-password", from)).sessionId).toBeUndefined(); // even the right one, for now
+    await settle(tab);
+    expect(tab.page).toContain("Too many tries: wait a minute, then try again.");
+    expect((await signIn("bo@leave.example", "bo-password")).sessionId).toBeDefined(); // Bo is not slowed by guesses at Ann
+    setSystemTime(new Date("2030-01-07T09:01:01Z"));
+    expect((await signIn("ann@leave.example", "ann-password")).sessionId).toBeDefined(); // a minute on, she may try again
+    tab.ws.close();
+  });
+});
+
+const withAnn =async () => open((await signIn("ann@leave.example", "ann-password")).sessionId!);
 const withMo = async () => open((await signIn("mo@leave.example", "mo-password")).sessionId!);
 const undo = (tab: Tab) => send(tab, "ledger", [{ op: "remove", path: "/latest" }]);
 

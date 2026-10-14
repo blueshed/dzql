@@ -44,6 +44,13 @@ export type Example = {
   delta: Local;
   /** Who a session is, as delta sees them -- for the ledger's `who` and for row-level security. Default: the session. */
   who?(sessionId: string): unknown;
+  /**
+   * Who a socket's request is, before it opens: the session to open it on, or a Response that
+   * refuses it. Undefined: a visit, on the session its cookie names, or a new one. Leave's believes
+   * a trusted proxy's header and the CLI's token. A person found here gets a fresh session (never
+   * the one the visit had: a fixed session) unless the cookie's is already theirs.
+   */
+  identify?(req: Bun.BunRequest): string | Response | undefined | Promise<string | Response | undefined>;
   /** Extra HTTP routes this example needs (e.g. serving uploaded pictures). Merged into the kernel's routes; a kernel route of the same path wins. */
   routes?: Record<string, Bun.Serve.BaseRouteValue | RouteHandler>;
 };
