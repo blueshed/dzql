@@ -1,6 +1,6 @@
 import { expect } from "bun:test";
 import { hear, type Heard } from "./harness";
-import type { PatchOp, WriteId } from "./json-patch";
+import type { PatchOp, Test, WriteId } from "./json-patch";
 
 // A socket to a running app, as a test holds it: everything the app sends it, in order, and the page
 // it holds once each render is laid on, as the browser keeps it (the harness's `hear`). For what a
@@ -81,7 +81,7 @@ export async function expectQuiet(ws: WebSocket): Promise<void> {
 }
 
 /** A write, as a page sends it: with an id of its own, or, as the CLI's did, without. */
-export const write = (ws: WebSocket, doc: string, ops: PatchOp[], id?: WriteId): void => ws.send(JSON.stringify({ id, doc, ops }));
+export const write = (ws: WebSocket, doc: string, ops: (PatchOp | Test)[], id?: WriteId): void => ws.send(JSON.stringify({ id, doc, ops }));
 
 /**
  * Everything the socket was sent until what came before is done: it asks (`inspect`), and the server,

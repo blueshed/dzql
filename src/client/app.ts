@@ -1,5 +1,5 @@
 import { applets } from "../applets";
-import { applyPatch, WIRE, type PatchOp } from "../json-patch";
+import { applyPatch, WIRE, type PatchOp, type Test } from "../json-patch";
 import { formValue, groupOf, held, isBox, isField, isRadio, rendered, type Field } from "./form-value";
 import type { HtmlOp } from "../compartments/render";
 import { keepingChoices, morph, morphElement, morphTag, removeNode, type MorphHooks } from "./morph";
@@ -19,7 +19,7 @@ const docs = new Map<string, { version: number; ops: PatchOp[] }>();
 // or refused, and why when the refusal says -- never anyone else's echo of its document, nor the
 // refusal of a write sent before it -- or unanswered, its socket gone first. Not domain state, just
 // enough to answer "did that even go through" from the console.
-let lastSent: { id: number; doc: string; ops: PatchOp[]; echoed: boolean; refused: boolean; reason?: string; unanswered?: true } | undefined;
+let lastSent: { id: number; doc: string; ops: Op[]; echoed: boolean; refused: boolean; reason?: string; unanswered?: true } | undefined;
 
 /**
  * What became of a write a script sent (todo n88): echoed, what it changed, with the handle that
@@ -33,8 +33,11 @@ export type Answer =
   | { id: number; unanswered: true }
   | { unsent: string };
 
+/** An op of a write: a verb, or a `test` of what a field typed in was drawn with. */
+type Op = PatchOp | Test;
+
 /** A write: a document's name and its ops, as a control sends them. */
-export type Write = { doc: string; ops: PatchOp[] };
+export type Write = { doc: string; ops: Op[] };
 
 /** The writes a script is waiting to hear of, by id. */
 const hearing = new Map<number, (answer: Answer) => void>();
@@ -46,7 +49,7 @@ declare global {
       reconnectDelay(): number;
       socket(): WebSocket | undefined;
       inspect(): { docs: Record<string, { version: number; ops: PatchOp[] }>; lastSent: typeof lastSent };
-      send(doc: string, ops: PatchOp[]): Promise<Answer>;
+      send(doc: string, ops: Op[]): Promise<Answer>;
       undo(change?: string): Promise<Answer>;
       redo(change?: string): Promise<Answer>;
       /** An app that imports src/client/tools.ts: the page's writes as tools, and one used by name. */
@@ -413,6 +416,7 @@ function drawing(draw: () => void, moving?: Element): () => void {
     const keyboard = keyboardAfter();
     const places = placesNow();
     draw();
+    seeDrawn();
     keepPlaces(places, moving);
     mountApplets();
     // Pin to the bottom only when this render put something new at its foot, or
@@ -554,7 +558,7 @@ let writes = 0;
  * refusal: the id -- or undefined when it did not go: a socket that is not open drops what it is
  * given, so a write then is not recorded as sent.
  */
-function send(doc: string, ops: PatchOp[]): number | undefined {
+function send(doc: string, ops: Op[]): number | undefined {
   if (socket?.readyState !== WebSocket.OPEN) return undefined;
   const id = ++writes;
   lastSent = { id, doc, ops, echoed: false, refused: false };
@@ -605,6 +609,8 @@ function answered(answer: Extract<Answer, { echoed: true } | { refused: true }>)
     if (refused) handBack();
     else sending = undefined;
   }
+  if (refused) showDrawn();
+  else if (answer.id !== undefined) yours = true;
   heard(answer.id, answer);
 }
 
@@ -659,8 +665,8 @@ document.addEventListener("keydown", (event) => {
 // "blur". Whatever the trigger, a commit identical to the last one *this form* sent is dropped
 // until a write lands -- typing back to a value on its way, or leaving a field twice, says nothing
 // new -- and not after: once an echo or an undo has been drawn, the same value is news again.
-function editingChange(form: HTMLFormElement): { doc: string; ops: PatchOp[] } | undefined {
-  const ops: PatchOp[] = [];
+function editingChange(form: HTMLFormElement): { doc: string; ops: Op[] } | undefined {
+  const ops: Op[] = [];
   let doc: string | undefined;
   const said = new Set<Field>(); // a group of radios is said once
   for (const field of [...form.querySelectorAll("[data-write]")].filter(holdsOne)) {
@@ -670,9 +676,40 @@ function editingChange(form: HTMLFormElement): { doc: string; ops: PatchOp[] } |
     if (value === rendered(field)) continue;
     const spec = JSON.parse(field.dataset.write!) as WriteSpec;
     doc = spec.doc;
+    if (typed(field)) ops.push({ op: "test", path: spec.path, value: seen.get(field) ?? (rendered(field) as string) });
     ops.push({ op: spec.op, path: spec.path, value });
   }
   return doc && ops.length > 0 ? { doc, ops } : undefined;
+}
+
+// The field you are typing in (todo n4). A drawing that changes it under you shows you nothing --
+// the morph keeps what you type -- so a write from it says what it was drawn with when you last
+// saw it, as RFC 6902's `test`, and the server refuses it when the field is drawn otherwise now:
+// someone changed it since. Refused so, it shows what is drawn. Your own write landing is seen.
+
+/** A field typed in: not a box, a radio or a select, which show what is drawn (morph.ts). */
+const typed = (field: Field): boolean => !isBox(field) && !isRadio(field) && !(field instanceof HTMLSelectElement);
+/** The editing forms' fields typed in. */
+const typedFields = (): Field[] => [...app.querySelectorAll<Field>("form[data-write-on] [data-write]")].filter(typed);
+/** What each field typed in was drawn with when its typist last saw it drawn. */
+const seen = new WeakMap<Field, string>();
+/** A write of yours has landed: the drawing that follows is yours, and seen. */
+let yours = false;
+
+/** After a drawing: a field typed in that shows what is drawn, or after a write of yours, is seen. */
+function seeDrawn(): void {
+  for (const field of typedFields()) if (yours || held(field) === rendered(field)) seen.set(field, rendered(field) as string);
+  yours = false;
+}
+
+/** A write of yours refused: a field typed in that is drawn otherwise than it was seen shows what is drawn. */
+function showDrawn(): void {
+  for (const field of typedFields()) {
+    const drawn = rendered(field) as string;
+    if (drawn === seen.get(field)) continue;
+    hold(field, drawn);
+    seen.set(field, drawn);
+  }
 }
 
 /** The editing form of the field `event` is from, if it commits on `trigger`. */
@@ -757,6 +794,13 @@ function reloadForWire(): boolean {
   return false;
 }
 
+// What the connection is doing, said in a status region beside the page, not in it: the page is
+// inert while the socket is gone, and what is inert is not read out. Only this is said. A change
+// from someone else is drawn in silently: a change speaks to the person who made it
+// (docs/bento/README.md), and a page that read out everyone's writes would never be quiet.
+app.insertAdjacentHTML("afterend", `<p role="status" class="connection"></p>`);
+const connection = app.nextElementSibling!;
+
 function connect() {
   socket = new WebSocket(`${location.origin.replace("http", "ws")}/ws`); // http: goes ws:, https: wss:
 
@@ -766,6 +810,7 @@ function connect() {
     reconnectDelay = RECONNECT_DELAY_MS;
     app.inert = false;
     delete app.dataset.offline;
+    connection.textContent = "";
   });
 
   socket.addEventListener("message", (event) => {
@@ -812,6 +857,7 @@ function connect() {
     afresh = true;
     app.inert = true;
     app.dataset.offline = "";
+    connection.textContent = "Reconnecting…";
     setTimeout(connect, reconnectDelay);
     reconnectDelay = Math.min(reconnectDelay * 2, MAX_RECONNECT_DELAY_MS);
   });

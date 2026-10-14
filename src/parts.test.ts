@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { appletProps } from "./html";
-import { comparable, diff, drawParts, part, splitTag } from "./parts";
+import { comparable, diff, drawnValues, drawParts, part, splitTag } from "./parts";
 
 const draw = (render: () => string) => drawParts(render);
 const list = (key: string, rows: [string, string][]) => part(key, `<ul>${rows.map(([k, t]) => part(k, `<li>${t}</li>`)).join("")}</ul>`);
@@ -219,5 +219,21 @@ describe("diff", () => {
     // inside it, its own kind counted in and out, and a comment or a lone `<` no tag
     expect(comparable(`<div data-doc="d" data-props="{}"><!-- </div> -->1 <3 2<div title="</div>">x</div></div><p>after</p>`)).toBe(`<div data-doc="d"></div><p>after</p>`);
     expect(comparable(`<b data-doc="d"`)).toBe(`<b data-doc="d"`);
+  });
+});
+
+describe("drawnValues", () => {
+  test("what the fields that write a path are drawn with, as a browser reads them: an input's value, a textarea's text less its first newline", () => {
+    const spec = (doc: string, path: string) => ` data-write='${JSON.stringify({ doc, op: "replace", path })}'`;
+    const page =
+      `<input${spec("trip", "/title")} value="Tom &amp; Jo&#39;s">` +
+      `<textarea${spec("trip", "/notes")}>\nfirst &lt;line&gt;\nsecond</textarea>` +
+      `<input${spec("trip", "/where")}>` +
+      `<input${spec("other", "/title")} value="not this one">` +
+      `<input value="nor this">`;
+    expect(drawnValues(page, "trip", "/title")).toEqual(["Tom & Jo's"]);
+    expect(drawnValues(page, "trip", "/notes")).toEqual(["first <line>\nsecond"]);
+    expect(drawnValues(page, "trip", "/where")).toEqual([""]);
+    expect(drawnValues(page, "trip", "/gone")).toEqual([]);
   });
 });

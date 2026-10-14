@@ -7,7 +7,7 @@ import { activeDocuments, settled } from "../../../src/documents";
 import { putAway } from "./session";
 import { householdPage, type HouseholdView } from "../views/household";
 import { keepEveryone } from "../everyone";
-import { refuse, tell } from "../../../src/refusal";
+import { refuse, tell, toldAt } from "../../../src/refusal";
 
 // A household's document (`household:<id>`), written by the household that arrived by its code.
 // Nearly everything it writes changes what others see -- an answer puts figures in the photo every
@@ -35,12 +35,13 @@ const RULES: Rule[] = [
 const DATED = new Set(["answer", "coming", "choices"]);
 
 /** Everything a household's page reads, for this session. */
-function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined {
+function viewFor(session: sessionDoc.SessionDocument, sessionId: string): HouseholdView | undefined {
   const h = householdDoc.read(session.id!);
   if (!h) return undefined;
   const w = weddingDoc.wedding();
   return {
     session,
+    wordsTold: toldAt(sessionId, "household", "/message"),
     h,
     w,
     courses: weddingDoc.courses(),
@@ -53,8 +54,8 @@ function viewFor(session: sessionDoc.SessionDocument): HouseholdView | undefined
 }
 
 /** A household's page. `viewFor` is always there in practice: read() only reports a kind for a code that exists. */
-export function renderHousehold(session: sessionDoc.SessionDocument): string | undefined {
-  const v = viewFor(session);
+export function renderHousehold(session: sessionDoc.SessionDocument, sessionId: string): string | undefined {
+  const v = viewFor(session, sessionId);
   return v && householdPage(v);
 }
 

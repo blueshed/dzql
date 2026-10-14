@@ -291,3 +291,31 @@ const RUN = /(?:<!--part:[^>]*-->)+/g;
 
 /** An inside whose child parts sit in one unbroken run: a list. */
 const isList = (inside: string): boolean => (inside.match(RUN) ?? []).length <= 1;
+
+/**
+ * What the fields on a page that write `path` of `doc` (their `data-write`) are drawn with, as a
+ * browser reads them: an input's `value`, a textarea's text, less the newline a browser drops after
+ * its start tag. What a write's `test` is held against (todo n4).
+ */
+export function drawnValues(page: string, doc: string, path: string): string[] {
+  const values: string[] = [];
+  let text: string | undefined;
+  new HTMLRewriter()
+    .on("input[data-write], textarea[data-write]", {
+      element(el) {
+        const spec = JSON.parse(decoded(el.getAttribute("data-write")!)) as { doc?: string; path?: string };
+        if (spec.doc !== doc || spec.path !== path) return;
+        if (el.tagName === "input") return void values.push(decoded(el.getAttribute("value") ?? ""));
+        text = "";
+        el.onEndTag(() => {
+          values.push(decoded(text!).replace(/^\r?\n/, ""));
+          text = undefined;
+        });
+      },
+      text(chunk) {
+        if (text !== undefined) text += chunk.text;
+      },
+    })
+    .transform(page);
+  return values;
+}

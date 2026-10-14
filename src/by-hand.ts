@@ -9,7 +9,7 @@
 // a browser sends; never a script's `element.click()`. The keyboard is not pressed: the WebView's
 // Enter is an editing command, not a key, so it presses no button.
 
-import type { PatchOp } from "./json-patch";
+import { isTest } from "./json-patch";
 import type { Gesture, Post, Write } from "./stories";
 import { CENTRED, MOUSE, NAMED, urlFor, waitFor } from "./webview";
 
@@ -231,7 +231,7 @@ export class Hand {
   }
 
   /** Does the write `doc`/`ops` as a person would, from whatever on the page sends it; what the page sent, once the server has answered it. */
-  async press(doc: string, ops: PatchOp[]): Promise<Pressed> {
+  async press(doc: string, ops: Write["ops"]): Promise<Pressed> {
     const view = this.view;
     this.strays.push(...(await this.since()));
     const planned = () => view.evaluate<Plan | { failure: string }>(`window.__hand.plan(${JSON.stringify(doc)}, ${JSON.stringify(ops)})`);
@@ -357,7 +357,8 @@ export const worded = (w: Write): string => `${w.ops.map((op) => `${op.op} ${op.
 /**
  * Does `sent` say what `story` writes? A value from a page is a string, so a value compares as the
  * wire sends a button's (`String`), a record by its keys: the story's, and no other but one a
- * form sent blank (a field left empty).
+ * form sent blank (a field left empty). A `test` is no write, and the page's own (todo n4): the
+ * two are compared by their verbs.
  */
 export function sameWrite(sent: Write, story: Write): boolean {
   const blank = (v: unknown): boolean => String(v ?? "") === "";
@@ -365,5 +366,6 @@ export function sameWrite(sent: Write, story: Write): boolean {
     a !== null && b !== null && typeof a === "object" && typeof b === "object"
       ? Object.keys(b).every((k) => same((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k])) && Object.keys(a).every((k) => k in b || blank((a as Record<string, unknown>)[k]))
       : String(a ?? "") === String(b ?? "");
-  return sameDoc(sent.doc, story.doc) && sent.ops.length === story.ops.length && sent.ops.every((op, i) => op.op === story.ops[i]!.op && op.path === story.ops[i]!.path && same(op.value, story.ops[i]!.value));
+  const [ours, theirs] = [sent, story].map((w) => w.ops.filter((op) => !isTest(op))) as [Write["ops"], Write["ops"]];
+  return sameDoc(sent.doc, story.doc) && ours.length === theirs.length && ours.every((op, i) => op.op === theirs[i]!.op && op.path === theirs[i]!.path && same(op.value, theirs[i]!.value));
 }

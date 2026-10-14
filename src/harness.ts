@@ -3,7 +3,7 @@ import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
 import { isPost, STORY_KEYS, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
-import { isVerb, applyPatch, type PatchOp, type WriteId } from "./json-patch";
+import { isVerb, applyPatch, type PatchOp, type Test, type WriteId } from "./json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
 import { comparable, decoded, ownProps, splitTag } from "./parts";
@@ -356,7 +356,7 @@ const fits = (pattern: string, path: string): boolean => {
 const postsTo = (c: Control, how: Post): boolean => c.op === "post" && c.path === how.path;
 
 /** Does `c` send this op to this document? A free control sends any value; a button only its own. */
-export function offers(c: Control, doc: string, op: PatchOp): boolean {
+export function offers(c: Control, doc: string, op: PatchOp | Test): boolean {
   if (!sameDoc(c.doc, doc)) return false;
   if (c.pattern) return c.op === op.op && fits(c.path, op.path) && (c.value === undefined || ("value" in op && String(op.value) === c.value)); // an applet's own: exactly what its mount names
   if (c.op !== op.op || c.path !== op.path) return false;

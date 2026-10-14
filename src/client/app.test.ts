@@ -72,8 +72,14 @@ async function typeThere(view: Bun.WebView): Promise<void> {
   await view.type(" there");
 }
 
+/** A field typed in, as an editing form sends it: what it was drawn with when the typing began (a `test`), then what is typed. */
+const typedOver = (path: string, was: string, value: string): Sent["ops"] => [
+  { op: "test", path, value: was },
+  { op: "replace", path, value },
+];
+
 /** The words' edit, as typeThere makes it. */
-const THERE: Sent = { doc: "household", ops: [{ op: "replace", path: "/message", value: "Hello there" }] };
+const THERE: Sent = { doc: "household", ops: typedOver("/message", "Hello", "Hello there") };
 
 /** A day's stops, `r0` on, 50px each, each a part, but those `gone`. */
 const rows = (gone: string[] = [], length = 30) =>
@@ -486,7 +492,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<number>(`window.__sent.length`)).toBe(1);
     expect(await view.evaluate<Sent>(`window.__sent[0]`)).toEqual({
       doc: "session",
-      ops: [{ op: "replace", path: "/filter/guests", value: "abc" }],
+      ops: typedOver("/filter/guests", "", "abc"),
     });
 
     // clearing and retyping the same value recomputes the same ops -- nothing new to say, so
@@ -504,7 +510,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await view.evaluate(`document.getElementById('q').blur()`);
     expect(await sentAt(view, 2, 300)).toEqual({
       doc: "session",
-      ops: [{ op: "replace", path: "/filter/guests", value: "xyz" }],
+      ops: typedOver("/filter/guests", "", "xyz"),
     });
   });
   test("after an undo, a field nobody is in shows the value undone to, and leaving another field sends nothing again", async () => {
@@ -556,7 +562,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string>(`document.getElementById('kind').value`)).toBe("eat");
 
     await typeAndLeave(view, " gate");
-    expect(await sentAt(view, 3)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not travel, which would revert the undo
+    expect(await sentAt(view, 3)).toEqual({ doc: "trip", ops: typedOver("/title", "Temple", "Temple gate") }); // not travel, which would revert the undo
   });
 
   test("what a select was drawn showing is the browser's own: the last option drawn `selected`, else the first not disabled, and in a list none", async () => {
@@ -588,7 +594,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
       </form>`;
     await pushRender(view, form("Temple"));
     await typeAndLeave(view, " gate");
-    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] });
+    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: typedOver("/title", "Temple", "Temple gate") });
 
     await pushRender(view, form("Temple gate")); // echoed
     expect(await view.evaluate<number>(`document.getElementById('tags').selectedOptions.length`)).toBe(0);
@@ -875,6 +881,56 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string>(`document.getElementById('say').value`)).toBe("half typ");
   });
 
+  test("Ada's connection drops, and she hears that it is reconnecting", async () => {
+    await using view = await open();
+    await pushRender(view, `<p>general</p>`);
+    // a status region beside the page, not in it: the page goes inert, and what is inert is not read out
+    const status = `(() => { const s = document.querySelector('[role=status]'); return s && !s.closest('#app') ? s.textContent : null; })()`;
+    expect(await view.evaluate<string | null>(status)).toBe("");
+
+    await view.evaluate(`window.eta.socket().close()`);
+    await waitFor(view, status, (v) => v === "Reconnecting…", 1000);
+    await waitFor(view, `window.eta.socket().readyState === 1`, (v) => v === true, 3000);
+    expect(await view.evaluate<string | null>(status)).toBe("");
+  });
+
+  test("the field you are typing in: a change from someone else is not written over unseen, and refused, it shows theirs (n4)", async () => {
+    await using view = await open();
+    await pushRender(view, words());
+    await typeThere(view);
+    await pushRender(view, words("Ben's")); // someone else's change, drawn under the caret: the typing is kept
+    expect(await view.evaluate<string>(`document.getElementById('words').value`)).toBe("Hello there");
+
+    await view.evaluate(`document.getElementById('words').blur()`);
+    expect(await sentAt(view, 1)).toEqual({ doc: "household", ops: typedOver("/message", "Hello", "Hello there") }); // what was seen, not "Ben's"
+    await pushRefused(view, words("Ben's"), "changed");
+    expect(await view.evaluate<string>(`document.getElementById('words').value`)).toBe("Ben's");
+
+    // typed again, from what is now seen; refused for another reason, what is typed stays
+    await view.click("#words");
+    await view.type("!");
+    await view.evaluate(`document.getElementById('words').blur()`);
+    expect((await sentAt(view, 2)).ops[0]).toEqual({ op: "test", path: "/message", value: "Ben's" });
+    await pushRefused(view, words("Ben's"), "no");
+    expect(await view.evaluate<string>(`document.getElementById('words').value`)).toContain("!");
+  });
+
+  test("the field you are typing in: your own write landing is seen, so the next one says it (n4)", async () => {
+    await using view = await open();
+    const name = (value: string) => `<form data-write-on="blur"><input id="q" value="${value}" data-write='{"doc":"trip","op":"replace","path":"/title"}'></form>`;
+    await pushRender(view, name(""));
+    await view.click("#q");
+    await view.type("ab");
+    await view.evaluate(`document.getElementById('q').blur()`);
+    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: typedOver("/title", "", "ab") });
+    await view.click("#q");
+    await view.type("c"); // back in it while the write is on its way
+    await push(view, { type: "patch", doc: "trip:1", version: 2, ops: [{ op: "replace", path: "/title", value: "ab" }], id: await lastId(view) });
+    await pushRender(view, name("ab")); // yours, drawn under the caret
+    await view.evaluate(`document.getElementById('q').blur()`);
+    expect(await sentAt(view, 2)).toEqual({ doc: "trip", ops: typedOver("/title", "ab", "abc") });
+  });
+
   test("a form clears as it sends: what is typed while the write is on its way is kept, whoever's echo comes", async () => {
     await using view = await open();
     await pushRender(view, SAY);
@@ -909,7 +965,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     await pushRender(view, ticksForm("Temple", true, false, "see"));
 
     await typeAndLeave(view, " gate");
-    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the boxes, left as they were drawn
+    expect(await sentAt(view, 1)).toEqual({ doc: "trip", ops: typedOver("/title", "Temple", "Temple gate") }); // not the boxes, left as they were drawn
     await pushRender(view, ticksForm("Temple gate", true, false, "see"));
 
     await view.click("#paid");
@@ -940,7 +996,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string[]>(ticked)).toEqual(["kind-see"]);
 
     await typeAndLeave(view, " gate");
-    expect(await sentAt(view, 3)).toEqual({ doc: "trip", ops: [{ op: "replace", path: "/title", value: "Temple gate" }] }); // not the tick or the choice undone
+    expect(await sentAt(view, 3)).toEqual({ doc: "trip", ops: typedOver("/title", "Temple", "Temple gate") }); // not the tick or the choice undone
   });
 
   test("a render drawn between pressing a box and letting go leaves it be, so the click ticks it as the person meant, and nothing undoes the other's tick", async () => {

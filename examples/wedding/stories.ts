@@ -32,6 +32,8 @@ const board = (op: "add" | "replace" | "remove", path: string, value?: unknown):
   doc: "board",
   ops: [op === "remove" ? { op, path } : { op, path, value }],
 });
+/** A household's field typed in, as its editing form sends it: the value it was drawn with when the typing began (RFC 6902's `test`), then what is typed. */
+const typed = (path: string, was: string, value: string): Write => ({ doc: "household", ops: [{ op: "test", path, value: was }, { op: "replace", path, value }] });
 
 /** Where someone stands, as one write to the session (`goTo`, src/stories.ts). */
 const goTo = goToOn("session");
@@ -59,6 +61,7 @@ export const stories: Stories = {
     story("The Okafors say maybe, and the couple's photo and everyone's change", { as: "okafors", does: household("replace", "/answer", "maybe"), seen: { okafors: "?answer", couple: "", benToo: "everyone" }, undone: "Undone: your answer.", redone: "Redone: your answer." }),
     story("Femi is not coming after all: the mark at his feet says so, and he leaves everyone's photo", { as: "okafors", from: "?guest=2", does: household("replace", "/guests/2/coming", "0"), seen: { okafors: "", couple: "", benToo: "everyone" } }),
     story("The Okafors leave the caterer a note, and only the couple read it", { as: "okafors", from: "?answer", does: household("replace", "/message", "Ada is vegetarian."), seen: { okafors: "", couple: "?family=1" }, untold: ["ben", "benToo"] }),
+    story("Ben is writing his note on his phone when he changes it on his laptop; the phone is told, and its next keystroke does not write over the laptop's unseen", { as: "ben", premise: { benToo: [household("replace", "/message", "Can I bring the dog?")] }, from: "?answer", cannot: typed("/message", "", "See you there."), told: "This was changed elsewhere as you typed: here it is now." }),
     story("The Okafors bring a plus-one, and the couple see the name", { as: "okafors", from: "?new=guests", does: household("add", "/guests/-", "Tolu Adebayo"), seen: { okafors: "", couple: "?family=1", benToo: "everyone" }, undone: "Undone: bringing Tolu Adebayo.", redone: "Redone: bringing Tolu Adebayo." }),
     story("Ben, with no plus-one, asks to bring his sister, and she stands in his photo as a ghost until the couple answer", { as: "ben", from: "?new=asks", does: household("add", "/asks/-", "Lotte Achterberg"), seen: { ben: "", benToo: "", couple: "?family=2" } }),
     story("The couple say yes to Kemi, and she is a guest in the Okafors' photo", { as: "couple", from: "?family=1", does: board("replace", "/households/1/asks/1/reply", "yes"), seen: { couple: "?family=1", okafors: "", benToo: "everyone" } }),
