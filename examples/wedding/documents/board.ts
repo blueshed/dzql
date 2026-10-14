@@ -1,7 +1,7 @@
 import { read as readDoc } from "../../../src/documents";
 import type { PatchOp } from "../../../src/json-patch";
 import { splitPath } from "@blueshed/delta/core";
-import { db } from "../delta";
+import { db, derived, schema } from "../delta";
 import { householdFrom, newId, type HouseholdDocument } from "./household";
 import { coursesOf, eventsOf, giftsOf, placesOf, weddingOf, WEDDING, type Course, type Event, type Gift, type Place, type Row, type Rows, type Wedding } from "./wedding";
 import { integer, text, yesNo } from "./values";
@@ -29,10 +29,12 @@ export type BoardDocument = Wedding & {
   gifts: Gift[];
   events: Event[];
   places: Place[];
+  /** The collections drawn from their shape (src/derive.ts), by name: their rows, as delta holds them. */
+  derived: Record<string, Row[]>;
   totals: Totals;
 };
 
-type Doc = { weddings: Row; households?: Rows; guests?: Rows; asks?: Rows; claims?: Rows; courses?: Rows; dishes?: Rows; drinks?: Rows; gifts?: Rows; events?: Rows; places?: Rows };
+type Doc = { weddings: Row; households?: Rows; guests?: Rows; asks?: Rows; claims?: Rows; courses?: Rows; dishes?: Rows; drinks?: Rows; gifts?: Rows; events?: Rows; places?: Rows } & Record<string, Rows | undefined>;
 
 /** What the caterer needs, counted from the households and the courses. */
 export function totals(households: HouseholdDocument[], cs: Course[]): Totals {
@@ -83,7 +85,7 @@ export function read(id = WEDDING): BoardDocument | undefined {
       .sort((a, b) => String(a.claimed_at).localeCompare(String(b.claimed_at)))
       .map((c) => codeOf.get(String(c.households_id)) ?? "");
   const cs = coursesOf(doc);
-  return { ...weddingOf(doc.weddings), households, courses: cs, gifts: giftsOf(doc.gifts, claimants), events: eventsOf(doc.events), places: placesOf(doc.places), totals: totals(households, cs) };
+  return { ...weddingOf(doc.weddings), households, courses: cs, gifts: giftsOf(doc.gifts, claimants), events: eventsOf(doc.events), places: placesOf(doc.places), derived: Object.fromEntries(Object.keys(derived).map((t) => [t, Object.values(doc[t] ?? {})])), totals: totals(households, cs) };
 }
 
 // ───────────────────────────── writing ─────────────────────────────
@@ -100,9 +102,11 @@ const LISTS: Record<string, { columns: Record<string, Col>; children?: string[];
   gifts: { columns: { name: "text", description: "text?", link: "text?", picture_key: "text?", shared: "bool", seq: "seq" } },
   events: { columns: { name: "text", when_at: "text?", where_at: "text?", notes: "text?", seq: "seq" } },
   places: { columns: { name: "text", notes: "text?", link: "text?", picture_key: "text?", seq: "seq" } },
+  // a collection drawn from its shape takes its columns from the schema, each text
+  ...Object.fromEntries(Object.keys(derived).map((t) => [t, { columns: Object.fromEntries(Object.entries(schema.tables[t]!.columns).map(([c, def]) => [c, def.nullable ? "text?" : "text"])) }])),
 };
 
-const TOP_LISTS = ["courses", "gifts", "events", "places"];
+const TOP_LISTS = ["courses", "gifts", "events", "places", ...Object.keys(derived)];
 
 /** The value a column of this kind takes from an op, or undefined when the op can't be applied to it. */
 function coerce(kind: Col, op: PatchOp): unknown {
@@ -130,7 +134,7 @@ const codeTaken = db.query<{ 1: number }, [string]>("SELECT 1 FROM wedding_house
 export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()): PatchOp[] {
   // a working copy: each op sees the ones before it in the message
   const d = structuredClone(doc) as Required<Doc>;
-  for (const key of ["households", "guests", "asks", "claims", "courses", "dishes", "drinks", "gifts", "events", "places"] as const) d[key] ??= {};
+  for (const key of ["households", "guests", "asks", "claims", "courses", "dishes", "drinks", "gifts", "events", "places", ...Object.keys(derived)]) d[key] ??= {};
   const out: PatchOp[] = [];
   let made = 0; // a row added at `-` has no id until delta names it: the copy keeps it by a key of its own
   const emit = (op: PatchOp) => {
@@ -238,7 +242,7 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
       }
       if (!value.name) return;
       if (spec.columns.shared === "bool") value.shared ??= 0;
-      value.seq = siblings().length + 1;
+      if (spec.columns.seq) value.seq = siblings().length + 1;
       if (spec.parent) value[`${spec.parent}_id`] = parentId;
       emit({ op: "add", path: `/${table}/-`, value });
       return;

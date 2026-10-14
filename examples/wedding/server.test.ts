@@ -570,6 +570,24 @@ describe("the couple", () => {
     ws.close();
   });
 
+  test("the venues are a page nobody wrote, drawn from their shape: a row each, its drawer, a new one asked for in a modal; a removal asks first, then goes back to the page", async () => {
+    const ws = await enter("DASH");
+    expect(pageOf(ws)).toContain(`aria-label="Venues" data-write='{"doc":"session","op":"replace","path":"/page"}' data-value="venues"`); // a tool on the couple's rail
+    let html = await at(ws, "venues?row=1");
+    expect(html).toContain(`<span class="what">The Mount Without</span>`);
+    expect(html).toContain(`id="venues-drawer"`);
+    expect(html).toContain(`data-applet="picture-field"`); // the picture, by the applet delta.ts names
+    await at(ws, "venues?new");
+    html = (await send(ws, "board", [{ op: "add", path: "/venues/-", value: "Arnos Vale" }])).page;
+    expect(html).toContain('data-page="venues"'); // answered, the modal is put away
+    const made = /id="venues-(\d+)"[^>]*><span class="words"><span class="what">Arnos Vale</.exec(html)![1];
+    expect(await at(ws, `venues?confirm=${made}`)).toContain(`<h3>Arnos Vale</h3>`);
+    html = (await send(ws, "board", [{ op: "remove", path: `/venues/${made}` }])).page;
+    expect(html).toContain('data-page="venues"');
+    expect(html).not.toContain("Arnos Vale");
+    ws.close();
+  });
+
   test("the lists are the couple's to keep: a move renumbers, a field takes its kind, a course taken off takes its choices with it", async () => {
     const ws = await enter("DASH");
     const names = async () => (await board()).courses.map((c) => c.name);
@@ -885,6 +903,9 @@ describe("a permit allows what a page offers, and nothing more", () => {
     ...each("replace", "/gifts/1/name", "/gifts/1/description", "/gifts/1/link", "/gifts/1/picture_key", "/gifts/1/shared", "/gifts/1/seq"),
     ...each("replace", "/events/1/name", "/events/1/when_at", "/events/1/where_at", "/events/1/notes", "/events/1/seq"),
     ...each("replace", "/places/1/name", "/places/1/notes", "/places/1/link", "/places/1/picture_key", "/places/1/seq"),
+    ...each("add", "/venues/-"),
+    ...each("remove", "/venues/1"),
+    ...each("replace", "/venues/1/name", "/venues/1/notes", "/venues/1/picture_key"),
   ];
   // a household's page: its answer and note, each guest's coming, look and choices, an ask, a claim
   const HOUSEHOLD: W[] = [
@@ -916,7 +937,7 @@ describe("a permit allows what a page offers, and nothing more", () => {
     const couple = await as("DASH");
     const household = await as(code);
     const fields = COUPLE.filter(([op, path]) => op === "replace" && !path.endsWith("/seq")).map(([, path]): W => ["remove", path]);
-    for (const w of [...fields, ...each("replace", "/courses/1/weddings_id", "/gifts/1/weddings_id", "/events/1/weddings_id", "/places/1/weddings_id", "/courses/1/dishes/1/courses_id", "/courses/1/dishes/1/seq", "/courses/1/drinks/1/seq", "/gifts/1/nope")]) {
+    for (const w of [...fields, ...each("replace", "/courses/1/weddings_id", "/gifts/1/weddings_id", "/events/1/weddings_id", "/places/1/weddings_id", "/venues/1/weddings_id", "/courses/1/dishes/1/courses_id", "/courses/1/dishes/1/seq", "/courses/1/drinks/1/seq", "/gifts/1/nope")]) {
       expect([w, couple.may("board", w)]).toEqual([w, false]);
     }
     expect(couple.may("board", ["remove", "/gifts/1/seq"])).toBe(false);

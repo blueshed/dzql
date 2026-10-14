@@ -21,7 +21,8 @@ export type Ui = {
    * it: a guest's drawer (`?guest=2`), a family's (`?family=2`), one opened by its name alone
    * (`?gifts`, `?day`, `?stay` for a household; `?courses`, `?gifts`, `?events`, `?places` for
    * the couple), a row's keep drawer (`?keep=courses/2`), the answer (`?answer`), the modal asking
-   * a new thing's name (`?new=guests`), the modal confirming a removal (`?confirm=courses/2`).
+   * a new thing's name (`?new=guests`), the modal confirming a removal (`?confirm=courses/2`). A
+   * page drawn from its shape ("venues", src/derive.ts) reads its own: `?row=1`, `?new`, `?confirm=1`.
    */
   page?: string;
 } & Collections; // how each collection is read, find's word, the eye: by the collection's name
@@ -131,6 +132,8 @@ export function answered(session: SessionDocument, ops: { op: string; path: stri
   const at = over(session.ui);
   if (at.new !== undefined && ops.some((op) => op.op === "add" && op.path.endsWith("/-"))) return [{ op: "replace", path: "/visits/page", value: at.path }];
   if (at.confirm === undefined || !ops.some((op) => op.op === "remove")) return [];
+  // a row of a page drawn from its shape (src/derive.ts) is confirmed by its id alone, and goes back to that page
   const [list, family] = at.confirm.split("/");
-  return [{ op: "replace", path: "/visits/page", value: list === "households" ? address(at.path, "family", family) : address(at.path, list) }];
+  const back = family === undefined ? at.path : list === "households" ? address(at.path, "family", family) : address(at.path, list);
+  return [{ op: "replace", path: "/visits/page", value: back }];
 }

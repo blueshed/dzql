@@ -14,7 +14,10 @@
 // couple's page is the photo of every family: "" (with the welcome over it) or "list"; over it, a
 // family's drawer (`?family=1`), the welcome's (`?answer`), the four lists they keep (`?courses`,
 // `?gifts`, `?events`, `?places`) and a row of one (`?keep=courses/1`), and the modals that invite
-// (`?new=households`) and take off (`?confirm=courses/4`, `?confirm=households/2/guests/3`).
+// (`?new=households`) and take off (`?confirm=courses/4`, `?confirm=households/2/guests/3`). The
+// venues they are choosing between are a page of their own, drawn from the venues' shape with no
+// view written for it (src/derive.ts): "venues", a venue's drawer (`venues?row=1`), and the modals
+// that add one (`venues?new`) and cross one off (`venues?confirm=1`).
 import { goTo as goToOn, story, type Stories, type Write } from "../../src/stories";
 
 const session = (path: string, value?: unknown): Write => ({
@@ -70,5 +73,10 @@ export const stories: Stories = {
     // ── The day, and where to stay ──
     story("The couple add an event to the day", { as: "couple", from: "?events", does: board("add", "/events/-", { name: "Fireworks", when_at: "2027-04-02T22:00" }), seen: { couple: "?events", okafors: "?day", ben: "?day" } }),
     story("The couple add somewhere to stay", { as: "couple", from: "?places", does: board("add", "/places/-", { name: "The Bristol Hotel", notes: "Ask for the wedding rate." }), seen: { couple: "?places", okafors: "?stay", ben: "?stay" } }),
+
+    // ── The venues, a page nobody wrote ──
+    story("The couple add a venue, and it is in the list", { as: "couple", from: "venues?new", does: board("add", "/venues/-", { name: "Arnos Vale" }), seen: { couple: "venues" } }),
+    story("The couple put a picture on a venue", { as: "couple", from: "venues?row=1", does: board("replace", "/venues/1/picture_key", "seed/mount-without.svg"), seen: { couple: "venues?row=1" } }),
+    story("The couple cross a venue off, and it leaves the list", { as: "couple", from: "venues?confirm=2", does: board("remove", "/venues/2"), seen: { couple: "venues" } }),
   ],
 };

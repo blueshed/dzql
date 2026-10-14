@@ -1,5 +1,5 @@
 -- Demo data: Rowena & Dashiell's wedding, two households, the courses, a waiting ask, the gifts
--- (with their drawings), the day and where to stay. The couple's code is DASH; the households'
+-- (with their drawings), the day, where to stay and the venues they chose between. The couple's code is DASH; the households'
 -- are OKAFOR and BEN. Run once, into empty tables (../delta.ts). Ids are text, as delta keeps them.
 INSERT INTO wedding_weddings (id, day, deadline, name1, name2, venue, message, picture_key) VALUES
   ('1', '2027-04-02', NULL, 'Rowena', 'Dashiell', 'The Mount Without, Bristol', 'We can''t wait to celebrate with you.', NULL);
@@ -54,6 +54,10 @@ INSERT INTO wedding_events (id, weddings_id, name, when_at, where_at, notes, seq
 INSERT INTO wedding_places (id, weddings_id, name, notes, link, picture_key, seq) VALUES
   ('1', '1', 'The Mount Without rooms', 'A few rooms on site, first come first served.', NULL, 'seed/mount-without.svg', 1),
   ('2', '1', 'Brooks Guesthouse', '10 minutes'' walk.', NULL, 'seed/guesthouse.svg', 2);
+
+INSERT INTO wedding_venues (id, weddings_id, name, notes, picture_key) VALUES
+  ('1', '1', 'The Mount Without', 'Booked for the day.', NULL),
+  ('2', '1', 'Clifton Observatory', 'Too small for the party.', NULL);
 
 -- The seed's own drawings, in the same store the couple's uploads go to.
 INSERT INTO wedding_pictures (key, type, bytes, created_at) VALUES
