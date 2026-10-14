@@ -1,37 +1,32 @@
 {
-  "name": "dzql-legacy",
-  "version": "0.5.33",
-  "description": "PostgreSQL-powered framework with zero boilerplate CRUD operations and real-time WebSocket synchronization",
+  "name": "dzql",
+  "version": "0.6.37",
+  "description": "Database-first real-time framework with TypeScript support",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blueshed/dzql"
+  },
   "type": "module",
-  "main": "src/server/index.js",
+  "bin": {
+    "dzql": "./src/cli/index.ts"
+  },
   "exports": {
-    ".": "./src/server/index.js",
-    "./client": "./src/client/ws.js",
-    "./client/stores": "./src/client/stores/index.js",
-    "./client/templates": "./src/client/templates/App.vue",
-    "./server": "./src/server/index.js",
-    "./db": "./src/server/db.js",
-    "./compiler": "./src/compiler/index.js",
-    "./namespace": "./src/server/namespace.js"
+    ".": "./src/runtime/index.ts",
+    "./client": "./src/client/index.ts",
+    "./compiler": "./src/cli/index.ts",
+    "./namespace": "./src/runtime/namespace.ts"
   },
   "files": [
-    "bin/**/*.js",
-    "src/**/*.js",
-    "src/**/*.d.ts",
-    "src/database/**/*.sql",
-    "docs/**/*.md",
-    "docs/examples/*.sql",
-    "README.md",
-    "LICENSE"
+    "src",
+    "docs/README.md",
+    "docs/project-setup.md",
+    "docs/for_ai.md",
+    "README.md"
   ],
   "scripts": {
-    "test": "docker compose -f tests/compose.yml up -d && sleep 3 && bun test tests/core/ tests/integration/",
-    "test:down": "docker compose -f tests/compose.yml down -v",
-    "prepublishOnly": "echo '✅ Publishing DZQL...'"
-  },
-  "dependencies": {
-    "jose": "^6.1.0",
-    "postgres": "^3.4.7"
+    "test": "bun run test:setup && bun test; bun run test:teardown",
+    "test:setup": "docker compose down -v && docker compose up -d --wait",
+    "test:teardown": "docker compose down -v"
   },
   "keywords": [
     "postgresql",
@@ -39,35 +34,31 @@
     "websocket",
     "real-time",
     "realtime",
-    "crud",
-    "api",
-    "framework",
-    "zero-boilerplate",
     "database",
     "bun",
-    "graph-rules",
-    "permissions",
-    "row-level-security",
-    "rls",
-    "notify",
-    "listen",
-    "subscriptions"
+    "vue",
+    "pinia",
+    "typescript",
+    "compiler",
+    "codegen"
   ],
   "author": "Peter Bunyan",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/blueshed/dzql",
-    "directory": "packages/dzql"
+  "dependencies": {
+    "postgres": "^3.4.3",
+    "dotenv": "^16.4.5",
+    "jose": "^5.2.3"
   },
-  "bugs": {
-    "url": "https://github.com/blueshed/dzql/issues"
+  "devDependencies": {
+    "@types/bun": "latest",
+    "pinia": "^3.0.4",
+    "typescript": "^5.0.0",
+    "vue": "^3.5.26"
   },
-  "homepage": "https://github.com/blueshed/dzql#readme",
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
   "engines": {
     "bun": ">=1.0.0"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }
