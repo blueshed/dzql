@@ -180,7 +180,7 @@ describe("judge and format", () => {
 describe("the examples", () => {
   test("chat reads without notes", () => {
     const { report } = judge(chat);
-    expect(report.counts.stories).toBe(11);
+    expect(report.counts.stories).toBe(14);
     expect(report.notes).toEqual([]);
   });
 

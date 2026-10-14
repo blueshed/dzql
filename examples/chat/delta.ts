@@ -1,21 +1,22 @@
-import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
+import { createTables, defineDoc, migrateSchema, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { db } from "../../src/db";
 
-// Chat's documents, in delta (`@blueshed/delta`). A session -- your name, your room --
+// Chat's documents, in delta (`@blueshed/delta`). A session -- your name, your room, how far back you read --
 // and a room's messages are written by people, stored, and on the ledger. Who is in a room, and
 // which rooms there are, are live: kept by the server from the sessions and the connections, in
 // memory. The tables are chat's own (`chat_`), beside anything else in the database.
 
 export const schema = defineSchema({
-  sessions: { table: "chat_sessions", columns: { name: "text?", room: "text?" }, temporal: false },
+  sessions: { table: "chat_sessions", columns: { name: "text?", room: "text?", before: "text?" }, temporal: false },
   rooms: { table: "chat_rooms", columns: {}, temporal: false },
   // keyed by a time-ordered id (UUID v7), so the key is the order
   messages: { table: "chat_messages", parent: "rooms", columns: { name: "text", text: "text", sent_at: "integer" }, temporal: false },
 });
 
 createTables(db, schema);
+migrateSchema(db, schema); // a session's `before` came later
 
 export const delta = createLocal();
 

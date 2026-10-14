@@ -5,6 +5,11 @@ const room = (value: string): Write => ({ doc: "session", ops: [{ op: "replace",
 const leave: Write = { doc: "session", ops: [{ op: "remove", path: "/room" }] };
 const logout: Write = { doc: "session", ops: [{ op: "remove", path: "/name" }] };
 const say = (text: string): Write => ({ doc: "room", ops: [{ op: "add", path: "/messages/-", value: text }] });
+const earlier: Write = { doc: "session", ops: [{ op: "replace", path: "/before", value: "earlier" }] };
+const latest: Write = { doc: "session", ops: [{ op: "remove", path: "/before" }] };
+// A room shows fifty messages at a time: Bob spoke yesterday, and Ada has said fifty things since.
+// Fifty come whole, as a room you go into does: 10 KB for these.
+const yesterday = { bob: [say("See you all tomorrow")], ada: Array.from({ length: 50 }, (_, i) => say(`${i + 1}`)) };
 
 // Chat is three steps: what's your name, what room, say something. The stories are those steps in
 // order, each with who then sees it, and the refusals that keep the steps in order. Nothing in
@@ -30,6 +35,11 @@ export const stories: Stories = {
     // ── say something ──
     story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", { as: "ada", does: say("hello"), seen: ["ada", "bob"], untold: ["cy", "dee", "eve"], budget: 1024 }), // a message is its row
     story("Nobody can take a message back over the wire; only Undo can", { as: "ada", cannot: { doc: "room", ops: [{ op: "remove", path: "/messages/any" }] } }),
+
+    // ── and reading back ──
+    story("Ada scrolls back past the first fifty messages and reads what Bob said yesterday", { as: "ada", premise: yesterday, does: earlier, seen: ["ada"], budget: 10240 }),
+    story("Bob speaks while Ada is reading old messages, and her place does not move", { as: "bob", premise: { ...yesterday, ada: [...yesterday.ada, earlier] }, does: say("Morning"), seen: ["bob"], untold: ["cy", "dee", "eve"] }),
+    story("Ada comes back from old messages to what is being said now", { as: "ada", premise: { ...yesterday, ada: [...yesterday.ada, earlier] }, does: latest, seen: ["ada"], budget: 10240 }),
 
     // ── and going ──
     story("Ada logs out, and the room shows her gone", { as: "ada", does: logout, seen: ["ada", "bob"] }),

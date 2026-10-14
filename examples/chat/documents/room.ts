@@ -5,11 +5,16 @@ import { read as readDoc } from "../../../src/documents";
 
 export type ChatMessage = { id: string; name: string; text: string; sent_at: number };
 
-/** The room's latest messages, oldest first: their ids are time-ordered, so the key is the order. */
-export function read(name: string, limit = 50): ChatMessage[] {
-  const messages = Object.values(readDoc<{ messages?: Record<string, ChatMessage> }>(`room:${name}`)?.messages ?? {});
-  messages.sort((a, b) => (a.id < b.id ? -1 : 1));
-  return messages.slice(-limit);
+/**
+ * A room shows fifty messages at a time, oldest first: the latest, or the fifty said before the
+ * one `before` names. Their ids are time-ordered, so the key is the order, and a window named by
+ * one (a keyset, never an offset) does not move when someone speaks. `earlier`: there are more
+ * before it.
+ */
+export function read(name: string, before: string | null = null, limit = 50): { messages: ChatMessage[]; earlier: boolean } {
+  const all = Object.values(readDoc<{ messages?: Record<string, ChatMessage> }>(`room:${name}`)?.messages ?? {}).filter((m) => before === null || m.id < before);
+  all.sort((a, b) => (a.id < b.id ? -1 : 1));
+  return { messages: all.slice(-limit), earlier: all.length > limit };
 }
 
 /** Who is in the room, in the order they came. */

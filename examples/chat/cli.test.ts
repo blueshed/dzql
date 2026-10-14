@@ -71,7 +71,7 @@ describe("chat's cli against a real server", () => {
     const session = afterSend.docs.find((d) => d.doc === "session");
     const room = afterSend.docs.find((d) => d.doc === "room:lobby");
     // a session's ledger entry is its whole row, at eta's paths, its id -- the session id -- taken out
-    expect(session?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "", value: { name: "Ada", room: "lobby" } }]);
+    expect(session?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "", value: { name: "Ada", room: "lobby", before: null } }]);
     expect(room?.version).toBeGreaterThan(0);
     expect(room?.entries?.[0]?.ops).toMatchObject([{ op: "add", value: { name: "Ada", text: "hello" } }]);
     expect(JSON.stringify(afterSend)).not.toContain(sessionId);
@@ -87,7 +87,7 @@ describe("chat's cli against a real server", () => {
     const afterUndo = await runCommand(ws, parseCommand(["undo"], aliases)!);
 
     const session = afterUndo.docs.find((d) => d.doc === "session");
-    expect(session?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "", value: { name: null, room: null } }]);
+    expect(session?.entries?.[0]?.ops).toEqual([{ op: "replace", path: "", value: { name: null, room: null, before: null } }]);
 
     ws.close();
   });
