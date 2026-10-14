@@ -5,6 +5,9 @@ Two kinds. **Guidance**, current:
 - `stories.md` -- what eta is for, and how stories drive it.
 - `bento/` -- where am I and what can I do: the directions (`README.md`), built in `src/bento.ts`, and two sets of sample designs (`design/`, `paintbrush/`).
 - `first-app.md` -- a first app, step by step: chat, then leave, in the order you meet the words.
+- `least-resistance.md` -- why eta suits an AI that builds apps, what still slows it, and the
+  five things that would make eta the easy path, model first among them.
+- `plan-2026-10-14.md` -- the ten medium items, a story each, done by a team in parallel.
 - `review-2026-10-13.md` -- the review in progress: is the repo as small and simple as it can be,
   with every example and test justified. Its decisions are being carried out.
 
