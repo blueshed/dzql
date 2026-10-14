@@ -19,6 +19,7 @@ UPDATE wedding_guests SET
   skin = '#E0A97A', hair = 'short', hair_color = '#2B2B33', top = '#1E3F8F', legs = '#2B2B33',
   face = 'grin', attitude = 'cool', built_at = '2026-09-01T09:00:00Z'
   WHERE id = '2';
+UPDATE wedding_guests SET top = '#7FAE4E' WHERE id = '3'; -- Ben, not yet built, in green
 
 INSERT INTO wedding_courses (id, weddings_id, name, seq) VALUES
   ('1', '1', 'Starter', 1), ('2', '1', 'Main', 2), ('3', '1', 'Dessert', 3), ('4', '1', 'The toast', 4);
