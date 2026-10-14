@@ -43,6 +43,8 @@ describe("search: untrusted filter/sort inputs", () => {
     db = new V2TestDatabase();
     sql = await db.setup();
     await sql`CREATE SCHEMA IF NOT EXISTS dzql_v2`;
+    // Shared per-process DB: drop first so this file is order-independent.
+    await sql`DROP TABLE IF EXISTS users CASCADE`;
     await sql`
       CREATE TABLE users (
         id serial PRIMARY KEY,

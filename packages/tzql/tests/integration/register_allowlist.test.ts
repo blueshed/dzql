@@ -21,6 +21,9 @@ describe("register_user: only allow-listed columns may be set at sign-up", () =>
     db = new V2TestDatabase();
     sql = await db.setup();
     await sql.unsafe(generateCoreSQL());
+    // Tests share one per-process DB; drop first so table shape is deterministic
+    // regardless of which other test file ran before this one.
+    await sql`DROP TABLE IF EXISTS users CASCADE`;
     // users table carries a privileged column that must NOT be client-settable.
     await sql`
       CREATE TABLE users (

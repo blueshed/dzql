@@ -334,9 +334,10 @@ ${paramExtracts}
     RAISE EXCEPTION 'permission_denied';
   END IF;
 
-  -- Return stream of documents
+  -- Return stream of documents (root projected to visible columns; ::jsonb so
+  -- the || merge works even when the projection is row_to_json)
   RETURN QUERY
-  SELECT to_jsonb(root.*) || jsonb_build_object(${relationSelects ? relationSelects.slice(1) : ''})
+  SELECT (${rootSelectExpr})::jsonb || jsonb_build_object(${relationSelects ? relationSelects.slice(1) : ''})
   FROM ${sub.root.entity} root
   ${whereClause};
 END;

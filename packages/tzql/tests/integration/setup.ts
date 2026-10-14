@@ -1,5 +1,11 @@
 import postgres from "postgres";
 
+// `bun test` runs every test file in one process, so a DB name keyed only on
+// process.pid is shared across files: each file's CREATE TABLE collides with
+// the last, making the suite order-dependent and flaky. Give every
+// V2TestDatabase instance (one per file) its own database instead.
+let instanceSeq = 0;
+
 export class V2TestDatabase {
   adminSql: any;
   testSql: any;
@@ -7,7 +13,7 @@ export class V2TestDatabase {
   baseUrl: string;
 
   constructor() {
-    this.dbName = `tzql_test_${process.pid}`;
+    this.dbName = `tzql_test_${process.pid}_${Date.now().toString(36)}_${instanceSeq++}`;
     this.baseUrl = process.env.DATABASE_URL || "postgres://dzql_test:dzql_test@localhost:5433/dzql_test";
   }
 

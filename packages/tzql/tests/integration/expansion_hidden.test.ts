@@ -51,6 +51,9 @@ describe("FK/M2M expansion does not leak the target's hidden columns", () => {
     await sql`
       CREATE OR REPLACE FUNCTION dzql_v2.compute_affected_keys(p_table text, p_op text, p_data jsonb)
       RETURNS text[] LANGUAGE sql IMMUTABLE AS $$ SELECT ARRAY[]::text[] $$`;
+    // Shared per-process DB: drop first (posts before users for the FK).
+    await sql`DROP TABLE IF EXISTS posts CASCADE`;
+    await sql`DROP TABLE IF EXISTS users CASCADE`;
     await sql`CREATE TABLE users (id serial PRIMARY KEY, name text NOT NULL, email text UNIQUE NOT NULL, password_hash text NOT NULL)`;
     await sql`CREATE TABLE posts (id serial PRIMARY KEY, title text NOT NULL, author_id int NOT NULL REFERENCES users(id))`;
     await sql`INSERT INTO users (id, name, email, password_hash) VALUES (1, 'alice', 'a@x', 'secret-hash')`;

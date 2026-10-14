@@ -64,6 +64,8 @@ describe("save: update permission is evaluated against the stored row", () => {
       CREATE OR REPLACE FUNCTION dzql_v2.compute_affected_keys(p_table text, p_op text, p_data jsonb)
       RETURNS text[] LANGUAGE sql IMMUTABLE AS $$ SELECT ARRAY[]::text[] $$
     `;
+    // Shared per-process DB: drop first so this file is order-independent.
+    await sql`DROP TABLE IF EXISTS posts CASCADE`;
     await sql`
       CREATE TABLE posts (
         id serial PRIMARY KEY,

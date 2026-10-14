@@ -2,7 +2,8 @@ import { serve } from "bun";
 import { config } from "dotenv";
 import { Database } from "./db.js";
 import { WebSocketServer } from "./ws.js";
-import { loadManifest } from "./manifest_loader.js";
+import { loadManifest, getEntityHidden } from "./manifest_loader.js";
+import { projectVisible } from "./projection.js";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import { runtimeLogger, notifyLogger, serverLogger } from "./logger.js";
@@ -44,7 +45,7 @@ const wsServer = new WebSocketServer(db);
  *
  * Each connection receives the event at most once, even if matched by both.
  */
-function processEventNotifications(event: {
+async function processEventNotifications(event: {
   table: string;
   op: string;
   pk: Record<string, unknown>;
@@ -52,7 +53,7 @@ function processEventNotifications(event: {
   user_id: number | null;
   affected_keys: string[];
   notify_users: number[];
-}) {
+}): Promise<void> {
   const { table, op, pk, data, affected_keys, notify_users } = event;
 
   notifyLogger.debug(`processEventNotifications called for ${table}:${op}`);
@@ -62,11 +63,16 @@ function processEventNotifications(event: {
   // Track which connections we've already notified to avoid duplicates
   const notifiedConnections = new Set<string>();
 
+  // Project out the entity's hidden columns before broadcasting. The stored
+  // event row is full (routing needs it) but subscribers must only ever see
+  // what the getter would return — never e.g. users.password_hash on an update.
+  const visibleData = projectVisible(data, getEntityHidden(table));
+
   // Build the event message for entity broadcasts
   const entityEventMessage = JSON.stringify({
     jsonrpc: "2.0",
     method: `${table}:${op}`,
-    params: { table, op, pk, data }
+    params: { table, op, pk, data: visibleData }
   });
 
   // 1. Send to users in notify_users list (entity notifications)
@@ -102,6 +108,30 @@ function processEventNotifications(event: {
         if (affected_keys.includes(subKey)) {
           // Send entity broadcast (not subscription:event) so global dispatcher can route it
           if (!notifiedConnections.has(sub.connection_id)) {
+            // Re-authorize on push: a matching affected_key means the change is
+            // relevant to this subscription's params, not that the subscriber may
+            // still see it. Re-run can_subscribe so a user whose access was
+            // revoked after subscribing stops receiving updates. Fail closed.
+            // Pass params as an object so postgres serializes it to jsonb; do
+            // NOT JSON.stringify + ::jsonb, which double-encodes into a json
+            // string scalar and makes every ->> lookup null (and the check fail).
+            let authorized = false;
+            try {
+              const rows: any = await db.query(
+                `SELECT dzql_v2.${subscribableName}_can_subscribe($1, $2) AS ok`,
+                [sub.user_id, sub.params ?? {}]
+              );
+              authorized = rows?.[0]?.ok === true;
+            } catch (e: any) {
+              notifyLogger.error(`can_subscribe re-check failed for ${subscribableName}: ${e.message}`);
+              authorized = false;
+            }
+
+            if (!authorized) {
+              notifyLogger.debug(`Suppressed push to ${sub.connection_id.slice(0, 8)}... (no longer authorized for ${subscribableName})`);
+              continue;
+            }
+
             const sent = wsServer.toConnection(sub.connection_id, entityEventMessage);
             if (sent) {
               notifiedConnections.add(sub.connection_id);
@@ -135,7 +165,7 @@ async function startListener() {
       notifyLogger.debug(`Fetched ${events.length} events for commit ${commit_id}`);
       for (const event of events) {
         notifyLogger.debug(`Processing event: ${event.table_name}:${event.op}`);
-        processEventNotifications({
+        await processEventNotifications({
           table: event.table_name,
           op: event.op,
           pk: event.pk,
