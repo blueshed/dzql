@@ -265,12 +265,14 @@ drag halfway through, a scroll position, a chart's history. That piece is an **a
 - **A watched document is drawn whole into the page.** Watch one cut for who reads it, with no
   secret in it.
 - **One Undo is one document.** Keep a gesture's changes in one.
-- **Don't edit `src/` for one app.** If it seems you must, read the reference's "When it looks
-  like you need to touch `src/`" first: a missing seam is rare.
+- **Don't edit `src/` for one app.** If it seems you must, read the eta-app reference's "When it looks
+  like you need to touch `src/`" (`.claude/skills/eta-app/reference/where-an-app-lives.md`) first:
+  a missing seam is rare.
 
 ## Where next
 
 - `docs/stories.md`: why eta is shaped this way.
-- `.claude/skills/eta-app/reference.md`: every part, in full.
+- `.claude/skills/eta-app/reference/`: every part, in full, one short file a part (its `SKILL.md`
+  says which for which step).
 - `docs/bento/README.md`: the bento, a guide to where am I and what can I do.
 - `examples/leave/`: sign-in, a calendar applet, drafts, and a manager's rules, in about 1,000 lines.

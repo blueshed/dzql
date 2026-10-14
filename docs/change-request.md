@@ -155,9 +155,9 @@ coverage from the browser: `Bun.WebView` cannot report it today, so this waits o
 ## 5. Session writes and the ledger
 
 *Done, 0.25.0: the sentence is in `concepts/concept.ts`'s `write()` doc comment and in the
-skill's reference.md ("Opting a write out of the ledger"), now with a second real example
-besides the wedding's session document -- chat's own presence ops (item 8) are off the ledger
-the same way.*
+skill's reference ("Opting a write out of the ledger", now `reference/documents.md`), now with a
+second real example besides the wedding's session document -- chat's own presence ops (item 8)
+are off the ledger the same way.*
 
 **What.** A document can say it is not the ledger's.
 
