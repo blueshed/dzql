@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { costs, differing, gzipped, item, measure, received, rewritten, said, size, tap, type Heard, type Run } from "./costs";
 
 // Every number the README quotes is a run's (src/costs.ts): what one write sends everyone else,
-// the client's size, the stories. A change that moves one fails here until `bun run costs` writes
+// the client's size. A change that moves one fails here until `bun run costs` writes
 // it in. The run is taken here in this process, where coverage sees it; each example's measure is
 // a process of its own, as a process serves one example. Then each piece: the words, the
 // comparison, the writing, and what a run that goes wrong says.

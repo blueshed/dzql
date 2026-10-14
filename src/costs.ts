@@ -2,10 +2,10 @@
 // The README marks each number it quotes (`<!-- measured:<name> -->…<!-- /measured -->`), and a run
 // measures them all: what one write sends everyone else, compressed, by each example's own script
 // (`examples/<name>/scripts/measure-render-cost.ts --json`, in a process of its own whose clock
-// stands still, src/costs-clock.ts); the client and railroad, built and gzipped; and the stories,
-// counted. `bun run costs` writes them into the README, and `--check` (src/costs.test.ts) fails where
-// it differs; a size that moves a little from run to run stands within 3% (`WITHIN`). Imported,
-// nothing runs.
+// stands still, src/costs-clock.ts); and the client and railroad, built and gzipped. Not the
+// stories: a count moves with every story added, and costs nothing. `bun run costs` writes them
+// into the README, and `--check` (src/costs.test.ts) fails where it differs; a size that moves a
+// little from run to run stands within 3% (`WITHIN`). Imported, nothing runs.
 
 import { connect, createServer, type AddressInfo } from "node:net";
 
@@ -152,7 +152,6 @@ export async function gzipped(entry: string, source?: string): Promise<number> {
 export async function measured(): Promise<Run> {
   const found = new Map<string, string>();
   const near = new Map<string, number[]>();
-  const dirs = [...new Bun.Glob("examples/*/").scanSync({ cwd: root, onlyFiles: false })].map((d) => d.replace(/\/$/, "")).sort();
 
   const scripts = [...new Bun.Glob("examples/*/scripts/measure-render-cost.ts").scanSync({ cwd: root })].sort();
   const writes = await Promise.all(scripts.map(measure));
@@ -170,14 +169,6 @@ export async function measured(): Promise<Run> {
   found.set("railroad", `${size(mount)} gzipped for \`signal\` and \`mount\`, ${size(list)} with \`list\``);
   near.set("railroad", [mount, list]);
 
-  // the stories `bun run stories:all` runs: an example's, once it has an app and a story (the starter has none)
-  const counts: string[] = [];
-  for (const dir of dirs) {
-    if (!(await Bun.file(`${root}/${dir}/stories.ts`).exists()) || !(await Bun.file(`${root}/${dir}/index.ts`).exists())) continue;
-    const { stories } = (await import(`${root}/${dir}/stories.ts`)) as { stories: { stories: unknown[] } };
-    if (stories.stories.length > 0) counts.push(`${stories.stories.length} in ${dir.slice("examples/".length)}`);
-  }
-  found.set("stories", and(counts, ", ", " and "));
   return { found: new Map([...found].map(([name, text]) => [name, text.replaceAll("\u00a0", " ")])), near };
 }
 

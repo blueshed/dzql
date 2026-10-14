@@ -19,6 +19,10 @@ async function load(name: string): Promise<{ example: Example; stories: Stories 
   const { stories } = await import(`../examples/${name}/stories`);
   return { example, stories };
 }
+/** The stories called `names`, whole names, so a story added that starts alike is never picked up; a name not there throws, naming it. */
+function named(stories: Stories, ...names: string[]): Story[] {
+  return names.map((name) => stories.stories.find((s) => s.name === name) ?? (() => { throw new Error(`no story called "${name}": renamed?`); })());
+}
 /** `stories` told among only the members `names`: each member walks every place it can get to, so a test casts no more than its stories need. */
 const among = (stories: Stories, ...names: string[]): Stories => ({ ...stories, cast: Object.fromEntries(names.map((name) => [name, stories.cast[name]!])) });
 
@@ -45,7 +49,7 @@ describe("the stories by hand", () => {
     const { example: ticker, stories: told } = await load("ticker");
     const reading = (value: string) => ({ doc: "desk", ops: [{ op: "replace" as const, path: "/reading/board", value }] });
     const ann: Story[] = [
-      ...told.stories.filter((s) => s.name.startsWith("Ann watches Charlie Metals, and only") || s.name.startsWith("Ann sets her clock")), // a modal's select; the city picker, an applet's
+      ...named(told, "Ann watches Charlie Metals, and only her board grows", "Ann sets her clock to Tokyo, and only her clock's face changes"), // a modal's select; the city picker, an applet's
       { name: "Ann, reading her board as a list, reads it as sparklines again", as: "ann", from: "board @ reading.board=list", does: reading("sparkline"), seen: ["ann"] }, // after " @ ", pressed there
     ];
     const tickerReport = await run(ticker, { ...told, stories: ann }, undefined, { byHand: true });
@@ -70,8 +74,8 @@ describe("the stories by hand", () => {
 
   test("a form posted to a route by hand: typed into and sent, the browser following where it sends it, signed in or told why; one a person cannot reach fails by name", async () => {
     const { example: leave, stories: told } = await load("leave");
-    const posts = told.stories.filter((s) => s.name.startsWith("Bo signs in on another phone") || s.name.startsWith("Someone types Bo's email"));
-    const after = told.stories.filter((s) => s.name.startsWith("Ann asks for her draft")).map((s) => ({ ...s, seen: { ann: "2026-10" } }) as Story); // a fresh browser after a post: not signed in as Bo by the route's cookie
+    const posts = named(told, "Bo signs in on another phone, and sees the team's calendar", "Someone types Bo's email with the wrong password, and is told the two do not match");
+    const after = named(told, "Ann asks for her draft, and Mo and Bo see it waiting on the calendar").map((s) => ({ ...s, seen: { ann: "2026-10" } }) as Story); // a fresh browser after a post: not signed in as Bo by the route's cookie
     const report = await run(leave, { ...among(told, "visitor", "ann"), stories: [...posts, ...after] }, undefined, { byHand: true });
     expect(report.outcomes.map((o) => o.failures)).toEqual([[], [], []]);
     expect(report.byHand).toMatchObject({ stories: 3 });
@@ -135,7 +139,7 @@ describe("the stories by hand", () => {
 
   test("a way that cannot be pressed is left for another, and with none left it is said where the way stopped", async () => {
     const { example: ticker, stories: told } = await load("ticker");
-    const watches = told.stories.filter((s) => s.name.startsWith("Ann watches Charlie Metals, and only"));
+    const watches = named(told, "Ann watches Charlie Metals, and only her board grows");
     const plus = write("desk", "replace", "/page", "board?new");
     const flat: Example = { ...ticker, render: (sessionId) => ticker.render(sessionId).replaceAll(plus, ` style="display: block; width: 0; height: 0; padding: 0; border: 0; overflow: hidden"${plus}`) };
     expect((await run(flat, { ...told, stories: watches })).outcomes[0]!.failures).toEqual([]);
@@ -144,7 +148,7 @@ describe("the stories by hand", () => {
 
   test("a story may say its gesture: leave's drags on its calendar are done by hand whenever they are told, and must send the story's write", async () => {
     const { example: leave, stories: told } = await load("leave");
-    const across = told.stories.find((s) => s.name.startsWith("Ann drags across"))!; // leave's other drags, a request's bar to a day, are `stories:all`'s
+    const across = named(told, "Ann drags across two days in Bo's week, and sees the clash before she asks")[0]!; // leave's other drags, a request's bar to a day, are `stories:all`'s
 
     // let go a day too far, and the page sends another draft; from nothing, nothing is dragged
     const tuesday = '.week[data-month="2026-10"][data-monday="2026-10-05"] > .date:nth-child(2)';
@@ -163,7 +167,7 @@ describe("the stories by hand", () => {
 
   test("a gesture's write is the one its events sent: a calendar that hears no pointer and writes by itself, late, fails; so does one that writes twice, or unasked before anything is pressed", async () => {
     const { stories: told } = await load("leave");
-    const across = told.stories.filter((s) => s.name.startsWith("Ann drags across"));
+    const across = named(told, "Ann drags across two days in Bo's week, and sees the clash before she asks");
     const failures = async (wrong: string) => (await run(await leaveWith(wrong), { ...among(told, "ann"), stories: across })).outcomes[0]!.failures;
     expect(await failures("")).toEqual([]);
     for (const late of ["late-200", "late-1500"]) {
@@ -207,7 +211,7 @@ describe("the stories by hand", () => {
     const { example: leave, stories: told } = await load("leave");
     const hidden: Example = { ...leave, render: (sessionId) => leave.render(sessionId).replaceAll('<form class="days"', '<form class="days" style="display: none"') };
     // Bo's weekend is asked for by the Ask button, which is to be seen: pressed, and refused, it passes
-    const refusals = told.stories.filter((s) => s.name.startsWith("Ann sets her draft's last day") || s.name.startsWith("Bo asks for a draft that is only a weekend"));
+    const refusals = named(told, "Ann sets her draft's last day before its first, and is told so", "Bo asks for a draft that is only a weekend, and is told it has no working days");
     const report = await run(hidden, { ...among(told, "ann", "bo"), stories: refusals }, undefined, { byHand: true });
     expect(report.outcomes.map((o) => [o.name, o.failures])).toEqual([
       ["Ann sets her draft's last day before its first, and is told so", ["by hand, ann could not replace /draft/ends on session: the control for it is not to be seen"]],
@@ -217,7 +221,7 @@ describe("the stories by hand", () => {
 
     // a symbol the Watch modal's select does not offer is one nobody can send from the page: its refusal is the wire's
     const { example: ticker, stories: watching } = await load("ticker");
-    const unquoted = watching.stories.filter((s) => s.name.startsWith("Ann cannot watch a symbol"));
+    const unquoted = named(watching, "Ann cannot watch a symbol the market does not quote, and is told so");
     expect((await run(ticker, { ...watching, stories: unquoted }, undefined, { byHand: true })).outcomes[0]!.failures).toEqual([]);
     // and a refusal that lands, sent from the page, fails when it is told and by hand
     const hello: Story = { name: "Ada cannot say hello", as: "ada", cannot: say };
@@ -226,7 +230,7 @@ describe("the stories by hand", () => {
 
   test("a record the page sent with a key the story does not name is not its write, unless the key is blank: a calendar's half day fails", async () => {
     const { stories: told } = await load("leave");
-    const across = told.stories.filter((s) => s.name.startsWith("Ann drags across"));
+    const across = named(told, "Ann drags across two days in Bo's week, and sees the clash before she asks");
     expect((await run(await leaveWith("half"), { ...among(told, "ann"), stories: across })).outcomes[0]!.failures).toEqual([
       'by hand, ann could not replace /draft on session: the page sent replace /draft {"starts":"2026-10-06","ends":"2026-10-07","half":true} on session',
     ]);

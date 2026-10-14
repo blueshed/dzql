@@ -87,16 +87,19 @@ describe("Peter tells leave's stories on the model page and Claude builds leave;
   });
 
   // writes.test.ts's, here so leave's stories are run once: what loading leave writes
-  test("leave: its 23 stories, the team and each person's session, as the model's seed has them by hand", () => {
-    expect(load.stories).toHaveLength(23);
-    expect(load.stories[0]).toEqual({ text: "Ann drags across two days in Bo's week, and sees the clash before she asks", actor: "ann", kind: "does", touches: ["sessions"] });
-    expect(load.stories[20]).toMatchObject({ actor: "visitor", kind: "does", post: "/login" });
-    expect(load.stories[2]!.kind).toBe("cannot");
+  test("leave: every story, the team and each person's session, as the model's seed has them by hand", async () => {
+    const { stories } = await import("../../leave/stories"); // leave's own, so a story added there moves nothing here
+    expect(load.stories.map((s) => s.text)).toEqual(stories.stories.map((s) => s.name));
+    expect(load.stories.find((s) => s.post === "/login")).toMatchObject({ actor: "visitor", kind: "does" });
+    expect(load.stories.some((s) => s.kind === "cannot")).toBe(true);
+    const at = (start: string) => load.stories.findIndex((s) => s.text.startsWith(start));
     const [team, session] = load.documents;
-    expect(team).toMatchObject({ name: "team", root: "teams", own: false, held_by: ["ann", "bo", "mo"], serves: [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18], fields: [{ name: "name", type: "text" }] });
+    expect(team).toMatchObject({ name: "team", root: "teams", own: false, held_by: ["ann", "bo", "mo"], fields: [{ name: "name", type: "text" }] });
+    expect(team!.serves).toContain(at("Ann asks for her draft, and Mo and Bo see it"));
     expect(team!.holds.map((h) => [h.entity, h.under])).toEqual([["people", "teams"], ["requests", "teams"]]);
-    expect(team!.holds[1]!.fields.map((f) => f.name)).toEqual(["person_id", "starts", "ends", "status", "answered_by"]);
-    expect(session).toMatchObject({ name: "session", root: "sessions", own: true, serves: [0, 2, 19, 22], holds: [] });
+    expect(team!.holds[1]!.fields.map((f) => f.name)).toEqual(expect.arrayContaining(["person_id", "starts", "ends", "status", "answered_by"]));
+    expect(session).toMatchObject({ name: "session", root: "sessions", own: true, holds: [] });
+    expect(session!.serves).toContain(at("Ann drags across two days in Bo's week"));
     expect(load.skipped).toEqual([]);
   });
 

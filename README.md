@@ -56,7 +56,7 @@ write.
   every screen that shows them.
 - **Undo for each person.** Undo walks back your own writes while others keep writing, and says so
   when someone has changed it since.
-- **Stories are the tests.** <!-- measured:stories -->14 in chat, 23 in leave, 12 in modeling, 17 in ticker and 22 in wedding<!-- /measured -->, run over real sockets and by hand.
+- **Stories are the tests.** Every example's, run over real sockets and again by hand.
 - **A small client.** <!-- measured:client -->7.4 KB<!-- /measured --> gzipped, and no framework
   to learn. The page is plain HTML, drawn on the server.
 - **One process.** Bun and SQLite, nothing else to run. Postgres when you need it, through delta.
