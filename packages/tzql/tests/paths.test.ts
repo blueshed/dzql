@@ -224,8 +224,8 @@ describe("Permission Compilation (EXISTS)", () => {
   test("Multi-hop traversal compiles with nested subqueries", () => {
     const sql = compilePermission("sites", "@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id", null);
     expect(sql).toContain("EXISTS");
-    expect(sql).toContain("SELECT org_id FROM venues");
-    expect(sql).toContain("acts_for");
+    expect(sql).toContain("FROM venues WHERE venues.id = (p_data->>'venue_id')::int");
+    expect(sql).toContain("acts_for.org_id = venues.org_id");
   });
 
   test("Table-first pattern compiles correctly", () => {
@@ -261,8 +261,9 @@ describe("Notification Compilation (SELECT)", () => {
   test("Multi-hop traversal compiles with nested subqueries", () => {
     const parsed = parsePath("@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id");
     const sql = compilePathToSelect(parsed, "p_data");
-    expect(sql).toContain("SELECT acts_for.user_id FROM acts_for");
-    expect(sql).toContain("SELECT org_id FROM venues");
+    expect(sql).toStartWith("SELECT acts_for.user_id FROM venues, acts_for");
+    expect(sql).toContain("venues.id = (p_data->>'venue_id')::int");
+    expect(sql).toContain("acts_for.org_id = venues.org_id");
   });
 
   test("Deep traversal (4 hops) compiles correctly", () => {
@@ -270,10 +271,11 @@ describe("Notification Compilation (SELECT)", () => {
     const parsed = parsePath(path);
     const sql = compilePathToSelect(parsed, "p_data");
 
-    expect(sql).toContain("SELECT user_orgs.user_id FROM user_orgs");
-    expect(sql).toContain("SELECT occasion_id FROM packages");
-    expect(sql).toContain("SELECT venue_id FROM occasions");
-    expect(sql).toContain("SELECT org_id FROM venues");
+    expect(sql).toBe(
+      "SELECT user_orgs.user_id FROM packages, occasions, venues, user_orgs" +
+      " WHERE packages.id = (p_data->>'package_id')::int AND occasions.id = packages.occasion_id" +
+      " AND venues.id = occasions.venue_id AND user_orgs.org_id = venues.org_id"
+    );
   });
 
   test("Table-first pattern compiles correctly", () => {
@@ -281,8 +283,9 @@ describe("Notification Compilation (SELECT)", () => {
     const parsed = parsePath(path);
     const sql = compilePathToSelect(parsed, "p_data");
 
-    expect(sql).toContain("SELECT user_orgs.user_id FROM user_orgs");
-    expect(sql).toContain("contractor_rights");
+    expect(sql).toStartWith("SELECT user_orgs.user_id FROM contractor_rights, user_orgs");
+    expect(sql).toContain("contractor_rights.package_id = (p_data->>'package_id')::int");
+    expect(sql).toContain("user_orgs.org_id = contractor_rights.contractor_org_id");
   });
 });
 

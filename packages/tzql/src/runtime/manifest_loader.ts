@@ -16,6 +16,16 @@ export function getManifest(): Manifest {
   return activeManifest;
 }
 
+/**
+ * Hidden columns for an entity, from the loaded manifest. Returns [] when the
+ * manifest or entity is unknown so callers can treat "no manifest" as "hide
+ * nothing extra" without throwing on the realtime hot path.
+ */
+export function getEntityHidden(table: string): string[] {
+  const entity = activeManifest?.entities?.[table] as { hidden?: string[] } | undefined;
+  return entity?.hidden ?? [];
+}
+
 export function resolveFunction(name: string) {
   const manifest = getManifest();
   const fn = manifest.functions[name];

@@ -44,12 +44,19 @@ temporal: {
 
 PERMISSION DSL
 ==============
-[]                                    = Deny all
+[] or omitted                         = Deny all (nobody, signed in or not)
 ['TRUE']                              = Public access
+['AUTHENTICATED']                     = Any signed-in user
 ['@author_id']                        = @user_id == @author_id
 ['@author_id == @user_id']            = Explicit equality
 ['@org_id->acts_for[org_id=$].user_id']        = Single-hop traversal
 ['@org_id->acts_for[org_id=$]{active}.user_id'] = With condition filter
+['@org_id->user_orgs[org_id=$,role=owner].user_id'] = Several filters (AND)
+['rule A', 'rule B']                  = Either rule grants access (OR); every rule is enforced
+
+A path that can't be compiled (bad syntax, unknown table or column, a start
+field that isn't an integer key) is a build error. It never compiles to "deny"
+or to "any signed-in user".
 
 CONDITION FILTERS
 =================
@@ -64,6 +71,11 @@ Single:  @org_id->acts_for[org_id=$]{active}.user_id
 2-hop:   @venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id
 3-hop:   @site_id->sites.venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id
 N-hop:   @pkg_id->packages.occasion_id->occasions.venue_id->venues.org_id->user_orgs[org_id=$].user_id
+
+A hop written table.field joins on table.id. A hop written table[field=$].out
+joins on that field instead, and may match many rows (each is followed):
+Filtered: @occasion_id->occasion_promoters[occasion_id=$].promoter_id->user_orgs[org_id=$].user_id
+          "a member of any org promoting this occasion"
 
 TABLE-FIRST PATTERN
 ===================
@@ -87,7 +99,8 @@ ROOT KEY RULES:
 
 SUBSCRIBABLE TYPES:
 1. Single Entity: has root.key, returns one document with includes
-2. List Subscribable: no root.key, returns array of documents
+2. List Subscribable: no root.key, returns array of documents, only the
+   root rows the subscriber may view (the root entity's view rules apply)
 ```
 
 ## Entity Definition
@@ -165,7 +178,7 @@ view: ['@id']  // For users table: @id == @user_id
 
 // Public read, authenticated write
 view: ['TRUE'],
-create: []  // Empty = logged-in users only
+create: ['AUTHENTICATED']  // Any signed-in user. [] would deny everyone
 
 // Multiple paths (OR'd)
 view: ['@author_id', '@org_id->acts_for[org_id=$].user_id']
@@ -294,7 +307,12 @@ export const subscribables = {
     // ALL tables that can trigger updates
     scopeTables: ['venues', 'organisations', 'sites', 'allocations'],
 
-    // Who can subscribe
+    // Who can subscribe: rules are checked against the root row, and a
+    // reference to the key param (venue_id) means the root's id.
+    // [] denies everyone; use ['TRUE'] or ['AUTHENTICATED'] to open it.
+    // canSubscribe is the whole gate: the root's view rules are NOT also
+    // applied. To give the document the same audience as get_venues, copy
+    // venues.permissions.view in here.
     canSubscribe: ['@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id']
   }
 };
@@ -306,7 +324,7 @@ Returns an array of entities. Omit `root.key` to create a list:
 
 ```typescript
 export const subscribables = {
-  // Returns all venues the user can access
+  // Returns the venues the subscriber may view, to any signed-in user
   my_venues: {
     params: {},  // No params needed
 
@@ -321,9 +339,12 @@ export const subscribables = {
 
     scopeTables: ['venues', 'organisations'],
 
-    // Empty = authenticated users only
-    // Row-level filtering happens in the query based on user context
-    canSubscribe: []
+    // A list has no root row for a path to start from, so only TRUE, FALSE
+    // or AUTHENTICATED are allowed here; [] denies everyone.
+    // Each subscriber gets only the root rows that match root.filter AND
+    // that venues.permissions.view lets them see (view: [] shows no rows).
+    // Includes are not filtered by their own entities' view rules.
+    canSubscribe: ['AUTHENTICATED']
   }
 };
 ```
@@ -653,7 +674,9 @@ bunx dzql compile domain.ts            # Explicit compile command
 
 ### Validate Paths
 
-Validate all permission and notification paths without running the full compiler:
+Validate all permission, notification and canSubscribe paths against the domain
+(syntax, tables, columns) without running the full compiler. The compiler runs
+the same checks and refuses to build if any fail:
 
 ```bash
 bunx dzql validate-paths domain.ts

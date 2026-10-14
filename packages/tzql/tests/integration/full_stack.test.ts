@@ -48,13 +48,18 @@ function patchGeneratedClient() {
   }
 }
 
-// Compile and check if dist exists
+// Compile the example. A compile failure fails this suite rather than skipping it:
+// a skipped suite reads as green while the example doesn't build.
 const COMPILE_SUCCESS = compileVenuesExample();
 const DIST_EXISTS = COMPILE_SUCCESS && existsSync(resolve(DIST_ROOT, "runtime/manifest.json"));
 
 if (DIST_EXISTS) {
   patchGeneratedClient();
 }
+
+test("the venues example compiles", () => {
+  expect(DIST_EXISTS).toBe(true);
+});
 
 describe.skipIf(!DIST_EXISTS)("Full Stack V2 Integration (Runtime + Client + Pinia)", () => {
   let db: V2TestDatabase;

@@ -1,4 +1,4 @@
-import type { ColumnInfo } from "./types.js";
+import type { ColumnInfo, EntityIR } from "./types.js";
 
 /**
  * Generate a jsonb_build_object expression that excludes hidden fields.
@@ -15,6 +15,21 @@ export function buildVisibleJsonb(alias: string, columns: ColumnInfo[], hidden: 
   const visibleCols = columns.filter(c => !hidden.includes(c.name));
   const pairs = visibleCols.map(c => `'${c.name}', ${alias}.${c.name}`).join(', ');
   return `jsonb_build_object(${pairs})`;
+}
+
+/**
+ * Project a RELATED entity (FK/M2M expansion target) through its own visible
+ * columns, so a related object never leaks the target's hidden fields (e.g. a
+ * post's `author` must not expose users.password_hash). Falls back to
+ * to_jsonb(alias.*) only when the target entity is unknown to the generator.
+ * @param alias - Table alias the related row is selected under (e.g. 't', 'target')
+ * @param targetEntity - IR of the related entity, if available
+ */
+export function buildVisibleJsonbForEntity(alias: string, targetEntity?: EntityIR): string {
+  if (!targetEntity) {
+    return `to_jsonb(${alias}.*)`;
+  }
+  return buildVisibleJsonb(alias, targetEntity.columns, targetEntity.hidden || []);
 }
 
 /**

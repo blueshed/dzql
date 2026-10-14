@@ -9,7 +9,8 @@
  */
 
 import type { SubscribableIR, IncludeIR, EntityIR } from "../../shared/ir.js";
-import { parsePath } from "../compiler/paths.js";
+import { parsePath, PathCompileError } from "../compiler/paths.js";
+import { compileRuleList } from "../compiler/permissions.js";
 
 export function generateSubscribableSQL(name: string, sub: SubscribableIR, entities: Record<string, EntityIR> = {}): string {
   // Validate: if root.key is set, it must exist in params or start with '@'
@@ -43,13 +44,11 @@ function generateHeader(name: string, sub: SubscribableIR): string {
 }
 
 function generateCanSubscribeFunction(name: string, sub: SubscribableIR): string {
-  const subscribePaths = sub.canSubscribe || [];
+  const rules = sub.canSubscribe || [];
   const rootKey = sub.root.key;
   const isList = !rootKey; // No key means it's a list subscribable
 
-  // If no paths, it's public
-  if (subscribePaths.length === 0) {
-    return `CREATE OR REPLACE FUNCTION dzql_v2.${name}_can_subscribe(
+  const header = `CREATE OR REPLACE FUNCTION dzql_v2.${name}_can_subscribe(
   p_user_id INT,
   p_params JSONB
 ) RETURNS BOOLEAN
@@ -57,45 +56,40 @@ LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = dzql_v2, public
-AS $$
+AS $$`;
+
+  // No rules: nobody may subscribe. Use TRUE for public, AUTHENTICATED for any signed-in user.
+  if (rules.length === 0) {
+    return `${header}
 BEGIN
-  RETURN TRUE; -- Public access
+  RETURN FALSE; -- canSubscribe is empty: nobody may subscribe
 END;
 $$;`;
   }
 
-  // List subscribables with permission paths: check authentication only
-  // (Row-level filtering happens in the query, not the permission check)
+  // A list subscribable has no root row for a path to start from, so only
+  // literal rules (TRUE, FALSE, AUTHENTICATED) can be enforced. Anything else is
+  // a build error rather than a silent fallback.
   if (isList) {
-    return `CREATE OR REPLACE FUNCTION dzql_v2.${name}_can_subscribe(
-  p_user_id INT,
-  p_params JSONB
-) RETURNS BOOLEAN
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = dzql_v2, public
-AS $$
+    for (const rule of rules) {
+      if (!parsePath(rule).literal) {
+        throw new PathCompileError(
+          `${name}.canSubscribe: a list subscribable has no root row to follow a path from; use TRUE, FALSE or AUTHENTICATED`,
+          rule
+        );
+      }
+    }
+    return `${header}
 BEGIN
-  -- List subscribable: user must be authenticated
-  -- Row-level access is filtered in the get function
-  RETURN p_user_id IS NOT NULL;
+  RETURN (${compileRuleList(name, rules)});
 END;
 $$;`;
   }
 
-  // Single-entity subscribable: check permissions against specific root entity
-  // Generate permission checks using RECORD dot notation
-  // Pass the root key so we can map param references to root entity's id
-  const compiledChecks = subscribePaths.map(path =>
-    compileSubscribePermission(sub.root.entity, path, rootKey)
-  );
-
-  // If all checks compile to FALSE (unsupported paths), fall back to authenticated users
-  const allFalse = compiledChecks.every(c => c === 'FALSE');
-  const checks = allFalse
-    ? 'p_user_id IS NOT NULL -- Fallback: multi-level paths not yet supported'
-    : compiledChecks.join(' OR\n    ');
+  // Single-entity subscribable: rules are checked against the root row (v_root).
+  // A rule's reference to the key param means the root's id.
+  const fieldMap: Record<string, string> = rootKey.startsWith('@') ? {} : { [rootKey]: 'id' };
+  const checks = compileRuleList(name, rules, { kind: 'row', name: 'v_root', fieldMap });
 
   // Extract params
   const paramNames = Object.keys(sub.params);
@@ -109,15 +103,7 @@ $$;`;
     ? `p_${rootKey.slice(1)}`  // @user_id -> p_user_id
     : `v_${rootKey}`;          // venue_id -> v_venue_id
 
-  return `CREATE OR REPLACE FUNCTION dzql_v2.${name}_can_subscribe(
-  p_user_id INT,
-  p_params JSONB
-) RETURNS BOOLEAN
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = dzql_v2, public
-AS $$
+  return `${header}
 DECLARE
 ${paramDecls}
   v_root RECORD;
@@ -140,97 +126,6 @@ ${paramExtracts}
   );
 END;
 $$;`;
-}
-
-/**
- * Compile permission for subscribable can_subscribe function.
- * Uses RECORD dot notation since v_root is a RECORD, not JSONB.
- * Supports unlimited traversal depth using the shared path parser.
- *
- * @param entityName - The root entity name
- * @param rule - The permission rule (e.g., "@org_id->acts_for[org_id=$]{active}.user_id")
- * @param rootKey - The param key used to look up the root entity (e.g., "org_id")
- *                  When @field matches rootKey, it maps to v_root.id (the root entity's PK)
- */
-function compileSubscribePermission(entityName: string, rule: string, rootKey: string = ''): string {
-  // Helper to resolve field reference - if field matches rootKey param, use 'id' instead
-  const resolveField = (field: string): string => {
-    return field === rootKey ? 'id' : field;
-  };
-
-  // Parse the path using the shared parser
-  const parsed = parsePath(rule);
-
-  if (!parsed.isValid) {
-    console.warn(`[Compiler] Warning: Invalid permission path '${rule}': ${parsed.error}`);
-    return 'FALSE';
-  }
-
-  // TRUE/FALSE literals
-  if (parsed.hops.length === 0) {
-    return rule === 'TRUE' || rule === 'true' ? 'TRUE' : 'FALSE';
-  }
-
-  // Simple field reference: @org_id implies checking acts_for membership
-  if (parsed.hops.length === 1 && parsed.hops[0].type === 'field') {
-    const field = parsed.hops[0].field!;
-    const rootField = resolveField(field);
-    return `EXISTS (SELECT 1 FROM acts_for WHERE acts_for.${field} = v_root.${rootField} AND acts_for.user_id = p_user_id AND acts_for.active)`;
-  }
-
-  // Traversal path - build EXISTS with nested subqueries for unlimited hops
-  // Start with the field from v_root
-  const startField = parsed.startField!;
-  const rootField = resolveField(startField);
-
-  // Build value expression starting from v_root
-  let valueExpr = `v_root.${rootField}`;
-
-  // Process intermediate hops (all but first field and last final)
-  for (let i = 1; i < parsed.hops.length - 1; i++) {
-    const hop = parsed.hops[i];
-    if (hop.type === 'table' && hop.table && hop.outputField) {
-      valueExpr = `(SELECT ${hop.outputField} FROM ${hop.table} WHERE id = ${valueExpr})`;
-    }
-  }
-
-  // Final hop - build EXISTS check
-  const finalHop = parsed.hops[parsed.hops.length - 1];
-  if (finalHop.type !== 'final' || !finalHop.table) {
-    return 'FALSE';
-  }
-
-  const conditions: string[] = [];
-
-  // Join condition
-  if (finalHop.filter && finalHop.filter.value === '$') {
-    conditions.push(`${finalHop.table}.${finalHop.filter.field} = ${valueExpr}`);
-  } else {
-    conditions.push(`${finalHop.table}.id = ${valueExpr}`);
-  }
-
-  // User check
-  if (finalHop.outputField === 'user_id') {
-    conditions.push(`${finalHop.table}.user_id = p_user_id`);
-  } else if (finalHop.outputField) {
-    conditions.push(`${finalHop.table}.${finalHop.outputField} = p_user_id`);
-  }
-
-  // Additional conditions from {active} or {role=admin}
-  for (const cond of finalHop.conditions || []) {
-    if (cond.type === 'boolean') {
-      conditions.push(`${finalHop.table}.${cond.field} = true`);
-    } else if (cond.type === 'equality') {
-      if (cond.value === 'NULL') {
-        conditions.push(`${finalHop.table}.${cond.field} IS NULL`);
-      } else {
-        const value = cond.value!.match(/^\d+$/) ? cond.value : `'${cond.value}'`;
-        conditions.push(`${finalHop.table}.${cond.field} = ${value}`);
-      }
-    }
-  }
-
-  return `EXISTS (SELECT 1 FROM ${finalHop.table} WHERE ${conditions.join(' AND ')})`;
 }
 
 /** Column info from EntityIR */
@@ -307,6 +202,13 @@ function generateGetFunction(name: string, sub: SubscribableIR, entities: Record
       }
     }
   }
+  if (isList) {
+    // canSubscribe on a list can only be a literal, so it can't tell rows apart.
+    // Return just the rows the subscriber may view: the root's view rules,
+    // checked against each root row ([] shows nobody any row).
+    const viewRules = entities[sub.root.entity]?.permissions?.view;
+    whereConditions.push(`(${compileRuleList(sub.root.entity, viewRules, { kind: 'row', name: 'root' })})`);
+  }
   const whereClause = whereConditions.length > 0
     ? `WHERE ${whereConditions.join(' AND ')}`
     : '';
@@ -334,9 +236,10 @@ ${paramExtracts}
     RAISE EXCEPTION 'permission_denied';
   END IF;
 
-  -- Return stream of documents
+  -- Return stream of documents (root projected to visible columns; ::jsonb so
+  -- the || merge works even when the projection is row_to_json)
   RETURN QUERY
-  SELECT to_jsonb(root.*) || jsonb_build_object(${relationSelects ? relationSelects.slice(1) : ''})
+  SELECT (${rootSelectExpr})::jsonb || jsonb_build_object(${relationSelects ? relationSelects.slice(1) : ''})
   FROM ${sub.root.entity} root
   ${whereClause};
 END;

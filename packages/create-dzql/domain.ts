@@ -16,8 +16,8 @@ export const entities = {
     searchable: ['name', 'email'],
     hidden: ['password_hash'],
     permissions: {
-      view: [],
-      create: [],
+      view: ['AUTHENTICATED'],
+      create: [],                  // Users sign up through register, not save_users
       update: ['@id'],
       delete: []
     }
@@ -43,8 +43,8 @@ export const entities = {
       created_at: '@now'
     },
     permissions: {
-      view: [],
-      create: [],
+      view: ['TRUE'],
+      create: ['AUTHENTICATED'],
       update: ['@author_id'],
       delete: ['@author_id']
     }
@@ -70,8 +70,8 @@ export const entities = {
       created_at: '@now'
     },
     permissions: {
-      view: [],
-      create: [],
+      view: ['TRUE'],
+      create: ['AUTHENTICATED'],
       update: ['@author_id'],
       delete: ['@author_id', '@post_id->posts.author_id']
     }
@@ -80,6 +80,7 @@ export const entities = {
 };
 
 // Real-time subscriptions
+// canSubscribe: [] denies everyone; TRUE is public, AUTHENTICATED any signed-in user.
 export const subscribables = {
 
   // Post detail with comments
@@ -101,7 +102,7 @@ export const subscribables = {
       }
     },
     scopeTables: ['posts', 'users', 'comments'],
-    canSubscribe: []
+    canSubscribe: ['AUTHENTICATED']
   },
 
   // All posts feed
@@ -115,7 +116,7 @@ export const subscribables = {
       author: 'users'
     },
     scopeTables: ['posts', 'users'],
-    canSubscribe: []
+    canSubscribe: ['AUTHENTICATED']
   }
 
 };

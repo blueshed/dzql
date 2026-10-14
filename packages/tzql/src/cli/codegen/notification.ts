@@ -6,7 +6,7 @@
  */
 
 import type { EntityIR } from "../../shared/ir.js";
-import { parsePath, compilePathToSelect } from "../compiler/paths.js";
+import { parsePath, compilePathToSelect, PathCompileError } from "../compiler/paths.js";
 
 /**
  * Generate notification resolution function for an entity
@@ -44,9 +44,9 @@ $$;`;
     for (const path of paths) {
       const parsed = parsePath(path);
 
+      // A path that can't be compiled is a build error, never silently skipped.
       if (!parsed.isValid) {
-        console.warn(`[Notification] Invalid path in ${name}.${pathName}: ${parsed.error}`);
-        continue;
+        throw new PathCompileError(`${name}.notifications.${pathName}: ${parsed.error}`, path);
       }
 
       const userQuery = compilePathToSelect(parsed, 'p_data');

@@ -109,8 +109,8 @@ export const entities = {
       author_id: 'int REFERENCES users(id)'
     },
     permissions: {
-      view: [],                    // Anyone can view
-      create: [],                  // Logged-in users can create
+      view: ['TRUE'],              // Anyone can view
+      create: ['AUTHENTICATED'],   // Logged-in users can create ([] denies everyone)
       update: ['@author_id'],      // Only author can update
       delete: ['@author_id']       // Only author can delete
     }

@@ -256,7 +256,8 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
       const sql = compilePermission("sites", rule, null, "p_data");
 
       expect(sql).toContain("EXISTS");
-      expect(sql).toContain("(SELECT org_id FROM venues WHERE id = (p_data->>'venue_id')::int)");
+      expect(sql).toContain("FROM venues WHERE venues.id = (p_data->>'venue_id')::int");
+      expect(sql).toContain("acts_for.org_id = venues.org_id");
       expect(sql).toContain("acts_for.active = true");
       expect(sql).toContain("acts_for.user_id = p_user_id");
     });
@@ -266,8 +267,9 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
       const sql = compilePermission("allocations", rule, null, "p_data");
 
       expect(sql).toContain("EXISTS");
-      expect(sql).toContain("(SELECT venue_id FROM sites WHERE id = (p_data->>'site_id')::int)");
-      expect(sql).toContain("(SELECT org_id FROM venues WHERE id =");
+      expect(sql).toContain("FROM sites WHERE sites.id = (p_data->>'site_id')::int");
+      expect(sql).toContain("FROM venues WHERE venues.id = sites.venue_id");
+      expect(sql).toContain("acts_for.org_id = venues.org_id");
       expect(sql).toContain("acts_for.user_id = p_user_id");
     });
 
@@ -276,7 +278,8 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
       const sql = compilePermission("allocations", rule, null, "p_data");
 
       expect(sql).toContain("EXISTS");
-      expect(sql).toContain("SELECT contractor_org_id FROM contractor_rights");
+      expect(sql).toContain("FROM contractor_rights WHERE");
+      expect(sql).toContain("acts_for.org_id = contractor_rights.contractor_org_id");
       expect(sql).toContain("contractor_rights.package_id = (p_data->>'package_id')::int");
       expect(sql).toContain("contractor_rights.active = true");
     });
@@ -355,7 +358,7 @@ describe("Feature Tests: Search Filters, Deep Paths, M2M", () => {
         searchable: ['name'],
         includes: { org: { relation: 'org', entity: 'organisations' } },
         softDelete: false,
-        permissions: { view: [], create: [], update: [], delete: [] },
+        permissions: { view: ['TRUE'], create: [], update: [], delete: [] },
         fieldDefaults: {},
         hidden: [],
         name: 'test_nullable_fk',

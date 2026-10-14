@@ -18,8 +18,8 @@ export const entities: DomainConfig['entities'] = {
     searchable: ['name', 'email'],
     hidden: ['password_hash'],
     permissions: {
-      view: [],
-      create: [],
+      view: ['TRUE'],
+      create: ['AUTHENTICATED'],
       update: ['@id'],
       delete: ['@id']
     }
@@ -35,8 +35,8 @@ export const entities: DomainConfig['entities'] = {
     label: 'name',
     searchable: ['name', 'description'],
     permissions: {
-      view: [],
-      create: [],
+      view: ['TRUE'],
+      create: ['AUTHENTICATED'],
       update: ['@id->acts_for[org_id=$]{active}.user_id'],
       delete: ['@id->acts_for[org_id=$]{active}.user_id']
     },
@@ -90,7 +90,13 @@ export const entities: DomainConfig['entities'] = {
       validFrom: 'valid_from',
       validTo: 'valid_to'
     },
-    permissions: {}
+    permissions: {
+      // A user sees and manages their own memberships; org members see the org's.
+      view: ['@user_id', '@org_id->acts_for[org_id=$]{active}.user_id'],
+      create: ['@user_id'],
+      update: ['@user_id'],
+      delete: ['@user_id']
+    }
   },
 
   // === Venues ===
@@ -109,7 +115,7 @@ export const entities: DomainConfig['entities'] = {
       sites: 'sites'
     },
     permissions: {
-      view: [],
+      view: ['TRUE'],
       create: ['@org_id->acts_for[org_id=$]{active}.user_id'],
       update: ['@org_id->acts_for[org_id=$]{active}.user_id'],
       delete: ['@org_id->acts_for[org_id=$]{active}.user_id']
@@ -133,7 +139,7 @@ export const entities: DomainConfig['entities'] = {
       venue: 'venues'
     },
     permissions: {
-      view: [],
+      view: ['TRUE'],
       create: ['@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id'],
       update: ['@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id'],
       delete: ['@venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id']
@@ -166,7 +172,7 @@ export const entities: DomainConfig['entities'] = {
       created_at: '@now'
     },
     permissions: {
-      view: [],
+      view: ['TRUE'],
       create: ['@org_id->acts_for[org_id=$]{active}.user_id'],
       update: ['@org_id->acts_for[org_id=$]{active}.user_id'],
       delete: ['@org_id->acts_for[org_id=$]{active}.user_id']
@@ -236,7 +242,7 @@ export const entities: DomainConfig['entities'] = {
         '@site_id->sites.venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id',
         '@package_id->packages.owner_org_id->acts_for[org_id=$]{active}.user_id',
         '@package_id->packages.sponsor_org_id->acts_for[org_id=$]{active}.user_id',
-        'contractor_rights[package_id=@package_id]{active}.contractor_org_id->acts_for[org_id=$]{active}.user_id'
+        'contractor_rights[package_id=@package_id]{valid_to=NULL}.contractor_org_id->acts_for[org_id=$]{active}.user_id'
       ],
       create: ['@site_id->sites.venue_id->venues.org_id->acts_for[org_id=$]{active}.user_id'],
       update: [
@@ -252,7 +258,7 @@ export const entities: DomainConfig['entities'] = {
         '@package_id->packages.sponsor_org_id->acts_for[org_id=$]{active}.user_id'
       ],
       delegated: [
-        'contractor_rights[package_id=@package_id]{active}.contractor_org_id->acts_for[org_id=$]{active}.user_id'
+        'contractor_rights[package_id=@package_id]{valid_to=NULL}.contractor_org_id->acts_for[org_id=$]{active}.user_id'
       ]
     }
   },
@@ -279,7 +285,7 @@ export const entities: DomainConfig['entities'] = {
       validTo: 'valid_to'
     },
     permissions: {
-      view: [],
+      view: ['TRUE'],
       create: ['@sponsor_org_id->acts_for[org_id=$]{active}.user_id'],
       update: ['@sponsor_org_id->acts_for[org_id=$]{active}.user_id'],
       delete: ['@sponsor_org_id->acts_for[org_id=$]{active}.user_id']
@@ -323,7 +329,7 @@ export const entities: DomainConfig['entities'] = {
       }
     },
     permissions: {
-      view: [],
+      view: ['TRUE'],
       create: ['@org_id->acts_for[org_id=$]{active}.user_id'],
       update: ['@org_id->acts_for[org_id=$]{active}.user_id'],
       delete: ['@org_id->acts_for[org_id=$]{active}.user_id']
@@ -353,7 +359,7 @@ export const entities: DomainConfig['entities'] = {
       brand: 'brands'
     },
     permissions: {
-      view: [],
+      view: ['TRUE'],
       create: ['@brand_id->brands.org_id->acts_for[org_id=$]{active}.user_id'],
       update: ['@brand_id->brands.org_id->acts_for[org_id=$]{active}.user_id'],
       delete: ['@brand_id->brands.org_id->acts_for[org_id=$]{active}.user_id']
@@ -374,8 +380,8 @@ export const entities: DomainConfig['entities'] = {
     label: 'name',
     searchable: ['name', 'description'],
     permissions: {
-      view: [],
-      create: [],
+      view: ['TRUE'],
+      create: ['AUTHENTICATED'],
       update: [],
       delete: []
     }

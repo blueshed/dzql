@@ -1,19 +1,31 @@
-import { compilePermission } from "../../compiler/permissions.js";
+import { compileRuleList } from "../../compiler/permissions.js";
 import type { EntityIR, ManyToManyIR, ColumnInfo } from "./types.js";
-import { buildVisibleJsonb } from "./utils.js";
+import { buildVisibleJsonb, buildVisibleJsonbForEntity } from "./utils.js";
 
 // === SEARCH FUNCTION ===
-export function generateSearchFunction(name: string, entityIR: EntityIR): string {
+export function generateSearchFunction(name: string, entityIR: EntityIR, entities: Record<string, EntityIR> = {}): string {
   const pk = entityIR.primaryKey[0] || 'id';
   const softDelete = entityIR.softDelete || false;
   const hidden = entityIR.hidden || [];
   const temporal = entityIR.temporal;
 
-  // For dynamic SQL in EXECUTE, we need to use $1 instead of p_user_id
-  const viewPermRaw = entityIR.permissions?.view?.length > 0
-    ? entityIR.permissions.view.map((rule: string) => compilePermission(name, rule, null, name)).join(' OR ')
-    : 'TRUE';
-  const viewPerm = viewPermRaw.replace(/p_user_id/g, '$1');
+  // Allow-list of columns a client may filter or sort on: every real column
+  // except hidden ones. These names come from the domain at compile time, never
+  // from the request, so embedding them as SQL literals is safe. Fixes two leaks:
+  // (1) filtering/sorting on a hidden column (e.g. password_hash) as an oracle,
+  // (2) an unvalidated sort_order string being spliced into the ORDER BY.
+  const allowedCols = entityIR.columns
+    .map((c: ColumnInfo) => c.name)
+    .filter((n: string) => !hidden.includes(n));
+  const allowedColsSql = `ARRAY[${allowedCols.map(n => `'${n}'`).join(', ')}]::text[]`;
+
+  // The view rule is spliced into a format() string run by EXECUTE: p_user_id
+  // becomes the $1 bind, quotes are doubled for the string literal, and % is
+  // escaped for format(). An empty view list denies everyone.
+  const viewPerm = compileRuleList(name, entityIR.permissions?.view, name)
+    .replace(/\bp_user_id\b/g, '$1')
+    .replace(/'/g, "''")
+    .replace(/%/g, '%%');
 
   // Soft delete filter
   const softDeleteFilter = softDelete ? ' AND deleted_at IS NULL' : '';
@@ -37,9 +49,12 @@ export function generateSearchFunction(name: string, entityIR: EntityIR): string
       ) m2m_${config.idField} ON true`;
 
     if (config.expand) {
+      // Project the expanded target through its visible columns (single quotes
+      // doubled because this becomes part of a dynamic-SQL format string).
+      const targetSelect = buildVisibleJsonbForEntity('target', entities[config.targetEntity]).replace(/'/g, "''");
       sql += `
       LEFT JOIN LATERAL (
-        SELECT COALESCE(jsonb_agg(to_jsonb(target.*) ORDER BY target.id), ''[]''::jsonb) as ${key}
+        SELECT COALESCE(jsonb_agg(${targetSelect} ORDER BY target.id), ''[]''::jsonb) as ${key}
         FROM ${config.junctionTable} jt
         JOIN ${config.targetEntity} target ON target.id = jt.${config.foreignKey}
         WHERE jt.${config.localKey} = t.${pk}
@@ -80,17 +95,36 @@ DECLARE
   v_filter jsonb;
   v_operator text;
   v_value jsonb;
+  v_allowed_cols text[] := ${allowedColsSql};
 BEGIN
   -- Extract query parameters
   v_filters := COALESCE(p_query->'filters', '{}'::jsonb);
   v_sort_field := COALESCE(p_query->>'sort_field', '${labelField}');
-  v_sort_order := COALESCE(p_query->>'sort_order', 'asc');
+  v_sort_order := lower(COALESCE(p_query->>'sort_order', 'asc'));
+
+  -- Validate sort against the compile-time allow-list. sort_order reaches the
+  -- ORDER BY via %s, so it must be exactly asc/desc; sort_field must be a real,
+  -- non-hidden column. Fail closed rather than splice an untrusted string.
+  IF v_sort_order NOT IN ('asc', 'desc') THEN
+    RAISE EXCEPTION 'dzql: invalid sort_order %', v_sort_order
+      USING ERRCODE = '22023';
+  END IF;
+  IF NOT (v_sort_field = ANY(v_allowed_cols)) THEN
+    RAISE EXCEPTION 'dzql: invalid sort_field %', v_sort_field
+      USING ERRCODE = '22023';
+  END IF;
 
   -- Build WHERE clause from filters
   -- Note: We avoid ::TEXT casts to preserve index usage on numeric/date columns
   -- The %L format specifier handles proper escaping for all types
   FOR v_field, v_filter IN SELECT * FROM jsonb_each(v_filters)
   LOOP
+    -- Reject filters on columns that are not in the visible allow-list, so a
+    -- hidden column (e.g. password_hash) can never be probed via filter result.
+    IF NOT (v_field = ANY(v_allowed_cols)) THEN
+      RAISE EXCEPTION 'dzql: invalid filter field %', v_field
+        USING ERRCODE = '22023';
+    END IF;
     -- Handle simple value (exact match)
     IF jsonb_typeof(v_filter) = 'number' THEN
       -- Numeric: compare without casting

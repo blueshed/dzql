@@ -1,4 +1,4 @@
-import { compilePermission } from "../../compiler/permissions.js";
+import { compileRuleList } from "../../compiler/permissions.js";
 import { compileGraphRules } from "../../compiler/graph_rules.js";
 import type { EntityIR, ColumnInfo } from "./types.js";
 
@@ -33,9 +33,8 @@ export function generateDeleteFunction(name: string, entityIR: EntityIR): string
     : `jsonb_build_object(${pkFields.map(f => `'${f}', v_old_data->'${f}'`).join(', ')})`;
 
   // Permissions
-  const deletePerm = entityIR.permissions?.delete?.[0]
-    ? compilePermission(name, entityIR.permissions.delete[0], null, 'v_old_data')
-    : 'TRUE';
+  // Every rule in a list grants access (OR); an empty list denies everyone.
+  const deletePerm = compileRuleList(name, entityIR.permissions?.delete, 'v_old_data');
 
   const onDeleteRules = entityIR.graphRules?.onDelete
     ? compileGraphRules(name, 'delete', entityIR.graphRules.onDelete)
@@ -117,9 +116,8 @@ function generateTemporalDeleteFunction(name: string, entityIR: EntityIR): strin
 
   const pkJsonbExpr = `jsonb_build_object('${pk}', v_old_data->'${pk}')`;
 
-  const deletePerm = entityIR.permissions?.delete?.[0]
-    ? compilePermission(name, entityIR.permissions.delete[0], null, 'v_old_data')
-    : 'TRUE';
+  // Every rule in a list grants access (OR); an empty list denies everyone.
+  const deletePerm = compileRuleList(name, entityIR.permissions?.delete, 'v_old_data');
 
   const onDeleteRules = entityIR.graphRules?.onDelete
     ? compileGraphRules(name, 'delete', entityIR.graphRules.onDelete)
