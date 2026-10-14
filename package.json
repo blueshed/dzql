@@ -10,17 +10,6 @@
   "bun-create": {
     "postinstall": "create/setup.ts"
   },
-  "files": [
-    "src",
-    "!src/**/*.test.*",
-    "!src/**/*.test.entry.*",
-    "!src/server.test.fixture.html",
-    ".claude/skills",
-    "README.md",
-    "CHANGELOG.md",
-    "docs/stories.md",
-    "docs/first-app.md"
-  ],
   "scripts": {
     "dev": "bun --watch src/start.ts",
     "dev:wedding": "ETA_EXAMPLE=wedding PORT=3001 bun --watch src/start.ts",

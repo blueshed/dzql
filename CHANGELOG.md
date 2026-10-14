@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking (for projects)
+
+- **A project's root is its app; eta is one folder, `eta/`, never edited.** `bun create blueshed/eta my-app` makes `src/` (the app, begun as the starter), `migrations/`, and `eta/`: the kernel (`eta/src/`), the model's page (`eta/model/`), the docs a project keeps, eta's changelog and `eta/VERSION`. `eta/` is a Bun workspace named `eta`: the app imports `eta/stories`, `eta/client/app`, `@import "eta/bento.css"`, never a path into `eta/`. `bun run eta:update [version | path]` brings a later eta (the latest by default): `eta/` replaced whole, the root's eta scripts and the kernel's dependencies set, `bun install`, the skills refreshed, eta's changelog since `eta/VERSION` printed with what to change first, the gate run, nothing committed. What to change: a project of `app/`, `model/` and `src/` runs `bun ../eta/create/update.ts ../eta` once from its root, with a checkout of eta beside it. It moves `app/` to `src/` (its `../src/...` imports become `eta/...`), puts eta's `src/`, `model/` and docs in `eta/`, makes `migrations/`, and rewrites `tsconfig.json`, `bunfig.toml`, `package.json`'s scripts and `CLAUDE.md` (`git diff CLAUDE.md` for lines of your own).
+- **A project's model page keeps its own database, `model.sqlite`** (`MODEL_DB` names another), never the app's. What to change: nothing, unless a model was kept in the app's database; move it with `bun run model:load`.
+
+### Changed
+
+- eta is not packed for npm: `package.json` has no `files`; a project takes eta by `bun create` and `bun run eta:update`.
+
+### Fixed
+
+- `bun create` no longer says a project started "with what its changelog had under Unreleased" when that section was empty.
+
 ## [0.53.0] - 2026-10-14
 
 ### Added
@@ -17,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- eta is not packed for npm: `package.json` has no `files`; a project takes eta by `bun create` and `bun run eta:update`.
 - **The eta-app skill is a compass**: `SKILL.md` (under 600 words) says the model, the order, what must not break and which file to read for which step; `reference/` is seventeen short files, each leading with a real example and pointing at the types. What to change: in a project, replace `.claude/skills/eta-app` whole (`reference.md` is gone).
 - **`bun test --parallel` runs the suite in about 50 s**, from about 190 s run file by file: the kernel's harness tests cast only the members their stories need (leave's stories whole are `stories:all`'s), a test's Chrome reaches nothing beyond this machine (no web fonts), and `bun run test` and the gate run in parallel. The client's coverage is judged on a whole run only; a run of some files says it was not judged.
 - The wedding's Ben wears green in the seed.

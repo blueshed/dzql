@@ -35,7 +35,7 @@ export const SCRIPTS: Record<string, string> = {
   stories: "ETA_EXAMPLE=./src bun --env-file=.env.test eta/src/stories-run.ts",
   "stories:hand": "STORY_BY_HAND=1 ETA_EXAMPLE=./src bun --env-file=.env.test eta/src/stories-run.ts",
   cli: "ETA_EXAMPLE=./src bun eta/src/cli.ts",
-  model: "ETA_EXAMPLE=./eta/model PORT=${MODEL_PORT:-3001} bun --watch eta/src/start.ts",
+  model: "ETA_EXAMPLE=./eta/model DB_PATH=${MODEL_DB:-model.sqlite} PORT=${MODEL_PORT:-3001} bun --watch eta/src/start.ts",
   "cli:model": "ETA_EXAMPLE=./eta/model ETA_URL=ws://localhost:${MODEL_PORT:-3001} bun eta/src/cli.ts",
   "model:check": "ETA_URL=ws://localhost:${MODEL_PORT:-3001} LOG_LEVEL=warn bun --env-file=.env.test eta/model/loader/check.ts ./src",
   "model:load": "ETA_URL=ws://localhost:${MODEL_PORT:-3001} LOG_LEVEL=warn bun --env-file=.env.test eta/model/loader/load.ts ./src",

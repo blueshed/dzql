@@ -9,6 +9,3 @@ server.log
 .DS_Store
 .claude/worktrees/
 
-
-# a packed eta, for an app of its own to install (bun pm pack)
-*.tgz
