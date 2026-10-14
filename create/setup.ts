@@ -27,8 +27,8 @@ const SKILLS = [
 /** What only developing eta needs. */
 const ETA_ONLY = ["examples", "create", "todo.jsonl", "CHANGELOG.md", ".claude/commands/publish.md", ".env.example"];
 
-/** Of eta's docs, what a project keeps: what stories are for, and the bento, a guide to pages. The rest is eta's own record. */
-const DOCS_KEPT = ["stories.md", "bento"];
+/** Of eta's docs, what a project keeps: what stories are for, the bento, a guide to pages, and the eta-app skill's notes. The rest is eta's own record. */
+const DOCS_KEPT = ["stories.md", "bento", "eta-app-notes.md"];
 
 /** eta's own clone is the one place this must never run: it deletes things. */
 function isTemplateClone(root: string): boolean {
