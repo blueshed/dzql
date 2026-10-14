@@ -1,7 +1,7 @@
 import { compilePermission } from "../../compiler/permissions.js";
 import { compileGraphRules } from "../../compiler/graph_rules.js";
 import type { EntityIR, ManyToManyIR, IncludeIR, ColumnInfo } from "./types.js";
-import { getCastForType } from "./utils.js";
+import { getCastForType, buildVisibleJsonbForEntity } from "./utils.js";
 
 /**
  * Generate M2M variable declarations
@@ -52,7 +52,7 @@ function generateM2MSync(m2m: Record<string, ManyToManyIR>, pk: string): string 
 /**
  * Generate M2M expansion code (add to output)
  */
-function generateM2MExpansion(m2m: Record<string, ManyToManyIR>, pk: string): string {
+function generateM2MExpansion(m2m: Record<string, ManyToManyIR>, pk: string, entities: Record<string, EntityIR> = {}): string {
   return Object.entries(m2m).map(([key, config]) => {
     let sql = `
   -- M2M: Add ${config.idField} to output
@@ -62,9 +62,9 @@ function generateM2MExpansion(m2m: Record<string, ManyToManyIR>, pk: string): st
 
     if (config.expand) {
       sql += `
-  -- M2M: Add expanded ${key} to output
+  -- M2M: Add expanded ${key} to output (projected to the target's visible columns)
   v_result := v_result || jsonb_build_object('${key}',
-    (SELECT COALESCE(jsonb_agg(to_jsonb(t.*) ORDER BY t.id), '[]'::jsonb)
+    (SELECT COALESCE(jsonb_agg(${buildVisibleJsonbForEntity('t', entities[config.targetEntity])} ORDER BY t.id), '[]'::jsonb)
      FROM ${config.junctionTable} jt
      JOIN ${config.targetEntity} t ON t.id = jt.${config.foreignKey}
      WHERE jt.${config.localKey} = (v_result->>'${pk}')::int));`;
@@ -76,7 +76,7 @@ function generateM2MExpansion(m2m: Record<string, ManyToManyIR>, pk: string): st
 /**
  * Generate FK expansion code (add related objects to output)
  */
-function generateFKExpansion(includes: Record<string, IncludeIR>, columns: ColumnInfo[]): string {
+function generateFKExpansion(includes: Record<string, IncludeIR>, columns: ColumnInfo[], entities: Record<string, EntityIR> = {}): string {
   return Object.entries(includes).map(([key, config]) => {
     const targetEntity = config.entity;
     const fkField = `${key}_id`;
@@ -84,10 +84,10 @@ function generateFKExpansion(includes: Record<string, IncludeIR>, columns: Colum
 
     if (hasFkColumn) {
       return `
-  -- FK: Add ${key} to output (from ${fkField})
+  -- FK: Add ${key} to output (from ${fkField}, projected to the target's visible columns)
   IF (v_result->>'${fkField}') IS NOT NULL THEN
     v_result := v_result || jsonb_build_object('${key}',
-      (SELECT to_jsonb(t.*) FROM ${targetEntity} t WHERE t.id = (v_result->>'${fkField}')::int));
+      (SELECT ${buildVisibleJsonbForEntity('t', entities[targetEntity])} FROM ${targetEntity} t WHERE t.id = (v_result->>'${fkField}')::int));
   END IF;`;
     }
     return '';
@@ -95,7 +95,7 @@ function generateFKExpansion(includes: Record<string, IncludeIR>, columns: Colum
 }
 
 // === SAVE FUNCTION (Upsert) ===
-export function generateSaveFunction(name: string, entityIR: EntityIR): string {
+export function generateSaveFunction(name: string, entityIR: EntityIR, entities: Record<string, EntityIR> = {}): string {
   const pkFields = entityIR.primaryKey.length > 0 ? entityIR.primaryKey : ['id'];
   const pk = pkFields[0];
   const fieldDefaults = entityIR.fieldDefaults || {};
@@ -105,7 +105,7 @@ export function generateSaveFunction(name: string, entityIR: EntityIR): string {
   // For temporal entities WITH refField, generate versioned save function
   // Temporal entities without refField just use standard save with validity filtering
   if (temporal?.refField) {
-    return generateTemporalSaveFunction(name, entityIR);
+    return generateTemporalSaveFunction(name, entityIR, entities);
   }
 
   // Build INSERT columns/values - exclude serial columns
@@ -194,11 +194,11 @@ export function generateSaveFunction(name: string, entityIR: EntityIR): string {
   const m2mVarDeclarations = generateM2MDeclarations(m2m);
   const m2mExtraction = generateM2MExtraction(m2m);
   const m2mSync = generateM2MSync(m2m, pk);
-  const m2mExpansion = generateM2MExpansion(m2m, pk);
+  const m2mExpansion = generateM2MExpansion(m2m, pk, entities);
 
   // FK expansion
   const includes: Record<string, IncludeIR> = entityIR.includes || {};
-  const fkExpansion = generateFKExpansion(includes, entityIR.columns);
+  const fkExpansion = generateFKExpansion(includes, entityIR.columns, entities);
 
   return `
 CREATE OR REPLACE FUNCTION dzql_v2.save_${name}(p_user_id int, p_data jsonb)
@@ -282,7 +282,7 @@ $$;
 }
 
 // === TEMPORAL SAVE FUNCTION (Versioned Insert) ===
-function generateTemporalSaveFunction(name: string, entityIR: EntityIR): string {
+function generateTemporalSaveFunction(name: string, entityIR: EntityIR, entities: Record<string, EntityIR> = {}): string {
   const pkFields = entityIR.primaryKey.length > 0 ? entityIR.primaryKey : ['id'];
   const pk = pkFields[0];
   const fieldDefaults = entityIR.fieldDefaults || {};
@@ -369,11 +369,11 @@ function generateTemporalSaveFunction(name: string, entityIR: EntityIR): string 
   const m2mVarDeclarations = generateM2MDeclarations(m2m);
   const m2mExtraction = generateM2MExtraction(m2m);
   const m2mSync = generateM2MSync(m2m, pk);
-  const m2mExpansion = generateM2MExpansion(m2m, pk);
+  const m2mExpansion = generateM2MExpansion(m2m, pk, entities);
 
   // FK expansion
   const includes: Record<string, IncludeIR> = entityIR.includes || {};
-  const fkExpansion = generateFKExpansion(includes, entityIR.columns);
+  const fkExpansion = generateFKExpansion(includes, entityIR.columns, entities);
 
   // Non-temporal columns for INSERT
   const nonTemporalCols = entityIR.columns

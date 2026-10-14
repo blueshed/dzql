@@ -56,7 +56,25 @@ $$;
  * Generate auth SQL functions.
  * These depend on the 'users' table existing, so must be applied after schema.
  */
-export function generateAuthSQL() {
+export function generateAuthSQL(registerableColumns: string[] = []) {
+  // Build a fail-closed guard for register_user's p_options. Only columns the
+  // domain explicitly marks registerable may be set at sign-up; otherwise a
+  // client could self-provision privileged columns (role, is_admin, org_id, ...)
+  // that happen to exist on the users table. Core fields are always rejected.
+  const optionsGuard = registerableColumns.length > 0
+    ? `  IF p_options IS NOT NULL AND p_options <> '{}'::jsonb THEN
+    IF EXISTS (
+      SELECT 1 FROM jsonb_object_keys(p_options) AS k
+      WHERE k NOT IN (${registerableColumns.map(c => `'${c}'`).join(', ')})
+    ) THEN
+      RAISE EXCEPTION 'validation_error: field not allowed at registration' USING ERRCODE = '22023';
+    END IF;
+    v_insert_data := (p_options - 'id' - 'email' - 'password_hash' - 'password') || v_insert_data;
+  END IF;`
+    : `  IF p_options IS NOT NULL AND p_options <> '{}'::jsonb THEN
+    RAISE EXCEPTION 'validation_error: registration does not accept additional fields' USING ERRCODE = '22023';
+  END IF;`;
+
   return `
 -- === AUTH SYSTEM ===
 -- These functions depend on a 'users' table being created by the domain schema.
@@ -102,11 +120,9 @@ BEGIN
   v_salt := gen_salt('bf', 10);
   v_hash := crypt(p_password, v_salt);
 
-  -- Build insert data: options fields + email + password_hash (options cannot override core fields)
+  -- Build insert data: email + password_hash, plus any allow-listed option fields.
   v_insert_data := jsonb_build_object('email', p_email, 'password_hash', v_hash);
-  IF p_options IS NOT NULL THEN
-    v_insert_data := (p_options - 'id' - 'email' - 'password_hash' - 'password') || v_insert_data;
-  END IF;
+${optionsGuard}
 
   -- Dynamic INSERT from JSONB (same pattern as compiled save functions)
   EXECUTE (

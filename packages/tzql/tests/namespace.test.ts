@@ -51,7 +51,7 @@ describe("DzqlNamespace", () => {
     await db.applySQL(postsSchema);
     await db.applySQL(commentsSchema);
     // Auth functions must come after users table is created
-    const authSQL = generateAuthSQL();
+    const authSQL = generateAuthSQL(['name']);
     await db.applySQL(authSQL);
     await db.applySQL(usersSQL);
     await db.applySQL(postsSQL);

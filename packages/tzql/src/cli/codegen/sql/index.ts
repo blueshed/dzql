@@ -30,16 +30,19 @@ import { generateSearchFunction } from "./search.js";
 import { generateLookupFunction } from "./lookup.js";
 
 // === AGGREGATE GENERATOR ===
-export function generateEntitySQL(name: string, entityIR: EntityIR): string {
+export function generateEntitySQL(name: string, entityIR: EntityIR, entities: Record<string, EntityIR> = {}): string {
   // Import here to avoid circular dependency
   const { generateNotificationFunction } = require('../notification.js');
 
+  // entities lets FK/M2M expansion project related rows through the TARGET
+  // entity's visible columns instead of to_jsonb(t.*), so a related object
+  // never leaks the target's hidden fields (e.g. author.password_hash).
   const functions = [
     generateNotificationFunction(name, entityIR),
-    generateSaveFunction(name, entityIR),
+    generateSaveFunction(name, entityIR, entities),
     generateDeleteFunction(name, entityIR),
-    generateGetFunction(name, entityIR),
-    generateSearchFunction(name, entityIR),
+    generateGetFunction(name, entityIR, entities),
+    generateSearchFunction(name, entityIR, entities),
     generateLookupFunction(name, entityIR)
   ];
 

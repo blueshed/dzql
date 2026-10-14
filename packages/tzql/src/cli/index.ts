@@ -89,7 +89,7 @@ async function main() {
         entitySQL.push(generateSchemaSQL(name, entityIR, circularFKSet));
         // Skip CRUD generation for unmanaged entities (e.g., junction tables)
         if (entityIR.managed !== false) {
-          entitySQL.push(generateEntitySQL(name, entityIR));
+          entitySQL.push(generateEntitySQL(name, entityIR, ir.entities));
         } else {
           console.log(`[Compiler] Skipping CRUD for unmanaged entity: ${name}`);
         }
@@ -131,7 +131,18 @@ async function main() {
 
       // Combine entity SQL with auth functions and custom functions
       // Auth functions must come after schema (they depend on users table)
-      const authSQL = generateAuthSQL();
+      // Columns a client may set at registration: those declared in
+      // auth.registerParams (beyond the built-in email/password/options), else
+      // just the users label field. Everything else is rejected at sign-up.
+      const usersEntity = ir.entities.users;
+      const declaredRegisterable = Object.keys(ir.auth?.registerParams || {})
+        .filter((k) => !["email", "password", "options"].includes(k));
+      const registerableColumns = declaredRegisterable.length > 0
+        ? declaredRegisterable
+        : (usersEntity && usersEntity.labelField && usersEntity.labelField !== "id"
+            ? [usersEntity.labelField]
+            : []);
+      const authSQL = generateAuthSQL(registerableColumns);
       let schemaContent = entitySQL.join('\n');
       schemaContent += '\n\n-- Auth Functions\n' + authSQL;
       if (customFunctionSQL.length > 0) {

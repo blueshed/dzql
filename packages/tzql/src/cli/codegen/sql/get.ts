@@ -1,9 +1,9 @@
 import { compilePermission } from "../../compiler/permissions.js";
 import type { EntityIR, ManyToManyIR, IncludeIR, ColumnInfo } from "./types.js";
-import { buildVisibleJsonb } from "./utils.js";
+import { buildVisibleJsonb, buildVisibleJsonbForEntity } from "./utils.js";
 
 // === GET FUNCTION ===
-export function generateGetFunction(name: string, entityIR: EntityIR): string {
+export function generateGetFunction(name: string, entityIR: EntityIR, entities: Record<string, EntityIR> = {}): string {
   const pkFields = entityIR.primaryKey.length > 0 ? entityIR.primaryKey : ['id'];
   const pk = pkFields[0];
   const hidden = entityIR.hidden || [];
@@ -83,7 +83,7 @@ export function generateGetFunction(name: string, entityIR: EntityIR): string {
   -- FK: Add ${key} to result (from ${fkField})
   IF (v_result->>'${fkField}') IS NOT NULL THEN
     v_result := v_result || jsonb_build_object('${key}',
-      (SELECT to_jsonb(t.*) FROM ${targetEntity} t WHERE t.id = (v_result->>'${fkField}')::int));
+      (SELECT ${buildVisibleJsonbForEntity('t', entities[targetEntity])} FROM ${targetEntity} t WHERE t.id = (v_result->>'${fkField}')::int));
   END IF;`;
     }
     return '';
@@ -102,7 +102,7 @@ export function generateGetFunction(name: string, entityIR: EntityIR): string {
       sql += `
   -- M2M: Add expanded ${key} to result
   v_result := v_result || jsonb_build_object('${key}',
-    (SELECT COALESCE(jsonb_agg(to_jsonb(t.*) ORDER BY t.id), '[]'::jsonb)
+    (SELECT COALESCE(jsonb_agg(${buildVisibleJsonbForEntity('t', entities[config.targetEntity])} ORDER BY t.id), '[]'::jsonb)
      FROM ${config.junctionTable} jt
      JOIN ${config.targetEntity} t ON t.id = jt.${config.foreignKey}
      WHERE jt.${config.localKey} = (v_result->>'${pk}')::int));`;
