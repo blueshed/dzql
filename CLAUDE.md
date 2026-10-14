@@ -5,7 +5,7 @@ the contract.
 
 ## Which to load
 
-- Stories still being told, before an app exists: the **modelling** skill (`.claude/skills/modelling/`).
+- Someone telling you the stories, there to answer: the **modelling** skill (`.claude/skills/modelling/`).
 - Building or extending an app or an example, or touching the `Compartment` contract, an app's
   `delta.ts`, the applet registry or the wire: the **eta-app** skill (`.claude/skills/eta-app/`).
 - Documents, their schema and ledger: delta's **delta-doc** skill

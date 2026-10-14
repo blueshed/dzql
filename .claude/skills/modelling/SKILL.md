@@ -1,6 +1,6 @@
 ---
 name: modelling
-description: Use while someone tells the stories of an app to be built on eta -- to write each story down on the model's page as it is told, describe the documents it needs (root, what each holds, who holds it), and read the gaps back, before any of the app is built. Then the eta-app skill builds from the model. reference.md has the verbs, the gaps and the move to an app, with a contents table.
+description: Use only while someone is telling you the stories of an app to be built on eta, there to answer -- to write each story down on the model's page as it is told, describe the documents it needs (root, what each holds, who holds it), and read the gaps back, before any of the app is built. Then the eta-app skill builds from the model. reference.md has the verbs, the gaps and the move to an app, with a contents table.
 metadata:
   version: 0.53.0
 ---
@@ -11,6 +11,10 @@ One person tells the stories; you write them down on the model's page and descri
 they need, while they watch each change land. The model is a delta document, so every change
 undoes. The entities are worked out from the documents, never written: if they look wrong, a
 document is. `reference.md` has each part, with a contents table.
+
+Asked to build or change the app instead, this is not the skill: load **eta-app** and build it.
+With nobody there to answer, never stop to wait: note the question, take the most natural reading,
+and go on.
 
 ## The order
 

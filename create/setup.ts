@@ -117,12 +117,12 @@ export async function setup(root: string): Promise<void> {
         engines: eta.engines,
         scripts: {
           dev: "ETA_EXAMPLE=./app bun --watch src/start.ts",
-          model: "ETA_EXAMPLE=./model PORT=3001 bun --watch src/start.ts",
+          model: "ETA_EXAMPLE=./model PORT=${MODEL_PORT:-3001} bun --watch src/start.ts",
           start: "NODE_ENV=production ETA_EXAMPLE=./app bun src/start.ts",
           cli: "ETA_EXAMPLE=./app bun src/cli.ts",
-          "cli:model": "ETA_EXAMPLE=./model ETA_URL=ws://localhost:3001 bun src/cli.ts",
-          "model:check": "ETA_URL=ws://localhost:3001 LOG_LEVEL=warn bun --env-file=.env.test model/loader/check.ts",
-          "model:load": "ETA_URL=ws://localhost:3001 LOG_LEVEL=warn bun --env-file=.env.test model/loader/load.ts",
+          "cli:model": "ETA_EXAMPLE=./model ETA_URL=ws://localhost:${MODEL_PORT:-3001} bun src/cli.ts",
+          "model:check": "ETA_URL=ws://localhost:${MODEL_PORT:-3001} LOG_LEVEL=warn bun --env-file=.env.test model/loader/check.ts",
+          "model:load": "ETA_URL=ws://localhost:${MODEL_PORT:-3001} LOG_LEVEL=warn bun --env-file=.env.test model/loader/load.ts",
           check: "bun check",
           test: "bun test",
           stories: "ETA_EXAMPLE=./app bun --env-file=.env.test src/stories-run.ts",
@@ -221,7 +221,8 @@ ${Name}: an app on eta, told before it is built.
 
 - \`model/\`: the model's page (\`bun run model\`, port 3001). You tell the stories; Claude writes
   them down and describes the documents they need with \`bun run cli:model\`, and the page shows
-  each change as it lands. Load the **modelling** skill before writing to it.
+  each change as it lands. Only while someone is telling you the stories: then load the
+  **modelling** skill and write them there as they are told.
 - \`app/\`: the app (\`bun dev\`, port 3000), built from the model. Load the **eta-app** skill before
   any change to it: it says which short file to read for each step.
 - \`src/\`: eta's kernel. The app imports it and never edits it. To update it, replace \`src/\` and
@@ -231,8 +232,10 @@ ${Name}: an app on eta, told before it is built.
 ## Working here
 
 - Bun only: never \`node\`, \`npm\`, \`yarn\` or \`python\`; a script or an edit is \`bun -e\` or a file.
-- Stories first: a story in \`app/stories.ts\`, modelled on the model's page, then the least that
-  makes it pass. Build nothing no story needs.
+- Asked to build or change something: build it. Its stories go in \`app/stories.ts\` first, then the
+  least that makes them pass; build nothing no story needs.
+- Never stop to wait for an answer. A question goes in \`todo.jsonl\` with the reading you took, and
+  the work goes on.
 - The gate before a commit: \`bun check\`, \`bun test\` (100% coverage of \`app/\`), \`bun run stories\`.
 - \`todo.jsonl\` is what is open; \`CHANGELOG.md\` is where the app has been. They move together.
 - No new dependencies without asking.

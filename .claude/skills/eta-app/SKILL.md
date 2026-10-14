@@ -14,8 +14,8 @@ person's page from the documents they hold, and sends only what changed.
 Stories, then documents, then pages: a story says who does what and who then sees it; documents are
 cut so that whoever must see a change holds it; the page is drawn from what it reads. This file is
 the order to work in; `reference/` says how each piece works, one short file a piece. The types in
-`src/` are the contract: read them, not prose about them. If the stories are still being told, the
-**modelling** skill comes first.
+`src/` are the contract: read them, not prose about them. Only while someone is telling you the stories,
+there to answer, does the **modelling** skill come first; asked to build or change, build.
 
 ## The order
 
@@ -40,6 +40,8 @@ Each step is the least that makes the next story pass. Run `bun run stories` aft
 
 ## The rules that matter most
 
+- Asked to build or change something, build it. Never stop to wait for an answer: put the question
+  in `todo.jsonl` with the reading you took, and go on.
 - Build nothing no story needs, and never write a story to justify what is built.
 - A refusal is a story too (`cannot`), and says why in the story's words.
 - HTML is the only vocabulary: the server is the only renderer, the client morphs and keeps no
