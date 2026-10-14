@@ -29,6 +29,7 @@ export function generateSubscribableSQL(name: string, sub: SubscribableIR, entit
   sections.push(generateHeader(name, sub));
   sections.push(generateCanSubscribeFunction(name, sub));
   sections.push(generateGetFunction(name, sub, entities));
+  sections.push(generateCanReceiveFunction(name, sub, entities));
   sections.push(generateAffectedKeysFunction(name, sub));
 
   return sections.join('\n\n');
@@ -124,6 +125,94 @@ ${paramExtracts}
   RETURN (
     ${checks}
   );
+END;
+$$;`;
+}
+
+/**
+ * <name>_can_receive(p_user_id, p_params, p_table, p_op, p_data): may this
+ * subscriber be pushed this change? The runtime calls it before every push.
+ * Returns 'row' (send the change), 'pk' (send only its key: a delete), or
+ * NULL (send nothing).
+ *
+ * - Nobody who fails can_subscribe receives anything.
+ * - A single-document subscription: canSubscribe is the whole gate.
+ * - A list: canSubscribe can only be a literal, so rows are filtered here, the
+ *   same way the list query filters them. A root row needs the root's view
+ *   rules; an included row must appear in one of the subscriber's documents.
+ *   An included row that was deleted is in no document any more, so its
+ *   delete goes to every subscriber as its key alone, which is all a client
+ *   uses to remove it.
+ */
+function generateCanReceiveFunction(name: string, sub: SubscribableIR, entities: Record<string, EntityIR>): string {
+  const isList = !sub.root.key;
+  const header = `CREATE OR REPLACE FUNCTION dzql_v2.${name}_can_receive(
+  p_user_id INT,
+  p_params JSONB,
+  p_table TEXT,
+  p_op TEXT,
+  p_data JSONB
+) RETURNS TEXT
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = dzql_v2, public
+AS $$
+BEGIN
+  IF NOT dzql_v2.${name}_can_subscribe(p_user_id, p_params) THEN
+    RETURN NULL;
+  END IF;
+`;
+  const kind = `CASE WHEN p_op = 'delete' THEN 'pk' ELSE 'row' END`;
+
+  if (!isList) {
+    return `${header}
+  RETURN ${kind};
+END;
+$$;`;
+  }
+
+  const root = sub.root.entity;
+  const viewRules = compileRuleList(root, entities[root]?.permissions?.view, { kind: 'jsonb', name: 'p_data' });
+
+  // Where each included table sits in a list document: root columns || { rel: ... }
+  const pathsByTable: Record<string, string[]> = {};
+  const collect = (incl: Record<string, IncludeIR>, prefix: string) => {
+    for (const [rel, cfg] of Object.entries(incl || {})) {
+      const path = `${prefix}."${rel}"`;
+      (pathsByTable[cfg.entity] ??= []).push(path);
+      if (cfg.includes) collect(cfg.includes, path);
+    }
+  };
+  collect(sub.includes, '$');
+  delete pathsByTable[root];
+
+  const includeCases = Object.entries(pathsByTable).map(([table, paths]) => {
+    const shown = paths
+      .map(path => `jsonb_path_exists(d, '${path} ? (@.id == $id)', jsonb_build_object('id', p_data->'id'))`)
+      .join(' OR ');
+    return `  IF p_table = '${table}' THEN
+    IF p_op = 'delete' THEN
+      RETURN 'pk';
+    END IF;
+    IF EXISTS (SELECT 1 FROM dzql_v2.get_${name}(p_params, p_user_id) d WHERE ${shown}) THEN
+      RETURN 'row';
+    END IF;
+    RETURN NULL;
+  END IF;
+`;
+  }).join('\n');
+
+  return `${header}
+  IF p_table = '${root}' THEN
+    IF ${viewRules} THEN
+      RETURN ${kind};
+    END IF;
+    RETURN NULL;
+  END IF;
+
+${includeCases}
+  RETURN NULL;
 END;
 $$;`;
 }
