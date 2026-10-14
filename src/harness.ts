@@ -3,14 +3,14 @@ import type { Example } from "./example";
 import { assemble } from "./compartments";
 import { createServer } from "./server";
 import { isPost, STORY_KEYS, writeOf, type Gesture, type Post, type Stories, type Story, type Write } from "./stories";
-import { isVerb, applyPatch, type PatchOp, type Test, type WriteId } from "./json-patch";
+import { isTest, isVerb, applyPatch, type PatchOp, type Test, type WriteId } from "./json-patch";
 import { activeDocuments, Pending, setActiveDocuments, settled, type Documents } from "./documents";
 import { onFailure } from "./failed";
 import { comparable, decoded, ownProps, splitTag } from "./parts";
 import { toldNothing, toldTo, type Line } from "./refusal";
 import { esc } from "./html";
 import { Hand, sameDoc, sameWrite, worded } from "./by-hand";
-import { allOpenSockets } from "./compartments/audience";
+import { allOpenSockets, resolveName, sees } from "./compartments/audience";
 import { shownTo } from "./reading";
 import type { Compartment, Kind } from "./compartments/compartment";
 import { prefixDoc, splitDoc } from "./names";
@@ -45,7 +45,7 @@ export type Trace = {
   /** What the ledger took: the ops as written, and their inverse -- which holds what was there before. */
   ledger: { doc: string; undoable: number; ops: PatchOp[]; inverse: PatchOp[] }[];
 };
-/** What the stories found that does not fail them: what props cost (`propsCost`), each kind for each applet once, in the first story that sent it; and a permit wider than its stories (`hiddenVerbs`), by the document it is on. */
+/** What the stories found that does not fail them: what props cost (`propsCost`), each kind for each applet once, in the first story that sent it; a control the wire refuses, on the page it was first drawn on (`miswritten`); and a permit wider than its stories (`hiddenVerbs`), by the document it is on. */
 export type Warning = { story: string; says: string };
 export type Report = { outcomes: Outcome[]; passed: number; failed: number; warnings?: Warning[]; byHand?: ByHand };
 
@@ -491,6 +491,40 @@ export function valueAt(value: unknown, path: string): unknown {
   return value;
 }
 
+/** Does a document hold something at a JSON Pointer: each step a key of what is there, an array's by its index? */
+export function holds(value: unknown, path: string): boolean {
+  for (const key of path.split("/").slice(1).map((k) => k.replaceAll("~1", "/").replaceAll("~0", "~"))) {
+    if (typeof value !== "object" || value === null || !Object.hasOwn(value, key) || (Array.isArray(value) && !/^(0|[1-9]\d*)$/.test(key))) return false;
+    value = (value as Record<string, unknown>)[key];
+  }
+  return true;
+}
+
+// The wire, checked: a control the server will not take leaves its page still, with no
+// word why. So every control on every page drawn is held to what the server asks of its write.
+
+/** A JSON Pointer: "", or each step a "/" and its key, a "~" only as "~0" or "~1". */
+const POINTER = /^(\/([^/~]|~[01])*)*$/;
+
+/** What a control writes, the value it is drawn with ("" for none), and a short name for it. */
+type Writing = { doc: string; op: string; path: string; value: string; control: string };
+
+/** Each control a page draws that writes (`data-write`: a button, a form, an editing form's field), but one drawn `disabled`, which sends nothing; and a short name for it: its tag, and its label, name, value or id. */
+export function writesOn(page: string): Writing[] {
+  const found: Writing[] = [];
+  new HTMLRewriter()
+    .on("[data-write]:not([disabled])", {
+      element(el) {
+        const { doc, op, path } = JSON.parse(decoded(el.getAttribute("data-write")!)) as { doc: string; op: string; path: string };
+        const by = ["aria-label", "name", "data-value", "id"].find((a) => el.hasAttribute(a));
+        const value = el.getAttribute("data-value") ?? el.getAttribute("value");
+        found.push({ doc, op, path, value: value === null ? "" : decoded(value), control: by ? `${el.tagName}[${by}="${decoded(el.getAttribute(by)!)}"]` : el.tagName });
+      },
+    })
+    .transform(page);
+  return found;
+}
+
 /**
  * A path with each member of a collection in it as any one (`*`, as an applet names one): an id (a
  * run of digits), or a key of an object `doc` keeps rows under, objects of the same fields.
@@ -735,7 +769,57 @@ export async function run(
         m.ws.send(JSON.stringify({ type: "inspect" }));
       })),
     );
+    for (const m of cast) await checkWire(m); // quiet: each page is the one last drawn, and what it read is that drawing's
   }
+
+  /** The socket the server holds for `m`'s tab. */
+  const socketOf = (m: Member) => allOpenSockets().find((ws) => ws.data.sessionId === m.sessionId);
+
+  const wired = new Set<number | bigint>(); // each page checked, with what it read: once
+  const miswired = new Map<string, Warning>(); // each control the wire refuses, by what is said of it: once
+
+  /** Every control on `m`'s page, as it stands, held to the wire (`miswritten`): one that fails is a warning, on the page it was first drawn on. */
+  async function checkWire(m: Member): Promise<void> {
+    const ws = socketOf(m);
+    const key = ws && Bun.hash(`${m.page}\0${shownTo(ws).join()}`);
+    if (key === undefined || wired.has(key)) return;
+    wired.add(key);
+    const at = placeOf(m.page);
+    for (const w of writesOn(m.page)) {
+      const wrong = await miswritten(ws!, w);
+      const says = wrong && `${w.control}, ${w.op} ${w.path} on ${w.doc}: ${wrong}`;
+      if (says && !miswired.has(says)) miswired.set(says, { story: `a control the wire refuses, on ${at === undefined ? `${m.name}'s page` : JSON.stringify(at)}`, says });
+    }
+  }
+
+  /** Why the server would refuse what a control writes from the page `ws` holds, if it would: its op, its path, a document the page did not read, or a replace of nothing. */
+  async function miswritten(ws: ReturnType<typeof allOpenSockets>[number], w: Writing): Promise<string | undefined> {
+    if (!isVerb(w.op) && w.op !== "test") return `${w.op} is not add, replace, remove or test`;
+    if (!POINTER.test(w.path)) return `${w.path} is not a JSON Pointer`;
+    const target = await settled(documents, () => resolveName(byDocType, w.doc, ws));
+    if (!target || !(await settled(documents, () => sees(target.owner, ws, target.docId)))) return `the page did not read ${w.doc}`;
+    if (w.op !== "replace") return undefined;
+    const { owner, docId } = target;
+    const value = valueAt(await settled(documents, () => documents.read(prefixDoc(owner.docType, docId))), owner.under ?? "");
+    if (holds(value, w.path)) return undefined;
+    if (!owner.shape) return `${w.doc} holds nothing at ${w.path} to replace`;
+    // the example's own words, which its shape translates: its permit must take them, or say why not
+    try {
+      return (await settled(documents, () => owner.permit?.(ws, { op: "replace", path: w.path, value: w.value }, docId))) ? undefined : `${w.doc} holds nothing at ${w.path}, and its permit refuses it without a word`;
+    } catch {
+      return undefined; // refused, and says why
+    }
+  }
+
+  /** A document as the wire names it: a session's own by its type alone. */
+  const wireNamed = (doc: string): string => (byDocType.get(splitDoc(doc).docType)?.perSession ? splitDoc(doc).docType : doc);
+
+  /** What `m`'s page read, as the wire names it, the kernel's `told` left out: what a failure about them says. */
+  const readBy = (m: Member): string => [...new Set(inFront([m])[0]!.docs.map(wireNamed))].filter((d) => d !== "told").join(", ") || "nothing";
+
+  /** The documents a step changed, as the wire names them: each its ledger took, and each anyone was told of. */
+  const changedSince = (cast: Member[], from: Map<Member, number>, entries: LedgerRow[] = []): string[] =>
+    [...new Set([...entries.map((e) => wireNamed(e.doc)), ...cast.flatMap((m) => sentSince(m, from).flatMap((h) => (h.type === "patch" && h.doc !== "told" ? [h.doc!] : [])))])];
 
   let writes = 0;
 
@@ -835,7 +919,7 @@ export async function run(
     for (const m of cast) {
       if (!untold?.includes(m.name)) continue;
       const docs = new Set(sentSince(m, from).filter((h) => h.type === "patch").map((h) => h.doc));
-      for (const doc of docs) failures.push(`${when}, ${m.name} was told of ${doc}, and should not have been`);
+      for (const doc of docs) failures.push(`${when}, ${m.name} was told of ${doc}, and should not have been: ${m.name}'s page read ${readBy(m)}`);
     }
   }
 
@@ -862,15 +946,18 @@ export async function run(
     for (const m of cast) if (a.get(m.name) !== b.get(m.name)) failures.push(`${what}: ${m.name}'s page differs${excerpt(a.get(m.name)!, b.get(m.name)!)}`);
   }
 
-  /** `seen` must notice, and everyone else must not (R3): nobody's page changes unless the story says so. */
-  function noticed(before: Snapshot, after: Snapshot, looking: Member[], seen: Map<string, string | undefined>, failures: string[]): void {
+  /** `seen` must notice, and everyone else must not (R3): nobody's page changes unless the story says so. One who does not is told what their page read, and what `changed` (a write, or a tab closing). */
+  function noticed(before: Snapshot, after: Snapshot, looking: Member[], seen: Map<string, string | undefined>, failures: string[], changed: string): void {
     for (const m of looking) {
       const differs = before.get(m.name) !== after.get(m.name);
       if (seen.has(m.name)) {
-        if (!differs) failures.push(`${m.name} did not see it${where(seen.get(m.name))}`);
+        if (!differs) failures.push(`${m.name} did not see it${where(seen.get(m.name))}: ${m.name}'s page read ${readBy(m)}${changed}`);
       } else if (differs) failures.push(`${m.name} noticed, and should not have${excerpt(before.get(m.name)!, after.get(m.name)!)}`);
     }
   }
+
+  /** What a step changed, as a failure ends with it; nothing, when it changed nothing. */
+  const naming = (what: string, docs: string[]): string => (docs.length === 0 ? "" : `; ${what} ${docs.join(", ")}`);
 
   /** Closes a member's tab, as a browser does: resolved once it is closed. The server has then been told, and what it sets going is `server.idle()`'s to wait for. */
   function closeTab(m: Member): Promise<unknown> {
@@ -999,7 +1086,7 @@ export async function run(
         checkUntold(looking, story.untold, from, "after the tab closed", failures);
         const after = await snapshot(looking);
         await stale(looking, "after the tab closed", failures);
-        noticed(before, after, looking, seen, failures);
+        noticed(before, after, looking, seen, failures, naming("the tab closing changed", changedSince(looking, from)));
         return outcome;
       }
 
@@ -1023,7 +1110,7 @@ export async function run(
           })
         : await step("does", does, cast, async (from) => {
             const answer = answerTo(who, await send(cast, who, does), from);
-            return answer?.type === "patch" ? undefined : answer ? `nothing landed: ${who.name}'s write was refused${answer.reason ? `: "${answer.reason}"` : ""}` : `${who.name}'s write was not answered: no echo carried its id`;
+            return answer?.type === "patch" ? undefined : answer ? `nothing landed: ${who.name}'s write was refused${await refusedBy(who, does)}${answer.reason ? `: "${answer.reason}"` : ""}` : `${who.name}'s write was not answered: no echo carried its id`;
           });
       if (unlanded) failures.push(unlanded);
       // Where the write left its author: answering a modal puts it away (off the ledger, a visit),
@@ -1039,7 +1126,7 @@ export async function run(
       const entries = ledger.since(ledgerBefore);
       await stale(cast, "after the story", failures);
 
-      noticed(before, quietAfter, cast, seen, failures); // what the author was told is checked on its own (above); an `untold` member is further told of nothing
+      noticed(before, quietAfter, cast, seen, failures, naming("the write was to", changedSince(cast, from, entries))); // what the author was told is checked on its own (above); an `untold` member is further told of nothing
       if (isPost(does)) return outcome; // a route writes as the server: nothing of the author's to undo
 
       // off the ledger, or the author has gone (logged out): no undo is theirs to press
@@ -1322,14 +1409,36 @@ export async function run(
     }
   }
 
-  /** Would the server take `op` to `docId` from `ws`: permitted, and shaped to something? One that throws is refused. Nothing is written. */
-  async function takes(owner: Compartment, ws: ReturnType<typeof allOpenSockets>[number], op: PatchOp, docId: string): Promise<boolean> {
+  /** Which of `owner`'s checks refuses `ops` to `docId` from `ws`, if one does: its `permit`, or its `shape`, shaping them to nothing. One that throws refuses. Nothing is written. */
+  async function refuser(owner: Compartment, ws: ReturnType<typeof allOpenSockets>[number], ops: PatchOp[], docId: string): Promise<"permit" | "shape" | undefined> {
     try {
-      if (!(await settled(documents, () => owner.permit!(ws, op, docId)))) return false;
-      return !owner.shape || (await settled(documents, () => owner.shape!(ws, docId, [op]))).length > 0;
+      if (!(await settled(documents, () => ops.every((op) => owner.permit?.(ws, op, docId) ?? false)))) return "permit";
     } catch {
-      return false;
+      return "permit";
     }
+    try {
+      return !owner.shape || (await settled(documents, () => owner.shape!(ws, docId, ops))).length > 0 ? undefined : "shape";
+    } catch {
+      return "shape";
+    }
+  }
+
+  /** Would the server take `op` to `docId` from `ws`: permitted, and shaped to something? */
+  const takes = async (owner: Compartment, ws: ReturnType<typeof allOpenSockets>[number], op: PatchOp, docId: string): Promise<boolean> => (await refuser(owner, ws, [op], docId)) === undefined;
+
+  /**
+   * Which check refused `write` from `m`'s page, asked again as the server asks (src/server.ts
+   * `write`), as the failure says it: the page did not read its document, which the wire does not
+   * write, or its compartment's `permit` or `shape`; past them both, delta. Nothing is written.
+   */
+  async function refusedBy(m: Member, write: Write): Promise<string> {
+    const ws = socketOf(m)!;
+    const target = await settled(documents, () => resolveName(byDocType, write.doc, ws));
+    if (!target || !(await settled(documents, () => sees(target.owner, ws, target.docId)))) return `, as ${m.name}'s page did not read ${write.doc}: it read ${readBy(m)}`;
+    const { owner, docId } = target;
+    if (!STORED.has(owner.kind ?? "written")) return `, as ${write.doc} is ${owner.kind}, which the wire does not write`;
+    const by = await refuser(owner, ws, write.ops.filter((op): op is PatchOp => !isTest(op)), docId);
+    return by ? ` by ${owner.docType}'s ${by}` : ` past ${owner.docType}'s permit and shape: delta applied nothing`;
   }
 
   /**
@@ -1358,7 +1467,7 @@ export async function run(
     try {
       await gather(cast);
       for (const m of cast) {
-        const ws = allOpenSockets().find((s) => s.data.sessionId === m.sessionId)!;
+        const ws = socketOf(m)!;
         for (const doc of met.get(m.name)!.reads) {
           const { docType, docId } = doc.includes(":") ? splitDoc(doc) : { docType: doc, docId: m.sessionId };
           const owner = byDocType.get(docType)!;
@@ -1428,7 +1537,7 @@ export async function run(
     tapped.close();
   }
   const failed = outcomes.filter((o) => o.failures.length > 0).length;
-  return { outcomes, passed: outcomes.length - failed, failed, ...(warned.size + hidden.length > 0 && { warnings: [...warned.values(), ...hidden] }), ...(byHandTally && { byHand: byHandTally }) };
+  return { outcomes, passed: outcomes.length - failed, failed, ...(warned.size + miswired.size + hidden.length > 0 && { warnings: [...warned.values(), ...miswired.values(), ...hidden] }), ...(byHandTally && { byHand: byHandTally }) };
 }
 
 /** The report, story by story; with `wire`, under each story what it cost there (`cost`). */
