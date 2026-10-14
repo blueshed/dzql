@@ -460,6 +460,14 @@ beside it (`after(state, ops)`, `shape(doc, ops)`), tested without a server.
   document: what a live document is computed from (chat's rooms spoken in, the wedding's
   `everyone`), a credential looked up (a household's code), a blob (the wedding's pictures), and a
   rule `shape` checks across rows (how many have claimed a gift).
+- A long document is read in windows, by a keyset, never an offset (an offset moves when someone
+  writes): chat keeps `/before`, the message the window ends before, in the session, and draws the
+  fifty before it. The page still reads the whole room, so it is told every change; a message said
+  meanwhile falls after the window, so a page reading back is sent nothing. A window as its own
+  document waits for a room too big to hold whole.
+- To try a change to delta before it is released, point `package.json` at a checkout
+  (`file:../delta`, a copy: `bun install --force` after each change) and put it back before
+  committing.
 
 ### The ledger
 
@@ -955,8 +963,13 @@ await press(view, "#quote-FXTR button");
 await waitFor(view, `document.querySelector('.drawer h2')?.textContent`, (v) => v === "FXTR");
 ```
 
-The gate is `bun check`, `bun test` (100% coverage) and the stories; the project's CLAUDE.md says
-what the browser tests need.
+The gate is `bun check`, `bun test` (100% coverage) and the stories. `.env.test` keeps the tests
+off the dev database. The browser tests need Chrome or Chromium on every platform:
+`BUN_CHROME_PATH` names it where it is not found. In a Claude Code web session the SessionStart
+hook (`.claude/hooks/session-start.sh`, Bun only, nothing on a Mac) stages it, sets that, and
+brings Bun up to `engines.bun`; `--dry-run` says what it would do. The client is in the coverage
+gate too (`src/client-coverage.ts`, read from Chrome), but only for a view made with `webview()`:
+one made with `new Bun.WebView()` is not measured.
 
 ## Where an app lives
 

@@ -27,7 +27,7 @@ const SKILLS = [
 /** What only developing eta needs. */
 const ETA_ONLY = ["examples", "create", "todo.jsonl", "CHANGELOG.md", ".claude/commands/publish.md", ".env.example"];
 
-/** Of eta's docs, what a project keeps: what stories are for, and how a page looks and moves. The rest is eta's own record. */
+/** Of eta's docs, what a project keeps: what stories are for, and the bento, a guide to pages. The rest is eta's own record. */
 const DOCS_KEPT = ["stories.md", "bento"];
 
 /** eta's own clone is the one place this must never run: it deletes things. */

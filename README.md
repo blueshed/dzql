@@ -1,120 +1,82 @@
 # eta
 
-**eta builds apps that several people use at once, where every change reaches everyone who should
-see it and nobody who shouldn't, and checks that before anyone signs in.**
+**Live apps for a few people at once, told as stories and checked by them.**
 
-You start by writing the app as stories: who does what, and who then sees it. "Ann asks for three
-days off, and Mo sees it waiting on the calendar." eta runs every story against the real app,
-over real sockets. It checks that the write lands, that the right people's pages change and
-nobody else's does, that anyone the story says must not even be told is sent nothing, and that
-undo and redo put every page back. The stories are the specification and the test, and the rule
-is to build nothing a story doesn't need.
+![A wedding site built on eta: one household's guests as Lego figures, dressed live](docs/images/wedding.jpg)
 
-The usual stack for this -- a client framework, an API, a cache, a socket server -- is a lot to
-carry for a wedding site or a booking board. eta is one Bun process: the server draws every page
-as HTML, the browser patches it in place, and what crosses the wire is documents, patches and
-HTML a person can read. Every change is a document patch from delta, so each person's page
-updates as it happens, and each can undo their own writes while others keep writing. Where a
-piece of a page must keep state in the browser, like a drag or a chart, it's a small railroad
-applet, and only there.
+People use more than one screen. Ann asks for a day off on her phone, and her manager sees it
+waiting on the calendar a moment later, with no refresh. Ben changes his note on his laptop, and
+his phone shows it. eta makes that the normal way a page works: you write no sync code.
 
-In one line: **multi-person live apps told as stories and checked by them, drawn on the server,
-on delta's live documents.**
+## A story is the spec and the test
+
+You start by saying what people do, in sentences a customer could call true or false:
+
+```ts
+story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", ...)
+story("Ann asks for her draft, and Mo and Bo see it waiting on the calendar", ...)
+story("Ann cannot approve her own day off", ...)
+```
+
+`bun run stories` runs each one against the real app, over real sockets. It checks the change
+lands, that the right people's pages change, that nobody else is sent anything, and that undo and
+redo put every page back. Then it does each again by hand, in a browser the size of a phone. You
+build the least that makes the next story pass, and nothing a story doesn't need.
 
 ## Start a project
 
-```
+```bash
 bun create blueshed/eta my-app
 cd my-app
 bun run model
 ```
 
-A project is three folders: `app/`, your app, empty to begin with; `model/`, the model's page; and
-`src/`, eta's kernel, which the app imports and never edits. You tell Claude the stories, and it
-models them on the model's page (http://localhost:3001; sign in with your name and the password in
-`.env`) while you watch: the documents they need, who holds each, and the entities that follow.
-Then it builds the app from the model (`bun dev`, http://localhost:3000), the least that makes
-each story pass. The project's `CHANGELOG.md` names the eta it started from, so a later eta can be
-carried across.
+You tell Claude the stories. It writes them down on the model's page (http://localhost:3001)
+while you watch, with the documents they need and who holds each. Then it builds the app from the
+model (`bun dev`, http://localhost:3000), story by story.
 
-## Try it
+## Try the examples
 
-You need Bun. `bun install` brings `@blueshed/delta` and `@blueshed/railroad` from npm.
+You need [Bun](https://bun.sh). Then `bun install` and `bun run dev`, and open
+http://localhost:3000. That is chat: give a name, name a room, say something. Open a private window
+as someone else and you each see the other speak. Undo, bottom right, takes back your own last
+write.
 
-```
-bun install
-bun run dev
-```
-
-Open http://localhost:3000. Give a name, name a room, say something. Open a private window, give
-another name and go into the same room: each of you sees the other arrive and speak. Undo, at the
-bottom right, takes back your own last write, and the other sees it go: your last message, or, if
-you have only just come in, your coming into the room.
-
-That is chat, the smallest example. Four more:
-
-- `bun run dev:wedding` (port 3001): a site for one wedding. The codes are `DASH` (the couple),
-  `OKAFOR` and `BEN` (two households). There is a Lego minifigure builder, and a photo of
-  everyone coming that fills in live.
-- `bun run dev:ticker` (port 3002): a price board and a Swiss railway clock, both drawn in the
-  browser.
-- `bun run dev:leave` (port 3004): a small team's leave, on one calendar. Drag across days for a
-  draft and see who else is off before you ask; drag your own waiting request to move it; a
-  manager answers. People sign in: `ann@leave.example` and `bo@leave.example` ask,
-  `mo@leave.example` answers; each password is the name and `-password` (`ann-password`).
-- `bun run dev:modeling` (port 3005): a description of an application, kept by two people as they
-  talk: one tells the stories, the other writes them down from the CLI and describes the documents
-  they need, and the entities are worked out from those. The page shows each change live, and the
-  gaps as they open. Sign in as `peter@modeling.example` or `claude@modeling.example`, each password
-  the name and `-password`; the CLI signs in with `login`, and `examples/modeling/cli.ts` lists its verbs.
-
-`ETA_EXAMPLE=<name>` picks the example for `bun run dev`, `start`, `stories` and `cli` (default
-`chat`); `dev:wedding`, `dev:ticker`, `dev:leave`, `dev:modeling` and `stories:all` set it themselves. The CLI also needs
-`ETA_URL` for the server it talks to (default `ws://localhost:3000`). `.env.example` explains every
-setting, `TICK_MS` and `CLOCK_TZ` (the ticker), `REVEAL` (the wedding) and `ETA_ORIGINS` (other
-sites whose pages may open a socket) among them.
-
-## What it pairs with
-
-- **[@blueshed/delta](https://www.npmjs.com/package/@blueshed/delta)** keeps the documents, their ledger and their one stream
-  of changes. eta owns people and pages; delta owns the data. An example's `delta.ts` says which
-  tables it has and which documents are cut from them.
-- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** draws an island: an
-  applet, the part of a page that keeps state of its own in the browser, written as a railroad
-  component (`island()`, `src/island.ts`). The ticker's city picker is one. The kernel's client
-  does not import it; a page with an island carries railroad too (<!-- measured:railroad -->2.9 KB
-  gzipped for `signal` and `mount`, 3.7 KB with `list`<!-- /measured -->).
+- `bun run dev:wedding` (port 3001): a site for one wedding, the picture above. Codes: `DASH` for
+  the couple, `OKAFOR` and `BEN` for two households.
+- `bun run dev:leave` (port 3004): a team's leave on one calendar. Drag across days to ask. Sign in
+  as `ann@leave.example`, `bo@leave.example` or `mo@leave.example` (the manager); each password is
+  the name and `-password`.
+- `bun run dev:ticker` (port 3002): a price board and a Swiss railway clock.
+- `bun run dev:modeling` (port 3005): the model's page, where an app is told before it is built.
 
 ## Why eta
 
-- **Undo and redo.** A write to a document on delta's ledger is a patch recorded with its
-  inverse. Undo walks your own writes back, newest first, even while others keep writing, and
-  sets back only what your write changed: if someone has changed it since, the undo is refused
-  and says so. A compartment can refuse one that breaks a rule of time or state
-  (`permitUndo`: answers closed at the deadline).
-- **Stories are the tests.** An example is a list of sentences -- who does what, and who then
-  sees it -- and `bun run stories` checks each one over real sockets, with its undo and redo;
-  `bun run stories:all` runs every example's (<!-- measured:stories -->14 in chat, 23 in leave, 12 in modeling, 17 in ticker and 22 in wedding<!-- /measured -->),
-  and does again by hand, in a browser the size of a phone, each write a page sends and each
-  refusal a control of the page sends, so a control nobody can press fails.
-- **A small client.** The kernel's client is <!-- measured:client -->7.4 KB<!-- /measured --> minified
-  and gzipped: a morph, the write gestures and an applet registry. There is no framework to learn.
-- **Nothing else to run.** Bun and SQLite, one process, one file.
-- **A readable wire.** `bun run cli watch` prints every patch as it happens; `bun run cli undo`
-  undoes the CLI session's own last write, from a terminal.
+- **No sync code.** The server draws each person's page and sends only the parts that changed, to
+  every screen that shows them.
+- **Undo for each person.** Undo walks back your own writes while others keep writing, and says so
+  when someone has changed it since.
+- **Stories are the tests.** <!-- measured:stories -->14 in chat, 23 in leave, 12 in modeling, 17 in ticker and 22 in wedding<!-- /measured -->, run over real sockets and by hand.
+- **A small client.** <!-- measured:client -->7.4 KB<!-- /measured --> gzipped, and no framework
+  to learn. The page is plain HTML, drawn on the server.
+- **One process.** Bun and SQLite, nothing else to run. Postgres when you need it, through delta.
 
-It suits small teams making live apps where being able to undo and to see what happened matter
-more than scale: a wedding, a booking board, a classroom, an ops console. It is not built for a
-large consumer product.
+It suits small teams where seeing what happened and being able to undo it matter more than scale:
+a wedding, a booking board, a classroom, an ops console. It is not built for a large consumer
+product.
+
+## What it is made of
+
+- **[@blueshed/delta](https://www.npmjs.com/package/@blueshed/delta)** keeps the documents, their
+  history and their one stream of changes.
+- **[@blueshed/railroad](https://www.npmjs.com/package/@blueshed/railroad)** draws the small parts of
+  a page that keep their own state in the browser, like a drag or a chart (<!-- measured:railroad -->2.9 KB
+  gzipped for `signal` and `mount`, 3.7 KB with `list`<!-- /measured -->, only on a page that has one).
 
 ## What a write costs
 
-After a write, each page that read the document is drawn again and sent only the parts that
-changed, and the socket compresses each message (permessage-deflate, which every browser offers).
-Each example measures what one write sends everyone else as it crosses the wire, and what it was
-before compression, with a script (`examples/<name>/scripts/measure-render-cost.ts`).
-`bun run costs` runs each from an empty database and writes what it finds here, and every other
-number this README quotes; `bun test` fails when the README says otherwise.
+After a change, each page that shows it gets only the parts that changed, compressed. `bun run
+costs` measures every number on this page from a fresh run, and `bun test` fails when they drift.
 
 <!-- measured:writes -->
 - **Chat**, one message in a room of 100 messages and 5 members: 517 B, compressed from 1.2 KB, to
@@ -132,26 +94,23 @@ number this README quotes; `bun test` fails when the README says otherwise.
 ## Commands
 
 ```
-bun run dev          # chat, watching for changes (dev:wedding, dev:ticker too)
-bun run start        # detached, in production mode; bun run stop stops it
-bun test             # the tests
+bun run dev          # chat, reloading as you edit (dev:wedding, dev:leave, dev:ticker, dev:modeling)
+bun run stories      # one example's stories; stories:all runs every example's
+bun test             # the tests, at 100% coverage
 bun check            # the type check (Bun 1.4.3 or later)
-bun run stories      # one example's stories; stories:all runs every example's, and by hand
-bun run cli <verb>   # a terminal client: inspect, watch, undo, redo, write, and the example's own
-bun run costs        # measures every number this README quotes, and writes it in
+bun run cli <verb>   # a terminal client: watch every change, undo, write
+bun run model:check  # read an app that exists as a model: who holds what, who is told
+bun run costs        # measure every number on this page
 ```
 
-The modeling example reads an app that exists, too (`examples/modeling/loader/`): `bun run
-model:check <example>` says its documents -- who holds each, who writes it, who is told of a
-change, and what permit lets through that no page offers -- then runs hjeli's predicates over its
-stories; `bun run model:load <example>` loads it into the model on the page.
+`ETA_EXAMPLE=<name>` picks the example for `dev`, `start`, `stories` and `cli`; `.env.example`
+explains every setting.
 
-## Where to go next
+## Learn more
 
-- `docs/first-app.md`: your first app, step by step, with the words met at each step.
-- `docs/stories.md`: what eta is for, and how stories drive it.
-- `.claude/skills/eta-app/`: how to build or extend an example, step by step, with the contracts
-  in `reference.md`.
-- `CLAUDE.md`: the rules a change must not break.
-- `docs/bento/README.md`: the bento, a guide to where am I and what can I do.
-- `CHANGELOG.md`: what changed, and how to move an example across a breaking change.
+- [docs/first-app.md](docs/first-app.md): a first app, step by step.
+- [docs/stories.md](docs/stories.md): what eta is for, and how stories drive it.
+- [docs/bento/README.md](docs/bento/README.md): a guide to pages where people know where they are
+  and what they can do.
+- [docs/least-resistance.md](docs/least-resistance.md): why eta suits an AI that builds apps.
+- `CHANGELOG.md`: what changed, and how to move an app across a change.
