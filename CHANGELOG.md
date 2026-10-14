@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.52.0] - 2026-10-14
+
 ### Breaking (for example authors)
 
 - **`readingSwitch` takes each option's own write**: `readingSwitch([[text, mark, on, write], ...])`, and `readAs(key, value)` is the write that keeps a collection's reading in the session, as the old `readingSwitch(key, current, [[value, mark]])` did. So a switch between pages (the wedding's, leave's) is the kernel's too, where three pages built it by hand. What to change: `readingSwitch("board", current, [["spark", "chart"], ["list", "list"]])` becomes `readingSwitch([["spark", "chart", current === "spark", readAs("board", "spark")], ["list", "list", current === "list", readAs("board", "list")]])`.
