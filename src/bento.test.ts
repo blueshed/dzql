@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { address, bento, choice, layers, matches, parseAddress, patchCollections, prop, rows, type Collections } from "./bento";
+import { address, bento, choice, field, layers, matches, parseAddress, patchCollections, prop, rows, type Collections, type FieldOptions } from "./bento";
 import { appletProps, esc, join, write } from "./html";
 import { decoded, diff, drawParts, part } from "./parts";
 import { waitFor, webview } from "./webview";
@@ -195,6 +195,36 @@ describe("the surfaces", () => {
     const pick = choice("Coming?", [{ text: "Yes", on: true, write: open, kind: "yes" }, { text: "No", on: false, write: open }], true);
     expect(pick).toContain(`<button type="button" class="tool yes" role="radio" aria-checked="true"${open} disabled>Yes</button>`); // a radio is checked, not pressed
     expect(choice("x", [{ text: "No", on: false, write: open }])).toContain(`class="tool" role="radio" aria-checked="false"${open}>No`);
+  });
+
+  test("a field is one call, and cannot be wired wrong: its own form writing its path on the trigger its kind takes, its label tied to it, a status beside it when given, read where the permit says no", () => {
+    const email = field({ doc: "trip", path: "/people/2/email", value: "ann@example.com", label: "Email", kind: "email" });
+    expect(email).toBe(
+      `<form class="prop" data-write-on="blur"><label class="prop-name cap" for="field-trip-people-2-email">Email</label><div class="prop-value">` +
+        `<input class="field" id="field-trip-people-2-email" name="email"${write("trip", "replace", "/people/2/email")} type="email" value="ann@example.com" autocomplete="off"></div></form>`,
+    );
+    // what is typed is written as it is left; a date, a choice or a tick as it is made; a reading as it is typed, if asked
+    const on = (o: Partial<FieldOptions>) => field({ doc: "trip", path: "/x", value: null, label: "X", ...o }).match(/data-write-on="(\w+)"/)![1];
+    expect([on({}), on({ kind: "number" }), on({ kind: "textarea" }), on({ kind: "date" }), on({ kind: "select" }), on({ kind: "checkbox" }), on({ on: "input" })]).toEqual(["blur", "blur", "blur", "change", "change", "change", "input"]);
+    // a textarea keeps a value that starts with a newline: the parser drops only the one drawn before it
+    expect(field({ doc: "trip", path: "/notes", value: "\nfirst", label: "Notes", kind: "textarea", placeholder: "a line" })).toContain(`placeholder="a line" rows="3">\n\nfirst</textarea>`);
+    const kinds = [{ value: "see", text: "See" }, { value: "eat", text: "Eat & drink" }];
+    expect(field({ doc: "trip", path: "/kind", value: "eat", label: "Kind", kind: "select", options: kinds })).toContain(`<option value="see">See</option><option value="eat" selected>Eat &amp; drink</option></select>`);
+    expect(field({ doc: "trip", path: "/kind", value: null, label: "Kind", kind: "select" })).toContain(`${write("trip", "replace", "/kind")}></select>`);
+    expect(field({ doc: "trip", path: "/booked", value: true, label: "Booked", kind: "checkbox" })).toContain(`type="checkbox" checked></div></form>`);
+    expect(field({ doc: "trip", path: "/booked", value: false, label: "Booked", kind: "checkbox" })).toContain(`type="checkbox"></div></form>`);
+    // what this person was told at it, beside it, and what it is described by
+    const told = field({ doc: "room:general", path: "/topic", value: "Tea", label: "Topic", said: `<p class="refused" role="alert">No.</p>` });
+    expect(told).toContain(`id="field-room-general-topic" name="topic"${write("room:general", "replace", "/topic")} aria-describedby="field-room-general-topic-said"`);
+    expect(told).toContain(`<div class="field-said" id="field-room-general-topic-said"><p class="refused" role="alert">No.</p></div></div></form>`);
+    // one of a row's own: heard by its label, laid out by the row
+    expect(field({ doc: "trip", path: "/dishes/3/name", value: "Soup", label: "Dish", inRow: true })).toStartWith(`<form class="in-row" data-write-on="blur"><label class="sr-only" for="field-trip-dishes-3-name">Dish</label><input class="field"`);
+    // the permit says no: read, not a control
+    expect(field({ doc: "trip", path: "/x", value: "<b>", label: "X", may: false })).toBe(prop("X", "&lt;b&gt;"));
+    expect(field({ doc: "trip", path: "/kind", value: "eat", label: "Kind", kind: "select", options: kinds, may: false })).toBe(prop("Kind", "Eat &amp; drink"));
+    expect(field({ doc: "trip", path: "/kind", value: "fly", label: "Kind", kind: "select", may: false })).toBe(prop("Kind", ""));
+    expect([true, false].map((value) => field({ doc: "trip", path: "/b", value, label: "B", kind: "checkbox", may: false }))).toEqual([prop("B", "Yes"), prop("B", "No")]);
+    expect(field({ doc: "trip", path: "/x", value: 3, label: "X", may: false, inRow: true })).toBe(`<span class="field">3</span>`);
   });
 
   test("the modals: adding asks for the fields it needs, removing asks one question; cancelling writes the session", () => {
@@ -519,7 +549,7 @@ describe("the surfaces in a browser", () => {
   });
 
   test("a drawer docked beside a window takes the window's curve at its outer corners; a field in a property keeps a field's height; a select's focus is the bento's ring", async () => {
-    const body = `<form data-write-on="blur"><div class="props">${prop("Name", `<input class="field" name="name" value="Alpha" aria-label="Name">`)}${prop("Kind", `<select class="field" name="kind" aria-label="Kind"><option>a</option></select>`)}</div></form>`;
+    const body = `<div class="props">${field({ doc: "desk", path: "/name", value: "Alpha", label: "Name" })}${field({ doc: "desk", path: "/kind", value: "a", label: "Kind", kind: "select", options: [{ value: "a", text: "a" }] })}</div>`;
     const page = layers(b.collectionPage([{ label: "The desk" }], { key: "market", body: "" }), b.drawer("d", "Alpha", body, go("")), "");
     await using view = await show(page, 1280);
     const corners = `['.cell.open', '.drawer'].map((s) => { const c = getComputedStyle(document.querySelector(s)); return [c.borderTopRightRadius, c.borderBottomRightRadius]; })`;
@@ -532,6 +562,28 @@ describe("the surfaces in a browser", () => {
     await view.evaluate(`document.querySelector('.cell-name').style.color = 'var(--accent)'`);
     const ring = `(() => { const s = document.activeElement, c = getComputedStyle(s); return [s.tagName, s.matches(':focus-visible'), c.outlineStyle, c.outlineColor === getComputedStyle(document.querySelector('.cell-name')).color]; })()`;
     expect(await view.evaluate<unknown[]>(ring)).toEqual(["SELECT", true, "solid", true]);
+  });
+
+  test("a field drawn in one call writes as a person uses it: its label takes the caret to it, what is typed goes as it is left with what it was drawn with, a tick as it is made; one in a row takes what the row leaves; a status says nothing until told", async () => {
+    const fields = join(
+      `<div class="props">`,
+      field({ doc: "desk", path: "/note", value: "Tea", label: "Note", said: "" }),
+      field({ doc: "desk", path: "/booked", value: false, label: "Booked", kind: "checkbox" }),
+      `<div class="pair" style="display: flex">${field({ doc: "desk", path: "/dish", value: "Soup", label: "Dish", inRow: true })}${b.tool("Remove", { write: go(""), iconOnly: true, icon: "trash" })}</div>`,
+      `</div>`,
+    );
+    await using view = await show(layers(b.collectionPage([{ label: "The desk" }], { key: "market", body: "" }), b.drawer("d", "Alpha", fields, go("")), ""));
+    await view.evaluate(`document.querySelector('label[for="field-desk-note"]').click()`);
+    expect(await view.evaluate<string>(`document.activeElement.id`)).toBe("field-desk-note");
+    expect(await view.evaluate<number>(`document.getElementById('field-desk-note-said').getBoundingClientRect().height`)).toBe(0);
+    await view.evaluate(`(() => { const f = document.activeElement; f.value = 'Coffee'; f.dispatchEvent(new Event('input', { bubbles: true })); f.blur(); })()`);
+    await waitFor(view, `window.__sent.length`, (v) => v === 1, 1000);
+    expect((await sent(view)).at(-1)).toEqual({ doc: "desk", ops: [{ op: "test", path: "/note", value: "Tea" }, { op: "replace", path: "/note", value: "Coffee" }] });
+    await view.evaluate(`document.getElementById('field-desk-booked').click()`);
+    await waitFor(view, `window.__sent.length`, (v) => v === 2, 1000);
+    expect((await sent(view)).at(-1)).toEqual({ doc: "desk", ops: [{ op: "replace", path: "/booked", value: true }] });
+    const row = await view.evaluate<number[]>(`['.pair', '.pair input', '.pair .tool'].map((s) => Math.round(document.querySelector(s).getBoundingClientRect().width))`);
+    expect(row[1]! + row[2]!).toBeGreaterThan(row[0]! - 20); // the field and the button fill the row, between them
   });
 
   test("bento.css draws the frame and nothing else: an app's own elements beside it are as the browser draws them", async () => {

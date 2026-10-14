@@ -11,7 +11,7 @@ import type { Guest, HouseholdDocument } from "../documents/household";
 import { over, type Named, type SessionDocument } from "../documents/session";
 import * as weddingDoc from "../documents/wedding";
 import type { Course, Gift, Wedding } from "../documents/wedding";
-import { addModal, addTool, choice, collectionPage, findControl, prop, readingSwitch, row, rows, drawer, tool, type Crumb } from "./bento";
+import { addModal, addTool, choice, collectionPage, field, findControl, prop,readingSwitch, row, rows, drawer, tool, type Crumb } from "./bento";
 import type { DressProps } from "../applets/dress";
 import { LOOK_FIELDS } from "../looks";
 import type { MenuProps } from "../applets/menu";
@@ -300,10 +300,7 @@ function answerSheet(v: HouseholdView): string {
     v.open ? "" : `<p class="note">Answers closed on ${esc(formatDay(v.w.deadline ?? ""))}.</p>`,
     `<div class="answer-options" role="radiogroup" aria-label="Are you coming?">${option("yes")}${option("maybe")}${option("no")}</div>`,
     h.answer && v.open && `<div class="drawer-foot">${tool("Take back our answer", { kind: "quiet", write: write("household", "remove", "/answer") })}</div>`,
-    `<div class="props">${prop(
-      "Our words",
-      `<form data-write-on="blur"><textarea name="message"${write("household", "replace", "/message")} rows="3" placeholder="Say something to the couple" aria-label="Our words">${esc(h.message ?? "")}</textarea></form>${v.wordsTold}`,
-    )}</div>`,
+    `<div class="props">${field({ doc: "household", path: "/message", value: h.message, label: "Our words", kind: "textarea", placeholder: "Say something to the couple", said: v.wordsTold })}</div>`,
   );
   return drawer("answer-drawer", "Our answer", body, close(v), "answer-drawer");
 }

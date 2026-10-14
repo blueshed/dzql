@@ -297,7 +297,7 @@ describe("the wedding in a real browser", () => {
     expect(new Set(props)).toEqual(new Set([40]));
   }, 20000);
 
-  test("editing a gift's fields in its drawer writes on blur, batches fields changed together, and does not reset", async () => {
+  test("editing a gift's fields in its drawer writes each as it is left, and does not reset", async () => {
     await using view = webview();
     // the couple's own code, not a household's: the keep drawers are theirs to edit
     await view.navigate(urlFor(view, server.url));
@@ -314,15 +314,16 @@ describe("the wedding in a real browser", () => {
     await view.evaluate(`window.eta.socket().send(JSON.stringify({ doc: "session", ops: [{ op: "replace", path: "/page", value: "?keep=gifts/${giftId}" }] }))`);
     await waitFor(view, `document.querySelector('.keep-drawer input[name=name]') !== null`, (v) => v === true);
 
-    // change two fields of the same editing form before either loses focus, then trigger just one:
-    // the write must carry both, not only the field whose event fired. Blanking the name is a
-    // required field's write the server refuses (see documents/values.ts's `text`); the
+    // each field is a form of its own (src/bento.ts field()), written as it is left: blanking the
+    // name is a required field's write the server refuses (see documents/values.ts's `text`); the
     // description's is accepted, so exactly one of the two lands.
     await view.evaluate(`(() => {
-      const form = document.querySelector('.keep-drawer form');
-      form.querySelector('input[name=name]').value = '';
-      form.querySelector('input[name=description]').value = 'a good one';
-      form.querySelector('input[name=description]').dispatchEvent(new Event('focusout', { bubbles: true }));
+      const name = document.querySelector('.keep-drawer input[name=name]');
+      name.value = '';
+      name.dispatchEvent(new Event('focusout', { bubbles: true }));
+      const words = document.querySelector('.keep-drawer input[name=description]');
+      words.value = 'a good one';
+      words.dispatchEvent(new Event('focusout', { bubbles: true }));
     })()`);
 
     await waitFor(

@@ -10,7 +10,7 @@
 import type { BoardDocument } from "../documents/board";
 import type { HouseholdDocument } from "../documents/household";
 import { over, type SessionDocument } from "../documents/session";
-import { addModal, addTool, choice, collectionPage, confirmModal, findControl, prop, readingSwitch, row, rows, drawer, surfaces, tool } from "./bento";
+import { addModal, addTool, choice, collectionPage, confirmModal, field, findControl, prop, readingSwitch, row, rows, drawer, surfaces, tool, type FieldOptions } from "./bento";
 import { appletWrites, esc, join, nav, open as openAt, write } from "./html";
 import { address } from "../../../src/bento";
 import { part } from "../../../src/parts";
@@ -188,10 +188,8 @@ function householdsList(v: BoardView): string {
 
 // ───────────────────────────── a family ─────────────────────────────
 
-/** A field edited where it is: its own path, written when it loses focus (see the enclosing `data-write-on="blur"` form). */
-function field(path: string, name: string, value: string, label: string, placeholder = "", type = "text"): string {
-  return `<input class="field"${write("board", "replace", path)} name="${esc(name)}" type="${type}" value="${esc(value)}" placeholder="${esc(placeholder)}" aria-label="${esc(label)}" autocomplete="off">`;
-}
+/** A field of the board's, edited where it is (src/bento.ts `field`): a property, or with `inRow`, one of a row's own. */
+const edit = (path: string, value: FieldOptions["value"], label: string, more: Partial<FieldOptions> = {}): string => field({ doc: "board", path, value, label, ...more });
 
 /** A form that adds one thing by its name, in place, at the foot of what it adds to. */
 const addInPlace = (path: string, noun: string): string =>
@@ -246,10 +244,10 @@ function familySheet(v: BoardView): string {
     addInPlace(`/households/${h.id}/guests/-`, "guest"),
     asked.length > 0 && `<h3 class="cap">Asked for</h3><div class="lines">${asked.map((a, i) => askLine(h, a, asks[i]!)).join("")}</div>`,
     `<h3 class="cap">The invitation</h3>`,
-    `<form data-write-on="blur"><div class="props">`,
-    prop("Email", field(`/households/${h.id}/email`, "email", h.email, "Their email", "", "email")),
-    prop("Plus-ones", field(`/households/${h.id}/plus_ones`, "plus_ones", String(h.plus_ones), "Plus-ones they may name", "0", "number")),
-    `</div></form>`,
+    `<div class="props">`,
+    edit(`/households/${h.id}/email`, h.email, "Email", { kind: "email" }),
+    edit(`/households/${h.id}/plus_ones`, h.plus_ones, "Plus-ones", { kind: "number", placeholder: "0" }),
+    `</div>`,
     `<div class="drawer-foot">${chaseLink(h)}</div>`,
   );
   return drawer("family-drawer", h.code, body, close(v), "family-drawer");
@@ -275,14 +273,14 @@ function welcomeSheet(v: BoardView): string {
   if (!over(v.session.ui).answering) return "";
   const { b } = v;
   const body = join(
-    `<form data-write-on="blur"><div class="props">`,
-    prop("Names", `<div class="pair">${field("/name1", "name1", b.name1, "The first name", "one name")}<span class="amp">&amp;</span>${field("/name2", "name2", b.name2, "The second name", "the other")}</div>`),
-    prop("The day", field("/day", "day", b.day, "The day", "2027-04-02")),
-    prop("The place", field("/venue", "venue", b.venue ?? "", "The place", "where")),
-    prop("Answers by", field("/deadline", "deadline", b.deadline ?? "", "Answers by", "2027-02-01")),
-    prop("Your words", `<textarea name="message"${write("board", "replace", "/message")} rows="3" placeholder="Your words on the welcome" aria-label="Your words on the welcome">${esc(b.message ?? "")}</textarea>`),
-    `</div></form>`,
-    `<div class="props">${prop("Picture", join(b.picture_key && `<div class="drawer-pic">${picture(b.picture_key, "")}</div>`, pictureField("/picture_key", b.picture_key)))}</div>`,
+    `<div class="props">`,
+    prop("Names", `<div class="pair">${edit("/name1", b.name1, "The first name", { placeholder: "one name", inRow: true })}<span class="amp">&amp;</span>${edit("/name2", b.name2, "The second name", { placeholder: "the other", inRow: true })}</div>`),
+    edit("/day", b.day, "The day", { placeholder: "2027-04-02" }),
+    edit("/venue", b.venue, "The place", { placeholder: "where" }),
+    edit("/deadline", b.deadline, "Answers by", { placeholder: "2027-02-01" }),
+    edit("/message", b.message, "Your words", { kind: "textarea", placeholder: "Your words on the welcome" }),
+    prop("Picture", join(b.picture_key && `<div class="drawer-pic">${picture(b.picture_key, "")}</div>`, pictureField("/picture_key", b.picture_key))),
+    `</div>`,
   );
   return drawer("welcome-drawer", "Our welcome", body, close(v), "welcome-drawer");
 }
@@ -351,31 +349,31 @@ function keepSheet(v: BoardView): string {
       `<span class="note">${position} of ${list.length}</span></div>`,
     ),
   );
-  const props: string[] = [prop("Name", field(`${at}/name`, "name", found.name, "Name"))];
+  const props: string[] = [edit(`${at}/name`, found.name, "Name")];
   let extra = "";
   if (table === "courses") {
     const c = v.b.courses.find((x) => x.id === id)!;
     const dishRows = c.dishes.map((d) =>
       join(
         `<div class="pair">`,
-        field(`${at}/dishes/${d.id}/name`, "name", d.name, "Dish", "dish"),
-        field(`${at}/dishes/${d.id}/dietary`, "dietary", d.dietary ?? "", "Dietary marks", "v, gf"),
+        edit(`${at}/dishes/${d.id}/name`, d.name, "Dish", { placeholder: "dish", inRow: true }),
+        edit(`${at}/dishes/${d.id}/dietary`, d.dietary, "Dietary marks", { placeholder: "v, gf", inRow: true }),
         tool(`remove ${d.name}`, { icon: "trash", kind: "danger", iconOnly: true, write: write("board", "remove", `${at}/dishes/${d.id}`) }),
         "</div>",
       ),
     );
     const drinkRows = c.drinks.map((d) =>
-      join(`<div class="pair">`, field(`${at}/drinks/${d.id}/name`, "name", d.name, "Drink", "drink"), tool(`remove ${d.name}`, { icon: "trash", kind: "danger", iconOnly: true, write: write("board", "remove", `${at}/drinks/${d.id}`) }), "</div>"),
+      join(`<div class="pair">`, edit(`${at}/drinks/${d.id}/name`, d.name, "Drink", { placeholder: "drink", inRow: true }), tool(`remove ${d.name}`, { icon: "trash", kind: "danger", iconOnly: true, write: write("board", "remove", `${at}/drinks/${d.id}`) }), "</div>"),
     );
     extra = join(
-      `<h3 class="cap">Dishes</h3><form data-write-on="blur"><div class="props">${dishRows.join("")}</div></form>${addInPlace(`${at}/dishes/-`, "dish")}`,
-      `<h3 class="cap">Drinks</h3><form data-write-on="blur"><div class="props">${drinkRows.join("")}</div></form>${addInPlace(`${at}/drinks/-`, "drink")}`,
+      `<h3 class="cap">Dishes</h3><div class="props">${dishRows.join("")}</div>${addInPlace(`${at}/dishes/-`, "dish")}`,
+      `<h3 class="cap">Drinks</h3><div class="props">${drinkRows.join("")}</div>${addInPlace(`${at}/drinks/-`, "drink")}`,
     );
   } else if (table === "gifts") {
     const g = v.b.gifts.find((x) => x.id === id)!;
     props.push(
-      prop("Words", field(`${at}/description`, "description", g.description ?? "", "Words", "a line about it")),
-      prop("Link", field(`${at}/link`, "link", g.link ?? "", "Link", "https://")),
+      edit(`${at}/description`, g.description, "Words", { placeholder: "a line about it" }),
+      edit(`${at}/link`, g.link, "Link", { placeholder: "https://" }),
       prop(
         "Shared",
         choice("Shared: any number may claim it", [
@@ -388,20 +386,20 @@ function keepSheet(v: BoardView): string {
   } else if (table === "events") {
     const e = v.b.events.find((x) => x.id === id)!;
     props.push(
-      prop("When", field(`${at}/when_at`, "when_at", e.when_at ?? "", "When", "2027-04-02T13:00")),
-      prop("Where", field(`${at}/where_at`, "where_at", e.where_at ?? "", "Where")),
-      prop("Notes", field(`${at}/notes`, "notes", e.notes ?? "", "Notes")),
+      edit(`${at}/when_at`, e.when_at, "When", { placeholder: "2027-04-02T13:00" }),
+      edit(`${at}/where_at`, e.where_at, "Where"),
+      edit(`${at}/notes`, e.notes, "Notes"),
     );
   } else {
     const p = v.b.places.find((x) => x.id === id)!;
     props.push(
-      prop("Notes", field(`${at}/notes`, "notes", p.notes ?? "", "Notes", "how far, how to book")),
-      prop("Link", field(`${at}/link`, "link", p.link ?? "", "Link", "https://")),
+      edit(`${at}/notes`, p.notes, "Notes", { placeholder: "how far, how to book" }),
+      edit(`${at}/link`, p.link, "Link", { placeholder: "https://" }),
       prop("Picture", pictureField(`${at}/picture_key`, p.picture_key)),
     );
   }
   // removing asks in a modal -- the drawer only opens it; `confirmRemove` does the write
   const remove = `<div class="drawer-foot">${tool(`Remove this ${noun}`, { icon: "trash", kind: "danger", write: open_(v, "confirm", at.slice(1)) })}</div>`;
-  const body = join(`<form data-write-on="blur"><div class="props">${props.join("")}${order}</div></form>`, extra, remove);
+  const body = join(`<div class="props">${props.join("")}${order}</div>`, extra, remove);
   return drawer("keep-drawer", found.name, body, open_(v, table), "keep-drawer");
 }
