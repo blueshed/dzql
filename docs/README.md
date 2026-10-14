@@ -8,6 +8,7 @@ Two kinds. **Guidance**, current:
 - `least-resistance.md` -- why eta suits an AI that builds apps, what still slows it, and the
   five things that would make eta the easy path, model first among them.
 - `plan-2026-10-14.md` -- the ten medium items, a story each, done by a team in parallel.
+- `feedback-cafe-2026-10-14.md` -- what building the cafe on eta 0.53.0 found: nine frictions, each with a suggestion.
 - `concise-skills.md` -- the standard the skills are cut to: a compass, not an encyclopedia.
 - `eta-app-notes.md` -- the why behind the eta-app skill: the numbers, the reasons and the
   sketches (OAuth2, LDAP) that left it when it was cut.
