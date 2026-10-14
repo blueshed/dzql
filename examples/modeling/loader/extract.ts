@@ -106,6 +106,7 @@ export async function extract(at: string) {
       premise: s.premise !== undefined,
       offPage: !!s.offPage,
       post: posted && isPost(posted) ? posted.path : null, // a route's path, where the story posts a form
+      ...(s.model !== undefined && { model: s.model }), // the model story it tells, where it names one
       failures: outcome.get(s.name) ?? ["not run"],
       sequence: (traces.get(s.name) ?? []).map((t) => ({ phase: t.phase, as: t.as, write: t.write, ledger: t.ledger.map(shown!), heard: t.heard.map((h) => ({ member: h.member, messages: h.messages.map(heardAs) })) })),
     };

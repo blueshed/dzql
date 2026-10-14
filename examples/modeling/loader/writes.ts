@@ -9,8 +9,8 @@ import type { Heart } from "./facts";
 
 type Field = { name: string; type: string };
 
-/** A story as the model takes it: its words, who tells it, whether they do it or are refused, a route it posts to, what it touches. */
-export type StoryWrite = { text: string; actor: string; kind: "does" | "cannot"; post?: string; touches: string[] };
+/** A story as the model takes it: its words, who tells it, whether they do it or are refused, a route it posts to, what it touches; and, for the model as built, the model story it tells, where the app's names one (the model takes no such field). */
+export type StoryWrite = { text: string; actor: string; kind: "does" | "cannot"; post?: string; model?: number; touches: string[] };
 
 /** A document as the model takes it, its stories by their place among the stories loaded, and each entity it holds besides its root. */
 export type DocumentWrite = { name: string; root: string; own: boolean; held_by: string[]; serves: number[]; fields: Field[]; holds: { entity: string; under: string; fields: Field[] }[] };
@@ -21,7 +21,7 @@ export type Load = { stories: StoryWrite[]; documents: DocumentWrite[]; skipped:
 const text = (names: string[]): Field[] => names.map((name) => ({ name, type: "text" }));
 
 export function writesOf(heart: Heart): Load {
-  const stories = heart.stories.map((s): StoryWrite => ({ text: s.name, actor: s.as, kind: s.kind === "cannot" ? "cannot" : "does", ...(s.post ? { post: s.post } : {}), touches: s.touches }));
+  const stories = heart.stories.map((s): StoryWrite => ({ text: s.name, actor: s.as, kind: s.kind === "cannot" ? "cannot" : "does", ...(s.post ? { post: s.post } : {}), ...(s.model !== undefined && { model: s.model }), touches: s.touches }));
   const entity = (name: string) => heart.entities.find((e) => e.name === name);
   const documents: DocumentWrite[] = [];
   const skipped: string[] = [];

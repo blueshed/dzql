@@ -11,4 +11,9 @@ describe("what loading an app into a model writes", () => {
     expect(load.documents).toEqual([{ name: "room", root: "rooms", own: false, held_by: [], serves: [0], fields: [], holds: [{ entity: "messages", under: "rooms", fields: [{ name: "text", type: "text" }] }] }]);
     expect(load.skipped).toEqual(["lobby"]);
   });
+
+  test("a story that names the model story it tells carries its number, for --against-page to match it by", () => {
+    const heart = heartOf({ example: "x", ran: false, session: null, perSession: [], stories: [{ n: 1, name: "Ann orders a flat white", as: "ann", kind: "does", model: 3, ops: [], seen: {}, untold: [], offPage: false }], rows: [{ n: 1, kind: "does", as: "ann", doc: "bill", changes: [] }] as never, traces: [], documents: [{ name: "bill", root: "bills", include: [] }], tables: [{ name: "bills", parent: null, columns: [], code: [], sql: "bills" }], files: [], cast: {}, held: {} });
+    expect(writesOf(heart).stories).toEqual([{ text: "Ann orders a flat white", actor: "ann", kind: "does", model: 3, touches: [] }]);
+  });
 });

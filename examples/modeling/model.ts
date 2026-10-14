@@ -34,6 +34,13 @@ const words = (value: unknown, why: string): string => {
   return text;
 };
 
+/** A story's words, on one line: a shell quote left open (an apostrophe in words not quoted) would run the commands after it into one story. */
+const line = (value: unknown): string => {
+  const text = words(value, "A story needs words.");
+  if (/[\r\n]/.test(text)) throw refuse("A story is one line: these words run onto a second.");
+  return text;
+};
+
 /** Names, from a list of them: each trimmed, a blank dropped. */
 const names = (value: unknown): string[] => (Array.isArray(value) ? value.map((v) => String(v).trim()).filter(Boolean) : []);
 
@@ -59,7 +66,7 @@ type Said = { text?: unknown; actor?: unknown; kind?: unknown; post?: unknown; t
 /**
  * A write to the model as it takes it. A story: written down with its words, who tells it, and
  * whether they do it or are refused (and a route it posts to, the entities it touches); reworded,
- * retold, taken back -- never without words. A document: described with its name, its root and
+ * retold, taken back -- never without words, nor on more than one line. A document: described with its name, its root and
  * the stories it serves (one at least); what it holds, an entity at a time with what it hangs under
  * and its fields; who holds it; whether it is each person's own; taken out. Its root stays.
  */
@@ -69,12 +76,12 @@ export function shape(m: Model, ops: PatchOp[]): PatchOp[] {
     const said = (op.value ?? {}) as Said;
     if (coll === "stories") {
       if (op.op === "add") {
-        const text = words(said.text, "A story needs words.");
+        const text = line(said.text);
         const post = typeof said.post === "string" && said.post.trim() ? said.post.trim() : null;
         return [{ op: "add", path: "/stories/-", value: { text, actor: words(said.actor, "A story is someone's: say who tells it."), kind: kindOf(said.kind), post, touches: names(said.touches) } }];
       }
       if (op.op === "remove") return [op];
-      if (field === "text") return [{ op: "replace", path: op.path, value: words(op.value, "A story needs words.") }];
+      if (field === "text") return [{ op: "replace", path: op.path, value: line(op.value) }];
       if (field === "actor") return [{ op: "replace", path: op.path, value: words(op.value, "A story is someone's: say who tells it.") }];
       if (field === "kind") return [{ op: "replace", path: op.path, value: kindOf(op.value) }];
       return [{ op: "replace", path: op.path, value: names(op.value) }]; // touches

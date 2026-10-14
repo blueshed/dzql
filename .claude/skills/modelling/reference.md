@@ -42,6 +42,12 @@ made; the page shows each story's number.
 | Which stories it serves | `serves <doc> <story>...` |
 | Renamed, taken out | `rename <doc> <name>`, `drop <doc>`, `unhold <doc> <entity>` (never its root) |
 | A slip | `undo`, `redo` |
+| The model, read back | `show`: each story, numbered, who and does or cannot; each document, numbered, whose, what it serves, and what it holds under its root |
+
+Words with an apostrophe go in double quotes (`story ann does "Ann scans the table's QR code"`):
+single quotes break on it, and a quote left open runs the commands after it into one story. Or pipe
+them in: `-` for the words reads them from stdin (`echo "..." | bun run cli:model story ann does -`,
+`reword <n> -` too). A story is one line; the model refuses words that run onto a second.
 
 ## Documents
 
@@ -76,7 +82,7 @@ Load the **eta-app** skill; the model says what to build, story by story:
 
 | In the model | In the app |
 |---|---|
-| A story | A story in `src/stories.ts`, in the wire's words: its actor is the cast member `as`, `does` or `cannot` the write, `seen` the holders of the documents it is born into |
+| A story | A story in `src/stories.ts`, in the wire's words: its actor is the cast member `as`, `does` or `cannot` the write, `seen` the holders of the documents it is born into, `model` the model story's number |
 | A document | A `defineDoc` in `src/delta.ts`: its root, and what it holds as its includes |
 | An entity, its fields, its parent | A table in `defineSchema`, its columns, its `parent` |
 | `own` | A `perSession` compartment |
@@ -90,5 +96,9 @@ Last, read it back: is the app the model as told? `bun run model:check --against
 the app as `model:load` would write it, and names each gap as a question for the teller: a story told
 that the app does not tell, one it tells that was never told, one whose teller or does/cannot
 differs, and a document whose root, holders, holdings (what each hangs under, its fields) or
-own-ness differ, or that serves other stories. Stories match by their words, so a story reworded on
-one side shows as two gaps. `--against-page <file.json>` reads the page's document saved instead.
+own-ness differ, or that serves other stories. Give each app story the number of the model story it
+tells: `story("Ann cannot order onto a paid bill", { model: 10, as: "ann", cannot: ... })`. A story
+that names one matches it whatever its words, and only does/cannot is compared (the model's teller
+is a role, "a customer"; the app's a cast member, "ann"). One that names none matches by its words,
+so a story reworded on one side shows as two gaps. The report says which matched which way.
+`--against-page <file.json>` reads the page's document saved instead.

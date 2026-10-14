@@ -1,11 +1,11 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import type { PatchOp } from "../../src/json-patch";
 import { createServer } from "../../src/server";
 import { run } from "../../src/harness";
 import { Refusal } from "../../src/refusal";
-import { drawHeart, heartOf, layout, picked, reason, related, shape as shapeOf, singular, type Raw, type Ui } from "./heart";
+import { drawHeart, heartOf, layout, picked, plain, reason, related, shape as shapeOf, singular, type Raw, type Ui } from "./heart";
 import { may, model, shape, type Model } from "./model";
-import { aliases } from "./cli";
+import { aliases, show, stdin } from "./cli";
 import { stories } from "./stories";
 import { example } from "./index";
 
@@ -37,6 +37,32 @@ describe("the heart, worked out from the model", () => {
       [2, "visitor", "does", "/login", ["session"], ["logins", "sessions"]],
       [3, "ann", "cannot", null, ["team"], []],
     ]);
+  });
+
+  test("the model in plain text, as the page shows it: each story, numbered, who and does or cannot; each document, numbered, whose, what it serves, and what it holds under its root", () => {
+    const more: Raw = { ...leave, stories: { ...leave.stories, "4": { id: 4, text: "Mo approves", actor: "mo", kind: "does" } } };
+    expect(plain(more)).toBe(
+      [
+        "Leave",
+        "",
+        "Stories",
+        "1. ann does: Ann asks",
+        "2. visitor does, posts to /login: Bo signs in",
+        "3. ann cannot: Ann cannot approve",
+        "4. mo does, no document: Mo approves",
+        "",
+        "Documents",
+        "1. team, held by ann and mo; serves 1 and 3",
+        "   teams: name",
+        "     requests: starts:date",
+        "     notes",
+        "2. session, each person's own, held by nobody yet; serves 2",
+        "   sessions: page",
+        "3. inbox, held by nobody yet; serves no story told",
+        "   requests: starts, note",
+      ].join("\n"),
+    );
+    expect(plain({ models: { name: "Cafe" } })).toBe("Cafe\n\nStories\nNone yet.\n\nDocuments\nNone yet.");
   });
 
   test("a document reaches its root and what it holds, its shape that tree, and serves a story or says it does not", () => {
@@ -246,6 +272,22 @@ describe("the model's rules", () => {
     expect(op("rename", "1", "the", "team")).toEqual({ op: "replace", path: "/documents/1/name", value: "the team" });
     expect(op("drop", "2")).toEqual({ op: "remove", path: "/documents/2" });
   });
+
+  test("a story's words with an apostrophe are piped in: `-` reads them, so no shell quote is left open", async () => {
+    const piped = `${process.env.TMPDIR ?? "/tmp"}/piped-${crypto.randomUUID()}`;
+    await Bun.write(piped, "Ann scans the table's QR code\n");
+    const was = stdin.path;
+    stdin.path = piped;
+    try {
+      expect(aliases.story!(["ann", "does", "-"]).ops[0]).toEqual({ op: "add", path: "/stories/-", value: { actor: "ann", kind: "does", text: "Ann scans the table's QR code" } });
+      expect(aliases.story!(["visitor", "does", "--post", "/login", "-"]).ops[0]).toMatchObject({ value: { text: "Ann scans the table's QR code", post: "/login" } });
+      expect(aliases.reword!(["1", "-"]).ops[0]).toEqual({ op: "replace", path: "/stories/1/text", value: "Ann scans the table's QR code" });
+      expect(aliases.story!(["ann", "does", "Ann", "-", "Bo"]).ops[0]).toMatchObject({ value: { text: "Ann - Bo" } }); // a dash among words is a word
+    } finally {
+      stdin.path = was;
+      await Bun.file(piped).delete();
+    }
+  });
 });
 
 describe("modeling, served", () => {
@@ -297,6 +339,34 @@ describe("modeling, served", () => {
     expect(await send("session", [{ op: "remove", path: "/person_id" }])).toEqual(["refused"]);
     ws.close();
   });
+
+  test("`show` prints the model as the page shows it, read as the CLI is signed in; signed out, it says to sign in", async () => {
+    const ws = server.url.href.replace(/^http/, "ws");
+    const file = `${process.env.TMPDIR ?? "/tmp"}/session-${crypto.randomUUID()}`;
+    await Bun.write(file, (await signIn("claude@modeling.example", "claude-password")).sessionId!);
+    const { readPage } = await import("./loader/told");
+    const page = plain(await readPage(ws, (await Bun.file(file).text()).trim()));
+    expect(page).toContain("\n21. visitor does, posts to /login: Bo signs in on another phone, and sees the team's calendar\n");
+    expect(page).toContain("\n2. session, each person's own, held by ann, bo, mo and visitor; serves 1, 3, 20 and 23\n   sessions: person_id, page, draft:json");
+
+    const printed = spyOn(console, "log").mockImplementation(() => {});
+    const said = spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(await show(ws, file)).toBe(0);
+      expect(printed).toHaveBeenCalledWith(page);
+      expect(await show(ws, `${file}-none`)).toBe(1);
+      expect(said).toHaveBeenCalledWith("No model on the page: sign in first (bun run cli login <email> <password>).");
+    } finally {
+      printed.mockRestore();
+      said.mockRestore();
+    }
+
+    // and as the CLI runs it: the kernel's, loading modeling's verbs
+    const cli = Bun.spawn(["bun", `${import.meta.dir}/../../src/cli.ts`, "show", "--session", file], { env: { ...process.env, ETA_EXAMPLE: "modeling", ETA_URL: ws }, stdout: "pipe" });
+    expect(await new Response(cli.stdout).text()).toBe(`${page}\n`);
+    expect(await cli.exited).toBe(0);
+    await Bun.file(file).delete();
+  }, 30000);
 
   test("every story passes", async () => {
     const report = await run(example, stories);

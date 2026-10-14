@@ -15,7 +15,7 @@ import { runAll } from "./model/predicates";
 import { compare, format, judge } from "./report";
 import { documentsOf, exampleAt, format as formatDocuments } from "./documents";
 import { extract } from "./extract";
-import { built, format as formatGaps, gaps, readPage, told } from "./told";
+import { built, format as formatGaps, gaps, matched, readPage, told } from "./told";
 import { writesOf } from "./writes";
 
 const { sessionFile, rest: argv } = extractSessionFile(process.argv.slice(2));
@@ -30,7 +30,8 @@ if (p >= 0) {
     console.error(err.message);
     process.exit(1);
   });
-  console.log(formatGaps(name, gaps(told(page), built(writesOf((await extract(at)).heart)))));
+  const [t, b] = [told(page), built(writesOf((await extract(at)).heart))];
+  console.log(formatGaps(name, gaps(t, b), matched(t, b)));
   process.exit(0);
 }
 

@@ -24,7 +24,7 @@ and go on.
 3. **Ask what the person needs in front of them to do it.** That is a document; whoever else must
    see the change holds it too. Name it for what it is to them, not for a table. → *Documents*
 4. **Say what it holds and what the story touches**, with only the fields a story needs.
-5. **Read the page back.** Each gap is a question for the teller, never something to fix quietly.
+5. **Read the page back** (`show` prints it). Each gap is a question for the teller, never something to fix quietly.
    → *The gaps*
 6. **Build nothing yet.** The model is done enough when the teller reads the page and calls each
    story true. Then load the **eta-app** skill. → *From the model to the app*

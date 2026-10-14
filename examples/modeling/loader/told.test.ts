@@ -7,7 +7,7 @@ import { connect, opened } from "../../../src/test-socket";
 import type { Raw } from "../heart";
 import { example } from "../index";
 import { extract } from "./extract";
-import { built, format, gaps, readPage, told } from "./told";
+import { built, format, gaps, matched, readPage, told } from "./told";
 import { said, send, writesOf, type Load } from "./writes";
 
 const field = (name: string, type = "text") => ({ name, type });
@@ -58,6 +58,38 @@ describe("the model as told, against the model as built", () => {
     expect(gaps(told(moved), built(app))).toContain(`team is rooted at people as told, at teams as built: which is it?`);
     expect(gaps(told({ models: { name: "Empty" } }), built({ stories: [], documents: [{ ...app.documents[1]!, serves: [] }], skipped: [] }))).toEqual([`board the app has, and it was never told: was it meant?`]);
     expect(gaps(told({ models: { name: "Empty" }, documents: { "1": { id: 1, name: "board", root: "boards", holds: { boards: { parent: null, fields: [] } } } } }), built({ stories: [], documents: [{ ...app.documents[1]!, own: true, serves: [] }], skipped: [] }))).toEqual([`board is shared as told, each person's own as built: which is it?`]);
+  });
+
+  test("an app story that names the model story it tells (`model: 2`) matches it though the words and the teller differ; one that names none goes by its words", () => {
+    const general: Raw = {
+      models: { name: "Cafe" },
+      stories: {
+        "1": { id: 1, text: "A customer orders a coffee", actor: "customer", kind: "does" },
+        "2": { id: 2, text: "A customer cannot order onto a bill that is paid", actor: "customer", kind: "cannot" },
+        "3": { id: 3, text: "Staff close the till", actor: "staff", kind: "does" },
+      },
+      documents: { "1": { id: 1, name: "bill", root: "bills", own: 0, holds: { bills: { parent: null, fields: [] } }, held_by: ["customer"], stories: [1, 2] } },
+    };
+    const cast: Load = {
+      stories: [
+        { text: "Ann orders a flat white", actor: "ann", kind: "does", model: 1, touches: [] },
+        { text: "Ann cannot order onto a paid bill", actor: "ann", kind: "does", model: 2, touches: [] },
+        { text: "Staff close the till", actor: "staff", kind: "does", touches: [] },
+        { text: "Bo pays for Ann", actor: "bo", kind: "does", model: 9, touches: [] },
+      ],
+      documents: [{ name: "bill", root: "bills", own: false, held_by: ["customer"], serves: [0, 1], fields: [], holds: [] }],
+      skipped: [],
+    };
+    const [t, b] = [told(general), built(cast)];
+    expect(gaps(t, b)).toEqual([
+      `"Bo pays for Ann" tells model story 9, and the page has no story 9: which does it tell?`,
+      `"A customer cannot order onto a bill that is paid" was told as customer cannot, and is built as ann does: which is it?`,
+      `"Bo pays for Ann" the app tells, and it was never told: was it meant?`,
+    ]);
+    expect(matched(t, b)).toEqual({ number: ["1", "2"], words: ["3"] });
+    expect(format("cafe", [], matched(t, b))).toBe("# cafe: as told on the model page, as built\n\nStories matched by the model story they name: 1 and 2; by their words: 3.\n\nNo gaps: the app is the model as told.");
+    expect(format("cafe", [], { number: [], words: ["3"] })).toBe("# cafe: as told on the model page, as built\n\nStories matched by their words: 3.\n\nNo gaps: the app is the model as told.");
+    expect(format("cafe", ["a?"], { number: [], words: [] })).toBe("# cafe: as told on the model page, as built\n\n1 gap\n\n- a?");
   });
 
   test("the report: the gaps, or that there are none", () => {

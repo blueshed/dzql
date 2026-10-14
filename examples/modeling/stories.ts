@@ -39,6 +39,7 @@ export const stories: Stories = {
     story("Claude rewords a story as Peter corrects it, and Peter sees the new words", { as: "claude", does: reword(6, "Bo takes back his week in October, before Mo has answered it"), offPage: true, seen: ["peter", "claude"] }),
     story("Claude says signing in touches the sessions too, and Peter sees the story light them", { as: "claude", does: touches(21, ["logins", "sessions"]), offPage: true, seen: ["peter", "claude"] }),
     story("A story with no words cannot be written down", { as: "claude", cannot: tell("  "), told: "A story needs words." }),
+    story("Claude cannot write a story whose words run onto a second line", { as: "claude", cannot: tell("Ann scans the table's QR code\nbun run cli:model story ann does Ann orders a coffee"), told: "A story is one line: these words run onto a second." }),
 
     // ── the documents ──
     story("Claude describes a document a story needs, and Peter sees it beside the story it serves", { as: "claude", does: describe("calendar", "requests", ["2"]), offPage: true, seen: ["peter", "claude"] }),

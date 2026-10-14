@@ -266,3 +266,27 @@ export function drawHeart(h: Heart, ui: Ui, width = Infinity): string {
 
   return stories + documents + entities;
 }
+
+// ───────────────────────────── the model, in plain text ─────────────────────────────
+
+/**
+ * The model as the page shows it, in plain text, for the CLI's `show`: each story by its number,
+ * who tells it, whether they do it or cannot, and its words; then each document by its number,
+ * whether it is each person's own, who holds it and the stories it serves, and below it its root
+ * and what it holds, each entity under the one it hangs from, with its fields (a type, where not text).
+ */
+export function plain(raw: Raw): string {
+  const h = heartOf(raw);
+  const told = new Set(h.stories.map((s) => String(s.n)));
+  const stories = h.stories.map((s) => `${s.n}. ${s.as} ${s.kind}${s.post ? `, posts to ${s.post}` : s.born.length ? "" : ", no document"}: ${s.name}`);
+  const documents = Object.values(raw.documents ?? {})
+    .sort(byId)
+    .flatMap((d) => {
+      const holds = d.holds ?? {};
+      const serves = (d.stories ?? []).map(String).filter((id) => told.has(id));
+      const head = `${d.id}. ${d.name}${d.own ? ", each person's own" : ""}, held by ${list(d.held_by ?? []) || "nobody yet"}; ${serves.length ? `serves ${list(serves)}` : "serves no story told"}`;
+      const fields = (e: string) => (holds[e]?.fields ?? []).map((f) => (f.type === "text" ? f.name : `${f.name}:${f.type}`)).join(", ");
+      return [head, ...shape(head, d.root, holds).slice(1).map((l) => `${" ".repeat(1 + l.pad / 7)}${l.text}${fields(l.text) && `: ${fields(l.text)}`}`)];
+    });
+  return [raw.models.name, "", "Stories", ...(stories.length ? stories : ["None yet."]), "", "Documents", ...(documents.length ? documents : ["None yet."])].join("\n");
+}

@@ -238,7 +238,7 @@ describe("stories harness", () => {
         misshapen({ name: "Bob is somewhere", as: "bob", seen: ["ada"] }),
         misshapen({ name: "Eve cannot go into general, and Ada sees nothing", as: "eve", cannot: general, seen: ["ada"], untold: ["ada"] }),
         misshapen({ name: "Ada says hi, told something, by an old name", as: "ada", does: hi, seen: ["ada", "bob"], told: "hi", unseen: ["cy"] }),
-        { name: "Ada says hi, with nothing left undefined counted", as: "ada", does: hi, from: undefined, seen: ["ada", "bob"], untold: ["cy"] },
+        { name: "Ada says hi, with nothing left undefined counted, telling the model's story 3", as: "ada", does: hi, from: undefined, seen: ["ada", "bob"], untold: ["cy"], model: 3 },
       ],
     });
     expect(report.outcomes.map((o) => o.failures)).toEqual([

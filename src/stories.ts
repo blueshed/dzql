@@ -53,8 +53,11 @@ export type Gesture = { press: string } | { drag: [from: string, to: string] };
  */
 type Budgeted = { budget?: number };
 
+/** The number of the story on the model's page this one tells, for `model:check --against-page` to match it by, where the words differ. The harness reads nothing of it. */
+type Modelled = { model?: number };
+
 /** A story that writes: `does`. */
-type Does = Budgeted & {
+type Does = Budgeted & Modelled & {
   /**
    * The write the author makes. Their page must offer a control that sends it, and it must land.
    * The harness then undoes and redoes it, and checks each puts every page back. Or a form they
@@ -93,7 +96,7 @@ type Does = Budgeted & {
 };
 
 /** A story that is refused: `cannot`. */
-type Cannot = Budgeted & {
+type Cannot = Budgeted & Modelled & {
   /**
    * A write that must be refused. Nothing may change, and the ledger must not move. Or a post to a
    * route (`post`) that the route refuses: a 4xx, or a `tell` with a reason on the page it came from.
@@ -107,7 +110,7 @@ type Cannot = Budgeted & {
 };
 
 /** A story told by a socket going: `closesTab`. */
-type ClosesTab = Budgeted & {
+type ClosesTab = Budgeted & Modelled & {
   /**
    * The author closes their tab: no write, the socket going, which the server tells like any
    * change (who is in a room). No control is looked for and nothing is undone; the author, gone,
@@ -126,9 +129,9 @@ type ClosesTab = Budgeted & {
  * be dropped without a word (`{ does, closesTab }` would close a tab and never write).
  */
 export const STORY_KEYS = {
-  does: ["does", "from", "offPage", "gesture", "seen", "undone", "redone", "untold", "budget"],
-  cannot: ["cannot", "from", "told", "budget"],
-  closesTab: ["closesTab", "seen", "untold", "budget"],
+  does: ["does", "from", "offPage", "gesture", "seen", "undone", "redone", "untold", "budget", "model"],
+  cannot: ["cannot", "from", "told", "budget", "model"],
+  closesTab: ["closesTab", "seen", "untold", "budget", "model"],
 } as const satisfies { does: readonly (keyof Does)[]; cannot: readonly (keyof Cannot)[]; closesTab: readonly (keyof ClosesTab)[] };
 
 /** One kind of story, and none of another kind's keys. */

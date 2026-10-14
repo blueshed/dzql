@@ -134,7 +134,7 @@ export function shape(head: string, root: string, include: string[], parentOf: (
 }
 
 /** A story as extract.ts reads it: what the heart needs of it. */
-type StoryFacts = { n: number; name: string; as: string; kind: string; offPage: boolean; post?: string | null; ops: { table: string | null }[]; seen: Record<string, unknown>; untold: string[] };
+type StoryFacts = { n: number; name: string; as: string; kind: string; offPage: boolean; post?: string | null; model?: number; ops: { table: string | null }[]; seen: Record<string, unknown>; untold: string[] };
 
 /**
  * The heart page's data: the stories (born into, touches, told and not asked for, with the patch
@@ -172,6 +172,7 @@ export function heartOf(f: {
       as: s.as,
       kind: s.kind,
       post: s.post ?? null,
+      ...(s.model !== undefined && { model: s.model }),
       seen: Object.keys(s.seen),
       born: bornInto(row, f.session),
       touches: touches(s.ops, step?.ledger ?? [], f.documents),
