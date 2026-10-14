@@ -325,7 +325,12 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    story. A record may carry no key the story does not name, but for a field left blank. A write
    only an applet's own control sends is sent as its mount declares, unless the story says the
    gesture.
-8. Report by story name. A failing story is a sentence, not a stack trace.
+8. Report by story name. A failing story is a sentence, not a stack trace, that says why: who was
+   not told names what their page read and what the write changed; a refused write, which check
+   refused it (the page did not read it, `permit`, `shape`, delta) and in the compartment's words.
+   And every control on every page drawn is held to the wire -- its document one that page read,
+   its path a JSON Pointer, its op add, replace, remove or test, a replace's path one the document
+   holds or its `permit` takes -- and one that fails is a warning: its page would stay still.
 
 *What it does not do yet (17 September).* Said plainly, because a builder will otherwise trust it
 for more than it checks:

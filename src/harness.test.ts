@@ -11,7 +11,7 @@ import { read } from "./documents";
 import { appletProps, appletWrites, write } from "./html";
 import type { Example } from "./example";
 import { size } from "./costs";
-import { anyOne, controlsOn, goesTo, hear, holding, largest, MOST_PROPS, offers, pathsIn, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, valueAt, type Outcome, type Report, type Trace, type Wire } from "./harness";
+import { anyOne, controlsOn, goesTo, hear, holding, holds,largest, MOST_PROPS, offers, pathsIn, placeOf, print, propsCost, retake, run, takersOn, taking, unheld, unversioned, valueAt, type Outcome, type Report, type Trace, type Wire } from "./harness";
 import { comparable, diff, drawParts, part, splitTag } from "./parts";
 import { post, type Stories, type Story } from "./stories";
 import { serverWrite } from "./documents";
@@ -221,7 +221,7 @@ describe("stories harness", () => {
     expect(report.outcomes[3]!.failures).toEqual(['refused, but eve was not told "You need a name first."']);
     expect(report.outcomes[2]!.failures.join("\n")).toMatch(/refused, but: ada's page differs\n\s+expected …/);
     expect(report.outcomes[0]!.failures[0]).toContain("ghost");
-    expect(report.outcomes[1]!.failures).toContain('eve did not see it on ""');
+    expect(report.outcomes[1]!.failures).toContain('eve did not see it on "": eve\'s page read session; the write was to room:general');
   }, 30000);
 
   test("a story is one kind, with only its own keys: one that mixes them fails by name and is not run, so no half of it is dropped", async () => {
@@ -273,9 +273,9 @@ describe("stories harness", () => {
     });
     const first = (i: number) => report.outcomes[i]!.failures.map((f) => f.split("\n")[0]);
     expect(first(0)).toContain("dee has no control on their page for add /messages/- on room");
-    expect(first(0)).toContain("nothing landed: dee's write was refused");
+    expect(first(0)).toContain("nothing landed: dee's write was refused, as dee's page did not read room: it read session, lobby:all");
     expect(first(1)).not.toContain("dee has no control on their page for replace /room on session");
-    expect(first(1)).toContain("nothing landed: dee's write was refused");
+    expect(first(1)).toContain("nothing landed: dee's write was refused by session's shape");
     expect(first(2)).toContain("dee's page offers this, and it is refused without a word: a control that always fails");
   }, 30000);
 
@@ -392,7 +392,7 @@ describe("stories harness", () => {
         [],
         [],
         ["ann noticed, and should not have", "bo noticed, and should not have"],
-        ['nothing landed: the route refused visitor\'s post to /login: "That email and password do not match."', "visitor did not see it"], // what they were told is not the page
+        ['nothing landed: the route refused visitor\'s post to /login: "That email and password do not match."', "visitor did not see it: visitor's page read session"], // what they were told is not the page
         ["ann has no form on their page that posts to /login"], // and Bo's calendar is hers now
         ["refused, but it landed: the route answered visitor's post to /login with 303, and told them nothing", "refused, but: visitor's page differs"],
         ['refused, but visitor was not told "Try again.": they were told "That email and password do not match."'],
@@ -537,15 +537,15 @@ describe("stories harness", () => {
   test("someone the story says is untold, told of the document all the same, fails it: a page that reads what it does not show", async () => {
     const leaky: Example = { ...example, render: (sessionId) => (read("room:general"), example.render(sessionId)) };
     const failures = await failuresOf(leaky, only("Ada says hello"));
-    expect(failures).toContain("after the story, cy was told of room:general, and should not have been");
-    expect(failures).toContain("after undo, eve was told of room:general, and should not have been");
-    expect(failures).toContain("after redo, dee was told of room:general, and should not have been");
+    expect(failures).toContain("after the story, cy was told of room:general, and should not have been: cy's page read room:general, session, here:kitchen, room:kitchen");
+    expect(failures).toContain("after undo, eve was told of room:general, and should not have been: eve's page read room:general, session");
+    expect(failures).toContain("after redo, dee was told of room:general, and should not have been: dee's page read room:general, session, lobby:all");
   }, 30000);
 
   test("a tab closing the server does not tell fails its story: nobody still looking sees it", async () => {
     const deaf: Example = { ...example, compartments: example.compartments.map((c) => ({ ...c, onClose: undefined })) };
     const failures = await failuresOf(deaf, only("Bob closes his tab"));
-    expect(failures).toEqual(["nothing landed: closing bob's tab changed nothing", "ada did not see it"]);
+    expect(failures).toEqual(["nothing landed: closing bob's tab changed nothing", "ada did not see it: ada's page read session, here:general, room:general"]);
   }, 30000);
 
   test("the fresh render is read from storage: a copy that drifted from the tables fails the story, by name", async () => {
@@ -620,7 +620,7 @@ describe("stories harness", () => {
       ],
     });
     const first = (i: number) => report.outcomes[i]!.failures.map((f) => f.split("\n")[0]);
-    expect(first(0)).toContain('nothing landed: ada\'s write was refused: "Not now."');
+    expect(first(0)).toContain('nothing landed: ada\'s write was refused by room\'s permit: "Not now."');
     expect(first(1)).toEqual(['refused, but ada was not told "Nobody takes a message back.": they were told "Messages are kept."']);
     expect(first(2)).toEqual(['refused and told "Messages are kept.", but ada\'s page does not show it']);
     expect(first(3)).toContain("refused, but it landed: ada's write was echoed back to them");
@@ -700,9 +700,9 @@ describe("stories harness", () => {
           return visit.read(sessionId).code === "OKAFOR" ? page.replaceAll("#7FAE4E", "#1E3F8F") : page;
         },
       };
-      expect(await failuresOf(blind, [femi], vows)).toContain('okafors did not see it on ""');
+      expect(await failuresOf(blind, [femi], vows)).toContain('okafors did not see it on "": okafors\'s page read session, household:1, wedding:1, everyone:1; the write was to household:1, board:1, everyone:1');
       const saved = withHousehold((h) => ({ afterWrite: async (ws, id, ops) => (await h.afterWrite!(ws, id, ops), tell(ws.data.sessionId, { doc: "ledger", path: "/latest", said: "Saved." })) }), blind);
-      expect(await failuresOf(saved, [femi], vows)).toContain('okafors did not see it on ""');
+      expect(await failuresOf(saved, [femi], vows)).toContain('okafors did not see it on "": okafors\'s page read session, household:1, wedding:1, everyone:1; the write was to household:1, board:1, everyone:1');
     }, 30000);
 
     test("what the author is told must be on their page in its own words: a line drawn saying something else fails", async () => {
@@ -1127,5 +1127,95 @@ describe("hear, after a render in parts: the page as a fresh render draws it, wh
       }
     }
     expect(removedInside).toBeGreaterThan(300); // 3000 renders, and rows taken out of where they left, named there
+  });
+});
+
+// J: a story fails, and says which page read what, so the fix is first time. Chat, broken on
+// purpose: a story that puts its change where nobody reads it, writes each check refuses, and
+// controls the wire would refuse without a word.
+describe("a failure that says why", () => {
+  const only = (prefix: string): Story[] => stories.stories.filter((s) => s.name.startsWith(prefix));
+  const withOwner = (docType: string, f: (c: Compartment) => Compartment): Example => ({ ...example, compartments: example.compartments.map((c) => (c.docType === docType ? f(c) : c)) });
+  const refusing = (reason: string): never => {
+    throw refuse(reason);
+  };
+
+  test("A story fails, and says which page read what, so the fix is first time: someone not told names the documents their page read and the one written", async () => {
+    const failures = await failuresOf(example, [{ name: "Ada says hello, and Cy, in the kitchen, sees it", as: "ada", does: say("hello"), seen: ["ada", "bob", "cy"] }]);
+    expect(failures).toEqual(["cy did not see it: cy's page read session, here:kitchen, room:kitchen; the write was to room:general"]);
+    // a page that reads what it does not show is told all the same, and says what it read
+    const leaky: Example = { ...example, render: (sessionId) => (read("room:general"), example.render(sessionId)) };
+    expect(await failuresOf(leaky, only("Ada says hello"))).toContain("after the story, cy was told of room:general, and should not have been: cy's page read room:general, session, here:kitchen, room:kitchen");
+    // a tab closing names what it changed
+    expect(await failuresOf(example, [{ name: "Bob closes his tab, and Cy sees it", as: "bob", closesTab: true, seen: ["ada", "cy"] }])).toEqual(["cy did not see it: cy's page read session, here:kitchen, room:kitchen; the tab closing changed here:general"]);
+  }, 30000);
+
+  test("A story fails, and says which page read what, so the fix is first time: a write refused says which check refused it, in the compartment's words", async () => {
+    const saying = withOwner("room", (room) => ({
+      ...room,
+      permit: (ws, op, id) => (op.value === "hi" ? refusing("Not now.") : room.permit!(ws, op, id)),
+      shape: (ws, id, ops) => (ops[0]!.value === "nothing" ? [] : ops[0]!.value === "at length" ? refusing("Say less.") : ops[0]!.value === "nowhere" ? [{ op: "replace", path: "/nowhere/at/all", value: 1 }] : room.shape!(ws, id, ops)),
+    }));
+    const told = (name: string, as: string, does: { doc: string; ops: PatchOp[] }): Story => ({ name, as, does, seen: [as] });
+    const report = await run(saying, {
+      ...stories,
+      stories: [
+        told("Ada says hi", "ada", say("hi")),
+        told("Ada says nothing", "ada", say("nothing")),
+        told("Ada speaks at length", "ada", say("at length")),
+        told("Ada says something delta cannot keep", "ada", say("nowhere")),
+        told("Ada goes into general, where she is", "ada", enter("general")),
+        told("Ada says who is here", "ada", { doc: "here:general", ops: [{ op: "add", path: "/people/ada", value: "Ada" }] }),
+        told("Dee speaks in general from the list of rooms", "dee", { doc: "room:general", ops: [{ op: "add", path: "/messages/-", value: "hi" }] }),
+      ],
+    });
+    const refused = report.outcomes.map((o) => o.failures.find((f) => f.startsWith("nothing landed")));
+    expect(refused).toEqual([
+      'nothing landed: ada\'s write was refused by room\'s permit: "Not now."',
+      "nothing landed: ada's write was refused by room's shape",
+      'nothing landed: ada\'s write was refused by room\'s shape: "Say less."',
+      "nothing landed: ada's write was refused past room's permit and shape: delta applied nothing",
+      "nothing landed: ada's write was refused by session's shape",
+      "nothing landed: ada's write was refused, as here:general is live, which the wire does not write",
+      "nothing landed: dee's write was refused, as dee's page did not read room:general: it read session, lobby:all",
+    ]);
+  }, 30000);
+
+  test("A story fails, and says which page read what, so the fix is first time: a control the wire would refuse without a word is said, by its page, once", async () => {
+    // the session's permit says why it refuses a mood; the room takes what it is sent, unshaped
+    const wired = withOwner("session", (session) => ({ ...session, permit: (ws, op, id) => (op.path === "/mood" ? refusing("No moods.") : session.permit!(ws, op, id)) }));
+    const careless: Example = {
+      ...wired,
+      compartments: wired.compartments.map((c) => (c.docType === "room" ? { ...c, shape: undefined } : c)),
+      render: (sessionId) =>
+        example.render(sessionId) +
+        part(
+          "careless",
+          [
+            `<button${write("room:kitchen", "add", "/messages/-", "psst")}>Psst</button>`, // a document the page forgot to read
+            `<button${write("session", "replace", "room", "general")}>In</button>`, // a path with no slash
+            `<button${write("session", "move" as "add", "/room")}>Move</button>`, // an op the wire has not
+            `<input name="nickname"${write("session", "replace", "/nickname")}>`, // nothing there, and the permit says no without a word
+            `<input name="mood"${write("session", "replace", "/mood")}>`, // nothing there, and the permit says why
+            `<button disabled${write("session", "replace", "/nickname", "x")}>x</button>`, // sends nothing
+            `<button${write("room", "replace", "/topic", "x")}>Topic</button>`, // a room, unshaped, has no topic
+          ].join(""),
+        ),
+    };
+    const report = await run(careless, { ...stories, stories: only("Bob closes his tab") });
+    expect(report.warnings!.filter((w) => w.story.startsWith("a control the wire refuses")).map((w) => `${w.story} | ${w.says}`)).toEqual([
+      'a control the wire refuses, on ada\'s page | button[data-value="psst"], add /messages/- on room:kitchen: the page did not read room:kitchen',
+      'a control the wire refuses, on ada\'s page | button[data-value="general"], replace room on session: room is not a JSON Pointer',
+      "a control the wire refuses, on ada's page | button, move /room on session: move is not add, replace, remove or test",
+      'a control the wire refuses, on ada\'s page | input[name="nickname"], replace /nickname on session: session holds nothing at /nickname, and its permit refuses it without a word',
+      'a control the wire refuses, on ada\'s page | button[data-value="x"], replace /topic on room: the page did not read room', // her page before she has a name: in no room
+      'a control the wire refuses, on ada\'s page | button[data-value="x"], replace /topic on room: room holds nothing at /topic to replace',
+    ]);
+  }, 30000);
+
+  test("a JSON Pointer is held where each step is a key of what is there, an array's by its index", () => {
+    const doc = { a: { "b/c": [1, { "d~": null }] } };
+    expect(["", "/a", "/a/b~1c", "/a/b~1c/0", "/a/b~1c/1/d~0"].every((p) => holds(doc, p))).toBe(true);
+    expect(["/b", "/a/b~1c/2", "/a/b~1c/-", "/a/b~1c/length", "/a/b~1c/0/x", "/a/b~1c/01"].some((p) => holds(doc, p))).toBe(false);
   });
 });
