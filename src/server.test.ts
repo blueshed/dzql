@@ -85,6 +85,7 @@ const noteCompartment: Compartment = {
 // (a bare `month`) is September.
 const monthPermits: string[] = [];
 const showing = new Map<string, string[]>();
+const followed: { sent: PatchOp[]; landed: PatchOp[] }[] = [];
 
 type Appointment = { id: string; what: string };
 
@@ -107,6 +108,8 @@ const monthCompartment: Compartment = {
     return op.op === "add" && op.path === "/appointments/-" && docId !== "2026-07";
   },
   shape: (_ws, _id, ops) => ops.map((op) => ({ op: "add", path: `/appointments/${Bun.randomUUIDv7()}`, value: { what: String(op.value) } })),
+  // what follows each write is given: as the page sent it, and as it landed
+  afterWrite: (_ws, _id, sent, landed) => void followed.push({ sent, landed }),
 };
 
 function makeExample(name: string): Example {
@@ -834,6 +837,16 @@ describe("one socket, any documents: a document is named whole, and seen because
     const { ws } = await showingMonths();
     write(ws, "month", [{ op: "add", path: "/appointments/-", value: "haircut" }]);
     expect(await nextPatch(ws)).toMatchObject({ doc: "month:2026-09", ops: [{ value: { what: "haircut" } }] });
+    ws.close();
+  });
+
+  test("what follows a write is given its ops as the page sent them and as they landed: a new row by the id it was made with, never the page's `-`", async () => {
+    const { ws } = await showingMonths("2026-09");
+    write(ws, "month:2026-09", [{ op: "add", path: "/appointments/-", value: "osteopath" }], 1);
+    await nextPatch(ws);
+    const made = (await appointments("2026-09")).at(-1)!;
+    expect(followed.at(-1)!.sent).toEqual([{ op: "add", path: "/appointments/-", value: "osteopath" }]);
+    expect(followed.at(-1)!.landed).toEqual([{ op: "add", path: `/appointments/${made.id}`, value: expect.objectContaining({ what: "osteopath" }) }]);
     ws.close();
   });
 

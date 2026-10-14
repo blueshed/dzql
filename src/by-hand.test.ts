@@ -75,7 +75,7 @@ describe("the stories by hand", () => {
   test("a form posted to a route by hand: typed into and sent, the browser following where it sends it, signed in or told why; one a person cannot reach fails by name", async () => {
     const { example: leave, stories: told } = await load("leave");
     const posts = named(told, "Bo signs in on another phone, and sees the team's calendar", "Someone types Bo's email with the wrong password, and is told the two do not match");
-    const after = named(told, "Ann asks for her draft, and Mo and Bo see it waiting on the calendar").map((s) => ({ ...s, seen: { ann: "2026-10" } }) as Story); // a fresh browser after a post: not signed in as Bo by the route's cookie
+    const after = named(told, "Ann asks for her draft, and Mo and Bo see it waiting on the calendar, and she sees it waiting in her drawer").map((s) => ({ ...s, seen: { ann: "2026-10" } }) as Story); // a fresh browser after a post: not signed in as Bo by the route's cookie
     const report = await run(leave, { ...among(told, "visitor", "ann"), stories: [...posts, ...after] }, undefined, { byHand: true });
     expect(report.outcomes.map((o) => o.failures)).toEqual([[], [], []]);
     expect(report.byHand).toMatchObject({ stories: 3 });

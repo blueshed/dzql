@@ -46,7 +46,8 @@ again. Put the pure rules beside it (`shape(doc, ops)`), tested without a server
 - A session that is not history goes in a registry without `{ ledger: true }`, and its compartment
   says `ledger: false`, so one left off the ledger by mistake is caught (leave's).
 - Read a long document in windows by a keyset, never an offset (chat's `/before`); the page still
-  reads it whole, so it is told every change.
+  reads it whole, so it is told every change. A document whose rows only pile up (every bill ever)
+  holds only what is open, or today's: [scope.md](scope.md).
 
 ## The ledger
 

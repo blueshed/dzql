@@ -706,7 +706,7 @@ describe("stories harness", () => {
         },
       };
       expect(await failuresOf(blind, [femi], vows)).toContain('okafors did not see it on "": okafors\'s page read session, household:1, wedding:1, everyone:1; the write was to household:1, board:1, everyone:1');
-      const saved = withHousehold((h) => ({ afterWrite: async (ws, id, ops) => (await h.afterWrite!(ws, id, ops), tell(ws.data.sessionId, { doc: "ledger", path: "/latest", said: "Saved." })) }), blind);
+      const saved = withHousehold((h) => ({ afterWrite: async (ws, id, ops, landed) => (await h.afterWrite!(ws, id, ops, landed), tell(ws.data.sessionId, { doc: "ledger", path: "/latest", said: "Saved." })) }), blind);
       expect(await failuresOf(saved, [femi], vows)).toContain('okafors did not see it on "": okafors\'s page read session, household:1, wedding:1, everyone:1; the write was to household:1, board:1, everyone:1');
     }, 30000);
 

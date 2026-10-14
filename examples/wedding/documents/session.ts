@@ -1,6 +1,6 @@
 import { db } from "../delta";
 import { read as readDoc } from "../../../src/documents";
-import { address, parseAddress, patchCollections, type Collections } from "../../../src/bento";
+import { address, collectionsWrite, parseAddress, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
 import { splitPath } from "@blueshed/delta/core";
 import { integer } from "./values";
@@ -108,7 +108,7 @@ function after(before: Visit, ops: PatchOp[]): Visit {
       next.page = removing ? "" : String(op.value ?? "");
     } else {
       const ui: Collections = { reading: next.reading ?? undefined, filter: next.filter ?? undefined, hide: next.hide ?? undefined };
-      if (!patchCollections(ui, op)) continue; // how a collection is read, find's word, the eye: the bento's own
+      if (!collectionsWrite(op, ui)?.length) continue; // how a collection is read, find's word, the eye: the bento's own
       Object.assign(next, { reading: ui.reading ?? null, filter: ui.filter ?? null, hide: ui.hide ?? null });
     }
   }

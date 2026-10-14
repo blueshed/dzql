@@ -63,6 +63,7 @@ Each step is the least that makes the next story pass. Run `bun run stories` aft
 | Know the words; make, refuse or keep a document | [words](reference/words.md) |
 | Write a story | [stories](reference/stories.md) |
 | Declare and read documents; undo | [documents](reference/documents.md) |
+| Keep a document from growing forever: today's, what is open, or a window | [scope](reference/scope.md) |
 | Permit, shape, follow a write | [compartment](reference/compartment.md) |
 | Say why a write was refused, or what it did | [refusal](reference/refusal.md) |
 | Draw the page in parts | [page](reference/page.md) |

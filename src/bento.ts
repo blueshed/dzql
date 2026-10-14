@@ -554,3 +554,24 @@ export function patchCollections(ui: Collections, op: PatchOp): boolean {
   }
   return true;
 }
+
+/** The fields of the session `patchCollections` keeps, each replaced whole by `collectionsWrite`. */
+const COLLECTIONS = ["reading", "filter", "hide"] as const;
+
+/**
+ * A session's `permit` and `shape` for the bento's own writes: a reading switched (`replace
+ * /reading/<key>`), find's word and its eye set or put away (`replace` or `remove` at
+ * `/filter/<key>`, `/hide/<key>`). Undefined when `op` is not one: refuse it, or it is the
+ * session's own. Otherwise it is applied to `ui`, in place, and what comes back is the ops the
+ * session keeps it by: each of `reading`, `filter` and `hide` it moved, replaced whole (null once
+ * empty), none when it moved nothing. A permit asks `collectionsWrite(op) !== undefined`; a shape
+ * hands in the session as it is, and each op after the one before.
+ */
+export function collectionsWrite(op: PatchOp, ui: Collections = {}): PatchOp[] | undefined {
+  const [field, key, more] = splitPath(op.path);
+  const verbs = field === "reading" ? ["replace"] : field === "filter" || field === "hide" ? ["replace", "remove"] : [];
+  if (!key || more !== undefined || !verbs.includes(op.op)) return undefined;
+  const before = COLLECTIONS.map((f) => JSON.stringify(ui[f]));
+  patchCollections(ui, op);
+  return COLLECTIONS.filter((f, i) => JSON.stringify(ui[f]) !== before[i]).map((f): PatchOp => ({ op: "replace", path: `/${f}`, value: ui[f] ?? null }));
+}

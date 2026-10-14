@@ -27,7 +27,8 @@ binds the app's icons, its session's docType and the last tool, once. These are 
 - Escalate only as the data forces: in place, then the cell, a drawer, a window, a modal. A list of
   five needs no find.
 - Find and the reading switch write to the session (`/filter/<key>`, `/hide/<key>`,
-  `/reading/<key>`): its `shape` applies them with `patchCollections(ui, op)`.
+  `/reading/<key>`): its `permit` says yes when `collectionsWrite(op)` is not undefined, and its
+  `shape` takes `collectionsWrite(op, ui)`, each field it moves replaced whole (the ticker's desk).
 - The stylesheet imports `src/bento.css` first, then says its own tokens. `bento.css` styles only
   inside `layers()`: draw every bento page in it (`layers(page, "", "")` when nothing is open).
   Outside it (`body`, `#app`) is the app's to style.

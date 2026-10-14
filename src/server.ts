@@ -253,7 +253,7 @@ export function createServer(example: Example, port: number | string = process.e
       const why = owner.ledger === false ? "its compartment keeps it off the ledger (ledger: false), yet delta recorded the write" : "delta recorded no ledger entry: register it with { ledger: true }, or say its compartment keeps it off the ledger (ledger: false)";
       failed(`writing ${named}`, new Error(why));
     }
-    await landed(ws, () => owner.afterWrite?.(ws, docId, ops), `following a write to ${named}`);
+    await landed(ws, () => owner.afterWrite?.(ws, docId, ops, wireOps(owner, docId, written.ops as PatchOp[])), `following a write to ${named}`);
     return true;
   }
 

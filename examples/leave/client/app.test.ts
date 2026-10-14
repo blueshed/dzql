@@ -48,9 +48,12 @@ describe("leave in a real browser", () => {
     await waitFor(view, `document.querySelector('.draft-drawer')?.textContent ?? ''`, (v) => String(v).includes("2 working days"));
     expect(await view.evaluate<string>(`document.querySelector('.draft-drawer').textContent`)).toContain("Bo, waiting: 2 days of these");
     expect(await view.evaluate<number>(`document.querySelectorAll('.calendar-view .date.clash').length`)).toBe(2);
-    // Ask, then drag the bar a week on
+    // Ask: the drawer shows the request it became; closed, the bar drags a week on
     await press(view, ".draft-drawer .tool.add");
     await waitFor(view, `[...document.querySelectorAll('.calendar-view .bar .sr-only')].some((s) => s.textContent === 'you, waiting, Wed 7 – Thu 8 Oct')`, (v) => v === true);
+    await waitFor(view, `document.querySelector('.request-drawer')?.textContent ?? ''`, (v) => String(v).includes("Wed 7 – Thu 8 Oct"));
+    await press(view, ".request-drawer .drawer-close");
+    await waitFor(view, `document.querySelector('.request-drawer') === null`, (v) => v === true);
     // grabbed over its Wednesday, dropped on the next Wednesday: a week later
     await view.evaluate(`(() => {
       const bar = [...document.querySelectorAll('.calendar-view .bar.movable')].find((b) => b.textContent.includes('Wed 7'));
