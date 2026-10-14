@@ -1,11 +1,11 @@
-import { test, afterAll, setDefaultTimeout } from "bun:test";
-import { cpSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { test, expect, afterAll, setDefaultTimeout } from "bun:test";
+import { cpSync, existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-// The evolve skill's references, proven: for each section, a new app made from this template,
-// with the section's code blocks applied and its `bun add` lines run (after those of the sections
-// it builds on), passes `bun run typecheck` and `bun test` at 100%.
+// The evolve skill's references, proven: for each file in references/, a new app made from this
+// template, with the file's code blocks applied and its `bun add` lines run (after those of the
+// files it builds on), passes `bun run typecheck` and `bun test` at 100%.
 //
 // Not part of `bun test` (the name has no .test): `bun run test:evolve` runs it, and CI does.
 // It is about the template, so setup deletes it from a new app.
@@ -13,18 +13,19 @@ import { join } from "node:path";
 setDefaultTimeout(600_000);
 
 const root = `${import.meta.dir}/..`;
-const references = await Bun.file(`${root}/.claude/skills/evolve/references.md`).text();
+const references = `${root}/.claude/skills/evolve/references`;
 const scratch = mkdtempSync(`${tmpdir()}/evolve-`);
 afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
-// Each section, and the sections it builds on, applied first in this order
+// Each reference, and the references it builds on, applied first in this order
 const SECTIONS: Record<string, string[]> = {
-  "A new document": [],
-  "Two documents on one page": [],
-  "Store documents in SQLite": ["Two documents on one page"],
-  "Store in Postgres": ["Two documents on one page", "Store documents in SQLite"],
-  "Serve what isn't communication": [],
-  "Build for production": [],
+  "document.md": [],
+  "testing.md": ["document.md"],
+  "two-documents.md": [],
+  "sqlite.md": ["two-documents.md"],
+  "postgres.md": ["two-documents.md", "sqlite.md"],
+  "http.md": [],
+  "build.md": [],
 };
 
 function run(cwd: string, cmd: string[]) {
@@ -34,18 +35,15 @@ function run(cwd: string, cmd: string[]) {
   return out;
 }
 
-/** A section's code blocks, from its heading to the next: the language, and the lines. */
-function blocks(name: string) {
-  const start = references.indexOf(`\n## ${name}\n`);
-  if (start < 0) throw new Error(`references.md has no section "${name}"`);
-  const end = references.indexOf("\n## ", start + 1);
-  const text = references.slice(start, end < 0 ? undefined : end);
+/** A reference's code blocks: the language, and the lines. */
+async function blocks(name: string) {
+  const text = await Bun.file(`${references}/${name}`).text();
   return [...text.matchAll(/^```(\w*)\n([\s\S]*?)^```$/gm)].map(([, lang, body]) => ({ lang, lines: body!.trimEnd().split("\n") }));
 }
 
 /** Apply a section to an app: run its `bun add` lines, and write each block whose first line names a file. */
 async function apply(app: string, name: string) {
-  for (const { lang, lines } of blocks(name)) {
+  for (const { lang, lines } of await blocks(name)) {
     if (lang === "sh") {
       for (const line of lines.filter((l) => l.startsWith("bun add "))) run(app, line.split(/\s+/));
       continue;
@@ -81,6 +79,10 @@ function newApp(name: string) {
   run(app, ["bun", "create/setup.ts"]);
   return app;
 }
+
+test("every reference is proven here", () => {
+  expect(readdirSync(references).sort()).toEqual(Object.keys(SECTIONS).sort());
+});
 
 for (const [name, after] of Object.entries(SECTIONS)) {
   test(name, async () => {

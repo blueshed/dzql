@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **The evolve skill is cut to a compass.** `SKILL.md` holds the mental model, the order of work,
+  the invariants and where the types are; `references.md` is now a file per step under
+  `references/` (`document`, `testing`, `two-documents`, `sqlite`, `postgres`, `http`, `build`),
+  each leading with its example and ending with its gotchas, one line each. `tests/evolve.ts`
+  applies each file in place of each section, and fails if a reference file is not in its list.
+  The order page's test no longer repeats the refused change (the notes test has it), and the
+  closing line about eta leaves the skill.
+
 ## [0.7.0] - 2026-10-12
 
 ### Added

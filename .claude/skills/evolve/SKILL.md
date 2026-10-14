@@ -5,37 +5,45 @@ description: "Grows this app: a new shared document, two documents on one page, 
 
 # Growing the app
 
-**Documents are how people communicate.** A document is what you need in front of you to take an action. To place an order you need the catalogue and your order: two documents on one page. The kitchen needs every open order, another document over the same rows.
+**Documents are how people communicate.** A document is what someone needs in front of them to take an action: to place an order, the catalogue and their order (two documents on one page); for the kitchen, every open order (another document over the same rows). Open one and you're subscribed: every change anyone makes reaches you. Change it with add, replace or remove on a path, and everyone holding it sees it at once.
 
-A document is never a poster on the wall. It's a conversation. Open it and you're subscribed: every change anyone makes reaches you as it happens, with nothing to poll, fetch or refresh. Change it yourself with add, replace or remove on a path, and everyone holding it sees it at once. The verbs exist because documents change, and everyone holding a document always shares the same state.
+**Think in documents, not entities.** Ask "what does someone need in front of them to do this?", not "what are the tables?" The tables follow from the documents.
 
-**Think in documents, not entities.** Ask "what does someone need in front of them to do this?" rather than "what are the tables?" The tables follow from the documents.
+**Storage grows; the page does not.** A shared JSON document does a lot on its own. SQLite earns its place when documents share rows, or for undo and history. Postgres when servers share the data, or people should see only their own. The page and its documents stay the same as the storage grows.
 
-**What grows is where they're kept.** A shared JSON document does a lot on its own. SQLite earns its place when documents share the same rows, or when you want undo and history. Postgres comes in when servers share the data, or people should see only their own. The page and its documents stay the same as the storage grows.
-
-Anything people share is a document from the start, as `message` is. HTTP routes serve what isn't communication: the health check, files, the server's status (`status`).
-
-A resource is a folder `src/resources/<name>/` of three files: `<name>-api.ts` (the server side, and the type both sides share), `<name>.ts` (the client: the document it opens, or what it fetches) and `<name>-view.tsx` (the view). The server side is wired in `src/server.ts`, and the view goes in a route in `src/app.tsx`.
-
-## Workflow
+## Order of work
 
 ```
 - [ ] Ask what someone needs in front of them to do what the user asked: those are the documents
-- [ ] Copy the closest section of references.md, or message / status
+- [ ] Copy the closest reference below, or message / status in src/resources/
 - [ ] Test what a person sees and clicks (a refused change included), and every route and method
 - [ ] bun test (100% coverage) and bun run typecheck
-- [ ] A CHANGELOG.md entry under [Unreleased], and in todo.jsonl the item it settles marked fixed (or a new one for what is left open)
+- [ ] CHANGELOG.md under [Unreleased]; in todo.jsonl the item settled marked fixed, or one for what is left open
 ```
+
+## Invariants
+
+- Anything people share is a document from the start, as `message` is. HTTP routes serve only what isn't communication: health, files, `status`.
+- A resource is `src/resources/<name>/`: `<name>-api.ts` (server side, and the type both sides share), `<name>.ts` (the document it opens, or what it fetches), `<name>-view.tsx`. Wire the server side in `src/server.ts`, the view as a route in `src/app.tsx`.
+- A document is never set in the page: `send` the change, and the change that comes back draws it, in this window too.
+- A row is addressed by its id, never its position.
+- The client imports a shared type with `import type`, so no server code reaches the browser.
+- Coverage stays at 100%: write the missing test, never lower the threshold.
+
+## The types
+
+delta's are in `node_modules/@blueshed/delta/src/`: `server/server.ts` (`registerDoc`), `client/client.ts` (`openDoc`, `connectWs`), `core.ts` (`DeltaOp`), `schema.ts`, and a file per backend under `server/`. The app's: `startServer` in `src/server.ts`, the page helpers in `tests/browser.ts`. The `delta-doc` skill is delta's manual; `railroad` is the page's.
 
 ## References
 
-[references.md](references.md) has a section per task, each with its code and its tests:
+Each leads with its example, code and tests that `bun run test:evolve` applies to a new app and runs:
 
-- [A new document](references.md#a-new-document): a shared JSON document, made the way `message` is
-- [Two documents on one page](references.md#two-documents-on-one-page): the catalogue and an order
-- [Store documents in SQLite](references.md#store-documents-in-sqlite): rows shared between documents, and undo
-- [Store in Postgres](references.md#store-in-postgres): PGlite in this process, then a Postgres server
-- [Serve what isn't communication](references.md#serve-what-isnt-communication): HTTP routes, and files in S3
-- [Build for production](references.md#build-for-production): optional
+- [references/document.md](references/document.md): a new shared document (notes: add and remove)
+- [references/testing.md](references/testing.md): the document in the browser: two windows, a refusal
+- [references/two-documents.md](references/two-documents.md): the catalogue and an order on one page
+- [references/sqlite.md](references/sqlite.md): documents that share rows (the kitchen), undo and history
+- [references/postgres.md](references/postgres.md): servers that share data; people who see only their own
+- [references/http.md](references/http.md): HTTP routes, and files in S3
+- [references/build.md](references/build.md): a production build (optional)
 
-The `delta-doc` skill is delta's own manual, and `railroad` is the page's.
+A block's first line names its file: `// src/x.ts` is the whole file; `// src/x.ts: after <text>` (or `before`, `in place of`) goes at the first line holding that text, at its indent.

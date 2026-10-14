@@ -5,7 +5,7 @@
 >
 > `bun create` runs each `bun-create` postinstall entry as `bun run <entry>`, so the entry in `package.json` is `create/setup.ts`; writing `bun run create/setup.ts` runs `bun run bun run ...`, which does nothing and says nothing (checked on Bun 1.4.2). bun create's own git step also races the script (its `git add` can hit a file the script has just deleted and give up), so `setup()` ends by committing or amending, and a new app is always one commit with a clean tree. After changing `create/`, test the whole flow, more than once, since a race shows only some of the time: put a copy of this repo in a folder, then `BUN_CREATE_DIR=<that folder> bun create <the copy's name> <a new folder>`, and run `bun test` in the new folder.
 >
-> After changing the `evolve` skill's references, run `bun run test:evolve`: it applies each section to a new app and runs that app's tests (CI does too).
+> After changing the `evolve` skill's references, run `bun run test:evolve`: it applies each file in `references/` to a new app and runs that app's tests (CI does too). A new reference file goes in its `SECTIONS`, or the test fails.
 >
 > `setup()` refuses to run in a clone of this repo (its `origin` is the template's), because it deletes things. Write ledger and changelog text with the file tools, never inside a quoted shell argument.
 <!-- /template -->
