@@ -33,7 +33,7 @@ describe("bun create blueshed/eta garden", () => {
     const setup = run(["bun", "create/setup.ts"]);
     expect(setup.out).toContain("garden is ready!");
     expect(setup.code).toBe(0);
-    for (const path of ["docs/stories.md", "docs/bento/README.md", "app/index.ts", "app/stories.ts", "model/index.ts", "model/cli.ts", "src/server.ts", ".claude/skills/eta-app/SKILL.md", ".claude/skills/modelling/SKILL.md", ".claude/skills/delta-doc", ".claude/skills/railroad"]) expect(existsSync(join(root, path))).toBe(true);
+    for (const path of ["docs/stories.md", "docs/bento/README.md", "app/index.ts", "app/stories.ts", "model/index.ts", "model/cli.ts", "src/server.ts", ".claude/skills/eta-app/SKILL.md", ".claude/skills/modelling/SKILL.md", ".claude/skills/delta-doc", ".claude/skills/railroad", ".claude/settings.json", ".claude/hooks/session-start.sh"]) expect(existsSync(join(root, path))).toBe(true);
     for (const path of ["examples", "create", "model/loader/londons", "model/loader/documents.test.ts", "docs/first-app.md", "docs/README.md", "model/server.test.ts", "src/server.test.ts", "src/client/app.test.html", ".claude/commands/publish.md"]) expect(existsSync(join(root, path))).toBe(false);
   }, 60000);
 
@@ -56,6 +56,13 @@ describe("bun create blueshed/eta garden", () => {
       expect({ cmd: cmd.join(" "), code, out: code === 0 ? "" : out }).toEqual({ cmd: cmd.join(" "), code: 0, out: "" });
     }
   }, 120000);
+
+  test("in a Claude Code web session its hook brings the Bun its tests need, and no browser they do not use", () => {
+    const { code, out } = run(["bash", ".claude/hooks/session-start.sh", "--dry-run"], { CLAUDE_PROJECT_DIR: root });
+    expect(code).toBe(0);
+    expect(out).toContain("chromium: not needed"); // the starter's tests use no Bun.WebView; the first that does brings it
+    expect(out).toMatch(/wants >=[\d.]+: ok/);
+  });
 
   test("its model's page is its own model, empty, and its people sign in with the password in .env", async () => {
     const env = Object.fromEntries((await Bun.file(join(root, ".env")).text()).split("\n").filter((l) => l.includes("=") && !l.startsWith("#")).map((l) => l.split("=") as [string, string]));

@@ -236,6 +236,8 @@ ${Name}: an app on eta, told before it is built.
 - The gate before a commit: \`bun check\`, \`bun test\` (100% coverage of \`app/\`), \`bun run stories\`.
 - \`todo.jsonl\` is what is open; \`CHANGELOG.md\` is where the app has been. They move together.
 - No new dependencies without asking.
+- A Claude Code web session is made ready by \`.claude/hooks/session-start.sh\`: Bun up to
+  \`engines.bun\`, and Chromium once a test uses \`Bun.WebView\` (\`--dry-run\` says what it would do).
 
 ## The wire
 
