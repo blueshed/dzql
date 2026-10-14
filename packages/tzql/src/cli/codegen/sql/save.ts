@@ -173,8 +173,12 @@ export function generateSaveFunction(name: string, entityIR: EntityIR): string {
     ? compilePermission(name, entityIR.permissions.create[0], null, 'p_data')
     : 'TRUE';
 
+  // Compile the update predicate against the STORED row (v_old_data), not the
+  // request body. Evaluating it against p_data lets a caller pass their own
+  // owner/tenant id in the body to satisfy an ownership rule and then overwrite
+  // someone else's row. delete.ts and the temporal save path already do this.
   const updatePerm = entityIR.permissions?.update?.[0]
-    ? compilePermission(name, entityIR.permissions.update[0], null, 'p_data')
+    ? compilePermission(name, entityIR.permissions.update[0], null, 'v_old_data')
     : 'TRUE';
 
   const onCreateRules = entityIR.graphRules?.onCreate
