@@ -1,59 +1,44 @@
 # Controls
 
-How a form, a button or a field says what it writes, and what it does as the write goes, is refused or lands. The messages are [wire.md](wire.md); the line that says why is `toldAt` ([compartment.md](compartment.md#saying-why-a-write-was-refused-or-what-one-did)).
-
-A control says what it writes with `write(doc, op, path, value?)`, which gives
-`data-write='{"doc","op","path"}'`:
+A control says what it writes, and the kernel's client sends it: a form, a button, a field that
+edits in place. The messages are [wire.md](wire.md); the line that says why is [refusal.md](refusal.md).
 
 ```ts
-`<form${write("room", "add", "/messages/-")}><input name="text" required>…</form>`
+// examples/chat/compartments/room.ts: a form that creates, and a button
+`<form class="say" aria-label="Say something"${write("room", "add", "/messages/-")}><input name="text" autocomplete="off" required autofocus aria-label="Message"><button type="submit" class="tool">Send</button></form>`
+`<button type="button" class="tool"${write("session", "replace", "/before", "earlier")}>Earlier</button>`
+
+// examples/leave/page.ts: an editing form, each field writing its own path when it changes
+const field = (which: "starts" | "ends", label: string) =>
+  `<label class="modal-field"><span class="note">${label}</span><input type="date" name="${which}"${write(doc, "replace", `${base}/${which}`)} value="${esc(s[which] ?? "")}"></label>${toldAt(sessionId, doc, `${base}/${which}`)}`;
+return `<form class="days" data-write-on="change">${field("starts", "First day")}${field("ends", "Last day")}</form>`;
 ```
 
-- A **form** writes on submit: its one field's value, or a record of several. A field has one
-  type whatever form it is in: a box is `true` or `false`, a group of radios is one field, the
-  value chosen or `null`, a `multiple` select its last choice or `null`, anything else its text.
-  A record keeps every named field's key, so a value keeps one shape. It clears as it sends. Its
-  write's own refusal (`refused`, by the write's id, before the page handed back) hands back what
-  was sent, into each field not typed in since; its own echo ends the wait. What is typed while a
-  write is on its way is kept, whoever's echo comes, and so is what a page sent whole for another
-  reason finds there (someone else's write turning the page into another). A write on its way
-  when the socket goes is unanswered: the page drawn afresh hands back what its form sent, as a
-  refusal would (it may have landed, which that page then shows: better there twice than lost),
-  and then each editing form says, once, any edit that page does not show -- one unanswered, or
-  one the closed socket never took; one that landed is drawn, and not said again.
-- A **button or row** writes on click, with its `data-value` if it has one. A click in a field
-  never writes.
-- A form with **`data-write-on="blur"`, `"change"` or `"input"`** edits in place: `data-write`
-  goes on each field, and every field whose value differs from what was rendered becomes one op
-  in one message. `"input"` is debounced about 150ms and sent when focus leaves. None of them
-  sends the same message twice until a write lands; after that (an echo, an undo) it may. A render that changes a field nobody is in shows the new value (an undo's), so it is not
-  sent again; a field someone is in keeps what they type. So a field typed in (not a box, a radio
-  or a select) sends, before its op, a `test` of what it was drawn with when its typist last saw
-  it drawn: a change from someone else drawn under the caret is not written over unseen. Refused
-  so, the field shows what is drawn; draw `toldAt` beside it to say why. A select was rendered showing the last
-  option drawn `selected`, else its first not disabled; it keeps a choice not yet drawn, by its
-  value, however its options move, and otherwise shows what is drawn. A box was rendered ticked
-  or not (`checked`), a group of radios with the value drawn `checked`; each goes only when what
-  it holds differs, as it would from a form that creates. It keeps a tick not yet drawn (a
-  radio's by its value, while its group offers it) and otherwise shows what is drawn. A
-  `multiple` select is not a field here (a write carries one value): an editing form never sends
-  it, nor a refusal hands it back. Escape (which presses the last `[data-escape]`) and the back
-  button first say the editing form someone is in, as leaving its field would: a drawer's words
-  are not lost with it, though WebKit fires no `focusout` for a field a render takes out.
+`write(doc, op, path, value?)` (`src/html.ts`) gives `data-write='{"doc","op","path"}'`.
 
-Also:
-
-- The stories count a control only where a person could press it: not drawn `disabled`, and not
-  `inert`, `hidden` or in a disabled fieldset, itself or by what it is in. So a story told from a
-  modal is done in the modal: the page behind it, inert, offers nothing. The page's address
-  (`data-page-write`) is the URL bar's, not a control: a story that goes somewhere needs the
-  button that goes there.
-- When the connection drops, the page stays as it was (what is typed, what applets hold), but
-  `inert`, and `#app` is marked `data-offline` (`src/bento.css` dims it) until the server, reached
-  again, draws it afresh. The client says "Reconnecting…" in a `role="status"` region it puts
-  beside `#app` (`.connection`), since what is inert is not read out. It says nothing else: a
-  change from someone else is drawn in silently, as a change speaks to the person who made it. A write made while it is down is not sent, nor taken
-  for sent: a form keeps what is typed, and an editing form says it once the page is drawn afresh.
-- `autofocus` means "this field is waiting for the caret": after a render the client focuses it,
-  but only when nothing else has the caret.
-- `data-autoscroll` keeps a list at its foot as it grows.
+- A **form** writes on submit: its one field's value, or a record of every named field. A box is
+  `true` or `false`; a group of radios one field, the value chosen or `null`; a `multiple` select its
+  last choice or `null`; anything else its text. It clears as it sends.
+- Refused, a form hands back what it sent into each field not typed in since; its echo ends the
+  wait. What is typed while a write is on its way is kept.
+- A **button or row** writes on click, with its `data-value`. A click in a field never writes.
+- **`data-write-on="blur"`, `"change"` or `"input"`** edits in place: `data-write` on each field, and
+  every field that differs from what was rendered is one op in one message. `"input"` is debounced
+  about 150ms and sent when focus leaves. The same message is not sent twice until a write lands.
+- A field typed in sends first a `test` of what it was drawn with: someone else's change drawn under
+  the caret is not written over unseen. Refused so, the field shows what is drawn: put `toldAt`
+  beside it.
+- A render that changes a field nobody is in shows the new value; a field someone is in keeps what
+  they type. A select, box or radio keeps a choice not yet drawn, and goes only when it differs.
+  An editing form never sends a `multiple` select.
+- Escape (which presses the last `[data-escape]`) and the back button first send the editing form
+  someone is in.
+- The socket gone: the page stays, `inert`, `#app[data-offline]`, and says "Reconnecting…" (`.connection`).
+  A write made while down is not sent; one on its way is unanswered, and the page drawn afresh hands
+  back what its form sent, and each editing form says once any edit that page does not show.
+- A change from someone else is drawn in silently.
+- `autofocus`: focused after a render only when nothing else has the caret. `data-autoscroll` keeps
+  a list at its foot as it grows.
+- Label what an assistant should use, in your own words (`aria-label`, `<legend>`, `<label>`):
+  the label is its tool's name ([assistants.md](assistants.md)).
+- The page's address (`data-page-write`) is the URL bar's, not a control ([bento.md](bento.md#where-you-are-the-address)).
