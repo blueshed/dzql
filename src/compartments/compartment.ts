@@ -80,15 +80,18 @@ export type Compartment = {
    */
   permitUndo?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): boolean;
   /**
-   * After a fresh write from this person has landed, with the ops as the page sent them: what
-   * follows for the writer alone. Leave closes the drawer once its draft is asked for.
+   * After a fresh write from this person has landed: what follows for the writer alone. Leave's
+   * drawer shows the request its draft became.
    *
+   * - `ops` are as the page sent them (`add /requests/-`); `landed`, as delta applied them, in the
+   *   wire's paths, the same its echo carried: a new row by its id and whole (`add
+   *   /requests/<id>`), whether `shape` made the id or left `-` for the store to name.
    * - Say what it did with `tell(ws.data.sessionId, { doc, path, said })` (src/refusal.ts), beside
    *   the control that sent it: what the writer was told before has gone by then.
    * - Never after an undo or redo: that is `afterWalk`'s.
    * - A throw here is the server's failure, reported; the write stands.
    */
-  afterWrite?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[]): void | Promise<void>;
+  afterWrite?(ws: ServerWebSocket<ConnectionData>, docId: string, ops: PatchOp[], landed: PatchOp[]): void | Promise<void>;
   /**
    * After an undo or redo of this person's has landed: what follows for the walker alone, as
    * `afterWrite` is for a fresh write.

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { address, bento, choice, field, layers, matches, parseAddress, patchCollections, prop, rows, type Collections, type FieldOptions } from "./bento";
+import { address, bento, choice, collectionsWrite, field, layers, matches, parseAddress, patchCollections, prop, rows, type Collections, type FieldOptions } from "./bento";
 import { appletProps, esc, join, write } from "./html";
 import { decoded, diff, drawParts, part } from "./parts";
 import { waitFor, webview } from "./webview";
@@ -312,6 +312,24 @@ describe("patchCollections", () => {
     expect(patchCollections(ui, remove("/hide/market"))).toBe(false);
     expect(patchCollections(ui, remove("/filter/rooms"))).toBe(false);
     expect(ui).toEqual({ filter: { market: "al" } });
+  });
+});
+
+describe("collectionsWrite: a session's permit and shape for the bento's own writes", () => {
+  const replace = (path: string, value?: unknown) => ({ op: "replace" as const, path, value });
+  const remove = (path: string) => ({ op: "remove" as const, path });
+
+  test("permitted: a reading switched, find's word and its eye set or put away, each by a collection's name; nothing else", () => {
+    for (const op of [replace("/reading/board", "list"), replace("/filter/market", ""), remove("/filter/market"), replace("/hide/market", true), remove("/hide/market")]) expect([op, collectionsWrite(op)]).toEqual([op, expect.any(Array)]);
+    for (const op of [remove("/reading/board"), { op: "add" as const, path: "/hide/market", value: true }, replace("/reading"), replace("/filter/market/x"), replace("/page", "board")]) expect([op, collectionsWrite(op)]).toEqual([op, undefined]);
+  });
+
+  test("shaped: applied to the session's own, each of reading, filter and hide it moves replaced whole, null once empty; one that moves nothing, none", () => {
+    const ui: Collections = { filter: { market: "al" }, hide: { market: true } };
+    expect(collectionsWrite(replace("/reading/board", "list"), ui)).toEqual([{ op: "replace", path: "/reading", value: { board: "list" } }]);
+    expect(collectionsWrite(remove("/filter/market"), ui)).toEqual([{ op: "replace", path: "/filter", value: null }, { op: "replace", path: "/hide", value: null }]);
+    expect(collectionsWrite(remove("/hide/market"), ui)).toEqual([]);
+    expect(ui).toEqual({ reading: { board: "list" } });
   });
 });
 

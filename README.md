@@ -14,7 +14,7 @@ You start by saying what people do, in sentences a customer could call true or f
 
 ```ts
 story("Ada says hello; Bob, in the room, sees it; Cy, in the kitchen, does not", ...)
-story("Ann asks for her draft, and Mo and Bo see it waiting on the calendar", ...)
+story("Ann asks for her draft, and Mo and Bo see it waiting on the calendar, and she sees it waiting in her drawer", ...)
 story("Ann cannot approve her own day off", ...)
 ```
 

@@ -347,16 +347,19 @@ describe("the page", () => {
     }
   });
 
-  test("a request just asked for opens its drawer by the id delta gave it, and can be taken back", async () => {
+  test("a draft asked for: the drawer that asked shows the request it became, by the id delta gave it, waiting, to be taken back", async () => {
     const ann = await withAnn();
     try {
+      await go(ann, "2027-01");
       await send(ann, "session", [{ op: "replace", path: "/draft", value: { starts: "2027-01-04", ends: "2027-01-05" } }]);
-      await send(ann, "team", [{ op: "add", path: "/requests/-" }]);
-      const at = /data-value="(2027-01\?request=[^"]+)"/.exec(await go(ann, "2027-01"))?.[1];
-      expect(at).toBeDefined();
-      expect(await go(ann, at!)).toContain("Mon 4 – Tue 5 Jan");
-      await go(ann, at!.replace("request", "confirm"));
-      expect(await send(ann, "team", [{ op: "remove", path: `/requests/${at!.split("=")[1]}` }])).not.toContain("Mon 4 – Tue 5 Jan");
+      const asked = await send(ann, "team", [{ op: "add", path: "/requests/-" }]);
+      const id = /data-page="2027-01\?request=([^"]+)"/.exec(asked)?.[1];
+      expect(id).toBeDefined();
+      expect(asked).toContain("Your leave");
+      expect(asked).toContain("Mon 4 – Tue 5 Jan");
+      expect(asked).toContain("Take it back");
+      await go(ann, `2027-01?confirm=${id}`);
+      expect(await send(ann, "team", [{ op: "remove", path: `/requests/${id}` }])).not.toContain("Mon 4 – Tue 5 Jan");
     } finally {
       await undo(ann); // the take-back
       await undo(ann); // the ask

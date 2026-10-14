@@ -56,8 +56,10 @@ in memory, never from the wire), `sourced` and `static` (read only).
 - `afterChange(docId, ops)`: after every change, once told (a write, an undo, another process's).
   Keep a live document true: compute it whole, `serverWrite` the difference, one run at a time
   (`examples/chat/presence.ts`): two at once diff the same copy, and delta refuses the second.
-- `afterWrite(ws, docId, ops)`: after this person's fresh write, ops as sent: what follows for the
-  writer alone (leave closes the draft's drawer). It has landed: a throw is reported, never a refusal.
+- `afterWrite(ws, docId, ops, landed)`: after this person's fresh write: what follows for the
+  writer alone. `ops` are as sent (`add /requests/-`); `landed`, as delta applied them, the echo's:
+  a new row by its id (`add /requests/<id>`), so leave's drawer goes on to the request its draft
+  became. It has landed: a throw is reported, never a refusal.
 - `afterWalk(ws, docId, { way, ops, inverse })`: after this person's undo or redo; `inverse` holds
   what it took back, rows whole. A walk that changed nothing comes with `ops: []`: say nothing.
 

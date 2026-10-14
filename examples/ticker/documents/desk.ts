@@ -1,7 +1,6 @@
 import { read as readDoc } from "../../../src/documents";
-import { address, parseAddress, patchCollections, type Collections } from "../../../src/bento";
+import { address, collectionsWrite, parseAddress, type Collections } from "../../../src/bento";
 import type { PatchOp } from "../../../src/json-patch";
-import { splitPath } from "@blueshed/delta/core";
 
 // The desk, kept in delta (`desk:<id>`, ../delta.ts): where this session is on the page -- one
 // address (src/bento.ts): the cell grown into the window, and the one thing open over it,
@@ -33,22 +32,14 @@ function placed(value: unknown): string | undefined {
   return undefined;
 }
 
-/** The desk after `ops`: what applies of them -- an address, a reading, find's word, the eye. */
-export function after(ui: Ui, ops: PatchOp[]): Ui {
-  const next: Ui = structuredClone(ui);
-  for (const op of ops) {
-    const [field] = splitPath(op.path);
-    if (field === "page") {
-      const page = op.op === "remove" ? "" : placed(op.value);
-      if (page !== undefined) next.page = page;
-    } else {
-      patchCollections(next, op); // a reading, find's word or the eye (src/bento.ts), or nothing
-    }
-  }
-  return next;
-}
-
-/** The ops that make desk `from` into `to`: each field that differs, replaced whole. */
-export function between(from: Ui, to: Ui): PatchOp[] {
-  return FIELDS.filter((f) => JSON.stringify(from[f]) !== JSON.stringify(to[f])).map((f) => ({ op: "replace", path: `/${f}`, value: to[f] ?? null }));
+/** What a write to the desk becomes, applied to `ui` an op at a time: an address it keeps, or a reading, find's word or the eye (src/bento.ts), each field it moves replaced whole. */
+export function shape(ui: Ui, ops: PatchOp[]): PatchOp[] {
+  return ops.flatMap((op): PatchOp[] => {
+    const bento = collectionsWrite(op, ui);
+    if (bento) return bento;
+    const page = op.path !== "/page" ? undefined : op.op === "remove" ? "" : placed(op.value);
+    if (page === undefined || page === ui.page) return [];
+    ui.page = page;
+    return [{ op: "replace", path: "/page", value: page }];
+  });
 }

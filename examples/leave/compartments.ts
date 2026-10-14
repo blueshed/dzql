@@ -1,6 +1,7 @@
 import type { Compartment } from "../../src/compartments/compartment";
 import { serverWrite } from "../../src/documents";
-import { parseAddress } from "../../src/bento";
+import { address, parseAddress } from "../../src/bento";
+import { splitPath } from "@blueshed/delta/core";
 import { may, session as sessionOf, shape, shapeSession, team as teamOf, TEAM, type Request } from "./documents";
 
 // leave's two compartments. The session: where you are, your draft, and who -- but who is written
@@ -34,13 +35,14 @@ export const team: Compartment = {
     const { person, draft } = sessionOf(ws.data.sessionId);
     return shape(person!, ops, teamOf(), draft);
   },
-  // Where the write leaves its writer: asked for, a draft is gone and its drawer closes; the modal
-  // that asked to take a request back closes.
-  async afterWrite(ws, _id, ops) {
+  // Where the write leaves its writer: asked for, a draft is gone and its drawer shows the request
+  // it became, by the id it landed with; the modal that asked to take a request back closes.
+  async afterWrite(ws, _id, ops, landed) {
     const { path, what } = parseAddress(sessionOf(ws.data.sessionId).page);
     const asked = ops.some((op) => op.op === "add" && op.value === undefined); // the draft, asked for
-    const closed = ops.some((op) => op.op === "add") || (what === "confirm" && ops.some((op) => op.op === "remove"));
-    if (closed) await serverWrite(`session:${ws.data.sessionId}`, [{ op: "replace", path: "/sessions/page", value: path }, ...(asked ? [{ op: "replace" as const, path: "/sessions/draft", value: null }] : [])]);
+    const made = landed.find((op) => op.op === "add");
+    const page = made ? address(path, "request", splitPath(made.path)[1]) : what === "confirm" && ops.some((op) => op.op === "remove") ? path : undefined;
+    if (page !== undefined) await serverWrite(`session:${ws.data.sessionId}`, [{ op: "replace", path: "/sessions/page", value: page }, ...(asked ? [{ op: "replace" as const, path: "/sessions/draft", value: null }] : [])]);
   },
   // An ask undone gives its draft back, as it was; asked again by Redo, that draft goes again.
   async afterWalk(ws, _id, { way, ops, inverse }) {
