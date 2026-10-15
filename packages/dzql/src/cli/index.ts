@@ -14,6 +14,13 @@ const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const VERSION = packageJson.version;
 
 const args = process.argv.slice(2);
+
+// delta's Postgres commands (dzql is delta's Postgres step): sql, init, migrate
+if (["sql", "init", "migrate"].includes(args[0] ?? "")) {
+  const { main } = await import("../postgres/cli.ts");
+  await main(args);
+  process.exit(0);
+}
 let command = args[0];
 let input = args[1];
 let outputDir = "dist"; // Default output directory
