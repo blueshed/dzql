@@ -1,5 +1,6 @@
 // A Bun.WebView at the app's page, and the helpers page tests share. One per test file.
 // The rules for Bun.WebView are at the top of site.test.ts: follow them.
+import { beforeAll } from "bun:test";
 
 // Poll a page-side expression until it is truthy
 async function waitIn(view: Bun.WebView, expr: string, timeout = 5_000) {
@@ -18,12 +19,21 @@ export function browser(url: () => URL) {
   const view = newView();
   let visits = 0;
 
+  // One navigation at a time, each after the last has settled: a test cut off while its page
+  // loads leaves the next test a page to wait for, not "a navigation is already pending".
+  let last: Promise<unknown> = Promise.resolve();
+  const navigate = (to: string) => (last = Promise.allSettled([last]).then(() => view.navigate(to)));
+
+  // The browser starts on the first navigation, which CI's Chrome can take more than a test's
+  // time over: the file makes it before its tests, with two minutes of its own.
+  beforeAll(() => navigate(`${url().href}?warm`), 120_000);
+
   return {
     view,
 
     // Load the page afresh. Navigating to the URL the view is already at does not reload it,
     // so each visit gets a query of its own (the route ignores it).
-    open: () => view.navigate(`${url().href}?visit=${++visits}`),
+    open: () => navigate(`${url().href}?visit=${++visits}`),
 
     waitFor: (expr: string, timeout?: number) => waitIn(view, expr, timeout),
 

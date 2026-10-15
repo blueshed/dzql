@@ -47,6 +47,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   The order page's test no longer repeats the refused change (the notes test has it), and the
   closing line about eta leaves the skill.
 
+### Fixed
+
+- **A slow browser start no longer fails the page tests after it** (todo #13). On CI's Chrome the
+  first navigation could take a page test past its 30 s, and the tests after it failed on "a
+  navigation is already pending" (the delta 1.0 PR, 15 October; GitHub mailed it before the re-run
+  passed). `browser()` in `tests/browser.ts` now:
+  - makes the first navigation itself, in a `beforeAll` with two minutes of its own, so a cold
+    start is not charged to a test;
+  - takes navigations one at a time, each after the last has settled, so a test cut off while its
+    page loads leaves the next test a page to wait for.
+
+  No test file changes, and nor does any `evolve` reference. Proven with a scratch test whose server
+  holds the first page past a test's time: without the change it fails as CI did, with it it passes;
+  and, holding a test's page past its time, the test after it passes with the change and fails on
+  the pending navigation without it.
+
 ## [0.7.0] - 2026-10-12
 
 ### Added

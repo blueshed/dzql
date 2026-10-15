@@ -18,6 +18,7 @@ import iconPage from "./icon-page.html";
 // - type() appends. To replace a field's text, use replaceText (browser.ts).
 // - view.title is empty after the first navigate on macOS WebKit: read document.title with evaluate.
 // - One WebView per file: browser() in browser.ts. A test that needs a second window uses withOtherWindow.
+//   browser() makes the first navigation before the file's tests, and open() waits for the last to settle.
 // - macOS uses the system WebKit. Linux needs Chrome, found through BUN_CHROME_PATH: CI and, in the
 //   Claude Code web sandbox, .claude/hooks/session-start.sh set that up (see CLAUDE.md).
 
