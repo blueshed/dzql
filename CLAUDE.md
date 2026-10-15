@@ -110,6 +110,7 @@ Publishing is done via GitHub Actions, triggered by git tags. Do NOT publish dir
 **STOP. Before creating a git tag, verify ALL of these:**
 
 - [ ] Tag format is `dzql@X.Y.Z`
+- [ ] `CHANGELOG.md`: the Unreleased section becomes the new version
 - [ ] Version updated in `packages/dzql/package.json`
 - [ ] Version updated in `packages/create-dzql/package.json` (both the package version AND the dzql dependency)
 - [ ] TypeScript compiles without errors (`cd packages/dzql && bunx tsc --noEmit`)
