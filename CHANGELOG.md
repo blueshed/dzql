@@ -35,6 +35,23 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   path cases open, every collection and every row (made-up ones too), on the seed and after writes;
   breaking the parent chain on purpose fails 25 of them. Re-apply the framework SQL
   (`applyFramework`, or `dzql init --upgrade`) and then `generateSql`.
+- **A write's scope is compiled** (2c, piece 2): "you may write what you may read", asked of every
+  row an op names (`_delta_row_in_scope`). `generateSql` writes `dzql_in_scope__<prefix>(name,
+  collection, id)`: a list holds its included collections whole and its root rows by the name's
+  conditions; a single document a row whose parents, walked up as written lookups, reach its root,
+  which meets the rest of its name's scope. `_delta_row_in_scope` sends each compiled document to
+  its own, any other to `_delta_row_in_scope_framework`. Equal to the framework for every name,
+  collection and id (`tests/compile/scope.test.ts`); dropping the root's other conditions on purpose
+  fails `fo-guest:1:z@x`, and a list's root holding everything fails 55.
+
+### Fixed
+
+- **The bench measures row-level security (todo #25).** Every timed write runs as `bench_app`
+  (NOSUPERUSER NOBYPASSRLS); the bench refuses to run as a role that bypasses RLS; the policy reads
+  `NULLIF(current_setting('app.user_id', true), '')`, so a pooled connection's `''` no longer breaks
+  it. It times delta's write with the framework's reads and checks and with them compiled, against
+  a raw `UPDATE`: 1.078 ms, 0.839 ms (22% less) and 0.184 ms p50 (`bench/results-2026-10-15.md`).
+  The 0.3.0 results are labelled as taken with RLS bypassed.
 
 ## [0.9.0] - 2026-10-15
 

@@ -1,5 +1,8 @@
 # Bench results — 0.3.0
 
+> Taken as the compose's superuser, which bypasses row-level security even with FORCE: these
+> numbers say nothing about RLS (todo #25). See results-2026-10-15.md.
+
 10,000 single-field updates per adapter, 200 warm-up iterations discarded.
 Loopback Postgres 18 (compose on `localhost:5433`), single Node pg Pool (max=4),
 macOS / Apple Silicon.

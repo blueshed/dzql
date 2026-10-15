@@ -323,7 +323,7 @@ $$;
 -- so the gate can't be used to probe for ids.
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_row_in_scope(
+CREATE OR REPLACE FUNCTION _delta_row_in_scope_framework(
   p_def            _delta_docs,
   p_doc_name       TEXT,
   p_collection_key TEXT,
@@ -412,6 +412,12 @@ BEGIN
   END LOOP;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- _delta_row_in_scope: as the framework reads a definition (above), until dzql's generateSql
+-- compiles the app's documents: it then sends each to its own dzql_in_scope__<prefix>, and any
+-- other (registered by hand, or by another generateSql) here.
+CREATE OR REPLACE FUNCTION _delta_row_in_scope(p_def _delta_docs, p_doc_name TEXT, p_collection_key TEXT, p_id BIGINT)
+RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT _delta_row_in_scope_framework(p_def, p_doc_name, p_collection_key, p_id); $$;
 
 -- ---------------------------------------------------------------------------
 -- Who holds a row: the fan-out (todo #28)

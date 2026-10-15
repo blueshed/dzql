@@ -11,30 +11,29 @@
  */
 import { Pool } from "pg";
 import type { Adapter } from "../adapter";
-import {
-  applyBenchSchema,
-  seedBenchRows,
-  BENCH_USER_ID,
-} from "../schema";
+import { applyBenchSchema, assertHeldByRls, seedBenchRows, BENCH_USER_ID } from "../schema";
 
-export function rawPostgresAdapter(connectionString: string): Adapter {
-  const pool = new Pool({ connectionString, max: 4 });
+export function rawPostgresAdapter(adminUrl: string, appUrl: string): Adapter {
+  const admin = new Pool({ connectionString: adminUrl, max: 1 });
+  const app = new Pool({ connectionString: appUrl, max: 4 });
   return {
     name: "raw-postgres",
     rtt: 1,
     async setup() {
-      await applyBenchSchema(pool);
-      await seedBenchRows(pool);
+      await applyBenchSchema(admin, { compiled: true });
+      await seedBenchRows(admin);
+      await assertHeldByRls(app);
     },
     async writeOp(rowId, newValue) {
-      await pool.query(
+      await app.query(
         `WITH _ AS (SELECT set_config('app.user_id', $3, true))
          UPDATE bench_items SET value = $1 WHERE id = $2`,
         [newValue, rowId, String(BENCH_USER_ID)],
       );
     },
     async teardown() {
-      await pool.end();
+      await app.end();
+      await admin.end();
     },
   };
 }
