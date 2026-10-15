@@ -28,7 +28,7 @@ const current = (table: ResolvedTable, alias: string): string => (table.temporal
  * finds it: its parent key, then each parent's, through the tables as they
  * stand; NULL where the chain ends short of the root.
  */
-function chainRoot(schema: Schema, doc: DocDef, coll: string): string {
+export function chainRoot(schema: Schema, doc: DocDef, coll: string): string {
   let table = need(schema, doc, coll);
   let id = `(p_row->>${lit(table.parent!.fkColumn)})::BIGINT`;
   for (let depth = 0; depth < 32; depth++) {

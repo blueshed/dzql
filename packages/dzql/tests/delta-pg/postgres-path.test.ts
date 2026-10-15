@@ -61,6 +61,7 @@ async function processOn(): Promise<PathProcess> {
   const opened = new Map<string, number>();
   const made: PathProcess = {
     call: async (action, msg) => {
+      if (action === "open") await caughtUp(made);   // a telling still on its way lands before the open, not after what it clears
       const r = await local.call(action, msg);
       if (action === "open" && typeof r.result?._v === "number") opened.set(String(msg.doc), r.result._v);
       if (action === "close") opened.delete(String(msg.doc));
@@ -81,13 +82,20 @@ async function processOn(): Promise<PathProcess> {
  */
 async function quiet(p: PathProcess): Promise<void> {
   await new Promise((r) => setTimeout(r, 300));
+  await caughtUp(p);
+}
+
+/** Every document open on `p` told up to the version the database is at for it, or 5 s gone. */
+async function caughtUp(p: PathProcess): Promise<void> {
   const opened = openedAt.get(p) ?? new Map<string, number>();
+  if (!opened.size) return;
   const deadline = Date.now() + 5000;
   while (Date.now() < deadline) {
     const { rows } = await pool.query("SELECT doc_name, version FROM _delta_versions WHERE doc_name = ANY($1)", [[...opened.keys()]]);
     const behind = rows.filter((r: any) => {
       const told = p.heard.filter((h) => h.channel === r.doc_name).map((h) => Number(h.data.v ?? 0));
-      return Math.max(opened.get(r.doc_name)!, ...told) < Number(r.version);
+      opened.set(r.doc_name, Math.max(opened.get(r.doc_name)!, ...told));   // remembered past a clearing of what was heard
+      return opened.get(r.doc_name)! < Number(r.version);
     });
     if (!behind.length) return;
     await new Promise((r) => setTimeout(r, 25));

@@ -539,7 +539,7 @@ RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT _delta_doc_holds_framework(p_de
 -- that applied the framework, owning the tables without FORCE ROW LEVEL
 -- SECURITY, or with BYPASSRLS; applied as the app's own role, it sees what
 -- the writer sees, as before.
-CREATE OR REPLACE FUNCTION _delta_holders(p_coll TEXT, p_row JSONB, p_writer TEXT)
+CREATE OR REPLACE FUNCTION _delta_holders_framework(p_coll TEXT, p_row JSONB, p_writer TEXT, p_skip TEXT[])
 RETURNS TEXT[] AS $$
 DECLARE
   v_def   _delta_docs;
@@ -559,7 +559,7 @@ BEGIN
 
   FOR v_def IN
     SELECT * FROM _delta_docs
-     WHERE root_collection = p_coll OR p_coll = ANY(include)
+     WHERE (root_collection = p_coll OR p_coll = ANY(include)) AND NOT (prefix = ANY(p_skip))
   LOOP
     v_all := v_def.scope <> '{}'::jsonb
              OR (p_coll IS DISTINCT FROM v_def.root_collection AND v_coll.parent_collection IS NULL);
@@ -584,6 +584,15 @@ END;
 $$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 -- the search path it was applied with, and pg_temp last: a caller's temporary
 -- tables never stand in for delta's own (pg_temp is searched first unless named)
+DO $$ BEGIN
+  EXECUTE format('ALTER FUNCTION _delta_holders_framework(TEXT, JSONB, TEXT, TEXT[]) SET search_path = %s, pg_temp', COALESCE(NULLIF(current_setting('search_path'), ''), 'public'));
+END $$;
+
+-- `p_skip`: the prefixes asked already, by the compiled `_delta_holders`
+-- (dzql's `compileHolders`), which replaces this one: each document it
+-- compiled asked by its own lookups, the rest by the framework's.
+CREATE OR REPLACE FUNCTION _delta_holders(p_coll TEXT, p_row JSONB, p_writer TEXT)
+RETURNS TEXT[] LANGUAGE sql VOLATILE SECURITY DEFINER AS $$ SELECT _delta_holders_framework(p_coll, p_row, p_writer, ARRAY[]::text[]); $$;
 DO $$ BEGIN
   EXECUTE format('ALTER FUNCTION _delta_holders(TEXT, JSONB, TEXT) SET search_path = %s, pg_temp', COALESCE(NULLIF(current_setting('search_path'), ''), 'public'));
 END $$;
