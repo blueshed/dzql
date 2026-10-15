@@ -2,7 +2,8 @@
  * Compiled opens answer what the framework answers. Over delta's path schema
  * and documents (@blueshed/delta/testing), every name the path cases open is
  * opened by `delta_open` (the framework SQL reading its tables of definitions)
- * and by `dzql_open` (compiled from the definitions), on PGlite, and the two
+ * and by its document's compiled function (found by the longest prefix, as
+ * `delta_open` finds it), on PGlite, and the two
  * must be equal -- an error included -- on the seed and again after writes of
  * every kind: adds, a field and a whole row replaced, a temporal row removed,
  * a row moved to another parent.
@@ -14,7 +15,7 @@ import { setLogLevel } from "@blueshed/delta/logger";
 import { pathDocs, pathPublicDocs, pathSchema, pathSeed } from "@blueshed/delta/testing";
 import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql, importTables } from "../../src/postgres";
 import { openPglite } from "../../src/postgres/pglite";
-import { compileOpens, openFunction } from "../../src/compile/opens";
+import { compileOpens, openAtFunction, openFunction } from "../../src/compile/opens";
 
 setLogLevel("silent");
 
@@ -36,7 +37,7 @@ const names = [
   "fo-all-households:", "fo-party:1", "fo-slim:1",
   "fo-notes-on:2019-01-01", "fo-notes-on:2021-01-01", "fo-notes-on:2021-02-30", "fo-notes-on:notadate", "fo-notes-on:today",
   "fo-courses-noted-on:2021-01-01", "fo-board-on:1:2021-01-01", "fo-board-on:1:2021-13-01", "fo-board-on:1:2999-01-01",
-  "fo-asks:1", "fo-asks-from:ann", "fo-pub-courses:", "nobody:1",
+  "fo-asks:1", "fo-asks-from:ann", "fo-pub-courses:",
 ];
 
 let pool: Pool;
@@ -50,24 +51,36 @@ beforeAll(async () => {
 });
 afterAll(async () => { await pool.end(); });
 
-/** What an open answers: its document, or its error's message. */
-async function opened(fn: string, name: string): Promise<unknown> {
+/** What an open answers (open_at's, given a time): its document, or its error's message. */
+async function opened(fn: string, name: string, at?: string): Promise<unknown> {
   try {
-    return (await pool.query(`SELECT ${fn}($1) AS doc`, [name])).rows[0].doc;
+    return (await pool.query(at === undefined ? `SELECT ${fn}($1) AS doc` : `SELECT ${fn}($1, $2) AS doc`, at === undefined ? [name] : [name, at])).rows[0].doc;
   } catch (err: any) {
     return { error: err.message };
   }
 }
 
+/** A name's document: by the longest prefix the name starts with, as `delta_open` finds it. */
+const prefixOf = (name: string) => docs.filter((d) => name.startsWith(d.prefix)).sort((a, b) => b.prefix.length - a.prefix.length)[0]!.prefix;
+const compiledFor = (name: string) => openFunction(prefixOf(name));
+
+/** Before the seed's note began, between, and after everything. */
+const times = ["2019-06-01T00:00:00Z", "2021-01-01T00:00:00Z", "2999-01-01T00:00:00Z"];
+
 function sameOpens() {
   for (const name of names) {
     test(name, async () => {
-      expect({ name, doc: await opened("dzql_open", name) }).toEqual({ name, doc: await opened("delta_open", name) });
+      expect({ name, doc: await opened(compiledFor(name), name) }).toEqual({ name, doc: await opened("delta_open", name) });
+    });
+    test(`${name}, open_at`, async () => {
+      for (const at of times) {
+        expect({ name, at, doc: await opened(openAtFunction(prefixOf(name)), name, at) }).toEqual({ name, at, doc: await opened("delta_open_at", name, at) });
+      }
     });
   }
 }
 
-describe("on the seed, every name opens as the framework opens it", () => sameOpens());
+describe("on the seed, every name opens (and opens at a time) as the framework opens it", () => sameOpens());
 
 describe("after writes of every kind, still", () => {
   beforeAll(async () => {
@@ -101,10 +114,17 @@ describe("the compiled text", () => {
     expect(compileOpens(pathSchema, docs)).toMatchSnapshot();
   });
 
-  test("names a function for each document, and dzql_open finds the longest prefix first", () => {
+  test("names a function for each document, and its _as for a signed-in caller", () => {
     const sql = compileOpens(pathSchema, docs);
-    for (const d of docs) expect(sql).toContain(`CREATE OR REPLACE FUNCTION ${openFunction(d.prefix)}(p_name TEXT)`);
-    expect(sql.indexOf(`'fo-courses-noted-on:'`)).toBeLessThan(sql.indexOf(`starts_with(p_name, 'fo-courses-noted:')`));
+    for (const d of docs) {
+      expect(sql).toContain(`CREATE OR REPLACE FUNCTION ${openFunction(d.prefix)}(p_name TEXT)`);
+      expect(sql).toContain(`CREATE OR REPLACE FUNCTION ${openFunction(d.prefix)}_as(p_user_id TEXT, p_name TEXT)`);
+    }
+  });
+
+  test("its _as opens as its plain function does, signed in", async () => {
+    const as = (await pool.query(`SELECT ${openFunction("fo-board:")}_as('7', 'fo-board:1') AS doc, current_setting('app.user_id', true) AS who`)).rows[0];
+    expect(as.doc).toEqual(await opened(openFunction("fo-board:"), "fo-board:1"));
   });
 
   test("a document over a collection the schema does not have is refused, naming both", () => {

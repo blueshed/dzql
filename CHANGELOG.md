@@ -23,6 +23,19 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Changed
+
+- **The listener opens documents through compiled SQL** (step 2c, its first piece). `generateSql`
+  now writes each document's reads compiled from its definitions -- `dzql_open__<prefix>(name)` and
+  `dzql_open_at__<prefix>(name, at)`, each with its `_as` -- and `docTypeFromDef`'s `open` and
+  `openAt` call them in place of `delta_open` and `delta_open_at`. Nothing changes for an app that
+  applies `generateSql` as before. delta's cases pass through them unchanged (the path, `owns`, the
+  law, the writes), and `tests/compile/` holds each equal to the framework's read for every name
+  the path cases open, now and at three times, on the seed and after writes. The `dzql_open`
+  dispatcher is gone: each registration calls its own document's function, and a dispatcher one
+  `generateSql` wrote would lose another's documents. Writes, the ledger and a name's scope still
+  run on the framework SQL.
+
 ### Docs
 
 - **`philo.md` says what dzql is for now**: delta's compiled Postgres step. Stories, then

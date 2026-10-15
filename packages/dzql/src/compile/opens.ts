@@ -2,10 +2,11 @@
  * Compiled opens: delta's documents, read by SQL written for each one.
  *
  * `compileOpens(schema, docs)` turns an app's `defineSchema` / `defineDoc`
- * into one function per document -- `dzql_open__<slug>(name)` -- and a
- * `dzql_open(name)` that finds a name's document by its longest prefix, as
- * `delta_open` does. Each answers what `delta_open` answers (the listener
- * then shows it by the same schema), but its queries are written out: which
+ * into the reads of each document -- `dzql_open__<slug>(name)` and
+ * `dzql_open_at__<slug>(name, at)`, each with an `_as` for a signed-in caller --
+ * which the listener opens that document's names through (`docTypeFromDef`). Each answers what `delta_open`
+ * answers (the listener then shows it by the same schema), but its queries
+ * are written out: which
  * table, which columns, how a collection hangs from the root, whether a row
  * is temporal, what an implied root opens with. Nothing reads
  * `_delta_collections` to find them.
@@ -101,15 +102,29 @@ function need(schema: Schema, doc: DocDef, coll: string): ResolvedTable {
   return table;
 }
 
-/** One document's open function. */
-function openOf(schema: Schema, doc: DocDef): string {
+/** A document's function for `open_at`: the document as it stood at a time the caller gives. */
+export const openAtFunction = (prefix: string): string => openFunction(prefix).replace(/^dzql_open__/, "dzql_open_at__");
+
+/**
+ * One document's read, as `open` (`delta_open`: the time is the name's, an implied
+ * root opens with its defaults, the version is kept) or as `open_at`
+ * (`delta_open_at`: the time is the caller's, a root not there is null, no version).
+ */
+function readOf(schema: Schema, doc: DocDef, at: boolean): string {
   const root = need(schema, doc, doc.root);
   const rootJson = rowJson("t", shown(root, doc, doc.root));
   const fields = (included: (coll: string) => string) =>
     doc.include.map((c) => ` || jsonb_build_object(${lit(c)}, ${included(c)})`).join("");
   const emptyIncludes = doc.include.map((c) => ` || jsonb_build_object(${lit(c)}, '{}'::jsonb)`).join("");
-  return `-- ${doc.prefix}: root ${doc.root}${doc.include.length ? `, includes ${doc.include.join(", ")}` : ""}${doc.implied ? ", implied" : ""}${doc.columns ? `, holds ${Object.entries(doc.columns).map(([c, cs]) => `${c}(${cs.join(", ")})`).join(" ")}` : ""}
-CREATE OR REPLACE FUNCTION ${openFunction(doc.prefix)}(p_name TEXT)
+  const fn = at ? openAtFunction(doc.prefix) : openFunction(doc.prefix);
+  const params = at ? "p_name TEXT, p_given TIMESTAMPTZ" : "p_name TEXT";
+  const missing = !at && doc.implied ? `v_doc := jsonb_build_object(${lit(doc.root)}, ${impliedRoot(root, doc)})${emptyIncludes};` : "RETURN NULL;";
+  const done = at
+    ? "RETURN v_doc;"
+    : `INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);`;
+  return `CREATE OR REPLACE FUNCTION ${fn}(${params})
 RETURNS JSONB AS $$
 DECLARE
   v_scope  JSONB;
@@ -123,7 +138,7 @@ DECLARE
 BEGIN
   v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = ${lit(doc.prefix)}), p_name);
   v_where := v_scope->>'where';
-  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  p_at := ${at ? "p_given" : "(v_scope->>'at')::TIMESTAMPTZ"};
   IF v_scope->>'mode' = 'list' THEN
     EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, ${rootJson.replace(/%/g, "%%").replace(/'/g, "''")}), ''{}''::jsonb) FROM ${q(root.name)} t WHERE %s${standing(root, "t", "$1").replace(/'/g, "''")}', v_where)
       INTO v_rows USING p_at;
@@ -133,31 +148,33 @@ BEGIN
     EXECUTE format('SELECT ${rootJson.replace(/%/g, "%%").replace(/'/g, "''")} FROM ${q(root.name)} t WHERE t.id = $1 AND %s${standing(root, "t", "$2").replace(/'/g, "''")}', v_where)
       INTO v_root USING v_id, p_at;
     IF v_root IS NULL THEN
-      ${doc.implied ? `v_doc := jsonb_build_object(${lit(doc.root)}, ${impliedRoot(root, doc)})${emptyIncludes};` : "RETURN NULL;"}
+      ${missing}
     ELSE
       v_doc := jsonb_build_object(${lit(doc.root)}, v_root)${fields((c) => includedSingle(schema, doc, c))};
     END IF;
   END IF;
-  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
-  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
-  RETURN v_doc || jsonb_build_object('_version', v_version);
+  ${done}
 END;
-$$ LANGUAGE plpgsql;`;
-}
+$$ LANGUAGE plpgsql;
 
-/** The dispatcher: a name's document by the longest prefix it starts with; an error for a name no document has, as `delta_open` raises. */
-function dispatcherOf(docs: DocDef[]): string {
-  const byLength = [...docs].sort((a, b) => b.prefix.length - a.prefix.length || (a.prefix < b.prefix ? -1 : 1));
-  return `CREATE OR REPLACE FUNCTION dzql_open(p_name TEXT)
+CREATE OR REPLACE FUNCTION ${fn}_as(p_user_id TEXT, ${params})
 RETURNS JSONB AS $$
 BEGIN
-${byLength.map((d) => `  IF starts_with(p_name, ${lit(d.prefix)}) THEN RETURN ${openFunction(d.prefix)}(p_name); END IF;`).join("\n")}
-  RAISE EXCEPTION 'no doc def for: %', p_name USING ERRCODE = 'P0001';
-END;
+  PERFORM set_config('app.user_id', p_user_id, true);
+  RETURN ${fn}(${at ? "p_name, p_given" : "p_name"});
+END
 $$ LANGUAGE plpgsql;`;
 }
 
-/** The SQL that opens each of `docs` over `schema`: a function per document and `dzql_open(name)`. */
+/** One document's reads: its open and its open_at, each with its `_as`. */
+function openOf(schema: Schema, doc: DocDef): string {
+  return `-- ${doc.prefix}: root ${doc.root}${doc.include.length ? `, includes ${doc.include.join(", ")}` : ""}${doc.implied ? ", implied" : ""}${doc.columns ? `, holds ${Object.entries(doc.columns).map(([c, cs]) => `${c}(${cs.join(", ")})`).join(" ")}` : ""}
+${readOf(schema, doc, false)}
+
+${readOf(schema, doc, true)}`;
+}
+
+/** The SQL that reads each of `docs` over `schema`: its open and its open_at, each with an `_as` for a signed-in caller. */
 export function compileOpens(schema: Schema, docs: DocDef[]): string {
   const names = new Map<string, string>();
   for (const doc of docs) {
@@ -169,7 +186,6 @@ export function compileOpens(schema: Schema, docs: DocDef[]): string {
   return [
     "-- Compiled by dzql from the app's defineSchema / defineDoc. Do not edit: compile again.",
     ...docs.map((d) => openOf(schema, d)),
-    dispatcherOf(docs),
     "",
   ].join("\n\n");
 }

@@ -18,6 +18,7 @@ import type { DocDef } from "./schema";
 import { splitPath, type DeltaOp } from "@blueshed/delta/core";
 import { authless, ownerless, type DeltaAuth } from "@blueshed/delta/auth";
 import { assertOnePrefix } from "@blueshed/delta/backend";
+import { openAtFunction, openFunction } from "../compile/opens";
 
 /** Who is writing, for the ledger: the identity as the ledger has it, and the cursor undo walks. */
 export type Writer = { who: string | null; cursor: string | null; undoable?: boolean; undoes?: number | null };
@@ -225,7 +226,7 @@ export function docTypeFromDef<I = unknown>(
     },
 
     async open(_ctx, docName, _msg, identity) {
-      const doc = await callAs(pool, "delta_open", [docName], auth, identity);
+      const doc = await callAs(pool, openFunction(def.prefix), [docName], auth, identity);   // compiled for this document (dzql)
       if (!doc) return null;
       const version = doc._version ?? 0;
       delete doc._version;
@@ -247,7 +248,7 @@ export function docTypeFromDef<I = unknown>(
     },
 
     async openAt(_ctx, docName, at, identity) {
-      return (await callAs(pool, "delta_open_at", [docName, at], auth, identity)) ?? null;
+      return (await callAs(pool, openAtFunction(def.prefix), [docName, at], auth, identity)) ?? null;   // compiled (dzql)
     },
   };
 }
