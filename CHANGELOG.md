@@ -75,6 +75,9 @@ dropped `role=owner`, and create/update/delete enforced only the first rule in a
 
 ### Repository
 
+- CI runs again, on every push to `main` and every pull request: Bun pinned at 1.4.3, a
+  type check, then the suite against a Postgres service. It had run only by hand since a
+  Bun download problem.
 - One package: the interpreter (`dzql-legacy`, never published under that name) is
   removed and `packages/tzql` moved to `packages/dzql`, so the folder, the npm name
   and the release tags all say dzql (#13).
