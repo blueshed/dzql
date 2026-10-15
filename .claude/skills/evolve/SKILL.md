@@ -1,6 +1,6 @@
 ---
 name: evolve
-description: "Grows this app: a new shared document, two documents on one page, keeping documents in SQLite (rows shared between documents, undo and history) or Postgres, HTTP routes for what isn't communication (health, status, files in S3), and a production build. Use when the user asks for something people share, see or act on, for storage beyond a JSON file, for undo or history, for files, or for a build."
+description: "Grows this app: a new shared document, two documents on one page, keeping documents in SQLite (rows shared between documents, undo and history) or Postgres, a schema change on a database that holds data (a migration), HTTP routes for what isn't communication (health, status, files in S3), and a production build. Use when the user asks for something people share, see or act on, for storage beyond a JSON file, for undo or history, for a change to a schema in use, for files, or for a build."
 ---
 
 # Growing the app
@@ -27,12 +27,13 @@ description: "Grows this app: a new shared document, two documents on one page, 
 - A resource is `src/resources/<name>/`: `<name>-api.ts` (server side, and the type both sides share), `<name>.ts` (the document it opens, or what it fetches), `<name>-view.tsx`. Wire the server side in `src/server.ts`, the view as a route in `src/app.tsx`.
 - A document is never set in the page: `send` the change, and the change that comes back draws it, in this window too.
 - A row is addressed by its id, never its position.
+- The schema is the contract: a database may hold more than it declares, never less. A change it cannot say (a rename, a drop, data moved) on a database holding data is a migration; one that has run is never edited.
 - The client imports a shared type with `import type`, so no server code reaches the browser.
 - Coverage stays at 100%: write the missing test, never lower the threshold.
 
 ## The types
 
-delta's are in `node_modules/@blueshed/delta/src/`: `server/server.ts` (`registerDoc`), `client/client.ts` (`openDoc`, `connectWs`), `core.ts` (`DeltaOp`), `schema.ts`, and a file per backend under `server/`. The app's: `startServer` in `src/server.ts`, the page helpers in `tests/browser.ts`. The `delta-doc` skill is delta's manual; `railroad` is the page's.
+delta's are in `node_modules/@blueshed/delta/src/`: `server/server.ts` (`registerDoc`), `client/client.ts` (`openDoc`, `connectWs`), `core.ts` (`DeltaOp`), `schema.ts`, `server/migrate.ts` (`Migration`), and a file per backend under `server/`. The app's: `startServer` in `src/server.ts`, the page helpers in `tests/browser.ts`. The `delta-doc` skill is delta's manual; `railroad` is the page's.
 
 ## References
 
@@ -42,6 +43,7 @@ Each leads with its example, code and tests that `bun run test:evolve` applies t
 - [references/testing.md](references/testing.md): the document in the browser: two windows, a refusal
 - [references/two-documents.md](references/two-documents.md): the catalogue and an order on one page
 - [references/sqlite.md](references/sqlite.md): documents that share rows (the kitchen), undo and history
+- [references/migrations.md](references/migrations.md): a schema that changes on a database holding data
 - [references/postgres.md](references/postgres.md): servers that share data; people who see only their own
 - [references/http.md](references/http.md): HTTP routes, and files in S3
 - [references/build.md](references/build.md): a production build (optional)
