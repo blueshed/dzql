@@ -53,8 +53,9 @@ holds through it.
   `withAppAuth` / `*_as`, so `app.user_id` is bound.
 - `SET LOCAL` cannot bind parameters: use `set_config(name, value, true)`.
 - **Who is told does not depend on what the writer may read**: `_delta_holders` is
-  `SECURITY DEFINER`, so Bob's card on Alice's list reaches Alice's board. It answers names,
-  never rows. It sees past RLS only where the role that applied the framework does.
+  `SECURITY DEFINER`, compiled by `generateSql` or the framework's, so Bob's card on Alice's
+  list reaches Alice's board. It answers names, never rows. It sees past RLS only where the
+  role that applied it does: apply the framework and `generateSql` as the same role.
 - **Errors name names, not values.** A bad prefix, root or scope key comes back as a 500 naming
   it, which helps debugging but lets a tenant probe prefixes and columns. Do not put
   tenant-sensitive identifiers in prefixes (`boards:42`, not `tenant-42:`); on a public server

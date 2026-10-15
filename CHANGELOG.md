@@ -25,6 +25,15 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The docs say what is compiled.** `docs/delta/postgres.md` has a "Compiled SQL" section:
+  - a table of each piece, its compiled functions and the framework's it falls back to;
+  - the rule that `generateSql` is applied after the framework every time, because
+    `applyFramework` puts the framework's dispatchers back (checked on PGlite: writes then go to
+    the framework, while the compiled opens stay);
+  - what happens to documents dzql did not compile.
+
+  The READMEs, `sql.md` and `rls.md` (the fan-out is still SECURITY DEFINER when compiled) say
+  the same.
 - **Who holds a row is compiled** (2c, the writes' first piece). Every write asks each open
   document whether it holds each row it changed (`_delta_holders`, the fan-out). `generateSql` now
   writes `dzql_holds__<prefix>(name, collection, row)` for each document -- which collections it
