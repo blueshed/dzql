@@ -62,7 +62,7 @@ write.
 - **Stories are the tests.** Every example's, run over real sockets and again by hand.
 - **A small client.** <!-- measured:client -->7.4 KB<!-- /measured --> gzipped, and no framework
   to learn. The page is plain HTML, drawn on the server.
-- **One process.** Bun and SQLite, nothing else to run. Postgres when you need it, through delta.
+- **One process.** Bun and SQLite, nothing else to run.
 
 It suits small teams where seeing what happened and being able to undo it matter more than scale:
 a wedding, a booking board, a classroom, an ops console. It is not built for a large consumer
