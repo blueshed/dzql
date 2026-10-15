@@ -1,5 +1,5 @@
 /**
- * @blueshed/delta/postgres — Postgres backend for delta-doc.
+ * dzql/postgres — delta's Postgres backend, compiled from its definitions.
  *
  * Schema + stored functions + LISTEN dispatch. Tables are generated from
  * a TypeScript schema definition; all mutations go through stored functions
@@ -9,7 +9,7 @@
  *   import {
  *     defineSchema, defineDoc,
  *     createDocListener, docTypeFromDef,
- *   } from "@blueshed/delta/postgres";
+ *   } from "dzql/postgres";
  *
  * The stored functions are `src/sql/001*.sql`: `applyFramework(pool)` applies
  * them, or `bunx @blueshed/delta init <dir>` copies them for a migration tool

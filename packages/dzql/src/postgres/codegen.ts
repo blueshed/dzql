@@ -14,7 +14,7 @@
  *
  * Drive it from your project's `types.ts`:
  *
- *   import { generateSql } from "@blueshed/delta/postgres";
+ *   import { generateSql } from "dzql/postgres";
  *   import { schema, docs } from "./types";
  *   await Bun.write("init_db/003-tables.sql", generateSql(schema, docs));
  *
@@ -31,6 +31,7 @@ import { compileHolds } from "../compile/holds";
 import { compileInScope } from "../compile/scope";
 import { compileHolders } from "../compile/holders";
 import { compileResolve } from "../compile/resolve";
+import { compileRootThere } from "../compile/root";
 import { compileTold } from "../compile/told";
 
 export interface GenerateSqlOptions {
@@ -175,6 +176,6 @@ export function generateSql(
   lines.push("");
 
   // each document opened by SQL compiled for it (dzql), which docTypeFromDef calls
-  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs));
+  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs));
   return lines.join("\n");
 }

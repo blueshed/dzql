@@ -3,7 +3,7 @@
  *
  * These are split out of `auth-jwt.ts` so the `delta init` CLI (which only
  * needs the file path) can run in projects that haven't installed jose.
- * Consumers of the `@blueshed/delta/auth-jwt` subpath still get these via
+ * Consumers of the `dzql/auth-jwt` subpath still get these via
  * re-export from `auth-jwt.ts`.
  */
 import type { Pool } from "pg";

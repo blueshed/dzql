@@ -95,6 +95,22 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   the framework's `AND`, or reading a text id as a number each fail. The resolver's share of a
   write fell from 0.071 to 0.012 ms; a write: 0.657 ms p50 compiled against 1.059 ms framework
   (38% less).
+- **A one-row document's root check is compiled** (2c, `delta_apply`'s second slice). Before each
+  op, a write through a one-row document asks whether its root is there and meets the whole of its
+  name's scope. The framework ran the resolver's conditions as text (`EXECUTE`); `delta_apply` now
+  asks `_delta_root_there`. `generateSql` writes `dzql_root_there__<prefix>(name, id)`: the name's
+  values checked as the resolver checks them, and the root's current rows asked with typed
+  conditions. Documents not compiled go to `_delta_root_there_framework`, which runs the same
+  `EXECUTE` as before. It is equal to the framework for 745 names (the path cases' names, plus
+  probes) and every root id, each version, ids not there and none, on the seed and after writes that
+  close and remove roots (`tests/compile/root.test.ts`). Dropping the scope's conditions, reading
+  every version, ignoring an unscoped name's id, or not checking the values each fail.
+  - The bench's `bench:` is a list, which never runs this check. Measured ad hoc through a one-row
+    document (`bench-item:<id>`, one replace of its root as the app role): 0.651 to 0.636 ms p50
+    compiled, about 15 µs a write (framework 0.855 ms), and more per op on longer writes.
+- **Doc comments name dzql's subpaths.** Nine comments in `src/postgres/` and `auth-jwt.sql`
+  still said `@blueshed/delta/postgres` and `@blueshed/delta/auth-jwt`, which delta 1.0 no longer
+  has; they now say `dzql/postgres` and `dzql/auth-jwt`.
 
 ### Fixed
 
