@@ -25,7 +25,7 @@ import { q, type ColumnDef, type DocDef, type ResolvedTable, type Schema } from 
 import { columnSqlType } from "../postgres/sql";
 
 /** A string as an SQL literal. */
-const lit = (s: string): string => `'${s.replace(/'/g, "''")}'`;
+export const lit = (s: string): string => `'${s.replace(/'/g, "''")}'`;
 
 /** A document's function name: its prefix, lower case, every other character `_`. */
 export function openFunction(prefix: string): string {
@@ -102,7 +102,7 @@ function includedList(schema: Schema, doc: DocDef, coll: string): string {
   return `(SELECT COALESCE(jsonb_object_agg(t.id, ${rowOf(table, doc, coll, "t")}), '{}'::jsonb) FROM ${q(table.name)} t${standing(table, "t").replace(" AND", " WHERE")})`;
 }
 
-function need(schema: Schema, doc: DocDef, coll: string): ResolvedTable {
+export function need(schema: Schema, doc: DocDef, coll: string): ResolvedTable {
   const table = schema.tables[coll];
   if (!table) throw new Error(`[dzql compile] document ${doc.prefix} names a collection the schema does not have: ${coll}`);
   return table;
@@ -125,8 +125,10 @@ const WHOLE = String.raw`^\s*[+-]?[0-9]+\s*$`;
 const SAFE = String.raw`^\s*[+-]?0*[0-9]{1,16}\s*$`;
 const DAY = String.raw`^\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\s*$`;
 
-/** Refuse a name's value: the framework's message, as a 400 (22P02). */
-const refuse = (message: string, value: string) => `RAISE EXCEPTION '${message.replace(/'/g, "''")}', ${value} USING ERRCODE = '22P02';`;
+/** What a value its column cannot take does: given the message and the value's variable, the plpgsql. */
+type Refuse = (message: string, value: string) => string;
+/** An open refuses it: the framework's message, as a 400 (22P02). */
+const raiseRefusal: Refuse = (message, value) => `RAISE EXCEPTION '${message.replace(/'/g, "''")}', ${value} USING ERRCODE = '22P02';`;
 
 /**
  * A document's scope, compiled from its definition as `_delta_resolve_scope`
@@ -136,7 +138,7 @@ const refuse = (message: string, value: string) => `RAISE EXCEPTION '${message.r
  * value its column cannot take refused with the same message, and an `id`
  * equality making the document one row (single mode).
  */
-function scopeOf(schema: Schema, doc: DocDef): CompiledScope {
+export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefusal): CompiledScope {
   const root = need(schema, doc, doc.root);
   const entries = Object.entries(doc.scope ?? {});
   if (entries.length === 0) {
@@ -172,7 +174,7 @@ function scopeOf(schema: Schema, doc: DocDef): CompiledScope {
     const isKey = op !== "at" && (key === "id" || key === root.parent?.fkColumn);
     const def = root.columns[key];
     if (op === "at") {
-      body.push(dayOf(v, key), `IF ${v} IS NOT NULL THEN p_at := ${v}::TIMESTAMPTZ; END IF;`);
+      body.push(dayOf(v, key, refuse), `IF ${v} IS NOT NULL THEN p_at := ${v}::TIMESTAMPTZ; END IF;`);
       return;
     }
     if (!isKey && !def) throw new Error(`[dzql compile] document ${doc.prefix}: scope key "${key}" is not a column of "${doc.root}"`);
@@ -218,7 +220,7 @@ function scopeOf(schema: Schema, doc: DocDef): CompiledScope {
     END;
   END IF;`);
     } else if (def!.type === "timestamptz") {
-      body.push(dayOf(v, key));
+      body.push(dayOf(v, key, refuse));
     }
     conds.push(`(${v} IS NULL OR t.${q(key)} ${sqlOp} ${v}::${columnSqlType(def!)})`);
   });
@@ -226,7 +228,7 @@ function scopeOf(schema: Schema, doc: DocDef): CompiledScope {
 }
 
 /** A date, YYYY-MM-DD, that the calendar has, read as the instant midnight UTC begins it; anything else refused. */
-function dayOf(v: string, key: string): string {
+function dayOf(v: string, key: string, refuse: Refuse): string {
   return `IF ${v} IS NOT NULL THEN
     v_date := regexp_match(${v}, '${DAY}');
     IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN

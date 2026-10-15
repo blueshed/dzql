@@ -459,7 +459,7 @@ $$ LANGUAGE plpgsql STABLE;
 -- _delta_doc_holds: does the document `p_doc_name` (of `p_def`) hold `p_row`
 -- of `p_coll`? Judged on the row's values, so a row as it was before a write
 -- is judged as well as one as it is after -- the same rule delta_open reads by.
-CREATE OR REPLACE FUNCTION _delta_doc_holds(p_def _delta_docs, p_doc_name TEXT, p_coll TEXT, p_row JSONB)
+CREATE OR REPLACE FUNCTION _delta_doc_holds_framework(p_def _delta_docs, p_doc_name TEXT, p_coll TEXT, p_row JSONB)
 RETURNS BOOLEAN AS $$
 DECLARE
   v_scope JSONB;
@@ -502,6 +502,12 @@ BEGIN
          IS NOT DISTINCT FROM (v_scope->'values'->>'id')::BIGINT;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- _delta_doc_holds: as the framework reads a definition (above), until dzql's generateSql
+-- compiles the app's documents: it then sends each to its own dzql_holds__<prefix>, and any
+-- other (registered by hand, or by another generateSql) here.
+CREATE OR REPLACE FUNCTION _delta_doc_holds(p_def _delta_docs, p_doc_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT _delta_doc_holds_framework(p_def, p_doc_name, p_coll, p_row); $$;
 
 -- _delta_holders: the documents that hold `p_row` of `p_coll` -- every one
 -- open now (a name in _delta_held, todo #73), and the writer's own `p_writer`.
