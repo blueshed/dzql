@@ -16,6 +16,22 @@ bun run dev
 
 Open http://localhost:5173 - you have a working app with auth, real-time updates, and typed stores.
 
+## delta's Postgres step
+
+dzql is becoming the Postgres step for apps built on [@blueshed/delta](https://github.com/blueshed/delta):
+a delta app grows from a JSON file to SQLite to Postgres, and on Postgres its documents are kept by
+dzql. Since 0.8.0 dzql carries delta's Postgres backend, with the same names, so moving is an
+import change:
+
+```ts
+import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql } from "dzql/postgres";
+import { openPglite } from "dzql/pglite";   // Postgres in this process
+import { jwtAuth } from "dzql/auth-jwt";
+```
+
+Its tests run delta's own cases (`@blueshed/delta/testing`) against it. Compiled SQL replaces the
+framework SQL in later releases; the plan is in Workshop's `docs/postgres-split-plan.md`.
+
 ## How It Works
 
 1. **Define your domain** in TypeScript:

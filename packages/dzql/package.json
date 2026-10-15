@@ -14,7 +14,10 @@
     ".": "./src/runtime/index.ts",
     "./client": "./src/client/index.ts",
     "./compiler": "./src/cli/index.ts",
-    "./namespace": "./src/runtime/namespace.ts"
+    "./namespace": "./src/runtime/namespace.ts",
+    "./postgres": "./src/postgres/index.ts",
+    "./pglite": "./src/postgres/pglite.ts",
+    "./auth-jwt": "./src/postgres/auth-jwt.ts"
   },
   "files": [
     "src",
@@ -45,12 +48,16 @@
   "author": "Peter Bunyan",
   "license": "MIT",
   "dependencies": {
-    "postgres": "^3.4.3",
+    "@blueshed/delta": "^0.16.0",
+    "@electric-sql/pglite": "^0.5.4",
     "dotenv": "^16.4.5",
-    "jose": "^5.2.3"
+    "jose": "^6.2.4",
+    "pg": "^8.22.0",
+    "postgres": "^3.4.3"
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/pg": "^8.20.0",
     "pinia": "^3.0.4",
     "typescript": "^5.0.0",
     "vue": "^3.5.26"

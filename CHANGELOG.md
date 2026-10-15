@@ -23,6 +23,25 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Added
+
+- **dzql is delta's Postgres step: `dzql/postgres`, `dzql/pglite` and `dzql/auth-jwt`** (step 2a
+  of the Postgres split, `docs/postgres-split-plan.md` in Workshop). delta's Postgres backend --
+  the listener, the registry, codegen, carry, migrations, bootstrap, PGlite, the JWT reference and
+  the framework SQL (`src/sql/001a`-`001g`, `auth-jwt.sql`) -- is copied in as it is at delta
+  0.15.0 (`711186e`), importing only delta's public subpaths and `@blueshed/delta/backend`
+  (`@blueshed/delta` ^0.16.0 is a dependency, with `pg` and `@electric-sql/pglite`). A delta
+  app moves its `@blueshed/delta/postgres` and `/pglite` imports to `dzql/postgres` and
+  `dzql/pglite`, the same names; nothing else changes. dzql's tests run delta's published cases
+  unchanged (`@blueshed/delta/testing`): the path, `owns` and the law over generated writes on
+  PGlite, with no Docker, and the write cases on PGlite and the test database
+  (`tests/delta/`). The compiled SQL replaces the copied framework SQL in later releases.
+
+### Changed
+
+- **jose ^6** (was ^5), as delta's JWT reference takes it; the runtime's `SignJWT` and `jwtVerify`
+  are the same.
+
 ## [0.7.0] - 2026-10-15
 
 October 2026. Pull requests #8 to #16. The last release of dzql as a whole stack:
