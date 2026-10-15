@@ -12,16 +12,16 @@
  * sends each compiled document to its own and any other to the framework
  * (`_delta_root_there_framework`).
  */
-import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
-import { lit, need, openFunction, scopeOf } from "./opens";
+import type { DocDef, Schema } from "@blueshed/delta/backend";
+import { lit, named, need, scopeOf, standingRows } from "./opens";
 
 /** A document's root check: `dzql_root_there__<slug>`. */
-export const rootThereFunction = (prefix: string): string => openFunction(prefix).replace(/^dzql_open__/, "dzql_root_there__");
+export const rootThereFunction = (prefix: string): string => named("root_there", prefix);
 
 /** One document's root check. */
 function rootThereOf(schema: Schema, doc: DocDef): string {
   const root = need(schema, doc, doc.root);
-  const rows = q(root.temporal ? `current_${root.name}` : root.name);   // the root's rows as they stand, as the framework's view reads them
+  const rows = standingRows(root);   // the root's rows as they stand, as the framework's view reads them
   const head = `CREATE OR REPLACE FUNCTION ${rootThereFunction(doc.prefix)}(p_name TEXT, p_id BIGINT)
 RETURNS BOOLEAN AS $$`;
   if (Object.keys(doc.scope ?? {}).length === 0) {

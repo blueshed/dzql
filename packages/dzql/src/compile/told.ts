@@ -12,10 +12,10 @@
  * document to its own and any other to the framework (`_delta_told_framework`).
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
-import { lit, need, openFunction, scopeOf } from "./opens";
+import { lit, named, need, scopeOf } from "./opens";
 
 /** A document's telling function: `dzql_told__<slug>`. */
-export const toldFunction = (prefix: string): string => openFunction(prefix).replace(/^dzql_open__/, "dzql_told__");
+export const toldFunction = (prefix: string): string => named("told", prefix);
 
 /**
  * A row (SQL `row`) of collection (SQL `coll`) as the document shows it, as

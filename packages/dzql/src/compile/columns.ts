@@ -22,10 +22,10 @@
  *   checked by the framework's (`_delta_assert_fields_framework`).
  */
 import type { ColumnDef, DocDef, ResolvedTable, Schema } from "@blueshed/delta/backend";
-import { lit, need, openFunction } from "./opens";
+import { lit, named, need } from "./opens";
 
 /** A document's columns function: `dzql_columns__<slug>`. */
-export const columnsFunction = (prefix: string): string => openFunction(prefix).replace(/^dzql_open__/, "dzql_columns__");
+export const columnsFunction = (prefix: string): string => named("columns", prefix);
 
 /** A set of columns as the database keeps it (`_delta_collections.columns_def`, generateSql's). */
 const asStored = (columns: Record<string, ColumnDef>): string => `${lit(JSON.stringify(columns))}::jsonb`;

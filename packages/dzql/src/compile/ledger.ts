@@ -17,8 +17,8 @@
  * - `_delta_row_standing(collection, id)`: a row as it stands, as `{row}`, for
  *   every collection of the schema; any other the framework's.
  */
-import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
-import { lit, openFunction, openWholeFunction, readOf } from "./opens";
+import type { DocDef, Schema } from "@blueshed/delta/backend";
+import { lit, openFunction, openWholeFunction, readOf, standingRows } from "./opens";
 
 /** The SQL the ledger reads by, for `schema` and each of `docs`. */
 export function compileLedger(schema: Schema, docs: DocDef[]): string {
@@ -63,7 +63,7 @@ $$ LANGUAGE plpgsql STABLE;`;
 RETURNS JSONB AS $$
 BEGIN
   CASE p_coll
-${colls.map(([coll, t]) => `    WHEN ${lit(coll)} THEN RETURN jsonb_build_object('row', (SELECT _delta_strip_temporal(to_jsonb(t.*)) FROM ${q(t.temporal ? `current_${t.name}` : t.name)} t WHERE t.id = p_id));`).join("\n")}
+${colls.map(([coll, t]) => `    WHEN ${lit(coll)} THEN RETURN jsonb_build_object('row', (SELECT _delta_strip_temporal(to_jsonb(t.*)) FROM ${standingRows(t)} t WHERE t.id = p_id));`).join("\n")}
     ELSE RETURN _delta_row_standing_framework(p_coll, p_id);
   END CASE;
 END;

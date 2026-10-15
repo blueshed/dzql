@@ -27,10 +27,18 @@ import { columnSqlType } from "../postgres/sql";
 /** A string as an SQL literal. */
 export const lit = (s: string): string => `'${s.replace(/'/g, "''")}'`;
 
-/** A document's function name: its prefix, lower case, every other character `_`. */
-export function openFunction(prefix: string): string {
-  return `dzql_open__${prefix.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`;
-}
+/** A compiled function's name: `dzql_<kind>__` and the document's prefix (or a collection's key), lower case, every other character `_`. */
+export const named = (kind: string, name: string): string =>
+  `dzql_${kind}__${name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`;
+
+/** A document's open: `dzql_open__<slug>`. */
+export const openFunction = (prefix: string): string => named("open", prefix);
+
+/** A table's rows as they stand: its current view where temporal, else the table. */
+export const standingRows = (table: ResolvedTable): string => q(table.temporal ? `current_${table.name}` : table.name);
+
+/** A temporal table's rows as they stand, as a condition on `alias`: ` AND <alias>.valid_to IS NULL`; nothing for a table that is not. */
+export const currentOnly = (table: ResolvedTable, alias: string): string => (table.temporal ? ` AND ${alias}.valid_to IS NULL` : "");
 
 /**
  * A row as a document reads it: as stored (a temporal row without its
@@ -264,10 +272,10 @@ function dayOf(v: string, key: string, refuse: Refuse): string {
 }
 
 /** A document's function for `open_at`: the document as it stood at a time the caller gives. */
-export const openAtFunction = (prefix: string): string => openFunction(prefix).replace(/^dzql_open__/, "dzql_open_at__");
+export const openAtFunction = (prefix: string): string => named("open_at", prefix);
 
 /** A document's whole read, for the ledger: `dzql_open_whole__<slug>`. */
-export const openWholeFunction = (prefix: string): string => openFunction(prefix).replace(/^dzql_open__/, "dzql_open_whole__");
+export const openWholeFunction = (prefix: string): string => named("open_whole", prefix);
 
 /**
  * One document's read, as `open` (`delta_open`: the time is the name's, an implied

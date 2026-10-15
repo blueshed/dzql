@@ -18,17 +18,14 @@
  * the collections that cascade on it by key and key column, each in the
  * database's byte order (`COLLATE "C"`), and each one's rows by id.
  */
-import { q, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
-import { lit } from "./opens";
+import { q, type Schema } from "@blueshed/delta/backend";
+import { lit, named, standingRows } from "./opens";
 
 /** A collection's function: `dzql_<what>__<slug>`. */
-const fn = (what: string, coll: string): string => `dzql_${what}__${coll.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`;
+const fn = (what: string, coll: string): string => named(what, coll);
 
 /** As `COLLATE "C"` orders text: by its bytes. */
 const bytes = (a: string, b: string): number => Buffer.compare(Buffer.from(a), Buffer.from(b));
-
-/** A table's rows as they stand: its current view, where temporal. */
-const standing = (t: ResolvedTable): string => q(t.temporal ? `current_${t.name}` : t.name);
 
 /** A collection's children, and the collections that cascade on it, in the framework's order: [collection, key column]. */
 function reached(schema: Schema, coll: string): { children: [string, string][]; refs: [string, string][] } {
@@ -56,7 +53,7 @@ function removeOf(schema: Schema, coll: string): string {
   const t = schema.tables[coll]!;
   const { children, refs } = reached(schema, coll);
   const walk = [...children, ...refs].map(([c, fk]) =>
-    `  FOR v_id IN SELECT id FROM ${standing(schema.tables[c]!)} WHERE ${q(fk)} = p_id ORDER BY id LOOP
+    `  FOR v_id IN SELECT id FROM ${standingRows(schema.tables[c]!)} WHERE ${q(fk)} = p_id ORDER BY id LOOP
     v_ops := v_ops || ${fn("cascade_remove", c)}(v_id);
   END LOOP;`);
   return `CREATE OR REPLACE FUNCTION ${fn("cascade_remove", coll)}(p_id BIGINT)
@@ -80,7 +77,7 @@ function rowsOf(schema: Schema, coll: string): string {
   const t = schema.tables[coll]!;
   const { children, refs } = reached(schema, coll);
   const walk = [...children, ...refs].map(([c, fk]) =>
-    `  FOR v_id IN SELECT id FROM ${standing(schema.tables[c]!)} WHERE ${q(fk)} = p_id ORDER BY id LOOP
+    `  FOR v_id IN SELECT id FROM ${standingRows(schema.tables[c]!)} WHERE ${q(fk)} = p_id ORDER BY id LOOP
     v_rows := v_rows || ${fn("cascade_rows", c)}(v_id);
   END LOOP;`);
   return `CREATE OR REPLACE FUNCTION ${fn("cascade_rows", coll)}(p_id BIGINT)
@@ -90,7 +87,7 @@ DECLARE
   v_id   BIGINT;
   v_rows JSONB;
 BEGIN
-  SELECT to_jsonb(t.*) INTO v_row FROM ${standing(t)} t WHERE t.id = p_id;
+  SELECT to_jsonb(t.*) INTO v_row FROM ${standingRows(t)} t WHERE t.id = p_id;
   IF v_row IS NULL THEN RETURN '[]'::jsonb; END IF;
   v_rows := jsonb_build_array(jsonb_build_object('coll', ${lit(coll)}, 'id', p_id, 'row', _delta_strip_temporal(v_row)));
 ${walk.join("\n")}
@@ -103,7 +100,7 @@ function hangingOf(schema: Schema, coll: string): string {
   const { children } = reached(schema, coll);
   const parts = children.map(([c, fk]) => {
     const below = schema.tables[c]!.children.length ? `${fn("hanging_rows", c)}(t.id)` : "'[]'::jsonb";
-    return `  SELECT COALESCE(jsonb_agg(e ORDER BY t.id, n), '[]'::jsonb) INTO v_part FROM ${standing(schema.tables[c]!)} t,
+    return `  SELECT COALESCE(jsonb_agg(e ORDER BY t.id, n), '[]'::jsonb) INTO v_part FROM ${standingRows(schema.tables[c]!)} t,
          jsonb_array_elements(jsonb_build_array(jsonb_build_object('coll', ${lit(c)}, 'id', t.id, 'row', _delta_strip_temporal(to_jsonb(t.*)))) || ${below})
            WITH ORDINALITY AS x(e, n)
    WHERE t.${q(fk)} = p_id;
