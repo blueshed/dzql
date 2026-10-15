@@ -1,20 +1,15 @@
 # DZQL
 
-Database-first real-time framework with TypeScript support.
+**delta's compiled Postgres step.**
 
-## Quick Start
-
-```bash
-bun create dzql my-app
-cd my-app
-bun install
-bun run db:rebuild
-bun run dev
-```
+An app built on [@blueshed/delta](https://github.com/blueshed/delta) keeps its definitions
+(`defineSchema`, `defineDoc`), its client and its wire. On Postgres, dzql keeps its documents and
+compiles those definitions to SQL, each piece held equal to delta's own cases. Why, and where it
+is going: [philo.md](https://github.com/blueshed/dzql/blob/main/philo.md).
 
 ## delta's Postgres step
 
-dzql is becoming the Postgres step for apps built on [@blueshed/delta](https://github.com/blueshed/delta):
+dzql is the Postgres step for apps built on [@blueshed/delta](https://github.com/blueshed/delta):
 a delta app grows from a JSON file to SQLite to Postgres, and on Postgres its documents are kept by
 dzql. Since 0.8.0 dzql carries delta's Postgres backend, with the same names, so moving is an
 import change:
@@ -28,10 +23,26 @@ import { jwtAuth } from "dzql/auth-jwt";
 Its tests run delta's own cases (`@blueshed/delta/testing`) against it. Compiled SQL is replacing
 the framework SQL a piece at a time: `generateSql` writes functions for each of your documents
 (opening it, reading its name, who holds a row, a write's scope, what each document is told, the
-fan-out), each held
-equal to the framework's; documents it did not compile go to the framework. Apply `generateSql`
+fan-out), each held equal to the framework's; documents it did not compile go to the framework. Apply `generateSql`
 after the framework, every time (`docs/delta/postgres.md`, "Compiled SQL"). The plan is in
 Workshop's `docs/postgres-split-plan.md`.
+
+## The whole-stack dzql (retiring)
+
+Before delta, dzql was a framework of its own: a `domain.ts` compiled to SQL, a typed client and
+Pinia stores, started with `bun create dzql`. It is kept working until step 5 of the plan retires
+it (the runtime, the client, the stores and `create-dzql`); nothing new is added to it. A new app
+starts from delta and moves to dzql when it moves to Postgres.
+
+### Quick start
+
+```bash
+bun create dzql my-app
+cd my-app
+bun install
+bun run db:rebuild
+bun run dev
+```
 
 ## Documentation
 
