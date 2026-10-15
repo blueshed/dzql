@@ -33,6 +33,8 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   bench`) and its todo #77 (now #25), and its Postgres commands: `dzql sql`, `dzql init` and
   `dzql migrate` (a postgres:// URL or a PGlite folder; a SQLite file stays `delta migrate`).
   `dzql init` stamps what it vendors `@blueshed/dzql`, and upgrades a file `delta init` stamped.
+  delta's Postgres skill pages are `docs/delta/` (postgres, rls, sql), and the cases that left delta's
+  CLI and client tests run here against dzql's Postgres (`tests/delta-pg/cli-and-client.test.ts`).
 
 ### Changed
 
