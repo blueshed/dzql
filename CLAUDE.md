@@ -8,6 +8,20 @@ Before working on this codebase, read:
 - `packages/dzql/docs/project-setup.md` - Project setup guide
 - `packages/create-dzql/README.md` - Starter template documentation
 
+## Where the Project Is
+
+`CHANGELOG.md` and `todo.jsonl` are the project's memory between sessions. The
+changelog is where dzql has been; `todo.jsonl` is what is open now. Read both
+before starting. As you work, keep them current together: what you find or leave
+open goes into `todo.jsonl`; what lands goes under `## [Unreleased]` in the
+changelog, breaking changes first, and the item it settles becomes `fixed` with a
+dated `note`. A release turns `[Unreleased]` into a version, and the settled items
+leave `todo.jsonl`.
+
+`todo.jsonl` has one JSON object per line: `n`, `status` (open / fixed / not
+fixed), `severity`, `area`, `file`, `summary`, `detail`, plus a dated `note` once
+an item is worked on. Same shape as duckdown's.
+
 ## Project Structure
 
 ```
@@ -110,6 +124,7 @@ Publishing is done via GitHub Actions, triggered by git tags. Do NOT publish dir
 **STOP. Before creating a git tag, verify ALL of these:**
 
 - [ ] Tag format is `dzql@X.Y.Z`
+- [ ] `CHANGELOG.md`: `[Unreleased]` becomes the new version; settled items leave `todo.jsonl`
 - [ ] Version updated in `packages/dzql/package.json`
 - [ ] Version updated in `packages/create-dzql/package.json` (both the package version AND the dzql dependency)
 - [ ] TypeScript compiles without errors (`cd packages/dzql && bunx tsc --noEmit`)

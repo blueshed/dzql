@@ -88,6 +88,7 @@ const { unsubscribe } = await ws.api.get_posts_feed(
 
 - [Project Setup](packages/dzql/docs/project-setup.md) - Full setup guide
 - [AI Guide](packages/dzql/docs/for_ai.md) - For AI-assisted development
+- [Changelog](CHANGELOG.md) - How dzql got here, version by version
 
 ## License
 
