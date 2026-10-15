@@ -1,0 +1,1494 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the compiled text is pinned: a change to what it writes shows in review 1`] = `
+"-- Compiled by dzql from the app's defineSchema / defineDoc. Do not edit: compile again.
+
+-- fo-board:: root weddings, includes households, courses, drinks, tags, notes
+CREATE OR REPLACE FUNCTION dzql_open__fo_board(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-board:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('households', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'email', t."email", 't', t."t")), '{}'::jsonb) FROM "fo_households" t)) || jsonb_build_object('courses', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'name', t."name")), '{}'::jsonb) FROM "fo_courses" t)) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t)) || jsonb_build_object('tags', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'label', t."label")), '{}'::jsonb) FROM "fo_tags" t)) || jsonb_build_object('notes', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'text', t."text")), '{}'::jsonb) FROM "fo_notes" t WHERE (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END)));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('households', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'email', t."email", 't', t."t")), '{}'::jsonb) FROM "fo_households" t WHERE t."weddings_id" = v_id)) || jsonb_build_object('courses', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'name', t."name")), '{}'::jsonb) FROM "fo_courses" t WHERE t."weddings_id" = v_id)) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t JOIN "fo_courses" p1 ON p1.id = t."courses_id" WHERE p1."weddings_id" = v_id)) || jsonb_build_object('tags', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'label', t."label")), '{}'::jsonb) FROM "fo_tags" t)) || jsonb_build_object('notes', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'text', t."text")), '{}'::jsonb) FROM "fo_notes" t WHERE t."weddings_id" = v_id AND (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END)));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-menu:: root weddings, includes courses, drinks
+CREATE OR REPLACE FUNCTION dzql_open__fo_menu(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-menu:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('courses', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'name', t."name")), '{}'::jsonb) FROM "fo_courses" t)) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('courses', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'name', t."name")), '{}'::jsonb) FROM "fo_courses" t WHERE t."weddings_id" = v_id)) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t JOIN "fo_courses" p1 ON p1.id = t."courses_id" WHERE p1."weddings_id" = v_id));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-household:: root households
+CREATE OR REPLACE FUNCTION dzql_open__fo_household(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-household:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''email'', t."email", ''t'', t."t")), ''{}''::jsonb) FROM "fo_households" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('households', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''email'', t."email", ''t'', t."t") FROM "fo_households" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('households', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-course:: root courses, includes drinks
+CREATE OR REPLACE FUNCTION dzql_open__fo_course(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-course:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_courses" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('courses', v_rows) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name") FROM "fo_courses" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('courses', v_root) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t WHERE t."courses_id" = v_id));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-title:: root weddings
+CREATE OR REPLACE FUNCTION dzql_open__fo_title(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-title:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-tagged:: root weddings, includes tags
+CREATE OR REPLACE FUNCTION dzql_open__fo_tagged(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-tagged:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('tags', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'label', t."label")), '{}'::jsonb) FROM "fo_tags" t));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('tags', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'label', t."label")), '{}'::jsonb) FROM "fo_tags" t));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-notes:: root weddings, includes notes
+CREATE OR REPLACE FUNCTION dzql_open__fo_notes(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-notes:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('notes', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'text', t."text")), '{}'::jsonb) FROM "fo_notes" t WHERE (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END)));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('notes', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'text', t."text")), '{}'::jsonb) FROM "fo_notes" t WHERE t."weddings_id" = v_id AND (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END)));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-all-courses:: root courses
+CREATE OR REPLACE FUNCTION dzql_open__fo_all_courses(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-all-courses:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_courses" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('courses', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name") FROM "fo_courses" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('courses', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-catalog:: root courses, includes drinks
+CREATE OR REPLACE FUNCTION dzql_open__fo_catalog(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-catalog:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_courses" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('courses', v_rows) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name") FROM "fo_courses" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('courses', v_root) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t WHERE t."courses_id" = v_id));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-courses-noted:: root courses, includes notes
+CREATE OR REPLACE FUNCTION dzql_open__fo_courses_noted(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-courses-noted:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_courses" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('courses', v_rows) || jsonb_build_object('notes', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'text', t."text")), '{}'::jsonb) FROM "fo_notes" t WHERE (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END)));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name") FROM "fo_courses" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('courses', v_root) || jsonb_build_object('notes', '{}'::jsonb);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-courses-like:: root courses
+CREATE OR REPLACE FUNCTION dzql_open__fo_courses_like(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-courses-like:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_courses" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('courses', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name") FROM "fo_courses" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('courses', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-menu-like:: root courses, includes drinks
+CREATE OR REPLACE FUNCTION dzql_open__fo_menu_like(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-menu-like:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_courses" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('courses', v_rows) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name") FROM "fo_courses" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('courses', v_root) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t WHERE t."courses_id" = v_id));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-tags-labelled:: root tags
+CREATE OR REPLACE FUNCTION dzql_open__fo_tags_labelled(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-tags-labelled:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''label'', t."label")), ''{}''::jsonb) FROM "fo_tags" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('tags', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''label'', t."label") FROM "fo_tags" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('tags', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-seating:: root weddings, includes seats
+CREATE OR REPLACE FUNCTION dzql_open__fo_seating(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-seating:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('seats', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'table_no', t."table_no", 'kept', t."kept", 'wishes', t."wishes")), '{}'::jsonb) FROM "fo_seats" t));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('seats', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'table_no', t."table_no", 'kept', t."kept", 'wishes', t."wishes")), '{}'::jsonb) FROM "fo_seats" t WHERE t."weddings_id" = v_id));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-seats-kept:: root seats
+CREATE OR REPLACE FUNCTION dzql_open__fo_seats_kept(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-seats-kept:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''table_no'', t."table_no", ''kept'', t."kept", ''wishes'', t."wishes")), ''{}''::jsonb) FROM "fo_seats" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('seats', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''table_no'', t."table_no", ''kept'', t."kept", ''wishes'', t."wishes") FROM "fo_seats" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('seats', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-seats-upto:: root seats
+CREATE OR REPLACE FUNCTION dzql_open__fo_seats_upto(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-seats-upto:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''table_no'', t."table_no", ''kept'', t."kept", ''wishes'', t."wishes")), ''{}''::jsonb) FROM "fo_seats" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('seats', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''table_no'', t."table_no", ''kept'', t."kept", ''wishes'', t."wishes") FROM "fo_seats" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('seats', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-seats-at:: root seats
+CREATE OR REPLACE FUNCTION dzql_open__fo_seats_at(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-seats-at:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''table_no'', t."table_no", ''kept'', t."kept", ''wishes'', t."wishes")), ''{}''::jsonb) FROM "fo_seats" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('seats', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''table_no'', t."table_no", ''kept'', t."kept", ''wishes'', t."wishes") FROM "fo_seats" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('seats', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-seats-wished:: root seats
+CREATE OR REPLACE FUNCTION dzql_open__fo_seats_wished(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-seats-wished:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''table_no'', t."table_no", ''kept'', t."kept", ''wishes'', t."wishes")), ''{}''::jsonb) FROM "fo_seats" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('seats', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''table_no'', t."table_no", ''kept'', t."kept", ''wishes'', t."wishes") FROM "fo_seats" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('seats', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-slots-upto:: root slots
+CREATE OR REPLACE FUNCTION dzql_open__fo_slots_upto(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-slots-upto:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''price'', t."price", ''starts'', t."starts")), ''{}''::jsonb) FROM "fo_slots" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('slots', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''price'', t."price", ''starts'', t."starts") FROM "fo_slots" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('slots', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-slots-of:: root slots
+CREATE OR REPLACE FUNCTION dzql_open__fo_slots_of(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-slots-of:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''price'', t."price", ''starts'', t."starts")), ''{}''::jsonb) FROM "fo_slots" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('slots', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''price'', t."price", ''starts'', t."starts") FROM "fo_slots" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('slots', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-slots-under:: root slots
+CREATE OR REPLACE FUNCTION dzql_open__fo_slots_under(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-slots-under:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''price'', t."price", ''starts'', t."starts")), ''{}''::jsonb) FROM "fo_slots" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('slots', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''price'', t."price", ''starts'', t."starts") FROM "fo_slots" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('slots', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-slots-by:: root slots
+CREATE OR REPLACE FUNCTION dzql_open__fo_slots_by(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-slots-by:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''price'', t."price", ''starts'', t."starts")), ''{}''::jsonb) FROM "fo_slots" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('slots', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''price'', t."price", ''starts'', t."starts") FROM "fo_slots" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('slots', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-slots-on:: root slots
+CREATE OR REPLACE FUNCTION dzql_open__fo_slots_on(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-slots-on:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''price'', t."price", ''starts'', t."starts")), ''{}''::jsonb) FROM "fo_slots" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('slots', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''price'', t."price", ''starts'', t."starts") FROM "fo_slots" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('slots', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-note:: root notes
+CREATE OR REPLACE FUNCTION dzql_open__fo_note(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-note:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''text'', t."text")), ''{}''::jsonb) FROM "fo_notes" t WHERE %s AND (CASE WHEN $1 IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= $1 AND (t.valid_to IS NULL OR t.valid_to > $1) END)', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('notes', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''text'', t."text") FROM "fo_notes" t WHERE t.id = $1 AND %s AND (CASE WHEN $2 IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= $2 AND (t.valid_to IS NULL OR t.valid_to > $2) END)', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('notes', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-all-notes:: root notes
+CREATE OR REPLACE FUNCTION dzql_open__fo_all_notes(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-all-notes:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''text'', t."text")), ''{}''::jsonb) FROM "fo_notes" t WHERE %s AND (CASE WHEN $1 IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= $1 AND (t.valid_to IS NULL OR t.valid_to > $1) END)', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('notes', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''text'', t."text") FROM "fo_notes" t WHERE t.id = $1 AND %s AND (CASE WHEN $2 IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= $2 AND (t.valid_to IS NULL OR t.valid_to > $2) END)', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('notes', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-drinks:: root weddings, includes drinks
+CREATE OR REPLACE FUNCTION dzql_open__fo_drinks(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-drinks:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t JOIN "fo_courses" p1 ON p1.id = t."courses_id" WHERE p1."weddings_id" = v_id));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-course-guests:: root courses, includes households
+CREATE OR REPLACE FUNCTION dzql_open__fo_course_guests(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-course-guests:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_courses" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('courses', v_rows) || jsonb_build_object('households', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'email', t."email", 't', t."t")), '{}'::jsonb) FROM "fo_households" t));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name") FROM "fo_courses" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('courses', v_root) || jsonb_build_object('households', '{}'::jsonb);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-plan:: root weddings, includes courses, drinks, implied
+CREATE OR REPLACE FUNCTION dzql_open__fo_plan(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-plan:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('courses', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'name', t."name")), '{}'::jsonb) FROM "fo_courses" t)) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      v_doc := jsonb_build_object('weddings', jsonb_build_object('id', v_id) || '{"name":""}'::jsonb) || jsonb_build_object('courses', '{}'::jsonb) || jsonb_build_object('drinks', '{}'::jsonb);
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('courses', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'name', t."name")), '{}'::jsonb) FROM "fo_courses" t WHERE t."weddings_id" = v_id)) || jsonb_build_object('drinks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'courses_id', t."courses_id", 'name', t."name")), '{}'::jsonb) FROM "fo_drinks" t JOIN "fo_courses" p1 ON p1.id = t."courses_id" WHERE p1."weddings_id" = v_id));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-weddings:: root weddings, includes courses
+CREATE OR REPLACE FUNCTION dzql_open__fo_weddings(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-weddings:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('courses', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'name', t."name")), '{}'::jsonb) FROM "fo_courses" t));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('courses', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'name', t."name")), '{}'::jsonb) FROM "fo_courses" t WHERE t."weddings_id" = v_id));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-guest:: root households
+CREATE OR REPLACE FUNCTION dzql_open__fo_guest(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-guest:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''email'', t."email", ''t'', t."t")), ''{}''::jsonb) FROM "fo_households" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('households', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''email'', t."email", ''t'', t."t") FROM "fo_households" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('households', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-seat-of:: root seats
+CREATE OR REPLACE FUNCTION dzql_open__fo_seat_of(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-seat-of:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''table_no'', t."table_no", ''kept'', t."kept", ''wishes'', t."wishes")), ''{}''::jsonb) FROM "fo_seats" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('seats', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''table_no'', t."table_no", ''kept'', t."kept", ''wishes'', t."wishes") FROM "fo_seats" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('seats', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-all-households:: root households
+CREATE OR REPLACE FUNCTION dzql_open__fo_all_households(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-all-households:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''email'', t."email", ''t'', t."t")), ''{}''::jsonb) FROM "fo_households" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('households', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''email'', t."email", ''t'', t."t") FROM "fo_households" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('households', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-party:: root weddings, includes households, favours
+CREATE OR REPLACE FUNCTION dzql_open__fo_party(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-party:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('households', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'email', t."email", 't', t."t")), '{}'::jsonb) FROM "fo_households" t)) || jsonb_build_object('favours', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'households_id', t."households_id", 'gift', t."gift")), '{}'::jsonb) FROM "fo_favours" t));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('households', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'email', t."email", 't', t."t")), '{}'::jsonb) FROM "fo_households" t WHERE t."weddings_id" = v_id)) || jsonb_build_object('favours', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'households_id', t."households_id", 'gift', t."gift")), '{}'::jsonb) FROM "fo_favours" t WHERE t."weddings_id" = v_id));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-slim:: root weddings, includes households, seats, holds households(email) seats(table_no)
+CREATE OR REPLACE FUNCTION dzql_open__fo_slim(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-slim:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('households', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'email', t."email")), '{}'::jsonb) FROM "fo_households" t)) || jsonb_build_object('seats', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'table_no', t."table_no")), '{}'::jsonb) FROM "fo_seats" t));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('households', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'email', t."email")), '{}'::jsonb) FROM "fo_households" t WHERE t."weddings_id" = v_id)) || jsonb_build_object('seats', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'table_no', t."table_no")), '{}'::jsonb) FROM "fo_seats" t WHERE t."weddings_id" = v_id));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-notes-on:: root notes
+CREATE OR REPLACE FUNCTION dzql_open__fo_notes_on(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-notes-on:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''text'', t."text")), ''{}''::jsonb) FROM "fo_notes" t WHERE %s AND (CASE WHEN $1 IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= $1 AND (t.valid_to IS NULL OR t.valid_to > $1) END)', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('notes', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''text'', t."text") FROM "fo_notes" t WHERE t.id = $1 AND %s AND (CASE WHEN $2 IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= $2 AND (t.valid_to IS NULL OR t.valid_to > $2) END)', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('notes', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-courses-noted-on:: root courses, includes notes
+CREATE OR REPLACE FUNCTION dzql_open__fo_courses_noted_on(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-courses-noted-on:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_courses" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('courses', v_rows) || jsonb_build_object('notes', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'text', t."text")), '{}'::jsonb) FROM "fo_notes" t WHERE (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END)));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name") FROM "fo_courses" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('courses', v_root) || jsonb_build_object('notes', '{}'::jsonb);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-board-on:: root weddings, includes notes
+CREATE OR REPLACE FUNCTION dzql_open__fo_board_on(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-board-on:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('notes', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'text', t."text")), '{}'::jsonb) FROM "fo_notes" t WHERE (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END)));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('notes', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'weddings_id', t."weddings_id", 'text', t."text")), '{}'::jsonb) FROM "fo_notes" t WHERE t."weddings_id" = v_id AND (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END)));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-asks:: root weddings, includes asks
+CREATE OR REPLACE FUNCTION dzql_open__fo_asks(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-asks:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_weddings" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('weddings', v_rows) || jsonb_build_object('asks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'group', t."group", 'in', t."in", 'from', t."from", 'to', t."to")), '{}'::jsonb) FROM "order" t WHERE (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END)));
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''name'', t."name") FROM "fo_weddings" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('weddings', v_root) || jsonb_build_object('asks', (SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object('id', t."id", 'group', t."group", 'in', t."in", 'from', t."from", 'to', t."to")), '{}'::jsonb) FROM "order" t WHERE t."group" = v_id AND (CASE WHEN p_at IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= p_at AND (t.valid_to IS NULL OR t.valid_to > p_at) END)));
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-asks-from:: root asks
+CREATE OR REPLACE FUNCTION dzql_open__fo_asks_from(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-asks-from:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''group'', t."group", ''in'', t."in", ''from'', t."from", ''to'', t."to")), ''{}''::jsonb) FROM "order" t WHERE %s AND (CASE WHEN $1 IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= $1 AND (t.valid_to IS NULL OR t.valid_to > $1) END)', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('asks', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''group'', t."group", ''in'', t."in", ''from'', t."from", ''to'', t."to") FROM "order" t WHERE t.id = $1 AND %s AND (CASE WHEN $2 IS NULL THEN t.valid_to IS NULL ELSE t.valid_from <= $2 AND (t.valid_to IS NULL OR t.valid_to > $2) END)', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('asks', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+-- fo-pub-courses:: root courses
+CREATE OR REPLACE FUNCTION dzql_open__fo_pub_courses(p_name TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_scope  JSONB;
+  v_where  TEXT;
+  p_at     TIMESTAMPTZ;
+  v_id     BIGINT;
+  v_rows   JSONB;
+  v_root   JSONB;
+  v_doc    JSONB;
+  v_version BIGINT;
+BEGIN
+  v_scope := _delta_resolve_scope((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-pub-courses:'), p_name);
+  v_where := v_scope->>'where';
+  p_at := (v_scope->>'at')::TIMESTAMPTZ;
+  IF v_scope->>'mode' = 'list' THEN
+    EXECUTE format('SELECT COALESCE(jsonb_object_agg(t.id, jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name")), ''{}''::jsonb) FROM "fo_courses" t WHERE %s', v_where)
+      INTO v_rows USING p_at;
+    v_doc := jsonb_build_object('courses', v_rows);
+  ELSE
+    v_id := (v_scope->'values'->>'id')::BIGINT;
+    EXECUTE format('SELECT jsonb_build_object(''id'', t."id", ''weddings_id'', t."weddings_id", ''name'', t."name") FROM "fo_courses" t WHERE t.id = $1 AND %s', v_where)
+      INTO v_root USING v_id, p_at;
+    IF v_root IS NULL THEN
+      RETURN NULL;
+    ELSE
+      v_doc := jsonb_build_object('courses', v_root);
+    END IF;
+  END IF;
+  INSERT INTO _delta_versions (doc_name, version) VALUES (p_name, 0) ON CONFLICT (doc_name) DO NOTHING;
+  SELECT version INTO v_version FROM _delta_versions WHERE doc_name = p_name;
+  RETURN v_doc || jsonb_build_object('_version', v_version);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION dzql_open(p_name TEXT)
+RETURNS JSONB AS $$
+BEGIN
+  IF starts_with(p_name, 'fo-courses-noted-on:') THEN RETURN dzql_open__fo_courses_noted_on(p_name); END IF;
+  IF starts_with(p_name, 'fo-all-households:') THEN RETURN dzql_open__fo_all_households(p_name); END IF;
+  IF starts_with(p_name, 'fo-course-guests:') THEN RETURN dzql_open__fo_course_guests(p_name); END IF;
+  IF starts_with(p_name, 'fo-courses-noted:') THEN RETURN dzql_open__fo_courses_noted(p_name); END IF;
+  IF starts_with(p_name, 'fo-tags-labelled:') THEN RETURN dzql_open__fo_tags_labelled(p_name); END IF;
+  IF starts_with(p_name, 'fo-courses-like:') THEN RETURN dzql_open__fo_courses_like(p_name); END IF;
+  IF starts_with(p_name, 'fo-seats-wished:') THEN RETURN dzql_open__fo_seats_wished(p_name); END IF;
+  IF starts_with(p_name, 'fo-all-courses:') THEN RETURN dzql_open__fo_all_courses(p_name); END IF;
+  IF starts_with(p_name, 'fo-pub-courses:') THEN RETURN dzql_open__fo_pub_courses(p_name); END IF;
+  IF starts_with(p_name, 'fo-slots-under:') THEN RETURN dzql_open__fo_slots_under(p_name); END IF;
+  IF starts_with(p_name, 'fo-seats-kept:') THEN RETURN dzql_open__fo_seats_kept(p_name); END IF;
+  IF starts_with(p_name, 'fo-seats-upto:') THEN RETURN dzql_open__fo_seats_upto(p_name); END IF;
+  IF starts_with(p_name, 'fo-slots-upto:') THEN RETURN dzql_open__fo_slots_upto(p_name); END IF;
+  IF starts_with(p_name, 'fo-all-notes:') THEN RETURN dzql_open__fo_all_notes(p_name); END IF;
+  IF starts_with(p_name, 'fo-asks-from:') THEN RETURN dzql_open__fo_asks_from(p_name); END IF;
+  IF starts_with(p_name, 'fo-household:') THEN RETURN dzql_open__fo_household(p_name); END IF;
+  IF starts_with(p_name, 'fo-menu-like:') THEN RETURN dzql_open__fo_menu_like(p_name); END IF;
+  IF starts_with(p_name, 'fo-board-on:') THEN RETURN dzql_open__fo_board_on(p_name); END IF;
+  IF starts_with(p_name, 'fo-notes-on:') THEN RETURN dzql_open__fo_notes_on(p_name); END IF;
+  IF starts_with(p_name, 'fo-seats-at:') THEN RETURN dzql_open__fo_seats_at(p_name); END IF;
+  IF starts_with(p_name, 'fo-slots-by:') THEN RETURN dzql_open__fo_slots_by(p_name); END IF;
+  IF starts_with(p_name, 'fo-slots-of:') THEN RETURN dzql_open__fo_slots_of(p_name); END IF;
+  IF starts_with(p_name, 'fo-slots-on:') THEN RETURN dzql_open__fo_slots_on(p_name); END IF;
+  IF starts_with(p_name, 'fo-weddings:') THEN RETURN dzql_open__fo_weddings(p_name); END IF;
+  IF starts_with(p_name, 'fo-catalog:') THEN RETURN dzql_open__fo_catalog(p_name); END IF;
+  IF starts_with(p_name, 'fo-seat-of:') THEN RETURN dzql_open__fo_seat_of(p_name); END IF;
+  IF starts_with(p_name, 'fo-seating:') THEN RETURN dzql_open__fo_seating(p_name); END IF;
+  IF starts_with(p_name, 'fo-course:') THEN RETURN dzql_open__fo_course(p_name); END IF;
+  IF starts_with(p_name, 'fo-drinks:') THEN RETURN dzql_open__fo_drinks(p_name); END IF;
+  IF starts_with(p_name, 'fo-tagged:') THEN RETURN dzql_open__fo_tagged(p_name); END IF;
+  IF starts_with(p_name, 'fo-board:') THEN RETURN dzql_open__fo_board(p_name); END IF;
+  IF starts_with(p_name, 'fo-guest:') THEN RETURN dzql_open__fo_guest(p_name); END IF;
+  IF starts_with(p_name, 'fo-notes:') THEN RETURN dzql_open__fo_notes(p_name); END IF;
+  IF starts_with(p_name, 'fo-party:') THEN RETURN dzql_open__fo_party(p_name); END IF;
+  IF starts_with(p_name, 'fo-title:') THEN RETURN dzql_open__fo_title(p_name); END IF;
+  IF starts_with(p_name, 'fo-asks:') THEN RETURN dzql_open__fo_asks(p_name); END IF;
+  IF starts_with(p_name, 'fo-menu:') THEN RETURN dzql_open__fo_menu(p_name); END IF;
+  IF starts_with(p_name, 'fo-note:') THEN RETURN dzql_open__fo_note(p_name); END IF;
+  IF starts_with(p_name, 'fo-plan:') THEN RETURN dzql_open__fo_plan(p_name); END IF;
+  IF starts_with(p_name, 'fo-slim:') THEN RETURN dzql_open__fo_slim(p_name); END IF;
+  RAISE EXCEPTION 'no doc def for: %', p_name USING ERRCODE = 'P0001';
+END;
+$$ LANGUAGE plpgsql;
+
+"
+`;
