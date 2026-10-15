@@ -175,6 +175,26 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   raise. Eight mutations each fail it. Measured ad hoc through `bench:1` as the app role: an add,
   0.59 to 0.56 ms compiled (framework 0.90); a remove, 0.58 to 0.52 ms (framework 0.82). Replaces,
   which the bench times, are unchanged at 0.593 ms.
+- **The ledger's reads are compiled** (2c, the ledger walk). An entry's inverse and a walk's guard
+  read the document whole, every column whatever it names (`_delta_open(name, TRUE)`). That was
+  the framework's interpreting read, beside the compiled opens.
+  - `generateSql` writes `dzql_open_whole__<prefix>(name)` for each document: its open with every
+    column. `_delta_open` sends each compiled document to its own open, shown or whole, and any
+    other to `_delta_open_framework`.
+  - `_delta_same` (a field the same in two values, a time by its instant) has each collection's
+    time fields written in. It still takes the writing process's declared type
+    (`delta.declared`) first.
+  - The rows a walk guards beyond the document are read by `_delta_row_standing`, per collection.
+  - `_delta_open_held` asks `_delta_row_there`.
+
+  Held equal (`tests/compile/ledger.test.ts`): every path-case name and one no document holds, read
+  whole and shown, on the seed and after writes; every collection and field (and ones there are
+  not) over pairs of values, with nothing, the app's own and another version's columns declared;
+  every collection's rows beyond, and a collection there is not. Seven mutations each fail it.
+  Measured ad hoc as the app role, from an empty ledger: a logged write through one row 0.815 to
+  0.78 ms compiled (framework 1.12), through a list of 100 1.09 to 1.056 ms (framework 1.63); an
+  undo about as before (1.45 and 2.34 ms; framework 2.0 and 3.5): its cost is the walk's own plan,
+  not these reads. An undo slows as its cursor's ledger grows (todo #28).
 - **Doc comments name dzql's subpaths.** Nine comments in `src/postgres/` and `auth-jwt.sql`
   still said `@blueshed/delta/postgres` and `@blueshed/delta/auth-jwt`, which delta 1.0 no longer
   has; they now say `dzql/postgres` and `dzql/auth-jwt`.

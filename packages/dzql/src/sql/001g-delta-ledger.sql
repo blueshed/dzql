@@ -233,7 +233,7 @@ $$;
 -- A field of a collection's row the same in two values: a timestamptz by the
 -- instant it names, whatever zone its text was written in (a ledger's entry
 -- keeps the session's TimeZone of its write), anything else as _delta_same.
-CREATE OR REPLACE FUNCTION _delta_same(p_coll TEXT, p_field TEXT, a JSONB, b JSONB)
+CREATE OR REPLACE FUNCTION _delta_same_framework(p_coll TEXT, p_field TEXT, a JSONB, b JSONB)
 RETURNS BOOLEAN LANGUAGE sql STABLE AS $$
   SELECT CASE
     WHEN jsonb_typeof(a) = 'string' AND jsonb_typeof(b) = 'string'
@@ -242,6 +242,31 @@ RETURNS BOOLEAN LANGUAGE sql STABLE AS $$
     ELSE _delta_same(a, b)
   END;
 $$;
+
+-- the framework's, until dzql's compiler (`compileLedger`) writes each
+-- collection's time fields in
+CREATE OR REPLACE FUNCTION _delta_same(p_coll TEXT, p_field TEXT, a JSONB, b JSONB)
+RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT _delta_same_framework(p_coll, p_field, a, b); $$;
+
+-- _delta_row_standing: row `p_id` of a collection as it stands, without its
+-- validity, as {row} (row null: not there); NULL for a collection there is not.
+-- What a walk guards a row beyond its document by.
+CREATE OR REPLACE FUNCTION _delta_row_standing_framework(p_coll TEXT, p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_coll RECORD;
+  v_row  JSONB;
+BEGIN
+  SELECT * INTO v_coll FROM _delta_collections WHERE collection_key = p_coll;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  EXECUTE format('SELECT _delta_strip_temporal(to_jsonb(t.*)) FROM %I t WHERE t.id = $1', _delta_source_view(v_coll.table_name, v_coll.temporal))
+    INTO v_row USING p_id;
+  RETURN jsonb_build_object('row', v_row);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_row_standing(p_coll TEXT, p_id BIGINT)
+RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_row_standing_framework(p_coll, p_id); $$;
 
 -- _delta_walk_key: a row's key in a walk -- the keyOf of planWalk in
 -- src/server/ledger.ts. A single document's root is one row at two paths,
@@ -306,11 +331,9 @@ BEGIN
   FOR v_parts IN SELECT DISTINCT _delta_split_path(o->>'path') FROM jsonb_array_elements(p_entry.ops || p_entry.inverse) AS o LOOP
     CONTINUE WHEN array_length(v_parts, 1) <> 2 OR v_parts[2] !~ '^[0-9]+$' OR v_parts[2]::numeric > 9007199254740991
       OR v_parts[1] = v_def.root_collection OR v_parts[1] = ANY(COALESCE(v_def.include, ARRAY[]::text[]));
-    SELECT * INTO v_coll FROM _delta_collections WHERE collection_key = v_parts[1];
-    CONTINUE WHEN NOT FOUND;
-    EXECUTE format('SELECT _delta_strip_temporal(to_jsonb(t.*)) FROM %I t WHERE t.id = $1', _delta_source_view(v_coll.table_name, v_coll.temporal))
-      INTO v_row USING v_parts[2]::bigint;
-    v_beyond := v_beyond || jsonb_build_array(jsonb_build_object('coll', v_parts[1], 'id', v_parts[2]::bigint, 'row', v_row));
+    v_row := _delta_row_standing(v_parts[1], v_parts[2]::bigint);
+    CONTINUE WHEN v_row IS NULL;   -- a collection there is not
+    v_beyond := v_beyond || jsonb_build_array(jsonb_build_object('coll', v_parts[1], 'id', v_parts[2]::bigint, 'row', v_row->'row'));
   END LOOP;
   v_doc := _delta_beside(v_doc, v_def, v_beyond);
 
