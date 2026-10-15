@@ -23,6 +23,8 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-15
+
 ### Changed
 
 - **The READMEs lead with what dzql is now.** They opened with "define your domain in TypeScript,

@@ -10,12 +10,12 @@
     },
     "packages/create-dzql": {
       "name": "create-dzql",
-      "version": "0.9.0",
+      "version": "0.10.0",
       "bin": {
         "create-dzql": "./index.ts",
       },
       "dependencies": {
-        "dzql": "^0.8.0",
+        "dzql": "^0.10.0",
         "invoket": "^0.1.2",
       },
       "devDependencies": {
@@ -24,7 +24,7 @@
     },
     "packages/dzql": {
       "name": "dzql",
-      "version": "0.9.0",
+      "version": "0.10.0",
       "bin": {
         "dzql": "./src/cli/index.ts",
       },
