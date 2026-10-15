@@ -268,6 +268,53 @@ $$ LANGUAGE plpgsql STABLE;
 -- two-argument form logs none.
 -- ---------------------------------------------------------------------------
 
+-- _delta_told: what one document is told of a write -- `p_rows`, the write's
+-- touches with their holders, as _delta_tell gathers them -- by its name
+-- `p_target`: an add, a replace of each field that changed, a remove; its
+-- root's arrival or leaving as a replace. The framework's answer is
+-- `_delta_told_framework`; dzql's compiler (`compileTold`) replaces
+-- `_delta_told` with one sending each document it compiled to its own.
+
+CREATE OR REPLACE FUNCTION _delta_told_framework(p_def _delta_docs, p_target TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_t      JSONB;
+  v_single BOOLEAN;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+BEGIN
+  v_single := (_delta_resolve_scope(p_def, p_target)->>'mode') = 'single';
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_target;
+    v_is  := (v_t->'holders') ? p_target;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and held either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = p_def.root_collection;
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    -- each row as this document shows it: the columns it holds (_delta_show, todo #70)
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(_delta_show(p_def, v_t->>'coll', v_t->'after')) AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object(
+        'op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', _delta_show(p_def, v_t->>'coll', v_t->'after')));
+    ELSIF v_root THEN   -- gone: null, or the empty root an implied document then opens with
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value',
+        CASE WHEN COALESCE(p_def.implied, FALSE) THEN _delta_show(p_def, v_t->>'coll', _delta_implied_root(p_def, (v_t->>'id')::BIGINT)) ELSE 'null'::jsonb END));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_told(p_def _delta_docs, p_target TEXT, p_rows JSONB)
+RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_told_framework(p_def, p_target, p_rows); $$;
+
 CREATE OR REPLACE FUNCTION _delta_tell(p_writer TEXT, p_touched JSONB, p_applied JSONB)
 RETURNS BIGINT AS $$
 DECLARE
@@ -277,12 +324,7 @@ DECLARE
   v_targets TEXT[] := ARRAY[]::text[];
   v_target  TEXT;
   v_def     _delta_docs;
-  v_single  BOOLEAN;
   v_told    JSONB;
-  v_was     BOOLEAN;
-  v_is      BOOLEAN;
-  v_root    BOOLEAN;
-  v_path    TEXT;
   v_version BIGINT;
   v_next    JSONB := '{}'::jsonb;   -- a row's holders, as its next touch found them
   v_key     TEXT;
@@ -309,29 +351,7 @@ BEGIN
   LOOP
     v_def := _delta_find_doc(v_target);
     CONTINUE WHEN v_def.prefix IS NULL;
-    v_single := (_delta_resolve_scope(v_def, v_target)->>'mode') = 'single';
-    v_told := '[]'::jsonb;
-    FOR v_t IN SELECT jsonb_array_elements(v_rows) LOOP
-      v_was := (v_t->'before') ? v_target;
-      v_is  := (v_t->'holders') ? v_target;
-      CONTINUE WHEN NOT v_was AND NOT v_is;
-      CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and held either way: unchanged for it
-      v_root := v_single AND (v_t->>'coll') = v_def.root_collection;
-      v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
-      -- each row as this document shows it: the columns it holds (_delta_show, todo #70)
-      IF v_was AND v_is THEN   -- stayed: what changed
-        v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
-                                        FROM jsonb_each(_delta_show(v_def, v_t->>'coll', v_t->'after')) AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
-      ELSIF v_is THEN
-        v_told := v_told || jsonb_build_array(jsonb_build_object(
-          'op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', _delta_show(v_def, v_t->>'coll', v_t->'after')));
-      ELSIF v_root THEN   -- gone: null, or the empty root an implied document then opens with
-        v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value',
-          CASE WHEN COALESCE(v_def.implied, FALSE) THEN _delta_show(v_def, v_t->>'coll', _delta_implied_root(v_def, (v_t->>'id')::BIGINT)) ELSE 'null'::jsonb END));
-      ELSE
-        v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
-      END IF;
-    END LOOP;
+    v_told := _delta_told(v_def, v_target, v_rows);
     IF v_target = p_writer THEN
       v_version := _delta_bump_and_notify(p_writer, v_told, CASE WHEN p_applied IS DISTINCT FROM v_told THEN p_applied END);
     ELSIF jsonb_array_length(v_told) > 0 THEN
