@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **delta 1.0, and the Postgres step is dzql's.** `@blueshed/delta` is `^1.0.0`: delta keeps the
+  documents on a JSON file and SQLite, and Postgres moved to dzql, delta's Postgres. The `evolve`
+  skill's Postgres step (`references/postgres.md`) adds `dzql` and imports `dzql/postgres` and
+  `dzql/pglite`; its schema, documents, page and tests are as they were, and `test:evolve` runs it.
+
 ### Added
 
 - **The evolve skill's migrations step** (`references/migrations.md`), on delta 0.14.0's
