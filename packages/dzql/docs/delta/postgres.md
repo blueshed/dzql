@@ -47,6 +47,39 @@ Options: `createDocListener` and `docTypeFromDef` in `src/server/postgres/listen
 - Mount `init_db/` at `/docker-entrypoint-initdb.d`: Postgres applies it alphabetically on the
   first boot of an empty volume, then skips; `docker compose down -v` starts fresh.
 
+## Compiled SQL
+
+`generateSql` writes more than your tables. It writes SQL for each of your documents, compiled
+from their definitions, in place of framework functions that read `_delta_collections` and
+`_delta_docs` at run time. Each piece answers what the framework answers: dzql's
+`tests/compile/` holds each equal to the framework's, on every document name of delta's path
+cases, on the seed and after writes. Compiled so far:
+
+| What | Compiled per document | The framework's, kept as |
+| --- | --- | --- |
+| Opening a document | `dzql_open__<doc>`, `dzql_open_at__<doc>` (and `_as`) | `delta_open`, `delta_open_at` |
+| Does a document hold a row | `dzql_holds__<doc>`, via `_delta_doc_holds` | `_delta_doc_holds_framework` |
+| May a write touch a row (its scope) | `dzql_in_scope__<doc>`, via `_delta_row_in_scope` | `_delta_row_in_scope_framework` |
+| What a document is told of a write | `dzql_told__<doc>`, via `_delta_told` | `_delta_told_framework` |
+| Which open documents hold a row (the fan-out) | `_delta_holders` itself, per collection | `_delta_holders_framework` |
+
+Two rules follow:
+
+- **The framework first, then `generateSql`, every time.** `applyFramework` (or vendored
+  `001*` files) puts the framework's own `_delta_doc_holds`, `_delta_row_in_scope`,
+  `_delta_told` and `_delta_holders` back: everything still works, and writes are answered by
+  the framework, slower (the compiled opens stay). Re-apply `generateSql` after it, and after `init
+  --upgrade`. Vendored, `003-tables.sql` sorts after `001*`, so a tool that re-applies the
+  directory in order gets this right; one that re-applies only `001*` must re-apply `003` too.
+- **A document dzql did not compile goes to the framework.** One registered by hand, or by
+  another `generateSql`, is answered by the `_framework` functions, as before. The dispatchers
+  send each document by its prefix, so a prefix compiled and then registered again by hand with
+  another definition answers by the compiled one until `generateSql` runs again.
+
+The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their `_as` forms
+(`sql.md`), which reach them. What a write costs, compiled against the framework, is in
+`bench/results-2026-10-15.md` (under RLS, as an app role).
+
 ## Gotchas
 
 - `bun add pg`, and `bun add -d @types/pg` to type-check (delta ships TS source).

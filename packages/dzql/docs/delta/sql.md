@@ -22,7 +22,9 @@ END $$;
 ```
 
 The functions are in `src/sql/001a–001g-*.sql`, applied in order (`postgres.md`), each
-`SECURITY INVOKER`. Read them there; the ones you call:
+`SECURITY INVOKER` but the fan-out (`_delta_holders`) and the serials. `generateSql` replaces
+some of their helpers with SQL compiled for your documents (`postgres.md`, "Compiled SQL"); the
+functions you call stay these:
 
 - `delta_open(doc)`, `delta_open_at(doc, timestamptz)`: a document now, or as it stood.
 - `delta_apply(doc, ops)`: apply, log to `_delta_ops_log`, NOTIFY.
