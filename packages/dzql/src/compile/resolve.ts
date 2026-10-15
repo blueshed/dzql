@@ -14,10 +14,10 @@
  * (`_delta_resolve_scope_framework`).
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
-import { lit, need, openFunction, scopeOf } from "./opens";
+import { lit, named, need, scopeOf } from "./opens";
 
 /** A document's scope function: `dzql_scope__<slug>`. */
-export const resolveFunction = (prefix: string): string => openFunction(prefix).replace(/^dzql_open__/, "dzql_scope__");
+export const resolveFunction = (prefix: string): string => named("scope", prefix);
 
 /** Refused: raised (22P02), or with `p_refuse` false, the scope that holds nothing, naming why. */
 const refuse = (message: string, value: string): string => {

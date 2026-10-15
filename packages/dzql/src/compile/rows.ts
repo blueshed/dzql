@@ -25,7 +25,7 @@
  * collection it was not compiled for there.
  */
 import { q, type Schema } from "@blueshed/delta/backend";
-import { lit } from "./opens";
+import { lit, standingRows } from "./opens";
 
 /** A CASE over the collections, each branch from `branch`, any other collection to `fallback`. */
 function dispatch(schema: Schema, branch: (coll: string, table: Schema["tables"][string]) => string | null, fallback: string): string {
@@ -86,7 +86,7 @@ RETURNS BOOLEAN AS $$
 DECLARE
   p_coll TEXT := p_collection_key;
 BEGIN
-${dispatch(schema, (_, t) => `RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM ${q(t.temporal ? `current_${t.name}` : t.name)} WHERE id = p_id);`,
+${dispatch(schema, (_, t) => `RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM ${standingRows(t)} WHERE id = p_id);`,
     "RETURN _delta_row_there_framework(p_collection_key, p_id);")}
 END;
 $$ LANGUAGE plpgsql STABLE;`;
@@ -96,7 +96,7 @@ RETURNS JSONB AS $$
 DECLARE
   v_row JSONB;
 BEGIN
-${dispatch(schema, (_, t) => `SELECT _delta_strip_temporal(to_jsonb(t.*)) INTO v_row FROM ${q(t.temporal ? `current_${t.name}` : t.name)} t WHERE t.id = p_id;
+${dispatch(schema, (_, t) => `SELECT _delta_strip_temporal(to_jsonb(t.*)) INTO v_row FROM ${standingRows(t)} t WHERE t.id = p_id;
       RETURN v_row;`, "RETURN _delta_row_read_framework(p_coll, p_view, p_id);")}
 END;
 $$ LANGUAGE plpgsql STABLE;`;

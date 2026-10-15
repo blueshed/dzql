@@ -13,14 +13,12 @@
  * scope. And `_delta_row_in_scope` itself, which sends each compiled document
  * to its own and any other to the framework (`_delta_row_in_scope_framework`).
  */
-import { q, type DocDef, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
-import { lit, need, openFunction, scopeOf } from "./opens";
+import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
+import { lit, named, need, scopeOf , currentOnly } from "./opens";
 
 /** A document's write-scope function: `dzql_in_scope__<slug>`. */
-export const inScopeFunction = (prefix: string): string => openFunction(prefix).replace(/^dzql_open__/, "dzql_in_scope__");
+export const inScopeFunction = (prefix: string): string => named("in_scope", prefix);
 
-/** A temporal table's rows as they stand (its current view). */
-const current = (table: ResolvedTable, alias: string): string => (table.temporal ? ` AND ${alias}.valid_to IS NULL` : "");
 
 /** One document's write-scope function. */
 function inScopeOf(schema: Schema, doc: DocDef): string {
@@ -30,7 +28,7 @@ function inScopeOf(schema: Schema, doc: DocDef): string {
   // the root row of a single document: its id, and (where the name scopes more than the id) the rest of its scope
   const others = Object.keys(doc.scope ?? {}).some((k) => k !== "id");
   const rootMeets = (id: string) => others
-    ? `COALESCE(${id} = v_id, FALSE) AND EXISTS (SELECT 1 FROM ${q(root.name)} t WHERE t.id = v_id${current(root, "t")}${conds})`
+    ? `COALESCE(${id} = v_id, FALSE) AND EXISTS (SELECT 1 FROM ${q(root.name)} t WHERE t.id = v_id${currentOnly(root, "t")}${conds})`
     : `COALESCE(${id} = v_id, FALSE)`;
   const included = new Set(doc.include);
 
@@ -41,7 +39,7 @@ function inScopeOf(schema: Schema, doc: DocDef): string {
     let id = "p_id";
     let t = table;
     for (let depth = 0; depth < 32; depth++) {
-      id = `(SELECT x.${q(t.parent!.fkColumn)} FROM ${q(t.name)} x WHERE x.id = ${id}${current(t, "x")})`;
+      id = `(SELECT x.${q(t.parent!.fkColumn)} FROM ${q(t.name)} x WHERE x.id = ${id}${currentOnly(t, "x")})`;
       const parentKey = t.parent!.collection;
       if (parentKey === doc.root) return `      WHEN ${lit(coll)} THEN RETURN ${rootMeets(id)};`;
       const parent = schema.tables[parentKey];
@@ -64,7 +62,7 @@ BEGIN
   IF NOT v_single THEN
     -- a list holds its included collections whole; its root rows by the name's conditions
     IF p_coll IS DISTINCT FROM ${lit(doc.root)} THEN RETURN TRUE; END IF;
-    RETURN EXISTS (SELECT 1 FROM ${q(root.name)} t WHERE t.id = p_id${current(root, "t")}${conds});
+    RETURN EXISTS (SELECT 1 FROM ${q(root.name)} t WHERE t.id = p_id${currentOnly(root, "t")}${conds});
   END IF;
   CASE p_coll
 ${singles.join("\n")}

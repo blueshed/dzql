@@ -195,6 +195,7 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   0.78 ms compiled (framework 1.12), through a list of 100 1.09 to 1.056 ms (framework 1.63); an
   undo about as before (1.45 and 2.34 ms; framework 2.0 and 3.5): its cost is the walk's own plan,
   not these reads. An undo slows as its cursor's ledger grows (todo #28).
+- **The compiler names its functions by one rule** (`named` in `src/compile/opens.ts`), and writes a table's standing rows one way (`standingRows`, `currentOnly`): a simplicity pass before 0.10.0, the SQL it writes unchanged byte for byte (every compile snapshot as it was).
 - **Doc comments name dzql's subpaths.** Nine comments in `src/postgres/` and `auth-jwt.sql`
   still said `@blueshed/delta/postgres` and `@blueshed/delta/auth-jwt`, which delta 1.0 no longer
   has; they now say `dzql/postgres` and `dzql/auth-jwt`.

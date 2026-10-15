@@ -15,13 +15,11 @@
  * (`_delta_doc_holds_framework`).
  */
 import { q, type DocDef, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
-import { lit, need, openFunction, scopeOf } from "./opens";
+import { lit, named, need, scopeOf , currentOnly } from "./opens";
 
 /** A document's holds function: `dzql_holds__<slug>`. */
-export const holdsFunction = (prefix: string): string => openFunction(prefix).replace(/^dzql_open__/, "dzql_holds__");
+export const holdsFunction = (prefix: string): string => named("holds", prefix);
 
-/** A temporal table's rows as they stand: the condition its current view reads by. */
-const current = (table: ResolvedTable, alias: string): string => (table.temporal ? ` AND ${alias}.valid_to IS NULL` : "");
 
 /**
  * The id of the root row an included row hangs from, as `_delta_chain_root`
@@ -36,7 +34,7 @@ export function chainRoot(schema: Schema, doc: DocDef, coll: string): string {
     if (parentKey === doc.root) return id;
     const parent = need(schema, doc, parentKey);
     if (!parent.parent) return "NULL::BIGINT";
-    id = `(SELECT p.${q(parent.parent.fkColumn)} FROM ${q(parent.name)} p WHERE p.id = ${id}${current(parent, "p")})`;
+    id = `(SELECT p.${q(parent.parent.fkColumn)} FROM ${q(parent.name)} p WHERE p.id = ${id}${currentOnly(parent, "p")})`;
     table = parent;
   }
   return "NULL::BIGINT";
