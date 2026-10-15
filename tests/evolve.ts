@@ -23,6 +23,7 @@ const SECTIONS: Record<string, string[]> = {
   "testing.md": ["document.md"],
   "two-documents.md": [],
   "sqlite.md": ["two-documents.md"],
+  "migrations.md": ["two-documents.md", "sqlite.md"],
   "postgres.md": ["two-documents.md", "sqlite.md"],
   "http.md": [],
   "build.md": [],

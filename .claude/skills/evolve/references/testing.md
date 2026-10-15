@@ -75,3 +75,4 @@ test("a note the server refuses says Not saved, and stays in the box", async () 
 - The Bun.WebView rules are at the top of `tests/site.test.ts`: follow them exactly.
 - Every server in a test gets a scratch data folder (`mkdtempSync`), never the project's `data/`.
 - To test a document without a browser, hold it from a client in the test process: `connectWs` and `openDoc(name, client)`, as `tests/kitchen.test.ts` does in [sqlite.md](sqlite.md).
+- delta's case suite (`@blueshed/delta/testing`: `errorCodeCases`, `pathCases` and the rest) is for a backend of one's own, dzql for Postgres, to answer as delta's do. An app tests its own documents, as here.

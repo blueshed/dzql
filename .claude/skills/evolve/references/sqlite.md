@@ -53,6 +53,7 @@ The page's test passes as it was. The kitchen's holds the documents from a clien
 // tests/kitchen.test.ts
 import { test, expect, afterAll } from "bun:test";
 import { connectWs, openDoc } from "@blueshed/delta/client";
+import type { DeltaOp } from "@blueshed/delta/core";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/server";
@@ -93,9 +94,20 @@ test("undo takes back this client's last change, and every document holding it i
   expect(kitchenLines()).toEqual([[1, 1]]);
   expect(second.data.peek()!.lines).toEqual({});
 });
+
+test("a line changed reaches the kitchen as the field that changed, not the row", async () => {
+  const told: DeltaOp[][] = [];
+  const stop = kitchen.onOps((ops) => told.push(ops));
+  const [line] = Object.values(first.data.peek()!.lines);
+  await first.send([{ op: "replace", path: `/lines/${line!.id}/item`, value: 2 }]);
+  await until(() => kitchenLines()[0]![1] === 2);
+  stop();
+  expect(told).toEqual([[{ op: "replace", path: `/lines/${line!.id}/item`, value: 2 }]]);
+});
 ```
 
-- A change to a row reaches every document holding it.
+- A change to a row reaches every document holding it, told as the fields that changed (`replace /lines/1/item`), not the whole row; a row that arrives or leaves is a whole-row `add` or `remove`. The client applies them, so a view draws from the document, never from what it was told.
 - `{ ledger: true }` keeps each change with what undoes it. Over the socket, undo walks back what that connection wrote.
 - Seed only an empty table.
 - Redo, history, a change named by its entry, and the cursor: delta-doc's `reference/ledger.md`.
+- A schema that changes on a database holding data: [migrations.md](migrations.md).
