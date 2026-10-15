@@ -75,7 +75,7 @@ END $$;
 -- ---------------------------------------------------------------------------
 
 DROP FUNCTION IF EXISTS _delta_cascade_remove(TEXT, BIGINT, TEXT[]);
-CREATE OR REPLACE FUNCTION _delta_cascade_remove(
+CREATE OR REPLACE FUNCTION _delta_cascade_remove_framework(
   p_collection_key TEXT,
   p_id             BIGINT
 ) RETURNS JSONB AS $$
@@ -155,6 +155,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- the framework's, until dzql's compiler (`compileCascades`) writes one per
+-- collection; the framework's own recursion goes through this name, so a
+-- collection either way cascades into the other
+CREATE OR REPLACE FUNCTION _delta_cascade_remove(p_collection_key TEXT, p_id BIGINT)
+RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_cascade_remove_framework(p_collection_key, p_id); $$;
+
 -- ---------------------------------------------------------------------------
 -- _delta_cascade_rows: the rows _delta_cascade_remove would take, read before
 -- it takes them, in the order it emits their removes -- so who holds each can
@@ -162,7 +168,7 @@ $$ LANGUAGE plpgsql;
 -- ---------------------------------------------------------------------------
 
 DROP FUNCTION IF EXISTS _delta_cascade_rows(TEXT, BIGINT, TEXT[]);
-CREATE OR REPLACE FUNCTION _delta_cascade_rows(
+CREATE OR REPLACE FUNCTION _delta_cascade_rows_framework(
   p_collection_key TEXT,
   p_id             BIGINT
 ) RETURNS JSONB AS $$
@@ -209,6 +215,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
+CREATE OR REPLACE FUNCTION _delta_cascade_rows(p_collection_key TEXT, p_id BIGINT)
+RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_cascade_rows_framework(p_collection_key, p_id); $$;
+
 -- ---------------------------------------------------------------------------
 -- _delta_hanging_rows: the rows that hang from a row -- its children, theirs,
 -- and on down, whichever documents include them -- parent first, each
@@ -216,7 +225,7 @@ $$ LANGUAGE plpgsql STABLE;
 -- hanging in sqlite.ts).
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_hanging_rows(p_collection_key TEXT, p_id BIGINT)
+CREATE OR REPLACE FUNCTION _delta_hanging_rows_framework(p_collection_key TEXT, p_id BIGINT)
 RETURNS JSONB AS $$
 DECLARE
   v_child RECORD;
@@ -237,6 +246,9 @@ BEGIN
   RETURN v_rows;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_hanging_rows(p_collection_key TEXT, p_id BIGINT)
+RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_hanging_rows_framework(p_collection_key, p_id); $$;
 
 -- ---------------------------------------------------------------------------
 -- _delta_tell: tell every document that holds a row a write changed what
@@ -533,6 +545,32 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- _delta_row_add: an add's row stored, naming the columns the row gives (_delta_insert_sql), answered as stored
+CREATE OR REPLACE FUNCTION _delta_row_add_framework(p_coll TEXT, p_table TEXT, p_row JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_row JSONB;
+BEGIN
+  EXECUTE _delta_insert_sql(p_table, p_row) || ' RETURNING to_jsonb(t.*)' INTO v_row USING p_row;
+  RETURN v_row;
+END;
+$$ LANGUAGE plpgsql;
+
+-- _delta_row_read: a row as it stands, without its validity (NULL: not there)
+CREATE OR REPLACE FUNCTION _delta_row_read_framework(p_coll TEXT, p_view TEXT, p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row JSONB;
+BEGIN
+  EXECUTE format('SELECT _delta_strip_temporal(to_jsonb(t.*)) FROM %I t WHERE t.id = $1', p_view) INTO v_row USING p_id;
+  RETURN v_row;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_row_add(p_coll TEXT, p_table TEXT, p_row JSONB)
+RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_row_add_framework(p_coll, p_table, p_row); $$;
+CREATE OR REPLACE FUNCTION _delta_row_read(p_coll TEXT, p_view TEXT, p_id BIGINT)
+RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_row_read_framework(p_coll, p_view, p_id); $$;
 CREATE OR REPLACE FUNCTION _delta_row_lock(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT)
 RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_row_lock_framework(p_coll, p_table, p_temporal, p_id); $$;
 CREATE OR REPLACE FUNCTION _delta_row_put(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT, p_row JSONB, p_ts TIMESTAMPTZ)
@@ -652,11 +690,11 @@ BEGIN
   -- documents, which showed it already (ensureImpliedRoot in sqlite.ts); an
   -- empty write makes nothing
   IF NOT v_is_list AND COALESCE(v_def.implied, FALSE) AND jsonb_array_length(p_ops) > 0 THEN
-    EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I WHERE id = $1)', v_root_view) INTO v_exists USING v_doc_id;
+    v_exists := _delta_row_there(v_def.root_collection, v_doc_id);
     PERFORM _delta_make_implied(v_def, v_doc_id, p_ops, v_ts);
     IF NOT v_exists THEN
       v_passed := jsonb_build_object(v_root_coll.table_name, v_doc_id);
-      EXECUTE format('SELECT _delta_strip_temporal(to_jsonb(t.*)) FROM %I t WHERE t.id = $1', v_root_view) INTO v_row USING v_doc_id;
+      v_row := _delta_row_read(v_def.root_collection, v_root_view, v_doc_id);
       IF v_row IS NOT NULL THEN
         v_touched := jsonb_build_array(jsonb_build_object('coll', v_def.root_collection, 'id', v_doc_id, 'after', v_row, 'carried', TRUE,
           'before', COALESCE((SELECT jsonb_agg(n) FROM unnest(_delta_holders(v_def.root_collection, v_row, p_doc_name)) AS n
@@ -947,7 +985,7 @@ BEGIN
       -- value its column casts (a scope's '1' into an integer, a date into a
       -- timestamptz) is told as a later open reads it, so the broadcast, the
       -- ledger's entry and undo's guard agree with the table.
-      EXECUTE _delta_insert_sql(v_coll.table_name, v_new_row) || ' RETURNING to_jsonb(t.*)' INTO v_new_row USING v_new_row;
+      v_new_row := _delta_row_add(v_coll_key, v_coll.table_name, v_new_row);
 
       -- An id the add named moves the serial past it, so a later /- does not meet it.
       IF v_id_text <> '-' AND v_id > COALESCE((v_passed->>v_coll.table_name)::BIGINT, 0) THEN

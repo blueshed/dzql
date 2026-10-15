@@ -1,0 +1,568 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the compiled text is the same for the same schema, and pinned 1`] = `
+"CREATE OR REPLACE FUNCTION dzql_cascade_remove__weddings(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_affected BIGINT;
+  v_id       BIGINT;
+  v_ops      JSONB;
+BEGIN
+  DELETE FROM "fo_weddings" WHERE id = p_id;
+  GET DIAGNOSTICS v_affected = ROW_COUNT;
+  IF v_affected = 0 THEN RETURN '[]'::jsonb; END IF;   -- only a removal that happened (closed already, or RLS filtered it)
+  v_ops := jsonb_build_array(jsonb_build_object('op', 'remove', 'path', _delta_build_path('weddings', p_id::text)));
+  FOR v_id IN SELECT id FROM "current_order" WHERE "group" = p_id ORDER BY id LOOP
+    v_ops := v_ops || dzql_cascade_remove__asks(v_id);
+  END LOOP;
+  FOR v_id IN SELECT id FROM "fo_courses" WHERE "weddings_id" = p_id ORDER BY id LOOP
+    v_ops := v_ops || dzql_cascade_remove__courses(v_id);
+  END LOOP;
+  FOR v_id IN SELECT id FROM "fo_favours" WHERE "weddings_id" = p_id ORDER BY id LOOP
+    v_ops := v_ops || dzql_cascade_remove__favours(v_id);
+  END LOOP;
+  FOR v_id IN SELECT id FROM "fo_households" WHERE "weddings_id" = p_id ORDER BY id LOOP
+    v_ops := v_ops || dzql_cascade_remove__households(v_id);
+  END LOOP;
+  FOR v_id IN SELECT id FROM "current_fo_notes" WHERE "weddings_id" = p_id ORDER BY id LOOP
+    v_ops := v_ops || dzql_cascade_remove__notes(v_id);
+  END LOOP;
+  FOR v_id IN SELECT id FROM "fo_seats" WHERE "weddings_id" = p_id ORDER BY id LOOP
+    v_ops := v_ops || dzql_cascade_remove__seats(v_id);
+  END LOOP;
+  FOR v_id IN SELECT id FROM "fo_slots" WHERE "weddings_id" = p_id ORDER BY id LOOP
+    v_ops := v_ops || dzql_cascade_remove__slots(v_id);
+  END LOOP;
+  RETURN v_ops;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_remove__households(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_affected BIGINT;
+  v_id       BIGINT;
+  v_ops      JSONB;
+BEGIN
+  DELETE FROM "fo_households" WHERE id = p_id;
+  GET DIAGNOSTICS v_affected = ROW_COUNT;
+  IF v_affected = 0 THEN RETURN '[]'::jsonb; END IF;   -- only a removal that happened (closed already, or RLS filtered it)
+  v_ops := jsonb_build_array(jsonb_build_object('op', 'remove', 'path', _delta_build_path('households', p_id::text)));
+  FOR v_id IN SELECT id FROM "fo_favours" WHERE "households_id" = p_id ORDER BY id LOOP
+    v_ops := v_ops || dzql_cascade_remove__favours(v_id);
+  END LOOP;
+  RETURN v_ops;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_remove__courses(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_affected BIGINT;
+  v_id       BIGINT;
+  v_ops      JSONB;
+BEGIN
+  DELETE FROM "fo_courses" WHERE id = p_id;
+  GET DIAGNOSTICS v_affected = ROW_COUNT;
+  IF v_affected = 0 THEN RETURN '[]'::jsonb; END IF;   -- only a removal that happened (closed already, or RLS filtered it)
+  v_ops := jsonb_build_array(jsonb_build_object('op', 'remove', 'path', _delta_build_path('courses', p_id::text)));
+  FOR v_id IN SELECT id FROM "fo_drinks" WHERE "courses_id" = p_id ORDER BY id LOOP
+    v_ops := v_ops || dzql_cascade_remove__drinks(v_id);
+  END LOOP;
+  RETURN v_ops;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_remove__drinks(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_affected BIGINT;
+  v_id       BIGINT;
+  v_ops      JSONB;
+BEGIN
+  DELETE FROM "fo_drinks" WHERE id = p_id;
+  GET DIAGNOSTICS v_affected = ROW_COUNT;
+  IF v_affected = 0 THEN RETURN '[]'::jsonb; END IF;   -- only a removal that happened (closed already, or RLS filtered it)
+  v_ops := jsonb_build_array(jsonb_build_object('op', 'remove', 'path', _delta_build_path('drinks', p_id::text)));
+
+  RETURN v_ops;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_remove__tags(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_affected BIGINT;
+  v_id       BIGINT;
+  v_ops      JSONB;
+BEGIN
+  DELETE FROM "fo_tags" WHERE id = p_id;
+  GET DIAGNOSTICS v_affected = ROW_COUNT;
+  IF v_affected = 0 THEN RETURN '[]'::jsonb; END IF;   -- only a removal that happened (closed already, or RLS filtered it)
+  v_ops := jsonb_build_array(jsonb_build_object('op', 'remove', 'path', _delta_build_path('tags', p_id::text)));
+
+  RETURN v_ops;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_remove__notes(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_affected BIGINT;
+  v_id       BIGINT;
+  v_ops      JSONB;
+BEGIN
+  UPDATE "fo_notes" SET valid_to = NOW() WHERE id = p_id AND valid_to IS NULL;
+  GET DIAGNOSTICS v_affected = ROW_COUNT;
+  IF v_affected = 0 THEN RETURN '[]'::jsonb; END IF;   -- only a removal that happened (closed already, or RLS filtered it)
+  v_ops := jsonb_build_array(jsonb_build_object('op', 'remove', 'path', _delta_build_path('notes', p_id::text)));
+
+  RETURN v_ops;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_remove__seats(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_affected BIGINT;
+  v_id       BIGINT;
+  v_ops      JSONB;
+BEGIN
+  DELETE FROM "fo_seats" WHERE id = p_id;
+  GET DIAGNOSTICS v_affected = ROW_COUNT;
+  IF v_affected = 0 THEN RETURN '[]'::jsonb; END IF;   -- only a removal that happened (closed already, or RLS filtered it)
+  v_ops := jsonb_build_array(jsonb_build_object('op', 'remove', 'path', _delta_build_path('seats', p_id::text)));
+
+  RETURN v_ops;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_remove__slots(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_affected BIGINT;
+  v_id       BIGINT;
+  v_ops      JSONB;
+BEGIN
+  DELETE FROM "fo_slots" WHERE id = p_id;
+  GET DIAGNOSTICS v_affected = ROW_COUNT;
+  IF v_affected = 0 THEN RETURN '[]'::jsonb; END IF;   -- only a removal that happened (closed already, or RLS filtered it)
+  v_ops := jsonb_build_array(jsonb_build_object('op', 'remove', 'path', _delta_build_path('slots', p_id::text)));
+
+  RETURN v_ops;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_remove__favours(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_affected BIGINT;
+  v_id       BIGINT;
+  v_ops      JSONB;
+BEGIN
+  DELETE FROM "fo_favours" WHERE id = p_id;
+  GET DIAGNOSTICS v_affected = ROW_COUNT;
+  IF v_affected = 0 THEN RETURN '[]'::jsonb; END IF;   -- only a removal that happened (closed already, or RLS filtered it)
+  v_ops := jsonb_build_array(jsonb_build_object('op', 'remove', 'path', _delta_build_path('favours', p_id::text)));
+
+  RETURN v_ops;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_remove__asks(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_affected BIGINT;
+  v_id       BIGINT;
+  v_ops      JSONB;
+BEGIN
+  UPDATE "order" SET valid_to = NOW() WHERE id = p_id AND valid_to IS NULL;
+  GET DIAGNOSTICS v_affected = ROW_COUNT;
+  IF v_affected = 0 THEN RETURN '[]'::jsonb; END IF;   -- only a removal that happened (closed already, or RLS filtered it)
+  v_ops := jsonb_build_array(jsonb_build_object('op', 'remove', 'path', _delta_build_path('asks', p_id::text)));
+
+  RETURN v_ops;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_rows__weddings(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row  JSONB;
+  v_id   BIGINT;
+  v_rows JSONB;
+BEGIN
+  SELECT to_jsonb(t.*) INTO v_row FROM "fo_weddings" t WHERE t.id = p_id;
+  IF v_row IS NULL THEN RETURN '[]'::jsonb; END IF;
+  v_rows := jsonb_build_array(jsonb_build_object('coll', 'weddings', 'id', p_id, 'row', _delta_strip_temporal(v_row)));
+  FOR v_id IN SELECT id FROM "current_order" WHERE "group" = p_id ORDER BY id LOOP
+    v_rows := v_rows || dzql_cascade_rows__asks(v_id);
+  END LOOP;
+  FOR v_id IN SELECT id FROM "fo_courses" WHERE "weddings_id" = p_id ORDER BY id LOOP
+    v_rows := v_rows || dzql_cascade_rows__courses(v_id);
+  END LOOP;
+  FOR v_id IN SELECT id FROM "fo_favours" WHERE "weddings_id" = p_id ORDER BY id LOOP
+    v_rows := v_rows || dzql_cascade_rows__favours(v_id);
+  END LOOP;
+  FOR v_id IN SELECT id FROM "fo_households" WHERE "weddings_id" = p_id ORDER BY id LOOP
+    v_rows := v_rows || dzql_cascade_rows__households(v_id);
+  END LOOP;
+  FOR v_id IN SELECT id FROM "current_fo_notes" WHERE "weddings_id" = p_id ORDER BY id LOOP
+    v_rows := v_rows || dzql_cascade_rows__notes(v_id);
+  END LOOP;
+  FOR v_id IN SELECT id FROM "fo_seats" WHERE "weddings_id" = p_id ORDER BY id LOOP
+    v_rows := v_rows || dzql_cascade_rows__seats(v_id);
+  END LOOP;
+  FOR v_id IN SELECT id FROM "fo_slots" WHERE "weddings_id" = p_id ORDER BY id LOOP
+    v_rows := v_rows || dzql_cascade_rows__slots(v_id);
+  END LOOP;
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_rows__households(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row  JSONB;
+  v_id   BIGINT;
+  v_rows JSONB;
+BEGIN
+  SELECT to_jsonb(t.*) INTO v_row FROM "fo_households" t WHERE t.id = p_id;
+  IF v_row IS NULL THEN RETURN '[]'::jsonb; END IF;
+  v_rows := jsonb_build_array(jsonb_build_object('coll', 'households', 'id', p_id, 'row', _delta_strip_temporal(v_row)));
+  FOR v_id IN SELECT id FROM "fo_favours" WHERE "households_id" = p_id ORDER BY id LOOP
+    v_rows := v_rows || dzql_cascade_rows__favours(v_id);
+  END LOOP;
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_rows__courses(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row  JSONB;
+  v_id   BIGINT;
+  v_rows JSONB;
+BEGIN
+  SELECT to_jsonb(t.*) INTO v_row FROM "fo_courses" t WHERE t.id = p_id;
+  IF v_row IS NULL THEN RETURN '[]'::jsonb; END IF;
+  v_rows := jsonb_build_array(jsonb_build_object('coll', 'courses', 'id', p_id, 'row', _delta_strip_temporal(v_row)));
+  FOR v_id IN SELECT id FROM "fo_drinks" WHERE "courses_id" = p_id ORDER BY id LOOP
+    v_rows := v_rows || dzql_cascade_rows__drinks(v_id);
+  END LOOP;
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_rows__drinks(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row  JSONB;
+  v_id   BIGINT;
+  v_rows JSONB;
+BEGIN
+  SELECT to_jsonb(t.*) INTO v_row FROM "fo_drinks" t WHERE t.id = p_id;
+  IF v_row IS NULL THEN RETURN '[]'::jsonb; END IF;
+  v_rows := jsonb_build_array(jsonb_build_object('coll', 'drinks', 'id', p_id, 'row', _delta_strip_temporal(v_row)));
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_rows__tags(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row  JSONB;
+  v_id   BIGINT;
+  v_rows JSONB;
+BEGIN
+  SELECT to_jsonb(t.*) INTO v_row FROM "fo_tags" t WHERE t.id = p_id;
+  IF v_row IS NULL THEN RETURN '[]'::jsonb; END IF;
+  v_rows := jsonb_build_array(jsonb_build_object('coll', 'tags', 'id', p_id, 'row', _delta_strip_temporal(v_row)));
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_rows__notes(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row  JSONB;
+  v_id   BIGINT;
+  v_rows JSONB;
+BEGIN
+  SELECT to_jsonb(t.*) INTO v_row FROM "current_fo_notes" t WHERE t.id = p_id;
+  IF v_row IS NULL THEN RETURN '[]'::jsonb; END IF;
+  v_rows := jsonb_build_array(jsonb_build_object('coll', 'notes', 'id', p_id, 'row', _delta_strip_temporal(v_row)));
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_rows__seats(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row  JSONB;
+  v_id   BIGINT;
+  v_rows JSONB;
+BEGIN
+  SELECT to_jsonb(t.*) INTO v_row FROM "fo_seats" t WHERE t.id = p_id;
+  IF v_row IS NULL THEN RETURN '[]'::jsonb; END IF;
+  v_rows := jsonb_build_array(jsonb_build_object('coll', 'seats', 'id', p_id, 'row', _delta_strip_temporal(v_row)));
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_rows__slots(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row  JSONB;
+  v_id   BIGINT;
+  v_rows JSONB;
+BEGIN
+  SELECT to_jsonb(t.*) INTO v_row FROM "fo_slots" t WHERE t.id = p_id;
+  IF v_row IS NULL THEN RETURN '[]'::jsonb; END IF;
+  v_rows := jsonb_build_array(jsonb_build_object('coll', 'slots', 'id', p_id, 'row', _delta_strip_temporal(v_row)));
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_rows__favours(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row  JSONB;
+  v_id   BIGINT;
+  v_rows JSONB;
+BEGIN
+  SELECT to_jsonb(t.*) INTO v_row FROM "fo_favours" t WHERE t.id = p_id;
+  IF v_row IS NULL THEN RETURN '[]'::jsonb; END IF;
+  v_rows := jsonb_build_array(jsonb_build_object('coll', 'favours', 'id', p_id, 'row', _delta_strip_temporal(v_row)));
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_cascade_rows__asks(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row  JSONB;
+  v_id   BIGINT;
+  v_rows JSONB;
+BEGIN
+  SELECT to_jsonb(t.*) INTO v_row FROM "current_order" t WHERE t.id = p_id;
+  IF v_row IS NULL THEN RETURN '[]'::jsonb; END IF;
+  v_rows := jsonb_build_array(jsonb_build_object('coll', 'asks', 'id', p_id, 'row', _delta_strip_temporal(v_row)));
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_hanging_rows__weddings(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_part JSONB;
+  v_rows JSONB := '[]'::jsonb;
+BEGIN
+  SELECT COALESCE(jsonb_agg(e ORDER BY t.id, n), '[]'::jsonb) INTO v_part FROM "current_order" t,
+         jsonb_array_elements(jsonb_build_array(jsonb_build_object('coll', 'asks', 'id', t.id, 'row', _delta_strip_temporal(to_jsonb(t.*)))) || '[]'::jsonb)
+           WITH ORDINALITY AS x(e, n)
+   WHERE t."group" = p_id;
+  v_rows := v_rows || v_part;
+  SELECT COALESCE(jsonb_agg(e ORDER BY t.id, n), '[]'::jsonb) INTO v_part FROM "fo_courses" t,
+         jsonb_array_elements(jsonb_build_array(jsonb_build_object('coll', 'courses', 'id', t.id, 'row', _delta_strip_temporal(to_jsonb(t.*)))) || dzql_hanging_rows__courses(t.id))
+           WITH ORDINALITY AS x(e, n)
+   WHERE t."weddings_id" = p_id;
+  v_rows := v_rows || v_part;
+  SELECT COALESCE(jsonb_agg(e ORDER BY t.id, n), '[]'::jsonb) INTO v_part FROM "fo_favours" t,
+         jsonb_array_elements(jsonb_build_array(jsonb_build_object('coll', 'favours', 'id', t.id, 'row', _delta_strip_temporal(to_jsonb(t.*)))) || '[]'::jsonb)
+           WITH ORDINALITY AS x(e, n)
+   WHERE t."weddings_id" = p_id;
+  v_rows := v_rows || v_part;
+  SELECT COALESCE(jsonb_agg(e ORDER BY t.id, n), '[]'::jsonb) INTO v_part FROM "fo_households" t,
+         jsonb_array_elements(jsonb_build_array(jsonb_build_object('coll', 'households', 'id', t.id, 'row', _delta_strip_temporal(to_jsonb(t.*)))) || '[]'::jsonb)
+           WITH ORDINALITY AS x(e, n)
+   WHERE t."weddings_id" = p_id;
+  v_rows := v_rows || v_part;
+  SELECT COALESCE(jsonb_agg(e ORDER BY t.id, n), '[]'::jsonb) INTO v_part FROM "current_fo_notes" t,
+         jsonb_array_elements(jsonb_build_array(jsonb_build_object('coll', 'notes', 'id', t.id, 'row', _delta_strip_temporal(to_jsonb(t.*)))) || '[]'::jsonb)
+           WITH ORDINALITY AS x(e, n)
+   WHERE t."weddings_id" = p_id;
+  v_rows := v_rows || v_part;
+  SELECT COALESCE(jsonb_agg(e ORDER BY t.id, n), '[]'::jsonb) INTO v_part FROM "fo_seats" t,
+         jsonb_array_elements(jsonb_build_array(jsonb_build_object('coll', 'seats', 'id', t.id, 'row', _delta_strip_temporal(to_jsonb(t.*)))) || '[]'::jsonb)
+           WITH ORDINALITY AS x(e, n)
+   WHERE t."weddings_id" = p_id;
+  v_rows := v_rows || v_part;
+  SELECT COALESCE(jsonb_agg(e ORDER BY t.id, n), '[]'::jsonb) INTO v_part FROM "fo_slots" t,
+         jsonb_array_elements(jsonb_build_array(jsonb_build_object('coll', 'slots', 'id', t.id, 'row', _delta_strip_temporal(to_jsonb(t.*)))) || '[]'::jsonb)
+           WITH ORDINALITY AS x(e, n)
+   WHERE t."weddings_id" = p_id;
+  v_rows := v_rows || v_part;
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_hanging_rows__households(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_part JSONB;
+  v_rows JSONB := '[]'::jsonb;
+BEGIN
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_hanging_rows__courses(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_part JSONB;
+  v_rows JSONB := '[]'::jsonb;
+BEGIN
+  SELECT COALESCE(jsonb_agg(e ORDER BY t.id, n), '[]'::jsonb) INTO v_part FROM "fo_drinks" t,
+         jsonb_array_elements(jsonb_build_array(jsonb_build_object('coll', 'drinks', 'id', t.id, 'row', _delta_strip_temporal(to_jsonb(t.*)))) || '[]'::jsonb)
+           WITH ORDINALITY AS x(e, n)
+   WHERE t."courses_id" = p_id;
+  v_rows := v_rows || v_part;
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_hanging_rows__drinks(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_part JSONB;
+  v_rows JSONB := '[]'::jsonb;
+BEGIN
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_hanging_rows__tags(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_part JSONB;
+  v_rows JSONB := '[]'::jsonb;
+BEGIN
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_hanging_rows__notes(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_part JSONB;
+  v_rows JSONB := '[]'::jsonb;
+BEGIN
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_hanging_rows__seats(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_part JSONB;
+  v_rows JSONB := '[]'::jsonb;
+BEGIN
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_hanging_rows__slots(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_part JSONB;
+  v_rows JSONB := '[]'::jsonb;
+BEGIN
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_hanging_rows__favours(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_part JSONB;
+  v_rows JSONB := '[]'::jsonb;
+BEGIN
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_hanging_rows__asks(p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_part JSONB;
+  v_rows JSONB := '[]'::jsonb;
+BEGIN
+
+  RETURN v_rows;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_cascade_remove(p_collection_key TEXT, p_id BIGINT)
+RETURNS JSONB AS $$
+BEGIN
+  CASE p_collection_key
+    WHEN 'weddings' THEN RETURN dzql_cascade_remove__weddings(p_id);
+    WHEN 'households' THEN RETURN dzql_cascade_remove__households(p_id);
+    WHEN 'courses' THEN RETURN dzql_cascade_remove__courses(p_id);
+    WHEN 'drinks' THEN RETURN dzql_cascade_remove__drinks(p_id);
+    WHEN 'tags' THEN RETURN dzql_cascade_remove__tags(p_id);
+    WHEN 'notes' THEN RETURN dzql_cascade_remove__notes(p_id);
+    WHEN 'seats' THEN RETURN dzql_cascade_remove__seats(p_id);
+    WHEN 'slots' THEN RETURN dzql_cascade_remove__slots(p_id);
+    WHEN 'favours' THEN RETURN dzql_cascade_remove__favours(p_id);
+    WHEN 'asks' THEN RETURN dzql_cascade_remove__asks(p_id);
+    ELSE RETURN _delta_cascade_remove_framework(p_collection_key, p_id);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION _delta_cascade_rows(p_collection_key TEXT, p_id BIGINT)
+RETURNS JSONB AS $$
+BEGIN
+  CASE p_collection_key
+    WHEN 'weddings' THEN RETURN dzql_cascade_rows__weddings(p_id);
+    WHEN 'households' THEN RETURN dzql_cascade_rows__households(p_id);
+    WHEN 'courses' THEN RETURN dzql_cascade_rows__courses(p_id);
+    WHEN 'drinks' THEN RETURN dzql_cascade_rows__drinks(p_id);
+    WHEN 'tags' THEN RETURN dzql_cascade_rows__tags(p_id);
+    WHEN 'notes' THEN RETURN dzql_cascade_rows__notes(p_id);
+    WHEN 'seats' THEN RETURN dzql_cascade_rows__seats(p_id);
+    WHEN 'slots' THEN RETURN dzql_cascade_rows__slots(p_id);
+    WHEN 'favours' THEN RETURN dzql_cascade_rows__favours(p_id);
+    WHEN 'asks' THEN RETURN dzql_cascade_rows__asks(p_id);
+    ELSE RETURN _delta_cascade_rows_framework(p_collection_key, p_id);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_hanging_rows(p_collection_key TEXT, p_id BIGINT)
+RETURNS JSONB AS $$
+BEGIN
+  CASE p_collection_key
+    WHEN 'weddings' THEN RETURN dzql_hanging_rows__weddings(p_id);
+    WHEN 'households' THEN RETURN dzql_hanging_rows__households(p_id);
+    WHEN 'courses' THEN RETURN dzql_hanging_rows__courses(p_id);
+    WHEN 'drinks' THEN RETURN dzql_hanging_rows__drinks(p_id);
+    WHEN 'tags' THEN RETURN dzql_hanging_rows__tags(p_id);
+    WHEN 'notes' THEN RETURN dzql_hanging_rows__notes(p_id);
+    WHEN 'seats' THEN RETURN dzql_hanging_rows__seats(p_id);
+    WHEN 'slots' THEN RETURN dzql_hanging_rows__slots(p_id);
+    WHEN 'favours' THEN RETURN dzql_hanging_rows__favours(p_id);
+    WHEN 'asks' THEN RETURN dzql_hanging_rows__asks(p_id);
+    ELSE RETURN _delta_hanging_rows_framework(p_collection_key, p_id);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+"
+`;

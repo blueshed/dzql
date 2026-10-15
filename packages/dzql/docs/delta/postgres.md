@@ -66,14 +66,15 @@ cases, on the seed and after writes. Compiled so far:
 | Is a one-row document's root there, before each op of a write | `dzql_root_there__<doc>`, via `_delta_root_there` | `_delta_root_there_framework` |
 | The columns a document writes | `dzql_columns__<doc>`, via `_delta_write_columns` | `_delta_write_columns_framework` |
 | Checking a write's fields | `_delta_assert_fields` itself, per collection and set of columns | `_delta_assert_fields_framework` |
-| A write's row SQL: lock, store a replace, mint an id, clear a moment, is it there | `_delta_row_lock`, `_delta_row_put`, `_delta_next_id`, `_delta_row_clear_moment`, `_delta_row_there`, per collection | each `_framework` |
+| A write's row SQL: lock, store a replace, mint an id, clear a moment, is it there, read, store an add | `_delta_row_lock`, `_delta_row_put`, `_delta_next_id`, `_delta_row_clear_moment`, `_delta_row_there`, `_delta_row_read`, `_delta_row_add`, per collection | each `_framework` |
+| What a remove takes with it, and what a moved row carries | `dzql_cascade_remove__<coll>`, `dzql_cascade_rows__<coll>`, `dzql_hanging_rows__<coll>`, via `_delta_cascade_remove`, `_delta_cascade_rows`, `_delta_hanging_rows` | each `_framework` |
 
 Two rules follow:
 
 - **The framework first, then `generateSql`, every time.** `applyFramework` (or vendored
   `001*` files) puts the framework's own `_delta_doc_holds`, `_delta_row_in_scope`,
   `_delta_told`, `_delta_holders`, `_delta_resolve_scope`, `_delta_root_there`, `_delta_write_columns`,
-  `_delta_assert_fields` and the row SQL back: everything still works, and writes are answered by
+  `_delta_assert_fields`, the row SQL and the cascades back: everything still works, and writes are answered by
   the framework, slower (the compiled opens stay). Re-apply `generateSql` after it, and after `init
   --upgrade`. Vendored, `003-tables.sql` sorts after `001*`, so a tool that re-applies the
   directory in order gets this right; one that re-applies only `001*` must re-apply `003` too.

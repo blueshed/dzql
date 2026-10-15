@@ -14,11 +14,15 @@
  * - `_delta_row_clear_moment`: a temporal version this write made and took
  *   back, so an add of its id takes its place;
  * - `_delta_row_there`: is the row there now (a temporal one's open version)?
+ * - `_delta_row_read`: the row as it stands, without its validity;
+ * - `_delta_row_add`: an add's row stored. The framework's INSERT names the
+ *   columns the row gives (`_delta_insert_sql`), so one it leaves out takes its
+ *   database default: where the row gives exactly every column the schema
+ *   declares (its id, parent key, columns and validity), that INSERT is one
+ *   statement, written here; a row with any other keys is the framework's.
  *
  * Each answers what the framework's (`_framework`) answers, and sends any
- * collection it was not compiled for there. An add's own INSERT stays the
- * framework's (`_delta_insert_sql`): it names the columns the row gives, so a
- * column it leaves out takes its database default, and that list is the row's.
+ * collection it was not compiled for there.
  */
 import { q, type Schema } from "@blueshed/delta/backend";
 import { lit } from "./opens";
@@ -87,5 +91,32 @@ ${dispatch(schema, (_, t) => `RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM 
 END;
 $$ LANGUAGE plpgsql STABLE;`;
 
-  return [lock, put, next, clear, there, ""].join("\n\n");
+  const read = `CREATE OR REPLACE FUNCTION _delta_row_read(p_coll TEXT, p_view TEXT, p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row JSONB;
+BEGIN
+${dispatch(schema, (_, t) => `SELECT _delta_strip_temporal(to_jsonb(t.*)) INTO v_row FROM ${q(t.temporal ? `current_${t.name}` : t.name)} t WHERE t.id = p_id;
+      RETURN v_row;`, "RETURN _delta_row_read_framework(p_coll, p_view, p_id);")}
+END;
+$$ LANGUAGE plpgsql STABLE;`;
+
+  const add = `CREATE OR REPLACE FUNCTION _delta_row_add(p_coll TEXT, p_table TEXT, p_row JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_row JSONB;
+BEGIN
+${dispatch(schema, (_, t) => {
+    const keys = [...new Set(["id", ...(t.parent ? [t.parent.fkColumn] : []), ...Object.keys(t.columns), ...(t.temporal ? ["valid_from", "valid_to"] : [])])];
+    const cols = keys.map((k) => q(k)).join(", ");
+    return `IF p_row ?& ARRAY[${keys.map(lit).join(", ")}] AND (SELECT count(*) FROM jsonb_object_keys(p_row)) = ${keys.length} THEN
+        INSERT INTO ${q(t.name)} AS t (${cols}) SELECT ${cols} FROM jsonb_populate_record(null::${q(t.name)}, p_row) RETURNING to_jsonb(t.*) INTO v_row;
+        RETURN v_row;
+      END IF;
+      RETURN _delta_row_add_framework(p_coll, p_table, p_row);`;
+  }, "RETURN _delta_row_add_framework(p_coll, p_table, p_row);")}
+END;
+$$ LANGUAGE plpgsql;`;
+
+  return [lock, put, next, clear, there, read, add, ""].join("\n\n");
 }
