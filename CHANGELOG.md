@@ -23,7 +23,8 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
-October 2026. Merged to `main`, not yet published. Pull requests #8 to #13.
+October 2026. Pull requests #8 to #16. The last release of dzql as a whole stack:
+next it becomes the compiled Postgres step for delta projects.
 
 ### Breaking
 
@@ -84,6 +85,10 @@ dropped `role=owner`, and create/update/delete enforced only the first rule in a
 
 ### Repository
 
+- **`/publish patch|minor|major`** (`.claude/commands/publish.md`), the release procedure
+  railroad, delta and eta share, for dzql's two packages and their tags.
+- `bun run test` fails when its database does not start, or a test fails: it answered
+  with the teardown's exit code, so a setup that could not bind its port passed.
 - CI runs again, on every push to `main` and every pull request: Bun pinned at 1.4.3, a
   type check, then the suite against a Postgres service. It had run only by hand since a
   Bun download problem.
