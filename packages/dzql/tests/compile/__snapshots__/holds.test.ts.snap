@@ -1,0 +1,1116 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the compiled text is the same for the same definitions, and pinned 1`] = `
+"CREATE OR REPLACE FUNCTION dzql_holds__fo_board(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings', 'households', 'courses', 'drinks', 'tags', 'notes') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 10);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE TRUE);
+    WHEN 'households' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+    WHEN 'courses' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+    WHEN 'drinks' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (SELECT p."weddings_id" FROM "fo_courses" p WHERE p.id = (p_row->>'courses_id')::BIGINT) IS NOT DISTINCT FROM v_id;
+    WHEN 'tags' THEN
+      RETURN TRUE;
+    WHEN 'notes' THEN
+      IF p_at <= now() THEN RETURN FALSE; END IF;
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_menu(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings', 'courses', 'drinks') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 9);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE TRUE);
+    WHEN 'courses' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+    WHEN 'drinks' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (SELECT p."weddings_id" FROM "fo_courses" p WHERE p.id = (p_row->>'courses_id')::BIGINT) IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_household(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('households') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 14);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'households' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_households", p_row) t WHERE TRUE);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_course(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('courses', 'drinks') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 11);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'courses' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_courses", p_row) t WHERE TRUE);
+    WHEN 'drinks' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'courses_id')::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_title(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 10);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE TRUE);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_tagged(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings', 'tags') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 11);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE TRUE);
+    WHEN 'tags' THEN
+      RETURN TRUE;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_notes(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings', 'notes') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 10);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE TRUE);
+    WHEN 'notes' THEN
+      IF p_at <= now() THEN RETURN FALSE; END IF;
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_all_courses(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('courses') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 16);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'courses' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_courses", p_row) t WHERE TRUE);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_catalog(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('courses', 'drinks') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 12);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'courses' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_courses", p_row) t WHERE TRUE);
+    WHEN 'drinks' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'courses_id')::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_courses_noted(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('courses', 'notes') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 18);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'courses' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_courses", p_row) t WHERE TRUE);
+    WHEN 'notes' THEN
+      IF p_at <= now() THEN RETURN FALSE; END IF;
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN NULL::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_courses_like(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('courses') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 17), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  CASE p_coll
+    WHEN 'courses' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_courses", p_row) t WHERE (v_s1 IS NULL OR t."name" ILIKE v_s1 || '%'));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_menu_like(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('courses', 'drinks') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 14), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  CASE p_coll
+    WHEN 'courses' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_courses", p_row) t WHERE (v_s1 IS NULL OR t."name" ILIKE v_s1 || '%'));
+    WHEN 'drinks' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'courses_id')::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_tags_labelled(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('tags') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 18), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  CASE p_coll
+    WHEN 'tags' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_tags", p_row) t WHERE (v_s1 IS NULL OR t."label" = v_s1::TEXT));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_seating(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings', 'seats') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 12);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE TRUE);
+    WHEN 'seats' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_seats_kept(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('seats') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 15), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  CASE p_coll
+    WHEN 'seats' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_seats", p_row) t WHERE (v_s1 IS NULL OR t."kept" = v_s1::BOOLEAN));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_seats_upto(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('seats') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 15), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  CASE p_coll
+    WHEN 'seats' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_seats", p_row) t WHERE (v_s1 IS NULL OR t."kept" <= v_s1::BOOLEAN));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_seats_at(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('seats') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 13), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    IF v_s1 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RETURN FALSE;
+    ELSIF abs(v_s1::numeric) > 9007199254740991 THEN RETURN FALSE;
+    END IF;
+  END IF;
+  CASE p_coll
+    WHEN 'seats' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_seats", p_row) t WHERE (v_s1 IS NULL OR t."table_no" = v_s1::BIGINT));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_seats_wished(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('seats') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 17), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  CASE p_coll
+    WHEN 'seats' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_seats", p_row) t WHERE (v_s1 IS NULL OR t."wishes" = v_s1::JSONB));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_slots_upto(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('slots') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 15), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    IF v_s1 !~* '^\\s*[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)(e[+-]?[0-9]+)?\\s*$' THEN RETURN FALSE; END IF;
+    BEGIN
+      PERFORM v_s1::float8;
+    EXCEPTION WHEN numeric_value_out_of_range THEN
+      RETURN FALSE;
+    END;
+  END IF;
+  CASE p_coll
+    WHEN 'slots' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_slots", p_row) t WHERE (v_s1 IS NULL OR t."price" <= v_s1::DOUBLE PRECISION));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_slots_of(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+  v_n1 BOOLEAN;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('slots') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 13), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    IF v_s1 ~ '^\\s*[+-]?[0-9]+\\s*$' THEN
+      IF v_s1 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RETURN FALSE;
+      ELSIF abs(v_s1::numeric) > 9007199254740991 THEN RETURN FALSE;
+      END IF;
+      v_n1 := TRUE;
+    ELSIF v_s1 ~* '^\\s*[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)(e[+-]?[0-9]+)?\\s*$' THEN
+      RETURN FALSE;
+    ELSE
+      v_n1 := FALSE;
+    END IF;
+  END IF;
+  CASE p_coll
+    WHEN 'slots' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_slots", p_row) t WHERE (v_s1 IS NULL OR (CASE WHEN v_n1 THEN t."weddings_id" = v_s1::BIGINT ELSE FALSE END)));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_slots_under(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+  v_n1 BOOLEAN;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('slots') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 16), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    IF v_s1 ~ '^\\s*[+-]?[0-9]+\\s*$' THEN
+      IF v_s1 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RETURN FALSE;
+      ELSIF abs(v_s1::numeric) > 9007199254740991 THEN RETURN FALSE;
+      END IF;
+      v_n1 := TRUE;
+    ELSIF v_s1 ~* '^\\s*[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)(e[+-]?[0-9]+)?\\s*$' THEN
+      RETURN FALSE;
+    ELSE
+      v_n1 := FALSE;
+    END IF;
+  END IF;
+  CASE p_coll
+    WHEN 'slots' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_slots", p_row) t WHERE (v_s1 IS NULL OR (CASE WHEN v_n1 THEN t."weddings_id" <= v_s1::BIGINT ELSE t."weddings_id" IS NOT NULL END)));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_slots_by(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('slots') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 13), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
+      RETURN FALSE;
+    ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
+      RETURN FALSE;
+    END IF;
+    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+  END IF;
+  CASE p_coll
+    WHEN 'slots' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_slots", p_row) t WHERE (v_s1 IS NULL OR t."starts" <= v_s1::TIMESTAMPTZ));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_slots_on(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('slots') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 13), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
+      RETURN FALSE;
+    ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
+      RETURN FALSE;
+    END IF;
+    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+  END IF;
+  CASE p_coll
+    WHEN 'slots' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_slots", p_row) t WHERE (v_s1 IS NULL OR t."starts" = v_s1::TIMESTAMPTZ));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_note(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('notes') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 9);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'notes' THEN
+      IF p_at <= now() THEN RETURN FALSE; END IF;
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_notes", p_row) t WHERE TRUE);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_all_notes(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('notes') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 14);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'notes' THEN
+      IF p_at <= now() THEN RETURN FALSE; END IF;
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_notes", p_row) t WHERE TRUE);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_drinks(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings', 'drinks') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 11);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE TRUE);
+    WHEN 'drinks' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (SELECT p."weddings_id" FROM "fo_courses" p WHERE p.id = (p_row->>'courses_id')::BIGINT) IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_course_guests(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('courses', 'households') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 18);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'courses' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_courses", p_row) t WHERE TRUE);
+    WHEN 'households' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN NULL::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_plan(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings', 'courses', 'drinks') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 9);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE TRUE);
+    WHEN 'courses' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+    WHEN 'drinks' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (SELECT p."weddings_id" FROM "fo_courses" p WHERE p.id = (p_row->>'courses_id')::BIGINT) IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_weddings(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings', 'courses') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 13);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE TRUE);
+    WHEN 'courses' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_guest(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+  v_n1 BOOLEAN;
+  v_s2 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('households') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 10), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    IF v_s1 ~ '^\\s*[+-]?[0-9]+\\s*$' THEN
+      IF v_s1 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RETURN FALSE;
+      ELSIF abs(v_s1::numeric) > 9007199254740991 THEN RETURN FALSE;
+      END IF;
+      v_n1 := TRUE;
+    ELSIF v_s1 ~* '^\\s*[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)(e[+-]?[0-9]+)?\\s*$' THEN
+      RETURN FALSE;
+    ELSE
+      v_n1 := FALSE;
+    END IF;
+  END IF;
+  IF v_s1 IS NOT NULL THEN v_single := TRUE; v_id := v_s1::BIGINT; END IF;
+  v_s2 := NULLIF(v_parts[2], '');
+  CASE p_coll
+    WHEN 'households' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_households", p_row) t WHERE (v_s1 IS NULL OR (CASE WHEN v_n1 THEN t."id" = v_s1::BIGINT ELSE FALSE END)) AND (v_s2 IS NULL OR t."email" = v_s2::TEXT));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_seat_of(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+  v_n1 BOOLEAN;
+  v_s2 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('seats') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 12), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    IF v_s1 ~ '^\\s*[+-]?[0-9]+\\s*$' THEN
+      IF v_s1 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RETURN FALSE;
+      ELSIF abs(v_s1::numeric) > 9007199254740991 THEN RETURN FALSE;
+      END IF;
+      v_n1 := TRUE;
+    ELSIF v_s1 ~* '^\\s*[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)(e[+-]?[0-9]+)?\\s*$' THEN
+      RETURN FALSE;
+    ELSE
+      v_n1 := FALSE;
+    END IF;
+  END IF;
+  IF v_s1 IS NOT NULL THEN v_single := TRUE; v_id := v_s1::BIGINT; END IF;
+  v_s2 := NULLIF(v_parts[2], '');
+  IF v_s2 IS NOT NULL THEN
+    IF v_s2 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RETURN FALSE;
+    ELSIF abs(v_s2::numeric) > 9007199254740991 THEN RETURN FALSE;
+    END IF;
+  END IF;
+  CASE p_coll
+    WHEN 'seats' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_seats", p_row) t WHERE (v_s1 IS NULL OR (CASE WHEN v_n1 THEN t."id" = v_s1::BIGINT ELSE FALSE END)) AND (v_s2 IS NULL OR t."table_no" = v_s2::BIGINT));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_all_households(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('households') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 19);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'households' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_households", p_row) t WHERE TRUE);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_party(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings', 'households', 'favours') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 10);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE TRUE);
+    WHEN 'households' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+    WHEN 'favours' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_slim(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings', 'households', 'seats') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 9);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE TRUE);
+    WHEN 'households' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+    WHEN 'seats' THEN
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_notes_on(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('notes') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 13), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
+      RETURN FALSE;
+    ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
+      RETURN FALSE;
+    END IF;
+    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+  END IF;
+  IF v_s1 IS NOT NULL THEN p_at := v_s1::TIMESTAMPTZ; END IF;
+  CASE p_coll
+    WHEN 'notes' THEN
+      IF p_at <= now() THEN RETURN FALSE; END IF;
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_notes", p_row) t WHERE TRUE);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_courses_noted_on(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('courses', 'notes') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 21), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
+      RETURN FALSE;
+    ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
+      RETURN FALSE;
+    END IF;
+    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+  END IF;
+  IF v_s1 IS NOT NULL THEN p_at := v_s1::TIMESTAMPTZ; END IF;
+  CASE p_coll
+    WHEN 'courses' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_courses", p_row) t WHERE TRUE);
+    WHEN 'notes' THEN
+      IF p_at <= now() THEN RETURN FALSE; END IF;
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN NULL::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_board_on(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+  v_s2 TEXT;
+  v_n2 BOOLEAN;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings', 'notes') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 13), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[2], '');
+  IF v_s1 IS NOT NULL THEN
+    v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
+      RETURN FALSE;
+    ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
+      RETURN FALSE;
+    END IF;
+    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+  END IF;
+  IF v_s1 IS NOT NULL THEN p_at := v_s1::TIMESTAMPTZ; END IF;
+  v_s2 := NULLIF(v_parts[1], '');
+  IF v_s2 IS NOT NULL THEN
+    IF v_s2 ~ '^\\s*[+-]?[0-9]+\\s*$' THEN
+      IF v_s2 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RETURN FALSE;
+      ELSIF abs(v_s2::numeric) > 9007199254740991 THEN RETURN FALSE;
+      END IF;
+      v_n2 := TRUE;
+    ELSIF v_s2 ~* '^\\s*[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)(e[+-]?[0-9]+)?\\s*$' THEN
+      RETURN FALSE;
+    ELSE
+      v_n2 := FALSE;
+    END IF;
+  END IF;
+  IF v_s2 IS NOT NULL THEN v_single := TRUE; v_id := v_s2::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE (v_s2 IS NULL OR (CASE WHEN v_n2 THEN t."id" = v_s2::BIGINT ELSE FALSE END)));
+    WHEN 'notes' THEN
+      IF p_at <= now() THEN RETURN FALSE; END IF;
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'weddings_id')::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_asks(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('weddings', 'asks') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 9);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'weddings' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_weddings", p_row) t WHERE TRUE);
+    WHEN 'asks' THEN
+      IF p_at <= now() THEN RETURN FALSE; END IF;
+      IF NOT v_single THEN RETURN TRUE; END IF;
+      RETURN (p_row->>'group')::BIGINT IS NOT DISTINCT FROM v_id;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_asks_from(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('asks') THEN RETURN FALSE; END IF;
+  v_parts := string_to_array(substring(p_name FROM 14), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  CASE p_coll
+    WHEN 'asks' THEN
+      IF p_at <= now() THEN RETURN FALSE; END IF;
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"order", p_row) t WHERE (v_s1 IS NULL OR t."from" = v_s1::TEXT));
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_holds__fo_pub_courses(p_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_rest TEXT;
+BEGIN
+  IF p_row IS NULL OR p_coll NOT IN ('courses') THEN RETURN FALSE; END IF;
+  v_rest := substring(p_name FROM 16);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  CASE p_coll
+    WHEN 'courses' THEN
+      IF v_single AND (p_row->>'id')::BIGINT IS DISTINCT FROM v_id THEN RETURN FALSE; END IF;
+      RETURN EXISTS (SELECT 1 FROM jsonb_populate_record(null::"fo_courses", p_row) t WHERE TRUE);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_doc_holds(p_def _delta_docs, p_doc_name TEXT, p_coll TEXT, p_row JSONB)
+RETURNS BOOLEAN AS $$
+BEGIN
+  CASE p_def.prefix
+    WHEN 'fo-board:' THEN RETURN dzql_holds__fo_board(p_doc_name, p_coll, p_row);
+    WHEN 'fo-menu:' THEN RETURN dzql_holds__fo_menu(p_doc_name, p_coll, p_row);
+    WHEN 'fo-household:' THEN RETURN dzql_holds__fo_household(p_doc_name, p_coll, p_row);
+    WHEN 'fo-course:' THEN RETURN dzql_holds__fo_course(p_doc_name, p_coll, p_row);
+    WHEN 'fo-title:' THEN RETURN dzql_holds__fo_title(p_doc_name, p_coll, p_row);
+    WHEN 'fo-tagged:' THEN RETURN dzql_holds__fo_tagged(p_doc_name, p_coll, p_row);
+    WHEN 'fo-notes:' THEN RETURN dzql_holds__fo_notes(p_doc_name, p_coll, p_row);
+    WHEN 'fo-all-courses:' THEN RETURN dzql_holds__fo_all_courses(p_doc_name, p_coll, p_row);
+    WHEN 'fo-catalog:' THEN RETURN dzql_holds__fo_catalog(p_doc_name, p_coll, p_row);
+    WHEN 'fo-courses-noted:' THEN RETURN dzql_holds__fo_courses_noted(p_doc_name, p_coll, p_row);
+    WHEN 'fo-courses-like:' THEN RETURN dzql_holds__fo_courses_like(p_doc_name, p_coll, p_row);
+    WHEN 'fo-menu-like:' THEN RETURN dzql_holds__fo_menu_like(p_doc_name, p_coll, p_row);
+    WHEN 'fo-tags-labelled:' THEN RETURN dzql_holds__fo_tags_labelled(p_doc_name, p_coll, p_row);
+    WHEN 'fo-seating:' THEN RETURN dzql_holds__fo_seating(p_doc_name, p_coll, p_row);
+    WHEN 'fo-seats-kept:' THEN RETURN dzql_holds__fo_seats_kept(p_doc_name, p_coll, p_row);
+    WHEN 'fo-seats-upto:' THEN RETURN dzql_holds__fo_seats_upto(p_doc_name, p_coll, p_row);
+    WHEN 'fo-seats-at:' THEN RETURN dzql_holds__fo_seats_at(p_doc_name, p_coll, p_row);
+    WHEN 'fo-seats-wished:' THEN RETURN dzql_holds__fo_seats_wished(p_doc_name, p_coll, p_row);
+    WHEN 'fo-slots-upto:' THEN RETURN dzql_holds__fo_slots_upto(p_doc_name, p_coll, p_row);
+    WHEN 'fo-slots-of:' THEN RETURN dzql_holds__fo_slots_of(p_doc_name, p_coll, p_row);
+    WHEN 'fo-slots-under:' THEN RETURN dzql_holds__fo_slots_under(p_doc_name, p_coll, p_row);
+    WHEN 'fo-slots-by:' THEN RETURN dzql_holds__fo_slots_by(p_doc_name, p_coll, p_row);
+    WHEN 'fo-slots-on:' THEN RETURN dzql_holds__fo_slots_on(p_doc_name, p_coll, p_row);
+    WHEN 'fo-note:' THEN RETURN dzql_holds__fo_note(p_doc_name, p_coll, p_row);
+    WHEN 'fo-all-notes:' THEN RETURN dzql_holds__fo_all_notes(p_doc_name, p_coll, p_row);
+    WHEN 'fo-drinks:' THEN RETURN dzql_holds__fo_drinks(p_doc_name, p_coll, p_row);
+    WHEN 'fo-course-guests:' THEN RETURN dzql_holds__fo_course_guests(p_doc_name, p_coll, p_row);
+    WHEN 'fo-plan:' THEN RETURN dzql_holds__fo_plan(p_doc_name, p_coll, p_row);
+    WHEN 'fo-weddings:' THEN RETURN dzql_holds__fo_weddings(p_doc_name, p_coll, p_row);
+    WHEN 'fo-guest:' THEN RETURN dzql_holds__fo_guest(p_doc_name, p_coll, p_row);
+    WHEN 'fo-seat-of:' THEN RETURN dzql_holds__fo_seat_of(p_doc_name, p_coll, p_row);
+    WHEN 'fo-all-households:' THEN RETURN dzql_holds__fo_all_households(p_doc_name, p_coll, p_row);
+    WHEN 'fo-party:' THEN RETURN dzql_holds__fo_party(p_doc_name, p_coll, p_row);
+    WHEN 'fo-slim:' THEN RETURN dzql_holds__fo_slim(p_doc_name, p_coll, p_row);
+    WHEN 'fo-notes-on:' THEN RETURN dzql_holds__fo_notes_on(p_doc_name, p_coll, p_row);
+    WHEN 'fo-courses-noted-on:' THEN RETURN dzql_holds__fo_courses_noted_on(p_doc_name, p_coll, p_row);
+    WHEN 'fo-board-on:' THEN RETURN dzql_holds__fo_board_on(p_doc_name, p_coll, p_row);
+    WHEN 'fo-asks:' THEN RETURN dzql_holds__fo_asks(p_doc_name, p_coll, p_row);
+    WHEN 'fo-asks-from:' THEN RETURN dzql_holds__fo_asks_from(p_doc_name, p_coll, p_row);
+    WHEN 'fo-pub-courses:' THEN RETURN dzql_holds__fo_pub_courses(p_doc_name, p_coll, p_row);
+    ELSE RETURN _delta_doc_holds_framework(p_def, p_doc_name, p_coll, p_row);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+"
+`;

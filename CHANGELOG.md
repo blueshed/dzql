@@ -23,6 +23,19 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Changed
+
+- **Who holds a row is compiled** (2c, the writes' first piece). Every write asks each open
+  document whether it holds each row it changed (`_delta_holders`, the fan-out). `generateSql` now
+  writes `dzql_holds__<prefix>(name, collection, row)` for each document -- which collections it
+  holds, its name's conditions tested on the row's own values, a temporal row and a time past, an
+  included row's parents up to the root as written lookups -- and `_delta_doc_holds`, which sends
+  each compiled document to its own and any other to the framework (`_delta_doc_holds_framework`,
+  as it was). `tests/compile/holds.test.ts` holds each equal to the framework for every name the
+  path cases open, every collection and every row (made-up ones too), on the seed and after writes;
+  breaking the parent chain on purpose fails 25 of them. Re-apply the framework SQL
+  (`applyFramework`, or `dzql init --upgrade`) and then `generateSql`.
+
 ## [0.9.0] - 2026-10-15
 
 ### Added
