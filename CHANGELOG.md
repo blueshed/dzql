@@ -73,8 +73,20 @@ dropped `role=owner`, and create/update/delete enforced only the first rule in a
 - Every path is checked against the domain at build time (`compileDomain`).
 - An entity whose only column is its key generates valid save SQL.
 
+### Fixed
+
+- **The client reconnects to where it connected.** A dropped socket reconnected with no URL,
+  so outside a browser it went to `ws://localhost:3000/ws` whatever `connect(url)` had
+  named, and a failed attempt was an unhandled rejection. It now goes back to the last URL
+  given; a failed attempt only schedules the next. `disconnect()` stays disconnected (its
+  socket's close no longer reconnects), and a socket replaced by a later `connect()` does
+  not reconnect beside it (`tests/ws_reconnect.test.ts`). Found when CI ran again.
+
 ### Repository
 
+- CI runs again, on every push to `main` and every pull request: Bun pinned at 1.4.3, a
+  type check, then the suite against a Postgres service. It had run only by hand since a
+  Bun download problem.
 - One package: the interpreter (`dzql-legacy`, never published under that name) is
   removed and `packages/tzql` moved to `packages/dzql`, so the folder, the npm name
   and the release tags all say dzql (#13).

@@ -51,6 +51,8 @@ export class WebSocketManager {
   protected maxReconnectAttempts = 5;
   protected tokenName = 'dzql_token';
   protected isShuttingDown = false;
+  /** The URL last given to connect(): a reconnect goes back to it. */
+  protected url: string | null = null;
 
   public user: any = null;
   public ready: boolean = false;
@@ -101,15 +103,16 @@ export class WebSocketManager {
     this.ready = false;
     this.ws?.close();
     this.ws = null;
-    this.isShuttingDown = false;
   }
 
   connect(url: string | null = null, timeout = 5000): Promise<void> {
     return new Promise((resolve, reject) => {
       this.ready = false;
       this.user = null;
+      this.isShuttingDown = false;
 
-      let wsUrl = url;
+      let wsUrl = url ?? this.url;
+      if (url) this.url = url;
       if (!wsUrl) {
         if (typeof globalThis !== "undefined" && "window" in globalThis) {
           const win = globalThis as unknown as { location: { protocol: string; host: string } };
@@ -128,19 +131,20 @@ export class WebSocketManager {
       }
 
       const connectionTimeout = setTimeout(() => {
-        this.ws?.close();
+        socket.close();
         reject(new Error('WebSocket connection timed out'));
       }, timeout);
 
-      this.ws = new WebSocket(wsUrl);
+      const socket = new WebSocket(wsUrl);
+      this.ws = socket;
 
-      this.ws.onopen = () => {
+      socket.onopen = () => {
         clearTimeout(connectionTimeout);
         this.reconnectAttempts = 0;
         resolve();
       };
 
-      this.ws.onmessage = (event) => {
+      socket.onmessage = (event) => {
         try {
           this.handleMessage(JSON.parse(event.data));
         } catch (error) {
@@ -148,13 +152,14 @@ export class WebSocketManager {
         }
       };
 
-      this.ws.onclose = () => {
-        if (!this.isShuttingDown) {
+      // only the current socket reconnects: one replaced by a later connect() or a disconnect() does not
+      socket.onclose = () => {
+        if (this.ws === socket && !this.isShuttingDown) {
           this.attemptReconnect();
         }
       };
 
-      this.ws.onerror = (error) => {
+      socket.onerror = (error) => {
         clearTimeout(connectionTimeout);
         reject(error);
       };
@@ -164,7 +169,12 @@ export class WebSocketManager {
   attemptReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      setTimeout(() => this.connect(), 1000 * this.reconnectAttempts);
+      setTimeout(() => {
+        // a disconnect() since, or a connect() already open or opening, needs no reconnect
+        if (this.isShuttingDown || (this.ws && this.ws.readyState <= WebSocket.OPEN)) return;
+        // a failed attempt closes, and its onclose tries again: nothing to reject to
+        this.connect().catch(() => {});
+      }, 1000 * this.reconnectAttempts);
     }
   }
 
