@@ -149,6 +149,32 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   database default. A write: 0.595 ms p50 compiled against 1.068 ms framework (44% less; 3.25x a
   raw `UPDATE`, from 5.8x); through a one-row document, 0.60 to 0.567 ms; the fan-out with 10
   open, 0.76 to 0.69 ms.
+- **Cascades, hanging rows, an add's row and an implied root's first write are compiled** (2c,
+  todo #27). They are what a write still built from text after the row SQL.
+  - What a remove takes, and what a moved row carries: the framework walked `_delta_collections` at
+    run time for a collection's children and the collections that cascade on it. `generateSql` now
+    writes `dzql_cascade_remove__<coll>`, `dzql_cascade_rows__<coll>` and
+    `dzql_hanging_rows__<coll>` for each collection. Each has the schema's children and `cascadeOn`
+    written in, in the framework's order (child collections, then the collections that cascade on
+    it, each by `COLLATE "C"`, rows by id). `_delta_cascade_remove`, `_delta_cascade_rows` and
+    `_delta_hanging_rows` send each collection to its own, any other to `_framework`, whose own
+    recursion goes through the same names. Two collection keys that would share a function name
+    are refused when compiling.
+  - An add's row: the framework's INSERT names the columns the row gives, so one it leaves out
+    takes its database default. Where the row gives exactly every column the schema declares, that
+    INSERT is one statement, written per collection (`_delta_row_add`); any other key set is the
+    framework's. `_delta_row_read` reads a row as it stands.
+  - An implied root's first write asks `_delta_row_there`, `_delta_row_read` and `_delta_row_add`.
+
+  Held equal (`tests/compile/cascades.test.ts`) for every collection and every id (each version,
+  absent, none), on the seed and after writes. It covers what a remove would take, the remove,
+  a second remove, what is left, the hanging rows, the read, and adds of every column, fewer, a
+  taken id and the same id twice. Each pair runs in one transaction from the same savepoint, the
+  framework's dispatchers pointed back at it so its recursion stays its own, and every table left
+  behind is compared too. A row giving every declared column is stored with the framework made to
+  raise. Eight mutations each fail it. Measured ad hoc through `bench:1` as the app role: an add,
+  0.59 to 0.56 ms compiled (framework 0.90); a remove, 0.58 to 0.52 ms (framework 0.82). Replaces,
+  which the bench times, are unchanged at 0.593 ms.
 - **Doc comments name dzql's subpaths.** Nine comments in `src/postgres/` and `auth-jwt.sql`
   still said `@blueshed/delta/postgres` and `@blueshed/delta/auth-jwt`, which delta 1.0 no longer
   has; they now say `dzql/postgres` and `dzql/auth-jwt`.

@@ -212,8 +212,7 @@ BEGIN
   END IF;
   SELECT * INTO v_coll FROM _delta_collections WHERE collection_key = p_def.root_collection;
   IF NOT FOUND THEN RETURN; END IF;
-  EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I WHERE id = $1)', _delta_source_view(v_coll.table_name, v_coll.temporal))
-    INTO v_exists USING p_id;
+  v_exists := _delta_row_there(p_def.root_collection, p_id);
   IF v_exists THEN RETURN; END IF;
   -- Not there, as the writer reads it: made under the add rule (todo #71) -- an
   -- id the serial has handed out is taken, whether a row RLS hides holds it or
@@ -225,7 +224,7 @@ BEGIN
   END IF;
   v_row := _delta_implied_root(p_def, p_id);
   IF v_coll.temporal THEN v_row := v_row || jsonb_build_object('valid_from', p_ts, 'valid_to', NULL); END IF;
-  EXECUTE _delta_insert_sql(v_coll.table_name, v_row) USING v_row;
+  PERFORM _delta_row_add(p_def.root_collection, v_coll.table_name, v_row);
 END;
 $$ LANGUAGE plpgsql;
 
