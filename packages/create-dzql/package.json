@@ -1,6 +1,6 @@
 {
   "name": "create-dzql",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Create a new DZQL application",
   "repository": {
     "type": "git",
@@ -36,7 +36,7 @@
     "dev": "concurrently -n server,client -c blue,green \"bun run --filter server dev\" \"bun run --filter client dev\""
   },
   "dependencies": {
-    "dzql": "^0.7.0",
+    "dzql": "^0.8.0",
     "invoket": "^0.1.2"
   },
   "devDependencies": {

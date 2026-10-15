@@ -23,6 +23,8 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-15
+
 ### Added
 
 - **dzql is delta's Postgres step: `dzql/postgres`, `dzql/pglite` and `dzql/auth-jwt`** (step 2a
