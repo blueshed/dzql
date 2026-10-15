@@ -1,0 +1,1790 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the compiled text is the same for the same definitions, and pinned 1`] = `
+"CREATE OR REPLACE FUNCTION dzql_told__fo_board(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 10);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_menu(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 9);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_household(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 14);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'households';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_course(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 11);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'courses';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_title(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 10);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_tagged(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 11);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_notes(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 10);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_all_courses(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 16);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'courses';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_catalog(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 12);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'courses';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_courses_noted(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 18);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'courses';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_courses_like(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 17), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'courses';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_menu_like(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 14), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'courses';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_tags_labelled(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 18), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'tags';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_seating(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 12);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_seats_kept(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 15), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'seats';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_seats_upto(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 15), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'seats';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_seats_at(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 13), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    IF v_s1 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RAISE EXCEPTION 'table_no must be an integer, not "%"', v_s1 USING ERRCODE = '22P02';
+    ELSIF abs(v_s1::numeric) > 9007199254740991 THEN RAISE EXCEPTION 'table_no must be an integer, not "%"', v_s1 USING ERRCODE = '22P02';
+    END IF;
+  END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'seats';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_seats_wished(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 17), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'seats';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_slots_upto(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 15), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    IF v_s1 !~* '^\\s*[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)(e[+-]?[0-9]+)?\\s*$' THEN RAISE EXCEPTION 'price must be a number, not "%"', v_s1 USING ERRCODE = '22P02'; END IF;
+    BEGIN
+      PERFORM v_s1::float8;
+    EXCEPTION WHEN numeric_value_out_of_range THEN
+      RAISE EXCEPTION 'price must be a number, not "%"', v_s1 USING ERRCODE = '22P02';
+    END;
+  END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'slots';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_slots_of(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+  v_n1 BOOLEAN;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 13), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    IF v_s1 ~ '^\\s*[+-]?[0-9]+\\s*$' THEN
+      IF v_s1 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RAISE EXCEPTION 'weddings_id % is past 2^53 - 1, which no number holds exactly', v_s1 USING ERRCODE = '22P02';
+      ELSIF abs(v_s1::numeric) > 9007199254740991 THEN RAISE EXCEPTION 'weddings_id % is past 2^53 - 1, which no number holds exactly', v_s1 USING ERRCODE = '22P02';
+      END IF;
+      v_n1 := TRUE;
+    ELSIF v_s1 ~* '^\\s*[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)(e[+-]?[0-9]+)?\\s*$' THEN
+      RAISE EXCEPTION 'weddings_id must be an id -- a whole number, or text -- not "%"', v_s1 USING ERRCODE = '22P02';
+    ELSE
+      v_n1 := FALSE;
+    END IF;
+  END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'slots';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_slots_under(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+  v_n1 BOOLEAN;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 16), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    IF v_s1 ~ '^\\s*[+-]?[0-9]+\\s*$' THEN
+      IF v_s1 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RAISE EXCEPTION 'weddings_id % is past 2^53 - 1, which no number holds exactly', v_s1 USING ERRCODE = '22P02';
+      ELSIF abs(v_s1::numeric) > 9007199254740991 THEN RAISE EXCEPTION 'weddings_id % is past 2^53 - 1, which no number holds exactly', v_s1 USING ERRCODE = '22P02';
+      END IF;
+      v_n1 := TRUE;
+    ELSIF v_s1 ~* '^\\s*[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)(e[+-]?[0-9]+)?\\s*$' THEN
+      RAISE EXCEPTION 'weddings_id must be an id -- a whole number, or text -- not "%"', v_s1 USING ERRCODE = '22P02';
+    ELSE
+      v_n1 := FALSE;
+    END IF;
+  END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'slots';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_slots_by(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 13), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
+      RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+    ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
+      RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+    END IF;
+    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+  END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'slots';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_slots_on(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 13), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
+      RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+    ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
+      RAISE EXCEPTION 'starts must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+    END IF;
+    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+  END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'slots';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_note(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 9);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'notes';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_all_notes(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 14);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'notes';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_drinks(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 11);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_course_guests(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 18);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'courses';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_plan(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 9);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: the empty root it then opens with
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', _delta_implied_root((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-plan:'), (v_t->>'id')::BIGINT)));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_weddings(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 13);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_guest(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+  v_n1 BOOLEAN;
+  v_s2 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 10), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    IF v_s1 ~ '^\\s*[+-]?[0-9]+\\s*$' THEN
+      IF v_s1 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RAISE EXCEPTION 'id % is past 2^53 - 1, which no number holds exactly', v_s1 USING ERRCODE = '22P02';
+      ELSIF abs(v_s1::numeric) > 9007199254740991 THEN RAISE EXCEPTION 'id % is past 2^53 - 1, which no number holds exactly', v_s1 USING ERRCODE = '22P02';
+      END IF;
+      v_n1 := TRUE;
+    ELSIF v_s1 ~* '^\\s*[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)(e[+-]?[0-9]+)?\\s*$' THEN
+      RAISE EXCEPTION 'id must be an id -- a whole number, or text -- not "%"', v_s1 USING ERRCODE = '22P02';
+    ELSE
+      v_n1 := FALSE;
+    END IF;
+  END IF;
+  IF v_s1 IS NOT NULL THEN v_single := TRUE; v_id := v_s1::BIGINT; END IF;
+  v_s2 := NULLIF(v_parts[2], '');
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'households';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_seat_of(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+  v_n1 BOOLEAN;
+  v_s2 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 12), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    IF v_s1 ~ '^\\s*[+-]?[0-9]+\\s*$' THEN
+      IF v_s1 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RAISE EXCEPTION 'id % is past 2^53 - 1, which no number holds exactly', v_s1 USING ERRCODE = '22P02';
+      ELSIF abs(v_s1::numeric) > 9007199254740991 THEN RAISE EXCEPTION 'id % is past 2^53 - 1, which no number holds exactly', v_s1 USING ERRCODE = '22P02';
+      END IF;
+      v_n1 := TRUE;
+    ELSIF v_s1 ~* '^\\s*[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)(e[+-]?[0-9]+)?\\s*$' THEN
+      RAISE EXCEPTION 'id must be an id -- a whole number, or text -- not "%"', v_s1 USING ERRCODE = '22P02';
+    ELSE
+      v_n1 := FALSE;
+    END IF;
+  END IF;
+  IF v_s1 IS NOT NULL THEN v_single := TRUE; v_id := v_s1::BIGINT; END IF;
+  v_s2 := NULLIF(v_parts[2], '');
+  IF v_s2 IS NOT NULL THEN
+    IF v_s2 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RAISE EXCEPTION 'table_no must be an integer, not "%"', v_s2 USING ERRCODE = '22P02';
+    ELSIF abs(v_s2::numeric) > 9007199254740991 THEN RAISE EXCEPTION 'table_no must be an integer, not "%"', v_s2 USING ERRCODE = '22P02';
+    END IF;
+  END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'seats';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_all_households(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 19);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'households';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_party(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 10);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_slim(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 9);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each((CASE WHEN jsonb_typeof(v_t->'after') IS DISTINCT FROM 'object' THEN v_t->'after' ELSE CASE v_t->>'coll' WHEN 'households' THEN COALESCE((SELECT jsonb_object_agg(f, v) FROM jsonb_each(v_t->'after') AS e(f, v) WHERE f IN ('id', 'weddings_id', 'email')), '{}'::jsonb) WHEN 'seats' THEN COALESCE((SELECT jsonb_object_agg(f, v) FROM jsonb_each(v_t->'after') AS e(f, v) WHERE f IN ('id', 'weddings_id', 'table_no')), '{}'::jsonb) ELSE v_t->'after' END END)) AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', (CASE WHEN jsonb_typeof(v_t->'after') IS DISTINCT FROM 'object' THEN v_t->'after' ELSE CASE v_t->>'coll' WHEN 'households' THEN COALESCE((SELECT jsonb_object_agg(f, v) FROM jsonb_each(v_t->'after') AS e(f, v) WHERE f IN ('id', 'weddings_id', 'email')), '{}'::jsonb) WHEN 'seats' THEN COALESCE((SELECT jsonb_object_agg(f, v) FROM jsonb_each(v_t->'after') AS e(f, v) WHERE f IN ('id', 'weddings_id', 'table_no')), '{}'::jsonb) ELSE v_t->'after' END END)));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_notes_on(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 13), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
+      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+    ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
+      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+    END IF;
+    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+  END IF;
+  IF v_s1 IS NOT NULL THEN p_at := v_s1::TIMESTAMPTZ; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'notes';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_courses_noted_on(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 21), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  IF v_s1 IS NOT NULL THEN
+    v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
+      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+    ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
+      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+    END IF;
+    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+  END IF;
+  IF v_s1 IS NOT NULL THEN p_at := v_s1::TIMESTAMPTZ; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'courses';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_board_on(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+  v_s2 TEXT;
+  v_n2 BOOLEAN;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 13), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[2], '');
+  IF v_s1 IS NOT NULL THEN
+    v_date := regexp_match(v_s1, '^\\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\\s*$');
+    IF v_date IS NULL OR v_date[1]::int < 1 OR v_date[2]::int NOT BETWEEN 1 AND 12 THEN
+      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+    ELSIF v_date[3]::int NOT BETWEEN 1 AND extract(day FROM make_date(v_date[1]::int, v_date[2]::int, 1) + interval '1 month - 1 day')::int THEN
+      RAISE EXCEPTION 'at must be a date, YYYY-MM-DD, not "%"', v_s1 USING ERRCODE = '22P02';
+    END IF;
+    v_s1 := format('%s-%s-%s 00:00:00+00', v_date[1], v_date[2], v_date[3]);
+  END IF;
+  IF v_s1 IS NOT NULL THEN p_at := v_s1::TIMESTAMPTZ; END IF;
+  v_s2 := NULLIF(v_parts[1], '');
+  IF v_s2 IS NOT NULL THEN
+    IF v_s2 ~ '^\\s*[+-]?[0-9]+\\s*$' THEN
+      IF v_s2 !~ '^\\s*[+-]?0*[0-9]{1,16}\\s*$' THEN RAISE EXCEPTION 'id % is past 2^53 - 1, which no number holds exactly', v_s2 USING ERRCODE = '22P02';
+      ELSIF abs(v_s2::numeric) > 9007199254740991 THEN RAISE EXCEPTION 'id % is past 2^53 - 1, which no number holds exactly', v_s2 USING ERRCODE = '22P02';
+      END IF;
+      v_n2 := TRUE;
+    ELSIF v_s2 ~* '^\\s*[+-]?([0-9]+\\.?[0-9]*|\\.[0-9]+)(e[+-]?[0-9]+)?\\s*$' THEN
+      RAISE EXCEPTION 'id must be an id -- a whole number, or text -- not "%"', v_s2 USING ERRCODE = '22P02';
+    ELSE
+      v_n2 := FALSE;
+    END IF;
+  END IF;
+  IF v_s2 IS NOT NULL THEN v_single := TRUE; v_id := v_s2::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_asks(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 9);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'weddings';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_asks_from(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_parts TEXT[];
+  v_date TEXT[];
+  v_s1 TEXT;
+BEGIN
+  v_parts := string_to_array(substring(p_name FROM 14), ':');
+  v_single := FALSE;
+  v_s1 := NULLIF(v_parts[1], '');
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'asks';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_told__fo_pub_courses(p_name TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  p_at     TIMESTAMPTZ;
+  v_single BOOLEAN;
+  v_id     BIGINT;
+  v_t      JSONB;
+  v_told   JSONB := '[]'::jsonb;
+  v_was    BOOLEAN;
+  v_is     BOOLEAN;
+  v_root   BOOLEAN;
+  v_path   TEXT;
+  v_rest TEXT;
+BEGIN
+  v_rest := substring(p_name FROM 16);
+  v_single := v_rest <> '';
+  IF v_single THEN v_id := v_rest::BIGINT; END IF;
+  FOR v_t IN SELECT jsonb_array_elements(p_rows) LOOP
+    v_was := (v_t->'before') ? p_name;
+    v_is  := (v_t->'holders') ? p_name;
+    CONTINUE WHEN NOT v_was AND NOT v_is;
+    CONTINUE WHEN v_was AND v_is AND (v_t ? 'carried');   -- carried along, and its either way: unchanged for it
+    v_root := v_single AND (v_t->>'coll') = 'courses';
+    v_path := CASE WHEN v_root THEN _delta_build_path(v_t->>'coll') ELSE _delta_build_path(v_t->>'coll', v_t->>'id') END;
+    IF v_was AND v_is THEN   -- stayed: what changed
+      v_told := v_told || COALESCE((SELECT jsonb_agg(jsonb_build_object('op', 'replace', 'path', v_path || _delta_build_path(f), 'value', v) ORDER BY f COLLATE "C")
+                                      FROM jsonb_each(v_t->'after') AS e(f, v) WHERE v IS DISTINCT FROM v_t->'was'->f), '[]'::jsonb);
+    ELSIF v_is THEN
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
+    ELSIF v_root THEN   -- gone: null
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', 'null'::jsonb));
+    ELSE
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
+    END IF;
+  END LOOP;
+  RETURN v_told;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_told(p_def _delta_docs, p_target TEXT, p_rows JSONB)
+RETURNS JSONB AS $$
+BEGIN
+  CASE p_def.prefix
+    WHEN 'fo-board:' THEN RETURN dzql_told__fo_board(p_target, p_rows);
+    WHEN 'fo-menu:' THEN RETURN dzql_told__fo_menu(p_target, p_rows);
+    WHEN 'fo-household:' THEN RETURN dzql_told__fo_household(p_target, p_rows);
+    WHEN 'fo-course:' THEN RETURN dzql_told__fo_course(p_target, p_rows);
+    WHEN 'fo-title:' THEN RETURN dzql_told__fo_title(p_target, p_rows);
+    WHEN 'fo-tagged:' THEN RETURN dzql_told__fo_tagged(p_target, p_rows);
+    WHEN 'fo-notes:' THEN RETURN dzql_told__fo_notes(p_target, p_rows);
+    WHEN 'fo-all-courses:' THEN RETURN dzql_told__fo_all_courses(p_target, p_rows);
+    WHEN 'fo-catalog:' THEN RETURN dzql_told__fo_catalog(p_target, p_rows);
+    WHEN 'fo-courses-noted:' THEN RETURN dzql_told__fo_courses_noted(p_target, p_rows);
+    WHEN 'fo-courses-like:' THEN RETURN dzql_told__fo_courses_like(p_target, p_rows);
+    WHEN 'fo-menu-like:' THEN RETURN dzql_told__fo_menu_like(p_target, p_rows);
+    WHEN 'fo-tags-labelled:' THEN RETURN dzql_told__fo_tags_labelled(p_target, p_rows);
+    WHEN 'fo-seating:' THEN RETURN dzql_told__fo_seating(p_target, p_rows);
+    WHEN 'fo-seats-kept:' THEN RETURN dzql_told__fo_seats_kept(p_target, p_rows);
+    WHEN 'fo-seats-upto:' THEN RETURN dzql_told__fo_seats_upto(p_target, p_rows);
+    WHEN 'fo-seats-at:' THEN RETURN dzql_told__fo_seats_at(p_target, p_rows);
+    WHEN 'fo-seats-wished:' THEN RETURN dzql_told__fo_seats_wished(p_target, p_rows);
+    WHEN 'fo-slots-upto:' THEN RETURN dzql_told__fo_slots_upto(p_target, p_rows);
+    WHEN 'fo-slots-of:' THEN RETURN dzql_told__fo_slots_of(p_target, p_rows);
+    WHEN 'fo-slots-under:' THEN RETURN dzql_told__fo_slots_under(p_target, p_rows);
+    WHEN 'fo-slots-by:' THEN RETURN dzql_told__fo_slots_by(p_target, p_rows);
+    WHEN 'fo-slots-on:' THEN RETURN dzql_told__fo_slots_on(p_target, p_rows);
+    WHEN 'fo-note:' THEN RETURN dzql_told__fo_note(p_target, p_rows);
+    WHEN 'fo-all-notes:' THEN RETURN dzql_told__fo_all_notes(p_target, p_rows);
+    WHEN 'fo-drinks:' THEN RETURN dzql_told__fo_drinks(p_target, p_rows);
+    WHEN 'fo-course-guests:' THEN RETURN dzql_told__fo_course_guests(p_target, p_rows);
+    WHEN 'fo-plan:' THEN RETURN dzql_told__fo_plan(p_target, p_rows);
+    WHEN 'fo-weddings:' THEN RETURN dzql_told__fo_weddings(p_target, p_rows);
+    WHEN 'fo-guest:' THEN RETURN dzql_told__fo_guest(p_target, p_rows);
+    WHEN 'fo-seat-of:' THEN RETURN dzql_told__fo_seat_of(p_target, p_rows);
+    WHEN 'fo-all-households:' THEN RETURN dzql_told__fo_all_households(p_target, p_rows);
+    WHEN 'fo-party:' THEN RETURN dzql_told__fo_party(p_target, p_rows);
+    WHEN 'fo-slim:' THEN RETURN dzql_told__fo_slim(p_target, p_rows);
+    WHEN 'fo-notes-on:' THEN RETURN dzql_told__fo_notes_on(p_target, p_rows);
+    WHEN 'fo-courses-noted-on:' THEN RETURN dzql_told__fo_courses_noted_on(p_target, p_rows);
+    WHEN 'fo-board-on:' THEN RETURN dzql_told__fo_board_on(p_target, p_rows);
+    WHEN 'fo-asks:' THEN RETURN dzql_told__fo_asks(p_target, p_rows);
+    WHEN 'fo-asks-from:' THEN RETURN dzql_told__fo_asks_from(p_target, p_rows);
+    WHEN 'fo-pub-courses:' THEN RETURN dzql_told__fo_pub_courses(p_target, p_rows);
+    ELSE RETURN _delta_told_framework(p_def, p_target, p_rows);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+"
+`;

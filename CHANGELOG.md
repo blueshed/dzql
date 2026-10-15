@@ -43,6 +43,17 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   its own, any other to `_delta_row_in_scope_framework`. Equal to the framework for every name,
   collection and id (`tests/compile/scope.test.ts`); dropping the root's other conditions on purpose
   fails `fo-guest:1:z@x`, and a list's root holding everything fails 55.
+- **What a document is told of a write is compiled** (2c, piece 3). `_delta_tell`'s answer for
+  one document is now its own function, `_delta_told(def, name, rows)` (the framework's,
+  `_delta_told_framework`, as it was). `generateSql` writes `dzql_told__<prefix>(name, rows)` for
+  each document: whether the name makes it one row, its root, the columns it shows (`columns`, with
+  the id and parent key), the empty root an implied one opens with. `_delta_told` sends each
+  compiled document to its own, any other to the framework. Equal to the framework for every name
+  over a write touching every row in every way (arrives, stays with all, one or no field changed,
+  carried, leaves, no concern of anyone's), on the seed and after writes
+  (`tests/compile/told.test.ts`). Showing every row whole, not skipping a carried row, telling an
+  implied root's leaving as null, or dropping the parent key each fail. A write: 0.745 ms p50
+  compiled against 1.000 ms framework (26% less, from 22%).
 
 ### Fixed
 
