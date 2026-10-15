@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   what a schema cannot say. Version two of the order counts an item: its migration,
   `src/resources/order/migrations/001-one-line-per-item.ts`, folds an order's lines of one item
   into one line with its `quantity`, and `orderDocs` runs `migrate` (with the resource's name as
-  `app`, and its schema) from `fromFolder`, then `createTables` and `migrateSchema`. Its test makes
+  `app`, and its schema) from `fromFolder`, before `createTables` and `migrateSchema`. Its test makes
   the database as version one left it, starts version two on it, and checks the order came
   through and that a second start runs nothing (`migrationStatus`); the kitchen's test, on a new
   folder, is the other side. `test:evolve` runs it, and the skill's evaluations have a scenario
@@ -22,8 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- **delta 0.15.0.** The template's documents and tests are unchanged on it. The evolve skill's
-  SQLite step says what a holder is told since delta 0.13.0: a row that stays is told the fields
+- **delta 0.16.0.** The template's documents and tests are unchanged on it (0.16.0 adds only
+  `@blueshed/delta/backend`, for dzql). The evolve skill's SQLite step runs `migrateSchema`
+  after `createTables`, so a column a later version declares is added to a table made before
+  it, and says what a holder is told since delta 0.13.0: a row that stays is told the fields
   that changed (`replace /lines/1/item`), not the whole row, and the kitchen's test now checks
   exactly that with `onOps` (on SQLite, and on PGlite in the Postgres step). Its testing step says
   that delta's case suite in `@blueshed/delta/testing` (0.15.0) is for a backend of one's own,

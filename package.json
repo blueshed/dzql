@@ -19,7 +19,7 @@
     "start": "NODE_ENV=production bun src/main.ts"
   },
   "dependencies": {
-    "@blueshed/delta": "^0.15.0",
+    "@blueshed/delta": "^0.16.0",
     "@blueshed/railroad": "^0.16.0",
     "lucide": "^1.51.0"
   },

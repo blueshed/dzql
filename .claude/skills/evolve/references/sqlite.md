@@ -110,6 +110,5 @@ test("a line changed reaches the kitchen as the field that changed, not the row"
 - A change to a row reaches every document holding it, told as the fields that changed (`replace /lines/1/item`), not the whole row; a row that arrives or leaves is a whole-row `add` or `remove`. The client applies them, so a view draws from the document, never from what it was told.
 - `{ ledger: true }` keeps each change with what undoes it. Over the socket, undo walks back what that connection wrote.
 - Seed only an empty table.
-- A column a later version declares needs nothing more: `migrateSchema` adds it. A rename, a drop or rows moved is a migration, run once each before `createTables` (`migrate`, delta-doc's `reference/migrations.md`).
+- A column a later version declares needs nothing more: `migrateSchema` adds it. A rename, a drop or rows moved is a migration, run once each before `createTables`: [migrations.md](migrations.md).
 - Redo, history, a change named by its entry, and the cursor: delta-doc's `reference/ledger.md`.
-- A schema that changes on a database holding data: [migrations.md](migrations.md).

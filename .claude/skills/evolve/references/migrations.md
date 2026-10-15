@@ -18,7 +18,7 @@ export function up(db: Database) {
 }
 ```
 
-The schema declares the column, and `orderDocs` runs the migrations before it makes the tables:
+The schema declares the column, and `orderDocs` runs the migrations before `createTables` and `migrateSchema`:
 
 ```ts
 // src/resources/order/order-api.ts: in place of export type Line = { id: number; item: number };
@@ -44,7 +44,6 @@ export async function orderDocs(ws: WsServer, dataDir: string) {
 // src/resources/order/order-api.ts: in place of createTables(db, schema);
 await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), { app: "order", schema }); // first: what a schema cannot say
 createTables(db, schema); // then what it declares
-migrateSchema(db, schema); // and a column it declares that a table made before it lacks
 ```
 
 The test makes the database as version one left it, and starts version two on it:
