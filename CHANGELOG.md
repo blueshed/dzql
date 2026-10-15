@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **eta runs on `@blueshed/delta` 1.0**: delta without Postgres, which is dzql's now. eta uses
+  `core`, `local`, `sqlite`, `kinds` and `server`, none of which changed; the gate passes as it was.
 - **eta runs on `@blueshed/delta` 0.16.** 0.14 brought migrations and made the schema the
   contract: delta reads and sends only the columns a schema declares, and keeps the rest, so a
   version that adds a column and one that does not can share a database. 0.15 publishes delta's
