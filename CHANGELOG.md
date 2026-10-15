@@ -25,6 +25,12 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **The READMEs lead with what dzql is now.** They opened with "define your domain in TypeScript,
+  compile to SQL, get a full-stack app", which is the whole-stack dzql that step 5 retires. Both now
+  open with delta's compiled Postgres step, and put `domain.ts`, the Quick Start and `bun create
+  dzql` under "The whole-stack dzql (retiring)". The npm description follows: "delta's compiled
+  Postgres step: an app's delta definitions compiled to SQL" (published with the next release).
+
 - **The docs say what is compiled.** `docs/delta/postgres.md` has a "Compiled SQL" section:
   - a table of each piece, its compiled functions and the framework's it falls back to;
   - the rule that `generateSql` is applied after the framework every time, because
