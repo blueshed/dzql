@@ -1,4 +1,4 @@
-import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
+import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolder, migrateSchema } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { db } from "../../src/db";
 import { DEFAULT_TZ } from "./documents/clock";
@@ -20,7 +20,11 @@ export const schema = defineSchema({
   desks: { table: "ticker_desks", columns: { page: "text?", reading: "json?", filter: "json?", hide: "json?" }, temporal: false },
 });
 
+/** Whose migrations these are, and its schema: the examples may share a database, and each runs only its own. */
+export const migrating = { app: "ticker", schema };
+await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), migrating); // first, what the schema cannot say: a rename, a drop, data moved
 createTables(db, schema);
+migrateSchema(db, schema);
 
 // The market as it opens: made-up names, made-up prices, so nothing here is anyone's advice.
 const OPENING: [string, string, number][] = [
