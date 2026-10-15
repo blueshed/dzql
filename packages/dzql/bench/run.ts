@@ -2,7 +2,7 @@
  * Bench runner — applies framework SQL, then walks each adapter through the
  * single-write workload and prints a comparison table.
  *
- * Usage (requires `bun run db:up` on the default compose):
+ * Usage (requires the test compose: `bun run test:setup`):
  *
  *   bun run bench/run.ts
  *   BENCH_ITERATIONS=5000 bun run bench/run.ts
@@ -12,9 +12,9 @@ import { Pool } from "pg";
 import { applyFramework } from "../src/postgres";
 import type { Adapter, Stats } from "./adapter";
 import { fmtMs } from "./adapter";
-import { deltaNewAdapter } from "./adapters/delta-new";
-import { deltaOldAdapter } from "./adapters/delta-old";
+import { deltaAdapter } from "./adapters/delta";
 import { rawPostgresAdapter } from "./adapters/raw-postgres";
+import { appUrl, ensureAppRole } from "./schema";
 import { runSingleWrite } from "./workloads/single-write";
 import { runFanout } from "./workloads/fanout";
 
@@ -26,10 +26,12 @@ const PG_URL =
 const ITERATIONS = Number(process.env.BENCH_ITERATIONS ?? 10_000);
 const WARMUP = Number(process.env.BENCH_WARMUP ?? 200);
 
-async function applyFrameworkOnce(): Promise<void> {
+/** The framework, and the app role every timed write runs as, made by the admin the URL names. */
+async function prepare(): Promise<void> {
   const pool = new Pool({ connectionString: PG_URL, max: 1 });
   try {
     await applyFramework(pool);
+    await ensureAppRole(pool);
   } finally {
     await pool.end();
   }
@@ -82,24 +84,24 @@ function printRow(r: Result): void {
 }
 
 async function main(): Promise<void> {
-  await applyFrameworkOnce();
+  await prepare();
+  const app = appUrl(PG_URL);
 
-  // Run all three adapters sequentially — we want them to share the same
-  // hardware state. Order: raw first (baseline), delta-new, delta-old.
+  // One after another, on the same hardware state: raw first (the baseline), then delta's write
+  // with the framework's reads and checks, then with them compiled. Every write as the app role.
   const results: Result[] = [];
-  results.push(await runOne(() => rawPostgresAdapter(PG_URL)));
-  results.push(await runOne(() => deltaNewAdapter(PG_URL)));
-  results.push(await runOne(() => deltaOldAdapter(PG_URL)));
+  results.push(await runOne(() => rawPostgresAdapter(PG_URL, app)));
+  results.push(await runOne(() => deltaAdapter(PG_URL, app, false)));
+  results.push(await runOne(() => deltaAdapter(PG_URL, app, true)));
 
   printHeader();
   for (const r of results) printRow(r);
 
-  const newS = results.find((r) => r.adapter.name.startsWith("delta-new"))!.stats;
-  const oldS = results.find((r) => r.adapter.name.startsWith("delta-old"))!.stats;
-  const rawS = results.find((r) => r.adapter.name.startsWith("raw-postgres"))!.stats;
+  const [rawS, frameworkS, compiledS] = results.map((r) => r.stats) as [Stats, Stats, Stats];
   console.log(
-    `\ndelta-old / delta-new p50 ratio: ${(oldS.p50 / newS.p50).toFixed(2)}x   (expect ≈ 4x)` +
-      `\ndelta-new / raw-postgres p50 ratio: ${(newS.p50 / rawS.p50).toFixed(2)}x   (expect ≈ 1-2x — extra server work in delta_apply)`,
+    `\ndelta, framework / raw-postgres p50: ${(frameworkS.p50 / rawS.p50).toFixed(2)}x` +
+      `\ndelta, compiled  / raw-postgres p50: ${(compiledS.p50 / rawS.p50).toFixed(2)}x` +
+      `\ncompiled / framework p50:            ${(compiledS.p50 / frameworkS.p50).toFixed(2)}x   (below 1: compiling saved that much)`,
   );
 
   // A write's fan-out as the names ever opened grow, ten open: it should stay flat.

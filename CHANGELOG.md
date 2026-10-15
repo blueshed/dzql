@@ -44,6 +44,15 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   collection and id (`tests/compile/scope.test.ts`); dropping the root's other conditions on purpose
   fails `fo-guest:1:z@x`, and a list's root holding everything fails 55.
 
+### Fixed
+
+- **The bench measures row-level security (todo #25).** Every timed write runs as `bench_app`
+  (NOSUPERUSER NOBYPASSRLS); the bench refuses to run as a role that bypasses RLS; the policy reads
+  `NULLIF(current_setting('app.user_id', true), '')`, so a pooled connection's `''` no longer breaks
+  it. It times delta's write with the framework's reads and checks and with them compiled, against
+  a raw `UPDATE`: 1.078 ms, 0.839 ms (22% less) and 0.184 ms p50 (`bench/results-2026-10-15.md`).
+  The 0.3.0 results are labelled as taken with RLS bypassed.
+
 ## [0.9.0] - 2026-10-15
 
 ### Added
