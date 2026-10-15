@@ -44,7 +44,7 @@ Each leads with its example, code and tests that `bun run test:evolve` applies t
 - [references/two-documents.md](references/two-documents.md): the catalogue and an order on one page
 - [references/sqlite.md](references/sqlite.md): documents that share rows (the kitchen), undo and history
 - [references/migrations.md](references/migrations.md): a schema that changes on a database holding data
-- [references/postgres.md](references/postgres.md): servers that share data; people who see only their own
+- [references/postgres.md](references/postgres.md): servers that share data; people who see only their own (dzql, delta's Postgres)
 - [references/http.md](references/http.md): HTTP routes, and files in S3
 - [references/build.md](references/build.md): a production build (optional)
 
