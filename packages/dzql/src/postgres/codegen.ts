@@ -28,6 +28,7 @@ import { defaultForType, q } from "@blueshed/delta/backend";
 import { assertScopeKeys } from "@blueshed/delta/backend";
 import { compileOpens } from "../compile/opens";
 import { compileHolds } from "../compile/holds";
+import { compileInScope } from "../compile/scope";
 
 export interface GenerateSqlOptions {
   /** Header comment included at the top of the file. */
@@ -171,6 +172,6 @@ export function generateSql(
   lines.push("");
 
   // each document opened by SQL compiled for it (dzql), which docTypeFromDef calls
-  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs));
+  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs));
   return lines.join("\n");
 }
