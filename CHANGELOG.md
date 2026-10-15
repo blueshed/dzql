@@ -23,6 +23,8 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-15
+
 ### Added
 
 - **dzql holds everything Postgres that delta held** (step 4 of the split, dzql's side), so delta
