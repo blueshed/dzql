@@ -201,6 +201,26 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Fixed
 
+- **An undo no longer slows as its cursor's ledger grows** (todo #28). Each undo and redo found its
+  entry by walking every chain the cursor had ever begun (a recursive query over its whole
+  history), so one cursor's undo went from about 2 ms to about 15 ms over a few thousand entries.
+  `_delta_ledger_tip` now looks newest first among the cursor's own entries, a step at a time on a
+  new `(cursor, id)` index. It stops at the first tip that goes the way asked: depth along its
+  chain, up to the write that began it, is found by following `undoes`. A redo stops at the
+  cursor's last write. It relies on every entry of a chain carrying its write's cursor, as
+  `delta_walk` records it.
+  - `tests/delta-pg/ledger-tip.test.ts` keeps the old walk as the reference. Over five seeded
+    runs of 150 steps (three cursors writing, removing, adding, writing facts, undoing, redoing,
+    walking a change by name, conflicts as they come), both take the same entry for every cursor,
+    both ways, after every step. Four mutations each fail it.
+  - On a cursor with 1,500 write-and-undo pairs, finding an undo's entry reads 1 row of the ledger
+    (the old walk read 1,503), counted by the transaction's own table and index counters. Against
+    the old function that test fails.
+  - Measured ad hoc as the app role, the ledger growing run to run: an undo stays at 1.07 ms
+    through one row and 1.6 ms through a list of 100, compiled (it was 1.45 and 2.34 ms from an
+    empty ledger, and grew).
+
+  delta's SQLite ledger (`src/server/ledger.ts`) finds the tip by the same recursive walk.
 - **A late telling no longer reddens the path cases on a server.** The listener fetches what a
   NOTIFY announced after the write has answered, so under CI's load a write's telling could land
   after the case opened its documents again and cleared what was heard, and `expectSilent` counted

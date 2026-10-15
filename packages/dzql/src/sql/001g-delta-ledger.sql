@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS _delta_ledger (
 CREATE INDEX IF NOT EXISTS idx_delta_ledger_doc ON _delta_ledger (doc_name, version);
 CREATE INDEX IF NOT EXISTS idx_delta_ledger_cursor ON _delta_ledger (cursor);
 CREATE INDEX IF NOT EXISTS idx_delta_ledger_undoes ON _delta_ledger (undoes);
+-- a cursor's entries newest first: where an undo or a redo looks for its tip (_delta_ledger_tip)
+CREATE INDEX IF NOT EXISTS idx_delta_ledger_cursor_id ON _delta_ledger (cursor, id);
 
 -- ---------------------------------------------------------------------------
 -- _delta_row_at: the row a document holds at a row's path, split -- the twin
@@ -204,25 +206,44 @@ $$ LANGUAGE plpgsql;
 -- what could be redone; an entry not undoable (a fact) starts no chain.
 -- ---------------------------------------------------------------------------
 
+-- _delta_ledger_tip: the entry an undo (p_back) or a redo of a cursor takes --
+-- the newest tip of the cursor's chains that goes the way asked: back, a tip at
+-- an even depth (a write, or a redo); forward, one at an odd depth (an undo that
+-- changed something) newer than the cursor's last write. Found newest first,
+-- among the cursor's own entries, so it costs what was written since the
+-- answer, not the cursor's whole history (todo #28): every entry of a chain
+-- carries its write's cursor, as delta_walk records it (an entry recorded by
+-- hand as walking another cursor's chain is not one of this cursor's tips).
 CREATE OR REPLACE FUNCTION _delta_ledger_tip(p_cursor TEXT, p_back BOOLEAN)
 RETURNS _delta_ledger AS $$
-  WITH RECURSIVE chain(id, depth) AS (
-    SELECT id, 0 FROM _delta_ledger WHERE cursor = p_cursor AND undoes IS NULL AND undoable
-    UNION ALL
-    SELECT l.id, c.depth + 1 FROM _delta_ledger l JOIN chain c ON l.undoes = c.id
-  ),
-  tips AS (
-    SELECT c.id, c.depth FROM chain c
-    WHERE NOT EXISTS (SELECT 1 FROM _delta_ledger w WHERE w.undoes = c.id)
-  )
-  SELECT l.* FROM _delta_ledger l JOIN tips t ON t.id = l.id
-  WHERE CASE WHEN p_back THEN t.depth % 2 = 0
-        ELSE t.depth % 2 = 1 AND l.undoable   -- a walk recorded as changing nothing is never redone
-          AND l.id > COALESCE((SELECT MAX(id) FROM _delta_ledger WHERE cursor = p_cursor AND undoes IS NULL AND undoable), 0)
-        END
-  ORDER BY l.id DESC
-  LIMIT 1;
-$$ LANGUAGE sql STABLE;
+DECLARE
+  v_entry _delta_ledger;
+  v_up    _delta_ledger;
+  v_depth INT;
+BEGIN
+  -- a step at a time, each the next older entry (LIMIT 1 on the cursor's index): it reads as far as it goes
+  SELECT * INTO v_entry FROM _delta_ledger WHERE cursor = p_cursor ORDER BY id DESC LIMIT 1;
+  WHILE v_entry.id IS NOT NULL LOOP
+    -- the cursor's last write, met newest first: a redo is of nothing older (a fresh write ends what could be redone)
+    IF NOT p_back AND v_entry.undoes IS NULL AND v_entry.undoable THEN RETURN NULL; END IF;
+    IF NOT EXISTS (SELECT 1 FROM _delta_ledger w WHERE w.undoes = v_entry.id) THEN   -- a tip: nothing has walked it
+      -- its depth along its chain, up to the write that began it
+      v_depth := 0;
+      v_up := v_entry;
+      WHILE v_up.undoes IS NOT NULL LOOP
+        SELECT * INTO v_up FROM _delta_ledger WHERE id = v_up.undoes;
+        v_depth := v_depth + 1;
+      END LOOP;
+      IF v_up.cursor IS NOT DISTINCT FROM p_cursor AND v_up.undoable THEN   -- a chain this cursor's undoable write began
+        IF p_back AND v_depth % 2 = 0 THEN RETURN v_entry; END IF;
+        IF NOT p_back AND v_depth % 2 = 1 AND v_entry.undoable THEN RETURN v_entry; END IF;   -- a walk recorded as changing nothing is never redone
+      END IF;
+    END IF;
+    SELECT * INTO v_entry FROM _delta_ledger WHERE cursor = p_cursor AND id < v_entry.id ORDER BY id DESC LIMIT 1;
+  END LOOP;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql STABLE;
 
 -- JSON values the same, with JSON null and a missing value the same.
 CREATE OR REPLACE FUNCTION _delta_same(a JSONB, b JSONB)
