@@ -15,13 +15,15 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
    From 0.6.2 it was published as `dzql` and the interpreter became `dzql-legacy`.
 4. **January 2026: hardening the compiler (0.6.x).** The `create-dzql` template,
    trusted publishing from GitHub Actions, list subscriptions, temporal entities.
-5. **October 2026: review and consolidation (unreleased).** A security review, a
+5. **October 2026: review and consolidation (0.7.0).** A security review, a
    rewritten permission path compiler proved against a real model, and one package:
    the interpreter and the `tzql` name are gone.
 
 ---
 
 ## [Unreleased]
+
+## [0.7.0] - 2026-10-15
 
 October 2026. Pull requests #8 to #16. The last release of dzql as a whole stack:
 next it becomes the compiled Postgres step for delta projects.
