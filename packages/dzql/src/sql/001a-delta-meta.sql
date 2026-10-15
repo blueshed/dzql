@@ -136,7 +136,7 @@ $$;
 -- It used to be merged into the broadcast row, acked, and dropped (or cast) by
 -- jsonb_populate_record: stored otherwise than told. id, the parent key and
 -- the temporal columns are the row's own.
-CREATE OR REPLACE FUNCTION _delta_assert_fields(
+CREATE OR REPLACE FUNCTION _delta_assert_fields_framework(
   p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB
 ) RETURNS void LANGUAGE plpgsql IMMUTABLE AS $$
 DECLARE
@@ -177,6 +177,13 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- The checks every write asks: the framework's, until dzql's compiler
+-- (`compileColumns`) replaces this with one that checks each column set it
+-- compiled by its own statements, and any other by the framework's.
+CREATE OR REPLACE FUNCTION _delta_assert_fields(
+  p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB
+) RETURNS void LANGUAGE sql IMMUTABLE AS $$ SELECT _delta_assert_fields_framework(p_collection, p_columns, p_parent_fk, p_value); $$;
 
 -- Pick the source relation for a collection.
 --   temporal + no timestamp → current_<table> view

@@ -454,6 +454,17 @@ $$ LANGUAGE plpgsql STABLE;
 CREATE OR REPLACE FUNCTION _delta_root_there(p_def _delta_docs, p_doc_name TEXT, p_scope JSONB, p_view TEXT, p_id BIGINT)
 RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT _delta_root_there_framework(p_def, p_doc_name, p_scope, p_view, p_id); $$;
 
+-- _delta_write_columns: the columns of `p_coll` a document writes -- as the
+-- process writing declares them (_delta_cols), those the document holds
+-- (_delta_held_columns). The framework's, until dzql's compiler
+-- (`compileColumns`) replaces it with one sending each document it compiled to
+-- its own.
+CREATE OR REPLACE FUNCTION _delta_write_columns_framework(p_def _delta_docs, p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_held_columns(p_def, p_coll, _delta_cols(p_coll, p_columns_def)); $$;
+
+CREATE OR REPLACE FUNCTION _delta_write_columns(p_def _delta_docs, p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_write_columns_framework(p_def, p_coll, p_columns_def); $$;
+
 CREATE OR REPLACE FUNCTION _delta_whole(p_columns JSONB, p_value JSONB)
 RETURNS JSONB AS $$
 DECLARE
@@ -634,7 +645,7 @@ BEGIN
       THEN COALESCE((SELECT jsonb_object_agg(c, '{"nullable": true}'::jsonb) FROM unnest(_delta_stored_columns(v_coll.table_name)) AS c
                       WHERE c NOT IN ('id', 'valid_from', 'valid_to') AND c IS DISTINCT FROM v_coll.parent_fk), '{}'::jsonb)
            || _delta_cols(v_coll_key, v_coll.columns_def)
-      ELSE _delta_held_columns(v_def, v_coll_key, _delta_cols(v_coll_key, v_coll.columns_def)) END;
+      ELSE _delta_write_columns(v_def, v_coll_key, v_coll.columns_def) END;
 
     -- Scope guard: an op may only target the doc's root or an included
     -- collection. Defence-in-depth — a client that opened doc A must not write
