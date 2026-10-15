@@ -54,6 +54,19 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   (`tests/compile/told.test.ts`). Showing every row whole, not skipping a carried row, telling an
   implied root's leaving as null, or dropping the parent key each fail. A write: 0.745 ms p50
   compiled against 1.000 ms framework (26% less, from 22%).
+- **The fan-out is compiled** (2c, piece 4): which open documents hold a row a write touched
+  (`_delta_holders`). `generateSql` writes `_delta_holders` itself: for the row's collection, each
+  document that holds it in turn -- its prefix's lock, its open names (by the root the row hangs
+  from, the chain written as lookups, or every open name of its prefix), the writer's, each name
+  its prefix owns whose document holds the row (`dzql_holds__<prefix>`). A document not compiled
+  is asked by the framework's, now `_delta_holders_framework(collection, row, writer, skip)`, told
+  the prefixes asked already. Still SECURITY DEFINER with pg_temp last, compiled or not. Equal to
+  the framework for every collection, row and writer (`tests/compile/holders.test.ts`): on the
+  seed, with only the writer open, after writes, and with documents registered by hand beside the
+  compiled ones, one a longer prefix taking a compiled one's names. Dropping the longest-prefix
+  rule, the fallback, the writer, the chain, or finding a scoped document by its root each fail. A
+  write: 0.706 ms p50 compiled against 1.049 ms framework (33% less); the fan-out with 10 open,
+  0.88 to 0.79 ms.
 
 ### Fixed
 

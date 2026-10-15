@@ -166,7 +166,7 @@ describe("a document's columns (todo #70)", () => {
   test("are written to _delta_docs.held, and only when a document names some", () => {
     const slim = defineDoc("trip-map:", { root: "trips", include: ["legs"], columns: { legs: ["day"] } });
     expect(generateSql(schema, [slim])).toContain(`'{"legs":["day"]}'`);
-    expect(generateSql(schema, [defineDoc("trip:", { root: "trips", include: ["legs"] })])).not.toContain("held");
+    expect(generateSql(schema, [defineDoc("trip:", { root: "trips", include: ["legs"] })])).not.toMatch(/INSERT INTO _delta_docs \([^)]*held/);
   });
 
   test("name only collections it holds, and only columns they have", () => {
