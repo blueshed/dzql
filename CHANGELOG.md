@@ -21,9 +21,9 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ---
 
-## Unreleased (October 2026)
+## [Unreleased]
 
-Merged to `main`, not yet published. Pull requests #8 to #13.
+October 2026. Merged to `main`, not yet published. Pull requests #8 to #13.
 
 ### Breaking
 
