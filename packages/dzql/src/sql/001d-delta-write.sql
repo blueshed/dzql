@@ -434,6 +434,26 @@ RETURNS JSONB AS $$
     ELSE COALESCE((SELECT jsonb_object_agg(k, v) FROM jsonb_each(p_columns) AS e(k, v) WHERE (p_def.held->p_coll) ? k), '{}'::jsonb) END;
 $$ LANGUAGE sql STABLE;
 
+-- _delta_root_there: is a single document's root row `p_id` there now, and
+-- does it meet the whole of its name's scope (a column beside its id), as
+-- delta_open reads it? Asked before each op of a write (delta_apply). The
+-- framework's runs the scope's conditions as text (`p_scope`, the resolver's
+-- answer) over the root's current rows (`p_view`); dzql's compiler
+-- (`compileRootThere`) replaces `_delta_root_there` with one sending each
+-- document it compiled to its own.
+CREATE OR REPLACE FUNCTION _delta_root_there_framework(p_def _delta_docs, p_doc_name TEXT, p_scope JSONB, p_view TEXT, p_id BIGINT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_exists BOOLEAN;
+BEGIN
+  EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I t WHERE t.id = $1 AND %s)', p_view, p_scope->>'where') INTO v_exists USING p_id;
+  RETURN v_exists;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_root_there(p_def _delta_docs, p_doc_name TEXT, p_scope JSONB, p_view TEXT, p_id BIGINT)
+RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT _delta_root_there_framework(p_def, p_doc_name, p_scope, p_view, p_id); $$;
+
 CREATE OR REPLACE FUNCTION _delta_whole(p_columns JSONB, p_value JSONB)
 RETURNS JSONB AS $$
 DECLARE
@@ -561,7 +581,7 @@ BEGIN
   -- An empty write is asked what each op is (below): a single document whose
   -- root is not there is not found, as on SQLite -- unless implied, or a walk.
   IF jsonb_array_length(p_ops) = 0 AND NOT v_is_list AND NOT COALESCE(p_walk, FALSE) AND NOT COALESCE(v_def.implied, FALSE) THEN
-    EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I t WHERE t.id = $1 AND %s)', v_root_view, v_scope->>'where') INTO v_exists USING v_doc_id;
+    v_exists := _delta_root_there(v_def, p_doc_name, v_scope, v_root_view, v_doc_id);
     IF NOT v_exists THEN
       RAISE EXCEPTION 'document not found: % (its root, %, is not there)',
         p_doc_name, _delta_build_path(v_def.root_collection, v_doc_id::text)
@@ -585,7 +605,7 @@ BEGIN
     -- (_delta_walk_plan), as SQLite's and ./json's are.
     IF NOT v_is_list AND NOT COALESCE(p_walk, FALSE) THEN   -- a walk not said (null) is none
       -- there, and meeting the whole of its name's scope (a column beside its id), as delta_open reads it
-      EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I t WHERE t.id = $1 AND %s)', v_root_view, v_scope->>'where') INTO v_exists USING v_doc_id;
+      v_exists := _delta_root_there(v_def, p_doc_name, v_scope, v_root_view, v_doc_id);
       v_opened := COALESCE(v_opened, v_exists OR COALESCE(v_def.implied, FALSE));
       v_back := FALSE;
       IF NOT v_exists AND v_opened AND v_op->>'op' = 'add' THEN

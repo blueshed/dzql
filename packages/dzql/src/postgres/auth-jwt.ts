@@ -2,7 +2,7 @@
  * Auth-JWT — reference `DeltaAuth` implementation using JWTs (jose) and
  * Postgres stored functions for credential verification.
  *
- * Ship this as an opt-in subpath: `@blueshed/delta/auth-jwt`. Users who want
+ * Ship this as an opt-in subpath: `dzql/auth-jwt`. Users who want
  * a different auth scheme (sessions, OAuth, magic links, none) implement
  * their own `DeltaAuth` instead.
  *
@@ -13,7 +13,7 @@
  *
  * Both are overridable via the `loginSql` / `registerSql` options.
  *
- *   import { jwtAuth } from "@blueshed/delta/auth-jwt";
+ *   import { jwtAuth } from "dzql/auth-jwt";
  *
  *   const auth = jwtAuth({
  *     pool,

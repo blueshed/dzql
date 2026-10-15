@@ -2,7 +2,7 @@
 -- auth-jwt — reference users schema + login / register stored functions.
 -- =========================================================================
 --
--- Apply this alongside the @blueshed/delta/auth-jwt module. Consumers who
+-- Apply this alongside the dzql/auth-jwt module. Consumers who
 -- want a different identity schema (sessions, OAuth, custom tables) can
 -- substitute their own `login` / `register` functions and pass the SQL
 -- strings via `jwtAuth({ loginSql, registerSql })`.

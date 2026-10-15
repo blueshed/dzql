@@ -4,7 +4,7 @@
  * The same stored functions, the same listener, the same documents as a
  * Postgres server, on PGlite (Postgres compiled to WASM): no database to run,
  * the data in a directory (or in memory). `openPglite()` answers the slice of
- * `pg`'s Pool delta uses, so everything in `@blueshed/delta/postgres` runs on
+ * `pg`'s Pool delta uses, so everything in `dzql/postgres` runs on
  * it unchanged:
  *
  *   const pool = await openPglite("./data");        // or openPglite() in memory

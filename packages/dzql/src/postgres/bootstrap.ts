@@ -4,7 +4,7 @@
  * consumer's `init_db/` directory.
  *
  *   import { Pool } from "pg";
- *   import { applyFramework } from "@blueshed/delta/postgres";
+ *   import { applyFramework } from "dzql/postgres";
  *
  *   const pool = new Pool({ connectionString: process.env.PG_URL });
  *   await applyFramework(pool);
@@ -23,7 +23,7 @@ const FRAMEWORK_SQL_DIR = join(import.meta.dir, "..", "sql");
 
 /** Absolute paths to the framework SQL files, in apply-order.
  *  Filters to `001*-*.sql` — siblings like `auth-jwt.sql` are applied
- *  separately (see `@blueshed/delta/auth-jwt` → `applyAuthJwtSchema`). */
+ *  separately (see `dzql/auth-jwt` → `applyAuthJwtSchema`). */
 export function frameworkSqlFiles(): string[] {
   return readdirSync(FRAMEWORK_SQL_DIR)
     .filter((f) => /^001[a-z]?-.+\.sql$/.test(f))
