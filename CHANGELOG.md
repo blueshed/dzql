@@ -70,6 +70,13 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Fixed
 
+- **A late telling no longer reddens the path cases on a server.** The listener fetches what a
+  NOTIFY announced after the write has answered, so under CI's load a write's telling could land
+  after the case opened its documents again and cleared what was heard, and `expectSilent` counted
+  it (`an add names a new id, past the serial`, on blueshed/dzql#25). The harness
+  (`tests/delta-pg/postgres-path.test.ts`) now waits, before each open, until every open document
+  has heard up to the version the database has for it. Delta's case is unchanged. With every
+  telling delayed 200 ms, that case fails without this and passes with it.
 - **The bench measures row-level security (todo #25).** Every timed write runs as `bench_app`
   (NOSUPERUSER NOBYPASSRLS); the bench refuses to run as a role that bypasses RLS; the policy reads
   `NULLIF(current_setting('app.user_id', true), '')`, so a pooled connection's `''` no longer breaks
