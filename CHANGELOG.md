@@ -23,6 +23,21 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Added
+
+- **Compiled opens: `dzql/compile`'s `compileOpens(schema, docs)`** (step 2b of the Postgres split).
+  From an app's delta definitions (`defineSchema`, `defineDoc`) it writes one function per
+  document, `dzql_open__<prefix>(name)`, and `dzql_open(name)`, which finds a name's document by
+  its longest prefix as `delta_open` does. Each query is written out from the definitions --
+  which table, the columns a document shows (its held columns too), how an included collection
+  hangs from the root (a join up its parent chain; none where the chain ends short of it), a
+  temporal row standing now or at a time in the name, an implied root's defaults -- where the
+  framework reads its tables of definitions at run time. A name's scope and the version stay the
+  framework's until 2c. A pure function: the same definitions give the same text, pinned by a
+  snapshot; a document over a collection the schema lacks, or two whose functions would share a
+  name, is refused. `tests/compile/opens.test.ts` opens every name delta's path cases open, both
+  ways on PGlite, on the seed and after writes of every kind: 82 names, equal, errors included.
+
 ## [0.8.0] - 2026-10-15
 
 ### Added

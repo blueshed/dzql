@@ -17,7 +17,8 @@
     "./namespace": "./src/runtime/namespace.ts",
     "./postgres": "./src/postgres/index.ts",
     "./pglite": "./src/postgres/pglite.ts",
-    "./auth-jwt": "./src/postgres/auth-jwt.ts"
+    "./auth-jwt": "./src/postgres/auth-jwt.ts",
+    "./compile": "./src/compile/opens.ts"
   },
   "files": [
     "src",
