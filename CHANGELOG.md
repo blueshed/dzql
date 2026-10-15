@@ -9,10 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **eta runs on `@blueshed/delta` 0.15.** 0.14 brought migrations and made the schema the
+- **eta runs on `@blueshed/delta` 0.16.** 0.14 brought migrations and made the schema the
   contract: delta reads and sends only the columns a schema declares, and keeps the rest, so a
   version that adds a column and one that does not can share a database. 0.15 publishes delta's
-  case suite (`@blueshed/delta/testing`). What to change: nothing; take migrations below.
+  case suite (`@blueshed/delta/testing`); 0.16 adds `@blueshed/delta/backend`, for dzql, which
+  eta does not use. What to change: nothing; take migrations below.
 
 ### Added
 

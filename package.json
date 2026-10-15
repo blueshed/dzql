@@ -41,7 +41,7 @@
     "@types/bun": "^1.4.3"
   },
   "dependencies": {
-    "@blueshed/delta": "^0.15.0",
+    "@blueshed/delta": "^0.16.0",
     "@blueshed/railroad": "^0.16.2",
     "lucide": "^1.46.0"
   }
