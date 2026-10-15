@@ -1,4 +1,4 @@
-import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
+import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolder, migrateSchema } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { db } from "../../src/db";
 
@@ -21,7 +21,11 @@ export const schema = defineSchema({
 /** A token as it is kept: its SHA-256, never the token. */
 export const tokenId = (token: string): string => new Bun.CryptoHasher("sha256").update(token).digest("hex");
 
+/** Whose migrations these are, and its schema: the examples may share a database, and each runs only its own. */
+export const migrating = { app: "leave", schema };
+await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), migrating); // first, what the schema cannot say: a rename, a drop, data moved
 createTables(db, schema);
+migrateSchema(db, schema);
 
 // The team as it starts: two who ask and one who answers, each with a password and a token for the
 // CLI made up for the example,two requests waiting, one approved, and the manager's own week, which he approved. A login's id is its email. Every id is text, as the wire

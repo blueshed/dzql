@@ -1,4 +1,4 @@
-import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
+import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolder, migrateSchema } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { db } from "../../src/db";
 
@@ -20,7 +20,11 @@ export const schema = defineSchema({
   logins: { table: "mdl_logins", columns: { person_id: "text", hash: "text" }, temporal: false },
 });
 
+/** Whose migrations these are, and its schema: the examples may share a database, and each runs only its own. */
+export const migrating = { app: "modeling", schema };
+await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), migrating); // first, what the schema cannot say: a rename, a drop, data moved
 createTables(db, schema);
+migrateSchema(db, schema);
 
 // The two who keep a model, and the model as it starts. Here, in eta: Peter and Claude, each with a
 // password made up for the example (a login's id is its email, `peter@modeling.example`), and

@@ -10,7 +10,9 @@ export const schema = defineSchema({
   rooms: { table: "chat_rooms", columns: {}, temporal: false },
   messages: { table: "chat_messages", parent: "rooms", columns: { name: "text", text: "text", sent_at: "integer" }, temporal: false },
 });
+await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), { app: "chat", schema }); // migrations.md
 createTables(db, schema);
+migrateSchema(db, schema);
 export const delta = createLocal();
 registerDocs(delta.server, db, schema, [
   defineDoc("session:", { root: "sessions", include: [], implied: true }),
@@ -32,8 +34,10 @@ synchronous; it throws `Pending` when the document is not held yet, and the kern
 again. Put the pure rules beside it (`shape(doc, ops)`), tested without a server.
 
 - Prefix tables with the app's name (`chat_`). Seed only into empty tables.
-- `createTables` makes a missing table, not a missing column: a column added later needs
-  `migrateSchema` (as chat's `delta.ts` calls it), or the dev database deleted.
+- At start-up `delta.ts` runs the app's migrations, then `createTables` (a missing table), then
+  `migrateSchema` (a missing column). That is all a new table or column needs. A field renamed or
+  dropped, or data moved, is a migration: [migrations.md](migrations.md). Never delete a database
+  to change its shape: people keep real data in it.
 - Address a row by its id, never its position: others write between a write and its undo. Make ids
   in `shape` (`Bun.randomUUIDv7()` is time-ordered). Ids are text on the wire: compare them as text.
 - A value a column cannot default in SQL (an object) goes in the schema's `default`; treat null as

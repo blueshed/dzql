@@ -15,15 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A project's root is its app; eta is one folder, `eta/`, never edited.** `bun create blueshed/eta my-app` makes `src/` (the app, begun as the starter), `migrations/`, and `eta/`: the kernel (`eta/src/`), the model's page (`eta/model/`), the docs a project keeps, eta's changelog and `eta/VERSION`. `eta/` is a Bun workspace named `eta`: the app imports `eta/stories`, `eta/client/app`, `@import "eta/bento.css"`, never a path into `eta/`. `bun run eta:update [version | path]` brings a later eta (the latest by default): `eta/` replaced whole, the root's eta scripts and the kernel's dependencies set, `bun install`, the skills refreshed, eta's changelog since `eta/VERSION` printed with what to change first, the gate run, nothing committed. What to change: a project of `app/`, `model/` and `src/` runs `bun ../eta/create/update.ts ../eta` once from its root, with a checkout of eta beside it. It moves `app/` to `src/` (its `../src/...` imports become `eta/...`), puts eta's `src/`, `model/` and docs in `eta/`, makes `migrations/`, and rewrites `tsconfig.json`, `bunfig.toml`, `package.json`'s scripts and `CLAUDE.md` (`git diff CLAUDE.md` for lines of your own).
 - **A project's model page keeps its own database, `model.sqlite`** (`MODEL_DB` names another), never the app's. What to change: nothing, unless a model was kept in the app's database; move it with `bun run model:load`.
 
-### Changed
-
-- eta is not packed for npm: `package.json` has no `files`; a project takes eta by `bun create` and `bun run eta:update`.
-
-### Fixed
-
-- The stories' wire check probes a select with the option it was drawn showing, as a browser sends it (the last `selected`, else the first not disabled; none in a list), not an empty value, so a permit no longer needs a refusal for a value no select sends.
-- `bun create` no longer says a project started "with what its changelog had under Unreleased" when that section was empty.
-
 ### Added
 
 - `collectionsWrite(op, ui?)` (`src/bento.ts`): a session's permit and shape for `/reading`, `/filter` and `/hide` in one call. The ticker's desk and the wedding's session use it.
@@ -31,6 +22,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A story may name the model story it tells (`model: 10`); `model:check --against-page` matches on it, else by words, and says which matched how.
 - The eta-app skill's `reference/scope.md`: three ways to keep a document from holding every row ever (the day as its root, a list scoped by a column, a keyset window).
 - `docs/feedback-cafe-2026-10-14.md`, the cafe's nine frictions, each now fixed.
+- **An upgrade keeps what people wrote.** Each example's `delta.ts` runs delta's migrations first,
+  `await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), migrating)`, then
+  `createTables` and `migrateSchema`; each has an empty `migrations/`. `migrating` is `{ app,
+  schema }`, the example's own name and schema: the examples may share a database, and each runs
+  only its own migrations, and one new to it runs none though another's tables are there
+  (`src/migrating.test.ts`). `examples/leave/upgrade.test.ts` is the story:
+  Ann's requests are still there after leave is upgraded to a version that adds a reason, renames a
+  field and drops one; Mo still sees them, and undo never reaches back across the upgrade. The
+  eta-app skill's `reference/migrations.md` says how to write one.
+
+### Changed
+
+- eta is not packed for npm: `package.json` has no `files`; a project takes eta by `bun create` and `bun run eta:update`.
+- **eta runs on `@blueshed/delta` 1.0**: delta without Postgres, which is dzql's now. eta uses
+  `core`, `local`, `sqlite`, `kinds` and `server`, none of which changed; the gate passes as it was.
+- **eta runs on `@blueshed/delta` 0.16.** 0.14 brought migrations and made the schema the
+  contract: delta reads and sends only the columns a schema declares, and keeps the rest, so a
+  version that adds a column and one that does not can share a database. 0.15 publishes delta's
+  case suite (`@blueshed/delta/testing`); 0.16 adds `@blueshed/delta/backend`, for dzql, which
+  eta does not use. What to change: nothing; take migrations below.
+
+### Fixed
+
+- The stories' wire check probes a select with the option it was drawn showing, as a browser sends it (the last `selected`, else the first not disabled; none in a list), not an empty value, so a permit no longer needs a refusal for a value no select sends.
+- `bun create` no longer says a project started "with what its changelog had under Unreleased" when that section was empty.
 
 ## [0.53.0] - 2026-10-14
 
