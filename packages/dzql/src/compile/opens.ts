@@ -266,18 +266,25 @@ function dayOf(v: string, key: string, refuse: Refuse): string {
 /** A document's function for `open_at`: the document as it stood at a time the caller gives. */
 export const openAtFunction = (prefix: string): string => openFunction(prefix).replace(/^dzql_open__/, "dzql_open_at__");
 
+/** A document's whole read, for the ledger: `dzql_open_whole__<slug>`. */
+export const openWholeFunction = (prefix: string): string => openFunction(prefix).replace(/^dzql_open__/, "dzql_open_whole__");
+
 /**
  * One document's read, as `open` (`delta_open`: the time is the name's, an implied
  * root opens with its defaults, the version is kept) or as `open_at`
  * (`delta_open_at`: the time is the caller's, a root not there is null, no version).
+ * `whole`: as `open`, every column of every row whatever columns the document
+ * names (`_delta_open(name, TRUE)`: what the ledger's inverse and a walk's guard
+ * read), with no `_as`.
  */
-function readOf(schema: Schema, doc: DocDef, at: boolean): string {
+export function readOf(schema: Schema, given: DocDef, at: boolean, whole = false): string {
+  const doc: DocDef = whole ? { ...given, columns: undefined } : given;
   const root = need(schema, doc, doc.root);
   const rootJson = rowOf(root, doc, doc.root, "t");
   const fields = (included: (coll: string) => string) =>
     doc.include.map((c) => ` || jsonb_build_object(${lit(c)}, ${included(c)})`).join("");
   const emptyIncludes = doc.include.map((c) => ` || jsonb_build_object(${lit(c)}, '{}'::jsonb)`).join("");
-  const fn = at ? openAtFunction(doc.prefix) : openFunction(doc.prefix);
+  const fn = whole ? openWholeFunction(doc.prefix) : at ? openAtFunction(doc.prefix) : openFunction(doc.prefix);
   const scope = scopeOf(schema, doc);
   const where = (first: string[]) => [...first, ...(scope.conds ? [scope.conds] : [])].join(" AND ") || "TRUE";
   const params = at ? "p_name TEXT, p_given TIMESTAMPTZ" : "p_name TEXT";
@@ -312,7 +319,7 @@ BEGIN
   END IF;` : ""}
   ${done}
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;${whole ? "" : `
 
 CREATE OR REPLACE FUNCTION ${fn}_as(p_user_id TEXT, ${params})
 RETURNS JSONB AS $$
@@ -320,7 +327,7 @@ BEGIN
   PERFORM set_config('app.user_id', p_user_id, true);
   RETURN ${fn}(${at ? "p_name, p_given" : "p_name"});
 END
-$$ LANGUAGE plpgsql;`;
+$$ LANGUAGE plpgsql;`}`;
 }
 
 /** One document's reads: its open and its open_at, each with its `_as`. */

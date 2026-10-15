@@ -234,17 +234,12 @@ DECLARE
   v_doc    JSONB := COALESCE(_delta_open(p_doc_name, TRUE), '{}'::jsonb);
   v_def    _delta_docs := _delta_find_doc(p_doc_name);
   v_scope  JSONB;
-  v_coll   RECORD;
-  v_exists BOOLEAN;
 BEGIN
   IF NOT COALESCE(v_def.implied, FALSE) THEN RETURN v_doc; END IF;
   v_scope := _delta_resolve_scope(v_def, p_doc_name);
   IF (v_scope->>'mode') <> 'single' THEN RETURN v_doc; END IF;
-  SELECT * INTO v_coll FROM _delta_collections WHERE collection_key = v_def.root_collection;
-  IF NOT FOUND THEN RETURN v_doc; END IF;
-  EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I WHERE id = $1)', _delta_source_view(v_coll.table_name, v_coll.temporal))
-    INTO v_exists USING (v_scope->'values'->>'id')::BIGINT;
-  IF v_exists THEN RETURN v_doc; END IF;
+  -- (its root collection is there: _delta_open raised otherwise)
+  IF _delta_row_there(v_def.root_collection, (v_scope->'values'->>'id')::BIGINT) THEN RETURN v_doc; END IF;
   RETURN v_doc || jsonb_build_object(v_def.root_collection, 'null'::jsonb);
 END;
 $$ LANGUAGE plpgsql;
@@ -350,7 +345,7 @@ $$ LANGUAGE plpgsql STABLE;
 -- whole: what the ledger's inverse and a walk's guard read.
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_open(p_doc_name TEXT, p_whole BOOLEAN)
+CREATE OR REPLACE FUNCTION _delta_open_framework(p_doc_name TEXT, p_whole BOOLEAN)
 RETURNS JSONB AS $$
 DECLARE
   v_def       _delta_docs;
@@ -443,6 +438,11 @@ BEGIN
   RETURN v_result || jsonb_build_object('_version', v_version);
 END;
 $$ LANGUAGE plpgsql;
+
+-- the framework's, until dzql's compiler (`compileLedger`) sends each document
+-- it compiled to its own open, shown or whole
+CREATE OR REPLACE FUNCTION _delta_open(p_doc_name TEXT, p_whole BOOLEAN)
+RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_open_framework(p_doc_name, p_whole); $$;
 
 CREATE OR REPLACE FUNCTION delta_open(p_doc_name TEXT)
 RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_open(p_doc_name, FALSE); $$;
