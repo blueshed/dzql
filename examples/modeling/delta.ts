@@ -20,7 +20,9 @@ export const schema = defineSchema({
   logins: { table: "mdl_logins", columns: { person_id: "text", hash: "text" }, temporal: false },
 });
 
-await migrate(db, await fromFolder(`${import.meta.dir}/migrations`)); // first, what the schema cannot say: a rename, a drop, data moved
+/** Whose migrations these are, and its schema: the examples may share a database, and each runs only its own. */
+export const migrating = { app: "modeling", schema };
+await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), migrating); // first, what the schema cannot say: a rename, a drop, data moved
 createTables(db, schema);
 migrateSchema(db, schema);
 

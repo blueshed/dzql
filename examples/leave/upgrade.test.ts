@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createTables, defineDoc, defineSchema, fromFolder, migrate, registerDocs } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
-import { schema, tokenId } from "./delta";
+import { migrating, schema, tokenId } from "./delta";
 
 // An upgrade is not a write, so this story is no harness story. It makes a database the way leave's
 // previous version left it -- that version's tables and seed, and a week Ann asked for and Mo
@@ -62,7 +62,7 @@ const annsRequests = (db: Database) =>
 beforeAll(async () => {
   await previousVersion();
   const db = new Database(path);
-  await migrate(db, await fromFolder(join(import.meta.dir, "upgrade")));
+  await migrate(db, await fromFolder(join(import.meta.dir, "upgrade")), migrating);
   db.close();
 });
 

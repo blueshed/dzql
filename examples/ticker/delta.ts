@@ -20,7 +20,9 @@ export const schema = defineSchema({
   desks: { table: "ticker_desks", columns: { page: "text?", reading: "json?", filter: "json?", hide: "json?" }, temporal: false },
 });
 
-await migrate(db, await fromFolder(`${import.meta.dir}/migrations`)); // first, what the schema cannot say: a rename, a drop, data moved
+/** Whose migrations these are, and its schema: the examples may share a database, and each runs only its own. */
+export const migrating = { app: "ticker", schema };
+await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), migrating); // first, what the schema cannot say: a rename, a drop, data moved
 createTables(db, schema);
 migrateSchema(db, schema);
 

@@ -17,8 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **An upgrade keeps what people wrote.** Each example's `delta.ts` runs delta's migrations first,
-  `await migrate(db, await fromFolder(`${import.meta.dir}/migrations`))`, then `createTables` and
-  `migrateSchema`; each has an empty `migrations/`. `examples/leave/upgrade.test.ts` is the story:
+  `await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), migrating)`, then
+  `createTables` and `migrateSchema`; each has an empty `migrations/`. `migrating` is `{ app,
+  schema }`, the example's own name and schema: the examples may share a database, and each runs
+  only its own migrations, and one new to it runs none though another's tables are there
+  (`src/migrating.test.ts`). `examples/leave/upgrade.test.ts` is the story:
   Ann's requests are still there after leave is upgraded to a version that adds a reason, renames a
   field and drops one; Mo still sees them, and undo never reaches back across the upgrade. The
   eta-app skill's `reference/migrations.md` says how to write one.

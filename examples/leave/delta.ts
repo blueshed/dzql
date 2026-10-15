@@ -21,7 +21,9 @@ export const schema = defineSchema({
 /** A token as it is kept: its SHA-256, never the token. */
 export const tokenId = (token: string): string => new Bun.CryptoHasher("sha256").update(token).digest("hex");
 
-await migrate(db, await fromFolder(`${import.meta.dir}/migrations`)); // first, what the schema cannot say: a rename, a drop, data moved
+/** Whose migrations these are, and its schema: the examples may share a database, and each runs only its own. */
+export const migrating = { app: "leave", schema };
+await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), migrating); // first, what the schema cannot say: a rename, a drop, data moved
 createTables(db, schema);
 migrateSchema(db, schema);
 

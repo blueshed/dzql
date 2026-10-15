@@ -21,8 +21,12 @@ export function up(db: Database) { dropColumn(db, "leave_requests", "days"); }
 leave's stories on it. The helpers are delta's (`@blueshed/delta/sqlite`: `renameColumn`,
 `dropColumn`, `renameTable`).
 
-- `delta.ts` runs them first, then the schema: `await migrate(db, await fromFolder(...))`, then
-  `createTables`, then `migrateSchema`. Change the schema to its new shape in the same commit.
+- `delta.ts` runs them first, then the schema: `await migrate(db, await fromFolder(...), { app,
+  schema })`, then `createTables`, then `migrateSchema`. Change the schema to its new shape in the
+  same commit.
+- `app` is whose they are, recorded with each id: apps sharing a database each run only their own.
+  `schema` says whether the app is new here (its tables not there), and which ledger entries a
+  migration fences. Without them, another app's tables make it not new, and every app's undo is fenced.
 - A file is `NNN-name.ts` exporting `up(db)`; its name is its id, recorded in `delta_migrations`.
   They run in name order, once each, each in its own transaction: one that throws is rolled back
   and stops start-up.

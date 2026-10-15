@@ -10,7 +10,7 @@ export const schema = defineSchema({
   rooms: { table: "chat_rooms", columns: {}, temporal: false },
   messages: { table: "chat_messages", parent: "rooms", columns: { name: "text", text: "text", sent_at: "integer" }, temporal: false },
 });
-await migrate(db, await fromFolder(`${import.meta.dir}/migrations`)); // migrations.md
+await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), { app: "chat", schema }); // migrations.md
 createTables(db, schema);
 migrateSchema(db, schema);
 export const delta = createLocal();
