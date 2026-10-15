@@ -50,7 +50,6 @@
   "author": "Peter Bunyan",
   "license": "MIT",
   "dependencies": {
-    "@blueshed/delta": "^0.16.0",
     "@electric-sql/pglite": "^0.5.4",
     "dotenv": "^16.4.5",
     "jose": "^6.2.4",
@@ -63,10 +62,12 @@
     "@types/pg": "^8.20.0",
     "pinia": "^3.0.4",
     "typescript": "^5.0.0",
-    "vue": "^3.5.26"
+    "vue": "^3.5.26",
+    "@blueshed/delta": "^1.0.0"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "@blueshed/delta": "^1.0.0"
   },
   "engines": {
     "bun": ">=1.0.0"

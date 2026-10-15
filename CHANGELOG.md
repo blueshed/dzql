@@ -38,6 +38,9 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **`@blueshed/delta` is a peer, `^1.0.0`**: an app installs delta and dzql side by side, and they
+  share the one delta (its server, its client, its definitions). delta 1.0.0 is delta without
+  Postgres; dzql is its Postgres.
 - **A document registered by hand opens through the framework.** `docTypeFromDef` reads through a
   document's compiled functions when `generateSql` made them, and through `delta_open` /
   `delta_open_at` for a document whose SQL was written by hand.
