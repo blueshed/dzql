@@ -3,7 +3,9 @@
 ## Read the Documentation First
 
 Before working on this codebase, read:
-- `packages/dzql/docs/for_ai.md` - **AI guide for domain definitions and patterns**
+- `philo.md` - **what dzql is for now**: delta's compiled Postgres step, and why
+- Workshop's `docs/postgres-split-plan.md` - the plan dzql is part way through (steps 2-5)
+- `packages/dzql/docs/for_ai.md` - AI guide for the whole-stack dzql (`domain.ts`), which retires in step 5
 - `packages/dzql/docs/README.md` - General documentation
 - `packages/dzql/docs/project-setup.md` - Project setup guide
 - `packages/create-dzql/README.md` - Starter template documentation
@@ -26,21 +28,40 @@ an item is worked on. Same shape as duckdown's.
 
 ```
 packages/
-├── dzql/          # The dzql package on npm: compiler, runtime, client
-│   ├── src/       # Compiler, runtime, client
-│   ├── docs/      # Documentation
-│   └── tests/     # Integration tests
-└── create-dzql/   # Starter template (bun create dzql)
+├── dzql/                # The dzql package on npm
+│   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt
+│   ├── src/sql/         # delta's framework SQL (001a-001g, auth-jwt.sql), replaced piece by piece by compiled SQL
+│   ├── src/compile/     # the compiler from delta's definitions: dzql/compile (compileOpens, ...)
+│   ├── src/cli, runtime, client, shared   # the whole-stack dzql (domain.ts), retiring in step 5
+│   ├── docs/            # Documentation of the whole-stack dzql
+│   └── tests/           # delta/ (delta's cases), compile/ (compiled = framework), integration/ (whole stack)
+└── create-dzql/         # Starter template (bun create dzql), retiring in step 5
 ```
 
-dzql compiles TypeScript domain definitions to SQL. The old interpreter-based
-runtime has been removed; it remains in git history only.
+## dzql as delta's Postgres step
+
+- **delta's wire and definitions are the contract.** An app's `defineSchema` / `defineDoc` are the
+  input; a client talks to dzql exactly as to delta's SQLite. `src/postgres/` was copied from
+  delta 0.15.0 and imports only delta's public subpaths and `@blueshed/delta/backend`.
+- **delta's cases are the proof.** `tests/delta/` runs `@blueshed/delta/testing` unchanged: the
+  path, `owns`, the law over generated writes, the write cases. Never change a case to make dzql
+  pass: a different answer is dzql's bug (or delta's, fixed in delta and released first).
+- **The compiler is deterministic, and Claude extends it, never stands in for it.** `src/compile/`
+  is pure: definitions in, SQL text out, the same every time. A definition it cannot compile is an
+  error naming the document and what it lacks. A compiled function must answer what the framework
+  answers (`tests/compile/`, both ways on PGlite, on the seed and after writes); its text is pinned
+  by a snapshot, updated (`bun test --update-snapshots`) only with the change that explains it.
+- **Permissions are a document's** (`owns` as a path), **migrations are delta's**: no table rules,
+  no upgrade scheme of dzql's own (philo.md).
+- **The whole-stack dzql** (`src/cli`, `runtime`, `client`, the Pinia stores, `create-dzql`) is kept
+  working until step 5 retires it: fix what breaks, add nothing to it.
 
 ## Testing
 
 - Run tests: `cd packages/dzql && bun run test`
 - Tests run against Docker PostgreSQL (see `packages/dzql/compose.yml`)
-- Follow patterns in `packages/dzql/tests/integration/`
+- `tests/delta/` and `tests/compile/` run on PGlite with no Docker (`bun test tests/delta tests/compile`)
+- Follow patterns in `packages/dzql/tests/integration/` for the whole stack
 - The test script handles Docker lifecycle: starts fresh, runs tests, tears down
 
 **Test-Driven Development:** Write tests first. Add failing tests for new features or bugs, then implement until they pass. This ensures the feature works and prevents regressions.

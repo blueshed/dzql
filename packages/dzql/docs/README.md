@@ -1,5 +1,11 @@
 # DZQL: Realtime Apps Without the Boilerplate
 
+> **The whole-stack dzql.** This describes dzql as it stood at 0.7: `domain.ts`, its runtime, the
+> typed client and the Pinia stores. They keep working until step 5 of Workshop's
+> `docs/postgres-split-plan.md` retires them. dzql is now delta's compiled Postgres step: a new app
+> starts on [@blueshed/delta](https://github.com/blueshed/delta) and comes to dzql through
+> `dzql/postgres` (`philo.md`, at the repo's root).
+
 DZQL compiles your data model into a complete realtime backend. Define entities and permissions in TypeScript, get a PostgreSQL database with CRUD operations, WebSocket sync, and type-safe client SDK - all generated.
 
 ## Why DZQL?

@@ -23,6 +23,16 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Docs
+
+- **`philo.md` says what dzql is for now**: delta's compiled Postgres step. Stories, then
+  documents, then entities; delta's definitions as the input and its wire as the contract; Claude
+  writes the compiler and is never it; delta's cases as the proof; permissions a document's,
+  migrations delta's. The patterns (Workflow, Activity Stream) stay the vision, over documents.
+- **CLAUDE.md** names the new parts (`src/postgres`, `src/sql`, `src/compile`, `tests/delta`,
+  `tests/compile`) and their rules; `docs/for_ai.md`, `project-setup.md` and `docs/README.md` open
+  with a note that they describe the whole-stack dzql, which step 5 retires.
+
 ### Added
 
 - **Compiled opens: `dzql/compile`'s `compileOpens(schema, docs)`** (step 2b of the Postgres split).
