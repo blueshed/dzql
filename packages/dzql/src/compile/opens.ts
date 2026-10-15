@@ -118,6 +118,10 @@ interface CompiledScope {
   conds: string;
   /** Whether a name can make it one row: no scope (a name with an id), or an `id` equality. */
   single: boolean;
+  /** `body` without what it sets for the reads (v_single, v_id, p_at): reading the values and checking each. */
+  checks: string;
+  /** After `checks`: plpgsql building `_delta_resolve_scope`'s answer as it builds it -- v_where (text), v_values, v_at. */
+  resolve: string;
 }
 
 const REAL = String.raw`^\s*[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)(e[+-]?[0-9]+)?\s*$`;
@@ -149,6 +153,8 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
   IF v_single THEN v_id := v_rest::BIGINT; END IF;`,
       conds: "",
       single: true,
+      checks: "",
+      resolve: "",
     };
   }
   const parsed = entries
@@ -165,28 +171,38 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
     .sort((a, b) => a.key.length - b.key.length || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));   // jsonb's order of keys
   const params = [...new Set(parsed.map((p) => p.param))].sort((a, b) => (a === "id" ? -1 : b === "id" ? 1 : a < b ? -1 : a > b ? 1 : 0));
   const declare = ["v_parts TEXT[];", "v_date TEXT[];"];
-  const body: string[] = [`v_parts := string_to_array(substring(p_name FROM ${doc.prefix.length + 1}), ':');`, "v_single := FALSE;"];
+  const read = `v_parts := string_to_array(substring(p_name FROM ${doc.prefix.length + 1}), ':');`;
+  const body: string[] = [read, "v_single := FALSE;"];
+  const checks: string[] = [read];
+  const resolve: string[] = [];
   const conds: string[] = [];
+  // a check goes in both; what the reads set, in body alone
+  const check = (...lines: string[]) => { body.push(...lines); checks.push(...lines); };
+  // the framework's where, in its words: `%I <op> %L`, joined by AND
+  const where = (v: string, expr: string) => resolve.push(`IF ${v} IS NOT NULL THEN v_where := v_where || CASE WHEN v_where <> '' THEN ' AND ' ELSE '' END || ${expr}; END IF;`);
   parsed.forEach(({ key, op, param }, i) => {
     const v = `v_s${i + 1}`;
     declare.push(`${v} TEXT;`);
-    body.push(`${v} := NULLIF(v_parts[${params.indexOf(param) + 1}], '');`);
+    check(`${v} := NULLIF(v_parts[${params.indexOf(param) + 1}], '');`);
     const isKey = op !== "at" && (key === "id" || key === root.parent?.fkColumn);
     const def = root.columns[key];
     if (op === "at") {
-      body.push(dayOf(v, key, refuse), `IF ${v} IS NOT NULL THEN p_at := ${v}::TIMESTAMPTZ; END IF;`);
+      check(dayOf(v, key, refuse));
+      body.push(`IF ${v} IS NOT NULL THEN p_at := ${v}::TIMESTAMPTZ; END IF;`);
+      resolve.push(`IF ${v} IS NOT NULL THEN v_at := ${v}; END IF;`);
       return;
     }
     if (!isKey && !def) throw new Error(`[dzql compile] document ${doc.prefix}: scope key "${key}" is not a column of "${doc.root}"`);
     if (op === "like") {
       conds.push(`(${v} IS NULL OR t.${q(key)} ILIKE ${v} || '%')`);
+      where(v, `format('%I ILIKE %L', ${lit(key)}, ${v} || '%')`);
       return;
     }
     const sqlOp = op === "!=" ? "<>" : op;
     if (isKey) {
       const n = `v_n${i + 1}`;
       declare.push(`${n} BOOLEAN;`);
-      body.push(`IF ${v} IS NOT NULL THEN
+      check(`IF ${v} IS NOT NULL THEN
     IF ${v} ~ '${WHOLE}' THEN
       IF ${v} !~ '${SAFE}' THEN ${refuse(`${key} % is past 2^53 - 1, which no number holds exactly`, v)}
       ELSIF abs(${v}::numeric) > 9007199254740991 THEN ${refuse(`${key} % is past 2^53 - 1, which no number holds exactly`, v)}
@@ -202,16 +218,18 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
       const asText = ["!=", "<", "<="].includes(op) ? `t.${q(key)} IS NOT NULL` : "FALSE";
       conds.push(`(${v} IS NULL OR (CASE WHEN ${n} THEN t.${q(key)} ${sqlOp} ${v}::BIGINT ELSE ${asText} END))`);
       if (key === "id" && op === "=") body.push(`IF ${v} IS NOT NULL THEN v_single := TRUE; v_id := ${v}::BIGINT; END IF;`);
+      where(v, `CASE WHEN ${n} THEN format('%I ${op} %L', ${lit(key)}, ${v}) ELSE ${asText === "FALSE" ? "'FALSE'" : `format('%I IS NOT NULL', ${lit(key)})`} END`);
+      if (op === "=") resolve.push(`IF ${v} IS NOT NULL THEN v_values := v_values || jsonb_build_object(${lit(key)}, ${v}); END IF;`);
       return;
     }
     if (def!.type === "integer") {
-      body.push(`IF ${v} IS NOT NULL THEN
+      check(`IF ${v} IS NOT NULL THEN
     IF ${v} !~ '${SAFE}' THEN ${refuse(`${key} must be an integer, not "%"`, v)}
     ELSIF abs(${v}::numeric) > 9007199254740991 THEN ${refuse(`${key} must be an integer, not "%"`, v)}
     END IF;
   END IF;`);
     } else if (def!.type === "real") {
-      body.push(`IF ${v} IS NOT NULL THEN
+      check(`IF ${v} IS NOT NULL THEN
     IF ${v} !~* '${REAL}' THEN ${refuse(`${key} must be a number, not "%"`, v)} END IF;
     BEGIN
       PERFORM ${v}::float8;
@@ -220,11 +238,16 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
     END;
   END IF;`);
     } else if (def!.type === "timestamptz") {
-      body.push(dayOf(v, key, refuse));
+      check(dayOf(v, key, refuse));
     }
     conds.push(`(${v} IS NULL OR t.${q(key)} ${sqlOp} ${v}::${columnSqlType(def!)})`);
+    where(v, `format('%I ${op} %L', ${lit(key)}, ${v})`);
+    if (op === "=") resolve.push(`IF ${v} IS NOT NULL THEN v_values := v_values || jsonb_build_object(${lit(key)}, ${v}); END IF;`);
   });
-  return { declare, body: body.join("\n  "), conds: conds.join(" AND "), single: parsed.some((p) => p.key === "id" && p.op === "=") };
+  return {
+    declare, body: body.join("\n  "), conds: conds.join(" AND "), single: parsed.some((p) => p.key === "id" && p.op === "="),
+    checks: checks.join("\n  "), resolve: resolve.join("\n  "),
+  };
 }
 
 /** A date, YYYY-MM-DD, that the calendar has, read as the instant midnight UTC begins it; anything else refused. */

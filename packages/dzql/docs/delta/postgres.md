@@ -62,12 +62,13 @@ cases, on the seed and after writes. Compiled so far:
 | May a write touch a row (its scope) | `dzql_in_scope__<doc>`, via `_delta_row_in_scope` | `_delta_row_in_scope_framework` |
 | What a document is told of a write | `dzql_told__<doc>`, via `_delta_told` | `_delta_told_framework` |
 | Which open documents hold a row (the fan-out) | `_delta_holders` itself, per collection | `_delta_holders_framework` |
+| Reading a name by its document's scope | `dzql_scope__<doc>`, via `_delta_resolve_scope` | `_delta_resolve_scope_framework` |
 
 Two rules follow:
 
 - **The framework first, then `generateSql`, every time.** `applyFramework` (or vendored
   `001*` files) puts the framework's own `_delta_doc_holds`, `_delta_row_in_scope`,
-  `_delta_told` and `_delta_holders` back: everything still works, and writes are answered by
+  `_delta_told`, `_delta_holders` and `_delta_resolve_scope` back: everything still works, and writes are answered by
   the framework, slower (the compiled opens stay). Re-apply `generateSql` after it, and after `init
   --upgrade`. Vendored, `003-tables.sql` sorts after `001*`, so a tool that re-applies the
   directory in order gets this right; one that re-applies only `001*` must re-apply `003` too.
