@@ -373,7 +373,7 @@ RETURNS BIGINT LANGUAGE sql AS $$ SELECT _delta_tell(p_writer, p_touched, NULL);
 -- not yet written opens empty). `there` in sqlite.ts.
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_row_there(p_collection_key TEXT, p_id BIGINT)
+CREATE OR REPLACE FUNCTION _delta_row_there_framework(p_collection_key TEXT, p_id BIGINT)
 RETURNS BOOLEAN AS $$
 DECLARE
   v_coll   RECORD;
@@ -386,6 +386,10 @@ BEGIN
   RETURN v_exists;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- the framework's, until dzql's compiler (`compileRows`) writes one per collection
+CREATE OR REPLACE FUNCTION _delta_row_there(p_collection_key TEXT, p_id BIGINT)
+RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT _delta_row_there_framework(p_collection_key, p_id); $$;
 
 -- ---------------------------------------------------------------------------
 -- _delta_assert_parent_held: a parent key written (in `p_value`, over the row
@@ -464,6 +468,79 @@ RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_held_columns(p_def, p_coll
 
 CREATE OR REPLACE FUNCTION _delta_write_columns(p_def _delta_docs, p_coll TEXT, p_columns_def JSONB)
 RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_write_columns_framework(p_def, p_coll, p_columns_def); $$;
+
+-- ---------------------------------------------------------------------------
+-- A row's SQL, as delta_apply runs it: the framework's, built from the table's
+-- name at run time; dzql's compiler (`compileRows`) replaces each with one
+-- written for each collection it compiled, any other sent here.
+--   _delta_row_lock: a row as it stands, locked for the write (NULL: not there)
+--   _delta_row_put: a replace's row stored -- a temporal one a new version (one
+--     this write made gives way to it; the standing one closes at `p_ts`), else
+--     the row again -- answered as stored
+--   _delta_next_id: an add's id, minted
+--   _delta_row_clear_moment: a temporal version this write made and took back
+--     (it never was outside the write), so an add of its id takes its place
+-- (_delta_row_there, above, is an add's "is the id there now".)
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION _delta_row_lock_framework(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row JSONB;
+BEGIN
+  IF p_temporal THEN
+    EXECUTE format('SELECT to_jsonb(t.*) FROM %I t WHERE t.id = $1 AND valid_to IS NULL FOR UPDATE', p_table) INTO v_row USING p_id;
+  ELSE
+    EXECUTE format('SELECT to_jsonb(t.*) FROM %I t WHERE t.id = $1 FOR UPDATE', p_table) INTO v_row USING p_id;
+  END IF;
+  RETURN v_row;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION _delta_row_put_framework(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT, p_row JSONB, p_ts TIMESTAMPTZ)
+RETURNS JSONB AS $$
+DECLARE
+  v_row JSONB;
+BEGIN
+  IF p_temporal THEN
+    EXECUTE format('DELETE FROM %I WHERE id = $1 AND valid_to IS NULL AND valid_from = $2', p_table) USING p_id, p_ts;
+    EXECUTE format('UPDATE %I SET valid_to = $2 WHERE id = $1 AND valid_to IS NULL', p_table) USING p_id, p_ts;
+    EXECUTE format('INSERT INTO %I AS t SELECT * FROM jsonb_populate_record(null::%I, $1) RETURNING to_jsonb(t.*)', p_table, p_table)
+      INTO v_row USING p_row || jsonb_build_object('valid_from', p_ts, 'valid_to', NULL);
+  ELSE
+    EXECUTE format('DELETE FROM %I WHERE id = $1', p_table) USING p_id;
+    EXECUTE format('INSERT INTO %I AS t SELECT * FROM jsonb_populate_record(null::%I, $1) RETURNING to_jsonb(t.*)', p_table, p_table)
+      INTO v_row USING p_row;
+  END IF;
+  RETURN v_row;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION _delta_next_id_framework(p_coll TEXT, p_table TEXT)
+RETURNS BIGINT AS $$
+DECLARE
+  v_id BIGINT;
+BEGIN
+  EXECUTE format('SELECT nextval(%L)', 'seq_' || p_table) INTO v_id;
+  RETURN v_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION _delta_row_clear_moment_framework(p_coll TEXT, p_table TEXT, p_id BIGINT, p_ts TIMESTAMPTZ)
+RETURNS void AS $$
+BEGIN
+  EXECUTE format('DELETE FROM %I WHERE id = $1 AND valid_from = $2 AND valid_to = $2', p_table) USING p_id, p_ts;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION _delta_row_lock(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT)
+RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_row_lock_framework(p_coll, p_table, p_temporal, p_id); $$;
+CREATE OR REPLACE FUNCTION _delta_row_put(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT, p_row JSONB, p_ts TIMESTAMPTZ)
+RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_row_put_framework(p_coll, p_table, p_temporal, p_id, p_row, p_ts); $$;
+CREATE OR REPLACE FUNCTION _delta_next_id(p_coll TEXT, p_table TEXT)
+RETURNS BIGINT LANGUAGE sql AS $$ SELECT _delta_next_id_framework(p_coll, p_table); $$;
+CREATE OR REPLACE FUNCTION _delta_row_clear_moment(p_coll TEXT, p_table TEXT, p_id BIGINT, p_ts TIMESTAMPTZ)
+RETURNS void LANGUAGE sql AS $$ SELECT _delta_row_clear_moment_framework(p_coll, p_table, p_id, p_ts); $$;
 
 CREATE OR REPLACE FUNCTION _delta_whole(p_columns JSONB, p_value JSONB)
 RETURNS JSONB AS $$
@@ -688,17 +765,7 @@ BEGIN
       v_blank := CASE WHEN array_length(v_parts, 1) = 1 THEN _delta_whole(v_cols, v_op->'value') ELSE '{}'::jsonb END;
 
       -- Read + lock
-      IF v_coll.temporal THEN
-        EXECUTE format(
-          'SELECT to_jsonb(t.*) FROM %I t WHERE t.id = $1 AND valid_to IS NULL FOR UPDATE',
-          v_coll.table_name
-        ) INTO v_row USING v_doc_id;
-      ELSE
-        EXECUTE format(
-          'SELECT to_jsonb(t.*) FROM %I t WHERE t.id = $1 FOR UPDATE',
-          v_coll.table_name
-        ) INTO v_row USING v_doc_id;
-      END IF;
+      v_row := _delta_row_lock(v_coll_key, v_coll.table_name, v_coll.temporal, v_doc_id);   -- read, and lock
 
       IF v_row IS NULL THEN
         RAISE EXCEPTION 'root row not found: %', v_def.root_collection USING ERRCODE = 'P0002';
@@ -711,34 +778,8 @@ BEGIN
       -- is the path's (it renumbered the row).
       v_new_row := v_row || v_blank || (v_op->'value') || jsonb_build_object('id', v_doc_id);
 
-      IF v_coll.temporal THEN
-        -- One version per write: a version this write made (its valid_from is the
-        -- write's NOW()) gives way to the next, rather than closing at the same
-        -- instant and colliding with it on (id, valid_from).
-        EXECUTE format(
-          'DELETE FROM %I WHERE id = $1 AND valid_to IS NULL AND valid_from = $2',
-          v_coll.table_name
-        ) USING v_doc_id, v_ts;
-        EXECUTE format(
-          'UPDATE %I SET valid_to = $2 WHERE id = $1 AND valid_to IS NULL',
-          v_coll.table_name
-        ) USING v_doc_id, v_ts;
-
-        v_new_row := v_new_row || jsonb_build_object('valid_from', v_ts, 'valid_to', NULL);
-
-        EXECUTE format(
-          'INSERT INTO %I AS t SELECT * FROM jsonb_populate_record(null::%I, $1) RETURNING to_jsonb(t.*)',
-          v_coll.table_name, v_coll.table_name
-        ) INTO v_new_row USING v_new_row;
-
-        v_new_row := _delta_strip_temporal(v_new_row);
-      ELSE
-        EXECUTE format('DELETE FROM %I WHERE id = $1', v_coll.table_name) USING v_doc_id;
-        EXECUTE format(
-          'INSERT INTO %I AS t SELECT * FROM jsonb_populate_record(null::%I, $1) RETURNING to_jsonb(t.*)',
-          v_coll.table_name, v_coll.table_name
-        ) INTO v_new_row USING v_new_row;
-      END IF;
+      v_new_row := _delta_row_put(v_coll_key, v_coll.table_name, v_coll.temporal, v_doc_id, v_new_row, v_ts);   -- the new version, or the row again
+      IF v_coll.temporal THEN v_new_row := _delta_strip_temporal(v_new_row); END IF;
 
       -- The root written through its document stays in its scope, as a list's
       -- rows do (below): one written out of the rest of its name's scope -- a
@@ -788,7 +829,7 @@ BEGIN
       v_id_text := v_parts[2];
       -- Auto-generate ID from sequence if path ends with '-'
       IF v_id_text = '-' THEN
-        EXECUTE format('SELECT nextval(%L)', 'seq_' || v_coll.table_name) INTO v_id;
+        v_id := _delta_next_id(v_coll_key, v_coll.table_name);
       ELSE
         v_id := _delta_row_id(v_coll_key, v_id_text);
       END IF;
@@ -818,7 +859,7 @@ BEGIN
         v_exists := NOT _delta_serial_new(v_coll.table_name, v_id);
       END IF;
       IF NOT v_exists AND (v_id_text <> '-' OR v_coll.temporal) THEN
-        EXECUTE format('SELECT EXISTS (SELECT 1 FROM %I WHERE id = $1)', v_view) INTO v_exists USING v_id;
+        v_exists := _delta_row_there(v_coll_key, v_id);
       END IF;
       IF v_exists THEN
         RAISE EXCEPTION 'id already taken: % -- add to % for a new id',
@@ -898,10 +939,7 @@ BEGIN
         -- valid_from and valid_to both the write's NOW()) never was outside it,
         -- so an add of the same id takes its place rather than colliding with it
         -- on (id, valid_from). SQLite's insertCollectionRow keeps the same rule.
-        EXECUTE format(
-          'DELETE FROM %I WHERE id = $1 AND valid_from = $2 AND valid_to = $2',
-          v_coll.table_name
-        ) USING v_id, v_ts;
+        PERFORM _delta_row_clear_moment(v_coll_key, v_coll.table_name, v_id, v_ts);
         v_new_row := v_new_row || jsonb_build_object('valid_from', v_ts, 'valid_to', NULL);
       END IF;
 
@@ -1006,17 +1044,7 @@ BEGIN
           USING ERRCODE = 'P0002';
       END IF;
 
-      IF v_coll.temporal THEN
-        EXECUTE format(
-          'SELECT to_jsonb(t.*) FROM %I t WHERE t.id = $1 AND valid_to IS NULL FOR UPDATE',
-          v_coll.table_name
-        ) INTO v_row USING v_id;
-      ELSE
-        EXECUTE format(
-          'SELECT to_jsonb(t.*) FROM %I t WHERE t.id = $1 FOR UPDATE',
-          v_coll.table_name
-        ) INTO v_row USING v_id;
-      END IF;
+      v_row := _delta_row_lock(v_coll_key, v_coll.table_name, v_coll.temporal, v_id);   -- read, and lock
 
       IF v_row IS NULL THEN
         RAISE EXCEPTION 'row not found: %/%', v_coll_key, v_id USING ERRCODE = 'P0002';
@@ -1051,35 +1079,7 @@ BEGIN
       -- an add's is (it renumbered the row).
       v_new_row := v_row || v_blank || (v_op->'value') || jsonb_build_object('id', v_id);
 
-      IF v_coll.temporal THEN
-        -- One version per write: a version this write made (its valid_from is the
-        -- write's NOW()) gives way to the next, rather than closing at the same
-        -- instant and colliding with it on (id, valid_from).
-        EXECUTE format(
-          'DELETE FROM %I WHERE id = $1 AND valid_to IS NULL AND valid_from = $2',
-          v_coll.table_name
-        ) USING v_id, v_ts;
-        EXECUTE format(
-          'UPDATE %I SET valid_to = $2 WHERE id = $1 AND valid_to IS NULL',
-          v_coll.table_name
-        ) USING v_id, v_ts;
-
-        v_new_row := v_new_row || jsonb_build_object('valid_from', v_ts, 'valid_to', NULL);
-
-        EXECUTE format(
-          'INSERT INTO %I AS t SELECT * FROM jsonb_populate_record(null::%I, $1) RETURNING to_jsonb(t.*)',
-          v_coll.table_name, v_coll.table_name
-        ) INTO v_new_row USING v_new_row;
-      ELSE
-        -- Non-temporal: UPDATE with merged row
-        EXECUTE format(
-          'DELETE FROM %I WHERE id = $1', v_coll.table_name
-        ) USING v_id;
-        EXECUTE format(
-          'INSERT INTO %I AS t SELECT * FROM jsonb_populate_record(null::%I, $1) RETURNING to_jsonb(t.*)',
-          v_coll.table_name, v_coll.table_name
-        ) INTO v_new_row USING v_new_row;
-      END IF;
+      v_new_row := _delta_row_put(v_coll_key, v_coll.table_name, v_coll.temporal, v_id, v_new_row, v_ts);   -- the new version, or the row again
 
       -- A list's root row written through the list stays in its scope, as an
       -- add through it is given its bindings: a field, a row or a merge that

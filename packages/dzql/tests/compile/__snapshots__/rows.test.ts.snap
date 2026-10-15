@@ -1,0 +1,176 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the compiled text is the same for the same schema, and pinned 1`] = `
+"CREATE OR REPLACE FUNCTION _delta_row_lock(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT)
+RETURNS JSONB AS $$
+DECLARE
+  v_row JSONB;
+BEGIN
+  CASE p_coll
+    WHEN 'weddings' THEN
+      SELECT to_jsonb(t.*) INTO v_row FROM "fo_weddings" t WHERE t.id = p_id FOR UPDATE;
+      RETURN v_row;
+    WHEN 'households' THEN
+      SELECT to_jsonb(t.*) INTO v_row FROM "fo_households" t WHERE t.id = p_id FOR UPDATE;
+      RETURN v_row;
+    WHEN 'courses' THEN
+      SELECT to_jsonb(t.*) INTO v_row FROM "fo_courses" t WHERE t.id = p_id FOR UPDATE;
+      RETURN v_row;
+    WHEN 'drinks' THEN
+      SELECT to_jsonb(t.*) INTO v_row FROM "fo_drinks" t WHERE t.id = p_id FOR UPDATE;
+      RETURN v_row;
+    WHEN 'tags' THEN
+      SELECT to_jsonb(t.*) INTO v_row FROM "fo_tags" t WHERE t.id = p_id FOR UPDATE;
+      RETURN v_row;
+    WHEN 'notes' THEN
+      SELECT to_jsonb(t.*) INTO v_row FROM "fo_notes" t WHERE t.id = p_id AND valid_to IS NULL FOR UPDATE;
+      RETURN v_row;
+    WHEN 'seats' THEN
+      SELECT to_jsonb(t.*) INTO v_row FROM "fo_seats" t WHERE t.id = p_id FOR UPDATE;
+      RETURN v_row;
+    WHEN 'slots' THEN
+      SELECT to_jsonb(t.*) INTO v_row FROM "fo_slots" t WHERE t.id = p_id FOR UPDATE;
+      RETURN v_row;
+    WHEN 'favours' THEN
+      SELECT to_jsonb(t.*) INTO v_row FROM "fo_favours" t WHERE t.id = p_id FOR UPDATE;
+      RETURN v_row;
+    WHEN 'asks' THEN
+      SELECT to_jsonb(t.*) INTO v_row FROM "order" t WHERE t.id = p_id AND valid_to IS NULL FOR UPDATE;
+      RETURN v_row;
+    ELSE RETURN _delta_row_lock_framework(p_coll, p_table, p_temporal, p_id);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION _delta_row_put(p_coll TEXT, p_table TEXT, p_temporal BOOLEAN, p_id BIGINT, p_row JSONB, p_ts TIMESTAMPTZ)
+RETURNS JSONB AS $$
+DECLARE
+  v_row JSONB;
+BEGIN
+  CASE p_coll
+    WHEN 'weddings' THEN
+      DELETE FROM "fo_weddings" WHERE id = p_id;
+      INSERT INTO "fo_weddings" AS t SELECT * FROM jsonb_populate_record(null::"fo_weddings", p_row) RETURNING to_jsonb(t.*) INTO v_row;
+      RETURN v_row;
+    WHEN 'households' THEN
+      DELETE FROM "fo_households" WHERE id = p_id;
+      INSERT INTO "fo_households" AS t SELECT * FROM jsonb_populate_record(null::"fo_households", p_row) RETURNING to_jsonb(t.*) INTO v_row;
+      RETURN v_row;
+    WHEN 'courses' THEN
+      DELETE FROM "fo_courses" WHERE id = p_id;
+      INSERT INTO "fo_courses" AS t SELECT * FROM jsonb_populate_record(null::"fo_courses", p_row) RETURNING to_jsonb(t.*) INTO v_row;
+      RETURN v_row;
+    WHEN 'drinks' THEN
+      DELETE FROM "fo_drinks" WHERE id = p_id;
+      INSERT INTO "fo_drinks" AS t SELECT * FROM jsonb_populate_record(null::"fo_drinks", p_row) RETURNING to_jsonb(t.*) INTO v_row;
+      RETURN v_row;
+    WHEN 'tags' THEN
+      DELETE FROM "fo_tags" WHERE id = p_id;
+      INSERT INTO "fo_tags" AS t SELECT * FROM jsonb_populate_record(null::"fo_tags", p_row) RETURNING to_jsonb(t.*) INTO v_row;
+      RETURN v_row;
+    WHEN 'notes' THEN
+      DELETE FROM "fo_notes" WHERE id = p_id AND valid_to IS NULL AND valid_from = p_ts;
+      UPDATE "fo_notes" SET valid_to = p_ts WHERE id = p_id AND valid_to IS NULL;
+      INSERT INTO "fo_notes" AS t SELECT * FROM jsonb_populate_record(null::"fo_notes", p_row || jsonb_build_object('valid_from', p_ts, 'valid_to', NULL))
+        RETURNING to_jsonb(t.*) INTO v_row;
+      RETURN v_row;
+    WHEN 'seats' THEN
+      DELETE FROM "fo_seats" WHERE id = p_id;
+      INSERT INTO "fo_seats" AS t SELECT * FROM jsonb_populate_record(null::"fo_seats", p_row) RETURNING to_jsonb(t.*) INTO v_row;
+      RETURN v_row;
+    WHEN 'slots' THEN
+      DELETE FROM "fo_slots" WHERE id = p_id;
+      INSERT INTO "fo_slots" AS t SELECT * FROM jsonb_populate_record(null::"fo_slots", p_row) RETURNING to_jsonb(t.*) INTO v_row;
+      RETURN v_row;
+    WHEN 'favours' THEN
+      DELETE FROM "fo_favours" WHERE id = p_id;
+      INSERT INTO "fo_favours" AS t SELECT * FROM jsonb_populate_record(null::"fo_favours", p_row) RETURNING to_jsonb(t.*) INTO v_row;
+      RETURN v_row;
+    WHEN 'asks' THEN
+      DELETE FROM "order" WHERE id = p_id AND valid_to IS NULL AND valid_from = p_ts;
+      UPDATE "order" SET valid_to = p_ts WHERE id = p_id AND valid_to IS NULL;
+      INSERT INTO "order" AS t SELECT * FROM jsonb_populate_record(null::"order", p_row || jsonb_build_object('valid_from', p_ts, 'valid_to', NULL))
+        RETURNING to_jsonb(t.*) INTO v_row;
+      RETURN v_row;
+    ELSE RETURN _delta_row_put_framework(p_coll, p_table, p_temporal, p_id, p_row, p_ts);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION _delta_next_id(p_coll TEXT, p_table TEXT)
+RETURNS BIGINT AS $$
+BEGIN
+  CASE p_coll
+    WHEN 'weddings' THEN
+      RETURN nextval('seq_fo_weddings');
+    WHEN 'households' THEN
+      RETURN nextval('seq_fo_households');
+    WHEN 'courses' THEN
+      RETURN nextval('seq_fo_courses');
+    WHEN 'drinks' THEN
+      RETURN nextval('seq_fo_drinks');
+    WHEN 'tags' THEN
+      RETURN nextval('seq_fo_tags');
+    WHEN 'notes' THEN
+      RETURN nextval('seq_fo_notes');
+    WHEN 'seats' THEN
+      RETURN nextval('seq_fo_seats');
+    WHEN 'slots' THEN
+      RETURN nextval('seq_fo_slots');
+    WHEN 'favours' THEN
+      RETURN nextval('seq_fo_favours');
+    WHEN 'asks' THEN
+      RETURN nextval('seq_order');
+    ELSE RETURN _delta_next_id_framework(p_coll, p_table);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION _delta_row_clear_moment(p_coll TEXT, p_table TEXT, p_id BIGINT, p_ts TIMESTAMPTZ)
+RETURNS void AS $$
+BEGIN
+  CASE p_coll
+    WHEN 'notes' THEN
+      DELETE FROM "fo_notes" WHERE id = p_id AND valid_from = p_ts AND valid_to = p_ts;
+      RETURN;
+    WHEN 'asks' THEN
+      DELETE FROM "order" WHERE id = p_id AND valid_from = p_ts AND valid_to = p_ts;
+      RETURN;
+    ELSE PERFORM _delta_row_clear_moment_framework(p_coll, p_table, p_id, p_ts);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION _delta_row_there(p_collection_key TEXT, p_id BIGINT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  p_coll TEXT := p_collection_key;
+BEGIN
+  CASE p_coll
+    WHEN 'weddings' THEN
+      RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM "fo_weddings" WHERE id = p_id);
+    WHEN 'households' THEN
+      RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM "fo_households" WHERE id = p_id);
+    WHEN 'courses' THEN
+      RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM "fo_courses" WHERE id = p_id);
+    WHEN 'drinks' THEN
+      RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM "fo_drinks" WHERE id = p_id);
+    WHEN 'tags' THEN
+      RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM "fo_tags" WHERE id = p_id);
+    WHEN 'notes' THEN
+      RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM "current_fo_notes" WHERE id = p_id);
+    WHEN 'seats' THEN
+      RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM "fo_seats" WHERE id = p_id);
+    WHEN 'slots' THEN
+      RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM "fo_slots" WHERE id = p_id);
+    WHEN 'favours' THEN
+      RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM "fo_favours" WHERE id = p_id);
+    WHEN 'asks' THEN
+      RETURN p_id IS NOT NULL AND EXISTS (SELECT 1 FROM "current_order" WHERE id = p_id);
+    ELSE RETURN _delta_row_there_framework(p_collection_key, p_id);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+"
+`;

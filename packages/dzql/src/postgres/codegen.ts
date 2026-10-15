@@ -33,6 +33,7 @@ import { compileHolders } from "../compile/holders";
 import { compileResolve } from "../compile/resolve";
 import { compileRootThere } from "../compile/root";
 import { compileColumns } from "../compile/columns";
+import { compileRows } from "../compile/rows";
 import { compileTold } from "../compile/told";
 
 export interface GenerateSqlOptions {
@@ -177,6 +178,6 @@ export function generateSql(
   lines.push("");
 
   // each document opened by SQL compiled for it (dzql), which docTypeFromDef calls
-  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs));
+  lines.push("", compileOpens(schema, docs), "", compileHolds(schema, docs), "", compileInScope(schema, docs), "", compileTold(schema, docs), "", compileHolders(schema, docs), "", compileResolve(schema, docs), "", compileRootThere(schema, docs), "", compileColumns(schema, docs), "", compileRows(schema));
   return lines.join("\n");
 }

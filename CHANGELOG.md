@@ -130,6 +130,25 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   1.063 ms framework (41% less); through a one-row document, 0.636 to 0.60 ms. The codegen test
   that a plain table has no `valid_from` now asks of the table's DDL: the checks name it, as a
   write's value may carry it.
+- **A write's row SQL is written out per collection** (2c, `delta_apply`'s fourth slice). The
+  statements a write runs on a row were built from the table's name and planned again on every
+  call (`EXECUTE format(...)`). They are now functions that `generateSql` writes for each
+  collection, as statements whose plans the database keeps:
+  - `_delta_row_lock`: the row as it stands, locked;
+  - `_delta_row_put`: a replace's row stored, a temporal one as a new version;
+  - `_delta_next_id`: an add's id;
+  - `_delta_row_clear_moment`: a version this write made and took back;
+  - `_delta_row_there`: is it there now.
+
+  Any other collection goes to each one's `_framework`. Held equal (`tests/compile/rows.test.ts`)
+  for every collection and every id (each version, absent, none), on the seed and after writes.
+  Each pair runs in one transaction, rolled back to the same savepoint between, so both see one
+  `now()`, and the table left behind is compared too. The replaces cover the row again, changed,
+  twice in one write, and missing what it must have. Seven mutations each fail it. An add's own
+  INSERT stays the framework's: it names the columns the row gives, so one it leaves out takes its
+  database default. A write: 0.595 ms p50 compiled against 1.068 ms framework (44% less; 3.25x a
+  raw `UPDATE`, from 5.8x); through a one-row document, 0.60 to 0.567 ms; the fan-out with 10
+  open, 0.76 to 0.69 ms.
 - **Doc comments name dzql's subpaths.** Nine comments in `src/postgres/` and `auth-jwt.sql`
   still said `@blueshed/delta/postgres` and `@blueshed/delta/auth-jwt`, which delta 1.0 no longer
   has; they now say `dzql/postgres` and `dzql/auth-jwt`.
