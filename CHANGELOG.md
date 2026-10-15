@@ -23,6 +23,27 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Added
+
+- **dzql holds everything Postgres that delta held** (step 4 of the split, dzql's side), so delta
+  can drop it: delta's Postgres tests (`tests/delta-pg/`: the listener, RLS, the ledger, custom
+  documents, isolation, the pointer and walk vectors in SQL, migrations and the schema contract,
+  `auth-jwt`, the 0.10.0 ledger SQL, the review findings), its Postgres examples
+  (`examples/delta/todos-vs-rls`, `examples/delta/sites-bbox`), its bench (`bench/`, `bun run
+  bench`) and its todo #77 (now #25), and its Postgres commands: `dzql sql`, `dzql init` and
+  `dzql migrate` (a postgres:// URL or a PGlite folder; a SQLite file stays `delta migrate`).
+  `dzql init` stamps what it vendors `@blueshed/dzql`, and upgrades a file `delta init` stamped.
+
+### Changed
+
+- **A document registered by hand opens through the framework.** `docTypeFromDef` reads through a
+  document's compiled functions when `generateSql` made them, and through `delta_open` /
+  `delta_open_at` for a document whose SQL was written by hand.
+- **A compiled read gives the row as stored** (minus a temporal row's validity), narrowed only by
+  a document's held columns, as `delta_open` does: two versions on one database each show their
+  own schema's columns (the schema is the contract), where a read compiled for one version's
+  columns hid a column the other declares.
+
 ### Changed
 
 - **The listener opens documents through compiled SQL** (step 2c, its first piece). `generateSql`

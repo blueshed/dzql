@@ -30,7 +30,8 @@
   "scripts": {
     "test": "bun run test:setup && bun test; status=$?; bun run test:teardown; exit $status",
     "test:setup": "docker compose down -v && docker compose up -d --wait",
-    "test:teardown": "docker compose down -v"
+    "test:teardown": "docker compose down -v",
+    "bench": "bun run bench/run.ts"
   },
   "keywords": [
     "postgresql",
@@ -57,6 +58,7 @@
     "postgres": "^3.4.3"
   },
   "devDependencies": {
+    "@blueshed/railroad": "^0.16.0",
     "@types/bun": "latest",
     "@types/pg": "^8.20.0",
     "pinia": "^3.0.4",

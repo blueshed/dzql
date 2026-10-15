@@ -34,7 +34,10 @@ packages/
 │   ├── src/compile/     # the compiler from delta's definitions: dzql/compile (compileOpens, ...)
 │   ├── src/cli, runtime, client, shared   # the whole-stack dzql (domain.ts), retiring in step 5
 │   ├── docs/            # Documentation of the whole-stack dzql
-│   └── tests/           # delta/ (delta's cases), compile/ (compiled = framework), integration/ (whole stack)
+│   ├── src/postgres/cli.ts  # dzql sql | init | migrate (src/cli/index.ts hands them here)
+│   ├── examples/delta/  # delta's Postgres examples: todos-vs-rls, sites-bbox
+│   ├── bench/           # delta's bench (bun run bench), todo #25
+│   └── tests/           # delta/ (delta's cases), delta-pg/ (delta's Postgres tests), compile/ (compiled = framework), integration/ (whole stack)
 └── create-dzql/         # Starter template (bun create dzql), retiring in step 5
 ```
 

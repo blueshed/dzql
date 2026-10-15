@@ -32,16 +32,21 @@ export function openFunction(prefix: string): string {
   return `dzql_open__${prefix.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`;
 }
 
-/** The columns a document shows of a collection's row: its id, its parent key, and its declared columns or, where it names them, those. */
-function shown(table: ResolvedTable, doc: DocDef, coll: string): string[] {
+/**
+ * A row as a document reads it: as stored (a temporal row without its
+ * validity), so a column a later version added is there for the process that
+ * declares it -- each listener shows its own schema's (the schema is the
+ * contract; a database may hold more). Where the document names the columns it
+ * holds, those, its id and its parent key.
+ */
+function rowOf(table: ResolvedTable, doc: DocDef, coll: string, alias: string): string {
   const held = doc.columns?.[coll];
-  const cols = Object.keys(table.columns).filter((c) => !held || held.includes(c));
-  return ["id", ...(table.parent ? [table.parent.fkColumn] : []), ...cols];
+  if (held) {
+    const cols = ["id", ...(table.parent ? [table.parent.fkColumn] : []), ...Object.keys(table.columns).filter((c) => held.includes(c))];
+    return `jsonb_build_object(${cols.map((c) => `${lit(c)}, ${alias}.${q(c)}`).join(", ")})`;
+  }
+  return table.temporal ? `(to_jsonb(${alias}.*) - 'valid_from' - 'valid_to' - 'override')` : `to_jsonb(${alias}.*)`;
 }
-
-/** A row as a JSON object of the columns shown. */
-const rowJson = (alias: string, cols: string[]): string =>
-  `jsonb_build_object(${cols.map((c) => `${lit(c)}, ${alias}.${q(c)}`).join(", ")})`;
 
 /** The rows of a temporal table that stand now, or at `at` (a time in the name): ` AND <condition>`; nothing for a table that is not temporal. */
 const standing = (table: ResolvedTable, alias: string, at = "p_at"): string =>
@@ -70,7 +75,6 @@ function impliedRoot(table: ResolvedTable, doc: DocDef): string {
  */
 function includedSingle(schema: Schema, doc: DocDef, coll: string): string {
   const table = need(schema, doc, coll);
-  const cols = shown(table, doc, coll);
   if (!table.parent) return includedList(schema, doc, coll);
   const joins: string[] = [];
   let where = "";
@@ -89,13 +93,13 @@ function includedSingle(schema: Schema, doc: DocDef, coll: string): string {
     child = parent;
     alias = p;
   }
-  return `(SELECT COALESCE(jsonb_object_agg(t.id, ${rowJson("t", cols)}), '{}'::jsonb) FROM ${[`${q(table.name)} t`, ...joins].join(" ")} WHERE ${where})`;
+  return `(SELECT COALESCE(jsonb_object_agg(t.id, ${rowOf(table, doc, coll, "t")}), '{}'::jsonb) FROM ${[`${q(table.name)} t`, ...joins].join(" ")} WHERE ${where})`;
 }
 
 /** A collection a list document includes: every row of it, as `_delta_load_collection_all` reads it. */
 function includedList(schema: Schema, doc: DocDef, coll: string): string {
   const table = need(schema, doc, coll);
-  return `(SELECT COALESCE(jsonb_object_agg(t.id, ${rowJson("t", shown(table, doc, coll))}), '{}'::jsonb) FROM ${q(table.name)} t${standing(table, "t").replace(" AND", " WHERE")})`;
+  return `(SELECT COALESCE(jsonb_object_agg(t.id, ${rowOf(table, doc, coll, "t")}), '{}'::jsonb) FROM ${q(table.name)} t${standing(table, "t").replace(" AND", " WHERE")})`;
 }
 
 function need(schema: Schema, doc: DocDef, coll: string): ResolvedTable {
@@ -244,7 +248,7 @@ export const openAtFunction = (prefix: string): string => openFunction(prefix).r
  */
 function readOf(schema: Schema, doc: DocDef, at: boolean): string {
   const root = need(schema, doc, doc.root);
-  const rootJson = rowJson("t", shown(root, doc, doc.root));
+  const rootJson = rowOf(root, doc, doc.root, "t");
   const fields = (included: (coll: string) => string) =>
     doc.include.map((c) => ` || jsonb_build_object(${lit(c)}, ${included(c)})`).join("");
   const emptyIncludes = doc.include.map((c) => ` || jsonb_build_object(${lit(c)}, '{}'::jsonb)`).join("");

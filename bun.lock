@@ -15,7 +15,7 @@
         "create-dzql": "./index.ts",
       },
       "dependencies": {
-        "dzql": "^0.7.0",
+        "dzql": "^0.8.0",
         "invoket": "^0.1.2",
       },
       "devDependencies": {
@@ -37,6 +37,7 @@
         "postgres": "^3.4.3",
       },
       "devDependencies": {
+        "@blueshed/railroad": "^0.16.0",
         "@types/bun": "latest",
         "@types/pg": "^8.20.0",
         "pinia": "^3.0.4",
@@ -58,6 +59,8 @@
     "@babel/types": ["@babel/types@7.28.5", "", { "dependencies": { "@babel/helper-string-parser": "^7.27.1", "@babel/helper-validator-identifier": "^7.28.5" } }, "sha512-qQ5m48eI/MFLQ5PxQj4PFaprjyCTLI37ElWMmNs0K8Lk3dVeOdNpB3ks8jc7yM5CDmVC73eMVk/trk3fgmrUpA=="],
 
     "@blueshed/delta": ["@blueshed/delta@0.16.0", "", { "peerDependencies": { "@blueshed/railroad": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0 || ^0.16.0", "@electric-sql/pglite": "^0.5.4", "jose": "^6.0.0", "pg": "^8.20.0" }, "optionalPeers": ["@blueshed/railroad", "@electric-sql/pglite", "jose", "pg"], "bin": { "delta": "cli.ts" } }, "sha512-6T0LDzvXcycQHvXuAyzb/vEUeDlQIfrGPzi2bWIPEuo9bV6EV0zMtdPNFHepm+ki4xV4A8S++m5QraLTAl/rMg=="],
+
+    "@blueshed/railroad": ["@blueshed/railroad@0.16.2", "", {}, "sha512-dYInSLGVTocDpk9vFOmvBQe2juCJHU0gy+8J8W25lFmxUbPt7BRH9nLJbjzuLXGGrVwZOAXGrVUTzsB/qDCgmA=="],
 
     "@electric-sql/pglite": ["@electric-sql/pglite@0.5.10", "", {}, "sha512-tXc/25U3ulOkiRQuTFdwIv+JhBqtMdAF7Gvo6CfZZWtSB4+hgC4Wr2vwK5ngvvN5PJfAAEGIsfyCVy1JhCOBYw=="],
 
