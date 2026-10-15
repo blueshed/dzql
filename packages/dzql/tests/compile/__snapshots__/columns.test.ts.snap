@@ -1,0 +1,664 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`the compiled text is the same for the same definitions, and pinned 1`] = `
+"CREATE OR REPLACE FUNCTION dzql_columns__fo_board(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_menu(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_household(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_course(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_title(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_tagged(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_notes(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_all_courses(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_catalog(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_courses_noted(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_courses_like(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_menu_like(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_tags_labelled(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_seating(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_seats_kept(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_seats_upto(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_seats_at(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_seats_wished(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_slots_upto(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_slots_of(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_slots_under(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_slots_by(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_slots_on(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_note(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_all_notes(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_drinks(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_course_guests(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_plan(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_weddings(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_guest(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_seat_of(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_all_households(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_party(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_slim(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  v_cols := COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+  CASE p_coll
+    WHEN 'households' THEN RETURN COALESCE((SELECT jsonb_object_agg(k, v) FROM jsonb_each(v_cols) AS e(k, v) WHERE k IN ('email')), '{}'::jsonb);
+    WHEN 'seats' THEN RETURN COALESCE((SELECT jsonb_object_agg(k, v) FROM jsonb_each(v_cols) AS e(k, v) WHERE k IN ('table_no')), '{}'::jsonb);
+    ELSE RETURN v_cols;
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_notes_on(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_courses_noted_on(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_board_on(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_asks(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_asks_from(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION dzql_columns__fo_pub_courses(p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+DECLARE
+  v_cols JSONB;
+BEGIN
+  RETURN COALESCE(NULLIF(current_setting('delta.declared', true), '')::jsonb -> p_coll, p_columns_def);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_write_columns(p_def _delta_docs, p_coll TEXT, p_columns_def JSONB)
+RETURNS JSONB AS $$
+BEGIN
+  CASE p_def.prefix
+    WHEN 'fo-board:' THEN RETURN dzql_columns__fo_board(p_coll, p_columns_def);
+    WHEN 'fo-menu:' THEN RETURN dzql_columns__fo_menu(p_coll, p_columns_def);
+    WHEN 'fo-household:' THEN RETURN dzql_columns__fo_household(p_coll, p_columns_def);
+    WHEN 'fo-course:' THEN RETURN dzql_columns__fo_course(p_coll, p_columns_def);
+    WHEN 'fo-title:' THEN RETURN dzql_columns__fo_title(p_coll, p_columns_def);
+    WHEN 'fo-tagged:' THEN RETURN dzql_columns__fo_tagged(p_coll, p_columns_def);
+    WHEN 'fo-notes:' THEN RETURN dzql_columns__fo_notes(p_coll, p_columns_def);
+    WHEN 'fo-all-courses:' THEN RETURN dzql_columns__fo_all_courses(p_coll, p_columns_def);
+    WHEN 'fo-catalog:' THEN RETURN dzql_columns__fo_catalog(p_coll, p_columns_def);
+    WHEN 'fo-courses-noted:' THEN RETURN dzql_columns__fo_courses_noted(p_coll, p_columns_def);
+    WHEN 'fo-courses-like:' THEN RETURN dzql_columns__fo_courses_like(p_coll, p_columns_def);
+    WHEN 'fo-menu-like:' THEN RETURN dzql_columns__fo_menu_like(p_coll, p_columns_def);
+    WHEN 'fo-tags-labelled:' THEN RETURN dzql_columns__fo_tags_labelled(p_coll, p_columns_def);
+    WHEN 'fo-seating:' THEN RETURN dzql_columns__fo_seating(p_coll, p_columns_def);
+    WHEN 'fo-seats-kept:' THEN RETURN dzql_columns__fo_seats_kept(p_coll, p_columns_def);
+    WHEN 'fo-seats-upto:' THEN RETURN dzql_columns__fo_seats_upto(p_coll, p_columns_def);
+    WHEN 'fo-seats-at:' THEN RETURN dzql_columns__fo_seats_at(p_coll, p_columns_def);
+    WHEN 'fo-seats-wished:' THEN RETURN dzql_columns__fo_seats_wished(p_coll, p_columns_def);
+    WHEN 'fo-slots-upto:' THEN RETURN dzql_columns__fo_slots_upto(p_coll, p_columns_def);
+    WHEN 'fo-slots-of:' THEN RETURN dzql_columns__fo_slots_of(p_coll, p_columns_def);
+    WHEN 'fo-slots-under:' THEN RETURN dzql_columns__fo_slots_under(p_coll, p_columns_def);
+    WHEN 'fo-slots-by:' THEN RETURN dzql_columns__fo_slots_by(p_coll, p_columns_def);
+    WHEN 'fo-slots-on:' THEN RETURN dzql_columns__fo_slots_on(p_coll, p_columns_def);
+    WHEN 'fo-note:' THEN RETURN dzql_columns__fo_note(p_coll, p_columns_def);
+    WHEN 'fo-all-notes:' THEN RETURN dzql_columns__fo_all_notes(p_coll, p_columns_def);
+    WHEN 'fo-drinks:' THEN RETURN dzql_columns__fo_drinks(p_coll, p_columns_def);
+    WHEN 'fo-course-guests:' THEN RETURN dzql_columns__fo_course_guests(p_coll, p_columns_def);
+    WHEN 'fo-plan:' THEN RETURN dzql_columns__fo_plan(p_coll, p_columns_def);
+    WHEN 'fo-weddings:' THEN RETURN dzql_columns__fo_weddings(p_coll, p_columns_def);
+    WHEN 'fo-guest:' THEN RETURN dzql_columns__fo_guest(p_coll, p_columns_def);
+    WHEN 'fo-seat-of:' THEN RETURN dzql_columns__fo_seat_of(p_coll, p_columns_def);
+    WHEN 'fo-all-households:' THEN RETURN dzql_columns__fo_all_households(p_coll, p_columns_def);
+    WHEN 'fo-party:' THEN RETURN dzql_columns__fo_party(p_coll, p_columns_def);
+    WHEN 'fo-slim:' THEN RETURN dzql_columns__fo_slim(p_coll, p_columns_def);
+    WHEN 'fo-notes-on:' THEN RETURN dzql_columns__fo_notes_on(p_coll, p_columns_def);
+    WHEN 'fo-courses-noted-on:' THEN RETURN dzql_columns__fo_courses_noted_on(p_coll, p_columns_def);
+    WHEN 'fo-board-on:' THEN RETURN dzql_columns__fo_board_on(p_coll, p_columns_def);
+    WHEN 'fo-asks:' THEN RETURN dzql_columns__fo_asks(p_coll, p_columns_def);
+    WHEN 'fo-asks-from:' THEN RETURN dzql_columns__fo_asks_from(p_coll, p_columns_def);
+    WHEN 'fo-pub-courses:' THEN RETURN dzql_columns__fo_pub_courses(p_coll, p_columns_def);
+    ELSE RETURN _delta_write_columns_framework(p_def, p_coll, p_columns_def);
+  END CASE;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+CREATE OR REPLACE FUNCTION _delta_assert_fields(p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB)
+RETURNS void AS $$
+DECLARE
+  v_bad TEXT;
+BEGIN
+  CASE p_collection
+    WHEN 'weddings' THEN
+      IF p_parent_fk IS NOT DISTINCT FROM NULL THEN
+        IF p_columns = '{"name":{"type":"text","nullable":false}}'::jsonb THEN
+        IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
+          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'name');
+        IF v_bad IS NOT NULL THEN
+          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+          ('name', CASE WHEN jsonb_typeof((p_value->'name')) <> 'null' AND NOT (jsonb_typeof((p_value->'name')) = 'string') THEN 'name must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        RETURN;
+        END IF;
+      END IF;
+    WHEN 'households' THEN
+      IF p_parent_fk IS NOT DISTINCT FROM 'weddings_id' THEN
+        IF p_columns = '{"email":{"type":"text","nullable":false},"t":{"type":"text","nullable":true}}'::jsonb THEN
+        IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
+          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'email', 't');
+        IF v_bad IS NOT NULL THEN
+          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
+        END IF;
+        IF p_value ? 'weddings_id' AND jsonb_typeof(p_value->'weddings_id') <> 'null'
+           AND NOT (jsonb_typeof(p_value->'weddings_id') = 'string' OR (jsonb_typeof(p_value->'weddings_id') = 'number' AND (p_value->>'weddings_id')::numeric = trunc((p_value->>'weddings_id')::numeric))) THEN
+          RAISE EXCEPTION '% must be an id: an integer', 'weddings_id' USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+          ('email', CASE WHEN jsonb_typeof((p_value->'email')) <> 'null' AND NOT (jsonb_typeof((p_value->'email')) = 'string') THEN 'email must be a string' END),
+          ('t', CASE WHEN jsonb_typeof((p_value->'t')) <> 'null' AND NOT (jsonb_typeof((p_value->'t')) = 'string') THEN 't must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        RETURN;
+        END IF;
+        IF p_columns = '{"email":{"type":"text","nullable":false}}'::jsonb THEN
+        IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
+          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'email');
+        IF v_bad IS NOT NULL THEN
+          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
+        END IF;
+        IF p_value ? 'weddings_id' AND jsonb_typeof(p_value->'weddings_id') <> 'null'
+           AND NOT (jsonb_typeof(p_value->'weddings_id') = 'string' OR (jsonb_typeof(p_value->'weddings_id') = 'number' AND (p_value->>'weddings_id')::numeric = trunc((p_value->>'weddings_id')::numeric))) THEN
+          RAISE EXCEPTION '% must be an id: an integer', 'weddings_id' USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+          ('email', CASE WHEN jsonb_typeof((p_value->'email')) <> 'null' AND NOT (jsonb_typeof((p_value->'email')) = 'string') THEN 'email must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        RETURN;
+        END IF;
+      END IF;
+    WHEN 'courses' THEN
+      IF p_parent_fk IS NOT DISTINCT FROM 'weddings_id' THEN
+        IF p_columns = '{"name":{"type":"text","nullable":false}}'::jsonb THEN
+        IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
+          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'name');
+        IF v_bad IS NOT NULL THEN
+          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
+        END IF;
+        IF p_value ? 'weddings_id' AND jsonb_typeof(p_value->'weddings_id') <> 'null'
+           AND NOT (jsonb_typeof(p_value->'weddings_id') = 'string' OR (jsonb_typeof(p_value->'weddings_id') = 'number' AND (p_value->>'weddings_id')::numeric = trunc((p_value->>'weddings_id')::numeric))) THEN
+          RAISE EXCEPTION '% must be an id: an integer', 'weddings_id' USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+          ('name', CASE WHEN jsonb_typeof((p_value->'name')) <> 'null' AND NOT (jsonb_typeof((p_value->'name')) = 'string') THEN 'name must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        RETURN;
+        END IF;
+      END IF;
+    WHEN 'drinks' THEN
+      IF p_parent_fk IS NOT DISTINCT FROM 'courses_id' THEN
+        IF p_columns = '{"name":{"type":"text","nullable":false}}'::jsonb THEN
+        IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
+          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'courses_id', 'name');
+        IF v_bad IS NOT NULL THEN
+          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
+        END IF;
+        IF p_value ? 'courses_id' AND jsonb_typeof(p_value->'courses_id') <> 'null'
+           AND NOT (jsonb_typeof(p_value->'courses_id') = 'string' OR (jsonb_typeof(p_value->'courses_id') = 'number' AND (p_value->>'courses_id')::numeric = trunc((p_value->>'courses_id')::numeric))) THEN
+          RAISE EXCEPTION '% must be an id: an integer', 'courses_id' USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+          ('name', CASE WHEN jsonb_typeof((p_value->'name')) <> 'null' AND NOT (jsonb_typeof((p_value->'name')) = 'string') THEN 'name must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        RETURN;
+        END IF;
+      END IF;
+    WHEN 'tags' THEN
+      IF p_parent_fk IS NOT DISTINCT FROM NULL THEN
+        IF p_columns = '{"label":{"type":"text","nullable":false}}'::jsonb THEN
+        IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
+          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'label');
+        IF v_bad IS NOT NULL THEN
+          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+          ('label', CASE WHEN jsonb_typeof((p_value->'label')) <> 'null' AND NOT (jsonb_typeof((p_value->'label')) = 'string') THEN 'label must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        RETURN;
+        END IF;
+      END IF;
+    WHEN 'notes' THEN
+      IF p_parent_fk IS NOT DISTINCT FROM 'weddings_id' THEN
+        IF p_columns = '{"text":{"type":"text","nullable":false}}'::jsonb THEN
+        IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
+          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'text');
+        IF v_bad IS NOT NULL THEN
+          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
+        END IF;
+        IF p_value ? 'weddings_id' AND jsonb_typeof(p_value->'weddings_id') <> 'null'
+           AND NOT (jsonb_typeof(p_value->'weddings_id') = 'string' OR (jsonb_typeof(p_value->'weddings_id') = 'number' AND (p_value->>'weddings_id')::numeric = trunc((p_value->>'weddings_id')::numeric))) THEN
+          RAISE EXCEPTION '% must be an id: an integer', 'weddings_id' USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+          ('text', CASE WHEN jsonb_typeof((p_value->'text')) <> 'null' AND NOT (jsonb_typeof((p_value->'text')) = 'string') THEN 'text must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        RETURN;
+        END IF;
+      END IF;
+    WHEN 'seats' THEN
+      IF p_parent_fk IS NOT DISTINCT FROM 'weddings_id' THEN
+        IF p_columns = '{"table_no":{"type":"integer","nullable":false},"kept":{"type":"boolean","nullable":false},"wishes":{"type":"json","nullable":true}}'::jsonb THEN
+        IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
+          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'table_no', 'kept', 'wishes');
+        IF v_bad IS NOT NULL THEN
+          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
+        END IF;
+        IF p_value ? 'weddings_id' AND jsonb_typeof(p_value->'weddings_id') <> 'null'
+           AND NOT (jsonb_typeof(p_value->'weddings_id') = 'string' OR (jsonb_typeof(p_value->'weddings_id') = 'number' AND (p_value->>'weddings_id')::numeric = trunc((p_value->>'weddings_id')::numeric))) THEN
+          RAISE EXCEPTION '% must be an id: an integer', 'weddings_id' USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+          ('table_no', CASE WHEN jsonb_typeof((p_value->'table_no')) <> 'null' AND NOT (jsonb_typeof((p_value->'table_no')) = 'number' AND (p_value->'table_no')::text::numeric = trunc((p_value->'table_no')::text::numeric)) THEN 'table_no must be an integer' END),
+          ('kept', CASE WHEN jsonb_typeof((p_value->'kept')) <> 'null' AND NOT (jsonb_typeof((p_value->'kept')) = 'boolean') THEN 'kept must be a boolean' END)) AS x(k, m) WHERE m IS NOT NULL;
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        RETURN;
+        END IF;
+        IF p_columns = '{"table_no":{"type":"integer","nullable":false}}'::jsonb THEN
+        IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
+          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'table_no');
+        IF v_bad IS NOT NULL THEN
+          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
+        END IF;
+        IF p_value ? 'weddings_id' AND jsonb_typeof(p_value->'weddings_id') <> 'null'
+           AND NOT (jsonb_typeof(p_value->'weddings_id') = 'string' OR (jsonb_typeof(p_value->'weddings_id') = 'number' AND (p_value->>'weddings_id')::numeric = trunc((p_value->>'weddings_id')::numeric))) THEN
+          RAISE EXCEPTION '% must be an id: an integer', 'weddings_id' USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+          ('table_no', CASE WHEN jsonb_typeof((p_value->'table_no')) <> 'null' AND NOT (jsonb_typeof((p_value->'table_no')) = 'number' AND (p_value->'table_no')::text::numeric = trunc((p_value->'table_no')::text::numeric)) THEN 'table_no must be an integer' END)) AS x(k, m) WHERE m IS NOT NULL;
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        RETURN;
+        END IF;
+      END IF;
+    WHEN 'slots' THEN
+      IF p_parent_fk IS NOT DISTINCT FROM 'weddings_id' THEN
+        IF p_columns = '{"price":{"type":"real","nullable":true},"starts":{"type":"timestamptz","nullable":true}}'::jsonb THEN
+        IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
+          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'price', 'starts');
+        IF v_bad IS NOT NULL THEN
+          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
+        END IF;
+        IF p_value ? 'weddings_id' AND jsonb_typeof(p_value->'weddings_id') <> 'null'
+           AND NOT (jsonb_typeof(p_value->'weddings_id') = 'string' OR (jsonb_typeof(p_value->'weddings_id') = 'number' AND (p_value->>'weddings_id')::numeric = trunc((p_value->>'weddings_id')::numeric))) THEN
+          RAISE EXCEPTION '% must be an id: an integer', 'weddings_id' USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+          ('price', CASE WHEN jsonb_typeof((p_value->'price')) <> 'null' AND NOT (jsonb_typeof((p_value->'price')) = 'number') THEN 'price must be a number' END),
+          ('starts', CASE WHEN jsonb_typeof((p_value->'starts')) <> 'null' AND NOT (jsonb_typeof((p_value->'starts')) = 'string' AND ((p_value->'starts') #>> '{}') ~ '^\\d{4}-\\d{2}-\\d{2}([T ]([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d(\\.\\d{1,6})?)?(Z|[+-]([01]\\d|2[0-3])(:?[0-5]\\d)?)?)?$') THEN 'starts must be an ISO-8601 time' END)) AS x(k, m) WHERE m IS NOT NULL;
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        RETURN;
+        END IF;
+      END IF;
+    WHEN 'favours' THEN
+      IF p_parent_fk IS NOT DISTINCT FROM 'weddings_id' THEN
+        IF p_columns = '{"households_id":{"type":"integer","nullable":false},"gift":{"type":"text","nullable":false}}'::jsonb THEN
+        IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
+          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'weddings_id', 'households_id', 'gift');
+        IF v_bad IS NOT NULL THEN
+          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
+        END IF;
+        IF p_value ? 'weddings_id' AND jsonb_typeof(p_value->'weddings_id') <> 'null'
+           AND NOT (jsonb_typeof(p_value->'weddings_id') = 'string' OR (jsonb_typeof(p_value->'weddings_id') = 'number' AND (p_value->>'weddings_id')::numeric = trunc((p_value->>'weddings_id')::numeric))) THEN
+          RAISE EXCEPTION '% must be an id: an integer', 'weddings_id' USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+          ('households_id', CASE WHEN jsonb_typeof((p_value->'households_id')) <> 'null' AND NOT (jsonb_typeof((p_value->'households_id')) = 'number' AND (p_value->'households_id')::text::numeric = trunc((p_value->'households_id')::text::numeric)) THEN 'households_id must be an integer' END),
+          ('gift', CASE WHEN jsonb_typeof((p_value->'gift')) <> 'null' AND NOT (jsonb_typeof((p_value->'gift')) = 'string') THEN 'gift must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        RETURN;
+        END IF;
+      END IF;
+    WHEN 'asks' THEN
+      IF p_parent_fk IS NOT DISTINCT FROM 'group' THEN
+        IF p_columns = '{"in":{"type":"integer","nullable":true},"from":{"type":"text","nullable":true},"to":{"type":"text","nullable":true}}'::jsonb THEN
+        IF p_value IS NULL OR jsonb_typeof(p_value) <> 'object' THEN
+          RAISE EXCEPTION 'a row value for % must be an object', p_collection USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_value) AS k WHERE k NOT IN ('id', 'valid_from', 'valid_to', 'group', 'in', 'from', 'to');
+        IF v_bad IS NOT NULL THEN
+          RAISE EXCEPTION 'Unknown field: % (not a column of %)', v_bad, p_collection USING ERRCODE = '22023';
+        END IF;
+        IF p_value ? 'group' AND jsonb_typeof(p_value->'group') <> 'null'
+           AND NOT (jsonb_typeof(p_value->'group') = 'string' OR (jsonb_typeof(p_value->'group') = 'number' AND (p_value->>'group')::numeric = trunc((p_value->>'group')::numeric))) THEN
+          RAISE EXCEPTION '% must be an id: an integer', 'group' USING ERRCODE = '22023';
+        END IF;
+        SELECT string_agg(m, '; ' ORDER BY k) INTO v_bad FROM (VALUES
+          ('in', CASE WHEN jsonb_typeof((p_value->'in')) <> 'null' AND NOT (jsonb_typeof((p_value->'in')) = 'number' AND (p_value->'in')::text::numeric = trunc((p_value->'in')::text::numeric)) THEN 'in must be an integer' END),
+          ('from', CASE WHEN jsonb_typeof((p_value->'from')) <> 'null' AND NOT (jsonb_typeof((p_value->'from')) = 'string') THEN 'from must be a string' END),
+          ('to', CASE WHEN jsonb_typeof((p_value->'to')) <> 'null' AND NOT (jsonb_typeof((p_value->'to')) = 'string') THEN 'to must be a string' END)) AS x(k, m) WHERE m IS NOT NULL;
+        IF v_bad IS NOT NULL THEN RAISE EXCEPTION '%', v_bad USING ERRCODE = '22023'; END IF;
+        RETURN;
+        END IF;
+      END IF;
+    ELSE NULL;
+  END CASE;
+  -- another set of columns (a walk's, another version's): the framework's
+  PERFORM _delta_assert_fields_framework(p_collection, p_columns, p_parent_fk, p_value);
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+"
+`;

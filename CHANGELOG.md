@@ -108,6 +108,28 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   - The bench's `bench:` is a list, which never runs this check. Measured ad hoc through a one-row
     document (`bench-item:<id>`, one replace of its root as the app role): 0.651 to 0.636 ms p50
     compiled, about 15 µs a write (framework 0.855 ms), and more per op on longer writes.
+- **A write's columns and their checks are compiled** (2c, `delta_apply`'s third slice). The columns
+  stay the writing process's (`delta.declared`, else the database's: two versions on one database
+  each write by their own), read at run time as before. What follows from the definitions is
+  compiled:
+  - `dzql_columns__<prefix>(collection, columns_def)` gives the columns a document writes, with
+    its own `columns` list written in. `_delta_write_columns` sends each compiled document to its
+    own, any other to `_delta_write_columns_framework`.
+  - `_delta_assert_fields` checks each set of columns the definitions give a collection (all of
+    them, and each document's own) by written statements, with the framework's messages, still
+    ordered by SQL's `ORDER BY` so the collation orders both alike. Any other set (a walk's,
+    another version's) goes to `_delta_assert_fields_framework`.
+
+  Held equal (`tests/compile/columns.test.ts`) for every document and collection with nothing, the
+  app's own or another version's columns declared, and for every collection, set of columns (the
+  compiled ones and sets it never saw) and parent key, over values probing each check. A test with
+  the framework's checks made to raise shows the compiled sets never reach them. The test caught a
+  precedence bug before it landed (`p_value->'n'::text::numeric`). An unknown field's message,
+  the parent key, a whole number, the messages' order, the time's pattern, a document's own columns
+  and the object check, each broken on purpose, fail. A write: 0.624 ms p50 compiled against
+  1.063 ms framework (41% less); through a one-row document, 0.636 to 0.60 ms. The codegen test
+  that a plain table has no `valid_from` now asks of the table's DDL: the checks name it, as a
+  write's value may carry it.
 - **Doc comments name dzql's subpaths.** Nine comments in `src/postgres/` and `auth-jwt.sql`
   still said `@blueshed/delta/postgres` and `@blueshed/delta/auth-jwt`, which delta 1.0 no longer
   has; they now say `dzql/postgres` and `dzql/auth-jwt`.

@@ -37,9 +37,9 @@ describe("generateSql", () => {
     expect(sql).toContain('"done" BOOLEAN NOT NULL DEFAULT FALSE');
     expect(sql).toContain("PRIMARY KEY (id)");
 
-    // Non-temporal → no current_* view, no valid_from
+    // Non-temporal → no current_* view, no valid_from column (the field checks still name it: a write's value may carry it)
     expect(sql).not.toContain("current_todos");
-    expect(sql).not.toContain("valid_from");
+    expect(sql.slice(sql.indexOf('CREATE TABLE IF NOT EXISTS "todos"')).split(";")[0]).not.toContain("valid_from");
 
     // Collection registration
     expect(sql).toContain("INSERT INTO _delta_collections");
