@@ -24,7 +24,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "bun run test:setup && bun test; bun run test:teardown",
+    "test": "bun run test:setup && bun test; status=$?; bun run test:teardown; exit $status",
     "test:setup": "docker compose down -v && docker compose up -d --wait",
     "test:teardown": "docker compose down -v"
   },

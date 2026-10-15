@@ -117,34 +117,10 @@ The `bun unlink` step removes the global link so future projects use the publish
 
 ## Publishing
 
-Publishing is done via GitHub Actions, triggered by git tags. Do NOT publish directly.
-
-### Pre-Publish Checklist
-
-**STOP. Before creating a git tag, verify ALL of these:**
-
-- [ ] Tag format is `dzql@X.Y.Z`
-- [ ] `CHANGELOG.md`: `[Unreleased]` becomes the new version; settled items leave `todo.jsonl`
-- [ ] Version updated in `packages/dzql/package.json`
-- [ ] Version updated in `packages/create-dzql/package.json` (both the package version AND the dzql dependency)
-- [ ] TypeScript compiles without errors (`cd packages/dzql && bunx tsc --noEmit`)
-- [ ] All tests pass (`cd packages/dzql && bun run test`)
-- [ ] Changes committed and pushed
-
-### Steps
-
-1. Update version in `packages/dzql/package.json`
-2. Commit the changes
-3. Create and push a git tag:
-   ```bash
-   git tag dzql@0.6.9
-   git push origin dzql@0.6.9
-   ```
-4. GitHub Actions will automatically publish to npm using OIDC trusted publishing
-
-**Tag format:** `dzql@<version>` or `create-dzql@<version>`
-
-**Version sync:** `dzql` and `create-dzql` should always have the same version number.
+`/publish patch|minor|major` (`.claude/commands/publish.md`): the gate, the create-dzql end-to-end
+check, one version for both packages, the changelog and ledger promoted, and the tags
+`dzql@x.y.z` and `create-dzql@x.y.z`, whose push is what publishes (GitHub Actions, OIDC trusted
+publishing). Never `npm publish` by hand.
 
 ## Events
 
