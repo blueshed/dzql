@@ -1,4 +1,4 @@
-import { createTables, defineDoc, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
+import { createTables, defineDoc, defineSchema, registerDocs, migrate, fromFolder, migrateSchema } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { db } from "../../src/db";
@@ -73,7 +73,9 @@ export const schema = defineSchema({
   },
 });
 
+await migrate(db, await fromFolder(`${import.meta.dir}/migrations`)); // first, what the schema cannot say: a rename, a drop, data moved
 createTables(db, schema);
+migrateSchema(db, schema);
 
 // A gift that is not shared takes one claim: the store refuses a second, so it is the store that
 // says "taken" when two households claim at once.

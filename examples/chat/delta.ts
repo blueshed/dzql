@@ -1,4 +1,4 @@
-import { createTables, defineDoc, migrateSchema, defineSchema, registerDocs } from "@blueshed/delta/sqlite";
+import { createTables, defineDoc, migrateSchema, defineSchema, registerDocs, migrate, fromFolder } from "@blueshed/delta/sqlite";
 import { createLocal } from "@blueshed/delta/local";
 import { registerMemory } from "@blueshed/delta/kinds";
 import { db } from "../../src/db";
@@ -15,8 +15,9 @@ export const schema = defineSchema({
   messages: { table: "chat_messages", parent: "rooms", columns: { name: "text", text: "text", sent_at: "integer" }, temporal: false },
 });
 
+await migrate(db, await fromFolder(`${import.meta.dir}/migrations`)); // first, what the schema cannot say: a rename, a drop, data moved
 createTables(db, schema);
-migrateSchema(db, schema); // a session's `before` came later
+migrateSchema(db, schema);
 
 export const delta = createLocal();
 

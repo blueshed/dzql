@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **eta runs on `@blueshed/delta` 0.15.** 0.14 brought migrations and made the schema the
+  contract: delta reads and sends only the columns a schema declares, and keeps the rest, so a
+  version that adds a column and one that does not can share a database. 0.15 publishes delta's
+  case suite (`@blueshed/delta/testing`). What to change: nothing; take migrations below.
+
+### Added
+
+- **An upgrade keeps what people wrote.** Each example's `delta.ts` runs delta's migrations first,
+  `await migrate(db, await fromFolder(`${import.meta.dir}/migrations`))`, then `createTables` and
+  `migrateSchema`; each has an empty `migrations/`. `examples/leave/upgrade.test.ts` is the story:
+  Ann's requests are still there after leave is upgraded to a version that adds a reason, renames a
+  field and drops one; Mo still sees them, and undo never reaches back across the upgrade. The
+  eta-app skill's `reference/migrations.md` says how to write one.
+
 ## [0.53.0] - 2026-10-14
 
 ### Added
