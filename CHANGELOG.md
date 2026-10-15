@@ -35,6 +35,12 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   dispatcher is gone: each registration calls its own document's function, and a dispatcher one
   `generateSql` wrote would lose another's documents. Writes, the ledger and a name's scope still
   run on the framework SQL.
+- **A document's name is read by compiled SQL too** (2c, scope). Each document's open reads its
+  name's values by position, checks each as its column takes it with the framework's own messages
+  (an integer, a number, a date read as midnight UTC, an id past 2^53 - 1), and writes its
+  conditions as typed SQL. The opens no longer call `_delta_resolve_scope` or build a query from
+  text (`EXECUTE`); a document that cannot be one row has no single branch. Equal to the framework
+  for every name, errors included; dropping one check on purpose fails its names.
 
 ### Docs
 
