@@ -51,7 +51,7 @@ $$ LANGUAGE sql STABLE;
 -- how the fan-out reads a name opened before a rule refused it (_delta_doc_holds).
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_resolve_scope(p_def _delta_docs, p_doc_name TEXT, p_refuse BOOLEAN)
+CREATE OR REPLACE FUNCTION _delta_resolve_scope_framework(p_def _delta_docs, p_doc_name TEXT, p_refuse BOOLEAN)
 RETURNS JSONB AS $$
 DECLARE
   v_doc_id    TEXT;
@@ -284,6 +284,12 @@ BEGIN
   RETURN jsonb_build_object('where', v_where, 'values', v_values, 'mode', v_mode, 'at', v_at);
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- The resolver every caller asks: the framework's, until dzql's compiler
+-- (`compileResolve`) replaces it with one sending each document it compiled
+-- to its own.
+CREATE OR REPLACE FUNCTION _delta_resolve_scope(p_def _delta_docs, p_doc_name TEXT, p_refuse BOOLEAN)
+RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_resolve_scope_framework(p_def, p_doc_name, p_refuse); $$;
 
 -- The resolver as every caller but the fan-out asks it: a value refused is raised.
 CREATE OR REPLACE FUNCTION _delta_resolve_scope(p_def _delta_docs, p_doc_name TEXT)

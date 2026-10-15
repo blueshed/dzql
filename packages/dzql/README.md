@@ -27,7 +27,8 @@ import { jwtAuth } from "dzql/auth-jwt";
 
 Its tests run delta's own cases (`@blueshed/delta/testing`) against it. Compiled SQL is replacing
 the framework SQL a piece at a time: `generateSql` writes functions for each of your documents
-(opening it, who holds a row, a write's scope, what each document is told, the fan-out), each held
+(opening it, reading its name, who holds a row, a write's scope, what each document is told, the
+fan-out), each held
 equal to the framework's; documents it did not compile go to the framework. Apply `generateSql`
 after the framework, every time (`docs/delta/postgres.md`, "Compiled SQL"). The plan is in
 Workshop's `docs/postgres-split-plan.md`.

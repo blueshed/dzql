@@ -76,6 +76,19 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   rule, the fallback, the writer, the chain, or finding a scoped document by its root each fail. A
   write: 0.706 ms p50 compiled against 1.049 ms framework (33% less); the fan-out with 10 open,
   0.88 to 0.79 ms.
+- **A name is read by its document's scope, compiled** (2c, `delta_apply`'s first slice). Every
+  write, the framework's reads and the ops log read a document's name by its scope
+  (`_delta_resolve_scope`: the conditions as SQL text, the equality values, single or list, a time).
+  `generateSql` writes `dzql_scope__<prefix>(name, refuse)` for each document, giving the
+  framework's JSON exactly, its `where` in the framework's words, a value refused with the same
+  message (raised, or answered as the scope that holds nothing). `_delta_resolve_scope` sends each
+  compiled document to its own, any other to `_delta_resolve_scope_framework`. Equal for 1,228
+  names, both ways (`tests/compile/resolve.test.ts`): the path cases' and names made to probe each
+  check (signs, spaces, zeros, past 2^53, not whole, text for an id, dates not in the calendar,
+  empty values). Dropping a `like`'s `%`, the values, the `at`, the refusal's reason, single mode,
+  the framework's `AND`, or reading a text id as a number each fail. The resolver's share of a
+  write fell from 0.071 to 0.012 ms; a write: 0.657 ms p50 compiled against 1.059 ms framework
+  (38% less).
 
 ### Fixed
 
