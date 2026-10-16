@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **delta 1.2.0** (`@blueshed/delta` `^1.2.0`): migrations from empty and `owns` as a path, which
+  the steps below build on; link sign-in came in 1.1.0.
 - **Migrations are a history from empty** (`references/sqlite.md`, `migrations.md`,
   `postgres.md`; todo #12). A resource's tables are made by its migrations, the first
   `001-order`, which `bunx @blueshed/delta migrations make` writes from the schema; `orderDocs`
