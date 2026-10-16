@@ -54,7 +54,8 @@ same thing pass.
   documents.
 - Sam's board is one document over every loan.
 - "Out" comes from the open loans themselves, shown on every list, and changes when a loan is made
-  or returned (story 2).
+  or returned (story 2). The list says a tool is out, never who has it: the borrower is Sam's
+  board's alone.
 - Borrowing a tool that is out is refused by the write, with a message (story 3). The refusal
   holds when two members try at once.
 - Undo is delta's ledger, walked by the member's own cursor: undo for each person (stories 4 and
@@ -66,6 +67,7 @@ same thing pass.
 - No "out" flag set by hand beside the loans, which can drift from them.
 - No undo of its own making: no stack in the page, no table of past values.
 - No phone number sent to Sam's board and hidden in the page.
+- No borrower sent with every member's list and hidden in the page.
 
 ## Stage 4: a change on a database that holds data
 
@@ -108,6 +110,8 @@ same thing pass.
 **Must not.**
 - No filtering of loans in the page or in a route.
 - No document that sends every loan to everyone for the page to narrow.
+- No borrower on the list: who has a tool is sent to Sam's board and the committee, never to every
+  member.
 - No hand-written SQL in place of what the compiler writes, beyond migrations.
 
 ## Recording a run

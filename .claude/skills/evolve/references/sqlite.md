@@ -1,6 +1,6 @@
 # Store documents in SQLite
 
-When documents share rows, or for undo and history. The kitchen needs every open order: a third document over the rows of each order. The tables follow from the documents of [two-documents.md](two-documents.md); only `order-api.ts` changes, and the names the page opens.
+When documents share rows, or for undo and history. The kitchen needs every open order: a third document over the rows of each order. The tables follow from the documents of [two-documents.md](two-documents.md); only `order-api.ts` changes, and the names the page opens, and the tables are made by a history of migrations from empty.
 
 ```ts
 // src/resources/order/order-api.ts
@@ -8,7 +8,7 @@ When documents share rows, or for undo and history. The kitchen needs every open
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import type { WsServer } from "@blueshed/delta/server";
-import { createTables, defineDoc, defineSchema, importTables, migrateSchema, registerDocs } from "@blueshed/delta/sqlite";
+import { defineDoc, defineSchema, fromFolder, importTables, migrate, registerDocs } from "@blueshed/delta/sqlite";
 
 export type Item = { id: number; name: string; price: number };
 export type Line = { id: number; item: number };
@@ -29,14 +29,32 @@ export const docs = [
 
 export const catalogue = { tables: { items: [{ id: 1, name: "Tea", price: 2.5 }, { id: 2, name: "Cake", price: 3 }] } };
 
-export function orderDocs(ws: WsServer, dataDir: string) {
+export async function orderDocs(ws: WsServer, dataDir: string) {
   mkdirSync(dataDir, { recursive: true }); // SQLite makes the file, not its folder
   const db = new Database(`${dataDir}/app.db`, { create: true });
-  createTables(db, schema);
-  migrateSchema(db, schema); // a column a later version declares is added to the table
+  // the history makes the tables: each migration once, in order (a new database runs them all)
+  await migrate(db, await fromFolder(`${import.meta.dir}/migrations`), { app: "order", schema });
   if (!db.query("SELECT 1 FROM items").get()) importTables(db, schema, catalogue);
   registerDocs(ws, db, schema, docs, [], { ledger: true }); // undo, redo and history
 }
+```
+
+The tables are the history's first migration. Never written by hand: `make` writes what the schema says beyond the migrations before it, so this one is every table:
+
+```sh
+bunx @blueshed/delta migrations make src/resources/order/order-api.ts --dir src/resources/order/migrations --name order
+```
+
+```ts
+// src/resources/order/migrations/001-order.ts
+// Made by `delta migrations make` from the definitions: what they say beyond the migrations before it.
+import { createTable } from "@blueshed/delta/migrations";
+
+export const changes = [
+  createTable("items", { columns: { name: { type: "text" }, price: { type: "real" } }, temporal: true }),
+  createTable("orders", { columns: {}, temporal: true }),
+  createTable("lines", { columns: { item: { type: "integer" } }, parent: { collection: "orders", fk: "orders_id" }, temporal: true }),
+];
 ```
 
 ```ts
@@ -110,5 +128,5 @@ test("a line changed reaches the kitchen as the field that changed, not the row"
 - A change to a row reaches every document holding it, told as the fields that changed (`replace /lines/1/item`), not the whole row; a row that arrives or leaves is a whole-row `add` or `remove`. The client applies them, so a view draws from the document, never from what it was told.
 - `{ ledger: true }` keeps each change with what undoes it. Over the socket, undo walks back what that connection wrote.
 - Seed only an empty table.
-- A column a later version declares needs nothing more: `migrateSchema` adds it. A rename, a drop or rows moved is a migration, run once each before `createTables`: [migrations.md](migrations.md).
+- Every change to the tables is the next migration: change the schema, run `migrations make`, commit what it writes. A rename, a change of type or rows moved it leaves to you: [migrations.md](migrations.md). Started with the schema saying more than the history, `migrate` says so (its `drift`).
 - Redo, history, a change named by its entry, and the cursor: delta-doc's `reference/ledger.md`.

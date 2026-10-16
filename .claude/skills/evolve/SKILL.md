@@ -1,6 +1,6 @@
 ---
 name: evolve
-description: "Grows this app: a new shared document, two documents on one page, keeping documents in SQLite (rows shared between documents, undo and history) or Postgres, a schema change on a database that holds data (a migration), HTTP routes for what isn't communication (health, status, files in S3), and a production build. Use when the user asks for something people share, see or act on, for storage beyond a JSON file, for undo or history, for a change to a schema in use, for files, or for a build."
+description: "Grows this app: a new shared document, two documents on one page, keeping documents in SQLite (rows shared between documents, undo and history) or Postgres, a schema change on a database that holds data (a migration), sign-in by link with no passwords, HTTP routes for what isn't communication (health, status, files in S3), and a production build. Use when the user asks for something people share, see or act on, for storage beyond a JSON file, for undo or history, for a change to a schema in use, for people signing in, for files, or for a build."
 ---
 
 # Growing the app
@@ -14,9 +14,10 @@ description: "Grows this app: a new shared document, two documents on one page, 
 ## Order of work
 
 ```
-- [ ] Ask what someone needs in front of them to do what the user asked: those are the documents
+- [ ] Write what the user asked into stories.md as stories: sentences someone could call true or false
+- [ ] Ask what someone needs in front of them to make each true: those are the documents
 - [ ] Copy the closest reference below, or message / status in src/resources/
-- [ ] Test what a person sees and clicks (a refused change included), and every route and method
+- [ ] A test named for each story: what a person sees and clicks (a refused change included), and every route and method
 - [ ] bun test (100% coverage) and bun run typecheck
 - [ ] CHANGELOG.md under [Unreleased]; in todo.jsonl the item settled marked fixed, or one for what is left open
 ```
@@ -45,6 +46,7 @@ Each leads with its example, code and tests that `bun run test:evolve` applies t
 - [references/sqlite.md](references/sqlite.md): documents that share rows (the kitchen), undo and history
 - [references/migrations.md](references/migrations.md): a schema that changes on a database holding data
 - [references/postgres.md](references/postgres.md): servers that share data; people who see only their own (dzql, delta's Postgres)
+- [references/auth.md](references/auth.md): sign-in with no passwords: a link is someone; in development, pick who you are
 - [references/http.md](references/http.md): HTTP routes, and files in S3
 - [references/build.md](references/build.md): a production build (optional)
 
