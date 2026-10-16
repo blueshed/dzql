@@ -10,6 +10,8 @@
 import type { Pool, PoolClient } from "pg";
 import { q } from "@blueshed/delta/backend";
 import { appOf, fenced, runMigrations, statusOf, type MigrateOptions, type MigrateResult, type Migration, type MigrationStatus, type Store } from "@blueshed/delta/backend";
+import { schemaOf } from "@blueshed/delta/migrations";
+import { tableSql } from "./codegen";
 
 export { fromFolder, type Migration, type MigrateOptions, type MigrateResult, type MigrationStatus } from "@blueshed/delta/backend";
 
@@ -66,6 +68,33 @@ function store(client: PoolClient, app: string, collections?: string): Store<Poo
       await tx.query(`UPDATE _delta_ledger SET undoable = FALSE WHERE undoable AND EXISTS (
         SELECT 1 FROM jsonb_array_elements(ops || inverse) AS o
          WHERE split_part(o->>'path', '/', 2) IN (SELECT jsonb_array_elements_text($1::jsonb)))`, [collections]);
+    },
+    async apply(tx, c, before, after) {
+      // each change as the history makes it; made already (a database adopting the history), it is left
+      switch (c.change) {
+        case "createTable":
+        case "addColumn":
+          // the table's SQL as generateSql writes it: every statement idempotent, so it adds what is missing
+          // (and a temporal table's view takes a column added after it)
+          await tx.query(tableSql(c.key, schemaOf(after).tables[c.key]!).join("\n"));
+          return;
+        case "dropColumn":
+          return dropColumn(tx, before[c.key]!.table, c.column);
+        case "renameColumn":
+          return renameColumn(tx, before[c.key]!.table, c.column, c.to);
+        case "renameTable":
+          if (before[c.key]!.table !== after[c.to]!.table) await renameTable(tx, before[c.key]!.table, after[c.to]!.table);
+          if (await regclass(tx, "_delta_collections")) await tx.query("UPDATE _delta_collections SET collection_key = $2 WHERE collection_key = $1", [c.key, c.to]);
+          return;
+        case "dropTable": {
+          const table = before[c.key]!.table;
+          await tx.query(`DROP VIEW IF EXISTS ${q(`current_${table}`)}`);
+          await tx.query(`DROP TABLE IF EXISTS ${q(table)}`);
+          await tx.query(`DROP SEQUENCE IF EXISTS ${q(`seq_${table}`)}`);
+          if (await regclass(tx, "_delta_collections")) await tx.query("DELETE FROM _delta_collections WHERE collection_key = $1", [c.key]);
+          return;
+        }
+      }
     },
   };
 }

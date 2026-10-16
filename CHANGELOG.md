@@ -23,6 +23,21 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Added
+
+- **Migrations as a history from empty, on Postgres** (delta's todo #82, the Django way). delta's
+  `migrate` now takes migrations that are lists of changes (`@blueshed/delta/migrations`), and
+  dzql's Postgres store makes each one:
+  - a table made, or a column added, as `generateSql` makes a table (`tableSql`, now its own
+    function). Every statement in it is idempotent, so a database adopting the history is left as
+    it is, and a temporal table's view takes a column added after it;
+  - a rename or drop by the helpers that keep delta's scaffolding in step (`renameColumn`,
+    `dropColumn`, `renameTable`), and a dropped table's view, serial and metadata dropped with it.
+
+  dzql answers delta's `migrationCases` on PGlite and on a Postgres server, each case on a database
+  of its own (`tests/delta-pg/migrations-from-empty.test.ts`). `dzql migrate` runs these lists as it
+  ran the older ones. Needs the delta that ships them.
+
 ## [0.12.0] - 2026-10-16
 
 ### Added
