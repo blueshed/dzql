@@ -49,6 +49,29 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Changed
 
+- **`bun create dzql` makes a paintbrush app on dzql**, in place of the whole-stack Vue app (Peter,
+  16 October: "remove vue and vite - replace with a proper paintbrush app that exercises the same
+  steps").
+  - People register and sign in with dzql's `auth-jwt`, and share posts.
+  - Posts are two documents: `posts:`, everyone's, read-only; and `mine:<id>`, one person's own,
+    through which every post is written, changed and deleted. A post's author comes from the
+    document's name, never the value.
+  - It's paintbrush's shape: `Bun.serve()` routes, railroad, resources of three files, and an edit
+    in a sheet over the list. It keeps its data in a Postgres server (compose.yml).
+  - Its own tests are the release's end-to-end check, in two real browsers with Postgres in memory:
+    - register, publish, see the post arrive in the other window, edit it, delete it;
+    - the other person sees it with no Edit or Delete;
+    - a write to everyone's posts is refused (403), and another's posts are not there (404);
+    - a reload keeps you signed in, and you can sign in again by email.
+  - `/publish` runs these tests in place of clicking through the old app by hand.
+- **`openPglite` gives PGlite pgcrypto**, so dzql's `auth-jwt` (bcrypt through pgcrypto) works on
+  Postgres in the process too. PGlite has an extension only when it is given one at start; the
+  extension loads when a database creates it.
+- **A document type that refuses a write with a wire code of its own is answered with it.** A
+  numeric 4xx `code` on its error is passed to the client, as a read-only document's 403; any
+  other refusal is still a 500. Until now only Postgres's error codes passed through, and a 403
+  became a 500.
+
 - **The document a name is of is a compiled lookup** (`_delta_find_doc`). Each document's prefix
   and row are written in, the longest prefix tried first. Held equal to the framework's on every
   path name and probes (case, spaces, partial prefixes, LIKE wildcards), recorded; four mutations

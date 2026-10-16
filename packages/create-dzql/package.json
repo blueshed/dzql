@@ -1,7 +1,7 @@
 {
   "name": "create-dzql",
   "version": "0.10.0",
-  "description": "Create a new DZQL application",
+  "description": "Create a paintbrush app on dzql: sign-in and live posts, kept in Postgres",
   "repository": {
     "type": "git",
     "url": "https://github.com/blueshed/dzql"
@@ -12,40 +12,7 @@
   },
   "files": [
     "index.ts",
-    "domain.ts",
-    "compose.yml",
-    "package.json",
-    ".env.example",
-    ".gitignore",
-    "README.md",
-    "setup.sh",
-    "tasks.ts",
-    "server",
-    "client"
-  ],
-  "workspaces": [
-    "client",
-    "server"
-  ],
-  "scripts": {
-    "compile": "bunx dzql domain.ts -o generated",
-    "db:up": "docker compose up -d",
-    "db:down": "docker compose down -v",
-    "db:logs": "docker compose logs -f",
-    "db:rebuild": "bun run compile && docker compose down -v && docker compose up -d",
-    "dev": "concurrently -n server,client -c blue,green \"bun run --filter server dev\" \"bun run --filter client dev\""
-  },
-  "dependencies": {
-    "dzql": "^0.10.0",
-    "invoket": "^0.1.2"
-  },
-  "devDependencies": {
-    "concurrently": "^9.1.0"
-  },
-  "bun-create": {
-    "postinstall": [
-      "./setup.sh",
-      "rm setup.sh"
-    ]
-  }
+    "template",
+    "README.md"
+  ]
 }

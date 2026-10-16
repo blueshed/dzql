@@ -235,6 +235,26 @@ describe("createDocListener (end-to-end WS flow)", () => {
     }
   });
 
+  test("a DocType that refuses a write with a wire code of its own is answered with it; any other refusal is the server's", async () => {
+    const ws = createWs();
+    ws.publish = () => {};
+    const refusing = (prefix: string, code: unknown): DocType => ({
+      ...items(),
+      prefix,
+      parse: (name) => (name === prefix ? {} : null),
+      async apply() { throw Object.assign(new Error(`${prefix} refuses`), { code }); },
+    });
+    const listener = await createDocListener(ws, pool, { types: [refusing("read-only:", 403), refusing("odd:", 600), refusing("named:", "403")] });
+    try {
+      const write = async (doc: string) => (await sendAndAwait(ws, mockClient(), { action: "delta", doc, ops: [{ op: "add", path: "/items/-", value: { name: "x" } }] })).error;
+      expect(await write("read-only:")).toMatchObject({ code: 403, message: "read-only: refuses" });
+      expect((await write("odd:"))?.code).toBe(500);
+      expect((await write("named:"))?.code).toBe(500);
+    } finally {
+      await listener.destroy();
+    }
+  });
+
   test("delta without doc returns 400", async () => {
     const ws = createWs();
     ws.publish = () => {};
