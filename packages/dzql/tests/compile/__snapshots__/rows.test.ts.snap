@@ -8,35 +8,55 @@ DECLARE
 BEGIN
   CASE p_coll
     WHEN 'weddings' THEN
-      SELECT to_jsonb(t.*) INTO v_row FROM "fo_weddings" t WHERE t.id = p_id FOR UPDATE;
-      RETURN v_row;
+      LOOP
+        SELECT to_jsonb(t.*) INTO v_row FROM "fo_weddings" t WHERE t.id = p_id FOR UPDATE;
+        IF v_row IS NOT NULL OR NOT EXISTS (SELECT 1 FROM "fo_weddings" t WHERE t.id = p_id) THEN RETURN v_row; END IF;
+      END LOOP;
     WHEN 'households' THEN
-      SELECT to_jsonb(t.*) INTO v_row FROM "fo_households" t WHERE t.id = p_id FOR UPDATE;
-      RETURN v_row;
+      LOOP
+        SELECT to_jsonb(t.*) INTO v_row FROM "fo_households" t WHERE t.id = p_id FOR UPDATE;
+        IF v_row IS NOT NULL OR NOT EXISTS (SELECT 1 FROM "fo_households" t WHERE t.id = p_id) THEN RETURN v_row; END IF;
+      END LOOP;
     WHEN 'courses' THEN
-      SELECT to_jsonb(t.*) INTO v_row FROM "fo_courses" t WHERE t.id = p_id FOR UPDATE;
-      RETURN v_row;
+      LOOP
+        SELECT to_jsonb(t.*) INTO v_row FROM "fo_courses" t WHERE t.id = p_id FOR UPDATE;
+        IF v_row IS NOT NULL OR NOT EXISTS (SELECT 1 FROM "fo_courses" t WHERE t.id = p_id) THEN RETURN v_row; END IF;
+      END LOOP;
     WHEN 'drinks' THEN
-      SELECT to_jsonb(t.*) INTO v_row FROM "fo_drinks" t WHERE t.id = p_id FOR UPDATE;
-      RETURN v_row;
+      LOOP
+        SELECT to_jsonb(t.*) INTO v_row FROM "fo_drinks" t WHERE t.id = p_id FOR UPDATE;
+        IF v_row IS NOT NULL OR NOT EXISTS (SELECT 1 FROM "fo_drinks" t WHERE t.id = p_id) THEN RETURN v_row; END IF;
+      END LOOP;
     WHEN 'tags' THEN
-      SELECT to_jsonb(t.*) INTO v_row FROM "fo_tags" t WHERE t.id = p_id FOR UPDATE;
-      RETURN v_row;
+      LOOP
+        SELECT to_jsonb(t.*) INTO v_row FROM "fo_tags" t WHERE t.id = p_id FOR UPDATE;
+        IF v_row IS NOT NULL OR NOT EXISTS (SELECT 1 FROM "fo_tags" t WHERE t.id = p_id) THEN RETURN v_row; END IF;
+      END LOOP;
     WHEN 'notes' THEN
-      SELECT to_jsonb(t.*) INTO v_row FROM "fo_notes" t WHERE t.id = p_id AND valid_to IS NULL FOR UPDATE;
-      RETURN v_row;
+      LOOP
+        SELECT to_jsonb(t.*) INTO v_row FROM "fo_notes" t WHERE t.id = p_id AND t.valid_to IS NULL FOR UPDATE;
+        IF v_row IS NOT NULL OR NOT EXISTS (SELECT 1 FROM "fo_notes" t WHERE t.id = p_id AND t.valid_to IS NULL) THEN RETURN v_row; END IF;
+      END LOOP;
     WHEN 'seats' THEN
-      SELECT to_jsonb(t.*) INTO v_row FROM "fo_seats" t WHERE t.id = p_id FOR UPDATE;
-      RETURN v_row;
+      LOOP
+        SELECT to_jsonb(t.*) INTO v_row FROM "fo_seats" t WHERE t.id = p_id FOR UPDATE;
+        IF v_row IS NOT NULL OR NOT EXISTS (SELECT 1 FROM "fo_seats" t WHERE t.id = p_id) THEN RETURN v_row; END IF;
+      END LOOP;
     WHEN 'slots' THEN
-      SELECT to_jsonb(t.*) INTO v_row FROM "fo_slots" t WHERE t.id = p_id FOR UPDATE;
-      RETURN v_row;
+      LOOP
+        SELECT to_jsonb(t.*) INTO v_row FROM "fo_slots" t WHERE t.id = p_id FOR UPDATE;
+        IF v_row IS NOT NULL OR NOT EXISTS (SELECT 1 FROM "fo_slots" t WHERE t.id = p_id) THEN RETURN v_row; END IF;
+      END LOOP;
     WHEN 'favours' THEN
-      SELECT to_jsonb(t.*) INTO v_row FROM "fo_favours" t WHERE t.id = p_id FOR UPDATE;
-      RETURN v_row;
+      LOOP
+        SELECT to_jsonb(t.*) INTO v_row FROM "fo_favours" t WHERE t.id = p_id FOR UPDATE;
+        IF v_row IS NOT NULL OR NOT EXISTS (SELECT 1 FROM "fo_favours" t WHERE t.id = p_id) THEN RETURN v_row; END IF;
+      END LOOP;
     WHEN 'asks' THEN
-      SELECT to_jsonb(t.*) INTO v_row FROM "order" t WHERE t.id = p_id AND valid_to IS NULL FOR UPDATE;
-      RETURN v_row;
+      LOOP
+        SELECT to_jsonb(t.*) INTO v_row FROM "order" t WHERE t.id = p_id AND t.valid_to IS NULL FOR UPDATE;
+        IF v_row IS NOT NULL OR NOT EXISTS (SELECT 1 FROM "order" t WHERE t.id = p_id AND t.valid_to IS NULL) THEN RETURN v_row; END IF;
+      END LOOP;
     ELSE RAISE EXCEPTION 'unknown collection: %', p_coll USING ERRCODE = '22023';
   END CASE;
 END;

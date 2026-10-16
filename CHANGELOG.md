@@ -36,6 +36,19 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
     `postgres://` URL or a PGlite folder; a SQLite file is `delta link`'s).
   - dzql now needs delta ^1.1.0.
 
+### Fixed
+
+- **Two writes to one row at once: the second no longer finds it "not there".** A write locks the
+  row first (`_delta_row_lock`, `SELECT … FOR UPDATE`). One that waited on another's lock woke to
+  find the row stored again: a non-temporal row deleted and inserted, a temporal one's version
+  closed for a new one. So Postgres skipped it, and the second write answered 404, "row not found".
+  CI caught it once (review-findings, "Finding #1").
+  - Now a lock that finds no row asks afresh whether one stands. Each statement sees what has
+    committed since, so a standing row is locked in its turn, and only a row really gone is not
+    there.
+  - `tests/delta-pg/row-race.test.ts` makes the race certain on the Postgres server, for both kinds
+    of row: one write holds the lock, the other waits, the first commits.
+
 ### Changed
 
 - **`bun create dzql` signs people in by link**, in place of `auth-jwt`'s email and password (Peter,
