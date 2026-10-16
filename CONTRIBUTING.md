@@ -50,7 +50,7 @@ When working with an AI assistant, point it at
 cd packages/dzql
 bun run test                 # everything, with a fresh database
 bun test tests/paths.test.ts # one file (start the database first: docker compose up -d --wait)
-bunx tsc --noEmit            # type check
+bun check                    # type check (TypeScript 7)
 ```
 
 - **Unit tests** (`tests/*.test.ts`) need no database.

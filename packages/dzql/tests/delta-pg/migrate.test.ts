@@ -14,7 +14,7 @@ import * as pg from "../../src/postgres";
 import { openPglite } from "../../src/postgres/pglite";
 import { createLocal } from "@blueshed/delta/local";
 import { setLogLevel } from "@blueshed/delta/logger";
-import type { DocDef, Schema } from "@blueshed/delta/backend";
+import type { Schema } from "@blueshed/delta/backend";
 import type { MigrateOptions, MigrateResult, Migration } from "@blueshed/delta/backend";
 
 setLogLevel("silent");

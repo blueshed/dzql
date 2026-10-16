@@ -9,11 +9,10 @@
  *                   NOSUPERUSER role; delta stamps the owner and is heard
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { join } from "node:path";
 import type { Pool } from "pg";
 import { setLogLevel } from "@blueshed/delta/logger";
 import { newPool, PG_URL } from "./setup";
-import { bboxStory, runExample, stop, until, type Proc } from "./helpers/examples";
+import { bboxStory, runExample, stop, until } from "./helpers/examples";
 import { setup, ALICE, BOB, CAROL, type Identity } from "../../examples/delta/todos-vs-rls/setup";
 import * as raw from "../../examples/delta/todos-vs-rls/raw-rls";
 import { serveTodos } from "../../examples/delta/todos-vs-rls/delta";
