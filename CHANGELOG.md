@@ -23,6 +23,17 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Breaking
+
+- **The whole-stack dzql is retired** (Workshop's docs/postgres-split-plan.md, step 5). The
+  `domain.ts` compiler, its runtime server, the client, the namespace, the Pinia stores and the
+  manifest generators are gone, with their tests, examples and docs, and the exports `dzql`,
+  `dzql/client`, `dzql/compiler` and `dzql/namespace`. dzql is delta's Postgres step and only
+  that: `dzql/postgres`, `dzql/pglite`, `dzql/auth-jwt`, `dzql/auth-link`, `dzql/compile`, and the
+  `dzql` command (sql, init, migrate, link). The dependencies `postgres` and `dotenv` go with it.
+  An app on the old stack stays on dzql 0.12; a new one starts from delta, or `bun create dzql`.
+  Ledger items about the retired code are closed (#12-#18, #20, #23, #24).
+
 ### Added
 
 - **A document's `owns` as a path, compiled** (Workshop's docs/postgres-split-plan.md, step 3).
