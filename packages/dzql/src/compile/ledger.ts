@@ -1,20 +1,16 @@
 /**
- * Compiled ledger reads: what the ledger reads to write an entry's inverse and
- * to guard a walk of it (undo, redo). The framework read the document whole
- * (`_delta_open(name, TRUE)`), a field's type and the rows beyond the document
- * from the definitions at run time; here each is written from them.
+ * Ledger reads: what the ledger reads to write an entry's inverse and to guard a walk of it (undo,
+ * redo), written from the definitions.
  *
  * `compileLedger(schema, docs)` writes:
- * - `dzql_open_whole__<slug>(name)` for each document: its open with every
- *   column of every row, whatever columns it names (`readOf`, whole), and
- *   `_delta_open` itself, sending each compiled document to its own open, shown
- *   (`dzql_open__<slug>`) or whole, and refusing a name of none;
- * - `_delta_same(collection, field, a, b)`: two values of a field the same, a
- *   time by the instant it names. The field's type is the writing process's
- *   (`delta.declared`), else the schema's, written in for each collection;
- *   a collection there is not, the same as JSON;
- * - `_delta_row_standing(collection, id)`: a row as it stands, as `{row}`, for
- *   every collection of the schema; NULL for one there is not.
+ * - `dzql_open_whole__<slug>(name)` for each document: its open with every column of every row,
+ *   whatever columns it names (`readOf`, whole), and `_delta_open`, sending each document to its own
+ *   open, shown (`dzql_open__<slug>`) or whole, and refusing a name no document has;
+ * - `_delta_same(collection, field, a, b)`: two values of a field the same, a time by the instant it
+ *   names. The field's type is the writing process's (`delta.declared`), else the schema's, written
+ *   in for each collection; a collection there is not, the same as JSON;
+ * - `_delta_row_standing(collection, id)`: a row as it stands, as `{row}`, for every collection of
+ *   the schema; NULL for one there is not.
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
 import { lit, noDoc, openFunction, openWholeFunction, readOf, standingRows } from "./opens";

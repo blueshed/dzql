@@ -1,24 +1,19 @@
 /**
- * Compiled columns and their checks: what a write may name, and what each
- * value must be. Asked of every op of a write (`delta_apply`).
+ * Columns and their checks: what a write may name, and what each value must be. Asked of every op of
+ * a write (`delta_apply`).
  *
- * The columns are the writing process's: `delta.declared`, set for the call by
- * its listener, else as the database last declared them (the schema is the
- * contract: two versions on one database each write by their own). So they
- * stay read at run time, as the framework reads them, and what is compiled is
- * what follows from the definitions:
+ * The columns are the writing process's: `delta.declared`, set for the call by its listener, else as
+ * the database last declared them (the schema is the contract: two versions on one database each
+ * write by their own). So they are read at run time; what follows from the definitions is compiled:
  *
- * - `dzql_columns__<slug>(collection, columns_def)` for each document: the
- *   columns it writes, the ones it names (`columns`) where it names some,
- *   from the list written in. `_delta_write_columns` sends each document to
- *   its own, and refuses a name of none.
- * - `_delta_assert_fields` itself: for each collection, each set of columns
- *   the definitions give it (all of them, and each document's own), checked
- *   by written statements -- the fields there are, the parent key, each
- *   column's type -- with the framework's messages, put together in the
- *   framework's order (`ORDER BY` in SQL, so the database's collation orders
- *   both alike). Columns of another set (a walk's, another version's) are
- *   checked by the columns given (`_delta_assert_fields_declared`).
+ * - `dzql_columns__<slug>(collection, columns_def)` for each document: the columns it writes, the
+ *   ones it names (`columns`) where it names some. `_delta_write_columns` sends each document to its
+ *   own, and refuses a name no document has.
+ * - `_delta_assert_fields`: for each collection, each set of columns the definitions give it (all
+ *   of them, and each document's own), checked by written statements -- the fields there are, the
+ *   parent key, each column's type -- with one message each, in one order (`ORDER BY` in SQL, so the
+ *   database's collation orders both alike). Another set (a walk's, another version's) is checked
+ *   by the columns given (`_delta_assert_fields_declared`).
  */
 import type { ColumnDef, DocDef, ResolvedTable, Schema } from "@blueshed/delta/backend";
 import { lit, named, need, noDoc } from "./opens";
@@ -53,7 +48,7 @@ END;
 $$ LANGUAGE plpgsql STABLE;`;
 }
 
-/** What a column's value must be, as the framework says it; none for a type it does not check. */
+/** What a column's value must be; none for a type it does not check. */
 const MUST: Record<string, [string, (v: string) => string]> = {
   text: ["a string", (v) => `jsonb_typeof(${v}) = 'string'`],
   integer: ["an integer", (v) => `jsonb_typeof(${v}) = 'number' AND ${v}::text::numeric = trunc(${v}::text::numeric)`],

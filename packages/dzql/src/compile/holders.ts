@@ -1,28 +1,25 @@
 /**
- * Compiled fan-out: which open documents hold a row. Asked by every write of
- * every row it touches, as the row was before and as it is after
- * (`_delta_holders`), and what each is told follows from it.
+ * Fan-out: which open documents hold a row. Asked by every write of every row it touches, as the row
+ * was before and as it is after (`_delta_holders`); what each is told follows from it.
  *
- * `compileHolders(schema, docs)` writes `_delta_holders` itself, answering
- * what the framework's answers, from the definitions: for the row's
- * collection, each document that holds it, in turn -- its prefix's lock,
- * shared; its open names, found as the framework finds them (by the root the
- * row hangs from, its chain written as lookups, where the document is one row
- * of an unscoped definition; else every open name of its prefix), and the
- * writer's; each name its own prefix owns and whose document holds the row
- * (`dzql_holds__<slug>`). There is no other document: the framework that asked
- * the rest retired (todo #26). SECURITY DEFINER, with the search path it was
- * applied with and pg_temp last, as the framework's was.
+ * `compileHolders(schema, docs)` writes `_delta_holders`: for the row's collection, each document
+ * that holds it in turn -- its prefix's lock, shared; its open names (by the root the row hangs from,
+ * its chain written as lookups, where the document is one row of an unscoped definition; else every
+ * open name of its prefix) and the writer's; each name its own prefix owns (not a longer prefix's)
+ * and whose document holds the row (`dzql_holds__<slug>`). SECURITY DEFINER, with the search path it
+ * was applied with and pg_temp last: who is told does not depend on what the writer may read.
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
 import { chainRoot, holdsFunction } from "./holds";
 import { lit, need } from "./opens";
 
 /** One document's names that hold the row, for a collection it holds. */
-function askOf(schema: Schema, doc: DocDef, coll: string): string {
+function askOf(schema: Schema, docs: DocDef[], doc: DocDef, coll: string): string {
   const table = need(schema, doc, coll);
   const all = Object.keys(doc.scope ?? {}).length > 0 || (coll !== doc.root && !table.parent);
   const prefix = lit(doc.prefix);
+  // a name a longer prefix starts is that document's: the longest prefix owns the name
+  const longer = docs.filter((d) => d.prefix.length > doc.prefix.length && d.prefix.startsWith(doc.prefix));
   return `      -- ${doc.prefix}
 ${all ? "" : `      v_rid := ${coll === doc.root ? "(p_row->>'id')::BIGINT" : chainRoot(schema, doc, coll)};\n`}      PERFORM pg_advisory_xact_lock_shared(hashtext('_delta_hold'), hashtext(${prefix}));
       FOR v_cand IN
@@ -31,8 +28,7 @@ ${all ? "" : `      v_rid := ${coll === doc.root ? "(p_row->>'id')::BIGINT" : ch
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, ${prefix})
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > ${doc.prefix.length} AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
-           AND ${holdsFunction(doc.prefix)}(v_cand, ${lit(coll)}, p_row) THEN
+${longer.length ? `           AND NOT (${longer.map((d) => `starts_with(v_cand, ${lit(d.prefix)})`).join(" OR ")})\n` : ""}           AND ${holdsFunction(doc.prefix)}(v_cand, ${lit(coll)}, p_row) THEN
           v_names := v_names || v_cand;
         END IF;
       END LOOP;`;
@@ -42,7 +38,7 @@ ${all ? "" : `      v_rid := ${coll === doc.root ? "(p_row->>'id')::BIGINT" : ch
 export function compileHolders(schema: Schema, docs: DocDef[]): string {
   const branches = Object.keys(schema.tables).flatMap((coll) => {
     const holding = docs.filter((d) => d.root === coll || d.include.includes(coll));
-    return holding.length ? [`    WHEN ${lit(coll)} THEN\n${holding.map((d) => askOf(schema, d, coll)).join("\n")}`] : [];
+    return holding.length ? [`    WHEN ${lit(coll)} THEN\n${holding.map((d) => askOf(schema, docs, d, coll)).join("\n")}`] : [];
   });
   return `CREATE OR REPLACE FUNCTION _delta_holders(p_coll TEXT, p_row JSONB, p_writer TEXT)
 RETURNS TEXT[] AS $$

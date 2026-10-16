@@ -4,7 +4,7 @@
 
 -- ---------------------------------------------------------------------------
 -- _delta_serial_past: moves a collection's serial (seq_<table>) past an id an
--- add named, never back, so a later add at /- does not meet it (todo #63).
+-- add named, never back, so a later add at /- does not meet it.
 -- setval needs UPDATE on the sequence, and an app role is granted USAGE,
 -- SELECT: so it runs as the framework's owner (SECURITY DEFINER), for a table
 -- delta knows, an id a path may name, and a caller that may insert into the
@@ -16,7 +16,7 @@
 -- ---------------------------------------------------------------------------
 -- _delta_serial_new: whether an id is past every one a collection's serial has
 -- handed out (minted, or passed for an add that named it): what an add may
--- name (todo #71). The serial is read as the framework's owner, as
+-- name. The serial is read as the framework's owner, as
 -- _delta_serial_past sets it, for a caller that may read the table: to any
 -- other every id is taken, so it learns nothing of the table's rows.
 -- ---------------------------------------------------------------------------
@@ -42,8 +42,7 @@ END $$;
 -- _delta_cascade_remove: remove a row + cascade to children & referencedBy,
 -- as the schema says, whichever document the removal is written through: one
 -- that does not include the drinks still takes a course's drinks (no orphans).
--- Returns the array of broadcast ops generated. (Until 0.12.0 it took the
--- writer's include, and left the rest: that form is dropped.) In one order on
+-- Returns the array of broadcast ops generated. In one order on
 -- every backend: each child collection by key, each row by id, then each
 -- collection that cascades on it (cascadeRows in sqlite.ts).
 -- ---------------------------------------------------------------------------
@@ -67,8 +66,8 @@ RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT '[]'::jsonb; $$;
 -- ---------------------------------------------------------------------------
 -- _delta_hanging_rows: the rows that hang from a row -- its children, theirs,
 -- and on down, whichever documents include them -- parent first, each
--- {coll, id, row}. A row moved to another parent takes them along (todo #62;
--- hanging in sqlite.ts).
+-- {coll, id, row}. A row moved to another parent takes them along (as
+-- delta's SQLite does).
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION _delta_hanging_rows(p_collection_key TEXT, p_id BIGINT)
@@ -76,7 +75,7 @@ RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT '[]'::jsonb; $$;
 
 -- ---------------------------------------------------------------------------
 -- _delta_tell: tell every document that holds a row a write changed what
--- changed for it (todo #28), and answer the writer's new version.
+-- changed for it, and answer the writer's new version.
 --
 -- `p_touched` is the write's rows in order, each {coll, id, before, after}:
 -- `before` the documents that held it before that touch (_delta_holders, asked
@@ -85,12 +84,12 @@ RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT '[]'::jsonb; $$;
 -- either way is told only the fields that changed: set by the write, a
 -- default or a trigger -- each a replace of its field, in field order); a
 -- `carried` row hangs under one the write moved, and is told only where it
--- arrives or leaves (todo #62). Each
+-- arrives or leaves. Each
 -- touch is told in turn: the documents that hold the row after it are those
 -- that held it at the row's next touch, or after its last, those that hold it
 -- once the write is done -- so a row made and then taken out (a drink, with its
--- course) is told its add wherever its remove is told (todo #75; tell in
--- sqlite.ts). For each document that held it before or holds it after: a row
+-- course) is told its add wherever its remove is told (as delta's SQLite
+-- does). For each document that held it before or holds it after: a row
 -- that arrives is an add, one that stays a replace of each field that changed,
 -- one that leaves a remove -- and where the row is the document's root, a
 -- replace of the root when it arrives (null when it leaves). The
@@ -181,7 +180,7 @@ RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT FALSE; $$;
 -- as an add names one: through it, a row is never moved into another
 -- document (you may write what you may read), RLS or none. A single
 -- document's own root too: it holds no parent of it, so the root moves
--- through a list that holds both (0.10.0 review). The parent must be there
+-- through a list that holds both. The parent must be there
 -- (_delta_row_there). A key written as it is, is no move. P0002 (404) when refused.
 -- ---------------------------------------------------------------------------
 
@@ -208,7 +207,7 @@ RETURNS BOOLEAN LANGUAGE plpgsql STABLE AS $$ BEGIN RAISE EXCEPTION 'no doc def 
 
 -- _delta_write_columns: the columns of `p_coll` a document writes -- as the
 -- process writing declares them (_delta_cols), those the document holds
--- (`held`, todo #70), else all: a write through it names those alone
+-- (`held`), else all: a write through it names those alone
 -- (_delta_assert_fields: 400 for another), and replacing a row whole sets those
 -- alone. generateSql sends each document to its own (compileColumns).
 CREATE OR REPLACE FUNCTION _delta_write_columns(p_def _delta_docs, p_coll TEXT, p_columns_def JSONB)
@@ -297,8 +296,7 @@ $$ LANGUAGE plpgsql IMMUTABLE;
 --
 -- `p_walk`: the write is a walk of the ledger, an undo or redo (001g's
 -- delta_apply_logged says so for delta_walk). A single document whose root is
--- gone takes no writes but a walk, which may put that root back (todo #43,
--- #59), or its root's add in a write that took it out (todo #61). The
+-- gone takes no writes but a walk, which may put that root back, or its root's add in a write that took it out. The
 -- two-argument form is no walk.
 -- ---------------------------------------------------------------------------
 
@@ -371,7 +369,7 @@ BEGIN
   v_root_coll := _delta_collection(v_def.root_collection);
   v_root_view := _delta_source_view(v_root_coll.table_name, v_root_coll.temporal);
 
-  -- an implied document's first write makes its root row (todo #34), told as a
+  -- an implied document's first write makes its root row, told as a
   -- row carried in: an add to a list of those roots, nothing to the implied
   -- documents, which showed it already (ensureImpliedRoot in sqlite.ts); an
   -- empty write makes nothing
@@ -405,14 +403,14 @@ BEGIN
   LOOP
     -- A single document is its root row and what hangs from it. One whose
     -- root is not there -- taken out, through it or another, or never there --
-    -- opens as not found, and takes no writes (todo #59): asked before each
+    -- opens as not found, and takes no writes: asked before each
     -- op, so an add under a root that is gone makes no orphan. But a write
     -- through a document that opened (its root there as the write began, the
-    -- first op's answer; an implied one always opens, todo #34) may add that
+    -- first op's answer; an implied one always opens) may add that
     -- root back after taking it out, and
     -- write on through it: a remove and an add of the root in one write is
     -- one row, walked as one (_delta_walk_key). A walk is not asked: an undo
-    -- of the root's removal puts it back (todo #43), and a walk of such a
+    -- of the root's removal puts it back, and a walk of such a
     -- document starts from the root absent, guarded by its plan
     -- (_delta_walk_plan), as SQLite's and ./json's are.
     IF NOT v_is_list AND NOT COALESCE(p_walk, FALSE) THEN   -- a walk not said (null) is none
@@ -506,8 +504,7 @@ BEGIN
 
       -- The root written through its document stays in its scope, as a list's
       -- rows do (below): one written out of the rest of its name's scope -- a
-      -- seat of fo-seat-of:1:3 to table 7 -- is refused, and the write undone
-      -- (0.10.0 review).
+      -- seat of fo-seat-of:1:3 to table 7 -- is refused, and the write undone.
       IF NOT _delta_row_in_scope(v_def, p_doc_name, v_coll_key, v_doc_id) THEN
         RAISE EXCEPTION 'row not found: %/% -- the write would take it out of %',
           v_coll_key, v_doc_id, p_doc_name
@@ -538,7 +535,7 @@ BEGIN
     -- ---------------------------------------------------------------
     IF array_length(v_parts, 1) = 2 AND v_op->>'op' = 'add' THEN
       -- ... and it holds one root row, the one its name names: it adds no
-      -- other (todo #52). A row it could not read would be told to no one.
+      -- other. A row it could not read would be told to no one.
       -- Its own it adds only when it is gone (above: taken out earlier in this
       -- write, or by a walk, an undo of its removal); there, the live check
       -- below answers 409.
@@ -557,7 +554,7 @@ BEGIN
         v_id := _delta_row_id(v_coll_key, v_id_text);
       END IF;
       -- An add makes a new row, under an id the serial has not handed out
-      -- (todo #71): one it has (minted, or passed for an add that named it) is
+      --: one it has (minted, or passed for an add that named it) is
       -- refused, whether a row holds it now or none does -- or RLS hides it --
       -- so the answer says nothing of rows the writer may not read. But for
       -- ids the writer has read: a walk puts back the rows its entry took, and
@@ -567,7 +564,7 @@ BEGIN
       -- keeps the same rule.
       --
       -- A temporal key is (id, valid_from), so nothing in the table stops a
-      -- second live version of an id (todo #16): a mint can meet a row put in
+      -- second live version of an id: a mint can meet a row put in
       -- by hand, and two writers through two documents can name one id at
       -- once. A lock on the id, held to commit, and the checks under it do: a
       -- second add waits for the first, then sees the serial past it (and its
@@ -629,7 +626,7 @@ BEGIN
 
       -- ... and a single document's own root, added back in the write that took
       -- it out, goes back under the parent it had: another would be a move, and
-      -- the document holds no parent of its root (0.10.0 review).
+      -- the document holds no parent of its root.
       IF NOT v_is_list AND v_coll_key = v_def.root_collection AND v_coll.parent_fk IS NOT NULL
          AND v_root_was IS NOT NULL
          AND (v_new_row->>v_coll.parent_fk)::BIGINT IS DISTINCT FROM (v_root_was->>v_coll.parent_fk)::BIGINT THEN
@@ -682,7 +679,7 @@ BEGIN
       -- `So`, a price up to 5), and a single document's own root added back,
       -- the whole of its name's scope. Else it would be made where the writer
       -- cannot read it -- told [] itself, and an add to the lists it does meet
-      -- -- so it is refused, and the write undone (0.10.0 review, todo #66).
+      -- -- so it is refused, and the write undone.
       IF v_coll_key = v_def.root_collection
          AND NOT _delta_row_in_scope(v_def, p_doc_name, v_coll_key, v_id) THEN
         RAISE EXCEPTION 'row not found: %/% -- the add is not one % holds',
@@ -783,7 +780,7 @@ BEGIN
         v_told_path := _delta_build_path(v_coll_key, v_id::text);
       END IF;
 
-      -- A row moved to another parent takes the rows under it along (todo #62):
+      -- A row moved to another parent takes the rows under it along:
       -- who holds each is asked before it moves, once a run, and each is told
       -- after the row, where it arrives or leaves (endRun in sqlite.ts).
       v_hung := '[]'::jsonb;
@@ -807,9 +804,9 @@ BEGIN
       -- A list's root row written through the list stays in its scope, as an
       -- add through it is given its bindings: a field, a row or a merge that
       -- takes it out -- into another owner's list by its key, or out of a
-      -- condition -- is refused, and the write undone (todo #6's review).
+      -- condition -- is refused, and the write undone.
       -- Asked of the row as written, RLS or none; and of a single document's
-      -- root named by its id, as above (0.10.0 review).
+      -- root named by its id, as above.
       IF v_coll_key = v_def.root_collection
          AND NOT _delta_row_in_scope(v_def, p_doc_name, v_coll_key, v_id) THEN
         RAISE EXCEPTION 'row not found: %/% -- the write would take it out of %',
@@ -845,7 +842,7 @@ BEGIN
   -- Told: the writer's document and every other that holds a row changed,
   -- each what changed for it. The answer (and the ledger) keep the ops as
   -- written, so an undo walks back exactly what was done -- and so does the
-  -- writer's entry in the log, once, for the custom documents (todo #44).
+  -- writer's entry in the log, once, for the custom documents.
   -- A write through a document whose owns is a path leaves it reaching the writer, or its row
   -- gone: a row is never handed away (403; compiled per document, _delta_keeps_reach).
   IF NOT _delta_keeps_reach(v_def, p_doc_name) THEN

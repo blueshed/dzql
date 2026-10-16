@@ -1,34 +1,26 @@
 /**
- * Compiled lookups: a collection's definition, its table's serial, and a
- * document read as it stood. What the write, the reads and the ledger still
- * looked up at run time -- `_delta_collections` for a collection's table,
- * parent and columns, a table's sequence by its name, the framework's read as
- * it stood -- written from the definitions.
+ * Lookups: a collection's definition, its table's serial, and a document read as it stood, written
+ * from the definitions.
  *
  * `compileLookups(schema, docs)` writes:
- * - `_delta_collection(key)`: each collection's definition, as generateSql
- *   records it in `_delta_collections`, written in; NULL fields for a key of
- *   none;
- * - `_delta_serial_new(table, id)` and `_delta_serial_past(table, id)`: each
- *   table's sequence named, read or moved as the framework's do (as the
- *   functions' owner, for a caller with the table's privilege); for a table
- *   there is not, no id is new and nothing moves;
- * - `_delta_find_doc(name)`: the document a name is of, by the longest prefix
- *   it starts with, as generateSql records it in `_delta_docs`, written in;
- *   NULL for a name of none;
- * - `delta_open_at(name, at)`: each compiled document to its own read as it
- *   stood (`dzql_open_at__<slug>`), refusing a name of none.
- *
- * Each answers what the framework's did (recorded: tests/compile/lookups.test.ts).
+ * - `_delta_collection(key)`: each collection's definition, as generateSql records it in
+ *   `_delta_collections`; NULL fields for a key of none;
+ * - `_delta_serial_new(table, id)` and `_delta_serial_past(table, id)`: each table's sequence read
+ *   or moved, as the functions' owner, for a caller with the table's privilege; for a table there is
+ *   not, no id is new and nothing moves;
+ * - `_delta_find_doc(name)`: the document a name is of, by the longest prefix it starts with; NULL
+ *   for a name no document has;
+ * - `delta_open_at(name, at)`: each document to its own read as it stood (`dzql_open_at__<slug>`),
+ *   refusing a name no document has.
  */
 import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { findCascadeOn } from "../postgres/sql";
 import { lit, noDoc, openAtFunction } from "./opens";
 
-/** The caller, as the framework's serials ask: the role set, else the session's. */
+/** The caller: the role set, else the session's. */
 const CALLER = "COALESCE(NULLIF(current_setting('role'), 'none'), session_user)";
 
-/** The search path a definer function runs with: the schemas applied in, and pg_temp last (as the framework's serials). */
+/** The search path a definer function runs with: the schemas applied in, and pg_temp last. */
 const searchPath = (signature: string) => `DO $$
 DECLARE
   v_path TEXT := COALESCE((SELECT string_agg(quote_ident(s), ', ') FROM unnest(current_schemas(false)) AS s), 'public') || ', pg_temp';
@@ -89,7 +81,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ${searchPath("_delta_serial_past(text, bigint)")}`;
 
-  // longest first, as the framework's ORDER BY length(prefix) DESC: a name is of the longest prefix it starts with
+  // longest first: a name is of the longest prefix it starts with
   const byLength = [...docs].sort((a, b) => b.prefix.length - a.prefix.length || (a.prefix < b.prefix ? -1 : 1));
   const findDoc = `CREATE OR REPLACE FUNCTION _delta_find_doc(p_doc_name TEXT)
 RETURNS _delta_docs AS $$

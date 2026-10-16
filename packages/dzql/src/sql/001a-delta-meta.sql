@@ -21,18 +21,17 @@ CREATE TABLE IF NOT EXISTS _delta_docs (
   scope            JSONB NOT NULL DEFAULT '{}'
 );
 
--- An implied document is there before its root row is (todo #34): it opens
+-- An implied document is there before its root row is: it opens
 -- empty, and its first write makes the row -- as on SQLite and ./json.
 ALTER TABLE _delta_docs ADD COLUMN IF NOT EXISTS implied BOOLEAN NOT NULL DEFAULT FALSE;
 
--- The columns a document holds of a collection it names (todo #70): collection
+-- The columns a document holds of a collection it names: collection
 -- key -> its column names. The row's id and parent key it holds always; a
 -- collection not named, whole. It is opened, told and written by those alone.
 ALTER TABLE _delta_docs ADD COLUMN IF NOT EXISTS held JSONB NOT NULL DEFAULT '{}';
 
--- The framework that read the definitions at run time retired (todo #26): each
--- document and collection is compiled by generateSql (dzql/compile). Dropped
--- where an earlier version made them.
+-- Each document and collection is compiled by generateSql: these generic
+-- forms, made by earlier versions, are dropped.
 DROP FUNCTION IF EXISTS _delta_collection_framework(text);
 DROP FUNCTION IF EXISTS _delta_assert_fields_framework(text, jsonb, text, jsonb);
 DROP FUNCTION IF EXISTS _delta_temporal_where(timestamptz, text);
@@ -78,7 +77,7 @@ CREATE TABLE IF NOT EXISTS _delta_versions (
   version  BIGINT NOT NULL DEFAULT 0
 );
 
--- The documents open now (todo #73): a row for each name a listener has
+-- The documents open now: a row for each name a listener has
 -- subscribers for, and which listener. A write's fan-out asks these names, not
 -- every name ever opened. A listener is alive while its connection holds its
 -- lock (001c, _delta_holder_live); a dead one's rows are cleared.
@@ -175,9 +174,8 @@ END;
 $$;
 
 -- Refuse a value that is not an object, names a field the collection does
--- not have, or gives a column a value not of its type (SQLSTATE 22023 → 400).
--- It used to be merged into the broadcast row, acked, and dropped (or cast) by
--- jsonb_populate_record: stored otherwise than told. id, the parent key and
+-- not have, or gives a column a value not of its type (SQLSTATE 22023 → 400),
+-- so nothing is stored otherwise than told. id, the parent key and
 -- the temporal columns are the row's own. By the columns given (`p_columns`): a
 -- set the compiler did not write in (another version's, `delta.declared`; a
 -- walk's, as its entry was stored) is checked here.

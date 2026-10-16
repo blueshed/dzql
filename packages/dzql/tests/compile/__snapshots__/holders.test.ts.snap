@@ -2238,7 +2238,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-board:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_board(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2252,7 +2251,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-menu:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 8 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_menu(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2266,7 +2264,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-title:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_title(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2280,7 +2277,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-tagged:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 10 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_tagged(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2294,7 +2290,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-notes:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_notes(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2308,7 +2303,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-seating:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 11 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_seating(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2322,7 +2316,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-drinks:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 10 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_drinks(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2336,7 +2329,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-plan:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 8 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_plan(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2350,7 +2342,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-weddings:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 12 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_weddings(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2364,7 +2355,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-party:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_party(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2378,7 +2368,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-slim:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 8 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_slim(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2391,7 +2380,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-board-on:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 12 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_board_on(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2405,7 +2393,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-asks:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 8 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_asks(v_cand, 'weddings', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2420,7 +2407,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-board:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_board(v_cand, 'households', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2434,7 +2420,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-household:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 13 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_household(v_cand, 'households', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2448,7 +2433,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-course-guests:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 17 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_course_guests(v_cand, 'households', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2461,7 +2445,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-guest:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_guest(v_cand, 'households', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2475,7 +2458,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-all-households:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 18 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_all_households(v_cand, 'households', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2489,7 +2471,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-party:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_party(v_cand, 'households', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2503,7 +2484,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-slim:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 8 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_slim(v_cand, 'households', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2518,7 +2498,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-board:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_board(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2532,7 +2511,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-menu:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 8 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_menu(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2546,7 +2524,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-course:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 10 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_course(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2560,7 +2537,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-all-courses:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 15 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_all_courses(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2574,7 +2550,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-catalog:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 11 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_catalog(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2588,7 +2563,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-courses-noted:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 17 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_courses_noted(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2601,7 +2575,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-courses-like:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 16 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_courses_like(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2614,7 +2587,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-menu-like:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 13 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_menu_like(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2628,7 +2600,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-course-guests:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 17 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_course_guests(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2642,7 +2613,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-plan:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 8 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_plan(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2656,7 +2626,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-weddings:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 12 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_weddings(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2669,7 +2638,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-courses-noted-on:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 20 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_courses_noted_on(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2683,7 +2651,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-pub-courses:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 15 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_pub_courses(v_cand, 'courses', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2698,7 +2665,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-board:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_board(v_cand, 'drinks', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2712,7 +2678,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-menu:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 8 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_menu(v_cand, 'drinks', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2726,7 +2691,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-course:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 10 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_course(v_cand, 'drinks', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2740,7 +2704,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-catalog:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 11 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_catalog(v_cand, 'drinks', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2753,7 +2716,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-menu-like:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 13 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_menu_like(v_cand, 'drinks', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2767,7 +2729,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-drinks:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 10 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_drinks(v_cand, 'drinks', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2781,7 +2742,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-plan:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 8 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_plan(v_cand, 'drinks', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2795,7 +2755,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-board:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_board(v_cand, 'tags', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2808,7 +2767,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-tagged:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 10 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_tagged(v_cand, 'tags', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2821,7 +2779,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-tags-labelled:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 17 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_tags_labelled(v_cand, 'tags', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2836,7 +2793,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-board:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_board(v_cand, 'notes', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2850,7 +2806,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-notes:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_notes(v_cand, 'notes', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2864,7 +2819,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-courses-noted:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 17 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_courses_noted(v_cand, 'notes', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2878,7 +2832,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-note:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 8 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_note(v_cand, 'notes', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2892,7 +2845,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-all-notes:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 13 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_all_notes(v_cand, 'notes', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2905,7 +2857,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-notes-on:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 12 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_notes_on(v_cand, 'notes', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2918,7 +2869,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-courses-noted-on:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 20 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_courses_noted_on(v_cand, 'notes', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2931,7 +2881,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-board-on:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 12 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_board_on(v_cand, 'notes', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2946,7 +2895,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-seating:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 11 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_seating(v_cand, 'seats', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2959,7 +2907,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-seats-kept:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 14 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_seats_kept(v_cand, 'seats', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2972,7 +2919,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-seats-upto:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 14 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_seats_upto(v_cand, 'seats', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2985,7 +2931,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-seats-at:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 12 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_seats_at(v_cand, 'seats', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -2998,7 +2943,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-seats-wished:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 16 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_seats_wished(v_cand, 'seats', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -3011,7 +2955,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-seat-of:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 11 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_seat_of(v_cand, 'seats', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -3025,7 +2968,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-slim:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 8 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_slim(v_cand, 'seats', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -3039,7 +2981,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-slots-upto:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 14 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_slots_upto(v_cand, 'slots', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -3052,7 +2993,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-slots-of:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 12 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_slots_of(v_cand, 'slots', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -3065,7 +3005,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-slots-under:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 15 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_slots_under(v_cand, 'slots', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -3078,7 +3017,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-slots-by:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 12 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_slots_by(v_cand, 'slots', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -3091,7 +3029,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-slots-on:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 12 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_slots_on(v_cand, 'slots', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -3106,7 +3043,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-party:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 9 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_party(v_cand, 'favours', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -3121,7 +3057,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-asks:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 8 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_asks(v_cand, 'asks', p_row) THEN
           v_names := v_names || v_cand;
         END IF;
@@ -3134,7 +3069,6 @@ BEGIN
         SELECT p_writer WHERE p_writer IS NOT NULL AND starts_with(p_writer, 'fo-asks-from:')
       LOOP
         IF NOT (v_cand = ANY(v_names))
-           AND NOT EXISTS (SELECT 1 FROM _delta_docs d WHERE length(d.prefix) > 13 AND starts_with(v_cand, d.prefix))   -- the longest prefix owns the name
            AND dzql_holds__fo_asks_from(v_cand, 'asks', p_row) THEN
           v_names := v_names || v_cand;
         END IF;

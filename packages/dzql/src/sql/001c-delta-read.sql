@@ -38,7 +38,7 @@ CREATE OR REPLACE FUNCTION _delta_bump_and_notify(p_doc TEXT, p_ops JSONB)
 RETURNS BIGINT LANGUAGE sql AS $$ SELECT _delta_bump_and_notify(p_doc, p_ops, NULL); $$;
 
 -- ---------------------------------------------------------------------------
--- Implied documents (todo #34): there before their root row is, as on SQLite.
+-- Implied documents: there before their root row is, as on SQLite.
 --
 -- _delta_implied_root: the root row an implied document opens with, and its
 -- first write makes -- its id, and each column's default (or null where it
@@ -80,7 +80,7 @@ BEGIN
   IF v_coll.collection_key IS NULL THEN RETURN; END IF;
   v_exists := _delta_row_there(p_def.root_collection, p_id);
   IF v_exists THEN RETURN; END IF;
-  -- Not there, as the writer reads it: made under the add rule (todo #71) -- an
+  -- Not there, as the writer reads it: made under the add rule -- an
   -- id the serial has handed out is taken, whether a row RLS hides holds it or
   -- none does. delta_apply passes the serial past the root once it is done.
   IF NOT _delta_serial_new(v_coll.table_name, p_id) THEN
@@ -112,7 +112,7 @@ $$ LANGUAGE plpgsql;
 
 -- ---------------------------------------------------------------------------
 -- _delta_show: a row of `p_coll` as a document shows it -- where it names that
--- collection's columns (`held`, todo #70), those, the row's id and its parent
+-- collection's columns (`held`), those, the row's id and its parent
 -- key; else whole. showRow in schema.ts.
 -- ---------------------------------------------------------------------------
 
@@ -171,7 +171,7 @@ CREATE OR REPLACE FUNCTION delta_open(p_doc_name TEXT)
 RETURNS JSONB LANGUAGE sql AS $$ SELECT _delta_open(p_doc_name, FALSE); $$;
 
 -- ---------------------------------------------------------------------------
--- The documents open now (_delta_held, todo #73): each listener holds the
+-- The documents open now (_delta_held): each listener holds the
 -- names it has subscribers for, so a write's fan-out asks only those.
 -- ---------------------------------------------------------------------------
 

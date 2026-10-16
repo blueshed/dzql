@@ -67,7 +67,7 @@ $$;
 -- removal have no inverse of their own -- a walk would find /root gone. A row
 -- the write makes and takes out again never was outside it: its make, and what
 -- it had since, walk back nothing, and its removal adds nothing back --
--- [add, remove] inverts to [], [add, remove, add] to [remove] (todo #67).
+-- [add, remove] inverts to [], [add, remove, add] to [remove].
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION _delta_inverse(p_before JSONB, p_ops JSONB, p_asked JSONB)
@@ -211,7 +211,7 @@ $$ LANGUAGE plpgsql;
 -- an even depth (a write, or a redo); forward, one at an odd depth (an undo that
 -- changed something) newer than the cursor's last write. Found newest first,
 -- among the cursor's own entries, so it costs what was written since the
--- answer, not the cursor's whole history (todo #28): every entry of a chain
+-- answer, not the cursor's whole history: every entry of a chain
 -- carries its write's cursor, as delta_walk records it (an entry recorded by
 -- hand as walking another cursor's chain is not one of this cursor's tips).
 CREATE OR REPLACE FUNCTION _delta_ledger_tip(p_cursor TEXT, p_back BOOLEAN)
@@ -383,7 +383,7 @@ BEGIN
       IF v_here IS NULL OR EXISTS (SELECT 1 FROM unnest(v_fields) f WHERE NOT _delta_same(v_parts[1], f, v_here->f, v_wrote->f)) THEN
         v_conflict := v_conflict || to_jsonb(v_at);
       ELSE
-        -- each field set back, one replace each (a replace of the row is the row whole, todo #3);
+        -- each field set back, one replace each (a replace of the row is the row whole);
         -- the document's root at /root/<field>, however the entry spelled it
         v_ops := v_ops || (SELECT jsonb_agg(jsonb_build_object('op', 'replace',
           'path', CASE WHEN v_here = v_doc->v_parts[1] THEN _delta_build_path(v_parts[1]) ELSE v_path END || _delta_build_path(f),

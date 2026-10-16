@@ -59,7 +59,7 @@ export async function pruneOpsLog(pool: Pool, keepInterval = "1 hour"): Promise<
  * `doc`: the document's name, which says its mode and its scope's values, as
  * `delta_apply` reads them (`_delta_resolve_scope`; `resolveScope` is its
  * twin) -- the definition alone cannot: `all-courses:` is every course, and
- * `all-courses:1` course 1 (todo #57). Or say them: `list`, the document is in
+ * `all-courses:1` course 1. Or say them: `list`, the document is in
  * list mode; `values`, its scope's equality bindings, which a list-mode add of
  * a root row is given, so they count as given -- the options SQLite's
  * validateOps takes, and they win over the name's. Given neither, the mode is
@@ -90,7 +90,7 @@ export function validateOps(schema: Schema, def: DocDef, ops: DeltaOp[], opts: {
     const fk = table.parent?.fkColumn;
     const value = (op as any).value;
     const isObject = value !== null && typeof value === "object" && !Array.isArray(value);
-    // A value's keys (_delta_assert_fields): its columns the document holds (todo #70), the row's id (the path's wins) and parent key, a temporal row's validity.
+    // A value's keys (_delta_assert_fields): its columns the document holds, the row's id (the path's wins) and parent key, a temporal row's validity.
     const held = (k: string) => holdsField(def, schema, collKey, k);
     const known = (k: string) => (Object.hasOwn(table.columns, k) && held(k)) || k === "id" || k === fk || k === "valid_from" || k === "valid_to";
     // What a written field may hold, beyond its column's cast: a column that is

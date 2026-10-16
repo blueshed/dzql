@@ -15,7 +15,7 @@ The release procedure of railroad, delta and eta, for dzql. The bump level is `$
 | Gate | `cd packages/dzql && bun check && bun run test` (Docker; port 5433 free) |
 | End to end | CLAUDE.md, *Testing the create-dzql Template*: a new app, linked to the local dzql, and its own tests |
 
-Run the steps in order. Stop at the first failure without changing anything further. Running this
+Run the steps in order. Stop at the first failure without changing anything further. Releasing is not a step of a plan: it comes once every stage is done, on Peter's word. Running this
 command is the authorisation to release -- carry it through to the end, the push included, without
 asking again. Bun only (`bun check`, TypeScript 7, as the gate says), and never `npm publish` from here: CI does it.
 
@@ -43,10 +43,11 @@ Run the gate command in the table. If it fails, stop -- no file has been edited 
 
 Follow CLAUDE.md's *Testing the create-dzql Template*: a new app from the local template, its
 `dzql` dependency set to `link:dzql` (so its runtime is the local one, not npm's), `bun check`
-clean and `bun test` passing. Its tests are the checks, in two real browsers: register, publish a
-post, see it arrive in the other window without a reload, edit it in the sheet, delete it; the
-other person sees it with no Edit or Delete; a write to everyone's posts is refused (403), another's
-posts are not there (404); a reload keeps you signed in, and you sign in again by email. Then its
+clean and `bun test` passing. Its tests are the checks, in two real browsers: pick who you
+are, publish a post, see it arrive in the other window without a reload, edit it in the sheet,
+delete it; the other person sees it with no Edit or Delete; a write to everyone's posts is refused
+(403), another's posts are not there (404); someone new's link, made in one window, signs them in
+in the other, keeps them on a reload, and is used once. Then its
 *Cleanup*, the `bun unlink` included. If any check fails, stop.
 
 ## 5. Bump

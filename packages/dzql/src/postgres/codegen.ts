@@ -1,7 +1,7 @@
 /**
  * Codegen — turn a TypeScript schema (`defineSchema`) and a set of doc
- * definitions (`defineDoc`) into the SQL that registers both with the
- * delta-doc framework.
+ * definitions (`defineDoc`) into the app's SQL: its tables, and each document
+ * compiled.
  *
  * Output includes:
  *   - CREATE SEQUENCE / CREATE TABLE (+ current_* view for temporal tables)
@@ -20,7 +20,7 @@
  *
  * Or from the bundled CLI:
  *
- *   bunx delta sql ./types.ts --out init_db/003-tables.sql
+ *   bunx dzql sql ./types.ts --out init_db/003-tables.sql
  */
 import type { Schema, DocDef } from "./schema";
 import { lit, columnSqlType, sqlDefault, findCascadeOn } from "./sql";
@@ -55,7 +55,7 @@ export function generateSql(
   const today = new Date().toISOString().slice(0, 10);
   const header =
     opts.header ?? "GENERATED FROM types.ts — DO NOT EDIT";
-  const regen = opts.regenerate ?? "bunx delta sql ./types.ts";
+  const regen = opts.regenerate ?? "bunx dzql sql ./types.ts";
 
   const lines: string[] = [
     "-- =========================================================================",
@@ -92,7 +92,7 @@ export function generateSql(
 
   // Doc definitions. `implied` is written when a document is implied (and
   // then for each, so one that stops being implied is reset), and `held` when
-  // one names its columns (todo #70): SQL for an app with neither needs no
+  // one names its columns: SQL for an app with neither needs no
   // framework SQL newer than it.
   lines.push("-- Doc definitions");
   const implied = docs.some((d) => d.implied);

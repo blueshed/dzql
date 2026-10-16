@@ -1,10 +1,6 @@
 # The stored functions, and calling them from SQL
 
-> Moved from delta's `delta-doc` skill when delta handed Postgres to dzql (delta 1.0). The
-> imports are dzql's (`dzql/postgres`, `dzql/pglite`, `dzql/auth-jwt`); the commands are
-> `dzql sql`, `dzql init` and `dzql migrate`.
-
-From `bench/adapters/delta-new.ts`: a write as a person, in one round trip.
+From `bench/adapters/delta.ts`: a write as a person, in one round trip.
 
 ```ts
 await pool.query("SELECT delta_apply_as($1, $2, $3) AS result",
@@ -32,7 +28,7 @@ functions you call stay these:
 - `delta_open_as` / `delta_open_at_as` / `delta_apply_as(user_id, …)`: the same with
   `app.user_id` set for that statement. `docTypeFromDef({ auth })` uses them; no opt-in.
 - Ledger (`001g`): `delta_apply_logged`, `delta_walk`, `delta_undo`, `delta_redo`,
-  `delta_history`, and their `_as` forms (`ledger.md`).
+  `delta_history`, and their `_as` forms (delta-doc's `ledger.md`).
 - `delta_snapshot(name, at)` / `delta_resolve_snapshot(name)`: pin a time to a label.
 - `delta_prune_ops(interval)` (`pruneOpsLog(pool)`): trims the log and forgets names nobody holds.
 
@@ -45,8 +41,8 @@ functions you call stay these:
   table: only that path versions, logs and NOTIFYs, so subscribers stay live.
 - **`SECURITY DEFINER` bypasses RLS.** Delta is persistence and broadcast, not authorization:
   such a function checks its own preconditions (through `_`-prefixed guard helpers, never
-  callable from the wire), and its named adds are judged as the session's role (`paths.md`).
+  callable from the wire), and its named adds are judged as the session's role (delta-doc's `paths.md`).
 - Never edit `001*`, nor `_delta_collections` / `_delta_docs` by hand: `generateSql` fills them.
 - Tables need `seq_<table>` sequences: `generateSql` makes them; do not hand-write tables.
-- A framework older than the listener (no `_delta_fetch_log`) still works, with a warning:
-  re-apply it (`applyFramework` or `init --upgrade`).
+- Framework SQL older than the listener works, with a warning: re-apply it (`applyFramework`
+  or `dzql init --upgrade`).

@@ -1,18 +1,18 @@
 /**
- * Bootstrap helpers — apply the delta-doc framework SQL to a Postgres
+ * Bootstrap helpers — apply the framework SQL (`src/sql/001*`) to a Postgres
  * database, programmatically. Alternative to copying the files into a
  * consumer's `init_db/` directory.
  *
  *   import { Pool } from "pg";
  *   import { applyFramework } from "dzql/postgres";
  *
- *   const pool = new Pool({ connectionString: process.env.PG_URL });
+ *   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
  *   await applyFramework(pool);
  *
  * The framework SQL is idempotent (`CREATE … IF NOT EXISTS`,
  * `ON CONFLICT DO UPDATE`) so it is safe to call on every server boot.
  *
- * For docker-entrypoint-initdb.d workflows, use the `delta init` CLI to
+ * For docker-entrypoint-initdb.d workflows, use `dzql init` to
  * copy the same files into a directory the image can mount.
  */
 import type { Pool } from "pg";
