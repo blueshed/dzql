@@ -10,14 +10,14 @@
     },
     "packages/create-dzql": {
       "name": "create-dzql",
-      "version": "0.10.0",
+      "version": "0.11.0",
       "bin": {
         "create-dzql": "./index.ts",
       },
     },
     "packages/dzql": {
       "name": "dzql",
-      "version": "0.10.0",
+      "version": "0.11.0",
       "bin": {
         "dzql": "./src/cli/index.ts",
       },

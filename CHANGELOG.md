@@ -23,6 +23,8 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-16
+
 ### Breaking
 
 - **The framework that read the definitions at run time is gone (todo #26).** Every document and
