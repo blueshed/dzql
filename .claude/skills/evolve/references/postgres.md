@@ -10,6 +10,7 @@ bun add -d @types/pg
 ```ts
 // src/resources/order/order-api.ts
 /** Order: the catalogue, each order and the kitchen, kept by PGlite in pg/ in the data folder. */
+import { mkdirSync } from "node:fs";
 import type { WsServer } from "@blueshed/delta/server";
 import { openPglite } from "dzql/pglite";
 import { applyFramework, applySql, createDocListener, defineDoc, defineSchema, docTypeFromDef, generateSql, importTables } from "dzql/postgres";
@@ -35,6 +36,7 @@ export const catalogue = { tables: { items: [{ id: 1, name: "Tea", price: 2.5 },
 
 // Answers what closes it: the server calls that when it stops
 export async function orderDocs(ws: WsServer, dataDir: string) {
+  mkdirSync(dataDir, { recursive: true }); // PGlite makes pg/, not the folder it is in
   const pool = await openPglite(`${dataDir}/pg`); // one process owns the folder
   await applyFramework(pool); // the framework's tables and functions
   await applySql(pool, generateSql(schema, docs)); // the app's tables, and each document's reads compiled
@@ -59,13 +61,14 @@ A server stopped and started again carries on where it was:
 // tests/order-pg.test.ts
 import { test, expect, afterAll } from "bun:test";
 import { connectWs, openDoc } from "@blueshed/delta/client";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { startServer } from "../src/server";
 import type { Order } from "../src/resources/order/order-api";
 
-const dataDir = mkdtempSync(`${tmpdir()}/order-pg-`);
-afterAll(() => rmSync(dataDir, { recursive: true, force: true }));
+const scratch = mkdtempSync(`${tmpdir()}/order-pg-`);
+const dataDir = `${scratch}/data`; // not there yet, as on a new app's first start
+afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 
 // A server on the data folder, a line added to order 1, and the server stopped: the ids of its lines
 async function addLine(item: number) {
@@ -82,7 +85,8 @@ async function addLine(item: number) {
   }
 }
 
-test("stopped and started again on the same folder, the order carries on where it was", async () => {
+test("started on a data folder not there yet, stopped and started again, the order carries on where it was", async () => {
+  expect(existsSync(dataDir)).toBe(false);
   expect(await addLine(1)).toEqual([1]);
   expect(await addLine(2)).toEqual([1, 2]);
 });

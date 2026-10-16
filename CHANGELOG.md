@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Postgres step starts on a data folder not made yet** (`references/postgres.md`, todo #17).
+  `orderDocs` opened PGlite in `pg/` without making the data folder first, so a new app's first
+  start failed (ENOENT on mkdir `<dataDir>/pg`); it makes the folder first, as the SQLite step
+  does. Its test starts the server on a folder that is not there yet, where it had passed a
+  folder `mkdtempSync` had made.
+- **The two-documents step's lists stay inside the page** (`references/two-documents.md`). The
+  reset takes a list's padding, so the catalogue's and the order's bullets hung outside it; the
+  step adds styles that draw each list as rows with a rule between them, and the total in bold.
+
 ### Added
 
 - **The Shed, a held-out example for the evolve skill** (`evals/shed/`). An allotment society's tool
