@@ -2,11 +2,14 @@
  * The compiled root check answers what the framework answers. For every name
  * the path cases open, and names made to probe each check, and for every id
  * the root's table holds (each version of a temporal one), ids it does not,
- * and none: `dzql_root_there__<prefix>` and `_delta_root_there_framework`
- * (given the framework resolver's scope and the root's view, as delta_apply
- * gives them) say the same, an error included, on the seed and after writes
- * that close and remove roots. Then every write through it: delta's own cases
- * (tests/delta) run with it in place.
+ * and none: `dzql_root_there__<prefix>` says what the framework's root check
+ * said, an error included, on the seed and after writes that close and remove
+ * roots. Then every write through it: delta's own cases (tests/delta) run with
+ * it in place.
+ *
+ * The framework's answers are recorded (the snapshot, taken 16 October 2026
+ * while the framework was applied and the two were held equal). The framework
+ * retired (todo #26); its answers stay the measure.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Pool } from "pg";
@@ -59,14 +62,9 @@ async function idsOf(prefix: string): Promise<(number | null)[]> {
   return [...held, 0, 404, null];
 }
 
-/** Whether each id's root is there for a name, compiled or framework: the answers, or the error. */
-async function there(compiled: boolean, name: string, ids: (number | null)[]): Promise<unknown> {
-  const prefix = prefixOf(name);
-  const def = `(SELECT d FROM _delta_docs d WHERE d.prefix = '${prefix.replace(/'/g, "''")}')`;
-  const call = compiled
-    ? `${rootThereFunction(prefix)}($1, i.id)`
-    : `_delta_root_there_framework(${def}, $1, _delta_resolve_scope_framework(${def}, $1, TRUE),
-         (SELECT _delta_source_view(c.table_name, c.temporal) FROM _delta_collections c WHERE c.collection_key = (${def}).root_collection), i.id)`;
+/** Whether each id's root is there for a name: the answers, or the error. */
+async function there(name: string, ids: (number | null)[]): Promise<unknown> {
+  const call = `${rootThereFunction(prefixOf(name))}($1, i.id)`;
   try {
     const { rows: [{ a }] } = await pool.query(
       `SELECT array_agg(${call} ORDER BY i.n) AS a FROM jsonb_array_elements($2::jsonb) WITH ORDINALITY AS e(x, n), LATERAL (SELECT e.n, (e.x #>> '{}')::BIGINT AS id) i`,
@@ -82,7 +80,7 @@ function sameThere() {
   for (const name of names) {
     test(name, async () => {
       const ids = await idsOf(prefixOf(name));
-      expect({ name, there: await there(true, name, ids) }).toEqual({ name, there: await there(false, name, ids) });
+      expect({ name, there: await there(name, ids) }).toMatchSnapshot();
     });
   }
 }

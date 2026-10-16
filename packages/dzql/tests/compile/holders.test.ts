@@ -2,12 +2,15 @@
  * The compiled fan-out answers what the framework answers. With every name the
  * path cases open held open, for every collection and every row the tables
  * hold (each version of a temporal one), with rows made up beside them, and
- * for each writer: `_delta_holders` (compiled) and `_delta_holders_framework`
- * name the same documents, an error included, on the seed, after writes of
- * every kind, and with documents registered by hand beside the compiled ones
- * (one a longer prefix that takes some of a compiled document's names), and
- * with no name open but the writer's. Then
- * the fan-out through it: delta's own cases (tests/delta) run with it in place.
+ * for each writer: `_delta_holders` names the documents the framework's named,
+ * an error included, on the seed, after writes of every kind, and with no name
+ * open but the writer's. Then the fan-out through it: delta's own cases
+ * (tests/delta) run with it in place.
+ *
+ * The framework's answers are recorded (the snapshot, taken 16 October 2026
+ * while the framework was applied and the two were held equal). The framework
+ * retired (todo #26); its answers stay the measure. Documents registered by
+ * hand beside compiled ones, which this once held equal too, retired with it.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Pool } from "pg";
@@ -48,7 +51,7 @@ afterAll(async () => { await pool.end(); });
 async function rowsOf(): Promise<Record<string, unknown[]>> {
   const out: Record<string, unknown[]> = {};
   for (const [coll, t] of Object.entries(pathSchema.tables)) {
-    const held = (await pool.query(`SELECT to_jsonb(t.*) AS row FROM "${t.name}" t`)).rows.map((r) => r.row);
+    const held = (await pool.query(`SELECT to_jsonb(t.*) AS row FROM "${t.name}" t ORDER BY t.id${t.temporal ? ", t.valid_from" : ""}`)).rows.map((r) => r.row);
     const made: unknown[] = [{ id: 900 }];
     if (t.parent) made.push({ id: 901, [t.parent.fkColumn]: 404 }, { id: 902, [t.parent.fkColumn]: null }, { id: 903, [t.parent.fkColumn]: 2 });
     out[coll] = [...held, ...made, null];
@@ -56,12 +59,11 @@ async function rowsOf(): Promise<Record<string, unknown[]>> {
   return out;
 }
 
-/** The names holding each row of a collection, for a writer: compiled or framework, each sorted, or the error. */
-async function holders(compiled: boolean, coll: string, rows: unknown[], writer: string | null): Promise<unknown> {
-  const call = compiled ? "_delta_holders($1, r.row, $3)" : "_delta_holders_framework($1, r.row, $3, ARRAY[]::text[])";
+/** The names holding each row of a collection, for a writer: each sorted, or the error. */
+async function holders(coll: string, rows: unknown[], writer: string | null): Promise<unknown> {
   try {
     const { rows: [{ a }] } = await pool.query(
-      `SELECT array_agg((SELECT COALESCE(string_agg(n, ' ' ORDER BY n), '') FROM unnest(${call}) AS n) ORDER BY r.i) AS a
+      `SELECT array_agg((SELECT COALESCE(string_agg(n, ' ' ORDER BY n), '') FROM unnest(_delta_holders($1, r.row, $3)) AS n) ORDER BY r.i) AS a
          FROM jsonb_array_elements($2::jsonb) WITH ORDINALITY AS r(row, i)`,
       [coll, JSON.stringify(rows), writer],
     );
@@ -75,10 +77,7 @@ function sameHolders() {
   for (const coll of Object.keys(pathSchema.tables)) {
     test(coll, async () => {
       const rows = (await rowsOf())[coll]!;
-      for (const writer of writers) {
-        const framework = await holders(false, coll, rows, writer);
-        expect({ coll, writer, holders: await holders(true, coll, rows, writer) }).toEqual({ coll, writer, holders: framework });
-      }
+      for (const writer of writers) expect({ coll, writer, holders: await holders(coll, rows, writer) }).toMatchSnapshot();
     });
   }
 }
@@ -111,17 +110,6 @@ describe("after writes of every kind, still", () => {
     await write("fo-all-households:", [{ op: "replace", path: "/households/2/weddings_id", value: 2 }]);
     await listener.destroy();
     for (const name of names) await pool.query("INSERT INTO _delta_held (doc_name, holder) VALUES ($1, 1) ON CONFLICT DO NOTHING", [name]);
-  });
-  sameHolders();
-});
-
-describe("with documents registered by hand beside the compiled ones, still", () => {
-  beforeAll(async () => {
-    const board = docs.find((d) => d.prefix === "fo-board:")!;
-    // a longer prefix that takes fo-board:1 (a list, now, of every board) from the compiled fo-board:, and one of its own
-    await pool.query("INSERT INTO _delta_docs (prefix, root_collection, include, scope) SELECT 'fo-board:1', root_collection, include, scope FROM _delta_docs WHERE prefix = 'fo-board:'");
-    await pool.query("INSERT INTO _delta_docs (prefix, root_collection, include, scope) VALUES ('fo-hand:', $1, $2::text[], '{}')", [board.root, `{${board.include.join(",")}}`]);
-    for (const name of ["fo-hand:1", "fo-hand:2", "fo-hand:"]) await pool.query("INSERT INTO _delta_held (doc_name, holder) VALUES ($1, 1) ON CONFLICT DO NOTHING", [name]);
   });
   sameHolders();
 });

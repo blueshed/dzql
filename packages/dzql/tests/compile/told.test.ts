@@ -4,10 +4,14 @@
  * of a temporal one), with rows made up beside them, in every way a touch
  * concerns a document -- the row arrives, stays with every field changed, one
  * or none, is carried along, leaves, or arrives as no row --
- * `dzql_told__<prefix>` and `_delta_told_framework` tell the same ops, an error
- * included, on the seed and after writes of every kind. Then the telling
+ * `dzql_told__<prefix>` tells the ops the framework's `_delta_told` told, an
+ * error included, on the seed and after writes of every kind. Then the telling
  * through them: delta's own cases (tests/delta) run with the compiled telling
  * in place.
+ *
+ * The framework's answers are recorded (the snapshot, taken 16 October 2026
+ * while the framework was applied and the two were held equal). The framework
+ * retired (todo #26); its answers stay the measure.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Pool } from "pg";
@@ -47,7 +51,7 @@ async function touches(): Promise<unknown[]> {
   const all = names;
   const out: unknown[] = [];
   for (const [coll, t] of Object.entries(pathSchema.tables)) {
-    const held = (await pool.query(`SELECT to_jsonb(t.*) - 'valid_from' - 'valid_to' - 'override' AS row FROM "${t.name}" t`)).rows.map((r) => r.row);
+    const held = (await pool.query(`SELECT to_jsonb(t.*) - 'valid_from' - 'valid_to' - 'override' AS row FROM "${t.name}" t ORDER BY t.id${t.temporal ? ", t.valid_from" : ""}`)).rows.map((r) => r.row);
     const made: Record<string, unknown>[] = [{ id: 900 }];
     if (t.parent) made.push({ id: 901, [t.parent.fkColumn]: 404 });
     for (const row of [...held, ...made]) {
@@ -70,14 +74,10 @@ async function touches(): Promise<unknown[]> {
 
 const prefixOf = (name: string) => docs.filter((d) => name.startsWith(d.prefix)).sort((a, b) => b.prefix.length - a.prefix.length)[0]!.prefix;
 
-/** What a name is told of the write: compiled or framework, or the error. */
-async function told(compiled: boolean, name: string, rows: unknown[]): Promise<unknown> {
-  const prefix = prefixOf(name);
-  const call = compiled
-    ? `${toldFunction(prefix)}($1, $2::jsonb)`
-    : `_delta_told_framework((SELECT d FROM _delta_docs d WHERE d.prefix = '${prefix.replace(/'/g, "''")}'), $1, $2::jsonb)`;
+/** What a name is told of the write, or the error. */
+async function told(name: string, rows: unknown[]): Promise<unknown> {
   try {
-    const { rows: [{ ops }] } = await pool.query(`SELECT ${call} AS ops`, [name, JSON.stringify(rows)]);
+    const { rows: [{ ops }] } = await pool.query(`SELECT ${toldFunction(prefixOf(name))}($1, $2::jsonb) AS ops`, [name, JSON.stringify(rows)]);
     return ops;
   } catch (err: any) {
     return { error: err.message };
@@ -87,9 +87,7 @@ async function told(compiled: boolean, name: string, rows: unknown[]): Promise<u
 function sameTold() {
   for (const name of names) {
     test(name, async () => {
-      const rows = await touches();
-      const framework = await told(false, name, rows);
-      expect({ name, told: await told(true, name, rows) }).toEqual({ name, told: framework });
+      expect({ name, told: await told(name, await touches()) }).toMatchSnapshot();
     });
   }
 }

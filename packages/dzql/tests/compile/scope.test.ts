@@ -1,10 +1,14 @@
 /**
  * Compiled write scope answers what the framework answers. For every name the
  * path cases open, every collection, and every id the tables hold (and one not
- * there, and none): `dzql_in_scope__<prefix>` and `_delta_row_in_scope_framework`
- * give the same answer, an error included, on the seed and after writes of
- * every kind. delta's own cases (tests/delta, write scope among them) run with
- * it in place.
+ * there, and none): `dzql_in_scope__<prefix>` gives the answer the framework's
+ * `_delta_row_in_scope` gave, an error included, on the seed and after writes
+ * of every kind. delta's own cases (tests/delta, write scope among them) run
+ * with it in place.
+ *
+ * The framework's answers are recorded (the snapshot, taken 16 October 2026
+ * while the framework was applied and the two were held equal). The framework
+ * retired (todo #26); its answers stay the measure.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Pool } from "pg";
@@ -52,12 +56,9 @@ async function rowsOf(): Promise<Record<string, unknown[]>> {
 
 const prefixOf = (name: string) => docs.filter((d) => name.startsWith(d.prefix)).sort((a, b) => b.prefix.length - a.prefix.length)[0]!.prefix;
 
-/** Each answer for a name, over every collection and row: compiled or framework, or the error. */
-async function answers(compiled: boolean, name: string, rows: Record<string, unknown[]>): Promise<unknown> {
-  const prefix = prefixOf(name);
-  const call = compiled
-    ? `${inScopeFunction(prefix)}($1, c.coll, (r.row #>> '{}')::BIGINT)`
-    : `_delta_row_in_scope_framework((SELECT d FROM _delta_docs d WHERE d.prefix = '${prefix.replace(/'/g, "''")}'), $1, c.coll, (r.row #>> '{}')::BIGINT)`;
+/** Each answer for a name, over every collection and id, or the error. */
+async function answers(name: string, rows: Record<string, unknown[]>): Promise<unknown> {
+  const call = `${inScopeFunction(prefixOf(name))}($1, c.coll, (r.row #>> '{}')::BIGINT)`;
   const cases = colls.flatMap((coll) => rows[coll]!.map((row) => ({ coll, row })));   // row: the id
   try {
     const { rows: [{ a }] } = await pool.query(
@@ -74,7 +75,7 @@ function sameHolds() {
   for (const name of names) {
     test(name, async () => {
       const rows = await rowsOf();
-      expect({ name, allowed: await answers(true, name, rows) }).toEqual({ name, allowed: await answers(false, name, rows) });
+      expect({ name, allowed: await answers(name, rows) }).toMatchSnapshot();
     });
   }
 }

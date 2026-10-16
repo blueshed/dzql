@@ -1,5 +1,4549 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
+exports[`on the seed, every document reads whole as the framework reads it fo-board:1 1`] = `
+{
+  "name": "fo-board:1",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-board:1 2`] = `
+{
+  "name": "fo-board:1",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-board:2 1`] = `
+{
+  "name": "fo-board:2",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+    "households": {
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-board:2 2`] = `
+{
+  "name": "fo-board:2",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+    "households": {
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-board:99 1`] = `
+{
+  "name": "fo-board:99",
+  "whole": null,
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-board:99 2`] = `
+{
+  "name": "fo-board:99",
+  "shown": null,
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-board:abc 1`] = `
+{
+  "name": "fo-board:abc",
+  "whole": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-board:abc 2`] = `
+{
+  "name": "fo-board:abc",
+  "shown": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-menu:1 1`] = `
+{
+  "name": "fo-menu:1",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-menu:1 2`] = `
+{
+  "name": "fo-menu:1",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-household:1 1`] = `
+{
+  "name": "fo-household:1",
+  "whole": {
+    "_version": 0,
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-household:1 2`] = `
+{
+  "name": "fo-household:1",
+  "shown": {
+    "_version": 0,
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-household:3 1`] = `
+{
+  "name": "fo-household:3",
+  "whole": {
+    "_version": 0,
+    "households": {
+      "email": "c@x",
+      "id": 3,
+      "t": null,
+      "weddings_id": 2,
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-household:3 2`] = `
+{
+  "name": "fo-household:3",
+  "shown": {
+    "_version": 0,
+    "households": {
+      "email": "c@x",
+      "id": 3,
+      "t": null,
+      "weddings_id": 2,
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-course:1 1`] = `
+{
+  "name": "fo-course:1",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-course:1 2`] = `
+{
+  "name": "fo-course:1",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-course:2 1`] = `
+{
+  "name": "fo-course:2",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "id": 2,
+      "name": "Salad",
+      "weddings_id": 2,
+    },
+    "drinks": {
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-course:2 2`] = `
+{
+  "name": "fo-course:2",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "id": 2,
+      "name": "Salad",
+      "weddings_id": 2,
+    },
+    "drinks": {
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-title:1 1`] = `
+{
+  "name": "fo-title:1",
+  "whole": {
+    "_version": 0,
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-title:1 2`] = `
+{
+  "name": "fo-title:1",
+  "shown": {
+    "_version": 0,
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-tagged:1 1`] = `
+{
+  "name": "fo-tagged:1",
+  "whole": {
+    "_version": 0,
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-tagged:1 2`] = `
+{
+  "name": "fo-tagged:1",
+  "shown": {
+    "_version": 0,
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-notes:1 1`] = `
+{
+  "name": "fo-notes:1",
+  "whole": {
+    "_version": 0,
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-notes:1 2`] = `
+{
+  "name": "fo-notes:1",
+  "shown": {
+    "_version": 0,
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-all-courses: 1`] = `
+{
+  "name": "fo-all-courses:",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-all-courses: 2`] = `
+{
+  "name": "fo-all-courses:",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-catalog: 1`] = `
+{
+  "name": "fo-catalog:",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-catalog: 2`] = `
+{
+  "name": "fo-catalog:",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-courses-noted: 1`] = `
+{
+  "name": "fo-courses-noted:",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-courses-noted: 2`] = `
+{
+  "name": "fo-courses-noted:",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-courses-like:So 1`] = `
+{
+  "name": "fo-courses-like:So",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-courses-like:So 2`] = `
+{
+  "name": "fo-courses-like:So",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-courses-like:X 1`] = `
+{
+  "name": "fo-courses-like:X",
+  "whole": {
+    "_version": 0,
+    "courses": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-courses-like:X 2`] = `
+{
+  "name": "fo-courses-like:X",
+  "shown": {
+    "_version": 0,
+    "courses": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-menu-like:So 1`] = `
+{
+  "name": "fo-menu-like:So",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-menu-like:So 2`] = `
+{
+  "name": "fo-menu-like:So",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-tags-labelled:red 1`] = `
+{
+  "name": "fo-tags-labelled:red",
+  "whole": {
+    "_version": 0,
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-tags-labelled:red 2`] = `
+{
+  "name": "fo-tags-labelled:red",
+  "shown": {
+    "_version": 0,
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seating:1 1`] = `
+{
+  "name": "fo-seating:1",
+  "whole": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seating:1 2`] = `
+{
+  "name": "fo-seating:1",
+  "shown": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-kept:1 1`] = `
+{
+  "name": "fo-seats-kept:1",
+  "whole": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-kept:1 2`] = `
+{
+  "name": "fo-seats-kept:1",
+  "shown": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-kept:maybe 1`] = `
+{
+  "name": "fo-seats-kept:maybe",
+  "whole": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-kept:maybe 2`] = `
+{
+  "name": "fo-seats-kept:maybe",
+  "shown": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-upto:yes 1`] = `
+{
+  "name": "fo-seats-upto:yes",
+  "whole": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-upto:yes 2`] = `
+{
+  "name": "fo-seats-upto:yes",
+  "shown": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-at:3 1`] = `
+{
+  "name": "fo-seats-at:3",
+  "whole": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-at:3 2`] = `
+{
+  "name": "fo-seats-at:3",
+  "shown": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-at:abc 1`] = `
+{
+  "name": "fo-seats-at:abc",
+  "whole": {
+    "error": "table_no must be an integer, not "abc"",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-at:abc 2`] = `
+{
+  "name": "fo-seats-at:abc",
+  "shown": {
+    "error": "table_no must be an integer, not "abc"",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-wished:5 1`] = `
+{
+  "name": "fo-seats-wished:5",
+  "whole": {
+    "_version": 0,
+    "seats": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-wished:5 2`] = `
+{
+  "name": "fo-seats-wished:5",
+  "shown": {
+    "_version": 0,
+    "seats": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-wished:abc 1`] = `
+{
+  "name": "fo-seats-wished:abc",
+  "whole": {
+    "error": "invalid input syntax for type json",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seats-wished:abc 2`] = `
+{
+  "name": "fo-seats-wished:abc",
+  "shown": {
+    "error": "invalid input syntax for type json",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-upto:5 1`] = `
+{
+  "name": "fo-slots-upto:5",
+  "whole": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-upto:5 2`] = `
+{
+  "name": "fo-slots-upto:5",
+  "shown": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-upto:abc 1`] = `
+{
+  "name": "fo-slots-upto:abc",
+  "whole": {
+    "error": "price must be a number, not "abc"",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-upto:abc 2`] = `
+{
+  "name": "fo-slots-upto:abc",
+  "shown": {
+    "error": "price must be a number, not "abc"",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-of:1 1`] = `
+{
+  "name": "fo-slots-of:1",
+  "whole": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-of:1 2`] = `
+{
+  "name": "fo-slots-of:1",
+  "shown": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-of:abc 1`] = `
+{
+  "name": "fo-slots-of:abc",
+  "whole": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-of:abc 2`] = `
+{
+  "name": "fo-slots-of:abc",
+  "shown": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-of:9007199254740992 1`] = `
+{
+  "name": "fo-slots-of:9007199254740992",
+  "whole": {
+    "error": "weddings_id 9007199254740992 is past 2^53 - 1, which no number holds exactly",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-of:9007199254740992 2`] = `
+{
+  "name": "fo-slots-of:9007199254740992",
+  "shown": {
+    "error": "weddings_id 9007199254740992 is past 2^53 - 1, which no number holds exactly",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-under:1 1`] = `
+{
+  "name": "fo-slots-under:1",
+  "whole": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-under:1 2`] = `
+{
+  "name": "fo-slots-under:1",
+  "shown": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-by:2026-01-02 1`] = `
+{
+  "name": "fo-slots-by:2026-01-02",
+  "whole": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-by:2026-01-02 2`] = `
+{
+  "name": "fo-slots-by:2026-01-02",
+  "shown": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-by:notadate 1`] = `
+{
+  "name": "fo-slots-by:notadate",
+  "whole": {
+    "error": "starts must be a date, YYYY-MM-DD, not "notadate"",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-by:notadate 2`] = `
+{
+  "name": "fo-slots-by:notadate",
+  "shown": {
+    "error": "starts must be a date, YYYY-MM-DD, not "notadate"",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-on:2026-01-01 1`] = `
+{
+  "name": "fo-slots-on:2026-01-01",
+  "whole": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slots-on:2026-01-01 2`] = `
+{
+  "name": "fo-slots-on:2026-01-01",
+  "shown": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-note:1 1`] = `
+{
+  "name": "fo-note:1",
+  "whole": {
+    "_version": 0,
+    "notes": {
+      "id": 1,
+      "text": "bring chairs",
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-note:1 2`] = `
+{
+  "name": "fo-note:1",
+  "shown": {
+    "_version": 0,
+    "notes": {
+      "id": 1,
+      "text": "bring chairs",
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-all-notes: 1`] = `
+{
+  "name": "fo-all-notes:",
+  "whole": {
+    "_version": 0,
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-all-notes: 2`] = `
+{
+  "name": "fo-all-notes:",
+  "shown": {
+    "_version": 0,
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-drinks:1 1`] = `
+{
+  "name": "fo-drinks:1",
+  "whole": {
+    "_version": 0,
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-drinks:1 2`] = `
+{
+  "name": "fo-drinks:1",
+  "shown": {
+    "_version": 0,
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-course-guests:1 1`] = `
+{
+  "name": "fo-course-guests:1",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "households": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-course-guests:1 2`] = `
+{
+  "name": "fo-course-guests:1",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "households": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-plan:1 1`] = `
+{
+  "name": "fo-plan:1",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-plan:1 2`] = `
+{
+  "name": "fo-plan:1",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-plan:7 1`] = `
+{
+  "name": "fo-plan:7",
+  "whole": {
+    "_version": 0,
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-plan:7 2`] = `
+{
+  "name": "fo-plan:7",
+  "shown": {
+    "_version": 0,
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-weddings: 1`] = `
+{
+  "name": "fo-weddings:",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-weddings: 2`] = `
+{
+  "name": "fo-weddings:",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-guest:1:a@x 1`] = `
+{
+  "name": "fo-guest:1:a@x",
+  "whole": {
+    "_version": 0,
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-guest:1:a@x 2`] = `
+{
+  "name": "fo-guest:1:a@x",
+  "shown": {
+    "_version": 0,
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-guest:1:z@x 1`] = `
+{
+  "name": "fo-guest:1:z@x",
+  "whole": null,
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-guest:1:z@x 2`] = `
+{
+  "name": "fo-guest:1:z@x",
+  "shown": null,
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seat-of:1:3 1`] = `
+{
+  "name": "fo-seat-of:1:3",
+  "whole": {
+    "_version": 0,
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-seat-of:1:3 2`] = `
+{
+  "name": "fo-seat-of:1:3",
+  "shown": {
+    "_version": 0,
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-all-households: 1`] = `
+{
+  "name": "fo-all-households:",
+  "whole": {
+    "_version": 0,
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-all-households: 2`] = `
+{
+  "name": "fo-all-households:",
+  "shown": {
+    "_version": 0,
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-party:1 1`] = `
+{
+  "name": "fo-party:1",
+  "whole": {
+    "_version": 0,
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-party:1 2`] = `
+{
+  "name": "fo-party:1",
+  "shown": {
+    "_version": 0,
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slim:1 1`] = `
+{
+  "name": "fo-slim:1",
+  "whole": {
+    "_version": 0,
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-slim:1 2`] = `
+{
+  "name": "fo-slim:1",
+  "shown": {
+    "_version": 0,
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "table_no": 3,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-notes-on:2019-01-01 1`] = `
+{
+  "name": "fo-notes-on:2019-01-01",
+  "whole": {
+    "_version": 0,
+    "notes": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-notes-on:2019-01-01 2`] = `
+{
+  "name": "fo-notes-on:2019-01-01",
+  "shown": {
+    "_version": 0,
+    "notes": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-notes-on:2999-01-01 1`] = `
+{
+  "name": "fo-notes-on:2999-01-01",
+  "whole": {
+    "_version": 0,
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-notes-on:2999-01-01 2`] = `
+{
+  "name": "fo-notes-on:2999-01-01",
+  "shown": {
+    "_version": 0,
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-notes-on:notadate 1`] = `
+{
+  "name": "fo-notes-on:notadate",
+  "whole": {
+    "error": "at must be a date, YYYY-MM-DD, not "notadate"",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-notes-on:notadate 2`] = `
+{
+  "name": "fo-notes-on:notadate",
+  "shown": {
+    "error": "at must be a date, YYYY-MM-DD, not "notadate"",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-courses-noted-on:2021-01-01 1`] = `
+{
+  "name": "fo-courses-noted-on:2021-01-01",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-courses-noted-on:2021-01-01 2`] = `
+{
+  "name": "fo-courses-noted-on:2021-01-01",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-board-on:1:2021-01-01 1`] = `
+{
+  "name": "fo-board-on:1:2021-01-01",
+  "whole": {
+    "_version": 0,
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-board-on:1:2021-01-01 2`] = `
+{
+  "name": "fo-board-on:1:2021-01-01",
+  "shown": {
+    "_version": 0,
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-board-on:1:2999-01-01 1`] = `
+{
+  "name": "fo-board-on:1:2999-01-01",
+  "whole": {
+    "_version": 0,
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-board-on:1:2999-01-01 2`] = `
+{
+  "name": "fo-board-on:1:2999-01-01",
+  "shown": {
+    "_version": 0,
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-asks:1 1`] = `
+{
+  "name": "fo-asks:1",
+  "whole": {
+    "_version": 0,
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-asks:1 2`] = `
+{
+  "name": "fo-asks:1",
+  "shown": {
+    "_version": 0,
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-asks-from:ann 1`] = `
+{
+  "name": "fo-asks-from:ann",
+  "whole": {
+    "_version": 0,
+    "asks": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-asks-from:ann 2`] = `
+{
+  "name": "fo-asks-from:ann",
+  "shown": {
+    "_version": 0,
+    "asks": {},
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-pub-courses: 1`] = `
+{
+  "name": "fo-pub-courses:",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it fo-pub-courses: 2`] = `
+{
+  "name": "fo-pub-courses:",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it no-such:1 1`] = `
+{
+  "name": "no-such:1",
+  "whole": {
+    "error": "no doc def for: no-such:1",
+  },
+}
+`;
+
+exports[`on the seed, every document reads whole as the framework reads it no-such:1 2`] = `
+{
+  "name": "no-such:1",
+  "shown": {
+    "error": "no doc def for: no-such:1",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-board:1 1`] = `
+{
+  "name": "fo-board:1",
+  "whole": {
+    "_version": 2,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-board:1 2`] = `
+{
+  "name": "fo-board:1",
+  "shown": {
+    "_version": 2,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-board:2 1`] = `
+{
+  "name": "fo-board:2",
+  "whole": {
+    "_version": 0,
+    "courses": {},
+    "drinks": {},
+    "households": {
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-board:2 2`] = `
+{
+  "name": "fo-board:2",
+  "shown": {
+    "_version": 0,
+    "courses": {},
+    "drinks": {},
+    "households": {
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-board:99 1`] = `
+{
+  "name": "fo-board:99",
+  "whole": null,
+}
+`;
+
+exports[`after writes of every kind, still fo-board:99 2`] = `
+{
+  "name": "fo-board:99",
+  "shown": null,
+}
+`;
+
+exports[`after writes of every kind, still fo-board:abc 1`] = `
+{
+  "name": "fo-board:abc",
+  "whole": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-board:abc 2`] = `
+{
+  "name": "fo-board:abc",
+  "shown": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-menu:1 1`] = `
+{
+  "name": "fo-menu:1",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-menu:1 2`] = `
+{
+  "name": "fo-menu:1",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-household:1 1`] = `
+{
+  "name": "fo-household:1",
+  "whole": {
+    "_version": 0,
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-household:1 2`] = `
+{
+  "name": "fo-household:1",
+  "shown": {
+    "_version": 0,
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-household:3 1`] = `
+{
+  "name": "fo-household:3",
+  "whole": {
+    "_version": 0,
+    "households": {
+      "email": "c@x",
+      "id": 3,
+      "t": null,
+      "weddings_id": 2,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-household:3 2`] = `
+{
+  "name": "fo-household:3",
+  "shown": {
+    "_version": 0,
+    "households": {
+      "email": "c@x",
+      "id": 3,
+      "t": null,
+      "weddings_id": 2,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-course:1 1`] = `
+{
+  "name": "fo-course:1",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-course:1 2`] = `
+{
+  "name": "fo-course:1",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-course:2 1`] = `
+{
+  "name": "fo-course:2",
+  "whole": null,
+}
+`;
+
+exports[`after writes of every kind, still fo-course:2 2`] = `
+{
+  "name": "fo-course:2",
+  "shown": null,
+}
+`;
+
+exports[`after writes of every kind, still fo-title:1 1`] = `
+{
+  "name": "fo-title:1",
+  "whole": {
+    "_version": 0,
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-title:1 2`] = `
+{
+  "name": "fo-title:1",
+  "shown": {
+    "_version": 0,
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-tagged:1 1`] = `
+{
+  "name": "fo-tagged:1",
+  "whole": {
+    "_version": 0,
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-tagged:1 2`] = `
+{
+  "name": "fo-tagged:1",
+  "shown": {
+    "_version": 0,
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-notes:1 1`] = `
+{
+  "name": "fo-notes:1",
+  "whole": {
+    "_version": 0,
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-notes:1 2`] = `
+{
+  "name": "fo-notes:1",
+  "shown": {
+    "_version": 0,
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-all-courses: 1`] = `
+{
+  "name": "fo-all-courses:",
+  "whole": {
+    "_version": 1,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-all-courses: 2`] = `
+{
+  "name": "fo-all-courses:",
+  "shown": {
+    "_version": 1,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-catalog: 1`] = `
+{
+  "name": "fo-catalog:",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-catalog: 2`] = `
+{
+  "name": "fo-catalog:",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-noted: 1`] = `
+{
+  "name": "fo-courses-noted:",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-noted: 2`] = `
+{
+  "name": "fo-courses-noted:",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-like:So 1`] = `
+{
+  "name": "fo-courses-like:So",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-like:So 2`] = `
+{
+  "name": "fo-courses-like:So",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-like:X 1`] = `
+{
+  "name": "fo-courses-like:X",
+  "whole": {
+    "_version": 0,
+    "courses": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-like:X 2`] = `
+{
+  "name": "fo-courses-like:X",
+  "shown": {
+    "_version": 0,
+    "courses": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-menu-like:So 1`] = `
+{
+  "name": "fo-menu-like:So",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-menu-like:So 2`] = `
+{
+  "name": "fo-menu-like:So",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-tags-labelled:red 1`] = `
+{
+  "name": "fo-tags-labelled:red",
+  "whole": {
+    "_version": 0,
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-tags-labelled:red 2`] = `
+{
+  "name": "fo-tags-labelled:red",
+  "shown": {
+    "_version": 0,
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seating:1 1`] = `
+{
+  "name": "fo-seating:1",
+  "whole": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seating:1 2`] = `
+{
+  "name": "fo-seating:1",
+  "shown": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-kept:1 1`] = `
+{
+  "name": "fo-seats-kept:1",
+  "whole": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-kept:1 2`] = `
+{
+  "name": "fo-seats-kept:1",
+  "shown": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-kept:maybe 1`] = `
+{
+  "name": "fo-seats-kept:maybe",
+  "whole": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-kept:maybe 2`] = `
+{
+  "name": "fo-seats-kept:maybe",
+  "shown": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-upto:yes 1`] = `
+{
+  "name": "fo-seats-upto:yes",
+  "whole": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-upto:yes 2`] = `
+{
+  "name": "fo-seats-upto:yes",
+  "shown": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-at:3 1`] = `
+{
+  "name": "fo-seats-at:3",
+  "whole": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-at:3 2`] = `
+{
+  "name": "fo-seats-at:3",
+  "shown": {
+    "_version": 0,
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-at:abc 1`] = `
+{
+  "name": "fo-seats-at:abc",
+  "whole": {
+    "error": "table_no must be an integer, not "abc"",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-at:abc 2`] = `
+{
+  "name": "fo-seats-at:abc",
+  "shown": {
+    "error": "table_no must be an integer, not "abc"",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-wished:5 1`] = `
+{
+  "name": "fo-seats-wished:5",
+  "whole": {
+    "_version": 0,
+    "seats": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-wished:5 2`] = `
+{
+  "name": "fo-seats-wished:5",
+  "shown": {
+    "_version": 0,
+    "seats": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-wished:abc 1`] = `
+{
+  "name": "fo-seats-wished:abc",
+  "whole": {
+    "error": "invalid input syntax for type json",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-wished:abc 2`] = `
+{
+  "name": "fo-seats-wished:abc",
+  "shown": {
+    "error": "invalid input syntax for type json",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-upto:5 1`] = `
+{
+  "name": "fo-slots-upto:5",
+  "whole": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-upto:5 2`] = `
+{
+  "name": "fo-slots-upto:5",
+  "shown": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-upto:abc 1`] = `
+{
+  "name": "fo-slots-upto:abc",
+  "whole": {
+    "error": "price must be a number, not "abc"",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-upto:abc 2`] = `
+{
+  "name": "fo-slots-upto:abc",
+  "shown": {
+    "error": "price must be a number, not "abc"",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-of:1 1`] = `
+{
+  "name": "fo-slots-of:1",
+  "whole": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-of:1 2`] = `
+{
+  "name": "fo-slots-of:1",
+  "shown": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-of:abc 1`] = `
+{
+  "name": "fo-slots-of:abc",
+  "whole": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-of:abc 2`] = `
+{
+  "name": "fo-slots-of:abc",
+  "shown": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-of:9007199254740992 1`] = `
+{
+  "name": "fo-slots-of:9007199254740992",
+  "whole": {
+    "error": "weddings_id 9007199254740992 is past 2^53 - 1, which no number holds exactly",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-of:9007199254740992 2`] = `
+{
+  "name": "fo-slots-of:9007199254740992",
+  "shown": {
+    "error": "weddings_id 9007199254740992 is past 2^53 - 1, which no number holds exactly",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-under:1 1`] = `
+{
+  "name": "fo-slots-under:1",
+  "whole": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-under:1 2`] = `
+{
+  "name": "fo-slots-under:1",
+  "shown": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-by:2026-01-02 1`] = `
+{
+  "name": "fo-slots-by:2026-01-02",
+  "whole": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-by:2026-01-02 2`] = `
+{
+  "name": "fo-slots-by:2026-01-02",
+  "shown": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-by:notadate 1`] = `
+{
+  "name": "fo-slots-by:notadate",
+  "whole": {
+    "error": "starts must be a date, YYYY-MM-DD, not "notadate"",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-by:notadate 2`] = `
+{
+  "name": "fo-slots-by:notadate",
+  "shown": {
+    "error": "starts must be a date, YYYY-MM-DD, not "notadate"",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-on:2026-01-01 1`] = `
+{
+  "name": "fo-slots-on:2026-01-01",
+  "whole": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-on:2026-01-01 2`] = `
+{
+  "name": "fo-slots-on:2026-01-01",
+  "shown": {
+    "_version": 0,
+    "slots": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-note:1 1`] = `
+{
+  "name": "fo-note:1",
+  "whole": null,
+}
+`;
+
+exports[`after writes of every kind, still fo-note:1 2`] = `
+{
+  "name": "fo-note:1",
+  "shown": null,
+}
+`;
+
+exports[`after writes of every kind, still fo-all-notes: 1`] = `
+{
+  "name": "fo-all-notes:",
+  "whole": {
+    "_version": 0,
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-all-notes: 2`] = `
+{
+  "name": "fo-all-notes:",
+  "shown": {
+    "_version": 0,
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-drinks:1 1`] = `
+{
+  "name": "fo-drinks:1",
+  "whole": {
+    "_version": 0,
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-drinks:1 2`] = `
+{
+  "name": "fo-drinks:1",
+  "shown": {
+    "_version": 0,
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-course-guests:1 1`] = `
+{
+  "name": "fo-course-guests:1",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "households": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-course-guests:1 2`] = `
+{
+  "name": "fo-course-guests:1",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "households": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:1 1`] = `
+{
+  "name": "fo-plan:1",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:1 2`] = `
+{
+  "name": "fo-plan:1",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:7 1`] = `
+{
+  "name": "fo-plan:7",
+  "whole": {
+    "_version": 0,
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:7 2`] = `
+{
+  "name": "fo-plan:7",
+  "shown": {
+    "_version": 0,
+    "courses": {},
+    "drinks": {},
+    "weddings": {
+      "id": 7,
+      "name": "",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-weddings: 1`] = `
+{
+  "name": "fo-weddings:",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-weddings: 2`] = `
+{
+  "name": "fo-weddings:",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-guest:1:a@x 1`] = `
+{
+  "name": "fo-guest:1:a@x",
+  "whole": {
+    "_version": 0,
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-guest:1:a@x 2`] = `
+{
+  "name": "fo-guest:1:a@x",
+  "shown": {
+    "_version": 0,
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-guest:1:z@x 1`] = `
+{
+  "name": "fo-guest:1:z@x",
+  "whole": null,
+}
+`;
+
+exports[`after writes of every kind, still fo-guest:1:z@x 2`] = `
+{
+  "name": "fo-guest:1:z@x",
+  "shown": null,
+}
+`;
+
+exports[`after writes of every kind, still fo-seat-of:1:3 1`] = `
+{
+  "name": "fo-seat-of:1:3",
+  "whole": {
+    "_version": 0,
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-seat-of:1:3 2`] = `
+{
+  "name": "fo-seat-of:1:3",
+  "shown": {
+    "_version": 0,
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-all-households: 1`] = `
+{
+  "name": "fo-all-households:",
+  "whole": {
+    "_version": 1,
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-all-households: 2`] = `
+{
+  "name": "fo-all-households:",
+  "shown": {
+    "_version": 1,
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-party:1 1`] = `
+{
+  "name": "fo-party:1",
+  "whole": {
+    "_version": 0,
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-party:1 2`] = `
+{
+  "name": "fo-party:1",
+  "shown": {
+    "_version": 0,
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slim:1 1`] = `
+{
+  "name": "fo-slim:1",
+  "whole": {
+    "_version": 0,
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-slim:1 2`] = `
+{
+  "name": "fo-slim:1",
+  "shown": {
+    "_version": 0,
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "table_no": 3,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-notes-on:2019-01-01 1`] = `
+{
+  "name": "fo-notes-on:2019-01-01",
+  "whole": {
+    "_version": 0,
+    "notes": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-notes-on:2019-01-01 2`] = `
+{
+  "name": "fo-notes-on:2019-01-01",
+  "shown": {
+    "_version": 0,
+    "notes": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-notes-on:2999-01-01 1`] = `
+{
+  "name": "fo-notes-on:2999-01-01",
+  "whole": {
+    "_version": 0,
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-notes-on:2999-01-01 2`] = `
+{
+  "name": "fo-notes-on:2999-01-01",
+  "shown": {
+    "_version": 0,
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-notes-on:notadate 1`] = `
+{
+  "name": "fo-notes-on:notadate",
+  "whole": {
+    "error": "at must be a date, YYYY-MM-DD, not "notadate"",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-notes-on:notadate 2`] = `
+{
+  "name": "fo-notes-on:notadate",
+  "shown": {
+    "error": "at must be a date, YYYY-MM-DD, not "notadate"",
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-noted-on:2021-01-01 1`] = `
+{
+  "name": "fo-courses-noted-on:2021-01-01",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-noted-on:2021-01-01 2`] = `
+{
+  "name": "fo-courses-noted-on:2021-01-01",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-board-on:1:2021-01-01 1`] = `
+{
+  "name": "fo-board-on:1:2021-01-01",
+  "whole": {
+    "_version": 0,
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-board-on:1:2021-01-01 2`] = `
+{
+  "name": "fo-board-on:1:2021-01-01",
+  "shown": {
+    "_version": 0,
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-board-on:1:2999-01-01 1`] = `
+{
+  "name": "fo-board-on:1:2999-01-01",
+  "whole": {
+    "_version": 0,
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-board-on:1:2999-01-01 2`] = `
+{
+  "name": "fo-board-on:1:2999-01-01",
+  "shown": {
+    "_version": 0,
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-asks:1 1`] = `
+{
+  "name": "fo-asks:1",
+  "whole": {
+    "_version": 0,
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-asks:1 2`] = `
+{
+  "name": "fo-asks:1",
+  "shown": {
+    "_version": 0,
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-asks-from:ann 1`] = `
+{
+  "name": "fo-asks-from:ann",
+  "whole": {
+    "_version": 0,
+    "asks": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-asks-from:ann 2`] = `
+{
+  "name": "fo-asks-from:ann",
+  "shown": {
+    "_version": 0,
+    "asks": {},
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-pub-courses: 1`] = `
+{
+  "name": "fo-pub-courses:",
+  "whole": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still fo-pub-courses: 2`] = `
+{
+  "name": "fo-pub-courses:",
+  "shown": {
+    "_version": 0,
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still no-such:1 1`] = `
+{
+  "name": "no-such:1",
+  "whole": {
+    "error": "no doc def for: no-such:1",
+  },
+}
+`;
+
+exports[`after writes of every kind, still no-such:1 2`] = `
+{
+  "name": "no-such:1",
+  "shown": {
+    "error": "no doc def for: no-such:1",
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 1`] = `
+{
+  "coll": "weddings",
+  "id": 1,
+  "row": {
+    "row": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 2`] = `
+{
+  "coll": "weddings",
+  "id": 2,
+  "row": {
+    "row": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 3`] = `
+{
+  "coll": "weddings",
+  "id": 404,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 4`] = `
+{
+  "coll": "weddings",
+  "id": null,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 5`] = `
+{
+  "coll": "households",
+  "id": 1,
+  "row": {
+    "row": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 6`] = `
+{
+  "coll": "households",
+  "id": 2,
+  "row": {
+    "row": {
+      "email": "b@x",
+      "id": 2,
+      "t": null,
+      "weddings_id": 2,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 7`] = `
+{
+  "coll": "households",
+  "id": 3,
+  "row": {
+    "row": {
+      "email": "c@x",
+      "id": 3,
+      "t": null,
+      "weddings_id": 2,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 8`] = `
+{
+  "coll": "households",
+  "id": 404,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 9`] = `
+{
+  "coll": "households",
+  "id": null,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 10`] = `
+{
+  "coll": "courses",
+  "id": 1,
+  "row": {
+    "row": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 11`] = `
+{
+  "coll": "courses",
+  "id": 3,
+  "row": {
+    "row": {
+      "id": 3,
+      "name": "Fish",
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 12`] = `
+{
+  "coll": "courses",
+  "id": 404,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 13`] = `
+{
+  "coll": "courses",
+  "id": null,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 14`] = `
+{
+  "coll": "drinks",
+  "id": 1,
+  "row": {
+    "row": {
+      "courses_id": 1,
+      "id": 1,
+      "name": "Sherry",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 15`] = `
+{
+  "coll": "drinks",
+  "id": 404,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 16`] = `
+{
+  "coll": "drinks",
+  "id": null,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 17`] = `
+{
+  "coll": "tags",
+  "id": 1,
+  "row": {
+    "row": {
+      "id": 1,
+      "label": "red",
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 18`] = `
+{
+  "coll": "tags",
+  "id": 404,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 19`] = `
+{
+  "coll": "tags",
+  "id": null,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 20`] = `
+{
+  "coll": "notes",
+  "id": 1,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 21`] = `
+{
+  "coll": "notes",
+  "id": 2,
+  "row": {
+    "row": {
+      "id": 2,
+      "text": "and tables",
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 22`] = `
+{
+  "coll": "notes",
+  "id": 404,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 23`] = `
+{
+  "coll": "notes",
+  "id": null,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 24`] = `
+{
+  "coll": "seats",
+  "id": 1,
+  "row": {
+    "row": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 25`] = `
+{
+  "coll": "seats",
+  "id": 404,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 26`] = `
+{
+  "coll": "seats",
+  "id": null,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 27`] = `
+{
+  "coll": "slots",
+  "id": 404,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 28`] = `
+{
+  "coll": "slots",
+  "id": null,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 29`] = `
+{
+  "coll": "favours",
+  "id": 1,
+  "row": {
+    "row": {
+      "gift": "jam",
+      "households_id": 1,
+      "id": 1,
+      "weddings_id": 1,
+    },
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 30`] = `
+{
+  "coll": "favours",
+  "id": 404,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 31`] = `
+{
+  "coll": "favours",
+  "id": null,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 32`] = `
+{
+  "coll": "asks",
+  "id": 404,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 33`] = `
+{
+  "coll": "asks",
+  "id": null,
+  "row": {
+    "row": null,
+  },
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 34`] = `
+{
+  "coll": "no_such",
+  "id": 404,
+  "row": null,
+}
+`;
+
+exports[`after writes of every kind, still a row beyond a document as it stands, for every collection and one there is not 35`] = `
+{
+  "coll": "no_such",
+  "id": null,
+  "row": null,
+}
+`;
+
 exports[`the compiled text is the same for the same definitions, and pinned 1`] = `
 "CREATE OR REPLACE FUNCTION dzql_open_whole__fo_board(p_name TEXT)
 RETURNS JSONB AS $$

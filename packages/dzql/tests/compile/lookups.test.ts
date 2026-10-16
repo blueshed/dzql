@@ -2,19 +2,22 @@
  * Compiled lookups answer what the framework's answer.
  *
  * A collection's definition: for every collection, and one there is not,
- * `_delta_collection` and `_delta_collection_framework` give the same row.
+ * `_delta_collection` gives the row the framework's gave.
  *
  * A table's serial: for every table, ids below, at and past what its
  * sequence has handed out, and past 2^53, `_delta_serial_new` answers as the
- * framework's, and `_delta_serial_past` moves the sequence where the
- * framework's does (each from the same sequence, set back between: a
- * sequence does not roll back); and a caller without the table's privilege is
- * answered alike. A table there is not goes to the framework.
+ * framework's did, and `_delta_serial_past` moves the sequence where the
+ * framework's did (each from the same sequence, set back between: a sequence
+ * does not roll back); a caller without the table's privilege is told no.
  *
  * A document as it stood: for every name the path cases open, at times before,
  * between and after its writes, `delta_open_at` (each compiled document to its
- * own read) and `_delta_open_at_framework` give the same, an error included,
- * on the seed and after writes.
+ * own read) gives what the framework's gave, an error included, on the seed and
+ * after writes.
+ *
+ * The framework's answers are recorded (the snapshot, taken 16 October 2026
+ * while the framework was applied and the two were held equal). The framework
+ * retired (todo #26); its answers stay the measure.
  *
  * Then the write, the reads and the ledger through them: delta's own cases
  * (tests/delta) run with them in place.
@@ -60,8 +63,7 @@ async function answer(sql: string, params: unknown[]): Promise<unknown> {
 
 test("every collection's definition, and one there is not, as the framework gives it", async () => {
   for (const key of [...tables.map(([k]) => k), "no_such"]) {
-    const compiled = await answer("SELECT row_to_json(_delta_collection($1)) AS r", [key]);
-    expect({ key, row: compiled }).toEqual({ key, row: await answer("SELECT row_to_json(_delta_collection_framework($1)) AS r", [key]) });
+    expect({ key, row: await answer("SELECT row_to_json(_delta_collection($1)) AS r", [key]) }).toMatchSnapshot();
   }
 });
 
@@ -76,13 +78,9 @@ describe("each table's serial, as the framework reads and moves it", () => {
       const last = there ? Number(was.v) : 0;
       for (const id of [0, 1, last - 1, last, last + 1, last + 50, 9007199254740991, 9007199254740992]) {
         const asked = await answer("SELECT _delta_serial_new($1, $2) AS r", [t.name, id]);
-        expect({ table: t.name, id, new: asked }).toEqual({ table: t.name, id, new: await answer("SELECT _delta_serial_new_framework($1, $2) AS r", [t.name, id]) });
-        const moved = async (fn: string) => {
-          await setTo(was);
-          const r = await answer(`SELECT ${fn}($1, $2)::text AS r`, [t.name, id]);
-          return { r, after: await state() };
-        };
-        expect({ table: t.name, id, past: await moved("_delta_serial_past") }).toEqual({ table: t.name, id, past: await moved("_delta_serial_past_framework") });
+        await setTo(was);
+        const r = await answer("SELECT _delta_serial_past($1, $2)::text AS r", [t.name, id]);
+        expect({ table: t.name, id, new: asked, past: { r, after: await state() } }).toMatchSnapshot();
       }
       await setTo(was);
     });
@@ -95,8 +93,7 @@ describe("each table's serial, as the framework reads and moves it", () => {
       await c.query("BEGIN");
       await c.query("SET LOCAL ROLE lookups_stranger");
       for (const [, t] of tables) {
-        const r = (await c.query("SELECT _delta_serial_new($1, 1) AS compiled, _delta_serial_new_framework($1, 1) AS framework", [t.name])).rows[0];
-        expect({ table: t.name, ...r }).toEqual({ table: t.name, compiled: r.framework, framework: r.framework });
+        const r = (await c.query("SELECT _delta_serial_new($1, 1) AS compiled", [t.name])).rows[0];
         expect({ table: t.name, compiled: r.compiled }).toEqual({ table: t.name, compiled: false });
       }
     } finally {
@@ -111,13 +108,9 @@ const TIMES = ["2000-01-01T00:00:00Z", "2021-01-01T00:00:00Z", "2026-01-01T00:00
 function sameOpenAt() {
   for (const name of names) {
     test(name, async () => {
-      for (const at of TIMES) {
-        const compiled = await answer("SELECT delta_open_at($1, $2::timestamptz) AS r", [name, at]);
-        expect({ name, at, doc: compiled }).toEqual({ name, at, doc: await answer("SELECT _delta_open_at_framework($1, $2::timestamptz) AS r", [name, at]) });
-      }
+      for (const at of TIMES) expect({ name, at, doc: await answer("SELECT delta_open_at($1, $2::timestamptz) AS r", [name, at]) }).toMatchSnapshot();
       const now = (await pool.query("SELECT now()::text AS n")).rows[0].n;
-      const compiled = await answer("SELECT delta_open_at($1, $2::timestamptz) AS r", [name, now]);
-      expect({ name, at: "now", doc: compiled }).toEqual({ name, at: "now", doc: await answer("SELECT _delta_open_at_framework($1, $2::timestamptz) AS r", [name, now]) });
+      expect({ name, at: "now", doc: await answer("SELECT delta_open_at($1, $2::timestamptz) AS r", [name, now]) }).toMatchSnapshot();
     });
   }
 }

@@ -1,5 +1,2219 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
+exports[`on the seed, every row is held by the documents the framework names weddings 1`] = `
+{
+  "coll": "weddings",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": null,
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names weddings 2`] = `
+{
+  "coll": "weddings",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names weddings 3`] = `
+{
+  "coll": "weddings",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names weddings 4`] = `
+{
+  "coll": "weddings",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names weddings 5`] = `
+{
+  "coll": "weddings",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names weddings 6`] = `
+{
+  "coll": "weddings",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names households 1`] = `
+{
+  "coll": "households",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": null,
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names households 2`] = `
+{
+  "coll": "households",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names households 3`] = `
+{
+  "coll": "households",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names households 4`] = `
+{
+  "coll": "households",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names households 5`] = `
+{
+  "coll": "households",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names households 6`] = `
+{
+  "coll": "households",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names courses 1`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": null,
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names courses 2`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names courses 3`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names courses 4`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names courses 5`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names courses 6`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names drinks 1`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names drinks 2`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names drinks 3`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names drinks 4`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names drinks 5`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names drinks 6`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names tags 1`] = `
+{
+  "coll": "tags",
+  "holders": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "writer": null,
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names tags 2`] = `
+{
+  "coll": "tags",
+  "holders": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names tags 3`] = `
+{
+  "coll": "tags",
+  "holders": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names tags 4`] = `
+{
+  "coll": "tags",
+  "holders": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names tags 5`] = `
+{
+  "coll": "tags",
+  "holders": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names tags 6`] = `
+{
+  "coll": "tags",
+  "holders": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names notes 1`] = `
+{
+  "coll": "notes",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": null,
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names notes 2`] = `
+{
+  "coll": "notes",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names notes 3`] = `
+{
+  "coll": "notes",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names notes 4`] = `
+{
+  "coll": "notes",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names notes 5`] = `
+{
+  "coll": "notes",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names notes 6`] = `
+{
+  "coll": "notes",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names seats 1`] = `
+{
+  "coll": "seats",
+  "holders": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+  "writer": null,
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names seats 2`] = `
+{
+  "coll": "seats",
+  "holders": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names seats 3`] = `
+{
+  "coll": "seats",
+  "holders": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names seats 4`] = `
+{
+  "coll": "seats",
+  "holders": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names seats 5`] = `
+{
+  "coll": "seats",
+  "holders": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names seats 6`] = `
+{
+  "coll": "seats",
+  "holders": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names slots 1`] = `
+{
+  "coll": "slots",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": null,
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names slots 2`] = `
+{
+  "coll": "slots",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names slots 3`] = `
+{
+  "coll": "slots",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names slots 4`] = `
+{
+  "coll": "slots",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names slots 5`] = `
+{
+  "coll": "slots",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names slots 6`] = `
+{
+  "coll": "slots",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names favours 1`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "fo-party:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names favours 2`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "fo-party:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names favours 3`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "fo-party:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names favours 4`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "fo-party:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names favours 5`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "fo-party:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names favours 6`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "fo-party:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names asks 1`] = `
+{
+  "coll": "asks",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": null,
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names asks 2`] = `
+{
+  "coll": "asks",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names asks 3`] = `
+{
+  "coll": "asks",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names asks 4`] = `
+{
+  "coll": "asks",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names asks 5`] = `
+{
+  "coll": "asks",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every row is held by the documents the framework names asks 6`] = `
+{
+  "coll": "asks",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`with no name open, the writer's own alone weddings 1`] = `
+{
+  "coll": "weddings",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`with no name open, the writer's own alone weddings 2`] = `
+{
+  "coll": "weddings",
+  "holders": [
+    "fo-board:1",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`with no name open, the writer's own alone weddings 3`] = `
+{
+  "coll": "weddings",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`with no name open, the writer's own alone weddings 4`] = `
+{
+  "coll": "weddings",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`with no name open, the writer's own alone weddings 5`] = `
+{
+  "coll": "weddings",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`with no name open, the writer's own alone weddings 6`] = `
+{
+  "coll": "weddings",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`with no name open, the writer's own alone households 1`] = `
+{
+  "coll": "households",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`with no name open, the writer's own alone households 2`] = `
+{
+  "coll": "households",
+  "holders": [
+    "fo-board:1",
+    "fo-board:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`with no name open, the writer's own alone households 3`] = `
+{
+  "coll": "households",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`with no name open, the writer's own alone households 4`] = `
+{
+  "coll": "households",
+  "holders": [
+    "fo-guest:1:a@x",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`with no name open, the writer's own alone households 5`] = `
+{
+  "coll": "households",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`with no name open, the writer's own alone households 6`] = `
+{
+  "coll": "households",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`with no name open, the writer's own alone courses 1`] = `
+{
+  "coll": "courses",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`with no name open, the writer's own alone courses 2`] = `
+{
+  "coll": "courses",
+  "holders": [
+    "fo-board:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`with no name open, the writer's own alone courses 3`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`with no name open, the writer's own alone courses 4`] = `
+{
+  "coll": "courses",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`with no name open, the writer's own alone courses 5`] = `
+{
+  "coll": "courses",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`with no name open, the writer's own alone courses 6`] = `
+{
+  "coll": "courses",
+  "holders": [
+    "",
+    "fo-course:2",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`with no name open, the writer's own alone drinks 1`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`with no name open, the writer's own alone drinks 2`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`with no name open, the writer's own alone drinks 3`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`with no name open, the writer's own alone drinks 4`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`with no name open, the writer's own alone drinks 5`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`with no name open, the writer's own alone drinks 6`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "",
+    "fo-course:2",
+    "",
+    "",
+    "",
+    "fo-course:2",
+    "",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`with no name open, the writer's own alone tags 1`] = `
+{
+  "coll": "tags",
+  "holders": [
+    "",
+    "",
+    "",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`with no name open, the writer's own alone tags 2`] = `
+{
+  "coll": "tags",
+  "holders": [
+    "fo-board:1",
+    "fo-board:1",
+    "fo-board:1",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`with no name open, the writer's own alone tags 3`] = `
+{
+  "coll": "tags",
+  "holders": [
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`with no name open, the writer's own alone tags 4`] = `
+{
+  "coll": "tags",
+  "holders": [
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`with no name open, the writer's own alone tags 5`] = `
+{
+  "coll": "tags",
+  "holders": [
+    "fo-board:99",
+    "fo-board:99",
+    "fo-board:99",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`with no name open, the writer's own alone tags 6`] = `
+{
+  "coll": "tags",
+  "holders": [
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`with no name open, the writer's own alone notes 1`] = `
+{
+  "coll": "notes",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`with no name open, the writer's own alone notes 2`] = `
+{
+  "coll": "notes",
+  "holders": [
+    "fo-board:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`with no name open, the writer's own alone notes 3`] = `
+{
+  "coll": "notes",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`with no name open, the writer's own alone notes 4`] = `
+{
+  "coll": "notes",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`with no name open, the writer's own alone notes 5`] = `
+{
+  "coll": "notes",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`with no name open, the writer's own alone notes 6`] = `
+{
+  "coll": "notes",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`with no name open, the writer's own alone seats 1`] = `
+{
+  "coll": "seats",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`with no name open, the writer's own alone seats 2`] = `
+{
+  "coll": "seats",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`with no name open, the writer's own alone seats 3`] = `
+{
+  "coll": "seats",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`with no name open, the writer's own alone seats 4`] = `
+{
+  "coll": "seats",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`with no name open, the writer's own alone seats 5`] = `
+{
+  "coll": "seats",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`with no name open, the writer's own alone seats 6`] = `
+{
+  "coll": "seats",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`with no name open, the writer's own alone slots 1`] = `
+{
+  "coll": "slots",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`with no name open, the writer's own alone slots 2`] = `
+{
+  "coll": "slots",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`with no name open, the writer's own alone slots 3`] = `
+{
+  "coll": "slots",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`with no name open, the writer's own alone slots 4`] = `
+{
+  "coll": "slots",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`with no name open, the writer's own alone slots 5`] = `
+{
+  "coll": "slots",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`with no name open, the writer's own alone slots 6`] = `
+{
+  "coll": "slots",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`with no name open, the writer's own alone favours 1`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`with no name open, the writer's own alone favours 2`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`with no name open, the writer's own alone favours 3`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`with no name open, the writer's own alone favours 4`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`with no name open, the writer's own alone favours 5`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`with no name open, the writer's own alone favours 6`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`with no name open, the writer's own alone asks 1`] = `
+{
+  "coll": "asks",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`with no name open, the writer's own alone asks 2`] = `
+{
+  "coll": "asks",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`with no name open, the writer's own alone asks 3`] = `
+{
+  "coll": "asks",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`with no name open, the writer's own alone asks 4`] = `
+{
+  "coll": "asks",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`with no name open, the writer's own alone asks 5`] = `
+{
+  "coll": "asks",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`with no name open, the writer's own alone asks 6`] = `
+{
+  "coll": "asks",
+  "holders": [
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`after writes of every kind, still weddings 1`] = `
+{
+  "coll": "weddings",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": null,
+}
+`;
+
+exports[`after writes of every kind, still weddings 2`] = `
+{
+  "coll": "weddings",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still weddings 3`] = `
+{
+  "coll": "weddings",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still weddings 4`] = `
+{
+  "coll": "weddings",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still weddings 5`] = `
+{
+  "coll": "weddings",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still weddings 6`] = `
+{
+  "coll": "weddings",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`after writes of every kind, still households 1`] = `
+{
+  "coll": "households",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": null,
+}
+`;
+
+exports[`after writes of every kind, still households 2`] = `
+{
+  "coll": "households",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still households 3`] = `
+{
+  "coll": "households",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still households 4`] = `
+{
+  "coll": "households",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still households 5`] = `
+{
+  "coll": "households",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still households 6`] = `
+{
+  "coll": "households",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`after writes of every kind, still courses 1`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": null,
+}
+`;
+
+exports[`after writes of every kind, still courses 2`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still courses 3`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still courses 4`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still courses 5`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still courses 6`] = `
+{
+  "coll": "courses",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`after writes of every kind, still drinks 1`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`after writes of every kind, still drinks 2`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still drinks 3`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still drinks 4`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still drinks 5`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still drinks 6`] = `
+{
+  "coll": "drinks",
+  "holders": [
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-board:1 fo-catalog: fo-course:1 fo-drinks:1 fo-menu-like:So fo-menu:1 fo-plan:1",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+    "fo-board:2 fo-catalog: fo-course:2 fo-menu-like:So",
+    "fo-catalog: fo-menu-like:So",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`after writes of every kind, still tags 1`] = `
+{
+  "coll": "tags",
+  "holders": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "writer": null,
+}
+`;
+
+exports[`after writes of every kind, still tags 2`] = `
+{
+  "coll": "tags",
+  "holders": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still tags 3`] = `
+{
+  "coll": "tags",
+  "holders": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still tags 4`] = `
+{
+  "coll": "tags",
+  "holders": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still tags 5`] = `
+{
+  "coll": "tags",
+  "holders": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still tags 6`] = `
+{
+  "coll": "tags",
+  "holders": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`after writes of every kind, still notes 1`] = `
+{
+  "coll": "notes",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": null,
+}
+`;
+
+exports[`after writes of every kind, still notes 2`] = `
+{
+  "coll": "notes",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still notes 3`] = `
+{
+  "coll": "notes",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still notes 4`] = `
+{
+  "coll": "notes",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still notes 5`] = `
+{
+  "coll": "notes",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still notes 6`] = `
+{
+  "coll": "notes",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`after writes of every kind, still seats 1`] = `
+{
+  "coll": "seats",
+  "holders": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+  "writer": null,
+}
+`;
+
+exports[`after writes of every kind, still seats 2`] = `
+{
+  "coll": "seats",
+  "holders": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still seats 3`] = `
+{
+  "coll": "seats",
+  "holders": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still seats 4`] = `
+{
+  "coll": "seats",
+  "holders": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still seats 5`] = `
+{
+  "coll": "seats",
+  "holders": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still seats 6`] = `
+{
+  "coll": "seats",
+  "holders": {
+    "error": "invalid input syntax for type boolean: "maybe"",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`after writes of every kind, still slots 1`] = `
+{
+  "coll": "slots",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": null,
+}
+`;
+
+exports[`after writes of every kind, still slots 2`] = `
+{
+  "coll": "slots",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still slots 3`] = `
+{
+  "coll": "slots",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still slots 4`] = `
+{
+  "coll": "slots",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still slots 5`] = `
+{
+  "coll": "slots",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still slots 6`] = `
+{
+  "coll": "slots",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`after writes of every kind, still favours 1`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "fo-party:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": null,
+}
+`;
+
+exports[`after writes of every kind, still favours 2`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "fo-party:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still favours 3`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "fo-party:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still favours 4`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "fo-party:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still favours 5`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "fo-party:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still favours 6`] = `
+{
+  "coll": "favours",
+  "holders": [
+    "fo-party:1",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ],
+  "writer": "fo-course:2",
+}
+`;
+
+exports[`after writes of every kind, still asks 1`] = `
+{
+  "coll": "asks",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": null,
+}
+`;
+
+exports[`after writes of every kind, still asks 2`] = `
+{
+  "coll": "asks",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still asks 3`] = `
+{
+  "coll": "asks",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still asks 4`] = `
+{
+  "coll": "asks",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still asks 5`] = `
+{
+  "coll": "asks",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still asks 6`] = `
+{
+  "coll": "asks",
+  "holders": {
+    "error": "cannot call populate_composite on a scalar",
+  },
+  "writer": "fo-course:2",
+}
+`;
+
 exports[`the compiled text is the same for the same definitions, and pinned 1`] = `
 "CREATE OR REPLACE FUNCTION _delta_holders(p_coll TEXT, p_row JSONB, p_writer TEXT)
 RETURNS TEXT[] AS $$
