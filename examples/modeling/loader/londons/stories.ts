@@ -1,5 +1,5 @@
 // The Londons rights market, told as stories, standing in the picture. See docs/stories.md at the
-// root and, for the page, apples.md ("The page": a page is a bento box; a ground drawn as itself).
+// root and, for the page, docs/bento/README.md (a page is a bento box; a ground drawn as itself).
 // These are the 133 stories of the hjeli model in
 // `the original hjeli model`, retold in eta's words as the whole
 // specification of an app that does not exist: the loader's tests read it as a project of stories alone.

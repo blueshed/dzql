@@ -37,7 +37,7 @@ again. Stop at the first failure, changing nothing further. Bun only.
 ## 3. The gate
 
 ```sh
-bun check && bun test --parallel && bun run stories:all
+bun check && bun test --parallel && bun run stories:all && bun run costs --check
 ```
 
 `bun test` includes `create/setup.test.ts`, which makes a project from a copy of eta and runs that

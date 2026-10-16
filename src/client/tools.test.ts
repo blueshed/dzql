@@ -6,7 +6,7 @@ import fixture from "./tools.test.html";
 import plain from "./app.test.html";
 
 // The page's writes as tools (src/client/tools.ts), and a script's write answered by its id
-// (todo n88, n99), in a real browser, on a socket that goes quiet (socket.test.helpers.ts).
+//, in a real browser, on a socket that goes quiet (socket.test.helpers.ts).
 const open = quietPages({ "/": fixture, "/plain": plain });
 
 /** Starts a script's write in the page, kept as `window.__answer` once it is answered. */

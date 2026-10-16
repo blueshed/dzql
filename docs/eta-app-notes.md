@@ -1,8 +1,7 @@
 # eta-app notes: the why behind the skill
 
-The eta-app skill (`.claude/skills/eta-app/`) says what to do. When it was cut to the standard in
-`concise-skills.md` (14 Oct 2026), the reasons, the numbers and the sketches left it for here.
-Nothing here is a rule the skill lacks.
+The eta-app skill (`.claude/skills/eta-app/`) says what to do; this is why: the reasons, the numbers
+and the sketches that would weigh the skill down. Nothing here is a rule the skill lacks.
 
 ## The wire
 
@@ -13,8 +12,8 @@ Nothing here is a rule the skill lacks.
   the cost to watch.
 - **Why no secret beside others' words.** As with BREACH: someone who can put text on a page and
   watch the encrypted sizes of what it is sent can guess a secret drawn in the same message.
-- **Wire versions.** A page sent whole carries `wire` (`WIRE`, `src/json-patch.ts`: 2 since a write
-  carries an id). A page from before ids sends none and is answered as it always was (its writes
+- **Wire versions.** A page sent whole carries `wire` (`WIRE`, `src/json-patch.ts`, where each
+  version is listed). A page from before ids sends none and is answered as it always was (its writes
   echoed without one, a refusal by the page whole, `refused` ignored), so a tab left open over a
   deploy keeps working. A page sent a page whole by a server of another wire (after a rollback)
   loads itself again, not twice in a minute; then it draws the page and says so in the console.
@@ -61,6 +60,3 @@ OAuth2 and LDAP plug in behind the shapes leave uses (`examples/leave/signin.ts`
   `identify` is not needed: the cookie carries it from there.
 - A proxy that does OAuth2 for the app (oauth2-proxy, Cloudflare Access) is `identify`'s header case.
 
-## Apps outside eta
-
-`Workshop/canyou-eta` is an app in a repo of its own that links eta from its checkout.

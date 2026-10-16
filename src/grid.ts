@@ -1,6 +1,6 @@
 // The tray: where a box's cells sit, computed from what the box declares rather than drawn
 // by hand. A box says its cells in its own order and how much of the tray each deserves --
-// its span in columns and in rows ("bigger for what matters more", apples.md) -- and the tray
+// its span in columns and in rows ("bigger for what matters more") -- and the tray
 // places them first-fit, left to right, top to bottom, in as many rows as they need. The result is
 // a CSS grid: its template areas, and for each cell its area and which corners of the tray
 // it touches, since a cell is cut into the tray -- square where its walls meet another,

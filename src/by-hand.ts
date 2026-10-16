@@ -360,7 +360,7 @@ export const worded = (w: Write): string => `${w.ops.map((op) => `${op.op} ${op.
  * Does `sent` say what `story` writes? A value compares with its type, as the wire carries it (a
  * button's `true` is not "true", a number field's 2 is not "2"); a record by its keys: the story's,
  * and no other but one a form sent blank (a field left empty: "" or null). A `test` is no write,
- * and the page's own (todo n4): the two are compared by their verbs.
+ * and the page's own: the two are compared by their verbs.
  */
 export function sameWrite(sent: Write, story: Write): boolean {
   const blank = (v: unknown): boolean => v === "" || v === null || v === undefined;

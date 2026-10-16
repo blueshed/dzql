@@ -6,7 +6,7 @@ import { bundle, count, decode, gaps, judge, judged, kept, read, shared, spans, 
 import fixture from "./client/morph.test.html";
 import { waitFor, webview } from "./webview";
 
-// The client in bun test's coverage gate (todo n15): what a page ran, read from Chrome, by file and line.
+// The client in bun test's coverage gate: what a page ran, read from Chrome, by file and line.
 
 const root = Bun.pathToFileURL(dirname(import.meta.dir)).href;
 

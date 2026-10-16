@@ -89,7 +89,7 @@ describe("stories harness", () => {
       expect([said.undo, said.redo].map((phase) => phase!.map((h) => h.member))).toEqual([["ada", "bob"], ["ada", "bob"]]); // an undo and a redo are writes too, to the same pages
       expect(refusal.write).toBe(Buffer.byteLength(JSON.stringify(take.cannot)));
       expect(refusal.handed.map((h) => h.member)).toEqual(["ada"]); // told no
-      expect(refusal.handed[0]!.most.part).toBe("refused"); // and nothing more: the page she holds is the page still (todo n103)
+      expect(refusal.handed[0]!.most.part).toBe("refused"); // and nothing more: the page she holds is the page still
       expect(refusal.handed[0]!.bytes).toBeLessThan(40); // its write's id, no page
       expect(closing.write).toBeUndefined(); // a tab closing writes nothing
       expect(closing.handed.map((h) => h.member)).toEqual(["ada"]);
@@ -776,7 +776,7 @@ describe("stories harness", () => {
     );
   });
 
-  // Where a person can go (n87): the harness puts people anywhere by a session write of its own, so
+  // Where a person can go: the harness puts people anywhere by a session write of its own, so
   // a story could stand where no control leads. The ticker, with controls taken off its pages.
   describe("a story stands only where a control leads", async () => {
     const { example: ticker, stories: told } = await load("ticker");

@@ -25,8 +25,7 @@ rollback.
   Ben's phone, his laptop and Wen's tab alike.
 - **The builder writes no sync code.**
 
-The one case left was the field you are typing in: the page keeps what you type, so a change from
-your other screen went unseen and your next keystroke wrote over it. Now the field's write carries
+The field you are typing in is the one place a page keeps what it has not sent: so its write carries
 the value it was drawn with (RFC 6902's `test`), and a stale one is refused and shows the new value.
 Its story is the wedding's: *"Ben is writing his note on his phone when he changes it on his laptop;
 the phone is told, and its next keystroke does not write over the laptop's unseen."*
@@ -58,15 +57,14 @@ Stories, then documents, then pages drawn on the server.
 ## 4. What still slows an AI down
 
 1. **The training prior.** A model has read far more React than eta. Asked plainly for a live app,
-   it reaches for client state and REST. The `blueshed` plugin's router skill
-   (`Workshop/blueshed/blueshed-plugin`, a local draft) is the answer: one guide that chooses eta,
-   delta or railroad.
+   it reaches for client state and REST. A router skill that chooses eta, delta or railroad for a
+   live app is the answer (todo #21).
 2. **Writing who may do what.** The stories say who may and may not; `permit()` says it again, as a
    rule. A permit cannot be derived from stories -- a story is one example, a permit is the rule
-   -- but it can be checked: `bun run stories` now warns of a write the server takes that no story
+   -- but it can be checked: `bun run stories` warns of a write the server takes that no story
    tells and no page offers.
-3. **Views by hand.** Every view was written as a template. A collection nobody writes stories for
-   (the wedding's venues) is now drawn from its document's shape (`src/derive.ts`).
+3. **Views by hand.** A view is written as a template, but for a collection nobody writes stories for
+   (the wedding's venues), drawn from its document's shape (`src/derive.ts`).
 4. **Form wiring.** `name="/path"`, `data-write-on`, a status beside the field: conventions to
    remember.
 5. **A page that stays still.** When a page never `read()` the document it shows, a change to it
@@ -74,12 +72,12 @@ Stories, then documents, then pages drawn on the server.
 
 ## 5. What would make eta the easy path
 
-### 1. Check the permit against the stories (done)
+### 1. Check the permit against the stories
 
 Not derive it: the probe in `bun run stories` names any write a compartment takes that no story
-tells and no page offers, and who may make it. It found two real ones on its first run.
+tells and no page offers, and who may make it.
 
-### 2. Pages from a document's shape (started)
+### 2. Pages from a document's shape
 
 `derivedPage` draws a list, a drawer and the add and remove modals from delta's schema and a small
 declaration, asking the permit for each control; a field can name an applet. A derived collection

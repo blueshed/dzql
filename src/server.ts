@@ -16,7 +16,7 @@ import { refuseOrigin } from "@blueshed/delta/server";
 type Socket = Bun.ServerWebSocket<ConnectionData>;
 
 /**
- * Sends a message compressed (permessage-deflate, todo n79), each on its own so a connection keeps
+ * Sends a message compressed (permessage-deflate), each on its own so a connection keeps
  * no context; as it is to a client that did not offer it. The costs measured are in CHANGELOG.md.
  */
 const send = (ws: Socket, message: string): void => void ws.send(message, true);
@@ -112,7 +112,7 @@ function claimed<T>(ws: Socket, id: WriteId | undefined, doc: string, writing: P
 }
 
 /**
- * The changes each session's writes made, by the handle its writer was given for each (todo n99):
+ * The changes each session's writes made, by the handle its writer was given for each:
  * the echo names a change by a handle of the session's own, never by delta's entry, a serial whose
  * gaps count everyone's writes, in documents this person cannot read too. Undo by change takes a
  * handle and nothing else. Kept while the session has a page open, the last MOST_HANDLES of them.
@@ -164,7 +164,7 @@ function tellChanges(documents: Documents): void {
 
 type Write = { id?: unknown; doc: string; ops: (PatchOp | Test)[] };
 
-/** Why a write whose `test` fails is refused, beside the field (todo n4). */
+/** Why a write whose `test` fails is refused, beside the field. */
 export const CHANGED_SINCE = "This was changed elsewhere as you typed: here it is now.";
 
 /** The most ledger entries `inspect` gives a document: it asks delta's history, and every event waits on it. */
@@ -309,7 +309,7 @@ export function createServer(example: Example, port: number | string = process.e
     const kind = owner.kind ?? "written";
     if (kind !== "written" && kind !== "fact") return false;
     if (!(await settled(documents, () => ops.every((op) => owner.permit?.(ws, op, docId) ?? false)))) return false;
-    // A field typed in says what it was drawn with as the typing began (todo n4): drawn otherwise on
+    // A field typed in says what it was drawn with as the typing began: drawn otherwise on
     // this page now, someone changed it since, unseen, and the typing would write over it.
     const page = sent.get(ws)?.html ?? "";
     if (all.filter(isTest).some((t) => !drawnValues(page, doc, t.path).includes(t.value))) throw refuse(CHANGED_SINCE);
@@ -323,8 +323,8 @@ export function createServer(example: Example, port: number | string = process.e
     }
     // A write that applied something is told from its change, its echo carrying its id. Nothing
     // applied is answered `refused` (by its id, if it has one, and why when the refusal says, kept
-    // for the page until the session's next write: src/refusal.ts), then the page as what differs
-    // (todo n103). A message that is no write at all asks for the page whole.
+    // for the page until the session's next write: src/refusal.ts), then the page as what differs.
+    // A message that is no write at all asks for the page whole.
     const id = idOf(message);
     const asWrite = isWrite(message) ? message : undefined;
     let wrote = false;

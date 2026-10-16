@@ -5,7 +5,7 @@ import { createTables, defineCustomDoc, defineDoc, defineSchema, registerDocs } 
 import { registerMemory } from "@blueshed/delta/kinds";
 import { activeDocuments, createDocuments, Pending, read, serverWrite, settled, setActiveDocuments, watch } from "./documents";
 
-/** delta as the Postgres backend behaves: a write is answered first, and its change published later (over NOTIFY). */
+/** delta over Postgres (dzql) behaves so: a write is answered first, and its change published later (over NOTIFY). */
 function laggingDelta() {
   const local = createLocal();
   let value = { n: 0 };

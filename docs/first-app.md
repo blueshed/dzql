@@ -2,7 +2,8 @@
 
 This is the way in: what to write, in what order, and the words you meet at each step. Each
 word is explained when it is first used, and not before. The first app is chat, the smallest
-example, so every piece of code here is real and runs. After step 7 the path follows leave, the
+example, and the code here is taken from it, shortened where chat does more (paging back through
+earlier messages, for one): `examples/chat/` is the whole of it. After step 7 the path follows leave, the
 example with sign-in, a calendar and drafts, for the things a bigger app needs.
 
 If you only remember one thing, remember this: **write the story first, and let the failure tell
@@ -70,8 +71,8 @@ registerDocs(delta.server, db, schema, [
 - A document is named `type:id`, like `room:general`. `root` is its row; `include` is the rows
   under it.
 - `ledger: true` records every write with its opposite, which is what makes Undo work.
-- **An id is text.** SQLite names a new row with a UUID and Postgres with a number, so never
-  `Number()` an id.
+- **An id is said as text** on the wire and in a document's name. A new row's id is a serial
+  number (delta names it), a session's may be a token, so never `Number()` an id.
 
 ## 3. Read a document
 

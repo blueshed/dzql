@@ -12,7 +12,7 @@ export function splitDoc(doc: string): { docType: string; docId: string } {
 
 /**
  * Where an app lives, as `ETA_EXAMPLE` names it: one of eta's examples by its name (`chat`, the
- * default: `examples/chat`), or an app's own folder, a path (`./app`, in a project made with `bun
+ * default: `examples/chat`), or an app's own folder, a path (`./src`, in a project made with `bun
  * create blueshed/eta`), from where the command runs.
  */
 export function appDir(named = "chat"): string {

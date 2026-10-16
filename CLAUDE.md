@@ -67,7 +67,7 @@ a person know where they are and what they can do? Cite a story for a choice, ne
 `src/bento.ts` and `src/bento.css` are defaults, to use, change or leave.
 
 Stop when you are splitting one thing across compartments, or adding one to fill a box: that is a
-collection. Chat was once a box with the same thing in several cells; it is three collections.
+collection: chat is three collections, never one box with the same thing in several cells.
 
 Say a thing once. In a list, what an item shares with the one before it is said at the start of the
 run; what is true of the person looking is shown by place or colour, not said.

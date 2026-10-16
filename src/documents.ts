@@ -6,7 +6,7 @@ import type { PatchOp } from "./json-patch";
 
 // eta's documents are delta's (`@blueshed/delta`). eta keeps a copy of every document
 // an open page reads, kept current from delta's one stream of changes -- this process's writes and,
-// over Postgres, other processes' alike -- so a page is drawn from memory, synchronously, and never
+// over Postgres (dzql), other processes' alike -- so a page is drawn from memory, synchronously, and never
 // reads the database per viewer, per redraw. A read of a document not held yet throws `Pending`:
 // `settled` loads it and runs the drawing again. A write goes to delta as the person, with the
 // session as the cursor undo walks, and resolves once its change is back and held. Every change

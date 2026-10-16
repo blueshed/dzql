@@ -295,7 +295,7 @@ const isList = (inside: string): boolean => (inside.match(RUN) ?? []).length <= 
 /**
  * What the fields on a page that write `path` of `doc` (their `data-write`) are drawn with, as a
  * browser reads them: an input's `value`, a textarea's text, less the newline a browser drops after
- * its start tag. What a write's `test` is held against (todo n4).
+ * its start tag. What a write's `test` is held against.
  */
 export function drawnValues(page: string, doc: string, path: string): string[] {
   const values: string[] = [];

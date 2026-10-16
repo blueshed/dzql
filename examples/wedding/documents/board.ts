@@ -210,7 +210,7 @@ export function shape(doc: Doc, ops: PatchOp[], now = new Date().toISOString()):
         if ((value !== null && value !== "yes" && value !== "no") || ask.reply === value) continue;
         emit({ op: "replace", path: `/asks/${ask.id}/reply`, value });
         if (value === "yes" && ask.guest_id == null) {
-          // A yes makes a guest (brief.md), remembered on the ask so a change of mind takes them out again.
+          // A yes makes a guest (the wedding's brief), remembered on the ask so a change of mind takes them out again.
           const gid = newId(); // the ask names them
           addGuest(h.id, { name: ask.name, named_by: "ask", coming: 1 }, gid);
           emit({ op: "replace", path: `/asks/${ask.id}/guest_id`, value: gid });

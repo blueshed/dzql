@@ -596,7 +596,7 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
-  test("a field typed in says what it was drawn with when the typing began: drawn otherwise now, its write is refused and says so; drawn so, it lands (n4)", async () => {
+  test("a field typed in says what it was drawn with when the typing began: drawn otherwise now, its write is refused and says so; drawn so, it lands", async () => {
     const ws = await open(server, "typing-ann");
     write(ws, "note", [{ op: "replace", path: "/text", value: "Ben's" }], 1); // as though someone changed it under the caret
     await heard(ws);
@@ -616,7 +616,7 @@ describe("createServer, generically (no example from the examples directory invo
     ws.close();
   });
 
-  test("an unpermitted op is rejected without crashing: no patch echo, and the page not sent again (todo n103)", async () => {
+  test("an unpermitted op is rejected without crashing: no patch echo, and the page not sent again", async () => {
     const ws = await open(server);
 
     write(ws, "note", [{ op: "remove", path: "/text" }], 1); // permit() only allows replace

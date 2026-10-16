@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The documents say what eta is now.** `docs/stories.md` is written in the present: no dated
+  notes, no history from retired projects, and what eta does not build agrees with the modelling
+  example; its open questions are in `todo.jsonl`. The finished snapshots go (two reviews, the
+  14 October plan and cafe feedback, the skills proposal, the chat-on-delta report, a patch for
+  railroad) and `docs/README.md` lists what stays. Comments no longer cite closed ledger items or
+  files outside the repo; Postgres is dzql's; an app's folder is `./src`; the wire's versions are
+  a list; the session-start hook no longer stages a Postgres cluster; `/publish`'s gate is
+  CLAUDE.md's, `costs --check` included. `todo.jsonl` loses four items done or decided.
+
 ### Breaking (for projects)
 
 - **A control's value goes on the wire with its type; the wire is 4.** `write(doc, op, path, true)` sends `true`, not `"true"`; a number field sends a number, or `null` when empty; a box `true` or `false`. The stories compare a story's value with what the page sends, typed, so a story can no longer pass where a browser would be refused (five of the wedding's could never be done by hand). What to change: a permit or shape that compares a button's value as text (`value === "true"`, `"1"`) takes the type the page draws (`true`, `1`); a story that says `"0"` where the page sends `0` says `0`; hand-written markup with a non-JSON `data-value` uses `write()`.

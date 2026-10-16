@@ -1,4 +1,4 @@
-// The README's numbers, measured (todo n7): a number in a README goes stale, and a run does not.
+// The README's numbers, measured: a number in a README goes stale, and a run does not.
 // The README marks each number it quotes (`<!-- measured:<name> -->…<!-- /measured -->`), and a run
 // measures them all: what one write sends everyone else, compressed, by each example's own script
 // (`examples/<name>/scripts/measure-render-cost.ts --json`, in a process of its own whose clock

@@ -130,7 +130,7 @@ export function takersOn(page: string): Map<string, Omit<Taken, "ops">> {
   return found;
 }
 
-// What props cost (todo n94), said and not failed: props that carry an applet's data go again
+// What props cost, said and not failed: props that carry an applet's data go again
 // whole with every change to it (`propsCost`).
 
 /** How big a mount's own props, as JSON, may be before the harness says so: the document it watches left out. */
@@ -487,7 +487,7 @@ export function hear(page: string, message: Heard): string {
   return (message.ops ?? []).reduce(applyOp, page);
 }
 
-// A hidden verb (todo n32): a write the server takes that no story tells and no page offers.
+// A hidden verb: a write the server takes that no story tells and no page offers.
 
 /** Every path in a document, as JSON Pointers: the whole (""), each member of each object and array, and an array's end (`-`), where an append goes. */
 export function pathsIn(value: unknown, at = ""): string[] {
@@ -1487,7 +1487,7 @@ export async function run(
   }
 
   /**
-   * Hidden verbs (todo n32): where the cast starts, as each of them, each op on each path of every
+   * Hidden verbs: where the cast starts, as each of them, each op on each path of every
    * document their pages read -- and on each path a story or a page writes there -- that no story
    * tells them and no page offered them, a member of a collection as any one (`anyOne`), with the
    * value there and each a story or a page writes to that path. One the server would take is a

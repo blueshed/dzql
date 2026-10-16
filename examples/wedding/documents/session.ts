@@ -98,7 +98,7 @@ function after(before: Visit, ops: PatchOp[]): Visit {
       const email = String(op.value ?? "").trim();
       if (!email) continue;
       // No email leaves this example: the resend is a stub that logs, and the welcome says the
-      // same thing whether or not the address is known (brief.md: "saying nothing else").
+      // same thing whether or not the address is known (the wedding's brief: "saying nothing else").
       console.log(`resend requested for ${email}`);
       next.note = "Sent, if we know that address.";
     } else if (field === "page") {

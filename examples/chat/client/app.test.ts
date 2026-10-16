@@ -272,7 +272,7 @@ describe("app.ts in a real browser", () => {
     expect(await viewA.evaluate<boolean>(`${m}.scrollTop + ${m}.clientHeight >= ${m}.scrollHeight - 1`)).toBe(true);
   }, 20000); // fifteen messages typed, one by one
 
-  // todo n70: a [data-autoscroll] list is pinned when something new is at its foot, not when its count grows
+  // a [data-autoscroll] list is pinned when something new is at its foot, not when its count grows
   test("a full room still scrolls to the newest message: the fifty-first takes the oldest out, and lands in view", async () => {
     await using view = webview();
     await view.navigate(urlFor(view, server.url));

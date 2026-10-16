@@ -60,7 +60,7 @@ describe("press: as a mouse does, never element.click()", () => {
     expect(await view.evaluate<string[]>(`heard`)).toEqual(["pointerdown word", "mousedown word", "pointerup word", "mouseup word", "click word"]);
   });
 
-  test("a page that redraws what was pressed as it is let go is sent no click, as a browser sends none (japan-eta's strip on the desktop)", async () => {
+  test("a page that redraws what was pressed as it is let go is sent no click, as a browser sends none (a strip on the desktop)", async () => {
     await using view = await page(`<div id="strip"><a id="stop" href="#">Nara</a></div>`);
     await view.evaluate(`(document.getElementById("stop").addEventListener("pointerup", (e) => (e.target.outerHTML = '<a id="stop" href="#">Nara</a>')), 1)`);
     await press(view, "#stop");

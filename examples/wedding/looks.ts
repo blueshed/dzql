@@ -1,4 +1,4 @@
-// The values a minifigure's look may take: the model's lists (brief.md: a face, an attitude, a
+// The values a minifigure's look may take: the model's lists (the wedding's brief: a face, an attitude, a
 // hair) and the palette (the save-the-date's own colours). Shared by the documents, which refuse
 // any other value on the wire, and by the views, which offer exactly these.
 

@@ -3,7 +3,7 @@ import { urlFor, waitFor, webview } from "../../../src/webview";
 import { createServer } from "../../../src/server";
 import { example } from "../index";
 
-// Chat with an assistant in the page (todo n99): the tools the kernel registers from chat's own
+// Chat with an assistant in the page: the tools the kernel registers from chat's own
 // controls, used through a model context as the WebMCP draft has it, while the person uses the page.
 // A person and an assistant in one browser are one session, so one cursor: each undoes its own.
 

@@ -46,7 +46,7 @@ describe("the ticker in a real browser", () => {
     await press(view, '.cell[data-key="board"]');
     await waitFor(view, `document.querySelector('.cell.open [aria-label="Watch a symbol"]') !== null`, (v) => v === true);
     await press(view, '.cell.open [aria-label="Watch a symbol"]');
-    // the ask is a choice of the symbols the board lacks (n68): a select, sized as a field is
+    // the ask is a choice of the symbols the board lacks: a select, sized as a field is
     await waitFor(view, `document.querySelector('select[name=symbol]') !== null`, (v) => v === true);
     expect(await view.evaluate<string[]>(FIELDS)).toEqual(["symbol 16px"]);
   });

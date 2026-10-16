@@ -1,6 +1,6 @@
 // Runs one example's stories (`examples/<name>/stories.ts`) against it and prints the report.
 // `bun run stories` (chat, by default) or `ETA_EXAMPLE=wedding bun run stories`, or an app's own
-// folder (`ETA_EXAMPLE=./app`, src/names.ts `appDir`). See docs/stories.md.
+// folder (`ETA_EXAMPLE=./src`, src/names.ts `appDir`). See docs/stories.md.
 // Stories come first, so an example may have them before it has an app: that is said, as the next
 // thing to do, not as a missing module.
 import { print, run } from "./harness";

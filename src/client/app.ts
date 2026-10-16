@@ -22,7 +22,7 @@ const docs = new Map<string, { version: number; ops: PatchOp[] }>();
 let lastSent: { id: number; doc: string; ops: Op[]; echoed: boolean; refused: boolean; reason?: string; unanswered?: true } | undefined;
 
 /**
- * What became of a write a script sent (todo n88): echoed, what it changed, with the handle that
+ * What became of a write a script sent: echoed, what it changed, with the handle that
  * names the change (undo takes it); refused, and why when the refusal says; unanswered, its
  * socket gone first; or unsent, and why -- the socket not open, or an input no control of the page's
  * takes.
@@ -340,7 +340,7 @@ function readingTop(port: Element): number {
   return line;
 }
 
-// The reader's place (todo n85). A render keeps what someone is reading where they read it: a row
+// The reader's place. A render keeps what someone is reading where they read it: a row
 // taken out above them, or under a sticky header, must not move the rest. The browsers' own scroll
 // anchoring can choose the very row hidden under a header, and the rows below it then slide up
 // under the header. So before a render the client notes, in each scroller that is scrolled (the
@@ -424,7 +424,7 @@ function drawing(draw: () => void, moving?: Element): () => void {
     // unrelated update (someone else's presence, an undo elsewhere) must not
     // yank the scroll position out from under someone reading history. The foot,
     // not the count: a list that keeps its last fifty takes the oldest out as the
-    // newest comes in, and its count stays fifty (todo n70).
+    // newest comes in, and its count stays fifty.
     for (const el of app.querySelectorAll<HTMLElement>("[data-autoscroll]")) {
       const had = before.get(el);
       const foot = el.lastElementChild;
@@ -680,7 +680,7 @@ function editingChange(form: HTMLFormElement): { doc: string; ops: Op[] } | unde
   return doc && ops.length > 0 ? { doc, ops } : undefined;
 }
 
-// The field you are typing in (todo n4). A drawing that changes it under you shows you nothing --
+// The field you are typing in. A drawing that changes it under you shows you nothing --
 // the morph keeps what you type -- so a write from it says what it was drawn with when you last
 // saw it, as RFC 6902's `test`, and the server refuses it when the field is drawn otherwise now:
 // someone changed it since. Refused so, it shows what is drawn. Your own write landing is seen.

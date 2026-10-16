@@ -65,8 +65,8 @@ in memory, never from the wire), `sourced` and `static` (read only).
 
 ## Telling a change
 
-Every change is told from delta's one stream, whether this process wrote it or another did over
-Postgres, one at a time, in order: never by hand. The kernel echoes the ops to everyone who sees the
+Every change is told from delta's one stream, whether this process wrote it or another did (two
+processes share documents on Postgres, through dzql), one at a time, in order: never by hand. The kernel echoes the ops to everyone who sees the
 document and draws every page that read it again, sending the parts that changed ([page.md](page.md)).
 `audienceFor(docType, docId)`, `readersOf` and `allOpenSockets()` name who. delta tells a change as
 the fields it changed (`replace /name`), and a row that arrives or leaves as the row, whole.

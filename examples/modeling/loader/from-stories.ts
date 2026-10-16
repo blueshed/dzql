@@ -1,4 +1,4 @@
-// Stories read as a hjeli model, so hjeli's six predicates can run over them (Workshop/docs/eta-modeller.md).
+// Stories read as a hjeli model, so hjeli's six predicates can run over them.
 //
 // eta's stories speak the wire: a session, a `{doc, ops}` write, and who then notices it, where.
 // hjeli's predicates speak a model: actors, entities, and the writes each story makes. This reads

@@ -47,7 +47,6 @@ The stories cannot see controls drawn in the browser, so the mount says what the
   send nothing now (answers closed) names nothing.
 - A write with only a few values names them, one each: that is how a tap says where it goes (the
   wedding's photo: `["session", "replace", "/page", "?guest=2"]`). Say each write once.
-- `[doc, path]` (the old shape) fails every story that meets it.
 - It sends with `ctx.send(doc, ops)`. A story works it with `gesture` ([stories.md](stories.md)); a
   drag by hand is pointer events, so wrap `setPointerCapture` in a `try`.
 

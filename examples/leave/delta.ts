@@ -28,8 +28,8 @@ createTables(db, schema);
 migrateSchema(db, schema);
 
 // The team as it starts: two who ask and one who answers, each with a password and a token for the
-// CLI made up for the example,two requests waiting, one approved, and the manager's own week, which he approved. A login's id is its email. Every id is text, as the wire
-// says it, whatever a backend names a new row (a UUID on SQLite, a serial on Postgres).
+// CLI made up for the example, two requests waiting, one approved, and the manager's own week, which
+// they approved. A login's id is its email. Every id is text here, as the wire says it.
 const PEOPLE: [id: string, name: string, role: "member" | "manager"][] = [
   ["1", "Ann", "member"],
   ["2", "Bo", "member"],

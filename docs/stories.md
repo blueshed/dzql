@@ -1,11 +1,8 @@
 # Stories: what eta is for
 
-*15 September 2026. Written after `docs/change-request.md`, which is done as a list: what the wedding
-asked of the kernel, item by item. This is not a list. It says what the three examples, the
-kernel and the change request were reaching for, so that the next thing built is built towards
-it. It comes out of a longer history: seven projects that each tried to keep what a person sees
-truthful to what a database holds. The reader is Peter, and any
-builder handed this repo.*
+*What the examples and the kernel reach for, so that the next thing built is built towards it: keeping
+what a person sees truthful to what a database holds. The reader is Peter, and any builder handed
+this repo.*
 
 ## The claim
 
@@ -20,9 +17,8 @@ Two canons hold the whole thing up:
 2. **Every change is complete and consistent.** A write happens whole or not at all, and what
    people see afterwards is what the tables hold.
 
-hjeli proved the first on a model, with predicates, before code existed. epsilon proved the second
-on the wire, with a law, after. eta does both on the running app, from one file of stories, and
-needs neither a model beside it nor a copy of the document in the browser to compare.
+eta checks both on the running app, from one file of stories, with neither a model beside it nor a
+copy of the document in the browser to compare.
 
 ## A story
 
@@ -71,8 +67,8 @@ ticker has one), `seen` is just a list of names. Where people sign in, the cast 
 own sign-in page (`signIn`), since a password is never a write. A place a story names must be a
 place the example has: the harness checks the member's page stands where it was put. And it must
 be a place a person can get to: the harness puts people there by a session write of its own, and
-a story whose `from` no control leads to passes while nobody could do it (japan-eta's add-a-base
-modal, whose story passed while Peter asked twice how to add a base). Everyone else in the cast must notice nothing, where the cast
+a story whose `from` no control leads to would pass while nobody could do it (a modal whose story
+passes while nobody can find how to open it). Everyone else in the cast must notice nothing, where the cast
 left them: a story says everyone who sees its change, counts on a home page included, so one that
 leaves someone out fails by name. `untold` names who must not even be told: sent no document's ops. `cannot` is a refusal: the permit table's
 other half, told as a sentence, whichever layer refuses (the permit, a document that finds nothing
@@ -175,12 +171,11 @@ file is not type-checked when it runs, and a key nobody reads would be dropped w
 The sentence at the front is the story's name and its whole value to a customer. It is what you
 scroll through with the groom and ask "is this true?". The object after it is what runs.
 
-*Learned from the first run (15 September).* The shape was first written with `seen` naming a
-compartment. The wedding showed that a household's whole page is one compartment and the couple's
-another, so the word carried nothing; what decided whether someone noticed was the page they were
-on, and for choices and coming, the reading of the list. `seen` now names where. And `untold` was
-first every member not in `seen`; the wedding's home pages, with their counts and the photo,
-noticed nearly everything, so silence now means silence.
+Why `seen` names a place, not a compartment: a household's whole page is one compartment and the
+couple's another, so a compartment says nothing; what decides whether someone notices is the page
+they are on, and for choices and coming, the reading of the list. And why `untold` is said, not
+read as everyone not in `seen`: home pages with counts and a photo notice nearly everything, so
+silence is said where it is meant.
 
 ## What falls out
 
@@ -195,16 +190,17 @@ Given a pile of stories, these are not written; they are read off:
 - **The pages and their places.** Where a change shows is where stories say it shows. A page
   nobody's story sees is not a page, and a compartment nobody's story sees is not a compartment.
 - **The documents and their shapes.** The paths written say what a document holds; the values
-  say what the paths refer to. Entities come last, as hjeli says they should.
+  say what the paths refer to. Entities come last.
 - **The two canons, run.** Canon 1 is every `seen` checked on that person's page. Canon 2 is
   every `does` run through a browser and the page compared to a fresh render.
 
 ## Who compiles
 
-Claude does. simple found this in the spring: the stories are the source, Claude reads them and
-writes the documents, the compartments and the permit tables, and the harness runs the same
-stories through the app and reports every place the reading was unfaithful. There is no story
-compiler in code. The harness is not a proof tool for the app; it is the test of the compiler.
+Claude does. The stories are the source: Claude reads them and writes the documents, the
+compartments and the permit tables, and the harness runs the same stories through the app and
+reports every place the reading was unfaithful. Nothing in code compiles stories into an app (the
+modelling example reads them to draw a model to talk over, and an app never depends on it). The
+harness is not a proof tool for the app; it is the test of the compiler.
 
 That is what makes the state shared. For the builder the stories are a recipe: deterministic
 enough that regenerating an example is not a gamble. For a person they are a list of decisions:
@@ -332,8 +328,8 @@ One kernel function, `run(example, stories)` in `src/harness.ts`, and one script
    its path a JSON Pointer, its op add, replace, remove or test, a replace's path one the document
    holds or its `permit` takes -- and one that fails is a warning: its page would stay still.
 
-*What it does not do yet (17 September).* Said plainly, because a builder will otherwise trust it
-for more than it checks:
+*What it does not check.* Said plainly, because a builder will otherwise trust it for more than it
+checks:
 
 - **A control hidden by a stylesheet still counts, until the story is done by hand.** Without a
   browser the harness reads the HTML, not what it looks like: a control under `display: none` by
@@ -370,8 +366,8 @@ for more than it checks:
 
 ## What a story costs
 
-*28 September.* japan-eta ran for a day at 8 KB a vote, for a 146-byte patch, and nothing said
-so. So the harness keeps what each story's step -- the write, the refusal, the tab closing --
+A page can be handed far more than its change -- 8 KB a vote, for a 146-byte patch -- with nothing
+to say so. So the harness keeps what each story's step -- the write, the refusal, the tab closing --
 handed each member's page: the bytes as the page takes them, as they crossed the wire
 (compressed: the cast's sockets go through the tap `bun run costs` uses, src/costs.ts), and the
 biggest part, beside the write's own size; and the bytes a write's undo and redo handed each,
@@ -410,43 +406,28 @@ export const stories: Stories = {
 
 ## What we do not build
 
-- **Not a modelling tool.** No `model.db`, no site to browse the entities, no predicates over a
-  schema. The stories are in the app's own repo, in one file, in the wire's words.
+- **Not a modelling tool for the app.** The stories are in the app's own repo, in one file, in the
+  wire's words; the app needs no model, no site to browse its entities, no predicates over a schema.
+  (The modelling example is for talking stories over; nothing an app runs depends on it.)
 - **Not a story language.** A story is a TypeScript object with a name and a few keys: who,
   the write, the refusal or the tab that closes, who sees it, where the author acts, how (a drag
   on an applet), what it alone starts from, what its undo and redo say, and what it may cost.
   Each key came from a story that needed it (the premise, from a deadline passed for one story
-  only; the gesture, from leave's calendar and japan-eta's drags; `undone`, from japan-eta's line
-  that says what Undo took back; the budget, from japan-eta's votes); it will not need a grammar.
+  only; the gesture, from leave's calendar; `undone`, from a line that says what Undo took back;
+  the budget, from a page handed far more than its change); it will not need a grammar.
 - **Not generated code.** Claude writes the compartments by hand from the stories, and a person
   can read both. When the permit table is the first thing derived rather than written, that is
   one function over the stories, not a code generator.
-- **Not a client copy of the document.** epsilon's law compared the browser's copy to a
-  recompute. eta's browser holds HTML, and the comparison is against a fresh render. The morph is
-  what is under test.
+- **Not a client copy of the document.** eta's browser holds HTML, and what it holds is compared
+  with a fresh render, not with a copy of the document.
 
-## Where it starts
+## Where to start reading
 
 Chat first, as the ten-line proof: a name, a room, a message, someone else in the room sees it,
-someone in another room does not. Then the wedding, where the stories already exist in prose in
-its brief and the cast has three roles who see different things; that is the file that will
-correct the shape above. The ticker last, because a tick is a story told by nobody -- the feed is
-its author -- and a clock is a story with nothing on the wire after the page, and both will say
-something about what `as` and `seen` mean at the edges.
+someone in another room does not. Then the wedding, whose cast has three roles who see different
+things; the ticker, where a tick is a story told by nobody (the feed is its author); and leave,
+where people sign in and drag across days.
 
-After that, the derivations, in the order they become pure: the permit table, then the audience.
+Next, the derivations, in the order they become pure: the permit table, then the audience.
 Documents and compartments stay Claude's to write from the stories, and the harness stays what
-says whether they were written right.
-
-## Open
-
-- **Time.** The wedding's deadline locks answers. A story told after the deadline is a `cannot`
-  that was a `does` the day before, and its premise moves the deadline into the past. The day
-  itself coming (the names in the photo) is a clock no write moves: that may still need a `when`.
-- **Values.** A story writes a value; the harness needs it to be a real one (guest index 1 must
-  exist). The cast's setup writes are where that is made true, and they may grow longer than the
-  stories. If they do, the seed is wrong, not the story. What only one story needs is its premise.
-- **Who tells the ticker's stories.** `as: "feed"` is a session that is not a person. Presence
-  has the same shape: a join is a story told by the socket, as a tab closing now is (`closesTab`).
-- **Meanwhile.** A story cannot yet put someone else's write between its `does` and its undo
-  ("Ada takes back her note, and Femi's, written after, stays"): the premise comes before.
+says whether they were written right. What is open is in `todo.jsonl`.

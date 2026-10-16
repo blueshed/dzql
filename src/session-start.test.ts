@@ -18,7 +18,6 @@ test("a builder opens eta in a fresh Claude Code web session, and `bun test` is 
   expect({ code, out }).toEqual({ code: 0, out: "" }); // progress goes to stderr: stdout would join the session's context
   expect(err).toContain(`wants ${engines.bun}: ok`); // the floor is package.json's, and this Bun is above it
   expect(err).toContain("chromium: a test uses Bun.WebView");
-  expect(err).toContain("postgres: not needed");
 });
 
 test("the hook is the session's, and outside the web sandbox it does nothing at all", async () => {

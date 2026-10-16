@@ -26,7 +26,7 @@ The fields are `Example` in `src/example.ts`.
 - `who` is who a session is to delta (the ledger's who, row-level security); default the session.
 - `routes` are extra HTTP routes; a kernel route of the same path wins. `index` is served at `/` and
   at any path the kernel does not own.
-- `src/start.ts` runs the app `ETA_EXAMPLE` names (`./app`, or an example's name). One process
+- `src/start.ts` runs the app `ETA_EXAMPLE` names (`./src`, or an example's name). One process
   serves one app.
 
 ## CLI

@@ -1,4 +1,4 @@
-// The client's coverage (todo n15), bun test's preload. bun's table holds only what a test loads in
+// The client's coverage, bun test's preload. bun's table holds only what a test loads in
 // its own process, and the client runs in a page. So every view is Chrome (src/webview.ts), whose
 // DevTools count what a page ran, block by block, and a bundle's source map takes each count back to
 // its file and line. A file a page ran that bun's table does not hold -- not a package's, not a

@@ -14,8 +14,8 @@
 coverage = true
 preload = ["./src/client-coverage.ts"]
 coverageThreshold = 1.0
-# delta is linked from its checkout: its source is delta's to cover, not eta's. the loader's model/ is
-# a copy of hjeli's model and predicates, covered by hjeli's own tests (its README.md).
+# delta's source, in node_modules, is delta's to cover, not eta's. The loader's model/ is a copy of
+# hjeli's model and predicates (hjeli: the modeller before eta's), covered by its own tests (its README.md).
 # An example's stories.ts is a declaration `bun run stories:all` runs whole; a test that imports
 # one to run a story or two would otherwise count the rest as uncovered
 # create/setup.ts is bun create's postinstall, and create/eta.ts and create/update.ts are eta:update's: their

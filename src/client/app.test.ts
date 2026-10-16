@@ -963,7 +963,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string | null>(status)).toBe("");
   });
 
-  test("the field you are typing in: a change from someone else is not written over unseen, and refused, it shows theirs (n4)", async () => {
+  test("the field you are typing in: a change from someone else is not written over unseen, and refused, it shows theirs", async () => {
     await using view = await open();
     await pushRender(view, words());
     await typeThere(view);
@@ -984,7 +984,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
     expect(await view.evaluate<string>(`document.getElementById('words').value`)).toContain("!");
   });
 
-  test("the field you are typing in: your own write landing is seen, so the next one says it (n4)", async () => {
+  test("the field you are typing in: your own write landing is seen, so the next one says it", async () => {
     await using view = await open();
     const name = (value: string) => `<form data-write-on="blur"><input id="q" value="${value}" data-write='{"doc":"trip","op":"replace","path":"/title"}'></form>`;
     await pushRender(view, name(""));
@@ -1242,7 +1242,7 @@ describe("app.ts in a real browser, with a stubbed socket", () => {
   });
 });
 
-describe("a write's own answer: its echo or its refusal, by its id (n14)", () => {
+describe("a write's own answer: its echo or its refusal, by its id", () => {
   const say = (title = "general") => `<h1>${title}</h1>${SAY}`;
   const text = (view: Bun.WebView) => view.evaluate<string>(`document.getElementById('text').value`);
 

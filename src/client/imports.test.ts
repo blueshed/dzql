@@ -5,7 +5,7 @@ import { dirname, relative, resolve } from "node:path";
 // reaches nothing only a server has: the documents, the database, the server, a refusal, the
 // harness, what a drawing read, the compartments, delta's server side, Bun's and Node's own. Walked
 // through what each really imports, as a bundle would (a type-only import goes), the way an app's
-// own browser-safe check walks it (japan-eta's tests/browser-safe.test.ts), so the kernel breaks
+// own browser-safe check walks it (an app's own browser-safe test), so the kernel breaks
 // no app's rule.
 
 const ROOT = resolve(import.meta.dir, "../..");

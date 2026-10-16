@@ -23,7 +23,7 @@ defineDoc("shift:", { root: "shifts", include: ["bills", "orders"] }), // shift:
 
 `resolveDoc` names the open shift (a query of the tables: which shift has no `closed_at`); a past
 one is its own document, opened only by a page that asks for it. Name it by its row's id, not a
-date: on Postgres an id is a number.
+date.
 
 ## What is open: a list scoped by a column
 
