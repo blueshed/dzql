@@ -1,6 +1,6 @@
 {
   "name": "dzql",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "delta's compiled Postgres step: an app's delta definitions compiled to SQL",
   "repository": {
     "type": "git",

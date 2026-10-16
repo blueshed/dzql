@@ -23,6 +23,8 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-16
+
 ### Breaking
 
 - **The whole-stack dzql is retired** (Workshop's docs/postgres-split-plan.md, step 5). The
