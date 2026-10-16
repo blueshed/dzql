@@ -136,6 +136,8 @@ interface CompiledScope {
   checks: string;
   /** After `checks`: plpgsql building `_delta_resolve_scope`'s answer as it builds it -- v_where (text), v_values, v_at. */
   resolve: string;
+  /** Each key the name gives by equality, and the variable holding its value as text (after `body` or `checks`). */
+  values: Record<string, string>;
 }
 
 const REAL = String.raw`^\s*[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)(e[+-]?[0-9]+)?\s*$`;
@@ -169,6 +171,7 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
       single: true,
       checks: "",
       resolve: "",
+      values: {},
     };
   }
   const parsed = entries
@@ -190,6 +193,7 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
   const checks: string[] = [read];
   const resolve: string[] = [];
   const conds: string[] = [];
+  const values: Record<string, string> = {};
   // a check goes in both; what the reads set, in body alone
   const check = (...lines: string[]) => { body.push(...lines); checks.push(...lines); };
   // the framework's where, in its words: `%I <op> %L`, joined by AND
@@ -213,6 +217,7 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
       return;
     }
     const sqlOp = op === "!=" ? "<>" : op;
+    if (op === "=") values[key] = v;
     if (isKey) {
       const n = `v_n${i + 1}`;
       declare.push(`${n} BOOLEAN;`);
@@ -260,7 +265,7 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
   });
   return {
     declare, body: body.join("\n  "), conds: conds.join(" AND "), single: parsed.some((p) => p.key === "id" && p.op === "="),
-    checks: checks.join("\n  "), resolve: resolve.join("\n  "),
+    checks: checks.join("\n  "), resolve: resolve.join("\n  "), values,
   };
 }
 

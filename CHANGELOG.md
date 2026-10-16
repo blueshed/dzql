@@ -25,6 +25,20 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ### Added
 
+- **A document's `owns` as a path, compiled** (Workshop's docs/postgres-split-plan.md, step 3).
+  delta's `defineDoc(..., { owns: "<path>" })`, the path language that moved to delta
+  (`@blueshed/delta/paths`), is compiled into each document's own function,
+  `dzql_owns__<slug>(name, person)`: the name read as its scope reads it, the path lowered by
+  delta's `pathSql`, the same SQL SQLite runs. `docTypeFromDef` asks it wherever `owns` is asked,
+  and a document with a path needs no `owns` or `shared` beside it.
+  - **A row is never handed away**: `delta_apply` asks `_delta_keeps_reach` once a write's ops are
+    applied, and a write that would leave the path not reaching the writer is refused (403,
+    SQLSTATE 42501). The framework SQL calls it, so apply this version's `generateSql` with it.
+  - delta's `permissionCases` pass on PGlite (`tests/delta/permissions-pglite.test.ts`), and every
+    one of modeling-dzql's 204 rules parses and checks with delta's `checkPath`
+    (`tests/compile/paths-model.test.ts`).
+  - A path is asked on the connection a walk holds (`DocType.owns` takes it), so a walk on PGlite
+    does not wait on itself.
 - **Migrations as a history from empty, on Postgres** (delta's todo #82, the Django way). delta's
   `migrate` now takes migrations that are lists of changes (`@blueshed/delta/migrations`), and
   dzql's Postgres store makes each one:

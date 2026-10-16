@@ -846,6 +846,11 @@ BEGIN
   -- each what changed for it. The answer (and the ledger) keep the ops as
   -- written, so an undo walks back exactly what was done -- and so does the
   -- writer's entry in the log, once, for the custom documents (todo #44).
+  -- A write through a document whose owns is a path leaves it reaching the writer, or its row
+  -- gone: a row is never handed away (403; compiled per document, _delta_keeps_reach).
+  IF NOT _delta_keeps_reach(v_def, p_doc_name) THEN
+    RAISE EXCEPTION '%: that would take it out of your reach', p_doc_name USING ERRCODE = '42501';
+  END IF;
   v_version := _delta_tell(p_doc_name, v_touched, v_broadcast_ops);
 
   -- The ids this write named move their serials past them, once it is done: a
