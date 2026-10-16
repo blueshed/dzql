@@ -37,7 +37,7 @@ RETURNS JSONB LANGUAGE plpgsql STABLE AS $$ BEGIN RAISE EXCEPTION 'no doc def fo
 
 -- ---------------------------------------------------------------------------
 -- delta_prune_ops: clean up old log entries -- and the names nobody holds
--- open (todo #73): the rows of listeners that are gone, and the version of a
+-- open: the rows of listeners that are gone, and the version of a
 -- name no listener holds, with nothing left of it in the log or the ledger.
 -- Opened again, it starts a fresh copy at 0. The table lock keeps an open from
 -- holding a name between the question and the delete. Answers the log

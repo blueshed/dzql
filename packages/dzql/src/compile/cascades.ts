@@ -1,22 +1,16 @@
 /**
- * Compiled cascades: what a remove takes with it, and what a moved row
- * carries. The framework walks `_delta_collections` at run time for a
- * collection's children and the collections that cascade on it, and builds
- * each query from their names; here the schema says them, and each is written.
+ * Cascades: what a remove takes with it, and what a moved row carries, written from the schema.
  *
  * `compileCascades(schema)` writes, for every collection of the schema:
- * - `dzql_cascade_remove__<slug>(id)`: the row closed (temporal) or deleted, and
- *   only if it was there, each child collection's rows under it, then each
- *   collection that cascades on it -- the removes, in that order;
- * - `dzql_cascade_rows__<slug>(id)`: the rows that remove would take, read
- *   before, in the order it takes them;
- * - `dzql_hanging_rows__<slug>(id)`: the rows that hang from it, and on down,
- *   parent first.
- * And `_delta_cascade_remove`, `_delta_cascade_rows` and `_delta_hanging_rows`,
- * sending each collection to its own; a collection there is not has nothing
- * to take. The order is the one the framework's had: child collections by key, then
- * the collections that cascade on it by key and key column, each in the
- * database's byte order (`COLLATE "C"`), and each one's rows by id.
+ * - `dzql_cascade_remove__<slug>(id)`: the row closed (temporal) or deleted, and only if it was there,
+ *   each child collection's rows under it, then each collection that cascades on it;
+ * - `dzql_cascade_rows__<slug>(id)`: the rows that remove would take, read before, in the order it
+ *   takes them;
+ * - `dzql_hanging_rows__<slug>(id)`: the rows that hang from it, and on down, parent first.
+ * `_delta_cascade_remove`, `_delta_cascade_rows` and `_delta_hanging_rows` send each collection to
+ * its own; a collection there is not has nothing to take. The order: child collections by key, then
+ * the collections that cascade on it by key and key column, each in byte order (`COLLATE "C"`), and
+ * each one's rows by id.
  */
 import { q, type Schema } from "@blueshed/delta/backend";
 import { lit, named, standingRows } from "./opens";
@@ -27,7 +21,7 @@ const fn = (what: string, coll: string): string => named(what, coll);
 /** As `COLLATE "C"` orders text: by its bytes. */
 const bytes = (a: string, b: string): number => Buffer.compare(Buffer.from(a), Buffer.from(b));
 
-/** A collection's children, and the collections that cascade on it, in the framework's order: [collection, key column]. */
+/** A collection's children, and the collections that cascade on it, in order: [collection, key column]. */
 function reached(schema: Schema, coll: string): { children: [string, string][]; refs: [string, string][] } {
   const table = schema.tables[coll]!;
   const children = [...table.children].sort(bytes).map((c): [string, string] => [c, schema.tables[c]!.parent!.fkColumn]);

@@ -29,7 +29,7 @@ packages/
 ├── dzql/                # The dzql package on npm
 │   ├── src/postgres/    # delta's Postgres backend: dzql/postgres, dzql/pglite, dzql/auth-jwt
 │   ├── src/sql/         # the framework SQL (001a-001g, auth-jwt.sql): tables, delta_apply, the ledger; it calls what generateSql compiles
-│   ├── src/compile/     # the compiler from delta's definitions: dzql/compile (compileOpens, owns, ...)
+│   ├── src/compile/     # the compiler from delta's definitions, a module per kind of function (generateSql runs them all)
 │   ├── docs/delta/      # delta on Postgres: postgres.md, sql.md, rls.md
 │   ├── src/postgres/cli.ts  # dzql sql | init | migrate | link (src/cli/index.ts, the bin, runs it)
 │   ├── examples/delta/  # delta's Postgres examples: todos-vs-rls, sites-bbox
@@ -41,29 +41,31 @@ packages/
 ## dzql as delta's Postgres step
 
 - **delta's wire and definitions are the contract.** An app's `defineSchema` / `defineDoc` are the
-  input; a client talks to dzql exactly as to delta's SQLite. `src/postgres/` was copied from
-  delta 0.15.0 and imports only delta's public subpaths and `@blueshed/delta/backend`.
+  input; a client talks to dzql exactly as to delta's SQLite. `src/postgres/` imports only delta's
+  public subpaths and `@blueshed/delta/backend`.
 - **delta's cases are the proof.** `tests/delta/` runs `@blueshed/delta/testing` unchanged: the
   path, `owns`, the law over generated writes, the write cases. Never change a case to make dzql
   pass: a different answer is dzql's bug (or delta's, fixed in delta and released first).
 - **The compiler is deterministic, and Claude extends it, never stands in for it.** `src/compile/`
   is pure: definitions in, SQL text out, the same every time. A definition it cannot compile is an
-  error naming the document and what it lacks. A compiled function must answer what the retired
-  framework answered (`tests/compile/`, its answers recorded, on PGlite, on the seed and after
-  writes) and pass delta's cases; its text is pinned by a snapshot, updated
+  error naming the document and what it lacks. A compiled function passes delta's cases, and
+  `tests/compile/` pins its answers (on PGlite, on the seed and after writes) and its text, by
+  snapshots updated
   (`bun test --update-snapshots`, whole files: a `-t` filter drops the snapshots it did not run)
   only with the change that explains it. One `generateSql` per database: one app's definitions.
 - **Permissions are a document's** (`owns` as a path), **migrations are delta's**: no table rules,
   no upgrade scheme of dzql's own (philo.md).
-- **The whole-stack dzql is retired** (0.13): the `domain.ts` compiler, runtime, client and Pinia
-  stores are gone. Its story is in CHANGELOG.md; nothing of it comes back unless a story asks.
+- **dzql is this step and nothing else**: no client, runtime or app framework of its own. What it
+  was before delta is in CHANGELOG.md; nothing of it comes back unless a story asks for it.
 
 ## Testing
 
 - Run tests: `cd packages/dzql && bun run test`
 - Tests run against Docker PostgreSQL (see `packages/dzql/compose.yml`)
 - `tests/delta/` and `tests/compile/` run on PGlite with no Docker (`bun test tests/delta tests/compile`)
-- The test script handles Docker lifecycle: starts fresh, runs tests, tears down
+- The test script handles Docker lifecycle: starts fresh, runs tests, tears down. It removes the
+  database as it starts and ends, so **never run it while another run is going** (a person's, a
+  session's): each wipes the other's database, and both fail
 
 **Test-Driven Development:** Write tests first. Add failing tests for new features or bugs, then implement until they pass. This ensures the feature works and prevents regressions.
 
@@ -105,27 +107,13 @@ cd packages/dzql && bun unlink
 
 ## Publishing
 
+Not a step of a plan: finish every stage first, then release once, on Peter's word. Across
+packages, test by linking or packing (above), never by publishing.
+
 `/publish patch|minor|major` (`.claude/commands/publish.md`): the gate, the create-dzql end-to-end
 check, one version for both packages, the changelog and ledger promoted, and the tags
 `dzql@x.y.z` and `create-dzql@x.y.z`, whose push is what publishes (GitHub Actions, OIDC trusted
 publishing). Never `npm publish` by hand.
-
-## Events
-
-Events only have `pk` and `data`. There is no `before`/`after` or `old`/`new`.
-
-- INSERT: `data` contains the new row
-- UPDATE: `data` contains the updated row
-- DELETE: `data` contains the deleted row (needed for subscription resolution)
-
-## Subscribables
-
-The `_affected_documents` function signature is:
-```sql
-function_name_affected_documents(p_table_name TEXT, p_op TEXT, p_data JSONB)
-```
-
-Three parameters. Not four.
 
 ## Listen to the User
 

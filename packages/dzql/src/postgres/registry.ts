@@ -7,22 +7,22 @@
  *   - apply   — apply delta ops and return the new version.
  *   - openAt  — optional snapshot-at-timestamp read.
  *
- * Generic docs (delta-doc framework) are made by `docTypeFromDef(def, pool)`.
- * Custom docs (e.g. venue-occasion) export their own `DocType`. Each is given
+ * A document defined by `defineDoc` is made by `docTypeFromDef(def, pool)`; a
+ * hand-written one exports its own `DocType`. Each is given
  * to a listener (`createDocListener(ws, pool, { types })`), which asks its own
  * types for every WS message -- no other place in the codebase interprets
  * doc-name prefixes.
  */
 import type { Pool } from "pg";
-
-/** What a path's owns asks on: the pool, or the connection a transaction holds (a walk's). */
-type Queryable = { query(sql: string, params: unknown[]): Promise<{ rows: any[] }> };
 import type { DocDef } from "./schema";
 import { splitPath, type DeltaOp } from "@blueshed/delta/core";
 import { authless, ownerless, type DeltaAuth } from "@blueshed/delta/auth";
 import { assertOnePrefix } from "@blueshed/delta/backend";
 import { openAtFunction, openFunction } from "../compile/opens";
 import { ownsFunction } from "../compile/owns";
+
+/** What a path's owns asks on: the pool, or the connection a transaction holds (a walk's). */
+type Queryable = { query(sql: string, params: unknown[]): Promise<{ rows: any[] }> };
 
 /** Who is writing, for the ledger: the identity as the ledger has it, and the cursor undo walks. */
 export type Writer = { who: string | null; cursor: string | null; undoable?: boolean; undoes?: number | null };
@@ -181,9 +181,8 @@ export async function callAs<I>(db: { query(sql: string, params: unknown[]): Pro
 // ---------------------------------------------------------------------------
 
 /**
- * Produce a DocType for a framework-generic doc. One DocType per DocDef —
- * this replaces the former "one big generic handler that loops prefixes"
- * pattern so the registry stays flat and each prefix owns itself.
+ * A DocType for a document `defineDoc` defines: one per definition, so each
+ * prefix answers for itself.
  *
  * When `opts.auth` is provided with `asSqlArg`, the hot path calls the
  * `delta_*_as(user_id, ...)` stored-function variants (see

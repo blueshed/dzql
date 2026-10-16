@@ -1,25 +1,18 @@
 /**
- * Compiled opens: delta's documents, read by SQL written for each one.
+ * Opens: delta's documents, read by SQL written for each one.
  *
- * `compileOpens(schema, docs)` turns an app's `defineSchema` / `defineDoc`
- * into the reads of each document -- `dzql_open__<slug>(name)` and
- * `dzql_open_at__<slug>(name, at)`, each with an `_as` for a signed-in caller --
- * which the listener opens that document's names through (`docTypeFromDef`). Each answers what `delta_open`
- * answers (the listener then shows it by the same schema), but its queries
- * are written out: which
- * table, which columns, how a collection hangs from the root, whether a row
- * is temporal, what an implied root opens with. Nothing reads
- * `_delta_collections` to find them.
+ * `compileOpens(schema, docs)` turns an app's `defineSchema` / `defineDoc` into the reads of each
+ * document -- `dzql_open__<slug>(name)` and `dzql_open_at__<slug>(name, at)`, each with an `_as` for
+ * a signed-in caller -- which the listener opens that document's names through (`docTypeFromDef`).
+ * Its queries are written out: which table, which columns, how a collection hangs from the root,
+ * whether a row is temporal, what an implied root opens with.
  *
- * A name's scope is compiled too (`scopeOf`): its values read by position,
- * each checked as its column takes it with the framework's own messages
- * (`_delta_resolve_scope`), and its conditions written as typed SQL, so no
- * query is built from text at run time. The version is still the
- * framework's (`_delta_versions`).
+ * A name's scope is compiled too (`scopeOf`): its values read by position, each checked as its
+ * column takes it, and its conditions written as typed SQL, so no query is built from text at run
+ * time. The version is kept in `_delta_versions`.
  *
- * A pure function: the same definitions give the same text, byte for byte.
- * A definition it cannot compile is an error naming the document, never SQL
- * that half works.
+ * A pure function: the same definitions give the same text, byte for byte. A definition it cannot
+ * compile is an error naming the document, never SQL that half works.
  */
 import { q, type ColumnDef, type DocDef, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
 import { columnSqlType } from "../postgres/sql";
@@ -27,15 +20,27 @@ import { columnSqlType } from "../postgres/sql";
 /** A string as an SQL literal. */
 export const lit = (s: string): string => `'${s.replace(/'/g, "''")}'`;
 
-/** A name no document compiled here holds: there is none (the framework that read the rest retired, todo #26). */
+/** A name no document compiled here holds: there is none. */
 export const noDoc = (name: string): string => `RAISE EXCEPTION 'no doc def for: %', ${name} USING ERRCODE = 'P0001';`;
 
 /** A collection none was compiled for: the write asks only its own, and delta_apply refuses any other first. */
 export const noCollection = (key: string): string => `RAISE EXCEPTION 'unknown collection: %', ${key} USING ERRCODE = '22023';`;
 
-/** A compiled function's name: `dzql_<kind>__` and the document's prefix (or a collection's key), lower case, every other character `_`. */
-export const named = (kind: string, name: string): string =>
-  `dzql_${kind}__${name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`;
+/**
+ * A compiled function's name: `dzql_<kind>__` and the document's prefix (or a collection's key),
+ * lower case, every other character `_`. Postgres keeps 63 bytes of a name and drops the rest, so
+ * a name that would pass 60 (room for an `_as` form), or a prefix with no letter or digit, ends in
+ * a hash of the whole: two never meet in the bytes Postgres keeps.
+ */
+export const named = (kind: string, name: string): string => {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  const whole = `dzql_${kind}__${slug}`;
+  if (slug && whole.length <= 60) return whole;
+  let h = 0x811c9dc5;   // FNV-1a over the name as written: the same name, the same hash
+  for (const ch of `${kind}:${name}`) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+  const tag = h.toString(16).padStart(8, "0");
+  return `${whole.slice(0, 60 - 9)}_${tag}`;
+};
 
 /** A document's open: `dzql_open__<slug>`. */
 export const openFunction = (prefix: string): string => named("open", prefix);
@@ -69,7 +74,7 @@ const standing = (table: ResolvedTable, alias: string, at = "p_at"): string =>
     : "";
 
 /** An implied document's root before its row is there: its id and each column's default, as `_delta_implied_root` gives it. */
-function impliedRoot(table: ResolvedTable, doc: DocDef): string {
+export function impliedRoot(table: ResolvedTable, doc: DocDef, id = "v_id"): string {
   const held = doc.columns?.[doc.root];
   const value = (d: ColumnDef): unknown =>
     d.default !== undefined && d.default !== null ? d.default
@@ -79,7 +84,7 @@ function impliedRoot(table: ResolvedTable, doc: DocDef): string {
     : d.type === "boolean" ? false
     : null;
   const fields = Object.entries(table.columns).filter(([c]) => !held || held.includes(c)).map(([c, d]) => [c, value(d)]);
-  return `jsonb_build_object('id', v_id) || ${lit(JSON.stringify(Object.fromEntries(fields)))}::jsonb`;
+  return `jsonb_build_object('id', ${id}) || ${lit(JSON.stringify(Object.fromEntries(fields)))}::jsonb`;
 }
 
 /**
@@ -147,7 +152,7 @@ const DAY = String.raw`^\s*([0-9]{4})-([0-9]{2})-([0-9]{2})\s*$`;
 
 /** What a value its column cannot take does: given the message and the value's variable, the plpgsql. */
 type Refuse = (message: string, value: string) => string;
-/** An open refuses it: the framework's message, as a 400 (22P02). */
+/** An open refuses it: its message, as a 400 (22P02). */
 const raiseRefusal: Refuse = (message, value) => `RAISE EXCEPTION '${message.replace(/'/g, "''")}', ${value} USING ERRCODE = '22P02';`;
 
 /**
@@ -196,7 +201,7 @@ export function scopeOf(schema: Schema, doc: DocDef, refuse: Refuse = raiseRefus
   const values: Record<string, string> = {};
   // a check goes in both; what the reads set, in body alone
   const check = (...lines: string[]) => { body.push(...lines); checks.push(...lines); };
-  // the framework's where, in its words: `%I <op> %L`, joined by AND
+  // the where as text: `%I <op> %L`, joined by AND
   const where = (v: string, expr: string) => resolve.push(`IF ${v} IS NOT NULL THEN v_where := v_where || CASE WHEN v_where <> '' THEN ' AND ' ELSE '' END || ${expr}; END IF;`);
   parsed.forEach(({ key, op, param }, i) => {
     const v = `v_s${i + 1}`;

@@ -1,19 +1,15 @@
 /**
- * Compiled telling: what a document is told of a write. Asked by `_delta_tell`
- * of the writer and of every document that held a row the write touched, or
- * holds it now, with the write's touches and their holders.
+ * Telling: what a document is told of a write. Asked by `_delta_tell` of the writer and of every
+ * document that held a row the write touched, or holds it now.
  *
- * `compileTold(schema, docs)` writes `dzql_told__<slug>(name, rows)` for each
- * document, answering what the framework's `_delta_told` answers, from its
- * definition: whether the name makes it one row (`scopeOf`), its root, the
- * columns it shows of each collection it names them for (`columns`, the row's
- * id and parent key with them), and the empty root an implied one opens with
- * when its root leaves. And `_delta_told` itself, which sends each document to
- * its own and refuses a name of none (`no doc def for`: the framework that read the rest
- * retired, todo #26).
+ * `compileTold(schema, docs)` writes `dzql_told__<slug>(name, rows)` for each document: whether
+ * the name makes it one row (`scopeOf`), its root, the columns it shows of each collection it names
+ * them for (with the row's id and parent key), and, for an implied document whose root leaves, the
+ * empty root it opens with. `_delta_told` sends each document to its own, and refuses a name no
+ * document has.
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
-import { lit, named, need, noDoc, scopeOf } from "./opens";
+import { impliedRoot, lit, named, need, noDoc, scopeOf } from "./opens";
 
 /** A document's telling function: `dzql_told__<slug>`. */
 export const toldFunction = (prefix: string): string => named("told", prefix);
@@ -36,11 +32,11 @@ function shown(schema: Schema, doc: DocDef, coll: string, row: string): string {
 
 /** One document's telling function. */
 function toldOf(schema: Schema, doc: DocDef): string {
-  need(schema, doc, doc.root);
-  const scope = scopeOf(schema, doc);   // a name its columns cannot take: refused, as the framework's resolver refuses it
+  const root = need(schema, doc, doc.root);
+  const scope = scopeOf(schema, doc);   // a name its columns cannot take: refused
   const after = shown(schema, doc, "v_t->>'coll'", "v_t->'after'");
   const gone = doc.implied
-    ? shown(schema, doc, "v_t->>'coll'", `_delta_implied_root((SELECT d FROM _delta_docs d WHERE d.prefix = ${lit(doc.prefix)}), (v_t->>'id')::BIGINT)`)
+    ? impliedRoot(root, doc, "(v_t->>'id')::BIGINT")
     : "'null'::jsonb";
   return `CREATE OR REPLACE FUNCTION ${toldFunction(doc.prefix)}(p_name TEXT, p_rows JSONB)
 RETURNS JSONB AS $$

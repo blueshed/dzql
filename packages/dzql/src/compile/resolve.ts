@@ -1,17 +1,13 @@
 /**
- * Compiled scope resolution: a document's name read as its definition's scope
- * reads it. Asked by every write (`delta_apply`: its mode, its root's id, the
- * values an add to a list is given, the conditions its root must meet), by
- * the framework's reads and by the ops log -- `_delta_resolve_scope`.
+ * Scope resolution: a document's name read as its definition's scope reads it. Asked by every write
+ * (`delta_apply`: its mode, its root's id, the values an add to a list is given, the conditions its
+ * root must meet), by the reads and by the ops log: `_delta_resolve_scope`.
  *
- * `compileResolve(schema, docs)` writes `dzql_scope__<slug>(name, refuse)` for
- * each document, giving the framework's answer exactly, as JSON: `where` (the
- * conditions as SQL text, in the framework's words), `values` (the equality
- * bindings), `mode` and `at`; a value its column cannot take refused with the
- * same message (`scopeOf`), raised, or with `refuse` false answered as the
- * scope that holds nothing. And `_delta_resolve_scope` itself, which sends each
- * document to its own and refuses a name of none (`no doc def for`: the framework that read the rest
- * retired, todo #26).
+ * `compileResolve(schema, docs)` writes `dzql_scope__<slug>(name, refuse)` for each document,
+ * answering as JSON: `where` (the conditions as SQL text), `values` (the equality bindings), `mode`
+ * and `at`. A value its column cannot take is refused (`scopeOf`): raised, or with `refuse` false,
+ * answered as the scope that holds nothing. `_delta_resolve_scope` sends each document to its own,
+ * and refuses a name no document has.
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
 import { lit, named, need, noDoc, scopeOf } from "./opens";

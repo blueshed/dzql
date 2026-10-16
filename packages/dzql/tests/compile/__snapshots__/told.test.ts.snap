@@ -126579,7 +126579,7 @@ BEGIN
     ELSIF v_is THEN
       v_told := v_told || jsonb_build_array(jsonb_build_object('op', CASE WHEN v_root THEN 'replace' ELSE 'add' END, 'path', v_path, 'value', v_t->'after'));
     ELSIF v_root THEN   -- gone: the empty root it then opens with
-      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', _delta_implied_root((SELECT d FROM _delta_docs d WHERE d.prefix = 'fo-plan:'), (v_t->>'id')::BIGINT)));
+      v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'replace', 'path', v_path, 'value', jsonb_build_object('id', (v_t->>'id')::BIGINT) || '{"name":""}'::jsonb));
     ELSE
       v_told := v_told || jsonb_build_array(jsonb_build_object('op', 'remove', 'path', v_path));
     END IF;

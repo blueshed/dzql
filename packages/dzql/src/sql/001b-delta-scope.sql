@@ -60,7 +60,7 @@ $$;
 -- ---------------------------------------------------------------------------
 -- _delta_scope_row: the scope's equality values (_delta_resolve_scope's
 -- `values`, the name's text), as a list-mode add of a root row is given them:
--- as the scope's condition reads each (todo #46). The condition casts its text
+-- as the scope's condition reads each. The condition casts its text
 -- to the column's type; jsonb_populate_record does the same with a JSON string
 -- for every type but json, where it keeps the string whole -- a name's 5 stored
 -- as "5", which `wishes = '5'` does not match. So a json column's value is the
@@ -81,9 +81,9 @@ $$;
 -- As the document's read filters, so the rule is simply "you may write what
 -- you may read".
 --
--- Reads were always scoped, but writes addressed rows by bare id: a client
--- holding `tenant:1` could name a row id belonging to `tenant:2` and remove or
--- overwrite it. delta_apply now gates every row-addressed write through here.
+-- A write names rows by id, so without this a client holding `tenant:1` could
+-- name a row of `tenant:2` and remove or overwrite it: delta_apply gates every
+-- row-addressed write through here.
 -- Returning FALSE for a row that exists but is invisible (including one hidden
 -- by RLS) is deliberate — it keeps "forbidden" and "absent" indistinguishable
 -- so the gate can't be used to probe for ids.
@@ -95,7 +95,7 @@ CREATE OR REPLACE FUNCTION _delta_row_in_scope(p_def _delta_docs, p_doc_name TEX
 RETURNS BOOLEAN LANGUAGE plpgsql STABLE AS $$ BEGIN RAISE EXCEPTION 'no doc def for: %', p_doc_name USING ERRCODE = 'P0001'; END $$;
 
 -- ---------------------------------------------------------------------------
--- Who holds a row: the fan-out (todo #28)
+-- Who holds a row: the fan-out
 --
 -- A write is told to every document that holds a row it changed -- the one
 -- written through, and every other opened document over the same rows -- as
@@ -113,7 +113,7 @@ CREATE OR REPLACE FUNCTION _delta_doc_holds(p_def _delta_docs, p_doc_name TEXT, 
 RETURNS BOOLEAN LANGUAGE plpgsql STABLE AS $$ BEGIN RAISE EXCEPTION 'no doc def for: %', p_doc_name USING ERRCODE = 'P0001'; END $$;
 
 -- _delta_holders: the documents that hold `p_row` of `p_coll` -- every one
--- open now (a name in _delta_held, todo #73), and the writer's own `p_writer`.
+-- open now (a name in _delta_held), and the writer's own `p_writer`.
 -- A single-mode document of an unscoped definition is found by its name,
 -- prefix || the root the row hangs from; a scoped or list-mode one, or one
 -- holding an unparented collection, by the open names of its prefix. So a
@@ -127,7 +127,7 @@ RETURNS BOOLEAN LANGUAGE plpgsql STABLE AS $$ BEGIN RAISE EXCEPTION 'no doc def 
 -- (REPEATABLE READ, SERIALIZABLE) would not see a name held after it began,
 -- and is refused (SQLSTATE 0A000).
 --
--- SECURITY DEFINER (todo #33), with pg_temp last on its path: who holds a row
+-- SECURITY DEFINER, with pg_temp last on its path: who holds a row
 -- is worked out as the functions' owner, not the writer, so a parent row the writer's RLS hides (another's
 -- list, under another's board) does not hide the document that holds it. It
 -- answers document names, never a row; each document is told only what it

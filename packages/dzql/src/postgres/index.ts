@@ -12,7 +12,7 @@
  *   } from "dzql/postgres";
  *
  * The stored functions are `src/sql/001*.sql`: `applyFramework(pool)` applies
- * them, or `bunx @blueshed/delta init <dir>` copies them for a migration tool
+ * them, or `bunx dzql init <dir>` copies them for a migration tool
  * (plain idempotent SQL; order is alphabetical).
  */
 

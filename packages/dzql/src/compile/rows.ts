@@ -1,31 +1,25 @@
 /**
- * Compiled row SQL: the statements a write runs on a row, written for each
- * collection. The framework builds each from the table's name at run time
- * (`EXECUTE format(...)`), planned again on every call; written out, each is a
- * statement whose plan the database keeps.
+ * Row SQL: the statements a write runs on a row, written for each collection, so each is a statement
+ * whose plan the database keeps.
  *
  * `compileRows(schema)` writes, for every collection of the schema:
- * - `_delta_row_lock`: the row as it stands (a temporal one's open version),
- *   locked for the write;
- * - `_delta_row_put`: a replace's row stored -- a temporal one a new version
- *   (one this write made gives way to it, the standing one closes), else the
- *   row again -- answered as stored;
+ * - `_delta_row_lock`: the row as it stands (a temporal one's open version), locked for the write;
+ * - `_delta_row_put`: a replace's row stored -- a temporal one a new version (one this write made
+ *   gives way to it, the standing one closes), else the row updated in place -- answered as stored;
  * - `_delta_next_id`: an add's id, from the collection's sequence;
- * - `_delta_row_clear_moment`: a temporal version this write made and took
- *   back, so an add of its id takes its place;
+ * - `_delta_row_clear_moment`: a temporal version this write made and took back, so an add of its id
+ *   takes its place;
  * - `_delta_row_there`: is the row there now (a temporal one's open version)?
  * - `_delta_row_read`: the row as it stands, without its validity;
- * - `_delta_row_add`: an add's row stored. An INSERT names the columns the row
- *   gives (`_delta_insert_sql`), so one it leaves out takes its database
- *   default: where the row gives exactly every column the schema declares (its
- *   id, parent key, columns and validity), that INSERT is one statement,
- *   written here; a row with any other keys is stored by the columns it gives
+ * - `_delta_row_add`: an add's row stored. An INSERT names the columns the row gives
+ *   (`_delta_insert_sql`), so one it leaves out takes its database default: where the row gives
+ *   exactly every column the schema declares (its id, parent key, columns and validity), that INSERT
+ *   is one statement, written here; a row with any other keys is stored by the columns it gives
  *   (`_delta_row_add_given`).
  *
- * Each answers what the framework's did. A collection none was compiled for is
- * refused (`unknown collection`), and a row of it is not there.
+ * A collection none was compiled for is refused (`unknown collection`), and a row of it is not there.
  */
-import { q, type Schema } from "@blueshed/delta/backend";
+import { q, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
 import { lit, noCollection, standingRows } from "./opens";
 
 /** A CASE over the collections, each branch from `branch`, any other collection to `fallback`. */
@@ -35,6 +29,20 @@ function dispatch(schema: Schema, branch: (coll: string, table: Schema["tables"]
     return b === null ? [] : [`    WHEN ${lit(coll)} THEN\n      ${b}`];
   });
   return branches.length ? `  CASE p_coll\n${branches.join("\n")}\n    ELSE ${fallback}\n  END CASE;` : `  ${fallback}`;
+}
+
+/**
+ * A replace on a table that keeps no versions: the row updated in place, each column it declares
+ * (and its parent key) set from `p_row`; a column the database holds beyond them keeps its value.
+ */
+function putInPlace(t: ResolvedTable): string {
+  const cols = [...(t.parent ? [t.parent.fkColumn] : []), ...Object.keys(t.columns)].map(q);
+  const set = cols.length
+    ? `UPDATE ${q(t.name)} AS t SET (${cols.join(", ")}) = (SELECT ${cols.map((c) => `r.${c}`).join(", ")} FROM jsonb_populate_record(null::${q(t.name)}, p_row) r)
+        WHERE t.id = p_id RETURNING to_jsonb(t.*) INTO v_row;`
+    : `SELECT to_jsonb(t.*) INTO v_row FROM ${q(t.name)} t WHERE t.id = p_id;`;
+  return `${set}
+      RETURN v_row;`;
 }
 
 /** The row SQL of every collection of `schema`, and its dispatch. */
@@ -68,13 +76,11 @@ ${dispatch(schema, (_, t) => (t.temporal
       INSERT INTO ${q(t.name)} AS t SELECT * FROM jsonb_populate_record(null::${q(t.name)}, p_row || jsonb_build_object('valid_from', p_ts, 'valid_to', NULL))
         RETURNING to_jsonb(t.*) INTO v_row;
       RETURN v_row;`
-    : `DELETE FROM ${q(t.name)} WHERE id = p_id;
-      INSERT INTO ${q(t.name)} AS t SELECT * FROM jsonb_populate_record(null::${q(t.name)}, p_row) RETURNING to_jsonb(t.*) INTO v_row;
-      RETURN v_row;`), noCollection("p_coll"))}
+    : putInPlace(t)), noCollection("p_coll"))}
 END;
 $$ LANGUAGE plpgsql;`;
 
-  // the sequence named as the framework names it: nextval of the text 'seq_<table>'
+  // the sequence by its name: nextval of the text 'seq_<table>'
   const next = `CREATE OR REPLACE FUNCTION _delta_next_id(p_coll TEXT, p_table TEXT)
 RETURNS BIGINT AS $$
 BEGIN

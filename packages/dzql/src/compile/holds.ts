@@ -1,17 +1,12 @@
 /**
- * Compiled holds: does a document hold a row? Asked of every open document by
- * every write (`_delta_holders`, the fan-out), on the row as it was before the
- * write and as it is after.
+ * Holds: does a document hold a row? Asked of every open document by every write (`_delta_holders`,
+ * the fan-out), on the row as it was before the write and as it is after.
  *
- * `compileHolds(schema, docs)` writes one function per document --
- * `dzql_holds__<slug>(name, collection, row)` -- answering what the
- * framework's `_delta_doc_holds` answers for it, from its definition: which
- * collections it holds, its name's conditions tested on the row's own values
- * (`scopeOf`, a name its columns cannot take holding nothing), a temporal row
- * not told to a document named with a time past, and an included row's chain
- * of parents up to the root, as written lookups. And `_delta_doc_holds`
- * itself, which sends each document to its function and refuses a name of none (`no doc def for`: the framework that read the rest
- * retired, todo #26).
+ * `compileHolds(schema, docs)` writes `dzql_holds__<slug>(name, collection, row)` for each
+ * document: the collections it holds, its name's conditions tested on the row's own values
+ * (`scopeOf`; a name its columns cannot take holds nothing), a temporal row not told to a document
+ * named with a time past, and an included row's chain of parents up to the root, as written
+ * lookups. `_delta_doc_holds` sends each document to its own, and refuses a name no document has.
  */
 import { q, type DocDef, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
 import { lit, named, need, noDoc, scopeOf, currentOnly } from "./opens";

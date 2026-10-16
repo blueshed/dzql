@@ -88,7 +88,7 @@ function errMsg(err: unknown): string {
  * there (404); 23505 for an add of a row that is, and 40001 for an undo of an
  * entry that is not the cursor's next (409). And 40P01, a write that met another
  * at once and gave way to it (two adds of temporal ids in opposite orders wait
- * on each other's row locks, todo #16): nothing was written, and the same write
+ * on each other's row locks): nothing was written, and the same write
  * sent again goes through, or meets the rows the other made (409). A document
  * type that refuses with a wire code of its own (a number, 400 to 499: a
  * read-only document's 403) is answered with it. Anything else is the
@@ -109,7 +109,7 @@ interface DocState {
   version: number;
   /**
    * The last version a notification has announced (or an open read): a drain
-   * reads no further (todo #55). A later entry is heard when its own
+   * reads no further. A later entry is heard when its own
    * notification comes, so each notification maps to entries not yet heard,
    * and a document let go of and tracked again by a late notification does not
    * read an entry twice. A resync after a reconnect, which missed notifications,
@@ -130,13 +130,13 @@ const FETCH_PAGE = 1000;
  * entry carries it (`applied`) where the writer was told otherwise, and null where it was told the
  * write as applied; each other told document's entry of the write carries none ([]). Told, a row
  * that left a document is a remove, which is not a delete, and a row told to two documents would be
- * heard twice (todo #44). An entry logged some other way carries null too: heard as told.
+ * heard twice. An entry logged some other way carries null too: heard as told.
  */
 const appliedOf = (row: any): DeltaOp[] => (row.applied ?? row.ops) as DeltaOp[];
 
 /**
  * How the listener reads a document's log. `_delta_fetch_log` (001e) gives each
- * entry with the write as applied, for custom documents (todo #44). Framework
+ * entry with the write as applied, for custom documents. Framework
  * SQL older than this listener -- vendored with `delta init` into an initdb
  * directory and not re-applied -- has no such function, and every fetch would
  * fail, so no broadcast would reach anyone: there the listener reads
@@ -150,7 +150,7 @@ async function fetchQuery(pool: Pool): Promise<string> {
   log.warn(
     "the framework SQL is older than this listener (no _delta_fetch_log, 001e): changes are read with delta_fetch_ops, " +
     "and a custom document hears a write once for each document told of it. Re-apply it (applyFramework, or " +
-    "bunx @blueshed/delta init) and restart.",
+    "bunx dzql init) and restart.",
   );
   return FETCH_TOLD;
 }
@@ -236,7 +236,7 @@ export async function createDocListener<I = unknown>(
   }
 
   // The custom documents (../custom): who holds each, who may hear it, what a
-  // write tells it -- and who may still hear any document (todo #17): a change
+  // write tells it -- and who may still hear any document: a change
   // told asks the gate and `owns` again of each socket it is told to (`owns`
   // once per identity per change), so what a change costs is the identities a
   // document has open, not its sockets. Without auth nothing is asked. The
@@ -397,7 +397,7 @@ export async function createDocListener<I = unknown>(
         // only what a notification has announced (`until`): the rest is heard with its own
         const rows = page.filter((row: any) => Number(row.version) <= state.until);
         more = page.length >= FETCH_PAGE && rows.length === page.length;
-        // Told to those who may still hear it (todo #17): the document's own subscribers
+        // Told to those who may still hear it: the document's own subscribers
         if (auth && rows.length > 0) {
           await custom.letGo(docName, state.subscribers, ownsOf(docName));
           if (resync) await custom.letGoWatching(rows.flatMap(appliedOf));

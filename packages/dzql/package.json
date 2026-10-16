@@ -14,8 +14,7 @@
     "./postgres": "./src/postgres/index.ts",
     "./pglite": "./src/postgres/pglite.ts",
     "./auth-jwt": "./src/postgres/auth-jwt.ts",
-    "./auth-link": "./src/postgres/auth-link.ts",
-    "./compile": "./src/compile/opens.ts"
+    "./auth-link": "./src/postgres/auth-link.ts"
   },
   "files": [
     "src",

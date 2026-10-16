@@ -15,5 +15,3 @@ Postgres. A post written in one window arrives in every other; each person edits
 their own. `bun run link "Your name"` gives the first person their link; in development the page
 lists everyone to pick from. Its tests (`bun test`) do all of that in two browsers, with Postgres
 in memory.
-
-Until 0.11.0 this made the whole-stack dzql's Vue app; that stack is retiring.

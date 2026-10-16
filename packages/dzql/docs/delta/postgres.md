@@ -1,8 +1,8 @@
 # Postgres (a server, or PGlite in process)
 
-> Moved from delta's `delta-doc` skill when delta handed Postgres to dzql (delta 1.0). The
-> imports are dzql's (`dzql/postgres`, `dzql/pglite`, `dzql/auth-jwt`, `dzql/auth-link`); the
-> commands are `dzql sql`, `dzql init`, `dzql migrate` and `dzql link`.
+The imports are `dzql/postgres`, `dzql/pglite`, `dzql/auth-link` and `dzql/auth-jwt`; the commands
+are `dzql sql`, `dzql init`, `dzql migrate` and `dzql link`. The definitions are delta's, and so is
+its manual (the `delta-doc` skill): this page is what Postgres adds.
 
 An app's documents, the same definitions it had on SQLite: its history of migrations makes the
 tables, the framework and the compiled SQL follow, and the listener serves the documents.
@@ -28,8 +28,9 @@ await listener.destroy();
 await pool.end();
 ```
 
-Options: `createDocListener` and `docTypeFromDef` in `src/server/postgres/listener.ts` and
-`registry.ts`. With auth: `auth.md`, `ownership.md`, `rls.md`.
+Options: `createDocListener` and `docTypeFromDef` in `src/postgres/listener.ts` and
+`registry.ts`. Signing in: delta-doc's `auth.md` (on Postgres, `postgresLinkStore` from
+`dzql/auth-link`); who may open what: below, and `rls.md`.
 
 ## Setting up the database
 
@@ -43,7 +44,7 @@ Options: `createDocListener` and `docTypeFromDef` in `src/server/postgres/listen
   first, then `applyFramework` and `applySql(pool, generateSql(…))`. The same migrations as on
   SQLite (`delta migrations make` writes them from the definitions): a new database runs them from
   the first; one made the older way, holding their tables, adopts them. A change the definitions
-  make is the next migration (delta's `migrations.md`). Give the listener your
+  make is the next migration (delta-doc's `migrations.md`). Give the listener your
   `schema` (`createDocListener(ws, pool, { types, schema })`): it sends and writes the columns
   it declares, so two versions on one database each see their own.
 - **After upgrading delta**, run `init <dir> --upgrade` (it keeps `.bak`s and says what changed)
@@ -54,7 +55,7 @@ Options: `createDocListener` and `docTypeFromDef` in `src/server/postgres/listen
 ## Who may open a document
 
 A document is the permission: opening it is the read, a write goes only through what it holds,
-and its `owns` says who may have it, as a path from its row to the person (delta's
+and its `owns` says who may have it, as a path from its row to the person (delta-doc's
 `ownership.md`):
 
 ```ts
@@ -74,9 +75,8 @@ no table rules.
 collections, compiled from their definitions: nothing reads `_delta_collections` or `_delta_docs`
 to work out what a document means at run time. The framework SQL (`001*`) holds the tables, the
 write (`delta_apply`), the ledger and the listener's functions, and calls what `generateSql`
-writes. Until 16 October 2026 a framework read the definitions at run time, and every compiled piece
-was held equal to it on every document name of delta's path cases, on the seed and after writes;
-its answers are recorded (`tests/compile/`) and stay the measure. It retired (todo #26).
+writes. Each compiled piece is pinned by `tests/compile/`: its answers on every document name of
+delta's path cases, on the seed and after writes, and its text.
 
 | What | Compiled |
 | --- | --- |
@@ -127,7 +127,12 @@ The `dzql_*` functions are internal: call `delta_open` / `delta_apply` and their
   single root row is not there, which the listener answers 404.
 - Write through `delta_apply` (the listener, or `delta_apply_as` from SQL), never a raw
   `INSERT`: only that path versions, logs and NOTIFYs (`sql.md`).
-- A hand-written `DocType` hears only its own writes (`custom-docs.md`).
+- A hand-written `DocType` hears only its own writes (delta-doc's `custom-docs.md`).
+- **A write tells every open document that holds a row it touched, in its own transaction**: that
+  is what makes each change arrive whole and in order. A row held by many open documents (a feed
+  per person, each holding the same new post) costs the write one telling for each. Keep
+  documents to what someone needs in front of them, scoped by a parent, a status or a time, never
+  a whole table that only grows: a document is opened whole.
 - `_delta_ops_log` is a catch-up buffer: prune it with `pruneOpsLog(pool)` (`delta_prune_ops`).
 - PGlite (`openPglite(dir?)`, `bun add @electric-sql/pglite`) is one process: a `Pool` that
   `./postgres` runs on unchanged.

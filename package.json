@@ -3,7 +3,7 @@
   "version": "1.0.3",
   "private": true,
   "type": "module",
-  "description": "DZQL - Database-first, real-time framework for PostgreSQL",
+  "description": "dzql, delta's compiled Postgres step, and create-dzql",
   "workspaces": [
     "packages/dzql",
     "packages/create-dzql"
@@ -24,12 +24,12 @@
     "url": "https://github.com/blueshed/dzql"
   },
   "keywords": [
+    "delta",
+    "postgres",
     "postgresql",
-    "websocket",
-    "real-time",
-    "typescript",
     "compiler",
-    "framework"
+    "bun",
+    "typescript"
   ],
   "author": "Peter Bunyan",
   "license": "MIT"

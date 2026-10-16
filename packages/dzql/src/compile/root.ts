@@ -1,16 +1,11 @@
 /**
- * Compiled root check: is a single document's root row there now, meeting the
- * whole of its name's scope? Asked before each op of a write (`delta_apply`),
- * so a document whose root is gone takes no writes.
+ * Root check: is a single document's root row there now, meeting the whole of its name's scope?
+ * Asked before each op of a write (`delta_apply`), so a document whose root is gone takes no writes.
  *
- * `compileRootThere(schema, docs)` writes `dzql_root_there__<slug>(name, id)`
- * for each document, answering what the framework's `_delta_root_there`
- * answers, from its definition: the name's values read and checked
- * (`scopeOf`, refused with the same message), and the root's current rows
- * asked with its conditions written as typed SQL, where the framework runs
- * the resolver's conditions as text. And `_delta_root_there` itself, which
- * sends each document to its own and refuses a name of none (`no doc def for`: the framework that read the rest
- * retired, todo #26).
+ * `compileRootThere(schema, docs)` writes `dzql_root_there__<slug>(name, id)` for each document:
+ * the name's values read and checked (`scopeOf`), and the root's standing rows asked with its
+ * conditions as typed SQL. `_delta_root_there` sends each document to its own, and refuses a name
+ * no document has.
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
 import { lit, named, need, noDoc, scopeOf, standingRows } from "./opens";
@@ -21,11 +16,11 @@ export const rootThereFunction = (prefix: string): string => named("root_there",
 /** One document's root check. */
 function rootThereOf(schema: Schema, doc: DocDef): string {
   const root = need(schema, doc, doc.root);
-  const rows = standingRows(root);   // the root's rows as they stand, as the framework's view reads them
+  const rows = standingRows(root);   // the root's rows as they stand
   const head = `CREATE OR REPLACE FUNCTION ${rootThereFunction(doc.prefix)}(p_name TEXT, p_id BIGINT)
 RETURNS BOOLEAN AS $$`;
   if (Object.keys(doc.scope ?? {}).length === 0) {
-    // no scope: a name with an id is that row (the framework's `id = '<id>'`), one without, any
+    // no scope: a name with an id is that row, one without, any
     return `${head}
 DECLARE
   v_rest TEXT := substring(p_name FROM ${doc.prefix.length + 1});

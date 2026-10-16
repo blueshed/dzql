@@ -51,7 +51,7 @@ holds through it.
 
 - **RLS filters reads, not the channel.** The listener reads the change log with no identity;
   one name several identities open hands each every row written through it. One name per
-  owner, checked by `owns` (a path, or delta's `ownership.md`). `tests/postgres-rls.test.ts` pins it as a
+  owner, checked by `owns` (a path, or delta-doc's `ownership.md`). `tests/postgres-rls.test.ts` pins it as a
   `NOSUPERUSER` role.
 - **No bare `pool.query` with auth on**: go through `docTypeFromDef({ auth, owns })`, or
   `withAppAuth` / `*_as`, so `app.user_id` is bound.

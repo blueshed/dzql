@@ -3,20 +3,19 @@
 ## The Problem: The "Boilerplate Trap"
 Building real-time apps at scale using just CRUD and subscriptions allows for too much variance. Manually writing event handlers for every interaction leads to unmaintainable N² complexity. Asking AI to generate this code results in subtle bugs and non-repeatable outcomes because the abstraction level is too low (it's "assembly language").
 
-## Where dzql Stands: delta's Compiled Step (October 2026)
+## Where dzql Stands: delta's Compiled Step
 The design path is **stories → documents → entities**. A story is something a person wants to do; a document is what they need in front of them to do it; the tables follow from the documents. [@blueshed/delta](https://github.com/blueshed/delta) keeps the documents and their storage grows along one path: a JSON file, SQLite, Postgres in the process, a Postgres server. **dzql is the last step: compiled Postgres.**
 
 - **The input is the app's own definitions.** dzql reads delta's `defineSchema` and `defineDoc`, the same ones the app had on SQLite, so moving to dzql changes where the truth lives, never the app.
 - **The wire is delta's.** A client talks to a dzql server exactly as to a SQLite one, so dzql may be as large and as opinionated as it likes behind it.
 - **Claude writes the compiler; Claude is never the compiler.** The compiler is deterministic: the same definitions give the same SQL, byte for byte. A case it cannot compile is an error naming what it lacks, never SQL that half works; Claude extends the compiler for it, with tests.
 - **delta's cases are the proof.** dzql runs delta's published cases (`@blueshed/delta/testing`) unchanged: what a person is sent, every backend's error table, write scope, the law over generated writes. A compiled function is right when it answers what delta answers. A backend that answers differently is the bug.
-- **Permissions are a document's.** Who may open a document is a path from its row to the person (`owns`, written in dzql's path language), never a rule on a table; row-level security is derived from the documents, not written.
+- **Permissions are a document's.** Who may open a document is a path from its row to the person (`owns`, in delta's path language), never a rule on a table; dzql compiles each path into the document. Row-level security beneath them, derived from the paths, is still to come (todo #19).
 - **Migrations stay delta's.** An app has one list of migrations whatever it runs on; dzql brings no upgrade scheme of its own.
 
-The plan, step by step, is Workshop's `docs/postgres-split-plan.md`.
 
 ## The Vision: Patterns as Infrastructure
-Instead of writing documents and their rules by hand, define systems as a composition of **Deterministic Patterns**: still the direction, now over documents rather than entities.
+Instead of writing documents and their rules by hand, define systems as a composition of **Deterministic Patterns**, over documents.
 
 ### The "Behavioral Compiler"
 A "Compiler for Intent", where we describe **Behaviors**, not just data shapes.

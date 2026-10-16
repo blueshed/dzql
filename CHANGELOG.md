@@ -23,6 +23,26 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Changed
+
+- **A replace on a table that keeps no versions updates the row in place** (`_delta_row_put`), its
+  declared columns and parent key set from the row; it had deleted and inserted it again, which
+  re-indexed every index and would fire a foreign key's or a trigger's delete. A column the database
+  holds beyond the schema keeps its value.
+- **Nothing reads `_delta_docs` when a write is told**: the fan-out's "the longest prefix owns the
+  name" is written from the definitions, and an implied document's empty root is inlined, as an
+  open inlines it.
+- **A compiled function's name fits Postgres**: a name past 60 bytes, or a prefix with no letter or
+  digit, ends in a hash of the whole, so two never meet in the 63 bytes Postgres keeps.
+- **`dzql/compile` is no longer exported**: it exposed one pass of thirteen; `generateSql` is the
+  compiler's entry.
+- The generated SQL's header and two messages say `bunx dzql`, not `bunx delta`.
+- **The documents say what is built**: the compiler's headers describe each pass, not the retired
+  run-time framework; closed ledger items are no longer cited in the code; `philo.md`, CLAUDE.md
+  and `docs/delta` are revised (`owns` is delta's path language, compiled here; derived row-level
+  security is still to do); the old stack's env samples and the superuser bench results go.
+  From Gemini's review (`feedback.md`).
+
 ## [0.13.0] - 2026-10-16
 
 ### Breaking

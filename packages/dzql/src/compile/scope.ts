@@ -1,18 +1,13 @@
 /**
- * Compiled write scope: may a document write a row? "You may write what you
- * may read": every row-addressed op in a write is asked first (`delta_apply`,
- * `_delta_row_in_scope`), and a row it may not read is answered as one that is
- * not there.
+ * Write scope: may a document write a row? You may write what you may read: every row-addressed
+ * op of a write is asked first (`delta_apply`, `_delta_row_in_scope`), and a row the document may
+ * not read is answered as one that is not there.
  *
- * `compileInScope(schema, docs)` writes `dzql_in_scope__<slug>(name,
- * collection, id)` for each document, answering what the framework's
- * `_delta_row_in_scope` answers, from its definition: a list document holds
- * its included collections whole and its root rows by the name's conditions;
- * a single document holds a row whose parent chain, walked up through the
- * tables as they stand, reaches its root, which meets the rest of its name's
- * scope. And `_delta_row_in_scope` itself, which sends each document to its
- * own and refuses a name of none (`no doc def for`: the framework that read the rest
- * retired, todo #26).
+ * `compileInScope(schema, docs)` writes `dzql_in_scope__<slug>(name, collection, id)` for each
+ * document. A list document holds its included collections whole and its root rows by the name's
+ * conditions; a single document holds a row whose parent chain, walked up through the tables as
+ * they stand, reaches its root, which meets the rest of its name's scope. `_delta_row_in_scope`
+ * sends each document to its own, and refuses a name no document has (`no doc def for`).
  */
 import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
 import { lit, named, need, noDoc, scopeOf, currentOnly } from "./opens";
@@ -24,7 +19,7 @@ export const inScopeFunction = (prefix: string): string => named("in_scope", pre
 /** One document's write-scope function. */
 function inScopeOf(schema: Schema, doc: DocDef): string {
   const root = need(schema, doc, doc.root);
-  const scope = scopeOf(schema, doc);   // a value its columns cannot take: refused, as the framework's resolver refuses it
+  const scope = scopeOf(schema, doc);   // a value its columns cannot take: refused
   const conds = scope.conds ? ` AND ${scope.conds}` : "";
   // the root row of a single document: its id, and (where the name scopes more than the id) the rest of its scope
   const others = Object.keys(doc.scope ?? {}).some((k) => k !== "id");
