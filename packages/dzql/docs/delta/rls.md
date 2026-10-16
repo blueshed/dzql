@@ -1,8 +1,12 @@
 # Row-level security with `app.user_id`
 
-> Moved from delta's `delta-doc` skill when delta handed Postgres to dzql (delta 1.0). The
-> imports are dzql's (`dzql/postgres`, `dzql/pglite`, `dzql/auth-jwt`); the commands are
-> `dzql sql`, `dzql init` and `dzql migrate`.
+**Permissions are a document's, never a table's.** Who may open a document, write through it and
+hear it is its `owns`, a path from its row to the person, compiled into the document
+(`postgres.md`, "Who may open a document"). Start there. Nothing on this page is needed for it.
+
+Row-level security is a backstop beneath the documents, for what reaches the tables another way
+(a report, a hand-written query). Deriving the policies from the documents' paths is not done
+yet (todo #19); until then a policy is written by hand, and must agree with the paths.
 
 From `examples/todos-vs-rls/rls.sql`: you see a todo you own or your team's; you write only your own.
 
@@ -47,7 +51,7 @@ holds through it.
 
 - **RLS filters reads, not the channel.** The listener reads the change log with no identity;
   one name several identities open hands each every row written through it. One name per
-  owner, checked by `owns` (`ownership.md`). `tests/postgres-rls.test.ts` pins it as a
+  owner, checked by `owns` (a path, or delta's `ownership.md`). `tests/postgres-rls.test.ts` pins it as a
   `NOSUPERUSER` role.
 - **No bare `pool.query` with auth on**: go through `docTypeFromDef({ auth, owns })`, or
   `withAppAuth` / `*_as`, so `app.user_id` is bound.
