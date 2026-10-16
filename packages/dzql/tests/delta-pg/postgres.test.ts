@@ -8,12 +8,14 @@
  *   bun test tests/postgres.test.ts
  *   docker compose down -v
  */
-import { describe, test, expect, beforeAll, beforeEach, afterAll, afterEach } from "bun:test";
+import { describe, test, expect, beforeAll, beforeEach, afterAll } from "bun:test";
 import { Pool } from "pg";
 import {
   createDocListener,
   docTypeFromDef,
   defineDoc,
+  defineSchema,
+  generateSql,
   loadDocAt,
   pruneOpsLog,
   type DocType,
@@ -24,7 +26,8 @@ import {
   PG_URL,
   newPool,
   applyFramework,
-  applyItemsFixture,
+  applyItems,
+  itemsTables,
   resetState,
 } from "./setup";
 import { waitFor, mockClient, sendAndAwait } from "@blueshed/delta/testing";
@@ -33,10 +36,41 @@ setLogLevel("silent");
 
 let pool: Pool;
 
+/**
+ * What these tests open, defined as an app defines it and applied once: the items, a temporal
+ * copy of them, and a catalog of products and their parts (and a temporal copy of the parts).
+ */
+const tables = {
+  items_t: { columns: { name: "text", value: { type: "integer", default: 0 } }, temporal: true },
+  products: { columns: { name: "text" }, temporal: false },
+  parts: { parent: "products", columns: { label: "text" }, temporal: false },
+  parts_t: { parent: "products", columns: { label: "text" }, temporal: true },
+};
+/** Each scope operator over the items, by the prefix its test opens. */
+const scopes: Record<string, Record<string, string>> = {
+  "s1:": { id: ":id" },
+  "s2:": { name: "=:name" },
+  "s3:": { value: ">=:start" },
+  "s4:": { value: "<=:end" },
+  "s5:": { name: "like:prefix" },
+  "s6:": { id: ":id", name: "=:name" },
+  "s7:": {},
+  "s8:": {},
+  "at-op:": { valid_from: "at:when" },
+  "endto:": { id: ":id" },
+};
+const docs = [
+  ...Object.entries(scopes).map(([prefix, scope]) => defineDoc(prefix, { root: "items", include: [], scope })),
+  defineDoc("t:", { root: "items_t", include: [] }),
+  defineDoc("catalog:", { root: "products", include: ["parts"] }),
+  defineDoc("catalog-root:", { root: "products", include: [] }),
+  defineDoc("catalog-t:", { root: "products", include: ["parts_t"] }),
+];
+
 beforeAll(async () => {
   pool = await newPool();
   await applyFramework(pool);
-  await applyItemsFixture(pool);
+  await applyItems(pool, { tables, docs });
 });
 
 afterAll(async () => {
@@ -311,36 +345,20 @@ describe("fail-fast on config errors", () => {
     ).rejects.toThrow(/no doc def for: bogus:42/);
   });
 
-  test("delta_open raises when the doc's root_collection is unknown", async () => {
-    // Hand-insert a bad doc def so the "unknown root collection" branch fires.
-    await pool.query(`
-      INSERT INTO _delta_docs (prefix, root_collection, include, scope)
-      VALUES ('ghost:', 'no_such_collection', '{}', '{}')
-      ON CONFLICT (prefix) DO UPDATE SET root_collection = EXCLUDED.root_collection
-    `);
-    try {
-      await expect(
-        pool.query("SELECT delta_open($1) AS doc", ["ghost:1"]),
-      ).rejects.toThrow(/unknown root collection: no_such_collection/);
-    } finally {
-      await pool.query("DELETE FROM _delta_docs WHERE prefix = 'ghost:'");
-    }
+  // A definition the compiler cannot compile is refused when the SQL is written, naming what it lacks.
+  const compiling = (doc: ReturnType<typeof defineDoc>) => () => generateSql(defineSchema(itemsTables), [doc]);
+
+  test("a document whose root is no collection is refused", () => {
+    expect(compiling(defineDoc("ghost:", { root: "no_such_collection", include: [] }))).toThrow(/no_such_collection/);
   });
 
-  test("_delta_resolve_scope raises when a scope key isn't a real column", async () => {
+  test("a scope key that isn't a real column is refused", () => {
     // "items.id" is the dotted-key footgun — not a column of the items table.
-    await pool.query(`
-      INSERT INTO _delta_docs (prefix, root_collection, include, scope)
-      VALUES ('bad:', 'items', '{}', '{"items.id":":id"}')
-      ON CONFLICT (prefix) DO UPDATE SET scope = EXCLUDED.scope
-    `);
-    try {
-      await expect(
-        pool.query("SELECT delta_open($1) AS doc", ["bad:1"]),
-      ).rejects.toThrow(/scope key "items\.id" is not a column of "items"/);
-    } finally {
-      await pool.query("DELETE FROM _delta_docs WHERE prefix = 'bad:'");
-    }
+    expect(compiling(defineDoc("bad:", { root: "items", include: [], scope: { "items.id": ":id" } }))).toThrow(/scope key "items\.id" is not a column of "items"/);
+  });
+
+  test("a junk scope operator (e.g. '<<<:x') is refused rather than producing bad SQL", () => {
+    expect(compiling(defineDoc("bad-op:", { root: "items", include: [], scope: { name: "<<<:foo" } }))).toThrow(/invalid scope operator/);
   });
 });
 
@@ -349,17 +367,6 @@ describe("fail-fast on config errors", () => {
 // ---------------------------------------------------------------------------
 
 describe("scope DSL operators", () => {
-  async function registerScope(prefix: string, scope: Record<string, string>) {
-    await pool.query(
-      `INSERT INTO _delta_docs (prefix, root_collection, include, scope)
-       VALUES ($1, 'items', '{}', $2::jsonb)
-       ON CONFLICT (prefix) DO UPDATE SET scope = EXCLUDED.scope`,
-      [prefix, JSON.stringify(scope)],
-    );
-  }
-  async function cleanup(prefix: string) {
-    await pool.query("DELETE FROM _delta_docs WHERE prefix = $1", [prefix]);
-  }
   async function resolve(prefix: string, docName: string) {
     const { rows } = await pool.query(
       `SELECT _delta_resolve_scope(d, $1) AS r FROM _delta_docs d WHERE prefix = $2`,
@@ -372,188 +379,114 @@ describe("scope DSL operators", () => {
   // are safe bare); %L always single-quotes the literal.
 
   test("':id' shorthand → col = <id>, single mode", async () => {
-    await registerScope("s1:", { id: ":id" });
-    try {
-      const r = await resolve("s1:", "s1:42");
-      expect(r.where).toBe("id = '42'");
-      expect(r.mode).toBe("single");
-      expect(r.values.id).toBe("42");
-    } finally { await cleanup("s1:"); }
+    const r = await resolve("s1:", "s1:42");
+    expect(r.where).toBe("id = '42'");
+    expect(r.mode).toBe("single");
+    expect(r.values.id).toBe("42");
   });
 
   test("'=:name' → col = <name>, list mode if key isn't 'id'", async () => {
-    await registerScope("s2:", { name: "=:name" });
-    try {
-      const r = await resolve("s2:", "s2:hello");
-      expect(r.where).toBe("name = 'hello'");
-      expect(r.mode).toBe("list");
-    } finally { await cleanup("s2:"); }
+    const r = await resolve("s2:", "s2:hello");
+    expect(r.where).toBe("name = 'hello'");
+    expect(r.mode).toBe("list");
   });
 
   test("'>=:start' → col >= <param>", async () => {
-    await registerScope("s3:", { value: ">=:start" });
-    try {
-      const r = await resolve("s3:", "s3:5");
-      expect(r.where).toBe("value >= '5'");
-      expect(r.mode).toBe("list");
-    } finally { await cleanup("s3:"); }
+    const r = await resolve("s3:", "s3:5");
+    expect(r.where).toBe("value >= '5'");
+    expect(r.mode).toBe("list");
   });
 
   test("'<=:end' → col <= <param>", async () => {
-    await registerScope("s4:", { value: "<=:end" });
-    try {
-      const r = await resolve("s4:", "s4:10");
-      expect(r.where).toBe("value <= '10'");
-      expect(r.mode).toBe("list");
-    } finally { await cleanup("s4:"); }
+    const r = await resolve("s4:", "s4:10");
+    expect(r.where).toBe("value <= '10'");
+    expect(r.mode).toBe("list");
   });
 
   test("'like:prefix' → col ILIKE '<param>%'", async () => {
-    await registerScope("s5:", { name: "like:prefix" });
-    try {
-      const r = await resolve("s5:", "s5:foo");
-      expect(r.where).toBe("name ILIKE 'foo%'");
-      expect(r.mode).toBe("list");
-    } finally { await cleanup("s5:"); }
+    const r = await resolve("s5:", "s5:foo");
+    expect(r.where).toBe("name ILIKE 'foo%'");
+    expect(r.mode).toBe("list");
   });
 
   test("multiple scope keys are AND'd", async () => {
-    await registerScope("s6:", { id: ":id", name: "=:name" });
-    try {
-      const r = await resolve("s6:", "s6:7:hello");
-      expect(r.where).toContain("id = '7'");
-      expect(r.where).toContain("name = 'hello'");
-      expect(r.where).toContain(" AND ");
-      expect(r.mode).toBe("single");  // 'id' equality → single mode
-    } finally { await cleanup("s6:"); }
+    const r = await resolve("s6:", "s6:7:hello");
+    expect(r.where).toContain("id = '7'");
+    expect(r.where).toContain("name = 'hello'");
+    expect(r.where).toContain(" AND ");
+    expect(r.mode).toBe("single");  // 'id' equality → single mode
   });
 
   test("empty scope with an id in the doc name → defaults to WHERE id = <id>", async () => {
-    await registerScope("s7:", {});
-    try {
-      const r = await resolve("s7:", "s7:99");
-      expect(r.where).toMatch(/id = '99'/);
-      expect(r.mode).toBe("single");
-    } finally { await cleanup("s7:"); }
-  });
-
-  test("junk operators (e.g. '<<<:x') raise rather than silently producing bad SQL", async () => {
-    await registerScope("bad-op:", { name: "<<<:foo" });
-    try {
-      await expect(resolve("bad-op:", "bad-op:hello")).rejects.toThrow(
-        /invalid scope operator/,
-      );
-    } finally { await cleanup("bad-op:"); }
+    const r = await resolve("s7:", "s7:99");
+    expect(r.where).toMatch(/id = '99'/);
+    expect(r.mode).toBe("single");
   });
 
   test("'at:when' → populates r.at, not WHERE (temporal snapshot marker)", async () => {
     // `at:` is a sentinel that feeds delta_open_at's `at` parameter rather
     // than adding to the WHERE — scope resolution just pulls it out.
-    await registerScope("at-op:", { valid_from: "at:when" });
-    try {
-      const r = await resolve("at-op:", "at-op:2026-06-01");
-      expect(r.at).toBe("2026-06-01 00:00:00+00");   // the instant midnight UTC begins the day, whatever the session's TimeZone
-      // No WHERE contribution — the 'at' op short-circuits the filter branch.
-      expect(r.where).not.toContain("valid_from");
-    } finally { await cleanup("at-op:"); }
+    const r = await resolve("at-op:", "at-op:2026-06-01");
+    expect(r.at).toBe("2026-06-01 00:00:00+00");   // the instant midnight UTC begins the day, whatever the session's TimeZone
+    // No WHERE contribution — the 'at' op short-circuits the filter branch.
+    expect(r.where).not.toContain("valid_from");
   });
 
   test("empty scope with no id in the doc name → list mode, WHERE TRUE", async () => {
-    await registerScope("s8:", {});
-    try {
-      const r = await resolve("s8:", "s8:");
-      expect(r.where).toBe("TRUE");
-      expect(r.mode).toBe("list");
-    } finally { await cleanup("s8:"); }
+    const r = await resolve("s8:", "s8:");
+    expect(r.where).toBe("TRUE");
+    expect(r.mode).toBe("list");
   });
 
   test("delta_open_at returns historical state before the replace landed", async () => {
-    // Register a temporal collection + a scoped-single doc. Can't piggyback
-    // on the `items` fixture — that one is non-temporal.
-    await pool.query(`
-      CREATE SEQUENCE IF NOT EXISTS seq_items_t;
-      CREATE TABLE IF NOT EXISTS items_t (
-        id         BIGINT NOT NULL DEFAULT nextval('seq_items_t'),
-        name       TEXT NOT NULL,
-        value      INTEGER NOT NULL DEFAULT 0,
-        valid_from TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        valid_to   TIMESTAMPTZ,
-        PRIMARY KEY (id, valid_from)
-      );
-      CREATE OR REPLACE VIEW current_items_t AS
-        SELECT * FROM items_t WHERE valid_to IS NULL;
-      INSERT INTO _delta_collections (collection_key, table_name, columns_def, temporal)
-      VALUES ('items_t', 'items_t',
-              '{"name":{"type":"text","nullable":false},
-                "value":{"type":"integer","nullable":false,"default":0}}'::jsonb,
-              TRUE)
-      ON CONFLICT (collection_key) DO UPDATE SET temporal = EXCLUDED.temporal;
-      INSERT INTO _delta_docs (prefix, root_collection, include, scope)
-      VALUES ('t:', 'items_t', '{}', '{}')
-      ON CONFLICT (prefix) DO UPDATE SET scope = EXCLUDED.scope;
-    `);
+    const type = docTypeFromDef(
+      defineDoc("t:", { root: "items_t", include: [] }),
+      pool,
+    );
 
-    try {
-      const type = docTypeFromDef(
-        defineDoc("t:", { root: "items_t", include: [] }),
-        pool,
-      );
+    // Add a row.
+    await type.apply({}, "t:", [
+      { op: "add", path: "/items_t/-", value: { name: "original", value: 1 } },
+    ]);
+    const { rows } = await pool.query(
+      "SELECT id FROM current_items_t WHERE name = 'original'",
+    );
+    const id = rows[0].id as string;
 
-      // Add a row.
-      await type.apply({}, "t:", [
-        { op: "add", path: "/items_t/-", value: { name: "original", value: 1 } },
-      ]);
-      const { rows } = await pool.query(
-        "SELECT id FROM current_items_t WHERE name = 'original'",
-      );
-      const id = rows[0].id as string;
+    // Capture a timestamp BETWEEN the add and the replace.
+    await new Promise((r) => setTimeout(r, 10));
+    const snapshotAt = new Date().toISOString();
+    await new Promise((r) => setTimeout(r, 10));
 
-      // Capture a timestamp BETWEEN the add and the replace.
-      await new Promise((r) => setTimeout(r, 10));
-      const snapshotAt = new Date().toISOString();
-      await new Promise((r) => setTimeout(r, 10));
+    // Update the row — temporal tables will retain the old version.
+    await type.apply({}, "t:", [
+      { op: "replace", path: `/items_t/${id}/name`, value: "updated" },
+    ]);
 
-      // Update the row — temporal tables will retain the old version.
-      await type.apply({}, "t:", [
-        { op: "replace", path: `/items_t/${id}/name`, value: "updated" },
-      ]);
+    // Current state sees the update; snapshotAt sees the original.
+    const current = await loadDocAt(pool, `t:${id}`, new Date().toISOString());
+    expect(current?.items_t?.name).toBe("updated");
 
-      // Current state sees the update; snapshotAt sees the original.
-      const current = await loadDocAt(pool, `t:${id}`, new Date().toISOString());
-      expect(current?.items_t?.name).toBe("updated");
-
-      const historical = await loadDocAt(pool, `t:${id}`, snapshotAt);
-      expect(historical?.items_t?.name).toBe("original");
-    } finally {
-      await pool.query(`
-        DELETE FROM _delta_docs WHERE prefix = 't:';
-        DELETE FROM _delta_collections WHERE collection_key = 'items_t';
-        DROP VIEW IF EXISTS current_items_t;
-        DROP TABLE IF EXISTS items_t;
-        DROP SEQUENCE IF EXISTS seq_items_t;
-      `);
-    }
+    const historical = await loadDocAt(pool, `t:${id}`, snapshotAt);
+    expect(historical?.items_t?.name).toBe("original");
   });
 
   test("':id' end-to-end — delta_open('p:N') returns only rows where id=N", async () => {
-    await registerScope("endto:", { id: ":id" });
-    try {
-      // Seed a couple of rows, then open by id.
-      await pool.query("INSERT INTO items (name, value) VALUES ('a', 1), ('b', 2), ('c', 3)");
-      const { rows: ids } = await pool.query("SELECT id FROM items ORDER BY id");
-      const target = ids[1].id;   // middle row
+    // Seed a couple of rows, then open by id.
+    await pool.query("INSERT INTO items (name, value) VALUES ('a', 1), ('b', 2), ('c', 3)");
+    const { rows: ids } = await pool.query("SELECT id FROM items ORDER BY id");
+    const target = ids[1].id;   // middle row
 
-      const { rows } = await pool.query(
-        "SELECT delta_open($1) AS doc",
-        [`endto:${target}`],
-      );
-      const doc = rows[0].doc;
-      expect(doc).not.toBeNull();
-      // Single mode puts the row under the root_collection key.
-      expect(doc.items).toBeDefined();
-      expect(Number(doc.items.id)).toBe(Number(target));
-      expect(doc.items.name).toBe("b");
-    } finally { await cleanup("endto:"); }
+    const { rows } = await pool.query(
+      "SELECT delta_open($1) AS doc",
+      [`endto:${target}`],
+    );
+    const doc = rows[0].doc;
+    expect(doc).not.toBeNull();
+    // Single mode puts the row under the root_collection key.
+    expect(doc.items).toBeDefined();
+    expect(Number(doc.items.id)).toBe(Number(target));
+    expect(doc.items.name).toBe("b");
   });
 });
 
@@ -565,57 +498,7 @@ describe("scope DSL operators", () => {
 
 describe("list-mode include", () => {
   beforeEach(async () => {
-    await pool.query(`
-      CREATE SEQUENCE IF NOT EXISTS seq_products;
-      CREATE SEQUENCE IF NOT EXISTS seq_parts;
-
-      CREATE TABLE IF NOT EXISTS products (
-        id   BIGINT NOT NULL DEFAULT nextval('seq_products'),
-        name TEXT   NOT NULL,
-        PRIMARY KEY (id)
-      );
-
-      CREATE TABLE IF NOT EXISTS parts (
-        id          BIGINT NOT NULL DEFAULT nextval('seq_parts'),
-        products_id BIGINT NOT NULL,
-        label       TEXT   NOT NULL,
-        PRIMARY KEY (id)
-      );
-
-      INSERT INTO _delta_collections (collection_key, table_name, columns_def, temporal)
-      VALUES
-        ('products', 'products',
-         '{"name":{"type":"text","nullable":false}}'::jsonb, FALSE),
-        ('parts', 'parts',
-         '{"products_id":{"type":"integer","nullable":false},
-           "label":{"type":"text","nullable":false}}'::jsonb, FALSE)
-      ON CONFLICT (collection_key) DO UPDATE SET
-        table_name  = EXCLUDED.table_name,
-        columns_def = EXCLUDED.columns_def,
-        temporal    = EXCLUDED.temporal;
-
-      UPDATE _delta_collections
-         SET parent_collection = 'products', parent_fk = 'products_id'
-       WHERE collection_key = 'parts';
-
-      INSERT INTO _delta_docs (prefix, root_collection, include, scope)
-      VALUES ('catalog:', 'products', ARRAY['parts']::text[], '{}'::jsonb)
-      ON CONFLICT (prefix) DO UPDATE SET
-        root_collection = EXCLUDED.root_collection,
-        include         = EXCLUDED.include,
-        scope           = EXCLUDED.scope;
-    `);
-  });
-
-  afterEach(async () => {
-    await pool.query(`
-      DELETE FROM _delta_docs WHERE prefix = 'catalog:';
-      DELETE FROM _delta_collections WHERE collection_key IN ('parts', 'products');
-      DROP TABLE IF EXISTS parts;
-      DROP TABLE IF EXISTS products;
-      DROP SEQUENCE IF EXISTS seq_parts;
-      DROP SEQUENCE IF EXISTS seq_products;
-    `);
+    await pool.query("TRUNCATE products, parts, parts_t");
   });
 
   test("delta_open returns root AND every included collection in full", async () => {
@@ -642,15 +525,12 @@ describe("list-mode include", () => {
   });
 
   test("empty include is unchanged (backwards-compat: only root)", async () => {
-    await pool.query(
-      "UPDATE _delta_docs SET include = ARRAY[]::text[] WHERE prefix = 'catalog:'",
-    );
     await pool.query(`
       INSERT INTO products (id, name) VALUES (1, 'widget');
       INSERT INTO parts (id, products_id, label) VALUES (10, 1, 'screw');
     `);
 
-    const { rows } = await pool.query("SELECT delta_open($1) AS doc", ["catalog:"]);
+    const { rows } = await pool.query("SELECT delta_open($1) AS doc", ["catalog-root:"]);
     const doc = rows[0].doc;
 
     expect(doc.products).toBeDefined();
@@ -685,38 +565,18 @@ describe("list-mode include", () => {
   });
 
   test("temporal include passes v_at through (current rows for current open)", async () => {
-    // Replace `parts` with a temporal variant to exercise the temporal branch
-    // of _delta_load_collection_all. Drop the non-temporal version first.
+    // parts_t: the parts, temporal, to exercise the temporal branch of the list read
     await pool.query(`
-      DROP TABLE IF EXISTS parts;
-      DROP SEQUENCE IF EXISTS seq_parts;
-      CREATE SEQUENCE seq_parts;
-      CREATE TABLE parts (
-        id          BIGINT NOT NULL DEFAULT nextval('seq_parts'),
-        products_id BIGINT NOT NULL,
-        label       TEXT   NOT NULL,
-        valid_from  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        valid_to    TIMESTAMPTZ,
-        PRIMARY KEY (id, valid_from)
-      );
-      CREATE OR REPLACE VIEW current_parts AS
-        SELECT * FROM parts WHERE valid_to IS NULL;
-      UPDATE _delta_collections SET temporal = TRUE WHERE collection_key = 'parts';
-
       INSERT INTO products (id, name) VALUES (1, 'widget');
-      INSERT INTO parts (id, products_id, label, valid_from)
-      VALUES (10, 1, 'screw', NOW());
+      INSERT INTO parts_t (id, products_id, label, valid_from) VALUES (10, 1, 'screw', NOW());
     `);
 
-    const { rows } = await pool.query("SELECT delta_open($1) AS doc", ["catalog:"]);
+    const { rows } = await pool.query("SELECT delta_open($1) AS doc", ["catalog-t:"]);
     const doc = rows[0].doc;
 
-    expect(doc.parts["10"].label).toBe("screw");
+    expect(doc.parts_t["10"].label).toBe("screw");
     // Temporal columns are stripped on the way out.
-    expect(doc.parts["10"].valid_from).toBeUndefined();
-    expect(doc.parts["10"].valid_to).toBeUndefined();
-
-    // Clean up the view we created (afterEach drops the table).
-    await pool.query("DROP VIEW IF EXISTS current_parts");
+    expect(doc.parts_t["10"].valid_from).toBeUndefined();
+    expect(doc.parts_t["10"].valid_to).toBeUndefined();
   });
 });

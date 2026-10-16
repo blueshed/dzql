@@ -248,7 +248,8 @@ describe("undo beside someone else (Postgres)", () => {
   const eta = () => mockClient({ local: true });   // in-process: names its cursor
   const write = (ws: any, c: any, cursor: string, ops: any[]) => sendAndAwait(ws, c, { action: "delta", doc: "items:", ops, cursor });
   const walk = (ws: any, c: any, cursor: string, more = {}, action = "undo") => sendAndAwait(ws, c, { action, cursor, ...more });
-  const row = async (id: number) => (await pool.query("SELECT name, value FROM items WHERE id = $1", [id])).rows[0];
+  // value read as a number: delta's integer is a BIGINT column, which pg reads as text
+  const row = async (id: number) => (await pool.query("SELECT name, value::int AS value FROM items WHERE id = $1", [id])).rows[0];
   const idOf = (answer: any) => Number(answer.result.ops[0].path.split("/")[2]);
 
   test("an undo leaves a later write by someone else, and answers the conflict (F2a)", async () => {

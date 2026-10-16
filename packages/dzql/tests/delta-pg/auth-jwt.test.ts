@@ -19,7 +19,7 @@ import {
   newPool,
   applyFramework,
   applyAuthJwt,
-  applyItemsFixture,
+  applyItems,
   resetState,
 } from "./setup";
 import { mockClient as socket, sendAndAwait } from "@blueshed/delta/testing";
@@ -332,8 +332,7 @@ describe("withAppAuth + identity plumbing", () => {
 
 describe("jwtAuth on a socket: logout and a switch let go of every document", () => {
   test("signed in, two documents open; logged out, none; signed in again, none until opened; another person, none", async () => {
-    await applyItemsFixture(pool);   // items:, and a second name for the same rows
-    await pool.query("INSERT INTO _delta_docs (prefix, root_collection, include, scope) VALUES ('all-items:', 'items', '{}', '{}') ON CONFLICT (prefix) DO NOTHING");
+    await applyItems(pool, { docs: [defineDoc("all-items:", { root: "items", include: [] })] });   // items:, and a second name for the same rows
     const auth = jwtAuth({ pool, secret: SECRET });
     const types = ["items:", "all-items:"].map((prefix) => docTypeFromDef(defineDoc(prefix, { root: "items", include: [] }), pool, { auth, shared: true }));
     const ws = createWs();

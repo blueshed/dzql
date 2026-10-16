@@ -2,10 +2,14 @@
  * Compiled holds answer what the framework answers. For every name the path
  * cases open, every collection, and every row the tables hold (each version of
  * a temporal one), with rows made up beside them (a parent not there, a key
- * that is null, another wedding's): `dzql_holds__<prefix>` and
- * `_delta_doc_holds_framework` give the same answer, an error included, on the
- * seed and after writes of every kind. Then the fan-out through them: delta's
- * own cases (tests/delta) run with the compiled holds in place.
+ * that is null, another wedding's): `dzql_holds__<prefix>` gives the answer the
+ * framework's `_delta_doc_holds` gave, an error included, on the seed and after
+ * writes of every kind. Then the fan-out through them: delta's own cases
+ * (tests/delta) run with the compiled holds in place.
+ *
+ * The framework's answers are recorded (the snapshot, taken 16 October 2026
+ * while the framework was applied and the two were held equal). The framework
+ * retired (todo #26); its answers stay the measure.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Pool } from "pg";
@@ -45,7 +49,7 @@ afterAll(async () => { await pool.end(); });
 async function rowsOf(): Promise<Record<string, unknown[]>> {
   const out: Record<string, unknown[]> = {};
   for (const [coll, t] of Object.entries(pathSchema.tables)) {
-    const held = (await pool.query(`SELECT to_jsonb(t.*) AS row FROM "${t.name}" t`)).rows.map((r) => r.row);
+    const held = (await pool.query(`SELECT to_jsonb(t.*) AS row FROM "${t.name}" t ORDER BY t.id${t.temporal ? ", t.valid_from" : ""}`)).rows.map((r) => r.row);
     const made: unknown[] = [{ id: 900 }];
     if (t.parent) made.push({ id: 901, [t.parent.fkColumn]: 404 }, { id: 902, [t.parent.fkColumn]: null }, { id: 903, [t.parent.fkColumn]: 2 });
     out[coll] = [...held, ...made];
@@ -55,12 +59,9 @@ async function rowsOf(): Promise<Record<string, unknown[]>> {
 
 const prefixOf = (name: string) => docs.filter((d) => name.startsWith(d.prefix)).sort((a, b) => b.prefix.length - a.prefix.length)[0]!.prefix;
 
-/** Each answer for a name, over every collection and row: compiled or framework, or the error. */
-async function answers(compiled: boolean, name: string, rows: Record<string, unknown[]>): Promise<unknown> {
-  const prefix = prefixOf(name);
-  const call = compiled
-    ? `${holdsFunction(prefix)}($1, c.coll, r.row)`
-    : `_delta_doc_holds_framework((SELECT d FROM _delta_docs d WHERE d.prefix = '${prefix.replace(/'/g, "''")}'), $1, c.coll, r.row)`;
+/** Each answer for a name, over every collection and row, or the error. */
+async function answers(name: string, rows: Record<string, unknown[]>): Promise<unknown> {
+  const call = `${holdsFunction(prefixOf(name))}($1, c.coll, r.row)`;
   const cases = colls.flatMap((coll) => rows[coll]!.map((row) => ({ coll, row })));
   try {
     const { rows: [{ a }] } = await pool.query(
@@ -77,7 +78,7 @@ function sameHolds() {
   for (const name of names) {
     test(name, async () => {
       const rows = await rowsOf();
-      expect({ name, holds: await answers(true, name, rows) }).toEqual({ name, holds: await answers(false, name, rows) });
+      expect({ name, holds: await answers(name, rows) }).toMatchSnapshot();
     });
   }
 }

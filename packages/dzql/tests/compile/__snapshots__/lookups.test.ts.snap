@@ -1,5 +1,8282 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
+exports[`every collection's definition, and one there is not, as the framework gives it 1`] = `
+{
+  "key": "weddings",
+  "row": {
+    "cascade_on": [],
+    "collection_key": "weddings",
+    "columns_def": {
+      "name": {
+        "nullable": false,
+        "type": "text",
+      },
+    },
+    "parent_collection": null,
+    "parent_fk": null,
+    "table_name": "fo_weddings",
+    "temporal": false,
+  },
+}
+`;
+
+exports[`every collection's definition, and one there is not, as the framework gives it 2`] = `
+{
+  "key": "households",
+  "row": {
+    "cascade_on": [],
+    "collection_key": "households",
+    "columns_def": {
+      "email": {
+        "nullable": false,
+        "type": "text",
+      },
+      "t": {
+        "nullable": true,
+        "type": "text",
+      },
+    },
+    "parent_collection": "weddings",
+    "parent_fk": "weddings_id",
+    "table_name": "fo_households",
+    "temporal": false,
+  },
+}
+`;
+
+exports[`every collection's definition, and one there is not, as the framework gives it 3`] = `
+{
+  "key": "courses",
+  "row": {
+    "cascade_on": [],
+    "collection_key": "courses",
+    "columns_def": {
+      "name": {
+        "nullable": false,
+        "type": "text",
+      },
+    },
+    "parent_collection": "weddings",
+    "parent_fk": "weddings_id",
+    "table_name": "fo_courses",
+    "temporal": false,
+  },
+}
+`;
+
+exports[`every collection's definition, and one there is not, as the framework gives it 4`] = `
+{
+  "key": "drinks",
+  "row": {
+    "cascade_on": [],
+    "collection_key": "drinks",
+    "columns_def": {
+      "name": {
+        "nullable": false,
+        "type": "text",
+      },
+    },
+    "parent_collection": "courses",
+    "parent_fk": "courses_id",
+    "table_name": "fo_drinks",
+    "temporal": false,
+  },
+}
+`;
+
+exports[`every collection's definition, and one there is not, as the framework gives it 5`] = `
+{
+  "key": "tags",
+  "row": {
+    "cascade_on": [],
+    "collection_key": "tags",
+    "columns_def": {
+      "label": {
+        "nullable": false,
+        "type": "text",
+      },
+    },
+    "parent_collection": null,
+    "parent_fk": null,
+    "table_name": "fo_tags",
+    "temporal": false,
+  },
+}
+`;
+
+exports[`every collection's definition, and one there is not, as the framework gives it 6`] = `
+{
+  "key": "notes",
+  "row": {
+    "cascade_on": [],
+    "collection_key": "notes",
+    "columns_def": {
+      "text": {
+        "nullable": false,
+        "type": "text",
+      },
+    },
+    "parent_collection": "weddings",
+    "parent_fk": "weddings_id",
+    "table_name": "fo_notes",
+    "temporal": true,
+  },
+}
+`;
+
+exports[`every collection's definition, and one there is not, as the framework gives it 7`] = `
+{
+  "key": "seats",
+  "row": {
+    "cascade_on": [],
+    "collection_key": "seats",
+    "columns_def": {
+      "kept": {
+        "nullable": false,
+        "type": "boolean",
+      },
+      "table_no": {
+        "nullable": false,
+        "type": "integer",
+      },
+      "wishes": {
+        "nullable": true,
+        "type": "json",
+      },
+    },
+    "parent_collection": "weddings",
+    "parent_fk": "weddings_id",
+    "table_name": "fo_seats",
+    "temporal": false,
+  },
+}
+`;
+
+exports[`every collection's definition, and one there is not, as the framework gives it 8`] = `
+{
+  "key": "slots",
+  "row": {
+    "cascade_on": [],
+    "collection_key": "slots",
+    "columns_def": {
+      "price": {
+        "nullable": true,
+        "type": "real",
+      },
+      "starts": {
+        "nullable": true,
+        "type": "timestamptz",
+      },
+    },
+    "parent_collection": "weddings",
+    "parent_fk": "weddings_id",
+    "table_name": "fo_slots",
+    "temporal": false,
+  },
+}
+`;
+
+exports[`every collection's definition, and one there is not, as the framework gives it 9`] = `
+{
+  "key": "favours",
+  "row": {
+    "cascade_on": [
+      {
+        "collection": "households",
+        "fk": "households_id",
+      },
+    ],
+    "collection_key": "favours",
+    "columns_def": {
+      "gift": {
+        "nullable": false,
+        "type": "text",
+      },
+      "households_id": {
+        "nullable": false,
+        "type": "integer",
+      },
+    },
+    "parent_collection": "weddings",
+    "parent_fk": "weddings_id",
+    "table_name": "fo_favours",
+    "temporal": false,
+  },
+}
+`;
+
+exports[`every collection's definition, and one there is not, as the framework gives it 10`] = `
+{
+  "key": "asks",
+  "row": {
+    "cascade_on": [],
+    "collection_key": "asks",
+    "columns_def": {
+      "from": {
+        "nullable": true,
+        "type": "text",
+      },
+      "in": {
+        "nullable": true,
+        "type": "integer",
+      },
+      "to": {
+        "nullable": true,
+        "type": "text",
+      },
+    },
+    "parent_collection": "weddings",
+    "parent_fk": "group",
+    "table_name": "order",
+    "temporal": true,
+  },
+}
+`;
+
+exports[`every collection's definition, and one there is not, as the framework gives it 11`] = `
+{
+  "key": "no_such",
+  "row": null,
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_weddings 1`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_weddings",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_weddings 2`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_weddings",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_weddings 3`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_weddings",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_weddings 4`] = `
+{
+  "id": 2,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_weddings",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_weddings 5`] = `
+{
+  "id": 3,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "3",
+    },
+    "r": "",
+  },
+  "table": "fo_weddings",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_weddings 6`] = `
+{
+  "id": 52,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "52",
+    },
+    "r": "",
+  },
+  "table": "fo_weddings",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_weddings 7`] = `
+{
+  "id": 9007199254740991,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "9007199254740991",
+    },
+    "r": "",
+  },
+  "table": "fo_weddings",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_weddings 8`] = `
+{
+  "id": 9007199254740992,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_weddings",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_households 1`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "3",
+    },
+    "r": "",
+  },
+  "table": "fo_households",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_households 2`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "3",
+    },
+    "r": "",
+  },
+  "table": "fo_households",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_households 3`] = `
+{
+  "id": 2,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "3",
+    },
+    "r": "",
+  },
+  "table": "fo_households",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_households 4`] = `
+{
+  "id": 3,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "3",
+    },
+    "r": "",
+  },
+  "table": "fo_households",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_households 5`] = `
+{
+  "id": 4,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "4",
+    },
+    "r": "",
+  },
+  "table": "fo_households",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_households 6`] = `
+{
+  "id": 53,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "53",
+    },
+    "r": "",
+  },
+  "table": "fo_households",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_households 7`] = `
+{
+  "id": 9007199254740991,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "9007199254740991",
+    },
+    "r": "",
+  },
+  "table": "fo_households",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_households 8`] = `
+{
+  "id": 9007199254740992,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "3",
+    },
+    "r": "",
+  },
+  "table": "fo_households",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_courses 1`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_courses",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_courses 2`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_courses",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_courses 3`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_courses",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_courses 4`] = `
+{
+  "id": 2,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_courses",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_courses 5`] = `
+{
+  "id": 3,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "3",
+    },
+    "r": "",
+  },
+  "table": "fo_courses",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_courses 6`] = `
+{
+  "id": 52,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "52",
+    },
+    "r": "",
+  },
+  "table": "fo_courses",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_courses 7`] = `
+{
+  "id": 9007199254740991,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "9007199254740991",
+    },
+    "r": "",
+  },
+  "table": "fo_courses",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_courses 8`] = `
+{
+  "id": 9007199254740992,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_courses",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_drinks 1`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_drinks",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_drinks 2`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_drinks",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_drinks 3`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_drinks",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_drinks 4`] = `
+{
+  "id": 2,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_drinks",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_drinks 5`] = `
+{
+  "id": 3,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "3",
+    },
+    "r": "",
+  },
+  "table": "fo_drinks",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_drinks 6`] = `
+{
+  "id": 52,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "52",
+    },
+    "r": "",
+  },
+  "table": "fo_drinks",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_drinks 7`] = `
+{
+  "id": 9007199254740991,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "9007199254740991",
+    },
+    "r": "",
+  },
+  "table": "fo_drinks",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_drinks 8`] = `
+{
+  "id": 9007199254740992,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_drinks",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_tags 1`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_tags",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_tags 2`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_tags",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_tags 3`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_tags",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_tags 4`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_tags",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_tags 5`] = `
+{
+  "id": 2,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_tags",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_tags 6`] = `
+{
+  "id": 51,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "51",
+    },
+    "r": "",
+  },
+  "table": "fo_tags",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_tags 7`] = `
+{
+  "id": 9007199254740991,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "9007199254740991",
+    },
+    "r": "",
+  },
+  "table": "fo_tags",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_tags 8`] = `
+{
+  "id": 9007199254740992,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_tags",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_notes 1`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_notes",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_notes 2`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_notes",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_notes 3`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_notes",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_notes 4`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_notes",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_notes 5`] = `
+{
+  "id": 2,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_notes",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_notes 6`] = `
+{
+  "id": 51,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "51",
+    },
+    "r": "",
+  },
+  "table": "fo_notes",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_notes 7`] = `
+{
+  "id": 9007199254740991,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "9007199254740991",
+    },
+    "r": "",
+  },
+  "table": "fo_notes",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_notes 8`] = `
+{
+  "id": 9007199254740992,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_notes",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_seats 1`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_seats",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_seats 2`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_seats",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_seats 3`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_seats",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_seats 4`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_seats",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_seats 5`] = `
+{
+  "id": 2,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_seats",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_seats 6`] = `
+{
+  "id": 51,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "51",
+    },
+    "r": "",
+  },
+  "table": "fo_seats",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_seats 7`] = `
+{
+  "id": 9007199254740991,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "9007199254740991",
+    },
+    "r": "",
+  },
+  "table": "fo_seats",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_seats 8`] = `
+{
+  "id": 9007199254740992,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_seats",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_slots 1`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": false,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_slots",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_slots 2`] = `
+{
+  "id": 1,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_slots",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_slots 3`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": false,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_slots",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_slots 4`] = `
+{
+  "id": 1,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_slots",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_slots 5`] = `
+{
+  "id": 2,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_slots",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_slots 6`] = `
+{
+  "id": 51,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "51",
+    },
+    "r": "",
+  },
+  "table": "fo_slots",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_slots 7`] = `
+{
+  "id": 9007199254740991,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "9007199254740991",
+    },
+    "r": "",
+  },
+  "table": "fo_slots",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_slots 8`] = `
+{
+  "id": 9007199254740992,
+  "new": true,
+  "past": {
+    "after": {
+      "c": false,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_slots",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_favours 1`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_favours",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_favours 2`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_favours",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_favours 3`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_favours",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_favours 4`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_favours",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_favours 5`] = `
+{
+  "id": 2,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "fo_favours",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_favours 6`] = `
+{
+  "id": 51,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "51",
+    },
+    "r": "",
+  },
+  "table": "fo_favours",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_favours 7`] = `
+{
+  "id": 9007199254740991,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "9007199254740991",
+    },
+    "r": "",
+  },
+  "table": "fo_favours",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it fo_favours 8`] = `
+{
+  "id": 9007199254740992,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "fo_favours",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it order 1`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": false,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "order",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it order 2`] = `
+{
+  "id": 1,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "order",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it order 3`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": {
+      "c": false,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "order",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it order 4`] = `
+{
+  "id": 1,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "order",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it order 5`] = `
+{
+  "id": 2,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "2",
+    },
+    "r": "",
+  },
+  "table": "order",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it order 6`] = `
+{
+  "id": 51,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "51",
+    },
+    "r": "",
+  },
+  "table": "order",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it order 7`] = `
+{
+  "id": 9007199254740991,
+  "new": true,
+  "past": {
+    "after": {
+      "c": true,
+      "v": "9007199254740991",
+    },
+    "r": "",
+  },
+  "table": "order",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it order 8`] = `
+{
+  "id": 9007199254740992,
+  "new": true,
+  "past": {
+    "after": {
+      "c": false,
+      "v": "1",
+    },
+    "r": "",
+  },
+  "table": "order",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it no_such 1`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": null,
+    "r": "",
+  },
+  "table": "no_such",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it no_such 2`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": null,
+    "r": "",
+  },
+  "table": "no_such",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it no_such 3`] = `
+{
+  "id": -1,
+  "new": false,
+  "past": {
+    "after": null,
+    "r": "",
+  },
+  "table": "no_such",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it no_such 4`] = `
+{
+  "id": 0,
+  "new": false,
+  "past": {
+    "after": null,
+    "r": "",
+  },
+  "table": "no_such",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it no_such 5`] = `
+{
+  "id": 1,
+  "new": false,
+  "past": {
+    "after": null,
+    "r": "",
+  },
+  "table": "no_such",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it no_such 6`] = `
+{
+  "id": 50,
+  "new": false,
+  "past": {
+    "after": null,
+    "r": "",
+  },
+  "table": "no_such",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it no_such 7`] = `
+{
+  "id": 9007199254740991,
+  "new": false,
+  "past": {
+    "after": null,
+    "r": "",
+  },
+  "table": "no_such",
+}
+`;
+
+exports[`each table's serial, as the framework reads and moves it no_such 8`] = `
+{
+  "id": 9007199254740992,
+  "new": false,
+  "past": {
+    "after": null,
+    "r": "",
+  },
+  "table": "no_such",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:2 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+    "households": {
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+  "name": "fo-board:2",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:2 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+    "households": {
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+  "name": "fo-board:2",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:2 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+    "households": {
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+  "name": "fo-board:2",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:2 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+    "households": {
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+  "name": "fo-board:2",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:2 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+    "households": {
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+  "name": "fo-board:2",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:99 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:99 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:99 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:99 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:99 5`] = `
+{
+  "at": "now",
+  "doc": null,
+  "name": "fo-board:99",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:abc 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "name": "fo-board:abc",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:abc 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "name": "fo-board:abc",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:abc 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "name": "fo-board:abc",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:abc 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "name": "fo-board:abc",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board:abc 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "name": "fo-board:abc",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-menu:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-menu:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-menu:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-menu:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-menu:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-menu:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-menu:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-menu:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-menu:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-menu:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-household:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-household:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-household:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-household:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-household:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-household:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-household:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-household:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-household:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-household:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-course:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-course:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-course:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-course:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-course:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-course:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-course:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-course:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-course:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-course:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-title:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-title:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-title:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-title:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-title:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-title:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-title:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-title:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-title:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-title:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-tagged:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-tagged:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-tagged:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-tagged:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-tagged:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-tagged:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-tagged:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-tagged:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-tagged:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-tagged:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-notes:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "notes": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-notes:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-notes:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-notes:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-notes:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-notes:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-notes:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-notes:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-notes:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-notes:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-courses: 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-courses: 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-courses: 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-courses: 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-courses: 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-courses:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-catalog: 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+  },
+  "name": "fo-catalog:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-catalog: 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+  },
+  "name": "fo-catalog:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-catalog: 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+  },
+  "name": "fo-catalog:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-catalog: 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+  },
+  "name": "fo-catalog:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-catalog: 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+      "2": {
+        "courses_id": 2,
+        "id": 2,
+        "name": "Water",
+      },
+    },
+  },
+  "name": "fo-catalog:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-courses-like:So 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-courses-like:So",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-courses-like:So 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-courses-like:So",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-courses-like:So 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-courses-like:So",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-courses-like:So 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-courses-like:So",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-courses-like:So 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-courses-like:So",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seating:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-seating:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seating:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-seating:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seating:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-seating:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seating:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-seating:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seating:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-seating:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seats-kept:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+  "name": "fo-seats-kept:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seats-kept:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+  "name": "fo-seats-kept:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seats-kept:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+  "name": "fo-seats-kept:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seats-kept:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+  "name": "fo-seats-kept:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seats-kept:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+  "name": "fo-seats-kept:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slots-of:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-of:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slots-of:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-of:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slots-of:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-of:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slots-of:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-of:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slots-of:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-of:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slots-by:2026-01-02 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-by:2026-01-02",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slots-by:2026-01-02 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-by:2026-01-02",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slots-by:2026-01-02 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-by:2026-01-02",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slots-by:2026-01-02 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-by:2026-01-02",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slots-by:2026-01-02 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-by:2026-01-02",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-note:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-note:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-note:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "id": 1,
+      "text": "bring chairs",
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-note:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-note:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "id": 1,
+      "text": "bring chairs",
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-note:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-note:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "id": 1,
+      "text": "bring chairs",
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-note:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-note:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "notes": {
+      "id": 1,
+      "text": "bring chairs",
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-note:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-notes: 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "notes": {},
+  },
+  "name": "fo-all-notes:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-notes: 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-notes:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-notes: 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-notes:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-notes: 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-notes:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-notes: 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-notes:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-drinks:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-drinks:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-drinks:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-drinks:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-drinks:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-drinks:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-drinks:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-drinks:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-drinks:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-drinks:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-plan:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-plan:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-plan:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-plan:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-plan:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-plan:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-plan:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-plan:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-plan:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-plan:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-plan:7 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-plan:7",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-plan:7 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-plan:7",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-plan:7 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-plan:7",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-plan:7 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-plan:7",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-plan:7 5`] = `
+{
+  "at": "now",
+  "doc": null,
+  "name": "fo-plan:7",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-weddings: 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+  "name": "fo-weddings:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-weddings: 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+  "name": "fo-weddings:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-weddings: 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+  "name": "fo-weddings:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-weddings: 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+  "name": "fo-weddings:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-weddings: 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+  "name": "fo-weddings:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-guest:1:a@x 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-guest:1:a@x 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-guest:1:a@x 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-guest:1:a@x 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-guest:1:a@x 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-guest:1:a@x",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seat-of:1:3 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+  "name": "fo-seat-of:1:3",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seat-of:1:3 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+  "name": "fo-seat-of:1:3",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seat-of:1:3 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+  "name": "fo-seat-of:1:3",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seat-of:1:3 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+  "name": "fo-seat-of:1:3",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-seat-of:1:3 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+  "name": "fo-seat-of:1:3",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-households: 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-households:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-households: 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-households:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-households: 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-households:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-households: 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-households:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-all-households: 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-households:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-party:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-party:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-party:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-party:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-party:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-party:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-party:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-party:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-party:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-party:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slim:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "table_no": 3,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-slim:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slim:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "table_no": 3,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-slim:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slim:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "table_no": 3,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-slim:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slim:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "table_no": 3,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-slim:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-slim:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "table_no": 3,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-slim:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-notes-on:2019-01-01 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "notes": {},
+  },
+  "name": "fo-notes-on:2019-01-01",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-notes-on:2019-01-01 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-notes-on:2019-01-01",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-notes-on:2019-01-01 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-notes-on:2019-01-01",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-notes-on:2019-01-01 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-notes-on:2019-01-01",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-notes-on:2019-01-01 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-notes-on:2019-01-01",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board-on:1:2021-01-01 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "notes": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board-on:1:2021-01-01",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board-on:1:2021-01-01 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board-on:1:2021-01-01",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board-on:1:2021-01-01 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board-on:1:2021-01-01",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board-on:1:2021-01-01 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board-on:1:2021-01-01",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-board-on:1:2021-01-01 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board-on:1:2021-01-01",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-asks:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-asks:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-asks:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-asks:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-asks:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-asks:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-asks:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-asks:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-asks:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-asks:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-pub-courses: 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-pub-courses:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-pub-courses: 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-pub-courses:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-pub-courses: 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-pub-courses:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-pub-courses: 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-pub-courses:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it fo-pub-courses: 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "2": {
+        "id": 2,
+        "name": "Salad",
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-pub-courses:",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it no-such:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "error": "no doc def for: no-such:1",
+  },
+  "name": "no-such:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it no-such:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "error": "no doc def for: no-such:1",
+  },
+  "name": "no-such:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it no-such:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "error": "no doc def for: no-such:1",
+  },
+  "name": "no-such:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it no-such:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "error": "no doc def for: no-such:1",
+  },
+  "name": "no-such:1",
+}
+`;
+
+exports[`on the seed, every document as it stood, as the framework reads it no-such:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "error": "no doc def for: no-such:1",
+  },
+  "name": "no-such:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:2 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "households": {
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+  "name": "fo-board:2",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:2 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "households": {
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+  "name": "fo-board:2",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:2 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "households": {
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+  "name": "fo-board:2",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:2 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "households": {
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+  "name": "fo-board:2",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:2 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {},
+    "drinks": {},
+    "households": {
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+    "notes": {},
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 2,
+      "name": "theirs",
+    },
+  },
+  "name": "fo-board:2",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:99 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:99 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:99 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:99 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:99 5`] = `
+{
+  "at": "now",
+  "doc": null,
+  "name": "fo-board:99",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:abc 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "name": "fo-board:abc",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:abc 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "name": "fo-board:abc",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:abc 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "name": "fo-board:abc",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:abc 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "name": "fo-board:abc",
+}
+`;
+
+exports[`after writes of every kind, still fo-board:abc 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "error": "invalid input syntax for type bigint: "abc"",
+  },
+  "name": "fo-board:abc",
+}
+`;
+
+exports[`after writes of every kind, still fo-menu:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-menu:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-menu:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-menu:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-menu:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-menu:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-menu:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-menu:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-menu:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-menu:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-household:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-household:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-household:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-household:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-household:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-household:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-household:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-household:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-household:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-household:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-course:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-course:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-course:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-course:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-course:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-course:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-course:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-course:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-course:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "id": 1,
+      "name": "Soup",
+      "weddings_id": 1,
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-course:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-title:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-title:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-title:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-title:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-title:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-title:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-title:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-title:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-title:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-title:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-tagged:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-tagged:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-tagged:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-tagged:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-tagged:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-tagged:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-tagged:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-tagged:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-tagged:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "tags": {
+      "1": {
+        "id": 1,
+        "label": "red",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-tagged:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-notes:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "notes": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-notes:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-notes:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-notes:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-notes:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-notes:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-notes:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-notes:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-notes:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-notes:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-courses: 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-courses: 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-courses: 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-courses: 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-courses: 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-courses:",
+}
+`;
+
+exports[`after writes of every kind, still fo-catalog: 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-catalog:",
+}
+`;
+
+exports[`after writes of every kind, still fo-catalog: 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-catalog:",
+}
+`;
+
+exports[`after writes of every kind, still fo-catalog: 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-catalog:",
+}
+`;
+
+exports[`after writes of every kind, still fo-catalog: 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-catalog:",
+}
+`;
+
+exports[`after writes of every kind, still fo-catalog: 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+  },
+  "name": "fo-catalog:",
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-like:So 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-courses-like:So",
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-like:So 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-courses-like:So",
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-like:So 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-courses-like:So",
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-like:So 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-courses-like:So",
+}
+`;
+
+exports[`after writes of every kind, still fo-courses-like:So 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-courses-like:So",
+}
+`;
+
+exports[`after writes of every kind, still fo-seating:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-seating:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-seating:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-seating:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-seating:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-seating:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-seating:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-seating:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-seating:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-seating:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-kept:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+  "name": "fo-seats-kept:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-kept:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+  "name": "fo-seats-kept:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-kept:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+  "name": "fo-seats-kept:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-kept:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+  "name": "fo-seats-kept:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-seats-kept:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "seats": {
+      "1": {
+        "id": 1,
+        "kept": true,
+        "table_no": 3,
+        "weddings_id": 1,
+        "wishes": {
+          "veg": true,
+        },
+      },
+    },
+  },
+  "name": "fo-seats-kept:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-of:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-of:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-of:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-of:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-of:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-of:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-of:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-of:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-of:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-of:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-by:2026-01-02 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-by:2026-01-02",
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-by:2026-01-02 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-by:2026-01-02",
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-by:2026-01-02 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-by:2026-01-02",
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-by:2026-01-02 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-by:2026-01-02",
+}
+`;
+
+exports[`after writes of every kind, still fo-slots-by:2026-01-02 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "slots": {},
+  },
+  "name": "fo-slots-by:2026-01-02",
+}
+`;
+
+exports[`after writes of every kind, still fo-note:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-note:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-note:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "id": 1,
+      "text": "bring chairs",
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-note:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-note:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "id": 1,
+      "text": "bring chairs",
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-note:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-note:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-note:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-note:1 5`] = `
+{
+  "at": "now",
+  "doc": null,
+  "name": "fo-note:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-notes: 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "notes": {},
+  },
+  "name": "fo-all-notes:",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-notes: 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-notes:",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-notes: 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-notes:",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-notes: 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-notes:",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-notes: 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-all-notes:",
+}
+`;
+
+exports[`after writes of every kind, still fo-drinks:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-drinks:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-drinks:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-drinks:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-drinks:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-drinks:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-drinks:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-drinks:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-drinks:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-drinks:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-plan:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-plan:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-plan:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-plan:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "drinks": {
+      "1": {
+        "courses_id": 1,
+        "id": 1,
+        "name": "Sherry",
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-plan:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:7 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-plan:7",
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:7 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-plan:7",
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:7 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-plan:7",
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:7 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": null,
+  "name": "fo-plan:7",
+}
+`;
+
+exports[`after writes of every kind, still fo-plan:7 5`] = `
+{
+  "at": "now",
+  "doc": null,
+  "name": "fo-plan:7",
+}
+`;
+
+exports[`after writes of every kind, still fo-weddings: 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+  "name": "fo-weddings:",
+}
+`;
+
+exports[`after writes of every kind, still fo-weddings: 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+  "name": "fo-weddings:",
+}
+`;
+
+exports[`after writes of every kind, still fo-weddings: 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+  "name": "fo-weddings:",
+}
+`;
+
+exports[`after writes of every kind, still fo-weddings: 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+  "name": "fo-weddings:",
+}
+`;
+
+exports[`after writes of every kind, still fo-weddings: 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "1": {
+        "id": 1,
+        "name": "ours",
+      },
+      "2": {
+        "id": 2,
+        "name": "theirs",
+      },
+    },
+  },
+  "name": "fo-weddings:",
+}
+`;
+
+exports[`after writes of every kind, still fo-guest:1:a@x 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still fo-guest:1:a@x 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still fo-guest:1:a@x 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still fo-guest:1:a@x 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still fo-guest:1:a@x 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "households": {
+      "email": "a@x",
+      "id": 1,
+      "t": null,
+      "weddings_id": 1,
+    },
+  },
+  "name": "fo-guest:1:a@x",
+}
+`;
+
+exports[`after writes of every kind, still fo-seat-of:1:3 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+  "name": "fo-seat-of:1:3",
+}
+`;
+
+exports[`after writes of every kind, still fo-seat-of:1:3 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+  "name": "fo-seat-of:1:3",
+}
+`;
+
+exports[`after writes of every kind, still fo-seat-of:1:3 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+  "name": "fo-seat-of:1:3",
+}
+`;
+
+exports[`after writes of every kind, still fo-seat-of:1:3 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+  "name": "fo-seat-of:1:3",
+}
+`;
+
+exports[`after writes of every kind, still fo-seat-of:1:3 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "seats": {
+      "id": 1,
+      "kept": true,
+      "table_no": 3,
+      "weddings_id": 1,
+      "wishes": {
+        "veg": true,
+      },
+    },
+  },
+  "name": "fo-seat-of:1:3",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-households: 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-households:",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-households: 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-households:",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-households: 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-households:",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-households: 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-households:",
+}
+`;
+
+exports[`after writes of every kind, still fo-all-households: 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+      "2": {
+        "email": "b@x",
+        "id": 2,
+        "t": null,
+        "weddings_id": 2,
+      },
+      "3": {
+        "email": "c@x",
+        "id": 3,
+        "t": null,
+        "weddings_id": 2,
+      },
+    },
+  },
+  "name": "fo-all-households:",
+}
+`;
+
+exports[`after writes of every kind, still fo-party:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-party:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-party:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-party:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-party:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-party:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-party:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-party:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-party:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "favours": {
+      "1": {
+        "gift": "jam",
+        "households_id": 1,
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "t": null,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-party:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-slim:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "table_no": 3,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-slim:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-slim:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "table_no": 3,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-slim:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-slim:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "table_no": 3,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-slim:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-slim:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "table_no": 3,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-slim:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-slim:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "households": {
+      "1": {
+        "email": "a@x",
+        "id": 1,
+        "weddings_id": 1,
+      },
+    },
+    "seats": {
+      "1": {
+        "id": 1,
+        "table_no": 3,
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-slim:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-notes-on:2019-01-01 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "notes": {},
+  },
+  "name": "fo-notes-on:2019-01-01",
+}
+`;
+
+exports[`after writes of every kind, still fo-notes-on:2019-01-01 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-notes-on:2019-01-01",
+}
+`;
+
+exports[`after writes of every kind, still fo-notes-on:2019-01-01 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-notes-on:2019-01-01",
+}
+`;
+
+exports[`after writes of every kind, still fo-notes-on:2019-01-01 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-notes-on:2019-01-01",
+}
+`;
+
+exports[`after writes of every kind, still fo-notes-on:2019-01-01 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-notes-on:2019-01-01",
+}
+`;
+
+exports[`after writes of every kind, still fo-board-on:1:2021-01-01 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "notes": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board-on:1:2021-01-01",
+}
+`;
+
+exports[`after writes of every kind, still fo-board-on:1:2021-01-01 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board-on:1:2021-01-01",
+}
+`;
+
+exports[`after writes of every kind, still fo-board-on:1:2021-01-01 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "1": {
+        "id": 1,
+        "text": "bring chairs",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board-on:1:2021-01-01",
+}
+`;
+
+exports[`after writes of every kind, still fo-board-on:1:2021-01-01 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board-on:1:2021-01-01",
+}
+`;
+
+exports[`after writes of every kind, still fo-board-on:1:2021-01-01 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "notes": {
+      "2": {
+        "id": 2,
+        "text": "and tables",
+        "weddings_id": 1,
+      },
+    },
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-board-on:1:2021-01-01",
+}
+`;
+
+exports[`after writes of every kind, still fo-asks:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-asks:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-asks:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-asks:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-asks:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-asks:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-asks:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-asks:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-asks:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "asks": {},
+    "weddings": {
+      "id": 1,
+      "name": "ours",
+    },
+  },
+  "name": "fo-asks:1",
+}
+`;
+
+exports[`after writes of every kind, still fo-pub-courses: 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-pub-courses:",
+}
+`;
+
+exports[`after writes of every kind, still fo-pub-courses: 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-pub-courses:",
+}
+`;
+
+exports[`after writes of every kind, still fo-pub-courses: 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-pub-courses:",
+}
+`;
+
+exports[`after writes of every kind, still fo-pub-courses: 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-pub-courses:",
+}
+`;
+
+exports[`after writes of every kind, still fo-pub-courses: 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "courses": {
+      "1": {
+        "id": 1,
+        "name": "Soup",
+        "weddings_id": 1,
+      },
+      "3": {
+        "id": 3,
+        "name": "Fish",
+        "weddings_id": 1,
+      },
+    },
+  },
+  "name": "fo-pub-courses:",
+}
+`;
+
+exports[`after writes of every kind, still no-such:1 1`] = `
+{
+  "at": "2000-01-01T00:00:00Z",
+  "doc": {
+    "error": "no doc def for: no-such:1",
+  },
+  "name": "no-such:1",
+}
+`;
+
+exports[`after writes of every kind, still no-such:1 2`] = `
+{
+  "at": "2021-01-01T00:00:00Z",
+  "doc": {
+    "error": "no doc def for: no-such:1",
+  },
+  "name": "no-such:1",
+}
+`;
+
+exports[`after writes of every kind, still no-such:1 3`] = `
+{
+  "at": "2026-01-01T00:00:00Z",
+  "doc": {
+    "error": "no doc def for: no-such:1",
+  },
+  "name": "no-such:1",
+}
+`;
+
+exports[`after writes of every kind, still no-such:1 4`] = `
+{
+  "at": "2999-01-01T00:00:00Z",
+  "doc": {
+    "error": "no doc def for: no-such:1",
+  },
+  "name": "no-such:1",
+}
+`;
+
+exports[`after writes of every kind, still no-such:1 5`] = `
+{
+  "at": "now",
+  "doc": {
+    "error": "no doc def for: no-such:1",
+  },
+  "name": "no-such:1",
+}
+`;
+
 exports[`the compiled text is the same for the same definitions, and pinned 1`] = `
 "CREATE OR REPLACE FUNCTION _delta_collection(p_key TEXT)
 RETURNS _delta_collections AS $$

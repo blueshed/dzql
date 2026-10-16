@@ -12,8 +12,6 @@
  * transition ops (add / replace / remove) on the custom doc's own shape.
  */
 import { describe, test, expect, beforeAll, beforeEach, afterAll, afterEach } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { Pool } from "pg";
 import {
   createDocListener,
@@ -24,17 +22,15 @@ import {
 } from "../../src/postgres";
 import { createWs, type WsServer } from "@blueshed/delta/server";
 import { setLogLevel } from "@blueshed/delta/logger";
-import { newPool, applyFramework } from "./setup";
+import { newPool, applyFramework, applyDefined, sitesTables, worldDoc } from "./setup";
 import { mockClient, sendAndAwait, waitFor } from "@blueshed/delta/testing";
 
 setLogLevel("silent");
 
 let pool: Pool;
 
-const SITES_FIXTURE = join(import.meta.dir, "fixtures", "sites.sql");
-
 async function applySitesFixture(pool: Pool): Promise<void> {
-  await pool.query(readFileSync(SITES_FIXTURE, "utf8"));
+  await applyDefined(pool, sitesTables, [worldDoc]);
 }
 
 async function resetSites(pool: Pool): Promise<void> {
@@ -429,5 +425,44 @@ describe("postgres custom docs — predicate-based membership", () => {
 
     expect(res.error).toBeDefined();
     expect(res.error.code).toBe(403);
+  });
+});
+
+describe("postgres custom docs — told in the order the writes were made", () => {
+  test("two writes through two documents reach a custom document in commit order, though the first's read is the slower", async () => {
+    const a = worldId;
+    const b = await seedWorld();
+    // the listener's reads of world:a held back: its drain finishes after world:b's
+    const slowed = new Proxy(pool, {
+      get(target, key) {
+        if (key === "query") {
+          return async (sql: any, params?: unknown[]) => {
+            if (params?.[0] === `world:${a}`) await Bun.sleep(300);
+            return target.query(sql, params);
+          };
+        }
+        const value = (target as any)[key];
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+    // its own server: the listener beforeEach made answers on `ws`
+    await listener.destroy();
+    ws = createWs();
+    ws.setServer({ publish: (channel: string, raw: string) => { for (const c of clients) if (c.subscriptions.has(channel)) c.send(raw); } });
+    listener = await createDocListener(ws, slowed as Pool, {
+      types: [docTypeFromDef(defineDoc("world:", { root: "worlds", include: ["sites"] }), pool)],
+      custom: [sitesInBbox],
+    });
+
+    const viewer = makeClient("v");
+    await sendAndAwait(ws, viewer, { action: "open", doc: "sites-in-bbox:0,0,50,50" });
+    const writer = makeClient("w");
+    for (const w of [a, b]) await sendAndAwait(ws, writer, { action: "open", doc: `world:${w}` });
+    await sendAndAwait(ws, writer, { action: "delta", doc: `world:${a}`, ops: [{ op: "add", path: "/sites/-", value: { name: "first", lat: 10, lng: 20 } }] });
+    await sendAndAwait(ws, writer, { action: "delta", doc: `world:${b}`, ops: [{ op: "add", path: "/sites/-", value: { name: "second", lat: 11, lng: 21 } }] });
+
+    const told = () => viewer.sent.filter((m: any) => m.doc === "sites-in-bbox:0,0,50,50" && m.ops).flatMap((m: any) => m.ops.map((o: any) => o.value?.name));
+    await waitFor(() => told().length >= 2, { timeout: 3000 });
+    expect(told()).toEqual(["first", "second"]);
   });
 });

@@ -3,9 +3,9 @@
  *
  * A document read whole -- what an entry's inverse and a walk's guard read:
  * for every name the path cases open, `_delta_open` (the compiled document's
- * whole open) and `_delta_open_framework(name, TRUE)` give the same, an error
- * included, on the seed and after writes; and read shown, the same as
- * `delta_open` has always been.
+ * whole open) gives what the framework's `_delta_open(name, TRUE)` gave, an
+ * error included, on the seed and after writes; and read shown, what
+ * `delta_open` has always given.
  *
  * A field the same in two values, a time by the instant it names: for every
  * collection, every field (and one there is not), and pairs of values (times
@@ -16,6 +16,10 @@
  *
  * A row beyond a document as it stands: for every collection, and one there
  * is not, every id (each version), one not there, and none.
+ *
+ * The framework's answers to the reads are recorded (the snapshot, taken 16
+ * October 2026 while the framework was applied and the two were held equal).
+ * The framework retired (todo #26); its answers stay the measure.
  *
  * Then every write and walk through them: delta's own cases (tests/delta),
  * undo and redo among them, run with them in place.
@@ -67,10 +71,8 @@ async function answer(sql: string, params: unknown[]): Promise<unknown> {
 function sameOpens() {
   for (const name of names) {
     test(name, async () => {
-      const whole = await answer("SELECT _delta_open($1, TRUE) AS r", [name]);
-      expect({ name, whole }).toEqual({ name, whole: await answer("SELECT _delta_open_framework($1, TRUE) AS r", [name]) });
-      const shown = await answer("SELECT _delta_open($1, FALSE) AS r", [name]);
-      expect({ name, shown }).toEqual({ name, shown: await answer("SELECT _delta_open_framework($1, FALSE) AS r", [name]) });
+      expect({ name, whole: await answer("SELECT _delta_open($1, TRUE) AS r", [name]) }).toMatchSnapshot();
+      expect({ name, shown: await answer("SELECT _delta_open($1, FALSE) AS r", [name]) }).toMatchSnapshot();
     });
   }
 }
@@ -102,8 +104,7 @@ describe("after writes of every kind, still", () => {
       const t = pathSchema.tables[coll];
       const ids = t ? (await pool.query(`SELECT DISTINCT id FROM "${t.name}" ORDER BY id`)).rows.map((r) => Number(r.id)) : [];
       for (const id of [...ids, 404, null]) {
-        const compiled = await answer("SELECT _delta_row_standing($1, $2) AS r", [coll, id]);
-        expect({ coll, id, row: compiled }).toEqual({ coll, id, row: await answer("SELECT _delta_row_standing_framework($1, $2) AS r", [coll, id]) });
+        expect({ coll, id, row: await answer("SELECT _delta_row_standing($1, $2) AS r", [coll, id]) }).toMatchSnapshot();
       }
     }
   });

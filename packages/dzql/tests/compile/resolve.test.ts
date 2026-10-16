@@ -2,11 +2,15 @@
  * Compiled scope resolution answers what the framework answers. For every name
  * the path cases open, and names made to probe each check (signs, spaces,
  * zeros, numbers past 2^53, numbers that are not whole, text where an id goes,
- * dates the calendar has not, values left empty): `dzql_scope__<prefix>` and
- * `_delta_resolve_scope_framework` give the same JSON -- where, values, mode,
- * at, and what was refused -- or the same error, raised or answered. It reads
- * no table, so the seed is the only state. Then every caller through it:
- * delta's own cases (tests/delta) run with it in place.
+ * dates the calendar has not, values left empty): `dzql_scope__<prefix>` gives
+ * the JSON the framework's resolver gave -- where, values, mode, at, and what
+ * was refused -- or the same error, raised or answered. It reads no table, so
+ * the seed is the only state. Then every caller through it: delta's own cases
+ * (tests/delta) run with it in place.
+ *
+ * The framework's answers are recorded (the snapshot, taken 16 October 2026
+ * while the framework was applied and the two were held equal). The framework
+ * retired (todo #26); its answers stay the measure.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Pool } from "pg";
@@ -51,26 +55,20 @@ afterAll(async () => { await pool.end(); });
 
 const prefixOf = (name: string) => docs.filter((d) => name.startsWith(d.prefix)).sort((a, b) => b.prefix.length - a.prefix.length)[0]!.prefix;
 
-/** A name resolved, compiled or framework, refusing or answering: the JSON, or the error. */
-async function resolved(compiled: boolean, name: string, refuse: boolean): Promise<unknown> {
-  const prefix = prefixOf(name);
-  const call = compiled
-    ? `${resolveFunction(prefix)}($1, $2)`
-    : `_delta_resolve_scope_framework((SELECT d FROM _delta_docs d WHERE d.prefix = '${prefix.replace(/'/g, "''")}'), $1, $2)`;
+/** A name resolved, refusing or answering: the JSON, or the error. */
+async function resolved(name: string, refuse: boolean): Promise<unknown> {
   try {
-    const { rows: [{ r }] } = await pool.query(`SELECT ${call} AS r`, [name, refuse]);
+    const { rows: [{ r }] } = await pool.query(`SELECT ${resolveFunction(prefixOf(name))}($1, $2) AS r`, [name, refuse]);
     return r;
   } catch (err: any) {
     return { error: err.message, code: err.code };
   }
 }
 
-describe("every name resolves as the framework resolves it", () => {
+describe("every name resolves as the framework resolved it", () => {
   for (const name of names) {
     test(name, async () => {
-      for (const refuse of [true, false]) {
-        expect({ name, refuse, scope: await resolved(true, name, refuse) }).toEqual({ name, refuse, scope: await resolved(false, name, refuse) });
-      }
+      for (const refuse of [true, false]) expect({ name, refuse, scope: await resolved(name, refuse) }).toMatchSnapshot();
     });
   }
 });

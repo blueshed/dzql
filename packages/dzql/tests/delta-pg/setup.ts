@@ -7,10 +7,9 @@
  * The compose service listens on localhost:5433 (so it won't fight with any
  * local Postgres on :5432). Override with DELTA_TEST_PG_URL if needed.
  */
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { Pool } from "pg";
-import { applyFramework as applyFrameworkFromPkg } from "../../src/postgres";
+import type { DocDef, Schema } from "@blueshed/delta/backend";
+import { applyFramework as applyFrameworkFromPkg, applySql, defineDoc, defineSchema, generateSql } from "../../src/postgres";
 import { applyAuthJwtSchema } from "../../src/postgres/auth-jwt";
 
 export const PG_URL =
@@ -18,15 +17,8 @@ export const PG_URL =
   process.env.DATABASE_URL ??
   "postgres://dzql_test:dzql_test@localhost:5433/dzql_test";
 
-const ITEMS_FIXTURE = join(import.meta.dir, "fixtures", "items.sql");
-
 export async function newPool(): Promise<Pool> {
   return new Pool({ connectionString: PG_URL, max: 8 });
-}
-
-async function applyFile(pool: Pool, path: string): Promise<void> {
-  const sql = readFileSync(path, "utf8");
-  await pool.query(sql);
 }
 
 /** Apply the delta framework SQL (001*) in alphabetical order. */
@@ -39,10 +31,45 @@ export async function applyAuthJwt(pool: Pool): Promise<void> {
   await applyAuthJwtSchema(pool);
 }
 
-/** Apply the items fixture used by postgres.test.ts. */
-export async function applyItemsFixture(pool: Pool): Promise<void> {
-  await applyFile(pool, ITEMS_FIXTURE);
+/**
+ * Apply definitions, as an app applies them: one `generateSql` over the tables and documents, every
+ * document compiled. A file applies its whole set once: a later `generateSql` with fewer documents
+ * would leave the rest uncompiled.
+ */
+export async function applyDefined(pool: Pool, tables: Record<string, unknown>, docs: DocDef[]): Promise<{ schema: Schema; docs: DocDef[] }> {
+  const schema = defineSchema(tables as Parameters<typeof defineSchema>[0]);
+  await applySql(pool, generateSql(schema, docs));
+  return { schema, docs };
 }
+
+/** The items fixture as definitions: one flat `items` collection, and `items:`, the list of them. */
+export const itemsTables = { items: { columns: { name: "text", value: { type: "integer", default: 0 } }, temporal: false } } as const;
+export const itemsDoc = defineDoc("items:", { root: "items", include: [] });
+
+/** The items fixture, and whatever tables and documents a test file adds (`more`). */
+export async function applyItems(pool: Pool, more: { tables?: Record<string, unknown>; docs?: DocDef[] } = {}): Promise<{ schema: Schema; docs: DocDef[] }> {
+  return applyDefined(pool, { ...itemsTables, ...(more.tables ?? {}) }, [itemsDoc, ...(more.docs ?? [])]);
+}
+
+/** The items fixture alone (as postgres.test.ts and the others had it). */
+export async function applyItemsFixture(pool: Pool): Promise<void> {
+  await applyItems(pool);
+}
+
+/** Worlds and the sites in them, with a place each: `world:<id>` is the world and its sites. */
+export const sitesTables = {
+  worlds: { columns: { label: "text" }, temporal: false },
+  sites: { parent: { collection: "worlds", fk: "world_id" }, columns: { name: "text", lat: "real", lng: "real" }, temporal: false },
+} as const;
+export const worldDoc = defineDoc("world:", { root: "worlds", include: ["sites"] });
+
+/** Customers, their brands, and the brands' artworks (an FK chain): `customer:<id>` is one customer's all. */
+export const customersTables = {
+  customers: { columns: { name: "text" }, temporal: false },
+  brands: { parent: "customers", columns: { name: "text" }, temporal: false },
+  artworks: { parent: { collection: "brands", fk: "brand_id" }, columns: { title: "text" }, temporal: false },
+} as const;
+export const customerDoc = defineDoc("customer:", { root: "customers", include: ["brands", "artworks"] });
 
 /**
  * Reset all delta/test state so tests can run independently. Truncates the

@@ -7,8 +7,6 @@
  * told, so the fan-out can't reintroduce the leak the SQLite backend once hit.
  */
 import { describe, test, beforeAll, beforeEach, afterAll, afterEach } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { Pool } from "pg";
 import {
   createDocListener,
@@ -17,7 +15,7 @@ import {
 } from "../../src/postgres";
 import { createWs, type WsServer } from "@blueshed/delta/server";
 import { setLogLevel } from "@blueshed/delta/logger";
-import { newPool, applyFramework } from "./setup";
+import { newPool, applyFramework, applyDefined, customersTables, customerDoc } from "./setup";
 import { mockClient, sendAndAwait } from "@blueshed/delta/testing";
 import {
   assertDocIsolation, type IsolationHarness, type OpenedDoc,
@@ -25,14 +23,13 @@ import {
 
 setLogLevel("silent");
 
-const FIXTURE = join(import.meta.dir, "fixtures", "customers.sql");
 
 let pool: Pool;
 
 beforeAll(async () => {
   pool = await newPool();
   await applyFramework(pool);
-  await pool.query(readFileSync(FIXTURE, "utf8"));
+  await applyDefined(pool, customersTables, [customerDoc]);
 });
 
 afterAll(async () => {

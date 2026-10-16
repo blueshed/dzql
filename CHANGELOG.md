@@ -48,6 +48,24 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
   Six mutations each fail it. A write is unchanged (0.588 ms p50 compiled): what this slice buys
   is the framework's retirement.
 
+- **delta's Postgres tests open only documents an app could define.** Every table and document
+  the tests in `tests/delta-pg` use is a definition, applied once with `generateSql`. Nothing is
+  registered by hand any more, and the SQL fixtures (items, sites, customers) are gone. A
+  definition the compiler refuses (a root that is no collection, a scope key that is no column, a
+  junk scope operator) is tested as refused when the SQL is written. This is the step before the
+  framework retires: no test leans on it to read a document it never compiled.
+
+### Fixed
+
+- **A custom document is told writes in the order they were made.** It hears writes made through
+  every document, but each document's notifications were drained on their own. So a slow read of
+  one document's ops told the custom document a later write, made through another, first, and its
+  copy broke delta's law. The full suite showed it once under load. The custom documents are now
+  told in their own queue, one notification after another, in the order Postgres delivers them
+  (commit order), each reading the one entry its notification announces. Each document still
+  drains to its own subscribers on its own: none waits on another's. A test holds one document's
+  reads back and makes the order certain.
+
 ## [0.10.0] - 2026-10-15
 
 ### Changed

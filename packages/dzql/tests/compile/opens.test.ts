@@ -1,12 +1,17 @@
 /**
- * Compiled opens answer what the framework answers. Over delta's path schema
+ * Compiled opens answer what the framework answered. Over delta's path schema
  * and documents (@blueshed/delta/testing), every name the path cases open is
- * opened by `delta_open` (the framework SQL reading its tables of definitions)
- * and by its document's compiled function (found by the longest prefix, as
- * `delta_open` finds it), on PGlite, and the two
- * must be equal -- an error included -- on the seed and again after writes of
- * every kind: adds, a field and a whole row replaced, a temporal row removed,
- * a row moved to another parent.
+ * opened by its document's compiled function (found by the longest prefix),
+ * now and as it stood, on PGlite, and gives what the framework's `delta_open`
+ * and `delta_open_at` gave -- an error included -- on the seed and again after
+ * writes of every kind: adds, a field and a whole row replaced, a temporal row
+ * removed, a row moved to another parent.
+ *
+ * The framework's answers are recorded (the snapshot, taken 16 October 2026
+ * while the framework was applied and the two were held equal: by this file
+ * until delta_open itself was compiled, then by tests/compile/ledger.test.ts
+ * and lookups.test.ts). The framework retired (todo #26); its answers stay the
+ * measure.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Pool } from "pg";
@@ -70,12 +75,10 @@ const times = ["2019-06-01T00:00:00Z", "2021-01-01T00:00:00Z", "2999-01-01T00:00
 function sameOpens() {
   for (const name of names) {
     test(name, async () => {
-      expect({ name, doc: await opened(compiledFor(name), name) }).toEqual({ name, doc: await opened("delta_open", name) });
+      expect({ name, doc: await opened(compiledFor(name), name) }).toMatchSnapshot();
     });
     test(`${name}, open_at`, async () => {
-      for (const at of times) {
-        expect({ name, at, doc: await opened(openAtFunction(prefixOf(name)), name, at) }).toEqual({ name, at, doc: await opened("delta_open_at", name, at) });
-      }
+      for (const at of times) expect({ name, at, doc: await opened(openAtFunction(prefixOf(name)), name, at) }).toMatchSnapshot();
     });
   }
 }
