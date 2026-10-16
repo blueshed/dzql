@@ -29,7 +29,7 @@
         "postgres": "^3.4.3",
       },
       "devDependencies": {
-        "@blueshed/delta": "^1.0.0",
+        "@blueshed/delta": "^1.1.0",
         "@blueshed/railroad": "^0.16.0",
         "@types/bun": "latest",
         "@types/pg": "^8.20.0",
@@ -38,7 +38,7 @@
         "vue": "^3.5.26",
       },
       "peerDependencies": {
-        "@blueshed/delta": "^1.0.0",
+        "@blueshed/delta": "^1.1.0",
         "typescript": "^5.0.0",
       },
     },
@@ -52,7 +52,7 @@
 
     "@babel/types": ["@babel/types@7.28.5", "", { "dependencies": { "@babel/helper-string-parser": "^7.27.1", "@babel/helper-validator-identifier": "^7.28.5" } }, "sha512-qQ5m48eI/MFLQ5PxQj4PFaprjyCTLI37ElWMmNs0K8Lk3dVeOdNpB3ks8jc7yM5CDmVC73eMVk/trk3fgmrUpA=="],
 
-    "@blueshed/delta": ["@blueshed/delta@1.0.0", "", { "peerDependencies": { "@blueshed/railroad": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0 || ^0.16.0" }, "optionalPeers": ["@blueshed/railroad"], "bin": { "delta": "cli.ts" } }, "sha512-SRB7olNWj9Tyh9UA9fxGpz7UdqOd1QL5nrBXSoOlz+HlwRtq+wF8Vh3s97H6dYkjmmo2RogNdRcRC7w0j5XzVw=="],
+    "@blueshed/delta": ["@blueshed/delta@1.1.0", "", { "peerDependencies": { "@blueshed/railroad": "^0.11.0 || ^0.12.0 || ^0.13.0 || ^0.14.0 || ^0.15.0 || ^0.16.0" }, "optionalPeers": ["@blueshed/railroad"], "bin": { "delta": "cli.ts" } }, "sha512-DQNCY2yc7mzdQVMzMVlsQ9vkPgC4j0SnsEbX3QElngFo14tXqiTkYtqxOfORgaeMZAm4CTplGeCx2FPe3f9bsQ=="],
 
     "@blueshed/railroad": ["@blueshed/railroad@0.16.2", "", {}, "sha512-dYInSLGVTocDpk9vFOmvBQe2juCJHU0gy+8J8W25lFmxUbPt7BRH9nLJbjzuLXGGrVwZOAXGrVUTzsB/qDCgmA=="],
 
