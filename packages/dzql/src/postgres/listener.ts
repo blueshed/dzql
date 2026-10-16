@@ -250,7 +250,7 @@ export async function createDocListener<I = unknown>(
   // are recycled by the pool, and a stale listener would fire against this
   // closure's state (and spuriously trigger reconnect) on a future checkout.
   function detachListener(client: any) {
-    try { client.removeListener?.("notification", onNotification); } catch {}
+    try { client.removeListener?.("notification", heard); } catch {}
     if (errorHandler) {
       try { client.removeListener?.("error", errorHandler); } catch {}
     }
@@ -259,7 +259,7 @@ export async function createDocListener<I = unknown>(
   /** LISTEN on `client`, and keep this holder's lock on it. */
   async function setupListener(client: any): Promise<void> {
     await client.query("LISTEN delta_changes");
-    client.on("notification", onNotification);
+    client.on("notification", heard);
     errorHandler = (err: Error) => {
       log.error(`listener error: ${err.message}`);
       if (!destroyed) reconnect();
@@ -318,6 +318,16 @@ export async function createDocListener<I = unknown>(
     detachListener(listener);
     listener.release();
     throw err;
+  }
+
+  // A document's own subscribers need only its own order, so each document drains on its own.
+  // A custom document hears writes made through every document: with any registered, the
+  // notifications are handled one after another, as Postgres delivers them (in commit order),
+  // or a slow drain of one document would tell it a later write through another first.
+  let inCommitOrder: Promise<void> = Promise.resolve();
+  function heard(msg: any) {
+    if (custom.size === 0) void onNotification(msg);
+    else inCommitOrder = inCommitOrder.then(() => onNotification(msg));
   }
 
   // Notification handler — fans out LISTEN/NOTIFY to WS subscribers, plus

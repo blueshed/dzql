@@ -16,8 +16,6 @@
  *     documenting that neither writer is told its edit was overwritten.
  */
 import { describe, test, expect, beforeAll, beforeEach, afterAll, afterEach } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { Pool } from "pg";
 import {
   createDocListener,
@@ -29,13 +27,12 @@ import {
 import { createWs, type WsServer } from "@blueshed/delta/server";
 import { setLogLevel } from "@blueshed/delta/logger";
 import type { DeltaAuth } from "@blueshed/delta/auth";
-import { newPool, applyFramework } from "./setup";
+import { newPool, applyFramework, applyDefined, sitesTables, worldDoc } from "./setup";
 import { mockClient, sendAndAwait, waitFor } from "@blueshed/delta/testing";
 
 setLogLevel("silent");
 
 let pool: Pool;
-const SITES_FIXTURE = join(import.meta.dir, "fixtures", "sites.sql");
 
 // Shared per-test wiring — reassigned in each describe's beforeEach.
 let ws: WsServer;
@@ -82,7 +79,7 @@ async function seedWorld(): Promise<string> {
 beforeAll(async () => {
   pool = await newPool();
   await applyFramework(pool);
-  await pool.query(readFileSync(SITES_FIXTURE, "utf8"));
+  await applyDefined(pool, sitesTables, [worldDoc, defineDoc("world-bare:", { root: "worlds", include: [] })]);
 });
 
 afterAll(async () => {
@@ -246,20 +243,11 @@ describe("M3: delta_apply collection scoping", () => {
 
   beforeEach(async () => {
     await resetSites();
-    // A doc exposing ONLY the world root — `sites` is a registered collection
-    // but intentionally NOT in this doc's include.
-    await pool.query(`
-      INSERT INTO _delta_docs (prefix, root_collection, include, scope)
-      VALUES ('world-bare:', 'worlds', ARRAY[]::text[], '{}'::jsonb)
-      ON CONFLICT (prefix) DO UPDATE SET include = EXCLUDED.include, scope = EXCLUDED.scope
-    `);
+    // world-bare: (defined with the sites) exposes ONLY the world root: `sites` is a collection, but not in its include.
     await startListener({ types: [docTypeFromDef(defineDoc("world-bare:", { root: "worlds", include: [] }), pool)] });
     worldId = await seedWorld();
   });
 
-  afterEach(async () => {
-    await pool.query("DELETE FROM _delta_docs WHERE prefix = 'world-bare:'");
-  });
 
   test("writing to a collection outside the doc's scope is rejected", async () => {
     const doc = `world-bare:${worldId}`;
