@@ -37,7 +37,8 @@ The people:
 ## Stage 3: the shed knows what is out
 
 1. Sam's board shows every loan as it is made: Ann's, Ben's and Dot's.
-2. A tool on loan shows as out on every member's list, and as in again once it is returned.
+2. A tool on loan shows as out on every member's list, and as in again once it is returned. The
+   list does not say who has it: that is on Sam's board.
 3. Ben cannot borrow the hedge shears while Ann has them; he is told they are out.
 4. Ann returns the hedge shears, then undoes the return: the shears are out again, on her loan, on
    Sam's board and on every list.

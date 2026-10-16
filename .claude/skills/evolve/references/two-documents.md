@@ -78,6 +78,23 @@ export function OrderView() {
 }
 ```
 
+The reset takes a list's padding, so its bullets would hang outside the page: the lists are rows instead.
+
+```css
+// src/styles.css: after .toast.alert { background: var(--danger); }
+
+.catalogue, .order { list-style: none; margin-bottom: 1rem; }
+.catalogue li, .order li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-mid);
+}
+.total { font-weight: 600; }
+```
+
 ```ts
 // src/server.ts: after import { statusApi } from "./resources/status/status-api";
 import { orderDocs } from "./resources/order/order-api";

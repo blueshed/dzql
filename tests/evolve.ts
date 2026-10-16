@@ -25,6 +25,7 @@ const SECTIONS: Record<string, string[]> = {
   "sqlite.md": ["two-documents.md"],
   "migrations.md": ["two-documents.md", "sqlite.md"],
   "postgres.md": ["two-documents.md", "sqlite.md"],
+  "auth.md": [],
   "http.md": [],
   "build.md": [],
 };
@@ -46,7 +47,8 @@ async function blocks(name: string) {
 async function apply(app: string, name: string) {
   for (const { lang, lines } of await blocks(name)) {
     if (lang === "sh") {
-      for (const line of lines.filter((l) => l.startsWith("bun add "))) run(app, line.split(/\s+/));
+      // DZQL_SPEC installs another dzql in place of npm's, as DELTA_SPEC does delta: dzql@<a candidate's tarball>
+      for (const line of lines.filter((l) => l.startsWith("bun add "))) run(app, (line === "bun add dzql" && process.env.DZQL_SPEC ? `bun add ${process.env.DZQL_SPEC}` : line).split(/\s+/));
       continue;
     }
     const where = lines[0]!.match(/^\/\/ ([\w./-]+)(?:: (after|before|in place of) (.+))?$/);

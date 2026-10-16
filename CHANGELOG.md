@@ -6,6 +6,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **delta 1.2.0** (`@blueshed/delta` `^1.2.0`): migrations from empty and `owns` as a path, which
+  the steps below build on; link sign-in came in 1.1.0.
+- **Migrations are a history from empty** (`references/sqlite.md`, `migrations.md`,
+  `postgres.md`; todo #12). A resource's tables are made by its migrations, the first
+  `001-order`, which `bunx @blueshed/delta migrations make` writes from the schema; `orderDocs`
+  runs `migrate` in place of `createTables`. A schema change is the next migration (`make` writes
+  the column; data moved is an `up` beside it), and its test builds the database as version one
+  left it from the history's first migration. The Postgres step runs the same history before
+  dzql's compiled SQL, from a `DATABASE_URL` server, else PGlite; it says never to deploy PGlite,
+  and one app to a database.
+
+### Added
+
+- **Sign-in with no passwords** (`references/auth.md`, todo #14). delta's link sign-in: a link is
+  someone, tapped once, and makes a session cookie the socket is signed in by. A `people`
+  resource with its own history, "Who are you?" in development, anyone's link from the People
+  list, and `bun run link <name>` for the first person. Its tests sign in through a real socket
+  and follow a link in a second window.
+- **Stories** (`stories.md`, todo #15). The template keeps the stories it makes true, and
+  CLAUDE.md and the evolve skill's order of work start from them: a request is written there as
+  stories first, then made true with tests named for them.
+- **The Shed says who may see who has a tool** (`evals/shed/`, todo #16): the list shows a tool
+  out, not who has it; Sam's board does.
+
+### Fixed
+
+- **The Postgres step starts on a data folder not made yet** (`references/postgres.md`, todo #17).
+  `orderDocs` opened PGlite in `pg/` without making the data folder first, so a new app's first
+  start failed (ENOENT on mkdir `<dataDir>/pg`); it makes the folder first, as the SQLite step
+  does. Its test starts the server on a folder that is not there yet, where it had passed a
+  folder `mkdtempSync` had made.
+- **The two-documents step's lists stay inside the page** (`references/two-documents.md`). The
+  reset takes a list's padding, so the catalogue's and the order's bullets hung outside it; the
+  step adds styles that draw each list as rows with a rule between them, and the total in bold.
+
 ### Added
 
 - **The Shed, a held-out example for the evolve skill** (`evals/shed/`). An allotment society's tool
