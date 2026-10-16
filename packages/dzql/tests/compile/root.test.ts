@@ -114,9 +114,9 @@ describe("the compiled text", () => {
     expect(compileRootThere(pathSchema, docs)).toMatchSnapshot();
   });
 
-  test("_delta_root_there sends a compiled document to its own, any other to the framework", () => {
+  test("_delta_root_there sends each document to its own, and refuses a name of none", () => {
     const sql = compileRootThere(pathSchema, docs);
     expect(sql).toContain(`WHEN 'fo-board:' THEN RETURN ${rootThereFunction("fo-board:")}(p_doc_name, p_id);`);
-    expect(sql).toContain("ELSE RETURN _delta_root_there_framework(p_def, p_doc_name, p_scope, p_view, p_id);");
+    expect(sql).toContain("ELSE RAISE EXCEPTION 'no doc def for: %', p_doc_name USING ERRCODE = 'P0001';");
   });
 });

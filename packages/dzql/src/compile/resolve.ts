@@ -10,11 +10,11 @@
  * bindings), `mode` and `at`; a value its column cannot take refused with the
  * same message (`scopeOf`), raised, or with `refuse` false answered as the
  * scope that holds nothing. And `_delta_resolve_scope` itself, which sends each
- * compiled document to its own and any other to the framework
- * (`_delta_resolve_scope_framework`).
+ * document to its own and refuses a name of none (`no doc def for`: the framework that read the rest
+ * retired, todo #26).
  */
 import type { DocDef, Schema } from "@blueshed/delta/backend";
-import { lit, named, need, scopeOf } from "./opens";
+import { lit, named, need, noDoc, scopeOf } from "./opens";
 
 /** A document's scope function: `dzql_scope__<slug>`. */
 export const resolveFunction = (prefix: string): string => named("scope", prefix);
@@ -67,7 +67,7 @@ RETURNS JSONB AS $$
 BEGIN
   CASE p_def.prefix
 ${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${resolveFunction(d.prefix)}(p_doc_name, p_refuse);`).join("\n")}
-    ELSE RETURN _delta_resolve_scope_framework(p_def, p_doc_name, p_refuse);
+    ELSE ${noDoc("p_doc_name")}
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;`;

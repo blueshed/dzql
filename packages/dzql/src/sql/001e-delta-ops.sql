@@ -27,76 +27,13 @@ RETURNS TABLE(version BIGINT, ops JSONB, applied JSONB) AS $$
 $$ LANGUAGE sql STABLE;
 
 -- ---------------------------------------------------------------------------
--- delta_open_at: time-travel — load a doc as it existed at a point in time
+-- delta_open_at: time-travel -- a document as it stood at a point in time.
+-- generateSql sends each document to its own read as it stood
+-- (compileLookups, dzql_open_at__<slug>); before it is applied there is none.
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION _delta_open_at_framework(p_doc_name TEXT, p_at TIMESTAMPTZ)
-RETURNS JSONB AS $$
-DECLARE
-  v_def       _delta_docs;
-  v_resolved  JSONB;
-  v_mode      TEXT;
-  v_doc_id    BIGINT;
-  v_root_coll RECORD;
-  v_root_row  JSONB;
-  v_result    JSONB;
-  v_coll_key  TEXT;
-BEGIN
-  v_def := _delta_find_doc(p_doc_name);
-  IF v_def.prefix IS NULL THEN
-    RAISE EXCEPTION 'no doc def for: %', p_doc_name
-      USING ERRCODE = 'P0001';
-  END IF;
-
-  v_resolved := _delta_resolve_scope(v_def, p_doc_name);
-  v_mode     := v_resolved->>'mode';
-
-  SELECT * INTO v_root_coll FROM _delta_collections
-   WHERE collection_key = v_def.root_collection;
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'doc "%" references unknown root collection: %',
-      p_doc_name, v_def.root_collection
-      USING ERRCODE = 'P0001';
-  END IF;
-
-  -- List mode (todo #74): as delta_open reads a list, at p_at -- each row as it shows (todo #70).
-  IF v_mode = 'list' THEN RETURN _delta_show_doc(v_def, _delta_read_list(v_def, v_resolved->>'where', p_at), FALSE); END IF;
-
-  v_doc_id := (v_resolved->'values'->>'id')::BIGINT;
-
-  -- the root as it stood, where it met the whole of its name's scope then
-  -- (a column beside its id), as delta_open reads it now
-  IF v_root_coll.temporal THEN
-    EXECUTE format(
-      'SELECT to_jsonb(t.*) FROM %I t WHERE t.id = $1 AND %s AND %s',
-      v_root_coll.table_name, _delta_temporal_where(p_at), v_resolved->>'where'
-    ) INTO v_root_row USING v_doc_id;
-    v_root_row := _delta_strip_temporal(v_root_row);
-  ELSE
-    EXECUTE format('SELECT to_jsonb(t.*) FROM %I t WHERE t.id = $1 AND %s', v_root_coll.table_name, v_resolved->>'where')
-      INTO v_root_row USING v_doc_id;
-  END IF;
-
-  IF v_root_row IS NULL THEN RETURN NULL; END IF;
-
-  v_result := jsonb_build_object(v_def.root_collection, v_root_row);
-
-  FOREACH v_coll_key IN ARRAY v_def.include
-  LOOP
-    v_result := v_result || jsonb_build_object(
-      v_coll_key,
-      _delta_load_collection(v_coll_key, v_def.root_collection, v_doc_id, p_at)
-    );
-  END LOOP;
-
-  RETURN _delta_show_doc(v_def, v_result, TRUE);
-END;
-$$ LANGUAGE plpgsql STABLE;
-
--- the framework's, until dzql's compiler (`compileLookups`) sends each document
--- it compiled to its own read as it stood (`dzql_open_at__<slug>`)
 CREATE OR REPLACE FUNCTION delta_open_at(p_doc_name TEXT, p_at TIMESTAMPTZ)
-RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_open_at_framework(p_doc_name, p_at); $$;
+RETURNS JSONB LANGUAGE plpgsql STABLE AS $$ BEGIN RAISE EXCEPTION 'no doc def for: %', p_doc_name USING ERRCODE = 'P0001'; END $$;
 
 -- ---------------------------------------------------------------------------
 -- delta_prune_ops: clean up old log entries -- and the names nobody holds

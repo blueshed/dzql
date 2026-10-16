@@ -120,7 +120,7 @@ describe("the compiled text", () => {
     expect(compileHolders(pathSchema, docs)).toMatchSnapshot();
   });
 
-  test("asks the framework for any document not compiled here", () => {
-    expect(compileHolders(pathSchema, docs)).toContain("_delta_holders_framework(p_coll, p_row, p_writer, ARRAY['fo-board:'");
+  test("asks only the documents compiled here: there is no other", () => {
+    expect(compileHolders(pathSchema, docs)).not.toContain("_framework");
   });
 });

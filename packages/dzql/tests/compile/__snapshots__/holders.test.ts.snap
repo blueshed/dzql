@@ -3141,10 +3141,6 @@ BEGIN
       END LOOP;
     ELSE NULL;
   END CASE;
-  -- the documents not compiled here, as the framework asks them
-  IF EXISTS (SELECT 1 FROM _delta_docs WHERE (root_collection = p_coll OR p_coll = ANY(include)) AND NOT (prefix = ANY(ARRAY['fo-board:', 'fo-menu:', 'fo-household:', 'fo-course:', 'fo-title:', 'fo-tagged:', 'fo-notes:', 'fo-all-courses:', 'fo-catalog:', 'fo-courses-noted:', 'fo-courses-like:', 'fo-menu-like:', 'fo-tags-labelled:', 'fo-seating:', 'fo-seats-kept:', 'fo-seats-upto:', 'fo-seats-at:', 'fo-seats-wished:', 'fo-slots-upto:', 'fo-slots-of:', 'fo-slots-under:', 'fo-slots-by:', 'fo-slots-on:', 'fo-note:', 'fo-all-notes:', 'fo-drinks:', 'fo-course-guests:', 'fo-plan:', 'fo-weddings:', 'fo-guest:', 'fo-seat-of:', 'fo-all-households:', 'fo-party:', 'fo-slim:', 'fo-notes-on:', 'fo-courses-noted-on:', 'fo-board-on:', 'fo-asks:', 'fo-asks-from:', 'fo-pub-courses:']::text[]))) THEN
-    v_names := v_names || _delta_holders_framework(p_coll, p_row, p_writer, ARRAY['fo-board:', 'fo-menu:', 'fo-household:', 'fo-course:', 'fo-title:', 'fo-tagged:', 'fo-notes:', 'fo-all-courses:', 'fo-catalog:', 'fo-courses-noted:', 'fo-courses-like:', 'fo-menu-like:', 'fo-tags-labelled:', 'fo-seating:', 'fo-seats-kept:', 'fo-seats-upto:', 'fo-seats-at:', 'fo-seats-wished:', 'fo-slots-upto:', 'fo-slots-of:', 'fo-slots-under:', 'fo-slots-by:', 'fo-slots-on:', 'fo-note:', 'fo-all-notes:', 'fo-drinks:', 'fo-course-guests:', 'fo-plan:', 'fo-weddings:', 'fo-guest:', 'fo-seat-of:', 'fo-all-households:', 'fo-party:', 'fo-slim:', 'fo-notes-on:', 'fo-courses-noted-on:', 'fo-board-on:', 'fo-asks:', 'fo-asks-from:', 'fo-pub-courses:']::text[]);
-  END IF;
   RETURN v_names;
 END;
 $$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;

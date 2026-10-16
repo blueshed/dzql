@@ -10,12 +10,11 @@
  * (`scopeOf`, a name its columns cannot take holding nothing), a temporal row
  * not told to a document named with a time past, and an included row's chain
  * of parents up to the root, as written lookups. And `_delta_doc_holds`
- * itself, which sends each compiled document to its function and any other
- * (registered by hand, or by another `generateSql`) to the framework's
- * (`_delta_doc_holds_framework`).
+ * itself, which sends each document to its function and refuses a name of none (`no doc def for`: the framework that read the rest
+ * retired, todo #26).
  */
 import { q, type DocDef, type ResolvedTable, type Schema } from "@blueshed/delta/backend";
-import { lit, named, need, scopeOf , currentOnly } from "./opens";
+import { lit, named, need, noDoc, scopeOf, currentOnly } from "./opens";
 
 /** A document's holds function: `dzql_holds__<slug>`. */
 export const holdsFunction = (prefix: string): string => named("holds", prefix);
@@ -83,7 +82,7 @@ RETURNS BOOLEAN AS $$
 BEGIN
   CASE p_def.prefix
 ${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${holdsFunction(d.prefix)}(p_doc_name, p_coll, p_row);`).join("\n")}
-    ELSE RETURN _delta_doc_holds_framework(p_def, p_doc_name, p_coll, p_row);
+    ELSE ${noDoc("p_doc_name")}
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;`;

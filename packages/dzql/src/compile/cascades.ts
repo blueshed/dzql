@@ -13,8 +13,8 @@
  * - `dzql_hanging_rows__<slug>(id)`: the rows that hang from it, and on down,
  *   parent first.
  * And `_delta_cascade_remove`, `_delta_cascade_rows` and `_delta_hanging_rows`,
- * sending each collection to its own and any other to the framework's
- * (`_framework`). The order is the framework's: child collections by key, then
+ * sending each collection to its own; a collection there is not has nothing
+ * to take. The order is the one the framework's had: child collections by key, then
  * the collections that cascade on it by key and key column, each in the
  * database's byte order (`COLLATE "C"`), and each one's rows by id.
  */
@@ -118,15 +118,15 @@ END;
 $$ LANGUAGE plpgsql STABLE;`;
 }
 
-/** A dispatcher: each collection of `schema` to its own, any other to the framework's. */
+/** A dispatcher: each collection of `schema` to its own; any other has nothing to take. */
 function dispatch(schema: Schema, name: string, what: string, volatility: string): string {
   const colls = Object.keys(schema.tables);
   const body = colls.length
     ? `  CASE p_collection_key
 ${colls.map((c) => `    WHEN ${lit(c)} THEN RETURN ${fn(what, c)}(p_id);`).join("\n")}
-    ELSE RETURN ${name}_framework(p_collection_key, p_id);
+    ELSE RETURN '[]'::jsonb;   -- a collection there is not: nothing to take, nothing hangs from it
   END CASE;`
-    : `  RETURN ${name}_framework(p_collection_key, p_id);`;
+    : `  RETURN '[]'::jsonb;`;
   return `CREATE OR REPLACE FUNCTION ${name}(p_collection_key TEXT, p_id BIGINT)
 RETURNS JSONB AS $$
 BEGIN
@@ -135,7 +135,7 @@ END;
 $$ LANGUAGE plpgsql${volatility};`;
 }
 
-/** The cascades and hanging rows of every collection of `schema`, and the dispatch to the framework's for any other. */
+/** The cascades and hanging rows of every collection of `schema`, and their dispatch. */
 export function compileCascades(schema: Schema): string {
   assertSlugs(schema);
   const colls = Object.keys(schema.tables);

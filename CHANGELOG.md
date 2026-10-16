@@ -23,7 +23,36 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+### Breaking
+
+- **The framework that read the definitions at run time is gone (todo #26).** Every document and
+  collection is now compiled by `generateSql`, and nothing interprets `_delta_docs` or
+  `_delta_collections` to work out what a document means.
+  - **Re-apply `generateSql` once** after upgrading, as an app does after `applyFramework` anyway.
+    The `001*` files drop the old `_framework` functions from a database that has them.
+  - **A document is what its definition compiles to.** A row put into `_delta_docs` by hand is not
+    read. A name no compiled document holds is refused: `no doc def for: <name>`, as before.
+  - **One app per database.** A `generateSql` writes one app's documents and collections in place
+    of the last. Two apps on one Postgres server each have a database (`CREATE DATABASE`); a schema
+    each is todo #29.
+  - The framework SQL before `generateSql` knows no document. Its dispatchers refuse a name, and
+    a collection there is not has no row, nothing to take and no definition.
+  - What stays generic is over the columns given, not a definition: a write's fields checked by a
+    set the compiler never saw (another version's, a walk's), `_delta_assert_fields_declared`; and a
+    row stored by the columns it gives, `_delta_row_add_given`.
+
+  The compiled pieces answer what the framework answered. Its answers were recorded while the two
+  were held equal (`tests/compile/` snapshots: every path-case name, the seed and after writes) and
+  stay the measure. The row SQL and cascades, whose answers carry the write's own time, are held by
+  delta's cases. 001b and 001c are a third of their size. The bench now runs delta's write compiled
+  only: 0.55 ms p50 under RLS, 2.8x a raw `UPDATE`, and the fan-out flat to 100,000 names ever opened.
+
 ### Changed
+
+- **The document a name is of is a compiled lookup** (`_delta_find_doc`). Each document's prefix
+  and row are written in, the longest prefix tried first. Held equal to the framework's on every
+  path name and probes (case, spaces, partial prefixes, LIKE wildcards), recorded; four mutations
+  each fail it.
 
 - **A collection's definition, a table's serial and a document as it stood are compiled lookups**
   (2c, the step before the framework retires).

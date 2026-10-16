@@ -1,18 +1,23 @@
 /**
- * Compiled columns and checks answer what the framework answers.
+ * Compiled columns and checks answer what the framework answered.
  *
  * The columns a document writes: for every document and collection, with no
  * columns declared by the process, with the app's own declared, and with
  * another version's (a column more, a column fewer), `dzql_columns__<prefix>`
- * and `_delta_write_columns_framework` give the same.
+ * gives what the framework's `_delta_write_columns` gave: recorded (the
+ * snapshot, taken 16 October 2026 while the framework was applied and the two
+ * were held equal). The framework retired (todo #26); its answers stay the
+ * measure.
  *
  * The checks: for every collection, every set of columns (all of them, each
  * document's own, and sets the compiler never saw), each parent key (the
  * schema's, none, another), and values made to probe each check -- not an
  * object, fields there are not, the parent key as every kind of value, each
  * column given every kind of value, several wrong at once --
- * `_delta_assert_fields` and `_delta_assert_fields_framework` accept the same
- * values and refuse the rest with the same code and message.
+ * `_delta_assert_fields` and the check by the columns given
+ * (`_delta_assert_fields_declared`, the framework's, which stays for a set the
+ * compiler never saw) accept the same values and refuse the rest with the same
+ * code and message.
  *
  * Then every write through them: delta's own cases (tests/delta) run with them
  * in place.
@@ -36,10 +41,10 @@ beforeAll(async () => {
   pool = await openPglite();
   await applyFramework(pool);
   await applySql(pool, generateSql(pathSchema, docs));   // the compiled columns and checks
-  // a check's answer, compiled or the framework's: ok, or its code and message
+  // a check's answer, compiled or by the columns given: ok, or its code and message
   await pool.query(`CREATE FUNCTION _t_check(p_fw BOOLEAN, p_coll TEXT, p_cols JSONB, p_fk TEXT, p_value JSONB) RETURNS TEXT AS $$
     BEGIN
-      IF p_fw THEN PERFORM _delta_assert_fields_framework(p_coll, p_cols, p_fk, p_value);
+      IF p_fw THEN PERFORM _delta_assert_fields_declared(p_coll, p_cols, p_fk, p_value);
       ELSE PERFORM _delta_assert_fields(p_coll, p_cols, p_fk, p_value); END IF;
       RETURN 'ok';
     EXCEPTION WHEN OTHERS THEN RETURN SQLSTATE || ' ' || SQLERRM;
@@ -67,11 +72,10 @@ describe("the columns each document writes, as the framework gives them", () => 
         await client.query("SELECT set_config('delta.declared', $1, false)", [declared ?? ""]);
         for (const doc of docs) {
           for (const [coll] of tables) {
-            const def = `(SELECT d FROM _delta_docs d WHERE d.prefix = '${doc.prefix.replace(/'/g, "''")}')`;
             const stored = `(SELECT columns_def FROM _delta_collections WHERE collection_key = $1)`;
             const { rows: [r] } = await client.query(
-              `SELECT ${columnsFunction(doc.prefix)}($1, ${stored}) AS compiled, _delta_write_columns_framework(${def}, $1, ${stored}) AS framework`, [coll]);
-            expect({ doc: doc.prefix, coll, cols: r.compiled }).toEqual({ doc: doc.prefix, coll, cols: r.framework });
+              `SELECT ${columnsFunction(doc.prefix)}($1, ${stored}) AS compiled`, [coll]);
+            expect({ doc: doc.prefix, coll, cols: r.compiled }).toMatchSnapshot();
           }
         }
       } finally {
@@ -102,7 +106,7 @@ function valuesOf(columns: Record<string, unknown>, fk: string | undefined): unk
   ];
 }
 
-describe("the checks of every collection's columns, as the framework's", () => {
+describe("the checks of every collection's columns, as by the columns given", () => {
   for (const [coll, table] of tables) {
     test(coll, async () => {
       const fk = table.parent?.fkColumn;
@@ -130,10 +134,10 @@ describe("the checks of every collection's columns, as the framework's", () => {
   }
 });
 
-describe("the sets of columns compiled are checked without the framework", () => {
-  test("every collection's own and each document's, with the framework's checks gone", async () => {
-    await pool.query(`CREATE OR REPLACE FUNCTION _delta_assert_fields_framework(p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB)
-      RETURNS void LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'the framework was asked'; END $$`);
+describe("the sets of columns compiled are checked by their own statements", () => {
+  test("every collection's own and each document's, with the check by the columns given gone", async () => {
+    await pool.query(`CREATE OR REPLACE FUNCTION _delta_assert_fields_declared(p_collection TEXT, p_columns JSONB, p_parent_fk TEXT, p_value JSONB)
+      RETURNS void LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'checked by the columns given'; END $$`);
     try {
       for (const [coll, table] of tables) {
         const sets = [table.columns, ...docs.flatMap((d) => d.columns?.[coll] ? [Object.fromEntries(Object.entries(table.columns).filter(([c]) => d.columns![coll]!.includes(c)))] : [])];
@@ -155,7 +159,7 @@ describe("the compiled text", () => {
     expect(compileColumns(pathSchema, docs)).toMatchSnapshot();
   });
 
-  test("a set of columns it never saw goes to the framework's checks", () => {
-    expect(compileColumns(pathSchema, docs)).toContain("PERFORM _delta_assert_fields_framework(p_collection, p_columns, p_parent_fk, p_value);");
+  test("a set of columns it never saw is checked by the columns given", () => {
+    expect(compileColumns(pathSchema, docs)).toContain("PERFORM _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value);");
   });
 });

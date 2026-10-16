@@ -254,40 +254,17 @@ $$;
 -- A field of a collection's row the same in two values: a timestamptz by the
 -- instant it names, whatever zone its text was written in (a ledger's entry
 -- keeps the session's TimeZone of its write), anything else as _delta_same.
-CREATE OR REPLACE FUNCTION _delta_same_framework(p_coll TEXT, p_field TEXT, a JSONB, b JSONB)
-RETURNS BOOLEAN LANGUAGE sql STABLE AS $$
-  SELECT CASE
-    WHEN jsonb_typeof(a) = 'string' AND jsonb_typeof(b) = 'string'
-         AND (SELECT _delta_cols(collection_key, columns_def)->p_field->>'type' FROM _delta_collections WHERE collection_key = p_coll) = 'timestamptz'
-      THEN (a #>> '{}')::timestamptz = (b #>> '{}')::timestamptz
-    ELSE _delta_same(a, b)
-  END;
-$$;
-
--- the framework's, until dzql's compiler (`compileLedger`) writes each
--- collection's time fields in
+-- generateSql writes each collection's time fields in (compileLedger); before
+-- it is applied there is no collection, and values are the same as JSON.
 CREATE OR REPLACE FUNCTION _delta_same(p_coll TEXT, p_field TEXT, a JSONB, b JSONB)
-RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT _delta_same_framework(p_coll, p_field, a, b); $$;
+RETURNS BOOLEAN LANGUAGE sql STABLE AS $$ SELECT _delta_same(a, b); $$;
 
 -- _delta_row_standing: row `p_id` of a collection as it stands, without its
 -- validity, as {row} (row null: not there); NULL for a collection there is not.
--- What a walk guards a row beyond its document by.
-CREATE OR REPLACE FUNCTION _delta_row_standing_framework(p_coll TEXT, p_id BIGINT)
-RETURNS JSONB AS $$
-DECLARE
-  v_coll RECORD;
-  v_row  JSONB;
-BEGIN
-  SELECT * INTO v_coll FROM _delta_collections WHERE collection_key = p_coll;
-  IF NOT FOUND THEN RETURN NULL; END IF;
-  EXECUTE format('SELECT _delta_strip_temporal(to_jsonb(t.*)) FROM %I t WHERE t.id = $1', _delta_source_view(v_coll.table_name, v_coll.temporal))
-    INTO v_row USING p_id;
-  RETURN jsonb_build_object('row', v_row);
-END;
-$$ LANGUAGE plpgsql STABLE;
-
+-- What a walk guards a row beyond its document by. generateSql writes one for
+-- each collection (compileLedger).
 CREATE OR REPLACE FUNCTION _delta_row_standing(p_coll TEXT, p_id BIGINT)
-RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT _delta_row_standing_framework(p_coll, p_id); $$;
+RETURNS JSONB LANGUAGE sql STABLE AS $$ SELECT NULL::jsonb; $$;
 
 -- _delta_walk_key: a row's key in a walk -- the keyOf of planWalk in
 -- src/server/ledger.ts. A single document's root is one row at two paths,

@@ -87,22 +87,17 @@ async function main(): Promise<void> {
   await prepare();
   const app = appUrl(PG_URL);
 
-  // One after another, on the same hardware state: raw first (the baseline), then delta's write
-  // with the framework's reads and checks, then with them compiled. Every write as the app role.
+  // One after another, on the same hardware state: raw first (the baseline), then delta's write.
+  // Every write as the app role.
   const results: Result[] = [];
   results.push(await runOne(() => rawPostgresAdapter(PG_URL, app)));
-  results.push(await runOne(() => deltaAdapter(PG_URL, app, false)));
-  results.push(await runOne(() => deltaAdapter(PG_URL, app, true)));
+  results.push(await runOne(() => deltaAdapter(PG_URL, app)));
 
   printHeader();
   for (const r of results) printRow(r);
 
-  const [rawS, frameworkS, compiledS] = results.map((r) => r.stats) as [Stats, Stats, Stats];
-  console.log(
-    `\ndelta, framework / raw-postgres p50: ${(frameworkS.p50 / rawS.p50).toFixed(2)}x` +
-      `\ndelta, compiled  / raw-postgres p50: ${(compiledS.p50 / rawS.p50).toFixed(2)}x` +
-      `\ncompiled / framework p50:            ${(compiledS.p50 / frameworkS.p50).toFixed(2)}x   (below 1: compiling saved that much)`,
-  );
+  const [rawS, deltaS] = results.map((r) => r.stats) as [Stats, Stats];
+  console.log(`\ndelta / raw-postgres p50: ${(deltaS.p50 / rawS.p50).toFixed(2)}x`);
 
   // A write's fan-out as the names ever opened grow, ten open: it should stay flat.
   console.log("\nfan-out — one write through a scoped document, 10 open\n");

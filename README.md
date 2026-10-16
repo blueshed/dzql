@@ -20,12 +20,12 @@ import { openPglite } from "dzql/pglite";   // Postgres in this process
 import { jwtAuth } from "dzql/auth-jwt";
 ```
 
-Its tests run delta's own cases (`@blueshed/delta/testing`) against it. Compiled SQL is replacing
-the framework SQL a piece at a time: `generateSql` writes functions for each of your documents
-(opening it, reading its name, who holds a row, a write's scope, what each document is told, the
-fan-out), each held equal to the framework's; documents it did not compile go to the framework. Apply `generateSql`
-after the framework, every time (`docs/delta/postgres.md`, "Compiled SQL"). The plan is in
-Workshop's `docs/postgres-split-plan.md`.
+Its tests run delta's own cases (`@blueshed/delta/testing`) against it. `generateSql` writes the
+SQL for each of your documents and collections, compiled from their definitions (opening a
+document, reading its name, who holds a row, a write's scope and rows, what each document is told,
+the fan-out, the ledger's reads): nothing interprets a definition at run time. Apply it after the
+framework, every time, one app per database (`docs/delta/postgres.md`, "Compiled SQL"). The plan
+is in Workshop's `docs/postgres-split-plan.md`.
 
 ## The whole-stack dzql (retiring)
 

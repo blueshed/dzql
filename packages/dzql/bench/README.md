@@ -1,7 +1,7 @@
 # Bench: a write's cost under row-level security
 
-Measures delta's write, `delta_apply_as(user, doc, ops)` in one round trip, with the framework's
-reads and checks and with them compiled, against a raw `UPDATE` as the baseline. Every timed write
+Measures delta's write, `delta_apply_as(user, doc, ops)` in one round trip, its document compiled
+(generateSql's), against a raw `UPDATE` as the baseline. Every timed write
 runs as an app role, `bench_app` (NOSUPERUSER NOBYPASSRLS), so the policy is evaluated; the bench
 refuses to run otherwise. Set-up (the framework, the table, the seed, the role) runs as the admin the
 URL names.
@@ -31,8 +31,10 @@ transaction-local setting as `''` once that transaction is done).
 | Adapter | Per op |
 |---|---|
 | `raw-postgres` | `WITH _ AS (set_config…) UPDATE …` |
-| `delta, framework` | `delta_apply_as`, its holds and write scope read from the definitions at run time |
-| `delta, compiled` | `delta_apply_as`, its holds and write scope compiled from the document's definition |
+| `delta` | `delta_apply_as`, its document compiled from its definition |
+
+Until the framework retired (todo #26) the bench also ran delta's write with the framework's reads
+and checks: the 2026-10-15 results compare the two.
 
 Results: [results-2026-10-15.md](./results-2026-10-15.md). The 0.3.0 results
 ([results-0.3.0.md](./results-0.3.0.md)) were taken as a superuser, so RLS was bypassed: they say

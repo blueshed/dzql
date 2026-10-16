@@ -10,11 +10,12 @@
  * its included collections whole and its root rows by the name's conditions;
  * a single document holds a row whose parent chain, walked up through the
  * tables as they stand, reaches its root, which meets the rest of its name's
- * scope. And `_delta_row_in_scope` itself, which sends each compiled document
- * to its own and any other to the framework (`_delta_row_in_scope_framework`).
+ * scope. And `_delta_row_in_scope` itself, which sends each document to its
+ * own and refuses a name of none (`no doc def for`: the framework that read the rest
+ * retired, todo #26).
  */
 import { q, type DocDef, type Schema } from "@blueshed/delta/backend";
-import { lit, named, need, scopeOf , currentOnly } from "./opens";
+import { lit, named, need, noDoc, scopeOf, currentOnly } from "./opens";
 
 /** A document's write-scope function: `dzql_in_scope__<slug>`. */
 export const inScopeFunction = (prefix: string): string => named("in_scope", prefix);
@@ -79,7 +80,7 @@ RETURNS BOOLEAN AS $$
 BEGIN
   CASE p_def.prefix
 ${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${inScopeFunction(d.prefix)}(p_doc_name, p_collection_key, p_id);`).join("\n")}
-    ELSE RETURN _delta_row_in_scope_framework(p_def, p_doc_name, p_collection_key, p_id);
+    ELSE ${noDoc("p_doc_name")}
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;`;

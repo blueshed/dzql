@@ -10,19 +10,18 @@
  *
  * - `dzql_columns__<slug>(collection, columns_def)` for each document: the
  *   columns it writes, the ones it names (`columns`) where it names some,
- *   from the list written in. `_delta_write_columns` sends each compiled
- *   document to its own, any other to the framework
- *   (`_delta_write_columns_framework`).
+ *   from the list written in. `_delta_write_columns` sends each document to
+ *   its own, and refuses a name of none.
  * - `_delta_assert_fields` itself: for each collection, each set of columns
  *   the definitions give it (all of them, and each document's own), checked
  *   by written statements -- the fields there are, the parent key, each
  *   column's type -- with the framework's messages, put together in the
  *   framework's order (`ORDER BY` in SQL, so the database's collation orders
  *   both alike). Columns of another set (a walk's, another version's) are
- *   checked by the framework's (`_delta_assert_fields_framework`).
+ *   checked by the columns given (`_delta_assert_fields_declared`).
  */
 import type { ColumnDef, DocDef, ResolvedTable, Schema } from "@blueshed/delta/backend";
-import { lit, named, need } from "./opens";
+import { lit, named, need, noDoc } from "./opens";
 
 /** A document's columns function: `dzql_columns__<slug>`. */
 export const columnsFunction = (prefix: string): string => named("columns", prefix);
@@ -105,7 +104,7 @@ RETURNS JSONB AS $$
 BEGIN
   CASE p_def.prefix
 ${docs.map((d) => `    WHEN ${lit(d.prefix)} THEN RETURN ${columnsFunction(d.prefix)}(p_coll, p_columns_def);`).join("\n")}
-    ELSE RETURN _delta_write_columns_framework(p_def, p_coll, p_columns_def);
+    ELSE ${noDoc("p_def.prefix")}
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;`;
@@ -136,8 +135,8 @@ BEGIN
 ${branches.join("\n")}
     ELSE NULL;
   END CASE;
-  -- another set of columns (a walk's, another version's): the framework's
-  PERFORM _delta_assert_fields_framework(p_collection, p_columns, p_parent_fk, p_value);
+  -- another set of columns (a walk's, another version's): by the columns given
+  PERFORM _delta_assert_fields_declared(p_collection, p_columns, p_parent_fk, p_value);
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;`;
   return [...docs.map((d) => columnsOf(schema, d)), dispatch, checks, ""].join("\n\n");

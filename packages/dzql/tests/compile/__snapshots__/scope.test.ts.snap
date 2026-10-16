@@ -5935,7 +5935,7 @@ BEGIN
     WHEN 'fo-asks:' THEN RETURN dzql_in_scope__fo_asks(p_doc_name, p_collection_key, p_id);
     WHEN 'fo-asks-from:' THEN RETURN dzql_in_scope__fo_asks_from(p_doc_name, p_collection_key, p_id);
     WHEN 'fo-pub-courses:' THEN RETURN dzql_in_scope__fo_pub_courses(p_doc_name, p_collection_key, p_id);
-    ELSE RETURN _delta_row_in_scope_framework(p_def, p_doc_name, p_collection_key, p_id);
+    ELSE RAISE EXCEPTION 'no doc def for: %', p_doc_name USING ERRCODE = 'P0001';
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;

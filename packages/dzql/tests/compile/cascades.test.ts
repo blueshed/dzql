@@ -1,22 +1,24 @@
 /**
- * Compiled cascades, hanging rows, and an add's row do what the framework's do.
- * For every collection and every id its table holds (each version of a
- * temporal one), one it does not, and none: the rows a remove would take, the
- * remove itself, the rows that hang from the row, the row read; and an add's
- * row stored, giving every column the schema declares or fewer, under an id
- * free or taken. Each is run by the framework (its dispatchers pointed back at
- * it, so its recursion stays its own) and by the compiled functions in turn,
- * in one transaction from the same savepoint: the same answer, the same error,
- * and every table left the same. And a row giving every declared column is
- * stored without the framework. Then every write through them: delta's own
- * cases (tests/delta) run with them in place.
+ * Compiled cascades, hanging rows, and an add's row.
+ *
+ * Until the framework retired (todo #26, 16 October 2026) every collection's
+ * cascades, the rows a remove takes, the rows hanging from a row, and an add's
+ * row stored were run by the framework and by the compiled functions in turn,
+ * for every id its table held, on the seed and after writes, and gave the same
+ * answers and left every table the same. Those answers carried the write's own
+ * time, so they were not recorded: the cascades are held by delta's own cases
+ * (tests/delta), every remove and walk through them, against what delta answers.
+ *
+ * Here: a row that gives every declared column is stored by its collection's
+ * own INSERT; one that gives fewer, by the columns it gives (a column it leaves
+ * out takes its database default); a collection there is not has nothing to
+ * take and nothing hanging from it; and the text is pinned.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import type { Pool, PoolClient } from "pg";
-import { createLocal } from "@blueshed/delta/local";
+import type { Pool } from "pg";
 import { setLogLevel } from "@blueshed/delta/logger";
 import { pathDocs, pathPublicDocs, pathSchema, pathSeed } from "@blueshed/delta/testing";
-import { applyFramework, applySql, createDocListener, docTypeFromDef, generateSql, importTables } from "../../src/postgres";
+import { applyFramework, applySql, generateSql, importTables } from "../../src/postgres";
 import { openPglite } from "../../src/postgres/pglite";
 import { compileCascades } from "../../src/compile/cascades";
 
@@ -24,10 +26,6 @@ setLogLevel("silent");
 
 const docs = [...pathDocs, ...pathPublicDocs];
 const tables = Object.entries(pathSchema.tables);
-
-/** The framework's dispatchers, as the framework SQL makes them: its recursion stays its own. */
-const FRAMEWORK = ["_delta_cascade_remove", "_delta_cascade_rows", "_delta_hanging_rows"].map((name) =>
-  `CREATE OR REPLACE FUNCTION ${name}(p_collection_key TEXT, p_id BIGINT) RETURNS JSONB LANGUAGE sql AS $$ SELECT ${name}_framework(p_collection_key, p_id); $$;`).join("\n");
 
 let pool: Pool;
 
@@ -39,73 +37,29 @@ beforeAll(async () => {
 });
 afterAll(async () => { await pool.end(); });
 
-/** Every table's rows, in a fixed order. */
-const everything = async (c: PoolClient) => {
-  const out: Record<string, unknown> = {};
-  for (const [, t] of tables) out[t.name] = (await c.query(`SELECT COALESCE(jsonb_agg(to_jsonb(t.*) ORDER BY to_jsonb(t.*)::text), '[]') AS r FROM "${t.name}" t`)).rows[0].r;
-  return out;
-};
-
-type Step = (c: PoolClient, fw: (name: string) => string, ts: string) => Promise<unknown>;
-
-/** `steps` by the framework, then by the compiled, each from the same savepoint: the answers, and every table after. */
-async function both(c: PoolClient, steps: Step[]) {
-  const ts = (await c.query("SELECT now()::text AS ts")).rows[0].ts;
-  const run = async (framework: boolean) => {
-    await c.query("SAVEPOINT s");
-    const answers: unknown[] = [];
-    try {
-      if (framework) await c.query(FRAMEWORK);
-      for (const step of steps) answers.push(await step(c, (name) => (framework ? `${name}_framework` : name), ts));
-      answers.push(await everything(c));
-    } catch (err: any) {
-      answers.push({ error: err.message });
-    }
-    await c.query("ROLLBACK TO SAVEPOINT s");
-    return answers;
-  };
-  return { framework: await run(true), compiled: await run(false) };
-}
-
-function same() {
+describe("an add's row, for every collection", () => {
   for (const [coll, t] of tables) {
     test(coll, async () => {
       const c = await pool.connect();
       try {
         await c.query("BEGIN");
-        const ids = [...(await c.query(`SELECT DISTINCT id FROM "${t.name}" ORDER BY id`)).rows.map((r) => Number(r.id)), 404, null];
-        const view = t.temporal ? `current_${t.name}` : t.name;
-        for (const id of ids) {
-          const call = (name: string, extra = ""): Step => async (c, fw) => (await c.query(`SELECT ${fw(name)}($1${extra}, $2) AS r`, extra ? [coll, view, id] : [coll, id])).rows[0].r;
-          const read: Step = async (c, fw) => (await c.query(`SELECT ${fw("_delta_row_read")}($1, $2, $3) AS r`, [coll, view, id])).rows[0].r;
-          for (const steps of [
-            [call("_delta_cascade_rows"), call("_delta_hanging_rows"), read],
-            [call("_delta_cascade_rows"), call("_delta_cascade_remove"), call("_delta_cascade_rows")],   // what it takes, taking it, nothing left
-            [call("_delta_cascade_remove"), call("_delta_cascade_remove")],                              // a second remove takes nothing
-          ]) {
-            const r = await both(c, steps);
-            expect({ coll, id, answers: r.compiled }).toEqual({ coll, id, answers: r.framework });
-          }
-        }
-
-        // an add's row: every declared column, fewer, under an id free or taken
         const ts = (await c.query("SELECT now()::text AS ts")).rows[0].ts;
         const some = (await c.query(`SELECT to_jsonb(t.*) - 'valid_from' - 'valid_to' AS r FROM "${t.name}" t ORDER BY id LIMIT 1`)).rows[0]?.r;
-        if (some) {
-          const full = (id: number) => ({ ...some, id, ...(t.temporal ? { valid_from: ts, valid_to: null } : {}) });
-          const [first] = Object.keys(t.columns);
-          const fewer = (id: number) => { const r: Record<string, unknown> = full(id); if (first) delete r[first]; return r; };
-          const add = (row: unknown): Step => async (c, fw) => (await c.query(`SELECT ${fw("_delta_row_add")}($1, $2, $3::jsonb) AS r`, [coll, t.name, JSON.stringify(row)])).rows[0].r;
-          for (const steps of [[add(full(950))], [add(fewer(951))], [add(full(Number(some.id)))], [add(full(952)), add(full(952))]]) {
-            const r = await both(c, steps);
-            expect({ coll, answers: r.compiled }).toEqual({ coll, answers: r.framework });
-          }
-          // every declared column given: stored without the framework
-          await c.query("SAVEPOINT w");
-          await c.query(`CREATE OR REPLACE FUNCTION _delta_row_add_framework(p_coll TEXT, p_table TEXT, p_row JSONB) RETURNS JSONB LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'the framework was asked'; END $$`);
-          const stored = (await c.query("SELECT _delta_row_add($1, $2, $3::jsonb) AS r", [coll, t.name, JSON.stringify(full(953))])).rows[0].r;
-          expect({ coll, id: stored.id }).toEqual({ coll, id: 953 });
-          await c.query("ROLLBACK TO SAVEPOINT w");
+        if (!some) return;
+        const full = (id: number) => ({ ...some, id, ...(t.temporal ? { valid_from: ts, valid_to: null } : {}) });
+        const add = async (row: unknown) => (await c.query("SELECT _delta_row_add($1, $2, $3::jsonb) AS r", [coll, t.name, JSON.stringify(row)])).rows[0].r;
+        // every declared column given: its own INSERT, never the one by the columns given
+        await c.query("SAVEPOINT w");
+        await c.query(`CREATE OR REPLACE FUNCTION _delta_row_add_given(p_table TEXT, p_row JSONB) RETURNS JSONB LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'stored by the columns given'; END $$`);
+        expect({ coll, id: (await add(full(953))).id }).toEqual({ coll, id: 953 });
+        await c.query("ROLLBACK TO SAVEPOINT w");
+        // fewer: by the columns it gives, the rest their defaults
+        const [first] = Object.keys(t.columns);
+        if (first && t.columns[first]!.nullable) {
+          const fewer: Record<string, unknown> = full(954);
+          delete fewer[first];
+          const stored = await add(fewer);
+          expect({ coll, id: stored.id, [first]: stored[first] }).toEqual({ coll, id: 954, [first]: null });
         }
       } finally {
         await c.query("ROLLBACK");
@@ -113,29 +67,12 @@ function same() {
       }
     });
   }
-}
+});
 
-describe("on the seed, every collection's cascades and rows do what the framework's do", () => same());
-
-describe("after writes of every kind, still", () => {
-  beforeAll(async () => {
-    const local = createLocal();
-    const listener = await createDocListener(local.server, pool, { types: docs.map((def) => docTypeFromDef(def, pool)), ledger: true });
-    const write = async (doc: string, ops: unknown[]) => {
-      await local.call("open", { doc });
-      const r = await local.call("delta", { doc, ops });
-      expect(r.error).toBeUndefined();
-    };
-    await write("fo-board:1", [
-      { op: "add", path: "/courses/-", value: { name: "Fish" } },
-      { op: "add", path: "/notes/-", value: { text: "and tables" } },
-      { op: "remove", path: "/notes/1" },
-    ]);
-    await write("fo-all-courses:", [{ op: "remove", path: "/courses/2" }]);
-    await write("fo-all-households:", [{ op: "replace", path: "/households/2/weddings_id", value: 2 }]);
-    await listener.destroy();
-  });
-  same();
+test("a collection there is not: nothing to take, nothing hanging from it", async () => {
+  for (const fn of ["_delta_cascade_remove", "_delta_cascade_rows", "_delta_hanging_rows"]) {
+    expect((await pool.query(`SELECT ${fn}('no_such', 1) AS r`)).rows[0].r).toEqual([]);
+  }
 });
 
 describe("the compiled text", () => {

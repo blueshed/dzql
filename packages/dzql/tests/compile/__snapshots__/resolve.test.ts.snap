@@ -33174,7 +33174,7 @@ BEGIN
     WHEN 'fo-asks:' THEN RETURN dzql_scope__fo_asks(p_doc_name, p_refuse);
     WHEN 'fo-asks-from:' THEN RETURN dzql_scope__fo_asks_from(p_doc_name, p_refuse);
     WHEN 'fo-pub-courses:' THEN RETURN dzql_scope__fo_pub_courses(p_doc_name, p_refuse);
-    ELSE RETURN _delta_resolve_scope_framework(p_def, p_doc_name, p_refuse);
+    ELSE RAISE EXCEPTION 'no doc def for: %', p_doc_name USING ERRCODE = 'P0001';
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;

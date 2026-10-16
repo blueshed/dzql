@@ -300,7 +300,7 @@ for (const [name, b] of [["sqlite", sqliteBackend], ["pglite", pgBackend]] as [s
       expect(await b.migrate(older, b.story(ran), { app: "team", schema: after })).toEqual({ ran: ["001-name-is-full-name", "002-fax-into-phone", "003-no-fax"], fresh: false, unknown: [] });
     }, SLOW);
 
-    test("the fence is the migrating app's: another app on the database undoes on across it", async () => {
+    test("the fence is the migrating app's: another app (on SQLite, the same file; on Postgres, its own database) undoes on across it", async () => {
       const h = await b.open();
       await lived(b, h);   // the team app, on the ledger
       const notes = sqlite.defineSchema({ notes: { table: "other_notes", columns: { text: "text" }, temporal: false } });
@@ -311,8 +311,12 @@ for (const [name, b] of [["sqlite", sqliteBackend], ["pglite", pgBackend]] as [s
         sqlite.createTables(db, notes);
         sqlite.registerDocs(other.server, db, notes, [note], [], { ledger: true });
       } else {
-        await pg.applySql(h, pg.generateSql(notes, [note]));
-        listeners.push(await pg.createDocListener(other.server, h, { types: [pg.docTypeFromDef(note, h)], ledger: true, schema: notes }));
+        // on Postgres an app has a database of its own (or a schema): one generateSql per
+        // database, so the other app's documents are compiled where it alone answers them
+        const own = await b.open();
+        await pg.applyFramework(own);
+        await pg.applySql(own, pg.generateSql(notes, [note]));
+        listeners.push(await pg.createDocListener(other.server, own, { types: [pg.docTypeFromDef(note, own)], ledger: true, schema: notes }));
       }
       await other.call("open", { doc: "notes:" });
       expect((await other.call("delta", { doc: "notes:", ops: [{ op: "add", path: "/notes/-", value: { text: "kept" } }], cursor: "cy" })).error).toBeUndefined();

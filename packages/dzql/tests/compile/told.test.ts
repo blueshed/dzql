@@ -121,9 +121,9 @@ describe("the compiled text", () => {
     expect(compileTold(pathSchema, docs)).toMatchSnapshot();
   });
 
-  test("_delta_told sends a compiled document to its own, any other to the framework", () => {
+  test("_delta_told sends each document to its own, and refuses a name of none", () => {
     const sql = compileTold(pathSchema, docs);
     expect(sql).toContain(`WHEN 'fo-board:' THEN RETURN ${toldFunction("fo-board:")}(p_target, p_rows);`);
-    expect(sql).toContain("ELSE RETURN _delta_told_framework(p_def, p_target, p_rows);");
+    expect(sql).toContain("ELSE RAISE EXCEPTION 'no doc def for: %', p_target USING ERRCODE = 'P0001';");
   });
 });

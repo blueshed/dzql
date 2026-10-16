@@ -8943,7 +8943,7 @@ BEGIN
     WHEN 'slots' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"slots","table_name":"fo_slots","columns_def":{"price":{"type":"real","nullable":true},"starts":{"type":"timestamptz","nullable":true}},"parent_collection":"weddings","parent_fk":"weddings_id","temporal":false,"cascade_on":[]}'::jsonb);
     WHEN 'favours' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"favours","table_name":"fo_favours","columns_def":{"households_id":{"type":"integer","nullable":false},"gift":{"type":"text","nullable":false}},"parent_collection":"weddings","parent_fk":"weddings_id","temporal":false,"cascade_on":[{"fk":"households_id","collection":"households"}]}'::jsonb);
     WHEN 'asks' THEN RETURN jsonb_populate_record(null::_delta_collections, '{"collection_key":"asks","table_name":"order","columns_def":{"in":{"type":"integer","nullable":true},"from":{"type":"text","nullable":true},"to":{"type":"text","nullable":true}},"parent_collection":"weddings","parent_fk":"group","temporal":true,"cascade_on":[]}'::jsonb);
-    ELSE RETURN _delta_collection_framework(p_key);
+    ELSE RETURN NULL;   -- a collection there is not
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;
@@ -8991,7 +8991,7 @@ BEGIN
   IF starts_with(p_doc_name, 'fo-note:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-note:","root_collection":"notes","include":[],"scope":{},"implied":false,"held":{}}'::jsonb); END IF;
   IF starts_with(p_doc_name, 'fo-plan:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-plan:","root_collection":"weddings","include":["courses","drinks"],"scope":{},"implied":true,"held":{}}'::jsonb); END IF;
   IF starts_with(p_doc_name, 'fo-slim:') THEN RETURN jsonb_populate_record(null::_delta_docs, '{"prefix":"fo-slim:","root_collection":"weddings","include":["households","seats"],"scope":{},"implied":false,"held":{"households":["email"],"seats":["table_no"]}}'::jsonb); END IF;
-  RETURN _delta_find_doc_framework(p_doc_name);
+  RETURN NULL;   -- a name no document holds
 END;
 $$ LANGUAGE plpgsql STABLE;
 
@@ -9041,7 +9041,7 @@ BEGIN
       IF NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'SELECT') THEN RETURN FALSE; END IF;
       SELECT p_id >= last_value + is_called::int INTO v_new FROM "seq_order";
       RETURN v_new;
-    ELSE RETURN _delta_serial_new_framework(p_table, p_id);
+    ELSE RETURN FALSE;   -- a table there is not: no id is new
   END CASE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -9086,7 +9086,7 @@ BEGIN
     WHEN 'order' THEN
       IF p_id > 9007199254740991 OR NOT has_table_privilege(COALESCE(NULLIF(current_setting('role'), 'none'), session_user), p_table, 'INSERT') THEN RETURN; END IF;
       PERFORM setval('seq_order', p_id) FROM "seq_order" WHERE p_id >= last_value + is_called::int;
-    ELSE PERFORM _delta_serial_past_framework(p_table, p_id);
+    ELSE NULL;   -- a table there is not: nothing to move
   END CASE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -9143,7 +9143,7 @@ BEGIN
     WHEN 'fo-asks:' THEN RETURN dzql_open_at__fo_asks(p_doc_name, p_at);
     WHEN 'fo-asks-from:' THEN RETURN dzql_open_at__fo_asks_from(p_doc_name, p_at);
     WHEN 'fo-pub-courses:' THEN RETURN dzql_open_at__fo_pub_courses(p_doc_name, p_at);
-    ELSE RETURN _delta_open_at_framework(p_doc_name, p_at);   -- a name no document compiled here holds (none at all: the framework refuses it)
+    ELSE RAISE EXCEPTION 'no doc def for: %', p_doc_name USING ERRCODE = 'P0001';
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;

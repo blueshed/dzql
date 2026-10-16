@@ -521,7 +521,7 @@ BEGIN
     WHEN 'slots' THEN RETURN dzql_cascade_remove__slots(p_id);
     WHEN 'favours' THEN RETURN dzql_cascade_remove__favours(p_id);
     WHEN 'asks' THEN RETURN dzql_cascade_remove__asks(p_id);
-    ELSE RETURN _delta_cascade_remove_framework(p_collection_key, p_id);
+    ELSE RETURN '[]'::jsonb;   -- a collection there is not: nothing to take, nothing hangs from it
   END CASE;
 END;
 $$ LANGUAGE plpgsql;
@@ -540,7 +540,7 @@ BEGIN
     WHEN 'slots' THEN RETURN dzql_cascade_rows__slots(p_id);
     WHEN 'favours' THEN RETURN dzql_cascade_rows__favours(p_id);
     WHEN 'asks' THEN RETURN dzql_cascade_rows__asks(p_id);
-    ELSE RETURN _delta_cascade_rows_framework(p_collection_key, p_id);
+    ELSE RETURN '[]'::jsonb;   -- a collection there is not: nothing to take, nothing hangs from it
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;
@@ -559,7 +559,7 @@ BEGIN
     WHEN 'slots' THEN RETURN dzql_hanging_rows__slots(p_id);
     WHEN 'favours' THEN RETURN dzql_hanging_rows__favours(p_id);
     WHEN 'asks' THEN RETURN dzql_hanging_rows__asks(p_id);
-    ELSE RETURN _delta_hanging_rows_framework(p_collection_key, p_id);
+    ELSE RETURN '[]'::jsonb;   -- a collection there is not: nothing to take, nothing hangs from it
   END CASE;
 END;
 $$ LANGUAGE plpgsql STABLE;
