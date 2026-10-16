@@ -20,7 +20,7 @@
   "dependencies": {
     "@blueshed/delta": "^1.1.0",
     "@blueshed/railroad": "^0.16.0",
-    "dzql": "^0.11.0",
+    "dzql": "^0.12.0",
     "lucide": "^1.51.0",
     "pg": "^8.22.0"
   },

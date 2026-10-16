@@ -23,6 +23,8 @@ How dzql got here. Newest first. Versions are those of the `dzql` package on npm
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-16
+
 ### Added
 
 - **Link sign-in on Postgres: `dzql/auth-link`.** delta 1.1.0's `auth-link` signs people in with no
