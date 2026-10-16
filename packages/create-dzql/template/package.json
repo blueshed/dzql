@@ -1,0 +1,30 @@
+{
+  "name": "{{name}}",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.3",
+  "engines": {
+    "bun": ">=1.4.3"
+  },
+  "scripts": {
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down -v",
+    "dev": "bun --hot src/main.ts",
+    "stop": "bun -e \"const f = Bun.file('.server.pid'); if (!(await f.exists())) console.log('not running'); else { const pid = Number(await f.text()); try { if (!(pid > 0)) throw 0; process.kill(pid, 'SIGTERM'); console.log('stopped ' + pid); } catch { await f.delete(); console.log('removed stale pid file'); } }\"",
+    "typecheck": "bun check",
+    "test": "bun test",
+    "start": "NODE_ENV=production bun src/main.ts"
+  },
+  "dependencies": {
+    "@blueshed/delta": "^1.0.0",
+    "@blueshed/railroad": "^0.16.0",
+    "dzql": "^0.11.0",
+    "lucide": "^1.51.0",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@types/pg": "^8.15.0"
+  }
+}

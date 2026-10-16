@@ -137,6 +137,9 @@ export async function openPglite(dir?: string): Promise<Pool> {
   } catch {
     throw new Error("[delta/pglite] @electric-sql/pglite is not installed -- bun add @electric-sql/pglite");
   }
-  const db: PGliteish = dir ? await PGlite.create(dir) : await PGlite.create();
+  // pgcrypto, which dzql/auth-jwt hashes passwords with: PGlite has an extension only when it is
+  // given one at start (loaded when a database creates it)
+  const { pgcrypto } = await import("@electric-sql/pglite/contrib/pgcrypto");
+  const db: PGliteish = await PGlite.create(dir, { extensions: { pgcrypto } });
   return pglitePool(db);
 }

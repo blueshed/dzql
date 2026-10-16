@@ -13,7 +13,7 @@ The release procedure of railroad, delta and eta, for dzql. The bump level is `$
 | Packages | `dzql` (`packages/dzql`) and `create-dzql` (`packages/create-dzql`), one version for both |
 | Published | npm, public, by `.github/workflows/publish.yml` on a pushed tag: `dzql@x.y.z`, `create-dzql@x.y.z` |
 | Gate | `cd packages/dzql && bun check && bun run test` (Docker; port 5433 free) |
-| End to end | CLAUDE.md, *Testing the create-dzql Template*: the five checks, linked to the local dzql |
+| End to end | CLAUDE.md, *Testing the create-dzql Template*: a new app, linked to the local dzql, and its own tests |
 
 Run the steps in order. Stop at the first failure without changing anything further. Running this
 command is the authorisation to release -- carry it through to the end, the push included, without
@@ -32,26 +32,28 @@ asking again. Bun only (`bun check`, TypeScript 7, as the gate says), and never 
    is `0`. Commits ahead of origin are fine -- they go out with the release in step 8.
 4. `CHANGELOG.md` has a `## [Unreleased]` section with something under it. It is the record of
    what is shipping, written as the work landed; if it is missing or empty, stop and say so.
-5. The two packages have the same `version`, and `create-dzql`'s `dzql` dependency is `^` it.
+5. The two packages have the same `version`, and the template's `dzql` dependency
+   (`packages/create-dzql/template/package.json`) is `^` it or the next version.
 
 ## 3. Gate
 
-Run the gate command in the table. If it fails, stop -- no file has been edited yet. Restore
-`packages/dzql/tsconfig.tsbuildinfo` if `tsc` rewrote it (`git checkout -- <it>`).
+Run the gate command in the table. If it fails, stop -- no file has been edited yet.
 
 ## 4. End to end
 
-Follow CLAUDE.md's *Testing the create-dzql Template* with the local dzql linked (the app's
-`dzql` dependency set to `link:dzql`, so its runtime is the local one, not npm's): register, create
-a post, see it arrive on a second page without a reload, edit it, delete it; and a second user
-sees the first's post with no Edit or Delete. Then its *Cleanup*, the `bun unlink` included. If
-any check fails, stop.
+Follow CLAUDE.md's *Testing the create-dzql Template*: a new app from the local template, its
+`dzql` dependency set to `link:dzql` (so its runtime is the local one, not npm's), `bun check`
+clean and `bun test` passing. Its tests are the checks, in two real browsers: register, publish a
+post, see it arrive in the other window without a reload, edit it in the sheet, delete it; the
+other person sees it with no Edit or Delete; a write to everyone's posts is refused (403), another's
+posts are not there (404); a reload keeps you signed in, and you sign in again by email. Then its
+*Cleanup*, the `bun unlink` included. If any check fails, stop.
 
 ## 5. Bump
 
 Parse `version` in `packages/dzql/package.json` as strict `x.y.z` (refuse anything else) and compute
 the next: `patch` → `x.y.(z+1)`, `minor` → `x.(y+1).0`, `major` → `(x+1).0.0`. Write it to both
-packages' `version`, and `^<new version>` to `create-dzql`'s `dzql` dependency, keeping the 2-space
+packages' `version`, and `^<new version>` to the template's `dzql` dependency, keeping the 2-space
 indent and the trailing newline. Then `bun install`, so `bun.lock` names the new versions
 (CI installs with `--frozen-lockfile`).
 
@@ -64,7 +66,7 @@ and put a fresh, empty `## [Unreleased]` above it. In `todo.jsonl`, the settled 
 ## 7. Commit and tag
 
 ```
-git add packages/dzql/package.json packages/create-dzql/package.json bun.lock CHANGELOG.md todo.jsonl
+git add packages/dzql/package.json packages/create-dzql/package.json packages/create-dzql/template/package.json bun.lock CHANGELOG.md todo.jsonl
 git commit -m "Release v<new version>"
 git tag -a dzql@<new version> -m "dzql <new version>"
 git tag -a create-dzql@<new version> -m "create-dzql <new version>"

@@ -1,8 +1,0 @@
-{
-  "name": "server",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "cd .. && bun run --watch server/index.ts"
-  }
-}

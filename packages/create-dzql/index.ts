@@ -1,84 +1,51 @@
 #!/usr/bin/env bun
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from "fs";
-import { join, dirname } from "path";
+/**
+ * `bun create dzql my-app`: a paintbrush app on dzql. People register and sign in, and share posts,
+ * kept in Postgres: everyone's live, each person's own to change. Copies `template/`, puts the app's
+ * name in it, and says what to run.
+ */
+import { cpSync, existsSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
-const destName = process.argv[2] || "my-dzql-app";
-const dest = join(process.cwd(), destName);
-
+const name = process.argv[2] || "my-dzql-app";
+if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) {
+  console.error(`"${name}" is not a name for an app: lower case letters, digits and dashes`);
+  process.exit(1);
+}
+const dest = join(process.cwd(), name);
 if (existsSync(dest)) {
-  console.error(`Error: Directory "${destName}" already exists`);
+  console.error(`Error: "${name}" already exists`);
   process.exit(1);
 }
 
-// Get the directory where this script is located (the package root)
-const templateDir = dirname(new URL(import.meta.url).pathname);
+console.log(`Creating ${name}...`);
+cpSync(join(import.meta.dir, "template"), dest, { recursive: true });
 
-// Files/dirs to copy (excluding node_modules, package-lock, and this script)
-const exclude = ["node_modules", "package-lock.json", "bun.lockb", "index.ts", ".git", destName];
+// npm leaves dotfiles of a package behind: they travel without their dot
+renameSync(join(dest, "gitignore"), join(dest, ".gitignore"));
+renameSync(join(dest, "env.example"), join(dest, ".env.example"));
 
-// Copy template files
-console.log(`Creating ${destName}...`);
-mkdirSync(dest, { recursive: true });
-
-for (const entry of readdirSync(templateDir)) {
-  if (exclude.includes(entry)) continue;
-
-  const src = join(templateDir, entry);
-  const target = join(dest, entry);
-
-  cpSync(src, target, { recursive: true });
-}
-
-// Replace {{name}} placeholders
-const filesToProcess = [
-  "package.json",
-  "compose.yml",
-  ".env.example",
-  "README.md",
-  "server/package.json",
-  "client/package.json",
-  "client/index.html"
-];
-
-for (const file of filesToProcess) {
-  const filePath = join(dest, file);
-  if (existsSync(filePath)) {
-    let content = readFileSync(filePath, "utf-8");
-    content = content.replace(/\{\{name\}\}/g, destName);
-    writeFileSync(filePath, content);
+// The app's name in place of {{name}}, in every file
+const named = (dir: string): void => {
+  for (const entry of readdirSync(dir)) {
+    const path = join(dir, entry);
+    if (statSync(path).isDirectory()) named(path);
+    else {
+      const text = readFileSync(path, "utf8");
+      if (text.includes("{{name}}")) writeFileSync(path, text.replaceAll("{{name}}", name));
+    }
   }
-}
-
-// Copy .env.example to .env
-const envExample = join(dest, ".env.example");
-const envFile = join(dest, ".env");
-if (existsSync(envExample)) {
-  cpSync(envExample, envFile);
-}
-
-// Remove setup.sh and bun-create field (not needed when using this script)
-const setupSh = join(dest, "setup.sh");
-if (existsSync(setupSh)) {
-  unlinkSync(setupSh);
-}
-
-// Clean up the destination package.json - remove template-only fields
-const destPkgPath = join(dest, "package.json");
-if (existsSync(destPkgPath)) {
-  const pkg = JSON.parse(readFileSync(destPkgPath, "utf-8"));
-  delete pkg["bun-create"];
-  delete pkg.bin;
-  delete pkg.files;
-  pkg.name = destName;
-  pkg.private = true;
-  writeFileSync(destPkgPath, JSON.stringify(pkg, null, 2) + "\n");
-}
+};
+named(dest);
+cpSync(join(dest, ".env.example"), join(dest, ".env"));
 
 console.log(`
-Done! To get started:
+Done. To start:
 
-  cd ${destName}
+  cd ${name}
   bun install
-  bun run db:rebuild
-  bun run dev
+  bun run db:up      # a Postgres server in Docker (compose.yml)
+  bun dev            # http://localhost:3000
+
+  bun test           # the app's tests: Postgres in memory, two browsers
 `);

@@ -8,7 +8,7 @@ Before working on this codebase, read:
 - `packages/dzql/docs/for_ai.md` - AI guide for the whole-stack dzql (`domain.ts`), which retires in step 5
 - `packages/dzql/docs/README.md` - General documentation
 - `packages/dzql/docs/project-setup.md` - Project setup guide
-- `packages/create-dzql/README.md` - Starter template documentation
+- `packages/create-dzql/README.md` - `bun create dzql`: a paintbrush app on dzql
 
 ## Where the Project Is
 
@@ -38,7 +38,7 @@ packages/
 │   ├── examples/delta/  # delta's Postgres examples: todos-vs-rls, sites-bbox
 │   ├── bench/           # delta's bench (bun run bench), todo #25
 │   └── tests/           # delta/ (delta's cases), delta-pg/ (delta's Postgres tests), compile/ (compiled, to the framework's recorded answers), integration/ (whole stack)
-└── create-dzql/         # Starter template (bun create dzql), retiring in step 5
+└── create-dzql/         # bun create dzql: a paintbrush app on dzql (template/), its tests the end-to-end check
 ```
 
 ## dzql as delta's Postgres step
@@ -58,7 +58,7 @@ packages/
   only with the change that explains it. One `generateSql` per database: one app's definitions.
 - **Permissions are a document's** (`owns` as a path), **migrations are delta's**: no table rules,
   no upgrade scheme of dzql's own (philo.md).
-- **The whole-stack dzql** (`src/cli`, `runtime`, `client`, the Pinia stores, `create-dzql`) is kept
+- **The whole-stack dzql** (`src/cli`, `runtime`, `client`, the Pinia stores) is kept
   working until step 5 retires it: fix what breaks, add nothing to it.
 
 ## Testing
@@ -75,71 +75,31 @@ packages/
 
 ### Testing the create-dzql Template
 
-Before publishing changes to `create-dzql` or `dzql`, test by creating a sample app using the local template **with local packages linked**:
+`create-dzql` makes a paintbrush app on dzql (`packages/create-dzql/template/`): register and sign in
+(`auth-jwt`), and posts as two documents, `posts:` (everyone's, read-only) and `mine:<id>` (one
+person's own, every write through it). Its own tests are the end-to-end check, in two real browsers
+(`Bun.WebView`), with Postgres in memory (PGlite). Before publishing `create-dzql` or `dzql`, make
+an app from the local template with the local dzql linked, and run them:
 
 ```bash
-# 1. Link local dzql package globally
-cd /Users/peterb/Workshop/blueshed/dzql/packages/dzql
-bun link
-
-# 2. Create test app from local template
-cd /tmp
-rm -rf dzql-test-app
+cd packages/dzql && bun link                  # the local dzql, for the app to link
+cd "$(mktemp -d)"
 bun /Users/peterb/Workshop/blueshed/dzql/packages/create-dzql/index.ts dzql-test-app
 cd dzql-test-app
-
-# 3. Link local dzql into the test app (uses local code, not npm published version)
-bun link dzql
-
-# 4. Install remaining dependencies
+sed -i '' 's|"dzql": "[^"]*"|"dzql": "link:dzql"|' package.json   # the local dzql, not npm's
 bun install
-
-# 5. Compile and start database
-bun run db:rebuild
-
-# 6. Start dev servers
-bun run dev
+bun check && bun test
 ```
 
-**IMPORTANT:** The `bun link dzql` step is critical - without it, `bun install` fetches the published npm version, not your local changes. Always verify you're testing local code, not the old published version.
-
-**Verify local code is linked:** After `bun run db:rebuild`, check the generated manifest to confirm your changes are present:
-```bash
-cat .dzql/manifest.json | head -20
-```
-
-Then use Playwright (via MCP Docker) to test at `http://host.docker.internal:5173`:
-
-1. **Register a user**: Click "Create one", fill name/email/password, submit
-2. **Create a post**: Click "New Post", navigate to `/posts/new`, fill title/content, click Publish
-3. **Verify real-time**: Post should appear in list immediately (no refresh needed)
-4. **Edit a post**: Click "Edit" on your post, modify content, save - verify update appears
-5. **Delete a post**: Click "Delete", confirm - verify post is removed from list
-
-**Key things to verify:**
-- Real-time updates work (posts appear/update/disappear without refresh)
-- Edit button only shows for posts you authored
-- Routes work: `/`, `/posts/new`, `/posts/:id/edit`
+`node_modules/dzql` must be a link to the global one (`ls -la node_modules/dzql`): otherwise the
+tests ran npm's dzql. To see it by hand: `bun run db:up` (a Postgres server in Docker) and `bun dev`.
 
 ### Cleanup
 
-**IMPORTANT:** Always clean up after E2E testing to avoid polluting your environment.
-
 ```bash
-# 1. Kill dev servers first (vite processes left running in background)
-pkill -f "vite" 2>/dev/null
-
-# 2. Stop and remove test app
-cd /tmp/dzql-test-app
-docker compose down -v
-cd /tmp && rm -rf dzql-test-app
-
-# 3. Remove the global bun link
-cd /Users/peterb/Workshop/blueshed/dzql/packages/dzql
-bun unlink
+docker compose down -v 2>/dev/null           # in the app, if db:up was run
+cd packages/dzql && bun unlink
 ```
-
-The `bun unlink` step removes the global link so future projects use the published npm version, not your local code.
 
 ## Publishing
 

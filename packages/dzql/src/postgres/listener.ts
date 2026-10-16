@@ -89,12 +89,15 @@ function errMsg(err: unknown): string {
  * entry that is not the cursor's next (409). And 40P01, a write that met another
  * at once and gave way to it (two adds of temporal ids in opposite orders wait
  * on each other's row locks, todo #16): nothing was written, and the same write
- * sent again goes through, or meets the rows the other made (409). Anything
- * else is the server's (500).
+ * sent again goes through, or meets the rows the other made (409). A document
+ * type that refuses with a wire code of its own (a number, 400 to 499: a
+ * read-only document's 403) is answered with it. Anything else is the
+ * server's (500).
  */
 const CODE_OF_SQLSTATE: Record<string, number> = { "22023": 400, "22P02": 400, "22007": 400, "22008": 400, "23502": 400, "25006": 403, P0002: 404, "23505": 409, "40001": 409, "40P01": 409 };
 function wireCode(err: unknown): number {
   const state = (err as { code?: unknown } | null)?.code;
+  if (typeof state === "number" && state >= 400 && state < 500) return state;
   return (typeof state === "string" && CODE_OF_SQLSTATE[state]) || 500;
 }
 
